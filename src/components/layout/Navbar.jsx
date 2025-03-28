@@ -13,6 +13,7 @@ const Navbar = () => {
             <li><Link to="/">Home</Link></li>
             <li><Link to="/teams">Teams</Link></li>
             <li><Link to="/garden">Project Garden</Link></li>
+            <li><Link to="/badges">Badges</Link></li>
           </ul>
         </div>
         <Link to="/" className="btn btn-ghost normal-case text-xl">Lomir</Link>
@@ -22,6 +23,7 @@ const Navbar = () => {
           <li><Link to="/">Home</Link></li>
           <li><Link to="/teams">Teams</Link></li>
           <li><Link to="/garden">Project Garden</Link></li>
+          <li><Link to="/badges">Badges</Link></li>
         </ul>
       </div>
       <div className="navbar-end">
