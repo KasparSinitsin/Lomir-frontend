@@ -7,7 +7,7 @@ import {
   // Creative Thinking
   Lightbulb, Key, Telescope, BookOpen, Paintbrush, PackageOpen,
   // Leadership Qualities
-  Compass, GraduationCap, Flag, UserPlus, ChessKnight, MessageSquare,
+  Compass, GraduationCap, Flag, UserPlus, Map, MessageSquare,
   // Personal Attributes
   Zap, Heart, Mountain, Search, Shuffle, Share2,
   // Default
@@ -51,7 +51,8 @@ const BadgeCard = ({ badge }) => {
       case 'Mentor': return <GraduationCap {...iconProps} />;
       case 'Initiative Taker': return <Flag {...iconProps} />;
       case 'Delegator': return <UserPlus {...iconProps} />;
-      case 'Strategic Planner': return <ChessKnight {...iconProps} />;
+      // Changed ChessKnight to Map for Strategic Planner
+      case 'Strategic Planner': return <Map {...iconProps} />;
       case 'Feedback Provider': return <MessageSquare {...iconProps} />;
       
       // Personal Attributes
