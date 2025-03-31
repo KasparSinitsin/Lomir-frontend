@@ -57,7 +57,17 @@ const Navbar = () => {
                 </Link>
               </li>
               <li><Link to="/settings">Settings</Link></li>
-              <li><a onClick={logout}>Logout</a></li>
+              <li>
+                  <button 
+                  className="w-full text-left" 
+                  onClick={(e) => {
+                  e.preventDefault();
+                  logout();
+                }}
+                  >
+                  Logout
+                </button>
+              </li>
             </ul>
           </div>
         ) : (
