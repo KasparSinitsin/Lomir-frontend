@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { FiChevronRight, FiChevronLeft } from 'react-icons/fi';
+import TagSelector from '../tags/TagSelector';
 
 // Placeholder for TagSelector - replace with your actual implementation
 const TagSelector = ({ onTagsSelected, selectedTags }) => {
