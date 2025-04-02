@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import { tagService } from '../../services/tagService';
 
 const TagSelector = ({ onTagsSelected, selectedTags = [] }) => {
   const [supercategories, setSupercategories] = useState([]);
@@ -20,8 +20,8 @@ const TagSelector = ({ onTagsSelected, selectedTags = [] }) => {
     const fetchTags = async () => {
       try {
         setLoading(true);
-        const response = await axios.get('/api/tags/structured');
-        setSupercategories(response.data);
+        const response = await tagService.getStructuredTags();
+        setSupercategories(response);
         setLoading(false);
       } catch (error) {
         console.error('Error fetching tags:', error);
@@ -97,14 +97,14 @@ const TagSelector = ({ onTagsSelected, selectedTags = [] }) => {
     }
 
     try {
-      const response = await axios.post('/api/tags/create', {
+      const newTag = await tagService.createTag({
         name: newTagName,
         category: selectedCategory,
         supercategory: selectedSupercategory
       });
 
       // Add the new tag to selected tags
-      toggleTagSelection(response.data.id);
+      toggleTagSelection(newTag.id);
 
       // Close modal and reset fields
       setShowAddTagModal(false);
