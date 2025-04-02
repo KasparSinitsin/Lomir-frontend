@@ -1,12 +1,10 @@
-import axios from 'axios';
-
-const BASE_URL = '/api/tags'; // Adjust this to match your backend API base URL
+import api from '../services/api';  
 
 export const tagService = {
   // Fetch structured tags
   getStructuredTags: async () => {
     try {
-      const response = await axios.get(`${BASE_URL}/structured`);
+      const response = await api.get('/tags/structured');
       return response.data;
     } catch (error) {
       console.error('Error fetching structured tags:', error);
@@ -17,7 +15,7 @@ export const tagService = {
   // Create a new tag
   createTag: async (tagData) => {
     try {
-      const response = await axios.post(`${BASE_URL}/create`, tagData);
+      const response = await api.post('/tags/create', tagData);
       return response.data;
     } catch (error) {
       console.error('Error creating tag:', error);
@@ -28,7 +26,7 @@ export const tagService = {
   // Search tags
   searchTags: async (query) => {
     try {
-      const response = await axios.get(`${BASE_URL}/search`, { 
+      const response = await api.get('/tags/search', { 
         params: { query } 
       });
       return response.data;
