@@ -2,57 +2,7 @@ import React, { useState } from 'react';
 import { FiChevronRight, FiChevronLeft } from 'react-icons/fi';
 import TagSelector from '../tags/TagSelector';
 
-// Placeholder for TagSelector - replace with your actual implementation
-const TagSelector = ({ onTagsSelected, selectedTags }) => {
-  const [localSelectedTags, setLocalSelectedTags] = useState(selectedTags || []);
-  const [experienceLevels, setExperienceLevels] = useState({});
-  const [interestLevels, setInterestLevels] = useState({});
 
-  const handleTagSelection = (tagId) => {
-    const newSelectedTags = localSelectedTags.includes(tagId)
-      ? localSelectedTags.filter(id => id !== tagId)
-      : [...localSelectedTags, tagId];
-    
-    setLocalSelectedTags(newSelectedTags);
-    
-    // Default levels if not set
-    const newExperienceLevels = { ...experienceLevels };
-    const newInterestLevels = { ...interestLevels };
-    
-    if (!newExperienceLevels[tagId]) {
-      newExperienceLevels[tagId] = 'beginner';
-    }
-    
-    if (!newInterestLevels[tagId]) {
-      newInterestLevels[tagId] = 'medium';
-    }
-    
-    setExperienceLevels(newExperienceLevels);
-    setInterestLevels(newInterestLevels);
-    
-    onTagsSelected(newSelectedTags, newExperienceLevels, newInterestLevels);
-  };
-
-  return (
-    <div className="p-4 border rounded">
-      <h3 className="text-lg font-semibold mb-4">Select Tags (Placeholder)</h3>
-      <div className="space-y-2">
-        {['Technology', 'Design', 'Marketing', 'Writing'].map(tag => (
-          <div key={tag} className="flex items-center">
-            <input 
-              type="checkbox"
-              id={tag}
-              checked={localSelectedTags.includes(tag)}
-              onChange={() => handleTagSelection(tag)}
-              className="mr-2"
-            />
-            <label htmlFor={tag}>{tag}</label>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-};
 
 // Placeholder for navigation and authentication
 const navigateTo = (path) => {

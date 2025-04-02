@@ -117,15 +117,17 @@ const TagSelector = ({ onTagsSelected, selectedTags = [] }) => {
     }
   };
 
-  const filteredSupercategories = supercategories.filter(supercat => 
-    supercat.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    supercat.categories.some(cat => 
-      cat.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      cat.tags.some(tag => 
-        tag.name.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredSupercategories = Array.isArray(supercategories) 
+  ? supercategories.filter(supercat => 
+      supercat.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      supercat.categories.some(cat => 
+        cat.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        cat.tags.some(tag => 
+          tag.name.toLowerCase().includes(searchQuery.toLowerCase())
+        )
       )
     )
-  );
+  : [];
 
   if (loading) {
     return <div>Loading tags...</div>;
