@@ -20,15 +20,18 @@ const TagSelector = ({ onTagsSelected, selectedTags = [] }) => {
     const fetchTags = async () => {
       try {
         setLoading(true);
+        console.log('Fetching structured tags...');
         const response = await tagService.getStructuredTags();
-        setSupercategories(response);
+        console.log('Received tag data:', response);
+        setSupercategories(response || []);  // Ensure it's always an array
         setLoading(false);
       } catch (error) {
         console.error('Error fetching tags:', error);
+        setSupercategories([]);  // Set an empty array on error
         setLoading(false);
       }
     };
-
+  
     fetchTags();
   }, []);
 
