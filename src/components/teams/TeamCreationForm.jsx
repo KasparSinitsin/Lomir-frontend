@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { FiChevronRight, FiChevronLeft } from 'react-icons/fi';
 import TagSelector from '../tags/TagSelector';
 import Alert from '../common/Alert';
+import { teamService } from '../../services/teamService';
 
 const TeamCreationForm = () => {
   const navigate = useNavigate();
@@ -94,7 +95,6 @@ const TeamCreationForm = () => {
       setSubmitError(null);
 
       try {
-        // TODO: Replace with actual team creation API call
         // Prepare submission data
         const submissionData = {
           name: formData.name,
@@ -109,17 +109,14 @@ const TeamCreationForm = () => {
           }))
         };
 
-        // Mock API call - replace with actual implementation
-        // const response = await teamService.createTeam(submissionData);
+        // Call team creation API
+        const response = await teamService.createTeam(submissionData);
         
-        // Temporary simulation
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // Navigate to teams page or newly created team page
-        navigate('/teams');
+        // Navigate to the newly created team's page or teams list
+        navigate(`/teams/${response.data.id}`);
       } catch (error) {
         console.error('Team creation error:', error);
-        setSubmitError(error.message || 'Failed to create team. Please try again.');
+        setSubmitError(error.response?.data?.message || 'Failed to create team. Please try again.');
       } finally {
         setIsSubmitting(false);
       }
