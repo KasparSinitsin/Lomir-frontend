@@ -9,6 +9,7 @@ import BadgeOverview from './pages/BadgeOverview';
 import Placeholder from './components/common/Placeholder';
 import ProtectedRoute from './components/layout/ProtectedRoute';
 import { AuthProvider } from './contexts/AuthContext';
+import CreateTeam from './pages/CreateTeam';
 
 function App() {
   return (
@@ -30,6 +31,7 @@ function App() {
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/profile/edit" element={<Placeholder pageName="Edit Profile" />} />
                 <Route path="/teams" element={<Placeholder pageName="Teams" />} />
+                <Route path="/teams/create" element={<CreateTeam />} />
                 <Route path="/settings" element={<Placeholder pageName="Settings" />} />
               </Route>
               
