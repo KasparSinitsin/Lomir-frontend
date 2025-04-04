@@ -15,7 +15,7 @@ function App() {
   return (
     <AuthProvider>
       <Router>
-        <div className="flex flex-col min-h-screen">
+        <div className="min-h-screen flex flex-col bg-base-100">
           <Navbar />
           <main className="flex-grow">
             <Routes>
@@ -38,7 +38,7 @@ function App() {
               {/* Catch-all route */}
               <Route path="*" element={<Placeholder pageName="Page Not Found" />} />
             </Routes>
-          </main>
+            </main>
           <Footer />
         </div>
       </Router>
