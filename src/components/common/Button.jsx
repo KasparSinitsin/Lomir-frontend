@@ -8,7 +8,8 @@ const Button = ({
   className = '', 
   onClick,
   disabled = false,
-  fullWidth = false
+  fullWidth = false,
+  icon = null
 }) => {
   const baseClasses = 'btn';
   const variantClasses = {
@@ -45,6 +46,7 @@ const Button = ({
       onClick={onClick}
       disabled={disabled}
     >
+      {icon && <span className="mr-2">{icon}</span>}
       {children}
     </button>
   );

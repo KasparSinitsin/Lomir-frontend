@@ -5,7 +5,7 @@ const Navbar = () => {
   const { isAuthenticated, user, logout } = useAuth();
 
   return (
-    <div className="navbar bg-base-100 shadow-lg">
+    <div className="navbar bg-base-100 shadow-sm border-b border-base-300">
       <div className="navbar-start">
         <div className="dropdown">
           <label tabIndex={0} className="btn btn-ghost lg:hidden">
@@ -24,7 +24,7 @@ const Navbar = () => {
             )}
           </ul>
         </div>
-        <Link to="/" className="btn btn-ghost normal-case text-xl">Lomir</Link>
+        <Link to="/" className="btn btn-ghost normal-case text-xl text-primary font-bold">Lomir</Link>
       </div>
       
       <div className="navbar-center hidden lg:flex">
@@ -45,8 +45,8 @@ const Navbar = () => {
       <div className="navbar-end">
         {isAuthenticated ? (
           <div className="dropdown dropdown-end">
-            <label tabIndex={0} className="btn btn-ghost btn-circle avatar placeholder">
-              <div className="bg-neutral-focus text-neutral-content rounded-full w-10">
+            <label tabIndex={0} className="btn btn-ghost btn-circle avatar bg-primary text-white">
+              <div className="rounded-full">
                 <span>{user.firstName?.charAt(0) || user.username?.charAt(0) || '?'}</span>
               </div>
             </label>
@@ -58,13 +58,13 @@ const Navbar = () => {
               </li>
               <li><Link to="/settings">Settings</Link></li>
               <li>
-                  <button 
+                <button 
                   className="w-full text-left" 
                   onClick={(e) => {
-                  e.preventDefault();
-                  logout();
-                }}
-                  >
+                    e.preventDefault();
+                    logout();
+                  }}
+                >
                   Logout
                 </button>
               </li>

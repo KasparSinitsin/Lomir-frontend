@@ -6,10 +6,9 @@ const Card = ({
   footer,
   className = '',
   compact = false,
-  bordered = true,
 }) => {
   return (
-    <div className={`card ${bordered ? 'border border-base-300' : ''} bg-base-100 shadow-sm ${compact ? 'card-compact' : ''} ${className}`}>
+    <div className={`card bg-base-100 border border-base-300 shadow-sm ${compact ? 'card-compact' : ''} ${className}`}>
       {title && (
         <div className="card-title p-4 border-b border-base-300">
           {title}
