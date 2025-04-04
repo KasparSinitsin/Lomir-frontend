@@ -10,12 +10,13 @@ import Placeholder from './components/common/Placeholder';
 import ProtectedRoute from './components/layout/ProtectedRoute';
 import { AuthProvider } from './contexts/AuthContext';
 import CreateTeam from './pages/CreateTeam';
+import DesignSystem from './pages/DesignSystem'; 
 
 function App() {
   return (
     <AuthProvider>
       <Router>
-        <div className="min-h-screen flex flex-col bg-base-100">
+      <div data-theme="lomirlite" className="min-h-screen flex flex-col bg-base-100">
           <Navbar />
           <main className="flex-grow">
             <Routes>
@@ -25,6 +26,7 @@ function App() {
               <Route path="/register" element={<Register />} />
               <Route path="/badges" element={<BadgeOverview />} />
               <Route path="/garden" element={<Placeholder pageName="Project Garden" />} />
+              <Route path="/design-system" element={<DesignSystem />} /> {/* Add this route */}
               
               {/* Protected routes */}
               <Route element={<ProtectedRoute />}>
@@ -38,7 +40,7 @@ function App() {
               {/* Catch-all route */}
               <Route path="*" element={<Placeholder pageName="Page Not Found" />} />
             </Routes>
-            </main>
+          </main>
           <Footer />
         </div>
       </Router>
