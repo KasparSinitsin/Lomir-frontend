@@ -2,7 +2,59 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Add custom base styles here */
+/* Global font styles */
+html, body {
+  font-family: 'Roboto', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Font weights for various heading levels */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 500;
+}
+
+/* Additional styling to optimize Roboto appearance */
+.text-xs, .text-sm {
+  letter-spacing: 0.01em;
+}
+
+.text-lg, .text-xl, .text-2xl, .text-3xl, .text-4xl, .text-5xl {
+  letter-spacing: -0.01em;
+}
+
+/* Custom font weights */
+.font-light {
+  font-weight: 300;
+}
+
+.font-normal {
+  font-weight: 400;
+}
+
+.font-medium {
+  font-weight: 500;
+}
+
+.font-bold {
+  font-weight: 700;
+}
+
+/* Custom Base Styles */
 body {
   min-height: 100vh;
+}
+
+/* Custom Button Design */
+.btn-primary {
+  background-image: linear-gradient(to right, #3B82F6, #2563EB);
+}
+
+.btn-primary:hover {
+  background-image: linear-gradient(to right, #2563EB, #1D4ED8);
+}
+
+/* Custom Input Focus for inpput fields */
+.input:focus {
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
 }

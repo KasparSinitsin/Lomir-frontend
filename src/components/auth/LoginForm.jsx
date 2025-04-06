@@ -62,9 +62,9 @@ const LoginForm = () => {
   };
 
   return (
-    <div className="card bg-base-100 shadow-xl mx-auto max-w-md w-full">
+    <div className="card bg-base-100 shadow-soft hover:shadow-md transition-shadow duration-300 mx-auto max-w-md w-full">
       <div className="card-body">
-        <h2 className="card-title text-2xl font-bold text-center">Login</h2>
+        <h2 className="card-title text-2xl font-bold text-center text-primary">Login</h2>
         
         {errors.form && (
           <div className="alert alert-error mt-4">
@@ -72,16 +72,16 @@ const LoginForm = () => {
           </div>
         )}
         
-        <form onSubmit={handleSubmit} className="mt-4">
+        <form onSubmit={handleSubmit} className="mt-4 space-y-4">
           <div className="form-control">
             <label className="label">
-              <span className="label-text">Email</span>
+              <span className="label-text font-medium">Email</span>
             </label>
             <input
               type="email"
               name="email"
               placeholder="email@example.com"
-              className={`input input-bordered ${errors.email ? 'input-error' : ''}`}
+              className={`input input-bordered ${errors.email ? 'input-error' : 'focus:border-primary'}`}
               value={formData.email}
               onChange={handleChange}
             />
@@ -92,15 +92,15 @@ const LoginForm = () => {
             )}
           </div>
           
-          <div className="form-control mt-2">
+          <div className="form-control">
             <label className="label">
-              <span className="label-text">Password</span>
+              <span className="label-text font-medium">Password</span>
             </label>
             <input
               type="password"
               name="password"
               placeholder="••••••••"
-              className={`input input-bordered ${errors.password ? 'input-error' : ''}`}
+              className={`input input-bordered ${errors.password ? 'input-error' : 'focus:border-primary'}`}
               value={formData.password}
               onChange={handleChange}
             />
