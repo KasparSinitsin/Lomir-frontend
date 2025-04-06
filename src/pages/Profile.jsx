@@ -20,21 +20,21 @@ const Profile = () => {
 
   return (
     <PageContainer>
-      <div className="card bg-base-100 shadow-xl mx-auto max-w-2xl">
+      <div className="card bg-base-100 shadow-soft hover:shadow-md transition-shadow duration-300 mx-auto max-w-2xl">
         <div className="card-body">
           <div className="flex justify-between items-center">
-            <h2 className="card-title text-2xl">My Profile</h2>
-            <button className="btn btn-outline btn-sm" onClick={logout}>
+            <h2 className="card-title text-2xl text-primary">My Profile</h2>
+            <button className="btn btn-outline btn-primary btn-sm" onClick={logout}>
               Logout
             </button>
           </div>
           
           <div className="divider"></div>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="md:col-span-1">
               <div className="avatar placeholder">
-                <div className="bg-neutral-focus text-neutral-content rounded-full w-24">
+                <div className="bg-primary text-primary-content rounded-full w-24">
                   <span className="text-3xl">{user.firstName?.charAt(0) || user.username?.charAt(0) || '?'}</span>
                 </div>
               </div>
@@ -44,15 +44,15 @@ const Profile = () => {
               <h3 className="text-xl font-bold">{user.firstName} {user.lastName}</h3>
               <p className="text-sm opacity-70">@{user.username}</p>
               
-              <div className="mt-4">
-                <p className="mb-2"><strong>Email:</strong> {user.email}</p>
+              <div className="mt-4 space-y-2">
+                <p><span className="font-semibold text-primary">Email:</span> {user.email}</p>
                 {user.postalCode && (
-                  <p className="mb-2"><strong>Location:</strong> {user.postalCode}</p>
+                  <p><span className="font-semibold text-primary">Location:</span> {user.postalCode}</p>
                 )}
                 
                 {user.bio && (
-                  <div className="mt-4">
-                    <h4 className="font-bold mb-2">Bio</h4>
+                  <div className="mt-4 p-3 bg-base-200 rounded-lg">
+                    <h4 className="font-bold mb-2 text-primary">Bio</h4>
                     <p>{user.bio}</p>
                   </div>
                 )}

@@ -69,7 +69,7 @@ const BadgeCard = ({ badge }) => {
   
   return (
     <div 
-      className="card bg-base-100 shadow-sm hover:shadow-md transition-shadow duration-300"
+      className="card bg-base-100 shadow-soft hover:shadow-md transition-shadow duration-300"
       style={{ borderLeft: `4px solid ${color}` }}
     >
       <div className="card-body p-4">
