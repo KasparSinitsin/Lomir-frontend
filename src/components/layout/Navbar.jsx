@@ -26,9 +26,9 @@ const Navbar = () => {
             )}
           </ul>
         </div>
-        <Link to="/" className="btn btn-ghost normal-case text-xl text-primary font-bold">
-          <span className="text-primary">Lomir</span>
-        </Link>
+        <Link to="/" className="btn btn-ghost normal-case text-xl text-primary font-medium">
+          <span className="text-primary tracking-wide">Lomir</span>
+        </Link> 
       </div>
       
       <div className="navbar-center hidden lg:flex">
