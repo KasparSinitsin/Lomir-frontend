@@ -2,6 +2,14 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Global background image */
+body {
+  background-image: url('/assets/images/backgrounds/gradient-bg1.svg');
+  background-size: cover;
+  background-attachment: fixed;
+  background-position: center;
+}
+
 /* Global font styles */
 html, body {
   font-family: 'Roboto', sans-serif;
