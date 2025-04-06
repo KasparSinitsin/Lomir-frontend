@@ -6,6 +6,9 @@ export default {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ['Roboto', 'sans-serif'],
+      },
       boxShadow: {
         'soft': '0 2px 15px rgba(0, 0, 0, 0.04)',
       },
@@ -35,6 +38,8 @@ export default {
           "success": "#10B981",       // Green for success
           "warning": "#F59E0B",       // Amber for warnings
           "error": "#EF4444",         // Red for errors
+
+          "font-family": "'Roboto', sans-serif",
         },
       },
       "light"
