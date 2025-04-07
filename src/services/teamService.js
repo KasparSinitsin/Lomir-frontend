@@ -65,5 +65,16 @@ export const teamService = {
       console.error(`Error removing member from team ${teamId}:`, error);
       throw error;
     }
+  },
+
+  // Get all teams of the user
+  getUserTeams: async (userId) => {
+    try {
+      const response = await api.get(`/teams/user/${userId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching user teams:', error);
+      throw error;
+    }
   }
 };

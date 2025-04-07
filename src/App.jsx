@@ -11,12 +11,13 @@ import ProtectedRoute from './components/layout/ProtectedRoute';
 import { AuthProvider } from './contexts/AuthContext';
 import CreateTeam from './pages/CreateTeam';
 import DesignSystem from './pages/DesignSystem'; 
+import MyTeams from './pages/MyTeams';  
 
 function App() {
   return (
     <AuthProvider>
       <Router>
-      <div data-theme="lomirlite" className="min-h-screen flex flex-col bg-base-200">
+        <div data-theme="lomirlite" className="min-h-screen flex flex-col bg-base-200">
           <Navbar />
           <main className="flex-grow py-6">
             <div className="content-container">
@@ -27,7 +28,7 @@ function App() {
                 <Route path="/register" element={<Register />} />
                 <Route path="/badges" element={<BadgeOverview />} />
                 <Route path="/garden" element={<Placeholder pageName="Project Garden" />} />
-                <Route path="/design-system" element={<DesignSystem />} /> {/* Add this route */}
+                <Route path="/design-system" element={<DesignSystem />} />
                 
                 {/* Protected routes */}
                 <Route element={<ProtectedRoute />}>
@@ -35,6 +36,8 @@ function App() {
                   <Route path="/profile/edit" element={<Placeholder pageName="Edit Profile" />} />
                   <Route path="/teams" element={<Placeholder pageName="Teams" />} />
                   <Route path="/teams/create" element={<CreateTeam />} />
+                  {/* Add this route */}
+                  <Route path="/teams/my-teams" element={<MyTeams />} />  
                   <Route path="/settings" element={<Placeholder pageName="Settings" />} />
                 </Route>
                 
