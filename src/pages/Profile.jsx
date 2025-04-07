@@ -1,73 +1,122 @@
+import React from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import PageContainer from '../components/layout/PageContainer';
-import { Link } from 'react-router-dom';
+import Section from '../components/layout/Section';
+import Grid from '../components/layout/Grid';
+import Card from '../components/common/Card';
+import Button from '../components/common/Button';
+import DataDisplay from '../components/common/DataDisplay';
+import { Mail, MapPin, User } from 'lucide-react';
 
 const Profile = () => {
   const { user, logout } = useAuth();
 
   if (!user) {
     return (
-      <PageContainer>
-        <div className="alert alert-error">
-          <span>User not found. Please login again.</span>
-        </div>
-        <div className="mt-4">
-          <Link to="/login" className="btn btn-primary">Go to Login</Link>
-        </div>
-      </PageContainer>
+      <div className="w-full max-w-lg mx-auto">
+        <Card>
+          <div className="text-center p-4">
+            <h2 className="text-xl font-semibold text-error mb-4">User Not Found</h2>
+            <p className="mb-6">Please login again to access your profile.</p>
+            <Link to="/login" className="btn btn-primary">Go to Login</Link>
+          </div>
+        </Card>
+      </div>
     );
   }
 
+  const EditButton = (
+    <Link to="/profile/edit">
+      <Button variant="outline" size="sm">Edit Profile</Button>
+    </Link>
+  );
+
   return (
-    <PageContainer>
-      <div className="card bg-base-100 shadow-soft hover:shadow-md transition-shadow duration-300 mx-auto max-w-2xl">
-        <div className="card-body">
-          <div className="flex justify-between items-center">
-            <h2 className="card-title text-2xl text-primary">My Profile</h2>
-            <button className="btn btn-outline btn-primary btn-sm" onClick={logout}>
-              Logout
-            </button>
+    <div className="space-y-6">
+      <Card className="overflow-visible">
+        <div className="flex flex-col md:flex-row md:items-center">
+          <div className="mb-6 md:mb-0 md:mr-8">
+            <div className="avatar placeholder">
+              <div className="bg-primary text-primary-content rounded-full w-24 h-24">
+                <span className="text-3xl">{user.firstName?.charAt(0) || user.username?.charAt(0) || '?'}</span>
+              </div>
+            </div>
           </div>
           
-          <div className="divider"></div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="md:col-span-1">
-              <div className="avatar placeholder">
-                <div className="bg-primary text-primary-content rounded-full w-24">
-                  <span className="text-3xl">{user.firstName?.charAt(0) || user.username?.charAt(0) || '?'}</span>
-                </div>
+          <div className="flex-grow">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4">
+              <div>
+                <h2 className="text-2xl font-bold">{user.firstName} {user.lastName}</h2>
+                <p className="text-base-content/70">@{user.username}</p>
+              </div>
+              <div className="mt-4 sm:mt-0">
+                {EditButton}
               </div>
             </div>
             
-            <div className="md:col-span-2">
-              <h3 className="text-xl font-bold">{user.firstName} {user.lastName}</h3>
-              <p className="text-sm opacity-70">@{user.username}</p>
+            <Grid cols={1} md={3} gap={4}>
+              <DataDisplay 
+                label="Email" 
+                value={user.email} 
+                icon={<Mail size={16} />} 
+              />
               
-              <div className="mt-4 space-y-2">
-                <p><span className="font-semibold text-primary">Email:</span> {user.email}</p>
-                {user.postalCode && (
-                  <p><span className="font-semibold text-primary">Location:</span> {user.postalCode}</p>
-                )}
-                
-                {user.bio && (
-                  <div className="mt-4 p-3 bg-base-200 rounded-lg">
-                    <h4 className="font-bold mb-2 text-primary">Bio</h4>
-                    <p>{user.bio}</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-          
-          <div className="card-actions justify-end mt-6">
-            <Link to="/profile/edit" className="btn btn-primary">
-              Edit Profile
-            </Link>
+              {user.postalCode && (
+                <DataDisplay 
+                  label="Location" 
+                  value={user.postalCode} 
+                  icon={<MapPin size={16} />} 
+                />
+              )}
+              
+              <DataDisplay 
+                label="Member Since" 
+                value="April 2025" 
+                icon={<User size={16} />} 
+              />
+            </Grid>
           </div>
         </div>
-      </div>
-    </PageContainer>
+        
+        {user.bio && (
+          <Section title="About Me" className="mt-6">
+            <p className="text-base-content/90">{user.bio}</p>
+          </Section>
+        )}
+      </Card>
+      
+      <Section 
+        title="My Skills & Interests" 
+        action={<Button variant="ghost" size="sm">Manage Skills</Button>}
+      >
+        <div className="flex flex-wrap gap-2">
+          {/* Example tags - replace with actual user tags */}
+          <span className="badge badge-primary badge-outline p-3">JavaScript</span>
+          <span className="badge badge-primary badge-outline p-3">React</span>
+          <span className="badge badge-primary badge-outline p-3">UX Design</span>
+          <span className="badge badge-primary badge-outline p-3">Project Management</span>
+        </div>
+      </Section>
+      
+      <Section title="My Badges">
+        <Grid cols={2} md={3} lg={4} gap={4}>
+          {/* Sample badges - replace with actual user badges */}
+          <div className="bg-base-200 rounded-lg p-4 text-center">
+            <div className="w-12 h-12 mx-auto bg-blue-100 rounded-full flex items-center justify-center mb-2">
+              <span className="text-blue-500">🏆</span>
+            </div>
+            <h3 className="font-medium">Team Player</h3>
+          </div>
+          <div className="bg-base-200 rounded-lg p-4 text-center">
+            <div className="w-12 h-12 mx-auto bg-green-100 rounded-full flex items-center justify-center mb-2">
+              <span className="text-green-500">💻</span>
+            </div>
+            <h3 className="font-medium">Coder</h3>
+          </div>
+        </Grid>
+      </Section>
+    </div>
   );
 };
 

@@ -1,6 +1,9 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import Card from '../common/Card';
+import Button from '../common/Button';
+import FormGroup from '../common/FormGroup';
 
 const LoginForm = () => {
   const [formData, setFormData] = useState({
@@ -62,73 +65,70 @@ const LoginForm = () => {
   };
 
   return (
-    <div className="card bg-base-100 shadow-soft hover:shadow-md transition-shadow duration-300 mx-auto max-w-md w-full">
-      <div className="card-body">
-        <h2 className="card-title text-2xl font-bold text-center text-primary">Login</h2>
+    <div className="max-w-md mx-auto w-full">
+      <Card>
+        <h2 className="text-2xl font-bold text-center text-primary mb-6">Login</h2>
         
         {errors.form && (
-          <div className="alert alert-error mt-4">
+          <div className="alert alert-error mb-6">
             <span>{errors.form}</span>
           </div>
         )}
         
-        <form onSubmit={handleSubmit} className="mt-4 space-y-4">
-          <div className="form-control">
-            <label className="label">
-              <span className="label-text font-medium">Email</span>
-            </label>
+        <form onSubmit={handleSubmit}>
+          <FormGroup
+            label="Email"
+            htmlFor="email"
+            error={errors.email}
+            required
+          >
             <input
+              id="email"
               type="email"
               name="email"
               placeholder="email@example.com"
-              className={`input input-bordered ${errors.email ? 'input-error' : 'focus:border-primary'}`}
+              className={`input input-bordered w-full ${errors.email ? 'input-error' : ''}`}
               value={formData.email}
               onChange={handleChange}
             />
-            {errors.email && (
-              <label className="label">
-                <span className="label-text-alt text-error">{errors.email}</span>
-              </label>
-            )}
-          </div>
+          </FormGroup>
           
-          <div className="form-control">
-            <label className="label">
-              <span className="label-text font-medium">Password</span>
-            </label>
+          <FormGroup
+            label="Password"
+            htmlFor="password"
+            error={errors.password}
+            required
+          >
             <input
+              id="password"
               type="password"
               name="password"
               placeholder="••••••••"
-              className={`input input-bordered ${errors.password ? 'input-error' : 'focus:border-primary'}`}
+              className={`input input-bordered w-full ${errors.password ? 'input-error' : ''}`}
               value={formData.password}
               onChange={handleChange}
             />
-            {errors.password && (
-              <label className="label">
-                <span className="label-text-alt text-error">{errors.password}</span>
-              </label>
-            )}
-          </div>
+          </FormGroup>
           
-          <div className="form-control mt-6">
-            <button 
-              type="submit" 
-              className={`btn btn-primary ${isSubmitting ? 'loading' : ''}`}
+          <div className="mt-6">
+            <Button
+              type="submit"
+              variant="primary"
+              fullWidth
               disabled={isSubmitting}
             >
               {isSubmitting ? 'Logging in...' : 'Login'}
-            </button>
+            </Button>
           </div>
         </form>
         
-        <div className="divider mt-6">OR</div>
+        <div className="divider my-6">OR</div>
         
         <div className="text-center">
-          <p>Don't have an account?</p>
+          <p className="mb-2">Don't have an account?</p>
           <Link to="/register" className="link link-primary">Register</Link>
         </div>
-      </div>
+      </Card>
     </div>
   );
 };
