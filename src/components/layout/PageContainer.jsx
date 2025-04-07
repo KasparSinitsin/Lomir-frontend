@@ -1,9 +1,23 @@
 import React from 'react';
 
-const PageContainer = ({ children, title }) => {
+const PageContainer = ({ 
+  children, 
+  title, 
+  subtitle,
+  action,
+  className = "" 
+}) => {
   return (
-    <div className="mx-auto px-4 py-6 w-full max-w-7xl">
-      {title && <h1 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-6 text-primary">{title}</h1>}
+    <div className={`bg-base-100 rounded-xl shadow-soft p-4 sm:p-6 ${className}`}>
+      {(title || action) && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6">
+          <div>
+            {title && <h1 className="text-2xl sm:text-3xl font-medium text-primary mb-1">{title}</h1>}
+            {subtitle && <p className="text-base-content/70">{subtitle}</p>}
+          </div>
+          {action && <div className="mt-4 sm:mt-0">{action}</div>}
+        </div>
+      )}
       {children}
     </div>
   );

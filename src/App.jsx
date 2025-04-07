@@ -16,9 +16,10 @@ function App() {
   return (
     <AuthProvider>
       <Router>
-      <div data-theme="lomirlite" className="min-h-screen flex flex-col bg-base-100">
+      <div data-theme="lomirlite" className="min-h-screen flex flex-col bg-base-200">
           <Navbar />
-          <main className="flex-grow">
+          <main className="flex-grow py-6 px-4 sm:px-6">
+          <div className="max-w-7xl mx-auto w-full">
             <Routes>
               {/* Public routes */}
               <Route path="/" element={<Home />} />
@@ -40,6 +41,7 @@ function App() {
               {/* Catch-all route */}
               <Route path="*" element={<Placeholder pageName="Page Not Found" />} />
             </Routes>
+            </div>
           </main>
           <Footer />
         </div>
