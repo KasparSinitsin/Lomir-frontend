@@ -16,29 +16,37 @@ export default {
         'xl': '0.75rem',
       },
     },
+    screens: {
+      'xs': '375px', 
+      'sm': '640px',
+      'md': '768px',
+      'ml': '900px', 
+      'lg': '1024px',
+      'xl': '1280px',
+      '2xl': '1536px',
+    },
   },
   plugins: [require("daisyui")],
   daisyui: {
     themes: [
       {
         lomirlite: {
-          "primary": "#3B82F6",       // Brighter blue
-          "primary-focus": "#2563EB", // Darker blue for hover states
-          "primary-content": "#FFFFFF", // White text on primary
-          "secondary": "#E0E7FF",     // Very light blue
-          "secondary-focus": "#C7D2FE", // Slightly darker for hover
-          "secondary-content": "#1E40AF", // Dark blue text on secondary
-          "accent": "#6366F1",        // Indigo accent
-          "neutral": "#3D4451",       // Dark gray
-          "base-100": "#FFFFFF",      // White background
-          "base-200": "#F8FAFC",      // Very light gray background
-          "base-300": "#F1F5F9",      // Light gray for borders
-          "base-content": "#1F2937",  // Dark text on base
-          "info": "#38BDF8",          // Light blue for info
-          "success": "#10B981",       // Green for success
-          "warning": "#F59E0B",       // Amber for warnings
-          "error": "#EF4444",         // Red for errors
-
+          "primary": "#3B82F6",
+          "primary-focus": "#2563EB",
+          "primary-content": "#FFFFFF",
+          "secondary": "#E0E7FF",
+          "secondary-focus": "#C7D2FE",
+          "secondary-content": "#1E40AF",
+          "accent": "#6366F1",
+          "neutral": "#3D4451",
+          "base-100": "#FFFFFF",
+          "base-200": "#F8FAFC",
+          "base-300": "#F1F5F9",
+          "base-content": "#1F2937",
+          "info": "#38BDF8",
+          "success": "#10B981",
+          "warning": "#F59E0B",
+          "error": "#EF4444",
           "font-family": "'Roboto', sans-serif",
         },
       },
