@@ -9,7 +9,7 @@ const PageContainer = ({
   fullWidth = false
 }) => {
   return (
-    <div className="content-container bg-base-100 rounded-xl shadow-soft p-4 sm:p-6">
+    <div className="bg-base-100 rounded-xl shadow-soft p-4 sm:p-6">
       <div className={`mx-auto ${!fullWidth ? 'max-w-5xl' : ''} ${className}`}>
         {(title || action) && (
           <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6">

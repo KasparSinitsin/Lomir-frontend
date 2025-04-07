@@ -16,31 +16,31 @@ function App() {
   return (
     <AuthProvider>
       <Router>
-        <div data-theme="lomirlite" className="min-h-screen flex flex-col bg-base-200">
+      <div data-theme="lomirlite" className="min-h-screen flex flex-col bg-base-200">
           <Navbar />
-          <main className="flex-grow py-6 px-4 sm:px-6">
-          <div className="content-container mx-auto border-2 w-full">
+          <main className="flex-grow py-6">
+            <div className="content-container">
               <Routes>
-              {/* Public routes */}
-              <Route path="/" element={<Home />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Register />} />
-              <Route path="/badges" element={<BadgeOverview />} />
-              <Route path="/garden" element={<Placeholder pageName="Project Garden" />} />
-              <Route path="/design-system" element={<DesignSystem />} /> {/* Add this route */}
-              
-              {/* Protected routes */}
-              <Route element={<ProtectedRoute />}>
-                <Route path="/profile" element={<Profile />} />
-                <Route path="/profile/edit" element={<Placeholder pageName="Edit Profile" />} />
-                <Route path="/teams" element={<Placeholder pageName="Teams" />} />
-                <Route path="/teams/create" element={<CreateTeam />} />
-                <Route path="/settings" element={<Placeholder pageName="Settings" />} />
-              </Route>
-              
-              {/* Catch-all route */}
-              <Route path="*" element={<Placeholder pageName="Page Not Found" />} />
-            </Routes>
+                {/* Public routes */}
+                <Route path="/" element={<Home />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/register" element={<Register />} />
+                <Route path="/badges" element={<BadgeOverview />} />
+                <Route path="/garden" element={<Placeholder pageName="Project Garden" />} />
+                <Route path="/design-system" element={<DesignSystem />} /> {/* Add this route */}
+                
+                {/* Protected routes */}
+                <Route element={<ProtectedRoute />}>
+                  <Route path="/profile" element={<Profile />} />
+                  <Route path="/profile/edit" element={<Placeholder pageName="Edit Profile" />} />
+                  <Route path="/teams" element={<Placeholder pageName="Teams" />} />
+                  <Route path="/teams/create" element={<CreateTeam />} />
+                  <Route path="/settings" element={<Placeholder pageName="Settings" />} />
+                </Route>
+                
+                {/* Catch-all route */}
+                <Route path="*" element={<Placeholder pageName="Page Not Found" />} />
+              </Routes>
             </div>
           </main>
           <Footer />
