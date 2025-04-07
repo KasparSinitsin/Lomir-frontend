@@ -126,8 +126,12 @@ const RegisterForm = () => {
   };
 
   const nextStep = () => {
+    console.log("Next button clicked for step:", step);
     if (validateStep()) {
       setStep(prev => Math.min(prev + 1, 4));
+      console.log("Moving to next step");
+    } else {
+      console.log("Validation failed", errors);
     }
   };
 
@@ -202,6 +206,8 @@ const RegisterForm = () => {
   );
 
   const renderStepContent = () => {
+    console.log("Rendering step:", step);
+    
     switch (step) {
       case 1:
         return (
@@ -284,7 +290,157 @@ const RegisterForm = () => {
           </>
         );
       
-      // ... other cases remain the same as in your previous implementation
+      case 2:
+        return (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="form-control">
+                <label className="label">
+                  <span className="label-text">First Name</span>
+                </label>
+                <input
+                  type="text"
+                  name="first_name"
+                  placeholder="First Name"
+                  className={`input input-bordered ${errors.first_name ? 'input-error' : ''}`}
+                  value={formData.first_name || ''}
+                  onChange={handleChange}
+                />
+                {errors.first_name && (
+                  <label className="label">
+                    <span className="label-text-alt text-error">{errors.first_name}</span>
+                  </label>
+                )}
+              </div>
+              
+              <div className="form-control">
+                <label className="label">
+                  <span className="label-text">Last Name</span>
+                </label>
+                <input
+                  type="text"
+                  name="last_name"
+                  placeholder="Last Name"
+                  className={`input input-bordered ${errors.last_name ? 'input-error' : ''}`}
+                  value={formData.last_name || ''}
+                  onChange={handleChange}
+                />
+                {errors.last_name && (
+                  <label className="label">
+                    <span className="label-text-alt text-error">{errors.last_name}</span>
+                  </label>
+                )}
+              </div>
+            </div>
+            
+            <div className="form-control mt-2">
+              <label className="label">
+                <span className="label-text">Postal Code</span>
+              </label>
+              <input
+                type="text"
+                name="postal_code"
+                placeholder="Postal Code"
+                className={`input input-bordered ${errors.postal_code ? 'input-error' : ''}`}
+                value={formData.postal_code || ''}
+                onChange={handleChange}
+              />
+              {errors.postal_code && (
+                <label className="label">
+                  <span className="label-text-alt text-error">{errors.postal_code}</span>
+                </label>
+              )}
+            </div>
+            
+            <div className="form-control mt-2">
+              <label className="label">
+                <span className="label-text">Bio (Optional)</span>
+              </label>
+              <textarea
+                name="bio"
+                placeholder="Tell us about yourself"
+                className="textarea textarea-bordered h-24"
+                value={formData.bio || ''}
+                onChange={handleChange}
+              ></textarea>
+            </div>
+            
+            <div className="form-control mt-2">
+              <label className="label">
+                <span className="label-text">Profile Picture (Optional)</span>
+              </label>
+              <input
+                type="file"
+                name="profile_image"
+                onChange={handleChange}
+                accept="image/*"
+                className="file-input file-input-bordered w-full"
+              />
+            </div>
+          </>
+        );
+      
+      case 3:
+        return (
+          <div>
+            <h3 className="text-lg font-semibold mb-4">Select Your Interests & Skills</h3>
+            <TagSelector 
+              onTagsSelected={handleTagSelection}
+              selectedTags={formData.selectedTags}
+            />
+            {errors.tags && (
+              <p className="text-error text-sm mt-2">{errors.tags}</p>
+            )}
+          </div>
+        );
+      
+      case 4:
+        return (
+          <div className="space-y-4">
+            <h3 className="text-xl font-semibold">Review Your Profile</h3>
+            
+            <div className="bg-base-200 p-4 rounded-lg">
+              <h4 className="font-bold mb-2">Account Details</h4>
+              <p><strong>Username:</strong> {formData.username}</p>
+              <p><strong>Email:</strong> {formData.email}</p>
+            </div>
+            
+            <div className="bg-base-200 p-4 rounded-lg">
+              <h4 className="font-bold mb-2">Personal Information</h4>
+              <p><strong>Name:</strong> {formData.first_name} {formData.last_name}</p>
+              <p><strong>Postal Code:</strong> {formData.postal_code}</p>
+              {formData.bio && <p><strong>Bio:</strong> {formData.bio}</p>}
+              {formData.profile_image && (
+                <div>
+                  <strong>Profile Picture:</strong>
+                  <img 
+                    src={URL.createObjectURL(formData.profile_image)} 
+                    alt="Profile" 
+                    className="w-32 h-32 object-cover rounded-full mt-2"
+                  />
+                </div>
+              )}
+            </div>
+            
+            <div className="bg-base-200 p-4 rounded-lg">
+              <h4 className="font-bold mb-2">Interests & Skills</h4>
+              <div className="flex flex-wrap gap-2">
+                {formData.selectedTags && formData.selectedTags.map(tagId => (
+                  <span 
+                    key={tagId} 
+                    className="badge badge-primary badge-outline"
+                  >
+                    {tagId} 
+                    <span className="text-xs ml-1">
+                      (Exp: {formData.tagExperienceLevels[tagId] || 'N/A'}, 
+                      Interest: {formData.tagInterestLevels[tagId] || 'N/A'})
+                    </span>
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
       
       default:
         return null;
@@ -325,7 +481,7 @@ const RegisterForm = () => {
         )}
         
         {step === 4 && (
-          <div className="flex space-x-2">
+          <div className="flex space-x-2 ml-auto">
             <button 
               type="button"
               onClick={() => setStep(3)}
@@ -352,6 +508,11 @@ const RegisterForm = () => {
       <div className="card-body">
         <h2 className="card-title text-2xl font-bold text-center">Create Account</h2>
         
+        {/* Debug information */}
+        <div className="alert alert-info mb-4">
+          Current Step: {step}
+        </div>
+        
         {errors.form && (
           <div className="alert alert-error mt-4">
             <span>{errors.form}</span>
@@ -362,7 +523,11 @@ const RegisterForm = () => {
           className="mt-4" 
           onSubmit={(e) => {
             e.preventDefault();
-            handleSubmit();
+            if (step === 4) {
+              handleSubmit();
+            } else {
+              nextStep();
+            }
           }}
         >
           {renderStepIndicator()}
