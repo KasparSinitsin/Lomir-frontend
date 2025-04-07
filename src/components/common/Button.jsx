@@ -13,7 +13,7 @@ const Button = ({
 }) => {
   const baseClasses = 'btn';
   const variantClasses = {
-    primary: 'btn-primary text-white',
+    primary: 'btn-outline btn-primary', 
     secondary: 'btn-secondary text-primary',
     accent: 'btn-accent',
     ghost: 'btn-ghost hover:bg-secondary hover:text-primary',
