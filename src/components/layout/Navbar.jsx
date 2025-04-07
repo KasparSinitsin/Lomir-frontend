@@ -22,14 +22,15 @@ const Navbar = () => {
           <ul className="menu menu-horizontal px-0 sm:px-1">
             <li><Link to="/" className="px-2 sm:px-3 py-1 sm:py-2 text-sm sm:text-base hover:bg-white/30 hover:text-primary transition-colors rounded-md">Home</Link></li>
             {isAuthenticated ? (
-              <>
-                <li><Link to="/teams" className="px-2 sm:px-3 py-1 sm:py-2 text-sm sm:text-base hover:bg-white/30 hover:text-primary transition-colors rounded-md">Teams</Link></li>
-                <li className="hidden sm:block"><Link to="/garden" className="px-2 sm:px-3 py-1 sm:py-2 text-sm sm:text-base hover:bg-white/30 hover:text-primary transition-colors rounded-md">Garden</Link></li>
-                <li className="hidden md:block"><Link to="/badges" className="px-2 sm:px-3 py-1 sm:py-2 text-sm sm:text-base hover:bg-white/30 hover:text-primary transition-colors rounded-md">Badges</Link></li>
-              </>
-            ) : (
-              <li className="hidden sm:block"><Link to="/garden" className="px-2 sm:px-3 py-1 sm:py-2 text-sm sm:text-base hover:bg-white/30 hover:text-primary transition-colors rounded-md">Garden</Link></li>
-            )}
+  <>
+    <li><Link to="/teams" className="px-2 sm:px-3 py-1 sm:py-2 text-sm sm:text-base hover:bg-white/30 hover:text-primary transition-colors rounded-md">Teams</Link></li>
+    <li><Link to="/teams/my-teams" className="px-2 sm:px-3 py-1 sm:py-2 text-sm sm:text-base hover:bg-white/30 hover:text-primary transition-colors rounded-md">My Teams</Link></li>
+    <li className="hidden sm:block"><Link to="/garden" className="px-2 sm:px-3 py-1 sm:py-2 text-sm sm:text-base hover:bg-white/30 hover:text-primary transition-colors rounded-md">Garden</Link></li>
+    <li className="hidden md:block"><Link to="/badges" className="px-2 sm:px-3 py-1 sm:py-2 text-sm sm:text-base hover:bg-white/30 hover:text-primary transition-colors rounded-md">Badges</Link></li>
+  </>
+) : (
+  <li className="hidden sm:block"><Link to="/garden" className="px-2 sm:px-3 py-1 sm:py-2 text-sm sm:text-base hover:bg-white/30 hover:text-primary transition-colors rounded-md">Garden</Link></li>
+)}
           </ul>
           
           {/* Authentication Buttons */}
@@ -41,12 +42,13 @@ const Navbar = () => {
                 </div>
               </label>
               <ul tabIndex={0} className="mt-3 z-[1] p-2 glass-navbar shadow-lg menu menu-sm dropdown-content rounded-lg w-52">
-                <li><Link to="/profile">Profile</Link></li>
-                <li><Link to="/settings">Settings</Link></li>
-                <li className="sm:hidden"><Link to="/garden">Garden</Link></li>
-                <li className="md:hidden"><Link to="/badges">Badges</Link></li>
-                <li><button onClick={logout}>Logout</button></li>
-              </ul>
+  <li><Link to="/profile">Profile</Link></li>
+  <li><Link to="/teams/my-teams">My Teams</Link></li>
+  <li><Link to="/settings">Settings</Link></li>
+  <li className="sm:hidden"><Link to="/garden">Garden</Link></li>
+  <li className="md:hidden"><Link to="/badges">Badges</Link></li>
+  <li><button onClick={logout}>Logout</button></li>
+</ul>
             </div>
           ) : (
             <div className="flex gap-1 sm:gap-2">
