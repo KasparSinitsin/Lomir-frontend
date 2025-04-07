@@ -16,11 +16,11 @@ function App() {
   return (
     <AuthProvider>
       <Router>
-      <div data-theme="lomirlite" className="min-h-screen flex flex-col bg-base-200">
+        <div data-theme="lomirlite" className="min-h-screen flex flex-col bg-base-200">
           <Navbar />
           <main className="flex-grow py-6 px-4 sm:px-6">
-          <div className="max-w-7xl mx-auto w-full">
-            <Routes>
+          <div className="content-container mx-auto border-2 w-full">
+              <Routes>
               {/* Public routes */}
               <Route path="/" element={<Home />} />
               <Route path="/login" element={<Login />} />

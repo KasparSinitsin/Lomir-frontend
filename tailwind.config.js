@@ -12,6 +12,8 @@ export default {
       boxShadow: {
         'soft': '0 2px 15px rgba(0, 0, 0, 0.04)',
       },
+
+      
       borderRadius: {
         'xl': '0.75rem',
       },

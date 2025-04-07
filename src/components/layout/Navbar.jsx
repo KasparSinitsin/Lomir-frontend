@@ -6,8 +6,8 @@ const Navbar = () => {
   const { isAuthenticated, user, logout } = useAuth();
 
   return (
-    <div className="navbar bg-base-100 shadow-sm border-b border-base-200 sticky top-0 z-10">
-      <div className="container mx-auto px-4 max-w-7xl flex justify-between">
+    <div className="navbar glass-navbar sticky top-0 z-10">
+      <div className="content-container flex justify-between">
         {/* Logo - Left aligned */}
         <div className="flex-none">
           <Link to="/" className="flex items-center">
@@ -20,15 +20,15 @@ const Navbar = () => {
         <div className="flex items-center gap-2 sm:gap-4">
           {/* Navigation Links - Responsive sizes */}
           <ul className="menu menu-horizontal px-0 sm:px-1">
-            <li><Link to="/" className="px-2 sm:px-3 py-1 sm:py-2 text-sm sm:text-base hover:bg-secondary hover:text-primary transition-colors">Home</Link></li>
+            <li><Link to="/" className="px-2 sm:px-3 py-1 sm:py-2 text-sm sm:text-base hover:bg-white/30 hover:text-primary transition-colors rounded-md">Home</Link></li>
             {isAuthenticated ? (
               <>
-                <li><Link to="/teams" className="px-2 sm:px-3 py-1 sm:py-2 text-sm sm:text-base hover:bg-secondary hover:text-primary transition-colors">Teams</Link></li>
-                <li className="hidden sm:block"><Link to="/garden" className="px-2 sm:px-3 py-1 sm:py-2 text-sm sm:text-base hover:bg-secondary hover:text-primary transition-colors">Garden</Link></li>
-                <li className="hidden md:block"><Link to="/badges" className="px-2 sm:px-3 py-1 sm:py-2 text-sm sm:text-base hover:bg-secondary hover:text-primary transition-colors">Badges</Link></li>
+                <li><Link to="/teams" className="px-2 sm:px-3 py-1 sm:py-2 text-sm sm:text-base hover:bg-white/30 hover:text-primary transition-colors rounded-md">Teams</Link></li>
+                <li className="hidden sm:block"><Link to="/garden" className="px-2 sm:px-3 py-1 sm:py-2 text-sm sm:text-base hover:bg-white/30 hover:text-primary transition-colors rounded-md">Garden</Link></li>
+                <li className="hidden md:block"><Link to="/badges" className="px-2 sm:px-3 py-1 sm:py-2 text-sm sm:text-base hover:bg-white/30 hover:text-primary transition-colors rounded-md">Badges</Link></li>
               </>
             ) : (
-              <li className="hidden sm:block"><Link to="/garden" className="px-2 sm:px-3 py-1 sm:py-2 text-sm sm:text-base hover:bg-secondary hover:text-primary transition-colors">Garden</Link></li>
+              <li className="hidden sm:block"><Link to="/garden" className="px-2 sm:px-3 py-1 sm:py-2 text-sm sm:text-base hover:bg-white/30 hover:text-primary transition-colors rounded-md">Garden</Link></li>
             )}
           </ul>
           
@@ -40,7 +40,7 @@ const Navbar = () => {
                   <span>{user.firstName?.charAt(0) || user.username?.charAt(0) || '?'}</span>
                 </div>
               </label>
-              <ul tabIndex={0} className="mt-3 z-[1] p-2 shadow-soft menu menu-sm dropdown-content bg-base-100 rounded-lg w-52">
+              <ul tabIndex={0} className="mt-3 z-[1] p-2 glass-navbar shadow-lg menu menu-sm dropdown-content rounded-lg w-52">
                 <li><Link to="/profile">Profile</Link></li>
                 <li><Link to="/settings">Settings</Link></li>
                 <li className="sm:hidden"><Link to="/garden">Garden</Link></li>
