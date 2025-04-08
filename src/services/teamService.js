@@ -75,7 +75,10 @@ export const teamService = {
   // Get all teams of the user
   getUserTeams: async (userId) => {
     try {
-      const response = await api.get(`/teams/user/${userId}`);
+      if (!userId) {
+        throw new Error('User ID is required');
+      }
+      const response = await api.get(`/teams/my-teams`);
       return response.data;
     } catch (error) {
       console.error('Error fetching user teams:', error);

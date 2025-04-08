@@ -16,21 +16,24 @@ const MyTeams = () => {
   useEffect(() => {
     const fetchUserTeams = async () => {
       try {
-        setLoading(true);
-        const response = await teamService.getUserTeams();
-        setTeams(response.data || []);
-        setLoading(false);
+        // Ensure user and user.id exist before making the API call
+        if (user && user.id) {
+          const response = await teamService.getUserTeams(user.id);
+          setTeams(response.data);
+          setLoading(false);
+        }
       } catch (err) {
         console.error('Failed to fetch teams:', err);
-        setError(err.response?.data?.message || 'Could not load teams');
+        setError('Could not load teams');
         setLoading(false);
       }
     };
-
+  
+    // Only call fetchUserTeams if user is defined
     if (user) {
       fetchUserTeams();
     }
-  }, [user]);
+  }, [user]); // Depend on user to re-run when user changes
 
   if (loading) {
     return (
