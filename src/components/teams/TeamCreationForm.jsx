@@ -63,9 +63,14 @@ const TeamCreationForm = () => {
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
+    let newValue = value;
 
-    //  Ensure maxMembers is converted to a number
-    const newValue = name === 'maxMembers' ? parseInt(value, 10) : type === 'checkbox' ? checked : value;
+    if (name === 'maxMembers') {
+      newValue = parseInt(value, 10);
+      console.log(`maxMembers changed to: ${newValue} (type: ${typeof newValue})`); // Debug log
+    } else if (type === 'checkbox') {
+      newValue = checked;
+    }
 
     setFormData(prev => ({
       ...prev,
@@ -111,6 +116,7 @@ const TeamCreationForm = () => {
           }))
         };
 
+        console.log('Team data being sent:', submissionData); // Log the final data
         const response = await teamService.createTeam(submissionData);
 
         // Navigate to the newly created team's page
