@@ -36,8 +36,7 @@ function App() {
                   <Route path="/profile/edit" element={<Placeholder pageName="Edit Profile" />} />
                   <Route path="/teams" element={<Placeholder pageName="Teams" />} />
                   <Route path="/teams/create" element={<CreateTeam />} />
-                  {/* Add this route */}
-                  <Route path="/teams/my-teams" element={<MyTeams />} />  
+                  <Route path="/teams/my-teams" element={<MyTeams />} />
                   <Route path="/settings" element={<Placeholder pageName="Settings" />} />
                 </Route>
                 

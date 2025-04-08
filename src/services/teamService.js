@@ -4,10 +4,15 @@ export const teamService = {
   // Create a new team
   createTeam: async (teamData) => {
     try {
+      console.log('Team data being sent:', teamData);
       const response = await api.post('/teams', teamData);
       return response.data;
     } catch (error) {
-      console.error('Error creating team:', error);
+      console.error('Team creation error details:', {
+        response: error.response,
+        message: error.message,
+        data: error.response?.data
+      });
       throw error;
     }
   },
@@ -70,11 +75,15 @@ export const teamService = {
   // Get all teams of the user
   getUserTeams: async (userId) => {
     try {
-      const response = await api.get(`/teams/user/${userId}`);
+      if (!userId) {
+        throw new Error('User ID is required');
+      }
+      const response = await api.get(`/teams/my-teams`);
       return response.data;
     } catch (error) {
       console.error('Error fetching user teams:', error);
       throw error;
     }
   }
+  
 };

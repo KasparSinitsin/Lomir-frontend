@@ -95,7 +95,6 @@ const TeamCreationForm = () => {
       setSubmitError(null);
   
       try {
-        // Format data for API submission
         const submissionData = {
           name: formData.name,
           description: formData.description,
@@ -109,14 +108,17 @@ const TeamCreationForm = () => {
           }))
         };
   
-        // Call team creation API
         const response = await teamService.createTeam(submissionData);
         
-        // On success, navigate to the team detail page
+        // Navigate to the newly created team's page
         navigate(`/teams/${response.data.id}`);
       } catch (error) {
         console.error('Team creation error:', error);
-        setSubmitError(error.response?.data?.message || 'Failed to create team. Please try again.');
+        setSubmitError(
+          error.response?.data?.message || 
+          error.message || 
+          'Failed to create team. Please try again.'
+        );
       } finally {
         setIsSubmitting(false);
       }
