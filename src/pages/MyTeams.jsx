@@ -1,4 +1,3 @@
-// src/pages/MyTeams.jsx (updated)
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import PageContainer from '../components/layout/PageContainer';
