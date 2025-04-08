@@ -20,6 +20,23 @@ body {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
+/* Add to src/index.css if not already present */
+.glass-modal {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+/* Make inputs and elements on glass backgrounds more readable */
+.glass-content .input,
+.glass-content .textarea,
+.glass-content .select {
+  background-color: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(4px);
+}
+
 .content-container {
   width: 100%;
   max-width: 1024px;
