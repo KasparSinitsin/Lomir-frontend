@@ -24,7 +24,7 @@ const TeamCreationForm = () => {
 
   const validateStep = () => {
     const newErrors = {};
-
+  
     switch (step) {
       case 1:
         if (!formData.name) {
@@ -32,7 +32,7 @@ const TeamCreationForm = () => {
         } else if (formData.name.length < 3) {
           newErrors.name = 'Team name must be at least 3 characters';
         }
-
+  
         if (!formData.description) {
           newErrors.description = 'Team description is required';
         } else if (formData.description.length < 10) {
@@ -93,9 +93,9 @@ const TeamCreationForm = () => {
     if (validateStep()) {
       setIsSubmitting(true);
       setSubmitError(null);
-
+  
       try {
-        // Prepare submission data
+        // Format data for API submission
         const submissionData = {
           name: formData.name,
           description: formData.description,
@@ -108,11 +108,11 @@ const TeamCreationForm = () => {
             interest_level: formData.tagInterestLevels[tagId] || 'medium'
           }))
         };
-
+  
         // Call team creation API
         const response = await teamService.createTeam(submissionData);
         
-        // Navigate to the newly created team's page or teams list
+        // On success, navigate to the team detail page
         navigate(`/teams/${response.data.id}`);
       } catch (error) {
         console.error('Team creation error:', error);
