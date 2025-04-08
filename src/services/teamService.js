@@ -73,13 +73,14 @@ export const teamService = {
   },
 
   // Get all teams of the user
-  getUserTeams: async () => {
+  getUserTeams: async (userId) => {
     try {
-      const response = await api.get('/teams/my-teams');
+      const response = await api.get(`/teams/user/${userId}`);
       return response.data;
     } catch (error) {
       console.error('Error fetching user teams:', error);
       throw error;
     }
   }
+  
 };
