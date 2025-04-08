@@ -16,13 +16,13 @@ const MyTeams = () => {
   useEffect(() => {
     const fetchUserTeams = async () => {
       try {
-        // Assuming we'll add a method to fetch user's teams in teamService
-        const response = await teamService.getUserTeams(user.id);
-        setTeams(response.data);
+        setLoading(true);
+        const response = await teamService.getUserTeams();
+        setTeams(response.data || []);
         setLoading(false);
       } catch (err) {
         console.error('Failed to fetch teams:', err);
-        setError('Could not load teams');
+        setError(err.response?.data?.message || 'Could not load teams');
         setLoading(false);
       }
     };
@@ -79,7 +79,7 @@ const MyTeams = () => {
             <Card 
               key={team.id} 
               title={team.name}
-              subtitle={`${team.members.length} members`}
+              subtitle={`${team.current_members_count} members`}
               footer={
                 <Link to={`/teams/${team.id}`} className="btn btn-primary btn-sm">
                   View Details
@@ -91,6 +91,11 @@ const MyTeams = () => {
                 <span className="text-sm text-base-content/60">
                   {team.is_public ? 'Public Team' : 'Private Team'}
                 </span>
+                {team.user_team_role && (
+                  <span className="ml-2 badge badge-primary badge-outline">
+                    {team.user_team_role}
+                  </span>
+                )}
               </div>
             </Card>
           ))}
