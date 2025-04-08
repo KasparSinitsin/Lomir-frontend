@@ -1,11 +1,13 @@
+// src/pages/MyTeams.jsx (updated)
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import PageContainer from '../components/layout/PageContainer';
 import Grid from '../components/layout/Grid';
-import Card from '../components/common/Card';
 import Button from '../components/common/Button';
+import TeamCard from '../components/teams/TeamCard';
 import { teamService } from '../services/teamService';
 import { useAuth } from '../contexts/AuthContext';
+import { Plus } from 'lucide-react';
 
 const MyTeams = () => {
   const [teams, setTeams] = useState([]);
@@ -13,27 +15,37 @@ const MyTeams = () => {
   const [error, setError] = useState(null);
   const { user } = useAuth();
 
-  useEffect(() => {
-    const fetchUserTeams = async () => {
-      try {
-        // Ensure user and user.id exist before making the API call
-        if (user && user.id) {
-          const response = await teamService.getUserTeams(user.id);
-          setTeams(response.data);
-          setLoading(false);
-        }
-      } catch (err) {
-        console.error('Failed to fetch teams:', err);
-        setError('Could not load teams');
-        setLoading(false);
+  const fetchUserTeams = async () => {
+    try {
+      setLoading(true);
+      // Ensure user and user.id exist before making the API call
+      if (user && user.id) {
+        const response = await teamService.getUserTeams(user.id);
+        setTeams(response.data);
       }
-    };
-  
+    } catch (err) {
+      console.error('Failed to fetch teams:', err);
+      setError('Could not load teams');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     // Only call fetchUserTeams if user is defined
     if (user) {
       fetchUserTeams();
     }
   }, [user]); // Depend on user to re-run when user changes
+
+  const handleTeamUpdate = (updatedTeam) => {
+    // Update the team in the local state
+    setTeams(prevTeams => 
+      prevTeams.map(team => 
+        team.id === updatedTeam.id ? updatedTeam : team
+      )
+    );
+  };
 
   if (loading) {
     return (
@@ -57,7 +69,9 @@ const MyTeams = () => {
 
   const CreateTeamAction = (
     <Link to="/teams/create">
-      <Button variant="primary">Create New Team</Button>
+      <Button variant="primary" icon={<Plus size={16} />}>
+        Create New Team
+      </Button>
     </Link>
   );
 
@@ -79,28 +93,11 @@ const MyTeams = () => {
       ) : (
         <Grid cols={1} md={2} lg={3} gap={6}>
           {teams.map(team => (
-            <Card 
+            <TeamCard 
               key={team.id} 
-              title={team.name}
-              subtitle={`${team.current_members_count} members`}
-              footer={
-                <Link to={`/teams/${team.id}`} className="btn btn-primary btn-sm">
-                  View Details
-                </Link>
-              }
-            >
-              <p className="text-base-content/80">{team.description}</p>
-              <div className="flex items-center mt-2">
-                <span className="text-sm text-base-content/60">
-                  {team.is_public ? 'Public Team' : 'Private Team'}
-                </span>
-                {team.user_team_role && (
-                  <span className="ml-2 badge badge-primary badge-outline">
-                    {team.user_team_role}
-                  </span>
-                )}
-              </div>
-            </Card>
+              team={team}
+              onUpdate={handleTeamUpdate}
+            />
           ))}
         </Grid>
       )}
