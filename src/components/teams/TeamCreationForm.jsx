@@ -100,28 +100,36 @@ const TeamCreationForm = () => {
           name: formData.name,
           description: formData.description,
           is_public: formData.isPublic,
-          max_members: formData.maxMembers,
+          max_members: Number(formData.maxMembers), // Ensure it's a number
           postal_code: formData.postalCode,
           tags: formData.selectedTags.map(tagId => ({
-            tag_id: tagId,
+            tag_id: Number(tagId), // Ensure tag_id is a number
             experience_level: formData.tagExperienceLevels[tagId] || 'beginner',
             interest_level: formData.tagInterestLevels[tagId] || 'medium'
           }))
         };
   
+        console.log('Submitting team data:', submissionData);
+  
         // Call team creation API
         const response = await teamService.createTeam(submissionData);
         
-        // On success, navigate to the team detail page
-        navigate(`/teams/${response.data.id}`);
-      } catch (error) {
-        console.error('Team creation error:', error);
-        setSubmitError(error.response?.data?.message || 'Failed to create team. Please try again.');
-      } finally {
-        setIsSubmitting(false);
-      }
+      // On success, navigate to the team detail page
+      navigate(`/teams/${response.data.id}`);
+    } catch (error) {
+      console.error('Team creation error:', error);
+      
+      // More specific error handling
+      const errorMessage = error.response?.data?.message || 
+                           error.response?.data?.errors?.join(', ') || 
+                           'Failed to create team. Please try again.';
+      
+      setSubmitError(errorMessage);
+    } finally {
+      setIsSubmitting(false);
     }
-  };
+  }
+};
 
   const renderStepIndicator = () => (
     <div className="flex justify-center space-x-2 mb-6">
