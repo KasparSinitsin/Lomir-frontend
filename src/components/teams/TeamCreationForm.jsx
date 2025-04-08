@@ -24,7 +24,7 @@ const TeamCreationForm = () => {
 
   const validateStep = () => {
     const newErrors = {};
-  
+    
     switch (step) {
       case 1:
         if (!formData.name) {
@@ -32,7 +32,7 @@ const TeamCreationForm = () => {
         } else if (formData.name.length < 3) {
           newErrors.name = 'Team name must be at least 3 characters';
         }
-  
+        
         if (!formData.description) {
           newErrors.description = 'Team description is required';
         } else if (formData.description.length < 10) {
@@ -56,17 +56,25 @@ const TeamCreationForm = () => {
         }
         break;
     }
-
+    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    
+    let newValue = value;
+
+    if (name === 'maxMembers') {
+      newValue = parseInt(value, 10);
+      console.log(`maxMembers changed to: ${newValue} (type: ${typeof newValue})`); // Debug log
+    } else if (type === 'checkbox') {
+      newValue = checked;
+    }
+
     setFormData(prev => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : value
+      [name]: newValue
     }));
   };
 
@@ -108,6 +116,7 @@ const TeamCreationForm = () => {
           }))
         };
   
+        console.log('Team data being sent:', submissionData); // Log the final data
         const response = await teamService.createTeam(submissionData);
         
         // Navigate to the newly created team's page
@@ -161,7 +170,7 @@ const TeamCreationForm = () => {
                 </label>
               )}
             </div>
-
+            
             <div className="form-control mt-4">
               <label className="label">
                 <span className="label-text">Team Description</span>
