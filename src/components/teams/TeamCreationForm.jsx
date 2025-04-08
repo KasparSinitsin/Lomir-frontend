@@ -24,7 +24,7 @@ const TeamCreationForm = () => {
 
   const validateStep = () => {
     const newErrors = {};
-
+    
     switch (step) {
       case 1:
         if (!formData.name) {
@@ -32,14 +32,14 @@ const TeamCreationForm = () => {
         } else if (formData.name.length < 3) {
           newErrors.name = 'Team name must be at least 3 characters';
         }
-
+        
         if (!formData.description) {
           newErrors.description = 'Team description is required';
         } else if (formData.description.length < 10) {
           newErrors.description = 'Description must be at least 10 characters';
         }
         break;
-
+      
       case 2:
         if (!formData.postalCode) {
           newErrors.postalCode = 'Postal code is required';
@@ -49,14 +49,14 @@ const TeamCreationForm = () => {
           newErrors.maxMembers = 'Team size must be between 2 and 20 members';
         }
         break;
-
+      
       case 3:
         if (formData.selectedTags.length === 0) {
           newErrors.tags = 'Please select at least one tag for your team';
         }
         break;
     }
-
+    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -101,7 +101,7 @@ const TeamCreationForm = () => {
     if (validateStep()) {
       setIsSubmitting(true);
       setSubmitError(null);
-
+  
       try {
         const submissionData = {
           name: formData.name,
@@ -115,17 +115,17 @@ const TeamCreationForm = () => {
             interest_level: formData.tagInterestLevels[tagId] || 'medium'
           }))
         };
-
+  
         console.log('Team data being sent:', submissionData); // Log the final data
         const response = await teamService.createTeam(submissionData);
-
+        
         // Navigate to the newly created team's page
         navigate(`/teams/${response.data.id}`);
       } catch (error) {
         console.error('Team creation error:', error);
         setSubmitError(
-          error.response?.data?.message ||
-          error.message ||
+          error.response?.data?.message || 
+          error.message || 
           'Failed to create team. Please try again.'
         );
       } finally {
@@ -137,8 +137,8 @@ const TeamCreationForm = () => {
   const renderStepIndicator = () => (
     <div className="flex justify-center space-x-2 mb-6">
       {[1, 2, 3, 4].map(s => (
-        <div
-          key={s}
+        <div 
+          key={s} 
           className={`h-2 w-2 rounded-full ${
             step === s ? 'bg-blue-600' : 'bg-gray-300'
           }`}
@@ -170,7 +170,7 @@ const TeamCreationForm = () => {
                 </label>
               )}
             </div>
-
+            
             <div className="form-control mt-4">
               <label className="label">
                 <span className="label-text">Team Description</span>
@@ -206,7 +206,7 @@ const TeamCreationForm = () => {
             </div>
           </>
         );
-
+      
       case 2:
         return (
           <>
@@ -254,12 +254,12 @@ const TeamCreationForm = () => {
             </div>
           </>
         );
-
+      
       case 3:
         return (
           <div>
             <h3 className="text-lg font-semibold mb-4">Select Team Tags</h3>
-            <TagSelector
+            <TagSelector 
               onTagsSelected={handleTagSelection}
               selectedTags={formData.selectedTags}
             />
@@ -268,36 +268,36 @@ const TeamCreationForm = () => {
             )}
           </div>
         );
-
+      
       case 4:
         return (
           <div className="space-y-4">
             <h3 className="text-xl font-semibold">Review Team Details</h3>
-
+            
             <div className="bg-base-200 p-4 rounded-lg">
               <h4 className="font-bold mb-2">Team Basics</h4>
               <p><strong>Name:</strong> {formData.name}</p>
               <p><strong>Description:</strong> {formData.description}</p>
               <p><strong>Visibility:</strong> {formData.isPublic ? 'Public' : 'Private'}</p>
             </div>
-
+            
             <div className="bg-base-200 p-4 rounded-lg">
               <h4 className="font-bold mb-2">Team Location & Size</h4>
               <p><strong>Postal Code:</strong> {formData.postalCode}</p>
               <p><strong>Maximum Members:</strong> {formData.maxMembers}</p>
             </div>
-
+            
             <div className="bg-base-200 p-4 rounded-lg">
               <h4 className="font-bold mb-2">Team Tags</h4>
               <div className="flex flex-wrap gap-2">
                 {formData.selectedTags.map(tagId => (
-                  <span
-                    key={tagId}
+                  <span 
+                    key={tagId} 
                     className="badge badge-primary badge-outline"
                   >
-                    {tagId}
+                    {tagId} 
                     <span className="text-xs ml-1">
-                      (Exp: {formData.tagExperienceLevels[tagId] || 'N/A'},
+                      (Exp: {formData.tagExperienceLevels[tagId] || 'N/A'}, 
                       Interest: {formData.tagInterestLevels[tagId] || 'N/A'})
                     </span>
                   </span>
@@ -306,7 +306,7 @@ const TeamCreationForm = () => {
             </div>
           </div>
         );
-
+      
       default:
         return null;
     }
@@ -316,7 +316,7 @@ const TeamCreationForm = () => {
     return (
       <div className="flex justify-between mt-6">
         {step > 1 && step < 4 && (
-          <button
+          <button 
             type="button"
             onClick={prevStep}
             className="btn btn-ghost"
@@ -324,9 +324,9 @@ const TeamCreationForm = () => {
             <FiChevronLeft className="mr-2" /> Previous
           </button>
         )}
-
+        
         {step < 3 && (
-          <button
+          <button 
             type="button"
             onClick={nextStep}
             className="btn btn-primary ml-auto"
@@ -334,9 +334,9 @@ const TeamCreationForm = () => {
             Next <FiChevronRight className="ml-2" />
           </button>
         )}
-
+        
         {step === 3 && (
-          <button
+          <button 
             type="button"
             onClick={nextStep}
             className="btn btn-primary ml-auto"
@@ -344,17 +344,17 @@ const TeamCreationForm = () => {
             Review <FiChevronRight className="ml-2" />
           </button>
         )}
-
+        
         {step === 4 && (
           <div className="flex space-x-2">
-            <button
+            <button 
               type="button"
               onClick={() => setStep(3)}
               className="btn btn-ghost"
             >
               <FiChevronLeft className="mr-2" /> Edit
             </button>
-            <button
+            <button 
               type="button"
               onClick={handleSubmit}
               disabled={isSubmitting}
@@ -372,15 +372,15 @@ const TeamCreationForm = () => {
     <div className="card bg-base-100 shadow-xl mx-auto max-w-md w-full">
       <div className="card-body">
         <h2 className="card-title text-2xl font-bold text-center">Create Team</h2>
-
+        
         {submitError && (
-          <Alert
-            type="error"
-            message={submitError}
-            onClose={() => setSubmitError(null)}
+          <Alert 
+            type="error" 
+            message={submitError} 
+            onClose={() => setSubmitError(null)} 
           />
         )}
-
+        
         <form className="mt-4">
           {renderStepIndicator()}
           {renderStepContent()}
