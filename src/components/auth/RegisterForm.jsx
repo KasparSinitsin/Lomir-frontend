@@ -1,12 +1,10 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { FiChevronRight, FiChevronLeft } from 'react-icons/fi';
 import TagSelector from '../tags/TagSelector';
 import api from '../../services/api';
 
 const RegisterForm = () => {
   const navigate = useNavigate();
-  const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
     username: '',
     email: '',
@@ -26,7 +24,22 @@ const RegisterForm = () => {
 
   const validateForm = () => {
     const newErrors = {};
-    // ... your validation logic ...
+    if (!formData.username) {
+      newErrors.username = 'Username is required';
+    }
+    if (!formData.email) {
+      newErrors.email = 'Email is required';
+    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+      newErrors.email = 'Email is invalid';
+    }
+    if (!formData.password) {
+      newErrors.password = 'Password is required';
+    }
+    if (!formData.confirmPassword) {
+      newErrors.confirmPassword = 'Confirm Password is required';
+    } else if (formData.password !== formData.confirmPassword) {
+      newErrors.confirmPassword = 'Passwords do not match';
+    }
     return Object.keys(newErrors).length === 0;
   };
 
@@ -38,245 +51,49 @@ const RegisterForm = () => {
     });
   };
 
-  const nextStep = () => {
-    if (validateForm()) {
-      setStep(prevStep => prevStep + 1);
-    }
-  };
-
-  const prevStep = () => {
-    setStep(prevStep => prevStep - 1);
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!validateForm()) {
+      return;
+    }
+
     setIsSubmitting(true);
 
     const submitFormData = new FormData();
-    // ... your form submission logic ...
+    submitFormData.append('username', formData.username);
+    submitFormData.append('email', formData.email);
+    submitFormData.append('password', formData.password);
+    submitFormData.append('first_name', formData.first_name || '');
+    submitFormData.append('last_name', formData.last_name || '');
+    submitFormData.append('bio', formData.bio || '');
+    submitFormData.append('postal_code', formData.postal_code || '');
+    if (formData.profile_image) {
+      submitFormData.append('avatar', formData.profile_image, formData.profile_image.name);
+    }
+
+    // Properly append tags (now optional)
+    if (formData.selectedTags.length > 0) {
+      const tags = formData.selectedTags.map(tagId => ({
+        tag_id: tagId,
+        experience_level: formData.tagExperienceLevels[tagId] || 'beginner',
+        interest_level: formData.tagInterestLevels[tagId] || 'medium'
+      }));
+      submitFormData.append('tags', JSON.stringify(tags));
+    }
 
     try {
       const response = await api.post('/auth/register', submitFormData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
-      // ... handle success ...
+      console.log('Registration successful', response.data);
+      localStorage.setItem('token', response.data.data.token);
       navigate('/login');
     } catch (error) {
-      // ... handle error ...
+      console.error('Registration error:', error.response ? error.response.data : error);
       setErrors(prev => ({ ...prev, form: error.response?.data?.message || 'Registration failed.' }));
     } finally {
       setIsSubmitting(false);
     }
-  };
-
-  // *** NEW FUNCTION DEFINITIONS ***
-
-  const renderStepIndicator = () => {
-    // Replace this with your actual step indicator UI
-    const stepLabels = ['Basic Info', 'Profile', 'Tags', 'Confirm'];
-    return (
-      <div className="steps">
-        {stepLabels.map((label, index) => (
-          <div key={index} className={`step ${step === index + 1 ? 'step-primary' : ''}`}>
-            {label}
-          </div>
-        ))}
-      </div>
-    );
-  };
-
-  const renderStepContent = () => {
-    switch (step) {
-      case 1:
-        return (
-          <div>
-            <div className="form-control w-full">
-              <label className="label">
-                <span className="label-text">Username</span>
-              </label>
-              <input
-                type="text"
-                placeholder="Username"
-                className="input input-bordered w-full"
-                value={formData.username}
-                onChange={handleChange}
-                name="username"
-              />
-            </div>
-            <div className="form-control w-full">
-              <label className="label">
-                <span className="label-text">Email</span>
-              </label>
-              <input
-                type="email"
-                placeholder="Email"
-                className="input input-bordered w-full"
-                value={formData.email}
-                onChange={handleChange}
-                name="email"
-              />
-            </div>
-            <div className="form-control w-full">
-              <label className="label">
-                <span className="label-text">Password</span>
-              </label>
-              <input
-                type="password"
-                placeholder="Password"
-                className="input input-bordered w-full"
-                value={formData.password}
-                onChange={handleChange}
-                name="password"
-              />
-            </div>
-            <div className="form-control w-full">
-              <label className="label">
-                <span className="label-text">Confirm Password</span>
-              </label>
-              <input
-                type="password"
-                placeholder="Confirm Password"
-                className="input input-bordered w-full"
-                value={formData.confirmPassword}
-                onChange={handleChange}
-                name="confirmPassword"
-              />
-            </div>
-          </div>
-        );
-      case 2:
-        return (
-          <div>
-            <div className="form-control w-full">
-              <label className="label">
-                <span className="label-text">First Name</span>
-              </label>
-              <input
-                type="text"
-                placeholder="First Name"
-                className="input input-bordered w-full"
-                value={formData.first_name}
-                onChange={handleChange}
-                name="first_name"
-              />
-            </div>
-            <div className="form-control w-full">
-              <label className="label">
-                <span className="label-text">Last Name</span>
-              </label>
-              <input
-                type="text"
-                placeholder="Last Name"
-                className="input input-bordered w-full"
-                value={formData.last_name}
-                onChange={handleChange}
-                name="last_name"
-              />
-            </div>
-            <div className="form-control w-full">
-              <label className="label">
-                <span className="label-text">Bio</span>
-              </label>
-              <textarea
-                className="textarea textarea-bordered w-full"
-                placeholder="Bio"
-                value={formData.bio}
-                onChange={handleChange}
-                name="bio"
-              />
-            </div>
-            <div className="form-control w-full">
-              <label className="label">
-                <span className="label-text">Postal Code</span>
-              </label>
-              <input
-                type="text"
-                placeholder="Postal Code"
-                className="input input-bordered w-full"
-                value={formData.postal_code}
-                onChange={handleChange}
-                name="postal_code"
-              />
-            </div>
-            <div className="form-control w-full">
-              <label className="label">
-                <span className="label-text">Profile Image</span>
-              </label>
-              <input
-                type="file"
-                className="file-input file-input-bordered w-full"
-                onChange={(e) => setFormData({ ...formData, profile_image: e.target.files[0] })}
-                name="profile_image"
-              />
-            </div>
-          </div>
-        );
-      case 3:
-        return (
-          <div>
-            <TagSelector
-              selectedTags={formData.selectedTags}
-              onTagChange={(tags) => setFormData({ ...formData, selectedTags: tags })}
-              tagExperienceLevels={formData.tagExperienceLevels}
-              onExperienceLevelChange={(tagId, level) =>
-                setFormData({
-                  ...formData,
-                  tagExperienceLevels: {
-                    ...formData.tagExperienceLevels,
-                    [tagId]: level
-                  }
-                })
-              }
-              tagInterestLevels={formData.tagInterestLevels}
-              onInterestLevelChange={(tagId, level) =>
-                setFormData({
-                  ...formData,
-                  tagInterestLevels: {
-                    ...formData.tagInterestLevels,
-                    [tagId]: level
-                  }
-                })
-              }
-            />
-          </div>
-        );
-      case 4:
-        return (
-          <div>
-            <h3>Confirm Your Information</h3>
-            <p>Please review your details before submitting.</p>
-            <p>Username: {formData.username}</p>
-            <p>Email: {formData.email}</p>
-            {/* ... Display other form data ... */}
-          </div>
-        );
-      default:
-        return <div>Unknown Step Content</div>;
-    }
-  };
-
-  const renderNavButtons = () => {
-    return (
-      <div className="mt-8 flex justify-between">
-        {step > 1 && (
-          <button type="button" className="btn btn-outline" onClick={prevStep}>
-            <FiChevronLeft className="mr-2" />
-            Previous
-          </button>
-        )}
-        {step < 4 && (
-          <button type="button" className="btn btn-primary" onClick={nextStep}>
-            Next
-            <FiChevronRight className="ml-2" />
-          </button>
-        )}
-        {step === 4 && (
-          <button type="submit" className="btn btn-primary">
-            {isSubmitting ? 'Submitting...' : 'Sign Up'}
-          </button>
-        )}
-      </div>
-    );
   };
 
   return (
@@ -284,31 +101,71 @@ const RegisterForm = () => {
       <div className="card-body">
         <h2 className="card-title text-2xl font-bold text-center">Create Account</h2>
 
-        {/* Debug information */}
-        <div className="alert alert-info mb-4">
-          Current Step: {step}
-        </div>
-
         {errors.form && (
           <div className="alert alert-error mt-4">
             <span>{errors.form}</span>
           </div>
         )}
 
-        <form
-          className="mt-4"
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (step === 4) {
-              handleSubmit(e);
-            } else {
-              nextStep();
-            }
-          }}
-        >
-          {renderStepIndicator()}
-          {renderStepContent()}
-          {renderNavButtons()}
+        <form className="mt-4" onSubmit={handleSubmit}>
+          {/* Basic Info */}
+          <div className="form-control w-full">
+            <label className="label"><span className="label-text">Username</span></label>
+            <input type="text" placeholder="Username" className={`input input-bordered w-full ${errors.username ? 'input-error' : ''}`} value={formData.username} onChange={handleChange} name="username" />
+            {errors.username && <label className="label"><span className="label-text-alt text-red-500">{errors.username}</span></label>}
+          </div>
+          <div className="form-control w-full">
+            <label className="label"><span className="label-text">Email</span></label>
+            <input type="email" placeholder="Email" className={`input input-bordered w-full ${errors.email ? 'input-error' : ''}`} value={formData.email} onChange={handleChange} name="email" />
+            {errors.email && <label className="label"><span className="label-text-alt text-red-500">{errors.email}</span></label>}
+          </div>
+          <div className="form-control w-full">
+            <label className="label"><span className="label-text">Password</span></label>
+            <input type="password" placeholder="Password" className={`input input-bordered w-full ${errors.password ? 'input-error' : ''}`} value={formData.password} onChange={handleChange} name="password" />
+            {errors.password && <label className="label"><span className="label-text-alt text-red-500">{errors.password}</span></label>}
+          </div>
+          <div className="form-control w-full">
+            <label className="label"><span className="label-text">Confirm Password</span></label>
+            <input type="password" placeholder="Confirm Password" className={`input input-bordered w-full ${errors.confirmPassword ? 'input-error' : ''}`} value={formData.confirmPassword} onChange={handleChange} name="confirmPassword" />
+            {errors.confirmPassword && <label className="label"><span className="label-text-alt text-red-500">{errors.confirmPassword}</span></label>}
+          </div>
+
+          {/* Profile Details */}
+          <div className="form-control w-full">
+            <label className="label"><span className="label-text">First Name</span></label>
+            <input type="text" placeholder="First Name" className="input input-bordered w-full" value={formData.first_name} onChange={handleChange} name="first_name" />
+          </div>
+          <div className="form-control w-full">
+            <label className="label"><span className="label-text">Last Name</span></label>
+            <input type="text" placeholder="Last Name" className="input input-bordered w-full" value={formData.last_name} onChange={handleChange} name="last_name" />
+          </div>
+          <div className="form-control w-full">
+            <label className="label"><span className="label-text">Bio</span></label>
+            <textarea className="textarea textarea-bordered w-full" placeholder="Bio" value={formData.bio} onChange={handleChange} name="bio" />
+          </div>
+          <div className="form-control w-full">
+            <label className="label"><span className="label-text">Postal Code</span></label>
+            <input type="text" placeholder="Postal Code" className="input input-bordered w-full" value={formData.postal_code} onChange={handleChange} name="postal_code" />
+          </div>
+          <div className="form-control w-full">
+            <label className="label"><span className="label-text">Profile Image</span></label>
+            <input type="file" className="file-input file-input-bordered w-full" onChange={(e) => setFormData({ ...formData, profile_image: e.target.files[0] })} name="profile_image" />
+          </div>
+
+          {/* Tags */}
+          <TagSelector
+            selectedTags={formData.selectedTags}
+            onTagChange={(tags) => setFormData({ ...formData, selectedTags: tags })}
+            tagExperienceLevels={formData.tagExperienceLevels}
+            onExperienceLevelChange={(tagId, level) => setFormData({ ...formData, tagExperienceLevels: { ...formData.tagExperienceLevels, [tagId]: level } })}
+            tagInterestLevels={formData.tagInterestLevels}
+            onInterestLevelChange={(tagId, level) => setFormData({ ...formData, tagInterestLevels: { ...formData.tagInterestLevels, [tagId]: level } })}
+          />
+          <p className="text-sm mt-2">You can add skills and interests tags later.</p>
+
+          <button type="submit" className="btn btn-primary mt-8">
+            {isSubmitting ? 'Signing Up...' : 'Sign Up'}
+          </button>
         </form>
 
         <div className="divider mt-6">OR</div>
