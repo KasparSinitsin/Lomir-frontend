@@ -18,6 +18,8 @@ body {
   -webkit-backdrop-filter: blur(8px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.2);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  padding-top: 2rem;
+  padding-bottom: 1rem;
 }
 
 /* Add to src/index.css if not already present */
