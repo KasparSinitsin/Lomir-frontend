@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import LomirLogo from '../../assets/images/Lomir.svg'; // Adjust the path as necessary
+import LomirLogo from '../src/assets/images/lomir-logo.png'; 
 
 const Navbar = () => {
   const { isAuthenticated, user, logout } = useAuth();
