@@ -1,3 +1,5 @@
+// src/App.jsx - Updated route configuration
+
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Navbar from './components/layout/Navbar';
 import Footer from './components/layout/Footer';
@@ -28,13 +30,13 @@ function App() {
                 <Route path="/register" element={<Register />} />
                 <Route path="/badges" element={<BadgeOverview />} />
                 <Route path="/garden" element={<Placeholder pageName="Project Garden" />} />
+                <Route path="/teams" element={<Placeholder pageName="Teams" />} />
                 <Route path="/design-system" element={<DesignSystem />} />
                 
                 {/* Protected routes */}
                 <Route element={<ProtectedRoute />}>
                   <Route path="/profile" element={<Profile />} />
                   <Route path="/profile/edit" element={<Placeholder pageName="Edit Profile" />} />
-                  <Route path="/teams" element={<Placeholder pageName="Teams" />} />
                   <Route path="/teams/create" element={<CreateTeam />} />
                   <Route path="/teams/my-teams" element={<MyTeams />} />
                   <Route path="/settings" element={<Placeholder pageName="Settings" />} />
