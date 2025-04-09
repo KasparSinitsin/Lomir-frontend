@@ -140,55 +140,39 @@ const RegisterForm = () => {
   };
 
   const handleSubmit = async (e) => {
-    if (e) e.preventDefault();
+    e.preventDefault();
     
-    if (validateStep()) {
-      setIsSubmitting(true);
-      
-      const submissionData = new FormData();
-      
-      // Append basic user data
-      const userFields = [
-        'username', 'email', 'password', 
-        'first_name', 'last_name', 'bio', 'postal_code'
-      ];
-      
-      userFields.forEach(field => {
-        if (formData[field]) {
-          submissionData.append(field, formData[field]);
+    const formData = new FormData();
+    
+    // Append basic fields
+    formData.append('username', formState.username);
+    formData.append('email', formState.email);
+    formData.append('password', formState.password);
+    formData.append('first_name', formState.first_name);
+    formData.append('last_name', formState.last_name);
+    formData.append('bio', formState.bio);
+    formData.append('postal_code', formState.postal_code);
+    
+    // Correctly handle profile image
+    if (formState.profile_image) {
+      formData.append('avatar', formState.profile_image);
+    }
+    
+    // Properly append tags
+    if (formState.tags && formState.tags.length > 0) {
+      formData.append('tags', JSON.stringify(formState.tags));
+    }
+  
+    try {
+      const response = await api.post('/auth/register', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
         }
       });
-  
-      // Handle profile image
-      if (formData.profile_image) {
-        submissionData.append('profile_image', formData.profile_image);
-      }
-  
-      // Handle tags
-      if (formData.selectedTags && formData.selectedTags.length > 0) {
-        formData.selectedTags.forEach(tagId => {
-          const tagData = {
-            tag_id: tagId,
-            experience_level: formData.tagExperienceLevels[tagId] || 'beginner',
-            interest_level: formData.tagInterestLevels[tagId] || 'medium'
-          };
-          submissionData.append('tags[]', JSON.stringify(tagData));
-        });
-      }
       
-      try {
-        const result = await registerUser(submissionData);
-        
-        if (result.success) {
-          navigate('/profile');
-        } else {
-          setErrors({ form: result.message });
-        }
-      } catch (error) {
-        setErrors({ form: 'An unexpected error occurred. Please try again.' });
-      } finally {
-        setIsSubmitting(false);
-      }
+      // Handle successful registration
+    } catch (error) {
+      console.error('Registration error:', error.response ? error.response.data : error);
     }
   };
 
