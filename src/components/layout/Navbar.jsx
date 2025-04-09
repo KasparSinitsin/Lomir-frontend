@@ -1,61 +1,55 @@
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import LomirLogo from '../../assets/images/Lomir.svg';
+import LomirLogo from '../src/assets/images/lomir-logo.png'; 
 
 const Navbar = () => {
   const { isAuthenticated, user, logout } = useAuth();
 
   return (
     <div className="navbar glass-navbar sticky top-0 z-10">
-      <div className="content-container flex justify-between">
+      <div className="content-container flex justify-between items-end w-full">
         {/* Logo - Left aligned */}
         <div className="flex-none">
-          <Link to="/" className="flex items-center">
+          <Link to="/" className="flex items-end">
             <img src={LomirLogo} alt="Lomir Logo" className="h-6 sm:h-8 mr-2" />
-            <span className="text-primary font-medium text-lg sm:text-xl tracking-wide">Lomir</span>
           </Link>
         </div>
         
-        {/* All other elements - Right aligned */}
-        <div className="flex items-center gap-2 sm:gap-4">
-          {/* Navigation Links - Responsive sizes */}
-          <ul className="menu menu-horizontal px-0 sm:px-1">
-            <li><Link to="/" className="px-2 sm:px-3 py-1 sm:py-2 text-sm sm:text-base hover:bg-white/30 hover:text-primary transition-colors rounded-md">Home</Link></li>
-            {isAuthenticated ? (
-  <>
-    <li><Link to="/teams" className="px-2 sm:px-3 py-1 sm:py-2 text-sm sm:text-base hover:bg-white/30 hover:text-primary transition-colors rounded-md">Teams</Link></li>
-    <li><Link to="/teams/my-teams" className="px-2 sm:px-3 py-1 sm:py-2 text-sm sm:text-base hover:bg-white/30 hover:text-primary transition-colors rounded-md">My Teams</Link></li>
-    <li className="hidden sm:block"><Link to="/garden" className="px-2 sm:px-3 py-1 sm:py-2 text-sm sm:text-base hover:bg-white/30 hover:text-primary transition-colors rounded-md">Garden</Link></li>
-    <li className="hidden md:block"><Link to="/badges" className="px-2 sm:px-3 py-1 sm:py-2 text-sm sm:text-base hover:bg-white/30 hover:text-primary transition-colors rounded-md">Badges</Link></li>
-  </>
-) : (
-  <li className="hidden sm:block"><Link to="/garden" className="px-2 sm:px-3 py-1 sm:py-2 text-sm sm:text-base hover:bg-white/30 hover:text-primary transition-colors rounded-md">Garden</Link></li>
-)}
-          </ul>
+        {/* Navigation and Auth - Right aligned */}
+        <div className="flex items-end gap-2">
+          {/* Navigation Links */}
+          <nav className="flex items-end">
+            <Link to="/" className="px-3 text-sm sm:text-base hover:text-primary transition-colors">Home</Link>
+            <Link to="/teams" className="px-3 text-sm sm:text-base hover:text-primary transition-colors">Teams</Link>
+            <Link to="/garden" className="px-3 text-sm sm:text-base hover:text-primary transition-colors">Garden</Link>
+            <Link to="/badges" className="px-3 text-sm sm:text-base hover:text-primary transition-colors">Badges</Link>
+          </nav>
           
-          {/* Authentication Buttons */}
-          {isAuthenticated ? (
-            <div className="dropdown dropdown-end">
-              <label tabIndex={0} className="btn btn-ghost btn-circle avatar bg-primary text-white btn-sm sm:btn-md">
-                <div className="rounded-full flex items-center justify-center">
-                  <span>{user.firstName?.charAt(0) || user.username?.charAt(0) || '?'}</span>
+          {/* Authentication - consistently spaced from nav */}
+          <div className="ml-6 flex items-end">
+            {isAuthenticated ? (
+              <div className="dropdown dropdown-end flex items-end">
+                <label tabIndex={0} className="btn btn-ghost btn-circle avatar bg-primary text-white btn-sm sm:btn-md">
+                  <div className="rounded-full flex items-center justify-center">
+                    <span>{user.firstName?.charAt(0) || user.username?.charAt(0) || '?'}</span>
+                  </div>
+                </label>
+                <div tabIndex={0} className="mt-3 z-[1] p-4 glass-navbar shadow-lg dropdown-content rounded-lg min-w-64">
+                  <div className="flex items-center justify-center gap-4">
+                    <Link to="/profile" className="px-2 py-1 hover:text-primary transition-colors">Profile</Link>
+                    <Link to="/teams/my-teams" className="px-2 py-1 hover:text-primary transition-colors">My Teams</Link>
+                    <Link to="/settings" className="px-2 py-1 hover:text-primary transition-colors">Settings</Link>
+                    <button onClick={logout} className="px-2 py-1 hover:text-primary transition-colors">Logout</button>
+                  </div>
                 </div>
-              </label>
-              <ul tabIndex={0} className="mt-3 z-[1] p-2 glass-navbar shadow-lg menu menu-sm dropdown-content rounded-lg w-52">
-  <li><Link to="/profile">Profile</Link></li>
-  <li><Link to="/teams/my-teams">My Teams</Link></li>
-  <li><Link to="/settings">Settings</Link></li>
-  <li className="sm:hidden"><Link to="/garden">Garden</Link></li>
-  <li className="md:hidden"><Link to="/badges">Badges</Link></li>
-  <li><button onClick={logout}>Logout</button></li>
-</ul>
-            </div>
-          ) : (
-            <div className="flex gap-1 sm:gap-2">
-              <Link to="/login" className="btn btn-outline btn-primary btn-xs sm:btn-sm">Login</Link>
-              <Link to="/register" className="btn btn-primary btn-xs sm:btn-sm">Sign Up</Link>
-            </div>
-          )}
+              </div>
+            ) : (
+              <div className="flex gap-2 items-end">
+                <Link to="/login" className="btn btn-outline btn-primary btn-xs sm:btn-sm">Login</Link>
+                <Link to="/register" className="btn btn-primary btn-xs sm:btn-sm">Sign Up</Link>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
