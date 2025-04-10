@@ -31,6 +31,7 @@ function App() {
                 <Route path="/badges" element={<BadgeOverview />} />
                 <Route path="/garden" element={<Placeholder pageName="Project Garden" />} />
                 <Route path="/teams" element={<Placeholder pageName="Teams" />} />
+                <Route path="/search" element={<SearchPage />} />
                 <Route path="/design-system" element={<DesignSystem />} />
                 
                 {/* Protected routes */}
