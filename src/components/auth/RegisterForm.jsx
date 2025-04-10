@@ -1,3 +1,4 @@
+import axios from 'axios';
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import TagSelector from '../tags/TagSelector';
@@ -56,41 +57,60 @@ const RegisterForm = () => {
     if (!validateForm()) {
       return;
     }
-
+  
     setIsSubmitting(true);
 
-    const submitFormData = new FormData();
-    submitFormData.append('username', formData.username);
-    submitFormData.append('email', formData.email);
-    submitFormData.append('password', formData.password);
-    submitFormData.append('first_name', formData.first_name || '');
-    submitFormData.append('last_name', formData.last_name || '');
-    submitFormData.append('bio', formData.bio || '');
-    submitFormData.append('postal_code', formData.postal_code || '');
-    if (formData.profile_image) {
-      submitFormData.append('avatar', formData.profile_image, formData.profile_image.name);
-    }
-
-    // Properly append tags (now optional)
-    if (formData.selectedTags.length > 0) {
-      const tags = formData.selectedTags.map(tagId => ({
-        tag_id: tagId,
-        experience_level: formData.tagExperienceLevels[tagId] || 'beginner',
-        interest_level: formData.tagInterestLevels[tagId] || 'medium'
-      }));
-      submitFormData.append('tags', JSON.stringify(tags));
-    }
-
     try {
-      const response = await api.post('/auth/register', submitFormData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
+      // If profile image exists, upload to Cloudinary first
+      let avatarUrl = null;
+      if (formData.profile_image) {
+        const cloudinaryFormData = new FormData();
+        cloudinaryFormData.append('file', formData.profile_image);
+        cloudinaryFormData.append('upload_preset', import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET);
+      
+        const cloudinaryResponse = await axios.post(
+          `https://api.cloudinary.com/v1_1/${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME}/image/upload`, 
+          cloudinaryFormData,
+          {
+            headers: {
+              'Content-Type': 'multipart/form-data'
+            }
+          }
+        );
+      
+        avatarUrl = cloudinaryResponse.data.secure_url;
+      }
+  
+      // Prepare registration data
+      const registrationData = {
+        username: formData.username,
+        email: formData.email,
+        password: formData.password,
+        first_name: formData.first_name || '',
+        last_name: formData.last_name || '',
+        bio: formData.bio || '',
+        postal_code: formData.postal_code || '',
+        avatar_url: avatarUrl,
+        tags: formData.selectedTags.length > 0 
+          ? formData.selectedTags.map(tagId => ({
+              tag_id: tagId,
+              experience_level: formData.tagExperienceLevels[tagId] || 'beginner',
+              interest_level: formData.tagInterestLevels[tagId] || 'medium'
+            }))
+          : []
+      };
+  
+      const response = await api.post('/auth/register', registrationData);
+      
       console.log('Registration successful', response.data);
       localStorage.setItem('token', response.data.data.token);
       navigate('/login');
     } catch (error) {
-      console.error('Registration error:', error.response ? error.response.data : error);
-      setErrors(prev => ({ ...prev, form: error.response?.data?.message || 'Registration failed.' }));
+      console.error('Full Registration error:', error);
+      setErrors(prev => ({ 
+        ...prev, 
+        form: error.response?.data?.message || 'Registration failed.' 
+      }));
     } finally {
       setIsSubmitting(false);
     }
