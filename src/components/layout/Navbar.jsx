@@ -19,6 +19,7 @@ const Navbar = () => {
         <div className="flex items-end gap-2">
           {/* Navigation Links */}
           <nav className="flex items-end">
+            <Link to="/search" className="px-3 text-sm sm:text-base hover:text-primary transition-colors">Search</Link>
             <Link to="/" className="px-3 text-sm sm:text-base hover:text-primary transition-colors">Home</Link>
             <Link to="/teams" className="px-3 text-sm sm:text-base hover:text-primary transition-colors">Teams</Link>
             <Link to="/garden" className="px-3 text-sm sm:text-base hover:text-primary transition-colors">Garden</Link>
