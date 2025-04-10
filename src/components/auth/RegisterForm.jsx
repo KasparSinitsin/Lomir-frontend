@@ -104,17 +104,22 @@ const RegisterForm = () => {
       
       console.log('Registration successful', response.data);
       localStorage.setItem('token', response.data.data.token);
-      navigate('/login');
-    } catch (error) {
-      console.error('Full Registration error:', error);
-      setErrors(prev => ({ 
-        ...prev, 
-        form: error.response?.data?.message || 'Registration failed.' 
-      }));
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+    // For now, we'll use localStorage to pass a message
+    // We can use a toast library or create a global alert system later
+    localStorage.setItem('registrationMessage', 'Profile created successfully!');
+    
+    // Redirect to profile page
+    navigate('/profile');
+  } catch (error) {
+    console.error('Full Registration error:', error);
+    setErrors(prev => ({ 
+      ...prev, 
+      form: error.response?.data?.message || 'Registration failed.' 
+    }));
+  } finally {
+    setIsSubmitting(false);
+  }
+};
 
   return (
     <div className="card bg-base-100 shadow-xl mx-auto max-w-md w-full">
