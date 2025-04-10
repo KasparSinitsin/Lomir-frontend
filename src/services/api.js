@@ -7,7 +7,7 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  withCredentials: true, // Add this for cross-origin credentials
+  withCredentials: true,
 });
 
 // Add a request interceptor to include auth token
@@ -28,14 +28,13 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    // Optional: Add global error handling
     if (error.response) {
       // The request was made and the server responded with a status code
       console.error('API Error:', error.response.data);
-      
+
       // Handle specific error scenarios
-      if (error.response.status === 401) {
-        // Token might be expired, redirect to login
+      if (error.response.status === 401 || error.response.status === 403) {
+        // Token might be expired or invalid, redirect to login
         localStorage.removeItem('token');
         window.location.href = '/login';
       }
@@ -46,7 +45,7 @@ api.interceptors.response.use(
       // Something happened in setting up the request
       console.error('Error:', error.message);
     }
-    
+
     return Promise.reject(error);
   }
 );

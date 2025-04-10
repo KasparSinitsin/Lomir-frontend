@@ -1,11 +1,13 @@
 import axios from 'axios';
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
 import TagSelector from '../tags/TagSelector';
 import api from '../../services/api';
 
 const RegisterForm = () => {
   const navigate = useNavigate();
+  const { register } = useAuth();
   const [formData, setFormData] = useState({
     username: '',
     email: '',
@@ -57,32 +59,11 @@ const RegisterForm = () => {
     if (!validateForm()) {
       return;
     }
-  
+
     setIsSubmitting(true);
 
     try {
-      // If profile image exists, upload to Cloudinary first
-      let avatarUrl = null;
-      if (formData.profile_image) {
-        const cloudinaryFormData = new FormData();
-        cloudinaryFormData.append('file', formData.profile_image);
-        cloudinaryFormData.append('upload_preset', import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET);
-      
-        const cloudinaryResponse = await axios.post(
-          `https://api.cloudinary.com/v1_1/${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME}/image/upload`, 
-          cloudinaryFormData,
-          {
-            headers: {
-              'Content-Type': 'multipart/form-data'
-            }
-          }
-        );
-      
-        avatarUrl = cloudinaryResponse.data.secure_url;
-      }
-  
-      // Prepare registration data
-      const registrationData = {
+      const userData = {
         username: formData.username,
         email: formData.email,
         password: formData.password,
@@ -90,8 +71,7 @@ const RegisterForm = () => {
         last_name: formData.last_name || '',
         bio: formData.bio || '',
         postal_code: formData.postal_code || '',
-        avatar_url: avatarUrl,
-        tags: formData.selectedTags.length > 0 
+        tags: formData.selectedTags.length > 0
           ? formData.selectedTags.map(tagId => ({
               tag_id: tagId,
               experience_level: formData.tagExperienceLevels[tagId] || 'beginner',
@@ -99,17 +79,41 @@ const RegisterForm = () => {
             }))
           : []
       };
-  
-      const response = await api.post('/auth/register', registrationData);
-      
-      console.log('Registration successful', response.data);
-      localStorage.setItem('token', response.data.data.token);
-      navigate('/login');
+
+      if (formData.profile_image) {
+        const cloudinaryFormData = new FormData();
+        cloudinaryFormData.append('file', formData.profile_image);
+        cloudinaryFormData.append('upload_preset', import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET);
+
+        const cloudinaryResponse = await axios.post(
+          `https://api.cloudinary.com/v1_1/${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME}/image/upload`,
+          cloudinaryFormData,
+          {
+            headers: {
+              'Content-Type': 'multipart/form-data'
+            }
+          }
+        );
+
+        userData.avatar_url = cloudinaryResponse.data.secure_url;
+      }
+
+      const result = await register(userData);
+
+      if (result.success) {
+        localStorage.setItem('registrationMessage', 'Profile created successfully!');
+        navigate('/profile');
+      } else {
+        setErrors(prev => ({
+          ...prev,
+          form: result.message
+        }));
+      }
     } catch (error) {
       console.error('Full Registration error:', error);
-      setErrors(prev => ({ 
-        ...prev, 
-        form: error.response?.data?.message || 'Registration failed.' 
+      setErrors(prev => ({
+        ...prev,
+        form: error.response?.data?.message || 'Registration failed.'
       }));
     } finally {
       setIsSubmitting(false);
@@ -187,8 +191,6 @@ const RegisterForm = () => {
             {isSubmitting ? 'Signing Up...' : 'Sign Up'}
           </button>
         </form>
-
-        <div className="divider mt-6">OR</div>
 
         <div className="text-center">
           <p>Already have an account?</p>
