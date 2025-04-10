@@ -57,32 +57,12 @@ const RegisterForm = () => {
     if (!validateForm()) {
       return;
     }
-  
+
     setIsSubmitting(true);
 
     try {
-      // If profile image exists, upload to Cloudinary first
-      let avatarUrl = null;
-      if (formData.profile_image) {
-        const cloudinaryFormData = new FormData();
-        cloudinaryFormData.append('file', formData.profile_image);
-        cloudinaryFormData.append('upload_preset', import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET);
-      
-        const cloudinaryResponse = await axios.post(
-          `https://api.cloudinary.com/v1_1/${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME}/image/upload`, 
-          cloudinaryFormData,
-          {
-            headers: {
-              'Content-Type': 'multipart/form-data'
-            }
-          }
-        );
-      
-        avatarUrl = cloudinaryResponse.data.secure_url;
-      }
-  
-      // Prepare registration data
-      const registrationData = {
+      // Prepare user data
+      const userData = {
         username: formData.username,
         email: formData.email,
         password: formData.password,
@@ -90,8 +70,7 @@ const RegisterForm = () => {
         last_name: formData.last_name || '',
         bio: formData.bio || '',
         postal_code: formData.postal_code || '',
-        avatar_url: avatarUrl,
-        tags: formData.selectedTags.length > 0 
+        tags: formData.selectedTags.length > 0
           ? formData.selectedTags.map(tagId => ({
               tag_id: tagId,
               experience_level: formData.tagExperienceLevels[tagId] || 'beginner',
@@ -99,27 +78,51 @@ const RegisterForm = () => {
             }))
           : []
       };
-  
-      const response = await api.post('/auth/register', registrationData);
-      
+
+      // If profile image exists, upload to Cloudinary first
+      if (formData.profile_image) {
+        const cloudinaryFormData = new FormData();
+        cloudinaryFormData.append('file', formData.profile_image);
+        cloudinaryFormData.append('upload_preset', import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET);
+
+        const cloudinaryResponse = await axios.post(
+          `https://api.cloudinary.com/v1_1/${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME}/image/upload`,
+          cloudinaryFormData,
+          {
+            headers: {
+              'Content-Type': 'multipart/form-data'
+            }
+          }
+        );
+
+        userData.avatar_url = cloudinaryResponse.data.secure_url;
+      }
+
+      const response = await api.post('/auth/register', userData);
+
       console.log('Registration successful', response.data);
-      localStorage.setItem('token', response.data.data.token);
-    // For now, we'll use localStorage to pass a message
-    // We can use a toast library or create a global alert system later
-    localStorage.setItem('registrationMessage', 'Profile created successfully!');
-    
-    // Redirect to profile page
-    navigate('/profile');
-  } catch (error) {
-    console.error('Full Registration error:', error);
-    setErrors(prev => ({ 
-      ...prev, 
-      form: error.response?.data?.message || 'Registration failed.' 
-    }));
-  } finally {
-    setIsSubmitting(false);
-  }
-};
+
+      // Directly use the token from the response
+      const { token, user } = response.data.data;
+
+      // Store token in localStorage
+      localStorage.setItem('token', token);
+
+      // Add a success message
+      localStorage.setItem('registrationMessage', 'Profile created successfully!');
+
+      // Navigate to profile page
+      navigate('/profile');
+    } catch (error) {
+      console.error('Full Registration error:', error);
+      setErrors(prev => ({
+        ...prev,
+        form: error.response?.data?.message || 'Registration failed.'
+      }));
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <div className="card bg-base-100 shadow-xl mx-auto max-w-md w-full">
@@ -192,8 +195,6 @@ const RegisterForm = () => {
             {isSubmitting ? 'Signing Up...' : 'Sign Up'}
           </button>
         </form>
-
-        <div className="divider mt-6">OR</div>
 
         <div className="text-center">
           <p>Already have an account?</p>
