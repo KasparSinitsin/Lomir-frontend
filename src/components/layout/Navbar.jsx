@@ -18,16 +18,16 @@ const Navbar = () => {
         </div>
 
         {/* Navigation & Auth - Right aligned */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-6"> {/* Increased gap here */}
           
           {/* Navigation Links */}
-          <nav className="flex gap-2 sm:gap-4 text-sm sm:text-base">
-            <Link to="/" className="btn btn-ghost btn-sm px-3">Home</Link>
-            <Link to="/teams" className="btn btn-ghost btn-sm px-3">Teams</Link>
+          <nav className="flex gap-4 text-sm sm:text-base">
+            <Link to="/" className="btn btn-sm neon-pomegranate px-4">Home</Link>
+            <Link to="/teams" className="btn btn-sm neon-pomegranate px-4">Teams</Link>
             {isAuthenticated && (
               <>
-                <Link to="/garden" className="btn btn-ghost btn-sm px-3">Garden</Link>
-                <Link to="/badges" className="btn btn-ghost btn-sm px-3">Badges</Link>
+                <Link to="/garden" className="btn btn-sm neon-pomegranate px-4">Garden</Link>
+                <Link to="/badges" className="btn btn-sm neon-pomegranate px-4">Badges</Link>
               </>
             )}
           </nav>
@@ -35,7 +35,7 @@ const Navbar = () => {
           {/* Auth Section */}
           {isAuthenticated ? (
             <div className="dropdown dropdown-end">
-              <label tabIndex={0} className="btn btn-ghost btn-circle avatar bg-primary text-white btn-sm sm:btn-md">
+              <label tabIndex={0} className="btn btn-circle avatar bg-primary text-white btn-sm sm:btn-md">
                 <div className="rounded-full flex items-center justify-center text-sm sm:text-base">
                   <span>{user.firstName?.charAt(0) || user.username?.charAt(0) || '?'}</span>
                 </div>
@@ -51,9 +51,9 @@ const Navbar = () => {
               </ul>
             </div>
           ) : (
-            <div className="flex gap-2">
-              <Link to="/login" className="btn btn-outline btn-primary btn-sm">Login</Link>
-              <Link to="/register" className="btn btn-primary btn-sm">Sign Up</Link>
+            <div className="flex gap-4"> {/* Increased gap here */}
+              <Link to="/login" className="btn btn-outline btn-sm neon-pomegranate">Login</Link>
+              <Link to="/register" className="btn btn-sm neon-pomegranate">Sign Up</Link>
             </div>
           )}
         </div>
