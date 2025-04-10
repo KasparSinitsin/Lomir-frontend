@@ -117,3 +117,20 @@ body {
 .input:focus {
   box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
 }
+
+/* Neon Glow Button Style */
+.neon-pomegranate {
+  @apply bg-pink-500 text-white shadow-md transition-all duration-200 ease-in-out;
+  box-shadow:
+    0 0 6px #ff4d6d,
+    0 0 12px #ff4d6d,
+    0 0 24px #ff4d6d;
+}
+
+.neon-pomegranate:hover {
+  background-color: #ff3c5a; /* Slightly deeper pink */
+  box-shadow:
+    0 0 8px #ff3c5a,
+    0 0 16px #ff3c5a,
+    0 0 28px #ff3c5a;
+}
