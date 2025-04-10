@@ -19,7 +19,7 @@ export const AuthProvider = ({ children }) => {
               Authorization: `Bearer ${token}`
             }
           });
-          
+
           setUser(response.data.data.user);
           setError(null);
         } catch (err) {
@@ -28,11 +28,15 @@ export const AuthProvider = ({ children }) => {
           if (err.response && (err.response.status === 401 || err.response.status === 403)) {
             localStorage.removeItem('token');
             setToken(null);
+            setUser(null);
           }
           setError('Authentication failed. Please login again.');
+        } finally {
+          setLoading(false);
         }
+      } else {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     loadUser();
@@ -44,7 +48,7 @@ export const AuthProvider = ({ children }) => {
       setLoading(true);
       const response = await api.post('/auth/register', userData);
       const { token, user } = response.data.data;
-      
+
       localStorage.setItem('token', token);
       setToken(token);
       setUser(user);
@@ -52,9 +56,9 @@ export const AuthProvider = ({ children }) => {
       return { success: true };
     } catch (err) {
       setError(err.response?.data?.message || 'Registration failed. Please try again.');
-      return { 
-        success: false, 
-        message: err.response?.data?.message || 'Registration failed' 
+      return {
+        success: false,
+        message: err.response?.data?.message || 'Registration failed'
       };
     } finally {
       setLoading(false);
@@ -67,7 +71,7 @@ export const AuthProvider = ({ children }) => {
       setLoading(true);
       const response = await api.post('/auth/login', credentials);
       const { token, user } = response.data.data;
-      
+
       localStorage.setItem('token', token);
       setToken(token);
       setUser(user);
@@ -75,9 +79,9 @@ export const AuthProvider = ({ children }) => {
       return { success: true };
     } catch (err) {
       setError(err.response?.data?.message || 'Login failed. Please check your credentials.');
-      return { 
-        success: false, 
-        message: err.response?.data?.message || 'Login failed' 
+      return {
+        success: false,
+        message: err.response?.data?.message || 'Login failed'
       };
     } finally {
       setLoading(false);
@@ -93,14 +97,14 @@ export const AuthProvider = ({ children }) => {
 
   // Provide the authentication context
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      loading, 
-      error, 
+    <AuthContext.Provider value={{
+      user,
+      loading,
+      error,
       isAuthenticated: !!user,
-      register, 
-      login, 
-      logout 
+      register,
+      login,
+      logout
     }}>
       {children}
     </AuthContext.Provider>
