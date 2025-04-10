@@ -1,11 +1,13 @@
 import axios from 'axios';
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
 import TagSelector from '../tags/TagSelector';
 import api from '../../services/api';
 
 const RegisterForm = () => {
   const navigate = useNavigate();
+  const { register } = useAuth();
   const [formData, setFormData] = useState({
     username: '',
     email: '',
@@ -61,7 +63,6 @@ const RegisterForm = () => {
     setIsSubmitting(true);
 
     try {
-      // Prepare user data
       const userData = {
         username: formData.username,
         email: formData.email,
@@ -79,7 +80,6 @@ const RegisterForm = () => {
           : []
       };
 
-      // If profile image exists, upload to Cloudinary first
       if (formData.profile_image) {
         const cloudinaryFormData = new FormData();
         cloudinaryFormData.append('file', formData.profile_image);
@@ -98,21 +98,17 @@ const RegisterForm = () => {
         userData.avatar_url = cloudinaryResponse.data.secure_url;
       }
 
-      const response = await api.post('/auth/register', userData);
+      const result = await register(userData);
 
-      console.log('Registration successful', response.data);
-
-      // Directly use the token from the response
-      const { token, user } = response.data.data;
-
-      // Store token in localStorage
-      localStorage.setItem('token', token);
-
-      // Add a success message
-      localStorage.setItem('registrationMessage', 'Profile created successfully!');
-
-      // Navigate to profile page
-      navigate('/profile');
+      if (result.success) {
+        localStorage.setItem('registrationMessage', 'Profile created successfully!');
+        navigate('/profile');
+      } else {
+        setErrors(prev => ({
+          ...prev,
+          form: result.message
+        }));
+      }
     } catch (error) {
       console.error('Full Registration error:', error);
       setErrors(prev => ({
