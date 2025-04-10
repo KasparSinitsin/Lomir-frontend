@@ -1,19 +1,18 @@
-// src/App.jsx - Updated route configuration
-
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { AuthProvider } from './contexts/AuthContext';
 import Navbar from './components/layout/Navbar';
 import Footer from './components/layout/Footer';
+import ProtectedRoute from './components/layout/ProtectedRoute';
+import Placeholder from './components/common/Placeholder';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Profile from './pages/Profile';
 import BadgeOverview from './pages/BadgeOverview';
-import Placeholder from './components/common/Placeholder';
-import ProtectedRoute from './components/layout/ProtectedRoute';
-import { AuthProvider } from './contexts/AuthContext';
 import CreateTeam from './pages/CreateTeam';
+import MyTeams from './pages/MyTeams'; 
+import SearchPage from './pages/SearchPage';
 import DesignSystem from './pages/DesignSystem'; 
-import MyTeams from './pages/MyTeams';  
 
 function App() {
   return (
@@ -31,6 +30,7 @@ function App() {
                 <Route path="/badges" element={<BadgeOverview />} />
                 <Route path="/garden" element={<Placeholder pageName="Project Garden" />} />
                 <Route path="/teams" element={<Placeholder pageName="Teams" />} />
+                <Route path="/search" element={<SearchPage />} />
                 <Route path="/design-system" element={<DesignSystem />} />
                 
                 {/* Protected routes */}

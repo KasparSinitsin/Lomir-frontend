@@ -22,6 +22,7 @@ const Navbar = () => {
           
           {/* Navigation Links */}
           <nav className="flex gap-4 text-sm sm:text-base">
+            <Link to="/search" className="btn btn-sm neon-pomegranate px-4">Search</Link>
             <Link to="/" className="btn btn-sm neon-pomegranate px-4">Home</Link>
             <Link to="/teams" className="btn btn-sm neon-pomegranate px-4">Teams</Link>
             {isAuthenticated && (
