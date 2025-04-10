@@ -65,7 +65,7 @@ const RegisterForm = () => {
       if (formData.profile_image) {
         const cloudinaryFormData = new FormData();
         cloudinaryFormData.append('file', formData.profile_image);
-        cloudinaryFormData.append('upload_preset', 'your_cloudinary_upload_preset');
+        cloudinaryFormData.append('upload_preset', 'lomir_avatars');
   
         const cloudinaryResponse = await axios.post(
           `https://api.cloudinary.com/v1_1/${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME}/image/upload`, 
