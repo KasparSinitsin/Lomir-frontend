@@ -3,7 +3,7 @@ import api from './api';
 export const searchService = {
   async globalSearch(query, isAuthenticated = false) {
     try {
-      const response = await api.get('/search', {
+      const response = await api.get('/search/global', {
         params: { 
           query, 
           // Only pass authenticated flag if true
