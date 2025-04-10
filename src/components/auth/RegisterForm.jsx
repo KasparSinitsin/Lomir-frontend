@@ -1,3 +1,4 @@
+import axios from 'axios';
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import TagSelector from '../tags/TagSelector';
@@ -65,13 +66,18 @@ const RegisterForm = () => {
       if (formData.profile_image) {
         const cloudinaryFormData = new FormData();
         cloudinaryFormData.append('file', formData.profile_image);
-        cloudinaryFormData.append('upload_preset', 'lomir_avatars');
-  
+        cloudinaryFormData.append('upload_preset', import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET);
+      
         const cloudinaryResponse = await axios.post(
           `https://api.cloudinary.com/v1_1/${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME}/image/upload`, 
-          cloudinaryFormData
+          cloudinaryFormData,
+          {
+            headers: {
+              'Content-Type': 'multipart/form-data'
+            }
+          }
         );
-  
+      
         avatarUrl = cloudinaryResponse.data.secure_url;
       }
   
