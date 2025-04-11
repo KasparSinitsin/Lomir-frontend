@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import PageContainer from '../components/layout/PageContainer';
 import Grid from '../components/layout/Grid';
 import TeamCard from '../components/teams/TeamCard';
-import UserCard from '../components/users/UserCard';
+import UserCard from '../components/users/UserCard'; 
 import { searchService } from '../services/searchService';
 import Input from '../components/common/Input';
 import Button from '../components/common/Button';
@@ -38,6 +38,27 @@ const SearchPage = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Add this method to handle user updates
+  const handleUserUpdate = (updatedUser) => {
+    // Update the user in the search results
+    setSearchResults(prevResults => ({
+      ...prevResults,
+      users: prevResults.users.map(user => 
+        user.id === updatedUser.id ? updatedUser : user
+      )
+    }));
+  };
+
+  // Add similar method for team updates if needed
+  const handleTeamUpdate = (updatedTeam) => {
+    setSearchResults(prevResults => ({
+      ...prevResults,
+      teams: prevResults.teams.map(team => 
+        team.id === updatedTeam.id ? updatedTeam : team
+      )
+    }));
   };
 
   return (
@@ -82,7 +103,11 @@ const SearchPage = () => {
               <h2 className="text-xl font-semibold mb-4">Teams</h2>
               <Grid cols={1} md={2} lg={3} gap={6}>
                 {searchResults.teams.map(team => (
-                  <TeamCard key={team.id} team={team} />
+                  <TeamCard 
+                    key={team.id} 
+                    team={team} 
+                    onUpdate={handleTeamUpdate} 
+                  />
                 ))}
               </Grid>
             </section>
@@ -90,19 +115,19 @@ const SearchPage = () => {
 
           {/* Users Results */}
           {searchResults.users.length > 0 && (
-  <section>
-    <h2 className="text-xl font-semibold mb-4">Users</h2>
-    <Grid cols={1} md={2} lg={3} gap={6}>
-      {searchResults.users.map(user => (
-        <UserCard 
-          key={user.id} 
-          user={user} 
-          onUpdate={handleUserUpdate} // You'll need to implement this method
-        />
-      ))}
-    </Grid>
-  </section>
-)}
+            <section>
+              <h2 className="text-xl font-semibold mb-4">Users</h2>
+              <Grid cols={1} md={2} lg={3} gap={6}>
+                {searchResults.users.map(user => (
+                  <UserCard 
+                    key={user.id} 
+                    user={user} 
+                    onUpdate={handleUserUpdate} 
+                  />
+                ))}
+              </Grid>
+            </section>
+          )}
 
           {searchResults.teams.length === 0 &&
            searchResults.users.length === 0 &&
