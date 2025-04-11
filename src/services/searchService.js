@@ -6,8 +6,7 @@ export const searchService = {
       const response = await api.get('/search/global', {
         params: { 
           query, 
-          // Only pass authenticated flag if true
-          ...(isAuthenticated && { authenticated: true }) 
+          authenticated: isAuthenticated 
         }
       });
       return response.data;
