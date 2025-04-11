@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import PageContainer from '../components/layout/PageContainer';
 import Grid from '../components/layout/Grid';
 import TeamCard from '../components/teams/TeamCard';
+import UserCard from '../components/users/UserCard';
 import { searchService } from '../services/searchService';
 import Input from '../components/common/Input';
 import Button from '../components/common/Button';
@@ -89,35 +90,19 @@ const SearchPage = () => {
 
           {/* Users Results */}
           {searchResults.users.length > 0 && (
-            <section>
-              <h2 className="text-xl font-semibold mb-4">Users</h2>
-              <Grid cols={1} md={2} lg={3} gap={6}>
-                {searchResults.users.map(user => (
-                  <div
-                    key={user.id}
-                    className="card bg-base-100 shadow-xl p-4"
-                  >
-                    <div className="flex items-center space-x-4">
-                      <div className="avatar placeholder">
-                        <div className="bg-primary text-primary-content rounded-full w-12 h-12">
-                          <span>{user.first_name?.charAt(0) || user.username?.charAt(0)}</span>
-                        </div>
-                      </div>
-                      <div>
-                        <h3 className="font-bold">{user.first_name} {user.lastName}</h3>
-                        <p className="text-base-content/70">@{user.username}</p>
-                        {user.tags && (
-                          <p className="text-sm text-base-content/60 mt-1">
-                            Skills: {user.tags}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </Grid>
-            </section>
-          )}
+  <section>
+    <h2 className="text-xl font-semibold mb-4">Users</h2>
+    <Grid cols={1} md={2} lg={3} gap={6}>
+      {searchResults.users.map(user => (
+        <UserCard 
+          key={user.id} 
+          user={user} 
+          onUpdate={handleUserUpdate} // You'll need to implement this method
+        />
+      ))}
+    </Grid>
+  </section>
+)}
 
           {searchResults.teams.length === 0 &&
            searchResults.users.length === 0 &&
