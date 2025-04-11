@@ -20,7 +20,7 @@ const SearchPage = () => {
 
   const handleSearch = async (e) => {
     e.preventDefault();
-    
+
     if (!searchQuery.trim()) {
       return;
     }
@@ -28,7 +28,7 @@ const SearchPage = () => {
     try {
       setLoading(true);
       setError(null);
-      
+
       const results = await searchService.globalSearch(searchQuery, isAuthenticated);
       setSearchResults(results.data);
     } catch (err) {
@@ -40,21 +40,21 @@ const SearchPage = () => {
   };
 
   return (
-    <PageContainer 
-      title="Search" 
+    <PageContainer
+      title="Search"
       subtitle="Find teams, users, and projects"
     >
       <div className="max-w-xl mx-auto mb-8">
         <form onSubmit={handleSearch} className="flex space-x-2">
-          <Input 
+          <Input
             placeholder="Search teams, users, skills..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="flex-grow"
           />
-          <Button 
-            type="submit" 
-            variant="primary" 
+          <Button
+            type="submit"
+            variant="primary"
             icon={<SearchIcon />}
             disabled={loading}
           >
@@ -93,19 +93,24 @@ const SearchPage = () => {
               <h2 className="text-xl font-semibold mb-4">Users</h2>
               <Grid cols={1} md={2} lg={3} gap={6}>
                 {searchResults.users.map(user => (
-                  <div 
-                    key={user.id} 
+                  <div
+                    key={user.id}
                     className="card bg-base-100 shadow-xl p-4"
                   >
                     <div className="flex items-center space-x-4">
                       <div className="avatar placeholder">
                         <div className="bg-primary text-primary-content rounded-full w-12 h-12">
-                          <span>{user.firstName?.charAt(0) || user.username?.charAt(0)}</span>
+                          <span>{user.first_name?.charAt(0) || user.username?.charAt(0)}</span>
                         </div>
                       </div>
                       <div>
-                        <h3 className="font-bold">{user.firstName} {user.lastName}</h3>
+                        <h3 className="font-bold">{user.first_name} {user.lastName}</h3>
                         <p className="text-base-content/70">@{user.username}</p>
+                        {user.tags && (
+                          <p className="text-sm text-base-content/60 mt-1">
+                            Skills: {user.tags}
+                          </p>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -114,8 +119,8 @@ const SearchPage = () => {
             </section>
           )}
 
-          {searchResults.teams.length === 0 && 
-           searchResults.users.length === 0 && 
+          {searchResults.teams.length === 0 &&
+           searchResults.users.length === 0 &&
            !loading && (
             <div className="text-center text-base-content/70 py-12">
               <p>No results found. Try a different search term.</p>
