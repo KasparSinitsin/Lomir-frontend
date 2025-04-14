@@ -7,6 +7,7 @@ import UserCard from '../components/users/UserCard';
 import { searchService } from '../services/searchService';
 import Input from '../components/common/Input';
 import Button from '../components/common/Button';
+import Alert from '../components/common/Alert';
 import { Search as SearchIcon, Users, Users2 } from 'lucide-react';
 
 const SearchPage = () => {
@@ -18,6 +19,7 @@ const SearchPage = () => {
   const [searchType, setSearchType] = useState('all'); // 'all', 'users', or 'teams'
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [hasSearched, setHasSearched] = useState(false); // New state to track if a search has been performed
   const { isAuthenticated } = useAuth();
 
   const handleSearch = async (e) => {
@@ -30,6 +32,7 @@ const SearchPage = () => {
     try {
       setLoading(true);
       setError(null);
+      setHasSearched(true); // Mark that a search has been performed
 
       const results = await searchService.globalSearch(searchQuery, isAuthenticated);
       setSearchResults(results.data);
@@ -72,16 +75,40 @@ const SearchPage = () => {
     }));
   };
 
+  // Check if no results were found after a search was performed
+  const noResultsFound = hasSearched && 
+                         filteredResults.teams.length === 0 && 
+                         filteredResults.users.length === 0 && 
+                         !loading;
+
   return (
     <PageContainer
       title="Search"
-      subtitle="Find teams, users, and projects"
+      subtitle="Find teams and users"
       titleAlignment="center"
     >
       <div className="max-w-xl mx-auto mb-8">
-
+        <form onSubmit={handleSearch} className="flex flex-col space-y-4">
+          {/* Search input and button */}
+          <div className="flex space-x-2">
+            <Input
+              placeholder="Search teams, users, skills..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="flex-grow"
+            />
+            <Button
+              type="submit"
+              variant="primary"
+              icon={<SearchIcon />}
+              disabled={loading}
+            >
+              Search
+            </Button>
+          </div>
+          
           {/* Toggle switch */}
-          <div className="flex justify-center space-x-2 pt-2 mb-2">
+          <div className="flex justify-center space-x-2 pt-2">
             <div className="btn-group">
               <button
                 type="button"
@@ -108,34 +135,23 @@ const SearchPage = () => {
               </button>
             </div>
           </div>
-
-        <form onSubmit={handleSearch} className="flex flex-col space-y-4">
-          {/* Search input and button */}
-          <div className="flex space-x-2">
-            <Input
-              placeholder="Search teams, users, skills..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="flex-grow"
-            />
-            <Button
-              type="submit"
-              variant="primary"
-              icon={<SearchIcon />}
-              disabled={loading}
-            >
-              Search
-            </Button>
-          </div>
-          
-
         </form>
       </div>
 
       {error && (
-        <div className="alert alert-error">
-          <span>{error}</span>
-        </div>
+        <Alert 
+          type="error" 
+          message={error}
+          onClose={() => setError(null)}
+        />
+      )}
+
+      {noResultsFound && (
+        <Alert
+          type="info"
+          message={`No results found for "${searchQuery}". Try a different search term.`}
+          className="max-w-xl mx-auto"
+        />
       )}
 
       {loading ? (
@@ -176,13 +192,7 @@ const SearchPage = () => {
             </section>
           )}
 
-          {filteredResults.teams.length === 0 &&
-           filteredResults.users.length === 0 &&
-           !loading && (
-            <div className="text-center text-base-content/70 py-12">
-              <p>No results found. Try a different search term.</p>
-            </div>
-          )}
+          {/* The "No results found" message is now shown as an Alert above */}
         </div>
       )}
     </PageContainer>

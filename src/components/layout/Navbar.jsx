@@ -13,7 +13,7 @@ const Navbar = () => {
         <div className="flex-none">
           <Link to="/" className="flex items-center">
             <img src={LomirLogo} alt="Lomir Logo" className="h-6 sm:h-8 mr-2" />
-            <span className="text-lg font-semibold text-primary hidden sm:inline">Lomir</span>
+            
           </Link>
         </div>
 
