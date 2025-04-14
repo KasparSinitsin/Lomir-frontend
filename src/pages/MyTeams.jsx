@@ -120,4 +120,19 @@ const MyTeams = () => {
   );
 };
 
+const handleTeamDelete = (teamId) => {
+  // Remove the deleted team from the state
+  setTeams(prevTeams => prevTeams.filter(team => team.id !== teamId));
+};
+
+// Update the TeamCard render to include the onDelete prop:
+{teams.map(team => (
+  <TeamCard 
+    key={team.id} 
+    team={team}
+    onUpdate={handleTeamUpdate}
+    onDelete={handleTeamDelete}
+  />
+))}
+
 export default MyTeams;
