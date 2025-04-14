@@ -23,25 +23,18 @@ const TeamCard = ({ team, onUpdate }) => {
   
   return (
     <>
-      <Card 
-        title={team.name}
-        subtitle={`${team.current_members_count} members`}
-        hoverable
-      >
-        <p className="text-base-content/80 mb-4">{team.description}</p>
+ <Card 
+  title={team.name}
+  subtitle={`Members: ${team.current_members_count ?? 1} out of ${team.max_members ?? '∞'}`}
+  hoverable
+>
+        <p className="text-base-content/80 mb-4 -mt-4">{team.description}</p>
         
         <div className="flex flex-wrap items-center gap-2 mb-4">
           <div className="flex items-center text-sm text-base-content/70">
             <Users size={16} className="mr-1" />
             <span>{team.is_public ? 'Public' : 'Private'}</span>
           </div>
-          
-          {team.postal_code && (
-            <div className="flex items-center text-sm text-base-content/70">
-              <MapPin size={16} className="mr-1" />
-              <span>{team.postal_code}</span>
-            </div>
-          )}
           
           {team.user_team_role && (
             <span className="badge badge-primary badge-outline">

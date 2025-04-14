@@ -14,6 +14,8 @@ const TagSelector = ({ onTagsSelected, selectedTags = [], mode = 'profile' }) =>
   const [newTagName, setNewTagName] = useState('');
   const [selectedCategoryId, setSelectedCategoryId] = useState('');
   const [selectedSupercategoryId, setSelectedSupercategoryId] = useState('');
+  
+  const [expandedTagLevels, setExpandedTagLevels] = useState({});
 
   useEffect(() => {
     const fetchTags = async () => {
@@ -46,27 +48,21 @@ const TagSelector = ({ onTagsSelected, selectedTags = [], mode = 'profile' }) =>
     setLocalSelectedTags((prev) =>
       prev.includes(tagId) ? prev.filter((id) => id !== tagId) : [...prev, tagId]
     );
-
+  
     if (mode === 'profile') {
-      if (!experienceLevels[tagId]) {
-        setExperienceLevels((prev) => ({ ...prev, [tagId]: 'beginner' }));
-      }
-      if (!interestLevels[tagId]) {
-        setInterestLevels((prev) => ({ ...prev, [tagId]: 'medium' }));
-      }
+      setExperienceLevels((prev) => ({ ...prev, [tagId]: prev[tagId] || 'beginner' }));
+      setInterestLevels((prev) => ({ ...prev, [tagId]: prev[tagId] || 'medium' }));
     }
   };
 
   const handleExperienceLevelChange = (tagId, level) => {
-    if (mode === 'profile') {
-      setExperienceLevels((prev) => ({ ...prev, [tagId]: level }));
-    }
+    if (mode !== 'profile') return;
+    setExperienceLevels((prev) => ({ ...prev, [tagId]: level }));
   };
-
+  
   const handleInterestLevelChange = (tagId, level) => {
-    if (mode === 'profile') {
-      setInterestLevels((prev) => ({ ...prev, [tagId]: level }));
-    }
+    if (mode !== 'profile') return;
+    setInterestLevels((prev) => ({ ...prev, [tagId]: level }));
   };
 
   const toggleSupercategory = (name) => {
@@ -80,6 +76,13 @@ const TagSelector = ({ onTagsSelected, selectedTags = [], mode = 'profile' }) =>
     setExpandedCategories((prev) => ({
       ...prev,
       [name]: !prev[name],
+    }));
+  };
+
+  const toggleTagLevelExpansion = (tagId) => {
+    setExpandedTagLevels((prev) => ({
+      ...prev,
+      [tagId]: !prev[tagId],
     }));
   };
 
@@ -178,27 +181,37 @@ const TagSelector = ({ onTagsSelected, selectedTags = [], mode = 'profile' }) =>
                           <span className="flex-grow">{tag.name}</span>
 
                           {mode === 'profile' && localSelectedTags.includes(tag.id) && (
-  <div className="flex space-x-2 ml-2">
-    <select
-      value={experienceLevels[tag.id] || 'beginner'}
-      onChange={(e) => handleExperienceLevelChange(tag.id, e.target.value)}
-      className="select select-bordered select-xs"
+  <div>
+    <button
+      onClick={() => toggleTagLevelExpansion(tag.id)}
+      className="text-sm text-blue-500"
     >
-      <option value="beginner">Beginner</option>
-      <option value="intermediate">Intermediate</option>
-      <option value="advanced">Advanced</option>
-      <option value="expert">Expert</option>
-    </select>
-    <select
-      value={interestLevels[tag.id] || 'medium'}
-      onChange={(e) => handleInterestLevelChange(tag.id, e.target.value)}
-      className="select select-bordered select-xs"
-    >
-      <option value="low">Low</option>
-      <option value="medium">Medium</option>
-      <option value="high">High</option>
-      <option value="very-high">Very High</option>
-    </select>
+      {expandedTagLevels[tag.id] ? 'Hide Levels' : 'Set Levels'}
+    </button>
+
+    {expandedTagLevels[tag.id] && (
+      <div className="flex space-x-2 ml-2">
+        <select
+          value={experienceLevels[tag.id] || 'beginner'}
+          onChange={(e) => handleExperienceLevelChange(tag.id, e.target.value)}
+          className="select select-bordered select-xs"
+        >
+          <option value="beginner">Beginner</option>
+          <option value="intermediate">Intermediate</option>
+          <option value="advanced">Advanced</option>
+          <option value="expert">Expert</option>
+        </select>
+        <select
+          value={interestLevels[tag.id] || 'medium'}
+          onChange={(e) => handleInterestLevelChange(tag.id, e.target.value)}
+          className="select select-bordered select-xs"
+        >
+          <option value="medium">Medium</option>
+          <option value="high">High</option>
+          <option value="very-high">Very High</option>
+        </select>
+      </div>
+    )}
   </div>
 )}
                         </div>
@@ -237,18 +250,18 @@ const TagSelector = ({ onTagsSelected, selectedTags = [], mode = 'profile' }) =>
               ))}
             </select>
             <select
-  value={selectedCategoryId}
-  onChange={(e) => setSelectedCategoryId(e.target.value)}
-  className="select select-bordered w-full mb-4"
-  disabled={!selectedSupercategoryId}
->
-  <option value="">Select Category</option>
-  {(supercategories.find((s) => s.id === selectedSupercategoryId)?.categories || []).map((c) => (
-    <option key={c.id} value={c.id}>
-      {c.name}
-    </option>
-  ))}
-</select>
+              value={selectedCategoryId}
+              onChange={(e) => setSelectedCategoryId(e.target.value)}
+              className="select select-bordered w-full mb-4"
+              disabled={!selectedSupercategoryId}
+            >
+              <option value="">Select Category</option>
+              {(supercategories.find((s) => s.id === selectedSupercategoryId)?.categories || []).map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
             <div className="flex justify-end space-x-2">
               <button className="btn btn-ghost" onClick={() => setShowAddTagModal(false)}>
                 Cancel
