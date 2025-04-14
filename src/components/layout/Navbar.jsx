@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import LomirLogo from '../../assets/images/Lomir-logo.png';
+import { Bell, MessageCircle, Search } from 'lucide-react';
 
 const Navbar = () => {
   const { isAuthenticated, user, logout } = useAuth();
@@ -8,7 +9,7 @@ const Navbar = () => {
   return (
     <div className="navbar glass-navbar sticky top-0 z-10">
       <div className="content-container flex justify-between items-center w-full">
-        
+
         {/* Logo - Left aligned */}
         <div className="flex-none">
           <Link to="/" className="flex items-center">
@@ -17,11 +18,26 @@ const Navbar = () => {
         </div>
 
         {/* Navigation & Auth - Right aligned */}
-        <div className="flex items-center space-x-6"> {/* Adjusted to ensure equal spacing */}
-          
+        <div className="flex items-center space-x-6">
+
+        {/* Icon Links */}
+<div className="flex items-center space-x-4 text-violet-600">
+  <div className="hover:text-violet-400 hover:drop-shadow-neon transition duration-200 cursor-pointer">
+    <Bell size={22} strokeWidth={2.2} />
+  </div>
+  <div className="hover:text-violet-400 hover:drop-shadow-neon transition duration-200 cursor-pointer">
+    <MessageCircle size={22} strokeWidth={2.2} />
+  </div>
+  <Link
+    to="/search"
+    className="hover:text-violet-400 hover:drop-shadow-neon transition duration-200"
+  >
+    <Search size={22} strokeWidth={2.2} />
+  </Link>
+</div>
+
           {/* Navigation Links */}
-          <nav className="flex space-x-4 text-sm sm:text-base"> {/* Use space-x-4 for consistent button spacing */}
-            <Link to="/search" className="neon hover:text-violet-600 bg-transparent rounded-full px-4 py-1">Search</Link>
+          <nav className="flex space-x-4 text-sm sm:text-base">
             <Link to="/teams/my-teams" className="neon hover:text-violet-600 bg-transparent rounded-full px-4 py-1">Teams</Link>
             {isAuthenticated && (
               <>
@@ -49,7 +65,7 @@ const Navbar = () => {
               </ul>
             </div>
           ) : (
-            <div className="flex space-x-4"> {/* Use space-x-4 for equal button spacing */}
+            <div className="flex space-x-4">
               <Link to="/login" className="neon btn-outline btn-sm">Login</Link>
               <Link to="/register" className="neon btn-sm">Sign Up</Link>
             </div>
