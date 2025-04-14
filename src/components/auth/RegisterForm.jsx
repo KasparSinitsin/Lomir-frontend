@@ -59,9 +59,9 @@ const RegisterForm = () => {
     if (!validateForm()) {
       return;
     }
-
+  
     setIsSubmitting(true);
-
+  
     try {
       const userData = {
         username: formData.username,
@@ -74,8 +74,11 @@ const RegisterForm = () => {
         tags: formData.selectedTags.length > 0
           ? formData.selectedTags.map(tagId => ({
               tag_id: tagId,
+              // Comment out experience and interest levels
+              /*
               experience_level: formData.tagExperienceLevels[tagId] || 'beginner',
               interest_level: formData.tagInterestLevels[tagId] || 'medium'
+              */
             }))
           : []
       };

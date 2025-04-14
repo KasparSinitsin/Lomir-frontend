@@ -7,14 +7,20 @@ const TagSelector = ({ onTagsSelected, selectedTags = [], mode = 'profile' }) =>
   const [expandedSupercategories, setExpandedSupercategories] = useState({});
   const [expandedCategories, setExpandedCategories] = useState({});
   const [localSelectedTags, setLocalSelectedTags] = useState(selectedTags);
+  // Comment out interest and experience levels states
+  /*
   const [experienceLevels, setExperienceLevels] = useState({});
   const [interestLevels, setInterestLevels] = useState({});
+  */
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddTagModal, setShowAddTagModal] = useState(false);
   const [newTagName, setNewTagName] = useState('');
   const [selectedCategoryId, setSelectedCategoryId] = useState('');
   const [selectedSupercategoryId, setSelectedSupercategoryId] = useState('');
+  // Comment out expanded tag levels state
+  /*
   const [expandedTagLevels, setExpandedTagLevels] = useState({});
+  */
 
   // Initialize from props
   useEffect(() => {
@@ -45,6 +51,8 @@ const TagSelector = ({ onTagsSelected, selectedTags = [], mode = 'profile' }) =>
     
     setLocalSelectedTags(newSelectedTags);
 
+    // Comment out level initialization for newly added tags
+    /*
     if (mode === 'profile') {
       // Initialize levels for newly added tag
       if (!localSelectedTags.includes(tagId) && newSelectedTags.includes(tagId)) {
@@ -52,17 +60,24 @@ const TagSelector = ({ onTagsSelected, selectedTags = [], mode = 'profile' }) =>
         setInterestLevels(prev => ({ ...prev, [tagId]: prev[tagId] || 'medium' }));
       }
     }
+    */
     
     // Notify parent of changes
     if (onTagsSelected) {
+      // Comment out sending levels to parent, just send tags
+      /*
       if (mode === 'profile') {
         onTagsSelected(newSelectedTags, experienceLevels, interestLevels);
       } else {
         onTagsSelected(newSelectedTags);
       }
+      */
+      onTagsSelected(newSelectedTags);
     }
   };
 
+  // Comment out level change handlers
+  /*
   const handleExperienceLevelChange = (tagId, level) => {
     if (mode !== 'profile') return;
     
@@ -86,6 +101,7 @@ const TagSelector = ({ onTagsSelected, selectedTags = [], mode = 'profile' }) =>
       onTagsSelected(localSelectedTags, experienceLevels, newLevels);
     }
   };
+  */
 
   const toggleSupercategory = (name) => {
     setExpandedSupercategories((prev) => ({
@@ -101,12 +117,15 @@ const TagSelector = ({ onTagsSelected, selectedTags = [], mode = 'profile' }) =>
     }));
   };
 
+  // Comment out tag level expansion toggle
+  /*
   const toggleTagLevelExpansion = (tagId) => {
     setExpandedTagLevels((prev) => ({
       ...prev,
       [tagId]: !prev[tagId],
     }));
   };
+  */
 
   const handleAddTag = async () => {
     if (!newTagName || !selectedCategoryId || !selectedSupercategoryId) {
@@ -128,13 +147,18 @@ const TagSelector = ({ onTagsSelected, selectedTags = [], mode = 'profile' }) =>
       const updatedSelectedTags = [...localSelectedTags, newTagId];
       setLocalSelectedTags(updatedSelectedTags);
 
+      // Comment out setting levels for new tags
+      /*
       if (mode === 'profile') {
         setExperienceLevels((prev) => ({ ...prev, [newTagId]: 'beginner' }));
         setInterestLevels((prev) => ({ ...prev, [newTagId]: 'medium' }));
       }
+      */
 
       // Notify parent of changes
       if (onTagsSelected) {
+        // Comment out sending levels to parent, just send tags
+        /*
         if (mode === 'profile') {
           onTagsSelected(updatedSelectedTags, 
             { ...experienceLevels, [newTagId]: 'beginner' }, 
@@ -143,6 +167,8 @@ const TagSelector = ({ onTagsSelected, selectedTags = [], mode = 'profile' }) =>
         } else {
           onTagsSelected(updatedSelectedTags);
         }
+        */
+        onTagsSelected(updatedSelectedTags);
       }
 
       setShowAddTagModal(false);
@@ -214,6 +240,8 @@ const TagSelector = ({ onTagsSelected, selectedTags = [], mode = 'profile' }) =>
                           />
                           <span className="flex-grow">{tag.name}</span>
 
+                          {/* Comment out the levels UI */}
+                          {/*
                           {mode === 'profile' && localSelectedTags.includes(tag.id) && (
                             <div>
                               <button
@@ -248,6 +276,7 @@ const TagSelector = ({ onTagsSelected, selectedTags = [], mode = 'profile' }) =>
                               )}
                             </div>
                           )}
+                          */}
                         </div>
                       ))}
                     </div>
