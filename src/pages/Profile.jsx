@@ -7,22 +7,33 @@ import Grid from '../components/layout/Grid';
 import Card from '../components/common/Card';
 import Button from '../components/common/Button';
 import DataDisplay from '../components/common/DataDisplay';
-import Alert from '../components/common/Alert'; // Assuming you have an Alert component
+import Alert from '../components/common/Alert';
 import { Mail, MapPin, User } from 'lucide-react';
-
+import { tagService } from '../services/tagService';
+import BadgeCard from '../components/badges/BadgeCard'; 
 
 const Profile = () => {
   const { user, logout } = useAuth();
   const [registrationMessage, setRegistrationMessage] = useState('');
+  const [tags, setTags] = useState([]);
 
   useEffect(() => {
-    // Check for registration message in localStorage
     const message = localStorage.getItem('registrationMessage');
     if (message) {
       setRegistrationMessage(message);
-      // Remove the message after displaying
       localStorage.removeItem('registrationMessage');
     }
+
+    const fetchTags = async () => {
+      try {
+        const structuredTags = await tagService.getStructuredTags();
+        setTags(structuredTags);
+      } catch (error) {
+        console.error('Error fetching tags:', error);
+      }
+    };
+
+    fetchTags();
   }, []);
 
   if (!user) {
@@ -49,7 +60,6 @@ const Profile = () => {
 
   return (
     <div className="space-y-6">
-      {/* Display registration message if it exists */}
       {registrationMessage && (
         <Alert
           type="success"
@@ -80,25 +90,11 @@ const Profile = () => {
             </div>
 
             <Grid cols={1} md={3} gap={4}>
-              <DataDisplay
-                label="Email"
-                value={user.email}
-                icon={<Mail size={16} />}
-              />
-
+              <DataDisplay label="Email" value={user.email} icon={<Mail size={16} />} />
               {user.postalCode && (
-                <DataDisplay
-                  label="Location"
-                  value={user.postalCode}
-                  icon={<MapPin size={16} />}
-                />
+                <DataDisplay label="Location" value={user.postalCode} icon={<MapPin size={16} />} />
               )}
-
-              <DataDisplay
-                label="Member Since"
-                value="April 2025"
-                icon={<User size={16} />}
-              />
+              <DataDisplay label="Member Since" value="April 2025" icon={<User size={16} />} />
             </Grid>
           </div>
         </div>
@@ -108,38 +104,38 @@ const Profile = () => {
             <p className="text-base-content/90">{user.bio}</p>
           </Section>
         )}
+
+        <Section
+          title="My Skills & Interests"
+          action={
+            <Button
+              variant="ghost"
+              size="sm"
+              className="hover:bg-violet-200 hover:text-violet-700"
+            >
+              Manage Skills
+            </Button>
+          }
+        >
+          <div className="flex flex-wrap gap-2">
+            {tags.map((tag) => (
+              <span key={tag.id} className="badge badge-primary badge-outline p-3">
+                {tag.name}
+              </span>
+            ))}
+          </div>
+        </Section>
+
+        <Section title="My Badges">
+          <Grid cols={2} md={3} lg={4} gap={4}>
+            {tags.map((tag) => (
+              tag.type === 'badge' && (
+                <BadgeCard key={tag.id} badge={tag} />
+              )
+            ))}
+          </Grid>
+        </Section>
       </Card>
-
-      <Section
-        title="My Skills & Interests"
-        action={<Button variant="ghost" size="sm">Manage Skills</Button>}
-      >
-        <div className="flex flex-wrap gap-2">
-          {/* Example tags - replace with actual user tags */}
-          <span className="badge badge-primary badge-outline p-3">JavaScript</span>
-          <span className="badge badge-primary badge-outline p-3">React</span>
-          <span className="badge badge-primary badge-outline p-3">UX Design</span>
-          <span className="badge badge-primary badge-outline p-3">Project Management</span>
-        </div>
-      </Section>
-
-      <Section title="My Badges">
-        <Grid cols={2} md={3} lg={4} gap={4}>
-          {/* Sample badges - replace with actual user badges */}
-          <div className="bg-base-200 rounded-lg p-4 text-center">
-            <div className="w-12 h-12 mx-auto bg-blue-100 rounded-full flex items-center justify-center mb-2">
-              <span className="text-blue-500">🏆</span>
-            </div>
-            <h3 className="font-medium">Team Player</h3>
-          </div>
-          <div className="bg-base-200 rounded-lg p-4 text-center">
-            <div className="w-12 h-12 mx-auto bg-green-100 rounded-full flex items-center justify-center mb-2">
-              <span className="text-green-500">💻</span>
-            </div>
-            <h3 className="font-medium">Coder</h3>
-          </div>
-        </Grid>
-      </Section>
     </div>
   );
 };

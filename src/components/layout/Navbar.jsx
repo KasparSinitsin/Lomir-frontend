@@ -18,17 +18,16 @@ const Navbar = () => {
         </div>
 
         {/* Navigation & Auth - Right aligned */}
-        <div className="flex items-center gap-6"> {/* Increased gap here */}
+        <div className="flex items-center space-x-6"> {/* Adjusted to ensure equal spacing */}
           
           {/* Navigation Links */}
-          <nav className="flex gap-4 text-sm sm:text-base">
-            <Link to="/search" className="btn btn-sm neon-pomegranate px-4">Search</Link>
-            <Link to="/" className="btn btn-sm neon-pomegranate px-4">Home</Link>
-            <Link to="/teams" className="btn btn-sm neon-pomegranate px-4">Teams</Link>
+          <nav className="flex space-x-4 text-sm sm:text-base"> {/* Use space-x-4 for consistent button spacing */}
+            <Link to="/search" className="neon hover:text-violet-600 bg-transparent rounded-full px-4 py-1">Search</Link>
+            <Link to="/teams/my-teams" className="neon hover:text-violet-600 bg-transparent rounded-full px-4 py-1">Teams</Link>
             {isAuthenticated && (
               <>
-                <Link to="/garden" className="btn btn-sm neon-pomegranate px-4">Garden</Link>
-                <Link to="/badges" className="btn btn-sm neon-pomegranate px-4">Badges</Link>
+                <Link to="/garden" className="neon hover:text-violet-600 bg-transparent rounded-full px-4 py-1">Garden</Link>
+                <Link to="/badges" className="neon hover:text-violet-600 bg-transparent rounded-full px-4 py-1">Badges</Link>
               </>
             )}
           </nav>
@@ -46,15 +45,14 @@ const Navbar = () => {
                 className="mt-3 z-[1] p-2 shadow-lg glass-navbar menu menu-sm dropdown-content rounded-box w-52"
               >
                 <li><Link to="/profile">Profile</Link></li>
-                <li><Link to="/teams/my-teams">My Teams</Link></li>
                 <li><Link to="/settings">Settings</Link></li>
                 <li><button onClick={logout}>Logout</button></li>
               </ul>
             </div>
           ) : (
-            <div className="flex gap-4"> {/* Increased gap here */}
-              <Link to="/login" className="btn btn-outline btn-sm neon-pomegranate">Login</Link>
-              <Link to="/register" className="btn btn-sm neon-pomegranate">Sign Up</Link>
+            <div className="flex space-x-4"> {/* Use space-x-4 for equal button spacing */}
+              <Link to="/login" className="neon btn-outline btn-sm">Login</Link>
+              <Link to="/register" className="neon btn-sm">Sign Up</Link>
             </div>
           )}
         </div>

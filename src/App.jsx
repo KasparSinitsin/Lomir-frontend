@@ -13,12 +13,13 @@ import CreateTeam from './pages/CreateTeam';
 import MyTeams from './pages/MyTeams'; 
 import SearchPage from './pages/SearchPage';
 import DesignSystem from './pages/DesignSystem'; 
+import './index.css';
 
 function App() {
   return (
     <AuthProvider>
       <Router>
-        <div data-theme="lomirlite" className="min-h-screen flex flex-col bg-base-200">
+        <div data-theme="lomirlite" className="bg-[url('./assets/images/Gradient_4.jpg')] min-h-screen flex flex-col">
           <Navbar />
           <main className="flex-grow py-6">
             <div className="content-container">

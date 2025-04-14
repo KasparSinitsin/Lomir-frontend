@@ -12,17 +12,19 @@ export default {
       boxShadow: {
         'soft': '0 2px 15px rgba(0, 0, 0, 0.04)',
       },
-
-      
       borderRadius: {
         'xl': '0.75rem',
       },
+      // Ensure that grid-cols utilities are generated
+      gridTemplateColumns: {
+        // Custom grid layout for convenience
+        '3': 'repeat(3, minmax(0, 1fr))',  // Custom 'grid-cols-3' template for better control
+      }
     },
     screens: {
       'xs': '375px', 
       'sm': '640px',
       'md': '768px',
-      'ml': '900px', 
       'lg': '1024px',
       'xl': '1280px',
       '2xl': '1536px',
@@ -52,7 +54,6 @@ export default {
           "font-family": "'Roboto', sans-serif",
         },
       },
-      "light"
     ],
     defaultTheme: "lomirlite",
   },

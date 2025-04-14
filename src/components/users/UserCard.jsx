@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import Card from '../common/Card';
 import Button from '../common/Button';
 import { Tag, MapPin } from 'lucide-react';
-import UserDetailsModal from './UserDetailsModal'; // We'll create this next
+import UserDetailsModal from './UserDetailsModal'; 
 
 const UserCard = ({ user, onUpdate }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -63,6 +63,7 @@ const UserCard = ({ user, onUpdate }) => {
         userId={user.id}
         onClose={closeUserDetails}
         onUpdate={handleUserUpdate}
+        mode="profile"
       />
     </>
   );

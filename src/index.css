@@ -4,16 +4,23 @@
 
 /* Global background image */
 body {
-  background-image: url('/src/assets/images/Gradient_2.jpg');
+  background-image: url('./assets/images/Gradient_4.jpg') !important;
   background-size: cover;
   background-attachment: fixed;
   background-position: center;
-  margin: 0;
-  padding: 0;
+  background-color: transparent !important;
+}
+
+html, body {
+  background: none !important;
+  background-color: transparent !important;
+}
+
+html, body, #root {
+  height: 100%;
 }
 
 .glass-navbar {
-  background: rgba(255, 255, 255, 0.7);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.2);
@@ -24,7 +31,6 @@ body {
 
 /* Add to src/index.css if not already present */
 .glass-modal {
-  background: rgba(255, 255, 255, 0.7);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   border: 1px solid rgba(255, 255, 255, 0.2);
@@ -35,7 +41,6 @@ body {
 .glass-content .input,
 .glass-content .textarea,
 .glass-content .select {
-  background-color: rgba(255, 255, 255, 0.8);
   backdrop-filter: blur(4px);
 }
 
@@ -118,19 +123,18 @@ body {
   box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
 }
 
-/* Neon Glow Button Style */
-.neon-pomegranate {
-  @apply bg-pink-500 text-white shadow-md transition-all duration-200 ease-in-out;
-  box-shadow:
-    0 0 6px #ff4d6d,
-    0 0 12px #ff4d6d,
-    0 0 24px #ff4d6d;
+.neon {
+  @apply text-[#b96eff] border-2 border-transparent bg-transparent rounded-full px-4 py-1 transition-all duration-300;
+  box-shadow: 0 0 4px #b96eff, 0 0 8px #b96eff, 0 0 16px #b96eff;
 }
 
-.neon-pomegranate:hover {
-  background-color: #ff3c5a; /* Slightly deeper pink */
-  box-shadow:
-    0 0 8px #ff3c5a,
-    0 0 16px #ff3c5a,
-    0 0 28px #ff3c5a;
+/* Hover effect */
+.neon:hover {
+  background-color: transparent;
+  color: #b96eff;
+  box-shadow: 0 0 8px #b96eff, 0 0 16px #b96eff, 0 0 28px #b96eff;
+}
+
+.background-opacity {
+  background-color: rgba(255, 255, 255, 0.5); 
 }

@@ -7,6 +7,7 @@ import TeamCard from '../components/teams/TeamCard';
 import { teamService } from '../services/teamService';
 import { useAuth } from '../contexts/AuthContext';
 import { Plus } from 'lucide-react';
+import { Search as SearchIcon } from 'lucide-react';
 
 const MyTeams = () => {
   const [teams, setTeams] = useState([]);
@@ -67,11 +68,18 @@ const MyTeams = () => {
   }
 
   const CreateTeamAction = (
-    <Link to="/teams/create">
-      <Button variant="primary" icon={<Plus size={16} />}>
-        Create New Team
-      </Button>
-    </Link>
+    <div className="flex flex-col gap-2 mt-8">
+      <Link to="/teams/create">
+        <Button variant="primary" icon={<Plus size={16} />}>
+          Create New Team
+        </Button>
+      </Link>
+      <Link to="/search">
+        <Button variant="primary" icon={<SearchIcon size={16} />}>
+          Search for Teams
+        </Button>
+      </Link>
+    </div>
   );
 
   return (

@@ -1,4 +1,3 @@
-// src/components/users/UserDetailsModal.jsx
 import React, { useState, useEffect } from 'react';
 import { X, Edit, Users, Tag, MapPin } from 'lucide-react';
 import { userService } from '../../services/userService';
@@ -7,7 +6,7 @@ import TagSelector from '../tags/TagSelector';
 import Alert from '../common/Alert';
 import Card from '../common/Card';
 
-const UserDetailsModal = ({ isOpen, userId, onClose, onUpdate }) => {
+const UserDetailsModal = ({ isOpen, userId, onClose, onUpdate, mode }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [user, setUser] = useState(null);
@@ -38,13 +37,11 @@ const UserDetailsModal = ({ isOpen, userId, onClose, onUpdate }) => {
       
       setUser(userData);
       
-      // Prepare form data for editing
       setFormData({
         firstName: userData.first_name,
         lastName: userData.last_name,
         bio: userData.bio,
         postalCode: userData.postal_code,
-        // You'll need to adjust this based on how tags are returned
         selectedTags: userData.tags?.map(tag => tag.id) || [],
         tagExperienceLevels: userData.tags?.reduce((acc, tag) => {
           acc[tag.id] = tag.experience_level;
@@ -100,13 +97,9 @@ const UserDetailsModal = ({ isOpen, userId, onClose, onUpdate }) => {
       
       const response = await userService.updateUser(userId, submissionData);
       
-      // Update the local user data
       setUser(response.data);
-      
-      // Exit edit mode
       setIsEditing(false);
       
-      // Notify parent component
       if (onUpdate) {
         onUpdate(response.data);
       }
@@ -128,14 +121,15 @@ const UserDetailsModal = ({ isOpen, userId, onClose, onUpdate }) => {
       
       {/* Modal container */}
       <div className="relative w-full max-w-2xl max-h-[90vh] rounded-xl overflow-hidden">
-        <div className="glass-navbar h-full flex flex-col">
+        <div className="bg-base-100 h-full flex flex-col">
           {/* Header */}
           <div className="px-6 py-4 border-b border-white/10 flex justify-between items-center">
             <h2 className="text-xl font-medium text-primary">
               {isEditing ? 'Edit Profile' : 'User Details'}
             </h2>
             <div className="flex items-center space-x-2">
-              {!isEditing && (
+              {/* Only show Edit button if not in 'profile' mode and not editing */}
+              {mode !== 'profile' && !isEditing && (
                 <Button 
                   variant="ghost" 
                   size="sm" 
@@ -163,87 +157,58 @@ const UserDetailsModal = ({ isOpen, userId, onClose, onUpdate }) => {
             ) : error ? (
               <Alert type="error" message={error} />
             ) : isEditing ? (
-              // Edit Mode
+              // Edit Mode (form for user to edit data)
               <form className="space-y-6">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="form-control">
-                    <label className="label">
-                      <span className="label-text">First Name</span>
-                    </label>
-                    <input
-                      type="text"
-                      name="firstName"
-                      value={formData.firstName}
-                      onChange={handleChange}
-                      className="input input-bordered"
-                    />
-                  </div>
-                  <div className="form-control">
-                    <label className="label">
-                      <span className="label-text">Last Name</span>
-                    </label>
-                    <input
-                      type="text"
-                      name="lastName"
-                      value={formData.lastName}
-                      onChange={handleChange}
-                      className="input input-bordered"
-                    />
-                  </div>
-                </div>
-
-                <div className="form-control">
-                  <label className="label">
-                    <span className="label-text">Bio</span>
-                  </label>
-                  <textarea
+                {/* Form inputs here */}
+                <div className="space-y-4">
+                  <input 
+                    type="text" 
+                    name="firstName" 
+                    value={formData.firstName}
+                    onChange={handleChange}
+                    className="input input-bordered w-full"
+                    placeholder="First Name"
+                  />
+                  <input 
+                    type="text" 
+                    name="lastName" 
+                    value={formData.lastName}
+                    onChange={handleChange}
+                    className="input input-bordered w-full"
+                    placeholder="Last Name"
+                  />
+                  <textarea 
                     name="bio"
                     value={formData.bio}
                     onChange={handleChange}
-                    className="textarea textarea-bordered h-24"
+                    className="textarea textarea-bordered w-full"
+                    placeholder="Bio"
                   />
-                </div>
-
-                <div className="form-control">
-                  <label className="label">
-                    <span className="label-text">Postal Code</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="postalCode"
+                  <input 
+                    type="text" 
+                    name="postalCode" 
                     value={formData.postalCode}
                     onChange={handleChange}
-                    className="input input-bordered"
+                    className="input input-bordered w-full"
+                    placeholder="Postal Code"
                   />
-                </div>
-
-                <div className="form-control">
-                  <label className="label">
-                    <span className="label-text">Skills & Interests</span>
-                  </label>
                   <TagSelector
                     selectedTags={formData.selectedTags}
-                    onTagsSelected={handleTagSelection}
+                    onSelect={handleTagSelection}
+                    tagExperienceLevels={formData.tagExperienceLevels}
+                    tagInterestLevels={formData.tagInterestLevels}
                   />
                 </div>
-
-                <div className="flex justify-end space-x-3 mt-6">
-                  <Button 
-                    variant="ghost" 
-                    onClick={() => setIsEditing(false)}
-                  >
-                    Cancel
-                  </Button>
-                  <Button 
-                    variant="primary" 
-                    onClick={handleSubmit}
-                  >
-                    Save Changes
-                  </Button>
-                </div>
+                <Button 
+                  variant="primary" 
+                  onClick={handleSubmit}
+                  className="mt-4"
+                >
+                  Save Changes
+                </Button>
               </form>
             ) : (
-              // View Mode
+              // View Mode (display user data)
               <div className="space-y-6">
                 <div className="flex items-center space-x-4 mb-6">
                   <div className="avatar placeholder">
@@ -289,11 +254,11 @@ const UserDetailsModal = ({ isOpen, userId, onClose, onUpdate }) => {
                           key={tag.id} 
                           className="badge badge-primary badge-outline p-3"
                         >
-                          {tag.name}
+                          {tag.name} - {tag.experience_level} - {tag.interest_level}
                         </span>
                       ))
                     ) : (
-                      <p className="text-base-content/70">No skills added yet</p>
+                      <span className="badge badge-warning">No tags yet</span>
                     )}
                   </div>
                 </div>

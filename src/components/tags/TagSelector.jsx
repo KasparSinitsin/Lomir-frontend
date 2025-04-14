@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { tagService } from '../../services/tagService';
 
-const TagSelector = ({ onTagsSelected, selectedTags = [] }) => {
+const TagSelector = ({ onTagsSelected, selectedTags = [], mode = 'profile' }) => {
   const [supercategories, setSupercategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expandedSupercategories, setExpandedSupercategories] = useState({});
@@ -12,129 +12,121 @@ const TagSelector = ({ onTagsSelected, selectedTags = [] }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddTagModal, setShowAddTagModal] = useState(false);
   const [newTagName, setNewTagName] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('');
-  const [selectedSupercategory, setSelectedSupercategory] = useState('');
+  const [selectedCategoryId, setSelectedCategoryId] = useState('');
+  const [selectedSupercategoryId, setSelectedSupercategoryId] = useState('');
 
-  // Fetch structured tags
   useEffect(() => {
     const fetchTags = async () => {
       try {
         setLoading(true);
-        console.log('Fetching structured tags...');
         const response = await tagService.getStructuredTags();
-        console.log('Received tag data:', response);
-        setSupercategories(response || []);  // Ensure it's always an array
-        setLoading(false);
+        setSupercategories(response || []);
       } catch (error) {
         console.error('Error fetching tags:', error);
-        setSupercategories([]);  // Set an empty array on error
+        setSupercategories([]);
+      } finally {
         setLoading(false);
       }
     };
-  
+
     fetchTags();
   }, []);
 
-  // Update parent component when tags change
   useEffect(() => {
     if (onTagsSelected) {
-      onTagsSelected(localSelectedTags, experienceLevels, interestLevels);
+      if (mode === 'profile') {
+        onTagsSelected(localSelectedTags, experienceLevels, interestLevels);
+      } else {
+        onTagsSelected(localSelectedTags);
+      }
     }
-  }, [localSelectedTags, experienceLevels, interestLevels]);
+  }, [localSelectedTags, experienceLevels, interestLevels, onTagsSelected, mode]);
 
   const toggleTagSelection = (tagId) => {
-    setLocalSelectedTags(prev => 
-      prev.includes(tagId) 
-        ? prev.filter(id => id !== tagId)
-        : [...prev, tagId]
+    setLocalSelectedTags((prev) =>
+      prev.includes(tagId) ? prev.filter((id) => id !== tagId) : [...prev, tagId]
     );
 
-    // Initialize levels if not set
-    if (!experienceLevels[tagId]) {
-      setExperienceLevels(prev => ({
-        ...prev,
-        [tagId]: 'beginner'
-      }));
-    }
-
-    if (!interestLevels[tagId]) {
-      setInterestLevels(prev => ({
-        ...prev,
-        [tagId]: 'medium'
-      }));
+    if (mode === 'profile') {
+      if (!experienceLevels[tagId]) {
+        setExperienceLevels((prev) => ({ ...prev, [tagId]: 'beginner' }));
+      }
+      if (!interestLevels[tagId]) {
+        setInterestLevels((prev) => ({ ...prev, [tagId]: 'medium' }));
+      }
     }
   };
 
   const handleExperienceLevelChange = (tagId, level) => {
-    setExperienceLevels(prev => ({
-      ...prev,
-      [tagId]: level
-    }));
+    if (mode === 'profile') {
+      setExperienceLevels((prev) => ({ ...prev, [tagId]: level }));
+    }
   };
 
   const handleInterestLevelChange = (tagId, level) => {
-    setInterestLevels(prev => ({
-      ...prev,
-      [tagId]: level
-    }));
+    if (mode === 'profile') {
+      setInterestLevels((prev) => ({ ...prev, [tagId]: level }));
+    }
   };
 
   const toggleSupercategory = (name) => {
-    setExpandedSupercategories(prev => ({
+    setExpandedSupercategories((prev) => ({
       ...prev,
-      [name]: !prev[name]
+      [name]: !prev[name],
     }));
   };
 
   const toggleCategory = (name) => {
-    setExpandedCategories(prev => ({
+    setExpandedCategories((prev) => ({
       ...prev,
-      [name]: !prev[name]
+      [name]: !prev[name],
     }));
   };
 
   const handleAddTag = async () => {
-    if (!newTagName || !selectedCategory || !selectedSupercategory) {
-      alert('Please provide a name, category, and supercategory for the new tag');
+    if (!newTagName || !selectedCategoryId || !selectedSupercategoryId) {
+      alert('Please fill in all fields for the new tag.');
       return;
     }
 
     try {
       const newTag = await tagService.createTag({
         name: newTagName,
-        category: selectedCategory,
-        supercategory: selectedSupercategory
+        category: selectedCategoryId,
+        supercategory: selectedSupercategoryId,
       });
 
-      // Add the new tag to selected tags
-      toggleTagSelection(newTag.id);
+      const updatedTags = await tagService.getStructuredTags();
+      setSupercategories(updatedTags || []);
 
-      // Close modal and reset fields
+      const newTagId = newTag.id;
+      const updatedSelectedTags = [...localSelectedTags, newTagId];
+      setLocalSelectedTags(updatedSelectedTags);
+
+      if (mode === 'profile') {
+        setExperienceLevels((prev) => ({ ...prev, [newTagId]: 'beginner' }));
+        setInterestLevels((prev) => ({ ...prev, [newTagId]: 'medium' }));
+      }
+
       setShowAddTagModal(false);
       setNewTagName('');
-      setSelectedCategory('');
-      setSelectedSupercategory('');
+      setSelectedCategoryId('');
+      setSelectedSupercategoryId('');
     } catch (error) {
       console.error('Error creating tag:', error);
-      alert('Failed to create tag');
+      alert('Failed to create tag.');
     }
   };
 
-  const filteredSupercategories = Array.isArray(supercategories) 
-  ? supercategories.filter(supercat => 
-      supercat.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      supercat.categories.some(cat => 
-        cat.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        cat.tags.some(tag => 
-          tag.name.toLowerCase().includes(searchQuery.toLowerCase())
-        )
-      )
+  const filteredSupercategories = supercategories.filter((supercat) =>
+    supercat.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    supercat.categories.some((cat) =>
+      cat.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      cat.tags.some((tag) => tag.name.toLowerCase().includes(searchQuery.toLowerCase()))
     )
-  : [];
+  );
 
-  if (loading) {
-    return <div>Loading tags...</div>;
-  }
+  if (loading) return <div>Loading tags...</div>;
 
   return (
     <div className="space-y-4">
@@ -146,17 +138,14 @@ const TagSelector = ({ onTagsSelected, selectedTags = [] }) => {
           onChange={(e) => setSearchQuery(e.target.value)}
           className="input input-bordered w-full mr-2"
         />
-        <button 
-          onClick={() => setShowAddTagModal(true)}
-          className="btn btn-primary"
-        >
+        <button onClick={() => setShowAddTagModal(true)} className="btn btn-primary">
           Add Tag
         </button>
       </div>
 
-      {filteredSupercategories.map(supercat => (
+      {filteredSupercategories.map((supercat) => (
         <div key={supercat.id} className="border rounded-lg">
-          <div 
+          <div
             onClick={() => toggleSupercategory(supercat.name)}
             className="p-3 bg-base-200 cursor-pointer flex justify-between items-center"
           >
@@ -166,9 +155,9 @@ const TagSelector = ({ onTagsSelected, selectedTags = [] }) => {
 
           {expandedSupercategories[supercat.name] && (
             <div className="p-3">
-              {supercat.categories.map(category => (
+              {supercat.categories.map((category) => (
                 <div key={category.id} className="mb-3">
-                  <div 
+                  <div
                     onClick={() => toggleCategory(category.name)}
                     className="font-medium mb-2 cursor-pointer flex justify-between items-center"
                   >
@@ -178,7 +167,7 @@ const TagSelector = ({ onTagsSelected, selectedTags = [] }) => {
 
                   {expandedCategories[category.name] && (
                     <div className="ml-4 space-y-2">
-                      {category.tags.map(tag => (
+                      {category.tags.map((tag) => (
                         <div key={tag.id} className="flex items-center">
                           <input
                             type="checkbox"
@@ -187,31 +176,31 @@ const TagSelector = ({ onTagsSelected, selectedTags = [] }) => {
                             className="mr-2"
                           />
                           <span className="flex-grow">{tag.name}</span>
-                          
-                          {localSelectedTags.includes(tag.id) && (
-                            <div className="flex space-x-2">
-                              <select
-                                value={experienceLevels[tag.id] || 'beginner'}
-                                onChange={(e) => handleExperienceLevelChange(tag.id, e.target.value)}
-                                className="select select-bordered select-xs w-full max-w-xs"
-                              >
-                                <option value="beginner">Beginner</option>
-                                <option value="intermediate">Intermediate</option>
-                                <option value="advanced">Advanced</option>
-                                <option value="expert">Expert</option>
-                              </select>
-                              <select
-                                value={interestLevels[tag.id] || 'medium'}
-                                onChange={(e) => handleInterestLevelChange(tag.id, e.target.value)}
-                                className="select select-bordered select-xs w-full max-w-xs"
-                              >
-                                <option value="low">Low</option>
-                                <option value="medium">Medium</option>
-                                <option value="high">High</option>
-                                <option value="very-high">Very High</option>
-                              </select>
-                            </div>
-                          )}
+
+                          {mode === 'profile' && localSelectedTags.includes(tag.id) && (
+  <div className="flex space-x-2 ml-2">
+    <select
+      value={experienceLevels[tag.id] || 'beginner'}
+      onChange={(e) => handleExperienceLevelChange(tag.id, e.target.value)}
+      className="select select-bordered select-xs"
+    >
+      <option value="beginner">Beginner</option>
+      <option value="intermediate">Intermediate</option>
+      <option value="advanced">Advanced</option>
+      <option value="expert">Expert</option>
+    </select>
+    <select
+      value={interestLevels[tag.id] || 'medium'}
+      onChange={(e) => handleInterestLevelChange(tag.id, e.target.value)}
+      className="select select-bordered select-xs"
+    >
+      <option value="low">Low</option>
+      <option value="medium">Medium</option>
+      <option value="high">High</option>
+      <option value="very-high">Very High</option>
+    </select>
+  </div>
+)}
                         </div>
                       ))}
                     </div>
@@ -223,9 +212,10 @@ const TagSelector = ({ onTagsSelected, selectedTags = [] }) => {
         </div>
       ))}
 
+      {/* Add New Tag Modal */}
       {showAddTagModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-          <div className="bg-white p-6 rounded-lg w-96">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg w-96 shadow-lg">
             <h3 className="text-lg font-bold mb-4">Add New Tag</h3>
             <input
               type="text"
@@ -235,46 +225,36 @@ const TagSelector = ({ onTagsSelected, selectedTags = [] }) => {
               className="input input-bordered w-full mb-2"
             />
             <select
-              value={selectedSupercategory}
-              onChange={(e) => setSelectedSupercategory(e.target.value)}
+              value={selectedSupercategoryId}
+              onChange={(e) => setSelectedSupercategoryId(e.target.value)}
               className="select select-bordered w-full mb-2"
             >
               <option value="">Select Supercategory</option>
-              {supercategories.map(supercat => (
-                <option key={supercat.id} value={supercat.name}>
-                  {supercat.name}
+              {supercategories.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
                 </option>
               ))}
             </select>
             <select
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-              className="select select-bordered w-full mb-4"
-              disabled={!selectedSupercategory}
-            >
-              <option value="">Select Category</option>
-              {selectedSupercategory && 
-                supercategories
-                  .find(s => s.name === selectedSupercategory)
-                  ?.categories.map(cat => (
-                    <option key={cat.id} value={cat.name}>
-                      {cat.name}
-                    </option>
-                  ))
-              }
-            </select>
+  value={selectedCategoryId}
+  onChange={(e) => setSelectedCategoryId(e.target.value)}
+  className="select select-bordered w-full mb-4"
+  disabled={!selectedSupercategoryId}
+>
+  <option value="">Select Category</option>
+  {(supercategories.find((s) => s.id === selectedSupercategoryId)?.categories || []).map((c) => (
+    <option key={c.id} value={c.id}>
+      {c.name}
+    </option>
+  ))}
+</select>
             <div className="flex justify-end space-x-2">
-              <button 
-                onClick={() => setShowAddTagModal(false)}
-                className="btn btn-ghost"
-              >
+              <button className="btn btn-ghost" onClick={() => setShowAddTagModal(false)}>
                 Cancel
               </button>
-              <button 
-                onClick={handleAddTag}
-                className="btn btn-primary"
-              >
-                Add Tag
+              <button className="btn btn-primary" onClick={handleAddTag}>
+                Add
               </button>
             </div>
           </div>
