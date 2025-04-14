@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import PageContainer from '../components/layout/PageContainer';
 import Grid from '../components/layout/Grid';
 import TeamCard from '../components/teams/TeamCard';
-import UserCard from '../components/users/UserCard'; 
+import UserCard from '../components/users/UserCard';
 import { searchService } from '../services/searchService';
 import Input from '../components/common/Input';
 import Button from '../components/common/Button';
@@ -42,24 +42,45 @@ const SearchPage = () => {
     }
   };
 
-  // Default recommendations when page loads
+  // Load all users and teams on initial render
   useEffect(() => {
-    const fetchDefaultResults = async () => {
+    const fetchInitialData = async () => {
       try {
         setLoading(true);
-        const results = await searchService.getRecommended(user?.id);
+        setError(null);
+
+        // Call the new method to get all users and teams
+        const results = await searchService.getAllUsersAndTeams(isAuthenticated);
         setSearchResults(results.data);
       } catch (err) {
-        console.error('Default search error:', err);
+        console.error('Error fetching initial data:', err);
+        setError('Failed to load initial data. Please try again.');
       } finally {
         setLoading(false);
       }
     };
 
-    if (!searchQuery && user?.id) {
-      fetchDefaultResults();
-    }
-  }, [user, searchQuery]);
+    fetchInitialData();
+  }, [isAuthenticated]); // Only re-run if authentication status changes
+
+  // Default recommendations when page loads (CONDITIONAL - SEE EXPLANATION BELOW)
+  // useEffect(() => {
+  //   const fetchDefaultResults = async () => {
+  //     try {
+  //       setLoading(true);
+  //       const results = await searchService.getRecommended(user?.id);
+  //       setSearchResults(results.data);
+  //     } catch (err) {
+  //       console.error('Default search error:', err);
+  //     } finally {
+  //       setLoading(false);
+  //     }
+  //   };
+
+  //   if (!searchQuery && user?.id) {
+  //     fetchDefaultResults();
+  //   }
+  // }, [user, searchQuery]);
 
   const handleToggleChange = (type) => setSearchType(type);
 
@@ -171,10 +192,10 @@ const SearchPage = () => {
               <h2 className="text-xl font-semibold mb-4">Teams</h2>
               <Grid cols={1} md={2} lg={3} gap={6}>
                 {filteredResults.teams.map(team => (
-                  <TeamCard 
-                    key={team.id} 
-                    team={team} 
-                    onUpdate={handleTeamUpdate} 
+                  <TeamCard
+                    key={team.id}
+                    team={team}
+                    onUpdate={handleTeamUpdate}
                   />
                 ))}
               </Grid>
