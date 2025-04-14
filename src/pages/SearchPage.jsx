@@ -48,7 +48,6 @@ const SearchPage = () => {
         setSearchResults(results.data);
       } catch (err) {
         console.error('Default search error:', err);
-        setError('Could not load recommendations.');
       } finally {
         setLoading(false);
       }
