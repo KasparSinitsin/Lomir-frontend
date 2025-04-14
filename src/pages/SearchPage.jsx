@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import PageContainer from '../components/layout/PageContainer';
 import Grid from '../components/layout/Grid';
 import TeamCard from '../components/teams/TeamCard';
-import UserCard from '../components/users/UserCard'; 
+import UserCard from '../components/users/UserCard';
 import { searchService } from '../services/searchService';
 import Input from '../components/common/Input';
 import Button from '../components/common/Button';
@@ -59,7 +59,7 @@ const SearchPage = () => {
   const handleUserUpdate = (updatedUser) => {
     setSearchResults(prevResults => ({
       ...prevResults,
-      users: prevResults.users.map(user => 
+      users: prevResults.users.map(user =>
         user.id === updatedUser.id ? updatedUser : user
       )
     }));
@@ -69,16 +69,16 @@ const SearchPage = () => {
   const handleTeamUpdate = (updatedTeam) => {
     setSearchResults(prevResults => ({
       ...prevResults,
-      teams: prevResults.teams.map(team => 
+      teams: prevResults.teams.map(team =>
         team.id === updatedTeam.id ? updatedTeam : team
       )
     }));
   };
 
   // Check if no results were found after a search was performed
-  const noResultsFound = hasSearched && 
-                         filteredResults.teams.length === 0 && 
-                         filteredResults.users.length === 0 && 
+  const noResultsFound = hasSearched &&
+                         filteredResults.teams.length === 0 &&
+                         filteredResults.users.length === 0 &&
                          !loading;
 
   return (
@@ -116,32 +116,32 @@ const SearchPage = () => {
               </button>
             </div>
           </div>
-
-        <form onSubmit={handleSearch} className="flex flex-col space-y-4">
-          
-          {/* Search input and button */}
-          <div className="flex space-x-2 items-center"> 
-  <Input
-    placeholder="Search teams, users, skills..."
-    value={searchQuery}
-    onChange={(e) => setSearchQuery(e.target.value)}
-    className="flex-grow"
-  />
-  <Button
-  type="submit"
-  variant="primary"
-  icon={<SearchIcon className="h-5 w-5"/>}
-  disabled={loading}
-  className="p-2 flex items-center justify-center" // Added flex, items-center, justify-center
-  aria-label="Search"
-></Button>
-</div>
-        </form>
-      </div>
+        
+            <form onSubmit={handleSearch} className="flex-col items-center space-y-4">
+              {/* Search input and button */}
+              <div className="flex space-x-2 items-center">
+                <Input
+                  placeholder="Search teams, users, skills..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="flex-grow"
+                />
+                <Button
+                  type="submit"
+                  variant="primary"
+                  icon={<SearchIcon className="h-5 w-5"/>}
+                  disabled={loading}
+                  className="p-2 flex items-center justify-center"
+                  aria-label="Search"
+                />
+              </div>
+            </form>
+          </div>
+     
 
       {error && (
-        <Alert 
-          type="error" 
+        <Alert
+          type="error"
           message={error}
           onClose={() => setError(null)}
         />
@@ -167,10 +167,10 @@ const SearchPage = () => {
               <h2 className="text-xl font-semibold mb-4">Teams</h2>
               <Grid cols={1} md={2} lg={3} gap={6}>
                 {filteredResults.teams.map(team => (
-                  <TeamCard 
-                    key={team.id} 
-                    team={team} 
-                    onUpdate={handleTeamUpdate} 
+                  <TeamCard
+                    key={team.id}
+                    team={team}
+                    onUpdate={handleTeamUpdate}
                   />
                 ))}
               </Grid>
@@ -183,10 +183,10 @@ const SearchPage = () => {
               <h2 className="text-xl font-semibold mb-4">People</h2>
               <Grid cols={1} md={2} lg={3} gap={6}>
                 {filteredResults.users.map(user => (
-                  <UserCard 
-                    key={user.id} 
-                    user={user} 
-                    onUpdate={handleUserUpdate} 
+                  <UserCard
+                    key={user.id}
+                    user={user}
+                    onUpdate={handleUserUpdate}
                   />
                 ))}
               </Grid>
