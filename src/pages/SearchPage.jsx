@@ -81,8 +81,7 @@ const SearchPage = () => {
 
   return (
     <PageContainer
-      title="Search"
-      subtitle="Find teams, users, and projects"
+      title="Search teams or users"
       titleAlignment="center"
     >
       <div className="max-w-xl mx-auto mb-8">
@@ -116,6 +115,8 @@ const SearchPage = () => {
         </div>
 
         <form onSubmit={handleSearch} className="flex space-x-2">
+
+          {/* Search input and button */}
           <Input
             placeholder="Search teams, users, skills..."
             value={searchQuery}
@@ -123,13 +124,13 @@ const SearchPage = () => {
             className="flex-grow"
           />
           <Button
-            type="submit"
-            variant="primary"
-            icon={<SearchIcon />}
-            disabled={loading}
-          >
-            Search
-          </Button>
+                  type="submit"
+                  variant="primary"
+                  icon={<SearchIcon className="h-5 w-5"/>}
+                  disabled={loading}
+                  className="p-2 flex items-center justify-center"
+                  aria-label="Search"
+                />
         </form>
       </div>
 
@@ -161,30 +162,23 @@ const SearchPage = () => {
             </section>
           )}
 
-          {/* Users */}
+          {/* Users Results */}
           {filteredResults.users.length > 0 && (
             <section>
               <h2 className="text-xl font-semibold mb-4">People</h2>
               <Grid cols={1} md={2} lg={3} gap={6}>
                 {filteredResults.users.map(user => (
-                  <UserCard 
-                    key={user.id} 
-                    user={user} 
-                    onUpdate={handleUserUpdate} 
+                  <UserCard
+                    key={user.id}
+                    user={user}
+                    onUpdate={handleUserUpdate}
                   />
                 ))}
               </Grid>
             </section>
           )}
 
-          {/* Empty state */}
-          {filteredResults.teams.length === 0 &&
-           filteredResults.users.length === 0 &&
-           !loading && (
-            <div className="text-center text-base-content/70 py-12">
-              <p>No results found. Try a different search term.</p>
-            </div>
-          )}
+
         </div>
       )}
     </PageContainer>

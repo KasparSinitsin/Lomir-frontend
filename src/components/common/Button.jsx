@@ -46,7 +46,7 @@ const Button = ({
       onClick={onClick}
       disabled={disabled}
     >
-      {icon && <span className="mr-2">{icon}</span>}
+      {icon && <span className="mr-0">{icon}</span>}
       {children}
     </button>
   );
