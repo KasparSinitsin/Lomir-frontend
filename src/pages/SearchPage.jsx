@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import PageContainer from '../components/layout/PageContainer';
 import Grid from '../components/layout/Grid';
 import TeamCard from '../components/teams/TeamCard';
-import UserCard from '../components/users/UserCard';
+import UserCard from '../components/users/UserCard'; 
 import { searchService } from '../services/searchService';
 import Input from '../components/common/Input';
 import Button from '../components/common/Button';
@@ -16,40 +16,16 @@ const SearchPage = () => {
   const [searchType, setSearchType] = useState('all'); // all, users, teams
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [hasSearched, setHasSearched] = useState(false); // New state to track if a search has been performed
-  const { isAuthenticated, user } = useAuth();
+  const [hasSearched, setHasSearched] = useState(false);
+  const { isAuthenticated } = useAuth();
 
-  const handleSearch = async (e) => {
-    e.preventDefault();
-    if (!searchQuery.trim()) return;
-
-    await fetchResults(searchQuery);
-  };
-
-  const fetchResults = async (query) => {
-    try {
-      setLoading(true);
-      setError(null);
-      setHasSearched(true); // Mark that a search has been performed
-
-      const results = await searchService.globalSearch(query, isAuthenticated);
-      setSearchResults(results.data);
-    } catch (err) {
-      console.error('Search error:', err);
-      setError('An error occurred while searching. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Load all users and teams on initial render
+  // Effect to load initial data when the component mounts
   useEffect(() => {
     const fetchInitialData = async () => {
       try {
         setLoading(true);
         setError(null);
-
-        // Call the new method to get all users and teams
+        
         const results = await searchService.getAllUsersAndTeams(isAuthenticated);
         setSearchResults(results.data);
       } catch (err) {
@@ -61,26 +37,43 @@ const SearchPage = () => {
     };
 
     fetchInitialData();
-  }, [isAuthenticated]); // Only re-run if authentication status changes
+  }, [isAuthenticated]);
 
-  // Default recommendations when page loads (CONDITIONAL - SEE EXPLANATION BELOW)
-  // useEffect(() => {
-  //   const fetchDefaultResults = async () => {
-  //     try {
-  //       setLoading(true);
-  //       const results = await searchService.getRecommended(user?.id);
-  //       setSearchResults(results.data);
-  //     } catch (err) {
-  //       console.error('Default search error:', err);
-  //     } finally {
-  //       setLoading(false);
-  //     }
-  //   };
+  const handleSearch = async (e) => {
+    e.preventDefault();
+    
+    if (!searchQuery.trim()) {
+      // If search query is empty, reload all data
+      try {
+        setLoading(true);
+        setError(null);
+        setHasSearched(false);
+        
+        const results = await searchService.getAllUsersAndTeams(isAuthenticated);
+        setSearchResults(results.data);
+      } catch (err) {
+        console.error('Error reloading data:', err);
+        setError('Failed to reload data. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
 
-  //   if (!searchQuery && user?.id) {
-  //     fetchDefaultResults();
-  //   }
-  // }, [user, searchQuery]);
+    try {
+      setLoading(true);
+      setError(null);
+      setHasSearched(true);
+
+      const results = await searchService.globalSearch(searchQuery, isAuthenticated);
+      setSearchResults(results.data);
+    } catch (err) {
+      console.error('Search error:', err);
+      setError('An error occurred while searching. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleToggleChange = (type) => setSearchType(type);
 
@@ -103,8 +96,7 @@ const SearchPage = () => {
     }));
   };
 
-    // Check if no results were found after a search was performed
-    const noResultsFound = hasSearched &&
+  const noResultsFound = hasSearched &&
     filteredResults.teams.length === 0 &&
     filteredResults.users.length === 0 &&
     !loading;
@@ -145,7 +137,6 @@ const SearchPage = () => {
         </div>
 
         <form onSubmit={handleSearch} className="flex space-x-2">
-
           {/* Search input and button */}
           <Input
             placeholder="Search teams, users, skills..."
@@ -154,13 +145,13 @@ const SearchPage = () => {
             className="flex-grow"
           />
           <Button
-                  type="submit"
-                  variant="primary"
-                  icon={<SearchIcon className="h-5 w-5"/>}
-                  disabled={loading}
-                  className="p-2 flex items-center justify-center"
-                  aria-label="Search"
-                />
+            type="submit"
+            variant="primary"
+            icon={<SearchIcon className="h-5 w-5"/>}
+            disabled={loading}
+            className="p-2 flex items-center justify-center"
+            aria-label="Search"
+          />
         </form>
       </div>
 
@@ -192,10 +183,10 @@ const SearchPage = () => {
               <h2 className="text-xl font-semibold mb-4">Teams</h2>
               <Grid cols={1} md={2} lg={3} gap={6}>
                 {filteredResults.teams.map(team => (
-                  <TeamCard
-                    key={team.id}
-                    team={team}
-                    onUpdate={handleTeamUpdate}
+                  <TeamCard 
+                    key={team.id} 
+                    team={team} 
+                    onUpdate={handleTeamUpdate} 
                   />
                 ))}
               </Grid>
@@ -217,8 +208,6 @@ const SearchPage = () => {
               </Grid>
             </section>
           )}
-
-
         </div>
       )}
     </PageContainer>
