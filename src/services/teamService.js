@@ -3,16 +3,21 @@ import api from './api';
 export const teamService = {
   // Create a new team
   createTeam: async (teamData) => {
-    const validatedTeamData = {
-      name: teamData.name,
-      description: teamData.description || '',
-      is_public: teamData.is_public === 1 ? true : false, 
-      max_members: teamData.max_members || 20, 
-      tags: teamData.tags || [], 
-    };
+    try {
+      const validatedTeamData = {
+        name: teamData.name,
+        description: teamData.description || '',
+        is_public: !!teamData.is_public,
+        max_members: teamData.max_members || 20,
+        tags: teamData.tags || [],
+      };
 
-    const response = await api.post('/teams', validatedTeamData);
-    return response.data;
+      const response = await api.post('/teams', validatedTeamData);
+      return response.data;
+    } catch (error) {
+      console.error('Error creating team:', error.response ? error.response.data : error.message);
+      throw error;
+    }
   },
 
   // Fetch all teams
@@ -40,6 +45,7 @@ export const teamService = {
   // Update team details
   updateTeam: async (teamId, teamData) => {
     try {
+      console.log(`Attempting to update team ${teamId} with data:`, teamData);
       const response = await api.put(`/teams/${teamId}`, teamData);
       return response.data;
     } catch (error) {

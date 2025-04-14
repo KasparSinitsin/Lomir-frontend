@@ -1,9 +1,9 @@
-import axios from 'axios';
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import TagSelector from '../tags/TagSelector';
 import api from '../../services/api';
+import axios from 'axios';
 
 const RegisterForm = () => {
   const navigate = useNavigate();
@@ -74,8 +74,11 @@ const RegisterForm = () => {
         tags: formData.selectedTags.length > 0
           ? formData.selectedTags.map(tagId => ({
               tag_id: tagId,
+              // Comment out experience and interest levels
+              /*
               experience_level: formData.tagExperienceLevels[tagId] || 'beginner',
               interest_level: formData.tagInterestLevels[tagId] || 'medium'
+              */
             }))
           : []
       };
@@ -180,10 +183,13 @@ const RegisterForm = () => {
           <TagSelector
             selectedTags={formData.selectedTags}
             onTagChange={(tags) => setFormData({ ...formData, selectedTags: tags })}
+            // Commented out experience and interest levels
+            /*
             tagExperienceLevels={formData.tagExperienceLevels}
             onExperienceLevelChange={(tagId, level) => setFormData({ ...formData, tagExperienceLevels: { ...formData.tagExperienceLevels, [tagId]: level } })}
             tagInterestLevels={formData.tagInterestLevels}
             onInterestLevelChange={(tagId, level) => setFormData({ ...formData, tagInterestLevels: { ...formData.tagInterestLevels, [tagId]: level } })}
+            */
           />
           <p className="text-sm mt-2">You can add skills and interests tags later.</p>
 
