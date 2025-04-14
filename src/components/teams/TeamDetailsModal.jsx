@@ -1,6 +1,4 @@
-// src/components/teams/TeamDetailsModal.jsx - Updated code
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { teamService } from '../../services/teamService';
 import TagSelector from '../tags/TagSelector';
@@ -22,19 +20,7 @@ const TeamDetailsModal = ({ isOpen, teamId, onClose, onUpdate }) => {
     selectedTags: [],
   });
 
-  // Check if the current user is the creator of the team
-  const isTeamCreator = team && user && team.creator_id === user.id;
-  
-  // Check if the user is already a member of this team
-  const isTeamMember = team && user && team.members?.some(member => member.user_id === user.id);
-
-  useEffect(() => {
-    if (isOpen && teamId) {
-      fetchTeamDetails();
-    }
-  }, [isOpen, teamId]);
-
-  const fetchTeamDetails = async () => {
+  const fetchTeamDetails = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -56,7 +42,19 @@ const TeamDetailsModal = ({ isOpen, teamId, onClose, onUpdate }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [teamId]);
+
+  // Check if the current user is the creator of the team
+  const isTeamCreator = team && user && team.creator_id === user.id;
+  
+  // Check if the user is already a member of this team
+  const isTeamMember = team && user && team.members?.some(member => member.user_id === user.id);
+
+  useEffect(() => {
+    if (isOpen && teamId) {
+      fetchTeamDetails();
+    }
+  }, [isOpen, teamId, fetchTeamDetails]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -67,18 +65,18 @@ const TeamDetailsModal = ({ isOpen, teamId, onClose, onUpdate }) => {
     }));
   };
 
-  const handleTagSelection = (selectedTags) => {
+  const handleTagSelection = useCallback((selectedTags) => {
     setFormData(prev => ({
       ...prev,
       selectedTags,
     }));
-  };
+  }, []);
 
   const handleSubmit = async () => {
     try {
       setLoading(true);
       setError(null);
-
+  
       const submissionData = {
         name: formData.name,
         description: formData.description,
@@ -86,21 +84,27 @@ const TeamDetailsModal = ({ isOpen, teamId, onClose, onUpdate }) => {
         max_members: formData.maxMembers,
         tags: formData.selectedTags.map(tagId => ({ tag_id: tagId })),
       };
-
+  
       const response = await teamService.updateTeam(teamId, submissionData);
       
-      // Update the local team data
-      fetchTeamDetails();
-      
-      setIsEditing(false);
-      if (onUpdate) onUpdate(response.data);
-    } catch (err) {
-      console.error('Error updating team:', err);
-      setError('Failed to update team. Please try again.');
-    } finally {
-      setLoading(false);
+    // Update the local team data
+    await fetchTeamDetails();
+    
+    setIsEditing(false);
+
+if (onUpdate && response.data) {
+      onUpdate(response.data);
+    } else if (onUpdate && team) {
+      // Fallback to using the current team data if response.data is not available
+      onUpdate({...team, ...submissionData});
     }
-  };
+  } catch (err) {
+    console.error('Error updating team:', err);
+    setError('Failed to update team. Please try again.');
+  } finally {
+    setLoading(false);
+  }
+};
   
   const handleApplyToJoin = async () => {
     try {
@@ -110,7 +114,7 @@ const TeamDetailsModal = ({ isOpen, teamId, onClose, onUpdate }) => {
       await teamService.addTeamMember(teamId, user.id);
       
       // Refresh team details
-      fetchTeamDetails();
+      await fetchTeamDetails();
       
       // Show success message
       setError({ type: 'success', message: 'Successfully applied to join the team!' });
@@ -160,7 +164,7 @@ const TeamDetailsModal = ({ isOpen, teamId, onClose, onUpdate }) => {
             <div className="flex justify-center items-center py-12">
               <div className="loading loading-spinner loading-lg text-primary"></div>
             </div>
-          ) : error && error.type !== 'success' ? (
+          ) : error && typeof error === 'string' ? (
             <Alert type="error" message={error} />
           ) : error && error.type === 'success' ? (
             <Alert type="success" message={error.message} />
