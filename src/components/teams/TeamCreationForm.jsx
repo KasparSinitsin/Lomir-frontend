@@ -18,6 +18,7 @@ const TeamCreationForm = () => {
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(null);
+  const [createdTeamId, setCreatedTeamId] = useState(null);
 
   const validateStep = () => {
     const newErrors = {};
@@ -44,10 +45,6 @@ const TeamCreationForm = () => {
         break;
 
       case 3:
-// Removed the following validation to make tags optional
-      // if (formData.selectedTags.length === 0) {
-      //   newErrors.tags = 'Please select at least one tag for your team';
-      // }
         break;
     }
 
@@ -90,7 +87,8 @@ const TeamCreationForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (isSubmitting) return;  // Prevent further submissions while submitting
+    if (isSubmitting) return;
+    
     if (validateStep()) {
       setIsSubmitting(true);
       setSubmitError(null);
@@ -98,21 +96,18 @@ const TeamCreationForm = () => {
       try {
         const submissionData = {
           name: formData.name,
-          description: formData.description,
-          is_public: formData.isPublic ? 1 : 0, // Ensure isPublic is sent as 1 or 0
+          description: formData.description || '',
+          is_public: formData.isPublic ? 1 : 0,
           max_members: formData.maxMembers,
           tags: formData.selectedTags.map(tagId => ({
             tag_id: tagId
           }))
         };
   
-        console.log('Submission Data:', submissionData); // Log to verify
-  
         const response = await teamService.createTeam(submissionData);
-        console.log('Team creation response:', response); // Log the response to verify
-  
-        // Redirect to 'MyTeams' after successful submission
-        navigate('/teams/my-teams');
+        
+        setCreatedTeamId(response.data.id);
+        setIsSubmitting(false);
       } catch (error) {
         console.error('Team creation error details:', error.response?.data);
         setSubmitError(
@@ -120,9 +115,14 @@ const TeamCreationForm = () => {
           error.message ||
           'Failed to create team. Please try again.'
         );
-      } finally {
         setIsSubmitting(false);
       }
+    }
+  };
+
+  const handleViewTeamDetails = () => {
+    if (createdTeamId) {
+      navigate(`/teams/${createdTeamId}`);
     }
   };
 
@@ -215,20 +215,84 @@ const TeamCreationForm = () => {
           </div>
         );
 
-        case 3:
+      case 3:
+        if (createdTeamId) {
           return (
-            <div>
-              <h3 className="text-lg font-semibold mb-4">Select Team Tags (Optional)</h3>
-              <TagSelector
-                onTagsSelected={handleTagSelection}
-                selectedTags={formData.selectedTags}
-              />
-              {errors.tags && (
-                <p className="text-error text-sm mt-2">{errors.tags}</p>
-              )}
+            <div className="text-center">
+              <h3 className="text-xl font-semibold mb-4">Team Created Successfully!</h3>
+              <p className="mb-6">Would you like to view and edit your new team's details?</p>
+              <div className="flex justify-center space-x-4">
+                <button
+                  type="button"
+                  onClick={() => navigate('/teams/my-teams')}
+                  className="btn btn-outline"
+                >
+                  Go to My Teams
+                </button>
+                <button
+                  type="button"
+                  onClick={handleViewTeamDetails}
+                  className="btn btn-primary"
+                >
+                  View Team Details
+                </button>
+              </div>
             </div>
           );
+        }
+        return (
+          <div>
+            <h3 className="text-lg font-semibold mb-4">Select Team Tags (Optional)</h3>
+            <TagSelector
+              onTagsSelected={handleTagSelection}
+              selectedTags={formData.selectedTags}
+            />
+            {errors.tags && (
+              <p className="text-error text-sm mt-2">{errors.tags}</p>
+            )}
+          </div>
+        );
     }
+  };
+
+  const renderButtons = () => {
+    if (createdTeamId) {
+      return null;
+    }
+
+    return (
+      <div className="flex justify-between mt-6">
+        {step > 1 && (
+          <button
+            type="button"
+            onClick={prevStep}
+            className="btn btn-outline"
+          >
+            <FiChevronLeft className="mr-2" />
+            Back
+          </button>
+        )}
+        {step < 3 ? (
+          <button
+            type="button"
+            onClick={nextStep}
+            className="btn btn-primary ml-auto"
+            disabled={isSubmitting}
+          >
+            Next
+            <FiChevronRight className="ml-2" />
+          </button>
+        ) : (
+          <button
+            type="submit"
+            className="btn btn-primary ml-auto"
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? 'Creating Team...' : 'Create Team'}
+          </button>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -237,38 +301,7 @@ const TeamCreationForm = () => {
       {submitError && <Alert type="error" message={submitError} />}
       <form onSubmit={handleSubmit}>
         {renderStepContent()}
-
-        <div className="flex justify-between mt-6">
-          {step > 1 && (
-            <button
-              type="button"
-              onClick={prevStep}
-              className="btn btn-outline"
-            >
-              <FiChevronLeft className="mr-2" />
-              Back
-            </button>
-          )}
-          {step < 3 ? (
-            <button
-              type="button"
-              onClick={nextStep}
-              className="btn btn-primary ml-auto"
-              disabled={isSubmitting} // Disable if submitting
-            >
-              Next
-              <FiChevronRight className="ml-2" />
-            </button>
-          ) : (
-            <button
-              type="submit"
-              className="btn btn-primary ml-auto"
-              disabled={isSubmitting} // Disable submit button during submission
-            >
-              {isSubmitting ? 'Submitting...' : 'Create Team'}
-            </button>
-          )}
-        </div>
+        {renderButtons()}
       </form>
     </div>
   );
