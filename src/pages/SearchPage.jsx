@@ -8,6 +8,7 @@ import { searchService } from '../services/searchService';
 import Input from '../components/common/Input';
 import Button from '../components/common/Button';
 import { Search as SearchIcon, Users, Users2 } from 'lucide-react';
+import Alert from '../components/common/Alert';
 
 const SearchPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -15,6 +16,7 @@ const SearchPage = () => {
   const [searchType, setSearchType] = useState('all'); // all, users, teams
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [hasSearched, setHasSearched] = useState(false); // New state to track if a search has been performed
   const { isAuthenticated, user } = useAuth();
 
   const handleSearch = async (e) => {
@@ -28,6 +30,7 @@ const SearchPage = () => {
     try {
       setLoading(true);
       setError(null);
+      setHasSearched(true); // Mark that a search has been performed
 
       const results = await searchService.globalSearch(query, isAuthenticated);
       setSearchResults(results.data);
@@ -79,10 +82,15 @@ const SearchPage = () => {
     }));
   };
 
+    // Check if no results were found after a search was performed
+    const noResultsFound = hasSearched &&
+    filteredResults.teams.length === 0 &&
+    filteredResults.users.length === 0 &&
+    !loading;
+
   return (
     <PageContainer
-      title="Search"
-      subtitle="Find teams, users, and projects"
+      title="Search teams or users"
       titleAlignment="center"
     >
       <div className="max-w-xl mx-auto mb-8">
@@ -116,6 +124,8 @@ const SearchPage = () => {
         </div>
 
         <form onSubmit={handleSearch} className="flex space-x-2">
+
+          {/* Search input and button */}
           <Input
             placeholder="Search teams, users, skills..."
             value={searchQuery}
@@ -123,20 +133,30 @@ const SearchPage = () => {
             className="flex-grow"
           />
           <Button
-            type="submit"
-            variant="primary"
-            icon={<SearchIcon />}
-            disabled={loading}
-          >
-            Search
-          </Button>
+                  type="submit"
+                  variant="primary"
+                  icon={<SearchIcon className="h-5 w-5"/>}
+                  disabled={loading}
+                  className="p-2 flex items-center justify-center"
+                  aria-label="Search"
+                />
         </form>
       </div>
 
       {error && (
-        <div className="alert alert-error">
-          <span>{error}</span>
-        </div>
+        <Alert
+          type="error"
+          message={error}
+          onClose={() => setError(null)}
+        />
+      )}
+
+      {noResultsFound && (
+        <Alert
+          type="info"
+          message={`No results found for "${searchQuery}". Try a different search term.`}
+          className="max-w-xl mx-auto"
+        />
       )}
 
       {loading ? (
@@ -161,30 +181,23 @@ const SearchPage = () => {
             </section>
           )}
 
-          {/* Users */}
+          {/* Users Results */}
           {filteredResults.users.length > 0 && (
             <section>
               <h2 className="text-xl font-semibold mb-4">People</h2>
               <Grid cols={1} md={2} lg={3} gap={6}>
                 {filteredResults.users.map(user => (
-                  <UserCard 
-                    key={user.id} 
-                    user={user} 
-                    onUpdate={handleUserUpdate} 
+                  <UserCard
+                    key={user.id}
+                    user={user}
+                    onUpdate={handleUserUpdate}
                   />
                 ))}
               </Grid>
             </section>
           )}
 
-          {/* Empty state */}
-          {filteredResults.teams.length === 0 &&
-           filteredResults.users.length === 0 &&
-           !loading && (
-            <div className="text-center text-base-content/70 py-12">
-              <p>No results found. Try a different search term.</p>
-            </div>
-          )}
+
         </div>
       )}
     </PageContainer>
