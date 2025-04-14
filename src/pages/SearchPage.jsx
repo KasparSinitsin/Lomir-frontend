@@ -8,6 +8,7 @@ import { searchService } from '../services/searchService';
 import Input from '../components/common/Input';
 import Button from '../components/common/Button';
 import { Search as SearchIcon, Users, Users2 } from 'lucide-react';
+import Alert from '../components/common/Alert';
 
 const SearchPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -15,6 +16,7 @@ const SearchPage = () => {
   const [searchType, setSearchType] = useState('all'); // all, users, teams
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [hasSearched, setHasSearched] = useState(false); // New state to track if a search has been performed
   const { isAuthenticated, user } = useAuth();
 
   const handleSearch = async (e) => {
@@ -28,6 +30,7 @@ const SearchPage = () => {
     try {
       setLoading(true);
       setError(null);
+      setHasSearched(true); // Mark that a search has been performed
 
       const results = await searchService.globalSearch(query, isAuthenticated);
       setSearchResults(results.data);
@@ -78,6 +81,12 @@ const SearchPage = () => {
       teams: prev.teams.map(team => team.id === updatedTeam.id ? updatedTeam : team),
     }));
   };
+
+    // Check if no results were found after a search was performed
+    const noResultsFound = hasSearched &&
+    filteredResults.teams.length === 0 &&
+    filteredResults.users.length === 0 &&
+    !loading;
 
   return (
     <PageContainer
@@ -135,9 +144,19 @@ const SearchPage = () => {
       </div>
 
       {error && (
-        <div className="alert alert-error">
-          <span>{error}</span>
-        </div>
+        <Alert
+          type="error"
+          message={error}
+          onClose={() => setError(null)}
+        />
+      )}
+
+      {noResultsFound && (
+        <Alert
+          type="info"
+          message={`No results found for "${searchQuery}". Try a different search term.`}
+          className="max-w-xl mx-auto"
+        />
       )}
 
       {loading ? (
