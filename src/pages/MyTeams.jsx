@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import PageContainer from '../components/layout/PageContainer';
 import Grid from '../components/layout/Grid';
@@ -15,7 +15,7 @@ const MyTeams = () => {
   const [error, setError] = useState(null);
   const { user } = useAuth();
 
-  const fetchUserTeams = async () => {
+  const fetchUserTeams = useCallback(async () => {
     try {
       setLoading(true);
       // Ensure user and user.id exist before making the API call
@@ -29,23 +29,23 @@ const MyTeams = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]); // Include user as a dependency
 
   useEffect(() => {
     // Only call fetchUserTeams if user is defined
     if (user) {
       fetchUserTeams();
     }
-  }, [user]); // Depend on user to re-run when user changes
+  }, [user, fetchUserTeams]); // Now it's safe to include fetchUserTeams
 
   const handleTeamUpdate = (updatedTeam) => {
-  // First, add a check to ensure updatedTeam is not undefined
-  if (!updatedTeam) {
-    console.warn('Received undefined team data in handleTeamUpdate');
-    // Optionally, you could refresh the teams list here
-    fetchUserTeams();
-    return;
-  }
+    // First, add a check to ensure updatedTeam is not undefined
+    if (!updatedTeam) {
+      console.warn('Received undefined team data in handleTeamUpdate');
+      // Optionally, you could refresh the teams list here
+      fetchUserTeams();
+      return;
+    }
 
     // Update the team in the local state
     setTeams(prevTeams => 
@@ -53,6 +53,11 @@ const MyTeams = () => {
         team.id === updatedTeam.id ? updatedTeam : team
       )
     );
+  };
+
+  const handleTeamDelete = (teamId) => {
+    // Remove the deleted team from the state
+    setTeams(prevTeams => prevTeams.filter(team => team.id !== teamId));
   };
 
   if (loading) {
@@ -112,6 +117,7 @@ const MyTeams = () => {
               key={team.id} 
               team={team}
               onUpdate={handleTeamUpdate}
+              onDelete={handleTeamDelete}
             />
           ))}
         </Grid>

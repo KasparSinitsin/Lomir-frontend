@@ -44,9 +44,10 @@ const TeamCreationForm = () => {
         break;
 
       case 3:
-        if (formData.selectedTags.length === 0) {
-          newErrors.tags = 'Please select at least one tag for your team';
-        }
+// Removed the following validation to make tags optional
+      // if (formData.selectedTags.length === 0) {
+      //   newErrors.tags = 'Please select at least one tag for your team';
+      // }
         break;
     }
 
@@ -214,19 +215,19 @@ const TeamCreationForm = () => {
           </div>
         );
 
-      case 3:
-        return (
-          <div>
-            <h3 className="text-lg font-semibold mb-4">Select Team Tags</h3>
-            <TagSelector
-              onTagsSelected={handleTagSelection}
-              selectedTags={formData.selectedTags}
-            />
-            {errors.tags && (
-              <p className="text-error text-sm mt-2">{errors.tags}</p>
-            )}
-          </div>
-        );
+        case 3:
+          return (
+            <div>
+              <h3 className="text-lg font-semibold mb-4">Select Team Tags (Optional)</h3>
+              <TagSelector
+                onTagsSelected={handleTagSelection}
+                selectedTags={formData.selectedTags}
+              />
+              {errors.tags && (
+                <p className="text-error text-sm mt-2">{errors.tags}</p>
+              )}
+            </div>
+          );
     }
   };
 

@@ -4,9 +4,9 @@ import { teamService } from '../../services/teamService';
 import TagSelector from '../tags/TagSelector';
 import Button from '../common/Button';
 import Alert from '../common/Alert';
-import { X, Edit, Users } from 'lucide-react';
+import { X, Edit, Users, Trash2 } from 'lucide-react';
 
-const TeamDetailsModal = ({ isOpen, teamId, onClose, onUpdate }) => {
+const TeamDetailsModal = ({ isOpen, teamId, onClose, onUpdate, onDelete }) => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -46,7 +46,7 @@ const TeamDetailsModal = ({ isOpen, teamId, onClose, onUpdate }) => {
 
   // Check if the current user is the creator of the team
   const isTeamCreator = team && user && team.creator_id === user.id;
-  
+
   // Check if the user is already a member of this team
   const isTeamMember = team && user && team.members?.some(member => member.user_id === user.id);
 
@@ -76,7 +76,7 @@ const TeamDetailsModal = ({ isOpen, teamId, onClose, onUpdate }) => {
     try {
       setLoading(true);
       setError(null);
-  
+
       const submissionData = {
         name: formData.name,
         description: formData.description,
@@ -84,38 +84,38 @@ const TeamDetailsModal = ({ isOpen, teamId, onClose, onUpdate }) => {
         max_members: formData.maxMembers,
         tags: formData.selectedTags.map(tagId => ({ tag_id: tagId })),
       };
-  
-      const response = await teamService.updateTeam(teamId, submissionData);
-      
-    // Update the local team data
-    await fetchTeamDetails();
-    
-    setIsEditing(false);
 
-if (onUpdate && response.data) {
-      onUpdate(response.data);
-    } else if (onUpdate && team) {
-      // Fallback to using the current team data if response.data is not available
-      onUpdate({...team, ...submissionData});
+      const response = await teamService.updateTeam(teamId, submissionData);
+
+      // Update the local team data
+      await fetchTeamDetails();
+
+      setIsEditing(false);
+
+      if (onUpdate && response.data) {
+        onUpdate(response.data);
+      } else if (onUpdate && team) {
+        // Fallback to using the current team data if response.data is not available
+        onUpdate({ ...team, ...submissionData });
+      }
+    } catch (err) {
+      console.error('Error updating team:', err);
+      setError('Failed to update team. Please try again.');
+    } finally {
+      setLoading(false);
     }
-  } catch (err) {
-    console.error('Error updating team:', err);
-    setError('Failed to update team. Please try again.');
-  } finally {
-    setLoading(false);
-  }
-};
-  
+  };
+
   const handleApplyToJoin = async () => {
     try {
       setLoading(true);
       setError(null);
-      
+
       await teamService.addTeamMember(teamId, user.id);
-      
+
       // Refresh team details
       await fetchTeamDetails();
-      
+
       // Show success message
       setError({ type: 'success', message: 'Successfully applied to join the team!' });
     } catch (err) {
@@ -123,6 +123,28 @@ if (onUpdate && response.data) {
       setError('Failed to apply. Please try again.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeleteTeam = async () => {
+    if (window.confirm('Are you sure you want to delete this team? This action cannot be undone.')) {
+      try {
+        setLoading(true);
+        await teamService.deleteTeam(teamId);
+
+        // Close the modal
+        onClose();
+
+        // Notify parent component
+        if (onDelete) {
+          onDelete(teamId);
+        }
+      } catch (err) {
+        console.error('Error deleting team:', err);
+        setError('Failed to delete team. Please try again.');
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -140,14 +162,25 @@ if (onUpdate && response.data) {
           </h2>
           <div className="flex items-center space-x-2">
             {isTeamCreator && !isEditing && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setIsEditing(true)}
-                icon={<Edit size={16} />}
-              >
-                Edit
-              </Button>
+              <>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsEditing(true)}
+                  icon={<Edit size={16} />}
+                >
+                  Edit
+                </Button>
+                <Button
+                  variant="error"
+                  size="sm"
+                  onClick={handleDeleteTeam}
+                  icon={<Trash2 size={16} />}
+                  disabled={loading}
+                >
+                  Delete
+                </Button>
+              </>
             )}
             <button
               onClick={onClose}
@@ -182,7 +215,7 @@ if (onUpdate && response.data) {
                       className="input input-bordered"
                     />
                   </div>
-                  
+
                   <div className="form-control">
                     <label className="label">Description</label>
                     <textarea
@@ -192,7 +225,7 @@ if (onUpdate && response.data) {
                       className="textarea textarea-bordered h-24"
                     ></textarea>
                   </div>
-                  
+
                   <div className="form-control">
                     <label className="label cursor-pointer">
                       <span className="label-text">Public Team</span>
@@ -205,7 +238,7 @@ if (onUpdate && response.data) {
                       />
                     </label>
                   </div>
-                  
+
                   <div className="form-control">
                     <label className="label">Maximum Members</label>
                     <select
@@ -219,7 +252,7 @@ if (onUpdate && response.data) {
                       ))}
                     </select>
                   </div>
-                  
+
                   <div className="form-control">
                     <label className="label">Team Tags</label>
                     <TagSelector
@@ -228,7 +261,7 @@ if (onUpdate && response.data) {
                       mode="team"
                     />
                   </div>
-                  
+
                   <div className="flex justify-end space-x-2 mt-6">
                     <Button
                       variant="ghost"
@@ -286,7 +319,7 @@ if (onUpdate && response.data) {
                         <ul className="list-disc pl-5 space-y-1 mt-2">
                           {team.members.map((member) => (
                             <li key={member.user_id} className="text-sm">
-                              {member.username || member.email} 
+                              {member.username || member.email}
                               {member.role && <span className="badge badge-sm ml-2">{member.role}</span>}
                             </li>
                           ))}
@@ -320,7 +353,7 @@ if (onUpdate && response.data) {
             </Button>
           </div>
         )}
-        
+
         {/* Already a member message */}
         {!isEditing && !isTeamCreator && isTeamMember && (
           <div className="absolute bottom-6 right-6">

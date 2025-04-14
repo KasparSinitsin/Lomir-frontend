@@ -15,6 +15,17 @@ export const teamService = {
     return response.data;
   },
 
+  // Delete a team
+deleteTeam: async (teamId) => {
+  try {
+    const response = await api.delete(`/teams/${teamId}`);
+    return response.data;
+  } catch (error) {
+    console.error(`Error deleting team ${teamId}:`, error.response ? error.response.data : error.message);
+    throw error;
+  }
+},
+
   // Fetch all teams
   getAllTeams: async (params = {}) => {
     try {
