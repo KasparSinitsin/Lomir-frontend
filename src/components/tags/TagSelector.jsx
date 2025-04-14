@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { tagService } from '../../services/tagService';
+import debounce from '../../utils/debounce';
 
 const TagSelector = ({ onTagsSelected, selectedTags = [], mode = 'profile' }) => {
   const [supercategories, setSupercategories] = useState([]);
@@ -45,10 +46,10 @@ const TagSelector = ({ onTagsSelected, selectedTags = [], mode = 'profile' }) =>
   }, []);
 
   const toggleTagSelection = (tagId) => {
-    const newSelectedTags = localSelectedTags.includes(tagId) 
-      ? localSelectedTags.filter((id) => id !== tagId) 
+    const newSelectedTags = localSelectedTags.includes(tagId)
+      ? localSelectedTags.filter((id) => id !== tagId)
       : [...localSelectedTags, tagId];
-    
+
     setLocalSelectedTags(newSelectedTags);
 
     // Comment out level initialization for newly added tags
@@ -61,7 +62,7 @@ const TagSelector = ({ onTagsSelected, selectedTags = [], mode = 'profile' }) =>
       }
     }
     */
-    
+
     // Notify parent of changes
     if (onTagsSelected) {
       // Comment out sending levels to parent, just send tags
@@ -80,22 +81,22 @@ const TagSelector = ({ onTagsSelected, selectedTags = [], mode = 'profile' }) =>
   /*
   const handleExperienceLevelChange = (tagId, level) => {
     if (mode !== 'profile') return;
-    
+
     const newLevels = { ...experienceLevels, [tagId]: level };
     setExperienceLevels(newLevels);
-    
+
     // Notify parent of changes
     if (onTagsSelected) {
       onTagsSelected(localSelectedTags, newLevels, interestLevels);
     }
   };
-  
+
   const handleInterestLevelChange = (tagId, level) => {
     if (mode !== 'profile') return;
-    
+
     const newLevels = { ...interestLevels, [tagId]: level };
     setInterestLevels(newLevels);
-    
+
     // Notify parent of changes
     if (onTagsSelected) {
       onTagsSelected(localSelectedTags, experienceLevels, newLevels);
@@ -160,8 +161,8 @@ const TagSelector = ({ onTagsSelected, selectedTags = [], mode = 'profile' }) =>
         // Comment out sending levels to parent, just send tags
         /*
         if (mode === 'profile') {
-          onTagsSelected(updatedSelectedTags, 
-            { ...experienceLevels, [newTagId]: 'beginner' }, 
+          onTagsSelected(updatedSelectedTags,
+            { ...experienceLevels, [newTagId]: 'beginner' },
             { ...interestLevels, [newTagId]: 'medium' }
           );
         } else {
@@ -177,9 +178,17 @@ const TagSelector = ({ onTagsSelected, selectedTags = [], mode = 'profile' }) =>
       setSelectedSupercategoryId('');
     } catch (error) {
       console.error('Error creating tag:', error);
-      alert('Failed to create tag.');
+      alert(`Failed to create tag: ${error.message || 'Unknown error'}`); // Show backend message
     }
   };
+
+  // Debounced setSearchQuery function
+  const handleSearchChange = useCallback(
+    debounce((query) => {
+      setSearchQuery(query);
+    }, 300),
+    []
+  );
 
   const filteredSupercategories = supercategories.filter((supercat) =>
     supercat.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -198,7 +207,7 @@ const TagSelector = ({ onTagsSelected, selectedTags = [], mode = 'profile' }) =>
           type="text"
           placeholder="Search tags..."
           value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
+          onChange={handleSearchChange} // Use debounced function
           className="input input-bordered w-full mr-2"
         />
         <button onClick={() => setShowAddTagModal(true)} className="btn btn-primary">
