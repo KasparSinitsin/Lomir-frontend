@@ -16,23 +16,56 @@ const SearchPage = () => {
   const [searchType, setSearchType] = useState('all'); // all, users, teams
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [hasSearched, setHasSearched] = useState(false); // New state to track if a search has been performed
-  const { isAuthenticated, user } = useAuth();
+  const [hasSearched, setHasSearched] = useState(false);
+  const { isAuthenticated } = useAuth();
+
+  // Effect to load initial data when the component mounts
+  useEffect(() => {
+    const fetchInitialData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        const results = await searchService.getAllUsersAndTeams(isAuthenticated);
+        setSearchResults(results.data);
+      } catch (err) {
+        console.error('Error fetching initial data:', err);
+        setError('Failed to load initial data. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchInitialData();
+  }, [isAuthenticated]);
 
   const handleSearch = async (e) => {
     e.preventDefault();
-    if (!searchQuery.trim()) return;
+    
+    if (!searchQuery.trim()) {
+      // If search query is empty, reload all data
+      try {
+        setLoading(true);
+        setError(null);
+        setHasSearched(false);
+        
+        const results = await searchService.getAllUsersAndTeams(isAuthenticated);
+        setSearchResults(results.data);
+      } catch (err) {
+        console.error('Error reloading data:', err);
+        setError('Failed to reload data. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
 
-    await fetchResults(searchQuery);
-  };
-
-  const fetchResults = async (query) => {
     try {
       setLoading(true);
       setError(null);
-      setHasSearched(true); // Mark that a search has been performed
+      setHasSearched(true);
 
-      const results = await searchService.globalSearch(query, isAuthenticated);
+      const results = await searchService.globalSearch(searchQuery, isAuthenticated);
       setSearchResults(results.data);
     } catch (err) {
       console.error('Search error:', err);
@@ -41,25 +74,6 @@ const SearchPage = () => {
       setLoading(false);
     }
   };
-
-  // Default recommendations when page loads
-  useEffect(() => {
-    const fetchDefaultResults = async () => {
-      try {
-        setLoading(true);
-        const results = await searchService.getRecommended(user?.id);
-        setSearchResults(results.data);
-      } catch (err) {
-        console.error('Default search error:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (!searchQuery && user?.id) {
-      fetchDefaultResults();
-    }
-  }, [user, searchQuery]);
 
   const handleToggleChange = (type) => setSearchType(type);
 
@@ -82,8 +96,7 @@ const SearchPage = () => {
     }));
   };
 
-    // Check if no results were found after a search was performed
-    const noResultsFound = hasSearched &&
+  const noResultsFound = hasSearched &&
     filteredResults.teams.length === 0 &&
     filteredResults.users.length === 0 &&
     !loading;
@@ -124,7 +137,6 @@ const SearchPage = () => {
         </div>
 
         <form onSubmit={handleSearch} className="flex space-x-2">
-
           {/* Search input and button */}
           <Input
             placeholder="Search teams, users, skills..."
@@ -133,13 +145,13 @@ const SearchPage = () => {
             className="flex-grow"
           />
           <Button
-                  type="submit"
-                  variant="primary"
-                  icon={<SearchIcon className="h-5 w-5"/>}
-                  disabled={loading}
-                  className="p-2 flex items-center justify-center"
-                  aria-label="Search"
-                />
+            type="submit"
+            variant="primary"
+            icon={<SearchIcon className="h-5 w-5"/>}
+            disabled={loading}
+            className="p-2 flex items-center justify-center"
+            aria-label="Search"
+          />
         </form>
       </div>
 
@@ -196,8 +208,6 @@ const SearchPage = () => {
               </Grid>
             </section>
           )}
-
-
         </div>
       )}
     </PageContainer>
