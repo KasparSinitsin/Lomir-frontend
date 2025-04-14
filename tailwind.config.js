@@ -15,11 +15,12 @@ export default {
       borderRadius: {
         'xl': '0.75rem',
       },
-      // Ensure that grid-cols utilities are generated
       gridTemplateColumns: {
-        // Custom grid layout for convenience
-        '3': 'repeat(3, minmax(0, 1fr))',  // Custom 'grid-cols-3' template for better control
-      }
+        '3': 'repeat(3, minmax(0, 1fr))',
+      },
+      colors: {
+        softviolet: '#C7D2FE', // Add your soft violet color here
+      },
     },
     screens: {
       'xs': '375px', 
@@ -35,22 +36,27 @@ export default {
     themes: [
       {
         lomirlite: {
-          "primary": "#3B82F6",
-          "primary-focus": "#2563EB",
+          "primary": "#3B82F6",           // blue
+          "primary-focus": "#2563EB",     // darker blue
           "primary-content": "#FFFFFF",
-          "secondary": "#E0E7FF",
-          "secondary-focus": "#C7D2FE",
-          "secondary-content": "#1E40AF",
-          "accent": "#6366F1",
+
+          "secondary": "#E0E7FF",         // soft violet-light
+          "secondary-focus": "#C7D2FE",   // soft violet
+          "secondary-content": "#1E40AF", // navy
+
+          "accent": "#C7D2FE",            // replacing magenta with soft violet
           "neutral": "#3D4451",
+
           "base-100": "#FFFFFF",
           "base-200": "#F8FAFC",
           "base-300": "#F1F5F9",
           "base-content": "#1F2937",
+
           "info": "#38BDF8",
           "success": "#10B981",
           "warning": "#F59E0B",
           "error": "#EF4444",
+
           "font-family": "'Roboto', sans-serif",
         },
       },
