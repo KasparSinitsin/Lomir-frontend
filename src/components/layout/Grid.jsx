@@ -7,7 +7,7 @@ const Grid = ({
   md = null,
   lg = null,
   xl = null,
-  gap = 4,
+  gap = 6,
   className = ''
 }) => {
   const getColClasses = () => {
