@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { tagService } from '../../services/tagService';
+import debounce from '../../utils/debounce'
 
 const TagSelector = ({ onTagsSelected, selectedTags = [], mode = 'profile' }) => {
   const [supercategories, setSupercategories] = useState([]);
@@ -7,14 +8,20 @@ const TagSelector = ({ onTagsSelected, selectedTags = [], mode = 'profile' }) =>
   const [expandedSupercategories, setExpandedSupercategories] = useState({});
   const [expandedCategories, setExpandedCategories] = useState({});
   const [localSelectedTags, setLocalSelectedTags] = useState(selectedTags);
+  // Comment out interest and experience levels states
+  /*
   const [experienceLevels, setExperienceLevels] = useState({});
   const [interestLevels, setInterestLevels] = useState({});
+  */
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddTagModal, setShowAddTagModal] = useState(false);
   const [newTagName, setNewTagName] = useState('');
   const [selectedCategoryId, setSelectedCategoryId] = useState('');
   const [selectedSupercategoryId, setSelectedSupercategoryId] = useState('');
+  // Comment out expanded tag levels state
+  /*
   const [expandedTagLevels, setExpandedTagLevels] = useState({});
+  */
 
   // Initialize from props
   useEffect(() => {
@@ -39,12 +46,14 @@ const TagSelector = ({ onTagsSelected, selectedTags = [], mode = 'profile' }) =>
   }, []);
 
   const toggleTagSelection = (tagId) => {
-    const newSelectedTags = localSelectedTags.includes(tagId) 
-      ? localSelectedTags.filter((id) => id !== tagId) 
+    const newSelectedTags = localSelectedTags.includes(tagId)
+      ? localSelectedTags.filter((id) => id !== tagId)
       : [...localSelectedTags, tagId];
-    
+
     setLocalSelectedTags(newSelectedTags);
 
+    // Comment out level initialization for newly added tags
+    /*
     if (mode === 'profile') {
       // Initialize levels for newly added tag
       if (!localSelectedTags.includes(tagId) && newSelectedTags.includes(tagId)) {
@@ -52,40 +61,48 @@ const TagSelector = ({ onTagsSelected, selectedTags = [], mode = 'profile' }) =>
         setInterestLevels(prev => ({ ...prev, [tagId]: prev[tagId] || 'medium' }));
       }
     }
-    
+    */
+
     // Notify parent of changes
     if (onTagsSelected) {
+      // Comment out sending levels to parent, just send tags
+      /*
       if (mode === 'profile') {
         onTagsSelected(newSelectedTags, experienceLevels, interestLevels);
       } else {
         onTagsSelected(newSelectedTags);
       }
+      */
+      onTagsSelected(newSelectedTags);
     }
   };
 
+  // Comment out level change handlers
+  /*
   const handleExperienceLevelChange = (tagId, level) => {
     if (mode !== 'profile') return;
-    
+
     const newLevels = { ...experienceLevels, [tagId]: level };
     setExperienceLevels(newLevels);
-    
+
     // Notify parent of changes
     if (onTagsSelected) {
       onTagsSelected(localSelectedTags, newLevels, interestLevels);
     }
   };
-  
+
   const handleInterestLevelChange = (tagId, level) => {
     if (mode !== 'profile') return;
-    
+
     const newLevels = { ...interestLevels, [tagId]: level };
     setInterestLevels(newLevels);
-    
+
     // Notify parent of changes
     if (onTagsSelected) {
       onTagsSelected(localSelectedTags, experienceLevels, newLevels);
     }
   };
+  */
 
   const toggleSupercategory = (name) => {
     setExpandedSupercategories((prev) => ({
@@ -101,12 +118,15 @@ const TagSelector = ({ onTagsSelected, selectedTags = [], mode = 'profile' }) =>
     }));
   };
 
+  // Comment out tag level expansion toggle
+  /*
   const toggleTagLevelExpansion = (tagId) => {
     setExpandedTagLevels((prev) => ({
       ...prev,
       [tagId]: !prev[tagId],
     }));
   };
+  */
 
   const handleAddTag = async () => {
     if (!newTagName || !selectedCategoryId || !selectedSupercategoryId) {
@@ -128,21 +148,28 @@ const TagSelector = ({ onTagsSelected, selectedTags = [], mode = 'profile' }) =>
       const updatedSelectedTags = [...localSelectedTags, newTagId];
       setLocalSelectedTags(updatedSelectedTags);
 
+      // Comment out setting levels for new tags
+      /*
       if (mode === 'profile') {
         setExperienceLevels((prev) => ({ ...prev, [newTagId]: 'beginner' }));
         setInterestLevels((prev) => ({ ...prev, [newTagId]: 'medium' }));
       }
+      */
 
       // Notify parent of changes
       if (onTagsSelected) {
+        // Comment out sending levels to parent, just send tags
+        /*
         if (mode === 'profile') {
-          onTagsSelected(updatedSelectedTags, 
-            { ...experienceLevels, [newTagId]: 'beginner' }, 
+          onTagsSelected(updatedSelectedTags,
+            { ...experienceLevels, [newTagId]: 'beginner' },
             { ...interestLevels, [newTagId]: 'medium' }
           );
         } else {
           onTagsSelected(updatedSelectedTags);
         }
+        */
+        onTagsSelected(updatedSelectedTags);
       }
 
       setShowAddTagModal(false);
@@ -151,8 +178,17 @@ const TagSelector = ({ onTagsSelected, selectedTags = [], mode = 'profile' }) =>
       setSelectedSupercategoryId('');
     } catch (error) {
       console.error('Error creating tag:', error);
-      alert('Failed to create tag.');
+      alert(`Failed to create tag: ${error.message || 'Unknown error'}`); // Show backend message
     }
+  };
+
+  // Debounced setSearchQuery function
+  const debouncedSetSearchQuery = debounce((query) => {
+    setSearchQuery(query);
+  }, 300); // Adjust debounce time as needed
+
+  const handleSearchChange = (e) => {
+    debouncedSetSearchQuery(e.target.value);
   };
 
   const filteredSupercategories = supercategories.filter((supercat) =>
@@ -172,7 +208,7 @@ const TagSelector = ({ onTagsSelected, selectedTags = [], mode = 'profile' }) =>
           type="text"
           placeholder="Search tags..."
           value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
+          onChange={handleSearchChange} // Use debounced function
           className="input input-bordered w-full mr-2"
         />
         <button onClick={() => setShowAddTagModal(true)} className="btn btn-primary">
@@ -214,6 +250,8 @@ const TagSelector = ({ onTagsSelected, selectedTags = [], mode = 'profile' }) =>
                           />
                           <span className="flex-grow">{tag.name}</span>
 
+                          {/* Comment out the levels UI */}
+                          {/*
                           {mode === 'profile' && localSelectedTags.includes(tag.id) && (
                             <div>
                               <button
@@ -248,6 +286,7 @@ const TagSelector = ({ onTagsSelected, selectedTags = [], mode = 'profile' }) =>
                               )}
                             </div>
                           )}
+                          */}
                         </div>
                       ))}
                     </div>
