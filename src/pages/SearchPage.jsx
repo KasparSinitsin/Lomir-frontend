@@ -83,32 +83,13 @@ const SearchPage = () => {
 
   return (
     <PageContainer
-      title="Search"
-      subtitle="Find teams and users"
+      title="Search teams or users"
       titleAlignment="center"
     >
       <div className="max-w-xl mx-auto mb-8">
-        <form onSubmit={handleSearch} className="flex flex-col space-y-4">
-          {/* Search input and button */}
-          <div className="flex space-x-2">
-            <Input
-              placeholder="Search teams, users, skills..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="flex-grow"
-            />
-            <Button
-              type="submit"
-              variant="primary"
-              icon={<SearchIcon />}
-              disabled={loading}
-            >
-              Search
-            </Button>
-          </div>
-          
+
           {/* Toggle switch */}
-          <div className="flex justify-center space-x-2 pt-2">
+          <div className="flex justify-center space-x-2 pt-2 mb-2">
             <div className="btn-group">
               <button
                 type="button"
@@ -135,6 +116,26 @@ const SearchPage = () => {
               </button>
             </div>
           </div>
+
+        <form onSubmit={handleSearch} className="flex flex-col space-y-4">
+          
+          {/* Search input and button */}
+          <div className="flex space-x-2 items-center"> 
+  <Input
+    placeholder="Search teams, users, skills..."
+    value={searchQuery}
+    onChange={(e) => setSearchQuery(e.target.value)}
+    className="flex-grow"
+  />
+  <Button
+  type="submit"
+  variant="primary"
+  icon={<SearchIcon className="h-5 w-5"/>}
+  disabled={loading}
+  className="p-2 flex items-center justify-center" // Added flex, items-center, justify-center
+  aria-label="Search"
+></Button>
+</div>
         </form>
       </div>
 
@@ -191,8 +192,6 @@ const SearchPage = () => {
               </Grid>
             </section>
           )}
-
-          {/* The "No results found" message is now shown as an Alert above */}
         </div>
       )}
     </PageContainer>
