@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { tagService } from '../../services/tagService';
-import debounce from '../../utils/debounce';
+import debounce from '../../utils/debounce'
 
 const TagSelector = ({ onTagsSelected, selectedTags = [], mode = 'profile' }) => {
   const [supercategories, setSupercategories] = useState([]);
