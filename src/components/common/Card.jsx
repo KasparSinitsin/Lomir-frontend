@@ -21,6 +21,8 @@ const Card = ({
       ${compact ? 'card-compact' : ''} 
       ${className}
       bg-opacity-70  // Apply opacity to card background
+      mb-6           // Add bottom margin
+      mr-4           // Add horizontal margin
     `}>
       {title && (
         <div className="p-6 sm:p-7 border-b border-base-200">
