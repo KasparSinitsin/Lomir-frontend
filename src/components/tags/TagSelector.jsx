@@ -14,8 +14,12 @@ const TagSelector = ({ onTagsSelected, selectedTags = [], mode = 'profile' }) =>
   const [newTagName, setNewTagName] = useState('');
   const [selectedCategoryId, setSelectedCategoryId] = useState('');
   const [selectedSupercategoryId, setSelectedSupercategoryId] = useState('');
-  
   const [expandedTagLevels, setExpandedTagLevels] = useState({});
+
+  // Initialize from props
+  useEffect(() => {
+    setLocalSelectedTags(selectedTags);
+  }, [selectedTags]);
 
   useEffect(() => {
     const fetchTags = async () => {
@@ -34,35 +38,53 @@ const TagSelector = ({ onTagsSelected, selectedTags = [], mode = 'profile' }) =>
     fetchTags();
   }, []);
 
-  useEffect(() => {
-    if (onTagsSelected) {
-      if (mode === 'profile') {
-        onTagsSelected(localSelectedTags, experienceLevels, interestLevels);
-      } else {
-        onTagsSelected(localSelectedTags);
+  const toggleTagSelection = (tagId) => {
+    const newSelectedTags = localSelectedTags.includes(tagId) 
+      ? localSelectedTags.filter((id) => id !== tagId) 
+      : [...localSelectedTags, tagId];
+    
+    setLocalSelectedTags(newSelectedTags);
+
+    if (mode === 'profile') {
+      // Initialize levels for newly added tag
+      if (!localSelectedTags.includes(tagId) && newSelectedTags.includes(tagId)) {
+        setExperienceLevels(prev => ({ ...prev, [tagId]: prev[tagId] || 'beginner' }));
+        setInterestLevels(prev => ({ ...prev, [tagId]: prev[tagId] || 'medium' }));
       }
     }
-  }, [localSelectedTags, experienceLevels, interestLevels, onTagsSelected, mode]);
-
-  const toggleTagSelection = (tagId) => {
-    setLocalSelectedTags((prev) =>
-      prev.includes(tagId) ? prev.filter((id) => id !== tagId) : [...prev, tagId]
-    );
-  
-    if (mode === 'profile') {
-      setExperienceLevels((prev) => ({ ...prev, [tagId]: prev[tagId] || 'beginner' }));
-      setInterestLevels((prev) => ({ ...prev, [tagId]: prev[tagId] || 'medium' }));
+    
+    // Notify parent of changes
+    if (onTagsSelected) {
+      if (mode === 'profile') {
+        onTagsSelected(newSelectedTags, experienceLevels, interestLevels);
+      } else {
+        onTagsSelected(newSelectedTags);
+      }
     }
   };
 
   const handleExperienceLevelChange = (tagId, level) => {
     if (mode !== 'profile') return;
-    setExperienceLevels((prev) => ({ ...prev, [tagId]: level }));
+    
+    const newLevels = { ...experienceLevels, [tagId]: level };
+    setExperienceLevels(newLevels);
+    
+    // Notify parent of changes
+    if (onTagsSelected) {
+      onTagsSelected(localSelectedTags, newLevels, interestLevels);
+    }
   };
   
   const handleInterestLevelChange = (tagId, level) => {
     if (mode !== 'profile') return;
-    setInterestLevels((prev) => ({ ...prev, [tagId]: level }));
+    
+    const newLevels = { ...interestLevels, [tagId]: level };
+    setInterestLevels(newLevels);
+    
+    // Notify parent of changes
+    if (onTagsSelected) {
+      onTagsSelected(localSelectedTags, experienceLevels, newLevels);
+    }
   };
 
   const toggleSupercategory = (name) => {
@@ -109,6 +131,18 @@ const TagSelector = ({ onTagsSelected, selectedTags = [], mode = 'profile' }) =>
       if (mode === 'profile') {
         setExperienceLevels((prev) => ({ ...prev, [newTagId]: 'beginner' }));
         setInterestLevels((prev) => ({ ...prev, [newTagId]: 'medium' }));
+      }
+
+      // Notify parent of changes
+      if (onTagsSelected) {
+        if (mode === 'profile') {
+          onTagsSelected(updatedSelectedTags, 
+            { ...experienceLevels, [newTagId]: 'beginner' }, 
+            { ...interestLevels, [newTagId]: 'medium' }
+          );
+        } else {
+          onTagsSelected(updatedSelectedTags);
+        }
       }
 
       setShowAddTagModal(false);
@@ -181,39 +215,39 @@ const TagSelector = ({ onTagsSelected, selectedTags = [], mode = 'profile' }) =>
                           <span className="flex-grow">{tag.name}</span>
 
                           {mode === 'profile' && localSelectedTags.includes(tag.id) && (
-  <div>
-    <button
-      onClick={() => toggleTagLevelExpansion(tag.id)}
-      className="text-sm text-blue-500"
-    >
-      {expandedTagLevels[tag.id] ? 'Hide Levels' : 'Set Levels'}
-    </button>
+                            <div>
+                              <button
+                                onClick={() => toggleTagLevelExpansion(tag.id)}
+                                className="text-sm text-blue-500"
+                              >
+                                {expandedTagLevels[tag.id] ? 'Hide Levels' : 'Set Levels'}
+                              </button>
 
-    {expandedTagLevels[tag.id] && (
-      <div className="flex space-x-2 ml-2">
-        <select
-          value={experienceLevels[tag.id] || 'beginner'}
-          onChange={(e) => handleExperienceLevelChange(tag.id, e.target.value)}
-          className="select select-bordered select-xs"
-        >
-          <option value="beginner">Beginner</option>
-          <option value="intermediate">Intermediate</option>
-          <option value="advanced">Advanced</option>
-          <option value="expert">Expert</option>
-        </select>
-        <select
-          value={interestLevels[tag.id] || 'medium'}
-          onChange={(e) => handleInterestLevelChange(tag.id, e.target.value)}
-          className="select select-bordered select-xs"
-        >
-          <option value="medium">Medium</option>
-          <option value="high">High</option>
-          <option value="very-high">Very High</option>
-        </select>
-      </div>
-    )}
-  </div>
-)}
+                              {expandedTagLevels[tag.id] && (
+                                <div className="flex space-x-2 ml-2">
+                                  <select
+                                    value={experienceLevels[tag.id] || 'beginner'}
+                                    onChange={(e) => handleExperienceLevelChange(tag.id, e.target.value)}
+                                    className="select select-bordered select-xs"
+                                  >
+                                    <option value="beginner">Beginner</option>
+                                    <option value="intermediate">Intermediate</option>
+                                    <option value="advanced">Advanced</option>
+                                    <option value="expert">Expert</option>
+                                  </select>
+                                  <select
+                                    value={interestLevels[tag.id] || 'medium'}
+                                    onChange={(e) => handleInterestLevelChange(tag.id, e.target.value)}
+                                    className="select select-bordered select-xs"
+                                  >
+                                    <option value="medium">Medium</option>
+                                    <option value="high">High</option>
+                                    <option value="very-high">Very High</option>
+                                  </select>
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>

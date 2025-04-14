@@ -39,6 +39,14 @@ const MyTeams = () => {
   }, [user]); // Depend on user to re-run when user changes
 
   const handleTeamUpdate = (updatedTeam) => {
+  // First, add a check to ensure updatedTeam is not undefined
+  if (!updatedTeam) {
+    console.warn('Received undefined team data in handleTeamUpdate');
+    // Optionally, you could refresh the teams list here
+    fetchUserTeams();
+    return;
+  }
+
     // Update the team in the local state
     setTeams(prevTeams => 
       prevTeams.map(team => 
