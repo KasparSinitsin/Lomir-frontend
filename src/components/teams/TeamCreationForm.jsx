@@ -44,9 +44,10 @@ const TeamCreationForm = () => {
         break;
 
       case 3:
-        if (formData.selectedTags.length === 0) {
-          newErrors.tags = 'Please select at least one tag for your team';
-        }
+// Removed the following validation to make tags optional
+      // if (formData.selectedTags.length === 0) {
+      //   newErrors.tags = 'Please select at least one tag for your team';
+      // }
         break;
     }
 
