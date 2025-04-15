@@ -1,214 +1,212 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiChevronRight, FiChevronLeft } from 'react-icons/fi';
+import { FiCheck } from 'react-icons/fi';
 import TagSelector from '../tags/TagSelector';
 import Alert from '../common/Alert';
 import { teamService } from '../../services/teamService';
 
 const TeamCreationForm = () => {
   const navigate = useNavigate();
-  const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
     isPublic: true,
     maxMembers: 5,
-    selectedTags: []
+    selectedTags: [],
   });
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(null);
+  const [submitSuccess, setSubmitSuccess] = useState(false);
+  const [newTeamId, setNewTeamId] = useState(null);
 
-  const validateStep = () => {
+  const validateForm = useCallback(() => {
     const newErrors = {};
-    switch (step) {
-      case 1:
-        if (!formData.name) newErrors.name = 'Team name is required';
-        else if (formData.name.length < 3) newErrors.name = 'Team name must be at least 3 characters';
-        if (!formData.description) newErrors.description = 'Team description is required';
-        else if (formData.description.length < 10) newErrors.description = 'Description must be at least 10 characters';
-        break;
-      case 2:
-        if (formData.maxMembers < 2 || formData.maxMembers > 20) {
-          newErrors.maxMembers = 'Team size must be between 2 and 20 members';
-        }
-        break;
-      case 3:
-        break; // Tags optional
+    if (!formData.name) {
+      newErrors.name = 'Team name is required';
+    } else if (formData.name.length < 3) {
+      newErrors.name = 'Team name must be at least 3 characters';
     }
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
+    if (!formData.description) {
+      newErrors.description = 'Team description is required';
+    } else if (formData.description.length < 10) {
+      newErrors.description = 'Description must be at least 10 characters';
+    }
+    if (formData.maxMembers < 2 || formData.maxMembers > 20) {
+      newErrors.maxMembers = 'Team size must be between 2 and 20 members';
+    }
+    return newErrors;
+  }, [formData.name, formData.description, formData.maxMembers]);
 
-  const handleChange = (e) => {
+  const handleChange = useCallback((e) => {
     const { name, value, type, checked } = e.target;
-    const newValue = name === 'maxMembers' ? parseInt(value, 10) : type === 'checkbox' ? checked : value;
-    setFormData(prev => ({ ...prev, [name]: newValue }));
-  };
+    let newValue = value;
+    if (name === 'maxMembers') {
+      newValue = parseInt(value, 10);
+    } else if (type === 'checkbox') {
+      newValue = checked;
+    }
+    setFormData(prev => ({
+      ...prev,
+      [name]: newValue,
+    }));
+    // Clear any existing error for the changed field
+    setErrors(prevErrors => {
+      const newErrors = { ...prevErrors };
+      delete newErrors[name];
+      return newErrors;
+    });
+  }, []);
 
-  const handleTagSelection = (selectedTags) => {
-    setFormData(prev => ({ ...prev, selectedTags }));
-  };
-
-  const nextStep = () => {
-    if (validateStep()) setStep(prev => Math.min(prev + 1, 3));
-  };
-
-  const prevStep = () => {
-    setStep(prev => Math.max(prev - 1, 1));
-  };
+  const handleTagSelection = useCallback((selectedTags) => {
+    setFormData(prev => ({
+      ...prev,
+      selectedTags,
+    }));
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (isSubmitting || !validateStep()) return;
+    if (isSubmitting) return;
+
+    const formErrors = validateForm();
+    if (Object.keys(formErrors).length > 0) {
+      setErrors(formErrors);
+      return;
+    }
+
     setIsSubmitting(true);
     setSubmitError(null);
+    setSubmitSuccess(false);
 
     try {
       const submissionData = {
         name: formData.name,
         description: formData.description,
-        is_public: formData.isPublic ? 1 : 0,
+        is_public: formData.isPublic,
         max_members: formData.maxMembers,
-        tags: formData.selectedTags.map(tagId => ({ tag_id: tagId }))
+        tags: formData.selectedTags.map(tagId => ({ tag_id: tagId })),
       };
       const response = await teamService.createTeam(submissionData);
-      navigate('/teams/my-teams');
+      setSubmitSuccess(true);
+      setNewTeamId(response.data.id);
+      navigate('/teams/my-teams'); // Redirect on success
     } catch (error) {
-      setSubmitError(error.response?.data?.message || error.message || 'Failed to create team.');
+      console.error('Team creation error:', error);
+      setSubmitError(
+        error.response?.data?.message ||
+        error.message ||
+        'Failed to create team. Please try again.'
+      );
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const renderStepIndicator = () => (
-    <div className="flex justify-center gap-2 mb-8">
-      {[1, 2, 3].map(s => (
-        <div
-          key={s}
-          className={`w-3 h-3 rounded-full transition-colors ${
-            step === s ? 'bg-blue-600' : 'bg-gray-300'
-          }`}
-        />
-      ))}
-    </div>
-  );
-
-  const renderStepContent = () => {
-    switch (step) {
-      case 1:
-        return (
-          <div className="space-y-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Team Name</label>
-              <input
-                type="text"
-                name="name"
-                className={`mt-1 w-full input input-bordered ${errors.name ? 'input-error' : ''}`}
-                value={formData.name}
-                onChange={handleChange}
-              />
-              {errors.name && <p className="mt-1 text-sm text-error">{errors.name}</p>}
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Team Description</label>
-              <textarea
-                name="description"
-                className={`mt-1 w-full textarea textarea-bordered h-24 ${errors.description ? 'textarea-error' : ''}`}
-                value={formData.description}
-                onChange={handleChange}
-              ></textarea>
-              {errors.description && <p className="mt-1 text-sm text-error">{errors.description}</p>}
-            </div>
-
-            <div>
-              <label className="label cursor-pointer justify-between">
-                <span className="label-text">Public Team</span>
-                <input
-                  type="checkbox"
-                  name="isPublic"
-                  className="toggle toggle-primary"
-                  checked={formData.isPublic}
-                  onChange={handleChange}
-                />
-              </label>
-              <p className="text-sm text-gray-500">
-                Public teams are visible to all users. Private teams require invitation.
-              </p>
-            </div>
-          </div>
-        );
-
-      case 2:
-        return (
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Maximum Team Size</label>
-            <select
-              name="maxMembers"
-              className={`mt-1 w-full select select-bordered ${errors.maxMembers ? 'select-error' : ''}`}
-              value={formData.maxMembers}
-              onChange={handleChange}
-            >
-              {[2, 3, 4, 5, 6, 8, 10, 12, 15, 20].map(size => (
-                <option key={size} value={size}>{size} members</option>
-              ))}
-            </select>
-            {errors.maxMembers && <p className="mt-1 text-sm text-error">{errors.maxMembers}</p>}
-          </div>
-        );
-
-      case 3:
-        return (
-          <div>
-            <h3 className="text-lg font-medium mb-4">Select Team Tags <span className="text-gray-400 text-sm">(optional)</span></h3>
-            <TagSelector
-              onTagsSelected={handleTagSelection}
-              selectedTags={formData.selectedTags}
-            />
-            {errors.tags && <p className="text-error text-sm mt-2">{errors.tags}</p>}
-          </div>
-        );
-    }
-  };
-
   return (
-    <div className="max-w-2xl mx-auto bg-white p-6 rounded-xl shadow-lg">
-      {renderStepIndicator()}
-      {submitError && <Alert type="error" message={submitError} />}
-      <form onSubmit={handleSubmit} className="space-y-8">
-        {renderStepContent()}
+    <div className="max-w-xl mx-auto p-4 bg-white shadow-md rounded-lg">
+      <h1 className="text-2xl font-bold mb-6 text-center">Create a New Team</h1>
+      {submitError && <Alert type="error" message={submitError} onClose={() => setSubmitError(null)} className="mb-4" />}
 
-        <div className="flex items-center justify-between">
-          {step > 1 ? (
-            <button
-              type="button"
-              onClick={prevStep}
-              className="btn btn-outline flex items-center"
-            >
-              <FiChevronLeft className="mr-1" /> Back
-            </button>
-          ) : <div></div>}
-
-          {step < 3 ? (
-            <button
-              type="button"
-              onClick={nextStep}
-              disabled={isSubmitting}
-              className="btn btn-primary flex items-center"
-            >
-              Next <FiChevronRight className="ml-1" />
-            </button>
-          ) : (
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="btn btn-primary"
-            >
-              {isSubmitting ? 'Creating...' : 'Create Team'}
-            </button>
-          )}
+      {/* Single-Step Form Content */}
+      <form onSubmit={handleSubmit}>
+        <div className="mb-4">
+          <label htmlFor="name" className="block text-gray-700 text-sm font-bold mb-2">
+            Team Name
+          </label>
+          <input
+            type="text"
+            id="name"
+            name="name"
+            value={formData.name}
+            onChange={handleChange}
+            className={`shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline ${errors.name ? 'border-red-500' : ''}`}
+            placeholder="Enter team name"
+          />
+          {errors.name && <p className="text-red-500 text-xs italic">{errors.name}</p>}
         </div>
+        <div className="mb-4">
+          <label htmlFor="description" className="block text-gray-700 text-sm font-bold mb-2">
+            Description
+          </label>
+          <textarea
+            id="description"
+            name="description"
+            value={formData.description}
+            onChange={handleChange}
+            className={`shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline ${errors.description ? 'border-red-500' : ''}`}
+            placeholder="Enter team description"
+            rows="3"
+          />
+          {errors.description && <p className="text-red-500 text-xs italic">{errors.description}</p>}
+        </div>
+        <div className="mb-4">
+          <label htmlFor="maxMembers" className="block text-gray-700 text-sm font-bold mb-2">
+            Maximum Members
+          </label>
+          <input
+            type="number"
+            id="maxMembers"
+            name="maxMembers"
+            value={formData.maxMembers}
+            onChange={handleChange}
+            min="2"
+            max="20"
+            className={`shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline ${errors.maxMembers ? 'border-red-500' : ''}`}
+          />
+          {errors.maxMembers && <p className="text-red-500 text-xs italic">{errors.maxMembers}</p>}
+        </div>
+        <div className="mb-4">
+          <label className="inline-flex items-center">
+            <input
+              type="checkbox"
+              name="isPublic"
+              checked={formData.isPublic}
+              onChange={handleChange}
+              className="form-checkbox h-5 w-5 text-primary rounded"
+            />
+            <span className="ml-2 text-gray-700">Public Team (visible to all users)</span>
+          </label>
+        </div>
+        <div className="mb-4">
+          <label className="block text-gray-700 text-sm font-bold mb-2">
+            Add Topic Tags (Optional)
+          </label>
+          <TagSelector onTagsSelected={handleTagSelection} initialTags={formData.selectedTags} />
+        </div>
+
+        <button
+          type="submit"
+          className="btn btn-primary ml-auto"
+          disabled={isSubmitting}
+        >
+          {isSubmitting ? 'Creating...' : 'Create Team'}
+        </button>
+
+        {submitSuccess && (
+          <div className="text-center mt-6">
+            <FiCheck className="mx-auto mb-4 text-green-500 text-4xl" />
+            <p className="mb-4 font-semibold">Team created successfully!</p>
+            <div className="flex justify-center gap-4">
+              <button
+                type="button"
+                onClick={() => navigate('/teams/my-teams')}
+                className="btn btn-primary"
+              >
+                Go to My Teams
+              </button>
+              {newTeamId && (
+                <button
+                  type="button"
+                  onClick={() => navigate(`/teams/${newTeamId}`)}
+                  className="btn btn-outline"
+                >
+                  View Team Details
+                </button>
+              )}
+            </div>
+          </div>
+        )}
       </form>
     </div>
   );
