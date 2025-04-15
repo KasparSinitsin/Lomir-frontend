@@ -51,7 +51,20 @@ export const teamService = {
   // Update team details
   updateTeam: async (teamId, teamData) => {
     try {
-      const response = await api.put(`/teams/${teamId}`, teamData);
+      console.log("Updating team with data:", teamData);
+      
+      // If tags are provided, make sure they are properly formatted
+      const dataToSend = {...teamData};
+      if (dataToSend.tags) {
+        dataToSend.tags = dataToSend.tags.map(tag => {
+          // Ensure tag_id is a number
+          return typeof tag === 'object' ? 
+            { tag_id: parseInt(tag.tag_id, 10) } : 
+            { tag_id: parseInt(tag, 10) };
+        });
+      }
+      
+      const response = await api.put(`/teams/${teamId}`, dataToSend);
       return response.data;
     } catch (error) {
       console.error(`Error updating team ${teamId}:`, error.response ? error.response.data : error.message);

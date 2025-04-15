@@ -8,13 +8,12 @@ import Alert from '../common/Alert';
 import { X, Edit, Users, Trash2 } from 'lucide-react';
 
 const TeamDetailsModal = ({
-  isOpen = true, // Default to true for URL access
+  isOpen = true,
   teamId: propTeamId,
   onClose,
   onUpdate,
   onDelete,
-  userRole,
-  isFromSearch = false 
+  userRole
 }) => {
   const navigate = useNavigate();
   const { id: urlTeamId } = useParams();
@@ -452,11 +451,11 @@ const TeamDetailsModal = ({
                       selectedTags={formData.selectedTags}
                       onTagsSelected={handleTagSelection}
                     />
-                    {process.env.NODE_ENV === 'development' && (
-                      <div className="mt-2 text-sm text-base-content/70">
-                        <p>Debug: Selected tag IDs: {formData.selectedTags.join(', ')}</p>
-                      </div>
-                    )}
+{import.meta.env.DEV && (
+  <div className="mt-2 text-sm text-base-content/70">
+    <p>Debug: Selected tag IDs: {formData.selectedTags.join(', ')}</p>
+  </div>
+)}
                   </div>
 
                   <div className="flex justify-end space-x-2 mt-6">

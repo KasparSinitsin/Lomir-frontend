@@ -140,15 +140,15 @@ const TagSelector = ({ onTagsSelected, selectedTags: initialSelectedTags = [], m
         </button>
       </div>
 
-      {process.env.NODE_ENV === 'development' && (
-        <button 
-          type="button" 
-          className="btn btn-sm btn-ghost text-xs" 
-          onClick={debugTags}
-        >
-          Debug Tags
-        </button>
-      )}
+      {import.meta.env.DEV && (
+  <button 
+    type="button" 
+    className="btn btn-sm btn-ghost text-xs" 
+    onClick={debugTags}
+  >
+    Debug Tags
+  </button>
+)}
 
       {filteredSupercategories.map((supercat) => (
         <div key={supercat.id} className="border rounded-lg">
