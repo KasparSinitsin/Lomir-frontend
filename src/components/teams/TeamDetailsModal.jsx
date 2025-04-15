@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { teamService } from '../../services/teamService';
 import TagSelector from '../tags/TagSelector';
@@ -6,10 +7,22 @@ import Button from '../common/Button';
 import Alert from '../common/Alert';
 import { X, Edit, Users, Trash2 } from 'lucide-react';
 
-const TeamDetailsModal = ({ isOpen, teamId, onClose, onUpdate, onDelete }) => {
+const TeamDetailsModal = ({
+  isOpen = true, // Default to true for URL access
+  teamId: propTeamId,
+  onClose,
+  onUpdate,
+  onDelete
+}) => {
+  const navigate = useNavigate();
+  const { id: urlTeamId } = useParams();
   const { user } = useAuth();
+
+  const effectiveTeamId = useMemo(() => propTeamId || urlTeamId, [propTeamId, urlTeamId]);
+
+  const [isModalVisible, setIsModalVisible] = useState(isOpen);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [notification, setNotification] = useState({ type: null, message: null });
   const [team, setTeam] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
@@ -19,46 +32,92 @@ const TeamDetailsModal = ({ isOpen, teamId, onClose, onUpdate, onDelete }) => {
     maxMembers: 5,
     selectedTags: [],
   });
+  const [formErrors, setFormErrors] = useState({});
 
   const fetchTeamDetails = useCallback(async () => {
+    if (!effectiveTeamId) return;
+
     try {
       setLoading(true);
-      setError(null);
-      const response = await teamService.getTeamById(teamId);
-      const teamData = response.data;
-      console.log('[TeamDetailsModal] Loaded team:', teamData);
-      setTeam(teamData);
+      setNotification({ type: null, message: null });
 
+      const response = await teamService.getTeamById(effectiveTeamId);
+      const teamData = response.data;
+
+      console.log('Fetched team details:', teamData);
+
+      setTeam(teamData);
       setFormData({
-        name: teamData.name,
-        description: teamData.description,
-        isPublic: teamData.is_public,
-        maxMembers: teamData.max_members,
-        selectedTags: teamData.tags?.map(tag => tag.id) || [],
+        name: teamData.name || '',
+        description: teamData.description || '',
+        isPublic: Boolean(teamData.is_public),
+        maxMembers: teamData.max_members || 5,
+        selectedTags: teamData.tags?.map(tag => tag.id || tag.tag_id) || [],
       });
     } catch (err) {
       console.error('Error fetching team details:', err);
-      setError('Failed to load team details. Please try again.');
+      setNotification({
+        type: 'error',
+        message: 'Failed to load team details. Please try again.'
+      });
     } finally {
       setLoading(false);
     }
-  }, [teamId]);
-
-  // Check if the current user is the creator of the team
-  const isTeamCreator = team && user && team.creator_id === user.id;
-
-  // Check if the user is already a member of this team
-  const isTeamMember = team && user && team.members?.some(member => member.user_id === user.id);
+  }, [effectiveTeamId]);
 
   useEffect(() => {
-    if (isOpen && teamId) {
+    setIsModalVisible(isOpen);
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (isModalVisible && effectiveTeamId) {
       fetchTeamDetails();
+    } else if (isModalVisible && !effectiveTeamId) {
+      // Handle the case where teamId is not yet available (e.g., just created)
+      setLoading(false); // Don't show loading indefinitely
+      setIsEditing(true); // Directly go to editing mode
     }
-  }, [isOpen, teamId, fetchTeamDetails]);
+  }, [isModalVisible, effectiveTeamId, fetchTeamDetails]);
+
+  useEffect(() => {
+    // Reset state when modal closes
+    if (!isModalVisible) {
+      setNotification({ type: null, message: null });
+      setFormErrors({});
+    }
+  }, [isModalVisible]);
+
+  const isTeamCreator = useMemo(() =>
+    team && user && team.creator_id === user.id,
+    [team, user]
+  );
+
+  const handleClose = useCallback(() => {
+    setIsModalVisible(false);
+    // Allow animation to complete before executing onClose
+    setTimeout(() => {
+      if (onClose) {
+        onClose();
+      } else if (urlTeamId) { // Corrected variable name
+        // If we're on a team-specific route, navigate back to teams
+        navigate('/teams/my-teams');
+      }
+    }, 300);
+  }, [onClose, navigate, urlTeamId]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     const newValue = type === 'checkbox' ? checked : value;
+
+    // Clear error for this field when user starts typing
+    if (formErrors[name]) {
+      setFormErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[name];
+        return newErrors;
+      });
+    }
+
     setFormData(prev => ({
       ...prev,
       [name]: name === 'maxMembers' ? parseInt(newValue, 10) : newValue
@@ -72,55 +131,70 @@ const TeamDetailsModal = ({ isOpen, teamId, onClose, onUpdate, onDelete }) => {
     }));
   }, []);
 
-  const handleSubmit = async () => {
+  const validateForm = () => {
+    const errors = {};
+
+    if (!formData.name.trim()) {
+      errors.name = 'Team name is required';
+    } else if (formData.name.trim().length < 3) {
+      errors.name = 'Team name must be at least 3 characters';
+    }
+
+    if (!formData.description.trim()) {
+      errors.description = 'Team description is required';
+    } else if (formData.description.trim().length < 10) {
+      errors.description = 'Description must be at least 10 characters';
+    }
+
+    if (formData.maxMembers < 2 || formData.maxMembers > 20) {
+      errors.maxMembers = 'Team size must be between 2 and 20 members';
+    }
+
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleSubmit = async (e) => {
+    if (e) e.preventDefault();
+
+    if (!validateForm()) {
+      return;
+    }
+
     try {
       setLoading(true);
-      setError(null);
+      setNotification({ type: null, message: null });
 
       const submissionData = {
-        name: formData.name,
-        description: formData.description,
+        name: formData.name.trim(),
+        description: formData.description.trim(),
         is_public: formData.isPublic,
         max_members: formData.maxMembers,
         tags: formData.selectedTags.map(tagId => ({ tag_id: tagId })),
       };
 
-      const response = await teamService.updateTeam(teamId, submissionData);
+      const response = await teamService.updateTeam(effectiveTeamId, submissionData);
 
-      // Update the local team data
       await fetchTeamDetails();
+
+      setNotification({
+        type: 'success',
+        message: 'Team updated successfully!'
+      });
 
       setIsEditing(false);
 
       if (onUpdate && response.data) {
         onUpdate(response.data);
       } else if (onUpdate && team) {
-        // Fallback to using the current team data if response.data is not available
         onUpdate({ ...team, ...submissionData });
       }
     } catch (err) {
       console.error('Error updating team:', err);
-      setError('Failed to update team. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleApplyToJoin = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      await teamService.addTeamMember(teamId, user.id);
-
-      // Refresh team details
-      await fetchTeamDetails();
-
-      // Show success message
-      setError({ type: 'success', message: 'Successfully applied to join the team!' });
-    } catch (err) {
-      console.error('Error applying to join team:', err);
-      setError('Failed to apply. Please try again.');
+      setNotification({
+        type: 'error',
+        message: 'Failed to update team. Please try again.'
+      });
     } finally {
       setLoading(false);
     }
@@ -130,32 +204,72 @@ const TeamDetailsModal = ({ isOpen, teamId, onClose, onUpdate, onDelete }) => {
     if (window.confirm('Are you sure you want to delete this team? This action cannot be undone.')) {
       try {
         setLoading(true);
-        await teamService.deleteTeam(teamId);
 
-        // Close the modal
-        onClose();
-
-        // Notify parent component
+        let success = false;
         if (onDelete) {
-          onDelete(teamId);
+          success = await onDelete(effectiveTeamId);
+        } else {
+          await teamService.deleteTeam(effectiveTeamId);
+          success = true;
+        }
+
+        if (success) {
+          handleClose();
+          // If we're on a team-specific route, navigate away
+          if (urlTeamId) {
+            navigate('/teams/my-teams');
+          }
         }
       } catch (err) {
         console.error('Error deleting team:', err);
-        setError('Failed to delete team. Please try again.');
-      } finally {
+        setNotification({
+          type: 'error',
+          message: 'Failed to delete team. Please try again.'
+        });
         setLoading(false);
       }
     }
   };
 
-  if (!isOpen) return null;
+  const handleApplyToJoin = async () => { // eslint-disable-line no-unused-vars
+    try {
+      setLoading(true);
+      setNotification({ type: null, message: null });
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black bg-opacity-40" onClick={onClose}></div>
+      await teamService.addTeamMember(effectiveTeamId, user.id);
+      await fetchTeamDetails();
 
-      <div className="relative w-full max-w-2xl max-h-[90vh] rounded-xl overflow-hidden bg-base-100 shadow-lg">
-        {/* Header */}
+      setNotification({
+        type: 'success',
+        message: 'Successfully applied to join the team!'
+      });
+    } catch (err) {
+      console.error('Error applying to join team:', err);
+      setNotification({
+        type: 'error',
+        message: 'Failed to apply. Please try again.'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const renderNotification = () => {
+    if (!notification.type || !notification.message) return null;
+
+    return (
+      <Alert
+        type={notification.type}
+        message={notification.message}
+        onClose={() => setNotification({ type: null, message: null })}
+        className="mb-4"
+      />
+    );
+  };
+
+  const renderContent = () => { // eslint-disable-line no-unused-vars
+    return (
+      <div className="relative w-full max-w-2xl mx-auto max-h-[90vh] rounded-xl overflow-hidden bg-base-100 shadow-lg">
         <div className="px-6 py-4 border-b border-base-300 flex justify-between items-center">
           <h2 className="text-xl font-medium text-primary">
             {isEditing ? 'Edit Team' : 'Team Details'}
@@ -167,7 +281,7 @@ const TeamDetailsModal = ({ isOpen, teamId, onClose, onUpdate, onDelete }) => {
                   variant="ghost"
                   size="sm"
                   onClick={() => setIsEditing(true)}
-                  className="ml-2 hover:bg-[#C7D2FE] hover:text-[#1E40AF]"
+                  className="hover:bg-[#C7D2FE] hover:text-[#1E40AF]"
                   icon={<Edit size={16} />}
                 >
                   Edit
@@ -176,7 +290,7 @@ const TeamDetailsModal = ({ isOpen, teamId, onClose, onUpdate, onDelete }) => {
                   variant="ghost"
                   size="sm"
                   onClick={handleDeleteTeam}
-                  className="ml-2 hover:bg-[#C7D2FE] hover:text-[#1E40AF]"
+                  className="hover:bg-[#C7D2FE] hover:text-[#1E40AF]"
                   icon={<Trash2 size={16} />}
                   disabled={loading}
                 >
@@ -185,7 +299,7 @@ const TeamDetailsModal = ({ isOpen, teamId, onClose, onUpdate, onDelete }) => {
               </>
             )}
             <button
-              onClick={onClose}
+              onClick={handleClose}
               className="btn btn-ghost btn-sm btn-circle"
             >
               <X size={20} />
@@ -193,20 +307,16 @@ const TeamDetailsModal = ({ isOpen, teamId, onClose, onUpdate, onDelete }) => {
           </div>
         </div>
 
-        {/* Modal Body */}
         <div className="flex-1 overflow-auto p-6">
+          {renderNotification()}
           {loading ? (
             <div className="flex justify-center items-center py-12">
               <div className="loading loading-spinner loading-lg text-primary"></div>
             </div>
-          ) : error && typeof error === 'string' ? (
-            <Alert type="error" message={error} />
-          ) : error && error.type === 'success' ? (
-            <Alert type="success" message={error.message} />
           ) : (
             <>
               {isEditing ? (
-                <form className="space-y-6">
+                <form onSubmit={handleSubmit} className="space-y-4">
                   <div className="form-control">
                     <label className="label">Team Name</label>
                     <input
@@ -214,18 +324,30 @@ const TeamDetailsModal = ({ isOpen, teamId, onClose, onUpdate, onDelete }) => {
                       name="name"
                       value={formData.name}
                       onChange={handleChange}
-                      className="input input-bordered"
+                      className={`input input-bordered w-full ${formErrors.name ? 'input-error' : ''}`}
+                      placeholder="Team Name"
                     />
+                    {formErrors.name && (
+                      <label className="label">
+                        <span className="label-text-alt text-error">{formErrors.name}</span>
+                      </label>
+                    )}
                   </div>
 
                   <div className="form-control">
-                    <label className="label">Description</label>
+                    <label className="label">Team Description</label>
                     <textarea
                       name="description"
                       value={formData.description}
                       onChange={handleChange}
-                      className="textarea textarea-bordered h-24"
+                      className={`textarea textarea-bordered h-24 w-full ${formErrors.description ? 'textarea-error' : ''}`}
+                      placeholder="Team Description"
                     ></textarea>
+                    {formErrors.description && (
+                      <label className="label">
+                        <span className="label-text-alt text-error">{formErrors.description}</span>
+                      </label>
+                    )}
                   </div>
 
                   <div className="form-control">
@@ -234,11 +356,16 @@ const TeamDetailsModal = ({ isOpen, teamId, onClose, onUpdate, onDelete }) => {
                       <input
                         type="checkbox"
                         name="isPublic"
+                        className="toggle toggle-primary"
                         checked={formData.isPublic}
                         onChange={handleChange}
-                        className="toggle toggle-primary"
                       />
                     </label>
+                    <p className="text-sm text-base-content/70">
+                      {formData.isPublic
+                        ? 'Your team will be visible to all users'
+                        : 'Your team will only be visible to members'}
+                    </p>
                   </div>
 
                   <div className="form-control">
@@ -247,33 +374,39 @@ const TeamDetailsModal = ({ isOpen, teamId, onClose, onUpdate, onDelete }) => {
                       name="maxMembers"
                       value={formData.maxMembers}
                       onChange={handleChange}
-                      className="select select-bordered"
+                      className={`select select-bordered w-full ${formErrors.maxMembers ? 'select-error' : ''}`}
                     >
                       {[2, 3, 4, 5, 6, 8, 10, 12, 15, 20].map(size => (
                         <option key={size} value={size}>{size} members</option>
                       ))}
                     </select>
+                    {formErrors.maxMembers && (
+                      <label className="label">
+                        <span className="label-text-alt text-error">{formErrors.maxMembers}</span>
+                      </label>
+                    )}
                   </div>
 
                   <div className="form-control">
-                    <label className="label">Team Tags</label>
+                    <label className="label">Team Tags (Optional)</label>
                     <TagSelector
                       selectedTags={formData.selectedTags}
                       onTagsSelected={handleTagSelection}
-                      mode="team"
                     />
                   </div>
 
                   <div className="flex justify-end space-x-2 mt-6">
                     <Button
+                      type="button"
                       variant="ghost"
                       onClick={() => setIsEditing(false)}
                     >
                       Cancel
                     </Button>
                     <Button
+                      type="submit"
                       variant="primary"
-                      onClick={handleSubmit}
+                      disabled={loading}
                     >
                       Save Changes
                     </Button>
@@ -281,40 +414,27 @@ const TeamDetailsModal = ({ isOpen, teamId, onClose, onUpdate, onDelete }) => {
                 </form>
               ) : (
                 <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <h1 className="text-2xl font-bold">{team.name}</h1>
-                  {!isEditing && !isTeamCreator && !isTeamMember && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleApplyToJoin}
-                      disabled={loading}
-                      className="ml-4"
-                    >
-                      Apply to join
-                    </Button>
-                  )}
-                </div>
+                  <h1 className="text-2xl font-bold">{team?.name}</h1>
 
-                  <div className="bg-base-100 p-4 rounded-lg shadow-inner space-y-3">
-                    <p className="text-base-content/90 whitespace-pre-line">{team.description}</p>
+                  <div className="bg-base-200 p-4 rounded-lg shadow-inner space-y-3">
+                    <p className="text-base-content/90 whitespace-pre-line">{team?.description}</p>
 
                     <div className="flex items-center space-x-2 text-sm">
                       <span className="font-medium">Visibility:</span>
-                      <span className={`badge ${team.is_public ? 'badge-success' : 'badge-neutral'}`}>
-                        {team.is_public ? 'Public' : 'Private'}
+                      <span className={`badge ${team?.is_public ? 'badge-success' : 'badge-warning'}`}>
+                        {team?.is_public ? 'Public' : 'Private'}
                       </span>
                     </div>
 
                     <div className="flex items-center space-x-2 text-sm">
                       <Users size={18} className="text-primary" />
-                      <span>{team.current_members_count || 0} / {team.max_members} members</span>
+                      <span>{team?.current_members_count || 0} / {team?.max_members} members</span>
                     </div>
 
                     {/* Tags */}
                     <div>
                       <h3 className="font-medium text-sm mt-4">Team Tags:</h3>
-                      {team.tags?.length > 0 ? (
+                      {team?.tags?.length > 0 ? ( // Corrected optional chaining
                         <div className="flex flex-wrap gap-2 mt-2">
                           {team.tags.map((tag) => (
                             <span key={tag.id || tag.tag_id} className="badge badge-outline">
@@ -329,49 +449,49 @@ const TeamDetailsModal = ({ isOpen, teamId, onClose, onUpdate, onDelete }) => {
 
                     {/* Members */}
                     {team.members && team.members.length > 0 && (
-  <div>
-    <h2 className="text-xl font-semibold mt-6 mb-4">Team Members</h2>
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-      {team.members.map((member) => (
-        <div
-          key={member.user_id}
-          className="flex items-start bg-base-200 rounded-xl shadow p-4 gap-4"
-        >
-          <img
-            src={member.profile_picture || '/default-avatar.png'}
-            alt={`${member.username}'s avatar`}
-            className="w-14 h-14 rounded-full object-cover"
-          />
+                      <div>
+                        <h2 className="text-xl font-semibold mt-6 mb-4">Team Members</h2>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          {team.members.map((member) => (
+                            <div
+                              key={member.user_id}
+                              className="flex items-start bg-base-200 rounded-xl shadow p-4 gap-4"
+                            >
+                              <img
+                                src={member.profile_picture || '/default-avatar.png'}
+                                alt={`${member.username}'s avatar`}
+                                className="w-14 h-14 rounded-full object-cover"
+                            />
 
-          <div className="flex flex-col">
-            <span className="font-medium text-primary">{member.username}</span>
-            {member.tags?.length > 0 && (
-              <div className="flex flex-wrap gap-1 mt-1">
-                {member.tags.map((tag) => (
-                  <span
-                    key={tag.id}
-                    className="badge badge-outline badge-sm text-xs"
-                  >
-                    {tag.name}
-                  </span>
-                ))}
+                            <div className="flex flex-col">
+                              <span className="font-medium text-primary">{member.username}</span>
+                              {member.tags?.length > 0 && (
+                                <div className="flex flex-wrap gap-1 mt-1">
+                                  {member.tags.map((tag) => (
+                                    <span
+                                      key={tag.id}
+                                      className="badge badge-outline badge-sm text-xs"
+                                    >
+                                      {tag.name}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
-          </div>
-        </div>
-      ))}
-    </div>
-  </div>
-)}
-                  </div>
-                </div>
-              )}
-            </>
-          )}
-        </div>
+          </>
+        )}
       </div>
     </div>
   );
 };
+}
 
 export default TeamDetailsModal;
