@@ -1,36 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { tagService } from '../../services/tagService';
-import debounce from '../../utils/debounce'
+// import debounce from '../../utils/debounce'; // Removed debounce import
 
-const TagSelector = ({ onTagsSelected, selectedTags = [], mode = 'profile' }) => {
-  // We'll use this line to suppress the 'mode' unused variable warning
-  // The underscore prefix is a common convention for "intentionally unused" variables
-  const _MODE = mode; // Using uppercase to match the linter rule /^[A-Z_]/u
-  
+const TagSelector = ({ onTagsSelected, selectedTags: initialSelectedTags = [], mode = 'profile' }) => {
+  const _MODE = mode;
+
   const [supercategories, setSupercategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expandedSupercategories, setExpandedSupercategories] = useState({});
   const [expandedCategories, setExpandedCategories] = useState({});
-  const [localSelectedTags, setLocalSelectedTags] = useState(selectedTags);
-  // Comment out interest and experience levels states
-  /*
-  const [experienceLevels, setExperienceLevels] = useState({});
-  const [interestLevels, setInterestLevels] = useState({});
-  */
+  const [localSelectedTags, setLocalSelectedTags] = useState(initialSelectedTags);
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddTagModal, setShowAddTagModal] = useState(false);
   const [newTagName, setNewTagName] = useState('');
   const [selectedCategoryId, setSelectedCategoryId] = useState('');
   const [selectedSupercategoryId, setSelectedSupercategoryId] = useState('');
-  // Comment out expanded tag levels state
-  /*
-  const [expandedTagLevels, setExpandedTagLevels] = useState({});
-  */
-
-  // Initialize from props
-  useEffect(() => {
-    setLocalSelectedTags(selectedTags);
-  }, [selectedTags]);
 
   useEffect(() => {
     const fetchTags = async () => {
@@ -49,90 +33,38 @@ const TagSelector = ({ onTagsSelected, selectedTags = [], mode = 'profile' }) =>
     fetchTags();
   }, []);
 
-  const toggleTagSelection = (tagId) => {
-    const newSelectedTags = localSelectedTags.includes(tagId)
-      ? localSelectedTags.filter((id) => id !== tagId)
-      : [...localSelectedTags, tagId];
+  const toggleTagSelection = useCallback((tagId) => {
+    setLocalSelectedTags((prevSelectedTags) => {
+      const newSelectedTags = prevSelectedTags.includes(tagId)
+        ? prevSelectedTags.filter((id) => id !== tagId)
+        : [...prevSelectedTags, tagId];
 
-    setLocalSelectedTags(newSelectedTags);
-
-    // Comment out level initialization for newly added tags
-    /*
-    if (mode === 'profile') {
-      // Initialize levels for newly added tag
-      if (!localSelectedTags.includes(tagId) && newSelectedTags.includes(tagId)) {
-        setExperienceLevels(prev => ({ ...prev, [tagId]: prev[tagId] || 'beginner' }));
-        setInterestLevels(prev => ({ ...prev, [tagId]: prev[tagId] || 'medium' }));
+      // Defer the call to onTagsSelected using setTimeout
+      if (onTagsSelected) {
+        setTimeout(() => {
+          onTagsSelected(newSelectedTags);
+        }, 0); // 0ms delay, but it's enough to defer
       }
-    }
-    */
 
-    // Notify parent of changes
-    if (onTagsSelected) {
-      // Comment out sending levels to parent, just send tags
-      /*
-      if (mode === 'profile') {
-        onTagsSelected(newSelectedTags, experienceLevels, interestLevels);
-      } else {
-        onTagsSelected(newSelectedTags);
-      }
-      */
-      onTagsSelected(newSelectedTags);
-    }
-  };
+      return newSelectedTags;
+    });
+  }, [onTagsSelected]);
 
-  // Comment out level change handlers
-  /*
-  const handleExperienceLevelChange = (tagId, level) => {
-    if (mode !== 'profile') return;
-
-    const newLevels = { ...experienceLevels, [tagId]: level };
-    setExperienceLevels(newLevels);
-
-    // Notify parent of changes
-    if (onTagsSelected) {
-      onTagsSelected(localSelectedTags, newLevels, interestLevels);
-    }
-  };
-
-  const handleInterestLevelChange = (tagId, level) => {
-    if (mode !== 'profile') return;
-
-    const newLevels = { ...interestLevels, [tagId]: level };
-    setInterestLevels(newLevels);
-
-    // Notify parent of changes
-    if (onTagsSelected) {
-      onTagsSelected(localSelectedTags, experienceLevels, newLevels);
-    }
-  };
-  */
-
-  const toggleSupercategory = (name) => {
+  const toggleSupercategory = useCallback((name) => {
     setExpandedSupercategories((prev) => ({
       ...prev,
       [name]: !prev[name],
     }));
-  };
+  }, []);
 
-  const toggleCategory = (name) => {
+  const toggleCategory = useCallback((name) => {
     setExpandedCategories((prev) => ({
       ...prev,
       [name]: !prev[name],
     }));
-  };
+  }, []);
 
-  // Comment out tag level expansion toggle
-  /*
-  const toggleTagLevelExpansion = (tagId) => {
-    setExpandedTagLevels((prev) => ({
-      ...prev,
-      [tagId]: !prev[tagId],
-    }));
-  };
-  */
-
-  const handleAddTag = async () => {
+  const handleAddTag = useCallback(async () => {
     if (!newTagName || !selectedCategoryId || !selectedSupercategoryId) {
       alert('Please fill in all fields for the new tag.');
       return;
@@ -149,32 +81,13 @@ const TagSelector = ({ onTagsSelected, selectedTags = [], mode = 'profile' }) =>
       setSupercategories(updatedTags || []);
 
       const newTagId = newTag.id;
-      const updatedSelectedTags = [...localSelectedTags, newTagId];
-      setLocalSelectedTags(updatedSelectedTags);
-
-      // Comment out setting levels for new tags
-      /*
-      if (mode === 'profile') {
-        setExperienceLevels((prev) => ({ ...prev, [newTagId]: 'beginner' }));
-        setInterestLevels((prev) => ({ ...prev, [newTagId]: 'medium' }));
-      }
-      */
-
-      // Notify parent of changes
-      if (onTagsSelected) {
-        // Comment out sending levels to parent, just send tags
-        /*
-        if (mode === 'profile') {
-          onTagsSelected(updatedSelectedTags,
-            { ...experienceLevels, [newTagId]: 'beginner' },
-            { ...interestLevels, [newTagId]: 'medium' }
-          );
-        } else {
+      setLocalSelectedTags((prevSelectedTags) => {
+        const updatedSelectedTags = [...prevSelectedTags, newTagId];
+        if (onTagsSelected) {
           onTagsSelected(updatedSelectedTags);
         }
-        */
-        onTagsSelected(updatedSelectedTags);
-      }
+        return updatedSelectedTags;
+      });
 
       setShowAddTagModal(false);
       setNewTagName('');
@@ -182,18 +95,23 @@ const TagSelector = ({ onTagsSelected, selectedTags = [], mode = 'profile' }) =>
       setSelectedSupercategoryId('');
     } catch (error) {
       console.error('Error creating tag:', error);
-      alert(`Failed to create tag: ${error.message || 'Unknown error'}`); // Show backend message
+      alert(`Failed to create tag: ${error.message || 'Unknown error'}`);
     }
-  };
+  }, [newTagName, selectedCategoryId, selectedSupercategoryId, onTagsSelected]);
 
-  // Debounced setSearchQuery function
-  const debouncedSetSearchQuery = debounce((query) => {
-    setSearchQuery(query);
-  }, 300); // Adjust debounce time as needed
+  const debouncedSetSearchQuery = useCallback((query) => {
+    let timer;
+    return function debounced(query) {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        setSearchQuery(query);
+      }, 300);
+    }(query);
+  }, []);
 
-  const handleSearchChange = (e) => {
+  const handleSearchChange = useCallback((e) => {
     debouncedSetSearchQuery(e.target.value);
-  };
+  }, [debouncedSetSearchQuery]);
 
   const filteredSupercategories = supercategories.filter((supercat) =>
     supercat.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -212,7 +130,7 @@ const TagSelector = ({ onTagsSelected, selectedTags = [], mode = 'profile' }) =>
           type="text"
           placeholder="Search tags..."
           value={searchQuery}
-          onChange={handleSearchChange} // Use debounced function
+          onChange={handleSearchChange}
           className="input input-bordered w-full mr-2"
         />
         <button onClick={() => setShowAddTagModal(true)} className="btn btn-primary">
@@ -253,44 +171,6 @@ const TagSelector = ({ onTagsSelected, selectedTags = [], mode = 'profile' }) =>
                             className="mr-2"
                           />
                           <span className="flex-grow">{tag.name}</span>
-
-                          {/* Comment out the levels UI */}
-                          {/*
-                          {mode === 'profile' && localSelectedTags.includes(tag.id) && (
-                            <div>
-                              <button
-                                onClick={() => toggleTagLevelExpansion(tag.id)}
-                                className="text-sm text-blue-500"
-                              >
-                                {expandedTagLevels[tag.id] ? 'Hide Levels' : 'Set Levels'}
-                              </button>
-
-                              {expandedTagLevels[tag.id] && (
-                                <div className="flex space-x-2 ml-2">
-                                  <select
-                                    value={experienceLevels[tag.id] || 'beginner'}
-                                    onChange={(e) => handleExperienceLevelChange(tag.id, e.target.value)}
-                                    className="select select-bordered select-xs"
-                                  >
-                                    <option value="beginner">Beginner</option>
-                                    <option value="intermediate">Intermediate</option>
-                                    <option value="advanced">Advanced</option>
-                                    <option value="expert">Expert</option>
-                                  </select>
-                                  <select
-                                    value={interestLevels[tag.id] || 'medium'}
-                                    onChange={(e) => handleInterestLevelChange(tag.id, e.target.value)}
-                                    className="select select-bordered select-xs"
-                                  >
-                                    <option value="medium">Medium</option>
-                                    <option value="high">High</option>
-                                    <option value="very-high">Very High</option>
-                                  </select>
-                                </div>
-                              )}
-                            </div>
-                          )}
-                          */}
                         </div>
                       ))}
                     </div>
@@ -302,7 +182,6 @@ const TagSelector = ({ onTagsSelected, selectedTags = [], mode = 'profile' }) =>
         </div>
       ))}
 
-      {/* Add New Tag Modal */}
       {showAddTagModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-lg w-96 shadow-lg">
