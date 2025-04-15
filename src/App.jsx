@@ -43,7 +43,6 @@ function App() {
                   <Route path="/teams/create" element={<CreateTeam />} />
                   <Route path="/teams/my-teams" element={<MyTeams />} />
                   <Route path="/teams/:id" element={<TeamDetailsModal />} />
-                  <Route path="/teams/:id" element={<TeamDetails />} />
                   <Route path="/settings" element={<Placeholder pageName="Settings" />} />
                 </Route>
                 
