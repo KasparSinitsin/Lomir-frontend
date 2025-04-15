@@ -167,14 +167,16 @@ const TeamDetailsModal = ({ isOpen, teamId, onClose, onUpdate, onDelete }) => {
                   variant="ghost"
                   size="sm"
                   onClick={() => setIsEditing(true)}
+                  className="ml-2 hover:bg-[#C7D2FE] hover:text-[#1E40AF]"
                   icon={<Edit size={16} />}
                 >
                   Edit
                 </Button>
                 <Button
-                  variant="error"
+                  variant="ghost"
                   size="sm"
                   onClick={handleDeleteTeam}
+                  className="ml-2 hover:bg-[#C7D2FE] hover:text-[#1E40AF]"
                   icon={<Trash2 size={16} />}
                   disabled={loading}
                 >
@@ -279,7 +281,20 @@ const TeamDetailsModal = ({ isOpen, teamId, onClose, onUpdate, onDelete }) => {
                 </form>
               ) : (
                 <div className="space-y-6">
+                <div className="flex items-center justify-between">
                   <h1 className="text-2xl font-bold">{team.name}</h1>
+                  {!isEditing && !isTeamCreator && !isTeamMember && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleApplyToJoin}
+                      disabled={loading}
+                      className="ml-4"
+                    >
+                      Apply to join
+                    </Button>
+                  )}
+                </div>
 
                   <div className="bg-base-100 p-4 rounded-lg shadow-inner space-y-3">
                     <p className="text-base-content/90 whitespace-pre-line">{team.description}</p>
@@ -314,52 +329,46 @@ const TeamDetailsModal = ({ isOpen, teamId, onClose, onUpdate, onDelete }) => {
 
                     {/* Members */}
                     {team.members && team.members.length > 0 && (
-                      <div>
-                        <h3 className="font-medium text-sm mt-4">Team Members:</h3>
-                        <ul className="list-disc pl-5 space-y-1 mt-2">
-                          {team.members.map((member) => (
-                            <li key={member.user_id} className="text-sm">
-                              {member.username || member.email}
-                              {member.role && <span className="badge badge-sm ml-2">{member.role}</span>}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
+  <div>
+    <h2 className="text-xl font-semibold mt-6 mb-4">Team Members</h2>
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      {team.members.map((member) => (
+        <div
+          key={member.user_id}
+          className="flex items-start bg-base-200 rounded-xl shadow p-4 gap-4"
+        >
+          <img
+            src={member.profile_picture || '/default-avatar.png'}
+            alt={`${member.username}'s avatar`}
+            className="w-14 h-14 rounded-full object-cover"
+          />
+
+          <div className="flex flex-col">
+            <span className="font-medium text-primary">{member.username}</span>
+            {member.tags?.length > 0 && (
+              <div className="flex flex-wrap gap-1 mt-1">
+                {member.tags.map((tag) => (
+                  <span
+                    key={tag.id}
+                    className="badge badge-outline badge-sm text-xs"
+                  >
+                    {tag.name}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+)}
                   </div>
                 </div>
               )}
             </>
           )}
         </div>
-
-        {/* Action Button (only show if not editing and not team creator) */}
-        {!isEditing && !isTeamCreator && !isTeamMember && (
-          <div className="absolute bottom-6 right-6">
-            <Button
-              onClick={handleApplyToJoin}
-              variant="primary"
-              disabled={loading}
-              style={{
-                backgroundColor: '#6a4c9c', // soft violet
-                color: '#fff',
-                padding: '16px 32px',
-                fontSize: '18px',
-                borderRadius: '8px',
-                boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
-              }}
-            >
-              Apply to Join
-            </Button>
-          </div>
-        )}
-
-        {/* Already a member message */}
-        {!isEditing && !isTeamCreator && isTeamMember && (
-          <div className="absolute bottom-6 right-6">
-            <span className="badge badge-success p-3">You're a member of this team</span>
-          </div>
-        )}
       </div>
     </div>
   );

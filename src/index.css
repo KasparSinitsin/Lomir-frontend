@@ -138,3 +138,8 @@ body {
 .background-opacity {
   background-color: rgba(255, 255, 255, 0.5); 
 }
+
+.btn-ghost:hover {
+  background-color: #C7D2FE !important;
+  color: #1E40AF !important;
+}

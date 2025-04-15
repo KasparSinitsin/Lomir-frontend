@@ -21,67 +21,37 @@ const TeamCreationForm = () => {
 
   const validateStep = () => {
     const newErrors = {};
-
     switch (step) {
       case 1:
-        if (!formData.name) {
-          newErrors.name = 'Team name is required';
-        } else if (formData.name.length < 3) {
-          newErrors.name = 'Team name must be at least 3 characters';
-        }
-
-        if (!formData.description) {
-          newErrors.description = 'Team description is required';
-        } else if (formData.description.length < 10) {
-          newErrors.description = 'Description must be at least 10 characters';
-        }
+        if (!formData.name) newErrors.name = 'Team name is required';
+        else if (formData.name.length < 3) newErrors.name = 'Team name must be at least 3 characters';
+        if (!formData.description) newErrors.description = 'Team description is required';
+        else if (formData.description.length < 10) newErrors.description = 'Description must be at least 10 characters';
         break;
-
       case 2:
         if (formData.maxMembers < 2 || formData.maxMembers > 20) {
           newErrors.maxMembers = 'Team size must be between 2 and 20 members';
         }
         break;
-
       case 3:
-// Removed the following validation to make tags optional
-      // if (formData.selectedTags.length === 0) {
-      //   newErrors.tags = 'Please select at least one tag for your team';
-      // }
-        break;
+        break; // Tags optional
     }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    let newValue = value;
-
-    if (name === 'maxMembers') {
-      newValue = parseInt(value, 10);
-    } else if (type === 'checkbox') {
-      newValue = checked;
-    }
-
-    setFormData(prev => ({
-      ...prev,
-      [name]: newValue
-    }));
+    const newValue = name === 'maxMembers' ? parseInt(value, 10) : type === 'checkbox' ? checked : value;
+    setFormData(prev => ({ ...prev, [name]: newValue }));
   };
 
   const handleTagSelection = (selectedTags) => {
-    setFormData(prev => ({
-      ...prev,
-      selectedTags
-    }));
+    setFormData(prev => ({ ...prev, selectedTags }));
   };
 
   const nextStep = () => {
-    if (validateStep()) {
-      setStep(prev => Math.min(prev + 1, 3));
-    }
+    if (validateStep()) setStep(prev => Math.min(prev + 1, 3));
   };
 
   const prevStep = () => {
@@ -90,48 +60,33 @@ const TeamCreationForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (isSubmitting) return;  // Prevent further submissions while submitting
-    if (validateStep()) {
-      setIsSubmitting(true);
-      setSubmitError(null);
-  
-      try {
-        const submissionData = {
-          name: formData.name,
-          description: formData.description,
-          is_public: formData.isPublic ? 1 : 0, // Ensure isPublic is sent as 1 or 0
-          max_members: formData.maxMembers,
-          tags: formData.selectedTags.map(tagId => ({
-            tag_id: tagId
-          }))
-        };
-  
-        console.log('Submission Data:', submissionData); // Log to verify
-  
-        const response = await teamService.createTeam(submissionData);
-        console.log('Team creation response:', response); // Log the response to verify
-  
-        // Redirect to 'MyTeams' after successful submission
-        navigate('/teams/my-teams');
-      } catch (error) {
-        console.error('Team creation error details:', error.response?.data);
-        setSubmitError(
-          error.response?.data?.message ||
-          error.message ||
-          'Failed to create team. Please try again.'
-        );
-      } finally {
-        setIsSubmitting(false);
-      }
+    if (isSubmitting || !validateStep()) return;
+    setIsSubmitting(true);
+    setSubmitError(null);
+
+    try {
+      const submissionData = {
+        name: formData.name,
+        description: formData.description,
+        is_public: formData.isPublic ? 1 : 0,
+        max_members: formData.maxMembers,
+        tags: formData.selectedTags.map(tagId => ({ tag_id: tagId }))
+      };
+      const response = await teamService.createTeam(submissionData);
+      navigate('/teams/my-teams');
+    } catch (error) {
+      setSubmitError(error.response?.data?.message || error.message || 'Failed to create team.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const renderStepIndicator = () => (
-    <div className="flex justify-center space-x-2 mb-6">
+    <div className="flex justify-center gap-2 mb-8">
       {[1, 2, 3].map(s => (
         <div
           key={s}
-          className={`h-2 w-2 rounded-full ${
+          className={`w-3 h-3 rounded-full transition-colors ${
             step === s ? 'bg-blue-600' : 'bg-gray-300'
           }`}
         />
@@ -143,40 +98,32 @@ const TeamCreationForm = () => {
     switch (step) {
       case 1:
         return (
-          <>
-            <div className="form-control">
-              <label className="label">
-                <span className="label-text">Team Name</span>
-              </label>
+          <div className="space-y-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Team Name</label>
               <input
                 type="text"
                 name="name"
-                className={`input input-bordered ${errors.name ? 'input-error' : ''}`}
+                className={`mt-1 w-full input input-bordered ${errors.name ? 'input-error' : ''}`}
                 value={formData.name}
                 onChange={handleChange}
               />
-              {errors.name && (
-                <label className="label text-error">{errors.name}</label>
-              )}
+              {errors.name && <p className="mt-1 text-sm text-error">{errors.name}</p>}
             </div>
 
-            <div className="form-control mt-4">
-              <label className="label">
-                <span className="label-text">Team Description</span>
-              </label>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Team Description</label>
               <textarea
                 name="description"
-                className={`textarea textarea-bordered h-24 ${errors.description ? 'textarea-error' : ''}`}
+                className={`mt-1 w-full textarea textarea-bordered h-24 ${errors.description ? 'textarea-error' : ''}`}
                 value={formData.description}
                 onChange={handleChange}
               ></textarea>
-              {errors.description && (
-                <label className="label text-error">{errors.description}</label>
-              )}
+              {errors.description && <p className="mt-1 text-sm text-error">{errors.description}</p>}
             </div>
 
-            <div className="form-control mt-4">
-              <label className="label cursor-pointer">
+            <div>
+              <label className="label cursor-pointer justify-between">
                 <span className="label-text">Public Team</span>
                 <input
                   type="checkbox"
@@ -186,22 +133,20 @@ const TeamCreationForm = () => {
                   onChange={handleChange}
                 />
               </label>
-              <p className="text-sm text-gray-500 mt-2">
+              <p className="text-sm text-gray-500">
                 Public teams are visible to all users. Private teams require invitation.
               </p>
             </div>
-          </>
+          </div>
         );
 
       case 2:
         return (
-          <div className="form-control">
-            <label className="label">
-              <span className="label-text">Maximum Team Size</span>
-            </label>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Maximum Team Size</label>
             <select
               name="maxMembers"
-              className={`select select-bordered ${errors.maxMembers ? 'select-error' : ''}`}
+              className={`mt-1 w-full select select-bordered ${errors.maxMembers ? 'select-error' : ''}`}
               value={formData.maxMembers}
               onChange={handleChange}
             >
@@ -209,63 +154,58 @@ const TeamCreationForm = () => {
                 <option key={size} value={size}>{size} members</option>
               ))}
             </select>
-            {errors.maxMembers && (
-              <label className="label text-error">{errors.maxMembers}</label>
-            )}
+            {errors.maxMembers && <p className="mt-1 text-sm text-error">{errors.maxMembers}</p>}
           </div>
         );
 
-        case 3:
-          return (
-            <div>
-              <h3 className="text-lg font-semibold mb-4">Select Team Tags (Optional)</h3>
-              <TagSelector
-                onTagsSelected={handleTagSelection}
-                selectedTags={formData.selectedTags}
-              />
-              {errors.tags && (
-                <p className="text-error text-sm mt-2">{errors.tags}</p>
-              )}
-            </div>
-          );
+      case 3:
+        return (
+          <div>
+            <h3 className="text-lg font-medium mb-4">Select Team Tags <span className="text-gray-400 text-sm">(optional)</span></h3>
+            <TagSelector
+              onTagsSelected={handleTagSelection}
+              selectedTags={formData.selectedTags}
+            />
+            {errors.tags && <p className="text-error text-sm mt-2">{errors.tags}</p>}
+          </div>
+        );
     }
   };
 
   return (
-    <div className="max-w-xl mx-auto p-4 bg-white shadow-md rounded-lg">
+    <div className="max-w-2xl mx-auto bg-white p-6 rounded-xl shadow-lg">
       {renderStepIndicator()}
       {submitError && <Alert type="error" message={submitError} />}
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} className="space-y-8">
         {renderStepContent()}
 
-        <div className="flex justify-between mt-6">
-          {step > 1 && (
+        <div className="flex items-center justify-between">
+          {step > 1 ? (
             <button
               type="button"
               onClick={prevStep}
-              className="btn btn-outline"
+              className="btn btn-outline flex items-center"
             >
-              <FiChevronLeft className="mr-2" />
-              Back
+              <FiChevronLeft className="mr-1" /> Back
             </button>
-          )}
+          ) : <div></div>}
+
           {step < 3 ? (
             <button
               type="button"
               onClick={nextStep}
-              className="btn btn-primary ml-auto"
-              disabled={isSubmitting} // Disable if submitting
+              disabled={isSubmitting}
+              className="btn btn-primary flex items-center"
             >
-              Next
-              <FiChevronRight className="ml-2" />
+              Next <FiChevronRight className="ml-1" />
             </button>
           ) : (
             <button
               type="submit"
-              className="btn btn-primary ml-auto"
-              disabled={isSubmitting} // Disable submit button during submission
+              disabled={isSubmitting}
+              className="btn btn-primary"
             >
-              {isSubmitting ? 'Submitting...' : 'Create Team'}
+              {isSubmitting ? 'Creating...' : 'Create Team'}
             </button>
           )}
         </div>

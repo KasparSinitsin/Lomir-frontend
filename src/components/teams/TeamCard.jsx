@@ -89,11 +89,11 @@ const TeamCard = ({ team, onUpdate, onDelete }) => {
           
           {isCreator && (
             <Button 
-              variant="error" 
+              variant="ghost" 
               size="sm"
               onClick={handleDeleteClick}
               disabled={isDeleting}
-              className="ml-2"
+              className="ml-2 hover:bg-[#C7D2FE] hover:text-[#1E40AF]"
               icon={<Trash2 size={16} />}
               aria-label="Delete team"
             >
