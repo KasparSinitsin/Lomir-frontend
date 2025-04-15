@@ -3,16 +3,40 @@ import api from './api';
 export const teamService = {
   // Create a new team
   createTeam: async (teamData) => {
-    const validatedTeamData = {
-      name: teamData.name,
-      description: teamData.description || '',
-      is_public: teamData.is_public === 1 ? true : false, 
-      max_members: teamData.max_members || 20, 
-      tags: teamData.tags || [], 
-    };
-
-    const response = await api.post('/teams', validatedTeamData);
-    return response.data;
+    try {
+      console.log("createTeam: Received data:", teamData);
+      
+      // Ensure tags are properly formatted
+      const formattedTags = teamData.tags?.map(tag => {
+        if (typeof tag === 'object' && tag.tag_id) {
+          // If it's already an object with tag_id, ensure it's a number
+          return { tag_id: parseInt(tag.tag_id, 10) };
+        } else if (typeof tag === 'number') {
+          // If it's already a number, use it directly
+          return { tag_id: tag };
+        } else {
+          // Otherwise, try to parse it as a number
+          return { tag_id: parseInt(tag, 10) };
+        }
+      }) || [];
+      
+      const validatedTeamData = {
+        name: teamData.name,
+        description: teamData.description || '',
+        is_public: typeof teamData.is_public === 'boolean' ? teamData.is_public : Boolean(teamData.is_public),
+        max_members: teamData.max_members || 20,
+        tags: formattedTags,
+      };
+      
+      console.log("createTeam: Sending validated data:", validatedTeamData);
+      
+      const response = await api.post('/teams', validatedTeamData);
+      return response.data;
+    } catch (error) {
+      console.error("Error in createTeam:", error);
+      console.error("Error response data:", error.response?.data);
+      throw error;
+    }
   },
 
   // Delete a team
@@ -51,18 +75,29 @@ export const teamService = {
   // Update team details
   updateTeam: async (teamId, teamData) => {
     try {
-      console.log("Updating team with data:", teamData);
+      console.log("updateTeam: Updating team with data:", teamData);
       
-      // If tags are provided, make sure they are properly formatted
-      const dataToSend = {...teamData};
-      if (dataToSend.tags) {
-        dataToSend.tags = dataToSend.tags.map(tag => {
-          // Ensure tag_id is a number
-          return typeof tag === 'object' ? 
-            { tag_id: parseInt(tag.tag_id, 10) } : 
-            { tag_id: parseInt(tag, 10) };
-        });
-      }
+      // Ensure tags are properly formatted
+      const formattedTags = teamData.tags?.map(tag => {
+        if (typeof tag === 'object' && tag.tag_id) {
+          // If it's already an object with tag_id, ensure it's a number
+          return { tag_id: parseInt(tag.tag_id, 10) };
+        } else if (typeof tag === 'number') {
+          // If it's already a number, use it directly
+          return { tag_id: tag };
+        } else {
+          // Otherwise, try to parse it as a number
+          return { tag_id: parseInt(tag, 10) };
+        }
+      }) || [];
+      
+      // Create a new object with formatted tags
+      const dataToSend = {
+        ...teamData,
+        tags: formattedTags
+      };
+      
+      console.log("updateTeam: Sending formatted data:", dataToSend);
       
       const response = await api.put(`/teams/${teamId}`, dataToSend);
       return response.data;
@@ -108,7 +143,7 @@ export const teamService = {
     }
   },
   
-  // Get user role in a team (new method)
+  // Get user role in a team
   getUserRoleInTeam: async (teamId, userId) => {
     try {
       const response = await api.get(`/teams/${teamId}/members/${userId}/role`);
@@ -119,3 +154,5 @@ export const teamService = {
     }
   }
 };
+
+export default teamService;

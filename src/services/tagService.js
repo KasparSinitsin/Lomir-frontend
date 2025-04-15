@@ -1,11 +1,30 @@
-import api from '../services/api';  
+// src/services/tagService.js
+
+import api from './api';  
 
 export const tagService = {
   // Fetch structured tags
   getStructuredTags: async () => {
     try {
       const response = await api.get('/tags/structured');
-      return response.data;
+      console.log("Raw tag structure from API:", response.data);
+      
+      // Process data to ensure all IDs are numeric
+      const processedData = response.data.map(supercat => ({
+        ...supercat,
+        id: parseInt(supercat.id, 10),
+        categories: supercat.categories.map(cat => ({
+          ...cat,
+          id: parseInt(cat.id, 10),
+          tags: cat.tags.map(tag => ({
+            ...tag,
+            id: parseInt(tag.id, 10)
+          }))
+        }))
+      }));
+      
+      console.log("Processed tag structure:", processedData);
+      return processedData;
     } catch (error) {
       console.error('Error fetching structured tags:', error);
       throw error;
@@ -36,3 +55,5 @@ export const tagService = {
     }
   }
 };
+
+export default tagService;

@@ -1,3 +1,5 @@
+// src/components/teams/TeamCreationForm.jsx
+
 import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FiCheck } from 'react-icons/fi';
@@ -57,6 +59,7 @@ const TeamCreationForm = () => {
   }, []);
 
   const handleTagSelection = useCallback((selectedTags) => {
+    console.log("Team Creation - Tags selected:", selectedTags);
     setFormData(prev => ({
       ...prev,
       selectedTags,
@@ -69,26 +72,43 @@ const TeamCreationForm = () => {
 
     const formErrors = validateForm();
     if (Object.keys(formErrors).length > 0) {
+      console.log("Form validation errors:", formErrors);
       setErrors(formErrors);
       return;
     }
 
     setIsSubmitting(true);
     setSubmitError(null);
-    setSubmitSuccess(true);
+    setSubmitSuccess(false);
     try {
+      // Ensure tag IDs are valid integers
+      const formattedTags = formData.selectedTags.map(tagId => {
+        const numericId = parseInt(tagId, 10);
+        console.log(`Converting tag ID ${tagId} to numeric: ${numericId}`);
+        return { tag_id: numericId };
+      });
+      
       const submissionData = {
         name: formData.name,
         description: formData.description,
         is_public: formData.isPublic,
         max_members: formData.maxMembers,
-        tags: formData.selectedTags.map(tagId => ({ tag_id: tagId })),
+        tags: formattedTags,
       };
+      
+      console.log("Submitting team data:", submissionData);
+      
       const response = await teamService.createTeam(submissionData);
+      console.log("Team creation response:", response);
+      
       setNewTeamId(response.data.id);
+      setSubmitSuccess(true);
       setIsModalOpen(true);
     } catch (error) {
       console.error('Team creation error:', error);
+      console.error('Full error object:', JSON.stringify(error, null, 2));
+      console.error('Response data:', error.response?.data);
+      
       setSubmitError(
         error.response?.data?.message ||
         error.message ||
@@ -166,7 +186,15 @@ const TeamCreationForm = () => {
           <label className="block text-gray-700 text-sm font-bold mb-2">
             Add Topic Tags (Optional)
           </label>
-          <TagSelector onTagsSelected={handleTagSelection} initialTags={formData.selectedTags} />
+          <TagSelector 
+            onTagsSelected={handleTagSelection} 
+            selectedTags={formData.selectedTags} 
+          />
+          {import.meta.env.DEV && (
+            <div className="mt-2 text-sm text-gray-600">
+              <p>Debug: Selected tag IDs: {formData.selectedTags.join(', ')}</p>
+            </div>
+          )}
         </div>
       </div>
     );
