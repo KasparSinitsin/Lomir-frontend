@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { tagService } from '../../services/tagService';
-// import debounce from '../../utils/debounce'; // Removed debounce
 
 const TagSelector = ({ onTagsSelected, selectedTags: initialSelectedTags = [], mode = 'profile' }) => {
   const _MODE = mode;
@@ -22,6 +21,7 @@ const TagSelector = ({ onTagsSelected, selectedTags: initialSelectedTags = [], m
         setLoading(true);
         const response = await tagService.getStructuredTags();
         setSupercategories(response || []);
+        console.log("Available tag structure:", response);
       } catch (error) {
         console.error('Error fetching tags:', error);
         setSupercategories([]);
@@ -33,19 +33,30 @@ const TagSelector = ({ onTagsSelected, selectedTags: initialSelectedTags = [], m
     fetchTags();
   }, []);
 
+  // Update localSelectedTags when initialSelectedTags prop changes
+  useEffect(() => {
+    if (initialSelectedTags) {
+      setLocalSelectedTags(initialSelectedTags);
+    }
+  }, [initialSelectedTags]);
+
+  // Call parent callback when localSelectedTags changes
+  useEffect(() => {
+    if (onTagsSelected) {
+      onTagsSelected(localSelectedTags);
+    }
+  }, [localSelectedTags, onTagsSelected]);
+
   const toggleTagSelection = useCallback((tagId) => {
     setLocalSelectedTags((prevSelectedTags) => {
-      const newSelectedTags = prevSelectedTags.includes(tagId)
-        ? prevSelectedTags.filter((id) => id !== tagId)
-        : [...prevSelectedTags, tagId];
-
-      if (onTagsSelected) {
-        onTagsSelected(newSelectedTags); // Removed setTimeout
-      }
-
+      const tagIdNum = parseInt(tagId, 10);
+      const newSelectedTags = prevSelectedTags.includes(tagIdNum)
+        ? prevSelectedTags.filter((id) => id !== tagIdNum)
+        : [...prevSelectedTags, tagIdNum];
+      
       return newSelectedTags;
     });
-  }, [onTagsSelected]);
+  }, []);
 
   const toggleSupercategory = useCallback((name) => {
     setExpandedSupercategories((prev) => ({
@@ -80,9 +91,6 @@ const TagSelector = ({ onTagsSelected, selectedTags: initialSelectedTags = [], m
       const newTagId = newTag.id;
       setLocalSelectedTags((prevSelectedTags) => {
         const updatedSelectedTags = [...prevSelectedTags, newTagId];
-        if (onTagsSelected) {
-          onTagsSelected(updatedSelectedTags);
-        }
         return updatedSelectedTags;
       });
 
@@ -94,22 +102,13 @@ const TagSelector = ({ onTagsSelected, selectedTags: initialSelectedTags = [], m
       console.error('Error creating tag:', error);
       alert(`Failed to create tag: ${error.message || 'Unknown error'}`);
     }
-  }, [newTagName, selectedCategoryId, selectedSupercategoryId, onTagsSelected]);
+  }, [newTagName, selectedCategoryId, selectedSupercategoryId]);
 
-  // Debounced setSearchQuery function
-  const debouncedSetSearchQuery = useCallback((query) => {
-    let timer;
-    return function debounced(query) {
-      if (timer) clearTimeout(timer);
-      timer = setTimeout(() => {
-        setSearchQuery(query);
-      }, 300);
-    }(query);
-  }, []);
-
+  // Debounced search query update
   const handleSearchChange = useCallback((e) => {
-    debouncedSetSearchQuery(e.target.value);
-  }, [debouncedSetSearchQuery]);
+    const query = e.target.value;
+    setSearchQuery(query);
+  }, []);
 
   const filteredSupercategories = supercategories.filter((supercat) =>
     supercat.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -118,6 +117,11 @@ const TagSelector = ({ onTagsSelected, selectedTags: initialSelectedTags = [], m
       cat.tags.some((tag) => tag.name.toLowerCase().includes(searchQuery.toLowerCase()))
     )
   );
+
+  const debugTags = () => {
+    console.log("Current loaded tags:", supercategories);
+    console.log("Currently selected tags:", localSelectedTags);
+  };
 
   if (loading) return <div>Loading tags...</div>;
 
@@ -135,6 +139,16 @@ const TagSelector = ({ onTagsSelected, selectedTags: initialSelectedTags = [], m
           Add Tag
         </button>
       </div>
+
+      {process.env.NODE_ENV === 'development' && (
+        <button 
+          type="button" 
+          className="btn btn-sm btn-ghost text-xs" 
+          onClick={debugTags}
+        >
+          Debug Tags
+        </button>
+      )}
 
       {filteredSupercategories.map((supercat) => (
         <div key={supercat.id} className="border rounded-lg">
@@ -164,7 +178,7 @@ const TagSelector = ({ onTagsSelected, selectedTags: initialSelectedTags = [], m
                         <div key={tag.id} className="flex items-center">
                           <input
                             type="checkbox"
-                            checked={localSelectedTags.includes(tag.id)}
+                            checked={localSelectedTags.includes(parseInt(tag.id, 10))}
                             onChange={() => toggleTagSelection(tag.id)}
                             className="mr-2"
                           />
