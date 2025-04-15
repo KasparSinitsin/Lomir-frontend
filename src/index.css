@@ -4,7 +4,6 @@
 
 /* Global background image */
 body {
-  background-image: url('./assets/images/Gradient_4.jpg') !important;
   background-size: cover;
   background-attachment: fixed;
   background-position: center;
@@ -136,7 +135,7 @@ body {
 }
 
 .background-opacity {
-  background-color: rgba(255, 255, 255, 0.5); 
+  background-color: rgba(255, 255, 255, 0.5);
 }
 
 .btn-ghost:hover {

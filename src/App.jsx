@@ -1,3 +1,4 @@
+import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import Navbar from './components/layout/Navbar';
@@ -10,16 +11,18 @@ import Register from './pages/Register';
 import Profile from './pages/Profile';
 import BadgeOverview from './pages/BadgeOverview';
 import CreateTeam from './pages/CreateTeam';
-import MyTeams from './pages/MyTeams'; 
+import MyTeams from './pages/MyTeams';
 import SearchPage from './pages/SearchPage';
-import DesignSystem from './pages/DesignSystem'; 
+import DesignSystem from './pages/DesignSystem';
 import './index.css';
+
+import backgroundImage from './assets/images/Gradient_4.jpg'; // Import the image
 
 function App() {
   return (
     <AuthProvider>
       <Router>
-        <div data-theme="lomirlite" className="bg-[url('./assets/images/Gradient_4.jpg')] min-h-screen flex flex-col">
+        <div data-theme="lomirlite" style={{ backgroundImage: `url(${backgroundImage})` }} className="min-h-screen flex flex-col">
           <Navbar />
           <main className="flex-grow py-6">
             <div className="content-container">
@@ -33,7 +36,7 @@ function App() {
                 <Route path="/teams" element={<Placeholder pageName="Teams" />} />
                 <Route path="/search" element={<SearchPage />} />
                 <Route path="/design-system" element={<DesignSystem />} />
-                
+
                 {/* Protected routes */}
                 <Route element={<ProtectedRoute />}>
                   <Route path="/profile" element={<Profile />} />
@@ -42,7 +45,7 @@ function App() {
                   <Route path="/teams/my-teams" element={<MyTeams />} />
                   <Route path="/settings" element={<Placeholder pageName="Settings" />} />
                 </Route>
-                
+
                 {/* Catch-all route */}
                 <Route path="*" element={<Placeholder pageName="Page Not Found" />} />
               </Routes>

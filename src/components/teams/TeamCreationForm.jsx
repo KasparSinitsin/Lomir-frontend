@@ -4,6 +4,7 @@ import { FiCheck } from 'react-icons/fi';
 import TagSelector from '../tags/TagSelector';
 import Alert from '../common/Alert';
 import { teamService } from '../../services/teamService';
+import TeamDetailsModal from './TeamDetailsModal';
 
 const TeamCreationForm = () => {
   const navigate = useNavigate();
@@ -19,6 +20,7 @@ const TeamCreationForm = () => {
   const [submitError, setSubmitError] = useState(null);
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [newTeamId, setNewTeamId] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const validateForm = useCallback(() => {
     const newErrors = {};
@@ -51,11 +53,7 @@ const TeamCreationForm = () => {
       [name]: newValue,
     }));
     // Clear any existing error for the changed field
-    setErrors(prevErrors => {
-      const newErrors = { ...prevErrors };
-      delete newErrors[name];
-      return newErrors;
-    });
+    setErrors(prevErrors => ({ ...prevErrors, [name]: '' }));
   }, []);
 
   const handleTagSelection = useCallback((selectedTags) => {
@@ -77,8 +75,7 @@ const TeamCreationForm = () => {
 
     setIsSubmitting(true);
     setSubmitError(null);
-    setSubmitSuccess(false);
-
+    setSubmitSuccess(true);
     try {
       const submissionData = {
         name: formData.name,
@@ -88,9 +85,8 @@ const TeamCreationForm = () => {
         tags: formData.selectedTags.map(tagId => ({ tag_id: tagId })),
       };
       const response = await teamService.createTeam(submissionData);
-      setSubmitSuccess(true);
       setNewTeamId(response.data.id);
-      navigate('/teams/my-teams'); // Redirect on success
+      setIsModalOpen(true);
     } catch (error) {
       console.error('Team creation error:', error);
       setSubmitError(
@@ -98,18 +94,16 @@ const TeamCreationForm = () => {
         error.message ||
         'Failed to create team. Please try again.'
       );
+      setSubmitSuccess(false);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  return (
-    <div className="max-w-xl mx-auto p-4 bg-white shadow-md rounded-lg">
-      <h1 className="text-2xl font-bold mb-6 text-center">Create a New Team</h1>
-      {submitError && <Alert type="error" message={submitError} onClose={() => setSubmitError(null)} className="mb-4" />}
-
-      {/* Single-Step Form Content */}
-      <form onSubmit={handleSubmit}>
+  const renderStepContent = useCallback(() => {
+    return (
+      <div>
+        <h2 className="text-xl font-semibold mb-4">Create a New Team</h2>
         <div className="mb-4">
           <label htmlFor="name" className="block text-gray-700 text-sm font-bold mb-2">
             Team Name
@@ -174,7 +168,16 @@ const TeamCreationForm = () => {
           </label>
           <TagSelector onTagsSelected={handleTagSelection} initialTags={formData.selectedTags} />
         </div>
+      </div>
+    );
+  }, [formData, errors, handleTagSelection, handleChange]);
 
+  return (
+    <div className="max-w-xl mx-auto p-4 bg-white shadow-md rounded-lg">
+      <h1 className="text-2xl font-bold mb-6 text-center">Create a New Team</h1>
+      {submitError && <Alert type="error" message={submitError} onClose={() => setSubmitError(null)} className="mb-4" />}
+      <form onSubmit={handleSubmit}>
+        {renderStepContent()}
         <button
           type="submit"
           className="btn btn-primary ml-auto"
@@ -182,32 +185,34 @@ const TeamCreationForm = () => {
         >
           {isSubmitting ? 'Creating...' : 'Create Team'}
         </button>
-
-        {submitSuccess && (
-          <div className="text-center mt-6">
-            <FiCheck className="mx-auto mb-4 text-green-500 text-4xl" />
-            <p className="mb-4 font-semibold">Team created successfully!</p>
-            <div className="flex justify-center gap-4">
-              <button
-                type="button"
-                onClick={() => navigate('/teams/my-teams')}
-                className="btn btn-primary"
-              >
-                Go to My Teams
-              </button>
-              {newTeamId && (
-                <button
-                  type="button"
-                  onClick={() => navigate(`/teams/${newTeamId}`)}
-                  className="btn btn-outline"
-                >
-                  View Team Details
-                </button>
-              )}
-            </div>
-          </div>
-        )}
       </form>
+
+      {submitSuccess && (
+        <div className="text-center mt-6">
+          <FiCheck className="mx-auto mb-4 text-green-500 text-4xl" />
+          <p className="mb-4 font-semibold">Team created successfully!</p>
+          <div className="flex justify-center gap-4">
+            <button
+              type="button"
+              onClick={() => setIsModalOpen(true)}
+              className="btn btn-primary"
+            >
+              Edit Team
+            </button>
+          </div>
+        </div>
+      )}
+
+      {isModalOpen && (
+        <TeamDetailsModal
+          isOpen={isModalOpen}
+          teamId={newTeamId}
+          onClose={() => {
+            setIsModalOpen(false);
+            navigate('/teams/my-teams');
+          }}
+        />
+      )}
     </div>
   );
 };
