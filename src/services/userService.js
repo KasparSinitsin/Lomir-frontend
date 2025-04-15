@@ -19,5 +19,27 @@ export const userService = {
       console.error('Error updating user:', error);
       throw error;
     }
+  },
+
+  getUserTags: async (userId) => {
+    try {
+      const response = await api.get(`/users/${userId}/tags`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching user tags:', error);
+      throw error;
+    }
+  },
+
+  updateUserTags: async (userId, tagIds) => {
+    try {
+      const response = await api.put(`/users/${userId}/tags`, { 
+        tags: tagIds.map(tagId => ({ tag_id: tagId })) 
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error updating user tags:', error);
+      throw error;
+    }
   }
 };
