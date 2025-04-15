@@ -14,10 +14,11 @@ const TeamDetailsModal = ({
   onUpdate,
   onDelete,
   userRole
+  // isFromSearch = false 
 }) => {
   const navigate = useNavigate();
   const { id: urlTeamId } = useParams();
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
 
   const effectiveTeamId = useMemo(() => propTeamId || urlTeamId, [propTeamId, urlTeamId]);
 
@@ -99,6 +100,12 @@ const TeamDetailsModal = ({
   );
   
   const canEditTeam = isTeamCreator || isTeamAdmin;
+  
+  // Check if user is already a member of this team
+  const isTeamMember = useMemo(() => {
+    if (!team || !user) return false;
+    return team.members?.some(member => member.user_id === user.id) || isTeamCreator || userRole;
+  }, [team, user, isTeamCreator, userRole]);
 
   const handleClose = useCallback(() => {
     setIsModalVisible(false);
@@ -260,6 +267,25 @@ const TeamDetailsModal = ({
     } finally {
       setLoading(false);
     }
+  };
+
+  const renderJoinButton = () => {
+    if (!isAuthenticated || !user || isTeamMember || loading) {
+      return null;
+    }
+    
+    return (
+      <div className="mt-6">
+        <Button
+          variant="primary"
+          onClick={handleApplyToJoin}
+          disabled={loading}
+          className="w-full"
+        >
+          Apply to Join Team
+        </Button>
+      </div>
+    );
   };
 
   const renderNotification = () => {
@@ -501,6 +527,9 @@ const TeamDetailsModal = ({
                         </div>
                       </div>
                     )}
+                    
+                    {/* Join Team Button for non-members */}
+                    {renderJoinButton()}
                   </div>
                 </div>
               )}
