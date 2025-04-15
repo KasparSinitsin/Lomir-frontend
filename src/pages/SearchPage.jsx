@@ -186,7 +186,8 @@ const SearchPage = () => {
                   <TeamCard 
                     key={team.id} 
                     team={team} 
-                    onUpdate={handleTeamUpdate} 
+                    onUpdate={handleTeamUpdate}
+                    isSearchResult={true} 
                   />
                 ))}
               </Grid>

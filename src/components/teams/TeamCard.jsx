@@ -7,12 +7,12 @@ import { teamService } from '../../services/teamService';
 import { useAuth } from '../../contexts/AuthContext';
 import Alert from '../common/Alert';
 
-const TeamCard = ({ team, onUpdate, onDelete }) => {
+const TeamCard = ({ team, onUpdate, onDelete, isSearchResult = false }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState(null);
   const [userRole, setUserRole] = useState(null);
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   
   // Check if current user is the creator of the team
   const isCreator = user && team.creator_id === user.id;
@@ -20,7 +20,7 @@ const TeamCard = ({ team, onUpdate, onDelete }) => {
   // Fetch the user's role in this team on component mount
   useEffect(() => {
     const fetchUserRole = async () => {
-      if (user && team.id) {
+      if (user && team.id && !isSearchResult) {
         try {
           const response = await teamService.getUserRoleInTeam(team.id, user.id);
           setUserRole(response.data.role);
@@ -31,7 +31,7 @@ const TeamCard = ({ team, onUpdate, onDelete }) => {
     };
     
     fetchUserRole();
-  }, [user, team.id]);
+  }, [user, team.id, isSearchResult]);
   
   const openTeamDetails = () => {
     setIsModalOpen(true);
@@ -67,6 +67,11 @@ const TeamCard = ({ team, onUpdate, onDelete }) => {
     }
   };
   
+  // Determine if the View Details button should be shown
+  const showViewDetailsButton = isSearchResult
+    ? isAuthenticated // On search page, show to all authenticated users
+    : (isCreator || userRole === 'admin' || userRole === 'member'); // On team pages, show to members
+  
   return (
     <>
       <Card 
@@ -86,7 +91,7 @@ const TeamCard = ({ team, onUpdate, onDelete }) => {
             <span>{team.is_public ? 'Public' : 'Private'}</span>
           </div>
           
-          {userRole && (
+          {userRole && !isSearchResult && (
             <span className="badge badge-primary badge-outline">
               {userRole}
             </span>
@@ -94,8 +99,8 @@ const TeamCard = ({ team, onUpdate, onDelete }) => {
         </div>
         
         <div className="mt-auto flex justify-between items-center">
-          {/* Show View Details button to all team members and the creator */}
-          {(isCreator || userRole === 'admin' || userRole === 'member') && (
+          {/* Show View Details button based on our condition */}
+          {showViewDetailsButton && (
             <Button 
               variant="primary" 
               size="sm" 
@@ -106,7 +111,7 @@ const TeamCard = ({ team, onUpdate, onDelete }) => {
             </Button>
           )}
           
-          {isCreator && (
+          {isCreator && !isSearchResult && (
             <Button 
               variant="ghost" 
               size="sm"
@@ -129,6 +134,7 @@ const TeamCard = ({ team, onUpdate, onDelete }) => {
         onUpdate={handleTeamUpdate}
         onDelete={onDelete}
         userRole={userRole}
+        isFromSearch={isSearchResult}
       />
     </>
   );
