@@ -22,22 +22,22 @@ const TagSelector = ({ selectedTags: initialSelectedTags = [], onTagsSelected, m
         const response = await tagService.getStructuredTags();
         console.log("Available tag structure:", response);
         
-        // Add detailed logging to see the full structure with actual IDs
-        console.log("FULL TAG STRUCTURE:", JSON.stringify(response, null, 2));
+        // // Add detailed logging to see the full structure with actual IDs
+        // console.log("FULL TAG STRUCTURE:", JSON.stringify(response, null, 2));
         
-        // Log the first tag from each category for quick debugging
-        if (response && response.length > 0) {
-          response.forEach(supercat => {
-            if (supercat.categories && supercat.categories.length > 0) {
-              supercat.categories.forEach(category => {
-                if (category.tags && category.tags.length > 0) {
-                  console.log(`Sample tag from ${supercat.name} > ${category.name}:`, 
-                    `ID: ${category.tags[0].id}, Name: ${category.tags[0].name}`);
-                }
-              });
-            }
-          });
-        }
+        // // Log the first tag from each category for quick debugging
+        // if (response && response.length > 0) {
+        //   response.forEach(supercat => {
+        //     if (supercat.categories && supercat.categories.length > 0) {
+        //       supercat.categories.forEach(category => {
+        //         if (category.tags && category.tags.length > 0) {
+        //           console.log(`Sample tag from ${supercat.name} > ${category.name}:`, 
+        //             `ID: ${category.tags[0].id}, Name: ${category.tags[0].name}`);
+        //         }
+        //       });
+        //     }
+        //   });
+        // }
         
         setSupercategories(response || []);
       } catch (error) {
