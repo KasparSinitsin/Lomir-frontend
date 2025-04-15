@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { tagService } from '../../services/tagService';
 
-const TagSelector = ({ onTagsSelected, selectedTags: initialSelectedTags = [], mode = 'profile' }) => {
+const TagSelector = ({ selectedTags: initialSelectedTags = [], onTagsSelected, mode = 'profile' }) => {
   const _MODE = mode;
 
   const [supercategories, setSupercategories] = useState([]);
@@ -20,8 +20,26 @@ const TagSelector = ({ onTagsSelected, selectedTags: initialSelectedTags = [], m
       try {
         setLoading(true);
         const response = await tagService.getStructuredTags();
-        setSupercategories(response || []);
         console.log("Available tag structure:", response);
+        
+        // // Add detailed logging to see the full structure with actual IDs
+        // console.log("FULL TAG STRUCTURE:", JSON.stringify(response, null, 2));
+        
+        // // Log the first tag from each category for quick debugging
+        // if (response && response.length > 0) {
+        //   response.forEach(supercat => {
+        //     if (supercat.categories && supercat.categories.length > 0) {
+        //       supercat.categories.forEach(category => {
+        //         if (category.tags && category.tags.length > 0) {
+        //           console.log(`Sample tag from ${supercat.name} > ${category.name}:`, 
+        //             `ID: ${category.tags[0].id}, Name: ${category.tags[0].name}`);
+        //         }
+        //       });
+        //     }
+        //   });
+        // }
+        
+        setSupercategories(response || []);
       } catch (error) {
         console.error('Error fetching tags:', error);
         setSupercategories([]);
@@ -29,7 +47,7 @@ const TagSelector = ({ onTagsSelected, selectedTags: initialSelectedTags = [], m
         setLoading(false);
       }
     };
-
+  
     fetchTags();
   }, []);
 
@@ -48,12 +66,20 @@ const TagSelector = ({ onTagsSelected, selectedTags: initialSelectedTags = [], m
   }, [localSelectedTags, onTagsSelected]);
 
   const toggleTagSelection = useCallback((tagId) => {
+    const numericTagId = parseInt(tagId, 10);
+    console.log(`Toggling tag with ID: ${tagId} (numeric: ${numericTagId})`);
+    
     setLocalSelectedTags((prevSelectedTags) => {
-      const tagIdNum = parseInt(tagId, 10);
-      const newSelectedTags = prevSelectedTags.includes(tagIdNum)
-        ? prevSelectedTags.filter((id) => id !== tagIdNum)
-        : [...prevSelectedTags, tagIdNum];
+      const isSelected = prevSelectedTags.includes(numericTagId);
+      let newSelectedTags;
       
+      if (isSelected) {
+        newSelectedTags = prevSelectedTags.filter((id) => id !== numericTagId);
+      } else {
+        newSelectedTags = [...prevSelectedTags, numericTagId];
+      }
+      
+      console.log("Updated selected tags:", newSelectedTags);
       return newSelectedTags;
     });
   }, []);
@@ -141,14 +167,14 @@ const TagSelector = ({ onTagsSelected, selectedTags: initialSelectedTags = [], m
       </div>
 
       {import.meta.env.DEV && (
-  <button 
-    type="button" 
-    className="btn btn-sm btn-ghost text-xs" 
-    onClick={debugTags}
-  >
-    Debug Tags
-  </button>
-)}
+        <button 
+          type="button" 
+          className="btn btn-sm btn-ghost text-xs" 
+          onClick={debugTags}
+        >
+          Debug Tags
+        </button>
+      )}
 
       {filteredSupercategories.map((supercat) => (
         <div key={supercat.id} className="border rounded-lg">
@@ -174,17 +200,20 @@ const TagSelector = ({ onTagsSelected, selectedTags: initialSelectedTags = [], m
 
                   {expandedCategories[category.name] && (
                     <div className="ml-4 space-y-2">
-                      {category.tags.map((tag) => (
-                        <div key={tag.id} className="flex items-center">
-                          <input
-                            type="checkbox"
-                            checked={localSelectedTags.includes(parseInt(tag.id, 10))}
-                            onChange={() => toggleTagSelection(tag.id)}
-                            className="mr-2"
-                          />
-                          <span className="flex-grow">{tag.name}</span>
-                        </div>
-                      ))}
+                      {category.tags.map((tag) => {
+                        const tagId = parseInt(tag.id, 10);
+                        return (
+                          <div key={tagId} className="flex items-center">
+                            <input
+                              type="checkbox"
+                              checked={localSelectedTags.includes(tagId)}
+                              onChange={() => toggleTagSelection(tagId)}
+                              className="mr-2"
+                            />
+                            <span className="flex-grow">{tag.name} (ID: {tagId})</span>
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
