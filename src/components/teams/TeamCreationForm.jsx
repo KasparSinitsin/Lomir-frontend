@@ -25,15 +25,15 @@ const TeamCreationForm = () => {
 
     switch (step) {
       case 1:
-        if (!formData.name) {
+        if (!formData.name.trim()) {
           newErrors.name = 'Team name is required';
-        } else if (formData.name.length < 3) {
+        } else if (formData.name.trim().length < 3) {
           newErrors.name = 'Team name must be at least 3 characters';
         }
 
-        if (!formData.description) {
+        if (!formData.description.trim()) {
           newErrors.description = 'Team description is required';
-        } else if (formData.description.length < 10) {
+        } else if (formData.description.trim().length < 10) {
           newErrors.description = 'Description must be at least 10 characters';
         }
         break;
@@ -48,6 +48,7 @@ const TeamCreationForm = () => {
         break;
     }
 
+    console.log('Validation Errors:', newErrors);
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -76,8 +77,17 @@ const TeamCreationForm = () => {
   };
 
   const nextStep = () => {
-    if (validateStep()) {
+    console.log('Current Step:', step);
+    console.log('Current Form Data:', formData);
+    console.log('Current Errors:', errors);
+
+    const isStepValid = validateStep();
+    
+    if (isStepValid) {
       setStep(prev => Math.min(prev + 1, 3));
+      console.log('Moving to next step');
+    } else {
+      console.log('Step validation failed');
     }
   };
 
@@ -124,6 +134,10 @@ const TeamCreationForm = () => {
     if (createdTeamId) {
       navigate(`/teams/${createdTeamId}`);
     }
+  };
+
+  const handleGoToMyTeams = () => {
+    navigate('/teams/my-teams');
   };
 
   const renderStepIndicator = () => (
@@ -220,11 +234,11 @@ const TeamCreationForm = () => {
           return (
             <div className="text-center">
               <h3 className="text-xl font-semibold mb-4">Team Created Successfully!</h3>
-              <p className="mb-6">Would you like to view and edit your new team's details?</p>
+              <p className="mb-6">What would you like to do next?</p>
               <div className="flex justify-center space-x-4">
                 <button
                   type="button"
-                  onClick={() => navigate('/teams/my-teams')}
+                  onClick={handleGoToMyTeams}
                   className="btn btn-outline"
                 >
                   Go to My Teams
@@ -240,6 +254,7 @@ const TeamCreationForm = () => {
             </div>
           );
         }
+
         return (
           <div>
             <h3 className="text-lg font-semibold mb-4">Select Team Tags (Optional)</h3>

@@ -11,6 +11,7 @@ import Profile from './pages/Profile';
 import BadgeOverview from './pages/BadgeOverview';
 import CreateTeam from './pages/CreateTeam';
 import MyTeams from './pages/MyTeams'; 
+import TeamDetailsModal from './components/teams/TeamDetailsModal';
 import SearchPage from './pages/SearchPage';
 import DesignSystem from './pages/DesignSystem'; 
 import './index.css';
@@ -40,6 +41,7 @@ function App() {
                   <Route path="/profile/edit" element={<Placeholder pageName="Edit Profile" />} />
                   <Route path="/teams/create" element={<CreateTeam />} />
                   <Route path="/teams/my-teams" element={<MyTeams />} />
+                  <Route path="/teams/:id" element={<TeamDetailsModal />} />
                   <Route path="/settings" element={<Placeholder pageName="Settings" />} />
                 </Route>
                 

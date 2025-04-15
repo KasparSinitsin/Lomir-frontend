@@ -1,8 +1,7 @@
-// src/components/teams/TeamCard.jsx
 import React, { useState } from 'react';
 import Card from '../common/Card';
 import Button from '../common/Button';
-import { Users, MapPin, Trash2 } from 'lucide-react'; // Add Trash2 icon
+import { Users, MapPin, Trash2 } from 'lucide-react';
 import TeamDetailsModal from './TeamDetailsModal';
 import { teamService } from '../../services/teamService';
 import { useAuth } from '../../contexts/AuthContext';
@@ -14,14 +13,15 @@ const TeamCard = ({ team, onUpdate, onDelete }) => {
   const [error, setError] = useState(null);
   const { user } = useAuth();
   
-  // Check if current user is the creator of the team
   const isCreator = user && team.creator_id === user.id;
   
   const openTeamDetails = () => {
+    console.log('Opening team details for team:', team.id);
     setIsModalOpen(true);
   };
   
   const closeTeamDetails = () => {
+    console.log('Closing team details');
     setIsModalOpen(false);
   };
   
@@ -32,7 +32,7 @@ const TeamCard = ({ team, onUpdate, onDelete }) => {
   };
 
   const handleDeleteClick = async (e) => {
-    e.stopPropagation(); // Prevent opening the details modal
+    e.stopPropagation();
     
     if (window.confirm('Are you sure you want to delete this team? This action cannot be undone.')) {
       try {
@@ -81,7 +81,10 @@ const TeamCard = ({ team, onUpdate, onDelete }) => {
           <Button 
             variant="primary" 
             size="sm" 
-            onClick={openTeamDetails}
+            onClick={(e) => {
+              e.stopPropagation();
+              openTeamDetails();
+            }}
             className="flex-grow"
           >
             View Details
@@ -104,12 +107,15 @@ const TeamCard = ({ team, onUpdate, onDelete }) => {
       </Card>
       
       <TeamDetailsModal 
-        isOpen={isModalOpen}
-        teamId={team.id}
-        onClose={closeTeamDetails}
-        onUpdate={handleTeamUpdate}
-        onDelete={onDelete}
-      />
+  isOpen={isModalOpen}
+  teamId={team.id}
+  onClose={() => {
+    console.log('Closing modal from TeamCard');
+    setIsModalOpen(false);
+  }}
+  onUpdate={handleTeamUpdate}
+  onDelete={onDelete}
+/>
     </>
   );
 };
