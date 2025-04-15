@@ -8,13 +8,12 @@ import Alert from '../common/Alert';
 import { X, Edit, Users, Trash2 } from 'lucide-react';
 
 const TeamDetailsModal = ({
-  isOpen = true, // Default to true for URL access
+  isOpen = true,
   teamId: propTeamId,
   onClose,
   onUpdate,
   onDelete,
   userRole
-  // isFromSearch = false 
 }) => {
   const navigate = useNavigate();
   const { id: urlTeamId } = useParams();
@@ -54,7 +53,7 @@ const TeamDetailsModal = ({
         description: teamData.description || '',
         isPublic: Boolean(teamData.is_public),
         maxMembers: teamData.max_members || 5,
-        selectedTags: teamData.tags?.map(tag => tag.id || tag.tag_id) || [],
+        selectedTags: teamData.tags?.map(tag => parseInt(tag.id || tag.tag_id, 10)) || [],
       });
     } catch (err) {
       console.error('Error fetching team details:', err);
@@ -140,6 +139,7 @@ const TeamDetailsModal = ({
   };
 
   const handleTagSelection = useCallback((selectedTags) => {
+    console.log("Tags selected:", selectedTags);
     setFormData(prev => ({
       ...prev,
       selectedTags,
@@ -180,13 +180,21 @@ const TeamDetailsModal = ({
       setLoading(true);
       setNotification({ type: null, message: null });
 
+      // Log the selected tag IDs to help debug
+      console.log("Selected tag IDs:", formData.selectedTags);
+
       const submissionData = {
         name: formData.name.trim(),
         description: formData.description.trim(),
         is_public: formData.isPublic,
         max_members: formData.maxMembers,
-        tags: formData.selectedTags.map(tagId => ({ tag_id: tagId })),
+        // Make sure tag IDs are valid integers
+        tags: formData.selectedTags.map(tagId => ({ 
+          tag_id: parseInt(tagId, 10) 
+        })),
       };
+
+      console.log("Submitting team data:", submissionData);
 
       const response = await teamService.updateTeam(effectiveTeamId, submissionData);
 
@@ -206,9 +214,16 @@ const TeamDetailsModal = ({
       }
     } catch (err) {
       console.error('Error updating team:', err);
+      
+      // Improve error message by extracting the specific error from the API response
+      let errorMessage = 'Failed to update team. Please try again.';
+      if (err.response?.data?.errors && err.response.data.errors.length > 0) {
+        errorMessage = `Error: ${err.response.data.errors[0]}`;
+      }
+      
       setNotification({
         type: 'error',
-        message: 'Failed to update team. Please try again.'
+        message: errorMessage
       });
     } finally {
       setLoading(false);
@@ -436,6 +451,11 @@ const TeamDetailsModal = ({
                       selectedTags={formData.selectedTags}
                       onTagsSelected={handleTagSelection}
                     />
+{import.meta.env.DEV && (
+  <div className="mt-2 text-sm text-base-content/70">
+    <p>Debug: Selected tag IDs: {formData.selectedTags.join(', ')}</p>
+  </div>
+)}
                   </div>
 
                   <div className="flex justify-end space-x-2 mt-6">
