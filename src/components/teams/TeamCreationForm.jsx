@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiChevronRight, FiChevronLeft } from 'react-icons/fi';
+import { FiChevronRight, FiChevronLeft, FiCheck } from 'react-icons/fi';
 import TagSelector from '../tags/TagSelector';
 import Alert from '../common/Alert';
 import { teamService } from '../../services/teamService';
@@ -17,10 +17,10 @@ const TeamCreationForm = () => {
   });
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState(null);
+  const [notification, setNotification] = useState(null);
   const [createdTeamId, setCreatedTeamId] = useState(null);
 
-  const validateStep = () => {
+  const validateStep = useCallback(() => {
     const newErrors = {};
 
     switch (step) {
@@ -48,10 +48,9 @@ const TeamCreationForm = () => {
         break;
     }
 
-    console.log('Validation Errors:', newErrors);
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  };
+  }, [step, formData]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -63,31 +62,31 @@ const TeamCreationForm = () => {
       newValue = checked;
     }
 
+    // Clear error for the field being changed
+    if (errors[name]) {
+      setErrors(prev => {
+        const newErrors = {...prev};
+        delete newErrors[name];
+        return newErrors;
+      });
+    }
+
     setFormData(prev => ({
       ...prev,
       [name]: newValue
     }));
   };
 
-  const handleTagSelection = (selectedTags) => {
+  const handleTagSelection = useCallback((selectedTags) => {
     setFormData(prev => ({
       ...prev,
       selectedTags
     }));
-  };
+  }, []);
 
   const nextStep = () => {
-    console.log('Current Step:', step);
-    console.log('Current Form Data:', formData);
-    console.log('Current Errors:', errors);
-
-    const isStepValid = validateStep();
-    
-    if (isStepValid) {
+    if (validateStep()) {
       setStep(prev => Math.min(prev + 1, 3));
-      console.log('Moving to next step');
-    } else {
-      console.log('Step validation failed');
     }
   };
 
@@ -101,13 +100,13 @@ const TeamCreationForm = () => {
     
     if (validateStep()) {
       setIsSubmitting(true);
-      setSubmitError(null);
+      setNotification(null);
   
       try {
         const submissionData = {
-          name: formData.name,
-          description: formData.description || '',
-          is_public: formData.isPublic ? 1 : 0,
+          name: formData.name.trim(),
+          description: formData.description.trim(),
+          is_public: formData.isPublic,
           max_members: formData.maxMembers,
           tags: formData.selectedTags.map(tagId => ({
             tag_id: tagId
@@ -117,14 +116,19 @@ const TeamCreationForm = () => {
         const response = await teamService.createTeam(submissionData);
         
         setCreatedTeamId(response.data.id);
-        setIsSubmitting(false);
+        setNotification({
+          type: 'success',
+          message: 'Team created successfully!'
+        });
       } catch (error) {
         console.error('Team creation error details:', error.response?.data);
-        setSubmitError(
-          error.response?.data?.message ||
-          error.message ||
-          'Failed to create team. Please try again.'
-        );
+        setNotification({
+          type: 'error',
+          message: error.response?.data?.message || 
+                   error.message || 
+                   'Failed to create team. Please try again.'
+        });
+      } finally {
         setIsSubmitting(false);
       }
     }
@@ -145,8 +149,8 @@ const TeamCreationForm = () => {
       {[1, 2, 3].map(s => (
         <div
           key={s}
-          className={`h-2 w-2 rounded-full ${
-            step === s ? 'bg-blue-600' : 'bg-gray-300'
+          className={`h-2 w-${step === s ? '6' : '2'} rounded-full transition-all duration-300 ${
+            step === s ? 'bg-primary' : step > s ? 'bg-success' : 'bg-gray-300'
           }`}
         />
       ))}
@@ -168,6 +172,7 @@ const TeamCreationForm = () => {
                 className={`input input-bordered ${errors.name ? 'input-error' : ''}`}
                 value={formData.name}
                 onChange={handleChange}
+                placeholder="Enter a distinctive team name"
               />
               {errors.name && (
                 <label className="label text-error">{errors.name}</label>
@@ -183,6 +188,7 @@ const TeamCreationForm = () => {
                 className={`textarea textarea-bordered h-24 ${errors.description ? 'textarea-error' : ''}`}
                 value={formData.description}
                 onChange={handleChange}
+                placeholder="Describe your team's purpose, goals, and what you're looking for in teammates"
               ></textarea>
               {errors.description && (
                 <label className="label text-error">{errors.description}</label>
@@ -200,8 +206,10 @@ const TeamCreationForm = () => {
                   onChange={handleChange}
                 />
               </label>
-              <p className="text-sm text-gray-500 mt-2">
-                Public teams are visible to all users. Private teams require invitation.
+              <p className="text-sm text-base-content/70 mt-2">
+                {formData.isPublic 
+                  ? 'Your team will be visible to all users in search results' 
+                  : 'Your team will be private and only visible to invited members'}
               </p>
             </div>
           </>
@@ -226,100 +234,126 @@ const TeamCreationForm = () => {
             {errors.maxMembers && (
               <label className="label text-error">{errors.maxMembers}</label>
             )}
+            
+            <p className="text-sm text-base-content/70 mt-4">
+              Choose a team size that fits your project needs. You can always change this later.
+            </p>
           </div>
         );
 
-      case 3:
-        if (createdTeamId) {
-          return (
-            <div className="text-center">
-              <h3 className="text-xl font-semibold mb-4">Team Created Successfully!</h3>
-              <p className="mb-6">What would you like to do next?</p>
-              <div className="flex justify-center space-x-4">
-                <button
-                  type="button"
-                  onClick={handleGoToMyTeams}
-                  className="btn btn-outline"
-                >
-                  Go to My Teams
-                </button>
-                <button
-                  type="button"
-                  onClick={handleViewTeamDetails}
-                  className="btn btn-primary"
-                >
-                  View Team Details
-                </button>
+        case 3:
+          if (createdTeamId) {
+            return (
+              <div className="text-center py-6">
+                <div className="w-16 h-16 bg-success text-white rounded-full flex items-center justify-center mx-auto mb-4">
+                  <FiCheck size={32} />
+                </div>
+                <h3 className="text-xl font-semibold mb-4">Team Created Successfully!</h3>
+                <p className="mb-6 text-base-content/80">
+                  Your team has been created and is ready for new members.
+                </p>
+                <div className="flex flex-col sm:flex-row justify-center gap-4">
+                  <button
+                    type="button"
+                    onClick={handleGoToMyTeams}
+                    className="btn btn-outline"
+                  >
+                    Go to My Teams
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleViewTeamDetails}
+                    className="btn btn-primary"
+                  >
+                    View Team Details
+                  </button>
+                </div>
               </div>
-            </div>
-          );
-        }
+            );
+          }
 
-        return (
-          <div>
-            <h3 className="text-lg font-semibold mb-4">Select Team Tags (Optional)</h3>
-            <TagSelector
-              onTagsSelected={handleTagSelection}
-              selectedTags={formData.selectedTags}
-            />
-            {errors.tags && (
-              <p className="text-error text-sm mt-2">{errors.tags}</p>
-            )}
-          </div>
-        );
-    }
-  };
+       return (
+         <div>
+           <h3 className="text-lg font-semibold mb-4">Select Team Tags (Optional)</h3>
+           <p className="text-sm text-base-content/70 mb-4">
+             Tags help others find your team when searching for specific interests or skills.
+           </p>
+           <TagSelector
+             onTagsSelected={handleTagSelection}
+             selectedTags={formData.selectedTags}
+           />
+           {errors.tags && (
+             <p className="text-error text-sm mt-2">{errors.tags}</p>
+           )}
+         </div>
+       );
+   }
+ };
 
-  const renderButtons = () => {
-    if (createdTeamId) {
-      return null;
-    }
+ const renderButtons = () => {
+   if (createdTeamId) {
+     return null;
+   }
 
-    return (
-      <div className="flex justify-between mt-6">
-        {step > 1 && (
-          <button
-            type="button"
-            onClick={prevStep}
-            className="btn btn-outline"
-          >
-            <FiChevronLeft className="mr-2" />
-            Back
-          </button>
-        )}
-        {step < 3 ? (
-          <button
-            type="button"
-            onClick={nextStep}
-            className="btn btn-primary ml-auto"
-            disabled={isSubmitting}
-          >
-            Next
-            <FiChevronRight className="ml-2" />
-          </button>
-        ) : (
-          <button
-            type="submit"
-            className="btn btn-primary ml-auto"
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? 'Creating Team...' : 'Create Team'}
-          </button>
-        )}
-      </div>
-    );
-  };
+   return (
+     <div className="flex justify-between mt-6">
+       {step > 1 && (
+         <button
+           type="button"
+           onClick={prevStep}
+           className="btn btn-outline"
+         >
+           <FiChevronLeft className="mr-2" />
+           Back
+         </button>
+       )}
+       {step < 3 ? (
+         <button
+           type="button"
+           onClick={nextStep}
+           className="btn btn-primary ml-auto"
+           disabled={isSubmitting}
+         >
+           Next
+           <FiChevronRight className="ml-2" />
+         </button>
+       ) : (
+         <button
+           type="submit"
+           className="btn btn-primary ml-auto"
+           disabled={isSubmitting}
+         >
+           {isSubmitting ? (
+             <>
+               <span className="loading loading-spinner loading-xs mr-2"></span>
+               Creating Team...
+             </>
+           ) : 'Create Team'}
+         </button>
+       )}
+     </div>
+   );
+ };
 
-  return (
-    <div className="max-w-xl mx-auto p-4 bg-white shadow-md rounded-lg">
-      {renderStepIndicator()}
-      {submitError && <Alert type="error" message={submitError} />}
-      <form onSubmit={handleSubmit}>
-        {renderStepContent()}
-        {renderButtons()}
-      </form>
-    </div>
-  );
+ return (
+   <div className="max-w-xl mx-auto p-6 bg-base-100 shadow-md rounded-lg">
+     {renderStepIndicator()}
+     
+     {notification && (
+       <Alert 
+         type={notification.type} 
+         message={notification.message} 
+         onClose={() => setNotification(null)}
+         className="mb-4"
+       />
+     )}
+     
+     <form onSubmit={handleSubmit}>
+       {renderStepContent()}
+       {renderButtons()}
+     </form>
+   </div>
+ );
 };
 
 export default TeamCreationForm;
