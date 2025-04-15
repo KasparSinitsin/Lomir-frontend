@@ -86,7 +86,11 @@ const TeamCreationForm = () => {
 
   const nextStep = () => {
     if (validateStep()) {
-      setStep(prev => Math.min(prev + 1, 3));
+      const newStep = Math.min(step + 1, 3);
+      setStep(newStep);
+      
+      // Make sure we don't automatically submit when moving to step 3
+      console.log(`Moving to step ${newStep}`);
     }
   };
 
