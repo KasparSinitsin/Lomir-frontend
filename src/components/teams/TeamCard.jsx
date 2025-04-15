@@ -20,10 +20,10 @@ const TeamCard = ({ team, onUpdate, onDelete }) => {
     setIsModalOpen(true);
   };
   
-  const closeTeamDetails = () => {
-    console.log('Closing team details');
-    setIsModalOpen(false);
-  };
+  // const closeTeamDetails = () => {
+  //   console.log('Closing team details');
+  //   setIsModalOpen(false);
+  // };
   
   const handleTeamUpdate = (updatedTeam) => {
     if (onUpdate) {
