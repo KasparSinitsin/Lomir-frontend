@@ -8,14 +8,20 @@ import Card from '../components/common/Card';
 import Button from '../components/common/Button';
 import DataDisplay from '../components/common/DataDisplay';
 import Alert from '../components/common/Alert';
-import { Mail, MapPin, User } from 'lucide-react';
+import { Mail, MapPin, User, Edit } from 'lucide-react';
 import { tagService } from '../services/tagService';
+import { userService } from '../services/userService';
 import BadgeCard from '../components/badges/BadgeCard'; 
+import TagSelector from '../components/tags/TagSelector';
 
 const Profile = () => {
   const { user, logout } = useAuth();
   const [registrationMessage, setRegistrationMessage] = useState('');
   const [tags, setTags] = useState([]);
+  const [isEditingTags, setIsEditingTags] = useState(false);
+  const [selectedTags, setSelectedTags] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     const message = localStorage.getItem('registrationMessage');
@@ -33,8 +39,37 @@ const Profile = () => {
       }
     };
 
+    const fetchUserTags = async () => {
+      if (user) {
+        try {
+          const userTagsResponse = await userService.getUserTags(user.id);
+          setSelectedTags(userTagsResponse.data.map(tag => tag.id));
+        } catch (error) {
+          console.error('Error fetching user tags:', error);
+        }
+      }
+    };
+
     fetchTags();
-  }, []);
+    fetchUserTags();
+  }, [user]);
+
+  const handleTagsUpdate = async () => {
+    if (!user) return;
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      await userService.updateUserTags(user.id, selectedTags);
+      setIsEditingTags(false);
+    } catch (error) {
+      console.error('Error updating user tags:', error);
+      setError('Failed to update tags. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   if (!user) {
     return (
@@ -108,22 +143,60 @@ const Profile = () => {
         <Section
           title="My Skills & Interests"
           action={
-            <Button
-              variant="ghost"
-              size="sm"
-              className="hover:bg-violet-200 hover:text-violet-700"
-            >
-              Manage Skills
-            </Button>
+            !isEditingTags ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="hover:bg-violet-200 hover:text-violet-700"
+                onClick={() => setIsEditingTags(true)}
+              >
+                Manage Skills
+              </Button>
+            ) : null
           }
         >
-          <div className="flex flex-wrap gap-2">
-            {tags.map((tag) => (
-              <span key={tag.id} className="badge badge-primary badge-outline p-3">
-                {tag.name}
-              </span>
-            ))}
-          </div>
+          {!isEditingTags ? (
+            <div className="flex flex-wrap gap-2">
+              {selectedTags.length > 0 ? (
+                selectedTags.map((tagId) => {
+                  const tag = tags
+                    .flatMap(supercat => supercat.categories)
+                    .flatMap(cat => cat.tags)
+                    .find(t => t.id === tagId);
+                  return tag ? (
+                    <span key={tagId} className="badge badge-primary badge-outline p-3">
+                      {tag.name}
+                    </span>
+                  ) : null;
+                })
+              ) : (
+                <p className="text-base-content/70">No skills or interests added yet.</p>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <TagSelector
+                selectedTags={selectedTags}
+                onTagsSelected={(tags) => setSelectedTags(tags)}
+              />
+              <div className="flex justify-end space-x-2 mt-4">
+                <Button 
+                  variant="ghost" 
+                  onClick={() => setIsEditingTags(false)}
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  variant="primary" 
+                  onClick={handleTagsUpdate}
+                  disabled={loading}
+                >
+                  {loading ? 'Saving...' : 'Save Tags'}
+                </Button>
+              </div>
+              {error && <Alert type="error" message={error} />}
+            </div>
+          )}
         </Section>
 
         <Section title="My Badges">
