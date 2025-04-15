@@ -12,7 +12,8 @@ const TeamDetailsModal = ({
   teamId: propTeamId,
   onClose,
   onUpdate,
-  onDelete
+  onDelete,
+  userRole
 }) => {
   const navigate = useNavigate();
   const { id: urlTeamId } = useParams();
@@ -91,6 +92,13 @@ const TeamDetailsModal = ({
     team && user && team.creator_id === user.id,
     [team, user]
   );
+  
+  const isTeamAdmin = useMemo(() =>
+    userRole === 'admin',
+    [userRole]
+  );
+  
+  const canEditTeam = isTeamCreator || isTeamAdmin;
 
   const handleClose = useCallback(() => {
     setIsModalVisible(false);
@@ -98,7 +106,7 @@ const TeamDetailsModal = ({
     setTimeout(() => {
       if (onClose) {
         onClose();
-      } else if (urlTeamId) { // Corrected variable name
+      } else if (urlTeamId) {
         // If we're on a team-specific route, navigate back to teams
         navigate('/teams/my-teams');
       }
@@ -231,7 +239,7 @@ const TeamDetailsModal = ({
     }
   };
 
-  const handleApplyToJoin = async () => { // eslint-disable-line no-unused-vars
+  const handleApplyToJoin = async () => {
     try {
       setLoading(true);
       setNotification({ type: null, message: null });
@@ -267,15 +275,22 @@ const TeamDetailsModal = ({
     );
   };
 
-  const renderContent = () => { // eslint-disable-line no-unused-vars
-    return (
-      <div className="relative w-full max-w-2xl mx-auto max-h-[90vh] rounded-xl overflow-hidden bg-base-100 shadow-lg">
+  if (!isModalVisible) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      {/* Backdrop overlay */}
+      <div className="absolute inset-0 bg-black bg-opacity-40" onClick={handleClose}></div>
+      
+      {/* Modal container */}
+      <div className="relative w-full max-w-2xl max-h-[90vh] rounded-xl overflow-hidden bg-base-100 shadow-lg">
         <div className="px-6 py-4 border-b border-base-300 flex justify-between items-center">
           <h2 className="text-xl font-medium text-primary">
             {isEditing ? 'Edit Team' : 'Team Details'}
           </h2>
           <div className="flex items-center space-x-2">
-            {isTeamCreator && !isEditing && (
+            {/* Only show Edit/Delete buttons if user has permission */}
+            {canEditTeam && !isEditing && (
               <>
                 <Button
                   variant="ghost"
@@ -286,16 +301,18 @@ const TeamDetailsModal = ({
                 >
                   Edit
                 </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleDeleteTeam}
-                  className="hover:bg-[#C7D2FE] hover:text-[#1E40AF]"
-                  icon={<Trash2 size={16} />}
-                  disabled={loading}
-                >
-                  Delete
-                </Button>
+                {isTeamCreator && ( // Only creator can delete, not admins
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleDeleteTeam}
+                    className="hover:bg-[#C7D2FE] hover:text-[#1E40AF]"
+                    icon={<Trash2 size={16} />}
+                    disabled={loading}
+                  >
+                    Delete
+                  </Button>
+                )}
               </>
             )}
             <button
@@ -434,7 +451,7 @@ const TeamDetailsModal = ({
                     {/* Tags */}
                     <div>
                       <h3 className="font-medium text-sm mt-4">Team Tags:</h3>
-                      {team?.tags?.length > 0 ? ( // Corrected optional chaining
+                      {team?.tags?.length > 0 ? (
                         <div className="flex flex-wrap gap-2 mt-2">
                           {team.tags.map((tag) => (
                             <span key={tag.id || tag.tag_id} className="badge badge-outline">
@@ -448,7 +465,7 @@ const TeamDetailsModal = ({
                     </div>
 
                     {/* Members */}
-                    {team.members && team.members.length > 0 && (
+                    {team?.members && team.members.length > 0 && (
                       <div>
                         <h2 className="text-xl font-semibold mt-6 mb-4">Team Members</h2>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -457,41 +474,42 @@ const TeamDetailsModal = ({
                               key={member.user_id}
                               className="flex items-start bg-base-200 rounded-xl shadow p-4 gap-4"
                             >
-                              <img
-                                src={member.profile_picture || '/default-avatar.png'}
-                                alt={`${member.username}'s avatar`}
-                                className="w-14 h-14 rounded-full object-cover"
-                            />
-
-                            <div className="flex flex-col">
-                              <span className="font-medium text-primary">{member.username}</span>
-                              {member.tags?.length > 0 && (
-                                <div className="flex flex-wrap gap-1 mt-1">
-                                  {member.tags.map((tag) => (
-                                    <span
-                                      key={tag.id}
-                                      className="badge badge-outline badge-sm text-xs"
-                                    >
-                                      {tag.name}
-                                    </span>
-                                  ))}
+                              <div className="avatar placeholder">
+                                <div className="bg-primary text-primary-content rounded-full w-12 h-12">
+                                  <span className="text-lg">{member.username?.charAt(0) || '?'}</span>
                                 </div>
-                              )}
+                              </div>
+
+                              <div className="flex flex-col">
+                                <span className="font-medium text-primary">{member.username}</span>
+                                <span className="text-xs text-base-content/70">{member.role}</span>
+                                {member.tags?.length > 0 && (
+                                  <div className="flex flex-wrap gap-1 mt-1">
+                                    {member.tags.map((tag) => (
+                                      <span
+                                        key={tag.id}
+                                        className="badge badge-outline badge-sm text-xs"
+                                      >
+                                        {tag.name}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
                             </div>
-                          </div>
-                        ))}
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
-              </div>
-            )}
-          </>
-        )}
+              )}
+            </>
+          )}
+        </div>
       </div>
     </div>
   );
 };
-}
 
 export default TeamDetailsModal;

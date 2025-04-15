@@ -16,15 +16,15 @@ export const teamService = {
   },
 
   // Delete a team
-deleteTeam: async (teamId) => {
-  try {
-    const response = await api.delete(`/teams/${teamId}`);
-    return response.data;
-  } catch (error) {
-    console.error(`Error deleting team ${teamId}:`, error.response ? error.response.data : error.message);
-    throw error;
-  }
-},
+  deleteTeam: async (teamId) => {
+    try {
+      const response = await api.delete(`/teams/${teamId}`);
+      return response.data;
+    } catch (error) {
+      console.error(`Error deleting team ${teamId}:`, error.response ? error.response.data : error.message);
+      throw error;
+    }
+  },
 
   // Fetch all teams
   getAllTeams: async (params = {}) => {
@@ -92,6 +92,17 @@ deleteTeam: async (teamId) => {
     } catch (error) {
       console.error('Error fetching user teams:', error.response ? error.response.data : error.message);
       throw error;
+    }
+  },
+  
+  // Get user role in a team (new method)
+  getUserRoleInTeam: async (teamId, userId) => {
+    try {
+      const response = await api.get(`/teams/${teamId}/members/${userId}/role`);
+      return response.data;
+    } catch (error) {
+      console.error(`Error fetching user role in team ${teamId}:`, error.response ? error.response.data : error.message);
+      return { data: { role: null } }; // Return a default response on error
     }
   }
 };

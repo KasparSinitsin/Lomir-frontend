@@ -1,8 +1,7 @@
-// src/components/teams/TeamCard.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Card from '../common/Card';
 import Button from '../common/Button';
-import { Users, MapPin, Trash2 } from 'lucide-react'; // Add Trash2 icon
+import { Users, MapPin, Trash2 } from 'lucide-react';
 import TeamDetailsModal from './TeamDetailsModal';
 import { teamService } from '../../services/teamService';
 import { useAuth } from '../../contexts/AuthContext';
@@ -12,10 +11,27 @@ const TeamCard = ({ team, onUpdate, onDelete }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState(null);
+  const [userRole, setUserRole] = useState(null);
   const { user } = useAuth();
   
   // Check if current user is the creator of the team
   const isCreator = user && team.creator_id === user.id;
+  
+  // Fetch the user's role in this team on component mount
+  useEffect(() => {
+    const fetchUserRole = async () => {
+      if (user && team.id) {
+        try {
+          const response = await teamService.getUserRoleInTeam(team.id, user.id);
+          setUserRole(response.data.role);
+        } catch (err) {
+          console.error('Error fetching user role:', err);
+        }
+      }
+    };
+    
+    fetchUserRole();
+  }, [user, team.id]);
   
   const openTeamDetails = () => {
     setIsModalOpen(true);
@@ -70,22 +86,25 @@ const TeamCard = ({ team, onUpdate, onDelete }) => {
             <span>{team.is_public ? 'Public' : 'Private'}</span>
           </div>
           
-          {team.user_team_role && (
+          {userRole && (
             <span className="badge badge-primary badge-outline">
-              {team.user_team_role}
+              {userRole}
             </span>
           )}
         </div>
         
         <div className="mt-auto flex justify-between items-center">
-          <Button 
-            variant="primary" 
-            size="sm" 
-            onClick={openTeamDetails}
-            className="flex-grow"
-          >
-            View Details
-          </Button>
+          {/* Show View Details button to all team members and the creator */}
+          {(isCreator || userRole === 'admin' || userRole === 'member') && (
+            <Button 
+              variant="primary" 
+              size="sm" 
+              onClick={openTeamDetails}
+              className="flex-grow"
+            >
+              View Details
+            </Button>
+          )}
           
           {isCreator && (
             <Button 
@@ -109,6 +128,7 @@ const TeamCard = ({ team, onUpdate, onDelete }) => {
         onClose={closeTeamDetails}
         onUpdate={handleTeamUpdate}
         onDelete={onDelete}
+        userRole={userRole}
       />
     </>
   );
