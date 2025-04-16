@@ -6,7 +6,7 @@ export const tagService = {
   // Fetch structured tags
   getStructuredTags: async () => {
     try {
-      const response = await api.get('/tags/structured');
+      const response = await api.get('/api/tags/structured');
       console.log("Raw tag structure from API:", response.data);
       
       // Process data to ensure all IDs are numeric
@@ -34,7 +34,7 @@ export const tagService = {
   // Create a new tag
   createTag: async (tagData) => {
     try {
-      const response = await api.post('/tags/create', tagData);
+      const response = await api.post('/api/tags/create', tagData);
       return response.data;
     } catch (error) {
       console.error('Error creating tag:', error);
