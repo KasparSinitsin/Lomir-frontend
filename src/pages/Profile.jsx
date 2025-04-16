@@ -150,7 +150,7 @@ const Profile = () => {
                 className="hover:bg-violet-200 hover:text-violet-700"
                 onClick={() => setIsEditingTags(true)}
               >
-                Manage Skills
+                Edit Tags
               </Button>
             ) : null
           }
