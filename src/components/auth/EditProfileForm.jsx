@@ -179,10 +179,17 @@ const EditProfileForm = () => {
             </FormGroup>
 
             <FormGroup label="Skills & Interests">
-              <TagSelector
-                selectedTags={formData.selectedTags}
-                onTagsSelected={handleTagSelection}
-              />
+            <TagSelector
+  key={`edit-tag-selector-${user?.id || 'new'}`}
+  selectedTags={formData.selectedTags}
+  onTagsSelected={(selectedTags) => {
+    console.log('Edit form selected tags:', selectedTags);
+    setFormData(prev => ({
+      ...prev,
+      selectedTags,
+    }));
+  }}
+/>
             </FormGroup>
 
             <div className="flex justify-end space-x-4 mt-6">

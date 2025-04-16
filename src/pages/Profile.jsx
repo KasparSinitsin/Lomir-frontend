@@ -175,10 +175,14 @@ const Profile = () => {
             </div>
           ) : (
             <div className="space-y-4">
-              <TagSelector
-                selectedTags={selectedTags}
-                onTagsSelected={(tags) => setSelectedTags(tags)}
-              />
+<TagSelector
+  key={`tag-selector-${user.id}`} // Add a unique key
+  selectedTags={selectedTags}
+  onTagsSelected={(tags) => {
+    console.log('Selected tags:', tags); // Add logging
+    setSelectedTags(tags);
+  }}
+/>
               <div className="flex justify-end space-x-2 mt-4">
                 <Button 
                   variant="ghost" 
