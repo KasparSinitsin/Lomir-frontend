@@ -16,11 +16,11 @@ export const AuthProvider = ({ children }) => {
         try {
           const response = await api.get('/auth/me', {
             headers: {
-              Authorization: `Bearer ${token}`
-            }
+              Authorization: `Bearer ${token}`,
+            },
           });
 
-          setUser(response.data.data.user);
+          setUser(response.data.data.user);  // Ensure your response data structure matches this
           setError(null);
         } catch (err) {
           console.error('Failed to load user:', err);
@@ -46,7 +46,7 @@ export const AuthProvider = ({ children }) => {
   const register = async (userData) => {
     try {
       setLoading(true);
-      const response = await api.post('/auth/register', userData);
+      const response = await api.post('api/auth/register', userData);
       const { token, user } = response.data.data;
 
       localStorage.setItem('token', token);
@@ -55,10 +55,11 @@ export const AuthProvider = ({ children }) => {
       setError(null);
       return { success: true };
     } catch (err) {
+      console.error('Registration error:', err);
       setError(err.response?.data?.message || 'Registration failed. Please try again.');
       return {
         success: false,
-        message: err.response?.data?.message || 'Registration failed'
+        message: err.response?.data?.message || 'Registration failed',
       };
     } finally {
       setLoading(false);
@@ -69,7 +70,7 @@ export const AuthProvider = ({ children }) => {
   const login = async (credentials) => {
     try {
       setLoading(true);
-      const response = await api.post('/auth/login', credentials);
+      const response = await api.post('api/auth/login', credentials);  // Make sure the endpoint is correct
       const { token, user } = response.data.data;
 
       localStorage.setItem('token', token);
@@ -78,10 +79,11 @@ export const AuthProvider = ({ children }) => {
       setError(null);
       return { success: true };
     } catch (err) {
+      console.error('Login error:', err);
       setError(err.response?.data?.message || 'Login failed. Please check your credentials.');
       return {
         success: false,
-        message: err.response?.data?.message || 'Login failed'
+        message: err.response?.data?.message || 'Login failed',
       };
     } finally {
       setLoading(false);
@@ -93,6 +95,7 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('token');
     setToken(null);
     setUser(null);
+    setError(null);  // Clear error when logging out
   };
 
   // Provide the authentication context
