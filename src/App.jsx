@@ -9,6 +9,7 @@ import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Profile from './pages/Profile';
+import EditProfile from './pages/EditProfile';
 import BadgeOverview from './pages/BadgeOverview';
 import CreateTeam from './pages/CreateTeam';
 import MyTeams from './pages/MyTeams';
@@ -40,7 +41,8 @@ function App() {
                 {/* Protected routes */}
                 <Route element={<ProtectedRoute />}>
                   <Route path="/profile" element={<Profile />} />
-                  <Route path="/profile/edit" element={<Placeholder pageName="Edit Profile" />} />
+                  {/* <Route path="/profile/edit" element={<Placeholder pageName="Edit Profile" />} /> */}
+                  <Route path="/profile/edit" element={<EditProfile />} />
                   <Route path="/teams/create" element={<CreateTeam />} />
                   <Route path="/teams/my-teams" element={<MyTeams />} />
                   <Route path="/settings" element={<Placeholder pageName="Settings" />} />
