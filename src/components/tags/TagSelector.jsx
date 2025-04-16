@@ -3,8 +3,7 @@ import { tagService } from '../../services/tagService';
 
 const TagSelector = ({ 
   selectedTags: initialSelectedTags = [], 
-  onTagsSelected, 
-  mode = 'profile' 
+  onTagsSelected 
 }) => {
   const [supercategories, setSupercategories] = useState([]);
   const [loading, setLoading] = useState(true);
