@@ -45,7 +45,7 @@ export const tagService = {
   // Search tags
   searchTags: async (query) => {
     try {
-      const response = await api.get('/tags/search', { 
+      const response = await api.get('/api/tags/search', { 
         params: { query } 
       });
       return response.data;

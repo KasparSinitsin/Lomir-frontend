@@ -30,7 +30,7 @@ export const teamService = {
       
       console.log("createTeam: Sending validated data:", validatedTeamData);
       
-      const response = await api.post('/teams', validatedTeamData);
+      const response = await api.post('/api/teams', validatedTeamData); 
       return response.data;
     } catch (error) {
       console.error("Error in createTeam:", error);
@@ -42,7 +42,7 @@ export const teamService = {
   // Delete a team
   deleteTeam: async (teamId) => {
     try {
-      const response = await api.delete(`/teams/${teamId}`);
+      const response = await api.delete(`/api/teams/${teamId}`); 
       return response.data;
     } catch (error) {
       console.error(`Error deleting team ${teamId}:`, error.response ? error.response.data : error.message);
@@ -53,7 +53,7 @@ export const teamService = {
   // Fetch all teams
   getAllTeams: async (params = {}) => {
     try {
-      const response = await api.get('/teams', { params });
+      const response = await api.get('/api/teams', { params }); 
       return response.data;
     } catch (error) {
       console.error('Error fetching teams:', error.response ? error.response.data : error.message);
@@ -64,7 +64,7 @@ export const teamService = {
   // Fetch a single team by ID
   getTeamById: async (teamId) => {
     try {
-      const response = await api.get(`/teams/${teamId}`);
+      const response = await api.get(`/api/teams/${teamId}`); 
       return response.data;
     } catch (error) {
       console.error(`Error fetching team ${teamId}:`, error.response ? error.response.data : error.message);
@@ -99,7 +99,7 @@ export const teamService = {
       
       console.log("updateTeam: Sending formatted data:", dataToSend);
       
-      const response = await api.put(`/teams/${teamId}`, dataToSend);
+      const response = await api.put(`/api/teams/${teamId}`, dataToSend); 
       return response.data;
     } catch (error) {
       console.error(`Error updating team ${teamId}:`, error.response ? error.response.data : error.message);
@@ -110,7 +110,7 @@ export const teamService = {
   // Add a member to a team
   addTeamMember: async (teamId, userId) => {
     try {
-      const response = await api.post(`/teams/${teamId}/members`, { memberId: userId });
+      const response = await api.post(`/api/teams/${teamId}/members`, { memberId: userId }); 
       return response.data;
     } catch (error) {
       console.error(`Error adding member to team ${teamId}:`, error.response ? error.response.data : error.message);
@@ -121,7 +121,7 @@ export const teamService = {
   // Remove a member from a team
   removeTeamMember: async (teamId, userId) => {
     try {
-      const response = await api.delete(`/teams/${teamId}/members/${userId}`);
+      const response = await api.delete(`/api/teams/${teamId}/members/${userId}`); 
       return response.data;
     } catch (error) {
       console.error(`Error removing member from team ${teamId}:`, error.response ? error.response.data : error.message);
@@ -135,7 +135,7 @@ export const teamService = {
       if (!userId) {
         throw new Error('User ID is required');
       }
-      const response = await api.get(`/teams/my-teams`, { params: { userId } });
+      const response = await api.get(`/api/teams/my-teams`, { params: { userId } }); 
       return response.data;
     } catch (error) {
       console.error('Error fetching user teams:', error.response ? error.response.data : error.message);
@@ -146,7 +146,7 @@ export const teamService = {
   // Get user role in a team
   getUserRoleInTeam: async (teamId, userId) => {
     try {
-      const response = await api.get(`/teams/${teamId}/members/${userId}/role`);
+      const response = await api.get(`/api/teams/${teamId}/members/${userId}/role`); 
       return response.data;
     } catch (error) {
       console.error(`Error fetching user role in team ${teamId}:`, error.response ? error.response.data : error.message);
