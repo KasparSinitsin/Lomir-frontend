@@ -200,20 +200,29 @@ const TagSelector = ({ selectedTags: initialSelectedTags = [], onTagsSelected, m
 
                   {expandedCategories[category.name] && (
                     <div className="ml-4 space-y-2">
-                      {category.tags.map((tag) => {
-                        const tagId = parseInt(tag.id, 10);
-                        return (
-                          <div key={tagId} className="flex items-center">
-                            <input
-                              type="checkbox"
-                              checked={localSelectedTags.includes(tagId)}
-                              onChange={() => toggleTagSelection(tagId)}
-                              className="mr-2"
-                            />
-                            <span className="flex-grow">{tag.name} (ID: {tagId})</span>
-                          </div>
-                        );
-                      })}
+                  {(category.tags || [])
+  .filter(tag => {
+    const id = parseInt(tag.id, 10);
+    const isValid = !isNaN(id);
+    if (!isValid) {
+      console.warn(`[TagSelector] Invalid tag ID in category "${category.name}":`, tag);
+    }
+    return isValid;
+  })
+  .map((tag) => {
+    const tagId = parseInt(tag.id, 10);
+    return (
+      <div key={tagId} className="flex items-center">
+        <input
+          type="checkbox"
+          checked={localSelectedTags.includes(tagId)}
+          onChange={() => toggleTagSelection(tagId)}
+          className="mr-2"
+        />
+        <span className="flex-grow">{tag.name}</span>
+      </div>
+    );
+  })}
                     </div>
                   )}
                 </div>
