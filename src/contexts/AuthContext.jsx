@@ -14,7 +14,7 @@ export const AuthProvider = ({ children }) => {
     const loadUser = async () => {
       if (token) {
         try {
-          const response = await api.get('/auth/me', {
+          const response = await api.get('/api/auth/me', {
             headers: {
               Authorization: `Bearer ${token}`,
             },
@@ -46,7 +46,7 @@ export const AuthProvider = ({ children }) => {
   const register = async (userData) => {
     try {
       setLoading(true);
-      const response = await api.post('api/auth/register', userData);
+      const response = await api.post('/api/auth/register', userData);
       const { token, user } = response.data.data;
 
       localStorage.setItem('token', token);
@@ -70,7 +70,7 @@ export const AuthProvider = ({ children }) => {
   const login = async (credentials) => {
     try {
       setLoading(true);
-      const response = await api.post('api/auth/login', credentials);  // Make sure the endpoint is correct
+      const response = await api.post('/api/auth/login', credentials);  // Make sure the endpoint is correct
       const { token, user } = response.data.data;
 
       localStorage.setItem('token', token);
