@@ -4,7 +4,7 @@ import api from './api';
 export const searchService = {
   async globalSearch(query, isAuthenticated = false) {
     try {
-      const response = await api.get('/search/global', {
+      const response = await api.get('/api/search/global', {
         params: {
           query,
           authenticated: isAuthenticated
@@ -20,7 +20,7 @@ export const searchService = {
   // New function to fetch recommended results
   async getRecommended(userId, isAuthenticated = false) { // Expecting userId now
     try {
-      const response = await api.get('/search/recommended', {
+      const response = await api.get('/api/search/recommended', {
         params: {
           userId: userId, // Passing userId as a parameter
           authenticated: isAuthenticated
@@ -36,7 +36,7 @@ export const searchService = {
   // Function to fetch all users and teams
   async getAllUsersAndTeams(isAuthenticated = false) {
     try {
-      const response = await api.get('/search/all', {
+      const response = await api.get('/api/search/all', {
         params: { authenticated: isAuthenticated }
       });
       return response.data;
