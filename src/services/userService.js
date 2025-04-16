@@ -13,7 +13,24 @@ export const userService = {
 
   updateUser: async (userId, userData) => {
     try {
-      const response = await api.put(`/users/${userId}`, userData);
+      // Format tags consistently with team service
+      const formattedTags = userData.tags?.map(tag => {
+        if (typeof tag === 'object' && tag.tag_id) {
+          return { tag_id: parseInt(tag.tag_id, 10) };
+        } else if (typeof tag === 'number') {
+          return { tag_id: tag };
+        } else {
+          return { tag_id: parseInt(tag, 10) };
+        }
+      }) || [];
+  
+      // Create submission data with formatted tags
+      const submissionData = {
+        ...userData,
+        tags: formattedTags
+      };
+  
+      const response = await api.put(`/users/${userId}`, submissionData);
       return response.data;
     } catch (error) {
       console.error('Error updating user:', error);
