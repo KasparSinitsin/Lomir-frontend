@@ -58,34 +58,39 @@ const EditProfileForm = () => {
     e.preventDefault();
     
     if (!user) return;
-
+  
     try {
       setLoading(true);
       setError(null);
-
+  
+      // Ensure tag IDs are valid integers
+      const formattedTags = formData.selectedTags.map(tagId => {
+        const numericId = parseInt(tagId, 10);
+        return { tag_id: numericId };
+      });
+  
       // Prepare submission data
       const submissionData = {
         first_name: formData.firstName,
         last_name: formData.lastName,
         bio: formData.bio,
         postal_code: formData.postalCode,
-        tags: formData.selectedTags.map(tagId => ({ 
-          tag_id: parseInt(tagId, 10) 
-        }))
+        tags: formattedTags,
       };
-
+  
       // Update user via service
-      const response = await userService.updateUser(user.id, submissionData);
-
+    //   const response = await userService.updateUser(user.id, submissionData);
+    await userService.updateUser(user.id, submissionData);
+  
       // Show success notification
       setNotification({
         type: 'success',
         message: 'Profile updated successfully!'
       });
-
-      // Optionally navigate back to profile or update context
+  
+      // Navigate back to profile after a short delay
       setTimeout(() => navigate('/profile'), 1500);
-
+  
     } catch (err) {
       console.error('Profile update error:', err);
       setError(err.response?.data?.message || 'Failed to update profile');

@@ -15,7 +15,7 @@ import BadgeCard from '../components/badges/BadgeCard';
 import TagSelector from '../components/tags/TagSelector';
 
 const Profile = () => {
-  const { user, logout } = useAuth();
+  const { user, logout: _logout } = useAuth(); // not using logout for now
   const [registrationMessage, setRegistrationMessage] = useState('');
   const [tags, setTags] = useState([]);
   const [isEditingTags, setIsEditingTags] = useState(false);
