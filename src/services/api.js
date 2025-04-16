@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || process.env.REACT_APP_BACKEND_URL || 'http://localhost:5001';
+const API_URL = 'https://lomir-backend.onrender.com';
 
 const api = axios.create({
   baseURL: API_URL,
