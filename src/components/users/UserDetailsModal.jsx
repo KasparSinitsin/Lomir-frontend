@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { X, Edit, MessageSquare } from 'lucide-react';
-import PropTypes from 'prop-types';
+import { X, Edit, MessageCircle, MapPin, Tag,  } from 'lucide-react'; 
+// import PropTypes from 'prop-types'; // saved for later in case we need to use PropTypes
 import { userService } from '../../services/userService';
 import Button from '../common/Button';
 import TagSelector from '../tags/TagSelector';
@@ -65,7 +65,7 @@ const UserDetailsModal = ({
     if (isOpen && userId) {
       fetchUserDetails();
     }
-  }, [isOpen, userId]);
+  }, [isOpen, userId, fetchUserDetails]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -120,7 +120,7 @@ const UserDetailsModal = ({
 
   const handleStartChatMock = () => {
     console.log('Chat icon clicked (mock)');
-    // In the future, you'd put your chat logic here
+    // In the future, we can put out chat logic here
   };
 
   if (!isOpen) return null;
@@ -137,35 +137,48 @@ const UserDetailsModal = ({
               {isEditing ? 'Edit Profile' : 'User Details'}
             </h2>
             <div className="flex items-center space-x-2">
-              {mode !== 'profile' && !isEditing && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setIsEditing(true)}
-                  icon={<Edit size={16} />}
-                >
-                  Edit
-                </Button>
-              )}
+            {mode !== 'profile' && !isEditing && (
+  <Button
+    variant="ghost"
+    size="sm"
+    onClick={() => setIsEditing(true)}
+    icon={<Edit size={16} />}
+  >
+    Edit
+  </Button>
+)}
 
-              {/* Add Chat Icon Button */}
-              {mode !== 'profile' && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleStartChatMock} // Use the mock function
-                  icon={<MessageSquare size={16} />}
-                >
-                  Chat
-                </Button>
-              )}
 
-              <button
-                onClick={onClose}
-                className="btn btn-ghost btn-sm btn-circle"
-              >
-                <X size={20} />
-              </button>
+{/* Add Chat Icon Button */}
+{/* mode !== 'profile' && (  <-- Comment or remove this line */ }
+<Button
+    variant="ghost"
+    size="sm"
+    onClick={handleStartChatMock}
+    icon={<MessageCircle size={16} />}
+  >
+  </Button>
+{/* )  <-- And this line */}
+
+
+{/* Add Chat Icon Button
+{mode !== 'profile' && (
+  <Button
+    variant="ghost"
+    size="sm"
+    onClick={handleStartChatMock}
+    icon={<MessageCircle size={16} />}
+  >
+    Chat
+  </Button>
+)} */}
+
+<button
+  onClick={onClose}
+  className="btn btn-ghost btn-sm btn-circle"
+>
+  <X size={20} />
+</button>
             </div>
           </div>
 
@@ -300,17 +313,17 @@ const UserDetailsModal = ({
   );
 };
 
-UserDetailsModal.propTypes = {
-  isOpen: PropTypes.bool.isRequired,
-  userId: PropTypes.number.isRequired,
-  onClose: PropTypes.func.isRequired,
-  onUpdate: PropTypes.func,
-  mode: PropTypes.oneOf(['view', 'edit'])
-};
+// UserDetailsModal.propTypes = {
+//   isOpen: PropTypes.bool.isRequired,
+//   userId: PropTypes.number.isRequired,
+//   onClose: PropTypes.func.isRequired,
+//   onUpdate: PropTypes.func,
+//   mode: PropTypes.oneOf(['view', 'edit'])
+// };
 
-UserDetailsModal.defaultProps = {
-  mode: 'view',
-  onUpdate: () => {}
-};
+// UserDetailsModal.defaultProps = {
+//   mode: 'view',
+//   onUpdate: () => {}
+// };
 
 export default UserDetailsModal;
