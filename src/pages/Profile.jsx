@@ -30,7 +30,7 @@ const Profile = () => {
     lastName: '',
     bio: '',
     postalCode: '',
-    profile_image: null
+    profileImage: null
   });
 
   useEffect(() => {
@@ -40,6 +40,11 @@ const Profile = () => {
       localStorage.removeItem('registrationMessage');
     }
 
+    // Debug the user object to see property names
+    if (user) {
+      console.log("User object for debugging:", user);
+    }
+
     // Initialize form data when user data is available
     if (user) {
       setFormData({
@@ -47,7 +52,7 @@ const Profile = () => {
         lastName: user.lastName || '',
         bio: user.bio || '',
         postalCode: user.postalCode || '',
-        profile_image: null
+        profileImage: null
       });
 
       // Set image preview if user has an avatar
@@ -93,7 +98,7 @@ const Profile = () => {
     if (file) {
       setFormData({
         ...formData,
-        profile_image: file
+        profileImage: file
       });
       
       // For preview
@@ -130,16 +135,16 @@ const Profile = () => {
       setError(null);
       
       const userData = {
-        first_name: formData.firstName,
-        last_name: formData.lastName,
+        firstName: formData.firstName,
+        lastName: formData.lastName,
         bio: formData.bio,
-        postal_code: formData.postalCode
+        postalCode: formData.postalCode
       };
       
       // Upload image if selected
-      if (formData.profile_image) {
+      if (formData.profileImage) {
         const cloudinaryFormData = new FormData();
-        cloudinaryFormData.append('file', formData.profile_image);
+        cloudinaryFormData.append('file', formData.profileImage);
         cloudinaryFormData.append('upload_preset', import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET);
 
         const cloudinaryResponse = await axios.post(
@@ -152,28 +157,21 @@ const Profile = () => {
           }
         );
 
-        userData.avatar_url = cloudinaryResponse.data.secure_url;
+        userData.avatarUrl = cloudinaryResponse.data.secure_url;
       }
       
+      console.log("Sending update with data:", userData);
       const response = await userService.updateUser(user.id, userData);
       
-      if (response.success) {
+      console.log("Update response:", response);
+      
+      if (response.success !== false) {
         setIsEditing(false);
         setSuccess('Profile updated successfully');
         
-        // Update local user object
-        // Note: You may need to adapt this based on your auth context implementation
-        const updatedUser = {
-          ...user,
-          firstName: userData.first_name,
-          lastName: userData.last_name,
-          bio: userData.bio,
-          postalCode: userData.postal_code,
-          avatarUrl: userData.avatar_url || user.avatarUrl
-        };
-        
-        // If your auth context provides a method to update the user
-        // setUser(updatedUser);
+        // Force a reload to get updated user data
+        // This is a temporary solution - ideally you would update the user context
+        window.location.reload();
       }
     } catch (error) {
       console.error('Error updating profile:', error);
@@ -181,6 +179,17 @@ const Profile = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // For debugging purposes
+  const displayUserData = () => {
+    if (!user) return "No user data available";
+    
+    return (
+      <pre className="text-xs overflow-auto p-2 bg-gray-100 rounded">
+        {JSON.stringify(user, null, 2)}
+      </pre>
+    );
   };
 
   if (!user) {
@@ -224,6 +233,16 @@ const Profile = () => {
           onClose={() => setError(null)}
         />
       )}
+      
+      {/* Debug section - remove in production */}
+      {import.meta.env.DEV && (
+        <Card className="mb-4">
+          <div className="p-4">
+            <h3 className="text-lg font-semibold mb-2">Debug User Data</h3>
+            {displayUserData()}
+          </div>
+        </Card>
+      )}
 
       <Card className="overflow-visible">
         {isEditing ? (
@@ -240,7 +259,11 @@ const Profile = () => {
                       className="rounded-full object-cover w-full h-full"
                     />
                   ) : (
-                    <span className="text-3xl">{formData.firstName?.charAt(0) || user.username?.charAt(0) || '?'}</span>
+                    <span className="text-3xl">
+                      {formData.firstName?.charAt(0) || 
+                       user.firstName?.charAt(0) || 
+                       user.username?.charAt(0) || '?'}
+                    </span>
                   )}
                 </div>
               </div>
@@ -344,7 +367,10 @@ const Profile = () => {
                         className="rounded-full object-cover w-full h-full" 
                       />
                     ) : (
-                      <span className="text-3xl">{user.firstName?.charAt(0) || user.username?.charAt(0) || '?'}</span>
+                      <span className="text-3xl">
+                        {user.firstName?.charAt(0) || 
+                         user.username?.charAt(0) || '?'}
+                      </span>
                     )}
                   </div>
                 </div>
@@ -353,7 +379,9 @@ const Profile = () => {
               <div className="flex-grow">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4">
                   <div>
-                    <h2 className="text-2xl font-bold">{user.firstName} {user.lastName}</h2>
+                    <h2 className="text-2xl font-bold">
+                      {user.firstName || ''} {user.lastName || ''}
+                    </h2>
                     <p className="text-base-content/70">@{user.username}</p>
                   </div>
                   <div className="mt-4 sm:mt-0">
@@ -371,7 +399,11 @@ const Profile = () => {
                 <Grid cols={1} md={3} gap={4}>
                   <DataDisplay label="Email" value={user.email} icon={<Mail size={16} />} />
                   {user.postalCode && (
-                    <DataDisplay label="Location" value={user.postalCode} icon={<MapPin size={16} />} />
+                    <DataDisplay 
+                      label="Location" 
+                      value={user.postalCode} 
+                      icon={<MapPin size={16} />} 
+                    />
                   )}
                   <DataDisplay label="Member Since" value="April 2025" icon={<User size={16} />} />
                 </Grid>

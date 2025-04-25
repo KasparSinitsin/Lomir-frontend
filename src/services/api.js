@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { snakeToCamel, camelToSnake } from '../utils/formatters';
 
 const API_URL = 'https://lomir-backend.onrender.com';
 
@@ -10,12 +11,19 @@ const api = axios.create({
   withCredentials: true,
 });
 
+// Add request interceptor to convert request data to snake_case
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
     if (token) {
       config.headers['Authorization'] = `Bearer ${token}`;  
     }
+    
+    // Transform request data from camelCase to snake_case
+    if (config.data && typeof config.data === 'object' && !(config.data instanceof FormData)) {
+      config.data = camelToSnake(config.data);
+    }
+    
     return config;
   },
   (error) => {
@@ -23,8 +31,15 @@ api.interceptors.request.use(
   }
 );
 
+// Add response interceptor to convert response data to camelCase
 api.interceptors.response.use(
-  (response) => response,  
+  (response) => {
+    // Transform response data from snake_case to camelCase
+    if (response.data) {
+      response.data = snakeToCamel(response.data);
+    }
+    return response;
+  },  
   (error) => {
     if (error.response) {
       console.error('API Error:', error.response.data); 

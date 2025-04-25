@@ -34,7 +34,7 @@ export const userService = {
   updateUserTags: async (userId, tagIds) => {
     try {
       const response = await api.put(`/api/users/${userId}/tags`, { 
-        tags: tagIds.map(tagId => ({ tag_id: tagId })) 
+        tags: tagIds.map(tagId => ({ tagId })) // Use camelCase here
       });
       return response.data;
     } catch (error) {
