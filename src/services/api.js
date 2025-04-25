@@ -21,7 +21,9 @@ api.interceptors.request.use(
     
     // Transform request data from camelCase to snake_case
     if (config.data && typeof config.data === 'object' && !(config.data instanceof FormData)) {
+      console.log('Before conversion:', config.data);
       config.data = camelToSnake(config.data);
+      console.log('After conversion:', config.data);
     }
     
     return config;
