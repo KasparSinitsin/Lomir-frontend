@@ -87,6 +87,7 @@ const Profile = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+    console.log(`Field "${name}" changed to:`, value);
     setFormData({
       ...formData,
       [name]: value
@@ -134,6 +135,8 @@ const Profile = () => {
       setLoading(true);
       setError(null);
       
+      console.log("Starting profile update with form data:", formData);
+      
       const userData = {
         firstName: formData.firstName,
         lastName: formData.lastName,
@@ -141,8 +144,11 @@ const Profile = () => {
         postalCode: formData.postalCode
       };
       
+      console.log("Sending update with data:", userData);
+      
       // Upload image if selected
       if (formData.profileImage) {
+        console.log("Profile image will be uploaded");
         const cloudinaryFormData = new FormData();
         cloudinaryFormData.append('file', formData.profileImage);
         cloudinaryFormData.append('upload_preset', import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET);
@@ -158,23 +164,34 @@ const Profile = () => {
         );
 
         userData.avatarUrl = cloudinaryResponse.data.secure_url;
+        console.log("Image uploaded, received URL:", userData.avatarUrl);
       }
       
-      console.log("Sending update with data:", userData);
+      console.log("Calling userService.updateUser with:", userData);
       const response = await userService.updateUser(user.id, userData);
       
       console.log("Update response:", response);
       
-      if (response.success !== false) {
+      // Check the response
+      if (response.success === false) {
+        console.error("Update failed:", response.message);
+        setError('Failed to update profile: ' + response.message);
+      } else {
         setIsEditing(false);
         setSuccess('Profile updated successfully');
         
+        console.log("Profile updated successfully");
+        
         // Force a reload to get updated user data
-        // This is a temporary solution - ideally you would update the user context
         window.location.reload();
       }
     } catch (error) {
       console.error('Error updating profile:', error);
+      // Log more details if available
+      if (error.response) {
+        console.error('Response data:', error.response.data);
+        console.error('Response status:', error.response.status);
+      }
       setError('Failed to update profile: ' + (error.message || 'Unknown error'));
     } finally {
       setLoading(false);
@@ -240,6 +257,15 @@ const Profile = () => {
           <div className="p-4">
             <h3 className="text-lg font-semibold mb-2">Debug User Data</h3>
             {displayUserData()}
+            
+            {isEditing && (
+              <div className="mt-4">
+                <h3 className="text-lg font-semibold mb-2">Debug Form Data</h3>
+                <pre className="text-xs overflow-auto p-2 bg-gray-100 rounded">
+                  {JSON.stringify(formData, null, 2)}
+                </pre>
+              </div>
+            )}
           </div>
         </Card>
       )}
@@ -346,6 +372,7 @@ const Profile = () => {
                 Cancel
               </Button>
               <Button 
+                type="button"
                 variant="primary" 
                 onClick={handleProfileUpdate}
                 disabled={loading}
