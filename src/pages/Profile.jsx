@@ -172,7 +172,6 @@ const Profile = () => {
       
       console.log("Update response:", response);
       
-      // Check the response
       if (response.success === false) {
         console.error("Update failed:", response.message);
         setError('Failed to update profile: ' + response.message);
@@ -180,18 +179,14 @@ const Profile = () => {
         setIsEditing(false);
         setSuccess('Profile updated successfully');
         
-        console.log("Profile updated successfully");
-        
-        // Force a reload to get updated user data
-        window.location.reload();
+        // Force a state update with new user data rather than a full reload
+        if (response.data) {
+          console.log("New user data:", response.data);
+          // Update any local state or context with the new user data
+        }
       }
     } catch (error) {
       console.error('Error updating profile:', error);
-      // Log more details if available
-      if (error.response) {
-        console.error('Response data:', error.response.data);
-        console.error('Response status:', error.response.status);
-      }
       setError('Failed to update profile: ' + (error.message || 'Unknown error'));
     } finally {
       setLoading(false);
