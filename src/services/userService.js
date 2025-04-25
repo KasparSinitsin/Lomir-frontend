@@ -28,17 +28,22 @@ export const userService = {
    */
   updateUser: async (userId, userData) => {
     try {
-      console.log(`userService.updateUser called for user ${userId} with:`, userData);
+      console.log(`Sending request to: ${api.defaults.baseURL}/api/users/${userId}`);
+      console.log('With data:', userData);
       
-      // Make the actual API call
       const response = await api.put(`/api/users/${userId}`, userData);
       console.log('API update response:', response.data);
       
-      // Return the response data
       return response.data;
     } catch (error) {
       console.error('Error updating user:', error);
-      throw error; // Rethrow to be handled by the component
+      console.error('Error details:', {
+        message: error.message,
+        endpoint: `/api/users/${userId}`,
+        requestData: userData,
+        response: error.response?.data
+      });
+      throw error;
     }
   },
 

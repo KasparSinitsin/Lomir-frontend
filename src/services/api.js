@@ -1,7 +1,8 @@
 import axios from 'axios';
 import { snakeToCamel, camelToSnake } from '../utils/formatters';
 
-const API_URL = 'https://lomir-backend.onrender.com';
+// const API_URL = 'https://lomir-backend.onrender.com'; // for production
+const API_URL = 'http://localhost:5001'; // for local development
 
 const api = axios.create({
   baseURL: API_URL,
