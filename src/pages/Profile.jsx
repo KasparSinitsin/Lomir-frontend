@@ -16,7 +16,7 @@ import BadgeCard from '../components/badges/BadgeCard';
 import TagSelector from '../components/tags/TagSelector';
 
 const Profile = () => {
-  const { user, logout } = useAuth();
+  const { user, updateUser } = useAuth();
   const [registrationMessage, setRegistrationMessage] = useState('');
   const [tags, setTags] = useState([]);
   const [isEditing, setIsEditing] = useState(false);
@@ -135,6 +135,10 @@ const Profile = () => {
       setLoading(true);
       setError(null);
       
+      // Debug logging for user information
+      console.log("Current user object:", user);
+      console.log("User ID from current context:", user.id);
+      
       console.log("Starting profile update with form data:", formData);
       
       const userData = {
@@ -167,31 +171,56 @@ const Profile = () => {
         console.log("Image uploaded, received URL:", userData.avatarUrl);
       }
       
-      console.log("Calling userService.updateUser with:", userData);
+      // Log complete API call details
+      console.log(`Attempting to update user with ID: ${user.id}`);
+      console.log("Full update payload:", userData);
+      
+      // Add a check for valid user ID
+      if (!user.id || isNaN(parseInt(user.id))) {
+        throw new Error(`Invalid user ID: ${user.id}`);
+      }
+      
       const response = await userService.updateUser(user.id, userData);
       
       console.log("Update response:", response);
       
-      // Check the response
-      if (response.success === false) {
-        console.error("Update failed:", response.message);
-        setError('Failed to update profile: ' + response.message);
+      if (!response || response.success === false) {
+        console.error("Update failed:", response?.message || "No response received");
+        setError('Failed to update profile: ' + (response?.message || "Unknown error"));
       } else {
         setIsEditing(false);
         setSuccess('Profile updated successfully');
         
-        console.log("Profile updated successfully");
-        
-        // Force a reload to get updated user data
-        window.location.reload();
+        // Update user data in AuthContext with the new data
+        if (response.data) {
+          console.log("New user data:", response.data);
+          
+          // Update global user context
+          updateUser({
+            firstName: response.data.first_name,
+            lastName: response.data.last_name,
+            bio: response.data.bio,
+            postalCode: response.data.postal_code,
+            avatarUrl: response.data.avatar_url
+          });
+          
+          // Update local form state
+          setFormData({
+            firstName: response.data.first_name || '',
+            lastName: response.data.last_name || '',
+            bio: response.data.bio || '',
+            postalCode: response.data.postal_code || '',
+            profileImage: null
+          });
+        }
       }
     } catch (error) {
       console.error('Error updating profile:', error);
-      // Log more details if available
-      if (error.response) {
-        console.error('Response data:', error.response.data);
-        console.error('Response status:', error.response.status);
-      }
+      console.error('Error details:', {
+        message: error.message,
+        userId: user?.id,
+        formData: formData
+      });
       setError('Failed to update profile: ' + (error.message || 'Unknown error'));
     } finally {
       setLoading(false);
@@ -337,7 +366,7 @@ const Profile = () => {
             
             <div className="form-control w-full mb-4">
               <label className="label">
-                <span className="label-text">Bio</span>
+                <span className="label-text">About Me</span>
               </label>
               <textarea 
                 name="bio" 
@@ -454,7 +483,7 @@ const Profile = () => {
                     className="hover:bg-violet-200 hover:text-violet-700"
                     onClick={() => setIsEditing(true)}
                   >
-                    Manage Skills
+                    Edit Skills & Interest Tags
                   </Button>
                 ) : null
               }

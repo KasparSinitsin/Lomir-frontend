@@ -1,7 +1,8 @@
 import axios from 'axios';
 import { snakeToCamel, camelToSnake } from '../utils/formatters';
 
-const API_URL = 'https://lomir-backend.onrender.com';
+// const API_URL = 'https://lomir-backend.onrender.com'; // for production
+const API_URL = 'http://localhost:5001'; // for local development
 
 const api = axios.create({
   baseURL: API_URL,
@@ -21,7 +22,9 @@ api.interceptors.request.use(
     
     // Transform request data from camelCase to snake_case
     if (config.data && typeof config.data === 'object' && !(config.data instanceof FormData)) {
+      console.log('Before conversion:', config.data);
       config.data = camelToSnake(config.data);
+      console.log('After conversion:', config.data);
     }
     
     return config;

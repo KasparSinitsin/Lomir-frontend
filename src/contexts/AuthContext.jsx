@@ -90,6 +90,15 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Update user data
+  const updateUser = (userData) => {
+    console.log("Updating user in context with:", userData);
+    setUser(prevUser => ({
+      ...prevUser,
+      ...userData
+    }));
+  };
+
   // Logout user
   const logout = () => {
     localStorage.removeItem('token');
@@ -107,7 +116,8 @@ export const AuthProvider = ({ children }) => {
       isAuthenticated: !!user,
       register,
       login,
-      logout
+      logout,
+      updateUser
     }}>
       {children}
     </AuthContext.Provider>
