@@ -366,7 +366,7 @@ const Profile = () => {
             
             <div className="form-control w-full mb-4">
               <label className="label">
-                <span className="label-text">Bio</span>
+                <span className="label-text">About Me</span>
               </label>
               <textarea 
                 name="bio" 
@@ -483,7 +483,7 @@ const Profile = () => {
                     className="hover:bg-violet-200 hover:text-violet-700"
                     onClick={() => setIsEditing(true)}
                   >
-                    Manage Skills
+                    Edit Skills & Interest Tags
                   </Button>
                 ) : null
               }
