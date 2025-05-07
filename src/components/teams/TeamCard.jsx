@@ -83,7 +83,7 @@ const TeamCard = ({ team, onUpdate, onDelete, isSearchResult = false }) => {
         hoverable
         image={teamImage}
         imageAlt={`${team.name} team`}
-        imageShape="rounded-lg" // Use rounded square for teams instead of circle
+        imageShape="circle" 
       >
         {error && (
           <Alert type="error" message={error} onClose={() => setError(null)} className="mb-4" />
