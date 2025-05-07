@@ -14,6 +14,9 @@ const TeamCard = ({ team, onUpdate, onDelete, isSearchResult = false }) => {
   const [userRole, setUserRole] = useState(null);
   const { user, isAuthenticated } = useAuth();
   
+  // Either use team's image or create an initial from the team name
+  const teamImage = team.image_url || team.name.charAt(0);
+  
   // Check if current user is the creator of the team
   const isCreator = user && team.creator_id === user.id;
   
@@ -78,6 +81,9 @@ const TeamCard = ({ team, onUpdate, onDelete, isSearchResult = false }) => {
         title={team.name}
         subtitle={`Members: ${team.current_members_count ?? 1} out of ${team.max_members ?? '∞'}`}
         hoverable
+        image={teamImage}
+        imageAlt={`${team.name} team`}
+        imageShape="circle" 
       >
         {error && (
           <Alert type="error" message={error} onClose={() => setError(null)} className="mb-4" />

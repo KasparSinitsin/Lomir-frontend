@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { X, Edit, MessageCircle, MapPin, Tag,  } from 'lucide-react'; 
-// import PropTypes from 'prop-types'; // saved for later in case we need to use PropTypes
+import { X, Edit, MessageCircle, MapPin, Tag } from 'lucide-react';
 import { userService } from '../../services/userService';
 import Button from '../common/Button';
 import TagSelector from '../tags/TagSelector';
@@ -34,14 +33,16 @@ const UserDetailsModal = ({
 
       const response = await userService.getUserById(userId);
       const userData = response.data;
+      
+      console.log('Full user details from API:', userData);
 
       setUser(userData);
 
       setFormData({
-        firstName: userData.first_name || '',
-        lastName: userData.last_name || '',
+        firstName: userData.first_name || userData.firstName || '',
+        lastName: userData.last_name || userData.lastName || '',
         bio: userData.bio || '',
-        postalCode: userData.postal_code || '',
+        postalCode: userData.postal_code || userData.postalCode || '',
         selectedTags: userData.tags?.map(tag => tag.id) || [],
         tagExperienceLevels: userData.tags?.reduce((acc, tag) => {
           acc[tag.id] = tag.experience_level || 'beginner';
@@ -123,6 +124,19 @@ const UserDetailsModal = ({
     // In the future, we can put out chat logic here
   };
 
+  // Helper function to get the avatar image URL or fallback to initials
+  const getProfileImage = () => {
+    if (user?.avatar_url) {
+      return user.avatar_url;
+    }
+    
+    if (user?.avatarUrl) {
+      return user.avatarUrl;
+    }
+    
+    return null; // Return null if no image found
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -137,48 +151,31 @@ const UserDetailsModal = ({
               {isEditing ? 'Edit Profile' : 'User Details'}
             </h2>
             <div className="flex items-center space-x-2">
-            {mode !== 'profile' && !isEditing && (
-  <Button
-    variant="ghost"
-    size="sm"
-    onClick={() => setIsEditing(true)}
-    icon={<Edit size={16} />}
-  >
-    Edit
-  </Button>
-)}
+              {mode !== 'profile' && !isEditing && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsEditing(true)}
+                  icon={<Edit size={16} />}
+                >
+                  Edit
+                </Button>
+              )}
 
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleStartChatMock}
+                icon={<MessageCircle size={16} />}
+              >
+              </Button>
 
-{/* Add Chat Icon Button */}
-{/* mode !== 'profile' && (  <-- Comment or remove this line */ }
-<Button
-    variant="ghost"
-    size="sm"
-    onClick={handleStartChatMock}
-    icon={<MessageCircle size={16} />}
-  >
-  </Button>
-{/* )  <-- And this line */}
-
-
-{/* Add Chat Icon Button
-{mode !== 'profile' && (
-  <Button
-    variant="ghost"
-    size="sm"
-    onClick={handleStartChatMock}
-    icon={<MessageCircle size={16} />}
-  >
-    Chat
-  </Button>
-)} */}
-
-<button
-  onClick={onClose}
-  className="btn btn-ghost btn-sm btn-circle"
->
-  <X size={20} />
-</button>
+              <button
+                onClick={onClose}
+                className="btn btn-ghost btn-sm btn-circle"
+              >
+                <X size={20} />
+              </button>
             </div>
           </div>
 
@@ -255,22 +252,33 @@ const UserDetailsModal = ({
                 <div className="flex items-center space-x-4 mb-6">
                   <div className="avatar placeholder">
                     <div className="bg-primary text-primary-content rounded-full w-16 h-16">
-                      <span className="text-2xl">
-                        {user?.first_name?.charAt(0) || user?.username?.charAt(0)}
-                      </span>
+                      {getProfileImage() ? (
+                        <img 
+                          src={getProfileImage()} 
+                          alt={`${user?.username || 'User'}'s profile`} 
+                          className="rounded-full object-cover w-full h-full"
+                        />
+                      ) : (
+                        <span className="text-2xl">
+                          {user?.first_name?.charAt(0) || user?.firstName?.charAt(0) || 
+                          user?.username?.charAt(0) || '?'}
+                        </span>
+                      )}
                     </div>
                   </div>
                   <div>
                     <h1 className="text-2xl font-bold">
-                      {user?.first_name} {user?.last_name}
+                      {(user?.first_name || user?.firstName) && (user?.last_name || user?.lastName) ? 
+                        `${user?.first_name || user?.firstName} ${user?.last_name || user?.lastName}` : 
+                        user?.username}
                     </h1>
                     <p className="text-base-content/70">@{user?.username}</p>
                   </div>
                 </div>
 
-                {user?.bio && (
+                {(user?.bio || user?.biography) && (
                   <div className="bg-white/30 p-4 rounded-lg shadow-inner">
-                    <p className="text-base-content/90">{user.bio}</p>
+                    <p className="text-base-content/90">{user?.bio || user?.biography}</p>
                   </div>
                 )}
 
@@ -279,7 +287,7 @@ const UserDetailsModal = ({
                     <MapPin size={18} className="mt-1 text-primary flex-shrink-0" />
                     <div>
                       <h3 className="font-medium">Location</h3>
-                      <p>{user?.postal_code || 'Not specified'}</p>
+                      <p>{user?.postal_code || user?.postalCode || 'Not specified'}</p>
                     </div>
                   </div>
                 </div>
@@ -291,14 +299,27 @@ const UserDetailsModal = ({
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {user?.tags && user.tags.length > 0 ? (
-                      user.tags.map(tag => (
-                        <span
-                          key={tag.id}
-                          className="badge badge-primary badge-outline p-3"
-                        >
-                          {tag.name} - {tag.experience_level} - {tag.interest_level}
-                        </span>
-                      ))
+                      typeof user.tags === 'string' ? (
+                        // Handle tags as a string (comma-separated list)
+                        user.tags.split(',').map((tag, index) => (
+                          <span
+                            key={index}
+                            className="badge badge-primary badge-outline p-3"
+                          >
+                            {tag.trim()}
+                          </span>
+                        ))
+                      ) : (
+                        // Handle tags as an array of objects
+                        user.tags.map(tag => (
+                          <span
+                            key={typeof tag === 'object' ? tag.id : tag}
+                            className="badge badge-primary badge-outline p-3"
+                          >
+                            {typeof tag === 'object' ? tag.name : tag}
+                          </span>
+                        ))
+                      )
                     ) : (
                       <span className="badge badge-warning">No tags yet</span>
                     )}
@@ -312,18 +333,5 @@ const UserDetailsModal = ({
     </div>
   );
 };
-
-// UserDetailsModal.propTypes = {
-//   isOpen: PropTypes.bool.isRequired,
-//   userId: PropTypes.number.isRequired,
-//   onClose: PropTypes.func.isRequired,
-//   onUpdate: PropTypes.func,
-//   mode: PropTypes.oneOf(['view', 'edit'])
-// };
-
-// UserDetailsModal.defaultProps = {
-//   mode: 'view',
-//   onUpdate: () => {}
-// };
 
 export default UserDetailsModal;
