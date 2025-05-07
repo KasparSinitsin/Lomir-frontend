@@ -8,8 +8,47 @@ const Card = ({
   className = '',
   compact = false,
   hoverable = true,
-  bordered = true
+  bordered = true,
+  image = null, // Add new image prop
+  imageAlt = '', // Add image alt text prop
+  imageSize = 'medium', // Add image size prop with default 'medium'
+  imageShape = 'circle' // Add image shape prop with default 'circle'
 }) => {
+  // Function to render the image/avatar when provided
+  const renderImage = () => {
+    if (!image) return null;
+    
+    // Determine image size class
+    const sizeClass = {
+      small: 'w-12 h-12',
+      medium: 'w-16 h-16',
+      large: 'w-24 h-24'
+    }[imageSize] || 'w-16 h-16';
+    
+    // Determine shape class
+    const shapeClass = imageShape === 'circle' ? 'rounded-full' : 'rounded-lg';
+    
+    return (
+      <div className="flex justify-center mb-4">
+        <div className="avatar placeholder">
+          <div className={`bg-primary text-primary-content ${shapeClass} ${sizeClass}`}>
+            {typeof image === 'string' ? (
+              <img 
+                src={image} 
+                alt={imageAlt}
+                className={`${shapeClass} object-cover w-full h-full`}
+              />
+            ) : (
+              <span className={imageSize === 'large' ? 'text-2xl' : 'text-xl'}>
+                {image}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className={`
       background-opacity 
@@ -31,6 +70,7 @@ const Card = ({
         </div>
       )}
       <div className="p-6 sm:p-7"> 
+        {renderImage()} {/* Add image before the content */}
         {children}
       </div>
       {footer && (
