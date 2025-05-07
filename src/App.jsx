@@ -16,13 +16,21 @@ import SearchPage from './pages/SearchPage';
 import DesignSystem from './pages/DesignSystem';
 import './index.css';
 
-import backgroundImage from './assets/images/Gradient-peach.jpg'; // Import the image
+import backgroundImage from './assets/images/Gradient-peach-yellow-violet-inverted-light.svg'; 
 
 function App() {
   return (
     <AuthProvider>
       <Router>
-        <div data-theme="lomirlite" style={{ backgroundImage: `url(${backgroundImage})` }} className="min-h-screen flex flex-col">
+      <div data-theme="lomirlite" 
+ style={{ 
+  backgroundImage: `url(${backgroundImage})`,
+  backgroundSize: 'cover',
+  backgroundPosition: 'center',
+  backgroundAttachment: 'fixed',
+  backgroundRepeat: 'no-repeat'
+}} 
+ className="min-h-screen flex flex-col">
           <Navbar />
           <main className="flex-grow py-6">
             <div className="content-container">
