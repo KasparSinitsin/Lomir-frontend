@@ -28,10 +28,24 @@ const UserCard = ({ user, onUpdate }) => {
     }
   };
   
-  // Get the profile image - directly use user.avatarUrl or user.avatar_url if available
-  const profileImage = user.avatarUrl || user.avatar_url || 
-                      ((user.firstName || user.first_name)?.charAt(0) || 
-                       user.username?.charAt(0) || '?');
+  // Get the profile image
+  const getProfileImage = () => {
+    // Explicitly look for avatar_url in snake_case format from API
+    if (user.avatar_url) {
+      console.log('Found avatar_url:', user.avatar_url);
+      return user.avatar_url;
+    }
+    
+    // Try camelCase format (from frontend state)
+    if (user.avatarUrl) {
+      console.log('Found avatarUrl:', user.avatarUrl);
+      return user.avatarUrl;
+    }
+    
+    // Use initial as fallback
+    return (user.first_name || user.firstName)?.charAt(0) || 
+           user.username?.charAt(0) || '?';
+  };
   
   const openUserDetails = () => {
     setIsModalOpen(true);
@@ -53,7 +67,7 @@ const UserCard = ({ user, onUpdate }) => {
         title={displayName()}
         subtitle={user.username ? `@${user.username}` : ''}
         hoverable
-        image={profileImage}
+        image={getProfileImage()}
         imageAlt={`${user.username || 'User'}'s profile`}
         imageSize="medium"
       >
