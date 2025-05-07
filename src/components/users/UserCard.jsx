@@ -7,6 +7,10 @@ import UserDetailsModal from './UserDetailsModal';
 const UserCard = ({ user, onUpdate }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   
+  // Prepare the image prop - either URL or initial
+  const userImage = user.avatar_url || 
+                    (user.first_name?.charAt(0) || user.username?.charAt(0) || '?');
+  
   const openUserDetails = () => {
     setIsModalOpen(true);
   };
@@ -27,6 +31,9 @@ const UserCard = ({ user, onUpdate }) => {
         title={`${user.first_name} ${user.last_name}`}
         subtitle={`@${user.username}`}
         hoverable
+        image={userImage}
+        imageAlt={`${user.username}'s profile`}
+        imageSize="medium"
       >
         <p className="text-base-content/80 mb-4">{user.bio}</p>
         
