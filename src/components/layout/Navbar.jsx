@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import LomirLogo from '../../assets/images/Lomir-logo.png';
+import LomirLogo from '../../assets/images/Lomir-logowordmark-color.svg';
 import { Bell, MessageCircle, Search } from 'lucide-react';
 
 const Navbar = () => {
