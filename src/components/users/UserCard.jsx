@@ -7,9 +7,11 @@ import UserDetailsModal from './UserDetailsModal';
 const UserCard = ({ user, onUpdate }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   
+  // For debugging
+  console.log('User data in UserCard:', user);
+  
   // Create a display name with fallbacks
   const displayName = () => {
-    // Check for both snake_case and camelCase property names
     const firstName = user.first_name || user.firstName || '';
     const lastName = user.last_name || user.lastName || '';
     
@@ -26,10 +28,10 @@ const UserCard = ({ user, onUpdate }) => {
     }
   };
   
-  // Prepare the image prop - either URL or initial
-  const userImage = user.avatar_url || user.avatarUrl || 
-                    ((user.first_name || user.firstName)?.charAt(0) || 
-                     user.username?.charAt(0) || '?');
+  // Get the profile image - directly use user.avatarUrl or user.avatar_url if available
+  const profileImage = user.avatarUrl || user.avatar_url || 
+                      ((user.firstName || user.first_name)?.charAt(0) || 
+                       user.username?.charAt(0) || '?');
   
   const openUserDetails = () => {
     setIsModalOpen(true);
@@ -45,16 +47,13 @@ const UserCard = ({ user, onUpdate }) => {
     }
   };
   
-  // For debugging
-  console.log('User card rendering with data:', user);
-  
   return (
     <>
       <Card 
         title={displayName()}
         subtitle={user.username ? `@${user.username}` : ''}
         hoverable
-        image={userImage}
+        image={profileImage}
         imageAlt={`${user.username || 'User'}'s profile`}
         imageSize="medium"
       >

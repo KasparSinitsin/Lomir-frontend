@@ -31,17 +31,19 @@ const UserDetailsModal = ({
     try {
       setLoading(true);
       setError(null);
-
+  
       const response = await userService.getUserById(userId);
       const userData = response.data;
-
+      
+      console.log('Full user details from API:', userData);
+  
       setUser(userData);
-
+  
       setFormData({
-        firstName: userData.first_name || '',
-        lastName: userData.last_name || '',
+        firstName: userData.first_name || userData.firstName || '',
+        lastName: userData.last_name || userData.lastName || '',
         bio: userData.bio || '',
-        postalCode: userData.postal_code || '',
+        postalCode: userData.postal_code || userData.postalCode || '',
         selectedTags: userData.tags?.map(tag => tag.id) || [],
         tagExperienceLevels: userData.tags?.reduce((acc, tag) => {
           acc[tag.id] = tag.experience_level || 'beginner';
@@ -52,7 +54,7 @@ const UserDetailsModal = ({
           return acc;
         }, {}) || {}
       });
-
+  
     } catch (err) {
       console.error('Error fetching user details:', err);
       setError('Failed to load user details. Please try again.');
