@@ -4,10 +4,20 @@ import App from './App.jsx';
 import './index.css';
 import { AuthProvider } from './contexts/AuthContext.jsx';
 
-ReactDOM.createRoot(document.getElementById('root')).render(
-  <React.StrictMode>
+function RootWrapper() {
+  React.useEffect(() => {
+    document.documentElement.setAttribute('data-theme', 'lomirlite');
+  }, []);
+
+  return (
     <AuthProvider>
       <App />
     </AuthProvider>
-  </React.StrictMode>,
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(
+  <React.StrictMode>
+    <RootWrapper />
+  </React.StrictMode>
 );

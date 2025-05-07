@@ -2,7 +2,143 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Add custom base styles here */
+/* Global background image */
+body {
+  background-size: cover;
+  background-attachment: fixed;
+  background-position: center;
+  background-color: transparent !important;
+}
+
+html, body {
+  background: none !important;
+  background-color: transparent !important;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+.glass-navbar {
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  padding-top: 2rem;
+  padding-bottom: 1rem;
+}
+
+/* Add to src/index.css if not already present */
+.glass-modal {
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+/* Make inputs and elements on glass backgrounds more readable */
+.glass-content .input,
+.glass-content .textarea,
+.glass-content .select {
+  backdrop-filter: blur(4px);
+}
+
+.content-container {
+  width: 100%;
+  max-width: 1024px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+/* Global font styles */
+html, body {
+  font-family: 'Roboto', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Font weights for various heading levels */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 500;
+}
+
+/* Additional styling to optimize Roboto appearance */
+.text-xs, .text-sm {
+  letter-spacing: 0.01em;
+}
+
+.text-lg, .text-xl, .text-2xl, .text-3xl, .text-4xl, .text-5xl {
+  letter-spacing: -0.01em;
+}
+
+/* Custom font weights */
+.font-light {
+  font-weight: 300;
+}
+
+.font-normal {
+  font-weight: 400;
+}
+
+.font-medium {
+  font-weight: 500;
+}
+
+.font-bold {
+  font-weight: 700;
+}
+
+/* Custom Base Styles */
 body {
   min-height: 100vh;
+}
+
+/* Custom Button Design */
+.btn-primary {
+  background-color: white !important;
+  color: #3B82F6 !important;
+  border: 1px solid #3B82F6 !important;
+  background-image: none !important; /* Remove the gradient */
+}
+
+.btn-primary:hover {
+  background-color: #F8FAFC !important;
+  color: #2563EB !important;
+  border-color: #2563EB !important;
+  background-image: none !important; /* Remove the gradient */
+}
+
+/* If you use btn-outline and want to override DaisyUI's hover behavior */
+.btn-outline.btn-primary:hover {
+  background-color: #F8FAFC !important;
+  color: #2563EB !important;
+  background-image: none !important;
+}
+
+/* Custom Input Focus for inpput fields */
+.input:focus {
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+.neon {
+  @apply text-[#b96eff] border-2 border-transparent bg-transparent rounded-full px-4 py-1 transition-all duration-300;
+  box-shadow: 0 0 4px #b96eff, 0 0 8px #b96eff, 0 0 16px #b96eff;
+}
+
+/* Hover effect */
+.neon:hover {
+  background-color: transparent;
+  color: #b96eff;
+  box-shadow: 0 0 8px #b96eff, 0 0 16px #b96eff, 0 0 28px #b96eff;
+}
+
+.background-opacity {
+  background-color: rgba(255, 255, 255, 0.5);
+}
+
+.btn-ghost:hover {
+  background-color: #C7D2FE !important;
+  color: #1E40AF !important;
 }
