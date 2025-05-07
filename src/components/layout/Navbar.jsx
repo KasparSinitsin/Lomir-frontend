@@ -21,28 +21,28 @@ const Navbar = () => {
         <div className="flex items-center space-x-6">
 
         {/* Icon Links */}
-<div className="flex items-center space-x-4 text-violet-600">
-  <div className="hover:text-violet-400 hover:drop-shadow-neon transition duration-200 cursor-pointer">
+        <div className="flex items-center space-x-4 text-[#009213]">
+  <div className="hover:text-[#036b0c] hover:drop-shadow-neon transition duration-200 cursor-pointer">
     <Bell size={22} strokeWidth={2.2} />
   </div>
-  <div className="hover:text-violet-400 hover:drop-shadow-neon transition duration-200 cursor-pointer">
+  <div className="hover:text-[#036b0c] hover:drop-shadow-neon transition duration-200 cursor-pointer">
     <MessageCircle size={22} strokeWidth={2.2} />
   </div>
   <Link
     to="/search"
-    className="hover:text-violet-400 hover:drop-shadow-neon transition duration-200"
+    className="hover:text-[#036b0c] hover:drop-shadow-neon transition duration-200"
   >
     <Search size={22} strokeWidth={2.2} />
   </Link>
 </div>
 
           {/* Navigation Links */}
-          <nav className="flex space-x-4 text-sm sm:text-base">
-            <Link to="/teams/my-teams" className="neon hover:text-violet-600 bg-transparent rounded-full px-4 py-1">Teams</Link>
+          <nav className="flex space-x-2 text-sm sm:text-base">
+            <Link to="/teams/my-teams" className="neon text-[#036b0c] bg-transparent rounded-full px-2 py-1">My Teams</Link>
             {isAuthenticated && (
               <>
-                <Link to="/garden" className="neon hover:text-violet-600 bg-transparent rounded-full px-4 py-1">Garden</Link>
-                <Link to="/badges" className="neon hover:text-violet-600 bg-transparent rounded-full px-4 py-1">Badges</Link>
+                <Link to="/garden" className="neon text-[#036b0c] bg-transparent rounded-full px-2 py-1">Garden</Link>
+                <Link to="/badges" className="neon text-[#036b0c] bg-transparent rounded-full px-2 py-1">Badges</Link>
               </>
             )}
           </nav>
@@ -57,7 +57,7 @@ const Navbar = () => {
               </label>
               <ul
                 tabIndex={0}
-                className="mt-3 z-[1] p-2 shadow-lg glass-navbar menu menu-sm dropdown-content rounded-box w-52"
+                className="mt-3 z-[1] p-2 shadow-lg glass-navbar menu menu-sm dropdown-content rounded-box w-30"
               >
                 <li><Link to="/profile">Profile</Link></li>
                 <li><Link to="/settings">Settings</Link></li>
