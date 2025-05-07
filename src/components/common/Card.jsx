@@ -32,8 +32,8 @@ const Card = ({
       <div className="flex justify-center mb-4">
         <div className="avatar placeholder">
           <div className={`bg-primary text-primary-content ${shapeClass} ${sizeClass}`}>
-            {typeof image === 'string' && image.startsWith('http') ? (
-              // If image is a URL (starts with http), render an img tag
+            {typeof image === 'string' && (image.startsWith('http') || image.startsWith('https') || image.startsWith('data:')) ? (
+              // If image is a URL, render an img tag
               <img 
                 src={image} 
                 alt={imageAlt}
