@@ -5,13 +5,14 @@ import TagSelector from '../tags/TagSelector';
 import Alert from '../common/Alert';
 import { teamService } from '../../services/teamService';
 import TeamDetailsModal from './TeamDetailsModal';
+import IconToggle from '../common/IconToggle';
 
 const TeamCreationForm = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    isPublic: true,
+    isPublic: false, // Changed default to false (hidden)
     maxMembers: 5,
     selectedTags: [],
   });
@@ -169,16 +170,13 @@ const TeamCreationForm = () => {
           {errors.maxMembers && <p className="text-red-500 text-xs italic">{errors.maxMembers}</p>}
         </div>
         <div className="mb-4">
-          <label className="inline-flex items-center">
-            <input
-              type="checkbox"
-              name="isPublic"
-              checked={formData.isPublic}
-              onChange={handleChange}
-              className="form-checkbox h-5 w-5 text-primary rounded"
-            />
-            <span className="ml-2 text-gray-700">Public Team (visible to all users)</span>
-          </label>
+          {/* Replace checkbox with IconToggle */}
+          <IconToggle
+            name="isPublic"
+            checked={formData.isPublic}
+            onChange={handleChange}
+            className="toggle-visibility"
+          />
         </div>
         <div className="mb-4">
           <label className="block text-gray-700 text-sm font-bold mb-2">

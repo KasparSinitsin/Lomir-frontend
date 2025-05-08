@@ -1,5 +1,5 @@
 import React from 'react';
-import { Eye, EyeOff } from 'lucide-react'; 
+import { Eye, EyeClosed } from 'lucide-react'; 
 
 const IconToggle = ({
   name,
@@ -18,8 +18,8 @@ const IconToggle = ({
       <div className="flex items-center justify-between p-3 bg-base-200 rounded-lg">
         <div className="flex items-center">
           {checked ? 
-            <Eye size={18} className="text-primary mr-2" /> : 
-            <EyeOff size={18} className="text-base-content/70 mr-2" />
+            <Eye size={30} className="text-primary mr-2" /> : 
+            <EyeClosed size={30} className="text-base-content/70 mr-2" />
           }
           <span className="font-medium">
             {checked ? 'Visible for all Users' : 'Hidden'}

@@ -18,10 +18,11 @@
   /* UI Colors */
   --color-background: #FFFFFF;
   --color-background-soft: #F8FAFC;
+  --color-background-soft-green: #bbeabf;
   --color-background-muted: rgba(255, 255, 255, 0.5);
   --color-text: #033f05;
   --color-text-soft: rgba(3, 63, 5, 0.7);
-  --color-border: rgba(255, 255, 255, 0.2);
+  --color-border: rgba(3, 63, 5, 0.2);
   
   /* Semantic Colors */
   --color-success: var(--color-primary);
@@ -199,15 +200,34 @@ body {
   height: 1.5rem;
 }
 
+/* Make the toggle circle round */
+.toggle-visibility::before {
+  border-radius: 50% !important; /* Ensures it's perfectly circular */
+  height: 1rem !important; /* Size of the circle */
+  width: 1rem !important; /* Size of the circle */
+  background-color: var(--input-color) !important; /* Color of the circle */
+}
+
+.toggle-visibility::before {
+  transition: transform 0.2s ease-in-out;
+}
+
 .toggle-visibility {
-  --off-background: #f3f4f6;
-  --on-background: var(--color-primary);
+  --off-background: white;
+  --on-background: var(--color-background-soft-green);
   height: 1.5rem !important;
   width: 3rem !important;
 }
 
+.toggle {
+  border: var(--border) solid currentColor;
+  color: var(--input-color); 
+
+}
+
 .toggle-visibility:checked {
   background-color: var(--on-background) !important;
+  color: var(--color-primary-focus);
 }
 
 .toggle-visibility:not(:checked) {
