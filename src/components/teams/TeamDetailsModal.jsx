@@ -409,7 +409,7 @@ const TeamDetailsModal = ({
                     )}
                   </div>
 
-                  {/* Replaced the checkbox with IconToggle */}
+                  {/* Toggle visibility with IconToggle */}
                   <IconToggle
                     name="isPublic"
                     checked={formData.isPublic}
