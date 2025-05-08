@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
@@ -34,6 +34,51 @@ const Profile = () => {
     isPublic: true,
     profileImage: null
   });
+  // Add a flag to track if initial data load has happened
+  const [initialDataLoaded, setInitialDataLoaded] = useState(false);
+  
+  // Fetch user details as a callback that doesn't re-create on each render
+  const fetchUserDetails = useCallback(async () => {
+    if (!user || !user.id || initialDataLoaded) return;
+    
+    try {
+      setLoading(true);
+      console.log("Fetching user details for ID:", user.id);
+      const response = await userService.getUserById(user.id);
+      
+      if (response && response.data) {
+        const apiUserData = response.data;
+        console.log("API returned user data:", apiUserData);
+        
+        // Avoid updating the user context here - that's causing the loop
+        // Instead, just use the API data to update the form
+        
+        // Update form data directly from API response
+        setFormData({
+          firstName: apiUserData.firstName || apiUserData.first_name || '',
+          lastName: apiUserData.lastName || apiUserData.last_name || '',
+          bio: apiUserData.bio || '',
+          postalCode: apiUserData.postalCode || apiUserData.postal_code || '',
+          isPublic: apiUserData.isPublic !== undefined ? apiUserData.isPublic : 
+                   (apiUserData.is_public !== undefined ? apiUserData.is_public : true),
+          profileImage: null
+        });
+        
+        // Set image preview if available
+        if (apiUserData.avatarUrl || apiUserData.avatar_url) {
+          setImagePreview(apiUserData.avatarUrl || apiUserData.avatar_url);
+        }
+        
+        // Mark initial data as loaded
+        setInitialDataLoaded(true);
+      }
+    } catch (error) {
+      console.error("Error fetching user details:", error);
+      setError("Failed to load user data. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  }, [user, initialDataLoaded]); // Only depend on user and initialDataLoaded
 
   useEffect(() => {
     const message = localStorage.getItem('registrationMessage');
@@ -42,29 +87,28 @@ const Profile = () => {
       localStorage.removeItem('registrationMessage');
     }
 
-    // Debug the user object to see property names
-    if (user) {
-      console.log("User object for debugging:", user);
+    // Fetch user details only if we haven't loaded initial data yet
+    if (user && !initialDataLoaded) {
+      fetchUserDetails();
     }
 
-    // Initialize form data when user data is available
-    if (user) {
-      console.log("Initializing form data with user:", user);
+    // Initialize form data from context if available and we haven't loaded from API yet
+    if (user && !initialDataLoaded) {
+      console.log("Initializing form with user data from context:", user);
       
-      // Check for both camelCase and snake_case field names
       setFormData({
-        firstName: user.firstName || user.first_name || '',
-        lastName: user.lastName || user.last_name || '',
+        firstName: user.first_name || user.firstName || '',
+        lastName: user.last_name || user.lastName || '',
         bio: user.bio || '',
-        postalCode: user.postalCode || user.postal_code || '',
-        isPublic: user.isPublic !== undefined ? user.isPublic : 
-                 (user.is_public !== undefined ? user.is_public : true),
+        postalCode: user.postal_code || user.postalCode || '',
+        isPublic: user.is_public !== undefined ? user.is_public : 
+                 (user.isPublic !== undefined ? user.isPublic : true),
         profileImage: null
       });
-
-      // Set image preview if user has an avatar
-      if (user.avatarUrl || user.avatar_url) {
-        setImagePreview(user.avatarUrl || user.avatar_url);
+      
+      // Set image preview if available
+      if (user.avatar_url || user.avatarUrl) {
+        setImagePreview(user.avatar_url || user.avatarUrl);
       }
     }
 
@@ -90,26 +134,26 @@ const Profile = () => {
 
     fetchTags();
     fetchUserTags();
-  }, [user]);
+  }, [user, initialDataLoaded, fetchUserDetails]); // Add initialDataLoaded and fetchUserDetails to dependencies
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     const newValue = type === 'checkbox' ? checked : value;
     
     console.log(`Field "${name}" changed to:`, newValue);
-    setFormData({
-      ...formData,
+    setFormData(prevData => ({
+      ...prevData,
       [name]: newValue
-    });
+    }));
   };
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      setFormData({
-        ...formData,
+      setFormData(prevData => ({
+        ...prevData,
         profileImage: file
-      });
+      }));
       
       // For preview
       const reader = new FileReader();
@@ -128,10 +172,10 @@ const Profile = () => {
       setError(null);
 
       await userService.updateUserTags(user.id, selectedTags);
-      setSuccess('Tags wurden erfolgreich aktualisiert');
+      setSuccess('Tags updated successfully');
     } catch (error) {
       console.error('Error updating user tags:', error);
-      setError('Fehler beim Aktualisieren der Tags. Bitte versuche es erneut.');
+      setError('Failed to update tags. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -144,18 +188,15 @@ const Profile = () => {
       setLoading(true);
       setError(null);
       
-      // Debug logging for user information
-      console.log("Current user object:", user);
-      console.log("User ID from current context:", user.id);
-      
       console.log("Starting profile update with form data:", formData);
       
+      // Convert form data to the format expected by the API
       const userData = {
-        firstName: formData.firstName,
-        lastName: formData.lastName,
+        first_name: formData.firstName,
+        last_name: formData.lastName,
         bio: formData.bio,
-        postalCode: formData.postalCode,
-        isPublic: formData.isPublic
+        postal_code: formData.postalCode,
+        is_public: formData.isPublic
       };
       
       console.log("Sending update with data:", userData);
@@ -177,18 +218,11 @@ const Profile = () => {
           }
         );
 
-        userData.avatarUrl = cloudinaryResponse.data.secure_url;
-        console.log("Image uploaded, received URL:", userData.avatarUrl);
+        userData.avatar_url = cloudinaryResponse.data.secure_url;
+        console.log("Image uploaded, received URL:", userData.avatar_url);
       }
       
-      // Log complete API call details
-      console.log(`Attempting to update user with ID: ${user.id}`);
-      console.log("Full update payload:", userData);
-      
-      // Add a check for valid user ID
-      if (!user.id || isNaN(parseInt(user.id))) {
-        throw new Error(`Ungültige Benutzer-ID: ${user.id}`);
-      }
+      console.log("Sending API update with data:", userData);
       
       const response = await userService.updateUser(user.id, userData);
       
@@ -196,26 +230,36 @@ const Profile = () => {
       
       if (!response || response.success === false) {
         console.error("Update failed:", response?.message || "No response received");
-        setError('Fehler beim Aktualisieren des Profils: ' + (response?.message || "Unbekannter Fehler"));
+        setError('Failed to update profile: ' + (response?.message || "Unknown error"));
       } else {
         setIsEditing(false);
-        setSuccess('Profil erfolgreich aktualisiert');
+        setSuccess('Profile updated successfully');
         
-        // Update user data in AuthContext with the new data
+        // Update user data in context with the new data
         if (response.data) {
-          console.log("New user data:", response.data);
+          console.log("New user data from API:", response.data);
           
-          // Update global user context
-          updateUser({
+          // Create an object with both snake_case and camelCase versions
+          const updatedUser = {
+            ...user,
+            // Original snake_case from API
+            first_name: response.data.first_name,
+            last_name: response.data.last_name,
+            postal_code: response.data.postal_code,
+            avatar_url: response.data.avatar_url,
+            is_public: response.data.is_public,
+            bio: response.data.bio,
+            // Add camelCase versions
             firstName: response.data.first_name,
             lastName: response.data.last_name,
-            bio: response.data.bio,
             postalCode: response.data.postal_code,
             avatarUrl: response.data.avatar_url,
             isPublic: response.data.is_public
-          });
+          };
           
-          // Update local form state
+          updateUser(updatedUser);
+          
+          // Also update the form data
           setFormData({
             firstName: response.data.first_name || '',
             lastName: response.data.last_name || '',
@@ -224,28 +268,42 @@ const Profile = () => {
             isPublic: response.data.is_public !== undefined ? response.data.is_public : true,
             profileImage: null
           });
+          
+          // Set image preview if available
+          if (response.data.avatar_url) {
+            setImagePreview(response.data.avatar_url);
+          }
         }
       }
     } catch (error) {
       console.error('Error updating profile:', error);
-      console.error('Error details:', {
-        message: error.message,
-        userId: user?.id,
-        formData: formData
-      });
-      setError('Fehler beim Aktualisieren des Profils: ' + (error.message || 'Unbekannter Fehler'));
+      setError('Failed to update profile: ' + (error.message || 'Unknown error'));
     } finally {
       setLoading(false);
     }
   };
 
+  // Manual refresh for debugging purposes
+  const handleManualRefresh = () => {
+    setInitialDataLoaded(false); // Reset the flag to allow a new fetch
+    fetchUserDetails(); // Manually trigger a refresh
+  };
+
   // For debugging purposes
   const displayUserData = () => {
-    if (!user) return "Keine Benutzerdaten verfügbar";
+    if (!user) return "No user data available";
     
     return (
       <pre className="text-xs overflow-auto p-2 bg-gray-100 rounded">
         {JSON.stringify(user, null, 2)}
+      </pre>
+    );
+  };
+
+  const displayFormData = () => {
+    return (
+      <pre className="text-xs overflow-auto p-2 bg-gray-100 rounded">
+        {JSON.stringify(formData, null, 2)}
       </pre>
     );
   };
@@ -256,9 +314,9 @@ const Profile = () => {
         <div className="w-full max-w-lg mx-auto">
           <Card>
             <div className="text-center p-4">
-              <h2 className="text-xl font-semibold text-error mb-4">Benutzer nicht gefunden</h2>
-              <p className="mb-6">Bitte melde dich erneut an, um auf dein Profil zuzugreifen.</p>
-              <Link to="/login" className="btn btn-primary">Zum Login</Link>
+              <h2 className="text-xl font-semibold text-error mb-4">User Not Found</h2>
+              <p className="mb-6">Please login again to access your profile.</p>
+              <Link to="/login" className="btn btn-primary">Go to Login</Link>
             </div>
           </Card>
         </div>
@@ -292,21 +350,34 @@ const Profile = () => {
         />
       )}
       
-      {/* Debug section - remove in production */}
+      {/* Debug section - keep this in development for troubleshooting */}
       {import.meta.env.DEV && (
         <Card className="mb-4">
           <div className="p-4">
-            <h3 className="text-lg font-semibold mb-2">Debug Benutzerdaten</h3>
+            <h3 className="text-lg font-semibold mb-2">Debug User Data</h3>
             {displayUserData()}
             
-            {isEditing && (
-              <div className="mt-4">
-                <h3 className="text-lg font-semibold mb-2">Debug Formulardaten</h3>
-                <pre className="text-xs overflow-auto p-2 bg-gray-100 rounded">
-                  {JSON.stringify(formData, null, 2)}
-                </pre>
-              </div>
-            )}
+            <div className="mt-4">
+              <h3 className="text-lg font-semibold mb-2">Debug Form Data</h3>
+              {displayFormData()}
+            </div>
+            
+            <div className="mt-4">
+              <h3 className="text-lg font-semibold mb-2">Debug State</h3>
+              <p>Initial Data Loaded: {initialDataLoaded ? 'Yes' : 'No'}</p>
+              <p>Is Editing: {isEditing ? 'Yes' : 'No'}</p>
+              <p>Loading: {loading ? 'Yes' : 'No'}</p>
+            </div>
+            
+            <div className="mt-4">
+              <Button 
+                variant="secondary" 
+                size="sm"
+                onClick={handleManualRefresh}
+              >
+                Manual Refresh
+              </Button>
+            </div>
           </div>
         </Card>
       )}
@@ -314,15 +385,15 @@ const Profile = () => {
       <Card className="overflow-visible">
         {isEditing ? (
           <div className="p-6">
-            <h2 className="text-2xl font-bold mb-6">Profil bearbeiten</h2>
+            <h2 className="text-2xl font-bold mb-6">Edit Profile</h2>
             
-            <div className="mb-6 flex justify-center">
+            <div className="mb-6 flex justify-top">
               <div className="avatar placeholder">
                 <div className="bg-primary text-primary-content rounded-full w-24 h-24 relative">
                   {imagePreview ? (
                     <img 
                       src={imagePreview} 
-                      alt="Profil" 
+                      alt="Profile" 
                       className="rounded-full object-cover w-full h-full"
                     />
                   ) : (
@@ -339,7 +410,7 @@ const Profile = () => {
             
             <div className="form-control w-full mb-4">
               <label className="label">
-                <span className="label-text">Profilbild</span>
+                <span className="label-text">Profile Image</span>
               </label>
               <input 
                 type="file" 
@@ -351,7 +422,7 @@ const Profile = () => {
             
             <div className="form-control w-full mb-4">
               <label className="label">
-                <span className="label-text">Vorname</span>
+                <span className="label-text">First Name</span>
               </label>
               <input 
                 type="text" 
@@ -359,13 +430,13 @@ const Profile = () => {
                 value={formData.firstName} 
                 onChange={handleChange} 
                 className="input input-bordered w-full" 
-                placeholder="Vorname"
+                placeholder="First Name"
               />
             </div>
             
             <div className="form-control w-full mb-4">
               <label className="label">
-                <span className="label-text">Nachname</span>
+                <span className="label-text">Last Name</span>
               </label>
               <input 
                 type="text" 
@@ -373,27 +444,27 @@ const Profile = () => {
                 value={formData.lastName} 
                 onChange={handleChange} 
                 className="input input-bordered w-full" 
-                placeholder="Nachname"
+                placeholder="Last Name"
               />
             </div>
             
             <div className="form-control w-full mb-4">
               <label className="label">
-                <span className="label-text">Über mich</span>
+                <span className="label-text">About Me</span>
               </label>
               <textarea 
                 name="bio" 
                 value={formData.bio} 
                 onChange={handleChange} 
                 className="textarea textarea-bordered w-full" 
-                placeholder="Erzähle etwas über dich"
+                placeholder="Tell us about yourself"
                 rows="4"
               />
             </div>
             
             <div className="form-control w-full mb-4">
               <label className="label">
-                <span className="label-text">Postleitzahl</span>
+                <span className="label-text">Postal Code</span>
               </label>
               <input 
                 type="text" 
@@ -401,7 +472,7 @@ const Profile = () => {
                 value={formData.postalCode} 
                 onChange={handleChange} 
                 className="input input-bordered w-full" 
-                placeholder="Postleitzahl"
+                placeholder="Postal Code"
               />
             </div>
             
@@ -411,12 +482,12 @@ const Profile = () => {
                 name="isPublic"
                 checked={formData.isPublic}
                 onChange={handleChange}
-                title="Profilsichtbarkeit" 
+                title="Profile Visibility" 
                 entityType="profile"
-                visibleLabel="Für alle sichtbar"
-                hiddenLabel="Privates Profil"
-                visibleDescription="Dein Profil wird für andere Benutzer auffindbar sein"
-                hiddenDescription="Dein Profil wird in den Suchergebnissen ausgeblendet"
+                visibleLabel="Visible to Everyone"
+                hiddenLabel="Private Profile"
+                visibleDescription="Your profile will be discoverable by other users"
+                hiddenDescription="Your profile will be hidden from search results"
                 className="toggle-visibility"
               />
             </div>
@@ -427,7 +498,7 @@ const Profile = () => {
                 onClick={() => setIsEditing(false)}
                 disabled={loading}
               >
-                Abbrechen
+                Cancel
               </Button>
               <Button 
                 type="button"
@@ -435,20 +506,20 @@ const Profile = () => {
                 onClick={handleProfileUpdate}
                 disabled={loading}
               >
-                {loading ? 'Speichern...' : 'Änderungen speichern'}
+                {loading ? 'Saving...' : 'Save Changes'}
               </Button>
             </div>
           </div>
         ) : (
           <div>
-            <div className="flex flex-col md:flex-row md:items-center p-6">
+            <div className="flex flex-col md:flex-row md:items-top p-6">
               <div className="mb-6 md:mb-0 md:mr-8">
                 <div className="avatar placeholder">
                   <div className="bg-primary text-primary-content rounded-full w-24 h-24">
                     {user.avatarUrl || user.avatar_url ? (
                       <img 
                         src={user.avatarUrl || user.avatar_url} 
-                        alt="Profil" 
+                        alt="Profile" 
                         className="rounded-full object-cover w-full h-full" 
                       />
                     ) : (
@@ -472,8 +543,13 @@ const Profile = () => {
                     {/* Display profile visibility status */}
                     <div className="mt-1">
                       <span className={`badge ${user.isPublic || user.is_public ? 'badge-success' : 'badge-warning'} badge-sm`}>
-                        {user.isPublic || user.is_public ? 'Öffentliches Profil' : 'Privates Profil'}
+                        {user.isPublic || user.is_public ? 'Public Profile' : 'Private Profile'}
                       </span>
+
+                      {/* <span className={`badge ${user.isPublic || user.is_public ? 'badge-success' : 'badge-warning'} badge-sm`}>
+                        {user.isPublic || user.is_public ? 'Public Profile' : 'Private Profile'}
+                      </span> */}
+
                     </div>
                   </div>
                   <div className="mt-4 sm:mt-0">
@@ -483,33 +559,34 @@ const Profile = () => {
                       onClick={() => setIsEditing(true)}
                       icon={<Edit size={16} />}
                     >
-                      Profil bearbeiten
+                      Edit Profile
                     </Button>
                   </div>
                 </div>
 
+
                 <Grid cols={1} md={3} gap={4}>
-                  <DataDisplay label="E-Mail" value={user.email} icon={<Mail size={16} />} />
+                  <DataDisplay label="Email" value={user.email} icon={<Mail size={16} />} />
                   {(user.postalCode || user.postal_code) && (
                     <DataDisplay 
-                      label="Standort" 
+                      label="Location" 
                       value={user.postalCode || user.postal_code} 
                       icon={<MapPin size={16} />} 
                     />
                   )}
-                  <DataDisplay label="Mitglied seit" value="April 2025" icon={<User size={16} />} />
+                  <DataDisplay label="Member Since" value="April 2025" icon={<User size={16} />} />
                 </Grid>
               </div>
             </div>
 
             {(user.bio) && (
-              <Section title="Über mich" className="px-6">
+              <Section title="About Me" className="px-6">
                 <p className="text-base-content/90">{user.bio}</p>
               </Section>
             )}
 
             <Section
-              title="Meine Fähigkeiten & Interessen"
+              title="My Skills & Interests"
               className="px-6"
               action={
                 !isEditing ? (
@@ -519,7 +596,7 @@ const Profile = () => {
                     className="hover:bg-violet-200 hover:text-violet-700"
                     onClick={() => setIsEditing(true)}
                   >
-                    Fähigkeiten & Interessen bearbeiten
+                    Edit Skills & Interest Tags
                   </Button>
                 ) : null
               }
@@ -539,7 +616,7 @@ const Profile = () => {
                       ) : null;
                     })
                   ) : (
-                    <p className="text-base-content/70">Noch keine Fähigkeiten oder Interessen hinzugefügt.</p>
+                    <p className="text-base-content/70">No skills or interests added yet.</p>
                   )}
                 </div>
               ) : (
@@ -553,21 +630,21 @@ const Profile = () => {
                       variant="ghost" 
                       onClick={() => setIsEditing(false)}
                     >
-                      Abbrechen
+                      Cancel
                     </Button>
                     <Button 
                       variant="primary" 
                       onClick={handleTagsUpdate}
                       disabled={loading}
                     >
-                      {loading ? 'Speichern...' : 'Tags speichern'}
+                      {loading ? 'Saving...' : 'Save Tags'}
                     </Button>
                   </div>
                 </div>
               )}
             </Section>
 
-            <Section title="Meine Badges" className="px-6">
+            <Section title="My Badges" className="px-6">
               <Grid cols={2} md={3} lg={4} gap={4}>
                 {tags.map((tag) => (
                   tag.type === 'badge' && (
