@@ -4,10 +4,30 @@
 
 
 :root {
-  --color-primary: #009213 !important;
-  --color-primary-content: #009213 !important;
-  --color-base-content: #033f05 !important;
-  --tw-ring-color: #009213 !important;
+  /* Primary Brand Colors */
+  --color-primary: #009213;
+  --color-primary-focus: #036b0c;
+  --color-primary-content: #FFFFFF;
+  
+  /* Badge Category Colors */
+  --color-badge-collaboration: #3B82F6; /* Blue */
+  --color-badge-technical: #10B981;     /* Green */
+  --color-badge-creative: #8B5CF6;      /* Purple */
+  --color-badge-leadership: #EF4444;    /* Red */
+  --color-badge-personal: #F59E0B;      /* Yellow */
+  
+  /* UI Colors */
+  --color-background: #FFFFFF;
+  --color-background-soft: #F8FAFC;
+  --color-text: #033f05;
+  --color-text-soft: rgba(3, 63, 5, 0.7);
+  --color-border: rgba(255, 255, 255, 0.2);
+  
+  /* Semantic Colors */
+  --color-success: #009213;
+  --color-warning: #ef6a3f;
+  --color-error: #df385b;
+  --color-info: #766aea;
 }
 
 /* Global background image */
