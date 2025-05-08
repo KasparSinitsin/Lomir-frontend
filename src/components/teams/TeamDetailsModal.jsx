@@ -6,6 +6,7 @@ import TagSelector from '../tags/TagSelector';
 import Button from '../common/Button';
 import Alert from '../common/Alert';
 import { X, Edit, Users, Trash2 } from 'lucide-react';
+import LabeledToggle from '../common/LabeledToggle';
 
 const TeamDetailsModal = ({
   isOpen = true,
@@ -337,7 +338,7 @@ const TeamDetailsModal = ({
                   variant="ghost"
                   size="sm"
                   onClick={() => setIsEditing(true)}
-                  className="hover:bg-[#C7D2FE] hover:text-[#1E40AF]"
+                  className="hover:bg-[#7ace82] hover:text-[#036b0c]"
                   icon={<Edit size={16} />}
                 >
                   Edit
@@ -347,7 +348,7 @@ const TeamDetailsModal = ({
                     variant="ghost"
                     size="sm"
                     onClick={handleDeleteTeam}
-                    className="hover:bg-[#C7D2FE] hover:text-[#1E40AF]"
+                    className="hover:bg-[#7ace82] hover:text-[#036b0c]"
                     icon={<Trash2 size={16} />}
                     disabled={loading}
                   >

@@ -1,5 +1,3 @@
-// src/components/teams/TeamCreationForm.jsx
-
 import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FiCheck } from 'react-icons/fi';

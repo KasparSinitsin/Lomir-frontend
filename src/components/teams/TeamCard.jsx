@@ -123,7 +123,7 @@ const TeamCard = ({ team, onUpdate, onDelete, isSearchResult = false }) => {
               size="sm"
               onClick={handleDeleteClick}
               disabled={isDeleting}
-              className="ml-2 hover:bg-[#C7D2FE] hover:text-[#1E40AF]"
+              className="ml-2 hover:bg-[#7ace82] hover:text-[#036b0c]"
               icon={<Trash2 size={16} />}
               aria-label="Delete team"
             >
