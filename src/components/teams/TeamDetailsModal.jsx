@@ -6,6 +6,7 @@ import TagSelector from '../tags/TagSelector';
 import Button from '../common/Button';
 import Alert from '../common/Alert';
 import { X, Edit, Users, Trash2 } from 'lucide-react';
+import LabeledToggle from '../common/LabeledToggle';
 
 const TeamDetailsModal = ({
   isOpen = true,

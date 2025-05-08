@@ -165,21 +165,56 @@ body {
   border-color: var(--color-primary);
 }
 
+/* Switches and Toggles */
+
 .checkbox {
-  --chkbg: var(--color-primary) !important;
-  --chkfg: var(--color-primary-content) !important;
-  border-radius: 50% !important;
+  --chkbg: var(--color-primary);
+  --chkfg: var(--color-primary-content);
+  border-radius: 50% !important; 
 }
 
 .checkbox:checked {
-  border-color: var(--color-primary) !important;
-  background-color: var(--color-primary) !important;
-  color: var(--color-primary-content) !important;
+  border-color: var(--color-primary);
+  background-color: var(--color-primary);
+  color: var(--color-primary-content);
 }
 
 .checkbox:focus-visible {
-  outline: 1px solid var(--color-primary) !important;
+  outline: 1px solid var(--color-primary);
 }
+
+.checkbox:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+
+.checkbox-sm {
+  width: 1rem;
+  height: 1rem;
+}
+
+.checkbox-lg {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+.toggle-visibility {
+  --off-background: #f3f4f6;
+  --on-background: var(--color-primary);
+  height: 1.5rem !important;
+  width: 3rem !important;
+}
+
+.toggle-visibility:checked {
+  background-color: var(--on-background) !important;
+}
+
+.toggle-visibility:not(:checked) {
+  background-color: var(--off-background) !important;
+}
+
+
 
 
 
