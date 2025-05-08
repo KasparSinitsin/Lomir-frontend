@@ -37,29 +37,29 @@ export default {
 
       {
         lomirlite: {
-          "primary": "#036b0c",           // Green
-          "primary-focus": "#009213",     // darker blue
-          "primary-content": "#FFFFFF",
+          "primary": "var(--color-primary)",
+          "primary-focus": "var(--color-primary-focus)",
+          "primary-content": "var(--color-primary-content)",
 
-          "secondary": "#E0E7FF",         // soft violet-light
-          "secondary-focus": "#C7D2FE",   // soft violet
-          "secondary-content": "#036b0c", // Dark Green
+          "secondary": "#E0E7FF",
+          "secondary-focus": "#C7D2FE",
+          "secondary-content": "var(--color-primary-focus)",
 
-          "accent": "#C7D2FE",            // replacing magenta with soft violet
+          "accent": "#C7D2FE",
           "neutral": "#3D4451",
 
-          "base-100": "#FFFFFF",
-          "base-200": "#F8FAFC",
+          "base-100": "var(--color-background)",
+          "base-200": "var(--color-background-soft)",
           "base-300": "#F1F5F9",
-          "base-content": "#1F2937",
+          "base-content": "var(--color-text)",
 
-          "info": "#766aea",
-          "success": "#009213",
-          "warning": "#ef6a3f",
-          "error": "#df385b",
+          "info": "var(--color-info)",
+          "success": "var(--color-success)",
+          "warning": "var(--color-warning)",
+          "error": "var(--color-error)",
 
           "font-family": "'Roboto', sans-serif",
-          "text-primary": "#036b0c",
+          "text-primary": "var(--color-primary-focus)",
         },
       },
 
