@@ -6,7 +6,7 @@ import TagSelector from '../tags/TagSelector';
 import Button from '../common/Button';
 import Alert from '../common/Alert';
 import { X, Edit, Users, Trash2 } from 'lucide-react';
-import LabeledToggle from '../common/LabeledToggle';
+import IconToggle from '../common/IconToggle';
 
 const TeamDetailsModal = ({
   isOpen = true,
@@ -30,7 +30,7 @@ const TeamDetailsModal = ({
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    isPublic: true,
+    isPublic: false, // Default is invisible
     maxMembers: 5,
     selectedTags: [],
   });
@@ -409,23 +409,13 @@ const TeamDetailsModal = ({
                     )}
                   </div>
 
-                  <div className="form-control">
-                    <label className="label cursor-pointer">
-                      <span className="label-text">Public Team</span>
-                      <input
-                        type="checkbox"
-                        name="isPublic"
-                        className="toggle toggle-primary"
-                        checked={formData.isPublic}
-                        onChange={handleChange}
-                      />
-                    </label>
-                    <p className="text-sm text-base-content/70">
-                      {formData.isPublic
-                        ? 'Your team will be visible to all users'
-                        : 'Your team will only be visible to members'}
-                    </p>
-                  </div>
+                  {/* Replaced the checkbox with IconToggle */}
+                  <IconToggle
+                    name="isPublic"
+                    checked={formData.isPublic}
+                    onChange={handleChange}
+                    className="toggle-visibility"
+                  />
 
                   <div className="form-control">
                     <label className="label">Maximum Members</label>
@@ -452,11 +442,11 @@ const TeamDetailsModal = ({
                       selectedTags={formData.selectedTags}
                       onTagsSelected={handleTagSelection}
                     />
-{import.meta.env.DEV && (
-  <div className="mt-2 text-sm text-base-content/70">
-    <p>Debug: Selected tag IDs: {formData.selectedTags.join(', ')}</p>
-  </div>
-)}
+                    {import.meta.env.DEV && (
+                      <div className="mt-2 text-sm text-base-content/70">
+                        <p>Debug: Selected tag IDs: {formData.selectedTags.join(', ')}</p>
+                      </div>
+                    )}
                   </div>
 
                   <div className="flex justify-end space-x-2 mt-6">
