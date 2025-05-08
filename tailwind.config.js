@@ -34,10 +34,40 @@ export default {
   plugins: [require("daisyui")],
   daisyui: {
     themes: [
+
+      {
+        lomirlite: {
+          "primary": "#036b0c",           // Green
+          "primary-focus": "#009213",     // darker blue
+          "primary-content": "#FFFFFF",
+
+          "secondary": "#E0E7FF",         // soft violet-light
+          "secondary-focus": "#C7D2FE",   // soft violet
+          "secondary-content": "#036b0c", // Dark Green
+
+          "accent": "#C7D2FE",            // replacing magenta with soft violet
+          "neutral": "#3D4451",
+
+          "base-100": "#FFFFFF",
+          "base-200": "#F8FAFC",
+          "base-300": "#F1F5F9",
+          "base-content": "#1F2937",
+
+          "info": "#766aea",
+          "success": "#009213",
+          "warning": "#ef6a3f",
+          "error": "#df385b",
+
+          "font-family": "'Roboto', sans-serif",
+          "text-primary": "#036b0c",
+        },
+      },
+
+        /* Commented out old custom theme
       {
         lomirlite: {
           "primary": "#3B82F6",           // blue
-          "primary-focus": "#2563EB",     // darker blue
+          "primary-focus": "#009213",     // darker blue
           "primary-content": "#FFFFFF",
 
           "secondary": "#E0E7FF",         // soft violet-light
@@ -60,6 +90,7 @@ export default {
           "font-family": "'Roboto', sans-serif",
         },
       },
+      */
     ],
     defaultTheme: "lomirlite",
   },

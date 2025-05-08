@@ -10,13 +10,13 @@ const Home = () => {
   const { isAuthenticated } = useAuth();
 
   return (
-    <div className="space-y-12">
+    <div className="align-items-center text-center space-y-12">
       {/* Hero Section */}
       <div className="background-opacity rounded-xl shadow-soft overflow-hidden">
         <div className="hero-content text-center py-16 px-6">
           <div className="max-w-md">
             <h1 className="text-4xl sm:text-5xl font-medium tracking-tight text-primary mb-2">Lomir</h1>
-            <p className="text-lg font-light text-base-content/80 mb-8">Build your perfect team for any collaborative project — or simply to have a great time.</p>
+            <p className="text-lg font-light text-base-content/80 mb-8">Build your perfect team for any collaborative project — <br></br>or simply to have a great time.</p>
             <div className="flex gap-4 justify-center">
               {!isAuthenticated ? (
                 <>
@@ -35,7 +35,13 @@ const Home = () => {
       </div>
 
       {/* Section with cards */}
-      <Section title="Why Choose Lomir?" subtitle="Discover what makes our platform unique">
+      <Section>
+
+      <div className="text-center mb-8"> {/* Wrapper für zentrierten Text */}
+  <h2 className="text-xl font-medium text-primary">Why Choose Lomir?</h2>
+  <p className="text-base-content/70 text-sm mt-1 mb-4">Discover what makes our platform unique.</p>
+</div>
+
         <div className="flex justify-between gap-x-4">
           <Card className="w-1/3" title="Find Your People" hoverable={true}>
             <div className="flex justify-center mb-4"> 
