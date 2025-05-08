@@ -9,10 +9,10 @@
   --color-primary-content: #FFFFFF;
   
   /* Badge Category Colors */
-  --color-badge-collaboration: #3B82F6; /* Blue */
-  --color-badge-technical: #10B981;     /* Green */
-  --color-badge-creative: #8B5CF6;      /* Purple */
-  --color-badge-leadership: #EF4444;    /* Red */
+  --color-badge-collaboration: #009213; /* Green */ 
+  --color-badge-technical: #199bff;     /* Blue */
+  --color-badge-creative: #766aea;      /* Purple */
+  --color-badge-leadership: #df385b;    /* Red */
   --color-badge-personal: #F59E0B;      /* Yellow */
   
   /* UI Colors */
@@ -25,7 +25,7 @@
   
   /* Semantic Colors */
   --color-success: var(--color-primary);
-  --color-warning: #ef6a3f;
+  --color-warning: #df385b;
   --color-error: #df385b;
   --color-info: #766aea;
   
@@ -164,6 +164,24 @@ body {
   box-shadow: 0 0 0 2px rgba(var(--color-primary), 0.2);
   border-color: var(--color-primary);
 }
+
+.checkbox {
+  --chkbg: var(--color-primary) !important;
+  --chkfg: var(--color-primary-content) !important;
+  border-radius: 50% !important;
+}
+
+.checkbox:checked {
+  border-color: var(--color-primary) !important;
+  background-color: var(--color-primary) !important;
+  color: var(--color-primary-content) !important;
+}
+
+.checkbox:focus-visible {
+  outline: 1px solid var(--color-primary) !important;
+}
+
+
 
 /* Neon Effect */
 .neon {

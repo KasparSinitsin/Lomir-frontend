@@ -217,7 +217,7 @@ const TagSelector = ({ selectedTags: initialSelectedTags = [], onTagsSelected, m
           type="checkbox"
           checked={localSelectedTags.includes(tagId)}
           onChange={() => toggleTagSelection(tagId)}
-          className="mr-2"
+          className="checkbox checkbox-sm mr-2" 
         />
         <span className="flex-grow">{tag.name}</span>
       </div>

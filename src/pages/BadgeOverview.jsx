@@ -94,28 +94,28 @@ const getBadgeData = () => {
     { id: 6, name: 'Reliable', description: 'Consistently delivers on commitments and meets deadlines', category: 'Collaboration Skills', color: '#3B82F6' },
 
     // Technical Expertise (Green)
-    { id: 7, name: 'Coder', description: 'Skilled in programming languages and development', category: 'Technical Expertise', color: '#10B981' },
-    { id: 8, name: 'Designer', description: 'Creates visually appealing and user-friendly interfaces', category: 'Technical Expertise', color: '#10B981' },
-    { id: 9, name: 'Data Whiz', description: 'Excels at analyzing, interpreting, and visualizing data', category: 'Technical Expertise', color: '#10B981' },
-    { id: 10, name: 'Tech Support', description: 'Helps troubleshoot and solve technical problems', category: 'Technical Expertise', color: '#10B981' },
-    { id: 11, name: 'Systems Thinker', description: 'Understands complex systems and how components interact', category: 'Technical Expertise', color: '#10B981' },
-    { id: 12, name: 'Documentation Master', description: 'Creates clear, thorough, and helpful documentation', category: 'Technical Expertise', color: '#10B981' },
+    { id: 7, name: 'Coder', description: 'Skilled in programming languages and development', category: 'Technical Expertise', color: '#009213' },
+    { id: 8, name: 'Designer', description: 'Creates visually appealing and user-friendly interfaces', category: 'Technical Expertise', color: '#009213' },
+    { id: 9, name: 'Data Whiz', description: 'Excels at analyzing, interpreting, and visualizing data', category: 'Technical Expertise', color: '#009213' },
+    { id: 10, name: 'Tech Support', description: 'Helps troubleshoot and solve technical problems', category: 'Technical Expertise', color: '#009213' },
+    { id: 11, name: 'Systems Thinker', description: 'Understands complex systems and how components interact', category: 'Technical Expertise', color: '#009213' },
+    { id: 12, name: 'Documentation Master', description: 'Creates clear, thorough, and helpful documentation', category: 'Technical Expertise', color: '#009213' },
 
     // Creative Thinking (Purple)
-    { id: 13, name: 'Innovator', description: 'Consistently brings fresh ideas and novel approaches', category: 'Creative Thinking', color: '#8B5CF6' },
-    { id: 14, name: 'Problem Solver', description: 'Finds creative solutions to challenging situations', category: 'Creative Thinking', color: '#8B5CF6' },
-    { id: 15, name: 'Visionary', description: 'Sees the big picture and envisions future possibilities', category: 'Creative Thinking', color: '#8B5CF6' },
-    { id: 16, name: 'Storyteller', description: 'Communicates ideas effectively through compelling narratives', category: 'Creative Thinking', color: '#8B5CF6' },
-    { id: 17, name: 'Artisan', description: 'Creates beautiful and high-quality work in any medium', category: 'Creative Thinking', color: '#8B5CF6' },
-    { id: 18, name: 'Outside-the-Box', description: 'Approaches challenges with unconventional thinking', category: 'Creative Thinking', color: '#8B5CF6' },
+    { id: 13, name: 'Innovator', description: 'Consistently brings fresh ideas and novel approaches', category: 'Creative Thinking', color: '#766aea' },
+    { id: 14, name: 'Problem Solver', description: 'Finds creative solutions to challenging situations', category: 'Creative Thinking', color: '#766aea' },
+    { id: 15, name: 'Visionary', description: 'Sees the big picture and envisions future possibilities', category: 'Creative Thinking', color: '#766aea' },
+    { id: 16, name: 'Storyteller', description: 'Communicates ideas effectively through compelling narratives', category: 'Creative Thinking', color: '#766aea' },
+    { id: 17, name: 'Artisan', description: 'Creates beautiful and high-quality work in any medium', category: 'Creative Thinking', color: '#766aea' },
+    { id: 18, name: 'Outside-the-Box', description: 'Approaches challenges with unconventional thinking', category: 'Creative Thinking', color: '#766aea' },
 
     // Leadership Qualities (Red)
-    { id: 19, name: 'Decision Maker', description: 'Makes timely, thoughtful choices that move projects forward', category: 'Leadership Qualities', color: '#EF4444' },
-    { id: 20, name: 'Mentor', description: 'Helps others develop their skills through guidance and support', category: 'Leadership Qualities', color: '#EF4444' },
-    { id: 21, name: 'Initiative Taker', description: 'Proactively identifies opportunities and takes action', category: 'Leadership Qualities', color: '#EF4444' },
-    { id: 22, name: 'Delegator', description: 'Effectively distributes responsibilities based on team strengths', category: 'Leadership Qualities', color: '#EF4444' },
-    { id: 23, name: 'Strategic Planner', description: 'Develops comprehensive, long-term approaches to achieving goals', category: 'Leadership Qualities', color: '#EF4444' },
-    { id: 24, name: 'Feedback Provider', description: 'Offers constructive criticism that helps others improve', category: 'Leadership Qualities', color: '#EF4444' },
+    { id: 19, name: 'Decision Maker', description: 'Makes timely, thoughtful choices that move projects forward', category: 'Leadership Qualities', color: '#df385b' },
+    { id: 20, name: 'Mentor', description: 'Helps others develop their skills through guidance and support', category: 'Leadership Qualities', color: '#df385b' },
+    { id: 21, name: 'Initiative Taker', description: 'Proactively identifies opportunities and takes action', category: 'Leadership Qualities', color: '#df385b' },
+    { id: 22, name: 'Delegator', description: 'Effectively distributes responsibilities based on team strengths', category: 'Leadership Qualities', color: '#df385b' },
+    { id: 23, name: 'Strategic Planner', description: 'Develops comprehensive, long-term approaches to achieving goals', category: 'Leadership Qualities', color: '#df385b' },
+    { id: 24, name: 'Feedback Provider', description: 'Offers constructive criticism that helps others improve', category: 'Leadership Qualities', color: '#df385b' },
 
     // Personal Attributes (Yellow)
     { id: 25, name: 'Quick Learner', description: 'Rapidly adapts to new information and technologies', category: 'Personal Attributes', color: '#F59E0B' },
