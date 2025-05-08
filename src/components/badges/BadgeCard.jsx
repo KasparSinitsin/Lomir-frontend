@@ -13,13 +13,17 @@ import {
   // Default
   Award
 } from 'lucide-react';
+import Colors from '../../utils/Colors';
 
 const BadgeCard = ({ badge }) => {
   const { name, description, category, color } = badge;
   
+  // Get color from our centralized color system or use provided color as fallback
+  const badgeColor = color || Colors.getBadgeColor(category);
+  
   // Get the icon based on badge name
   const renderIcon = () => {
-    const iconProps = { size: 24, color: color };
+    const iconProps = { size: 24, color: badgeColor };
     
     switch (name) {
       // Collaboration Skills
@@ -51,7 +55,6 @@ const BadgeCard = ({ badge }) => {
       case 'Mentor': return <GraduationCap {...iconProps} />;
       case 'Initiative Taker': return <Flag {...iconProps} />;
       case 'Delegator': return <UserPlus {...iconProps} />;
-      // Changed ChessKnight to Map for Strategic Planner
       case 'Strategic Planner': return <Map {...iconProps} />;
       case 'Feedback Provider': return <MessageSquare {...iconProps} />;
       
@@ -70,14 +73,14 @@ const BadgeCard = ({ badge }) => {
   return (
     <div 
       className="card bg-base-100 shadow-soft hover:shadow-md transition-shadow duration-300"
-      style={{ borderLeft: `4px solid ${color}` }}
+      style={{ borderLeft: `4px solid ${badgeColor}` }}
     >
       <div className="card-body p-4">
         <div className="flex items-center mb-2">
           <div className="mr-3">
             {renderIcon()}
           </div>
-          <h3 className="card-title text-lg" style={{ color }}>{name}</h3>
+          <h3 className="card-title text-lg" style={{ color: badgeColor }}>{name}</h3>
         </div>
         <p className="text-sm text-base-content/80">{description}</p>
       </div>

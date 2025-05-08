@@ -19,7 +19,7 @@ export default {
         '3': 'repeat(3, minmax(0, 1fr))',
       },
       colors: {
-        softviolet: '#C7D2FE', // Add your soft violet color here
+        softviolet: '#C7D2FE', 
       },
     },
     screens: {
@@ -62,35 +62,6 @@ export default {
           "text-primary": "var(--color-primary-focus)",
         },
       },
-
-        /* Commented out old custom theme
-      {
-        lomirlite: {
-          "primary": "#3B82F6",           // blue
-          "primary-focus": "#009213",     // darker blue
-          "primary-content": "#FFFFFF",
-
-          "secondary": "#E0E7FF",         // soft violet-light
-          "secondary-focus": "#C7D2FE",   // soft violet
-          "secondary-content": "#1E40AF", // navy
-
-          "accent": "#C7D2FE",            // replacing magenta with soft violet
-          "neutral": "#3D4451",
-
-          "base-100": "#FFFFFF",
-          "base-200": "#F8FAFC",
-          "base-300": "#F1F5F9",
-          "base-content": "#1F2937",
-
-          "info": "#38BDF8",
-          "success": "#10B981",
-          "warning": "#F59E0B",
-          "error": "#EF4444",
-
-          "font-family": "'Roboto', sans-serif",
-        },
-      },
-      */
     ],
     defaultTheme: "lomirlite",
   },

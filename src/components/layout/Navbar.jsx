@@ -2,9 +2,14 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import LomirLogo from '../../assets/images/Lomir-logowordmark-color.svg';
 import { Bell, MessageCircle, Search } from 'lucide-react';
+import Colors from '../../utils/Colors';
 
 const Navbar = () => {
   const { isAuthenticated, user, logout } = useAuth();
+
+  // Define Tailwind class strings using CSS variables for consistent colors
+  const iconClasses = "text-[var(--color-primary)] hover:text-[var(--color-primary-focus)] hover:drop-shadow-neon transition duration-200";
+  const navLinkClasses = "text-[var(--color-primary)] text-center border-2 border-transparent rounded-full px-2 py-1 transition-all duration-300";
 
   return (
     <div className="navbar glass-navbar sticky top-0 z-10">
@@ -20,29 +25,26 @@ const Navbar = () => {
         {/* Navigation & Auth - Right aligned */}
         <div className="flex items-center space-x-6">
 
-        {/* Icon Links */}
-        <div className="flex items-center space-x-4 text-[#009213]">
-  <div className="hover:text-[#036b0c] hover:drop-shadow-neon transition duration-200 cursor-pointer">
-    <Bell size={22} strokeWidth={2.2} />
-  </div>
-  <div className="hover:text-[#036b0c] hover:drop-shadow-neon transition duration-200 cursor-pointer">
-    <MessageCircle size={22} strokeWidth={2.2} />
-  </div>
-  <Link
-    to="/search"
-    className="hover:text-[#036b0c] hover:drop-shadow-neon transition duration-200"
-  >
-    <Search size={22} strokeWidth={2.2} />
-  </Link>
-</div>
+          {/* Icon Links */}
+          <div className="flex items-center space-x-4">
+            <div className={`${iconClasses} cursor-pointer`}>
+              <Bell size={22} strokeWidth={2.2} />
+            </div>
+            <div className={`${iconClasses} cursor-pointer`}>
+              <MessageCircle size={22} strokeWidth={2.2} />
+            </div>
+            <Link to="/search" className={iconClasses}>
+              <Search size={22} strokeWidth={2.2} />
+            </Link>
+          </div>
 
           {/* Navigation Links */}
           <nav className="flex space-x-2 text-sm sm:text-base">
-            <Link to="/teams/my-teams" className="neon text-[#036b0c] bg-transparent rounded-full px-2 py-1">My Teams</Link>
+            <Link to="/teams/my-teams" className={`${navLinkClasses} neon`}>My Teams</Link>
             {isAuthenticated && (
               <>
-                <Link to="/garden" className="neon text-[#036b0c] bg-transparent rounded-full px-2 py-1">Garden</Link>
-                <Link to="/badges" className="neon text-[#036b0c] bg-transparent rounded-full px-2 py-1">Badges</Link>
+                <Link to="/garden" className={`${navLinkClasses} neon`}>Garden</Link>
+                <Link to="/badges" className={`${navLinkClasses} neon`}>Badges</Link>
               </>
             )}
           </nav>
