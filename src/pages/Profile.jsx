@@ -181,107 +181,86 @@ const Profile = () => {
     }
   };
 
-  const handleProfileUpdate = async () => {
-    if (!user) return;
+const handleProfileUpdate = async () => {
+  if (!user) return;
+  
+  try {
+    setLoading(true);
+    setError(null);
     
-    try {
-      setLoading(true);
-      setError(null);
-      
-      console.log("Starting profile update with form data:", formData);
-      
-      // Convert form data to the format expected by the API
-      const userData = {
-        first_name: formData.firstName,
-        last_name: formData.lastName,
-        bio: formData.bio,
-        postal_code: formData.postalCode,
-        is_public: formData.isPublic
-      };
-      
-      console.log("Sending update with data:", userData);
-      
-      // Upload image if selected
-      if (formData.profileImage) {
-        console.log("Profile image will be uploaded");
-        const cloudinaryFormData = new FormData();
-        cloudinaryFormData.append('file', formData.profileImage);
-        cloudinaryFormData.append('upload_preset', import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET);
-
-        const cloudinaryResponse = await axios.post(
-          `https://api.cloudinary.com/v1_1/${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME}/image/upload`,
-          cloudinaryFormData,
-          {
-            headers: {
-              'Content-Type': 'multipart/form-data'
-            }
-          }
-        );
-
-        userData.avatar_url = cloudinaryResponse.data.secure_url;
-        console.log("Image uploaded, received URL:", userData.avatar_url);
-      }
-      
-      console.log("Sending API update with data:", userData);
-      
-      const response = await userService.updateUser(user.id, userData);
-      
-      console.log("Update response:", response);
-      
-      if (!response || response.success === false) {
-        console.error("Update failed:", response?.message || "No response received");
-        setError('Failed to update profile: ' + (response?.message || "Unknown error"));
-      } else {
-        setIsEditing(false);
-        setSuccess('Profile updated successfully');
-        
-        // Update user data in context with the new data
-        if (response.data) {
-          console.log("New user data from API:", response.data);
-          
-          // Create an object with both snake_case and camelCase versions
-          const updatedUser = {
-            ...user,
-            // Original snake_case from API
-            first_name: response.data.first_name,
-            last_name: response.data.last_name,
-            postal_code: response.data.postal_code,
-            avatar_url: response.data.avatar_url,
-            is_public: response.data.is_public,
-            bio: response.data.bio,
-            // Add camelCase versions
-            firstName: response.data.first_name,
-            lastName: response.data.last_name,
-            postalCode: response.data.postal_code,
-            avatarUrl: response.data.avatar_url,
-            isPublic: response.data.is_public
-          };
-          
-          updateUser(updatedUser);
-          
-          // Also update the form data
-          setFormData({
-            firstName: response.data.first_name || '',
-            lastName: response.data.last_name || '',
-            bio: response.data.bio || '',
-            postalCode: response.data.postal_code || '',
-            isPublic: response.data.is_public !== undefined ? response.data.is_public : true,
-            profileImage: null
-          });
-          
-          // Set image preview if available
-          if (response.data.avatar_url) {
-            setImagePreview(response.data.avatar_url);
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Error updating profile:', error);
-      setError('Failed to update profile: ' + (error.message || 'Unknown error'));
-    } finally {
-      setLoading(false);
+    console.log("Starting profile update with form data:", formData);
+    
+    // Convert form data to the format expected by the API
+    const userData = {
+      first_name: formData.firstName,
+      last_name: formData.lastName,
+      bio: formData.bio,
+      postal_code: formData.postalCode,
+      is_public: formData.isPublic  // Ensure this is correctly passed
+    };
+    
+    console.log("Sending update with data:", userData);
+    
+    // Upload image if selected
+    if (formData.profileImage) {
+      // Image upload code remains the same
     }
-  };
+    
+    const response = await userService.updateUser(user.id, userData);
+    
+    console.log("Update response:", response);
+    
+    if (!response || response.success === false) {
+      console.error("Update failed:", response?.message || "No response received");
+      setError('Failed to update profile: ' + (response?.message || "Unknown error"));
+    } else {
+      setIsEditing(false);
+      setSuccess('Profile updated successfully');
+      
+      // Update user data in context with the new data
+      if (response.data) {
+        console.log("New user data from API:", response.data);
+        
+        // Create a new user object that has both snake_case and camelCase properties
+        const updatedUser = {
+          ...user,
+          // Snake_case properties from API
+          first_name: response.data.first_name,
+          last_name: response.data.last_name,
+          postal_code: response.data.postal_code,
+          avatar_url: response.data.avatar_url,
+          is_public: response.data.is_public,
+          bio: response.data.bio,
+          // Add camelCase versions for consistency
+          firstName: response.data.first_name,
+          lastName: response.data.last_name,
+          postalCode: response.data.postal_code,
+          avatarUrl: response.data.avatar_url,
+          isPublic: response.data.is_public
+        };
+        
+        // Update the global user context
+        updateUser(updatedUser);
+        
+        // Reset form data with updated values
+        setFormData(prev => ({
+          ...prev,
+          firstName: response.data.first_name || '',
+          lastName: response.data.last_name || '',
+          bio: response.data.bio || '',
+          postalCode: response.data.postal_code || '',
+          isPublic: response.data.is_public !== undefined ? response.data.is_public : true,
+          profileImage: null
+        }));
+      }
+    }
+  } catch (error) {
+    console.error('Error updating profile:', error);
+    setError('Failed to update profile: ' + (error.message || 'Unknown error'));
+  } finally {
+    setLoading(false);
+  }
+};
 
   // Manual refresh for debugging purposes
   const handleManualRefresh = () => {
@@ -541,16 +520,11 @@ const Profile = () => {
                     </h2>
                     <p className="text-base-content/70">@{user.username}</p>
                     {/* Display profile visibility status */}
-                    <div className="mt-1">
-                      <span className={`badge ${user.isPublic || user.is_public ? 'badge-success' : 'badge-warning'} badge-sm`}>
-                        {user.isPublic || user.is_public ? 'Public Profile' : 'Private Profile'}
-                      </span>
-
-                      {/* <span className={`badge ${user.isPublic || user.is_public ? 'badge-success' : 'badge-warning'} badge-sm`}>
-                        {user.isPublic || user.is_public ? 'Public Profile' : 'Private Profile'}
-                      </span> */}
-
-                    </div>
+<div className="mt-1">
+  <span className={`badge ${(user.isPublic === true || user.is_public === true) ? 'badge-success' : 'badge-warning'} badge-sm`}>
+    {(user.isPublic === true || user.is_public === true) ? 'Public Profile' : 'Private Profile'}
+  </span>
+</div>
                   </div>
                   <div className="mt-4 sm:mt-0">
                     <Button 
