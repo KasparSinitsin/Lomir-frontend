@@ -1,3 +1,5 @@
+// src/components/teams/TeamCard.jsx
+
 import React, { useState, useEffect } from 'react';
 import Card from '../common/Card';
 import Button from '../common/Button';
@@ -70,11 +72,6 @@ const TeamCard = ({ team, onUpdate, onDelete, isSearchResult = false }) => {
     }
   };
   
-  // Determine if the View Details button should be shown
-  const showViewDetailsButton = isSearchResult
-    ? isAuthenticated // On search page, show to all authenticated users
-    : (isCreator || userRole === 'admin' || userRole === 'member'); // On team pages, show to members
-  
   return (
     <>
       <Card 
@@ -105,17 +102,15 @@ const TeamCard = ({ team, onUpdate, onDelete, isSearchResult = false }) => {
         </div>
         
         <div className="mt-auto flex justify-between items-center">
-          {/* Show View Details button based on our condition */}
-          {showViewDetailsButton && (
-            <Button 
-              variant="primary" 
-              size="sm" 
-              onClick={openTeamDetails}
-              className="flex-grow"
-            >
-              View Details
-            </Button>
-          )}
+          {/* Always show View Details button on MyTeams page */}
+          <Button 
+            variant="primary" 
+            size="sm" 
+            onClick={openTeamDetails}
+            className="flex-grow"
+          >
+            View Details
+          </Button>
           
           {isCreator && !isSearchResult && (
             <Button 
