@@ -1,4 +1,4 @@
-import api from './api';
+import api from './api';  
 
 export const teamService = {
   // Create a new team
@@ -64,10 +64,33 @@ export const teamService = {
   // Fetch a single team by ID
   getTeamById: async (teamId) => {
     try {
-      const response = await api.get(`/api/teams/${teamId}`); 
+      console.log(`Fetching team details for ID: ${teamId}`);
+      const response = await api.get(`/api/teams/${teamId}`);
+      
+      // Log the complete raw response including headers
+      console.log('Raw API response from getTeamById:', {
+        status: response.status,
+        statusText: response.statusText,
+        headers: response.headers,
+        data: response.data
+      });
+      
+      // Examine response structure
+      if (response.data) {
+        console.log('Response data structure:', {
+          hasData: Boolean(response.data),
+          dataType: typeof response.data,
+          keys: Object.keys(response.data),
+          hasNestedData: Boolean(response.data.data),
+          hasTeamId: Boolean(response.data.id || (response.data.data && response.data.data.id)),
+          hasCreatorId: Boolean(response.data.creator_id || (response.data.data && response.data.data.creator_id)),
+          hasIsPublic: Boolean(response.data.is_public !== undefined || (response.data.data && response.data.data.is_public !== undefined))
+        });
+      }
+      
       return response.data;
     } catch (error) {
-      console.error(`Error fetching team ${teamId}:`, error.response ? error.response.data : error.message);
+      console.error(`Error fetching team ${teamId}:`, error);
       throw error;
     }
   },
@@ -75,34 +98,21 @@ export const teamService = {
   // Update team details
   updateTeam: async (teamId, teamData) => {
     try {
-      console.log("updateTeam: Updating team with data:", teamData);
+      console.log(`Updating team with ID: ${teamId}`);
+      console.log('Update data being sent:', teamData);
       
-      // Ensure tags are properly formatted
-      const formattedTags = teamData.tags?.map(tag => {
-        if (typeof tag === 'object' && tag.tag_id) {
-          // If it's already an object with tag_id, ensure it's a number
-          return { tag_id: parseInt(tag.tag_id, 10) };
-        } else if (typeof tag === 'number') {
-          // If it's already a number, use it directly
-          return { tag_id: tag };
-        } else {
-          // Otherwise, try to parse it as a number
-          return { tag_id: parseInt(tag, 10) };
-        }
-      }) || [];
+      const response = await api.put(`/api/teams/${teamId}`, teamData);
       
-      // Create a new object with formatted tags
-      const dataToSend = {
-        ...teamData,
-        tags: formattedTags
-      };
+      console.log('Update response:', {
+        status: response.status,
+        statusText: response.statusText,
+        data: response.data
+      });
       
-      console.log("updateTeam: Sending formatted data:", dataToSend);
-      
-      const response = await api.put(`/api/teams/${teamId}`, dataToSend); 
       return response.data;
     } catch (error) {
-      console.error(`Error updating team ${teamId}:`, error.response ? error.response.data : error.message);
+      console.error(`Error updating team ${teamId}:`, error);
+      console.error('Error details:', error.response?.data || error.message);
       throw error;
     }
   },

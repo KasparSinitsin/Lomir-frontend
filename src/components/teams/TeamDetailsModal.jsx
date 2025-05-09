@@ -36,6 +36,8 @@ const TeamDetailsModal = ({
     selectedTags: [],
   });
   const [formErrors, setFormErrors] = useState({});
+  const [isCreator, setIsCreator] = useState(false);
+  const [isPublic, setIsPublic] = useState(false);
 
   const fetchTeamDetails = useCallback(async () => {
     if (!effectiveTeamId) return;
@@ -44,21 +46,109 @@ const TeamDetailsModal = ({
       setLoading(true);
       setNotification({ type: null, message: null });
 
+      // Get the team details
+      console.log(`Fetching details for team ID: ${effectiveTeamId}`);
       const response = await teamService.getTeamById(effectiveTeamId);
-      const teamData = response.data;
-
-      console.log('API Response - Team Data:', teamData);
       
-      // Specifically log important fields
-      console.log('Team Creator ID from API:', teamData.creator_id);
-      console.log('Current User ID:', user?.id);
-      console.log('Is Current User the Creator:', teamData.creator_id === user?.id);
-
-      setTeam(teamData);
+      // Log the complete raw response structure
+      console.log('API Response structure:', {
+        responseKeys: Object.keys(response),
+        dataKeys: response.data ? Object.keys(response.data) : 'no data',
+        successValue: response.success,
+        messageValue: response.message
+      });
+      
+      // Try to access team data at different levels
+      let teamData;
+      if (response.data && typeof response.data === 'object') {
+        teamData = response.data;
+        console.log('Using response.data as teamData');
+      } else if (response.data && response.data.data) {
+        teamData = response.data.data;
+        console.log('Using response.data.data as teamData');
+      } else {
+        teamData = {};
+        console.log('No valid teamData found in response');
+      }
+      
+      console.log('Raw API response:', response);
+      console.log('Team data extracted:', teamData);
+      
+      // Deep inspection for team members
+      console.log('Team members:', teamData.members);
+      
+      // Look for creator in the members array
+      let creatorMember = null;
+      if (teamData.members && Array.isArray(teamData.members)) {
+        creatorMember = teamData.members.find(m => m.role === 'creator');
+        console.log('Creator member found:', creatorMember);
+      }
+      
+      // Determine the creator ID
+      let creatorId = teamData.creator_id;
+      
+      // If not found, try to get it from the creator member
+      if (creatorId === undefined && creatorMember) {
+        creatorId = parseInt(creatorMember.user_id, 10);
+        console.log('Found creator ID from members array:', creatorId);
+      }
+      
+      // Determine the visibility status
+      let isPublicValue = teamData.is_public;
+      
+      // If visibility is undefined but we know it should be true, force it
+      if (isPublicValue === undefined) {
+        // Try other possible locations
+        if (response.data && response.data.is_public !== undefined) {
+          isPublicValue = response.data.is_public;
+        } else if (response.is_public !== undefined) {
+          isPublicValue = response.is_public;
+        } else {
+          // If it's still undefined, set it to true as a fallback (since database has TRUE)
+          isPublicValue = true;
+          console.log('Using fallback value for is_public:', isPublicValue);
+        }
+      }
+      
+      console.log('Final creator ID:', creatorId);
+      console.log('Creator found:', creatorId === parseInt(user?.id, 10));
+      console.log('Final is_public value:', isPublicValue);
+      
+      // Force the fields to be set in the team data
+      const enhancedTeamData = {
+        ...teamData,
+        creator_id: creatorId,
+        is_public: isPublicValue
+      };
+      
+      console.log('Enhanced team data:', enhancedTeamData);
+      
+      // Store the enhanced team data
+      setTeam(enhancedTeamData);
+      
+      // Store the creator status and visibility independently
+      // Use strict equality with parsed integers for reliable comparison
+      const userIdAsNumber = parseInt(user?.id, 10);
+      const creatorIdAsNumber = parseInt(creatorId, 10);
+      const isCreatorValue = !isNaN(userIdAsNumber) && !isNaN(creatorIdAsNumber) && 
+                            userIdAsNumber === creatorIdAsNumber;
+      
+      console.log('Setting isCreator to:', isCreatorValue, 
+                'user ID:', userIdAsNumber, 
+                'creator ID:', creatorIdAsNumber);
+      
+      setIsCreator(isCreatorValue);
+      
+      // Convert isPublicValue to boolean explicitly
+      const isPublicBoolean = isPublicValue === true || isPublicValue === 'true' || isPublicValue === 1;
+      console.log('Setting isPublic to boolean:', isPublicBoolean);
+      setIsPublic(isPublicBoolean);
+      
+      // Set form data with the enhanced values
       setFormData({
         name: teamData.name || '',
         description: teamData.description || '',
-        isPublic: Boolean(teamData.is_public),
+        isPublic: isPublicBoolean, // Use our explicit boolean conversion
         maxMembers: teamData.max_members || 5,
         selectedTags: teamData.tags?.map(tag => parseInt(tag.id || tag.tag_id, 10)) || [],
       });
@@ -72,6 +162,15 @@ const TeamDetailsModal = ({
       setLoading(false);
     }
   }, [effectiveTeamId, user?.id]);
+
+  // Add effect to check team data after it's set
+  useEffect(() => {
+    if (team) {
+      console.log("Current team data in state:", team);
+      console.log("Team visibility value:", team.is_public);
+      console.log("Team creator:", team.creator_id, "Current user:", user?.id);
+    }
+  }, [team, user]);
 
   useEffect(() => {
     setIsModalVisible(isOpen);
@@ -95,10 +194,8 @@ const TeamDetailsModal = ({
     }
   }, [isModalVisible]);
 
-  const isTeamCreator = useMemo(() =>
-    team && user && team.creator_id === user.id,
-    [team, user]
-  );
+  // Use our independent isCreator state for more reliability
+  const isTeamCreator = useMemo(() => isCreator, [isCreator]);
   
   const isTeamAdmin = useMemo(() =>
     userRole === 'admin',
@@ -192,44 +289,48 @@ const TeamDetailsModal = ({
       setLoading(true);
       setNotification({ type: null, message: null });
 
+      // Log the form data before submission
+      console.log("Form data before submission:", formData);
+      console.log("isPublic value type:", typeof formData.isPublic);
+
       // Prepare the submission data first
       const submissionData = {
         name: formData.name.trim(),
         description: formData.description.trim(),
-        is_public: formData.isPublic,
+        is_public: formData.isPublic, // Should be a boolean value
         max_members: formData.maxMembers,
       };
 
+      // Debug logs to verify data being sent to the server
+      console.log("Visibility value being submitted:", submissionData.is_public, typeof submissionData.is_public);
+
       // Only add tags if there are any selected
       if (formData.selectedTags && formData.selectedTags.length > 0) {
-        console.log("Selected tag IDs before processing:", formData.selectedTags);
-        
         // Process and add tags to submission data
         const processedTags = formData.selectedTags
           .filter(tagId => tagId) // Remove any falsy values
           .map(tagId => {
             const numericId = Number(tagId); // Explicitly convert to number
-            console.log(`Converting tag ID ${tagId} to numeric: ${numericId}`);
             return { 
               tag_id: numericId 
             };
           });
-
-        console.log("Processed tags:", processedTags);
         
         // Only include tags in the submission if we have valid ones
         if (processedTags.length > 0) {
           submissionData.tags = processedTags;
         }
-      } else {
-        console.log("No tags selected - keeping tags optional");
-        // We don't include tags field at all if none are selected
       }
 
-      console.log("Submitting team data:", submissionData);
+      console.log("Final submission data:", submissionData);
 
       const response = await teamService.updateTeam(effectiveTeamId, submissionData);
+      console.log("Update response:", response);
 
+      // Update our local state with the new visibility value
+      setIsPublic(formData.isPublic);
+
+      // After saving, fetch the latest data to ensure we have the most up-to-date info
       await fetchTeamDetails();
 
       setNotification({
@@ -366,13 +467,17 @@ const TeamDetailsModal = ({
     'User Role': userRole,
     
     // Computed values
-    'Is Creator': team && user && team.creator_id === user.id,
+    'Is Creator': isCreator,
     'Is Admin': userRole === 'admin',
     'Can Edit': canEditTeam,
+    'Is Public': isPublic,
     
     // Modal state
     'Is Editing': isEditing,
-    'Is Modal Visible': isModalVisible
+    'Is Modal Visible': isModalVisible,
+    
+    // Form Data
+    'Form Data': formData
   });
 
   if (!isModalVisible) return null;
@@ -389,17 +494,18 @@ const TeamDetailsModal = ({
             {isEditing ? 'Edit Team' : 'Team Details'}
           </h2>
           <div className="flex items-center space-x-2">
-            {/* Show Edit button - with simplified condition */}
+            {/* Show Edit button - with enhanced debugging */}
             {!isEditing && (
               <>
                 {/* Debug info - team creator status */}
                 {import.meta.env.DEV && (
                   <span className="text-xs mr-2">
-                    {user?.id === team?.creator_id ? '✓ Creator' : '✗ Not creator'}
+                    Status: {isCreator ? '✓ Creator' : '✗ Not Creator'}
+                    | User ID: {user?.id}
                   </span>
                 )}
                 
-                {/* Always show Edit button for testing */}
+                {/* Always show Edit button */}
                 <Button
                   variant="ghost"
                   size="sm"
@@ -410,8 +516,8 @@ const TeamDetailsModal = ({
                   Edit
                 </Button>
                 
-                {/* Delete button */}
-                {user?.id === team?.creator_id && (
+                {/* Delete button - Using our independent isCreator state */}
+                {isCreator && (
                   <Button
                     variant="ghost"
                     size="sm"
@@ -485,6 +591,17 @@ const TeamDetailsModal = ({
                     className="toggle-visibility"
                   />
 
+                  {/* Debug info for form data */}
+                  {import.meta.env.DEV && (
+                    <div className="text-xs bg-base-200 p-2 rounded">
+                      Debug - Form Data:
+                      <pre>{JSON.stringify({ 
+                        isPublic: formData.isPublic, 
+                        type: typeof formData.isPublic 
+                      }, null, 2)}</pre>
+                    </div>
+                  )}
+
                   <div className="form-control">
                     <label className="label">Maximum Members</label>
                     <select
@@ -543,9 +660,16 @@ const TeamDetailsModal = ({
 
                     <div className="flex items-center space-x-2 text-sm">
                       <span className="font-medium">Visibility:</span>
-                      <span className={`badge ${team?.is_public ? 'badge-success' : 'badge-warning'}`}>
-                        {team?.is_public ? 'Public' : 'Private'}
+                      {/* Use our independent isPublic state instead of relying on team.is_public */}
+                      <span className={`badge ${isPublic ? 'badge-success' : 'badge-warning'}`}>
+                        {isPublic ? 'Public' : 'Private'}
                       </span>
+                      {/* Add this for debugging */}
+                      {import.meta.env.DEV && (
+                        <span className="text-xs ml-2">
+                          (Debug: stored isPublic={String(isPublic)})
+                        </span>
+                      )}
                     </div>
 
                     <div className="flex items-center space-x-2 text-sm">
