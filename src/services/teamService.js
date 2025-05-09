@@ -62,15 +62,26 @@ export const teamService = {
   },
 
   // Fetch a single team by ID
-  getTeamById: async (teamId) => {
-    try {
-      const response = await api.get(`/api/teams/${teamId}`); 
-      return response.data;
-    } catch (error) {
-      console.error(`Error fetching team ${teamId}:`, error.response ? error.response.data : error.message);
-      throw error;
+getTeamById: async (teamId) => {
+  try {
+    console.log(`Fetching team details for ID: ${teamId}`);
+    const response = await api.get(`/api/teams/${teamId}`);
+    
+    // Log the complete raw response
+    console.log('Raw API response from getTeamById:', response);
+    
+    // Check if important fields are present
+    if (response.data && response.data.data) {
+      console.log('Team visibility from API:', response.data.data.is_public);
+      console.log('Team creator from API:', response.data.data.creator_id);
     }
-  },
+    
+    return response.data;
+  } catch (error) {
+    console.error(`Error fetching team ${teamId}:`, error);
+    throw error;
+  }
+},
 
   // Update team details
   updateTeam: async (teamId, teamData) => {
