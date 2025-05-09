@@ -91,13 +91,18 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Update user data
-  const updateUser = (userData) => {
-    console.log("Updating user in context with:", userData);
-    setUser(prevUser => ({
+const updateUser = (userData) => {
+  console.log("Updating user in context with:", userData);
+  setUser(prevUser => {
+    // Create a completely new object that combines previous and new data
+    const newUser = {
       ...prevUser,
       ...userData
-    }));
-  };
+    };
+    console.log("Updated user object:", newUser);
+    return newUser;
+  });
+};
 
   // Logout user
   const logout = () => {
