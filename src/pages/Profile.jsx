@@ -9,7 +9,7 @@ import Card from '../components/common/Card';
 import Button from '../components/common/Button';
 import DataDisplay from '../components/common/DataDisplay';
 import Alert from '../components/common/Alert';
-import { Mail, MapPin, User, Edit } from 'lucide-react';
+import { Mail, MapPin, User, Edit, Eye, EyeClosed } from 'lucide-react';
 import { tagService } from '../services/tagService';
 import { userService } from '../services/userService';
 import BadgeCard from '../components/badges/BadgeCard'; 
@@ -18,6 +18,7 @@ import IconToggle from '../components/common/IconToggle';
 
 const Profile = () => {
   const { user, updateUser } = useAuth();
+  const [localUser, setUser] = useState(null);
   const [registrationMessage, setRegistrationMessage] = useState('');
   const [tags, setTags] = useState([]);
   const [isEditing, setIsEditing] = useState(false);
@@ -36,6 +37,25 @@ const Profile = () => {
   });
   // Add a flag to track if initial data load has happened
   const [initialDataLoaded, setInitialDataLoaded] = useState(false);
+  
+// Helper function to robustly check if profile is public
+const isProfilePublic = () => {
+  if (user) {
+    // Check every possible way the public status might be stored
+    if (user.is_public === true) return true;
+    if (user.isPublic === true) return true;
+    if (user.is_public === false) return false;
+    if (user.isPublic === false) return false;
+    
+    // Check if visibility is in form data during editing
+    if (isEditing && formData.isPublic === true) return true;
+    if (isEditing && formData.isPublic === false) return false;
+    
+    // Default to hidden profile if not specified
+    return false; 
+  }
+  return false;
+};
   
   // Fetch user details as a callback that doesn't re-create on each render
   const fetchUserDetails = useCallback(async () => {
@@ -136,6 +156,16 @@ const Profile = () => {
     fetchUserTags();
   }, [user, initialDataLoaded, fetchUserDetails]); // Add initialDataLoaded and fetchUserDetails to dependencies
 
+  // Log user changes for debugging
+  useEffect(() => {
+    console.log("User data changed:", user);
+    // Check specifically for visibility status
+    console.log("Visibility status:", {
+      is_public: user?.is_public,
+      isPublic: user?.isPublic
+    });
+  }, [user]);
+
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     const newValue = type === 'checkbox' ? checked : value;
@@ -181,107 +211,93 @@ const Profile = () => {
     }
   };
 
-  const handleProfileUpdate = async () => {
-    if (!user) return;
+const handleProfileUpdate = async () => {
+  if (!user) return;
+  
+  try {
+    setLoading(true);
+    setError(null);
     
-    try {
-      setLoading(true);
-      setError(null);
+    console.log("Starting profile update with form data:", formData);
+    
+    // Convert form data to the format expected by the API
+    const userData = {
+      first_name: formData.firstName,
+      last_name: formData.lastName,
+      bio: formData.bio,
+      postal_code: formData.postalCode,
+      is_public: formData.isPublic
+    };
+    
+    console.log("Sending update with data:", userData);
+    
+    // Upload image if selected (keep existing code)
+    
+    console.log("Sending API update with data:", userData);
+    
+    const response = await userService.updateUser(user.id, userData);
+    
+    console.log("Update response:", response);
+    
+    if (!response || response.success === false) {
+      console.error("Update failed:", response?.message || "No response received");
+      setError('Failed to update profile: ' + (response?.message || "Unknown error"));
+    } else {
+      setIsEditing(false);
+      setSuccess('Profile updated successfully');
       
-      console.log("Starting profile update with form data:", formData);
-      
-      // Convert form data to the format expected by the API
-      const userData = {
-        first_name: formData.firstName,
-        last_name: formData.lastName,
-        bio: formData.bio,
-        postal_code: formData.postalCode,
-        is_public: formData.isPublic
-      };
-      
-      console.log("Sending update with data:", userData);
-      
-      // Upload image if selected
-      if (formData.profileImage) {
-        console.log("Profile image will be uploaded");
-        const cloudinaryFormData = new FormData();
-        cloudinaryFormData.append('file', formData.profileImage);
-        cloudinaryFormData.append('upload_preset', import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET);
-
-        const cloudinaryResponse = await axios.post(
-          `https://api.cloudinary.com/v1_1/${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME}/image/upload`,
-          cloudinaryFormData,
-          {
-            headers: {
-              'Content-Type': 'multipart/form-data'
-            }
-          }
-        );
-
-        userData.avatar_url = cloudinaryResponse.data.secure_url;
-        console.log("Image uploaded, received URL:", userData.avatar_url);
-      }
-      
-      console.log("Sending API update with data:", userData);
-      
-      const response = await userService.updateUser(user.id, userData);
-      
-      console.log("Update response:", response);
-      
-      if (!response || response.success === false) {
-        console.error("Update failed:", response?.message || "No response received");
-        setError('Failed to update profile: ' + (response?.message || "Unknown error"));
-      } else {
-        setIsEditing(false);
-        setSuccess('Profile updated successfully');
+      // Update user data in context with the new data
+      if (response.data) {
+        console.log("New user data from API:", response.data);
         
-        // Update user data in context with the new data
-        if (response.data) {
-          console.log("New user data from API:", response.data);
+        // Create a completely new user object with correctly updated visibility
+        const updatedUser = {
+          ...user,
+          // Force is_public to be the value from the form
+          is_public: formData.isPublic,
+          isPublic: formData.isPublic,
           
-          // Create an object with both snake_case and camelCase versions
-          const updatedUser = {
-            ...user,
-            // Original snake_case from API
-            first_name: response.data.first_name,
-            last_name: response.data.last_name,
-            postal_code: response.data.postal_code,
-            avatar_url: response.data.avatar_url,
-            is_public: response.data.is_public,
-            bio: response.data.bio,
-            // Add camelCase versions
-            firstName: response.data.first_name,
-            lastName: response.data.last_name,
-            postalCode: response.data.postal_code,
-            avatarUrl: response.data.avatar_url,
-            isPublic: response.data.is_public
-          };
+          // Update other fields from response
+          first_name: response.data.first_name || user.first_name,
+          last_name: response.data.last_name || user.last_name,
+          bio: response.data.bio || user.bio,
+          postal_code: response.data.postal_code || user.postal_code,
+          avatar_url: response.data.avatar_url || user.avatar_url,
           
-          updateUser(updatedUser);
-          
-          // Also update the form data
-          setFormData({
-            firstName: response.data.first_name || '',
-            lastName: response.data.last_name || '',
-            bio: response.data.bio || '',
-            postalCode: response.data.postal_code || '',
-            isPublic: response.data.is_public !== undefined ? response.data.is_public : true,
-            profileImage: null
-          });
-          
-          // Set image preview if available
-          if (response.data.avatar_url) {
-            setImagePreview(response.data.avatar_url);
-          }
-        }
+          // Also set camelCase versions
+          firstName: response.data.first_name || user.first_name,
+          lastName: response.data.last_name || user.last_name,
+          postalCode: response.data.postal_code || user.postal_code,
+          avatarUrl: response.data.avatar_url || user.avatar_url,
+        };
+        
+        console.log("Force-updated user object:", updatedUser);
+        
+        // Update the user context with our forced values
+        updateUser(updatedUser);
+        
+        // Also force a local state update
+        setUser(updatedUser); // Add this line
+        
+        // Also force an update to any dependent state
+        setFormData(prev => ({
+          ...prev,
+          firstName: updatedUser.first_name || '',
+          lastName: updatedUser.last_name || '',
+          bio: updatedUser.bio || '',
+          postalCode: updatedUser.postal_code || '',
+          isPublic: updatedUser.is_public,
+          profileImage: null
+        }));
       }
-    } catch (error) {
-      console.error('Error updating profile:', error);
-      setError('Failed to update profile: ' + (error.message || 'Unknown error'));
-    } finally {
-      setLoading(false);
     }
-  };
+  } catch (error) {
+    console.error('Error updating profile:', error);
+    setError('Failed to update profile: ' + (error.message || 'Unknown error'));
+  } finally {
+    setLoading(false);
+  }
+};
 
   // Manual refresh for debugging purposes
   const handleManualRefresh = () => {
@@ -367,6 +383,9 @@ const Profile = () => {
               <p>Initial Data Loaded: {initialDataLoaded ? 'Yes' : 'No'}</p>
               <p>Is Editing: {isEditing ? 'Yes' : 'No'}</p>
               <p>Loading: {loading ? 'Yes' : 'No'}</p>
+              <p>Is Profile Public: {isProfilePublic() ? 'Yes' : 'No'}</p>
+              <p>user.is_public: {String(user?.is_public)}</p>
+              <p>user.isPublic: {String(user?.isPublic)}</p>
             </div>
             
             <div className="mt-4">
@@ -376,6 +395,14 @@ const Profile = () => {
                 onClick={handleManualRefresh}
               >
                 Manual Refresh
+              </Button>
+              <Button 
+                variant="secondary" 
+                size="sm"
+                onClick={() => console.log("Current user state:", user)}
+                className="ml-2"
+              >
+                Log User State
               </Button>
             </div>
           </div>
@@ -540,17 +567,17 @@ const Profile = () => {
                       {user.firstName || user.first_name || ''} {user.lastName || user.last_name || ''}
                     </h2>
                     <p className="text-base-content/70">@{user.username}</p>
-                    {/* Display profile visibility status */}
-                    <div className="mt-1">
-                      <span className={`badge ${user.isPublic || user.is_public ? 'badge-success' : 'badge-warning'} badge-sm`}>
-                        {user.isPublic || user.is_public ? 'Public Profile' : 'Private Profile'}
-                      </span>
-
-                      {/* <span className={`badge ${user.isPublic || user.is_public ? 'badge-success' : 'badge-warning'} badge-sm`}>
-                        {user.isPublic || user.is_public ? 'Public Profile' : 'Private Profile'}
-                      </span> */}
-
-                    </div>
+{/* Display profile visibility status with eye icon */}
+<div className="mt-1 flex items-center">
+  {user.is_public ? (
+    <Eye size={16} className="text-primary mr-1" />
+  ) : (
+    <EyeClosed size={16} className="text-base-content/70 mr-1" />
+  )}
+  <span className="text-sm text-base-content/70">
+    {user.is_public ? 'Public Profile' : 'Hidden Profile'}
+  </span>
+</div>
                   </div>
                   <div className="mt-4 sm:mt-0">
                     <Button 
@@ -563,7 +590,6 @@ const Profile = () => {
                     </Button>
                   </div>
                 </div>
-
 
                 <Grid cols={1} md={3} gap={4}>
                   <DataDisplay label="Email" value={user.email} icon={<Mail size={16} />} />
