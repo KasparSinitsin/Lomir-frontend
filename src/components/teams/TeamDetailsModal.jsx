@@ -47,7 +47,12 @@ const TeamDetailsModal = ({
       const response = await teamService.getTeamById(effectiveTeamId);
       const teamData = response.data;
 
-      console.log('Fetched team details:', teamData);
+      console.log('API Response - Team Data:', teamData);
+      
+      // Specifically log important fields
+      console.log('Team Creator ID from API:', teamData.creator_id);
+      console.log('Current User ID:', user?.id);
+      console.log('Is Current User the Creator:', teamData.creator_id === user?.id);
 
       setTeam(teamData);
       setFormData({
@@ -66,7 +71,7 @@ const TeamDetailsModal = ({
     } finally {
       setLoading(false);
     }
-  }, [effectiveTeamId]);
+  }, [effectiveTeamId, user?.id]);
 
   useEffect(() => {
     setIsModalVisible(isOpen);
@@ -141,10 +146,15 @@ const TeamDetailsModal = ({
   };
 
   const handleTagSelection = useCallback((selectedTags) => {
-    console.log("Tags selected:", selectedTags);
+    console.log("Tags selected (raw):", selectedTags);
+    
+    // Convert tag IDs to numbers
+    const numericTags = selectedTags.map(tag => Number(tag));
+    console.log("Tags converted to numbers:", numericTags);
+    
     setFormData(prev => ({
       ...prev,
-      selectedTags,
+      selectedTags: numericTags,
     }));
   }, []);
 
@@ -182,19 +192,39 @@ const TeamDetailsModal = ({
       setLoading(true);
       setNotification({ type: null, message: null });
 
-      // Log the selected tag IDs to help debug
-      console.log("Selected tag IDs:", formData.selectedTags);
-
+      // Prepare the submission data first
       const submissionData = {
         name: formData.name.trim(),
         description: formData.description.trim(),
         is_public: formData.isPublic,
         max_members: formData.maxMembers,
-        // Make sure tag IDs are valid integers
-        tags: formData.selectedTags.map(tagId => ({ 
-          tag_id: parseInt(tagId, 10) 
-        })),
       };
+
+      // Only add tags if there are any selected
+      if (formData.selectedTags && formData.selectedTags.length > 0) {
+        console.log("Selected tag IDs before processing:", formData.selectedTags);
+        
+        // Process and add tags to submission data
+        const processedTags = formData.selectedTags
+          .filter(tagId => tagId) // Remove any falsy values
+          .map(tagId => {
+            const numericId = Number(tagId); // Explicitly convert to number
+            console.log(`Converting tag ID ${tagId} to numeric: ${numericId}`);
+            return { 
+              tag_id: numericId 
+            };
+          });
+
+        console.log("Processed tags:", processedTags);
+        
+        // Only include tags in the submission if we have valid ones
+        if (processedTags.length > 0) {
+          submissionData.tags = processedTags;
+        }
+      } else {
+        console.log("No tags selected - keeping tags optional");
+        // We don't include tags field at all if none are selected
+      }
 
       console.log("Submitting team data:", submissionData);
 
@@ -221,6 +251,10 @@ const TeamDetailsModal = ({
       let errorMessage = 'Failed to update team. Please try again.';
       if (err.response?.data?.errors && err.response.data.errors.length > 0) {
         errorMessage = `Error: ${err.response.data.errors[0]}`;
+      } else if (err.response?.data?.message) {
+        errorMessage = `Error: ${err.response.data.message}`;
+      } else if (err.message) {
+        errorMessage = `Error: ${err.message}`;
       }
       
       setNotification({
@@ -318,6 +352,29 @@ const TeamDetailsModal = ({
     );
   };
 
+  // Add detailed debugging
+  console.log('Team Details Debug:', {
+    // User information
+    'Current User ID': user?.id,
+    'User Object': user,
+    
+    // Team information
+    'Team Creator ID': team?.creator_id,
+    'Team Object': team,
+    
+    // Role information
+    'User Role': userRole,
+    
+    // Computed values
+    'Is Creator': team && user && team.creator_id === user.id,
+    'Is Admin': userRole === 'admin',
+    'Can Edit': canEditTeam,
+    
+    // Modal state
+    'Is Editing': isEditing,
+    'Is Modal Visible': isModalVisible
+  });
+
   if (!isModalVisible) return null;
 
   return (
@@ -332,9 +389,17 @@ const TeamDetailsModal = ({
             {isEditing ? 'Edit Team' : 'Team Details'}
           </h2>
           <div className="flex items-center space-x-2">
-            {/* Only show Edit/Delete buttons if user has permission */}
-            {canEditTeam && !isEditing && (
+            {/* Show Edit button - with simplified condition */}
+            {!isEditing && (
               <>
+                {/* Debug info - team creator status */}
+                {import.meta.env.DEV && (
+                  <span className="text-xs mr-2">
+                    {user?.id === team?.creator_id ? '✓ Creator' : '✗ Not creator'}
+                  </span>
+                )}
+                
+                {/* Always show Edit button for testing */}
                 <Button
                   variant="ghost"
                   size="sm"
@@ -344,7 +409,9 @@ const TeamDetailsModal = ({
                 >
                   Edit
                 </Button>
-                {isTeamCreator && ( // Only creator can delete, not admins
+                
+                {/* Delete button */}
+                {user?.id === team?.creator_id && (
                   <Button
                     variant="ghost"
                     size="sm"
