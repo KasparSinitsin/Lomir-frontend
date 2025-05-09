@@ -9,7 +9,7 @@ import Card from '../components/common/Card';
 import Button from '../components/common/Button';
 import DataDisplay from '../components/common/DataDisplay';
 import Alert from '../components/common/Alert';
-import { Mail, MapPin, User, Edit } from 'lucide-react';
+import { Mail, MapPin, User, Edit, Eye, EyeClosed } from 'lucide-react';
 import { tagService } from '../services/tagService';
 import { userService } from '../services/userService';
 import BadgeCard from '../components/badges/BadgeCard'; 
@@ -18,6 +18,7 @@ import IconToggle from '../components/common/IconToggle';
 
 const Profile = () => {
   const { user, updateUser } = useAuth();
+  const [localUser, setUser] = useState(null);
   const [registrationMessage, setRegistrationMessage] = useState('');
   const [tags, setTags] = useState([]);
   const [isEditing, setIsEditing] = useState(false);
@@ -36,6 +37,25 @@ const Profile = () => {
   });
   // Add a flag to track if initial data load has happened
   const [initialDataLoaded, setInitialDataLoaded] = useState(false);
+  
+// Helper function to robustly check if profile is public
+const isProfilePublic = () => {
+  if (user) {
+    // Check every possible way the public status might be stored
+    if (user.is_public === true) return true;
+    if (user.isPublic === true) return true;
+    if (user.is_public === false) return false;
+    if (user.isPublic === false) return false;
+    
+    // Check if visibility is in form data during editing
+    if (isEditing && formData.isPublic === true) return true;
+    if (isEditing && formData.isPublic === false) return false;
+    
+    // Default to hidden profile if not specified
+    return false; 
+  }
+  return false;
+};
   
   // Fetch user details as a callback that doesn't re-create on each render
   const fetchUserDetails = useCallback(async () => {
@@ -136,6 +156,16 @@ const Profile = () => {
     fetchUserTags();
   }, [user, initialDataLoaded, fetchUserDetails]); // Add initialDataLoaded and fetchUserDetails to dependencies
 
+  // Log user changes for debugging
+  useEffect(() => {
+    console.log("User data changed:", user);
+    // Check specifically for visibility status
+    console.log("Visibility status:", {
+      is_public: user?.is_public,
+      isPublic: user?.isPublic
+    });
+  }, [user]);
+
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     const newValue = type === 'checkbox' ? checked : value;
@@ -196,15 +226,14 @@ const handleProfileUpdate = async () => {
       last_name: formData.lastName,
       bio: formData.bio,
       postal_code: formData.postalCode,
-      is_public: formData.isPublic  // Ensure this is correctly passed
+      is_public: formData.isPublic
     };
     
     console.log("Sending update with data:", userData);
     
-    // Upload image if selected
-    if (formData.profileImage) {
-      // Image upload code remains the same
-    }
+    // Upload image if selected (keep existing code)
+    
+    console.log("Sending API update with data:", userData);
     
     const response = await userService.updateUser(user.id, userData);
     
@@ -221,35 +250,43 @@ const handleProfileUpdate = async () => {
       if (response.data) {
         console.log("New user data from API:", response.data);
         
-        // Create a new user object that has both snake_case and camelCase properties
+        // Create a completely new user object with correctly updated visibility
         const updatedUser = {
           ...user,
-          // Snake_case properties from API
-          first_name: response.data.first_name,
-          last_name: response.data.last_name,
-          postal_code: response.data.postal_code,
-          avatar_url: response.data.avatar_url,
-          is_public: response.data.is_public,
-          bio: response.data.bio,
-          // Add camelCase versions for consistency
-          firstName: response.data.first_name,
-          lastName: response.data.last_name,
-          postalCode: response.data.postal_code,
-          avatarUrl: response.data.avatar_url,
-          isPublic: response.data.is_public
+          // Force is_public to be the value from the form
+          is_public: formData.isPublic,
+          isPublic: formData.isPublic,
+          
+          // Update other fields from response
+          first_name: response.data.first_name || user.first_name,
+          last_name: response.data.last_name || user.last_name,
+          bio: response.data.bio || user.bio,
+          postal_code: response.data.postal_code || user.postal_code,
+          avatar_url: response.data.avatar_url || user.avatar_url,
+          
+          // Also set camelCase versions
+          firstName: response.data.first_name || user.first_name,
+          lastName: response.data.last_name || user.last_name,
+          postalCode: response.data.postal_code || user.postal_code,
+          avatarUrl: response.data.avatar_url || user.avatar_url,
         };
         
-        // Update the global user context
+        console.log("Force-updated user object:", updatedUser);
+        
+        // Update the user context with our forced values
         updateUser(updatedUser);
         
-        // Reset form data with updated values
+        // Also force a local state update
+        setUser(updatedUser); // Add this line
+        
+        // Also force an update to any dependent state
         setFormData(prev => ({
           ...prev,
-          firstName: response.data.first_name || '',
-          lastName: response.data.last_name || '',
-          bio: response.data.bio || '',
-          postalCode: response.data.postal_code || '',
-          isPublic: response.data.is_public !== undefined ? response.data.is_public : true,
+          firstName: updatedUser.first_name || '',
+          lastName: updatedUser.last_name || '',
+          bio: updatedUser.bio || '',
+          postalCode: updatedUser.postal_code || '',
+          isPublic: updatedUser.is_public,
           profileImage: null
         }));
       }
@@ -346,6 +383,9 @@ const handleProfileUpdate = async () => {
               <p>Initial Data Loaded: {initialDataLoaded ? 'Yes' : 'No'}</p>
               <p>Is Editing: {isEditing ? 'Yes' : 'No'}</p>
               <p>Loading: {loading ? 'Yes' : 'No'}</p>
+              <p>Is Profile Public: {isProfilePublic() ? 'Yes' : 'No'}</p>
+              <p>user.is_public: {String(user?.is_public)}</p>
+              <p>user.isPublic: {String(user?.isPublic)}</p>
             </div>
             
             <div className="mt-4">
@@ -355,6 +395,14 @@ const handleProfileUpdate = async () => {
                 onClick={handleManualRefresh}
               >
                 Manual Refresh
+              </Button>
+              <Button 
+                variant="secondary" 
+                size="sm"
+                onClick={() => console.log("Current user state:", user)}
+                className="ml-2"
+              >
+                Log User State
               </Button>
             </div>
           </div>
@@ -519,10 +567,15 @@ const handleProfileUpdate = async () => {
                       {user.firstName || user.first_name || ''} {user.lastName || user.last_name || ''}
                     </h2>
                     <p className="text-base-content/70">@{user.username}</p>
-                    {/* Display profile visibility status */}
-<div className="mt-1">
-  <span className={`badge ${(user.isPublic === true || user.is_public === true) ? 'badge-success' : 'badge-warning'} badge-sm`}>
-    {(user.isPublic === true || user.is_public === true) ? 'Public Profile' : 'Private Profile'}
+{/* Display profile visibility status with eye icon */}
+<div className="mt-1 flex items-center">
+  {user.is_public ? (
+    <Eye size={16} className="text-primary mr-1" />
+  ) : (
+    <EyeClosed size={16} className="text-base-content/70 mr-1" />
+  )}
+  <span className="text-sm text-base-content/70">
+    {user.is_public ? 'Public Profile' : 'Hidden Profile'}
   </span>
 </div>
                   </div>
@@ -537,7 +590,6 @@ const handleProfileUpdate = async () => {
                     </Button>
                   </div>
                 </div>
-
 
                 <Grid cols={1} md={3} gap={4}>
                   <DataDisplay label="Email" value={user.email} icon={<Mail size={16} />} />

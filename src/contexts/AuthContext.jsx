@@ -20,7 +20,28 @@ export const AuthProvider = ({ children }) => {
             },
           });
 
-          setUser(response.data.data.user);  // Ensure your response data structure matches this
+          // Ensure we have both snake_case and camelCase versions of properties
+          const userData = response.data.data.user;
+          const enhancedUserData = {
+            ...userData,
+            // Add camelCase versions if missing
+            firstName: userData.first_name || userData.firstName,
+            lastName: userData.last_name || userData.lastName,
+            postalCode: userData.postal_code || userData.postalCode,
+            avatarUrl: userData.avatar_url || userData.avatarUrl,
+            isPublic: userData.is_public !== undefined ? userData.is_public : 
+                      (userData.isPublic !== undefined ? userData.isPublic : true),
+            // Add snake_case versions if missing
+            first_name: userData.first_name || userData.firstName,
+            last_name: userData.last_name || userData.lastName,
+            postal_code: userData.postal_code || userData.postalCode,
+            avatar_url: userData.avatar_url || userData.avatarUrl,
+            is_public: userData.is_public !== undefined ? userData.is_public : 
+                       (userData.isPublic !== undefined ? userData.isPublic : true),
+          };
+
+          console.log("Enhanced user data:", enhancedUserData);
+          setUser(enhancedUserData);
           setError(null);
         } catch (err) {
           console.error('Failed to load user:', err);
@@ -49,9 +70,28 @@ export const AuthProvider = ({ children }) => {
       const response = await api.post('/api/auth/register', userData);
       const { token, user } = response.data.data;
 
+      // Enhance user data with both snake_case and camelCase
+      const enhancedUser = {
+        ...user,
+        // Add camelCase versions
+        firstName: user.first_name || user.firstName,
+        lastName: user.last_name || user.lastName,
+        postalCode: user.postal_code || user.postalCode,
+        avatarUrl: user.avatar_url || user.avatarUrl,
+        isPublic: user.is_public !== undefined ? user.is_public : 
+                  (user.isPublic !== undefined ? user.isPublic : true),
+        // Add snake_case versions
+        first_name: user.first_name || user.firstName,
+        last_name: user.last_name || user.lastName,
+        postal_code: user.postal_code || user.postalCode,
+        avatar_url: user.avatar_url || user.avatarUrl,
+        is_public: user.is_public !== undefined ? user.is_public : 
+                   (user.isPublic !== undefined ? user.isPublic : true),
+      };
+
       localStorage.setItem('token', token);
       setToken(token);
-      setUser(user);
+      setUser(enhancedUser);
       setError(null);
       return { success: true };
     } catch (err) {
@@ -70,12 +110,31 @@ export const AuthProvider = ({ children }) => {
   const login = async (credentials) => {
     try {
       setLoading(true);
-      const response = await api.post('/api/auth/login', credentials);  // Make sure the endpoint is correct
+      const response = await api.post('/api/auth/login', credentials);
       const { token, user } = response.data.data;
+
+      // Enhance user data with both snake_case and camelCase
+      const enhancedUser = {
+        ...user,
+        // Add camelCase versions
+        firstName: user.first_name || user.firstName,
+        lastName: user.last_name || user.lastName,
+        postalCode: user.postal_code || user.postalCode,
+        avatarUrl: user.avatar_url || user.avatarUrl,
+        isPublic: user.is_public !== undefined ? user.is_public : 
+                  (user.isPublic !== undefined ? user.isPublic : true),
+        // Add snake_case versions
+        first_name: user.first_name || user.firstName,
+        last_name: user.last_name || user.lastName,
+        postal_code: user.postal_code || user.postalCode,
+        avatar_url: user.avatar_url || user.avatarUrl,
+        is_public: user.is_public !== undefined ? user.is_public : 
+                   (user.isPublic !== undefined ? user.isPublic : true),
+      };
 
       localStorage.setItem('token', token);
       setToken(token);
-      setUser(user);
+      setUser(enhancedUser);
       setError(null);
       return { success: true };
     } catch (err) {
@@ -91,18 +150,69 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Update user data
-const updateUser = (userData) => {
-  console.log("Updating user in context with:", userData);
-  setUser(prevUser => {
-    // Create a completely new object that combines previous and new data
-    const newUser = {
-      ...prevUser,
-      ...userData
-    };
-    console.log("Updated user object:", newUser);
-    return newUser;
-  });
-};
+  const updateUser = (userData) => {
+    console.log("Updating user in context with:", userData);
+    
+    // Create a new object that preserves existing properties and adds new ones
+    setUser(prevUser => {
+      if (!prevUser) return userData;
+      
+      // Start with a copy of the previous user data
+      const newUser = { ...prevUser };
+      
+      // Add all new properties
+      Object.keys(userData).forEach(key => {
+        if (userData[key] !== undefined) {
+          newUser[key] = userData[key];
+        }
+      });
+      
+      // Specifically handle visibility properties to ensure both versions exist
+      if (userData.is_public !== undefined) {
+        newUser.is_public = userData.is_public;
+        newUser.isPublic = userData.is_public;
+      } else if (userData.isPublic !== undefined) {
+        newUser.isPublic = userData.isPublic;
+        newUser.is_public = userData.isPublic;
+      }
+      
+      // Handle other property pairs to ensure both snake_case and camelCase exist
+      if (userData.first_name !== undefined) {
+        newUser.first_name = userData.first_name;
+        newUser.firstName = userData.first_name;
+      } else if (userData.firstName !== undefined) {
+        newUser.firstName = userData.firstName;
+        newUser.first_name = userData.firstName;
+      }
+      
+      if (userData.last_name !== undefined) {
+        newUser.last_name = userData.last_name;
+        newUser.lastName = userData.last_name;
+      } else if (userData.lastName !== undefined) {
+        newUser.lastName = userData.lastName;
+        newUser.last_name = userData.lastName;
+      }
+      
+      if (userData.postal_code !== undefined) {
+        newUser.postal_code = userData.postal_code;
+        newUser.postalCode = userData.postal_code;
+      } else if (userData.postalCode !== undefined) {
+        newUser.postalCode = userData.postalCode;
+        newUser.postal_code = userData.postalCode;
+      }
+      
+      if (userData.avatar_url !== undefined) {
+        newUser.avatar_url = userData.avatar_url;
+        newUser.avatarUrl = userData.avatar_url;
+      } else if (userData.avatarUrl !== undefined) {
+        newUser.avatarUrl = userData.avatarUrl;
+        newUser.avatar_url = userData.avatarUrl;
+      }
+      
+      console.log("Updated user object:", newUser);
+      return newUser;
+    });
+  };
 
   // Logout user
   const logout = () => {

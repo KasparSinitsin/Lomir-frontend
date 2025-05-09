@@ -11,6 +11,16 @@ export const userService = {
     try {
       // Make GET request to the user endpoint
       const response = await api.get(`/api/users/${userId}`);
+      console.log('API getUserById response:', response.data);
+      
+      // Check if visibility info is included
+      if (response.data && response.data.data) {
+        console.log('Profile visibility in getUserById response:', {
+          is_public: response.data.data.is_public,
+          type: typeof response.data.data.is_public
+        });
+      }
+      
       // Return the data from the response (already converted to camelCase by interceptor)
       return response.data;
     } catch (error) {
@@ -34,6 +44,14 @@ export const userService = {
       const response = await api.put(`/api/users/${userId}`, userData);
       console.log('API update response:', response.data);
       
+      // Add some additional debug
+      if (response.data && response.data.data) {
+        console.log('Profile visibility in updateUser response:', {
+          is_public: response.data.data.is_public,
+          type: typeof response.data.data.is_public
+        });
+      }
+      
       return response.data;
     } catch (error) {
       console.error('Error updating user:', error);
@@ -48,10 +66,7 @@ export const userService = {
   },
 
 
-  // --- Commented Out Functions ---
-  // These functions are currently commented out. Uncomment and potentially adjust
-  // when you need to implement/test tag functionality.
-
+  // --- User Tags Functions ---
   getUserTags: async (userId) => {
      try {
        const response = await api.get(`/api/users/${userId}/tags`);
@@ -78,8 +93,6 @@ export const userService = {
        throw error;
      }
    }
-  // --- End Commented Out Functions ---
-
 };
 
 // Export the service object as the default export
