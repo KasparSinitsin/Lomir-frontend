@@ -48,17 +48,16 @@ const MyTeams = () => {
     }
 
     // Update the team in the local state
-    setTeams(prevTeams => 
-      prevTeams.map(team => 
-        team.id === updatedTeam.id ? updatedTeam : team
-      )
-    );
-  };
+  setTeams(prevTeams => 
+    prevTeams.map(team => 
+      team.id === updatedTeam.id ? updatedTeam : team
+    )
+  );
+};
 
-  const handleTeamDelete = (teamId) => {
-    // Remove the deleted team from the state
-    setTeams(prevTeams => prevTeams.filter(team => team.id !== teamId));
-  };
+const handleTeamDelete = (teamId) => {
+  setTeams(prevTeams => prevTeams.filter(team => team.id !== teamId));
+};
 
   if (loading) {
     return (
