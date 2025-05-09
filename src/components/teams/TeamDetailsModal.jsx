@@ -14,7 +14,8 @@ const TeamDetailsModal = ({
   onClose,
   onUpdate,
   onDelete,
-  userRole
+  userRole,
+  isFromSearch = false
 }) => {
   const navigate = useNavigate();
   const { id: urlTeamId } = useParams();

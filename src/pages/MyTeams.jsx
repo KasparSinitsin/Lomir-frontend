@@ -111,16 +111,16 @@ const MyTeams = () => {
           </Link>
         </div>
       ) : (
-        <Grid cols={1} md={2} lg={3} gap={6}>
-          {teams.map(team => (
-            <TeamCard 
-              key={team.id} 
-              team={team}
-              onUpdate={handleTeamUpdate}
-              onDelete={handleTeamDelete}
-            />
-          ))}
-        </Grid>
+<Grid cols={1} md={2} lg={3} gap={6}>
+  {teams.map(team => (
+    <TeamCard 
+      key={team.id} 
+      team={team}
+      onUpdate={handleTeamUpdate}
+      onDelete={handleTeamDelete}
+    />
+  ))}
+</Grid>
       )}
     </PageContainer>
   );
