@@ -1,5 +1,3 @@
-// src/components/teams/TeamCard.jsx
-
 import React, { useState, useEffect } from 'react';
 import Card from '../common/Card';
 import Button from '../common/Button';
@@ -14,20 +12,26 @@ const TeamCard = ({ team, onUpdate, onDelete, isSearchResult = false }) => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState(null);
   const [userRole, setUserRole] = useState(null);
+  const [teamData, setTeamData] = useState(team); // Store team data locally
   const { user, isAuthenticated } = useAuth();
   
   // Either use team's image or create an initial from the team name
-  const teamImage = team.image_url || team.name.charAt(0);
+  const teamImage = teamData.image_url || teamData.name.charAt(0);
   
   // Check if current user is the creator of the team
-  const isCreator = user && team.creator_id === user.id;
+  const isCreator = user && teamData.creator_id === user.id;
+  
+  // Update local team data when the prop changes
+  useEffect(() => {
+    setTeamData(team);
+  }, [team]);
   
   // Fetch the user's role in this team on component mount
   useEffect(() => {
     const fetchUserRole = async () => {
-      if (user && team.id && !isSearchResult) {
+      if (user && teamData.id && !isSearchResult) {
         try {
-          const response = await teamService.getUserRoleInTeam(team.id, user.id);
+          const response = await teamService.getUserRoleInTeam(teamData.id, user.id);
           setUserRole(response.data.role);
         } catch (err) {
           console.error('Error fetching user role:', err);
@@ -36,7 +40,7 @@ const TeamCard = ({ team, onUpdate, onDelete, isSearchResult = false }) => {
     };
     
     fetchUserRole();
-  }, [user, team.id, isSearchResult]);
+  }, [user, teamData.id, isSearchResult]);
   
   const openTeamDetails = () => {
     setIsModalOpen(true);
@@ -47,6 +51,10 @@ const TeamCard = ({ team, onUpdate, onDelete, isSearchResult = false }) => {
   };
   
   const handleTeamUpdate = (updatedTeam) => {
+    // Update the local state first
+    setTeamData(updatedTeam);
+    
+    // Then call the parent's callback if provided
     if (onUpdate) {
       onUpdate(updatedTeam);
     }
@@ -58,10 +66,10 @@ const TeamCard = ({ team, onUpdate, onDelete, isSearchResult = false }) => {
     if (window.confirm('Are you sure you want to delete this team? This action cannot be undone.')) {
       try {
         setIsDeleting(true);
-        await teamService.deleteTeam(team.id);
+        await teamService.deleteTeam(teamData.id);
         
         if (onDelete) {
-          onDelete(team.id);
+          onDelete(teamData.id);
         }
       } catch (err) {
         console.error('Error deleting team:', err);
@@ -72,26 +80,58 @@ const TeamCard = ({ team, onUpdate, onDelete, isSearchResult = false }) => {
     }
   };
   
+  // Force local refresh of team data when modal closes
+  const handleModalClose = async () => {
+    try {
+      // Fetch fresh team data directly
+      const response = await teamService.getTeamById(teamData.id);
+      if (response && response.data) {
+        const freshTeamData = response.data;
+        setTeamData(freshTeamData);
+        
+        // Call parent update handler
+        if (onUpdate) {
+          onUpdate(freshTeamData);
+        }
+      }
+    } catch (error) {
+      console.error('Error refreshing team data:', error);
+    }
+    
+    closeTeamDetails();
+  };
+  
+  // For debugging in development
+  useEffect(() => {
+    if (import.meta.env.DEV) {
+      console.log('TeamCard data:', teamData);
+      console.log('isPublic value:', teamData.is_public);
+    }
+  }, [teamData]);
+  
+  // Ensure is_public is a proper boolean
+  const isPublic = teamData.is_public === true;
+  
   return (
     <>
       <Card 
-        title={team.name}
-        subtitle={`Members: ${team.current_members_count ?? 1} out of ${team.max_members ?? '∞'}`}
+        title={teamData.name}
+        subtitle={`Members: ${teamData.current_members_count ?? 1} out of ${teamData.max_members ?? '∞'}`}
         hoverable
         image={teamImage}
-        imageAlt={`${team.name} team`}
+        imageAlt={`${teamData.name} team`}
         imageShape="circle" 
       >
         {error && (
           <Alert type="error" message={error} onClose={() => setError(null)} className="mb-4" />
         )}
         
-        <p className="text-base-content/80 mb-4 -mt-4">{team.description}</p>
+        <p className="text-base-content/80 mb-4 -mt-4">{teamData.description}</p>
         
         <div className="flex flex-wrap items-center gap-2 mb-4">
           <div className="flex items-center text-sm text-base-content/70">
             <Users size={16} className="mr-1" />
-            <span>{team.is_public ? 'Public' : 'Private'}</span>
+            <span>{isPublic ? 'Public Team' : 'Private Team'}</span>
           </div>
           
           {userRole && !isSearchResult && (
@@ -130,8 +170,8 @@ const TeamCard = ({ team, onUpdate, onDelete, isSearchResult = false }) => {
       
       <TeamDetailsModal 
         isOpen={isModalOpen}
-        teamId={team.id}
-        onClose={closeTeamDetails}
+        teamId={teamData.id}
+        onClose={handleModalClose}
         onUpdate={handleTeamUpdate}
         onDelete={onDelete}
         userRole={userRole}

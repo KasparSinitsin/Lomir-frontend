@@ -89,12 +89,17 @@ const SearchPage = () => {
     }));
   };
 
-  const handleTeamUpdate = (updatedTeam) => {
-    setSearchResults(prev => ({
-      ...prev,
-      teams: prev.teams.map(team => team.id === updatedTeam.id ? updatedTeam : team),
-    }));
-  };
+const handleTeamUpdate = (updatedTeam) => {
+  setSearchResults(prev => ({
+    ...prev,
+    teams: prev.teams.map(team => 
+      team.id === updatedTeam.id ? {
+        ...updatedTeam,
+        is_public: updatedTeam.is_public === true // Ensure proper boolean
+      } : team
+    ),
+  }));
+};
 
   const noResultsFound = hasSearched &&
     filteredResults.teams.length === 0 &&
@@ -182,14 +187,14 @@ const SearchPage = () => {
             <section className="mb-8">
               <h2 className="text-xl font-semibold mb-4">Teams</h2>
               <Grid cols={1} md={2} lg={3} gap={6}>
-                {filteredResults.teams.map(team => (
-                  <TeamCard 
-                    key={team.id} 
-                    team={team} 
-                    onUpdate={handleTeamUpdate}
-                    isSearchResult={true} 
-                  />
-                ))}
+ {filteredResults.teams.map(team => (
+<TeamCard 
+  key={team.id} 
+  team={team} 
+  onUpdate={handleTeamUpdate}
+  isSearchResult={true} 
+/>
+))}
               </Grid>
             </section>
           )}

@@ -20,11 +20,14 @@ export const teamService = {
         }
       }) || [];
       
+      // Make sure is_public is properly set as a boolean
+      const isPublic = teamData.is_public === true;
+      
       const validatedTeamData = {
         name: teamData.name,
         description: teamData.description || '',
-        is_public: typeof teamData.is_public === 'boolean' ? teamData.is_public : Boolean(teamData.is_public),
-        max_members: teamData.max_members || 20,
+        is_public: isPublic, // Ensure it's a boolean
+        max_members: parseInt(teamData.max_members || 20, 10),
         tags: formattedTags,
       };
       
@@ -101,7 +104,15 @@ export const teamService = {
       console.log(`Updating team with ID: ${teamId}`);
       console.log('Update data being sent:', teamData);
       
-      const response = await api.put(`/api/teams/${teamId}`, teamData);
+      // Ensure is_public is properly set as a boolean
+      const validatedData = {
+        ...teamData,
+        is_public: teamData.is_public === true
+      };
+      
+      console.log('Validated update data:', validatedData);
+      
+      const response = await api.put(`/api/teams/${teamId}`, validatedData);
       
       console.log('Update response:', {
         status: response.status,

@@ -114,7 +114,10 @@ const handleTeamDelete = (teamId) => {
   {teams.map(team => (
     <TeamCard 
       key={team.id} 
-      team={team}
+      team={{
+        ...team,
+        is_public: team.is_public === true // Ensure boolean
+      }}
       onUpdate={handleTeamUpdate}
       onDelete={handleTeamDelete}
     />

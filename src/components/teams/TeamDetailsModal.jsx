@@ -50,13 +50,10 @@ const TeamDetailsModal = ({
       console.log(`Fetching details for team ID: ${effectiveTeamId}`);
       const response = await teamService.getTeamById(effectiveTeamId);
       
-      // Log the complete raw response structure
-      console.log('API Response structure:', {
-        responseKeys: Object.keys(response),
-        dataKeys: response.data ? Object.keys(response.data) : 'no data',
-        successValue: response.success,
-        messageValue: response.message
-      });
+      // Detailed logging for debugging visibility issues
+      console.log('Raw API response:', response);
+      console.log('API response type:', typeof response);
+      console.log('API data property:', response.data);
       
       // Try to access team data at different levels
       let teamData;
@@ -71,48 +68,48 @@ const TeamDetailsModal = ({
         console.log('No valid teamData found in response');
       }
       
-      console.log('Raw API response:', response);
       console.log('Team data extracted:', teamData);
       
-      // Deep inspection for team members
-      console.log('Team members:', teamData.members);
-      
-      // Look for creator in the members array
-      let creatorMember = null;
-      if (teamData.members && Array.isArray(teamData.members)) {
-        creatorMember = teamData.members.find(m => m.role === 'creator');
-        console.log('Creator member found:', creatorMember);
-      }
+      // Inspect is_public field specifically
+      console.log('Raw is_public value:', teamData.is_public);
+      console.log('Type of is_public:', typeof teamData.is_public);
       
       // Determine the creator ID
       let creatorId = teamData.creator_id;
       
-      // If not found, try to get it from the creator member
-      if (creatorId === undefined && creatorMember) {
-        creatorId = parseInt(creatorMember.user_id, 10);
-        console.log('Found creator ID from members array:', creatorId);
-      }
-      
-      // Determine the visibility status
-      let isPublicValue = teamData.is_public;
-      
-      // If visibility is undefined but we know it should be true, force it
-      if (isPublicValue === undefined) {
-        // Try other possible locations
-        if (response.data && response.data.is_public !== undefined) {
-          isPublicValue = response.data.is_public;
-        } else if (response.is_public !== undefined) {
-          isPublicValue = response.is_public;
-        } else {
-          // If it's still undefined, set it to true as a fallback (since database has TRUE)
-          isPublicValue = true;
-          console.log('Using fallback value for is_public:', isPublicValue);
+      // Get members for creator lookup if needed
+      if (teamData.members && Array.isArray(teamData.members)) {
+        console.log('Team members:', teamData.members);
+        
+        // Look for creator in the members array
+        const creatorMember = teamData.members.find(m => m.role === 'creator');
+        
+        // If creator_id is not in the data but we found a creator member, use that
+        if (creatorId === undefined && creatorMember) {
+          creatorId = parseInt(creatorMember.user_id, 10);
+          console.log('Found creator ID from members array:', creatorId);
         }
       }
       
-      console.log('Final creator ID:', creatorId);
-      console.log('Creator found:', creatorId === parseInt(user?.id, 10));
-      console.log('Final is_public value:', isPublicValue);
+      // Get the is_public value directly from response or data
+      // IMPORTANT: The database value is transformed to string 'true'/'false' by PostgreSQL
+      // So we need to explicitly compare against both boolean and string representations
+      let isPublicRaw = teamData.is_public;
+      
+      // The critical fix: Make sure we interpret 'false' string as false boolean
+      let isPublicValue = false; // Default to false (private)
+      
+      if (isPublicRaw === true || isPublicRaw === 'true' || isPublicRaw === 1) {
+        isPublicValue = true;
+      } else if (isPublicRaw === false || isPublicRaw === 'false' || isPublicRaw === 0 || isPublicRaw === null) {
+        isPublicValue = false;
+      } else {
+        // If it's something unexpected, log and default to false
+        console.log('Unexpected is_public value:', isPublicRaw);
+        isPublicValue = false;
+      }
+      
+      console.log('Final is_public value after conversion:', isPublicValue);
       
       // Force the fields to be set in the team data
       const enhancedTeamData = {
@@ -139,16 +136,15 @@ const TeamDetailsModal = ({
       
       setIsCreator(isCreatorValue);
       
-      // Convert isPublicValue to boolean explicitly
-      const isPublicBoolean = isPublicValue === true || isPublicValue === 'true' || isPublicValue === 1;
-      console.log('Setting isPublic to boolean:', isPublicBoolean);
-      setIsPublic(isPublicBoolean);
+      // Set isPublic state with our carefully determined boolean value
+      console.log('Setting isPublic to:', isPublicValue);
+      setIsPublic(isPublicValue);
       
       // Set form data with the enhanced values
       setFormData({
         name: teamData.name || '',
         description: teamData.description || '',
-        isPublic: isPublicBoolean, // Use our explicit boolean conversion
+        isPublic: isPublicValue,
         maxMembers: teamData.max_members || 5,
         selectedTags: teamData.tags?.map(tag => parseInt(tag.id || tag.tag_id, 10)) || [],
       });
@@ -225,6 +221,20 @@ const TeamDetailsModal = ({
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
+    
+    // Special handling for isPublic to ensure it's always a boolean
+    if (name === 'isPublic') {
+      setFormData(prev => ({
+        ...prev,
+        isPublic: checked // Explicitly use the checked property
+      }));
+      
+      // Debug logging
+      console.log(`Changed isPublic to: ${checked} (${typeof checked})`);
+      return;
+    }
+    
+    // Handle other form fields normally
     const newValue = type === 'checkbox' ? checked : value;
 
     // Clear error for this field when user starts typing
@@ -278,94 +288,102 @@ const TeamDetailsModal = ({
     return Object.keys(errors).length === 0;
   };
 
-  const handleSubmit = async (e) => {
-    if (e) e.preventDefault();
+const handleSubmit = async (e) => {
+  if (e) e.preventDefault();
 
-    if (!validateForm()) {
-      return;
+  if (!validateForm()) {
+    return;
+  }
+
+  try {
+    setLoading(true);
+    setNotification({ type: null, message: null });
+
+    // Log the form data before submission
+    console.log("Form data before submission:", formData);
+    
+    // Ensure isPublic is a proper boolean
+    const isPublicBoolean = formData.isPublic === true;
+    console.log("Visibility value computed:", isPublicBoolean, typeof isPublicBoolean);
+
+    // Prepare the submission data first
+    const submissionData = {
+      name: formData.name.trim(),
+      description: formData.description.trim(),
+      is_public: isPublicBoolean, // Force it to be a boolean
+      max_members: formData.maxMembers,
+    };
+
+    console.log("Submission data prepared:", submissionData);
+
+    // Only add tags if there are any selected
+    if (formData.selectedTags && formData.selectedTags.length > 0) {
+      // Process and add tags to submission data
+      const processedTags = formData.selectedTags
+        .filter(tagId => tagId) // Remove any falsy values
+        .map(tagId => {
+          const numericId = Number(tagId); // Explicitly convert to number
+          return { 
+            tag_id: numericId 
+          };
+        });
+      
+      // Only include tags in the submission if we have valid ones
+      if (processedTags.length > 0) {
+        submissionData.tags = processedTags;
+      }
     }
 
-    try {
-      setLoading(true);
-      setNotification({ type: null, message: null });
+    console.log("Final submission data:", submissionData);
 
-      // Log the form data before submission
-      console.log("Form data before submission:", formData);
-      console.log("isPublic value type:", typeof formData.isPublic);
+    const response = await teamService.updateTeam(effectiveTeamId, submissionData);
+    console.log("Update response:", response);
 
-      // Prepare the submission data first
-      const submissionData = {
-        name: formData.name.trim(),
-        description: formData.description.trim(),
-        is_public: formData.isPublic, // Should be a boolean value
-        max_members: formData.maxMembers,
-      };
+    // Update our local state with the new visibility value
+    setIsPublic(isPublicBoolean);
 
-      // Debug logs to verify data being sent to the server
-      console.log("Visibility value being submitted:", submissionData.is_public, typeof submissionData.is_public);
+    // Create a properly updated team object to return to parent
+    const updatedTeam = {
+      ...team,
+      ...submissionData,
+      is_public: isPublicBoolean // Explicitly include the visibility
+    };
 
-      // Only add tags if there are any selected
-      if (formData.selectedTags && formData.selectedTags.length > 0) {
-        // Process and add tags to submission data
-        const processedTags = formData.selectedTags
-          .filter(tagId => tagId) // Remove any falsy values
-          .map(tagId => {
-            const numericId = Number(tagId); // Explicitly convert to number
-            return { 
-              tag_id: numericId 
-            };
-          });
-        
-        // Only include tags in the submission if we have valid ones
-        if (processedTags.length > 0) {
-          submissionData.tags = processedTags;
-        }
-      }
+    setNotification({
+      type: 'success',
+      message: 'Team updated successfully!'
+    });
 
-      console.log("Final submission data:", submissionData);
+    setIsEditing(false);
 
-      const response = await teamService.updateTeam(effectiveTeamId, submissionData);
-      console.log("Update response:", response);
+    // After updating, fetch the latest data to ensure we have the most up-to-date info
+    await fetchTeamDetails();
 
-      // Update our local state with the new visibility value
-      setIsPublic(formData.isPublic);
-
-      // After saving, fetch the latest data to ensure we have the most up-to-date info
-      await fetchTeamDetails();
-
-      setNotification({
-        type: 'success',
-        message: 'Team updated successfully!'
-      });
-
-      setIsEditing(false);
-
-      if (onUpdate && response.data) {
-        onUpdate(response.data);
-      } else if (onUpdate && team) {
-        onUpdate({ ...team, ...submissionData });
-      }
-    } catch (err) {
-      console.error('Error updating team:', err);
-      
-      // Improve error message by extracting the specific error from the API response
-      let errorMessage = 'Failed to update team. Please try again.';
-      if (err.response?.data?.errors && err.response.data.errors.length > 0) {
-        errorMessage = `Error: ${err.response.data.errors[0]}`;
-      } else if (err.response?.data?.message) {
-        errorMessage = `Error: ${err.response.data.message}`;
-      } else if (err.message) {
-        errorMessage = `Error: ${err.message}`;
-      }
-      
-      setNotification({
-        type: 'error',
-        message: errorMessage
-      });
-    } finally {
-      setLoading(false);
+    // Update the parent component if callback is provided
+    if (onUpdate) {
+      onUpdate(updatedTeam);
     }
-  };
+  } catch (err) {
+    console.error('Error updating team:', err);
+    
+    // Improve error message by extracting the specific error from the API response
+    let errorMessage = 'Failed to update team. Please try again.';
+    if (err.response?.data?.errors && err.response.data.errors.length > 0) {
+      errorMessage = `Error: ${err.response.data.errors[0]}`;
+    } else if (err.response?.data?.message) {
+      errorMessage = `Error: ${err.response.data.message}`;
+    } else if (err.message) {
+      errorMessage = `Error: ${err.message}`;
+    }
+    
+    setNotification({
+      type: 'error',
+      message: errorMessage
+    });
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleDeleteTeam = async () => {
     if (window.confirm('Are you sure you want to delete this team? This action cannot be undone.')) {
@@ -586,8 +604,14 @@ const TeamDetailsModal = ({
                   {/* Toggle visibility with IconToggle */}
                   <IconToggle
                     name="isPublic"
-                    checked={formData.isPublic}
+                    checked={formData.isPublic === true}
                     onChange={handleChange}
+                    title="Team Visibility" 
+                    entityType="team"
+                    visibleLabel="Public Team"
+                    hiddenLabel="Private Team"
+                    visibleDescription="Anyone can find and view your team"
+                    hiddenDescription="Only members can see this team"
                     className="toggle-visibility"
                   />
 
@@ -667,7 +691,8 @@ const TeamDetailsModal = ({
                       {/* Add this for debugging */}
                       {import.meta.env.DEV && (
                         <span className="text-xs ml-2">
-                          (Debug: stored isPublic={String(isPublic)})
+                          (Debug: stored isPublic={String(isPublic)}, 
+                          team.is_public={team?.is_public !== undefined ? String(team.is_public) : 'undefined'})
                         </span>
                       )}
                     </div>

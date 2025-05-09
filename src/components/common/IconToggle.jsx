@@ -19,6 +19,14 @@ const IconToggle = ({
   // Generate a unique ID if none is provided
   const inputId = id || `toggle-${name}-${Math.random().toString(36).substr(2, 9)}`;
   
+  // Force the checked prop to be a boolean
+  const isChecked = checked === true;
+  
+  // Debug logging in development environments
+  if (import.meta.env.DEV) {
+    console.log(`IconToggle ${name}: checked=${checked}, isChecked=${isChecked}, type=${typeof checked}`);
+  }
+  
   // Customize descriptions based on entityType if provided
   const getVisibleDescription = () => {
     if (entityType === "team") return "Anyone can find and view your team";
@@ -37,12 +45,12 @@ const IconToggle = ({
       {title && <h3 className="font-medium mb-2">{title}</h3>}
       <div className="flex items-center justify-between p-3 bg-base-200 rounded-lg">
         <div className="flex items-center">
-          {checked ? 
+          {isChecked ? 
             <Eye size={30} className="text-primary mr-2" /> : 
             <EyeClosed size={30} className="text-base-content/70 mr-2" />
           }
           <span className="font-medium">
-            {checked ? visibleLabel : hiddenLabel}
+            {isChecked ? visibleLabel : hiddenLabel}
           </span>
         </div>
         
@@ -51,7 +59,7 @@ const IconToggle = ({
             id={inputId}
             type="checkbox"
             name={name}
-            checked={checked}
+            checked={isChecked}
             onChange={onChange}
             disabled={disabled}
             className={`toggle toggle-primary ${className}`}
@@ -61,8 +69,15 @@ const IconToggle = ({
       </div>
       {showDescription && (
         <p className="text-sm text-base-content/70 mt-2">
-          {checked ? getVisibleDescription() : getHiddenDescription()}
+          {isChecked ? getVisibleDescription() : getHiddenDescription()}
         </p>
+      )}
+
+      {/* Add debug info in development */}
+      {import.meta.env.DEV && (
+        <div className="text-xs text-base-content/50 mt-1">
+          Debug: checked={String(checked)}, isChecked={String(isChecked)}, type={typeof checked}
+        </div>
       )}
     </div>
   );
