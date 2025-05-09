@@ -89,10 +89,10 @@ const TeamCard = ({ team, onUpdate, onDelete, isSearchResult = false }) => {
         <p className="text-base-content/80 mb-4 -mt-4">{team.description}</p>
         
         <div className="flex flex-wrap items-center gap-2 mb-4">
-          <div className="flex items-center text-sm text-base-content/70">
-            <Users size={16} className="mr-1" />
-            <span>{team.is_public ? 'Public' : 'Private'}</span>
-          </div>
+<div className="flex items-center text-sm text-base-content/70">
+  <Users size={16} className="mr-1" />
+  <span>{team.is_public === true ? 'Public Team' : 'Private Team'}</span>
+</div>
           
           {userRole && !isSearchResult && (
             <span className="badge badge-primary badge-outline">

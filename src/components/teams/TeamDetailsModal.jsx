@@ -110,6 +110,9 @@ const TeamDetailsModal = ({
         }
       }
       
+      // Convert to boolean explicitly
+      isPublicValue = isPublicValue === true || isPublicValue === 'true' || isPublicValue === 1;
+      
       console.log('Final creator ID:', creatorId);
       console.log('Creator found:', creatorId === parseInt(user?.id, 10));
       console.log('Final is_public value:', isPublicValue);
@@ -139,16 +142,15 @@ const TeamDetailsModal = ({
       
       setIsCreator(isCreatorValue);
       
-      // Convert isPublicValue to boolean explicitly
-      const isPublicBoolean = isPublicValue === true || isPublicValue === 'true' || isPublicValue === 1;
-      console.log('Setting isPublic to boolean:', isPublicBoolean);
-      setIsPublic(isPublicBoolean);
+      // Convert isPublicValue to boolean explicitly and set it
+      console.log('Setting isPublic to boolean:', isPublicValue);
+      setIsPublic(isPublicValue);
       
       // Set form data with the enhanced values
       setFormData({
         name: teamData.name || '',
         description: teamData.description || '',
-        isPublic: isPublicBoolean, // Use our explicit boolean conversion
+        isPublic: isPublicValue, // Use our explicit boolean conversion
         maxMembers: teamData.max_members || 5,
         selectedTags: teamData.tags?.map(tag => parseInt(tag.id || tag.tag_id, 10)) || [],
       });
@@ -225,6 +227,20 @@ const TeamDetailsModal = ({
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
+    
+    // Special handling for isPublic to ensure it's always a boolean
+    if (name === 'isPublic') {
+      setFormData(prev => ({
+        ...prev,
+        isPublic: checked // Explicitly use the checked property
+      }));
+      
+      // Debug logging
+      console.log(`Changed isPublic to: ${checked} (${typeof checked})`);
+      return;
+    }
+    
+    // Handle other form fields normally
     const newValue = type === 'checkbox' ? checked : value;
 
     // Clear error for this field when user starts typing
@@ -291,18 +307,20 @@ const TeamDetailsModal = ({
 
       // Log the form data before submission
       console.log("Form data before submission:", formData);
-      console.log("isPublic value type:", typeof formData.isPublic);
+      
+      // Ensure isPublic is a proper boolean
+      const isPublicBoolean = formData.isPublic === true;
+      console.log("Visibility value computed:", isPublicBoolean, typeof isPublicBoolean);
 
       // Prepare the submission data first
       const submissionData = {
         name: formData.name.trim(),
         description: formData.description.trim(),
-        is_public: formData.isPublic, // Should be a boolean value
+        is_public: isPublicBoolean, // Force it to be a boolean
         max_members: formData.maxMembers,
       };
 
-      // Debug logs to verify data being sent to the server
-      console.log("Visibility value being submitted:", submissionData.is_public, typeof submissionData.is_public);
+      console.log("Submission data prepared:", submissionData);
 
       // Only add tags if there are any selected
       if (formData.selectedTags && formData.selectedTags.length > 0) {
@@ -328,7 +346,7 @@ const TeamDetailsModal = ({
       console.log("Update response:", response);
 
       // Update our local state with the new visibility value
-      setIsPublic(formData.isPublic);
+      setIsPublic(isPublicBoolean);
 
       // After saving, fetch the latest data to ensure we have the most up-to-date info
       await fetchTeamDetails();
@@ -586,8 +604,14 @@ const TeamDetailsModal = ({
                   {/* Toggle visibility with IconToggle */}
                   <IconToggle
                     name="isPublic"
-                    checked={formData.isPublic}
+                    checked={formData.isPublic === true}
                     onChange={handleChange}
+                    title="Team Visibility" 
+                    entityType="team"
+                    visibleLabel="Public Team"
+                    hiddenLabel="Private Team"
+                    visibleDescription="Anyone can find and view your team"
+                    hiddenDescription="Only members can see this team"
                     className="toggle-visibility"
                   />
 
