@@ -2,42 +2,45 @@ import api from './api';
 
 export const teamService = {
   // Create a new team
-createTeam: async (teamData) => {
-  try {
-    console.log("createTeam: Received data:", teamData);
-    
-    // Ensure tags are properly formatted
-    const formattedTags = teamData.tags?.map(tag => {
-      if (typeof tag === 'object' && tag.tag_id) {
-        return { tag_id: parseInt(tag.tag_id, 10) };
-      } else if (typeof tag === 'number') {
-        return { tag_id: tag };
-      } else {
-        return { tag_id: parseInt(tag, 10) };
-      }
-    }) || [];
-    
-    // Make sure is_public is properly set as a boolean
-    const isPublic = teamData.is_public === true;
-    
-    const validatedTeamData = {
-      name: teamData.name,
-      description: teamData.description || '',
-      is_public: isPublic, // Ensure it's a boolean
-      max_members: parseInt(teamData.max_members || 20, 10),
-      tags: formattedTags,
-    };
-    
-    console.log("createTeam: Sending validated data:", validatedTeamData);
-    
-    const response = await api.post('/api/teams', validatedTeamData); 
-    return response.data;
-  } catch (error) {
-    console.error("Error in createTeam:", error);
-    console.error("Error response data:", error.response?.data);
-    throw error;
-  }
-},
+  createTeam: async (teamData) => {
+    try {
+      console.log("createTeam: Received data:", teamData);
+      
+      // Ensure tags are properly formatted
+      const formattedTags = teamData.tags?.map(tag => {
+        if (typeof tag === 'object' && tag.tag_id) {
+          // If it's already an object with tag_id, ensure it's a number
+          return { tag_id: parseInt(tag.tag_id, 10) };
+        } else if (typeof tag === 'number') {
+          // If it's already a number, use it directly
+          return { tag_id: tag };
+        } else {
+          // Otherwise, try to parse it as a number
+          return { tag_id: parseInt(tag, 10) };
+        }
+      }) || [];
+      
+      // Make sure is_public is properly set as a boolean
+      const isPublic = teamData.is_public === true;
+      
+      const validatedTeamData = {
+        name: teamData.name,
+        description: teamData.description || '',
+        is_public: isPublic, // Ensure it's a boolean
+        max_members: parseInt(teamData.max_members || 20, 10),
+        tags: formattedTags,
+      };
+      
+      console.log("createTeam: Sending validated data:", validatedTeamData);
+      
+      const response = await api.post('/api/teams', validatedTeamData); 
+      return response.data;
+    } catch (error) {
+      console.error("Error in createTeam:", error);
+      console.error("Error response data:", error.response?.data);
+      throw error;
+    }
+  },
 
   // Delete a team
   deleteTeam: async (teamId) => {
@@ -96,32 +99,34 @@ createTeam: async (teamData) => {
   },
 
   // Update team details
-updateTeam: async (teamId, teamData) => {
-  try {
-    console.log(`Updating team with ID: ${teamId}`);
-    console.log('Update data being sent:', teamData);
-    
-    // Ensure is_public is a proper boolean
-    const validatedData = {
-      ...teamData,
-      is_public: teamData.is_public === true
-    };
-    
-    const response = await api.put(`/api/teams/${teamId}`, validatedData);
-    
-    console.log('Update response:', {
-      status: response.status,
-      statusText: response.statusText,
-      data: response.data
-    });
-    
-    return response.data;
-  } catch (error) {
-    console.error(`Error updating team ${teamId}:`, error);
-    console.error('Error details:', error.response?.data || error.message);
-    throw error;
-  }
-}
+  updateTeam: async (teamId, teamData) => {
+    try {
+      console.log(`Updating team with ID: ${teamId}`);
+      console.log('Update data being sent:', teamData);
+      
+      // Ensure is_public is properly set as a boolean
+      const validatedData = {
+        ...teamData,
+        is_public: teamData.is_public === true
+      };
+      
+      console.log('Validated update data:', validatedData);
+      
+      const response = await api.put(`/api/teams/${teamId}`, validatedData);
+      
+      console.log('Update response:', {
+        status: response.status,
+        statusText: response.statusText,
+        data: response.data
+      });
+      
+      return response.data;
+    } catch (error) {
+      console.error(`Error updating team ${teamId}:`, error);
+      console.error('Error details:', error.response?.data || error.message);
+      throw error;
+    }
+  },
 
   // Add a member to a team
   addTeamMember: async (teamId, userId) => {
