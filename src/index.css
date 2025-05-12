@@ -58,6 +58,12 @@ html, body, #root {
   height: 100%;
 }
 
+/* Custom layout styles */
+
+.card-title-centered > div > div > h3 {
+  text-align: center;
+}
+
 /* Glass Elements */
 .glass-navbar {
   backdrop-filter: blur(var(--blur-amount));
@@ -114,6 +120,14 @@ html, body, #root {
   .text-lg, .text-xl, .text-2xl, .text-3xl, .text-4xl, .text-5xl {
     letter-spacing: -0.01em;
   }
+}
+
+.h3-smaller-line-height {
+  line-height: 1.1; 
+}
+
+.h3-centered {
+  text-align: center;
 }
 
 /* Custom font weights */
