@@ -177,22 +177,22 @@ const isProfilePublic = () => {
     }));
   };
 
-  const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setFormData(prevData => ({
-        ...prevData,
-        profileImage: file
-      }));
-      
-      // For preview
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
+const handleImageChange = (e) => {
+  const file = e.target.files[0];
+  if (file) {
+    setFormData(prevData => ({
+      ...prevData,
+      profileImage: file
+    }));
+    
+    // For preview
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setImagePreview(reader.result);
+    };
+    reader.readAsDataURL(file);
+  }
+};
 
   const handleTagsUpdate = async () => {
     if (!user) return;
@@ -220,7 +220,7 @@ const handleProfileUpdate = async () => {
     
     console.log("Starting profile update with form data:", formData);
     
-    // Convert form data to the format expected by the API
+    // Create an object to hold the updated user data
     const userData = {
       first_name: formData.firstName,
       last_name: formData.lastName,
@@ -229,9 +229,39 @@ const handleProfileUpdate = async () => {
       is_public: formData.isPublic
     };
     
-    console.log("Sending update with data:", userData);
-    
-    // Upload image if selected (keep existing code)
+    // Handle image upload if a new image was selected
+    if (formData.profileImage) {
+      const cloudinaryData = new FormData();
+      cloudinaryData.append('file', formData.profileImage);
+      // Use the environment variable for upload preset
+      cloudinaryData.append('upload_preset', import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET);
+      
+      console.log("Uploading image to Cloudinary");
+      
+      try {
+        const cloudinaryResponse = await axios.post(
+          `https://api.cloudinary.com/v1_1/${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME}/image/upload`,
+          cloudinaryData,
+          {
+            headers: {
+              'Content-Type': 'multipart/form-data'
+            }
+          }
+        );
+        
+        console.log("Cloudinary response:", cloudinaryResponse.data);
+        
+        // Add the image URL to the user data
+        if (cloudinaryResponse.data && cloudinaryResponse.data.secure_url) {
+          userData.avatar_url = cloudinaryResponse.data.secure_url;
+        }
+      } catch (cloudinaryError) {
+        console.error("Error uploading to Cloudinary:", cloudinaryError);
+        setError("Failed to upload image. Please try a different image or try again later.");
+        setLoading(false);
+        return;
+      }
+    }
     
     console.log("Sending API update with data:", userData);
     
@@ -250,7 +280,7 @@ const handleProfileUpdate = async () => {
       if (response.data) {
         console.log("New user data from API:", response.data);
         
-        // Create a completely new user object with correctly updated visibility
+        // Create updated user object with avatar URL
         const updatedUser = {
           ...user,
           // Force is_public to be the value from the form
@@ -271,13 +301,13 @@ const handleProfileUpdate = async () => {
           avatarUrl: response.data.avatar_url || user.avatar_url,
         };
         
-        console.log("Force-updated user object:", updatedUser);
+        console.log("Updated user object:", updatedUser);
         
         // Update the user context with our forced values
         updateUser(updatedUser);
         
         // Also force a local state update
-        setUser(updatedUser); // Add this line
+        setUser(updatedUser);
         
         // Also force an update to any dependent state
         setFormData(prev => ({
@@ -289,6 +319,11 @@ const handleProfileUpdate = async () => {
           isPublic: updatedUser.is_public,
           profileImage: null
         }));
+        
+        // Update image preview with the new avatar URL if available
+        if (updatedUser.avatar_url) {
+          setImagePreview(updatedUser.avatar_url);
+        }
       }
     }
   } catch (error) {
