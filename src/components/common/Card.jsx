@@ -84,7 +84,7 @@ const Card = ({
             </div>
 
             <div>
-              <h3 className="h3-smaller-line-height text-lg font-medium text-primary">{title}</h3>
+              <h3 className="text-lg font-medium text-primary">{title}</h3>
               {subtitle && <p className="mt-1 text-sm text-base-content/70">{subtitle}</p>}
             </div>
 
