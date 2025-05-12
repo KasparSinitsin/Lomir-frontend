@@ -116,6 +116,10 @@ html, body, #root {
   }
 }
 
+.h3-smaller-line-height {
+  line-height: 1.1; /* oder ein anderer Wert */
+}
+
 /* Custom font weights */
 .font-light {
   font-weight: 300;
