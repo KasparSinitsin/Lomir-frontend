@@ -51,12 +51,22 @@ const Navbar = () => {
 
           {/* Auth Section */}
           {isAuthenticated ? (
-            <div className="dropdown dropdown-end">
-              <label tabIndex={0} className="btn btn-circle avatar bg-primary text-white btn-sm sm:btn-md">
-                <div className="rounded-full flex items-center justify-center text-sm sm:text-base">
-                  <span>{user.firstName?.charAt(0) || user.username?.charAt(0) || '?'}</span>
-                </div>
-              </label>
+<div className="dropdown dropdown-end">
+  <label tabIndex={0} className="btn btn-circle avatar bg-primary text-white btn-sm sm:btn-md">
+    <div className="rounded-full flex items-center justify-center text-sm sm:text-base">
+      {user.avatarUrl || user.avatar_url ? (
+        <img 
+          src={user.avatarUrl || user.avatar_url} 
+          alt="Profile" 
+          className="rounded-full object-cover w-full h-full" 
+        />
+      ) : (
+        <span>{user.firstName?.charAt(0) || 
+               user.first_name?.charAt(0) ||
+               user.username?.charAt(0) || '?'}</span>
+      )}
+    </div>
+  </label>
               <ul
                 tabIndex={0}
                 className="mt-3 z-[1] p-2 shadow-lg glass-navbar menu menu-sm dropdown-content rounded-box w-30"
