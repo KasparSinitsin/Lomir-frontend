@@ -16,7 +16,7 @@ const TeamCard = ({ team, onUpdate, onDelete, isSearchResult = false }) => {
   const { user, isAuthenticated } = useAuth();
   
   // Either use team's image or create an initial from the team name
-  const teamImage = teamData.image_url || teamData.name.charAt(0);
+  const teamImage = teamData.teamavatar_url || teamData.name.charAt(0);
   
   // Check if current user is the creator of the team
   const isCreator = user && teamData.creator_id === user.id;
