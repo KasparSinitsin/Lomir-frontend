@@ -230,10 +230,10 @@ const handleProfileUpdate = async () => {
     };
     
     // Handle image upload if a new image was selected
+    let avatarUrl = null;
     if (formData.profileImage) {
       const cloudinaryData = new FormData();
       cloudinaryData.append('file', formData.profileImage);
-      // Use the environment variable for upload preset
       cloudinaryData.append('upload_preset', import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET);
       
       console.log("Uploading image to Cloudinary");
@@ -251,9 +251,13 @@ const handleProfileUpdate = async () => {
         
         console.log("Cloudinary response:", cloudinaryResponse.data);
         
-        // Add the image URL to the user data
+        // Get and store the image URL
         if (cloudinaryResponse.data && cloudinaryResponse.data.secure_url) {
-          userData.avatar_url = cloudinaryResponse.data.secure_url;
+          avatarUrl = cloudinaryResponse.data.secure_url;
+          userData.avatar_url = avatarUrl;
+          
+          // IMPORTANT: Update image preview immediately
+          setImagePreview(avatarUrl);
         }
       } catch (cloudinaryError) {
         console.error("Error uploading to Cloudinary:", cloudinaryError);
@@ -276,55 +280,43 @@ const handleProfileUpdate = async () => {
       setIsEditing(false);
       setSuccess('Profile updated successfully');
       
-      // Update user data in context with the new data
-      if (response.data) {
-        console.log("New user data from API:", response.data);
-        
-        // Create updated user object with avatar URL
-        const updatedUser = {
-          ...user,
-          // Force is_public to be the value from the form
-          is_public: formData.isPublic,
-          isPublic: formData.isPublic,
-          
-          // Update other fields from response
-          first_name: response.data.first_name || user.first_name,
-          last_name: response.data.last_name || user.last_name,
-          bio: response.data.bio || user.bio,
-          postal_code: response.data.postal_code || user.postal_code,
-          avatar_url: response.data.avatar_url || user.avatar_url,
-          
-          // Also set camelCase versions
-          firstName: response.data.first_name || user.first_name,
-          lastName: response.data.last_name || user.last_name,
-          postalCode: response.data.postal_code || user.postal_code,
-          avatarUrl: response.data.avatar_url || user.avatar_url,
-        };
-        
-        console.log("Updated user object:", updatedUser);
-        
-        // Update the user context with our forced values
-        updateUser(updatedUser);
-        
-        // Also force a local state update
-        setUser(updatedUser);
-        
-        // Also force an update to any dependent state
-        setFormData(prev => ({
-          ...prev,
-          firstName: updatedUser.first_name || '',
-          lastName: updatedUser.last_name || '',
-          bio: updatedUser.bio || '',
-          postalCode: updatedUser.postal_code || '',
-          isPublic: updatedUser.is_public,
-          profileImage: null
-        }));
-        
-        // Update image preview with the new avatar URL if available
-        if (updatedUser.avatar_url) {
-          setImagePreview(updatedUser.avatar_url);
-        }
-      }
+      // Create updated user object with correct avatar URL
+      const updatedUser = {
+        ...user,
+        is_public: formData.isPublic,
+        isPublic: formData.isPublic,
+        first_name: formData.firstName,
+        last_name: formData.lastName,
+        bio: formData.bio,
+        postal_code: formData.postalCode,
+        // Use the avatar URL from Cloudinary if we uploaded a new image,
+        // otherwise use the response data or keep the existing avatar
+        avatar_url: avatarUrl || response.data?.avatar_url || user.avatar_url,
+        avatarUrl: avatarUrl || response.data?.avatar_url || user.avatarUrl,
+        // Also set camelCase versions
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        postalCode: formData.postalCode,
+      };
+      
+      console.log("Updated user object:", updatedUser);
+      
+      // Update global context with new user data
+      updateUser(updatedUser);
+      
+      // Force a local state update
+      setUser(updatedUser);
+      
+      // Reset form data with updated values
+      setFormData(prev => ({
+        ...prev,
+        firstName: updatedUser.first_name || updatedUser.firstName || '',
+        lastName: updatedUser.last_name || updatedUser.lastName || '',
+        bio: updatedUser.bio || '',
+        postalCode: updatedUser.postal_code || updatedUser.postalCode || '',
+        isPublic: updatedUser.is_public || updatedUser.isPublic || false,
+        profileImage: null // Reset profile image after successful update
+      }));
     }
   } catch (error) {
     console.error('Error updating profile:', error);
