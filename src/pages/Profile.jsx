@@ -27,6 +27,8 @@ const Profile = () => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
+  // Add form errors state
+  const [formErrors, setFormErrors] = useState({});
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -39,24 +41,24 @@ const Profile = () => {
   // Add a flag to track if initial data load has happened
   const [initialDataLoaded, setInitialDataLoaded] = useState(false);
   
-// Helper function to robustly check if profile is public
-const isProfilePublic = () => {
-  if (user) {
-    // Check every possible way the public status might be stored
-    if (user.is_public === true) return true;
-    if (user.isPublic === true) return true;
-    if (user.is_public === false) return false;
-    if (user.isPublic === false) return false;
-    
-    // Check if visibility is in form data during editing
-    if (isEditing && formData.isPublic === true) return true;
-    if (isEditing && formData.isPublic === false) return false;
-    
-    // Default to hidden profile if not specified
-    return false; 
-  }
-  return false;
-};
+  // Helper function to robustly check if profile is public
+  const isProfilePublic = () => {
+    if (user) {
+      // Check every possible way the public status might be stored
+      if (user.is_public === true) return true;
+      if (user.isPublic === true) return true;
+      if (user.is_public === false) return false;
+      if (user.isPublic === false) return false;
+      
+      // Check if visibility is in form data during editing
+      if (isEditing && formData.isPublic === true) return true;
+      if (isEditing && formData.isPublic === false) return false;
+      
+      // Default to hidden profile if not specified
+      return false; 
+    }
+    return false;
+  };
   
   // Fetch user details as a callback that doesn't re-create on each render
   const fetchUserDetails = useCallback(async () => {
@@ -178,24 +180,33 @@ const isProfilePublic = () => {
       ...prevData,
       [name]: newValue
     }));
+    
+    // Clear any error for this field when user makes changes
+    if (formErrors[name]) {
+      setFormErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[name];
+        return newErrors;
+      });
+    }
   };
 
-const handleImageChange = (e) => {
-  const file = e.target.files[0];
-  if (file) {
-    setFormData(prevData => ({
-      ...prevData,
-      profileImage: file
-    }));
-    
-    // For preview
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setImagePreview(reader.result);
-    };
-    reader.readAsDataURL(file);
-  }
-};
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setFormData(prevData => ({
+        ...prevData,
+        profileImage: file
+      }));
+      
+      // For preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const handleTagsUpdate = async () => {
     if (!user) return;
@@ -214,121 +225,150 @@ const handleImageChange = (e) => {
     }
   };
 
-const handleProfileUpdate = async () => {
-  if (!user) return;
-  
-  try {
-    setLoading(true);
-    setError(null);
+  // Add form validation function
+  const validateForm = () => {
+    const errors = {};
     
-    console.log("Starting profile update with form data:", formData);
-    
-    // Create an object to hold the updated user data
-    const userData = {
-      first_name: formData.firstName,
-      last_name: formData.lastName,
-      email: formData.email,
-      bio: formData.bio,
-      postal_code: formData.postalCode,
-      is_public: formData.isPublic
-    };
-    
-    // Handle image upload if a new image was selected
-    let avatarUrl = null;
-    if (formData.profileImage) {
-      const cloudinaryData = new FormData();
-      cloudinaryData.append('file', formData.profileImage);
-      cloudinaryData.append('upload_preset', import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET);
-      
-      console.log("Uploading image to Cloudinary");
-      
-      try {
-        const cloudinaryResponse = await axios.post(
-          `https://api.cloudinary.com/v1_1/${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME}/image/upload`,
-          cloudinaryData,
-          {
-            headers: {
-              'Content-Type': 'multipart/form-data'
-            }
-          }
-        );
-        
-        console.log("Cloudinary response:", cloudinaryResponse.data);
-        
-        // Get and store the image URL
-        if (cloudinaryResponse.data && cloudinaryResponse.data.secure_url) {
-          avatarUrl = cloudinaryResponse.data.secure_url;
-          userData.avatar_url = avatarUrl;
-          
-          // IMPORTANT: Update image preview immediately
-          setImagePreview(avatarUrl);
-        }
-      } catch (cloudinaryError) {
-        console.error("Error uploading to Cloudinary:", cloudinaryError);
-        setError("Failed to upload image. Please try a different image or try again later.");
-        setLoading(false);
-        return;
-      }
+    // Email validation
+    if (!formData.email.trim()) {
+      errors.email = 'Email is required';
+    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+      errors.email = 'Email is invalid';
     }
     
-    console.log("Sending API update with data:", userData);
+    // First name validation (optional)
+    if (!formData.firstName.trim()) {
+      errors.firstName = 'First name is required';
+    }
     
-    const response = await userService.updateUser(user.id, userData);
+    // Add more validations if needed
     
-    console.log("Update response:", response);
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleProfileUpdate = async () => {
+    if (!user) return;
     
-    if (!response || response.success === false) {
-      console.error("Update failed:", response?.message || "No response received");
-      setError('Failed to update profile: ' + (response?.message || "Unknown error"));
-    } else {
-      setIsEditing(false);
-      setSuccess('Profile updated successfully');
+    // Validate form before proceeding
+    if (!validateForm()) {
+      return; // Stop execution if validation fails
+    }
+    
+    try {
+      setLoading(true);
+      setError(null);
       
-      // Create updated user object with correct avatar URL
-      const updatedUser = {
-        ...user,
-        is_public: formData.isPublic,
-        isPublic: formData.isPublic,
+      console.log("Starting profile update with form data:", formData);
+      
+      // Create an object to hold the updated user data
+      const userData = {
         first_name: formData.firstName,
         last_name: formData.lastName,
+        email: formData.email,
         bio: formData.bio,
         postal_code: formData.postalCode,
-        // Use the avatar URL from Cloudinary if we uploaded a new image,
-        // otherwise use the response data or keep the existing avatar
-        avatar_url: avatarUrl || response.data?.avatar_url || user.avatar_url,
-        avatarUrl: avatarUrl || response.data?.avatar_url || user.avatarUrl,
-        // Also set camelCase versions
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        postalCode: formData.postalCode,
+        is_public: formData.isPublic
       };
       
-      console.log("Updated user object:", updatedUser);
+      // Handle image upload if a new image was selected
+      let avatarUrl = null;
+      if (formData.profileImage) {
+        const cloudinaryData = new FormData();
+        cloudinaryData.append('file', formData.profileImage);
+        cloudinaryData.append('upload_preset', import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET);
+        
+        console.log("Uploading image to Cloudinary");
+        
+        try {
+          const cloudinaryResponse = await axios.post(
+            `https://api.cloudinary.com/v1_1/${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME}/image/upload`,
+            cloudinaryData,
+            {
+              headers: {
+                'Content-Type': 'multipart/form-data'
+              }
+            }
+          );
+          
+          console.log("Cloudinary response:", cloudinaryResponse.data);
+          
+          // Get and store the image URL
+          if (cloudinaryResponse.data && cloudinaryResponse.data.secure_url) {
+            avatarUrl = cloudinaryResponse.data.secure_url;
+            userData.avatar_url = avatarUrl;
+            
+            // IMPORTANT: Update image preview immediately
+            setImagePreview(avatarUrl);
+          }
+        } catch (cloudinaryError) {
+          console.error("Error uploading to Cloudinary:", cloudinaryError);
+          setError("Failed to upload image. Please try a different image or try again later.");
+          setLoading(false);
+          return;
+        }
+      }
       
-      // Update global context with new user data
-      updateUser(updatedUser);
+      console.log("Sending API update with data:", userData);
       
-      // Force a local state update
-      setUser(updatedUser);
+      const response = await userService.updateUser(user.id, userData);
       
-      // Reset form data with updated values
-      setFormData(prev => ({
-        ...prev,
-        firstName: updatedUser.first_name || updatedUser.firstName || '',
-        lastName: updatedUser.last_name || updatedUser.lastName || '',
-        bio: updatedUser.bio || '',
-        postalCode: updatedUser.postal_code || updatedUser.postalCode || '',
-        isPublic: updatedUser.is_public || updatedUser.isPublic || false,
-        profileImage: null // Reset profile image after successful update
-      }));
+      console.log("Update response:", response);
+      
+      if (!response || response.success === false) {
+        console.error("Update failed:", response?.message || "No response received");
+        setError('Failed to update profile: ' + (response?.message || "Unknown error"));
+      } else {
+        setIsEditing(false);
+        setSuccess('Profile updated successfully');
+        
+        // Create updated user object with correct avatar URL
+        const updatedUser = {
+          ...user,
+          is_public: formData.isPublic,
+          isPublic: formData.isPublic,
+          first_name: formData.firstName,
+          last_name: formData.lastName,
+          email: formData.email, // Include email in the updated user object
+          bio: formData.bio,
+          postal_code: formData.postalCode,
+          // Use the avatar URL from Cloudinary if we uploaded a new image,
+          // otherwise use the response data or keep the existing avatar
+          avatar_url: avatarUrl || response.data?.avatar_url || user.avatar_url,
+          avatarUrl: avatarUrl || response.data?.avatar_url || user.avatarUrl,
+          // Also set camelCase versions
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          postalCode: formData.postalCode,
+        };
+        
+        console.log("Updated user object:", updatedUser);
+        
+        // Update global context with new user data
+        updateUser(updatedUser);
+        
+        // Force a local state update
+        setUser(updatedUser);
+        
+        // Reset form data with updated values
+        setFormData(prev => ({
+          ...prev,
+          firstName: updatedUser.first_name || updatedUser.firstName || '',
+          lastName: updatedUser.last_name || updatedUser.lastName || '',
+          email: updatedUser.email || '', // Keep the email in the form data
+          bio: updatedUser.bio || '',
+          postalCode: updatedUser.postal_code || updatedUser.postalCode || '',
+          isPublic: updatedUser.is_public || updatedUser.isPublic || false,
+          profileImage: null // Reset profile image after successful update
+        }));
+      }
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      setError('Failed to update profile: ' + (error.message || 'Unknown error'));
+    } finally {
+      setLoading(false);
     }
-  } catch (error) {
-    console.error('Error updating profile:', error);
-    setError('Failed to update profile: ' + (error.message || 'Unknown error'));
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   // Manual refresh for debugging purposes
   const handleManualRefresh = () => {
@@ -417,6 +457,7 @@ const handleProfileUpdate = async () => {
               <p>Is Profile Public: {isProfilePublic() ? 'Yes' : 'No'}</p>
               <p>user.is_public: {String(user?.is_public)}</p>
               <p>user.isPublic: {String(user?.isPublic)}</p>
+              <p>Form Errors: {JSON.stringify(formErrors)}</p>
             </div>
             
             <div className="mt-4">
@@ -487,9 +528,14 @@ const handleProfileUpdate = async () => {
                 name="firstName" 
                 value={formData.firstName} 
                 onChange={handleChange} 
-                className="input input-bordered w-full" 
+                className={`input input-bordered w-full ${formErrors.firstName ? 'input-error' : ''}`}
                 placeholder="First Name"
               />
+              {formErrors.firstName && (
+                <label className="label">
+                  <span className="label-text-alt text-error">{formErrors.firstName}</span>
+                </label>
+              )}
             </div>
             
             <div className="form-control w-full mb-4">
@@ -507,18 +553,23 @@ const handleProfileUpdate = async () => {
             </div>
 
             <div className="form-control w-full mb-4">
-  <label className="label">
-    <span className="label-text">Email Address</span>
-  </label>
-  <input 
-    type="email" 
-    name="email" 
-    value={formData.email} 
-    onChange={handleChange} 
-    className="input input-bordered w-full" 
-    placeholder="Email Address"
-  />
-</div>
+              <label className="label">
+                <span className="label-text">Email Address</span>
+              </label>
+              <input 
+                type="email" 
+                name="email" 
+                value={formData.email} 
+                onChange={handleChange} 
+                className={`input input-bordered w-full ${formErrors.email ? 'input-error' : ''}`}
+                placeholder="Email Address"
+              />
+              {formErrors.email && (
+                <label className="label">
+                  <span className="label-text-alt text-error">{formErrors.email}</span>
+                </label>
+              )}
+            </div>
             
             <div className="form-control w-full mb-4">
               <label className="label">
@@ -612,17 +663,17 @@ const handleProfileUpdate = async () => {
                       {user.firstName || user.first_name || ''} {user.lastName || user.last_name || ''}
                     </h2>
                     <p className="text-base-content/70">@{user.username}</p>
-{/* Display profile visibility status with eye icon */}
-<div className="mt-1 flex items-center">
-  {user.is_public ? (
-    <Eye size={16} className="text-primary mr-1" />
-  ) : (
-    <EyeClosed size={16} className="text-base-content/70 mr-1" />
-  )}
-  <span className="text-sm text-base-content/70">
-    {user.is_public ? 'Public Profile' : 'Hidden Profile'}
-  </span>
-</div>
+                    {/* Display profile visibility status with eye icon */}
+                    <div className="mt-1 flex items-center">
+                      {user.is_public ? (
+                        <Eye size={16} className="text-primary mr-1" />
+                      ) : (
+                        <EyeClosed size={16} className="text-base-content/70 mr-1" />
+                      )}
+                      <span className="text-sm text-base-content/70">
+                        {user.is_public ? 'Public Profile' : 'Hidden Profile'}
+                      </span>
+                    </div>
                   </div>
                   <div className="mt-4 sm:mt-0">
                     <Button 
