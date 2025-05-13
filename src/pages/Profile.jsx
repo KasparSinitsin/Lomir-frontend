@@ -30,6 +30,7 @@ const Profile = () => {
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
+    email: '',
     bio: '',
     postalCode: '',
     isPublic: true,
@@ -77,6 +78,7 @@ const isProfilePublic = () => {
         setFormData({
           firstName: apiUserData.firstName || apiUserData.first_name || '',
           lastName: apiUserData.lastName || apiUserData.last_name || '',
+          email: apiUserData.email || apiUserData.email || '',
           bio: apiUserData.bio || '',
           postalCode: apiUserData.postalCode || apiUserData.postal_code || '',
           isPublic: apiUserData.isPublic !== undefined ? apiUserData.isPublic : 
@@ -119,6 +121,7 @@ const isProfilePublic = () => {
       setFormData({
         firstName: user.first_name || user.firstName || '',
         lastName: user.last_name || user.lastName || '',
+        email: user.email || '',
         bio: user.bio || '',
         postalCode: user.postal_code || user.postalCode || '',
         isPublic: user.is_public !== undefined ? user.is_public : 
@@ -224,6 +227,7 @@ const handleProfileUpdate = async () => {
     const userData = {
       first_name: formData.firstName,
       last_name: formData.lastName,
+      email: formData.email,
       bio: formData.bio,
       postal_code: formData.postalCode,
       is_public: formData.isPublic
@@ -501,6 +505,20 @@ const handleProfileUpdate = async () => {
                 placeholder="Last Name"
               />
             </div>
+
+            <div className="form-control w-full mb-4">
+  <label className="label">
+    <span className="label-text">Email Address</span>
+  </label>
+  <input 
+    type="email" 
+    name="email" 
+    value={formData.email} 
+    onChange={handleChange} 
+    className="input input-bordered w-full" 
+    placeholder="Email Address"
+  />
+</div>
             
             <div className="form-control w-full mb-4">
               <label className="label">
