@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Card from '../common/Card';
 import Button from '../common/Button';
-import { Users, MapPin, Trash2 } from 'lucide-react';
+import { Users, Trash2 } from 'lucide-react';
 import TeamDetailsModal from './TeamDetailsModal';
 import { teamService } from '../../services/teamService';
 import { useAuth } from '../../contexts/AuthContext';
@@ -16,7 +16,8 @@ const TeamCard = ({ team, onUpdate, onDelete, isSearchResult = false }) => {
   const { user, isAuthenticated } = useAuth();
   
   // Either use team's image or create an initial from the team name
-  const teamImage = teamData.teamavatar_url || teamData.name.charAt(0);
+const teamImage = teamData.teamavatarUrl || null;
+const teamInitial = teamData.name.charAt(0);
   
   // Check if current user is the creator of the team
   const isCreator = user && teamData.creator_id === user.id;
@@ -125,6 +126,8 @@ const TeamCard = ({ team, onUpdate, onDelete, isSearchResult = false }) => {
         {error && (
           <Alert type="error" message={error} onClose={() => setError(null)} className="mb-4" />
         )}
+
+ 
         
         <p className="text-base-content/80 mb-4 -mt-4">{teamData.description}</p>
         
