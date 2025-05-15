@@ -15,9 +15,23 @@ const TeamCard = ({ team, onUpdate, onDelete, isSearchResult = false }) => {
   const [teamData, setTeamData] = useState(team); // Store team data locally
   const { user, isAuthenticated } = useAuth();
   
-  // Either use team's image or create an initial from the team name
-const teamImage = teamData.teamavatarUrl || null;
-const teamInitial = teamData.name.charAt(0);
+  // Get the team image or initial for the avatar
+  const getTeamImage = () => {
+    // First check for teamavatar_url (snake_case from API)
+    if (teamData.teamavatar_url) {
+      console.log('Found teamavatar_url:', teamData.teamavatar_url);
+      return teamData.teamavatar_url;
+    }
+    
+    // Then check for teamavatarUrl (camelCase from frontend)
+    if (teamData.teamavatarUrl) {
+      console.log('Found teamavatarUrl:', teamData.teamavatarUrl);
+      return teamData.teamavatarUrl;
+    }
+    
+    // If no image is found, return the first letter of the team name as fallback
+    return teamData.name?.charAt(0) || '?';
+  };
   
   // Check if current user is the creator of the team
   const isCreator = user && teamData.creator_id === user.id;
@@ -107,6 +121,7 @@ const teamInitial = teamData.name.charAt(0);
     if (import.meta.env.DEV) {
       console.log('TeamCard data:', teamData);
       console.log('isPublic value:', teamData.is_public);
+      console.log('Team image:', getTeamImage());
     }
   }, [teamData]);
   
@@ -119,15 +134,14 @@ const teamInitial = teamData.name.charAt(0);
         title={teamData.name}
         subtitle={`Members: ${teamData.current_members_count ?? 1} out of ${teamData.max_members ?? '∞'}`}
         hoverable
-        image={teamImage}
+        image={getTeamImage()}
         imageAlt={`${teamData.name} team`}
-        imageShape="circle" 
+        imageSize="medium"
+        imageShape="circle"
       >
         {error && (
           <Alert type="error" message={error} onClose={() => setError(null)} className="mb-4" />
         )}
-
- 
         
         <p className="text-base-content/80 mb-4 -mt-4">{teamData.description}</p>
         
