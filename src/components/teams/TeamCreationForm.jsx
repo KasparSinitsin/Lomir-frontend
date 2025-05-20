@@ -100,6 +100,8 @@ const TeamCreationForm = () => {
     setSubmitError(null);
     setSubmitSuccess(false);
     try {
+
+      console.log("Starting team creation with image:", formData.teamImage ? "Image selected" : "No image");
       // Ensure tag IDs are valid integers
       const formattedTags = formData.selectedTags.map(tagId => {
         const numericId = parseInt(tagId, 10);
@@ -116,12 +118,19 @@ const TeamCreationForm = () => {
         tags: formattedTags,
       };
 
+        console.log("Initial submission data:", submissionData);
+
           // Upload image to Cloudinary if one is selected
       if (formData.teamImage) {
+        console.log("Preparing to upload image to Cloudinary");
         const cloudinaryFormData = new FormData();
         cloudinaryFormData.append('file', formData.teamImage);
         cloudinaryFormData.append('upload_preset', import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET);
 
+ console.log("Cloudinary upload preset:", import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET);
+      console.log("Cloudinary cloud name:", import.meta.env.VITE_CLOUDINARY_CLOUD_NAME);
+
+      try {
         const cloudinaryResponse = await axios.post(
           `https://api.cloudinary.com/v1_1/${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME}/image/upload`,
           cloudinaryFormData,
@@ -131,15 +140,24 @@ const TeamCreationForm = () => {
             }
           }
         );
+        
+        console.log("Cloudinary upload success:", cloudinaryResponse.data);
 
-        // Add the uploaded image URL to the team data
         submissionData.teamavatar_url = cloudinaryResponse.data.secure_url;
-      }  
+        console.log("Team data with avatar URL:", submissionData);
+      } catch (cloudinaryError) {
+        console.error("Cloudinary upload failed:", cloudinaryError);
+        console.error("Response:", cloudinaryError.response?.data);
+        // Continue with team creation without the avatar
+      }
+    }
+
+       console.log("Final submission data before API call:", submissionData);
       
-      console.log("Submitting team data:", submissionData);
+    
       
-      const response = await teamService.createTeam(submissionData);
-      console.log("Team creation response:", response);
+    const response = await teamService.createTeam(submissionData);
+    console.log("Team creation response:", response);
       
       setNewTeamId(response.data.id);
       setSubmitSuccess(true);
