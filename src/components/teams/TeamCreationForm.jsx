@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FiCheck } from 'react-icons/fi';
+import axios from 'axios';
 import TagSelector from '../tags/TagSelector';
 import Alert from '../common/Alert';
 import { teamService } from '../../services/teamService';
@@ -15,7 +16,9 @@ const TeamCreationForm = () => {
     isPublic: false, // Changed default to false (hidden)
     maxMembers: 5,
     selectedTags: [],
+    teamImage: null
   });
+  const [imagePreview, setImagePreview] = useState(null);
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(null);
@@ -57,6 +60,23 @@ const TeamCreationForm = () => {
     setErrors(prevErrors => ({ ...prevErrors, [name]: '' }));
   }, []);
 
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setFormData({
+        ...formData,
+        teamImage: file
+      });
+      
+      // For preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleTagSelection = useCallback((selectedTags) => {
     console.log("Team Creation - Tags selected:", selectedTags);
     setFormData(prev => ({
@@ -87,6 +107,7 @@ const TeamCreationForm = () => {
         return { tag_id: numericId };
       });
       
+      // Create the team data object
       const submissionData = {
         name: formData.name,
         description: formData.description,
@@ -94,6 +115,26 @@ const TeamCreationForm = () => {
         max_members: formData.maxMembers,
         tags: formattedTags,
       };
+
+          // Upload image to Cloudinary if one is selected
+      if (formData.teamImage) {
+        const cloudinaryFormData = new FormData();
+        cloudinaryFormData.append('file', formData.teamImage);
+        cloudinaryFormData.append('upload_preset', import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET);
+
+        const cloudinaryResponse = await axios.post(
+          `https://api.cloudinary.com/v1_1/${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME}/image/upload`,
+          cloudinaryFormData,
+          {
+            headers: {
+              'Content-Type': 'multipart/form-data'
+            }
+          }
+        );
+
+        // Add the uploaded image URL to the team data
+        submissionData.teamavatar_url = cloudinaryResponse.data.secure_url;
+      }  
       
       console.log("Submitting team data:", submissionData);
       
@@ -123,6 +164,36 @@ const TeamCreationForm = () => {
     return (
       <div>
         <h2 className="text-xl font-semibold mb-4">Create a New Team</h2>
+
+        {/* Team Image Upload */}
+        <div className="mb-6 flex justify-center">
+          <div className="avatar">
+            <div className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center cursor-pointer border relative overflow-hidden">
+              {imagePreview ? (
+                <img 
+                  src={imagePreview} 
+                  alt="Team Preview" 
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <span className="text-gray-400">Team Image</span>
+              )}
+            </div>
+          </div>
+        </div>
+
+                <div className="mb-4">
+          <label className="block text-gray-700 text-sm font-bold mb-2">
+            Team Image (Optional)
+          </label>
+          <input
+            type="file"
+            onChange={handleImageChange}
+            className="file-input file-input-bordered w-full"
+            accept="image/*"
+          />
+        </div>
+
         <div className="mb-4">
           <label htmlFor="name" className="block text-gray-700 text-sm font-bold mb-2">
             Team Name
