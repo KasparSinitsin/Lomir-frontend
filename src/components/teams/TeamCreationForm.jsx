@@ -131,20 +131,24 @@ const TeamCreationForm = () => {
       console.log("Cloudinary cloud name:", import.meta.env.VITE_CLOUDINARY_CLOUD_NAME);
 
       try {
-        const cloudinaryResponse = await axios.post(
-          `https://api.cloudinary.com/v1_1/${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME}/image/upload`,
-          cloudinaryFormData,
-          {
-            headers: {
-              'Content-Type': 'multipart/form-data'
-            }
-          }
-        );
+const cloudinaryResponse = await axios.post(
+  `https://api.cloudinary.com/v1_1/${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME}/image/upload`,
+  cloudinaryFormData,
+  {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  }
+);
         
         console.log("Cloudinary upload success:", cloudinaryResponse.data);
 
-        submissionData.teamavatar_url = cloudinaryResponse.data.secure_url;
-        console.log("Team data with avatar URL:", submissionData);
+// Set the avatar URL in the submission data
+// Using both field names to ensure compatibility with your API interceptors
+submissionData.teamavatar_url = cloudinaryResponse.data.secure_url;
+submissionData.teamavatarUrl = cloudinaryResponse.data.secure_url;
+
+console.log("Team data with avatar URL:", submissionData);
       } catch (cloudinaryError) {
         console.error("Cloudinary upload failed:", cloudinaryError);
         console.error("Response:", cloudinaryError.response?.data);

@@ -18,7 +18,7 @@ export const teamService = {
           // If it's already a number, use it directly
           return { tag_id: tag };
         } else {
-          // Otherwise, try to parse it as a number
+          // Otherwise, try to parse it as a number 
           return { tag_id: parseInt(tag, 10) };
         }
       }) || [];
