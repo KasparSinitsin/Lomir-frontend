@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import TeamCard from "../teams/TeamCard";
 import { useAuth } from "../../contexts/AuthContext";
 import { teamService } from "../../services/teamService";
 import TagSelector from "../tags/TagSelector";
@@ -58,78 +57,87 @@ const TeamDetailsModal = ({
       console.log(`Fetching details for team ID: ${effectiveTeamId}`);
       const response = await teamService.getTeamById(effectiveTeamId);
 
-      // Detailed logging for debugging visibility issues
+      // Log full response for debugging
       console.log("Raw API response:", response);
-      console.log("API response type:", typeof response);
-      console.log("API data property:", response.data);
 
-      // Try to access team data at different levels
+      // Get team data from response
       let teamData;
       if (response.data && typeof response.data === "object") {
         teamData = response.data;
-        console.log("Using response.data as teamData");
       } else if (response.data && response.data.data) {
         teamData = response.data.data;
-        console.log("Using response.data.data as teamData");
       } else {
         teamData = {};
-        console.log("No valid teamData found in response");
       }
 
       console.log("Team data extracted:", teamData);
 
-      // Inspect is_public field specifically
-      console.log("Raw is_public value:", teamData.is_public);
-      console.log("Type of is_public:", typeof teamData.is_public);
+      // Look for creator ID in multiple possible locations
+      let creatorId = null;
 
-      // Determine the creator ID
-      let creatorId = teamData.creator_id;
+      // 1. Try direct creator_id field
+      if (teamData.creator_id !== undefined) {
+        creatorId = parseInt(teamData.creator_id, 10);
+      }
+      // 2. Try creatorId field (camelCase variation)
+      else if (teamData.creatorId !== undefined) {
+        creatorId = parseInt(teamData.creatorId, 10);
+      }
 
-      // Get members for creator lookup if needed
-      if (teamData.members && Array.isArray(teamData.members)) {
-        console.log("Team members:", teamData.members);
-
-        // Look for creator in the members array
-        const creatorMember = teamData.members.find(
-          (m) => m.role === "creator"
+      // 3. If still not found or invalid, check members array for creator role
+      if (
+        isNaN(creatorId) &&
+        teamData.members &&
+        Array.isArray(teamData.members)
+      ) {
+        console.log(
+          "Searching for creator in members array:",
+          teamData.members
         );
 
-        // If creator_id is not in the data but we found a creator member, use that
-        if (creatorId === undefined && creatorMember) {
-          creatorId = parseInt(creatorMember.user_id, 10);
+        const creatorMember = teamData.members.find(
+          (m) => m.role === "creator" || m.role === "Creator"
+        );
+
+        if (creatorMember) {
+          // Use either user_id or userId depending on which exists
+          creatorId = parseInt(
+            creatorMember.user_id || creatorMember.userId,
+            10
+          );
           console.log("Found creator ID from members array:", creatorId);
         }
       }
 
-      // Get the is_public value directly from response or data
-      // IMPORTANT: The database value is transformed to string 'true'/'false' by PostgreSQL
-      // So we need to explicitly compare against both boolean and string representations
-      let isPublicRaw = teamData.is_public;
+      // 4. Ensure creatorId is valid, use logged-in user as fallback for creator's own teams
+      if (isNaN(creatorId) && user && teamData.members) {
+        // Check if current user is listed as creator in members
+        const isCurrentUserCreator = teamData.members.some(
+          (member) =>
+            (member.user_id === user.id || member.userId === user.id) &&
+            (member.role === "creator" || member.role === "Creator")
+        );
 
-      // The critical fix: Make sure we interpret 'false' string as false boolean
-      let isPublicValue = false; // Default to false (private)
+        if (isCurrentUserCreator) {
+          creatorId = parseInt(user.id, 10);
+          console.log("Using current user as creator ID:", creatorId);
+        }
+      }
+
+      console.log("Final creator ID determination:", creatorId);
+
+      // Process visibility
+      let isPublicValue = false;
+      const isPublicRaw = teamData.is_public || teamData.isPublic;
 
       if (isPublicRaw === true || isPublicRaw === "true" || isPublicRaw === 1) {
         isPublicValue = true;
-      } else if (
-        isPublicRaw === false ||
-        isPublicRaw === "false" ||
-        isPublicRaw === 0 ||
-        isPublicRaw === null
-      ) {
-        isPublicValue = false;
-      } else {
-        // If it's something unexpected, log and default to false
-        console.log("Unexpected is_public value:", isPublicRaw);
-        isPublicValue = false;
       }
 
-      console.log("Final is_public value after conversion:", isPublicValue);
-
-      // Force the fields to be set in the team data
+      // Enhance team data with normalized values
       const enhancedTeamData = {
         ...teamData,
-        creator_id: creatorId,
+        creator_id: creatorId, // Set the corrected creator ID
         is_public: isPublicValue,
       };
 
@@ -137,40 +145,52 @@ const TeamDetailsModal = ({
 
       // Store the enhanced team data
       setTeam(enhancedTeamData);
-
-      // Store the creator status and visibility independently
-      // Use strict equality with parsed integers for reliable comparison
-      const userIdAsNumber = parseInt(user?.id, 10);
-      const creatorIdAsNumber = parseInt(creatorId, 10);
-      const isCreatorValue =
-        !isNaN(userIdAsNumber) &&
-        !isNaN(creatorIdAsNumber) &&
-        userIdAsNumber === creatorIdAsNumber;
-
-      console.log(
-        "Setting isCreator to:",
-        isCreatorValue,
-        "user ID:",
-        userIdAsNumber,
-        "creator ID:",
-        creatorIdAsNumber
-      );
-
-      setIsCreator(isCreatorValue);
-
-      // Set isPublic state with our carefully determined boolean value
-      console.log("Setting isPublic to:", isPublicValue);
       setIsPublic(isPublicValue);
 
-      // Set form data with the enhanced values
+      // Determine if current user is creator - REQUIRE AUTHENTICATION FIRST
+      const isUserAuthenticated = isAuthenticated && user && user.id;
+
+      // Calculate if user is creator by ID comparison (only if authenticated)
+      const isCreatorById =
+        isUserAuthenticated &&
+        !isNaN(creatorId) &&
+        parseInt(user.id, 10) === creatorId;
+
+      // Calculate if user is creator by role (only if authenticated)
+      const isCreatorByRole =
+        (isUserAuthenticated &&
+          teamData.members?.some(
+            (member) =>
+              (member.user_id === user.id || member.userId === user.id) &&
+              (member.role === "creator" || member.role === "Creator")
+          )) ||
+        false;
+
+      // Final creator determination - must be authenticated AND either method confirms
+      const finalCreatorStatus =
+        isUserAuthenticated && (isCreatorById || isCreatorByRole);
+
+      console.log("Creator check:", {
+        isUserAuthenticated,
+        userId: user?.id,
+        creatorId,
+        isCreatorById,
+        isCreatorByRole,
+        finalCreatorStatus,
+      });
+
+      setIsCreator(finalCreatorStatus);
+
+      // Set form data with the normalized values from team data
       setFormData({
         name: teamData.name || "",
         description: teamData.description || "",
         isPublic: isPublicValue,
-        maxMembers: teamData.max_members || 5,
+        maxMembers: teamData.max_members || teamData.maxMembers || 5,
         teamavatarUrl: teamData.teamavatar_url || teamData.teamavatarUrl || "",
-        selectedTags:
-          teamData.tags?.map((tag) => parseInt(tag.id || tag.tag_id, 10)) || [],
+        selectedTags: (teamData.tags || []).map((tag) =>
+          parseInt(tag.id || tag.tag_id, 10)
+        ),
       });
     } catch (err) {
       console.error("Error fetching team details:", err);
@@ -181,7 +201,7 @@ const TeamDetailsModal = ({
     } finally {
       setLoading(false);
     }
-  }, [effectiveTeamId, user?.id]);
+  }, [effectiveTeamId, user, isAuthenticated]);
 
   // Add effect to check team data after it's set
   useEffect(() => {
@@ -202,7 +222,6 @@ const TeamDetailsModal = ({
     } else if (isModalVisible && !effectiveTeamId) {
       // Handle the case where teamId is not yet available (e.g., just created)
       setLoading(false); // Don't show loading indefinitely
-      setIsEditing(true); // Directly go to editing mode
     }
   }, [isModalVisible, effectiveTeamId, fetchTeamDetails]);
 
@@ -315,6 +334,15 @@ const TeamDetailsModal = ({
 
   const handleSubmit = async (e) => {
     if (e) e.preventDefault();
+
+    // Prevent non-creators from submitting form updates
+    if (!isCreator) {
+      setNotification({
+        type: "error",
+        message: "You do not have permission to edit this team.",
+      });
+      return;
+    }
 
     if (!validateForm()) {
       return;
@@ -587,30 +615,33 @@ const TeamDetailsModal = ({
             {isEditing ? "Edit Team" : "Team Details"}
           </h2>
           <div className="flex items-center space-x-2">
-            {/* Show Edit button - with enhanced debugging */}
+            {/* Only show edit/delete buttons if user is authenticated AND creator */}
             {!isEditing && (
               <>
-                {/* Debug info - team creator status */}
+                {/* Debug info for development only */}
                 {import.meta.env.DEV && (
                   <span className="text-xs mr-2">
-                    Status: {isCreator ? "✓ Creator" : "✗ Not Creator"}| User
-                    ID: {user?.id}
+                    Auth: {isAuthenticated ? "✓" : "✗"} | User: {user?.id} |
+                    Creator: {team?.creator_id} | Status:{" "}
+                    {isCreator ? "✓ Creator" : "✗ Not Creator"}
                   </span>
                 )}
 
-                {/* Always show Edit button */}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setIsEditing(true)}
-                  className="hover:bg-[#7ace82] hover:text-[#036b0c]"
-                  icon={<Edit size={16} />}
-                >
-                  Edit
-                </Button>
+                {/* Edit button - only shown to authenticated creators */}
+                {isAuthenticated && isCreator && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setIsEditing(true)}
+                    className="hover:bg-[#7ace82] hover:text-[#036b0c]"
+                    icon={<Edit size={16} />}
+                  >
+                    Edit
+                  </Button>
+                )}
 
-                {/* Delete button - Using our independent isCreator state */}
-                {isCreator && (
+                {/* Delete button - only shown to authenticated creators */}
+                {isAuthenticated && isCreator && (
                   <Button
                     variant="ghost"
                     size="sm"
