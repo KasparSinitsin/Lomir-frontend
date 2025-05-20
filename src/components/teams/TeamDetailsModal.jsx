@@ -8,6 +8,7 @@ import Button from '../common/Button';
 import Alert from '../common/Alert';
 import { X, Edit, Users, Trash2 } from 'lucide-react';
 import IconToggle from '../common/IconToggle';
+import axios from 'axios';
 
 const TeamDetailsModal = ({
   isOpen = true,
@@ -149,6 +150,7 @@ const TeamDetailsModal = ({
         description: teamData.description || '',
         isPublic: isPublicValue,
         maxMembers: teamData.max_members || 5,
+        teamavatarUrl: teamData.teamavatar_url || teamData.teamavatarUrl || '',
         selectedTags: teamData.tags?.map(tag => parseInt(tag.id || tag.tag_id, 10)) || [],
       });
     } catch (err) {
@@ -316,6 +318,38 @@ const handleSubmit = async (e) => {
       is_public: isPublicBoolean, // Force it to be a boolean
       max_members: formData.maxMembers,
     };
+
+    // Handle avatar file upload if a new file was selected
+    if (formData.teamavatarFile) {
+      // Create FormData for file upload
+      const avatarFormData = new FormData();
+      avatarFormData.append('file', formData.teamavatarFile);
+      avatarFormData.append('upload_preset', import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET);
+
+      try {
+        // Upload to Cloudinary
+        const cloudinaryResponse = await axios.post(
+          `https://api.cloudinary.com/v1_1/${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME}/image/upload`,
+          avatarFormData,
+          {
+            headers: {
+              'Content-Type': 'multipart/form-data'
+            }
+          }
+        );
+
+        // Add the uploaded URL to submission data
+        submissionData.teamavatar_url = cloudinaryResponse.data.secure_url;
+      } catch (uploadError) {
+        console.error('Error uploading team avatar:', uploadError);
+        // Continue with the update even if image upload fails
+        setNotification({
+          type: 'warning',
+          message: 'Team updated but avatar upload failed.'
+        });
+      }
+    }
+
 
     console.log("Submission data prepared:", submissionData);
 
@@ -571,6 +605,48 @@ const handleSubmit = async (e) => {
             <>
               {isEditing ? (
                 <form onSubmit={handleSubmit} className="space-y-4">
+
+<div className="form-control">
+  <label className="label">Team Avatar</label>
+  <div className="flex items-center space-x-4">
+    <div className="avatar placeholder">
+      <div className="bg-primary text-primary-content rounded-full w-16 h-16">
+        {formData.teamavatarUrl ? (
+          <img 
+            src={formData.teamavatarUrl} 
+            alt="Team Preview" 
+            className="rounded-full object-cover w-full h-full" 
+          />
+        ) : (
+          <span className="text-2xl">
+            {formData.name?.charAt(0) || '?'}
+          </span>
+        )}
+      </div>
+    </div>
+    <input
+      type="file"
+      name="teamavatar"
+      onChange={(e) => {
+        if (e.target.files && e.target.files[0]) {
+          // Preview the image
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            setFormData(prev => ({
+              ...prev,
+              teamavatarUrl: event.target.result,
+              teamavatarFile: e.target.files[0] // Store the file for upload
+            }));
+          };
+          reader.readAsDataURL(e.target.files[0]);
+        }
+      }}
+      accept="image/*"
+      className="file-input file-input-bordered w-full max-w-xs"
+    />
+  </div>
+</div>
+
                   <div className="form-control">
                     <label className="label">Team Name</label>
                     <input
@@ -587,6 +663,7 @@ const handleSubmit = async (e) => {
                       </label>
                     )}
                   </div>
+
 
                   <div className="form-control">
                     <label className="label">Team Description</label>
