@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import TeamCard from '../teams/TeamCard';
 import { useAuth } from '../../contexts/AuthContext';
 import { teamService } from '../../services/teamService';
 import TagSelector from '../tags/TagSelector';
@@ -20,6 +21,8 @@ const TeamDetailsModal = ({
   const navigate = useNavigate();
   const { id: urlTeamId } = useParams();
   const { user, isAuthenticated } = useAuth();
+
+
 
   const effectiveTeamId = useMemo(() => propTeamId || urlTeamId, [propTeamId, urlTeamId]);
 
@@ -677,90 +680,115 @@ const handleSubmit = async (e) => {
                 </form>
               ) : (
                 <div className="space-y-6">
-                  <h1 className="text-2xl font-bold">{team?.name}</h1>
+    {/* Team header with avatar */}
+<div className="flex items-center space-x-4 mb-6">
+  <div className="avatar placeholder">
+    <div className="bg-primary text-primary-content rounded-full w-16 h-16">
+      {/* Check for both snake_case and camelCase versions of avatar URL */}
+      {team?.teamavatar_url || team?.teamavatarUrl ? (
+        <img 
+          src={team?.teamavatar_url || team?.teamavatarUrl} 
+          alt="Team" 
+          className="rounded-full object-cover w-full h-full" 
+        />
+      ) : (
+        <span className="text-2xl">
+          {team?.name?.charAt(0) || '?'}
+        </span>
+      )}
+    </div>
+  </div>
+  <div>
+    <h1 className="text-2xl font-bold">{team?.name}</h1>
+    <p className="text-base-content/70">{isPublic ? 'Public' : 'Private'} Team</p>
+  </div>
+</div>
 
-                  <div className="bg-base-200 p-4 rounded-lg shadow-inner space-y-3">
-                    <p className="text-base-content/90 whitespace-pre-line">{team?.description}</p>
+    {/* Team description */}
+    {team?.description && (
+      <div className="bg-white/30 p-4 rounded-lg shadow-inner">
+        <p className="text-base-content/90">{team.description}</p>
+      </div>
+    )}
 
-                    <div className="flex items-center space-x-2 text-sm">
-                      <span className="font-medium">Visibility:</span>
-                      {/* Use our independent isPublic state instead of relying on team.is_public */}
-                      <span className={`badge ${isPublic ? 'badge-success' : 'badge-warning'}`}>
-                        {isPublic ? 'Public' : 'Private'}
-                      </span>
-                      {/* Add this for debugging */}
-                      {import.meta.env.DEV && (
-                        <span className="text-xs ml-2">
-                          (Debug: stored isPublic={String(isPublic)}, 
-                          team.is_public={team?.is_public !== undefined ? String(team.is_public) : 'undefined'})
-                        </span>
-                      )}
-                    </div>
+    {/* Visibility info */}
+    <div className="flex items-center space-x-2 text-sm">
+      <span className="font-medium">Visibility:</span>
+      <span className={`badge ${isPublic ? 'badge-success' : 'badge-warning'}`}>
+        {isPublic ? 'Public' : 'Private'}
+      </span>
+      {import.meta.env.DEV && (
+        <span className="text-xs ml-2">
+          (Debug: stored isPublic={String(isPublic)}, 
+          team.is_public={team?.is_public !== undefined ? String(team.is_public) : 'undefined'})
+        </span>
+      )}
+    </div>
 
-                    <div className="flex items-center space-x-2 text-sm">
-                      <Users size={18} className="text-primary" />
-                      <span>{team?.current_members_count || 0} / {team?.max_members} members</span>
-                    </div>
+    {/* Members count */}
+    <div className="flex items-center space-x-2 text-sm">
+      <Users size={18} className="text-primary" />
+      <span>{team?.current_members_count || 0} / {team?.max_members} members</span>
+    </div>
 
-                    {/* Tags */}
-                    <div>
-                      <h3 className="font-medium text-sm mt-4">Team Tags:</h3>
-                      {team?.tags?.length > 0 ? (
-                        <div className="flex flex-wrap gap-2 mt-2">
-                          {team.tags.map((tag) => (
-                            <span key={tag.id || tag.tag_id} className="badge badge-outline">
-                              {tag.name}
-                            </span>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-sm text-base-content/60 italic">No tags selected.</p>
-                      )}
-                    </div>
+    {/* Tags */}
+    <div>
+      <h3 className="font-medium text-sm mt-4">Team Tags:</h3>
+      {team?.tags?.length > 0 ? (
+        <div className="flex flex-wrap gap-2 mt-2">
+          {team.tags.map((tag) => (
+            <span key={tag.id || tag.tag_id} className="badge badge-outline">
+              {tag.name}
+            </span>
+          ))}
+        </div>
+      ) : (
+        <p className="text-sm text-base-content/60 italic">No tags selected.</p>
+      )}
+    </div>
 
-                    {/* Members */}
-                    {team?.members && team.members.length > 0 && (
-                      <div>
-                        <h2 className="text-xl font-semibold mt-6 mb-4">Team Members</h2>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          {team.members.map((member) => (
-                            <div
-                              key={member.user_id}
-                              className="flex items-start bg-base-200 rounded-xl shadow p-4 gap-4"
-                            >
-                              <div className="avatar placeholder">
-                                <div className="bg-primary text-primary-content rounded-full w-12 h-12">
-                                  <span className="text-lg">{member.username?.charAt(0) || '?'}</span>
-                                </div>
-                              </div>
-
-                              <div className="flex flex-col">
-                                <span className="font-medium text-primary">{member.username}</span>
-                                <span className="text-xs text-base-content/70">{member.role}</span>
-                                {member.tags?.length > 0 && (
-                                  <div className="flex flex-wrap gap-1 mt-1">
-                                    {member.tags.map((tag) => (
-                                      <span
-                                        key={tag.id}
-                                        className="badge badge-outline badge-sm text-xs"
-                                      >
-                                        {tag.name}
-                                      </span>
-                                    ))}
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    
-                    {/* Join Team Button for non-members */}
-                    {renderJoinButton()}
-                  </div>
+    {/* Members */}
+    {team?.members && team.members.length > 0 && (
+      <div>
+        <h2 className="text-xl font-semibold mt-6 mb-4">Team Members</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {team.members.map((member) => (
+            <div
+              key={member.user_id}
+              className="flex items-start bg-base-200 rounded-xl shadow p-4 gap-4"
+            >
+              <div className="avatar placeholder">
+                <div className="bg-primary text-primary-content rounded-full w-12 h-12">
+                  <span className="text-lg">{member.username?.charAt(0) || '?'}</span>
                 </div>
-              )}
+              </div>
+
+              <div className="flex flex-col">
+                <span className="font-medium text-primary">{member.username}</span>
+                <span className="text-xs text-base-content/70">{member.role}</span>
+                {member.tags?.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {member.tags.map((tag) => (
+                      <span
+                        key={tag.id}
+                        className="badge badge-outline badge-sm text-xs"
+                      >
+                        {tag.name}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    )}
+                    
+    {/* Join Team Button for non-members */}
+    {renderJoinButton()}
+  </div>
+)}
             </>
           )}
         </div>
