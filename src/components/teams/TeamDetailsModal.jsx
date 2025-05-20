@@ -904,53 +904,80 @@ const TeamDetailsModal = ({
                         Team Members
                       </h2>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        {team.members.map((member) => (
-                          <div
-                            key={member.user_id}
-                            className="flex items-start bg-base-200 rounded-xl shadow p-4 gap-4"
-                          >
-                            <div className="avatar">
-                              {member.avatar_url ? (
-                                <div className="rounded-full w-12 h-12">
-                                  <img
-                                    src={member.avatar_url}
-                                    alt={member.username}
-                                    className="object-cover w-full h-full"
-                                  />
-                                </div>
-                              ) : (
-                                <div className="placeholder bg-primary text-primary-content rounded-full w-12 h-12">
-                                  <span className="text-lg">
-                                    {member.username?.charAt(0) || "?"}
-                                  </span>
-                                </div>
-                              )}
-                            </div>
-
-                            <div className="flex flex-col">
-                              <span className="font-medium text-primary">
-                                {member.first_name && member.last_name
-                                  ? `${member.first_name} ${member.last_name}`
-                                  : member.username}
-                              </span>
-                              <span className="text-xs text-base-content/70">
-                                {member.role}
-                              </span>
-                              {member.tags?.length > 0 && (
-                                <div className="flex flex-wrap gap-1 mt-1">
-                                  {member.tags.map((tag) => (
-                                    <span
-                                      key={tag.id}
-                                      className="badge badge-outline badge-sm text-xs"
-                                    >
-                                      {tag.name}
+                        {team.members.map((member) => {
+                          console.log("Member data:", member); // Debug info
+                          // Check which property is available (userId or user_id)
+                          const memberId = member.userId || member.user_id;
+                          return (
+                            <div
+                              key={memberId}
+                              className="flex items-start bg-base-200 rounded-xl shadow p-4 gap-4"
+                            >
+                              <div className="avatar">
+                                {member.avatarUrl || member.avatar_url ? (
+                                  <div className="rounded-full w-12 h-12">
+                                    <img
+                                      src={
+                                        member.avatarUrl || member.avatar_url
+                                      }
+                                      alt={member.username}
+                                      className="object-cover w-full h-full"
+                                      onError={(e) => {
+                                        e.target.onerror = null;
+                                        // Fall back to placeholder on error
+                                        e.target.style.display = "none";
+                                        const parentDiv = e.target.parentNode;
+                                        parentDiv.classList.add(
+                                          "placeholder",
+                                          "bg-primary",
+                                          "text-primary-content"
+                                        );
+                                        const span =
+                                          document.createElement("span");
+                                        span.className = "text-lg";
+                                        span.textContent =
+                                          (member.username || "").charAt(0) ||
+                                          "?";
+                                        parentDiv.appendChild(span);
+                                      }}
+                                    />
+                                  </div>
+                                ) : (
+                                  <div className="placeholder bg-primary text-primary-content rounded-full w-12 h-12">
+                                    <span className="text-lg">
+                                      {(member.username || "").charAt(0) || "?"}
                                     </span>
-                                  ))}
-                                </div>
-                              )}
+                                  </div>
+                                )}
+                              </div>
+
+                              <div className="flex flex-col">
+                                <span className="font-medium text-primary">
+                                  {member.firstName && member.lastName
+                                    ? `${member.firstName} ${member.lastName}`
+                                    : member.first_name && member.last_name
+                                    ? `${member.first_name} ${member.last_name}`
+                                    : member.username}
+                                </span>
+                                <span className="text-xs text-base-content/70">
+                                  {member.role}
+                                </span>
+                                {member.tags?.length > 0 && (
+                                  <div className="flex flex-wrap gap-1 mt-1">
+                                    {member.tags.map((tag) => (
+                                      <span
+                                        key={tag.id}
+                                        className="badge badge-outline badge-sm text-xs"
+                                      >
+                                        {tag.name}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
                   )}
