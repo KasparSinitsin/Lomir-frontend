@@ -1,14 +1,14 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import TeamCard from '../teams/TeamCard';
-import { useAuth } from '../../contexts/AuthContext';
-import { teamService } from '../../services/teamService';
-import TagSelector from '../tags/TagSelector';
-import Button from '../common/Button';
-import Alert from '../common/Alert';
-import { X, Edit, Users, Trash2 } from 'lucide-react';
-import IconToggle from '../common/IconToggle';
-import axios from 'axios';
+import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import TeamCard from "../teams/TeamCard";
+import { useAuth } from "../../contexts/AuthContext";
+import { teamService } from "../../services/teamService";
+import TagSelector from "../tags/TagSelector";
+import Button from "../common/Button";
+import Alert from "../common/Alert";
+import { X, Edit, Users, Trash2 } from "lucide-react";
+import IconToggle from "../common/IconToggle";
+import axios from "axios";
 
 const TeamDetailsModal = ({
   isOpen = true,
@@ -17,24 +17,28 @@ const TeamDetailsModal = ({
   onUpdate,
   onDelete,
   userRole,
-  isFromSearch = false
+  isFromSearch = false,
 }) => {
   const navigate = useNavigate();
   const { id: urlTeamId } = useParams();
   const { user, isAuthenticated } = useAuth();
 
-
-
-  const effectiveTeamId = useMemo(() => propTeamId || urlTeamId, [propTeamId, urlTeamId]);
+  const effectiveTeamId = useMemo(
+    () => propTeamId || urlTeamId,
+    [propTeamId, urlTeamId]
+  );
 
   const [isModalVisible, setIsModalVisible] = useState(isOpen);
   const [loading, setLoading] = useState(true);
-  const [notification, setNotification] = useState({ type: null, message: null });
+  const [notification, setNotification] = useState({
+    type: null,
+    message: null,
+  });
   const [team, setTeam] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
-    name: '',
-    description: '',
+    name: "",
+    description: "",
     isPublic: false, // Default is invisible
     maxMembers: 5,
     selectedTags: [],
@@ -53,111 +57,126 @@ const TeamDetailsModal = ({
       // Get the team details
       console.log(`Fetching details for team ID: ${effectiveTeamId}`);
       const response = await teamService.getTeamById(effectiveTeamId);
-      
+
       // Detailed logging for debugging visibility issues
-      console.log('Raw API response:', response);
-      console.log('API response type:', typeof response);
-      console.log('API data property:', response.data);
-      
+      console.log("Raw API response:", response);
+      console.log("API response type:", typeof response);
+      console.log("API data property:", response.data);
+
       // Try to access team data at different levels
       let teamData;
-      if (response.data && typeof response.data === 'object') {
+      if (response.data && typeof response.data === "object") {
         teamData = response.data;
-        console.log('Using response.data as teamData');
+        console.log("Using response.data as teamData");
       } else if (response.data && response.data.data) {
         teamData = response.data.data;
-        console.log('Using response.data.data as teamData');
+        console.log("Using response.data.data as teamData");
       } else {
         teamData = {};
-        console.log('No valid teamData found in response');
+        console.log("No valid teamData found in response");
       }
-      
-      console.log('Team data extracted:', teamData);
-      
+
+      console.log("Team data extracted:", teamData);
+
       // Inspect is_public field specifically
-      console.log('Raw is_public value:', teamData.is_public);
-      console.log('Type of is_public:', typeof teamData.is_public);
-      
+      console.log("Raw is_public value:", teamData.is_public);
+      console.log("Type of is_public:", typeof teamData.is_public);
+
       // Determine the creator ID
       let creatorId = teamData.creator_id;
-      
+
       // Get members for creator lookup if needed
       if (teamData.members && Array.isArray(teamData.members)) {
-        console.log('Team members:', teamData.members);
-        
+        console.log("Team members:", teamData.members);
+
         // Look for creator in the members array
-        const creatorMember = teamData.members.find(m => m.role === 'creator');
-        
+        const creatorMember = teamData.members.find(
+          (m) => m.role === "creator"
+        );
+
         // If creator_id is not in the data but we found a creator member, use that
         if (creatorId === undefined && creatorMember) {
           creatorId = parseInt(creatorMember.user_id, 10);
-          console.log('Found creator ID from members array:', creatorId);
+          console.log("Found creator ID from members array:", creatorId);
         }
       }
-      
+
       // Get the is_public value directly from response or data
       // IMPORTANT: The database value is transformed to string 'true'/'false' by PostgreSQL
       // So we need to explicitly compare against both boolean and string representations
       let isPublicRaw = teamData.is_public;
-      
+
       // The critical fix: Make sure we interpret 'false' string as false boolean
       let isPublicValue = false; // Default to false (private)
-      
-      if (isPublicRaw === true || isPublicRaw === 'true' || isPublicRaw === 1) {
+
+      if (isPublicRaw === true || isPublicRaw === "true" || isPublicRaw === 1) {
         isPublicValue = true;
-      } else if (isPublicRaw === false || isPublicRaw === 'false' || isPublicRaw === 0 || isPublicRaw === null) {
+      } else if (
+        isPublicRaw === false ||
+        isPublicRaw === "false" ||
+        isPublicRaw === 0 ||
+        isPublicRaw === null
+      ) {
         isPublicValue = false;
       } else {
         // If it's something unexpected, log and default to false
-        console.log('Unexpected is_public value:', isPublicRaw);
+        console.log("Unexpected is_public value:", isPublicRaw);
         isPublicValue = false;
       }
-      
-      console.log('Final is_public value after conversion:', isPublicValue);
-      
+
+      console.log("Final is_public value after conversion:", isPublicValue);
+
       // Force the fields to be set in the team data
       const enhancedTeamData = {
         ...teamData,
         creator_id: creatorId,
-        is_public: isPublicValue
+        is_public: isPublicValue,
       };
-      
-      console.log('Enhanced team data:', enhancedTeamData);
-      
+
+      console.log("Enhanced team data:", enhancedTeamData);
+
       // Store the enhanced team data
       setTeam(enhancedTeamData);
-      
+
       // Store the creator status and visibility independently
       // Use strict equality with parsed integers for reliable comparison
       const userIdAsNumber = parseInt(user?.id, 10);
       const creatorIdAsNumber = parseInt(creatorId, 10);
-      const isCreatorValue = !isNaN(userIdAsNumber) && !isNaN(creatorIdAsNumber) && 
-                            userIdAsNumber === creatorIdAsNumber;
-      
-      console.log('Setting isCreator to:', isCreatorValue, 
-                'user ID:', userIdAsNumber, 
-                'creator ID:', creatorIdAsNumber);
-      
+      const isCreatorValue =
+        !isNaN(userIdAsNumber) &&
+        !isNaN(creatorIdAsNumber) &&
+        userIdAsNumber === creatorIdAsNumber;
+
+      console.log(
+        "Setting isCreator to:",
+        isCreatorValue,
+        "user ID:",
+        userIdAsNumber,
+        "creator ID:",
+        creatorIdAsNumber
+      );
+
       setIsCreator(isCreatorValue);
-      
+
       // Set isPublic state with our carefully determined boolean value
-      console.log('Setting isPublic to:', isPublicValue);
+      console.log("Setting isPublic to:", isPublicValue);
       setIsPublic(isPublicValue);
-      
+
       // Set form data with the enhanced values
       setFormData({
-        name: teamData.name || '',
-        description: teamData.description || '',
+        name: teamData.name || "",
+        description: teamData.description || "",
         isPublic: isPublicValue,
         maxMembers: teamData.max_members || 5,
-        teamavatarUrl: teamData.teamavatar_url || teamData.teamavatarUrl || '',
-        selectedTags: teamData.tags?.map(tag => parseInt(tag.id || tag.tag_id, 10)) || [],
+        teamavatarUrl: teamData.teamavatar_url || teamData.teamavatarUrl || "",
+        selectedTags:
+          teamData.tags?.map((tag) => parseInt(tag.id || tag.tag_id, 10)) || [],
       });
     } catch (err) {
-      console.error('Error fetching team details:', err);
+      console.error("Error fetching team details:", err);
       setNotification({
-        type: 'error',
-        message: 'Failed to load team details. Please try again.'
+        type: "error",
+        message: "Failed to load team details. Please try again.",
       });
     } finally {
       setLoading(false);
@@ -197,18 +216,19 @@ const TeamDetailsModal = ({
 
   // Use our independent isCreator state for more reliability
   const isTeamCreator = useMemo(() => isCreator, [isCreator]);
-  
-  const isTeamAdmin = useMemo(() =>
-    userRole === 'admin',
-    [userRole]
-  );
-  
+
+  const isTeamAdmin = useMemo(() => userRole === "admin", [userRole]);
+
   const canEditTeam = isTeamCreator || isTeamAdmin;
-  
+
   // Check if user is already a member of this team
   const isTeamMember = useMemo(() => {
     if (!team || !user) return false;
-    return team.members?.some(member => member.user_id === user.id) || isTeamCreator || userRole;
+    return (
+      team.members?.some((member) => member.user_id === user.id) ||
+      isTeamCreator ||
+      userRole
+    );
   }, [team, user, isTeamCreator, userRole]);
 
   const handleClose = useCallback(() => {
@@ -219,52 +239,52 @@ const TeamDetailsModal = ({
         onClose();
       } else if (urlTeamId) {
         // If we're on a team-specific route, navigate back to teams
-        navigate('/teams/my-teams');
+        navigate("/teams/my-teams");
       }
     }, 300);
   }, [onClose, navigate, urlTeamId]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    
+
     // Special handling for isPublic to ensure it's always a boolean
-    if (name === 'isPublic') {
-      setFormData(prev => ({
+    if (name === "isPublic") {
+      setFormData((prev) => ({
         ...prev,
-        isPublic: checked // Explicitly use the checked property
+        isPublic: checked, // Explicitly use the checked property
       }));
-      
+
       // Debug logging
       console.log(`Changed isPublic to: ${checked} (${typeof checked})`);
       return;
     }
-    
+
     // Handle other form fields normally
-    const newValue = type === 'checkbox' ? checked : value;
+    const newValue = type === "checkbox" ? checked : value;
 
     // Clear error for this field when user starts typing
     if (formErrors[name]) {
-      setFormErrors(prev => {
+      setFormErrors((prev) => {
         const newErrors = { ...prev };
         delete newErrors[name];
         return newErrors;
       });
     }
 
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: name === 'maxMembers' ? parseInt(newValue, 10) : newValue
+      [name]: name === "maxMembers" ? parseInt(newValue, 10) : newValue,
     }));
   };
 
   const handleTagSelection = useCallback((selectedTags) => {
     console.log("Tags selected (raw):", selectedTags);
-    
+
     // Convert tag IDs to numbers
-    const numericTags = selectedTags.map(tag => Number(tag));
+    const numericTags = selectedTags.map((tag) => Number(tag));
     console.log("Tags converted to numbers:", numericTags);
-    
-    setFormData(prev => ({
+
+    setFormData((prev) => ({
       ...prev,
       selectedTags: numericTags,
     }));
@@ -274,156 +294,171 @@ const TeamDetailsModal = ({
     const errors = {};
 
     if (!formData.name.trim()) {
-      errors.name = 'Team name is required';
+      errors.name = "Team name is required";
     } else if (formData.name.trim().length < 3) {
-      errors.name = 'Team name must be at least 3 characters';
+      errors.name = "Team name must be at least 3 characters";
     }
 
     if (!formData.description.trim()) {
-      errors.description = 'Team description is required';
+      errors.description = "Team description is required";
     } else if (formData.description.trim().length < 10) {
-      errors.description = 'Description must be at least 10 characters';
+      errors.description = "Description must be at least 10 characters";
     }
 
     if (formData.maxMembers < 2 || formData.maxMembers > 20) {
-      errors.maxMembers = 'Team size must be between 2 and 20 members';
+      errors.maxMembers = "Team size must be between 2 and 20 members";
     }
 
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
 
-const handleSubmit = async (e) => {
-  if (e) e.preventDefault();
+  const handleSubmit = async (e) => {
+    if (e) e.preventDefault();
 
-  if (!validateForm()) {
-    return;
-  }
+    if (!validateForm()) {
+      return;
+    }
 
-  try {
-    setLoading(true);
-    setNotification({ type: null, message: null });
+    try {
+      setLoading(true);
+      setNotification({ type: null, message: null });
 
-    // Log the form data before submission
-    console.log("Form data before submission:", formData);
-    
-    // Ensure isPublic is a proper boolean
-    const isPublicBoolean = formData.isPublic === true;
-    console.log("Visibility value computed:", isPublicBoolean, typeof isPublicBoolean);
+      // Log the form data before submission
+      console.log("Form data before submission:", formData);
 
-    // Prepare the submission data first
-    const submissionData = {
-      name: formData.name.trim(),
-      description: formData.description.trim(),
-      is_public: isPublicBoolean, // Force it to be a boolean
-      max_members: formData.maxMembers,
-    };
+      // Ensure isPublic is a proper boolean
+      const isPublicBoolean = formData.isPublic === true;
+      console.log(
+        "Visibility value computed:",
+        isPublicBoolean,
+        typeof isPublicBoolean
+      );
 
-    // Handle avatar file upload if a new file was selected
-    if (formData.teamavatarFile) {
-      // Create FormData for file upload
-      const avatarFormData = new FormData();
-      avatarFormData.append('file', formData.teamavatarFile);
-      avatarFormData.append('upload_preset', import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET);
+      // Prepare the submission data first
+      const submissionData = {
+        name: formData.name.trim(),
+        description: formData.description.trim(),
+        is_public: isPublicBoolean, // Force it to be a boolean
+        max_members: formData.maxMembers,
+      };
 
-      try {
-        // Upload to Cloudinary
-        const cloudinaryResponse = await axios.post(
-          `https://api.cloudinary.com/v1_1/${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME}/image/upload`,
-          avatarFormData,
-          {
-            headers: {
-              'Content-Type': 'multipart/form-data'
-            }
-          }
+      // Handle avatar file upload if a new file was selected
+      if (formData.teamavatarFile) {
+        // Create FormData for file upload
+        const avatarFormData = new FormData();
+        avatarFormData.append("file", formData.teamavatarFile);
+        avatarFormData.append(
+          "upload_preset",
+          import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET
         );
 
-        // Add the uploaded URL to submission data
-        submissionData.teamavatar_url = cloudinaryResponse.data.secure_url;
-      } catch (uploadError) {
-        console.error('Error uploading team avatar:', uploadError);
-        // Continue with the update even if image upload fails
-        setNotification({
-          type: 'warning',
-          message: 'Team updated but avatar upload failed.'
-        });
+        try {
+          // Upload to Cloudinary
+          const cloudinaryResponse = await axios.post(
+            `https://api.cloudinary.com/v1_1/${
+              import.meta.env.VITE_CLOUDINARY_CLOUD_NAME
+            }/image/upload`,
+            avatarFormData,
+            {
+              headers: {
+                "Content-Type": "multipart/form-data",
+              },
+            }
+          );
+
+          // Add the uploaded URL to submission data
+          submissionData.teamavatar_url = cloudinaryResponse.data.secure_url;
+        } catch (uploadError) {
+          console.error("Error uploading team avatar:", uploadError);
+          // Continue with the update even if image upload fails
+          setNotification({
+            type: "warning",
+            message: "Team updated but avatar upload failed.",
+          });
+        }
       }
-    }
 
+      console.log("Submission data prepared:", submissionData);
 
-    console.log("Submission data prepared:", submissionData);
+      // Only add tags if there are any selected
+      if (formData.selectedTags && formData.selectedTags.length > 0) {
+        // Process and add tags to submission data
+        const processedTags = formData.selectedTags
+          .filter((tagId) => tagId) // Remove any falsy values
+          .map((tagId) => {
+            const numericId = Number(tagId); // Explicitly convert to number
+            return {
+              tag_id: numericId,
+            };
+          });
 
-    // Only add tags if there are any selected
-    if (formData.selectedTags && formData.selectedTags.length > 0) {
-      // Process and add tags to submission data
-      const processedTags = formData.selectedTags
-        .filter(tagId => tagId) // Remove any falsy values
-        .map(tagId => {
-          const numericId = Number(tagId); // Explicitly convert to number
-          return { 
-            tag_id: numericId 
-          };
-        });
-      
-      // Only include tags in the submission if we have valid ones
-      if (processedTags.length > 0) {
-        submissionData.tags = processedTags;
+        // Only include tags in the submission if we have valid ones
+        if (processedTags.length > 0) {
+          submissionData.tags = processedTags;
+        }
       }
+
+      console.log("Final submission data:", submissionData);
+
+      const response = await teamService.updateTeam(
+        effectiveTeamId,
+        submissionData
+      );
+      console.log("Update response:", response);
+
+      // Update our local state with the new visibility value
+      setIsPublic(isPublicBoolean);
+
+      // Create a properly updated team object to return to parent
+      const updatedTeam = {
+        ...team,
+        ...submissionData,
+        is_public: isPublicBoolean, // Explicitly include the visibility
+      };
+
+      setNotification({
+        type: "success",
+        message: "Team updated successfully!",
+      });
+
+      setIsEditing(false);
+
+      // After updating, fetch the latest data to ensure we have the most up-to-date info
+      await fetchTeamDetails();
+
+      // Update the parent component if callback is provided
+      if (onUpdate) {
+        onUpdate(updatedTeam);
+      }
+    } catch (err) {
+      console.error("Error updating team:", err);
+
+      // Improve error message by extracting the specific error from the API response
+      let errorMessage = "Failed to update team. Please try again.";
+      if (err.response?.data?.errors && err.response.data.errors.length > 0) {
+        errorMessage = `Error: ${err.response.data.errors[0]}`;
+      } else if (err.response?.data?.message) {
+        errorMessage = `Error: ${err.response.data.message}`;
+      } else if (err.message) {
+        errorMessage = `Error: ${err.message}`;
+      }
+
+      setNotification({
+        type: "error",
+        message: errorMessage,
+      });
+    } finally {
+      setLoading(false);
     }
-
-    console.log("Final submission data:", submissionData);
-
-    const response = await teamService.updateTeam(effectiveTeamId, submissionData);
-    console.log("Update response:", response);
-
-    // Update our local state with the new visibility value
-    setIsPublic(isPublicBoolean);
-
-    // Create a properly updated team object to return to parent
-    const updatedTeam = {
-      ...team,
-      ...submissionData,
-      is_public: isPublicBoolean // Explicitly include the visibility
-    };
-
-    setNotification({
-      type: 'success',
-      message: 'Team updated successfully!'
-    });
-
-    setIsEditing(false);
-
-    // After updating, fetch the latest data to ensure we have the most up-to-date info
-    await fetchTeamDetails();
-
-    // Update the parent component if callback is provided
-    if (onUpdate) {
-      onUpdate(updatedTeam);
-    }
-  } catch (err) {
-    console.error('Error updating team:', err);
-    
-    // Improve error message by extracting the specific error from the API response
-    let errorMessage = 'Failed to update team. Please try again.';
-    if (err.response?.data?.errors && err.response.data.errors.length > 0) {
-      errorMessage = `Error: ${err.response.data.errors[0]}`;
-    } else if (err.response?.data?.message) {
-      errorMessage = `Error: ${err.response.data.message}`;
-    } else if (err.message) {
-      errorMessage = `Error: ${err.message}`;
-    }
-    
-    setNotification({
-      type: 'error',
-      message: errorMessage
-    });
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   const handleDeleteTeam = async () => {
-    if (window.confirm('Are you sure you want to delete this team? This action cannot be undone.')) {
+    if (
+      window.confirm(
+        "Are you sure you want to delete this team? This action cannot be undone."
+      )
+    ) {
       try {
         setLoading(true);
 
@@ -439,14 +474,14 @@ const handleSubmit = async (e) => {
           handleClose();
           // If we're on a team-specific route, navigate away
           if (urlTeamId) {
-            navigate('/teams/my-teams');
+            navigate("/teams/my-teams");
           }
         }
       } catch (err) {
-        console.error('Error deleting team:', err);
+        console.error("Error deleting team:", err);
         setNotification({
-          type: 'error',
-          message: 'Failed to delete team. Please try again.'
+          type: "error",
+          message: "Failed to delete team. Please try again.",
         });
         setLoading(false);
       }
@@ -462,14 +497,14 @@ const handleSubmit = async (e) => {
       await fetchTeamDetails();
 
       setNotification({
-        type: 'success',
-        message: 'Successfully applied to join the team!'
+        type: "success",
+        message: "Successfully applied to join the team!",
       });
     } catch (err) {
-      console.error('Error applying to join team:', err);
+      console.error("Error applying to join team:", err);
       setNotification({
-        type: 'error',
-        message: 'Failed to apply. Please try again.'
+        type: "error",
+        message: "Failed to apply. Please try again.",
       });
     } finally {
       setLoading(false);
@@ -480,7 +515,7 @@ const handleSubmit = async (e) => {
     if (!isAuthenticated || !user || isTeamMember || loading) {
       return null;
     }
-    
+
     return (
       <div className="mt-6">
         <Button
@@ -509,30 +544,30 @@ const handleSubmit = async (e) => {
   };
 
   // Add detailed debugging
-  console.log('Team Details Debug:', {
+  console.log("Team Details Debug:", {
     // User information
-    'Current User ID': user?.id,
-    'User Object': user,
-    
+    "Current User ID": user?.id,
+    "User Object": user,
+
     // Team information
-    'Team Creator ID': team?.creator_id,
-    'Team Object': team,
-    
+    "Team Creator ID": team?.creator_id,
+    "Team Object": team,
+
     // Role information
-    'User Role': userRole,
-    
+    "User Role": userRole,
+
     // Computed values
-    'Is Creator': isCreator,
-    'Is Admin': userRole === 'admin',
-    'Can Edit': canEditTeam,
-    'Is Public': isPublic,
-    
+    "Is Creator": isCreator,
+    "Is Admin": userRole === "admin",
+    "Can Edit": canEditTeam,
+    "Is Public": isPublic,
+
     // Modal state
-    'Is Editing': isEditing,
-    'Is Modal Visible': isModalVisible,
-    
+    "Is Editing": isEditing,
+    "Is Modal Visible": isModalVisible,
+
     // Form Data
-    'Form Data': formData
+    "Form Data": formData,
   });
 
   if (!isModalVisible) return null;
@@ -540,13 +575,16 @@ const handleSubmit = async (e) => {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop overlay */}
-      <div className="absolute inset-0 bg-black bg-opacity-40" onClick={handleClose}></div>
-      
+      <div
+        className="absolute inset-0 bg-black bg-opacity-40"
+        onClick={handleClose}
+      ></div>
+
       {/* Modal container */}
       <div className="relative w-full max-w-2xl max-h-[90vh] rounded-xl overflow-hidden bg-base-100 shadow-lg">
         <div className="px-6 py-4 border-b border-base-300 flex justify-between items-center">
           <h2 className="text-xl font-medium text-primary">
-            {isEditing ? 'Edit Team' : 'Team Details'}
+            {isEditing ? "Edit Team" : "Team Details"}
           </h2>
           <div className="flex items-center space-x-2">
             {/* Show Edit button - with enhanced debugging */}
@@ -555,11 +593,11 @@ const handleSubmit = async (e) => {
                 {/* Debug info - team creator status */}
                 {import.meta.env.DEV && (
                   <span className="text-xs mr-2">
-                    Status: {isCreator ? '✓ Creator' : '✗ Not Creator'}
-                    | User ID: {user?.id}
+                    Status: {isCreator ? "✓ Creator" : "✗ Not Creator"}| User
+                    ID: {user?.id}
                   </span>
                 )}
-                
+
                 {/* Always show Edit button */}
                 <Button
                   variant="ghost"
@@ -570,7 +608,7 @@ const handleSubmit = async (e) => {
                 >
                   Edit
                 </Button>
-                
+
                 {/* Delete button - Using our independent isCreator state */}
                 {isCreator && (
                   <Button
@@ -605,47 +643,46 @@ const handleSubmit = async (e) => {
             <>
               {isEditing ? (
                 <form onSubmit={handleSubmit} className="space-y-4">
-
-<div className="form-control">
-  <label className="label">Team Avatar</label>
-  <div className="flex items-center space-x-4">
-    <div className="avatar placeholder">
-      <div className="bg-primary text-primary-content rounded-full w-16 h-16">
-        {formData.teamavatarUrl ? (
-          <img 
-            src={formData.teamavatarUrl} 
-            alt="Team Preview" 
-            className="rounded-full object-cover w-full h-full" 
-          />
-        ) : (
-          <span className="text-2xl">
-            {formData.name?.charAt(0) || '?'}
-          </span>
-        )}
-      </div>
-    </div>
-    <input
-      type="file"
-      name="teamavatar"
-      onChange={(e) => {
-        if (e.target.files && e.target.files[0]) {
-          // Preview the image
-          const reader = new FileReader();
-          reader.onload = (event) => {
-            setFormData(prev => ({
-              ...prev,
-              teamavatarUrl: event.target.result,
-              teamavatarFile: e.target.files[0] // Store the file for upload
-            }));
-          };
-          reader.readAsDataURL(e.target.files[0]);
-        }
-      }}
-      accept="image/*"
-      className="file-input file-input-bordered w-full max-w-xs"
-    />
-  </div>
-</div>
+                  <div className="form-control">
+                    <label className="label">Team Avatar</label>
+                    <div className="flex items-center space-x-4">
+                      <div className="avatar placeholder">
+                        <div className="bg-primary text-primary-content rounded-full w-16 h-16">
+                          {formData.teamavatarUrl ? (
+                            <img
+                              src={formData.teamavatarUrl}
+                              alt="Team Preview"
+                              className="rounded-full object-cover w-full h-full"
+                            />
+                          ) : (
+                            <span className="text-2xl">
+                              {formData.name?.charAt(0) || "?"}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <input
+                        type="file"
+                        name="teamavatar"
+                        onChange={(e) => {
+                          if (e.target.files && e.target.files[0]) {
+                            // Preview the image
+                            const reader = new FileReader();
+                            reader.onload = (event) => {
+                              setFormData((prev) => ({
+                                ...prev,
+                                teamavatarUrl: event.target.result,
+                                teamavatarFile: e.target.files[0], // Store the file for upload
+                              }));
+                            };
+                            reader.readAsDataURL(e.target.files[0]);
+                          }
+                        }}
+                        accept="image/*"
+                        className="file-input file-input-bordered w-full max-w-xs"
+                      />
+                    </div>
+                  </div>
 
                   <div className="form-control">
                     <label className="label">Team Name</label>
@@ -654,16 +691,19 @@ const handleSubmit = async (e) => {
                       name="name"
                       value={formData.name}
                       onChange={handleChange}
-                      className={`input input-bordered w-full ${formErrors.name ? 'input-error' : ''}`}
+                      className={`input input-bordered w-full ${
+                        formErrors.name ? "input-error" : ""
+                      }`}
                       placeholder="Team Name"
                     />
                     {formErrors.name && (
                       <label className="label">
-                        <span className="label-text-alt text-error">{formErrors.name}</span>
+                        <span className="label-text-alt text-error">
+                          {formErrors.name}
+                        </span>
                       </label>
                     )}
                   </div>
-
 
                   <div className="form-control">
                     <label className="label">Team Description</label>
@@ -671,12 +711,16 @@ const handleSubmit = async (e) => {
                       name="description"
                       value={formData.description}
                       onChange={handleChange}
-                      className={`textarea textarea-bordered h-24 w-full ${formErrors.description ? 'textarea-error' : ''}`}
+                      className={`textarea textarea-bordered h-24 w-full ${
+                        formErrors.description ? "textarea-error" : ""
+                      }`}
                       placeholder="Team Description"
                     ></textarea>
                     {formErrors.description && (
                       <label className="label">
-                        <span className="label-text-alt text-error">{formErrors.description}</span>
+                        <span className="label-text-alt text-error">
+                          {formErrors.description}
+                        </span>
                       </label>
                     )}
                   </div>
@@ -686,7 +730,7 @@ const handleSubmit = async (e) => {
                     name="isPublic"
                     checked={formData.isPublic === true}
                     onChange={handleChange}
-                    title="Team Visibility" 
+                    title="Team Visibility"
                     entityType="team"
                     visibleLabel="Public Team"
                     hiddenLabel="Private Team"
@@ -699,10 +743,16 @@ const handleSubmit = async (e) => {
                   {import.meta.env.DEV && (
                     <div className="text-xs bg-base-200 p-2 rounded">
                       Debug - Form Data:
-                      <pre>{JSON.stringify({ 
-                        isPublic: formData.isPublic, 
-                        type: typeof formData.isPublic 
-                      }, null, 2)}</pre>
+                      <pre>
+                        {JSON.stringify(
+                          {
+                            isPublic: formData.isPublic,
+                            type: typeof formData.isPublic,
+                          },
+                          null,
+                          2
+                        )}
+                      </pre>
                     </div>
                   )}
 
@@ -712,15 +762,21 @@ const handleSubmit = async (e) => {
                       name="maxMembers"
                       value={formData.maxMembers}
                       onChange={handleChange}
-                      className={`select select-bordered w-full ${formErrors.maxMembers ? 'select-error' : ''}`}
+                      className={`select select-bordered w-full ${
+                        formErrors.maxMembers ? "select-error" : ""
+                      }`}
                     >
-                      {[2, 3, 4, 5, 6, 8, 10, 12, 15, 20].map(size => (
-                        <option key={size} value={size}>{size} members</option>
+                      {[2, 3, 4, 5, 6, 8, 10, 12, 15, 20].map((size) => (
+                        <option key={size} value={size}>
+                          {size} members
+                        </option>
                       ))}
                     </select>
                     {formErrors.maxMembers && (
                       <label className="label">
-                        <span className="label-text-alt text-error">{formErrors.maxMembers}</span>
+                        <span className="label-text-alt text-error">
+                          {formErrors.maxMembers}
+                        </span>
                       </label>
                     )}
                   </div>
@@ -733,7 +789,10 @@ const handleSubmit = async (e) => {
                     />
                     {import.meta.env.DEV && (
                       <div className="mt-2 text-sm text-base-content/70">
-                        <p>Debug: Selected tag IDs: {formData.selectedTags.join(', ')}</p>
+                        <p>
+                          Debug: Selected tag IDs:{" "}
+                          {formData.selectedTags.join(", ")}
+                        </p>
                       </div>
                     )}
                   </div>
@@ -746,126 +805,160 @@ const handleSubmit = async (e) => {
                     >
                       Cancel
                     </Button>
-                    <Button
-                      type="submit"
-                      variant="primary"
-                      disabled={loading}
-                    >
+                    <Button type="submit" variant="primary" disabled={loading}>
                       Save Changes
                     </Button>
                   </div>
                 </form>
               ) : (
                 <div className="space-y-6">
-    {/* Team header with avatar */}
-<div className="flex items-center space-x-4 mb-6">
-  <div className="avatar placeholder">
-    <div className="bg-primary text-primary-content rounded-full w-16 h-16">
-      {/* Check for both snake_case and camelCase versions of avatar URL */}
-      {team?.teamavatar_url || team?.teamavatarUrl ? (
-        <img 
-          src={team?.teamavatar_url || team?.teamavatarUrl} 
-          alt="Team" 
-          className="rounded-full object-cover w-full h-full" 
-        />
-      ) : (
-        <span className="text-2xl">
-          {team?.name?.charAt(0) || '?'}
-        </span>
-      )}
-    </div>
-  </div>
-  <div>
-    <h1 className="text-2xl font-bold">{team?.name}</h1>
-    <p className="text-base-content/70">{isPublic ? 'Public' : 'Private'} Team</p>
-  </div>
-</div>
-
-    {/* Team description */}
-    {team?.description && (
-      <div className="bg-white/30 p-4 rounded-lg shadow-inner">
-        <p className="text-base-content/90">{team.description}</p>
-      </div>
-    )}
-
-    {/* Visibility info */}
-    <div className="flex items-center space-x-2 text-sm">
-      <span className="font-medium">Visibility:</span>
-      <span className={`badge ${isPublic ? 'badge-success' : 'badge-warning'}`}>
-        {isPublic ? 'Public' : 'Private'}
-      </span>
-      {import.meta.env.DEV && (
-        <span className="text-xs ml-2">
-          (Debug: stored isPublic={String(isPublic)}, 
-          team.is_public={team?.is_public !== undefined ? String(team.is_public) : 'undefined'})
-        </span>
-      )}
-    </div>
-
-    {/* Members count */}
-    <div className="flex items-center space-x-2 text-sm">
-      <Users size={18} className="text-primary" />
-      <span>{team?.current_members_count || 0} / {team?.max_members} members</span>
-    </div>
-
-    {/* Tags */}
-    <div>
-      <h3 className="font-medium text-sm mt-4">Team Tags:</h3>
-      {team?.tags?.length > 0 ? (
-        <div className="flex flex-wrap gap-2 mt-2">
-          {team.tags.map((tag) => (
-            <span key={tag.id || tag.tag_id} className="badge badge-outline">
-              {tag.name}
-            </span>
-          ))}
-        </div>
-      ) : (
-        <p className="text-sm text-base-content/60 italic">No tags selected.</p>
-      )}
-    </div>
-
-    {/* Members */}
-    {team?.members && team.members.length > 0 && (
-      <div>
-        <h2 className="text-xl font-semibold mt-6 mb-4">Team Members</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {team.members.map((member) => (
-            <div
-              key={member.user_id}
-              className="flex items-start bg-base-200 rounded-xl shadow p-4 gap-4"
-            >
-              <div className="avatar placeholder">
-                <div className="bg-primary text-primary-content rounded-full w-12 h-12">
-                  <span className="text-lg">{member.username?.charAt(0) || '?'}</span>
-                </div>
-              </div>
-
-              <div className="flex flex-col">
-                <span className="font-medium text-primary">{member.username}</span>
-                <span className="text-xs text-base-content/70">{member.role}</span>
-                {member.tags?.length > 0 && (
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    {member.tags.map((tag) => (
-                      <span
-                        key={tag.id}
-                        className="badge badge-outline badge-sm text-xs"
-                      >
-                        {tag.name}
-                      </span>
-                    ))}
+                  {/* Team header with avatar */}
+                  <div className="flex items-center space-x-4 mb-6">
+                    <div className="avatar placeholder">
+                      <div className="bg-primary text-primary-content rounded-full w-16 h-16">
+                        {/* Check for both snake_case and camelCase versions of avatar URL */}
+                        {team?.teamavatar_url || team?.teamavatarUrl ? (
+                          <img
+                            src={team?.teamavatar_url || team?.teamavatarUrl}
+                            alt="Team"
+                            className="rounded-full object-cover w-full h-full"
+                          />
+                        ) : (
+                          <span className="text-2xl">
+                            {team?.name?.charAt(0) || "?"}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div>
+                      <h1 className="text-2xl font-bold">{team?.name}</h1>
+                      <p className="text-base-content/70">
+                        {isPublic ? "Public" : "Private"} Team
+                      </p>
+                    </div>
                   </div>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    )}
-                    
-    {/* Join Team Button for non-members */}
-    {renderJoinButton()}
-  </div>
-)}
+
+                  {/* Team description */}
+                  {team?.description && (
+                    <div className="bg-white/30 p-4 rounded-lg shadow-inner">
+                      <p className="text-base-content/90">{team.description}</p>
+                    </div>
+                  )}
+
+                  {/* Visibility info */}
+                  <div className="flex items-center space-x-2 text-sm">
+                    <span className="font-medium">Visibility:</span>
+                    <span
+                      className={`badge ${
+                        isPublic ? "badge-success" : "badge-warning"
+                      }`}
+                    >
+                      {isPublic ? "Public" : "Private"}
+                    </span>
+                    {import.meta.env.DEV && (
+                      <span className="text-xs ml-2">
+                        (Debug: stored isPublic={String(isPublic)},
+                        team.is_public=
+                        {team?.is_public !== undefined
+                          ? String(team.is_public)
+                          : "undefined"}
+                        )
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Members count */}
+                  <div className="flex items-center space-x-2 text-sm">
+                    <Users size={18} className="text-primary" />
+                    <span>
+                      {team?.current_members_count || 0} / {team?.max_members}{" "}
+                      members
+                    </span>
+                  </div>
+
+                  {/* Tags */}
+                  <div>
+                    <h3 className="font-medium text-sm mt-4">Team Tags:</h3>
+                    {team?.tags?.length > 0 ? (
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {team.tags.map((tag) => (
+                          <span
+                            key={tag.id || tag.tag_id}
+                            className="badge badge-outline"
+                          >
+                            {tag.name}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-base-content/60 italic">
+                        No tags selected.
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Members */}
+                  {team?.members && team.members.length > 0 && (
+                    <div>
+                      <h2 className="text-xl font-semibold mt-6 mb-4">
+                        Team Members
+                      </h2>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {team.members.map((member) => (
+                          <div
+                            key={member.user_id}
+                            className="flex items-start bg-base-200 rounded-xl shadow p-4 gap-4"
+                          >
+                            <div className="avatar">
+                              {member.avatar_url ? (
+                                <div className="rounded-full w-12 h-12">
+                                  <img
+                                    src={member.avatar_url}
+                                    alt={member.username}
+                                    className="object-cover w-full h-full"
+                                  />
+                                </div>
+                              ) : (
+                                <div className="placeholder bg-primary text-primary-content rounded-full w-12 h-12">
+                                  <span className="text-lg">
+                                    {member.username?.charAt(0) || "?"}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="flex flex-col">
+                              <span className="font-medium text-primary">
+                                {member.first_name && member.last_name
+                                  ? `${member.first_name} ${member.last_name}`
+                                  : member.username}
+                              </span>
+                              <span className="text-xs text-base-content/70">
+                                {member.role}
+                              </span>
+                              {member.tags?.length > 0 && (
+                                <div className="flex flex-wrap gap-1 mt-1">
+                                  {member.tags.map((tag) => (
+                                    <span
+                                      key={tag.id}
+                                      className="badge badge-outline badge-sm text-xs"
+                                    >
+                                      {tag.name}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Join Team Button for non-members */}
+                  {renderJoinButton()}
+                </div>
+              )}
             </>
           )}
         </div>
