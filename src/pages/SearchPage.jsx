@@ -1,19 +1,19 @@
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '../contexts/AuthContext';
-import PageContainer from '../components/layout/PageContainer';
-import Grid from '../components/layout/Grid';
-import TeamCard from '../components/teams/TeamCard';
-import UserCard from '../components/users/UserCard'; 
-import { searchService } from '../services/searchService';
-import Input from '../components/common/Input';
-import Button from '../components/common/Button';
-import { Search as SearchIcon, Users, Users2 } from 'lucide-react';
-import Alert from '../components/common/Alert';
+import React, { useState, useEffect } from "react";
+import { useAuth } from "../contexts/AuthContext";
+import PageContainer from "../components/layout/PageContainer";
+import Grid from "../components/layout/Grid";
+import TeamCard from "../components/teams/TeamCard";
+import UserCard from "../components/users/UserCard";
+import { searchService } from "../services/searchService";
+import Input from "../components/common/Input";
+import Button from "../components/common/Button";
+import { Search as SearchIcon, Users, Users2 } from "lucide-react";
+import Alert from "../components/common/Alert";
 
 const SearchPage = () => {
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState({ teams: [], users: [] });
-  const [searchType, setSearchType] = useState('all'); // all, users, teams
+  const [searchType, setSearchType] = useState("all"); // all, users, teams
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [hasSearched, setHasSearched] = useState(false);
@@ -25,12 +25,14 @@ const SearchPage = () => {
       try {
         setLoading(true);
         setError(null);
-        
-        const results = await searchService.getAllUsersAndTeams(isAuthenticated);
+
+        const results = await searchService.getAllUsersAndTeams(
+          isAuthenticated
+        );
         setSearchResults(results.data);
       } catch (err) {
-        console.error('Error fetching initial data:', err);
-        setError('Failed to load initial data. Please try again.');
+        console.error("Error fetching initial data:", err);
+        setError("Failed to load initial data. Please try again.");
       } finally {
         setLoading(false);
       }
@@ -41,19 +43,21 @@ const SearchPage = () => {
 
   const handleSearch = async (e) => {
     e.preventDefault();
-    
+
     if (!searchQuery.trim()) {
       // If search query is empty, reload all data
       try {
         setLoading(true);
         setError(null);
         setHasSearched(false);
-        
-        const results = await searchService.getAllUsersAndTeams(isAuthenticated);
+
+        const results = await searchService.getAllUsersAndTeams(
+          isAuthenticated
+        );
         setSearchResults(results.data);
       } catch (err) {
-        console.error('Error reloading data:', err);
-        setError('Failed to reload data. Please try again.');
+        console.error("Error reloading data:", err);
+        setError("Failed to reload data. Please try again.");
       } finally {
         setLoading(false);
       }
@@ -65,11 +69,14 @@ const SearchPage = () => {
       setError(null);
       setHasSearched(true);
 
-      const results = await searchService.globalSearch(searchQuery, isAuthenticated);
+      const results = await searchService.globalSearch(
+        searchQuery,
+        isAuthenticated
+      );
       setSearchResults(results.data);
     } catch (err) {
-      console.error('Search error:', err);
-      setError('An error occurred while searching. Please try again.');
+      console.error("Search error:", err);
+      setError("An error occurred while searching. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -78,62 +85,72 @@ const SearchPage = () => {
   const handleToggleChange = (type) => setSearchType(type);
 
   const filteredResults = {
-    users: searchType === 'all' || searchType === 'users' ? searchResults.users : [],
-    teams: searchType === 'all' || searchType === 'teams' ? searchResults.teams : []
+    users:
+      searchType === "all" || searchType === "users" ? searchResults.users : [],
+    teams:
+      searchType === "all" || searchType === "teams" ? searchResults.teams : [],
   };
 
   const handleUserUpdate = (updatedUser) => {
-    setSearchResults(prev => ({
+    setSearchResults((prev) => ({
       ...prev,
-      users: prev.users.map(user => user.id === updatedUser.id ? updatedUser : user),
+      users: prev.users.map((user) =>
+        user.id === updatedUser.id ? updatedUser : user
+      ),
     }));
   };
 
-const handleTeamUpdate = (updatedTeam) => {
-  setSearchResults(prev => ({
-    ...prev,
-    teams: prev.teams.map(team => 
-      team.id === updatedTeam.id ? {
-        ...updatedTeam,
-        is_public: updatedTeam.is_public === true // Ensure proper boolean
-      } : team
-    ),
-  }));
-};
+  const handleTeamUpdate = (updatedTeam) => {
+    setSearchResults((prev) => ({
+      ...prev,
+      teams: prev.teams.map((team) =>
+        team.id === updatedTeam.id
+          ? {
+              ...updatedTeam,
+              is_public: updatedTeam.is_public === true, // Ensure proper boolean
+            }
+          : team
+      ),
+    }));
+  };
 
-  const noResultsFound = hasSearched &&
+  const noResultsFound =
+    hasSearched &&
     filteredResults.teams.length === 0 &&
     filteredResults.users.length === 0 &&
     !loading;
 
   return (
-    <PageContainer
-      title="Search teams or users"
-      titleAlignment="center"
-    >
+    <PageContainer title="Search teams or users" titleAlignment="center">
       <div className="max-w-xl mx-auto mb-8">
         {/* Toggle */}
         <div className="flex justify-center space-x-2 pt-2 mb-2">
           <div className="btn-group">
             <button
               type="button"
-              className={`btn btn-sm ${searchType === 'all' ? 'btn-active' : ''}`}
-              onClick={() => handleToggleChange('all')}
+              className={`btn btn-sm ${
+                searchType === "all" ? "btn-active" : ""
+              }`}
+              onClick={() => handleToggleChange("all")}
             >
               All
             </button>
             <button
               type="button"
-              className={`btn btn-sm ${searchType === 'users' ? 'btn-active' : ''}`}
-              onClick={() => handleToggleChange('users')}
+              className={`btn btn-sm ${
+                searchType === "users" ? "btn-active" : ""
+              }`}
+              onClick={() => handleToggleChange("users")}
             >
               <Users size={16} className="mr-1" />
               People
             </button>
             <button
               type="button"
-              className={`btn btn-sm ${searchType === 'teams' ? 'btn-active' : ''}`}
-              onClick={() => handleToggleChange('teams')}
+              className={`btn btn-sm ${
+                searchType === "teams" ? "btn-active" : ""
+              }`}
+              onClick={() => handleToggleChange("teams")}
             >
               <Users2 size={16} className="mr-1" />
               Teams
@@ -152,7 +169,7 @@ const handleTeamUpdate = (updatedTeam) => {
           <Button
             type="submit"
             variant="primary"
-            icon={<SearchIcon className="h-5 w-5"/>}
+            icon={<SearchIcon className="h-5 w-5" />}
             disabled={loading}
             className="p-2 flex items-center justify-center"
             aria-label="Search"
@@ -161,11 +178,7 @@ const handleTeamUpdate = (updatedTeam) => {
       </div>
 
       {error && (
-        <Alert
-          type="error"
-          message={error}
-          onClose={() => setError(null)}
-        />
+        <Alert type="error" message={error} onClose={() => setError(null)} />
       )}
 
       {noResultsFound && (
@@ -187,14 +200,14 @@ const handleTeamUpdate = (updatedTeam) => {
             <section className="mb-8">
               <h2 className="text-xl font-semibold mb-4">Teams</h2>
               <Grid cols={1} md={2} lg={3} gap={6}>
- {filteredResults.teams.map(team => (
-<TeamCard 
-  key={team.id} 
-  team={team} 
-  onUpdate={handleTeamUpdate}
-  isSearchResult={true} 
-/>
-))}
+                {filteredResults.teams.map((team) => (
+                  <TeamCard
+                    key={team.id}
+                    team={team}
+                    onUpdate={handleTeamUpdate}
+                    isSearchResult={true}
+                  />
+                ))}
               </Grid>
             </section>
           )}
@@ -204,7 +217,7 @@ const handleTeamUpdate = (updatedTeam) => {
             <section>
               <h2 className="text-xl font-semibold mb-4">People</h2>
               <Grid cols={1} md={2} lg={3} gap={6}>
-                {filteredResults.users.map(user => (
+                {filteredResults.users.map((user) => (
                   <UserCard
                     key={user.id}
                     user={user}
