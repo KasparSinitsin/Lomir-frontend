@@ -108,7 +108,7 @@ const UserCard = ({ user, onUpdate }) => {
         <div className="flex flex-wrap items-center gap-2 mb-4">
           {/* Visibility indicator - only show for current user's own profile */}
           {shouldShowVisibilityIcon() && (
-            <div className="flex items-center text-sm text-base-content/70 bg-base-200/50 px-2 py-1 rounded-full">
+            <div className="flex items-center text-sm text-base-content/70 bg-base-200/50 py-1 rounded-full">
               {isUserProfilePublic() ? (
                 <>
                   <Eye size={16} className="mr-1 text-green-600" />
@@ -116,17 +116,10 @@ const UserCard = ({ user, onUpdate }) => {
                 </>
               ) : (
                 <>
-                  <EyeClosed size={16} className="mr-1 text-orange-600" />
+                  <EyeClosed size={16} className="mr-1 text-grey-600" />
                   <span>Private</span>
                 </>
               )}
-            </div>
-          )}
-
-          {user.tags && (
-            <div className="flex items-center text-sm text-base-content/70">
-              <Tag size={16} className="mr-1" />
-              <span>{user.tags}</span>
             </div>
           )}
 
@@ -134,6 +127,13 @@ const UserCard = ({ user, onUpdate }) => {
             <div className="flex items-center text-sm text-base-content/70">
               <MapPin size={16} className="mr-1" />
               <span>{user.postal_code || user.postalCode}</span>
+            </div>
+          )}
+
+          {user.tags && (
+            <div className="flex items-center text-sm text-base-content/70">
+              <Tag size={16} className="mr-1" />
+              <span>{user.tags}</span>
             </div>
           )}
 

@@ -890,16 +890,23 @@ const TeamDetailsModal = ({
                     </div>
                     <div>
                       <h1 className="text-2xl font-bold">{team?.name}</h1>
-                      <p className="text-base-content/70">
-                        {isPublic ? "Public" : "Private"} Team
-                      </p>
+                      {/* Members count */}
+                      <div className="flex items-center space-x-1 text-sm">
+                        <Users size={18} className="text-primary" />
+                        <span>
+                          {team?.current_members_count || 0} /{" "}
+                          {team?.max_members} Members
+                        </span>
+                      </div>
                     </div>
                   </div>
 
                   {/* Team description */}
                   {team?.description && (
                     <div>
-                      <p className="text-base-content/90 my-6">{team.description}</p>
+                      <p className="text-base-content/90 my-6">
+                        {team.description}
+                      </p>
                     </div>
                   )}
 
@@ -913,10 +920,7 @@ const TeamDetailsModal = ({
                         </>
                       ) : (
                         <>
-                          <EyeClosed
-                            size={16}
-                            className="mr-1 text-grey-600"
-                          />
+                          <EyeClosed size={16} className="mr-1 text-grey-600" />
                           <span>Private Team</span>
                         </>
                       )}
@@ -934,15 +938,6 @@ const TeamDetailsModal = ({
                       )}
                     </div>
                   )}
-
-                  {/* Members count */}
-                  <div className="flex items-center space-x-1 text-sm">
-                    <Users size={18} className="text-primary"/>
-                    <span>
-                      {team?.current_members_count || 0} / {team?.max_members}{" "}
-                      members
-                    </span>
-                  </div>
 
                   {/* Tags */}
                   <div>

@@ -208,9 +208,15 @@ const TeamCard = ({ team, onUpdate, onDelete, isSearchResult = false }) => {
     <>
       <Card
         title={teamData.name}
-        subtitle={`Members: ${teamData.current_members_count ?? 1} out of ${
-          teamData.max_members ?? "∞"
-        }`}
+        subtitle={
+          <div className="flex items-center space-x-1 text-sm">
+            <Users size={16} className="text-primary" />
+            <span>
+              {teamData.current_members_count ?? 1} /{" "}
+              {teamData.max_members ?? "∞"} Members
+            </span>
+          </div>
+        }
         hoverable
         image={getTeamImage()}
         imageAlt={`${teamData.name} team`}
