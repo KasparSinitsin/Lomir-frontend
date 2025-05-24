@@ -232,7 +232,7 @@ const TeamCard = ({ team, onUpdate, onDelete, isSearchResult = false }) => {
 
         <div className="flex flex-wrap items-center gap-2 mb-4">
           {shouldShowVisibilityIcon() && (
-            <div className="flex items-center text-sm text-base-content/70 bg-base-200/50 px-2 py-1 rounded-full">
+            <div className="flex items-center text-sm text-base-content/70 bg-base-200/50 py-1 rounded-full">
               {team.isPublic === true || team.is_public === true ? (
                 <>
                   <EyeIcon size={16} className="mr-1 text-green-600" />
@@ -240,7 +240,7 @@ const TeamCard = ({ team, onUpdate, onDelete, isSearchResult = false }) => {
                 </>
               ) : (
                 <>
-                  <EyeClosed size={16} className="mr-1 text-orange-600" />
+                  <EyeClosed size={16} className="mr-1 text-grey-600" />
                   <span>Private</span>
                 </>
               )}

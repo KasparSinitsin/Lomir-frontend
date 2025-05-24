@@ -1,30 +1,64 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { X, Edit, MessageCircle, MapPin, Tag } from 'lucide-react';
-import { userService } from '../../services/userService';
-import Button from '../common/Button';
-import TagSelector from '../tags/TagSelector';
-import Alert from '../common/Alert';
+import React, { useState, useEffect, useCallback } from "react";
+import {
+  X,
+  Edit,
+  MessageCircle,
+  MapPin,
+  Tag,
+  Eye,
+  EyeClosed,
+} from "lucide-react";
+import { userService } from "../../services/userService";
+import Button from "../common/Button";
+import TagSelector from "../tags/TagSelector";
+import Alert from "../common/Alert";
+import { useAuth } from "../../contexts/AuthContext";
 
 const UserDetailsModal = ({
   isOpen,
   userId,
   onClose,
   onUpdate,
-  mode = 'view'
+  mode = "view",
 }) => {
+  const { user: currentUser, isAuthenticated } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [user, setUser] = useState(null);
-  const [isEditing, setIsEditing] = useState(mode === 'edit');
+  const [isEditing, setIsEditing] = useState(mode === "edit");
   const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
-    bio: '',
-    postalCode: '',
+    firstName: "",
+    lastName: "",
+    bio: "",
+    postalCode: "",
     selectedTags: [],
     tagExperienceLevels: {},
-    tagInterestLevels: {}
+    tagInterestLevels: {},
   });
+
+  // Add these helper functions
+  const shouldShowVisibilityIndicator = () => {
+    // Only show for authenticated users viewing their own profile
+    if (!currentUser || !isAuthenticated || !user) {
+      return false;
+    }
+
+    // Only show if this modal represents the current user's profile
+    return currentUser.id === user.id;
+  };
+
+  const isUserProfilePublic = () => {
+    if (!user) return false;
+
+    // Check both possible property names for is_public
+    if (user.is_public === true) return true;
+    if (user.isPublic === true) return true;
+    if (user.is_public === false) return false;
+    if (user.isPublic === false) return false;
+
+    // Default to private if not specified
+    return false;
+  };
 
   const fetchUserDetails = useCallback(async () => {
     try {
@@ -33,30 +67,31 @@ const UserDetailsModal = ({
 
       const response = await userService.getUserById(userId);
       const userData = response.data;
-      
-      console.log('Full user details from API:', userData);
+
+      console.log("Full user details from API:", userData);
 
       setUser(userData);
 
       setFormData({
-        firstName: userData.first_name || userData.firstName || '',
-        lastName: userData.last_name || userData.lastName || '',
-        bio: userData.bio || '',
-        postalCode: userData.postal_code || userData.postalCode || '',
-        selectedTags: userData.tags?.map(tag => tag.id) || [],
-        tagExperienceLevels: userData.tags?.reduce((acc, tag) => {
-          acc[tag.id] = tag.experience_level || 'beginner';
-          return acc;
-        }, {}) || {},
-        tagInterestLevels: userData.tags?.reduce((acc, tag) => {
-          acc[tag.id] = tag.interest_level || 'medium';
-          return acc;
-        }, {}) || {}
+        firstName: userData.first_name || userData.firstName || "",
+        lastName: userData.last_name || userData.lastName || "",
+        bio: userData.bio || "",
+        postalCode: userData.postal_code || userData.postalCode || "",
+        selectedTags: userData.tags?.map((tag) => tag.id) || [],
+        tagExperienceLevels:
+          userData.tags?.reduce((acc, tag) => {
+            acc[tag.id] = tag.experience_level || "beginner";
+            return acc;
+          }, {}) || {},
+        tagInterestLevels:
+          userData.tags?.reduce((acc, tag) => {
+            acc[tag.id] = tag.interest_level || "medium";
+            return acc;
+          }, {}) || {},
       });
-
     } catch (err) {
-      console.error('Error fetching user details:', err);
-      setError('Failed to load user details. Please try again.');
+      console.error("Error fetching user details:", err);
+      setError("Failed to load user details. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -70,18 +105,22 @@ const UserDetailsModal = ({
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
   };
 
-  const handleTagSelection = (selectedTags, experienceLevels, interestLevels) => {
-    setFormData(prev => ({
+  const handleTagSelection = (
+    selectedTags,
+    experienceLevels,
+    interestLevels
+  ) => {
+    setFormData((prev) => ({
       ...prev,
       selectedTags,
       tagExperienceLevels: experienceLevels,
-      tagInterestLevels: interestLevels
+      tagInterestLevels: interestLevels,
     }));
   };
 
@@ -95,11 +134,11 @@ const UserDetailsModal = ({
         last_name: formData.lastName,
         bio: formData.bio,
         postal_code: formData.postalCode,
-        tags: formData.selectedTags.map(tagId => ({
+        tags: formData.selectedTags.map((tagId) => ({
           tag_id: tagId,
-          experience_level: formData.tagExperienceLevels[tagId] || 'beginner',
-          interest_level: formData.tagInterestLevels[tagId] || 'medium'
-        }))
+          experience_level: formData.tagExperienceLevels[tagId] || "beginner",
+          interest_level: formData.tagInterestLevels[tagId] || "medium",
+        })),
       };
 
       const response = await userService.updateUser(userId, submissionData);
@@ -110,17 +149,16 @@ const UserDetailsModal = ({
       if (onUpdate) {
         onUpdate(response.data);
       }
-
     } catch (err) {
-      console.error('Error updating user:', err);
-      setError('Failed to update user. Please try again.');
+      console.error("Error updating user:", err);
+      setError("Failed to update user. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
   const handleStartChatMock = () => {
-    console.log('Chat icon clicked (mock)');
+    console.log("Chat icon clicked (mock)");
     // In the future, we can put out chat logic here
   };
 
@@ -129,11 +167,11 @@ const UserDetailsModal = ({
     if (user?.avatar_url) {
       return user.avatar_url;
     }
-    
+
     if (user?.avatarUrl) {
       return user.avatarUrl;
     }
-    
+
     return null; // Return null if no image found
   };
 
@@ -141,17 +179,20 @@ const UserDetailsModal = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black bg-opacity-40" onClick={onClose}></div>
+      <div
+        className="absolute inset-0 bg-black bg-opacity-40"
+        onClick={onClose}
+      ></div>
 
       <div className="relative w-full max-w-2xl max-h-[90vh] rounded-xl overflow-hidden">
         <div className="bg-base-100 h-full flex flex-col">
           {/* Header */}
           <div className="px-6 py-4 border-b border-white/10 flex justify-between items-center">
             <h2 className="text-xl font-medium text-primary">
-              {isEditing ? 'Edit Profile' : 'User Details'}
+              {isEditing ? "Edit Profile" : "User Details"}
             </h2>
             <div className="flex items-center space-x-2">
-              {mode !== 'profile' && !isEditing && (
+              {mode !== "profile" && !isEditing && (
                 <Button
                   variant="ghost"
                   size="sm"
@@ -167,8 +208,7 @@ const UserDetailsModal = ({
                 size="sm"
                 onClick={handleStartChatMock}
                 icon={<MessageCircle size={16} />}
-              >
-              </Button>
+              ></Button>
 
               <button
                 onClick={onClose}
@@ -231,17 +271,10 @@ const UserDetailsModal = ({
                   />
                 </div>
                 <div className="flex justify-end space-x-2">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    onClick={onClose}
-                  >
+                  <Button type="button" variant="ghost" onClick={onClose}>
                     Cancel
                   </Button>
-                  <Button
-                    type="submit"
-                    variant="primary"
-                  >
+                  <Button type="submit" variant="primary">
                     Save Changes
                   </Button>
                 </div>
@@ -253,55 +286,105 @@ const UserDetailsModal = ({
                   <div className="avatar placeholder">
                     <div className="bg-primary text-primary-content rounded-full w-16 h-16">
                       {getProfileImage() ? (
-                        <img 
-                          src={getProfileImage()} 
-                          alt={`${user?.username || 'User'}'s profile`} 
+                        <img
+                          src={getProfileImage()}
+                          alt={`${user?.username || "User"}'s profile`}
                           className="rounded-full object-cover w-full h-full"
                         />
                       ) : (
                         <span className="text-2xl">
-                          {user?.first_name?.charAt(0) || user?.firstName?.charAt(0) || 
-                          user?.username?.charAt(0) || '?'}
+                          {user?.first_name?.charAt(0) ||
+                            user?.firstName?.charAt(0) ||
+                            user?.username?.charAt(0) ||
+                            "?"}
                         </span>
                       )}
                     </div>
                   </div>
                   <div>
                     <h1 className="text-2xl font-bold">
-                      {(user?.first_name || user?.firstName) && (user?.last_name || user?.lastName) ? 
-                        `${user?.first_name || user?.firstName} ${user?.last_name || user?.lastName}` : 
-                        user?.username}
+                      {(user?.first_name || user?.firstName) &&
+                      (user?.last_name || user?.lastName)
+                        ? `${user?.first_name || user?.firstName} ${
+                            user?.last_name || user?.lastName
+                          }`
+                        : user?.username}
                     </h1>
                     <p className="text-base-content/70">@{user?.username}</p>
+
+                    {/* VISIBILITY INDICATOR - NEW ADDITION */}
+                    {shouldShowVisibilityIndicator() && (
+                      <div className="mt-2 flex items-center">
+                        {isUserProfilePublic() ? (
+                          <>
+                            <Eye size={16} className="text-green-600 mr-2" />
+                            <span className="text-sm text-base-content/70">
+                              Public Profile
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <EyeClosed
+                              size={16}
+                              className="text-orange-600 mr-2"
+                            />
+                            <span className="text-sm text-base-content/70">
+                              Private Profile
+                            </span>
+                          </>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Debug info - add this right after the visibility indicator */}
+                    {import.meta.env.DEV && currentUser && (
+                      <div className="mt-2 text-xs bg-blue-100 px-2 py-1 rounded text-black">
+                        Debug Modal: CurrentUser={currentUser.id}, ModalUser=
+                        {user?.id}, ShouldShow={shouldShowVisibilityIndicator()}
+                        , IsPublic={isUserProfilePublic()}
+                      </div>
+                    )}
                   </div>
                 </div>
 
                 {(user?.bio || user?.biography) && (
                   <div className="bg-white/30 p-4 rounded-lg shadow-inner">
-                    <p className="text-base-content/90">{user?.bio || user?.biography}</p>
+                    <p className="text-base-content/90">
+                      {user?.bio || user?.biography}
+                    </p>
                   </div>
                 )}
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="flex items-start space-x-2">
-                    <MapPin size={18} className="mt-1 text-primary flex-shrink-0" />
+                    <MapPin
+                      size={18}
+                      className="mt-1 text-primary flex-shrink-0"
+                    />
                     <div>
                       <h3 className="font-medium">Location</h3>
-                      <p>{user?.postal_code || user?.postalCode || 'Not specified'}</p>
+                      <p>
+                        {user?.postal_code ||
+                          user?.postalCode ||
+                          "Not specified"}
+                      </p>
                     </div>
                   </div>
                 </div>
 
                 <div>
                   <div className="flex items-center mb-2">
-                    <Tag size={18} className="mr-2 text-primary flex-shrink-0" />
+                    <Tag
+                      size={18}
+                      className="mr-2 text-primary flex-shrink-0"
+                    />
                     <h3 className="font-medium">Skills & Interests</h3>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {user?.tags && user.tags.length > 0 ? (
-                      typeof user.tags === 'string' ? (
+                      typeof user.tags === "string" ? (
                         // Handle tags as a string (comma-separated list)
-                        user.tags.split(',').map((tag, index) => (
+                        user.tags.split(",").map((tag, index) => (
                           <span
                             key={index}
                             className="badge badge-primary badge-outline p-3"
@@ -311,12 +394,12 @@ const UserDetailsModal = ({
                         ))
                       ) : (
                         // Handle tags as an array of objects
-                        user.tags.map(tag => (
+                        user.tags.map((tag) => (
                           <span
-                            key={typeof tag === 'object' ? tag.id : tag}
+                            key={typeof tag === "object" ? tag.id : tag}
                             className="badge badge-primary badge-outline p-3"
                           >
-                            {typeof tag === 'object' ? tag.name : tag}
+                            {typeof tag === "object" ? tag.name : tag}
                           </span>
                         ))
                       )
