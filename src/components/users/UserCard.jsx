@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import Card from '../common/Card';
 import Button from '../common/Button';
-import { Tag, MapPin, MessageCircle } from 'lucide-react';
+import { Tag, MapPin, MessageCircle, Eye, EyeClosed } from 'lucide-react';
 import UserDetailsModal from './UserDetailsModal'; 
 
 const UserCard = ({ user, onUpdate }) => {
@@ -60,6 +60,16 @@ const UserCard = ({ user, onUpdate }) => {
       onUpdate(updatedUser);
     }
   };
+
+  const shouldShowVisibilityIcon = () => {
+  // Only show for authenticated users viewing their own profile
+  if (!currentUser || !isAuthenticated) {
+    return false;
+  }
+  
+  // Only show if this card represents the current user's profile
+  return currentUser.id === user.id;
+};
   
   return (
     <>
