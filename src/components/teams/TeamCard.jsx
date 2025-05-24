@@ -6,6 +6,7 @@ import TeamDetailsModal from "./TeamDetailsModal";
 import { teamService } from "../../services/teamService";
 import { useAuth } from "../../contexts/AuthContext";
 import Alert from "../common/Alert";
+import { EyeIcon } from "lucide-react";
 
 const TeamCard = ({ team, onUpdate, onDelete, isSearchResult = false }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -59,6 +60,18 @@ const TeamCard = ({ team, onUpdate, onDelete, isSearchResult = false }) => {
 
     fetchUserRole();
   }, [user, teamData.id, isSearchResult]);
+
+  // Debugging useEffect to log team data:
+  useEffect(() => {
+    console.log("=== TEAMCARD DEBUG ===");
+    console.log("Team name:", team.name);
+    console.log("Original team prop:", team);
+    console.log("team.is_public:", team.is_public);
+    console.log("typeof team.is_public:", typeof team.is_public);
+    console.log("teamData.is_public:", teamData.is_public);
+    console.log("typeof teamData.is_public:", typeof teamData.is_public);
+    console.log("=== END TEAMCARD DEBUG ===");
+  }, [team, teamData]);
 
   const openTeamDetails = () => {
     setIsModalOpen(true);
@@ -123,17 +136,23 @@ const TeamCard = ({ team, onUpdate, onDelete, isSearchResult = false }) => {
     closeTeamDetails();
   };
 
+  // Ensure is_public is a proper boolean
+  const isPublic = teamData.is_public === true;
+
   // For debugging in development
   useEffect(() => {
     if (import.meta.env.DEV) {
       console.log("TeamCard data:", teamData);
       console.log("isPublic value:", teamData.is_public);
+      console.log("Computed isPublic:", isPublic);
       console.log("Team image:", getTeamImage());
     }
-  }, [teamData]);
+  }, [teamData, isPublic]);
 
-  // Ensure is_public is a proper boolean
-  const isPublic = teamData.is_public === true;
+  // Determine if the View Details button should be shown
+  const showViewDetailsButton = isSearchResult
+    ? isAuthenticated // On search page, show to all authenticated users
+    : isCreator || userRole === "admin" || userRole === "member"; // On team pages, show to members
 
   return (
     <>
@@ -161,30 +180,40 @@ const TeamCard = ({ team, onUpdate, onDelete, isSearchResult = false }) => {
           {teamData.description}
         </p>
 
-        <div className="flex items-center text-sm text-base-content/70 mb-2">
-          {team.is_public ? (
-            <>
-              <Users size={16} className="mr-1" />
-              <span>Public</span>
-            </>
-          ) : (
-            <>
-              <EyeClosed size={16} className="mr-1" />
-              <span>Private</span>
-            </>
+        <div className="flex flex-wrap items-center gap-2 mb-4">
+          <div className="flex items-center text-sm text-base-content/70">
+            {team.isPublic === true || team.is_public === true ? (
+              <>
+                <EyeIcon size={16} className="mr-1" />
+                <span>Public</span>
+              </>
+            ) : (
+              <>
+                <EyeClosed size={16} className="mr-1" />
+                <span>Private</span>
+              </>
+            )}
+          </div>
+
+          {userRole && !isSearchResult && (
+            <span className="badge badge-primary badge-outline">
+              {userRole}
+            </span>
           )}
         </div>
 
         <div className="mt-auto flex justify-between items-center">
-          {/* Always show View Details button on MyTeams page */}
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={openTeamDetails}
-            className="flex-grow"
-          >
-            View Details
-          </Button>
+          {/* Show View Details button based on our condition */}
+          {showViewDetailsButton && (
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={openTeamDetails}
+              className="flex-grow"
+            >
+              View Details
+            </Button>
+          )}
 
           {isCreator && !isSearchResult && (
             <Button
@@ -192,7 +221,7 @@ const TeamCard = ({ team, onUpdate, onDelete, isSearchResult = false }) => {
               size="sm"
               onClick={handleDeleteClick}
               disabled={isDeleting}
-              className="ml-2 hover:bg-[#7ace82] hover:text-[#036b0c]"
+              className="ml-2 hover:bg-[#C7D2FE] hover:text-[#1E40AF]"
               icon={<Trash2 size={16} />}
               aria-label="Delete team"
             >

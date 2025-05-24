@@ -1,13 +1,13 @@
-import axios from 'axios';
-import { snakeToCamel, camelToSnake } from '../utils/formatters';
+import axios from "axios";
+import { snakeToCamel, camelToSnake } from "../utils/formatters";
 
 // const API_URL = 'https://lomir-backend.onrender.com'; // for production
-const API_URL = 'http://localhost:5001'; // for local development
+const API_URL = "http://localhost:5001"; // for local development
 
 const api = axios.create({
   baseURL: API_URL,
   headers: {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
   },
   withCredentials: true,
 });
@@ -15,18 +15,22 @@ const api = axios.create({
 // Add request interceptor to convert request data to snake_case
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem("token");
     if (token) {
-      config.headers['Authorization'] = `Bearer ${token}`;  
+      config.headers["Authorization"] = `Bearer ${token}`;
     }
-    
+
     // Transform request data from camelCase to snake_case
-    if (config.data && typeof config.data === 'object' && !(config.data instanceof FormData)) {
-      console.log('Before conversion:', config.data);
+    if (
+      config.data &&
+      typeof config.data === "object" &&
+      !(config.data instanceof FormData)
+    ) {
+      console.log("Before conversion:", config.data);
       config.data = camelToSnake(config.data);
-      console.log('After conversion:', config.data);
+      console.log("After conversion:", config.data);
     }
-    
+
     return config;
   },
   (error) => {
@@ -42,21 +46,21 @@ api.interceptors.response.use(
       response.data = snakeToCamel(response.data);
     }
     return response;
-  },  
+  },
   (error) => {
     if (error.response) {
-      console.error('API Error:', error.response.data); 
+      console.error("API Error:", error.response.data);
 
       if (error.response.status === 401 || error.response.status === 403) {
-        localStorage.removeItem('token');  
-        window.location.href = '/login';
+        localStorage.removeItem("token");
+        window.location.href = "/login";
       }
     } else if (error.request) {
-      console.error('No response received:', error.request);  
+      console.error("No response received:", error.request);
     } else {
-      console.error('Error:', error.message); 
+      console.error("Error:", error.message);
     }
-    return Promise.reject(error);  
+    return Promise.reject(error);
   }
 );
 
