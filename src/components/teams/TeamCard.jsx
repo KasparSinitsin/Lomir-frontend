@@ -204,11 +204,6 @@ const TeamCard = ({ team, onUpdate, onDelete, isSearchResult = false }) => {
     }
   }, [teamData, isPublic, user, isCreator]);
 
-  // Determine if the View Details button should be shown
-  const showViewDetailsButton = isSearchResult
-    ? isAuthenticated // On search page, show to all authenticated users
-    : isCreator || userRole === "admin" || userRole === "member"; // On team pages, show to members
-
   return (
     <>
       <Card
@@ -269,19 +264,18 @@ const TeamCard = ({ team, onUpdate, onDelete, isSearchResult = false }) => {
         </div>
 
         <div className="mt-auto flex justify-between items-center">
-          {/* Show View Details button based on our condition */}
-          {showViewDetailsButton && (
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={openTeamDetails}
-              className="flex-grow"
-            >
-              View Details
-            </Button>
-          )}
+          {/* Show View Details button to ALL users */}
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={openTeamDetails}
+            className="flex-grow"
+          >
+            View Details
+          </Button>
 
-          {isCreator && !isSearchResult && (
+          {/* Edit/Delete buttons - only for authenticated creators on non-search pages */}
+          {isAuthenticated && isCreator && !isSearchResult && (
             <Button
               variant="ghost"
               size="sm"
