@@ -5,7 +5,7 @@ import { teamService } from "../../services/teamService";
 import TagSelector from "../tags/TagSelector";
 import Button from "../common/Button";
 import Alert from "../common/Alert";
-import { X, Edit, Users, Trash2 } from "lucide-react";
+import { X, Edit, Users, Trash2, Eye, EyeClosed } from "lucide-react";
 import IconToggle from "../common/IconToggle";
 import axios from "axios";
 
@@ -869,7 +869,7 @@ const TeamDetailsModal = ({
                   </div>
                 </form>
               ) : (
-                <div className="space-y-6">
+                <div className="space-y-1">
                   {/* Team header with avatar */}
                   <div className="flex items-center space-x-4 mb-6">
                     <div className="avatar placeholder">
@@ -890,32 +890,44 @@ const TeamDetailsModal = ({
                     </div>
                     <div>
                       <h1 className="text-2xl font-bold">{team?.name}</h1>
-                      <p className="text-base-content/70">
-                        {isPublic ? "Public" : "Private"} Team
-                      </p>
+                      {/* Members count */}
+                      <div className="flex items-center space-x-1 text-sm">
+                        <Users size={18} className="text-primary" />
+                        <span>
+                          {team?.current_members_count || 0} /{" "}
+                          {team?.max_members} Members
+                        </span>
+                      </div>
                     </div>
                   </div>
 
                   {/* Team description */}
                   {team?.description && (
-                    <div className="bg-white/30 p-4 rounded-lg shadow-inner">
-                      <p className="text-base-content/90">{team.description}</p>
+                    <div>
+                      <p className="text-base-content/90 my-6">
+                        {team.description}
+                      </p>
                     </div>
                   )}
 
                   {/* Visibility info - only show to authenticated members/creators */}
                   {shouldShowVisibilityStatus() && (
-                    <div className="flex items-center space-x-2 text-sm">
-                      <span className="font-medium">Visibility:</span>
-                      <span
-                        className={`badge ${
-                          isPublic ? "badge-success" : "badge-warning"
-                        }`}
-                      >
-                        {isPublic ? "Public" : "Private"}
-                      </span>
+                    <div className="flex items-center space-x-1 text-sm text-base-content/70">
+                      {isPublic ? (
+                        <>
+                          <Eye size={16} className="mr-1 text-green-600" />
+                          <span>Public Team</span>
+                        </>
+                      ) : (
+                        <>
+                          <EyeClosed size={16} className="mr-1 text-grey-600" />
+                          <span>Private Team</span>
+                        </>
+                      )}
+
+                      {/* Debug info in development */}
                       {import.meta.env.DEV && (
-                        <span className="text-xs ml-2">
+                        <span className="text-xs ml-2 opacity-50">
                           (Debug: stored isPublic={String(isPublic)},
                           team.is_public=
                           {team?.is_public !== undefined
@@ -926,15 +938,6 @@ const TeamDetailsModal = ({
                       )}
                     </div>
                   )}
-
-                  {/* Members count */}
-                  <div className="flex items-center space-x-2 text-sm">
-                    <Users size={18} className="text-primary" />
-                    <span>
-                      {team?.current_members_count || 0} / {team?.max_members}{" "}
-                      members
-                    </span>
-                  </div>
 
                   {/* Tags */}
                   <div>
