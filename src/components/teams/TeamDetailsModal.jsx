@@ -250,6 +250,33 @@ const TeamDetailsModal = ({
     );
   }, [team, user, isTeamCreator, userRole]);
 
+  // Helper function to determine if visibility status should be shown
+  const shouldShowVisibilityStatus = () => {
+    // Only show for authenticated users
+    if (!isAuthenticated || !user) {
+      return false;
+    }
+
+    // Show for creators
+    if (isCreator) {
+      return true;
+    }
+
+    // Show for team members
+    if (team && team.members && Array.isArray(team.members)) {
+      return team.members.some(
+        (member) => member.user_id === user.id || member.userId === user.id
+      );
+    }
+
+    // Show if user has a role in the team
+    if (userRole && userRole !== null) {
+      return true;
+    }
+
+    return false;
+  };
+
   const handleClose = useCallback(() => {
     setIsModalVisible(false);
     // Allow animation to complete before executing onClose
@@ -876,27 +903,29 @@ const TeamDetailsModal = ({
                     </div>
                   )}
 
-                  {/* Visibility info */}
-                  <div className="flex items-center space-x-2 text-sm">
-                    <span className="font-medium">Visibility:</span>
-                    <span
-                      className={`badge ${
-                        isPublic ? "badge-success" : "badge-warning"
-                      }`}
-                    >
-                      {isPublic ? "Public" : "Private"}
-                    </span>
-                    {import.meta.env.DEV && (
-                      <span className="text-xs ml-2">
-                        (Debug: stored isPublic={String(isPublic)},
-                        team.is_public=
-                        {team?.is_public !== undefined
-                          ? String(team.is_public)
-                          : "undefined"}
-                        )
+                  {/* Visibility info - only show to authenticated members/creators */}
+                  {shouldShowVisibilityStatus() && (
+                    <div className="flex items-center space-x-2 text-sm">
+                      <span className="font-medium">Visibility:</span>
+                      <span
+                        className={`badge ${
+                          isPublic ? "badge-success" : "badge-warning"
+                        }`}
+                      >
+                        {isPublic ? "Public" : "Private"}
                       </span>
-                    )}
-                  </div>
+                      {import.meta.env.DEV && (
+                        <span className="text-xs ml-2">
+                          (Debug: stored isPublic={String(isPublic)},
+                          team.is_public=
+                          {team?.is_public !== undefined
+                            ? String(team.is_public)
+                            : "undefined"}
+                          )
+                        </span>
+                      )}
+                    </div>
+                  )}
 
                   {/* Members count */}
                   <div className="flex items-center space-x-2 text-sm">

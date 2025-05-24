@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from "react";
 import Card from "../common/Card";
 import Button from "../common/Button";
-import { Users, MapPin, Trash2, EyeClosed } from "lucide-react";
+import { Users, MapPin, Trash2, EyeClosed, EyeIcon } from "lucide-react";
 import TeamDetailsModal from "./TeamDetailsModal";
 import { teamService } from "../../services/teamService";
 import { useAuth } from "../../contexts/AuthContext";
 import Alert from "../common/Alert";
-import { EyeIcon } from "lucide-react";
 
 const TeamCard = ({ team, onUpdate, onDelete, isSearchResult = false }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -35,7 +34,8 @@ const TeamCard = ({ team, onUpdate, onDelete, isSearchResult = false }) => {
   };
 
   // Check if current user is the creator of the team
-  const isCreator = user && teamData.creator_id === user.id;
+  const isCreator =
+    user && (teamData.creator_id === user.id || teamData.creatorId === user.id);
 
   // Update local team data when the prop changes
   useEffect(() => {
@@ -70,8 +70,11 @@ const TeamCard = ({ team, onUpdate, onDelete, isSearchResult = false }) => {
     console.log("typeof team.is_public:", typeof team.is_public);
     console.log("teamData.is_public:", teamData.is_public);
     console.log("typeof teamData.is_public:", typeof teamData.is_public);
+    console.log("teamData.creator_id:", teamData.creator_id);
+    console.log("user.id:", user?.id);
+    console.log("isCreator:", isCreator);
     console.log("=== END TEAMCARD DEBUG ===");
-  }, [team, teamData]);
+  }, [team, teamData, isCreator, user]);
 
   const openTeamDetails = () => {
     setIsModalOpen(true);
@@ -139,15 +142,67 @@ const TeamCard = ({ team, onUpdate, onDelete, isSearchResult = false }) => {
   // Ensure is_public is a proper boolean
   const isPublic = teamData.is_public === true;
 
+  // Enhanced helper function to determine if visibility icon should be shown
+  const shouldShowVisibilityIcon = () => {
+    // Only show visibility icons for authenticated users
+    if (!isAuthenticated || !user) {
+      console.log("❌ No visibility icon - not authenticated");
+      return false;
+    }
+
+    // Show for creators (using creator_id from search results)
+    if (isCreator) {
+      console.log("✅ Show visibility icon - user is creator");
+      return true;
+    }
+
+    // Additional check: if creator_id matches user id (handles different property names)
+    if (teamData.creator_id === user.id || teamData.creatorId === user.id) {
+      console.log(
+        "✅ Show visibility icon - user is creator (direct property check)"
+      );
+      return true;
+    }
+
+    // Show for team members (check if user is in the team via members array)
+    if (teamData.members && Array.isArray(teamData.members)) {
+      const foundInMembers = teamData.members.some(
+        (member) => member.user_id === user.id || member.userId === user.id
+      );
+      if (foundInMembers) {
+        console.log("✅ Show visibility icon - user found in members array");
+        return true;
+      }
+    }
+
+    // Show if user has a role in the team
+    if (userRole && userRole !== null) {
+      console.log("✅ Show visibility icon - user has role:", userRole);
+      return true;
+    }
+
+    console.log("❌ No visibility icon - user not associated with team", {
+      userId: user.id,
+      creatorId: teamData.creator_id,
+      teamName: teamData.name,
+      isCreator: isCreator,
+    });
+    return false;
+  };
+
   // For debugging in development
   useEffect(() => {
     if (import.meta.env.DEV) {
-      console.log("TeamCard data:", teamData);
-      console.log("isPublic value:", teamData.is_public);
-      console.log("Computed isPublic:", isPublic);
-      console.log("Team image:", getTeamImage());
+      console.log("TeamCard visibility check:", {
+        teamName: teamData.name,
+        isPublic: teamData.is_public,
+        shouldShow: shouldShowVisibilityIcon(),
+        userId: user?.id,
+        creatorId: teamData.creator_id,
+        isCreator: isCreator,
+      });
     }
-  }, [teamData, isPublic]);
+  }, [teamData, isPublic, user, isCreator]);
 
   // Determine if the View Details button should be shown
   const showViewDetailsButton = isSearchResult
@@ -181,24 +236,35 @@ const TeamCard = ({ team, onUpdate, onDelete, isSearchResult = false }) => {
         </p>
 
         <div className="flex flex-wrap items-center gap-2 mb-4">
-          <div className="flex items-center text-sm text-base-content/70">
-            {team.isPublic === true || team.is_public === true ? (
-              <>
-                <EyeIcon size={16} className="mr-1" />
-                <span>Public</span>
-              </>
-            ) : (
-              <>
-                <EyeClosed size={16} className="mr-1" />
-                <span>Private</span>
-              </>
-            )}
-          </div>
+          {shouldShowVisibilityIcon() && (
+            <div className="flex items-center text-sm text-base-content/70 bg-base-200/50 px-2 py-1 rounded-full">
+              {team.isPublic === true || team.is_public === true ? (
+                <>
+                  <EyeIcon size={16} className="mr-1 text-green-600" />
+                  <span>Public</span>
+                </>
+              ) : (
+                <>
+                  <EyeClosed size={16} className="mr-1 text-orange-600" />
+                  <span>Private</span>
+                </>
+              )}
+            </div>
+          )}
 
           {userRole && !isSearchResult && (
             <span className="badge badge-primary badge-outline">
               {userRole}
             </span>
+          )}
+
+          {/* Debug info in development */}
+          {import.meta.env.DEV && (
+            <div className="text-xs bg-yellow-100 px-2 py-1 rounded text-black">
+              Debug: Creator={isCreator ? "✓" : "✗"} | Show=
+              {shouldShowVisibilityIcon() ? "✓" : "✗"} | UserID={user?.id} |
+              CreatorID={teamData.creator_id}
+            </div>
           )}
         </div>
 
