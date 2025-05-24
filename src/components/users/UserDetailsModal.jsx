@@ -13,6 +13,7 @@ import Button from "../common/Button";
 import TagSelector from "../tags/TagSelector";
 import Alert from "../common/Alert";
 import { useAuth } from "../../contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
 
 const UserDetailsModal = ({
   isOpen,
@@ -21,7 +22,8 @@ const UserDetailsModal = ({
   onUpdate,
   mode = "view",
 }) => {
-  const { user: currentUser, isAuthenticated } = useAuth();
+  const { user: currentUser, isAuthenticated, updateUser } = useAuth();
+  const navigate = useNavigate(); // Move this INSIDE the component
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [user, setUser] = useState(null);
@@ -36,7 +38,11 @@ const UserDetailsModal = ({
     tagInterestLevels: {},
   });
 
-  // Add these helper functions
+  const isOwnProfile = () => {
+    return currentUser && user && currentUser.id === user.id;
+  };
+
+  // Helper function to determine if we should show the visibility indicator
   const shouldShowVisibilityIndicator = () => {
     // Only show for authenticated users viewing their own profile
     if (!currentUser || !isAuthenticated || !user) {
@@ -124,7 +130,9 @@ const UserDetailsModal = ({
     }));
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (e) => {
+    if (e) e.preventDefault(); // Prevent form submission
+
     try {
       setLoading(true);
       setError(null);
@@ -146,6 +154,11 @@ const UserDetailsModal = ({
       setUser(response.data);
       setIsEditing(false);
 
+      // If this is the current user's own profile, update the global context
+      if (isOwnProfile() && currentUser) {
+        updateUser(response.data);
+      }
+
       if (onUpdate) {
         onUpdate(response.data);
       }
@@ -159,7 +172,7 @@ const UserDetailsModal = ({
 
   const handleStartChatMock = () => {
     console.log("Chat icon clicked (mock)");
-    // In the future, we can put out chat logic here
+    // In the future, we can put our chat logic here
   };
 
   // Helper function to get the avatar image URL or fallback to initials
@@ -192,23 +205,32 @@ const UserDetailsModal = ({
               {isEditing ? "Edit Profile" : "User Details"}
             </h2>
             <div className="flex items-center space-x-2">
-              {mode !== "profile" && !isEditing && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setIsEditing(true)}
-                  icon={<Edit size={16} />}
-                >
-                  Edit
-                </Button>
+              {!isEditing && (
+                <>
+                  {isOwnProfile() ? (
+                    // Navigate to profile page for comprehensive editing
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        onClose(); // Close the modal first
+                        navigate("/profile"); // Then navigate to profile page
+                      }}
+                      icon={<Edit size={16} />}
+                    >
+                      Edit Profile
+                    </Button>
+                  ) : (
+                    // Show chat button for other users' profiles
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleStartChatMock}
+                      icon={<MessageCircle size={16} />}
+                    ></Button>
+                  )}
+                </>
               )}
-
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleStartChatMock}
-                icon={<MessageCircle size={16} />}
-              ></Button>
 
               <button
                 onClick={onClose}
@@ -254,6 +276,7 @@ const UserDetailsModal = ({
                     onChange={handleChange}
                     className="textarea textarea-bordered w-full"
                     placeholder="Bio"
+                    rows="4"
                   />
                   <input
                     type="text"
@@ -263,19 +286,28 @@ const UserDetailsModal = ({
                     className="input input-bordered w-full"
                     placeholder="Postal Code"
                   />
-                  <TagSelector
-                    selectedTags={formData.selectedTags}
-                    onTagsSelected={handleTagSelection}
-                    tagExperienceLevels={formData.tagExperienceLevels}
-                    tagInterestLevels={formData.tagInterestLevels}
-                  />
+                  <div>
+                    <label className="label">
+                      <span className="label-text">Skills & Interests</span>
+                    </label>
+                    <TagSelector
+                      selectedTags={formData.selectedTags}
+                      onTagsSelected={handleTagSelection}
+                      tagExperienceLevels={formData.tagExperienceLevels}
+                      tagInterestLevels={formData.tagInterestLevels}
+                    />
+                  </div>
                 </div>
                 <div className="flex justify-end space-x-2">
-                  <Button type="button" variant="ghost" onClick={onClose}>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => setIsEditing(false)}
+                  >
                     Cancel
                   </Button>
-                  <Button type="submit" variant="primary">
-                    Save Changes
+                  <Button type="submit" variant="primary" disabled={loading}>
+                    {loading ? "Saving..." : "Save Changes"}
                   </Button>
                 </div>
               </form>
@@ -312,7 +344,7 @@ const UserDetailsModal = ({
                     </h1>
                     <p className="text-base-content/70">@{user?.username}</p>
 
-                    {/* VISIBILITY INDICATOR - NEW ADDITION */}
+                    {/* VISIBILITY INDICATOR - Only show for own profile */}
                     {shouldShowVisibilityIndicator() && (
                       <div className="mt-2 flex items-center">
                         {isUserProfilePublic() ? (
@@ -408,6 +440,20 @@ const UserDetailsModal = ({
                     )}
                   </div>
                 </div>
+
+                {/* Hide message/chat button for own profile */}
+                {!isOwnProfile() && (
+                  <div className="mt-6">
+                    <Button
+                      variant="primary"
+                      onClick={handleStartChatMock}
+                      className="w-full"
+                      icon={<MessageCircle size={16} />}
+                    >
+                      Send Message
+                    </Button>
+                  </div>
+                )}
               </div>
             )}
           </div>
