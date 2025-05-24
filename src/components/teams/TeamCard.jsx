@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import Card from "../common/Card";
 import Button from "../common/Button";
-import { Users, MapPin, Trash2, EyeClosed, EyeIcon } from "lucide-react";
+import { Users, MapPin, Trash2, EyeClosed, EyeIcon, Tag } from "lucide-react"; 
 import TeamDetailsModal from "./TeamDetailsModal";
 import { teamService } from "../../services/teamService";
 import { useAuth } from "../../contexts/AuthContext";
@@ -258,6 +258,17 @@ const TeamCard = ({ team, onUpdate, onDelete, isSearchResult = false }) => {
               {userRole}
             </span>
           )}
+
+          {/* Team Tags Display */}
+{teamData.tags && teamData.tags.length > 0 && (
+  <div className="flex items-center text-sm text-base-content/70 bg-base-200/50 px-2 py-1 rounded-full">
+    <Tag size={16} className="mr-1 text-base-content/70" />
+    <span className="truncate">
+      {teamData.tags.slice(0, 2).map(tag => tag.name).join(', ')}
+      {teamData.tags.length > 2 && ` +${teamData.tags.length - 2}`}
+    </span>
+  </div>
+)}
 
           {/* Debug info in development */}
           {import.meta.env.DEV && (
