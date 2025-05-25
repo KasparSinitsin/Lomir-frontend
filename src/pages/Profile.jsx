@@ -15,6 +15,7 @@ import { userService } from "../services/userService";
 import BadgeCard from "../components/badges/BadgeCard";
 import TagSelector from "../components/tags/TagSelector";
 import IconToggle from "../components/common/IconToggle";
+import LocationDisplay from "../components/common/LocationDisplay";
 
 const Profile = () => {
   const { user, updateUser } = useAuth();
@@ -741,7 +742,13 @@ const Profile = () => {
                   {(user.postalCode || user.postal_code) && (
                     <DataDisplay
                       label="Location"
-                      value={user.postalCode || user.postal_code}
+                      value={
+                        <LocationDisplay
+                          postalCode={user.postalCode || user.postal_code}
+                          showIcon={false}
+                          className=""
+                        />
+                      }
                       icon={<MapPin size={16} />}
                     />
                   )}
