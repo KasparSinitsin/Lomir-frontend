@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import LocationDisplay from "../common/LocationDisplay";
 import {
   X,
   Edit,
@@ -395,11 +396,17 @@ const UserDetailsModal = ({
                     />
                     <div>
                       <h3 className="font-medium">Location</h3>
-                      <p>
-                        {user?.postal_code ||
-                          user?.postalCode ||
-                          "Not specified"}
-                      </p>
+                      <div>
+                        {user?.postal_code || user?.postalCode ? (
+                          <LocationDisplay
+                            postalCode={user?.postal_code || user?.postalCode}
+                            showIcon={false}
+                            className="text-base font-normal"
+                          />
+                        ) : (
+                          <p>Not specified</p>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
