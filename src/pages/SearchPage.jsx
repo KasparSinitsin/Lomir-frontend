@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import PageContainer from "../components/layout/PageContainer";
 import Grid from "../components/layout/Grid";
@@ -11,9 +12,21 @@ import { Search as SearchIcon, Users, Users2 } from "lucide-react";
 import Alert from "../components/common/Alert";
 
 const SearchPage = () => {
+  const location = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState({ teams: [], users: [] });
-  const [searchType, setSearchType] = useState("all"); // all, users, teams
+
+  // Initialize searchType based on URL parameters
+  const [searchType, setSearchType] = useState(() => {
+    const urlParams = new URLSearchParams(location.search);
+    const typeParam = urlParams.get("type");
+    return typeParam === "teams"
+      ? "teams"
+      : typeParam === "users"
+      ? "users"
+      : "all";
+  });
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [hasSearched, setHasSearched] = useState(false);
@@ -40,6 +53,20 @@ const SearchPage = () => {
 
     fetchInitialData();
   }, [isAuthenticated]);
+
+  // Effect to handle URL parameter changes
+  useEffect(() => {
+    const urlParams = new URLSearchParams(location.search);
+    const typeParam = urlParams.get("type");
+
+    if (typeParam === "teams") {
+      setSearchType("teams");
+    } else if (typeParam === "users") {
+      setSearchType("users");
+    } else if (typeParam === "all") {
+      setSearchType("all");
+    }
+  }, [location.search]);
 
   const handleSearch = async (e) => {
     e.preventDefault();
