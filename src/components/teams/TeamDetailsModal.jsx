@@ -216,6 +216,18 @@ const TeamDetailsModal = ({
   }, [team, user]);
 
   useEffect(() => {
+    if (team) {
+      console.log("TeamDetailsModal - Team data:", {
+        name: team.name,
+        current_members_count: team.current_members_count,
+        max_members: team.max_members,
+        max_members_type: typeof team.max_members,
+        members_length: team.members?.length,
+      });
+    }
+  }, [team]);
+
+  useEffect(() => {
     setIsModalVisible(isOpen);
   }, [isOpen]);
 
@@ -909,8 +921,11 @@ const TeamDetailsModal = ({
                       <div className="flex items-center space-x-1 text-sm">
                         <Users size={18} className="text-primary" />
                         <span>
-                          {team?.current_members_count || 0} /{" "}
-                          {team?.max_members} Members
+                          {team.current_members_count ??
+                            team.currentMembersCount ??
+                            team.members?.length ??
+                            0}{" "}
+                          / {team.max_members ?? team.maxMembers ?? "∞"} Members
                         </span>
                       </div>
                     </div>
