@@ -368,14 +368,14 @@ const UserDetailsModal = ({
                       </div>
                     )}
 
-                    {/* Debug info - add this right after the visibility indicator */}
+                    {/* Debug info - add this right after the visibility indicator
                     {import.meta.env.DEV && currentUser && (
                       <div className="mt-2 text-xs bg-blue-100 px-2 py-1 rounded text-black">
                         Debug Modal: CurrentUser={currentUser.id}, ModalUser=
                         {user?.id}, ShouldShow={shouldShowVisibilityIndicator()}
                         , IsPublic={isUserProfilePublic()}
                       </div>
-                    )}
+                    )} */}
                   </div>
                 </div>
 

@@ -672,14 +672,14 @@ const TeamDetailsModal = ({
             {/* Only show edit/delete buttons if user is authenticated AND creator */}
             {!isEditing && (
               <>
-                {/* Debug info for development only */}
+                {/* Debug info for development only
                 {import.meta.env.DEV && (
                   <span className="text-xs mr-2">
                     Auth: {isAuthenticated ? "✓" : "✗"} | User: {user?.id} |
                     Creator: {team?.creator_id} | Status:{" "}
                     {isCreator ? "✓ Creator" : "✗ Not Creator"}
                   </span>
-                )}
+                )} */}
 
                 {/* Edit button - only shown to authenticated creators */}
                 {isAuthenticated && isCreator && (
@@ -824,7 +824,7 @@ const TeamDetailsModal = ({
                     className="toggle-visibility"
                   />
 
-                  {/* Debug info for form data */}
+                  {/* Debug info for form data
                   {import.meta.env.DEV && (
                     <div className="text-xs bg-base-200 p-2 rounded">
                       Debug - Form Data:
@@ -839,7 +839,7 @@ const TeamDetailsModal = ({
                         )}
                       </pre>
                     </div>
-                  )}
+                  )} */}
 
                   <div className="form-control">
                     <label className="label">Maximum Members</label>
@@ -955,7 +955,7 @@ const TeamDetailsModal = ({
                         </>
                       )}
 
-                      {/* Debug info in development */}
+                      {/* Debug info in development
                       {import.meta.env.DEV && (
                         <span className="text-xs ml-2 opacity-50">
                           (Debug: stored isPublic={String(isPublic)},
@@ -965,7 +965,7 @@ const TeamDetailsModal = ({
                             : "undefined"}
                           )
                         </span>
-                      )}
+                      )} */}
                     </div>
                   )}
 
