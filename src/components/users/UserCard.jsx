@@ -1,9 +1,10 @@
 import React, { useState } from "react";
 import Card from "../common/Card";
 import Button from "../common/Button";
-import { Tag, MapPin, MessageCircle, Eye, EyeClosed } from "lucide-react";
+import { Tag, MessageCircle, Eye, EyeClosed } from "lucide-react";
 import UserDetailsModal from "./UserDetailsModal";
-import { useAuth } from "../../contexts/AuthContext"; // Add this import
+import { useAuth } from "../../contexts/AuthContext";
+import LocationDisplay from "../common/LocationDisplay";
 
 const UserCard = ({ user, onUpdate }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -123,13 +124,16 @@ const UserCard = ({ user, onUpdate }) => {
             </div>
           )}
 
+          {/* Location display with geocoding */}
           {(user.postal_code || user.postalCode) && (
-            <div className="flex items-center text-sm text-base-content/70">
-              <MapPin size={16} className="mr-1" />
-              <span>{user.postal_code || user.postalCode}</span>
-            </div>
+            <LocationDisplay
+              postalCode={user.postal_code || user.postalCode}
+              className="bg-base-200/50 py-1"
+              iconSize={16}
+            />
           )}
 
+          {/* Tags */}
           {user.tags && (
             <div className="flex items-center text-sm text-base-content/70">
               <Tag size={16} className="mr-1" />
