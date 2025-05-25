@@ -465,7 +465,7 @@ const Profile = () => {
         <Alert type="error" message={error} onClose={() => setError(null)} />
       )}
 
-      {/* Debug section - keep this in development for troubleshooting */}
+      {/* Debug section - keep this in development for troubleshooting
       {import.meta.env.DEV && (
         <Card className="mb-4">
           <div className="p-4">
@@ -507,7 +507,7 @@ const Profile = () => {
             </div>
           </div>
         </Card>
-      )}
+      )} */}
 
       <Card className="overflow-visible">
         {isEditing ? (

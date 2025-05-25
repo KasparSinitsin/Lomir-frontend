@@ -15,12 +15,12 @@ const TeamCard = ({ team, onUpdate, onDelete, isSearchResult = false }) => {
   const [teamData, setTeamData] = useState(team); // Store team data locally
   const { user, isAuthenticated } = useAuth();
 
-  // Add new debugging useEffect to track tag data
-  useEffect(() => {
-    console.log("TeamCard data for team:", teamData.name);
-    console.log("Tags data:", teamData.tags);
-    console.log("Tags JSON:", JSON.stringify(teamData.tags));
-  }, [teamData]);
+  // // Add new debugging useEffect to track tag data
+  // useEffect(() => {
+  //   console.log("TeamCard data for team:", teamData.name);
+  //   console.log("Tags data:", teamData.tags);
+  //   console.log("Tags JSON:", JSON.stringify(teamData.tags));
+  // }, [teamData]);
 
   // Get the team image or initial for the avatar
   const getTeamImage = () => {
@@ -49,14 +49,14 @@ const TeamCard = ({ team, onUpdate, onDelete, isSearchResult = false }) => {
     setTeamData(team);
   }, [team]);
 
-  useEffect(() => {
-    console.log("=== TEAMCARD TAG DEBUG ===");
-    console.log("Full teamData:", teamData);
-    console.log("teamData.tags:", teamData.tags);
-    console.log("teamData.tags type:", typeof teamData.tags);
-    console.log("teamData.tags length:", teamData.tags?.length);
-    console.log("=== END TAG DEBUG ===");
-  }, [teamData]);
+  // useEffect(() => {
+  //   console.log("=== TEAMCARD TAG DEBUG ===");
+  //   console.log("Full teamData:", teamData);
+  //   console.log("teamData.tags:", teamData.tags);
+  //   console.log("teamData.tags type:", typeof teamData.tags);
+  //   console.log("teamData.tags length:", teamData.tags?.length);
+  //   console.log("=== END TAG DEBUG ===");
+  // }, [teamData]);
 
   // Fetch the user's role in this team on component mount
   useEffect(() => {
@@ -77,20 +77,20 @@ const TeamCard = ({ team, onUpdate, onDelete, isSearchResult = false }) => {
     fetchUserRole();
   }, [user, teamData.id, isSearchResult]);
 
-  // Debugging useEffect to log team data:
-  useEffect(() => {
-    console.log("=== TEAMCARD DEBUG ===");
-    console.log("Team name:", team.name);
-    console.log("Original team prop:", team);
-    console.log("team.is_public:", team.is_public);
-    console.log("typeof team.is_public:", typeof team.is_public);
-    console.log("teamData.is_public:", teamData.is_public);
-    console.log("typeof teamData.is_public:", typeof teamData.is_public);
-    console.log("teamData.creator_id:", teamData.creator_id);
-    console.log("user.id:", user?.id);
-    console.log("isCreator:", isCreator);
-    console.log("=== END TEAMCARD DEBUG ===");
-  }, [team, teamData, isCreator, user]);
+  // // Debugging useEffect to log team data:
+  // useEffect(() => {
+  //   console.log("=== TEAMCARD DEBUG ===");
+  //   console.log("Team name:", team.name);
+  //   console.log("Original team prop:", team);
+  //   console.log("team.is_public:", team.is_public);
+  //   console.log("typeof team.is_public:", typeof team.is_public);
+  //   console.log("teamData.is_public:", teamData.is_public);
+  //   console.log("typeof teamData.is_public:", typeof teamData.is_public);
+  //   console.log("teamData.creator_id:", teamData.creator_id);
+  //   console.log("user.id:", user?.id);
+  //   console.log("isCreator:", isCreator);
+  //   console.log("=== END TEAMCARD DEBUG ===");
+  // }, [team, teamData, isCreator, user]);
 
   const openTeamDetails = () => {
     setIsModalOpen(true);
@@ -206,19 +206,19 @@ const TeamCard = ({ team, onUpdate, onDelete, isSearchResult = false }) => {
     return false;
   };
 
-  // For debugging in development
-  useEffect(() => {
-    if (import.meta.env.DEV) {
-      console.log("TeamCard visibility check:", {
-        teamName: teamData.name,
-        isPublic: teamData.is_public,
-        shouldShow: shouldShowVisibilityIcon(),
-        userId: user?.id,
-        creatorId: teamData.creator_id,
-        isCreator: isCreator,
-      });
-    }
-  }, [teamData, isPublic, user, isCreator]);
+  // // For debugging in development
+  // useEffect(() => {
+  //   if (import.meta.env.DEV) {
+  //     console.log("TeamCard visibility check:", {
+  //       teamName: teamData.name,
+  //       isPublic: teamData.is_public,
+  //       shouldShow: shouldShowVisibilityIcon(),
+  //       userId: user?.id,
+  //       creatorId: teamData.creator_id,
+  //       isCreator: isCreator,
+  //     });
+  //   }
+  // }, [teamData, isPublic, user, isCreator]);
 
   useEffect(() => {
     // Fetch complete team data on mount if tags are missing or malformed
@@ -323,8 +323,8 @@ const TeamCard = ({ team, onUpdate, onDelete, isSearchResult = false }) => {
       (tag) => tag && (tag.name || typeof tag === "string")
     );
 
-    // Add extra debugging
-    console.log("Final processed displayTags:", displayTags);
+    // // Add extra debugging
+    // console.log("Final processed displayTags:", displayTags);
 
     return displayTags;
   };
@@ -418,14 +418,14 @@ const TeamCard = ({ team, onUpdate, onDelete, isSearchResult = false }) => {
             return null;
           })()}
 
-          {/* Debug info in development */}
+          {/* Debug info in development
           {import.meta.env.DEV && (
             <div className="text-xs bg-yellow-100 px-2 py-1 rounded text-black">
               Debug: Creator={isCreator ? "✓" : "✗"} | Show=
               {shouldShowVisibilityIcon() ? "✓" : "✗"} | UserID={user?.id} |
               CreatorID={teamData.creator_id}
             </div>
-          )}
+          )} */}
         </div>
 
         <div className="mt-auto flex justify-between items-center">

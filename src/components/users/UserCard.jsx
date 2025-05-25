@@ -137,14 +137,14 @@ const UserCard = ({ user, onUpdate }) => {
             </div>
           )}
 
-          {/* Debug info - add this AFTER the existing elements in the flex container */}
+          {/* Debug info - add this AFTER the existing elements in the flex container
           {import.meta.env.DEV && currentUser && (
             <div className="text-xs bg-blue-100 px-2 py-1 rounded text-black">
               Debug: CurrentUser={currentUser.id}, CardUser={user.id},
               ShouldShow={shouldShowVisibilityIcon()}, IsPublic=
               {isUserProfilePublic()}
             </div>
-          )}
+          )} */}
         </div>
 
         <div className="mt-auto">
