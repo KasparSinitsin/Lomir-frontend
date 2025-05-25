@@ -337,8 +337,11 @@ const TeamCard = ({ team, onUpdate, onDelete, isSearchResult = false }) => {
           <div className="flex items-center space-x-1 text-sm">
             <Users size={16} className="text-primary" />
             <span>
-              {teamData.current_members_count ?? 1} /{" "}
-              {teamData.max_members ?? "∞"} Members
+              {teamData.current_members_count ??
+                teamData.currentMembersCount ??
+                teamData.members?.length ??
+                0}{" "}
+              / {teamData.max_members ?? teamData.maxMembers ?? "∞"} Members
             </span>
           </div>
         }
