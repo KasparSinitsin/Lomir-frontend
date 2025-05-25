@@ -42,6 +42,16 @@ const TeamCard = ({ team, onUpdate, onDelete, isSearchResult = false }) => {
     setTeamData(team);
   }, [team]);
 
+  
+  useEffect(() => {
+  console.log("=== TEAMCARD TAG DEBUG ===");
+  console.log("Full teamData:", teamData);
+  console.log("teamData.tags:", teamData.tags);
+  console.log("teamData.tags type:", typeof teamData.tags);
+  console.log("teamData.tags length:", teamData.tags?.length);
+  console.log("=== END TAG DEBUG ===");
+}, [teamData]);
+  
   // Fetch the user's role in this team on component mount
   useEffect(() => {
     const fetchUserRole = async () => {
