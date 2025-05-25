@@ -5,7 +5,7 @@ import { teamService } from "../../services/teamService";
 import TagSelector from "../tags/TagSelector";
 import Button from "../common/Button";
 import Alert from "../common/Alert";
-import TagDisplay from '../common/TagDisplay';
+import TagDisplay from "../common/TagDisplay";
 import { X, Edit, Users, Trash2, Eye, EyeClosed, Tag } from "lucide-react";
 import IconToggle from "../common/IconToggle";
 import axios from "axios";
@@ -197,7 +197,9 @@ const TeamDetailsModal = ({
       console.error("Error fetching team details:", err);
       setNotification({
         type: "error",
-        message: "Failed to load team details. Please try again.",
+        message:
+          "Server error: " +
+          (err.response?.data?.error || err.message || "Unknown error"),
       });
     } finally {
       setLoading(false);
@@ -276,6 +278,18 @@ const TeamDetailsModal = ({
     }
 
     return false;
+  };
+
+  // Helper function to determine if a member profile should be anonymized
+  const shouldAnonymizeMember = (member) => {
+    // Don't anonymize the current user's own profile
+    if (user && (member.user_id === user.id || member.userId === user.id)) {
+      return false;
+    }
+
+    // Check if the member has a private profile
+    // Look for is_public property in both camelCase and snake_case formats
+    return member.is_public === false || member.isPublic === false;
   };
 
   const handleClose = useCallback(() => {
@@ -940,55 +954,63 @@ const TeamDetailsModal = ({
                     </div>
                   )}
 
-{/* Team Tags - Enhanced Display */}
-<div className="mb-6">
-  <h3 className="font-semibold text-lg mb-3 flex items-center">
-    <Tag size={18} className="mr-2 text-primary" />
-    Team Focus Areas
-  </h3>
-  
-  {team?.tags?.length > 0 ? (
-    <div className="space-y-3">
-      {/* Group tags by category if available */}
-      {(() => {
-        const tagsByCategory = {};
-        team.tags.forEach(tag => {
-          const category = tag.category || 'Other';
-          if (!tagsByCategory[category]) {
-            tagsByCategory[category] = [];
-          }
-          tagsByCategory[category].push(tag);
-        });
+                  {/* Team Tags - Enhanced Display */}
+                  <div className="mb-6">
+                    <h3 className="font-semibold text-lg mb-3 flex items-center">
+                      <Tag size={18} className="mr-2 text-primary" />
+                      Team Focus Areas
+                    </h3>
 
-        return Object.entries(tagsByCategory).map(([category, categoryTags]) => (
-          <div key={category} className="bg-base-200/30 rounded-lg p-3">
-            <h4 className="font-medium text-sm text-base-content/80 mb-2">
-              {category}
-            </h4>
-            <TagDisplay 
-              tags={categoryTags}
-              size="md"
-              variant="primary"
-              showCategory={false}
-            />
-          </div>
-        ));
-      })()}
-    </div>
-  ) : (
-    <div className="bg-base-200/20 rounded-lg p-4 text-center">
-      <Tag size={24} className="mx-auto mb-2 text-base-content/40" />
-      <p className="text-sm text-base-content/60">
-        No focus areas specified yet
-      </p>
-      {isCreator && !isEditing && (
-        <p className="text-xs text-base-content/50 mt-1">
-          Add tags to help others find your team
-        </p>
-      )}
-    </div>
-  )}
-</div>
+                    {team?.tags?.length > 0 ? (
+                      <div className="space-y-3">
+                        {/* Group tags by category if available */}
+                        {(() => {
+                          const tagsByCategory = {};
+                          team.tags.forEach((tag) => {
+                            const category = tag.category || "Other";
+                            if (!tagsByCategory[category]) {
+                              tagsByCategory[category] = [];
+                            }
+                            tagsByCategory[category].push(tag);
+                          });
+
+                          return Object.entries(tagsByCategory).map(
+                            ([category, categoryTags]) => (
+                              <div
+                                key={category}
+                                className="bg-base-200/30 rounded-lg p-3"
+                              >
+                                <h4 className="font-medium text-sm text-base-content/80 mb-2">
+                                  {category}
+                                </h4>
+                                <TagDisplay
+                                  tags={categoryTags}
+                                  size="md"
+                                  variant="primary"
+                                  showCategory={false}
+                                />
+                              </div>
+                            )
+                          );
+                        })()}
+                      </div>
+                    ) : (
+                      <div className="bg-base-200/20 rounded-lg p-4 text-center">
+                        <Tag
+                          size={24}
+                          className="mx-auto mb-2 text-base-content/40"
+                        />
+                        <p className="text-sm text-base-content/60">
+                          No focus areas specified yet
+                        </p>
+                        {isCreator && !isEditing && (
+                          <p className="text-xs text-base-content/50 mt-1">
+                            Add tags to help others find your team
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
 
                   {/* Members */}
                   {team?.members && team.members.length > 0 && (
@@ -999,15 +1021,21 @@ const TeamDetailsModal = ({
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         {team.members.map((member) => {
                           console.log("Member data:", member); // Debug info
+
                           // Check which property is available (userId or user_id)
                           const memberId = member.userId || member.user_id;
+
+                          // Determine if this member should be anonymized
+                          const anonymize = shouldAnonymizeMember(member);
+
                           return (
                             <div
                               key={memberId}
                               className="flex items-start bg-base-200 rounded-xl shadow p-4 gap-4"
                             >
                               <div className="avatar">
-                                {member.avatarUrl || member.avatar_url ? (
+                                {!anonymize &&
+                                (member.avatarUrl || member.avatar_url) ? (
                                   <div className="rounded-full w-12 h-12">
                                     <img
                                       src={
@@ -1028,9 +1056,10 @@ const TeamDetailsModal = ({
                                         const span =
                                           document.createElement("span");
                                         span.className = "text-lg";
-                                        span.textContent =
-                                          (member.username || "").charAt(0) ||
-                                          "?";
+                                        span.textContent = anonymize
+                                          ? "PP"
+                                          : (member.username || "").charAt(0) ||
+                                            "?";
                                         parentDiv.appendChild(span);
                                       }}
                                     />
@@ -1038,7 +1067,10 @@ const TeamDetailsModal = ({
                                 ) : (
                                   <div className="placeholder bg-primary text-primary-content rounded-full w-12 h-12">
                                     <span className="text-lg">
-                                      {(member.username || "").charAt(0) || "?"}
+                                      {anonymize
+                                        ? "PP"
+                                        : (member.username || "").charAt(0) ||
+                                          "?"}
                                     </span>
                                   </div>
                                 )}
@@ -1046,7 +1078,9 @@ const TeamDetailsModal = ({
 
                               <div className="flex flex-col">
                                 <span className="font-medium text-primary">
-                                  {member.firstName && member.lastName
+                                  {anonymize
+                                    ? "Private Profile"
+                                    : member.firstName && member.lastName
                                     ? `${member.firstName} ${member.lastName}`
                                     : member.first_name && member.last_name
                                     ? `${member.first_name} ${member.last_name}`
@@ -1055,7 +1089,7 @@ const TeamDetailsModal = ({
                                 <span className="text-xs text-base-content/70">
                                   {member.role}
                                 </span>
-                                {member.tags?.length > 0 && (
+                                {!anonymize && member.tags?.length > 0 && (
                                   <div className="flex flex-wrap gap-1 mt-1">
                                     {member.tags.map((tag) => (
                                       <span
