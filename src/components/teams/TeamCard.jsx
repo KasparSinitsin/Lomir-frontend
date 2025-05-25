@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import Card from "../common/Card";
 import Button from "../common/Button";
-import { Users, MapPin, Trash2, EyeClosed, EyeIcon, Tag } from "lucide-react"; 
+import { Users, MapPin, Trash2, EyeClosed, EyeIcon, Tag } from "lucide-react";
 import TeamDetailsModal from "./TeamDetailsModal";
 import { teamService } from "../../services/teamService";
 import { useAuth } from "../../contexts/AuthContext";
@@ -14,6 +14,13 @@ const TeamCard = ({ team, onUpdate, onDelete, isSearchResult = false }) => {
   const [userRole, setUserRole] = useState(null);
   const [teamData, setTeamData] = useState(team); // Store team data locally
   const { user, isAuthenticated } = useAuth();
+
+  // Add new debugging useEffect to track tag data
+  useEffect(() => {
+    console.log("TeamCard data for team:", teamData.name);
+    console.log("Tags data:", teamData.tags);
+    console.log("Tags JSON:", JSON.stringify(teamData.tags));
+  }, [teamData]);
 
   // Get the team image or initial for the avatar
   const getTeamImage = () => {
@@ -42,16 +49,15 @@ const TeamCard = ({ team, onUpdate, onDelete, isSearchResult = false }) => {
     setTeamData(team);
   }, [team]);
 
-  
   useEffect(() => {
-  console.log("=== TEAMCARD TAG DEBUG ===");
-  console.log("Full teamData:", teamData);
-  console.log("teamData.tags:", teamData.tags);
-  console.log("teamData.tags type:", typeof teamData.tags);
-  console.log("teamData.tags length:", teamData.tags?.length);
-  console.log("=== END TAG DEBUG ===");
-}, [teamData]);
-  
+    console.log("=== TEAMCARD TAG DEBUG ===");
+    console.log("Full teamData:", teamData);
+    console.log("teamData.tags:", teamData.tags);
+    console.log("teamData.tags type:", typeof teamData.tags);
+    console.log("teamData.tags length:", teamData.tags?.length);
+    console.log("=== END TAG DEBUG ===");
+  }, [teamData]);
+
   // Fetch the user's role in this team on component mount
   useEffect(() => {
     const fetchUserRole = async () => {
@@ -214,6 +220,115 @@ const TeamCard = ({ team, onUpdate, onDelete, isSearchResult = false }) => {
     }
   }, [teamData, isPublic, user, isCreator]);
 
+  useEffect(() => {
+    // Fetch complete team data on mount if tags are missing or malformed
+    const fetchCompleteTeamData = async () => {
+      if (teamData && teamData.id) {
+        try {
+          // Skip this if we already have properly formatted tags
+          if (
+            teamData.tags &&
+            Array.isArray(teamData.tags) &&
+            teamData.tags.length > 0 &&
+            teamData.tags.every((tag) => tag.name || typeof tag === "string")
+          ) {
+            console.log(
+              "Team already has properly formatted tags, skipping fetch"
+            );
+            return;
+          }
+
+          console.log("Fetching complete team data to get proper tags");
+          const response = await teamService.getTeamById(teamData.id);
+          if (response && response.data) {
+            console.log("Fetched complete team data:", response.data);
+            // Only update if we got tags in the response
+            if (response.data.tags && Array.isArray(response.data.tags)) {
+              setTeamData((prev) => ({
+                ...prev,
+                tags: response.data.tags,
+              }));
+            }
+          }
+        } catch (error) {
+          console.error("Error fetching complete team data:", error);
+        }
+      }
+    };
+
+    fetchCompleteTeamData();
+  }, [teamData.id]);
+
+  // Helper function to extract and format tags for display
+  const getDisplayTags = () => {
+    let displayTags = [];
+
+    try {
+      if (teamData.tags_json) {
+        // If tags_json is present (from API), try to parse it
+        const tagStrings = teamData.tags_json.split(",");
+        displayTags = tagStrings
+          .filter((tagStr) => tagStr && tagStr.trim() !== "null")
+          .map((tagStr) => {
+            try {
+              return JSON.parse(tagStr.trim());
+            } catch (e) {
+              console.warn("Failed to parse tag JSON:", tagStr);
+              return null;
+            }
+          })
+          .filter((tag) => tag !== null);
+      } else if (teamData.tags) {
+        // If tags is already an array, use it
+        if (Array.isArray(teamData.tags)) {
+          // Map to ensure consistent structure with name property
+          displayTags = teamData.tags.map((tag) => {
+            // Handle different tag property formats
+            if (typeof tag === "string") {
+              return { name: tag };
+            } else if (tag && typeof tag === "object") {
+              // Ensure tag has a name property
+              return {
+                id:
+                  tag.id ||
+                  tag.tag_id ||
+                  tag.tagId ||
+                  Math.random().toString(36).substr(2, 9),
+                name: tag.name || (typeof tag.tag === "string" ? tag.tag : ""),
+                category: tag.category || tag.supercategory || "",
+              };
+            }
+            return tag;
+          });
+        }
+        // If tags is a string, try to parse it
+        else if (typeof teamData.tags === "string") {
+          try {
+            displayTags = JSON.parse(teamData.tags);
+          } catch (e) {
+            // If not valid JSON, split by comma
+            displayTags = teamData.tags
+              .split(",")
+              .map((name) => ({ name: name.trim() }));
+          }
+        }
+      }
+    } catch (e) {
+      console.error("Error processing tags for display:", e);
+      displayTags = [];
+    }
+
+    // Final cleanup to ensure all tags have a name property
+    displayTags = displayTags.filter(
+      (tag) => tag && (tag.name || typeof tag === "string")
+    );
+
+    // Add extra debugging
+    console.log("Final processed displayTags:", displayTags);
+
+    return displayTags;
+  };
+
   return (
     <>
       <Card
@@ -270,15 +385,35 @@ const TeamCard = ({ team, onUpdate, onDelete, isSearchResult = false }) => {
           )}
 
           {/* Team Tags Display */}
-{teamData.tags && teamData.tags.length > 0 && (
-  <div className="flex items-center text-sm text-base-content/70 bg-base-200/50 px-2 py-1 rounded-full">
-    <Tag size={16} className="mr-1 text-base-content/70" />
-    <span className="truncate">
-      {teamData.tags.slice(0, 2).map(tag => tag.name).join(', ')}
-      {teamData.tags.length > 2 && ` +${teamData.tags.length - 2}`}
-    </span>
-  </div>
-)}
+          {(() => {
+            const displayTags = getDisplayTags();
+
+            if (displayTags && displayTags.length > 0) {
+              return (
+                <div className="flex items-center text-sm text-base-content/70 bg-base-200/50 py-1 rounded-full">
+                  <Tag size={16} className="mr-1 text-base-content/70" />
+                  <span className="truncate">
+                    {displayTags.slice(0, 2).map((tag, index) => {
+                      // Handle different possible tag formats
+                      const tagName =
+                        typeof tag === "string"
+                          ? tag
+                          : tag.name || tag.tag || "";
+
+                      return (
+                        <span key={index}>
+                          {index > 0 ? ", " : ""}
+                          {tagName}
+                        </span>
+                      );
+                    })}
+                    {displayTags.length > 2 && ` +${displayTags.length - 2}`}
+                  </span>
+                </div>
+              );
+            }
+            return null;
+          })()}
 
           {/* Debug info in development */}
           {import.meta.env.DEV && (
