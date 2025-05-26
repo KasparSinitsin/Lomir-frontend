@@ -600,7 +600,7 @@ const TeamDetailsModal = ({
     }
 
     return (
-      <div className="mt-6">
+      <div className="pt-6">
         <Button
           variant="primary"
           onClick={handleApplyToJoin}
@@ -1030,8 +1030,8 @@ const TeamDetailsModal = ({
 
                   {/* Members */}
                   {team?.members && team.members.length > 0 && (
-                    <div>
-                      <h2 className="text-xl font-semibold mt-6 mb-4">
+                    <div className="mb-6">
+                      <h2 className="text-xl font-semibold mb-4">
                         Team Members
                       </h2>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
