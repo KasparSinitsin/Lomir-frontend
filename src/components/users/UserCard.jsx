@@ -130,6 +130,8 @@ const UserCard = ({ user, onUpdate }) => {
               postalCode={user.postal_code || user.postalCode}
               className="bg-base-200/50 py-1"
               iconSize={16}
+              showPostalCode={true} // Show postal code in the display
+              displayType="detailed" 
             />
           )}
 

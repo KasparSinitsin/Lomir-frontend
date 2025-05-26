@@ -399,9 +399,11 @@ const UserDetailsModal = ({
                       <div>
                         {user?.postal_code || user?.postalCode ? (
                           <LocationDisplay
-                            postalCode={user?.postal_code || user?.postalCode}
-                            showIcon={false}
-                            className="text-base font-normal"
+                            postalCode={user.postal_code || user.postalCode}
+                            className="bg-base-200/50 py-1"
+                            showIcon={false} // Hide icon in modal
+                            showPostalCode={true} // Show postal code in the display
+                            displayType="detailed"
                           />
                         ) : (
                           <p>Not specified</p>
