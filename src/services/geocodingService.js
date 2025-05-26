@@ -33,49 +33,50 @@ class GeocodingService {
   async getLocationFromPostalCode(postalCode, countryCode = null) {
     if (!postalCode) return null;
 
-    // Auto-detect country code if not provided
-    const detectedCountryCode =
-      countryCode || this.detectCountryCode(postalCode);
-
-    // Check cache first
+    const detectedCountryCode = countryCode || this.detectCountryCode(postalCode);
     const cacheKey = `${postalCode}-${detectedCountryCode}`;
+    
     if (this.cache.has(cacheKey)) {
       return this.cache.get(cacheKey);
     }
 
     try {
-      // Use your backend API instead of direct Nominatim call
-      const response = await api.get(
-        `/api/geocoding/postal-code/${postalCode}`,
-        {
-          params: { country: detectedCountryCode },
-        }
-      );
+      const response = await api.get(`/api/geocoding/postal-code/${postalCode}`, {
+        params: { country: detectedCountryCode },
+      });
 
       if (response.data) {
         const locationInfo = {
-          // Display information
+          // Basic information
           city: response.data.city,
           state: response.data.state,
           country: response.data.country,
+          
+          // Enhanced detailed information
+          district: response.data.district,        // Charlottenburg, Schweinheim
+          suburb: response.data.suburb,            // Neighborhood level
+          borough: response.data.borough,          // Borough/Bezirk
+          cityDistrict: response.data.cityDistrict, // City district
+          
+          // Multiple display options
           displayName: response.data.displayName,
-
-          // Map coordinates for future use
+          shortDisplayName: this.formatShortDisplayName(response.data),
+          detailedDisplayName: this.formatDetailedDisplayName(response.data),
+          
+          // Map coordinates
           latitude: response.data.latitude,
           longitude: response.data.longitude,
-
-          // Additional useful data
+          
+          // Additional data
           importance: response.data.importance,
           osmType: response.data.osmType,
+          
+          // Raw address components for debugging
+          rawAddress: response.data.rawAddress
         };
 
-        // Cache the result for 1 hour
         this.cache.set(cacheKey, locationInfo);
-
-        // Set cache expiry
-        setTimeout(() => {
-          this.cache.delete(cacheKey);
-        }, 60 * 60 * 1000); // 1 hour
+        setTimeout(() => this.cache.delete(cacheKey), 60 * 60 * 1000);
 
         return locationInfo;
       }
@@ -86,6 +87,8 @@ class GeocodingService {
       return null;
     }
   }
+
+
 
   formatDisplayName(address) {
     const city =
@@ -101,6 +104,49 @@ class GeocodingService {
     }
 
     return "";
+  }
+
+  // Format detailed display name with district/neighborhood
+  formatDetailedDisplayName(addressData) {
+    const components = [];
+    
+    // Add district/neighborhood if available
+    if (addressData.district) {
+      components.push(addressData.district);
+    } else if (addressData.suburb) {
+      components.push(addressData.suburb);
+    } else if (addressData.borough) {
+      components.push(addressData.borough);
+    } else if (addressData.cityDistrict) {
+      components.push(addressData.cityDistrict);
+    }
+    
+    // Add city
+    if (addressData.city) {
+      components.push(addressData.city);
+    }
+    
+    // Add country
+    if (addressData.country) {
+      components.push(addressData.country);
+    }
+    
+    return components.join(", ");
+  }
+
+  // Format short display name (city, country)
+  formatShortDisplayName(addressData) {
+    const components = [];
+    
+    if (addressData.city) {
+      components.push(addressData.city);
+    }
+    
+    if (addressData.country) {
+      components.push(addressData.country);
+    }
+    
+    return components.join(", ");
   }
 
   // Clear cache method for testing
