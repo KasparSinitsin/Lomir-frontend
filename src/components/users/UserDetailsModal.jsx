@@ -84,17 +84,9 @@ const UserDetailsModal = ({
         lastName: userData.last_name || userData.lastName || "",
         bio: userData.bio || "",
         postalCode: userData.postal_code || userData.postalCode || "",
-        selectedTags: userData.tags?.map((tag) => tag.id) || [],
-        tagExperienceLevels:
-          userData.tags?.reduce((acc, tag) => {
-            acc[tag.id] = tag.experience_level || "beginner";
-            return acc;
-          }, {}) || {},
-        tagInterestLevels:
-          userData.tags?.reduce((acc, tag) => {
-            acc[tag.id] = tag.interest_level || "medium";
-            return acc;
-          }, {}) || {},
+        selectedTags: [], // Since tags are now strings, we can't easily convert back to IDs
+        tagExperienceLevels: {},
+        tagInterestLevels: {},
       });
     } catch (err) {
       console.error("Error fetching user details:", err);
@@ -381,7 +373,7 @@ const UserDetailsModal = ({
                 </div>
 
                 {(user?.bio || user?.biography) && (
-                  <div className="bg-white/30 p-4 rounded-lg shadow-inner">
+                  <div>
                     <p className="text-base-content/90">
                       {user?.bio || user?.biography}
                     </p>
@@ -422,7 +414,7 @@ const UserDetailsModal = ({
                     <h3 className="font-medium">Skills & Interests</h3>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    {user?.tags && user.tags.length > 0 ? (
+                    {user?.tags && user.tags.trim() ? (
                       typeof user.tags === "string" ? (
                         // Handle tags as a string (comma-separated list)
                         user.tags.split(",").map((tag, index) => (
@@ -434,7 +426,7 @@ const UserDetailsModal = ({
                           </span>
                         ))
                       ) : (
-                        // Handle tags as an array of objects
+                        // Handle tags as an array of objects (fallback)
                         user.tags.map((tag) => (
                           <span
                             key={typeof tag === "object" ? tag.id : tag}
