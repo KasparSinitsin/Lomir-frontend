@@ -10,6 +10,7 @@ const LocationDisplay = ({
   iconSize = 16,
   showLoadingSpinner = true,
   displayType = "detailed", // "detailed", "short", "city-only"
+  showPostalCode = false, // New prop to show/hide postal code
 }) => {
   const { location, loading, error } = useLocation(postalCode, countryCode);
 
@@ -21,20 +22,30 @@ const LocationDisplay = ({
   const getDisplayText = () => {
     if (!location) return postalCode;
 
+    let displayText;
     switch (displayType) {
       case "detailed":
-        return (
-          location.detailedDisplayName || location.displayName || postalCode
-        );
+        displayText =
+          location.detailedDisplayName || location.displayName || postalCode;
+        break;
       case "short":
-        return location.shortDisplayName || location.displayName || postalCode;
+        displayText =
+          location.shortDisplayName || location.displayName || postalCode;
+        break;
       case "city-only":
-        return location.city || postalCode;
+        displayText = location.city || postalCode;
+        break;
       default:
-        return (
-          location.detailedDisplayName || location.displayName || postalCode
-        );
+        displayText =
+          location.detailedDisplayName || location.displayName || postalCode;
     }
+
+    // Add postal code to the display text if requested
+    if (showPostalCode && postalCode) {
+      return `${postalCode} ${displayText}`;
+    }
+
+    return displayText;
   };
 
   const displayText = getDisplayText();

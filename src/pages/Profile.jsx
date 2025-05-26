@@ -744,9 +744,10 @@ const Profile = () => {
                       label="Location"
                       value={
                         <LocationDisplay
-                          postalCode={user.postalCode || user.postal_code}
-                          showIcon={false}
-                          className=""
+                          postalCode={user.postal_code || user.postalCode}
+                          showIcon={false} // Hide icon here
+                          showPostalCode={true} // Show postal code in the display
+                          displayType="detailed"
                         />
                       }
                       icon={<MapPin size={16} />}

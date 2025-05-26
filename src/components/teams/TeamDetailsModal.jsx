@@ -6,6 +6,7 @@ import TagSelector from "../tags/TagSelector";
 import Button from "../common/Button";
 import Alert from "../common/Alert";
 import TagDisplay from "../common/TagDisplay";
+import LocationDisplay from "../common/LocationDisplay";
 import { X, Edit, Users, Trash2, Eye, EyeClosed, Tag } from "lucide-react";
 import IconToggle from "../common/IconToggle";
 import axios from "axios";
@@ -1046,7 +1047,7 @@ const TeamDetailsModal = ({
                           return (
                             <div
                               key={memberId}
-                              className="flex items-start bg-base-200 rounded-xl shadow p-4 gap-4"
+                              className="flex items-start bg-green-50 rounded-xl shadow p-4 gap-4"
                             >
                               <div className="avatar">
                                 {!anonymize &&
@@ -1101,9 +1102,31 @@ const TeamDetailsModal = ({
                                     ? `${member.first_name} ${member.last_name}`
                                     : member.username}
                                 </span>
-                                <span className="text-xs text-base-content/70">
-                                  {member.role}
-                                </span>
+                                <div className="flex items-center">
+                                  <span className="text-xs text-base-content/70">
+                                    {member.role}
+                                  </span>
+                                  {/* Add location display if the member has a postal code */}
+                                  {!anonymize &&
+                                    (member.postal_code ||
+                                      member.postalCode) && (
+                                      <>
+                                        <span className="text-xs text-base-content/70 mx-1">
+                                          •
+                                        </span>
+                                        <LocationDisplay
+                                          postalCode={
+                                            member.postal_code ||
+                                            member.postalCode
+                                          }
+                                          showIcon={false}
+                                          displayType="short"
+                                          className="text-xs text-base-content/70"
+                                        />
+                                      </>
+                                    )}
+                                </div>
+
                                 {!anonymize && member.tags?.length > 0 && (
                                   <div className="flex flex-wrap gap-1 mt-1">
                                     {member.tags.map((tag) => (
