@@ -1,59 +1,78 @@
-import axios from "axios";
+import api from "./api";
 
 class GeocodingService {
   constructor() {
-    this.baseURL = "https://nominatim.openstreetmap.org";
     this.cache = new Map(); // Simple in-memory cache
   }
 
-  async getLocationFromPostalCode(postalCode, countryCode = "DE") {
+  // Helper function to detect country code from postal code format
+  detectCountryCode(postalCode) {
+    if (!postalCode) return "DE";
+
+    const code = postalCode.toString().trim();
+
+    if (/^\d{5}$/.test(code)) return "DE"; // German: 12345
+    if (/^\d{4}$/.test(code)) return "NL"; // Dutch: 1234
+    if (/^[A-Z]{1,2}\d[A-Z\d]?\s?\d[A-Z]{2}$/i.test(code)) return "GB"; // UK: SW1A 1AA
+    if (/^\d{2}-\d{3}$/.test(code)) return "PL"; // Polish: 12-345
+    if (/^\d{5}-\d{3}$/.test(code)) return "PT"; // Portuguese: 12345-123
+    if (/^\d{3}\s\d{2}$/.test(code)) return "SE"; // Swedish: 123 45
+    if (/^\d{4}\s[A-Z]{2}$/i.test(code)) return "NO"; // Norwegian: 1234 AB
+    if (/^\d{4}$/.test(code)) return "DK"; // Danish: 1234
+    if (/^\d{4}$/.test(code)) return "AT"; // Austrian: 1234
+    if (/^\d{4}$/.test(code)) return "CH"; // Swiss: 1234
+    if (/^\d{5}$/.test(code)) return "IT"; // Italian: 12345
+    if (/^\d{5}$/.test(code)) return "FR"; // French: 12345
+    if (/^\d{5}$/.test(code)) return "ES"; // Spanish: 12345
+    if (/^\d{4}$/.test(code)) return "BE"; // Belgian: 1234
+    if (/^\d{2}\s\d{3}$/.test(code)) return "CZ"; // Czech: 12 345
+
+    return "DE"; // Default fallback
+  }
+
+  async getLocationFromPostalCode(postalCode, countryCode = null) {
     if (!postalCode) return null;
 
+    // Auto-detect country code if not provided
+    const detectedCountryCode =
+      countryCode || this.detectCountryCode(postalCode);
+
     // Check cache first
-    const cacheKey = `${postalCode}-${countryCode}`;
+    const cacheKey = `${postalCode}-${detectedCountryCode}`;
     if (this.cache.has(cacheKey)) {
       return this.cache.get(cacheKey);
     }
 
     try {
-      const response = await axios.get(`${this.baseURL}/search`, {
-        params: {
-          postalcode: postalCode,
-          countrycodes: countryCode,
-          format: "json",
-          limit: 1,
-          addressdetails: 1,
-        },
-        headers: {
-          "User-Agent": "Lomir-App/1.0", // Required by Nominatim
-        },
-      });
+      // Use your backend API instead of direct Nominatim call
+      const response = await api.get(
+        `/api/geocoding/postal-code/${postalCode}`,
+        {
+          params: { country: detectedCountryCode },
+        }
+      );
 
-      if (response.data && response.data.length > 0) {
-        const result = response.data[0];
-        const address = result.address;
-
+      if (response.data) {
         const locationInfo = {
           // Display information
-          city:
-            address.city || address.town || address.village || address.hamlet,
-          state: address.state,
-          country: address.country,
-          displayName: this.formatDisplayName(address),
+          city: response.data.city,
+          state: response.data.state,
+          country: response.data.country,
+          displayName: response.data.displayName,
 
           // Map coordinates for future use
-          latitude: parseFloat(result.lat),
-          longitude: parseFloat(result.lon),
+          latitude: response.data.latitude,
+          longitude: response.data.longitude,
 
           // Additional useful data
-          importance: result.importance,
-          osmType: result.osm_type,
+          importance: response.data.importance,
+          osmType: response.data.osmType,
         };
 
         // Cache the result for 1 hour
         this.cache.set(cacheKey, locationInfo);
 
-        // Optional: Set cache expiry (for production)
+        // Set cache expiry
         setTimeout(() => {
           this.cache.delete(cacheKey);
         }, 60 * 60 * 1000); // 1 hour
