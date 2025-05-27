@@ -53,6 +53,19 @@ export const teamService = {
     }
   },
 
+  applyToJoinTeam: async (teamId, applicationData) => {
+    try {
+      const response = await api.post(
+        `/api/teams/${teamId}/apply`,
+        applicationData
+      );
+      return response.data;
+    } catch (error) {
+      console.error(`Error applying to join team ${teamId}:`, error);
+      throw error;
+    }
+  },
+
   // Delete a team
   deleteTeam: async (teamId) => {
     try {
