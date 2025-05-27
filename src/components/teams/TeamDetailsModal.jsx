@@ -387,154 +387,147 @@ const TeamDetailsModal = ({
     return Object.keys(errors).length === 0;
   };
 
-  const handleSubmit = async (e) => {
-    if (e) e.preventDefault();
+const handleSubmit = async (e) => {
+  if (e) e.preventDefault();
 
-    // Prevent non-creators from submitting form updates
-    if (!isCreator) {
-      setNotification({
-        type: "error",
-        message: "You do not have permission to edit this team.",
-      });
-      return;
-    }
+  // Prevent non-creators from submitting form updates
+  if (!isCreator) {
+    setNotification({
+      type: "error",
+      message: "You do not have permission to edit this team.",
+    });
+    return;
+  }
 
-    if (!validateForm()) {
-      return;
-    }
+  if (!validateForm()) {
+    return;
+  }
 
-    try {
-      setLoading(true);
-      setNotification({ type: null, message: null });
+  try {
+    setLoading(true);
+    setNotification({ type: null, message: null });
 
-      // Log the form data before submission
-      console.log("Form data before submission:", formData);
+    console.log("Form data before submission:", formData);
 
-      // Ensure isPublic is a proper boolean
-      const isPublicBoolean = formData.isPublic === true;
-      console.log(
-        "Visibility value computed:",
-        isPublicBoolean,
-        typeof isPublicBoolean
+    const isPublicBoolean = formData.isPublic === true;
+    console.log("Visibility value computed:", isPublicBoolean, typeof isPublicBoolean);
+
+    // Prepare the submission data - PRESERVE EXISTING IMAGE URL
+    const submissionData = {
+      name: formData.name.trim(),
+      description: formData.description.trim(),
+      is_public: isPublicBoolean,
+      max_members: formData.maxMembers,
+      // ✅ FIX: Always include the existing teamavatar_url to preserve it
+      teamavatar_url: formData.teamavatarUrl || team?.teamavatar_url || team?.teamavatarUrl || null,
+    };
+
+    // Handle avatar file upload if a new file was selected
+    if (formData.teamavatarFile) {
+      // Create FormData for file upload
+      const avatarFormData = new FormData();
+      avatarFormData.append("file", formData.teamavatarFile);
+      avatarFormData.append(
+        "upload_preset",
+        import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET
       );
 
-      // Prepare the submission data first
-      const submissionData = {
-        name: formData.name.trim(),
-        description: formData.description.trim(),
-        is_public: isPublicBoolean, // Force it to be a boolean
-        max_members: formData.maxMembers,
-      };
-
-      // Handle avatar file upload if a new file was selected
-      if (formData.teamavatarFile) {
-        // Create FormData for file upload
-        const avatarFormData = new FormData();
-        avatarFormData.append("file", formData.teamavatarFile);
-        avatarFormData.append(
-          "upload_preset",
-          import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET
+      try {
+        // Upload to Cloudinary
+        const cloudinaryResponse = await axios.post(
+          `https://api.cloudinary.com/v1_1/${
+            import.meta.env.VITE_CLOUDINARY_CLOUD_NAME
+          }/image/upload`,
+          avatarFormData,
+          {
+            headers: {
+              "Content-Type": "multipart/form-data",
+            },
+          }
         );
 
-        try {
-          // Upload to Cloudinary
-          const cloudinaryResponse = await axios.post(
-            `https://api.cloudinary.com/v1_1/${
-              import.meta.env.VITE_CLOUDINARY_CLOUD_NAME
-            }/image/upload`,
-            avatarFormData,
-            {
-              headers: {
-                "Content-Type": "multipart/form-data",
-              },
-            }
-          );
-
-          // Add the uploaded URL to submission data
-          submissionData.teamavatar_url = cloudinaryResponse.data.secure_url;
-        } catch (uploadError) {
-          console.error("Error uploading team avatar:", uploadError);
-          // Continue with the update even if image upload fails
-          setNotification({
-            type: "warning",
-            message: "Team updated but avatar upload failed.",
-          });
-        }
+        // ✅ UPDATE: Only override the avatar URL if upload was successful
+        submissionData.teamavatar_url = cloudinaryResponse.data.secure_url;
+        console.log("New avatar uploaded:", submissionData.teamavatar_url);
+      } catch (uploadError) {
+        console.error("Error uploading team avatar:", uploadError);
+        // Continue with the update even if image upload fails
+        setNotification({
+          type: "warning",
+          message: "Team updated but avatar upload failed.",
+        });
       }
-
-      console.log("Submission data prepared:", submissionData);
-
-      // Only add tags if there are any selected
-      if (formData.selectedTags && formData.selectedTags.length > 0) {
-        // Process and add tags to submission data
-        const processedTags = formData.selectedTags
-          .filter((tagId) => tagId) // Remove any falsy values
-          .map((tagId) => {
-            const numericId = Number(tagId); // Explicitly convert to number
-            return {
-              tag_id: numericId,
-            };
-          });
-
-        // Only include tags in the submission if we have valid ones
-        if (processedTags.length > 0) {
-          submissionData.tags = processedTags;
-        }
-      }
-
-      console.log("Final submission data:", submissionData);
-
-      const response = await teamService.updateTeam(
-        effectiveTeamId,
-        submissionData
-      );
-      console.log("Update response:", response);
-
-      // Update our local state with the new visibility value
-      setIsPublic(isPublicBoolean);
-
-      // Create a properly updated team object to return to parent
-      const updatedTeam = {
-        ...team,
-        ...submissionData,
-        is_public: isPublicBoolean, // Explicitly include the visibility
-      };
-
-      setNotification({
-        type: "success",
-        message: "Team updated successfully!",
-      });
-
-      setIsEditing(false);
-
-      // After updating, fetch the latest data to ensure we have the most up-to-date info
-      await fetchTeamDetails();
-
-      // Update the parent component if callback is provided
-      if (onUpdate) {
-        onUpdate(updatedTeam);
-      }
-    } catch (err) {
-      console.error("Error updating team:", err);
-
-      // Improve error message by extracting the specific error from the API response
-      let errorMessage = "Failed to update team. Please try again.";
-      if (err.response?.data?.errors && err.response.data.errors.length > 0) {
-        errorMessage = `Error: ${err.response.data.errors[0]}`;
-      } else if (err.response?.data?.message) {
-        errorMessage = `Error: ${err.response.data.message}`;
-      } else if (err.message) {
-        errorMessage = `Error: ${err.message}`;
-      }
-
-      setNotification({
-        type: "error",
-        message: errorMessage,
-      });
-    } finally {
-      setLoading(false);
+    } else {
+      console.log("No new image selected, preserving existing avatar URL:", submissionData.teamavatar_url);
     }
-  };
+
+    console.log("Final submission data:", submissionData);
+
+    // Only add tags if there are any selected
+    if (formData.selectedTags && formData.selectedTags.length > 0) {
+      const processedTags = formData.selectedTags
+        .filter((tagId) => tagId)
+        .map((tagId) => {
+          const numericId = Number(tagId);
+          return {
+            tag_id: numericId,
+          };
+        });
+
+      if (processedTags.length > 0) {
+        submissionData.tags = processedTags;
+      }
+    }
+
+    console.log("Final submission data with tags:", submissionData);
+
+    const response = await teamService.updateTeam(effectiveTeamId, submissionData);
+    console.log("Update response:", response);
+
+    // Update our local state with the new visibility value
+    setIsPublic(isPublicBoolean);
+
+    // Create a properly updated team object to return to parent
+    const updatedTeam = {
+      ...team,
+      ...submissionData,
+      is_public: isPublicBoolean,
+    };
+
+    setNotification({
+      type: "success",
+      message: "Team updated successfully!",
+    });
+
+    setIsEditing(false);
+
+    // After updating, fetch the latest data to ensure we have the most up-to-date info
+    await fetchTeamDetails();
+
+    // Update the parent component if callback is provided
+    if (onUpdate) {
+      onUpdate(updatedTeam);
+    }
+  } catch (err) {
+    console.error("Error updating team:", err);
+
+    let errorMessage = "Failed to update team. Please try again.";
+    if (err.response?.data?.errors && err.response.data.errors.length > 0) {
+      errorMessage = `Error: ${err.response.data.errors[0]}`;
+    } else if (err.response?.data?.message) {
+      errorMessage = `Error: ${err.response.data.message}`;
+    } else if (err.message) {
+      errorMessage = `Error: ${err.message}`;
+    }
+
+    setNotification({
+      type: "error",
+      message: errorMessage,
+    });
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleDeleteTeam = async () => {
     if (
