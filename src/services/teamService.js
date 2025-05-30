@@ -53,8 +53,29 @@ export const teamService = {
     }
   },
 
+  getUserPendingApplications: async () => {
+    try {
+      const response = await api.get(`/api/teams/applications/user`);
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching user pending applications:", error);
+      throw error;
+    }
+  },
 
-    getTeamApplications: async (teamId) => {
+  cancelApplication: async (applicationId) => {
+    try {
+      const response = await api.delete(
+        `/api/teams/applications/${applicationId}`
+      );
+      return response.data;
+    } catch (error) {
+      console.error(`Error canceling application ${applicationId}:`, error);
+      throw error;
+    }
+  },
+
+  getTeamApplications: async (teamId) => {
     try {
       const response = await api.get(`/api/teams/${teamId}/applications`);
       return response.data;
@@ -64,12 +85,15 @@ export const teamService = {
     }
   },
 
-    handleTeamApplication: async (applicationId, action, response = '') => {
+  handleTeamApplication: async (applicationId, action, response = "") => {
     try {
-      const apiResponse = await api.put(`/api/teams/applications/${applicationId}`, {
-        action,
-        response
-      });
+      const apiResponse = await api.put(
+        `/api/teams/applications/${applicationId}`,
+        {
+          action,
+          response,
+        }
+      );
       return apiResponse.data;
     } catch (error) {
       console.error(`Error handling application ${applicationId}:`, error);
@@ -281,8 +305,6 @@ export const teamService = {
       return { data: { role: null } }; // Return a default response on error
     }
   },
-}
-
-
+};
 
 export default teamService;
