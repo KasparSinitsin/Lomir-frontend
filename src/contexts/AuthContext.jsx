@@ -1,6 +1,6 @@
 import { createContext, useState, useEffect, useContext } from "react";
 import api from "../services/api";
-import socketService from '../services/socketService';
+import socketService from "../services/socketService";
 
 const AuthContext = createContext(null);
 
@@ -15,7 +15,6 @@ export const AuthProvider = ({ children }) => {
     const loadUser = async () => {
       if (token) {
         try {
-
           // Connect socket with token
           socketService.connect(token);
           console.log("Loading user with token:", token);
@@ -133,15 +132,14 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Login user
-const login = async (credentials) => {
-  try {
-    setLoading(true);
-    const response = await api.post('/api/auth/login', credentials);
-    const { token, user } = response.data.data;
+  const login = async (credentials) => {
+    try {
+      setLoading(true);
+      const response = await api.post("/api/auth/login", credentials);
+      const { token, user } = response.data.data;
 
-
-    // Initialize socket connection with token
-    socketService.connect(token);
+      // Initialize socket connection with token
+      socketService.connect(token);
 
       // Enhance user data with both snake_case and camelCase
       const enhancedUser = {
@@ -273,11 +271,11 @@ const login = async (credentials) => {
   };
 
   // Add cleanup on unmount
-useEffect(() => {
-  return () => {
-    socketService.disconnect();
-  };
-}, []);
+  useEffect(() => {
+    return () => {
+      socketService.disconnect();
+    };
+  }, []);
 
   // Provide the authentication context
   return (
