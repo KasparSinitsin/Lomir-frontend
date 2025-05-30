@@ -1,4 +1,5 @@
 import React from 'react';
+import Colors from '../../utils/Colors';
 
 const Button = ({ 
   children, 
@@ -12,18 +13,21 @@ const Button = ({
   icon = null
 }) => {
   const baseClasses = 'btn';
+  
+  // Define variants using CSS variables
   const variantClasses = {
     primary: 'btn-outline btn-primary', 
-    secondary: 'btn-secondary text-primary',
+    secondary: 'btn-secondary text-[var(--color-primary)]',
     accent: 'btn-accent',
-    ghost: 'btn-ghost hover:bg-secondary hover:text-primary',
-    link: 'btn-link text-primary',
-    outline: 'btn-outline border-primary text-primary hover:bg-primary hover:text-white',
+    ghost: 'btn-ghost hover:bg-secondary hover:text-[var(--color-primary)]',
+    link: 'btn-link text-[var(--color-primary)]',
+    outline: 'btn-outline border-[var(--color-primary)] text-[var(--color-primary)] hover:bg-[var(--color-primary)] hover:text-white',
     error: 'btn-error',
     success: 'btn-success',
     warning: 'btn-warning',
     info: 'btn-info',
   };
+  
   const sizeClasses = {
     xs: 'btn-xs',
     sm: 'btn-sm',

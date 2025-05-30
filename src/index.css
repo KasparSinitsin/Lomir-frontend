@@ -2,6 +2,45 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  /* Primary Brand Colors */
+  --color-primary: #009213;
+  --color-primary-focus: #036b0c;
+  --color-primary-content: #FFFFFF;
+  
+  /* Badge Category Colors */
+  --color-badge-collaboration: #009213; /* Green */ 
+  --color-badge-technical: #199bff;     /* Blue */
+  --color-badge-creative: #766aea;      /* Purple */
+  --color-badge-leadership: #df385b;    /* Red */
+  --color-badge-personal: #F59E0B;      /* Yellow */
+  
+  /* UI Colors */
+  --color-background: #FFFFFF;
+  --color-background-soft: #F8FAFC;
+  --color-background-soft-green: #bbeabf;
+  --color-background-muted: rgba(255, 255, 255, 0.5);
+  --color-text: #033f05;
+  --color-text-soft: rgba(3, 63, 5, 0.7);
+  --color-border: rgba(3, 63, 5, 0.2);
+  
+  /* Semantic Colors */
+  --color-success: var(--color-primary);
+  --color-warning: #df385b;
+  --color-error: #df385b;
+  --color-info: #766aea;
+  
+  /* UI Element Specific */
+  --shadow-soft: 0 2px 15px rgba(0, 0, 0, 0.04);
+  --shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --blur-amount: 8px;
+  
+  /* Animation Speeds */
+  --transition-speed-fast: 200ms;
+  --transition-speed-normal: 300ms;
+  --transition-speed-slow: 500ms;
+}
+
 /* Global background image */
 body {
   background-size: cover;
@@ -19,28 +58,34 @@ html, body, #root {
   height: 100%;
 }
 
+/* Custom layout styles */
+
+.card-title-centered > div > div > h3 {
+  text-align: center;
+}
+
+/* Glass Elements */
 .glass-navbar {
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(var(--blur-amount));
+  -webkit-backdrop-filter: blur(var(--blur-amount));
+  border-bottom: 1px solid var(--color-border);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
   padding-top: 2rem;
   padding-bottom: 1rem;
 }
 
-/* Add to src/index.css if not already present */
 .glass-modal {
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(var(--blur-amount));
+  -webkit-backdrop-filter: blur(var(--blur-amount));
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-card);
 }
 
 /* Make inputs and elements on glass backgrounds more readable */
 .glass-content .input,
 .glass-content .textarea,
 .glass-content .select {
-  backdrop-filter: blur(4px);
+  backdrop-filter: blur(calc(var(--blur-amount) / 2));
 }
 
 .content-container {
@@ -52,25 +97,37 @@ html, body, #root {
   padding-right: 1rem;
 }
 
-/* Global font styles */
-html, body {
-  font-family: 'Roboto', sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+/* Typography */
+@layer base {
+  html, body {
+    font-family: 'Roboto', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    color: var(--color-text);
+  }
+
+  /* Font weights for various heading levels */
+  h1, h2, h3, h4, h5, h6 {
+    font-weight: 500;
+    color: var(--color-text);
+  }
+
+  /* Additional styling to optimize Roboto appearance */
+  .text-xs, .text-sm {
+    letter-spacing: 0.01em;
+  }
+
+  .text-lg, .text-xl, .text-2xl, .text-3xl, .text-4xl, .text-5xl {
+    letter-spacing: -0.01em;
+  }
 }
 
-/* Font weights for various heading levels */
-h1, h2, h3, h4, h5, h6 {
-  font-weight: 500;
+.h3-smaller-line-height {
+  line-height: 1.1; 
 }
 
-/* Additional styling to optimize Roboto appearance */
-.text-xs, .text-sm {
-  letter-spacing: 0.01em;
-}
-
-.text-lg, .text-xl, .text-2xl, .text-3xl, .text-4xl, .text-5xl {
-  letter-spacing: -0.01em;
+.h3-centered {
+  text-align: center;
 }
 
 /* Custom font weights */
@@ -95,50 +152,163 @@ body {
   min-height: 100vh;
 }
 
-/* Custom Button Design */
+.avatar-group :where(.avatar) {
+  overflow: hidden;
+  border-radius: calc(infinity * 1px);
+  border: 4px solid var(--color-base-100);
+}
+.avatar {
+  position: relative;
+  display: inline-flex;
+  vertical-align: middle;
+}
+.avatar > div {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  font-weight: 500;
+}
+.avatar img {
+  height: 100%;
+  width: 100%;
+  object-fit: cover;
+}
+
+/* Custom Button Styles - Using CSS variables */
 .btn-primary {
   background-color: white !important;
-  color: #3B82F6 !important;
-  border: 1px solid #3B82F6 !important;
-  background-image: none !important; /* Remove the gradient */
+  color: var(--color-primary) !important;
+  border: 1px solid var(--color-primary) !important;
+  background-image: none !important;
+  transition: all var(--transition-speed-normal) ease;
 }
 
 .btn-primary:hover {
-  background-color: #F8FAFC !important;
-  color: #2563EB !important;
-  border-color: #2563EB !important;
-  background-image: none !important; /* Remove the gradient */
-}
-
-/* If you use btn-outline and want to override DaisyUI's hover behavior */
-.btn-outline.btn-primary:hover {
-  background-color: #F8FAFC !important;
-  color: #2563EB !important;
+  background-color: var(--color-background-soft) !important;
+  color: var(--color-primary) !important;
+  border-color: var(--color-primary) !important;
   background-image: none !important;
 }
 
-/* Custom Input Focus for inpput fields */
+.btn-outline.btn-primary:hover {
+  background-color: var(--color-background-soft) !important;
+  color: var(--color-primary-focus) !important;
+  background-image: none !important;
+}
+
+/* Custom Input Focus */
 .input:focus {
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+  box-shadow: 0 0 0 2px rgba(var(--color-primary), 0.2);
+  border-color: var(--color-primary);
 }
 
+/* Switches and Toggles */
+
+.checkbox {
+  --chkbg: var(--color-primary);
+  --chkfg: var(--color-primary-content);
+  border-radius: 50% !important; 
+}
+
+.checkbox:checked {
+  border-color: var(--color-primary);
+  background-color: var(--color-primary);
+  color: var(--color-primary-content);
+}
+
+.checkbox:focus-visible {
+  outline: 1px solid var(--color-primary);
+}
+
+.checkbox:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+
+.checkbox-sm {
+  width: 1rem;
+  height: 1rem;
+}
+
+.checkbox-lg {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+/* Make the toggle circle round */
+.toggle-visibility::before {
+  border-radius: 50% !important; /* Ensures it's perfectly circular */
+  height: 1rem !important; /* Size of the circle */
+  width: 1rem !important; /* Size of the circle */
+  background-color: var(--input-color) !important; /* Color of the circle */
+}
+
+.toggle-visibility::before {
+  transition: transform 0.2s ease-in-out;
+}
+
+.toggle-visibility {
+  --off-background: white;
+  --on-background: var(--color-background-soft-green);
+  height: 1.5rem !important;
+  width: 3rem !important;
+}
+
+.toggle {
+  border: var(--border) solid currentColor;
+  color: var(--input-color); 
+
+}
+
+.toggle-visibility:checked {
+  background-color: var(--on-background) !important;
+  color: var(--color-primary-focus);
+}
+
+.toggle-visibility:not(:checked) {
+  background-color: var(--off-background) !important;
+}
+
+
+
+
+
+/* Neon Effect */
 .neon {
-  @apply text-[#b96eff] border-2 border-transparent bg-transparent rounded-full px-4 py-1 transition-all duration-300;
-  box-shadow: 0 0 4px #b96eff, 0 0 8px #b96eff, 0 0 16px #b96eff;
+  color: var(--color-primary);
+  text-align: center;
+  border: 2px solid transparent;
+  border-radius: 9999px;
+  padding: 0.25rem 0.5rem;
+  transition: all var(--transition-speed-normal);
 }
 
-/* Hover effect */
 .neon:hover {
   background-color: transparent;
-  color: #b96eff;
-  box-shadow: 0 0 8px #b96eff, 0 0 16px #b96eff, 0 0 28px #b96eff;
+  color: var(--color-primary-focus);
+  font-weight: 600;
+  box-shadow: 0 0 1px var(--color-primary), 
+              0 0 2px var(--color-primary-focus), 
+              0 0 1px var(--color-primary-focus); 
 }
 
 .background-opacity {
-  background-color: rgba(255, 255, 255, 0.5);
+  background-color: var(--color-background-muted);
 }
 
 .btn-ghost:hover {
-  background-color: #C7D2FE !important;
-  color: #1E40AF !important;
+  background-color: var(--color-background-soft) !important;
+  color: var(--color-text) !important;
+}
+
+/* Common shadows */
+.shadow-soft {
+  box-shadow: var(--shadow-soft);
+}
+
+.shadow-card {
+  box-shadow: var(--shadow-card);
 }

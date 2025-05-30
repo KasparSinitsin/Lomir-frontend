@@ -1,22 +1,24 @@
-// src/components/teams/TeamCreationForm.jsx
-
 import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FiCheck } from 'react-icons/fi';
+import axios from 'axios';
 import TagSelector from '../tags/TagSelector';
 import Alert from '../common/Alert';
 import { teamService } from '../../services/teamService';
 import TeamDetailsModal from './TeamDetailsModal';
+import IconToggle from '../common/IconToggle';
 
 const TeamCreationForm = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    isPublic: true,
+    isPublic: false, // Changed default to false (hidden)
     maxMembers: 5,
     selectedTags: [],
+    teamImage: null
   });
+  const [imagePreview, setImagePreview] = useState(null);
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(null);
@@ -58,6 +60,23 @@ const TeamCreationForm = () => {
     setErrors(prevErrors => ({ ...prevErrors, [name]: '' }));
   }, []);
 
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setFormData({
+        ...formData,
+        teamImage: file
+      });
+      
+      // For preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleTagSelection = useCallback((selectedTags) => {
     console.log("Team Creation - Tags selected:", selectedTags);
     setFormData(prev => ({
@@ -81,6 +100,8 @@ const TeamCreationForm = () => {
     setSubmitError(null);
     setSubmitSuccess(false);
     try {
+
+      console.log("Starting team creation with image:", formData.teamImage ? "Image selected" : "No image");
       // Ensure tag IDs are valid integers
       const formattedTags = formData.selectedTags.map(tagId => {
         const numericId = parseInt(tagId, 10);
@@ -88,6 +109,7 @@ const TeamCreationForm = () => {
         return { tag_id: numericId };
       });
       
+      // Create the team data object
       const submissionData = {
         name: formData.name,
         description: formData.description,
@@ -95,11 +117,51 @@ const TeamCreationForm = () => {
         max_members: formData.maxMembers,
         tags: formattedTags,
       };
+
+        console.log("Initial submission data:", submissionData);
+
+          // Upload image to Cloudinary if one is selected
+      if (formData.teamImage) {
+        console.log("Preparing to upload image to Cloudinary");
+        const cloudinaryFormData = new FormData();
+        cloudinaryFormData.append('file', formData.teamImage);
+        cloudinaryFormData.append('upload_preset', import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET);
+
+ console.log("Cloudinary upload preset:", import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET);
+      console.log("Cloudinary cloud name:", import.meta.env.VITE_CLOUDINARY_CLOUD_NAME);
+
+      try {
+const cloudinaryResponse = await axios.post(
+  `https://api.cloudinary.com/v1_1/${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME}/image/upload`,
+  cloudinaryFormData,
+  {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  }
+);
+        
+        console.log("Cloudinary upload success:", cloudinaryResponse.data);
+
+// Set the avatar URL in the submission data
+// Using both field names to ensure compatibility with your API interceptors
+submissionData.teamavatar_url = cloudinaryResponse.data.secure_url;
+submissionData.teamavatarUrl = cloudinaryResponse.data.secure_url;
+
+console.log("Team data with avatar URL:", submissionData);
+      } catch (cloudinaryError) {
+        console.error("Cloudinary upload failed:", cloudinaryError);
+        console.error("Response:", cloudinaryError.response?.data);
+        // Continue with team creation without the avatar
+      }
+    }
+
+       console.log("Final submission data before API call:", submissionData);
       
-      console.log("Submitting team data:", submissionData);
+    
       
-      const response = await teamService.createTeam(submissionData);
-      console.log("Team creation response:", response);
+    const response = await teamService.createTeam(submissionData);
+    console.log("Team creation response:", response);
       
       setNewTeamId(response.data.id);
       setSubmitSuccess(true);
@@ -124,6 +186,36 @@ const TeamCreationForm = () => {
     return (
       <div>
         <h2 className="text-xl font-semibold mb-4">Create a New Team</h2>
+
+        {/* Team Image Upload */}
+        <div className="mb-6 flex justify-center">
+          <div className="avatar">
+            <div className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center cursor-pointer border relative overflow-hidden">
+              {imagePreview ? (
+                <img 
+                  src={imagePreview} 
+                  alt="Team Preview" 
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <span className="text-gray-400">Team Image</span>
+              )}
+            </div>
+          </div>
+        </div>
+
+                <div className="mb-4">
+          <label className="block text-gray-700 text-sm font-bold mb-2">
+            Team Image (Optional)
+          </label>
+          <input
+            type="file"
+            onChange={handleImageChange}
+            className="file-input file-input-bordered w-full"
+            accept="image/*"
+          />
+        </div>
+
         <div className="mb-4">
           <label htmlFor="name" className="block text-gray-700 text-sm font-bold mb-2">
             Team Name
@@ -171,16 +263,15 @@ const TeamCreationForm = () => {
           {errors.maxMembers && <p className="text-red-500 text-xs italic">{errors.maxMembers}</p>}
         </div>
         <div className="mb-4">
-          <label className="inline-flex items-center">
-            <input
-              type="checkbox"
-              name="isPublic"
-              checked={formData.isPublic}
-              onChange={handleChange}
-              className="form-checkbox h-5 w-5 text-primary rounded"
-            />
-            <span className="ml-2 text-gray-700">Public Team (visible to all users)</span>
-          </label>
+          {/* IconToggle switch to choose visibility */}
+          <IconToggle
+  name="isPublic"
+  checked={formData.isPublic}
+  onChange={handleChange}
+  title="Team Visibility"
+  entityType="team"
+  className="toggle-visibility"
+/>
         </div>
         <div className="mb-4">
           <label className="block text-gray-700 text-sm font-bold mb-2">

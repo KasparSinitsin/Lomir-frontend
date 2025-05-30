@@ -10,7 +10,8 @@ export default {
         sans: ['Roboto', 'sans-serif'],
       },
       boxShadow: {
-        'soft': '0 2px 15px rgba(0, 0, 0, 0.04)',
+        'soft': 'var(--shadow-soft)',
+        'card': 'var(--shadow-card)',
       },
       borderRadius: {
         'xl': '0.75rem',
@@ -19,7 +20,39 @@ export default {
         '3': 'repeat(3, minmax(0, 1fr))',
       },
       colors: {
-        softviolet: '#C7D2FE', // Add your soft violet color here
+        // Add custom colors here
+        
+        
+        // CSS Variable based colors for direct use in Tailwind classes
+        'primary': 'var(--color-primary)',
+        'primary-focus': 'var(--color-primary-focus)',
+        'primary-content': 'var(--color-primary-content)',
+        
+        // Badge colors
+        'badge-collaboration': 'var(--color-badge-collaboration)',
+        'badge-technical': 'var(--color-badge-technical)',
+        'badge-creative': 'var(--color-badge-creative)',
+        'badge-leadership': 'var(--color-badge-leadership)',
+        'badge-personal': 'var(--color-badge-personal)',
+        
+        // UI colors
+        'background': 'var(--color-background)',
+        'background-soft': 'var(--color-background-soft)',
+        'background-muted': 'var(--color-background-muted)',
+        'text': 'var(--color-text)',
+        'text-soft': 'var(--color-text-soft)',
+        'border': 'var(--color-border)',
+        
+        // Semantic colors
+        'success': 'var(--color-success)',
+        'warning': 'var(--color-warning)',
+        'error': 'var(--color-error)',
+        'info': 'var(--color-info)',
+      },
+      transitionDuration: {
+        'fast': 'var(--transition-speed-fast)',
+        'normal': 'var(--transition-speed-normal)',
+        'slow': 'var(--transition-speed-slow)',
       },
     },
     screens: {
@@ -36,30 +69,62 @@ export default {
     themes: [
       {
         lomirlite: {
-          "primary": "#3B82F6",           // blue
-          "primary-focus": "#2563EB",     // darker blue
-          "primary-content": "#FFFFFF",
+          "primary": "var(--color-primary)",
+          "primary-focus": "var(--color-primary-focus)",
+          "primary-content": "var(--color-primary-content)",
 
-          "secondary": "#E0E7FF",         // soft violet-light
-          "secondary-focus": "#C7D2FE",   // soft violet
-          "secondary-content": "#1E40AF", // navy
+          "secondary": "#bbeabf",
+          "secondary-focus": "#7ace82",
+          "secondary-content": "var(--color-primary-focus)",
 
-          "accent": "#C7D2FE",            // replacing magenta with soft violet
+          "accent": "#7ace82",
           "neutral": "#3D4451",
 
-          "base-100": "#FFFFFF",
-          "base-200": "#F8FAFC",
+          "base-100": "var(--color-background)",
+          "base-200": "var(--color-background-soft)",
           "base-300": "#F1F5F9",
-          "base-content": "#1F2937",
+          "base-content": "var(--color-text)",
 
-          "info": "#38BDF8",
-          "success": "#10B981",
-          "warning": "#F59E0B",
-          "error": "#EF4444",
+          "info": "var(--color-info)",
+          "success": "var(--color-success)",
+          "warning": "var(--color-warning)",
+          "error": "var(--color-error)",
 
           "font-family": "'Roboto', sans-serif",
+          "text-primary": "var(--color-primary-focus)",
+
         },
       },
+      // Optional: Add a dark theme version here for future use
+      /* Uncomment when dark mode is implemented
+      {
+        lomirdark: {
+          "primary": "var(--color-primary)",
+          "primary-focus": "var(--color-primary-focus)",
+          "primary-content": "var(--color-primary-content)",
+
+          "secondary": "#262B42",
+          "secondary-focus": "#1F2235",
+          "secondary-content": "var(--color-primary-content)",
+
+          "accent": "#373F67",
+          "neutral": "#1A1E2C",
+
+          "base-100": "#1C1F2E",
+          "base-200": "#16192A",
+          "base-300": "#131625",
+          "base-content": "#EAEDF6",
+
+          "info": "var(--color-info)",
+          "success": "var(--color-success)",
+          "warning": "var(--color-warning)",
+          "error": "var(--color-error)",
+
+          "font-family": "'Roboto', sans-serif",
+          "text-primary": "var(--color-primary-focus)",
+        },
+      },
+      */
     ],
     defaultTheme: "lomirlite",
   },
