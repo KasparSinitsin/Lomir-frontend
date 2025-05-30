@@ -53,6 +53,30 @@ export const teamService = {
     }
   },
 
+
+    getTeamApplications: async (teamId) => {
+    try {
+      const response = await api.get(`/api/teams/${teamId}/applications`);
+      return response.data;
+    } catch (error) {
+      console.error(`Error fetching applications for team ${teamId}:`, error);
+      throw error;
+    }
+  },
+
+    handleTeamApplication: async (applicationId, action, response = '') => {
+    try {
+      const apiResponse = await api.put(`/api/teams/applications/${applicationId}`, {
+        action,
+        response
+      });
+      return apiResponse.data;
+    } catch (error) {
+      console.error(`Error handling application ${applicationId}:`, error);
+      throw error;
+    }
+  },
+
   applyToJoinTeam: async (teamId, applicationData) => {
     try {
       const response = await api.post(
@@ -257,6 +281,8 @@ export const teamService = {
       return { data: { role: null } }; // Return a default response on error
     }
   },
-};
+}
+
+
 
 export default teamService;
