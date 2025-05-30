@@ -5,6 +5,7 @@ import Navbar from './components/layout/Navbar';
 import Footer from './components/layout/Footer';
 import ProtectedRoute from './components/layout/ProtectedRoute';
 import Placeholder from './components/common/Placeholder';
+import MessageNotifications from './components/chat/MessageNotifications';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -57,6 +58,9 @@ function App() {
                 {/* Catch-all route */}
                 <Route path="*" element={<Placeholder pageName="Page Not Found" />} />
               </Routes>
+
+<MessageNotifications />
+
             </div>
           </main>
           <Footer />

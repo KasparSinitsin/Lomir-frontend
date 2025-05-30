@@ -1,5 +1,6 @@
 import { createContext, useState, useEffect, useContext } from "react";
 import api from "../services/api";
+import socketService from '../services/socketService';
 
 const AuthContext = createContext(null);
 
@@ -14,6 +15,10 @@ export const AuthProvider = ({ children }) => {
     const loadUser = async () => {
       if (token) {
         try {
+
+          // Connect socket with token
+          socketService.connect(token);
+          console.log("Loading user with token:", token);
           const response = await api.get("/api/auth/me", {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -128,11 +133,15 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Login user
-  const login = async (credentials) => {
-    try {
-      setLoading(true);
-      const response = await api.post("/api/auth/login", credentials);
-      const { token, user } = response.data.data;
+const login = async (credentials) => {
+  try {
+    setLoading(true);
+    const response = await api.post('/api/auth/login', credentials);
+    const { token, user } = response.data.data;
+
+
+    // Initialize socket connection with token
+    socketService.connect(token);
 
       // Enhance user data with both snake_case and camelCase
       const enhancedUser = {
@@ -259,7 +268,16 @@ export const AuthProvider = ({ children }) => {
     setToken(null);
     setUser(null);
     setError(null); // Clear error when logging out
+    // Disconnect socket
+    socketService.disconnect();
   };
+
+  // Add cleanup on unmount
+useEffect(() => {
+  return () => {
+    socketService.disconnect();
+  };
+}, []);
 
   // Provide the authentication context
   return (
