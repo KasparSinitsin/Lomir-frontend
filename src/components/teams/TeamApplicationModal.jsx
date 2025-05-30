@@ -25,7 +25,7 @@ const TeamApplicationModal = ({
       setError(null);
       await onSubmit({
         message: message.trim(),
-        isDraft: saveAsDraft,
+        isDraft: saveAsDraft, // This should be false when sending
       });
 
       if (saveAsDraft) {
