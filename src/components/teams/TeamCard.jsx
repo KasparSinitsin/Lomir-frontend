@@ -1,16 +1,37 @@
-import React, { useState, useEffect, useCallback } from "react"; // Add useCallback here
+// Update src/components/teams/TeamCard.jsx
+
+import React, { useState, useEffect, useCallback } from "react";
 import Card from "../common/Card";
 import Button from "../common/Button";
-import { Users, MapPin, Trash2, EyeClosed, EyeIcon, Tag } from "lucide-react";
+import {
+  Users,
+  MapPin,
+  Trash2,
+  EyeClosed,
+  EyeIcon,
+  Tag,
+  Clock,
+  AlertCircle,
+} from "lucide-react";
 import TeamDetailsModal from "./TeamDetailsModal";
+import TeamApplicationDetailsModal from "./TeamApplicationDetailsModal"; // We'll create this
 import { teamService } from "../../services/teamService";
 import { useAuth } from "../../contexts/AuthContext";
 import Alert from "../common/Alert";
-import ApplicationNotificationBadge from './ApplicationNotificationBadge';
-import TeamApplicationsModal from './TeamApplicationsModal';
+import ApplicationNotificationBadge from "./ApplicationNotificationBadge";
+import TeamApplicationsModal from "./TeamApplicationsModal";
+import { format } from "date-fns";
 
-const TeamCard = ({ team, onUpdate, onDelete, isSearchResult = false }) => {
+const TeamCard = ({
+  team,
+  onUpdate,
+  onDelete,
+  isSearchResult = false,
+  isPendingApplication = false,
+  onCancelApplication,
+}) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isApplicationModalOpen, setIsApplicationModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState(null);
   const [userRole, setUserRole] = useState(null);
@@ -22,12 +43,10 @@ const TeamCard = ({ team, onUpdate, onDelete, isSearchResult = false }) => {
   // Get the team image or initial for the avatar
   const getTeamImage = () => {
     if (teamData.teamavatar_url) {
-      console.log("Found teamavatar_url:", teamData.teamavatar_url);
       return teamData.teamavatar_url;
     }
 
     if (teamData.teamavatarUrl) {
-      console.log("Found teamavatarUrl:", teamData.teamavatarUrl);
       return teamData.teamavatarUrl;
     }
 
@@ -46,7 +65,7 @@ const TeamCard = ({ team, onUpdate, onDelete, isSearchResult = false }) => {
   // Fetch the user's role in this team on component mount
   useEffect(() => {
     const fetchUserRole = async () => {
-      if (user && teamData.id && !isSearchResult) {
+      if (user && teamData.id && !isSearchResult && !isPendingApplication) {
         try {
           const response = await teamService.getUserRoleInTeam(
             teamData.id,
@@ -60,30 +79,26 @@ const TeamCard = ({ team, onUpdate, onDelete, isSearchResult = false }) => {
     };
 
     fetchUserRole();
-  }, [user, teamData.id, isSearchResult]);
+  }, [user, teamData.id, isSearchResult, isPendingApplication]);
 
-  // Fixed: Add useCallback here
   const fetchPendingApplications = useCallback(async () => {
-    if (isCreator && teamData.id) {
+    if (isCreator && teamData.id && !isPendingApplication) {
       try {
         const response = await teamService.getTeamApplications(teamData.id);
         setPendingApplications(response.data || []);
       } catch (error) {
-        console.error('Error fetching applications:', error);
+        console.error("Error fetching applications:", error);
       }
     }
-  }, [isCreator, teamData.id]);
+  }, [isCreator, teamData.id, isPendingApplication]);
 
-  // Add useEffect to fetch applications
   useEffect(() => {
     fetchPendingApplications();
   }, [fetchPendingApplications]);
 
-  // Add this function to handle application actions
   const handleApplicationAction = async (applicationId, action, response) => {
     try {
       await teamService.handleTeamApplication(applicationId, action, response);
-      // Refresh applications and team data
       await fetchPendingApplications();
       if (onUpdate) {
         const updatedTeam = await teamService.getTeamById(teamData.id);
@@ -95,11 +110,19 @@ const TeamCard = ({ team, onUpdate, onDelete, isSearchResult = false }) => {
   };
 
   const openTeamDetails = () => {
-    setIsModalOpen(true);
+    if (isPendingApplication) {
+      setIsApplicationModalOpen(true);
+    } else {
+      setIsModalOpen(true);
+    }
   };
 
   const closeTeamDetails = () => {
     setIsModalOpen(false);
+  };
+
+  const closeApplicationDetails = () => {
+    setIsApplicationModalOpen(false);
   };
 
   const handleTeamUpdate = (updatedTeam) => {
@@ -133,15 +156,39 @@ const TeamCard = ({ team, onUpdate, onDelete, isSearchResult = false }) => {
     }
   };
 
+  const handleCancelApplication = async (e) => {
+    e.stopPropagation();
+
+    if (
+      window.confirm(
+        "Are you sure you want to cancel your application to this team?"
+      )
+    ) {
+      try {
+        setIsDeleting(true);
+        if (onCancelApplication) {
+          await onCancelApplication(teamData.applicationId);
+        }
+      } catch (err) {
+        console.error("Error canceling application:", err);
+        setError("Failed to cancel application. Please try again.");
+      } finally {
+        setIsDeleting(false);
+      }
+    }
+  };
+
   const handleModalClose = async () => {
     try {
-      const response = await teamService.getTeamById(teamData.id);
-      if (response && response.data) {
-        const freshTeamData = response.data;
-        setTeamData(freshTeamData);
+      if (!isPendingApplication) {
+        const response = await teamService.getTeamById(teamData.id);
+        if (response && response.data) {
+          const freshTeamData = response.data;
+          setTeamData(freshTeamData);
 
-        if (onUpdate) {
-          onUpdate(freshTeamData);
+          if (onUpdate) {
+            onUpdate(freshTeamData);
+          }
         }
       }
     } catch (error) {
@@ -149,6 +196,7 @@ const TeamCard = ({ team, onUpdate, onDelete, isSearchResult = false }) => {
     }
 
     closeTeamDetails();
+    closeApplicationDetails();
   };
 
   const isPublic = teamData.is_public === true;
@@ -184,7 +232,7 @@ const TeamCard = ({ team, onUpdate, onDelete, isSearchResult = false }) => {
 
   useEffect(() => {
     const fetchCompleteTeamData = async () => {
-      if (teamData && teamData.id) {
+      if (teamData && teamData.id && !isPendingApplication) {
         try {
           if (
             teamData.tags &&
@@ -211,7 +259,7 @@ const TeamCard = ({ team, onUpdate, onDelete, isSearchResult = false }) => {
     };
 
     fetchCompleteTeamData();
-  }, [teamData.id]);
+  }, [teamData.id, isPendingApplication]);
 
   const getDisplayTags = () => {
     let displayTags = [];
@@ -270,6 +318,11 @@ const TeamCard = ({ team, onUpdate, onDelete, isSearchResult = false }) => {
     return displayTags;
   };
 
+  // Format the application date if this is a pending application
+  const formattedApplicationDate = teamData.applicationDate
+    ? format(new Date(teamData.applicationDate), "MMM d, yyyy")
+    : null;
+
   return (
     <>
       <Card
@@ -306,7 +359,7 @@ const TeamCard = ({ team, onUpdate, onDelete, isSearchResult = false }) => {
         </p>
 
         <div className="flex flex-wrap items-center gap-2 mb-4">
-          {shouldShowVisibilityIcon() && (
+          {shouldShowVisibilityIcon() && !isPendingApplication && (
             <div className="flex items-center text-sm text-base-content/70 bg-base-200/50 py-1 rounded-full">
               {team.isPublic === true || team.is_public === true ? (
                 <>
@@ -322,7 +375,21 @@ const TeamCard = ({ team, onUpdate, onDelete, isSearchResult = false }) => {
             </div>
           )}
 
-          {userRole && !isSearchResult && (
+          {isPendingApplication && (
+            <div className="flex items-center text-sm text-base-content/70 bg-yellow-100 py-1 px-2 rounded-full">
+              <AlertCircle size={16} className="mr-1 text-yellow-600" />
+              <span>Application Pending</span>
+            </div>
+          )}
+
+          {isPendingApplication && formattedApplicationDate && (
+            <div className="flex items-center text-sm text-base-content/70 bg-base-200/50 py-1 px-2 rounded-full">
+              <Clock size={16} className="mr-1" />
+              <span>Applied on {formattedApplicationDate}</span>
+            </div>
+          )}
+
+          {userRole && !isSearchResult && !isPendingApplication && (
             <span className="badge badge-primary badge-outline">
               {userRole}
             </span>
@@ -370,40 +437,86 @@ const TeamCard = ({ team, onUpdate, onDelete, isSearchResult = false }) => {
             View Details
           </Button>
 
-          {/* Fixed: Edit/Delete buttons - only for authenticated creators on non-search pages */}
-          {isAuthenticated && isCreator && !isSearchResult && (
+          {/* Pending Application Cancel Button */}
+          {isPendingApplication && (
             <div className="flex items-center space-x-2 ml-2">
-              {/* Application notification badge */}
-              <ApplicationNotificationBadge 
-                count={pendingApplications.length}
-                onClick={() => setIsApplicationsModalOpen(true)}
-              />
-
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={handleDeleteClick}
+                onClick={handleCancelApplication}
                 disabled={isDeleting}
-                className="hover:bg-[#C7D2FE] hover:text-[#1E40AF]"
+                className="hover:bg-red-100 hover:text-red-700"
                 icon={<Trash2 size={16} />}
-                aria-label="Delete team"
+                aria-label="Cancel application"
               >
-                {isDeleting ? "Deleting..." : ""}
+                {isDeleting ? "Canceling..." : ""}
               </Button>
             </div>
           )}
+
+          {/* Team Management Actions */}
+          {isAuthenticated &&
+            isCreator &&
+            !isSearchResult &&
+            !isPendingApplication && (
+              <div className="flex items-center space-x-2 ml-2">
+                {/* Application notification badge */}
+                <ApplicationNotificationBadge
+                  count={pendingApplications.length}
+                  onClick={() => setIsApplicationsModalOpen(true)}
+                />
+
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleDeleteClick}
+                  disabled={isDeleting}
+                  className="hover:bg-[#C7D2FE] hover:text-[#1E40AF]"
+                  icon={<Trash2 size={16} />}
+                  aria-label="Delete team"
+                >
+                  {isDeleting ? "Deleting..." : ""}
+                </Button>
+              </div>
+            )}
         </div>
       </Card>
 
-      <TeamDetailsModal
-        isOpen={isModalOpen}
-        teamId={teamData.id}
-        onClose={handleModalClose}
-        onUpdate={handleTeamUpdate}
-        onDelete={onDelete}
-        userRole={userRole}
-        isFromSearch={isSearchResult}
-      />
+      {/* Team Details Modal */}
+      {!isPendingApplication && (
+        <TeamDetailsModal
+          isOpen={isModalOpen}
+          teamId={teamData.id}
+          onClose={handleModalClose}
+          onUpdate={handleTeamUpdate}
+          onDelete={onDelete}
+          userRole={userRole}
+          isFromSearch={isSearchResult}
+        />
+      )}
+
+      {/* Application Details Modal */}
+      {isPendingApplication && (
+        <TeamApplicationDetailsModal
+          isOpen={isApplicationModalOpen}
+          application={{
+            id: teamData.applicationId,
+            message: teamData.applicationMessage,
+            status: teamData.applicationStatus,
+            created_at: teamData.applicationDate,
+            team: {
+              id: teamData.id,
+              name: teamData.name,
+              description: teamData.description,
+              teamavatar_url: teamData.teamavatar_url || teamData.teamavatarUrl,
+              max_members: teamData.max_members || teamData.maxMembers,
+              is_public: teamData.is_public === true,
+            },
+          }}
+          onClose={closeApplicationDetails}
+          onCancel={onCancelApplication}
+        />
+      )}
 
       <TeamApplicationsModal
         isOpen={isApplicationsModalOpen}
