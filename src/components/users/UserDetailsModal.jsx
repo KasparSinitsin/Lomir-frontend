@@ -1,3 +1,5 @@
+// src/components/users/UserDetailsModal.jsx
+import { messageService } from '../../services/messageService';
 import React, { useState, useEffect, useCallback } from "react";
 import LocationDisplay from "../common/LocationDisplay";
 import {
@@ -24,7 +26,7 @@ const UserDetailsModal = ({
   mode = "view",
 }) => {
   const { user: currentUser, isAuthenticated, updateUser } = useAuth();
-  const navigate = useNavigate(); // Move this INSIDE the component
+  const navigate = useNavigate(); 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [user, setUser] = useState(null);
@@ -163,9 +165,20 @@ const UserDetailsModal = ({
     }
   };
 
-  const handleStartChatMock = () => {
-    console.log("Chat icon clicked (mock)");
-    // In the future, we can put our chat logic here
+  const handleStartChat = async () => {
+    try {
+      // Start a new conversation
+      const response = await messageService.startConversation(user.id, "");
+      
+      // Close the modal
+      onClose();
+      
+      // Navigate to the chat page with this conversation
+      navigate(`/chat/${response.data.conversationId}`);
+    } catch (error) {
+      console.error("Error starting chat:", error);
+      setError("Failed to start conversation. Please try again.");
+    }
   };
 
   // Helper function to get the avatar image URL or fallback to initials
@@ -218,7 +231,7 @@ const UserDetailsModal = ({
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={handleStartChatMock}
+                      onClick={handleStartChat} // FIXED: Changed from handleStartChatMock to handleStartChat
                       icon={<MessageCircle size={16} />}
                     ></Button>
                   )}
@@ -360,15 +373,6 @@ const UserDetailsModal = ({
                         )}
                       </div>
                     )}
-
-                    {/* Debug info - add this right after the visibility indicator
-                    {import.meta.env.DEV && currentUser && (
-                      <div className="mt-2 text-xs bg-blue-100 px-2 py-1 rounded text-black">
-                        Debug Modal: CurrentUser={currentUser.id}, ModalUser=
-                        {user?.id}, ShouldShow={shouldShowVisibilityIndicator()}
-                        , IsPublic={isUserProfilePublic()}
-                      </div>
-                    )} */}
                   </div>
                 </div>
 
@@ -447,7 +451,7 @@ const UserDetailsModal = ({
                   <div className="mt-6">
                     <Button
                       variant="primary"
-                      onClick={handleStartChatMock}
+                      onClick={handleStartChat} // FIXED: Changed from handleStartChatMock to handleStartChat
                       className="w-full"
                       icon={<MessageCircle size={16} />}
                     >
