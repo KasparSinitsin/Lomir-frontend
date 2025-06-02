@@ -8,40 +8,40 @@ const MessageInput = ({ onSendMessage, onTyping }) => {
   const isTypingRef = useRef(false);
 
   // Handle typing indicator
-  useEffect(() => {
-    if (message.trim() && !isTypingRef.current) {
-      // User started typing
-      console.log("User started typing");
-      onTyping(true);
-      isTypingRef.current = true;
-    } else if (!message.trim() && isTypingRef.current) {
-      // User stopped typing (cleared input)
-      console.log("User stopped typing (cleared input)");
+useEffect(() => {
+  if (message.trim() && !isTypingRef.current) {
+    // User started typing
+    console.log("User started typing - calling onTyping(true)");
+    onTyping(true);
+    isTypingRef.current = true;
+  } else if (!message.trim() && isTypingRef.current) {
+    // User stopped typing (cleared input)
+    console.log("User stopped typing (cleared input) - calling onTyping(false)");
+    onTyping(false);
+    isTypingRef.current = false;
+  }
+
+  // Clear existing timer
+  if (typingTimerRef.current) {
+    clearTimeout(typingTimerRef.current);
+  }
+
+  // Set a new timer to stop the typing indicator after 3 seconds of inactivity
+  if (message.trim()) {
+    typingTimerRef.current = setTimeout(() => {
+      console.log("Typing timeout - stopping typing indicator - calling onTyping(false)");
       onTyping(false);
       isTypingRef.current = false;
-    }
+    }, 3000);
+  }
 
-    // Clear existing timer
+  // Clean up on unmount
+  return () => {
     if (typingTimerRef.current) {
       clearTimeout(typingTimerRef.current);
     }
-
-    // Set a new timer to stop the typing indicator after 3 seconds of inactivity
-    if (message.trim()) {
-      typingTimerRef.current = setTimeout(() => {
-        console.log("Typing timeout - stopping typing indicator");
-        onTyping(false);
-        isTypingRef.current = false;
-      }, 3000);
-    }
-
-    // Clean up on unmount
-    return () => {
-      if (typingTimerRef.current) {
-        clearTimeout(typingTimerRef.current);
-      }
-    };
-  }, [message, onTyping]);
+  };
+}, [message, onTyping]);
 
   const handleSubmit = (e) => {
     e.preventDefault();

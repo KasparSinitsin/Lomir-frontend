@@ -201,24 +201,34 @@ const Chat = () => {
     };
 
     // Handle typing indicators
-    const handleTypingUpdate = (data) => {
-      console.log("Typing update:", data);
-      if (String(data.conversationId) === String(conversationId)) {
-        setTypingUsers((prev) => {
-          const updated = {
-            ...prev,
-            [data.userId]: data.isTyping ? data.username : null,
-          };
-          // Clean up null values
-          Object.keys(updated).forEach((key) => {
-            if (updated[key] === null) {
-              delete updated[key];
-            }
-          });
-          return updated;
-        });
-      }
-    };
+const handleTypingUpdate = (data) => {
+  console.log("=== TYPING UPDATE RECEIVED ===");
+  console.log("Typing data:", data);
+  console.log("Current conversationId:", conversationId);
+  console.log("Data conversationId:", data.conversationId);
+  console.log("Current user ID:", user?.id);
+  console.log("Typing user ID:", data.userId);
+  
+  if (String(data.conversationId) === String(conversationId)) {
+    console.log("✅ Typing update is for current conversation");
+    setTypingUsers((prev) => {
+      const updated = {
+        ...prev,
+        [data.userId]: data.isTyping ? data.username : null,
+      };
+      // Clean up null values
+      Object.keys(updated).forEach((key) => {
+        if (updated[key] === null) {
+          delete updated[key];
+        }
+      });
+      console.log("Updated typing users:", updated);
+      return updated;
+    });
+  } else {
+    console.log("❌ Typing update NOT for current conversation");
+  }
+};
 
     // Handle message status updates
     const handleMessageStatus = (data) => {
