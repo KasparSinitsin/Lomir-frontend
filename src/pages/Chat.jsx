@@ -103,7 +103,22 @@ const Chat = () => {
   useEffect(() => {
     const socket = socketService.getSocket();
 
-    if (!socket || !isAuthenticated) return;
+    if (!socket || !isAuthenticated) {
+      console.log("No socket or not authenticated");
+      return;
+    }
+
+    console.log(
+      "Setting up socket listeners for conversationId:",
+      conversationId
+    );
+
+    // Remove any existing listeners first to prevent duplicates
+    socket.off("users:online");
+    socket.off("message:received");
+    socket.off("typing:update");
+    socket.off("message:status");
+    socket.off("conversation:updated");
 
     // Handle online users
     const handleOnlineUsers = (users) => {
@@ -112,19 +127,63 @@ const Chat = () => {
 
     // Handle new messages
     const handleNewMessage = (message) => {
-      // Add message to state if it's for the current conversation
-      if (message.conversationId === conversationId) {
-        setMessages((prev) => [...prev, message]);
+      console.log("=== NEW MESSAGE RECEIVED ===");
+      console.log("Message:", message);
+      console.log("Current conversationId:", conversationId);
+      console.log("Message conversationId:", message.conversationId);
 
-        // Mark as read if the user is viewing this conversation
-        socketService.markMessagesAsRead(message.conversationId);
+      // Convert both to strings for comparison
+      const messageConvId = String(message.conversationId);
+      const currentConvId = String(conversationId);
+
+      // Add message to state if it's for the current conversation OR if it involves the current user
+      if (
+        messageConvId === currentConvId ||
+        (message.senderId === user.id && messageConvId === currentConvId) ||
+        (message.senderId !== user.id && messageConvId === String(user.id))
+      ) {
+        console.log("Adding message to current conversation");
+
+        setMessages((prev) => {
+          // Check if message already exists to prevent duplicates
+          const messageExists = prev.some((msg) => msg.id === message.id);
+          if (messageExists) {
+            console.log("Message already exists, skipping duplicate");
+            return prev;
+          }
+
+          const newMessage = {
+            id: message.id,
+            senderId: message.senderId,
+            content: message.content,
+            createdAt: message.createdAt,
+            senderUsername: message.senderUsername,
+          };
+
+          console.log("Adding new message to state:", newMessage);
+          return [...prev, newMessage];
+        });
+
+        // Mark as read if the user is viewing this conversation and didn't send it
+        if (message.senderId !== user.id) {
+          socketService.markMessagesAsRead(currentConvId);
+        }
+      } else {
+        console.log(
+          "Message not for current conversation, updating conversation list only"
+        );
       }
 
-      // Update conversation list
+      // Always update conversation list for new messages
       setConversations((prev) => {
-        // Find and update the conversation
         const updatedList = prev.map((conv) => {
-          if (conv.id === message.conversationId) {
+          // For direct messages, check if conversation involves this message
+          if (
+            (conv.type === "direct" &&
+              (String(conv.id) === String(message.senderId) ||
+                String(conv.id) === messageConvId)) ||
+            (conv.type === "team" && String(conv.id) === messageConvId)
+          ) {
             return {
               ...conv,
               lastMessage: message.content,
@@ -143,18 +202,27 @@ const Chat = () => {
 
     // Handle typing indicators
     const handleTypingUpdate = (data) => {
-      if (data.conversationId === conversationId) {
-        setTypingUsers((prev) => ({
-          ...prev,
-          [data.userId]: data.isTyping ? data.username : null,
-        }));
+      console.log("Typing update:", data);
+      if (String(data.conversationId) === String(conversationId)) {
+        setTypingUsers((prev) => {
+          const updated = {
+            ...prev,
+            [data.userId]: data.isTyping ? data.username : null,
+          };
+          // Clean up null values
+          Object.keys(updated).forEach((key) => {
+            if (updated[key] === null) {
+              delete updated[key];
+            }
+          });
+          return updated;
+        });
       }
     };
 
     // Handle message status updates
     const handleMessageStatus = (data) => {
-      if (data.conversationId === conversationId) {
-        // Update read status for messages
+      if (String(data.conversationId) === String(conversationId)) {
         setMessages((prev) =>
           prev.map((msg) => ({
             ...msg,
@@ -167,12 +235,14 @@ const Chat = () => {
 
     // Handle conversation updates
     const handleConversationUpdate = (data) => {
+      console.log("Conversation update:", data);
       setConversations((prev) => {
-        // Find the conversation
-        const conversationIndex = prev.findIndex((c) => c.id === data.id);
+        const conversationIndex = prev.findIndex(
+          (c) => String(c.id) === String(data.id)
+        );
 
         if (conversationIndex === -1) {
-          // If conversation not found, fetch all conversations again
+          console.log("Conversation not found, refreshing all conversations");
           messageService
             .getConversations()
             .then((response) => setConversations(response.data || []))
@@ -182,7 +252,6 @@ const Chat = () => {
           return prev;
         }
 
-        // Update the conversation
         const updatedList = [...prev];
         updatedList[conversationIndex] = {
           ...updatedList[conversationIndex],
@@ -190,7 +259,6 @@ const Chat = () => {
           updatedAt: data.updatedAt,
         };
 
-        // Sort by updatedAt (newest first)
         return updatedList.sort(
           (a, b) => new Date(b.updatedAt) - new Date(a.updatedAt)
         );
@@ -204,7 +272,7 @@ const Chat = () => {
     socket.on("message:status", handleMessageStatus);
     socket.on("conversation:updated", handleConversationUpdate);
 
-    // Cleanup
+    // Cleanup function to remove listeners
     return () => {
       socket.off("users:online", handleOnlineUsers);
       socket.off("message:received", handleNewMessage);

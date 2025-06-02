@@ -5,25 +5,34 @@ const MessageInput = ({ onSendMessage, onTyping }) => {
   const [message, setMessage] = useState("");
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const typingTimerRef = useRef(null);
+  const isTypingRef = useRef(false);
 
   // Handle typing indicator
   useEffect(() => {
-    if (message.trim()) {
-      // User is typing
+    if (message.trim() && !isTypingRef.current) {
+      // User started typing
+      console.log("User started typing");
       onTyping(true);
-
-      // Clear existing timer
-      if (typingTimerRef.current) {
-        clearTimeout(typingTimerRef.current);
-      }
-
-      // Set a new timer to stop the typing indicator after 3 seconds of inactivity
-      typingTimerRef.current = setTimeout(() => {
-        onTyping(false);
-      }, 3000);
-    } else {
-      // Message is empty, stop typing indicator
+      isTypingRef.current = true;
+    } else if (!message.trim() && isTypingRef.current) {
+      // User stopped typing (cleared input)
+      console.log("User stopped typing (cleared input)");
       onTyping(false);
+      isTypingRef.current = false;
+    }
+
+    // Clear existing timer
+    if (typingTimerRef.current) {
+      clearTimeout(typingTimerRef.current);
+    }
+
+    // Set a new timer to stop the typing indicator after 3 seconds of inactivity
+    if (message.trim()) {
+      typingTimerRef.current = setTimeout(() => {
+        console.log("Typing timeout - stopping typing indicator");
+        onTyping(false);
+        isTypingRef.current = false;
+      }, 3000);
     }
 
     // Clean up on unmount
@@ -38,9 +47,17 @@ const MessageInput = ({ onSendMessage, onTyping }) => {
     e.preventDefault();
     if (!message.trim()) return;
 
+    console.log("Sending message and stopping typing indicator");
     onSendMessage(message);
     setMessage("");
+
+    // Stop typing indicator immediately when sending
     onTyping(false);
+    isTypingRef.current = false;
+
+    if (typingTimerRef.current) {
+      clearTimeout(typingTimerRef.current);
+    }
 
     // Hide emoji picker after sending
     setShowEmojiPicker(false);
@@ -86,6 +103,7 @@ const MessageInput = ({ onSendMessage, onTyping }) => {
           onChange={(e) => setMessage(e.target.value)}
           className="input input-bordered flex-grow mr-2"
           placeholder="Type a message..."
+          maxLength={500}
         />
 
         <button
