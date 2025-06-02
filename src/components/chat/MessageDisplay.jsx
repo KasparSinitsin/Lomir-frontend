@@ -170,7 +170,7 @@ const MessageDisplay = ({
         </div>
       ))}
 
-      {/* Typing indicator */}
+      {/* Typing animation */}
       {typingUsers.length > 0 && (
         <div className="flex justify-start">
           <div className="bg-base-200 rounded-lg p-3 rounded-bl-none">
@@ -190,27 +190,8 @@ const MessageDisplay = ({
         </div>
       )}
 
+      {/* Scroll anchor */}
       <div ref={messagesEndRef} />
-
-      {/* Typing indicator */}
-      {typingUsers.length > 0 && (
-        <div className="flex justify-start mb-4">
-          <div className="bg-base-200 rounded-lg p-3 rounded-bl-none max-w-xs">
-            <div className="flex items-center">
-              <div className="typing-indicator">
-                <span></span>
-                <span></span>
-                <span></span>
-              </div>
-              <span className="text-sm ml-2 text-base-content/70">
-                {typingUsers.length === 1
-                  ? `${typingUsers[0]} is typing...`
-                  : `${typingUsers.length} people are typing...`}
-              </span>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
