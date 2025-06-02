@@ -6,35 +6,36 @@
   /* Primary Brand Colors */
   --color-primary: #009213;
   --color-primary-focus: #036b0c;
-  --color-primary-content: #FFFFFF;
-  
+  --color-primary-content: #ffffff;
+
   /* Badge Category Colors */
-  --color-badge-collaboration: #009213; /* Green */ 
-  --color-badge-technical: #199bff;     /* Blue */
-  --color-badge-creative: #766aea;      /* Purple */
-  --color-badge-leadership: #df385b;    /* Red */
-  --color-badge-personal: #F59E0B;      /* Yellow */
-  
+  --color-badge-collaboration: #009213; /* Green */
+  --color-badge-technical: #199bff; /* Blue */
+  --color-badge-creative: #766aea; /* Purple */
+  --color-badge-leadership: #df385b; /* Red */
+  --color-badge-personal: #f59e0b; /* Yellow */
+
   /* UI Colors */
-  --color-background: #FFFFFF;
-  --color-background-soft: #F8FAFC;
+  --color-background: #ffffff;
+  --color-background-soft: #f8fafc;
   --color-background-soft-green: #bbeabf;
   --color-background-muted: rgba(255, 255, 255, 0.5);
   --color-text: #033f05;
   --color-text-soft: rgba(3, 63, 5, 0.7);
   --color-border: rgba(3, 63, 5, 0.2);
-  
+
   /* Semantic Colors */
   --color-success: var(--color-primary);
   --color-warning: #df385b;
   --color-error: #df385b;
   --color-info: #766aea;
-  
+
   /* UI Element Specific */
   --shadow-soft: 0 2px 15px rgba(0, 0, 0, 0.04);
-  --shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06);
   --blur-amount: 8px;
-  
+
   /* Animation Speeds */
   --transition-speed-fast: 200ms;
   --transition-speed-normal: 300ms;
@@ -49,12 +50,15 @@ body {
   background-color: transparent !important;
 }
 
-html, body {
+html,
+body {
   background: none !important;
   background-color: transparent !important;
 }
 
-html, body, #root {
+html,
+body,
+#root {
   height: 100%;
 }
 
@@ -99,31 +103,43 @@ html, body, #root {
 
 /* Typography */
 @layer base {
-  html, body {
-    font-family: 'Roboto', sans-serif;
+  html,
+  body {
+    font-family: "Roboto", sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     color: var(--color-text);
   }
 
   /* Font weights for various heading levels */
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     font-weight: 500;
     color: var(--color-text);
   }
 
   /* Additional styling to optimize Roboto appearance */
-  .text-xs, .text-sm {
+  .text-xs,
+  .text-sm {
     letter-spacing: 0.01em;
   }
 
-  .text-lg, .text-xl, .text-2xl, .text-3xl, .text-4xl, .text-5xl {
+  .text-lg,
+  .text-xl,
+  .text-2xl,
+  .text-3xl,
+  .text-4xl,
+  .text-5xl {
     letter-spacing: -0.01em;
   }
 }
 
 .h3-smaller-line-height {
-  line-height: 1.1; 
+  line-height: 1.1;
 }
 
 .h3-centered {
@@ -209,7 +225,7 @@ body {
 .checkbox {
   --chkbg: var(--color-primary);
   --chkfg: var(--color-primary-content);
-  border-radius: 50% !important; 
+  border-radius: 50% !important;
 }
 
 .checkbox:checked {
@@ -226,7 +242,6 @@ body {
   opacity: 0.5;
   cursor: not-allowed;
 }
-
 
 .checkbox-sm {
   width: 1rem;
@@ -259,8 +274,7 @@ body {
 
 .toggle {
   border: var(--border) solid currentColor;
-  color: var(--input-color); 
-
+  color: var(--input-color);
 }
 
 .toggle-visibility:checked {
@@ -271,10 +285,6 @@ body {
 .toggle-visibility:not(:checked) {
   background-color: var(--off-background) !important;
 }
-
-
-
-
 
 /* Neon Effect */
 .neon {
@@ -290,9 +300,8 @@ body {
   background-color: transparent;
   color: var(--color-primary-focus);
   font-weight: 600;
-  box-shadow: 0 0 1px var(--color-primary), 
-              0 0 2px var(--color-primary-focus), 
-              0 0 1px var(--color-primary-focus); 
+  box-shadow: 0 0 1px var(--color-primary), 0 0 2px var(--color-primary-focus),
+    0 0 1px var(--color-primary-focus);
 }
 
 .background-opacity {
@@ -338,11 +347,13 @@ body {
 }
 
 @keyframes typing-bounce {
-  0%, 80%, 100% { 
+  0%,
+  80%,
+  100% {
     transform: scale(0);
-  } 
-  40% { 
-    transform: scale(1.0);
+  }
+  40% {
+    transform: scale(1);
   }
 }
 

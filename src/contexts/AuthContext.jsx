@@ -15,8 +15,6 @@ export const AuthProvider = ({ children }) => {
     const loadUser = async () => {
       if (token) {
         try {
-          // Connect socket with token
-          socketService.connect(token);
           console.log("Loading user with token:", token);
           const response = await api.get("/api/auth/me", {
             headers: {
@@ -55,6 +53,14 @@ export const AuthProvider = ({ children }) => {
           console.log("Enhanced user data:", enhancedUserData);
           setUser(enhancedUserData);
           setError(null);
+
+          // Connect socket AFTER user is loaded
+          console.log("Connecting socket after user load");
+          try {
+            socketService.connect(token);
+          } catch (socketError) {
+            console.error("Failed to connect socket on load:", socketError);
+          }
         } catch (err) {
           console.error("Failed to load user:", err);
           // If token is invalid, clear it
@@ -116,6 +122,19 @@ export const AuthProvider = ({ children }) => {
       setToken(token);
       setUser(enhancedUser);
       setError(null);
+
+      // Initialize socket connection AFTER user is set
+      console.log("Initializing socket connection after registration");
+      try {
+        socketService.connect(token);
+      } catch (socketError) {
+        console.error(
+          "Failed to connect socket after registration:",
+          socketError
+        );
+        // Don't fail registration if socket fails
+      }
+
       return { success: true };
     } catch (err) {
       console.error("Registration error:", err);
@@ -137,9 +156,6 @@ export const AuthProvider = ({ children }) => {
       setLoading(true);
       const response = await api.post("/api/auth/login", credentials);
       const { token, user } = response.data.data;
-
-      // Initialize socket connection with token
-      socketService.connect(token);
 
       // Enhance user data with both snake_case and camelCase
       const enhancedUser = {
@@ -172,6 +188,16 @@ export const AuthProvider = ({ children }) => {
       setToken(token);
       setUser(enhancedUser);
       setError(null);
+
+      // Initialize socket connection AFTER user is set
+      console.log("Initializing socket connection after login");
+      try {
+        socketService.connect(token);
+      } catch (socketError) {
+        console.error("Failed to connect socket after login:", socketError);
+        // Don't fail login if socket fails
+      }
+
       return { success: true };
     } catch (err) {
       console.error("Login error:", err);
@@ -267,6 +293,7 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
     setError(null); // Clear error when logging out
     // Disconnect socket
+    console.log("Disconnecting socket on logout");
     socketService.disconnect();
   };
 
