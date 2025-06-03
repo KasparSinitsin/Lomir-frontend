@@ -1,4 +1,3 @@
-// src/components/users/UserDetailsModal.jsx
 import { messageService } from '../../services/messageService';
 import React, { useState, useEffect, useCallback } from "react";
 import LocationDisplay from "../common/LocationDisplay";
@@ -165,21 +164,36 @@ const UserDetailsModal = ({
     }
   };
 
-  const handleStartChat = async () => {
-    try {
-      // Start a new conversation
-      const response = await messageService.startConversation(user.id, "");
-      
-      // Close the modal
-      onClose();
-      
-      // Navigate to the chat page with this conversation
-      navigate(`/chat/${response.data.conversationId}`);
-    } catch (error) {
-      console.error("Error starting chat:", error);
-      setError("Failed to start conversation. Please try again.");
-    }
-  };
+const handleStartChat = async () => {
+  if (!user?.id) {
+    console.error('User ID is required to start chat');
+    return;
+  }
+
+  try {
+    console.log('Starting chat with user:', user.id);
+    
+    // Create conversation with the user and send an empty message to ensure it appears
+    const conversationResponse = await messageService.startConversation(user.id, '');
+    console.log('Conversation created:', conversationResponse);
+    
+    // Give a bit more time for the conversation to be created
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    // Open chat in new tab with direct message type
+    const chatUrl = `${window.location.origin}/chat/${user.id}?type=direct`;
+    console.log('Opening chat URL:', chatUrl);
+    
+    window.open(chatUrl, '_blank', 'noopener,noreferrer');
+    
+  } catch (error) {
+    console.error('Error starting conversation:', error);
+    
+    // Fallback: still open chat page even if API call fails
+    const chatUrl = `${window.location.origin}/chat/${user.id}?type=direct`;
+    window.open(chatUrl, '_blank', 'noopener,noreferrer');
+  }
+};
 
   // Helper function to get the avatar image URL or fallback to initials
   const getProfileImage = () => {
@@ -231,7 +245,7 @@ const UserDetailsModal = ({
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={handleStartChat} // FIXED: Changed from handleStartChatMock to handleStartChat
+                      onClick={handleStartChat} 
                       icon={<MessageCircle size={16} />}
                     ></Button>
                   )}
