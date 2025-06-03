@@ -57,7 +57,11 @@ const MessageInput = ({ onSendMessage, onTyping }) => {
     if (!message.trim()) return;
 
     console.log("Sending message and stopping typing indicator");
+
+    // Send the message
     onSendMessage(message);
+
+    // Clear input immediately
     setMessage("");
 
     // Stop typing indicator immediately when sending
