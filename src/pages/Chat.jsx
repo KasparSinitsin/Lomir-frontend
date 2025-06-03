@@ -33,7 +33,11 @@ const Chat = () => {
 
         // If there are conversations but none is selected, select the first one
         if (response.data?.length > 0 && !conversationId) {
-          navigate(`/chat/${response.data[0].id}`);
+          // Determine the type of the first conversation
+          const firstConversationType = response.data[0].type || "direct";
+          navigate(
+            `/chat/${response.data[0].id}?type=${firstConversationType}`
+          );
         }
 
         setLoading(false);
@@ -76,10 +80,10 @@ const Chat = () => {
         setLoading(false);
 
         // Join the conversation room
-        socketService.joinConversation(conversationId);
+        socketService.joinConversation(conversationId, type);
 
         // Mark messages as read
-        socketService.markMessagesAsRead(conversationId);
+        socketService.markMessagesAsRead(conversationId, type);
       } catch (err) {
         console.error("Error fetching messages:", err);
         setError("Failed to load messages. Please try again.");
@@ -93,7 +97,9 @@ const Chat = () => {
       // When leaving, leave the conversation room
       return () => {
         if (conversationId) {
-          socketService.leaveConversation(conversationId);
+          const urlParams = new URLSearchParams(window.location.search);
+          const type = urlParams.get("type") || "direct";
+          socketService.leaveConversation(conversationId, type);
         }
       };
     }
@@ -136,12 +142,16 @@ const Chat = () => {
       const messageConvId = String(message.conversationId);
       const currentConvId = String(conversationId);
 
-      // Add message to state if it's for the current conversation OR if it involves the current user
-      if (
-        messageConvId === currentConvId ||
-        (message.senderId === user.id && messageConvId === currentConvId) ||
-        (message.senderId !== user.id && messageConvId === String(user.id))
-      ) {
+      // Determine the type from the message or URL (fallback to 'direct')
+      const messageType =
+        message.type ||
+        new URLSearchParams(window.location.search).get("type") ||
+        "direct";
+      const currentType =
+        new URLSearchParams(window.location.search).get("type") || "direct";
+
+      // Add message to state if it's for the current conversation
+      if (messageConvId === currentConvId) {
         console.log("Adding message to current conversation");
 
         setMessages((prev) => {
@@ -158,6 +168,7 @@ const Chat = () => {
             content: message.content,
             createdAt: message.createdAt,
             senderUsername: message.senderUsername,
+            type: message.type, // Ensure type is included
           };
 
           console.log("Adding new message to state:", newMessage);
@@ -166,7 +177,7 @@ const Chat = () => {
 
         // Mark as read if the user is viewing this conversation and didn't send it
         if (message.senderId !== user.id) {
-          socketService.markMessagesAsRead(currentConvId);
+          socketService.markMessagesAsRead(currentConvId, currentType);
         }
       } else {
         console.log(
@@ -177,13 +188,8 @@ const Chat = () => {
       // Always update conversation list for new messages
       setConversations((prev) => {
         const updatedList = prev.map((conv) => {
-          // For direct messages, check if conversation involves this message
-          if (
-            (conv.type === "direct" &&
-              (String(conv.id) === String(message.senderId) ||
-                String(conv.id) === messageConvId)) ||
-            (conv.type === "team" && String(conv.id) === messageConvId)
-          ) {
+          // Check if the conversation ID matches the message's conversation ID
+          if (String(conv.id) === messageConvId) {
             return {
               ...conv,
               lastMessage: message.content,
@@ -232,6 +238,8 @@ const Chat = () => {
 
     // Handle message status updates
     const handleMessageStatus = (data) => {
+      const currentType =
+        new URLSearchParams(window.location.search).get("type") || "direct";
       if (String(data.conversationId) === String(conversationId)) {
         setMessages((prev) =>
           prev.map((msg) => ({
@@ -295,15 +303,19 @@ const Chat = () => {
   const handleSendMessage = (content) => {
     if (!content.trim() || !conversationId) return;
 
-    // Send message via WebSocket
-    socketService.sendMessage(conversationId, content);
+    // Get type from URL parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    const type = urlParams.get("type") || "direct";
+
+    // Send message via WebSocket with correct type
+    socketService.sendMessage(conversationId, content, type);
 
     // Clear typing indicator
     clearTimeout(typingTimeoutRef.current);
-    socketService.sendTypingStop(conversationId);
+    socketService.sendTypingStop(conversationId, type);
   };
 
-  const handleTyping = (isTyping) => {
+  const handleTyping = (isTyping, type = "direct") => {
     if (!conversationId) return;
 
     // Clear existing timeout
@@ -312,16 +324,12 @@ const Chat = () => {
     }
 
     if (isTyping) {
-      // Send typing indicator
-      socketService.sendTypingStart(conversationId);
-
-      // Set timeout to stop typing indicator after 3 seconds
+      socketService.sendTypingStart(conversationId, type);
       typingTimeoutRef.current = setTimeout(() => {
-        socketService.sendTypingStop(conversationId);
+        socketService.sendTypingStop(conversationId, type);
       }, 3000);
     } else {
-      // Send stop typing
-      socketService.sendTypingStop(conversationId);
+      socketService.sendTypingStop(conversationId, type);
     }
   };
 

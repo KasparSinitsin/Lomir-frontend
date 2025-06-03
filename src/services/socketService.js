@@ -87,28 +87,28 @@ export const socketService = {
   },
 
   // Send a new message
-  sendMessage: (conversationId, content) => {
-    if (socket && socket.connected) {
-      socket.emit("message:new", { conversationId, content });
-      console.log("Sending message:", { conversationId, content });
-    } else {
-      console.error("Cannot send message - socket not connected");
-    }
-  },
+sendMessage: (conversationId, content, type = "direct") => {
+  if (socket && socket.connected) {
+    socket.emit("message:new", { conversationId, content, type });
+    console.log("Sending message:", { conversationId, content, type });
+  } else {
+    console.error("Cannot send message - socket not connected");
+  }
+},
 
-  // Send typing indicator
-  sendTypingStart: (conversationId) => {
-    if (socket && socket.connected) {
-      socket.emit("typing:start", conversationId);
-    }
-  },
+// Send typing indicator  
+sendTypingStart: (conversationId, type = "direct") => {
+  if (socket && socket.connected) {
+    socket.emit("typing:start", { conversationId, type });
+  }
+},
 
-  // Stop typing indicator
-  sendTypingStop: (conversationId) => {
-    if (socket && socket.connected) {
-      socket.emit("typing:stop", conversationId);
-    }
-  },
+// Stop typing indicator
+sendTypingStop: (conversationId, type = "direct") => {
+  if (socket && socket.connected) {
+    socket.emit("typing:stop", { conversationId, type });
+  }
+},
 
   // Mark messages as read
   markMessagesAsRead: (conversationId) => {

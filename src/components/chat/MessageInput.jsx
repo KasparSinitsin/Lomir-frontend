@@ -8,40 +8,49 @@ const MessageInput = ({ onSendMessage, onTyping }) => {
   const isTypingRef = useRef(false);
 
   // Handle typing indicator
-useEffect(() => {
-  if (message.trim() && !isTypingRef.current) {
-    // User started typing
-    console.log("User started typing - calling onTyping(true)");
-    onTyping(true);
-    isTypingRef.current = true;
-  } else if (!message.trim() && isTypingRef.current) {
-    // User stopped typing (cleared input)
-    console.log("User stopped typing (cleared input) - calling onTyping(false)");
-    onTyping(false);
-    isTypingRef.current = false;
-  }
+  useEffect(() => {
+    const handleTyping = (isTyping) => {
+      // Get conversation type from URL parameters
+      const urlParams = new URLSearchParams(window.location.search);
+      const type = urlParams.get("type") || "direct";
+      if (message.trim() && !isTypingRef.current) {
+        console.log("User started typing - calling onTyping(true, type)");
+        onTyping(true, type); // Pass type parameter
+        isTypingRef.current = true;
+      } else if (!message.trim() && isTypingRef.current) {
+        console.log(
+          "User stopped typing (cleared input) - calling onTyping(false, type)"
+        );
+        onTyping(false, type); // Pass type parameter
+        isTypingRef.current = false;
+      }
 
-  // Clear existing timer
-  if (typingTimerRef.current) {
-    clearTimeout(typingTimerRef.current);
-  }
+      // Clear existing timer
+      if (typingTimerRef.current) {
+        clearTimeout(typingTimerRef.current);
+      }
 
-  // Set a new timer to stop the typing indicator after 3 seconds of inactivity
-  if (message.trim()) {
-    typingTimerRef.current = setTimeout(() => {
-      console.log("Typing timeout - stopping typing indicator - calling onTyping(false)");
-      onTyping(false);
-      isTypingRef.current = false;
-    }, 3000);
-  }
+      // Set a new timer to stop the typing indicator after 3 seconds of inactivity
+      if (message.trim()) {
+        typingTimerRef.current = setTimeout(() => {
+          console.log(
+            "Typing timeout - stopping typing indicator - calling onTyping(false, type)"
+          );
+          onTyping(false, type);
+          isTypingRef.current = false;
+        }, 3000);
+      }
+    };
 
-  // Clean up on unmount
-  return () => {
-    if (typingTimerRef.current) {
-      clearTimeout(typingTimerRef.current);
-    }
-  };
-}, [message, onTyping]);
+    handleTyping(!!message.trim()); // Initial call based on message state
+
+    // Clean up on unmount
+    return () => {
+      if (typingTimerRef.current) {
+        clearTimeout(typingTimerRef.current);
+      }
+    };
+  }, [message, onTyping]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -52,7 +61,9 @@ useEffect(() => {
     setMessage("");
 
     // Stop typing indicator immediately when sending
-    onTyping(false);
+    const urlParams = new URLSearchParams(window.location.search);
+    const type = urlParams.get("type") || "direct";
+    onTyping(false, type);
     isTypingRef.current = false;
 
     if (typingTimerRef.current) {
