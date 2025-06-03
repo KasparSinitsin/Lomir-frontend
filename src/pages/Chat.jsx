@@ -24,86 +24,142 @@ const Chat = () => {
   const typingTimeoutRef = useRef(null);
 
   // Fetch conversations
-  useEffect(() => {
-    const fetchConversations = async () => {
-      try {
-        setLoading(true);
-        const response = await messageService.getConversations();
-        setConversations(response.data || []);
+useEffect(() => {
+  const fetchConversations = async () => {
+    try {
+      setLoading(true);
+      const response = await messageService.getConversations();
+      setConversations(response.data || []);
 
-        // If there are conversations but none is selected, select the first one
-        if (response.data?.length > 0 && !conversationId) {
-          // Determine the type of the first conversation
-          const firstConversationType = response.data[0].type || "direct";
-          navigate(
-            `/chat/${response.data[0].id}?type=${firstConversationType}`
-          );
+      // If we have a conversationId but it's not in the conversations list,
+      // and we haven't found it yet, try to create it
+      if (conversationId && response.data?.length >= 0) {
+        const conversationExists = response.data.some(conv => String(conv.id) === String(conversationId));
+        
+        if (!conversationExists) {
+          const urlParams = new URLSearchParams(window.location.search);
+          const type = urlParams.get("type") || "direct";
+          
+          if (type === "direct") {
+            console.log('Conversation not found in list, creating new conversation...');
+            try {
+              await messageService.startConversation(parseInt(conversationId), '');
+              
+              // Refresh conversations after creating
+              const refreshedResponse = await messageService.getConversations();
+              setConversations(refreshedResponse.data || []);
+              
+            } catch (error) {
+              console.error('Error creating conversation for direct link:', error);
+            }
+          }
         }
-
-        setLoading(false);
-      } catch (err) {
-        console.error("Error fetching conversations:", err);
-        setError("Failed to load conversations. Please try again.");
-        setLoading(false);
       }
-    };
 
-    if (isAuthenticated) {
-      fetchConversations();
+      // If there are conversations but none is selected, select the first one
+      // (but only if we don't already have a conversationId from the URL)
+      if (response.data?.length > 0 && !conversationId) {
+        const firstConversationType = response.data[0].type || "direct";
+        navigate(`/chat/${response.data[0].id}?type=${firstConversationType}`);
+      }
+
+      setLoading(false);
+    } catch (err) {
+      console.error("Error fetching conversations:", err);
+      setError("Failed to load conversations. Please try again.");
+      setLoading(false);
     }
-  }, [isAuthenticated, conversationId, navigate]);
+  };
+
+  if (isAuthenticated) {
+    fetchConversations();
+  }
+}, [isAuthenticated, conversationId, navigate]);
 
   // Fetch messages when conversation changes
-  useEffect(() => {
-    const fetchMessages = async () => {
-      if (!conversationId) return;
+useEffect(() => {
+  const fetchMessages = async () => {
+    if (!conversationId) return;
 
+    try {
+      setLoading(true);
+
+      // Get type from URL parameters
+      const urlParams = new URLSearchParams(window.location.search);
+      const type = urlParams.get("type") || "direct";
+
+      // First, try to get conversation details
+      let conversationDetails;
       try {
-        setLoading(true);
-
-        // Get type from URL parameters
-        const urlParams = new URLSearchParams(window.location.search);
-        const type = urlParams.get("type") || "direct";
-
-        const conversationDetails = await messageService.getConversationById(
+        conversationDetails = await messageService.getConversationById(
           conversationId,
           type
         );
         setActiveConversation(conversationDetails.data);
+      } catch (error) {
+        console.log("Conversation doesn't exist yet, creating it...");
+        
+        // If conversation doesn't exist and it's a direct message, create it
+        if (type === "direct") {
+          try {
+            await messageService.startConversation(parseInt(conversationId), '');
+            
+            // Now try to get the conversation details again
+            conversationDetails = await messageService.getConversationById(
+              conversationId,
+              type
+            );
+            setActiveConversation(conversationDetails.data);
+            
+            // Also refresh the conversations list to show the new conversation
+            const conversationsResponse = await messageService.getConversations();
+            setConversations(conversationsResponse.data || []);
+            
+          } catch (createError) {
+            console.error("Failed to create conversation:", createError);
+          }
+        }
+      }
 
+      // Get messages for the conversation
+      try {
         const messagesResponse = await messageService.getMessages(
           conversationId,
           type
         );
         setMessages(messagesResponse.data || []);
+      } catch (messagesError) {
+        console.log("No messages yet, starting with empty conversation");
+        setMessages([]);
+      }
 
-        setLoading(false);
+      setLoading(false);
 
-        // Join the conversation room
-        socketService.joinConversation(conversationId, type);
+      // Join the conversation room
+      socketService.joinConversation(conversationId, type);
 
-        // Mark messages as read
-        socketService.markMessagesAsRead(conversationId, type);
-      } catch (err) {
-        console.error("Error fetching messages:", err);
-        setError("Failed to load messages. Please try again.");
-        setLoading(false);
+      // Mark messages as read
+      socketService.markMessagesAsRead(conversationId, type);
+    } catch (err) {
+      console.error("Error fetching messages:", err);
+      setError("Failed to load messages. Please try again.");
+      setLoading(false);
+    }
+  };
+
+  if (isAuthenticated && conversationId) {
+    fetchMessages();
+
+    // When leaving, leave the conversation room
+    return () => {
+      if (conversationId) {
+        const urlParams = new URLSearchParams(window.location.search);
+        const type = urlParams.get("type") || "direct";
+        socketService.leaveConversation(conversationId, type);
       }
     };
-
-    if (isAuthenticated && conversationId) {
-      fetchMessages();
-
-      // When leaving, leave the conversation room
-      return () => {
-        if (conversationId) {
-          const urlParams = new URLSearchParams(window.location.search);
-          const type = urlParams.get("type") || "direct";
-          socketService.leaveConversation(conversationId, type);
-        }
-      };
-    }
-  }, [isAuthenticated, conversationId]);
+  }
+}, [isAuthenticated, conversationId]);
 
   // Set up WebSocket event listeners
   useEffect(() => {

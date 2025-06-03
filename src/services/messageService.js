@@ -64,13 +64,18 @@ export const messageService = {
   // Start a new conversation with a user
   startConversation: async (recipientId, initialMessage = "") => {
     try {
+      console.log('API call: startConversation with recipientId:', recipientId); // Debug log
+      
       const response = await api.post("/api/messages/conversations", {
-        recipientId,
-        initialMessage,
+        recipientId: parseInt(recipientId), // Ensure it's a number
+        initialMessage: initialMessage.trim(),
       });
+      
+      console.log('startConversation response:', response.data); // Debug log
       return response.data;
     } catch (error) {
       console.error("Error starting conversation:", error);
+      console.error("Error response:", error.response?.data); // More detailed error
       throw error;
     }
   },
