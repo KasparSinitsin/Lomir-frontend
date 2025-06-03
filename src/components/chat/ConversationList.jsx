@@ -45,15 +45,20 @@ const ConversationList = ({
           ? `${conversationData.firstName} ${conversationData.lastName}`
           : conversationData?.username;
 
+        const isActive =
+          String(activeConversationId) === String(conversation.id);
+
         return (
           <div
             key={conversation.id}
             className={`
-              p-4 cursor-pointer hover:bg-base-200/50 transition-colors duration-200
-              ${
-                activeConversationId === conversation.id ? "bg-base-200/70" : ""
-              }
-            `}
+        p-4 cursor-pointer transition-colors duration-200
+        ${
+          isActive
+            ? "bg-green-100 border-l-4 border-green-500" // Active conversation styling
+            : "hover:bg-base-200/50" // Hover styling for inactive conversations
+        }
+      `}
             onClick={() => onSelectConversation(conversation.id)}
           >
             <div className="flex items-center">

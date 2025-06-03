@@ -7,6 +7,8 @@
   --color-primary: #009213;
   --color-primary-focus: #036b0c;
   --color-primary-content: #ffffff;
+  --color-chat-active: #bbf7d0; /* Light green for active chat */
+  --color-chat-active-border: #009213; /* Green border for active chat */
 
   /* Badge Category Colors */
   --color-badge-collaboration: #009213; /* Green */
@@ -320,6 +322,13 @@ body {
 
 .shadow-card {
   box-shadow: var(--shadow-card);
+}
+
+
+/* Chat styles */
+.chat-active {
+  background-color: var(--color-chat-active);
+  border-left: 4px solid var(--color-chat-active-border);
 }
 
 /* Typing indicator animation */
