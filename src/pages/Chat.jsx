@@ -115,20 +115,66 @@ const Chat = () => {
       try {
         setLoading(true);
 
-        // Get type from URL parameters
         const urlParams = new URLSearchParams(window.location.search);
         const type = urlParams.get("type") || "direct";
 
-        // First, try to get conversation details
+        console.log("=== CHAT DEBUG ===");
+        console.log("Conversation ID:", conversationId);
+        console.log("Conversation Type:", type);
+
         let conversationDetails;
         try {
           conversationDetails = await messageService.getConversationById(
             conversationId,
             type
           );
+
+          console.log("Initial conversation details:", conversationDetails);
+
+          // If it's a team conversation, fetch detailed team member information
+          if (type === "team" && conversationDetails?.data) {
+            try {
+              console.log("Fetching team details for team ID:", conversationId);
+              const teamDetails = await teamService.getTeamById(conversationId);
+              console.log("Team details fetched:", teamDetails);
+
+              if (teamDetails?.data?.members) {
+                console.log("Team members found:", teamDetails.data.members);
+                conversationDetails.data.team = {
+                  ...conversationDetails.data.team,
+                  members: teamDetails.data.members,
+                };
+                console.log(
+                  "Updated conversation with team members:",
+                  conversationDetails.data
+                );
+              } else {
+                console.log("No team members in team details response");
+              }
+            } catch (teamError) {
+              console.error("Error fetching team member details:", teamError);
+            }
+          }
+
           setActiveConversation(conversationDetails.data);
+          console.log("Set active conversation:", conversationDetails.data);
         } catch (error) {
           console.log("Conversation doesn't exist yet, creating it...");
+
+          if (type === "team" && conversationDetails?.data) {
+            // Fetch team members if it's a team conversation
+            try {
+              const teamDetails = await teamService.getTeamById(conversationId);
+              if (teamDetails?.data?.members) {
+                conversationDetails.data.team = {
+                  ...conversationDetails.data.team,
+                  members: teamDetails.data.members,
+                };
+              }
+            } catch (error) {
+              console.log("Could not fetch team member details:", error);
+            }
+          }
 
           // If conversation doesn't exist and it's a direct message, create it
           if (type === "direct") {
@@ -162,17 +208,14 @@ const Chat = () => {
             type
           );
           setMessages(messagesResponse.data || []);
+          console.log("Messages fetched:", messagesResponse.data);
         } catch (messagesError) {
           console.log("No messages yet, starting with empty conversation");
           setMessages([]);
         }
 
         setLoading(false);
-
-        // Join the conversation room
         socketService.joinConversation(conversationId, type);
-
-        // Mark messages as read
         socketService.markMessagesAsRead(conversationId, type);
       } catch (err) {
         console.error("Error fetching messages:", err);
@@ -488,6 +531,8 @@ const Chat = () => {
                   conversationPartner={activeConversation?.partner}
                   loading={loading}
                   typingUsers={activeTypingUsers}
+                  conversationType={activeConversation?.type || "direct"}
+                  teamMembers={activeConversation?.team?.members || []}
                 />
               </div>
               <div className="p-4 border-t border-base-200">
