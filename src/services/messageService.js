@@ -12,6 +12,17 @@ export const messageService = {
     }
   },
 
+  // Get unread message count for current user
+  getUnreadCount: async () => {
+    try {
+      const response = await api.get("/api/messages/unread-count");
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching unread count:", error);
+      throw error;
+    }
+  },
+
   // Get a specific conversation by ID
   getConversationById: async (conversationId, type = "direct") => {
     try {
@@ -64,14 +75,14 @@ export const messageService = {
   // Start a new conversation with a user
   startConversation: async (recipientId, initialMessage = "") => {
     try {
-      console.log('API call: startConversation with recipientId:', recipientId); // Debug log
-      
+      console.log("API call: startConversation with recipientId:", recipientId); // Debug log
+
       const response = await api.post("/api/messages/conversations", {
         recipientId: parseInt(recipientId), // Ensure it's a number
         initialMessage: initialMessage.trim(),
       });
-      
-      console.log('startConversation response:', response.data); // Debug log
+
+      console.log("startConversation response:", response.data); // Debug log
       return response.data;
     } catch (error) {
       console.error("Error starting conversation:", error);

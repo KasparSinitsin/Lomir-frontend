@@ -7,6 +7,7 @@ import MessageInput from "../components/chat/MessageInput";
 import { useAuth } from "../contexts/AuthContext";
 import { messageService } from "../services/messageService";
 import socketService from "../services/socketService";
+import { userService } from "../services/userService";
 import Alert from "../components/common/Alert";
 
 const Chat = () => {
@@ -24,142 +25,175 @@ const Chat = () => {
   const typingTimeoutRef = useRef(null);
 
   // Fetch conversations
-useEffect(() => {
-  const fetchConversations = async () => {
-    try {
-      setLoading(true);
-      const response = await messageService.getConversations();
-      setConversations(response.data || []);
+  useEffect(() => {
+    const fetchConversations = async () => {
+      try {
+        setLoading(true);
+        const response = await messageService.getConversations();
+        let conversationsList = response.data || [];
 
-      // If we have a conversationId but it's not in the conversations list,
-      // and we haven't found it yet, try to create it
-      if (conversationId && response.data?.length >= 0) {
-        const conversationExists = response.data.some(conv => String(conv.id) === String(conversationId));
-        
-        if (!conversationExists) {
-          const urlParams = new URLSearchParams(window.location.search);
-          const type = urlParams.get("type") || "direct";
-          
-          if (type === "direct") {
-            console.log('Conversation not found in list, creating new conversation...');
-            try {
-              await messageService.startConversation(parseInt(conversationId), '');
-              
-              // Refresh conversations after creating
-              const refreshedResponse = await messageService.getConversations();
-              setConversations(refreshedResponse.data || []);
-              
-            } catch (error) {
-              console.error('Error creating conversation for direct link:', error);
+        // If we have a conversationId from URL but it's not in the conversations list,
+        // create a virtual conversation entry
+        if (conversationId && conversationsList.length >= 0) {
+          const conversationExists = conversationsList.some(
+            (conv) => String(conv.id) === String(conversationId)
+          );
+
+          if (!conversationExists) {
+            const urlParams = new URLSearchParams(window.location.search);
+            const type = urlParams.get("type") || "direct";
+
+            if (type === "direct") {
+              console.log("Creating virtual conversation for new contact...");
+              try {
+                // Get the user details for the virtual conversation
+                const userResponse = await userService.getUserById(
+                  conversationId
+                );
+                console.log("User details fetched:", userResponse.data);
+
+                const userData = userResponse.data;
+
+                // Create a virtual conversation entry
+                const virtualConversation = {
+                  id: parseInt(conversationId),
+                  type: "direct",
+                  partner: {
+                    id: userData.id,
+                    username: userData.username,
+                    firstName: userData.firstName || userData.first_name,
+                    lastName: userData.lastName || userData.last_name,
+                    avatarUrl: userData.avatarUrl || userData.avatar_url,
+                  },
+                  lastMessage: "Start your conversation...", // Placeholder text
+                  updatedAt: new Date().toISOString(),
+                  isVirtual: true, // Flag to identify virtual conversations
+                };
+
+                // Add to the beginning of the conversations list
+                conversationsList = [virtualConversation, ...conversationsList];
+                console.log(
+                  "Virtual conversation created:",
+                  virtualConversation
+                );
+              } catch (error) {
+                console.error("Error creating virtual conversation:", error);
+                // Continue without the virtual conversation if user fetch fails
+              }
             }
           }
         }
-      }
 
-      // If there are conversations but none is selected, select the first one
-      // (but only if we don't already have a conversationId from the URL)
-      if (response.data?.length > 0 && !conversationId) {
-        const firstConversationType = response.data[0].type || "direct";
-        navigate(`/chat/${response.data[0].id}?type=${firstConversationType}`);
-      }
+        setConversations(conversationsList);
 
-      setLoading(false);
-    } catch (err) {
-      console.error("Error fetching conversations:", err);
-      setError("Failed to load conversations. Please try again.");
-      setLoading(false);
-    }
-  };
-
-  if (isAuthenticated) {
-    fetchConversations();
-  }
-}, [isAuthenticated, conversationId, navigate]);
-
-  // Fetch messages when conversation changes
-useEffect(() => {
-  const fetchMessages = async () => {
-    if (!conversationId) return;
-
-    try {
-      setLoading(true);
-
-      // Get type from URL parameters
-      const urlParams = new URLSearchParams(window.location.search);
-      const type = urlParams.get("type") || "direct";
-
-      // First, try to get conversation details
-      let conversationDetails;
-      try {
-        conversationDetails = await messageService.getConversationById(
-          conversationId,
-          type
-        );
-        setActiveConversation(conversationDetails.data);
-      } catch (error) {
-        console.log("Conversation doesn't exist yet, creating it...");
-        
-        // If conversation doesn't exist and it's a direct message, create it
-        if (type === "direct") {
-          try {
-            await messageService.startConversation(parseInt(conversationId), '');
-            
-            // Now try to get the conversation details again
-            conversationDetails = await messageService.getConversationById(
-              conversationId,
-              type
-            );
-            setActiveConversation(conversationDetails.data);
-            
-            // Also refresh the conversations list to show the new conversation
-            const conversationsResponse = await messageService.getConversations();
-            setConversations(conversationsResponse.data || []);
-            
-          } catch (createError) {
-            console.error("Failed to create conversation:", createError);
-          }
+        // If there are conversations but none is selected, select the first one
+        if (conversationsList.length > 0 && !conversationId) {
+          const firstConversationType = conversationsList[0].type || "direct";
+          navigate(
+            `/chat/${conversationsList[0].id}?type=${firstConversationType}`
+          );
         }
-      }
 
-      // Get messages for the conversation
-      try {
-        const messagesResponse = await messageService.getMessages(
-          conversationId,
-          type
-        );
-        setMessages(messagesResponse.data || []);
-      } catch (messagesError) {
-        console.log("No messages yet, starting with empty conversation");
-        setMessages([]);
-      }
-
-      setLoading(false);
-
-      // Join the conversation room
-      socketService.joinConversation(conversationId, type);
-
-      // Mark messages as read
-      socketService.markMessagesAsRead(conversationId, type);
-    } catch (err) {
-      console.error("Error fetching messages:", err);
-      setError("Failed to load messages. Please try again.");
-      setLoading(false);
-    }
-  };
-
-  if (isAuthenticated && conversationId) {
-    fetchMessages();
-
-    // When leaving, leave the conversation room
-    return () => {
-      if (conversationId) {
-        const urlParams = new URLSearchParams(window.location.search);
-        const type = urlParams.get("type") || "direct";
-        socketService.leaveConversation(conversationId, type);
+        setLoading(false);
+      } catch (err) {
+        console.error("Error fetching conversations:", err);
+        setError("Failed to load conversations. Please try again.");
+        setLoading(false);
       }
     };
-  }
-}, [isAuthenticated, conversationId]);
+
+    if (isAuthenticated) {
+      fetchConversations();
+    }
+  }, [isAuthenticated, conversationId, navigate]);
+
+  // Fetch messages when conversation changes
+  useEffect(() => {
+    const fetchMessages = async () => {
+      if (!conversationId) return;
+
+      try {
+        setLoading(true);
+
+        // Get type from URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const type = urlParams.get("type") || "direct";
+
+        // First, try to get conversation details
+        let conversationDetails;
+        try {
+          conversationDetails = await messageService.getConversationById(
+            conversationId,
+            type
+          );
+          setActiveConversation(conversationDetails.data);
+        } catch (error) {
+          console.log("Conversation doesn't exist yet, creating it...");
+
+          // If conversation doesn't exist and it's a direct message, create it
+          if (type === "direct") {
+            try {
+              await messageService.startConversation(
+                parseInt(conversationId),
+                ""
+              );
+
+              // Now try to get the conversation details again
+              conversationDetails = await messageService.getConversationById(
+                conversationId,
+                type
+              );
+              setActiveConversation(conversationDetails.data);
+
+              // Also refresh the conversations list to show the new conversation
+              const conversationsResponse =
+                await messageService.getConversations();
+              setConversations(conversationsResponse.data || []);
+            } catch (createError) {
+              console.error("Failed to create conversation:", createError);
+            }
+          }
+        }
+
+        // Get messages for the conversation
+        try {
+          const messagesResponse = await messageService.getMessages(
+            conversationId,
+            type
+          );
+          setMessages(messagesResponse.data || []);
+        } catch (messagesError) {
+          console.log("No messages yet, starting with empty conversation");
+          setMessages([]);
+        }
+
+        setLoading(false);
+
+        // Join the conversation room
+        socketService.joinConversation(conversationId, type);
+
+        // Mark messages as read
+        socketService.markMessagesAsRead(conversationId, type);
+      } catch (err) {
+        console.error("Error fetching messages:", err);
+        setError("Failed to load messages. Please try again.");
+        setLoading(false);
+      }
+    };
+
+    if (isAuthenticated && conversationId) {
+      fetchMessages();
+
+      // When leaving, leave the conversation room
+      return () => {
+        if (conversationId) {
+          const urlParams = new URLSearchParams(window.location.search);
+          const type = urlParams.get("type") || "direct";
+          socketService.leaveConversation(conversationId, type);
+        }
+      };
+    }
+  }, [isAuthenticated, conversationId]);
 
   // Set up WebSocket event listeners
   useEffect(() => {
@@ -191,71 +225,79 @@ useEffect(() => {
     const handleNewMessage = (message) => {
       console.log("=== NEW MESSAGE RECEIVED ===");
       console.log("Message:", message);
-      console.log("Current conversationId:", conversationId);
-      console.log("Message conversationId:", message.conversationId);
 
-      // Convert both to strings for comparison
       const messageConvId = String(message.conversationId);
       const currentConvId = String(conversationId);
 
-      // Determine the type from the message or URL (fallback to 'direct')
-      const messageType =
-        message.type ||
-        new URLSearchParams(window.location.search).get("type") ||
-        "direct";
-      const currentType =
-        new URLSearchParams(window.location.search).get("type") || "direct";
-
-      // Add message to state if it's for the current conversation
       if (messageConvId === currentConvId) {
-        console.log("Adding message to current conversation");
-
         setMessages((prev) => {
-          // Check if message already exists to prevent duplicates
-          const messageExists = prev.some((msg) => msg.id === message.id);
-          if (messageExists) {
-            console.log("Message already exists, skipping duplicate");
-            return prev;
+          // If this is our own message, replace the optimistic version
+          if (message.senderId === user.id) {
+            // Remove optimistic message and add real one
+            const withoutOptimistic = prev.filter(
+              (msg) => !msg.isOptimistic || msg.senderId !== user.id
+            );
+
+            // Check if real message already exists
+            const messageExists = withoutOptimistic.some(
+              (msg) => msg.id === message.id
+            );
+            if (messageExists) {
+              return prev;
+            }
+
+            const newMessage = {
+              id: message.id,
+              senderId: message.senderId,
+              content: message.content,
+              createdAt: message.createdAt,
+              senderUsername: message.senderUsername,
+              type: message.type,
+            };
+
+            return [...withoutOptimistic, newMessage];
+          } else {
+            // For other users' messages, just add normally
+            const messageExists = prev.some((msg) => msg.id === message.id);
+            if (messageExists) {
+              return prev;
+            }
+
+            const newMessage = {
+              id: message.id,
+              senderId: message.senderId,
+              content: message.content,
+              createdAt: message.createdAt,
+              senderUsername: message.senderUsername,
+              type: message.type,
+            };
+
+            return [...prev, newMessage];
           }
-
-          const newMessage = {
-            id: message.id,
-            senderId: message.senderId,
-            content: message.content,
-            createdAt: message.createdAt,
-            senderUsername: message.senderUsername,
-            type: message.type, // Ensure type is included
-          };
-
-          console.log("Adding new message to state:", newMessage);
-          return [...prev, newMessage];
         });
 
-        // Mark as read if the user is viewing this conversation and didn't send it
+        // Mark as read if viewing and didn't send it
         if (message.senderId !== user.id) {
-          socketService.markMessagesAsRead(currentConvId, currentType);
+          const urlParams = new URLSearchParams(window.location.search);
+          const type = urlParams.get("type") || "direct";
+          socketService.markMessagesAsRead(currentConvId, type);
         }
-      } else {
-        console.log(
-          "Message not for current conversation, updating conversation list only"
-        );
       }
 
-      // Always update conversation list for new messages
+      // Update conversation list
       setConversations((prev) => {
         const updatedList = prev.map((conv) => {
-          // Check if the conversation ID matches the message's conversation ID
           if (String(conv.id) === messageConvId) {
             return {
               ...conv,
               lastMessage: message.content,
               updatedAt: message.createdAt,
+              isVirtual: false,
             };
           }
           return conv;
         });
 
-        // Sort by updatedAt (newest first)
         return updatedList.sort(
           (a, b) => new Date(b.updatedAt) - new Date(a.updatedAt)
         );
@@ -363,7 +405,21 @@ useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const type = urlParams.get("type") || "direct";
 
-    // Send message via WebSocket with correct type
+    // Create optimistic message (show immediately)
+    const optimisticMessage = {
+      id: `temp-${Date.now()}`, // Temporary ID
+      senderId: user.id,
+      content: content,
+      createdAt: new Date().toISOString(),
+      senderUsername: user.username,
+      type: type,
+      isOptimistic: true, // Flag to identify optimistic messages
+    };
+
+    // Add optimistic message to UI immediately
+    setMessages((prev) => [...prev, optimisticMessage]);
+
+    // Send message via WebSocket
     socketService.sendMessage(conversationId, content, type);
 
     // Clear typing indicator

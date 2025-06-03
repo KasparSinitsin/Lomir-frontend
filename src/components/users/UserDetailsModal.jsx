@@ -1,4 +1,4 @@
-import { messageService } from '../../services/messageService';
+import { messageService } from "../../services/messageService";
 import React, { useState, useEffect, useCallback } from "react";
 import LocationDisplay from "../common/LocationDisplay";
 import {
@@ -25,7 +25,7 @@ const UserDetailsModal = ({
   mode = "view",
 }) => {
   const { user: currentUser, isAuthenticated, updateUser } = useAuth();
-  const navigate = useNavigate(); 
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [user, setUser] = useState(null);
@@ -164,36 +164,38 @@ const UserDetailsModal = ({
     }
   };
 
-const handleStartChat = async () => {
-  if (!user?.id) {
-    console.error('User ID is required to start chat');
-    return;
-  }
+  const handleStartChat = async () => {
+    if (!user?.id) {
+      console.error("User ID is required to start chat");
+      return;
+    }
 
-  try {
-    console.log('Starting chat with user:', user.id);
-    
-    // Create conversation with the user and send an empty message to ensure it appears
-    const conversationResponse = await messageService.startConversation(user.id, '');
-    console.log('Conversation created:', conversationResponse);
-    
-    // Give a bit more time for the conversation to be created
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Open chat in new tab with direct message type
-    const chatUrl = `${window.location.origin}/chat/${user.id}?type=direct`;
-    console.log('Opening chat URL:', chatUrl);
-    
-    window.open(chatUrl, '_blank', 'noopener,noreferrer');
-    
-  } catch (error) {
-    console.error('Error starting conversation:', error);
-    
-    // Fallback: still open chat page even if API call fails
-    const chatUrl = `${window.location.origin}/chat/${user.id}?type=direct`;
-    window.open(chatUrl, '_blank', 'noopener,noreferrer');
-  }
-};
+    try {
+      console.log("Starting chat with user:", user.id);
+
+      // Create conversation with the user and send an empty message to ensure it appears
+      const conversationResponse = await messageService.startConversation(
+        user.id,
+        ""
+      );
+      console.log("Conversation created:", conversationResponse);
+
+      // Give a bit more time for the conversation to be created
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      // Open chat in new tab with direct message type
+      const chatUrl = `${window.location.origin}/chat/${user.id}?type=direct`;
+      console.log("Opening chat URL:", chatUrl);
+
+      window.open(chatUrl, "_blank", "noopener,noreferrer");
+    } catch (error) {
+      console.error("Error starting conversation:", error);
+
+      // Fallback: still open chat page even if API call fails
+      const chatUrl = `${window.location.origin}/chat/${user.id}?type=direct`;
+      window.open(chatUrl, "_blank", "noopener,noreferrer");
+    }
+  };
 
   // Helper function to get the avatar image URL or fallback to initials
   const getProfileImage = () => {
@@ -245,7 +247,7 @@ const handleStartChat = async () => {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={handleStartChat} 
+                      onClick={handleStartChat}
                       icon={<MessageCircle size={16} />}
                     ></Button>
                   )}
