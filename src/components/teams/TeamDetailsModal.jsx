@@ -4,6 +4,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { teamService } from "../../services/teamService";
 import TagSelector from "../tags/TagSelector";
 import Button from "../common/Button";
+import SendMessageButton from "../common/SendMessageButton";
 import Alert from "../common/Alert";
 import TagDisplay from "../common/TagDisplay";
 import LocationDisplay from "../common/LocationDisplay";
@@ -618,20 +619,34 @@ const TeamDetailsModal = ({
   };
 
   const renderJoinButton = () => {
-    if (!isAuthenticated || !user || isTeamMember || loading) {
+    if (!isAuthenticated || !user || loading) {
       return null;
     }
 
     return (
       <div className="pt-6">
-        <Button
-          variant="primary"
-          onClick={handleApplyToJoin}
-          disabled={loading}
-          className="w-full"
-        >
-          Apply to Join Team
-        </Button>
+        {isTeamMember ? (
+          // Show team chat button for members/creators
+          <SendMessageButton
+            type="team"
+            teamId={team?.id} // Changed from teamData.id to team?.id
+            teamName={team?.name} // Changed from teamData.name to team?.name
+            variant="primary"
+            className="w-full"
+          >
+            Send Message to Team
+          </SendMessageButton>
+        ) : (
+          // Show apply button for non-members
+          <Button
+            variant="primary"
+            onClick={handleApplyToJoin}
+            disabled={loading}
+            className="w-full"
+          >
+            Apply to Join Team
+          </Button>
+        )}
       </div>
     );
   };
