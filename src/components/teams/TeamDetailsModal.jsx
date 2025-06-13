@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import TeamRoleManager from "./TeamRoleManager";
 import { useAuth } from "../../contexts/AuthContext";
 import { teamService } from "../../services/teamService";
 import TagSelector from "../tags/TagSelector";
@@ -11,6 +12,7 @@ import LocationDisplay from "../common/LocationDisplay";
 import { X, Edit, Users, Trash2, Eye, EyeClosed, Tag } from "lucide-react";
 import IconToggle from "../common/IconToggle";
 import UserDetailsModal from "../users/UserDetailsModal";
+import RoleBadgeDropdown from "./RoleBadgeDropdown";
 import TeamApplicationModal from "./TeamApplicationModal";
 import axios from "axios";
 
@@ -258,22 +260,32 @@ const TeamDetailsModal = ({
     }
   }, [isModalVisible]);
 
-  // Use our independent isCreator state for more reliability
+  // Use independent isCreator state for more reliability
   const isTeamCreator = useMemo(() => isCreator, [isCreator]);
 
   const isTeamAdmin = useMemo(() => userRole === "admin", [userRole]);
 
-  const canEditTeam = isTeamCreator || isTeamAdmin;
+  const canEditTeam = useMemo(() => {
+    if (!isAuthenticated || !user || !team) {
+      return false;
+    }
 
-  // Check if user is already a member of this team
-  const isTeamMember = useMemo(() => {
-    if (!team || !user) return false;
-    return (
-      team.members?.some((member) => member.user_id === user.id) ||
-      isTeamCreator ||
-      userRole
-    );
-  }, [team, user, isTeamCreator, userRole]);
+    // Creators can always edit
+    if (isCreator) {
+      return true;
+    }
+
+    // Admins can also edit (but not delete)
+    if (userRole === "admin") {
+      return true;
+    }
+
+    return false;
+  }, [isAuthenticated, user, team, isCreator, userRole]);
+
+  const canDeleteTeam = useMemo(() => {
+    return isAuthenticated && user && team && isCreator; // Only creators can delete
+  }, [isAuthenticated, user, team, isCreator]);
 
   // Helper function to determine if visibility status should be shown
   const shouldShowVisibilityStatus = () => {
@@ -621,6 +633,15 @@ const TeamDetailsModal = ({
     }
   };
 
+  const isTeamMember = useMemo(() => {
+    if (!team || !user) return false;
+    return (
+      team.members?.some((member) => member.user_id === user.id) ||
+      isCreator || // Make sure this matches your variable name
+      userRole
+    );
+  }, [team, user, isCreator, userRole]);
+
   const renderJoinButton = () => {
     if (!isAuthenticated || !user || loading) {
       return null;
@@ -744,16 +765,13 @@ const TeamDetailsModal = ({
                   )}
 
                   {/* Delete button - only shown to authenticated creators */}
-                  {isAuthenticated && isCreator && (
+                  {canDeleteTeam && (
                     <Button
-                      variant="ghost"
-                      size="sm"
+                      variant="destructive"
                       onClick={handleDeleteTeam}
-                      className="hover:bg-[#7ace82] hover:text-[#036b0c]"
-                      icon={<Trash2 size={16} />}
                       disabled={loading}
                     >
-                      Delete
+                      Delete Team
                     </Button>
                   )}
                 </>
@@ -1055,7 +1073,7 @@ const TeamDetailsModal = ({
                       )}
                     </div>
 
-                    {/* Members */}
+                    {/* Team Members */}
                     {team?.members && team.members.length > 0 && (
                       <div className="mb-6">
                         <h2 className="text-xl font-semibold mb-4">
@@ -1067,32 +1085,21 @@ const TeamDetailsModal = ({
 
                             // Check which property is available (userId or user_id)
                             const memberId = member.userId || member.user_id;
+                            const isCurrentUser = memberId === user?.id;
 
                             // Determine if this member should be anonymized
                             const anonymize = shouldAnonymizeMember(member);
 
+                            // Role management logic
+                            const canManageThisMember =
+                              isCreator &&
+                              member.role !== "creator" &&
+                              !isCurrentUser;
+
                             return (
                               <div
                                 key={memberId}
-                                className={`flex items-start bg-green-50 rounded-xl shadow p-4 gap-4 transition-all duration-200 ${
-                                  !anonymize
-                                    ? "cursor-pointer hover:bg-green-100 hover:shadow-md"
-                                    : ""
-                                }`}
-                                onClick={() =>
-                                  !anonymize && handleMemberClick(memberId)
-                                }
-                                role={!anonymize ? "button" : undefined}
-                                tabIndex={!anonymize ? 0 : undefined}
-                                onKeyDown={(e) => {
-                                  if (
-                                    !anonymize &&
-                                    (e.key === "Enter" || e.key === " ")
-                                  ) {
-                                    e.preventDefault();
-                                    handleMemberClick(memberId);
-                                  }
-                                }}
+                                className="flex items-start bg-green-50 rounded-xl shadow p-4 gap-4 transition-all duration-200 hover:bg-green-100 hover:shadow-md"
                               >
                                 <div className="avatar">
                                   {!anonymize &&
@@ -1141,16 +1148,59 @@ const TeamDetailsModal = ({
                                 <div className="flex-1 min-w-0">
                                   <div className="flex flex-col">
                                     <div className="flex items-center justify-between">
-                                      <h3 className="font-medium text-base truncate">
-                                        {anonymize
-                                          ? "Private Profile"
-                                          : member.username || "Unknown"}
-                                      </h3>
-                                      {member.role && (
-                                        <span className="badge badge-primary badge-sm ml-2">
-                                          {member.role}
-                                        </span>
-                                      )}
+                                      <div
+                                        className={`${
+                                          !anonymize ? "cursor-pointer" : ""
+                                        }`}
+                                        onClick={() =>
+                                          !anonymize &&
+                                          handleMemberClick(memberId)
+                                        }
+                                      >
+                                        <h3 className="font-medium text-base truncate">
+                                          {anonymize
+                                            ? "Private Profile"
+                                            : member.username || "Unknown"}
+                                        </h3>
+                                      </div>
+
+                                      {/* Role Badge with Dropdown */}
+                                      <RoleBadgeDropdown
+                                        member={member}
+                                        canManage={canManageThisMember}
+                                        onRoleChange={async (newRole) => {
+                                          try {
+                                            await teamService.updateMemberRole(
+                                              team.id,
+                                              memberId,
+                                              newRole
+                                            );
+                                            setNotification({
+                                              type: "success",
+                                              message: `${
+                                                member.username || "Member"
+                                              } ${
+                                                newRole === "admin"
+                                                  ? "promoted to admin"
+                                                  : "demoted to member"
+                                              } successfully!`,
+                                            });
+                                            // Refresh team data
+                                            await fetchTeamDetails();
+                                          } catch (error) {
+                                            console.error(
+                                              "Error updating member role:",
+                                              error
+                                            );
+                                            setNotification({
+                                              type: "error",
+                                              message:
+                                                error.response?.data?.message ||
+                                                "Failed to update member role",
+                                            });
+                                          }
+                                        }}
+                                      />
                                     </div>
 
                                     {!anonymize &&
@@ -1196,13 +1246,6 @@ const TeamDetailsModal = ({
                                       ))}
                                     </div>
                                   )}
-
-                                  {/* Add visual hint for clickable cards
-                                  {!anonymize && (
-                                    <div className="text-xs text-primary mt-1 opacity-60">
-                                      Click to view profile
-                                    </div>
-                                  )} */}
                                 </div>
                               </div>
                             );
