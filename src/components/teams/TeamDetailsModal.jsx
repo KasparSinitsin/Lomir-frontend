@@ -10,6 +10,7 @@ import TagDisplay from "../common/TagDisplay";
 import LocationDisplay from "../common/LocationDisplay";
 import { X, Edit, Users, Trash2, Eye, EyeClosed, Tag } from "lucide-react";
 import IconToggle from "../common/IconToggle";
+import UserDetailsModal from "../users/UserDetailsModal";
 import TeamApplicationModal from "./TeamApplicationModal";
 import axios from "axios";
 
@@ -53,6 +54,8 @@ const TeamDetailsModal = ({
   // New state for application modal
   const [isApplicationModalOpen, setIsApplicationModalOpen] = useState(false);
   const [applicationLoading, setApplicationLoading] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState(null);
+  const [isUserModalOpen, setIsUserModalOpen] = useState(false);
 
   const fetchTeamDetails = useCallback(async () => {
     if (!effectiveTeamId) return;
@@ -664,6 +667,16 @@ const TeamDetailsModal = ({
     );
   };
 
+  const handleMemberClick = (memberId) => {
+    setSelectedUserId(memberId);
+    setIsUserModalOpen(true);
+  };
+
+  const handleUserModalClose = () => {
+    setIsUserModalOpen(false);
+    setSelectedUserId(null);
+  };
+
   // Add detailed debugging
   console.log("Team Details Debug:", {
     // User information
@@ -1061,7 +1074,25 @@ const TeamDetailsModal = ({
                             return (
                               <div
                                 key={memberId}
-                                className="flex items-start bg-green-50 rounded-xl shadow p-4 gap-4"
+                                className={`flex items-start bg-green-50 rounded-xl shadow p-4 gap-4 transition-all duration-200 ${
+                                  !anonymize
+                                    ? "cursor-pointer hover:bg-green-100 hover:shadow-md"
+                                    : ""
+                                }`}
+                                onClick={() =>
+                                  !anonymize && handleMemberClick(memberId)
+                                }
+                                role={!anonymize ? "button" : undefined}
+                                tabIndex={!anonymize ? 0 : undefined}
+                                onKeyDown={(e) => {
+                                  if (
+                                    !anonymize &&
+                                    (e.key === "Enter" || e.key === " ")
+                                  ) {
+                                    e.preventDefault();
+                                    handleMemberClick(memberId);
+                                  }
+                                }}
                               >
                                 <div className="avatar">
                                   {!anonymize &&
@@ -1107,38 +1138,49 @@ const TeamDetailsModal = ({
                                   )}
                                 </div>
 
-                                <div className="flex flex-col">
-                                  <span className="font-medium text-primary">
-                                    {anonymize
-                                      ? "Private Profile"
-                                      : member.firstName && member.lastName
-                                      ? `${member.firstName} ${member.lastName}`
-                                      : member.first_name && member.last_name
-                                      ? `${member.first_name} ${member.last_name}`
-                                      : member.username}
-                                  </span>
-                                  <div className="flex items-center">
-                                    <span className="text-xs text-base-content/70">
-                                      {member.role}
-                                    </span>
-                                    {/* Add location display if the member has a postal code */}
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex flex-col">
+                                    <div className="flex items-center justify-between">
+                                      <h3 className="font-medium text-base truncate">
+                                        {anonymize
+                                          ? "Private Profile"
+                                          : member.username || "Unknown"}
+                                      </h3>
+                                      {member.role && (
+                                        <span className="badge badge-primary badge-sm ml-2">
+                                          {member.role}
+                                        </span>
+                                      )}
+                                    </div>
+
+                                    {!anonymize &&
+                                      (member.firstName ||
+                                        member.first_name ||
+                                        member.lastName ||
+                                        member.last_name) && (
+                                        <p className="text-sm text-base-content/70 truncate">
+                                          {(member.firstName ||
+                                            member.first_name ||
+                                            "") +
+                                            " " +
+                                            (member.lastName ||
+                                              member.last_name ||
+                                              "")}
+                                        </p>
+                                      )}
+
                                     {!anonymize &&
                                       (member.postal_code ||
                                         member.postalCode) && (
-                                        <>
-                                          <span className="text-xs text-base-content/70 mx-1">
-                                            •
-                                          </span>
-                                          <LocationDisplay
-                                            postalCode={
-                                              member.postal_code ||
-                                              member.postalCode
-                                            }
-                                            showIcon={false}
-                                            displayType="short"
-                                            className="text-xs text-base-content/70"
-                                          />
-                                        </>
+                                        <LocationDisplay
+                                          postalCode={
+                                            member.postal_code ||
+                                            member.postalCode
+                                          }
+                                          showIcon={false}
+                                          displayType="short"
+                                          className="text-xs text-base-content/70"
+                                        />
                                       )}
                                   </div>
 
@@ -1154,6 +1196,13 @@ const TeamDetailsModal = ({
                                       ))}
                                     </div>
                                   )}
+
+                                  {/* Add visual hint for clickable cards
+                                  {!anonymize && (
+                                    <div className="text-xs text-primary mt-1 opacity-60">
+                                      Click to view profile
+                                    </div>
+                                  )} */}
                                 </div>
                               </div>
                             );
@@ -1165,6 +1214,16 @@ const TeamDetailsModal = ({
                     {/* Join Team Button for non-members */}
                     {renderJoinButton()}
                   </div>
+                )}
+
+                {/* User Details Modal */}
+                {isUserModalOpen && selectedUserId && (
+                  <UserDetailsModal
+                    isOpen={isUserModalOpen}
+                    userId={selectedUserId}
+                    onClose={handleUserModalClose}
+                    mode="view"
+                  />
                 )}
               </>
             )}
