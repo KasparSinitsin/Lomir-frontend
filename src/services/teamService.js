@@ -305,6 +305,24 @@ export const teamService = {
       return { data: { role: null } }; // Return a default response on error
     }
   },
-};
 
+  // Update member role in a team
+  updateMemberRole: async (teamId, memberId, newRole) => {
+    try {
+      const response = await api.put(
+        `/api/teams/${teamId}/members/${memberId}/role`,
+        {
+          newRole: newRole,
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error(
+        `Error updating member role in team ${teamId}:`,
+        error.response ? error.response.data : error.message
+      );
+      throw error;
+    }
+  },
+};
 export default teamService;
