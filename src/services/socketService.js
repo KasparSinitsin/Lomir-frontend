@@ -69,46 +69,46 @@ export const socketService = {
   },
 
   // Join a conversation room
-  joinConversation: (conversationId) => {
+  joinConversation: (conversationId, type = "direct") => {
     if (socket && socket.connected) {
-      socket.emit("conversation:join", conversationId);
-      console.log("Joined conversation:", conversationId);
+      socket.emit("conversation:join", { conversationId, type });
+      console.log(`Joined ${type} conversation:`, conversationId);
     } else {
       console.warn("Cannot join conversation - socket not connected");
     }
   },
 
   // Leave a conversation room
-  leaveConversation: (conversationId) => {
+  leaveConversation: (conversationId, type = "direct") => {
     if (socket && socket.connected) {
-      socket.emit("conversation:leave", conversationId);
-      console.log("Left conversation:", conversationId);
+      socket.emit("conversation:leave", { conversationId, type });
+      console.log(`Left ${type} conversation:`, conversationId);
     }
   },
 
   // Send a new message
-sendMessage: (conversationId, content, type = "direct") => {
-  if (socket && socket.connected) {
-    socket.emit("message:new", { conversationId, content, type });
-    console.log("Sending message:", { conversationId, content, type });
-  } else {
-    console.error("Cannot send message - socket not connected");
-  }
-},
+  sendMessage: (conversationId, content, type = "direct") => {
+    if (socket && socket.connected) {
+      socket.emit("message:new", { conversationId, content, type });
+      console.log("Sending message:", { conversationId, content, type });
+    } else {
+      console.error("Cannot send message - socket not connected");
+    }
+  },
 
-// Send typing indicator  
-sendTypingStart: (conversationId, type = "direct") => {
-  if (socket && socket.connected) {
-    socket.emit("typing:start", { conversationId, type });
-  }
-},
+  // Send typing indicator
+  sendTypingStart: (conversationId, type = "direct") => {
+    if (socket && socket.connected) {
+      socket.emit("typing:start", { conversationId, type });
+    }
+  },
 
-// Stop typing indicator
-sendTypingStop: (conversationId, type = "direct") => {
-  if (socket && socket.connected) {
-    socket.emit("typing:stop", { conversationId, type });
-  }
-},
+  // Stop typing indicator
+  sendTypingStop: (conversationId, type = "direct") => {
+    if (socket && socket.connected) {
+      socket.emit("typing:stop", { conversationId, type });
+    }
+  },
 
   // Mark messages as read
   markMessagesAsRead: (conversationId) => {

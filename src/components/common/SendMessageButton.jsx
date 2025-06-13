@@ -10,26 +10,38 @@ const SendMessageButton = ({
   size = "sm",
   className = "",
   children,
+  type = "direct", // "direct" or "team"
+  teamId = null,
+  teamName = null,
 }) => {
   const handleSendMessage = async () => {
-    if (!recipientId) {
-      console.error("Recipient ID is required");
+    if (type === "team" && teamId) {
+      // Handle team message
+      const chatUrl = `${window.location.origin}/chat/${teamId}?type=team`;
+      window.open(chatUrl, "_blank", "noopener,noreferrer");
       return;
     }
 
-    try {
-      // Create conversation or get existing one
-      await messageService.startConversation(recipientId, "");
-
-      // Open chat in new tab with direct message type
-      const chatUrl = `${window.location.origin}/chat/${recipientId}?type=direct`;
-      window.open(chatUrl, "_blank", "noopener,noreferrer");
-    } catch (error) {
-      console.error("Error starting conversation:", error);
-      // Fallback: still open chat page even if API call fails
-      const chatUrl = `${window.location.origin}/chat/${recipientId}?type=direct`;
-      window.open(chatUrl, "_blank", "noopener,noreferrer");
+    if (type === "direct" && recipientId) {
+      // Existing direct message logic
+      try {
+        await messageService.startConversation(recipientId, "");
+        const chatUrl = `${window.location.origin}/chat/${recipientId}?type=direct`;
+        window.open(chatUrl, "_blank", "noopener,noreferrer");
+      } catch (error) {
+        console.error("Error starting conversation:", error);
+        const chatUrl = `${window.location.origin}/chat/${recipientId}?type=direct`;
+        window.open(chatUrl, "_blank", "noopener,noreferrer");
+      }
+      return;
     }
+
+    console.error("Missing required props for message type:", type);
+  };
+
+  const getDefaultText = () => {
+    if (type === "team") return "Send Team Message";
+    return "Send Message";
   };
 
   return (
@@ -40,7 +52,7 @@ const SendMessageButton = ({
       className={className}
       icon={<MessageCircle size={16} />}
     >
-      {children || "Send Message"}
+      {children || getDefaultText()}
     </Button>
   );
 };

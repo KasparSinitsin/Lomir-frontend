@@ -8,6 +8,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { messageService } from "../services/messageService";
 import socketService from "../services/socketService";
 import { userService } from "../services/userService";
+import { teamService } from "../services/teamService";
 import Alert from "../components/common/Alert";
 
 const Chat = () => {
@@ -158,6 +159,39 @@ const Chat = () => {
 
           setActiveConversation(conversationDetails.data);
           console.log("Set active conversation:", conversationDetails.data);
+
+          // Ensure team conversation appears in conversation list
+          if (type === "team" && conversationDetails.data) {
+            setConversations((prev) => {
+              // Check if this team conversation already exists in the list
+              const existingConversation = prev.find(
+                (conv) =>
+                  String(conv.id) === String(conversationId) &&
+                  conv.type === "team"
+              );
+
+              if (!existingConversation) {
+                // Create a new team conversation entry
+                const newTeamConversation = {
+                  id: parseInt(conversationId),
+                  type: "team",
+                  team: {
+                    id: conversationDetails.data.team.id,
+                    name: conversationDetails.data.team.name,
+                    avatarUrl: conversationDetails.data.team.avatarUrl,
+                  },
+                  lastMessage: "Start your team conversation...",
+                  updatedAt: new Date().toISOString(),
+                  isVirtual: true, // Flag to identify virtual conversations
+                };
+
+                // Add to the beginning of the conversations list
+                return [newTeamConversation, ...prev];
+              }
+
+              return prev;
+            });
+          }
         } catch (error) {
           console.log("Conversation doesn't exist yet, creating it...");
 
@@ -215,8 +249,29 @@ const Chat = () => {
         }
 
         setLoading(false);
-        socketService.joinConversation(conversationId, type);
-        socketService.markMessagesAsRead(conversationId, type);
+
+        // Wait for socket to be connected before joining
+        const socket = socketService.getSocket();
+        if (socket && socket.connected) {
+          socketService.joinConversation(conversationId, type);
+          socketService.markMessagesAsRead(conversationId, type);
+        } else {
+          // Wait for socket connection and then join
+          console.log("Socket not connected, waiting for connection...");
+          const checkConnection = setInterval(() => {
+            const socket = socketService.getSocket();
+            if (socket && socket.connected) {
+              const urlParams = new URLSearchParams(window.location.search);
+              const type = urlParams.get("type") || "direct";
+              socketService.joinConversation(conversationId, type);
+              socketService.markMessagesAsRead(conversationId, type);
+              clearInterval(checkConnection);
+            }
+          }, 100);
+
+          // Clear interval after 5 seconds to prevent infinite checking
+          setTimeout(() => clearInterval(checkConnection), 5000);
+        }
       } catch (err) {
         console.error("Error fetching messages:", err);
         setError("Failed to load messages. Please try again.");
@@ -529,6 +584,7 @@ const Chat = () => {
                   messages={messages}
                   currentUserId={user?.id}
                   conversationPartner={activeConversation?.partner}
+                  teamData={activeConversation?.team}
                   loading={loading}
                   typingUsers={activeTypingUsers}
                   conversationType={activeConversation?.type || "direct"}
