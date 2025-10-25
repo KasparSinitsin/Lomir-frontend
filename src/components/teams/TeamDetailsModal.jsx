@@ -97,7 +97,7 @@ const TeamDetailsModal = ({
         creatorId = parseInt(teamData.creatorId, 10);
       }
 
-      // 3. If still not found or invalid, check members array for creator role
+      // 3. If not found or invalid, check members array for creator role
       if (
         isNaN(creatorId) &&
         teamData.members &&
