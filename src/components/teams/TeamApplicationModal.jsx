@@ -116,7 +116,7 @@ const TeamApplicationModal = ({
       hideBackdrop={true}
       closeOnBackdrop={false}
     >
-      {/* Content - Just the main content, all layout handled by Modal! */}
+      {/* COMPLETE CONTENT - This was missing! */}
       {error && (
         <Alert
           type="error"
@@ -153,6 +153,9 @@ const TeamApplicationModal = ({
           <div className="label">
             <span className="label-text-alt text-base-content/60">
               {message.length}/500 characters
+              {isDraft && (
+                <span className="ml-2 text-warning">• Draft saved</span>
+              )}
             </span>
           </div>
         </div>
