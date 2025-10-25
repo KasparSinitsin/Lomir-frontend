@@ -15,6 +15,7 @@ import UserDetailsModal from "../users/UserDetailsModal";
 import RoleBadgeDropdown from "./RoleBadgeDropdown";
 import TeamApplicationModal from "./TeamApplicationModal";
 import axios from "axios";
+import Modal from "../common/Modal";
 
 const TeamDetailsModal = ({
   isOpen = true,
