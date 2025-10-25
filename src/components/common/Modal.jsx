@@ -43,6 +43,28 @@ const Modal = ({
   
   ...props
 }) => {
+  React.useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && closeOnEscape && onClose) {
+        onClose();
+      }
+    };
+
+    if (isOpen) {
+      if (closeOnEscape) {
+        document.addEventListener('keydown', handleKeyDown);
+      }
+      // Prevent body scroll when modal is open
+      document.body.style.overflow = 'hidden';
+      
+      return () => {
+        document.removeEventListener('keydown', handleKeyDown);
+        document.body.style.overflow = 'unset';
+      };
+    }
+  }, [isOpen, closeOnEscape, onClose]);
+
+  // NOW we can do conditional return and regular functions
   if (!isOpen) return null;
 
   // Size configurations
@@ -66,27 +88,6 @@ const Modal = ({
       onClose();
     }
   };
-
-  const handleKeyDown = (e) => {
-    if (e.key === 'Escape' && closeOnEscape && onClose) {
-      onClose();
-    }
-  };
-
-  React.useEffect(() => {
-    if (isOpen) {
-      if (closeOnEscape) {
-        document.addEventListener('keydown', handleKeyDown);
-      }
-      // Prevent body scroll when modal is open
-      document.body.style.overflow = 'hidden';
-      
-      return () => {
-        document.removeEventListener('keydown', handleKeyDown);
-        document.body.style.overflow = 'unset';
-      };
-    }
-  }, [isOpen, closeOnEscape]);
 
   return (
     <div 
