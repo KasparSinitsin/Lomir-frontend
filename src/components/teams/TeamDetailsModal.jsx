@@ -98,7 +98,7 @@ const TeamDetailsModal = ({
         creatorId = parseInt(teamData.creatorId, 10);
       }
 
-      // 3. If still not found or invalid, check members array for creator role
+      // 3. If not found or invalid, check members array for creator role
       if (
         isNaN(creatorId) &&
         teamData.members &&
@@ -125,7 +125,7 @@ const TeamDetailsModal = ({
 
       // 4. Ensure creatorId is valid, use logged-in user as fallback for creator's own teams
       if (isNaN(creatorId) && user && teamData.members) {
-        // Check if current user is listed as creator in members
+        // Check if current user is listed as creator under members
         const isCurrentUserCreator = teamData.members.some(
           (member) =>
             (member.user_id === user.id || member.userId === user.id) &&
