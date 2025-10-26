@@ -727,6 +727,7 @@ const TeamDetailsModal = ({
   });
 
   if (!isModalVisible) return null;
+  
 
   return (
     <>

@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { X, Clock, MessageCircle } from "lucide-react";
+import { Clock, MessageCircle } from "lucide-react";
+import Modal from "../common/Modal";
 import Button from "../common/Button";
 import { format } from "date-fns";
 
@@ -11,7 +12,17 @@ const TeamApplicationDetailsModal = ({
 }) => {
   const [isLoading, setIsLoading] = useState(false);
 
-  if (!isOpen || !application) return null;
+  // Debug: Log the application object to see its structure
+  React.useEffect(() => {
+    if (application) {
+      console.log("TeamApplicationDetailsModal - Application object:", application);
+      console.log("Available date properties:", {
+        created_at: application.created_at,
+        createdAt: application.createdAt,
+        date: application.date,
+      });
+    }
+  }, [application]);
 
   const handleCancelApplication = async () => {
     if (
@@ -31,69 +42,81 @@ const TeamApplicationDetailsModal = ({
     }
   };
 
-  // Format application date
-  const formattedDate = application.created_at
-    ? format(new Date(application.created_at), "MMMM d, yyyy")
-    : "Unknown date";
+  // Format application date - check multiple possible property names
+  const getApplicationDate = () => {
+    const date = application?.created_at || application?.createdAt || application?.date;
+    
+    if (!date) return "Unknown date";
+    
+    try {
+      return format(new Date(date), "MMMM d, yyyy");
+    } catch (error) {
+      console.error("Error formatting date:", error, "Date value:", date);
+      return "Unknown date";
+    }
+  };
+  
+  const formattedDate = getApplicationDate();
+
+  // Footer with action buttons
+  const footer = (
+    <div className="flex justify-end space-x-3">
+      <Button variant="ghost" onClick={onClose}>
+        Close
+      </Button>
+      <Button
+        variant="error"
+        onClick={handleCancelApplication}
+        disabled={isLoading}
+      >
+        {isLoading ? "Canceling..." : "Cancel Application"}
+      </Button>
+    </div>
+  );
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div
-        className="absolute inset-0 bg-black bg-opacity-40"
-        onClick={onClose}
-      ></div>
+    <Modal
+      isOpen={isOpen && !!application}
+      onClose={onClose}
+      title="Pending Application"
+      footer={footer}
+      
+      // Modal settings
+      position="center"
+      size="default" // max-w-2xl
+      maxHeight="max-h-[90vh]"
+      
+      // Standard center modal behavior
+      closeOnBackdrop={true}
+      closeOnEscape={true}
+      showCloseButton={true}
+    >
+      {/* Team Information */}
+      <div className="mb-6">
+        <h3 className="text-xl font-bold mb-2">{application?.team?.name}</h3>
+        <p className="text-base-content/70 mb-4">
+          {application?.team?.description}
+        </p>
 
-      <div className="relative w-full max-w-2xl max-h-[90vh] rounded-xl overflow-hidden bg-base-100 shadow-lg">
-        {/* Header */}
-        <div className="px-6 py-4 border-b border-base-300 flex justify-between items-center">
-          <h2 className="text-xl font-medium text-primary">
-            Pending Application
-          </h2>
-          <button onClick={onClose} className="btn btn-ghost btn-sm btn-circle">
-            <X size={20} />
-          </button>
-        </div>
-
-        {/* Content */}
-        <div className="p-6 overflow-auto">
-          <div className="mb-6">
-            <h3 className="text-xl font-bold mb-2">{application.team.name}</h3>
-            <p className="text-base-content/70 mb-4">
-              {application.team.description}
-            </p>
-
-            <div className="flex items-center text-sm text-base-content/70 bg-yellow-100 py-2 px-3 rounded-lg mb-4">
-              <Clock size={18} className="mr-2 text-yellow-600" />
-              <span>Application submitted on {formattedDate}</span>
-            </div>
-          </div>
-
-          <div className="bg-base-200/50 rounded-lg p-4 mb-6">
-            <div className="flex items-start mb-2">
-              <MessageCircle
-                size={20}
-                className="text-primary mt-1 mr-2 flex-shrink-0"
-              />
-              <h4 className="font-medium">Your Application Message</h4>
-            </div>
-            <p className="text-base-content/90 pl-7">{application.message}</p>
-          </div>
-
-          <div className="flex justify-end">
-            <Button variant="ghost" onClick={onClose} className="mr-2">
-              Close
-            </Button>
-            <Button
-              variant="error"
-              onClick={handleCancelApplication}
-              disabled={isLoading}
-            >
-              {isLoading ? "Canceling..." : "Cancel Application"}
-            </Button>
-          </div>
+        {/* Application Date Badge */}
+        <div className="flex items-center text-sm text-base-content/70 bg-yellow-100 py-2 px-3 rounded-lg mb-4">
+          <Clock size={18} className="mr-2 text-yellow-600" />
+          <span>Application submitted on {formattedDate}</span>
         </div>
       </div>
-    </div>
+
+      {/* Application Message */}
+      <div className="bg-base-200/50 rounded-lg p-4">
+        <div className="flex items-start mb-2">
+          <MessageCircle
+            size={20}
+            className="text-primary mt-1 mr-2 flex-shrink-0"
+          />
+          <h4 className="font-medium">Your Application Message</h4>
+        </div>
+        <p className="text-base-content/90 pl-7">{application?.message}</p>
+      </div>
+    </Modal>
   );
 };
 
