@@ -12,6 +12,18 @@ const TeamApplicationDetailsModal = ({
 }) => {
   const [isLoading, setIsLoading] = useState(false);
 
+  // Debug: Log the application object to see its structure
+  React.useEffect(() => {
+    if (application) {
+      console.log("TeamApplicationDetailsModal - Application object:", application);
+      console.log("Available date properties:", {
+        created_at: application.created_at,
+        createdAt: application.createdAt,
+        date: application.date,
+      });
+    }
+  }, [application]);
+
   const handleCancelApplication = async () => {
     if (
       window.confirm(
@@ -30,10 +42,21 @@ const TeamApplicationDetailsModal = ({
     }
   };
 
-  // Format application date
-  const formattedDate = application?.created_at
-    ? format(new Date(application.created_at), "MMMM d, yyyy")
-    : "Unknown date";
+  // Format application date - check multiple possible property names
+  const getApplicationDate = () => {
+    const date = application?.created_at || application?.createdAt || application?.date;
+    
+    if (!date) return "Unknown date";
+    
+    try {
+      return format(new Date(date), "MMMM d, yyyy");
+    } catch (error) {
+      console.error("Error formatting date:", error, "Date value:", date);
+      return "Unknown date";
+    }
+  };
+  
+  const formattedDate = getApplicationDate();
 
   // Footer with action buttons
   const footer = (
