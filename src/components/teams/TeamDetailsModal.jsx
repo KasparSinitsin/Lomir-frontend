@@ -726,69 +726,59 @@ const TeamDetailsModal = ({
     "Form Data": formData,
   });
 
-  if (!isModalVisible) return null;
-  
+// Create custom title with buttons
+  const modalTitle = (
+    <div className="flex justify-between items-center w-full">
+      <h2 className="text-xl font-medium text-primary">
+        {isEditing ? "Edit Team" : "Team Details"}
+      </h2>
+      <div className="flex items-center space-x-2">
+        {!isEditing && (
+          <>
+            {isAuthenticated && isCreator && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsEditing(true)}
+                className="hover:bg-[#7ace82] hover:text-[#036b0c]"
+                icon={<Edit size={16} />}
+              >
+                Edit
+              </Button>
+            )}
+            {canDeleteTeam && (
+              <Button
+                variant="destructive"
+                onClick={handleDeleteTeam}
+                disabled={loading}
+              >
+                Delete Team
+              </Button>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+
+ if (!isModalVisible) return null;
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center">
-        {/* Backdrop overlay */}
-        <div
-          className="absolute inset-0 bg-black bg-opacity-40"
-          onClick={(e) => {
-            // Don't close if application modal is open
-            if (!isApplicationModalOpen) {
-              handleClose();
-            }
-          }}
-        ></div>
-
-        {/* Modal container */}
-        <div className="relative w-full max-w-2xl max-h-[90vh] rounded-xl overflow-hidden bg-base-100 shadow-lg">
-          <div className="px-6 py-4 border-b border-base-300 flex justify-between items-center">
-            <h2 className="text-xl font-medium text-primary">
-              {isEditing ? "Edit Team" : "Team Details"}
-            </h2>
-            <div className="flex items-center space-x-2">
-              {/* Only show edit/delete buttons if user is authenticated AND creator */}
-              {!isEditing && (
-                <>
-                  {/* Edit button - only shown to authenticated creators */}
-                  {isAuthenticated && isCreator && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setIsEditing(true)}
-                      className="hover:bg-[#7ace82] hover:text-[#036b0c]"
-                      icon={<Edit size={16} />}
-                    >
-                      Edit
-                    </Button>
-                  )}
-
-                  {/* Delete button - only shown to authenticated creators */}
-                  {canDeleteTeam && (
-                    <Button
-                      variant="destructive"
-                      onClick={handleDeleteTeam}
-                      disabled={loading}
-                    >
-                      Delete Team
-                    </Button>
-                  )}
-                </>
-              )}
-              <button
-                onClick={handleClose}
-                className="btn btn-ghost btn-sm btn-circle"
-              >
-                <X size={20} />
-              </button>
-            </div>
-          </div>
-
-          <div className="flex-1 overflow-auto p-6">
-            {renderNotification()}
+      {/* Main Modal using Modal.jsx component */}
+      <Modal
+        isOpen={isModalVisible && !isApplicationModalOpen}
+        onClose={handleClose}
+        title={modalTitle}
+        position="center"
+        size="default"
+        maxHeight="max-h-[90vh]"
+        minHeight="min-h-[300px]"
+        closeOnBackdrop={true}
+        closeOnEscape={true}
+        showCloseButton={true}
+      >
+        {renderNotification()}
             {loading ? (
               <div className="flex justify-center items-center py-12">
                 <div className="loading loading-spinner loading-lg text-primary"></div>
@@ -1260,32 +1250,30 @@ const TeamDetailsModal = ({
                     {renderJoinButton()}
                   </div>
                 )}
-
-                {/* User Details Modal */}
-                {isUserModalOpen && selectedUserId && (
-                  <UserDetailsModal
-                    isOpen={isUserModalOpen}
-                    userId={selectedUserId}
-                    onClose={handleUserModalClose}
-                    mode="view"
-                  />
-                )}
               </>
             )}
-          </div>
-        </div>
-      </div>
+          </Modal>
 
-      {/* Application Modal */}
-      <TeamApplicationModal
-        isOpen={isApplicationModalOpen}
-        onClose={() => setIsApplicationModalOpen(false)}
-        team={team}
-        onSubmit={handleApplicationSubmit}
-        loading={applicationLoading}
-      />
-    </>
-  );
-};
+          {/* User Details Modal */}
+          {isUserModalOpen && selectedUserId && (
+            <UserDetailsModal
+              isOpen={isUserModalOpen}
+              userId={selectedUserId}
+              onClose={handleUserModalClose}
+              mode="view"
+            />
+          )}
 
-export default TeamDetailsModal;
+          {/* Application Modal */}
+          <TeamApplicationModal
+            isOpen={isApplicationModalOpen}
+            onClose={() => setIsApplicationModalOpen(false)}
+            team={team}
+            onSubmit={handleApplicationSubmit}
+            loading={applicationLoading}
+          />
+        </>
+      );
+    };
+
+    export default TeamDetailsModal;
