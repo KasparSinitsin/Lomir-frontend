@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import TagSelector from "../tags/TagSelector";
 import Button from "../common/Button";
 import IconToggle from "../common/IconToggle";
@@ -54,23 +54,23 @@ const TeamEditForm = ({
     }));
   };
 
-  // Handle tag selection
-const handleTagSelection = (selected) => {
-  // akzeptiert: [number|string|object], z.B. { id, value }
-  const ids = (selected ?? [])
-    .map((t) => (typeof t === "object" ? t.id ?? t.value ?? t : t))
-    .map((x) =>
-      x === "" || x === null || x === undefined ? null : Number(x)
-    )
-    .filter((x) => Number.isFinite(x)); // <- NaN, null etc. raus
+  // Handle tag selection - PROPERLY MEMOIZED
+  const handleTagSelection = useCallback((selected) => {
+    // akzeptiert: [number|string|object], z.B. { id, value }
+    const ids = (selected ?? [])
+      .map((t) => (typeof t === "object" ? t.id ?? t.value ?? t : t))
+      .map((x) =>
+        x === "" || x === null || x === undefined ? null : Number(x)
+      )
+      .filter((x) => Number.isFinite(x)); // <- NaN, null etc. raus
 
-  const deduped = Array.from(new Set(ids));
+    const deduped = Array.from(new Set(ids));
 
-  setFormData((prev) => ({
-    ...prev,
-    selectedTags: deduped,
-  }));
-};
+    setFormData((prev) => ({
+      ...prev,
+      selectedTags: deduped,
+    }));
+  }, []); // Empty dependency array - only created once
 
   // Handle avatar file selection
   const handleAvatarFileChange = (e) => {
