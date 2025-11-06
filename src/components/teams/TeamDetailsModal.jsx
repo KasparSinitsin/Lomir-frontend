@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import TeamRoleManager from "./TeamRoleManager";
+import TeamEditForm from "./TeamEditForm";
 import { useAuth } from "../../contexts/AuthContext";
 import { teamService } from "../../services/teamService";
 import TagSelector from "../tags/TagSelector";
@@ -788,157 +789,17 @@ const TeamDetailsModal = ({
         ) : (
           <>
             {isEditing ? (
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="form-control">
-                  <label className="label">Team Avatar</label>
-                  <div className="flex items-center space-x-4">
-                    <div className="avatar placeholder">
-                      <div className="bg-primary text-primary-content rounded-full w-16 h-16">
-                        {formData.teamavatarUrl ? (
-                          <img
-                            src={formData.teamavatarUrl}
-                            alt="Team Preview"
-                            className="rounded-full object-cover w-full h-full"
-                          />
-                        ) : (
-                          <span className="text-2xl">
-                            {formData.name?.charAt(0) || "?"}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <input
-                      type="file"
-                      name="teamavatar"
-                      onChange={(e) => {
-                        if (e.target.files && e.target.files[0]) {
-                          // Preview the image
-                          const reader = new FileReader();
-                          reader.onload = (event) => {
-                            setFormData((prev) => ({
-                              ...prev,
-                              teamavatarUrl: event.target.result,
-                              teamavatarFile: e.target.files[0], // Store the file for upload
-                            }));
-                          };
-                          reader.readAsDataURL(e.target.files[0]);
-                        }
-                      }}
-                      accept="image/*"
-                      className="file-input file-input-bordered w-full max-w-xs"
-                    />
-                  </div>
-                </div>
-
-                <div className="form-control">
-                  <label className="label">Team Name</label>
-                  <input
-                    type="text"
-                    name="name"
-                    value={formData.name}
-                    onChange={handleChange}
-                    className={`input input-bordered w-full ${
-                      formErrors.name ? "input-error" : ""
-                    }`}
-                    placeholder="Team Name"
-                  />
-                  {formErrors.name && (
-                    <label className="label">
-                      <span className="label-text-alt text-error">
-                        {formErrors.name}
-                      </span>
-                    </label>
-                  )}
-                </div>
-
-                <div className="form-control">
-                  <label className="label">Team Description</label>
-                  <textarea
-                    name="description"
-                    value={formData.description}
-                    onChange={handleChange}
-                    className={`textarea textarea-bordered h-24 w-full ${
-                      formErrors.description ? "textarea-error" : ""
-                    }`}
-                    placeholder="Team Description"
-                  ></textarea>
-                  {formErrors.description && (
-                    <label className="label">
-                      <span className="label-text-alt text-error">
-                        {formErrors.description}
-                      </span>
-                    </label>
-                  )}
-                </div>
-
-                {/* Toggle visibility with IconToggle */}
-                <IconToggle
-                  name="isPublic"
-                  checked={formData.isPublic === true}
-                  onChange={handleChange}
-                  title="Team Visibility"
-                  entityType="team"
-                  visibleLabel="Public Team"
-                  hiddenLabel="Private Team"
-                  visibleDescription="Anyone can find and view your team"
-                  hiddenDescription="Only members can see this team"
-                  className="toggle-visibility"
-                />
-
-                <div className="form-control">
-                  <label className="label">Maximum Members</label>
-                  <select
-                    name="maxMembers"
-                    value={formData.maxMembers}
-                    onChange={handleChange}
-                    className={`select select-bordered w-full ${
-                      formErrors.maxMembers ? "select-error" : ""
-                    }`}
-                  >
-                    {[2, 3, 4, 5, 6, 8, 10, 12, 15, 20].map((size) => (
-                      <option key={size} value={size}>
-                        {size} members
-                      </option>
-                    ))}
-                  </select>
-                  {formErrors.maxMembers && (
-                    <label className="label">
-                      <span className="label-text-alt text-error">
-                        {formErrors.maxMembers}
-                      </span>
-                    </label>
-                  )}
-                </div>
-
-                <div className="form-control">
-                  <label className="label">Team Tags (Optional)</label>
-                  <TagSelector
-                    selectedTags={formData.selectedTags}
-                    onTagsSelected={handleTagSelection}
-                  />
-                  {import.meta.env.DEV && (
-                    <div className="mt-2 text-sm text-base-content/70">
-                      <p>
-                        Debug: Selected tag IDs:{" "}
-                        {formData.selectedTags.join(", ")}
-                      </p>
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex justify-end space-x-2 mt-6">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    onClick={() => setIsEditing(false)}
-                  >
-                    Cancel
-                  </Button>
-                  <Button type="submit" variant="primary" disabled={loading}>
-                    Save Changes
-                  </Button>
-                </div>
-              </form>
+              <TeamEditForm
+                team={team}
+                formData={formData}
+                setFormData={setFormData}
+                formErrors={formErrors}
+                setFormErrors={setFormErrors}
+                onSubmit={handleSubmit}
+                onCancel={() => setIsEditing(false)}
+                loading={loading}
+                isCreator={isCreator}
+              />
             ) : (
               <div className="space-y-1">
                 {/* Team header with avatar */}
