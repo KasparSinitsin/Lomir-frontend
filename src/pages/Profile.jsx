@@ -14,6 +14,8 @@ import { tagService } from "../services/tagService";
 import { userService } from "../services/userService";
 import BadgeCard from "../components/badges/BadgeCard";
 import TagSelector from "../components/tags/TagSelector";
+import TagInputV2 from '../components/tags/TagInputV2';
+import FocusAreasSection from '../components/tags/FocusAreasSection';
 import IconToggle from "../components/common/IconToggle";
 import LocationDisplay from "../components/common/LocationDisplay";
 
@@ -768,66 +770,16 @@ const Profile = () => {
               </Section>
             )}
 
-            <Section
-              title="My Skills & Interests"
+            <FocusAreasSection
+              title="Focus Areas"
+              selectedTags={selectedTags}
+              allTags={tags}
+              onSave={handleTagsUpdate}
+              canEdit={true}
+              emptyMessage="No focus areas added yet."
+              placeholder="Add your skills and interests..."
               className="px-6"
-              action={
-                !isEditing ? (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="hover:bg-violet-200 hover:text-violet-700"
-                    onClick={() => setIsEditing(true)}
-                  >
-                    Edit Skills & Interest Tags
-                  </Button>
-                ) : null
-              }
-            >
-              {!isEditing ? (
-                <div className="flex flex-wrap gap-2">
-                  {selectedTags.length > 0 ? (
-                    selectedTags.map((tagId) => {
-                      const tag = tags
-                        .flatMap((supercat) => supercat.categories)
-                        .flatMap((cat) => cat.tags)
-                        .find((t) => t.id === tagId);
-                      return tag ? (
-                        <span
-                          key={tagId}
-                          className="badge badge-primary badge-outline p-3"
-                        >
-                          {tag.name}
-                        </span>
-                      ) : null;
-                    })
-                  ) : (
-                    <p className="text-base-content/70">
-                      No skills or interests added yet.
-                    </p>
-                  )}
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <TagSelector
-                    selectedTags={selectedTags}
-                    onTagsSelected={(tags) => setSelectedTags(tags)}
-                  />
-                  <div className="flex justify-end space-x-2 mt-4">
-                    <Button variant="ghost" onClick={() => setIsEditing(false)}>
-                      Cancel
-                    </Button>
-                    <Button
-                      variant="primary"
-                      onClick={handleTagsUpdate}
-                      disabled={loading}
-                    >
-                      {loading ? "Saving..." : "Save Tags"}
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </Section>
+            />
 
             <Section title="My Badges" className="px-6">
               <Grid cols={2} md={3} lg={4} gap={4}>
