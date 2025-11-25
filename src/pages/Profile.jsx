@@ -14,8 +14,8 @@ import { tagService } from "../services/tagService";
 import { userService } from "../services/userService";
 import BadgeCard from "../components/badges/BadgeCard";
 import TagSelector from "../components/tags/TagSelector";
-import TagInputV2 from '../components/tags/TagInputV2';
-import FocusAreasSection from '../components/tags/FocusAreasSection';
+import TagInputV2 from "../components/tags/TagInputV2";
+import FocusAreasSection from "../components/tags/FocusAreasSection";
 import IconToggle from "../components/common/IconToggle";
 import LocationDisplay from "../components/common/LocationDisplay";
 
@@ -225,14 +225,19 @@ const Profile = () => {
     }
   };
 
-  const handleTagsUpdate = async () => {
+  const handleTagsUpdate = async (newTags) => {
     if (!user) return;
 
     try {
       setLoading(true);
       setError(null);
 
-      await userService.updateUserTags(user.id, selectedTags);
+      // Use the newTags parameter instead of selectedTags
+      await userService.updateUserTags(user.id, newTags);
+
+      // Update Profile's state with the new tags
+      setSelectedTags(newTags);
+
       setSuccess("Tags updated successfully");
     } catch (error) {
       console.error("Error updating user tags:", error);
