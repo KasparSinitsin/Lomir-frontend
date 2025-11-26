@@ -221,10 +221,16 @@ export const teamService = {
       const dataToSend = {
         ...teamData,
         tags: formattedTags,
-        // Include both possible field names for the avatar URL
-        teamavatar_url:
-          teamData.teamavatar_url || teamData.teamavatarUrl || null,
       };
+
+      // Only include avatar URL if it was explicitly provided
+      if (
+        teamData.teamavatar_url !== undefined ||
+        teamData.teamavatarUrl !== undefined
+      ) {
+        dataToSend.teamavatar_url =
+          teamData.teamavatar_url || teamData.teamavatarUrl || null;
+      }
 
       console.log("updateTeam: Sending formatted data:", dataToSend);
 

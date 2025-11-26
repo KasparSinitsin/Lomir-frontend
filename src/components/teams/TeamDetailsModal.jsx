@@ -13,6 +13,8 @@ import LocationDisplay from "../common/LocationDisplay";
 import { X, Edit, Users, Trash2, Eye, EyeClosed, Tag } from "lucide-react";
 import IconToggle from "../common/IconToggle";
 import UserDetailsModal from "../users/UserDetailsModal";
+import FocusAreasSection from "../tags/FocusAreasSection";
+import { tagService } from "../../services/tagService";
 import RoleBadgeDropdown from "./RoleBadgeDropdown";
 import TeamApplicationModal from "./TeamApplicationModal";
 import TeamMembersSection from "./TeamMembersSection";
@@ -62,6 +64,7 @@ const TeamDetailsModal = ({
   const [applicationLoading, setApplicationLoading] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState(null);
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
+  const [allTags, setAllTags] = useState([]);
 
   const fetchTeamDetails = useCallback(async () => {
     if (!effectiveTeamId) return;
@@ -198,6 +201,8 @@ const TeamDetailsModal = ({
 
       setIsCreator(finalCreatorStatus);
 
+      console.log("Team tags data:", teamData.tags);
+
       // Set form data with the normalized values from team data
       setFormData({
         name: teamData.name || "",
@@ -205,9 +210,9 @@ const TeamDetailsModal = ({
         isPublic: isPublicValue,
         maxMembers: teamData.max_members || teamData.maxMembers || 5,
         teamavatarUrl: teamData.teamavatar_url || teamData.teamavatarUrl || "",
-        selectedTags: (teamData.tags || []).map((tag) =>
-          parseInt(tag.id || tag.tag_id, 10)
-        ),
+        selectedTags: (teamData.tags || [])
+          .map((tag) => parseInt(tag.id || tag.tag_id, 10))
+          .filter((id) => !isNaN(id)),
       });
     } catch (err) {
       console.error("Error fetching team details:", err);
@@ -388,6 +393,40 @@ const TeamDetailsModal = ({
       selectedTags: numericTags,
     }));
   }, []);
+
+  // Fetch structured tags for FocusAreasSection
+  useEffect(() => {
+    const fetchTags = async () => {
+      try {
+        const structuredTags = await tagService.getStructuredTags();
+        setAllTags(structuredTags);
+      } catch (error) {
+        console.error("Error fetching tags:", error);
+      }
+    };
+    fetchTags();
+  }, []);
+
+  // Handle team tags update
+  const handleTeamTagsUpdate = async (newTagIds) => {
+    try {
+      // Format tags for the API
+      const tagsPayload = newTagIds.map((tagId) => ({ tag_id: tagId }));
+
+      await teamService.updateTeam(effectiveTeamId, { tags: tagsPayload });
+
+      // Refresh team details to show updated tags
+      await fetchTeamDetails();
+
+      setNotification({
+        type: "success",
+        message: "Team focus areas updated successfully!",
+      });
+    } catch (error) {
+      console.error("Error updating team tags:", error);
+      throw new Error("Failed to update team focus areas");
+    }
+  };
 
   const validateForm = () => {
     const errors = {};
@@ -803,6 +842,11 @@ const TeamDetailsModal = ({
             ) : (
               <div className="space-y-1">
                 {/* Team header with avatar */}
+                {console.log("Team avatar debug:", {
+                  teamavatar_url: team?.teamavatar_url,
+                  teamavatarUrl: team?.teamavatarUrl,
+                  fullTeam: team,
+                })}
                 <div className="flex items-center space-x-4 mb-6">
                   <div className="avatar placeholder">
                     <div className="bg-primary text-primary-content rounded-full w-16 h-16">
@@ -863,11 +907,23 @@ const TeamDetailsModal = ({
                 )}
 
                 {/* Team Focus Areas */}
-                <TeamFocusAreaSection
-                  team={team}
-                  isEditing={isEditing}
-                  isCreator={isCreator}
-                />
+                {console.log("Team tags for FocusAreasSection:", team?.tags)}
+                {!isEditing && (
+                  <FocusAreasSection
+                    title="Team Focus Areas"
+                    selectedTags={
+                      team?.tags
+                        ?.map((tag) => tag.id || tag.tag_id || tag.tagId)
+                        .filter((id) => !isNaN(id)) || []
+                    }
+                    allTags={allTags}
+                    onSave={handleTeamTagsUpdate}
+                    canEdit={isCreator}
+                    emptyMessage="No focus areas added yet."
+                    placeholder="Add team focus areas..."
+                    className="px-6"
+                  />
+                )}
 
                 {/* Team Members */}
                 <TeamMembersSection
