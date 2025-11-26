@@ -122,33 +122,7 @@ const TagInputV2 = ({
     }
   };
 
-  const {
-    isOpen,
-    getMenuProps,
-    getInputProps,
-    highlightedIndex,
-    getItemProps,
-    closeMenu,
-  } = useCombobox({
-    items: suggestions,
-    inputValue,
-    onInputValueChange: ({ inputValue }) => {
-      handleInputChange(inputValue);
-    },
-    onSelectedItemChange: ({ selectedItem }) => {
-      if (selectedItem) {
-        handleSelectTag(selectedItem);
-      }
-    },
-    itemToString: (item) => (item ? item.name : ""),
-    onIsOpenChange: ({ isOpen }) => {
-      // Sync Downshift's isOpen with our showSuggestions state
-      if (!isOpen) {
-        setShowSuggestions(false);
-      }
-    },
-  });
-
+// Determine which tags to show - MUST be before useCombobox
   const getCurrentSuggestions = () => {
     if (inputValue.length >= 2 && suggestions.length > 0) {
       return { type: "search", tags: suggestions, icon: TagIcon };
@@ -161,6 +135,36 @@ const TagInputV2 = ({
     }
     return { type: "none", tags: [], icon: TagIcon };
   };
+
+  // Get current suggestions to pass to Downshift
+  const currentSuggestionsForCombobox = getCurrentSuggestions();
+
+  const {
+    isOpen,
+    getMenuProps,
+    getInputProps,
+    highlightedIndex,
+    getItemProps,
+    closeMenu,
+  } = useCombobox({
+    items: currentSuggestionsForCombobox.tags,  
+    inputValue,
+    onInputValueChange: ({ inputValue }) => {
+      handleInputChange(inputValue);
+    },
+    onSelectedItemChange: ({ selectedItem }) => {
+      if (selectedItem) {
+        handleSelectTag(selectedItem);
+      }
+    },
+    itemToString: (item) => (item ? item.name : ""),
+    onIsOpenChange: ({ isOpen }) => {
+      // Sync Downshift's isOpen with showSuggestions state
+      if (!isOpen) {
+        setShowSuggestions(false);
+      }
+    },
+  });
 
   const currentSuggestions = getCurrentSuggestions();
   const shouldShowDropdown =

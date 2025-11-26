@@ -1,5 +1,4 @@
 import React, { useState, useCallback } from "react";
-import TagSelector from "../tags/TagSelector";
 import Button from "../common/Button";
 import IconToggle from "../common/IconToggle";
 import axios from "axios";
@@ -164,9 +163,7 @@ const TeamEditForm = ({
         />
         {formErrors.name && (
           <label className="label">
-            <span className="label-text-alt text-error">
-              {formErrors.name}
-            </span>
+            <span className="label-text-alt text-error">{formErrors.name}</span>
           </label>
         )}
       </div>
@@ -235,22 +232,6 @@ const TeamEditForm = ({
               {formErrors.maxMembers}
             </span>
           </label>
-        )}
-      </div>
-
-      {/* Team Tags */}
-      <div className="form-control">
-        <label className="label">
-          <span className="label-text">Team Tags (Optional)</span>
-        </label>
-        <TagSelector
-          selectedTags={formData.selectedTags}
-          onTagsSelected={handleTagSelection}
-        />
-        {import.meta.env.DEV && (
-          <div className="mt-2 text-sm text-base-content/70">
-            <p>Debug: Selected tag IDs: {formData.selectedTags.join(", ")}</p>
-          </div>
         )}
       </div>
 
