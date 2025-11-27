@@ -53,9 +53,9 @@ const TeamCard = ({
     return teamData.name?.charAt(0) || "?";
   };
 
-  // Check if current user is the creator of the team
-  const isCreator =
-    user && (teamData.creator_id === user.id || teamData.creatorId === user.id);
+  // Check if current user is the owner of the team
+  const isOwner =
+    user && (teamData.owner_id === user.id || teamData.ownerId === user.id);
 
   // Update local team data when the prop changes
   useEffect(() => {
@@ -82,7 +82,7 @@ const TeamCard = ({
   }, [user, teamData.id, isSearchResult, isPendingApplication]);
 
   const fetchPendingApplications = useCallback(async () => {
-    if (isCreator && teamData.id && !isPendingApplication) {
+    if (isOwner && teamData.id && !isPendingApplication) {
       try {
         const response = await teamService.getTeamApplications(teamData.id);
         setPendingApplications(response.data || []);
@@ -90,7 +90,7 @@ const TeamCard = ({
         console.error("Error fetching applications:", error);
       }
     }
-  }, [isCreator, teamData.id, isPendingApplication]);
+  }, [isOwner, teamData.id, isPendingApplication]);
 
   useEffect(() => {
     fetchPendingApplications();
@@ -206,11 +206,11 @@ const TeamCard = ({
       return false;
     }
 
-    if (isCreator) {
+    if (isOwner) {
       return true;
     }
 
-    if (teamData.creator_id === user.id || teamData.creatorId === user.id) {
+    if (teamData.owner_id === user.id || teamData.ownerId === user.id) {
       return true;
     }
 
@@ -456,7 +456,7 @@ const TeamCard = ({
 
           {/* Team Management Actions */}
           {isAuthenticated &&
-            isCreator &&
+            isOwner &&
             !isSearchResult &&
             !isPendingApplication && (
               <div className="flex items-center space-x-2 ml-2">

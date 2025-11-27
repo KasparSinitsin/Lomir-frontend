@@ -16,11 +16,14 @@ const TeamMembersSection = ({
   user = null,
   onMemberClick = () => {},
   shouldAnonymizeMember = () => false,
-  isCreator = false,
+  isOwner = false,
   onRoleChange = null,
   className = "",
 }) => {
-  const [notification, setNotification] = React.useState({ type: null, message: null });
+  const [notification, setNotification] = React.useState({
+    type: null,
+    message: null,
+  });
 
   // Early return if no members
   if (!team?.members || team.members.length === 0) {
@@ -30,9 +33,7 @@ const TeamMembersSection = ({
   return (
     <div className={`mb-6 ${className}`}>
       {/* Section Header */}
-      <h2 className="text-xl font-semibold mb-4">
-        Team Members
-      </h2>
+      <h2 className="text-xl font-semibold mb-4">Team Members</h2>
 
       {/* Members Grid - EXACT original layout */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -46,11 +47,14 @@ const TeamMembersSection = ({
           // Determine if this member should be anonymized
           const anonymize = shouldAnonymizeMember(member);
 
-          // Role management logic
+          // Role management logic - Owners and admins can manage roles
+          const currentUserMember = team.members?.find(
+            (m) => m.user_id === user?.id || m.userId === user?.id
+          );
+          const isAdmin = currentUserMember?.role === "admin";
+
           const canManageThisMember =
-            isCreator &&
-            member.role !== "creator" &&
-            !isCurrentUser;
+            (isOwner || isAdmin) && member.role !== "owner" && !isCurrentUser;
 
           return (
             <div
@@ -112,6 +116,7 @@ const TeamMembersSection = ({
                     <RoleBadgeDropdown
                       member={member}
                       canManage={canManageThisMember}
+                      isOwner={isOwner}
                       onRoleChange={async (newRole) => {
                         if (onRoleChange) {
                           try {

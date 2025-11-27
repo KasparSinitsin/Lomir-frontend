@@ -18,7 +18,7 @@ const TeamApplicationModal = ({
 
   const handleSubmit = async (saveAsDraft = false) => {
     if (!message.trim() && !saveAsDraft) {
-      setError("Please write a message to the team creator");
+      setError("Please write a message to the team owner");
       return;
     }
 
@@ -139,14 +139,14 @@ const TeamApplicationModal = ({
         <div className="form-control">
           <label className="label">
             <span className="label-text font-medium">
-              Your message to the team creator:
+              Your message to the team owner:
             </span>
           </label>
           <textarea
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             className="textarea textarea-bordered h-32 w-full resize-none"
-            placeholder="Tell the team creator why you'd like to join this team, what skills you bring, and what you hope to contribute..."
+            placeholder="Tell the team owner why you'd like to join this team, what skills you bring, and what you hope to contribute..."
             disabled={loading}
             maxLength={500}
           />
