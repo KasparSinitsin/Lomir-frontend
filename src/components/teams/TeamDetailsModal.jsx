@@ -57,6 +57,7 @@ const TeamDetailsModal = ({
   });
   const [formErrors, setFormErrors] = useState({});
   const [isCreator, setIsCreator] = useState(false);
+  const [internalUserRole, setInternalUserRole] = useState(null);
   const [isPublic, setIsPublic] = useState(false);
 
   // New state for application modal
@@ -201,6 +202,17 @@ const TeamDetailsModal = ({
 
       setIsCreator(finalCreatorStatus);
 
+      // Determine user's role from members list
+      if (isUserAuthenticated && teamData.members) {
+        const currentUserMember = teamData.members.find(
+          (member) => member.user_id === user.id || member.userId === user.id
+        );
+        if (currentUserMember) {
+          setInternalUserRole(currentUserMember.role);
+          console.log("User role set to:", currentUserMember.role);
+        }
+      }
+
       console.log("Team tags data:", teamData.tags);
 
       // Set form data with the normalized values from team data
@@ -269,10 +281,16 @@ const TeamDetailsModal = ({
     }
   }, [isModalVisible]);
 
+  // Use internal role state, fall back to prop
+  const effectiveUserRole = internalUserRole || userRole;
+
   // Use independent isCreator state for more reliability
   const isTeamCreator = useMemo(() => isCreator, [isCreator]);
 
-  const isTeamAdmin = useMemo(() => userRole === "admin", [userRole]);
+  const isTeamAdmin = useMemo(
+    () => effectiveUserRole === "admin",
+    [effectiveUserRole]
+  );
 
   const canEditTeam = useMemo(() => {
     if (!isAuthenticated || !user || !team) {
@@ -285,12 +303,12 @@ const TeamDetailsModal = ({
     }
 
     // Admins can also edit (but not delete)
-    if (userRole === "admin") {
+    if (effectiveUserRole === "admin") {
       return true;
     }
 
     return false;
-  }, [isAuthenticated, user, team, isCreator, userRole]);
+  }, [isAuthenticated, user, team, isCreator, effectiveUserRole]);
 
   const canDeleteTeam = useMemo(() => {
     return isAuthenticated && user && team && isCreator; // Only creators can delete
@@ -455,7 +473,7 @@ const TeamDetailsModal = ({
     if (e) e.preventDefault();
 
     // Prevent non-creators from submitting form updates
-    if (!isCreator) {
+    if (!canEditTeam) {
       setNotification({
         type: "error",
         message: "You do not have permission to edit this team.",
@@ -777,7 +795,7 @@ const TeamDetailsModal = ({
       <div className="flex items-center space-x-2">
         {!isEditing && (
           <>
-            {isAuthenticated && isCreator && (
+            {canEditTeam && (
               <Button
                 variant="ghost"
                 size="sm"
@@ -918,7 +936,7 @@ const TeamDetailsModal = ({
                     }
                     allTags={allTags}
                     onSave={handleTeamTagsUpdate}
-                    canEdit={isCreator}
+                    canEdit={canEditTeam}
                     emptyMessage="No focus areas added yet."
                     placeholder="Add team focus areas..."
                     className="px-6"
