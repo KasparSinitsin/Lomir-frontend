@@ -12,19 +12,19 @@ const RoleBadgeDropdown = ({ member, canManage, onRoleChange, isOwner = false })
         return {
           label: "Owner",
           icon: Crown,
-          badgeColor: "badge-warning",
+          badgeColor: "badge-role-owner",
         };
       case "admin":
         return {
           label: "Admin",
           icon: Shield,
-          badgeColor: "badge-info",
+          badgeColor: "badge-role-admin",
         };
       case "member":
         return {
           label: "Member",
           icon: User,
-          badgeColor: "badge-success",
+          badgeColor: "badge-role-member",
         };
       default:
         return {
