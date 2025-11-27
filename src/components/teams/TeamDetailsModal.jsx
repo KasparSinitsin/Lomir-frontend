@@ -808,11 +808,15 @@ const TeamDetailsModal = ({
             )}
             {canDeleteTeam && (
               <Button
-                variant="destructive"
+                variant="ghost"
+                size="sm"
                 onClick={handleDeleteTeam}
                 disabled={loading}
+                className="hover:bg-red-100 hover:text-red-700"
+                icon={<Trash2 size={16} />}
+                aria-label="Delete team"
               >
-                Delete Team
+                Delete
               </Button>
             )}
           </>

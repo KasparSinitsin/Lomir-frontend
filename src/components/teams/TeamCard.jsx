@@ -465,18 +465,6 @@ const TeamCard = ({
                   count={pendingApplications.length}
                   onClick={() => setIsApplicationsModalOpen(true)}
                 />
-
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleDeleteClick}
-                  disabled={isDeleting}
-                  className="hover:bg-[#C7D2FE] hover:text-[#1E40AF]"
-                  icon={<Trash2 size={16} />}
-                  aria-label="Delete team"
-                >
-                  {isDeleting ? "Deleting..." : ""}
-                </Button>
               </div>
             )}
         </div>
