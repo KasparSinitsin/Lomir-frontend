@@ -41,14 +41,14 @@ const TeamRoleManager = ({ team, onRoleUpdate, className = "" }) => {
   const currentUserRole = getCurrentUserRole();
 
   // Check if current user can manage roles
-  const canManageRoles = currentUserRole === "creator";
+  const canManageRoles = currentUserRole === "owner";
 
   // Get role display information
   const getRoleInfo = (role) => {
     switch (role) {
-      case "creator":
-        return {
-          label: "Team Creator",
+case "owner":
+  return {
+    label: "Team Owner",
           icon: Crown,
           color: "text-warning",
           bgColor: "bg-warning/10",
@@ -143,7 +143,7 @@ const TeamRoleManager = ({ team, onRoleUpdate, className = "" }) => {
   // Sort members by role priority
   const sortedMembers =
     team?.members?.sort((a, b) => {
-      const roleOrder = { creator: 1, admin: 2, member: 3 };
+      const roleOrder = { Owner: 1, admin: 2, member: 3 };
       return roleOrder[a.role] - roleOrder[b.role];
     }) || [];
 
@@ -181,7 +181,7 @@ const TeamRoleManager = ({ team, onRoleUpdate, className = "" }) => {
           const RoleIcon = roleInfo.icon;
           const isCurrentUser =
             member.user_id === user?.id || member.userId === user?.id;
-          const canChangeRole = member.role !== "creator" && !isCurrentUser;
+          const canChangeRole = member.role !== "Owner" && !isCurrentUser;
 
           return (
             <div
@@ -276,8 +276,7 @@ const TeamRoleManager = ({ team, onRoleUpdate, className = "" }) => {
           <div className="flex items-center space-x-2">
             <Crown className="w-4 h-4 text-warning" />
             <span>
-              <strong>Creator:</strong> Full control, can delete team, manage
-              all roles
+              <strong>Owner:</strong> Full control, can delete team, transfer ownership
             </span>
           </div>
           <div className="flex items-center space-x-2">

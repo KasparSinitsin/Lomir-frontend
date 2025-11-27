@@ -8,13 +8,13 @@ import TagDisplay from "../common/TagDisplay";
  * @param {Object} props
  * @param {Object} props.team - Team object containing tags
  * @param {boolean} props.isEditing - Whether the team is in edit mode
- * @param {boolean} props.isCreator - Whether the current user is the team creator
+ * @param {boolean} props.isOwner - Whether the current user is the team owner
  * @param {string} props.className - Additional CSS classes
  */
 const TeamFocusAreaSection = ({
   team,
   isEditing = false,
-  isCreator = false,
+  isOwner = false,
   className = "",
 }) => {
   // Don't render anything if in editing mode
@@ -73,7 +73,7 @@ const TeamFocusAreaSection = ({
           <p className="text-sm text-base-content/60">
             No focus areas specified yet
           </p>
-          {isCreator && !isEditing && (
+          {isOwner && !isEditing && (
             <p className="text-xs text-base-content/50 mt-1">
               Add tags to help others find your team
             </p>

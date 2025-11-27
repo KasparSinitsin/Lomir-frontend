@@ -17,7 +17,7 @@ const TeamEditForm = ({
   onSubmit,
   onCancel,
   loading = false,
-  isCreator = false,
+  isOwner = false,
 }) => {
   const [uploadingImage, setUploadingImage] = useState(false);
 

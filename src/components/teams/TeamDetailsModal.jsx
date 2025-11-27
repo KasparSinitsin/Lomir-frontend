@@ -56,7 +56,7 @@ const TeamDetailsModal = ({
     selectedTags: [],
   });
   const [formErrors, setFormErrors] = useState({});
-  const [isCreator, setIsCreator] = useState(false);
+  const [isOwner, setIsOwner] = useState(false);
   const [internalUserRole, setInternalUserRole] = useState(null);
   const [isPublic, setIsPublic] = useState(false);
 
@@ -93,59 +93,59 @@ const TeamDetailsModal = ({
 
       console.log("Team data extracted:", teamData);
 
-      // Look for creator ID in multiple possible locations
-      let creatorId = null;
+      // Look for owner ID in multiple possible locations
+      let ownerId = null;
 
-      // 1. Try direct creator_id field
-      if (teamData.creator_id !== undefined) {
-        creatorId = parseInt(teamData.creator_id, 10);
+      // 1. Try direct owner_id field
+      if (teamData.owner_id !== undefined) {
+        ownerId = parseInt(teamData.owner_id, 10);
       }
-      // 2. Try creatorId field (camelCase variation)
-      else if (teamData.creatorId !== undefined) {
-        creatorId = parseInt(teamData.creatorId, 10);
+      // 2. Try ownerId field (camelCase variation)
+      else if (teamData.ownerId !== undefined) {
+        ownerId = parseInt(teamData.ownerId, 10);
       }
 
-      // 3. If not found or invalid, check members array for creator role
+      // 3. If not found or invalid, check members array for owner role
       if (
-        isNaN(creatorId) &&
+        isNaN(ownerId) &&
         teamData.members &&
         Array.isArray(teamData.members)
       ) {
         console.log(
-          "Searching for creator in members array:",
+          "Searching for owner in members array:",
           teamData.members
         );
 
-        const creatorMember = teamData.members.find(
-          (m) => m.role === "creator" || m.role === "Creator"
-        );
+const ownerMember = teamData.members.find(
+  (m) => m.role === "owner" || m.role === "Owner"
+);
 
-        if (creatorMember) {
+        if (ownerMember) {
           // Use either user_id or userId depending on which exists
-          creatorId = parseInt(
-            creatorMember.user_id || creatorMember.userId,
+          ownerId = parseInt(
+            ownerMember.user_id || ownerMember.userId,
             10
           );
-          console.log("Found creator ID from members array:", creatorId);
+          console.log("Found owner ID from members array:", ownerId);
         }
       }
 
-      // 4. Ensure creatorId is valid, use logged-in user as fallback for creator's own teams
-      if (isNaN(creatorId) && user && teamData.members) {
-        // Check if current user is listed as creator under members
-        const isCurrentUserCreator = teamData.members.some(
-          (member) =>
-            (member.user_id === user.id || member.userId === user.id) &&
-            (member.role === "creator" || member.role === "Creator")
-        );
+      // 4. Ensure ownerId is valid, use logged-in user as fallback for owner's own teams
+      if (isNaN(ownerId) && user && teamData.members) {
+        // Check if current user is listed as owner under members
+const isCurrentUserOwner = teamData.members.some(
+  (member) =>
+    (member.user_id === user.id || member.userId === user.id) &&
+    (member.role === "owner" || member.role === "Owner")
+);
 
-        if (isCurrentUserCreator) {
-          creatorId = parseInt(user.id, 10);
-          console.log("Using current user as creator ID:", creatorId);
+        if (isCurrentUserOwner) {
+          ownerId = parseInt(user.id, 10);
+          console.log("Using current user as owner ID:", ownerId);
         }
       }
 
-      console.log("Final creator ID determination:", creatorId);
+      console.log("Final owner ID determination:", ownerId);
 
       // Process visibility
       let isPublicValue = false;
@@ -158,7 +158,7 @@ const TeamDetailsModal = ({
       // Enhance team data with normalized values
       const enhancedTeamData = {
         ...teamData,
-        creator_id: creatorId, // Set the corrected creator ID
+        owner_id: ownerId, // Set the corrected owner ID
         is_public: isPublicValue,
       };
 
@@ -168,39 +168,39 @@ const TeamDetailsModal = ({
       setTeam(enhancedTeamData);
       setIsPublic(isPublicValue);
 
-      // Determine if current user is creator - REQUIRE AUTHENTICATION FIRST
+      // Determine if current user is owner - REQUIRE AUTHENTICATION FIRST
       const isUserAuthenticated = isAuthenticated && user && user.id;
 
-      // Calculate if user is creator by ID comparison (only if authenticated)
-      const isCreatorById =
+      // Calculate if user is owner by ID comparison (only if authenticated)
+      const isOwnerById =
         isUserAuthenticated &&
-        !isNaN(creatorId) &&
-        parseInt(user.id, 10) === creatorId;
+        !isNaN(ownerId) &&
+        parseInt(user.id, 10) === ownerId;
 
-      // Calculate if user is creator by role (only if authenticated)
-      const isCreatorByRole =
-        (isUserAuthenticated &&
-          teamData.members?.some(
-            (member) =>
-              (member.user_id === user.id || member.userId === user.id) &&
-              (member.role === "creator" || member.role === "Creator")
-          )) ||
-        false;
+      // Calculate if user is owner by role (only if authenticated)
+const isOwnerByRole =
+  (isUserAuthenticated &&
+    teamData.members?.some(
+      (member) =>
+        (member.user_id === user.id || member.userId === user.id) &&
+        (member.role === "owner" || member.role === "Owner")
+    )) ||
+  false;
 
-      // Final creator determination - must be authenticated AND either method confirms
-      const finalCreatorStatus =
-        isUserAuthenticated && (isCreatorById || isCreatorByRole);
+      // Final owner determination - must be authenticated AND either method confirms
+      const finalOwnerStatus =
+        isUserAuthenticated && (isOwnerById || isOwnerByRole);
 
-      console.log("Creator check:", {
+      console.log("Owner check:", {
         isUserAuthenticated,
         userId: user?.id,
-        creatorId,
-        isCreatorById,
-        isCreatorByRole,
-        finalCreatorStatus,
+        ownerId,
+        isOwnerById,
+        isOwnerByRole,
+        finalOwnerStatus,
       });
 
-      setIsCreator(finalCreatorStatus);
+      setIsOwner(finalOwnerStatus);
 
       // Determine user's role from members list
       if (isUserAuthenticated && teamData.members) {
@@ -244,7 +244,7 @@ const TeamDetailsModal = ({
     if (team) {
       console.log("Current team data in state:", team);
       console.log("Team visibility value:", team.is_public);
-      console.log("Team creator:", team.creator_id, "Current user:", user?.id);
+      console.log("Team owner:", team.owner_id, "Current user:", user?.id);
     }
   }, [team, user]);
 
@@ -284,8 +284,8 @@ const TeamDetailsModal = ({
   // Use internal role state, fall back to prop
   const effectiveUserRole = internalUserRole || userRole;
 
-  // Use independent isCreator state for more reliability
-  const isTeamCreator = useMemo(() => isCreator, [isCreator]);
+  // Use independent isOwner state for more reliability
+  const isTeamOwner = useMemo(() => isOwner, [isOwner]);
 
   const isTeamAdmin = useMemo(
     () => effectiveUserRole === "admin",
@@ -297,8 +297,8 @@ const TeamDetailsModal = ({
       return false;
     }
 
-    // Creators can always edit
-    if (isCreator) {
+    // Owners can always edit
+    if (isOwner) {
       return true;
     }
 
@@ -308,11 +308,11 @@ const TeamDetailsModal = ({
     }
 
     return false;
-  }, [isAuthenticated, user, team, isCreator, effectiveUserRole]);
+  }, [isAuthenticated, user, team, isOwner, effectiveUserRole]);
 
   const canDeleteTeam = useMemo(() => {
-    return isAuthenticated && user && team && isCreator; // Only creators can delete
-  }, [isAuthenticated, user, team, isCreator]);
+    return isAuthenticated && user && team && isOwner; // Only owners can delete
+  }, [isAuthenticated, user, team, isOwner]);
 
   // Helper function to determine if visibility status should be shown
   const shouldShowVisibilityStatus = () => {
@@ -321,8 +321,8 @@ const TeamDetailsModal = ({
       return false;
     }
 
-    // Show for creators
-    if (isCreator) {
+    // Show for owners
+    if (isOwner) {
       return true;
     }
 
@@ -472,7 +472,7 @@ const TeamDetailsModal = ({
   const handleSubmit = async (e) => {
     if (e) e.preventDefault();
 
-    // Prevent non-creators from submitting form updates
+    // Prevent non-owners from submitting form updates
     if (!canEditTeam) {
       setNotification({
         type: "error",
@@ -698,10 +698,10 @@ const TeamDetailsModal = ({
     if (!team || !user) return false;
     return (
       team.members?.some((member) => member.user_id === user.id) ||
-      isCreator || // Make sure this matches your variable name
+      isOwner || // Make sure this matches your variable name
       userRole
     );
-  }, [team, user, isCreator, userRole]);
+  }, [team, user, isOwner, userRole]);
 
   const renderJoinButton = () => {
     if (!isAuthenticated || !user || loading) {
@@ -711,7 +711,7 @@ const TeamDetailsModal = ({
     return (
       <div className="pt-6">
         {isTeamMember ? (
-          // Show team chat button for members/creators
+          // Show team chat button for members/owners
           <SendMessageButton
             type="team"
             teamId={team?.id} // Changed from teamData.id to team?.id
@@ -766,14 +766,14 @@ const TeamDetailsModal = ({
     "User Object": user,
 
     // Team information
-    "Team Creator ID": team?.creator_id,
+    "Team Owner ID": team?.owner_id,
     "Team Object": team,
 
     // Role information
     "User Role": userRole,
 
     // Computed values
-    "Is Creator": isCreator,
+    "Is Owner": isOwner,
     "Is Admin": userRole === "admin",
     "Can Edit": canEditTeam,
     "Is Public": isPublic,
@@ -859,7 +859,7 @@ const TeamDetailsModal = ({
                 onSubmit={handleSubmit}
                 onCancel={() => setIsEditing(false)}
                 loading={loading}
-                isCreator={isCreator}
+                isOwner={isOwner}
               />
             ) : (
               <div className="space-y-1">
@@ -911,7 +911,7 @@ const TeamDetailsModal = ({
                   </div>
                 )}
 
-                {/* Visibility info - only show to authenticated members/creators */}
+                {/* Visibility info - only show to authenticated members/owners */}
                 {shouldShowVisibilityStatus() && (
                   <div className="flex items-center space-x-1 text-sm text-base-content/70">
                     {isPublic ? (
@@ -955,7 +955,7 @@ const TeamDetailsModal = ({
                   user={user}
                   onMemberClick={handleMemberClick}
                   shouldAnonymizeMember={shouldAnonymizeMember}
-                  isCreator={isCreator}
+                  isOwner={isOwner}
                   onRoleChange={fetchTeamDetails}
                 />
 

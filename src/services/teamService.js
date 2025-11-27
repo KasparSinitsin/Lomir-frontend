@@ -185,7 +185,7 @@ export const teamService = {
   //         keys: Object.keys(response.data),
   //         hasNestedData: Boolean(response.data.data),
   //         hasTeamId: Boolean(response.data.id || (response.data.data && response.data.data.id)),
-  //         hasCreatorId: Boolean(response.data.creator_id || (response.data.data && response.data.data.creator_id)),
+  //         hasOwnerId: Boolean(response.data.owner_id || (response.data.data && response.data.data.owner_id)),
   //         hasIsPublic: Boolean(response.data.is_public !== undefined || (response.data.data && response.data.data.is_public !== undefined))
   //       });
   //     }
