@@ -66,9 +66,16 @@ const MyTeams = () => {
     );
   };
 
-  const handleTeamDelete = (teamId) => {
+const handleTeamDelete = async (teamId) => {
+  try {
+    await teamService.deleteTeam(teamId);
     setTeams((prevTeams) => prevTeams.filter((team) => team.id !== teamId));
-  };
+    return true; // Signal success to the modal
+  } catch (error) {
+    console.error("Error deleting team:", error);
+    return false;
+  }
+};
 
   const handleApplicationCancel = async (applicationId) => {
     try {
