@@ -17,6 +17,16 @@
   --color-badge-leadership: #df385b; /* Red */
   --color-badge-personal: #f59e0b; /* Yellow */
 
+  /* Team Role Badge Colors - Light backgrounds with lighter text */
+--color-role-owner-bg: #e86a86;     
+--color-role-owner-text: #fce8ec;     
+
+--color-role-admin-bg: #9a8ef0;      
+--color-role-admin-text: #ede9fe;    
+
+--color-role-member-bg: #33a742;     
+--color-role-member-text: #dcfce7;   
+
   /* UI Colors */
   --color-background: #ffffff;
   --color-background-soft: #f8fafc;
@@ -287,6 +297,26 @@ body {
 .toggle-visibility:not(:checked) {
   background-color: var(--off-background) !important;
 }
+
+/* Team Role Badge Styles */
+.badge-role-owner {
+  background-color: var(--color-role-owner-bg) !important;
+  color: var(--color-role-owner-text) !important;
+  border: none;
+}
+
+.badge-role-admin {
+  background-color: var(--color-role-admin-bg) !important;
+  color: var(--color-role-admin-text) !important;
+  border: none;
+}
+
+.badge-role-member {
+  background-color: var(--color-role-member-bg) !important;
+  color: var(--color-role-member-text) !important;
+  border: none;
+}
+
 
 /* Neon Effect */
 .neon {
