@@ -9,10 +9,11 @@ const Card = ({
   compact = false,
   hoverable = true,
   bordered = true,
-  image = null, // This will accept either a URL string or a name string
+  image = null,
   imageAlt = "",
   imageSize = "medium",
   imageShape = "circle",
+  onClick = null, // NEW: Optional click handler
 }) => {
   // Function to generate initials from a name
   const generateInitials = (name) => {
@@ -76,17 +77,27 @@ const Card = ({
       rounded-xl
       overflow-hidden
       ${compact ? "card-compact" : ""}
+      ${onClick ? "cursor-pointer" : ""}
       ${className}
-      bg-opacity-70  // Apply opacity to card background
-      mb-6           // Add bottom margin
-      mr-4           // Add horizontal margin
+      bg-opacity-70
+      mb-6
+      mr-4
     `}
+      onClick={onClick}
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onKeyDown={onClick ? (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onClick(e);
+        }
+      } : undefined}
     >
       {title && (
         <div className="p-6 sm:p-7 border-base-200">
           <div className="flex border-0 gap-4">
             <div>
-              {renderImage()} {/* Add image/avatar before the content */}
+              {renderImage()}
             </div>
 
             <div>
