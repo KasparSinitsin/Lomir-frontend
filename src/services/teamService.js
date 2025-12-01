@@ -330,5 +330,80 @@ export const teamService = {
       throw error;
     }
   },
+
+  // ==================== INVITATION METHODS ====================
+
+  /**
+   * Get all pending invitations sent by a specific team
+   */
+  getTeamSentInvitations: async (teamId) => {
+    try {
+      const response = await api.get(`/api/teams/${teamId}/invitations`);
+      return response.data;
+    } catch (error) {
+      console.error(
+        `Error fetching sent invitations for team ${teamId}:`,
+        error
+      );
+      throw error;
+    }
+  },
+
+  getTeamsWhereUserCanInvite: async () => {
+    try {
+      const response = await api.get("/api/teams/can-invite");
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching teams for invite:", error);
+      throw error;
+    }
+  },
+
+  sendInvitation: async (teamId, inviteeId, message = "") => {
+    try {
+      const response = await api.post(`/api/teams/${teamId}/invitations`, {
+        inviteeId,
+        message,
+      });
+      return response.data;
+    } catch (error) {
+      console.error(`Error sending invitation to team ${teamId}:`, error);
+      throw error;
+    }
+  },
+
+  getUserReceivedInvitations: async () => {
+    try {
+      const response = await api.get("/api/teams/invitations/received");
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching received invitations:", error);
+      throw error;
+    }
+  },
+
+  respondToInvitation: async (invitationId, action) => {
+    try {
+      const response = await api.put(`/api/teams/invitations/${invitationId}`, {
+        action,
+      });
+      return response.data;
+    } catch (error) {
+      console.error(`Error responding to invitation ${invitationId}:`, error);
+      throw error;
+    }
+  },
+
+  cancelInvitation: async (invitationId) => {
+    try {
+      const response = await api.delete(
+        `/api/teams/invitations/${invitationId}`
+      );
+      return response.data;
+    } catch (error) {
+      console.error(`Error canceling invitation ${invitationId}:`, error);
+      throw error;
+    }
+  },
 };
 export default teamService;

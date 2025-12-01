@@ -4,6 +4,7 @@ import PageContainer from "../components/layout/PageContainer";
 import Grid from "../components/layout/Grid";
 import Button from "../components/common/Button";
 import TeamCard from "../components/teams/TeamCard";
+import TeamInvitationCard from "../components/teams/TeamInvitationCard";
 import Section from "../components/layout/Section";
 import { teamService } from "../services/teamService";
 import { useAuth } from "../contexts/AuthContext";
@@ -15,6 +16,8 @@ const MyTeams = () => {
   const [pendingApplications, setPendingApplications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingApplications, setLoadingApplications] = useState(true);
+  const [pendingInvitations, setPendingInvitations] = useState([]);
+  const [loadingInvitations, setLoadingInvitations] = useState(true);
   const [error, setError] = useState(null);
   const { user } = useAuth();
 
@@ -47,12 +50,25 @@ const MyTeams = () => {
     }
   }, [user]);
 
-  useEffect(() => {
-    if (user) {
-      fetchUserTeams();
-      fetchPendingApplications();
+  const fetchPendingInvitations = useCallback(async () => {
+    try {
+      setLoadingInvitations(true);
+      const response = await teamService.getUserReceivedInvitations();
+      setPendingInvitations(response.data || []);
+    } catch (err) {
+      console.error("Error fetching pending invitations:", err);
+    } finally {
+      setLoadingInvitations(false);
     }
-  }, [user, fetchUserTeams, fetchPendingApplications]);
+  }, []);
+
+useEffect(() => {
+  if (user?.id) {
+    fetchUserTeams();
+    fetchPendingApplications();
+    fetchPendingInvitations();
+  }
+}, [user?.id, fetchUserTeams, fetchPendingApplications, fetchPendingInvitations]);
 
   const handleTeamUpdate = (updatedTeam) => {
     if (!updatedTeam) {
@@ -66,16 +82,16 @@ const MyTeams = () => {
     );
   };
 
-const handleTeamDelete = async (teamId) => {
-  try {
-    await teamService.deleteTeam(teamId);
-    setTeams((prevTeams) => prevTeams.filter((team) => team.id !== teamId));
-    return true; // Signal success to the modal
-  } catch (error) {
-    console.error("Error deleting team:", error);
-    return false;
-  }
-};
+  const handleTeamDelete = async (teamId) => {
+    try {
+      await teamService.deleteTeam(teamId);
+      setTeams((prevTeams) => prevTeams.filter((team) => team.id !== teamId));
+      return true; // Signal success to the modal
+    } catch (error) {
+      console.error("Error deleting team:", error);
+      return false;
+    }
+  };
 
   const handleApplicationCancel = async (applicationId) => {
     try {
@@ -84,6 +100,25 @@ const handleTeamDelete = async (teamId) => {
       fetchPendingApplications();
     } catch (error) {
       console.error("Error canceling application:", error);
+    }
+  };
+
+  const handleInvitationAccept = async (invitationId) => {
+    try {
+      await teamService.respondToInvitation(invitationId, "accept");
+      fetchUserTeams();
+      fetchPendingInvitations();
+    } catch (error) {
+      console.error("Error accepting invitation:", error);
+    }
+  };
+
+  const handleInvitationDecline = async (invitationId) => {
+    try {
+      await teamService.respondToInvitation(invitationId, "decline");
+      fetchPendingInvitations();
+    } catch (error) {
+      console.error("Error declining invitation:", error);
     }
   };
 
@@ -134,6 +169,32 @@ const handleTeamDelete = async (teamId) => {
 
   return (
     <PageContainer title="My Teams" action={CreateTeamAction}>
+      {/* Pending Invitations Section */}
+      {pendingInvitations.length > 0 && (
+        <Section
+          title="My Pending Membership Invitations"
+          subtitle="Teams that have invited you to join"
+          className="mb-10"
+        >
+          {loadingInvitations ? (
+            <div className="flex justify-center py-8">
+              <div className="loading loading-spinner loading-md"></div>
+            </div>
+          ) : (
+            <Grid cols={1} md={2} lg={3} gap={6}>
+              {pendingInvitations.map((invitation) => (
+                <TeamInvitationCard
+                  key={`invitation-${invitation.id}`}
+                  invitation={invitation}
+                  onAccept={handleInvitationAccept}
+                  onDecline={handleInvitationDecline}
+                />
+              ))}
+            </Grid>
+          )}
+        </Section>
+      )}
+
       {/* Pending Applications Section */}
       {applicationTeams.length > 0 && (
         <Section
