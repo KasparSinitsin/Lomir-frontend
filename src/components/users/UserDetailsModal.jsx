@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import Modal from "../common/Modal";
 import UserBioSection from "./UserBioSection";
-import UserLocationSection from "./UserLocationSection";  
+import UserLocationSection from "./UserLocationSection";
 import UserSkillsSection from "./UserSkillsSection";
 import UserProfileHeaderSection from "./UserProfileHeaderSection";
 import { messageService } from "../../services/messageService";
@@ -11,10 +11,8 @@ import TagSelector from "../tags/TagSelector";
 import Alert from "../common/Alert";
 import { useAuth } from "../../contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
-import {
-  Edit,
-  MessageCircle,
-} from "lucide-react";
+import { Edit, MessageCircle, UserPlus } from "lucide-react";
+import TeamInviteModal from "../teams/TeamInviteModal";
 
 const UserDetailsModal = ({
   isOpen,
@@ -28,6 +26,7 @@ const UserDetailsModal = ({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [user, setUser] = useState(null);
+  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(mode === "edit");
   const [formData, setFormData] = useState({
     firstName: "",
@@ -175,6 +174,21 @@ const UserDetailsModal = ({
     }
   };
 
+  const handleInviteToTeam = () => {
+    setIsInviteModalOpen(true);
+  };
+
+  const handleInviteModalClose = () => {
+    setIsInviteModalOpen(false);
+  };
+
+  const getUserDisplayName = () => {
+    if (user?.first_name && user?.last_name) {
+      return `${user.first_name} ${user.last_name}`;
+    }
+    return user?.username || "User";
+  };
+
   // CUSTOM HEADER with dynamic title and action buttons
   const customHeader = (
     <div className="flex justify-between items-center w-full">
@@ -198,13 +212,25 @@ const UserDetailsModal = ({
                 Edit Profile
               </Button>
             ) : (
-              // Show chat button for other users' profiles
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleStartChat}
-                icon={<MessageCircle size={16} />}
-              />
+              // Show invite and chat buttons for other users' profiles
+              <>
+                {isAuthenticated && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleInviteToTeam}
+                    icon={<UserPlus size={16} />}
+                    title="Invite to team"
+                  />
+                )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleStartChat}
+                  icon={<MessageCircle size={16} />}
+                  title="Send message"
+                />
+              </>
             )}
           </>
         )}
@@ -228,58 +254,71 @@ const UserDetailsModal = ({
     ) : null;
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title={customHeader}
-      footer={footer}
-      // PRESERVE ORIGINAL STYLING
-      position="center"
-      size="default" // max-w-2xl
-      // Standard modal settings
-      closeOnBackdrop={true}
-      closeOnEscape={true}
-      showCloseButton={true}
-    >
-      {/* CONTENT - All business logic preserved */}
-      {loading ? (
-        <div className="flex justify-center items-center py-12">
-          <div className="loading loading-spinner loading-lg text-primary"></div>
-        </div>
-      ) : error ? (
-        <Alert type="error" message={error} />
-      ) : isEditing ? (
-        // EDIT MODE - Future implementation could use TagSelector here
-        <div className="space-y-6">
-          <p className="text-base-content/70">
-            For comprehensive profile editing, you'll be redirected to the full
-            profile page.
-          </p>
-          {/* Future: Add TagSelector and form fields here */}
-          {/* <TagSelector onSelectionChange={handleTagSelection} /> */}
-        </div>
-      ) : (
-        // VIEW MODE - User profile information
-        <div className="space-y-6">
-          {/* User Profile Header */}
-          <UserProfileHeaderSection
-            user={user}
-            currentUser={currentUser}
-            isAuthenticated={isAuthenticated}
-          />
-
-          {/* Bio */}
-          <UserBioSection bio={user?.bio || user?.biography} />
-
-          {/* Location and Skills */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <UserLocationSection user={user} />
+    <>
+      <Modal
+        isOpen={isOpen}
+        onClose={onClose}
+        title={customHeader}
+        footer={footer}
+        // PRESERVE ORIGINAL STYLING
+        position="center"
+        size="default" // max-w-2xl
+        // Standard modal settings
+        closeOnBackdrop={true}
+        closeOnEscape={true}
+        showCloseButton={true}
+      >
+        {/* CONTENT - All business logic preserved */}
+        {loading ? (
+          <div className="flex justify-center items-center py-12">
+            <div className="loading loading-spinner loading-lg text-primary"></div>
           </div>
+        ) : error ? (
+          <Alert type="error" message={error} />
+        ) : isEditing ? (
+          // EDIT MODE - Future implementation could use TagSelector here
+          <div className="space-y-6">
+            <p className="text-base-content/70">
+              For comprehensive profile editing, you'll be redirected to the
+              full profile page.
+            </p>
+            {/* Future: Add TagSelector and form fields here */}
+            {/* <TagSelector onSelectionChange={handleTagSelection} /> */}
+          </div>
+        ) : (
+          // VIEW MODE - User profile information
+          <div className="space-y-6">
+            {/* User Profile Header */}
+            <UserProfileHeaderSection
+              user={user}
+              currentUser={currentUser}
+              isAuthenticated={isAuthenticated}
+            />
 
-          <UserSkillsSection user={user} />
-        </div>
+            {/* Bio */}
+            <UserBioSection bio={user?.bio || user?.biography} />
+
+            {/* Location and Skills */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <UserLocationSection user={user} />
+            </div>
+
+            <UserSkillsSection user={user} />
+          </div>
+        )}
+      </Modal>
+
+      {/* Team Invite Modal */}
+      {isInviteModalOpen && user && (
+        <TeamInviteModal
+          isOpen={isInviteModalOpen}
+          onClose={handleInviteModalClose}
+          inviteeId={user.id}
+          inviteeName={getUserDisplayName()}
+          inviteeAvatar={user.avatar_url || user.avatarUrl}
+        />
       )}
-    </Modal>
+    </>
   );
 };
 
