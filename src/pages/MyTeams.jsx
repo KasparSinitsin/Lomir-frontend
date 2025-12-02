@@ -67,7 +67,12 @@ const MyTeams = () => {
       fetchPendingApplications();
       fetchPendingInvitations();
     }
-  }, [user?.id, fetchUserTeams, fetchPendingApplications, fetchPendingInvitations]);
+  }, [
+    user?.id,
+    fetchUserTeams,
+    fetchPendingApplications,
+    fetchPendingInvitations,
+  ]);
 
   const handleTeamUpdate = (updatedTeam) => {
     if (!updatedTeam) {
@@ -90,6 +95,13 @@ const MyTeams = () => {
       console.error("Error deleting team:", error);
       return false;
     }
+  };
+
+  // Handler for when user LEAVES a team (not deletes it)
+  const handleTeamLeave = (teamId) => {
+    // Server-side removal already happened in TeamDetailsModal
+    console.log("handleTeamLeave called with teamId:", teamId);
+    setTeams((prevTeams) => prevTeams.filter((team) => team.id !== teamId));
   };
 
   // Application handlers
@@ -178,7 +190,7 @@ const MyTeams = () => {
             </div>
           ) : (
             <Grid cols={1} md={2} lg={3} gap={6}>
-              {pendingInvitations.map((invitation) => (
+              {pendingInvitations.filter(Boolean).map((invitation) => (
                 <TeamCard
                   key={`invitation-${invitation.id}`}
                   variant="invitation"
@@ -205,7 +217,7 @@ const MyTeams = () => {
             </div>
           ) : (
             <Grid cols={1} md={2} lg={3} gap={6}>
-              {pendingApplications.map((application) => (
+              {pendingApplications.filter(Boolean).map((application) => (
                 <TeamCard
                   key={`application-${application.id}`}
                   variant="application"
@@ -235,7 +247,7 @@ const MyTeams = () => {
           </div>
         ) : (
           <Grid cols={1} md={2} lg={3} gap={6}>
-            {teams.map((team) => (
+            {teams.filter(Boolean).map((team) => (
               <TeamCard
                 key={team.id}
                 variant="member"
@@ -245,6 +257,7 @@ const MyTeams = () => {
                 }}
                 onUpdate={handleTeamUpdate}
                 onDelete={handleTeamDelete}
+                onLeave={handleTeamLeave}
               />
             ))}
           </Grid>
