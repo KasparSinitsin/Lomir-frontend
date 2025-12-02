@@ -4,7 +4,6 @@ import PageContainer from "../components/layout/PageContainer";
 import Grid from "../components/layout/Grid";
 import Button from "../components/common/Button";
 import TeamCard from "../components/teams/TeamCard";
-import TeamInvitationCard from "../components/teams/TeamInvitationCard";
 import Section from "../components/layout/Section";
 import { teamService } from "../services/teamService";
 import { useAuth } from "../contexts/AuthContext";
@@ -62,13 +61,13 @@ const MyTeams = () => {
     }
   }, []);
 
-useEffect(() => {
-  if (user?.id) {
-    fetchUserTeams();
-    fetchPendingApplications();
-    fetchPendingInvitations();
-  }
-}, [user?.id, fetchUserTeams, fetchPendingApplications, fetchPendingInvitations]);
+  useEffect(() => {
+    if (user?.id) {
+      fetchUserTeams();
+      fetchPendingApplications();
+      fetchPendingInvitations();
+    }
+  }, [user?.id, fetchUserTeams, fetchPendingApplications, fetchPendingInvitations]);
 
   const handleTeamUpdate = (updatedTeam) => {
     if (!updatedTeam) {
@@ -86,23 +85,30 @@ useEffect(() => {
     try {
       await teamService.deleteTeam(teamId);
       setTeams((prevTeams) => prevTeams.filter((team) => team.id !== teamId));
-      return true; // Signal success to the modal
+      return true;
     } catch (error) {
       console.error("Error deleting team:", error);
       return false;
     }
   };
 
+  // Application handlers
   const handleApplicationCancel = async (applicationId) => {
     try {
       await teamService.cancelApplication(applicationId);
-      // Refresh applications after cancellation
       fetchPendingApplications();
     } catch (error) {
       console.error("Error canceling application:", error);
     }
   };
 
+  const handleSendReminder = async (applicationId) => {
+    // TODO: Implement send reminder functionality
+    console.log("Send reminder for application:", applicationId);
+    alert("Reminder feature coming soon!");
+  };
+
+  // Invitation handlers
   const handleInvitationAccept = async (invitationId) => {
     try {
       await teamService.respondToInvitation(invitationId, "accept");
@@ -157,16 +163,6 @@ useEffect(() => {
     );
   }
 
-  // Process application data to create team cards with application info
-  const applicationTeams = pendingApplications.map((application) => ({
-    ...application.team,
-    applicationId: application.id,
-    applicationStatus: application.status,
-    applicationMessage: application.message,
-    applicationDate: application.created_at,
-    isPendingApplication: true, // Flag to indicate this is a pending application
-  }));
-
   return (
     <PageContainer title="My Teams" action={CreateTeamAction}>
       {/* Pending Invitations Section */}
@@ -183,8 +179,9 @@ useEffect(() => {
           ) : (
             <Grid cols={1} md={2} lg={3} gap={6}>
               {pendingInvitations.map((invitation) => (
-                <TeamInvitationCard
+                <TeamCard
                   key={`invitation-${invitation.id}`}
+                  variant="invitation"
                   invitation={invitation}
                   onAccept={handleInvitationAccept}
                   onDecline={handleInvitationDecline}
@@ -196,7 +193,7 @@ useEffect(() => {
       )}
 
       {/* Pending Applications Section */}
-      {applicationTeams.length > 0 && (
+      {pendingApplications.length > 0 && (
         <Section
           title="My Pending Membership Applications"
           subtitle="Teams that I would like to join"
@@ -208,14 +205,13 @@ useEffect(() => {
             </div>
           ) : (
             <Grid cols={1} md={2} lg={3} gap={6}>
-              {applicationTeams.map((team) => (
+              {pendingApplications.map((application) => (
                 <TeamCard
-                  key={`application-${team.applicationId}`}
-                  team={team}
-                  isPendingApplication={true}
-                  onCancelApplication={() =>
-                    handleApplicationCancel(team.applicationId)
-                  }
+                  key={`application-${application.id}`}
+                  variant="application"
+                  application={application}
+                  onCancel={handleApplicationCancel}
+                  onSendReminder={handleSendReminder}
                 />
               ))}
             </Grid>
@@ -242,6 +238,7 @@ useEffect(() => {
             {teams.map((team) => (
               <TeamCard
                 key={team.id}
+                variant="member"
                 team={{
                   ...team,
                   is_public: team.is_public === true,
