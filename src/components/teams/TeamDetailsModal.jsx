@@ -1037,6 +1037,7 @@ const TeamDetailsModal = ({
                   shouldAnonymizeMember={shouldAnonymizeMember}
                   isOwner={isOwner}
                   onRoleChange={fetchTeamDetails}
+                  onMemberRemoved={fetchTeamDetails}
                 />
 
                 {/* Join / Leave / Message Buttons */}
