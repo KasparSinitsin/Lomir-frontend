@@ -1,8 +1,14 @@
 import React, { useState } from "react";
-import { Crown, Shield, User } from "lucide-react";
+import { Crown, Shield, User, UserX } from "lucide-react";
 import Dropdown, { DropdownItem } from "../common/Dropdown";
 
-const RoleBadgeDropdown = ({ member, canManage, onRoleChange, isOwner = false }) => {
+const RoleBadgeDropdown = ({ 
+  member, 
+  canManage, 
+  onRoleChange, 
+  onRemoveMember,  // Callback for removing member
+  isOwner = false,           
+}) => {
   const [isLoading, setIsLoading] = useState(false);
 
   // Get role display information
@@ -56,6 +62,22 @@ const RoleBadgeDropdown = ({ member, canManage, onRoleChange, isOwner = false })
         await onRoleChange(newRole);
       } catch (error) {
         console.error("Role change error:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+  };
+
+  // Handle member removal
+  const handleRemoveMember = async () => {
+    const memberName = member.username || member.first_name || "this member";
+    
+    if (window.confirm(`Are you sure you want to remove ${memberName} from the team? This action cannot be undone.`)) {
+      setIsLoading(true);
+      try {
+        await onRemoveMember(member.user_id || member.userId);
+      } catch (error) {
+        console.error("Remove member error:", error);
       } finally {
         setIsLoading(false);
       }
@@ -120,6 +142,20 @@ const RoleBadgeDropdown = ({ member, canManage, onRoleChange, isOwner = false })
             variant="warning"
           >
             Transfer Ownership
+          </DropdownItem>
+        </>
+      )}
+
+      {/* Remove from Team - shown for non-owners */}
+      {member.role !== "owner" && onRemoveMember && (
+        <>
+          <div className="border-t border-base-300 my-1" />
+          <DropdownItem
+            icon={<UserX className="w-4 h-4 text-error" />}
+            onClick={handleRemoveMember}
+            variant="error"
+          >
+            Remove from Team
           </DropdownItem>
         </>
       )}

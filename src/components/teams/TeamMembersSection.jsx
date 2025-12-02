@@ -11,16 +11,17 @@ import { teamService } from "../../services/teamService";
  */
 const TeamMembersSection = ({
   team,
-  isEditing = false,
-  isAuthenticated = false,
+  // isEditing: isEditing = false,        
+  // isAuthenticated: isAuthenticated = false,  
   user = null,
   onMemberClick = () => {},
   shouldAnonymizeMember = () => false,
   isOwner = false,
   onRoleChange = null,
+  onMemberRemoved = null,
   className = "",
 }) => {
-  const [notification, setNotification] = React.useState({
+  const [setNotification] = React.useState({
     type: null,
     message: null,
   });
@@ -129,21 +130,41 @@ const TeamMembersSection = ({
                               type: "success",
                               message: `${member.username || "Member"} ${
                                 newRole === "admin"
-                                  ? "promoted to admin"
-                                  : "demoted to member"
+                                  ? "promoted to Admin"
+                                  : "demoted to Member"
                               } successfully!`,
                             });
-                            // Call parent callback to refresh
-                            onRoleChange();
+                            onRoleChange(); // Refresh team data
                           } catch (error) {
-                            console.error("Error updating member role:", error);
                             setNotification({
                               type: "error",
                               message:
                                 error.response?.data?.message ||
-                                "Failed to update member role",
+                                "Failed to update role",
                             });
                           }
+                        }
+                      }}
+                      // Add onRemoveMember handler
+                      onRemoveMember={async () => {
+                        try {
+                          await teamService.removeTeamMember(team.id, memberId);
+                          setNotification({
+                            type: "success",
+                            message: `${
+                              member.username || "Member"
+                            } has been removed from the team.`,
+                          });
+                          if (onMemberRemoved) {
+                            onMemberRemoved(); // Refresh team data
+                          }
+                        } catch (error) {
+                          setNotification({
+                            type: "error",
+                            message:
+                              error.response?.data?.message ||
+                              "Failed to remove member",
+                          });
                         }
                       }}
                     />
