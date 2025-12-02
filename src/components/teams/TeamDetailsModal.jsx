@@ -10,7 +10,16 @@ import SendMessageButton from "../common/SendMessageButton";
 import Alert from "../common/Alert";
 import TagDisplay from "../common/TagDisplay";
 import LocationDisplay from "../common/LocationDisplay";
-import { X, Edit, Users, Trash2, Eye, EyeClosed, Tag } from "lucide-react";
+import {
+  X,
+  Edit,
+  Users,
+  Trash2,
+  Eye,
+  EyeClosed,
+  Tag,
+  LogOut,
+} from "lucide-react";
 import IconToggle from "../common/IconToggle";
 import UserDetailsModal from "../users/UserDetailsModal";
 import FocusAreasSection from "../tags/FocusAreasSection";
@@ -28,6 +37,7 @@ const TeamDetailsModal = ({
   onClose,
   onUpdate,
   onDelete,
+  onLeave, // ← neu
   userRole,
   isFromSearch = false,
 }) => {
@@ -66,6 +76,8 @@ const TeamDetailsModal = ({
   const [selectedUserId, setSelectedUserId] = useState(null);
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [allTags, setAllTags] = useState([]);
+  const [isLeaveDialogOpen, setIsLeaveDialogOpen] = useState(false);
+  const [leaveLoading, setLeaveLoading] = useState(false);
 
   const fetchTeamDetails = useCallback(async () => {
     if (!effectiveTeamId) return;
@@ -111,21 +123,15 @@ const TeamDetailsModal = ({
         teamData.members &&
         Array.isArray(teamData.members)
       ) {
-        console.log(
-          "Searching for owner in members array:",
-          teamData.members
-        );
+        console.log("Searching for owner in members array:", teamData.members);
 
-const ownerMember = teamData.members.find(
-  (m) => m.role === "owner" || m.role === "Owner"
-);
+        const ownerMember = teamData.members.find(
+          (m) => m.role === "owner" || m.role === "Owner"
+        );
 
         if (ownerMember) {
           // Use either user_id or userId depending on which exists
-          ownerId = parseInt(
-            ownerMember.user_id || ownerMember.userId,
-            10
-          );
+          ownerId = parseInt(ownerMember.user_id || ownerMember.userId, 10);
           console.log("Found owner ID from members array:", ownerId);
         }
       }
@@ -133,11 +139,11 @@ const ownerMember = teamData.members.find(
       // 4. Ensure ownerId is valid, use logged-in user as fallback for owner's own teams
       if (isNaN(ownerId) && user && teamData.members) {
         // Check if current user is listed as owner under members
-const isCurrentUserOwner = teamData.members.some(
-  (member) =>
-    (member.user_id === user.id || member.userId === user.id) &&
-    (member.role === "owner" || member.role === "Owner")
-);
+        const isCurrentUserOwner = teamData.members.some(
+          (member) =>
+            (member.user_id === user.id || member.userId === user.id) &&
+            (member.role === "owner" || member.role === "Owner")
+        );
 
         if (isCurrentUserOwner) {
           ownerId = parseInt(user.id, 10);
@@ -178,14 +184,14 @@ const isCurrentUserOwner = teamData.members.some(
         parseInt(user.id, 10) === ownerId;
 
       // Calculate if user is owner by role (only if authenticated)
-const isOwnerByRole =
-  (isUserAuthenticated &&
-    teamData.members?.some(
-      (member) =>
-        (member.user_id === user.id || member.userId === user.id) &&
-        (member.role === "owner" || member.role === "Owner")
-    )) ||
-  false;
+      const isOwnerByRole =
+        (isUserAuthenticated &&
+          teamData.members?.some(
+            (member) =>
+              (member.user_id === user.id || member.userId === user.id) &&
+              (member.role === "owner" || member.role === "Owner")
+          )) ||
+        false;
 
       // Final owner determination - must be authenticated AND either method confirms
       const finalOwnerStatus =
@@ -446,6 +452,61 @@ const isOwnerByRole =
     }
   };
 
+  const handleLeaveTeam = async () => {
+    if (!user?.id || !team?.id) return;
+
+    setLeaveLoading(true);
+    try {
+      await teamService.removeTeamMember(team.id, user.id);
+      setNotification({
+        type: "success",
+        message: "You have left the team successfully.",
+      });
+      setIsLeaveDialogOpen(false);
+
+      // Close modal and trigger leave callback after a short delay
+      setTimeout(() => {
+        console.log(
+          "TeamDetailsModal: about to call onLeave with team.id:",
+          team.id
+        );
+        console.log("TeamDetailsModal: onLeave is:", onLeave);
+        if (onLeave) onLeave(team.id);
+        if (onClose) onClose();
+      }, 1500);
+    } catch (error) {
+      console.error("Error leaving team:", error);
+      setNotification({
+        type: "error",
+        message:
+          error.response?.data?.message ||
+          "Failed to leave team. Please try again.",
+      });
+      setIsLeaveDialogOpen(false);
+    } finally {
+      setLeaveLoading(false);
+    }
+  };
+
+  // Check if user can leave (is a member but not the sole owner)
+  const canLeaveTeam = useMemo(() => {
+    if (!user?.id || !team?.members) return false;
+
+    const currentMember = team.members.find(
+      (m) => m.user_id === user.id || m.userId === user.id
+    );
+
+    if (!currentMember) return false;
+
+    // If user is owner, check if they're the only owner
+    if (currentMember.role === "owner") {
+      const ownerCount = team.members.filter((m) => m.role === "owner").length;
+      return ownerCount > 1; // Can only leave if there's another owner
+    }
+
+    return true; // Members and admins can always leave
+  }, [user?.id, team?.members]);
+
   const validateForm = () => {
     const errors = {};
 
@@ -704,25 +765,44 @@ const isOwnerByRole =
   }, [team, user, isOwner, userRole]);
 
   const renderJoinButton = () => {
-    if (!isAuthenticated || !user || loading) {
+    if (!isAuthenticated) {
       return null;
     }
 
+    const isMember = team?.members?.some(
+      (m) => m.user_id === user?.id || m.userId === user?.id
+    );
+
     return (
-      <div className="pt-6">
-        {isTeamMember ? (
-          // Show team chat button for members/owners
-          <SendMessageButton
-            type="team"
-            teamId={team?.id} // Changed from teamData.id to team?.id
-            teamName={team?.name} // Changed from teamData.name to team?.name
-            variant="primary"
-            className="w-full"
-          >
-            Send Message to Team
-          </SendMessageButton>
+      <div className="mt-6 border-t border-base-200 pt-4">
+        {isMember ? (
+          <div className="flex items-center gap-2">
+            {/* Send Message to Team Button */}
+            <SendMessageButton
+              type="team"
+              teamId={team?.id}
+              teamName={team?.name}
+              variant="primary"
+              className="flex-1"
+            >
+              Send Message to Team
+            </SendMessageButton>
+
+            {/* Leave Team Button */}
+            {canLeaveTeam && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsLeaveDialogOpen(true)}
+                className="hover:bg-red-100 hover:text-red-700 p-2"
+                aria-label="Leave team"
+                title="Leave team"
+              >
+                <LogOut size={20} />
+              </Button>
+            )}
+          </div>
         ) : (
-          // Show apply button for non-members
           <Button
             variant="primary"
             onClick={handleApplyToJoin}
@@ -959,7 +1039,7 @@ const isOwnerByRole =
                   onRoleChange={fetchTeamDetails}
                 />
 
-                {/* Join Team Button for non-members */}
+                {/* Join / Leave / Message Buttons */}
                 {renderJoinButton()}
               </div>
             )}
@@ -985,6 +1065,51 @@ const isOwnerByRole =
         onSubmit={handleApplicationSubmit}
         loading={applicationLoading}
       />
+
+      {/* Leave Team Confirmation Dialog */}
+      {isLeaveDialogOpen && (
+        <Modal
+          isOpen={isLeaveDialogOpen}
+          onClose={() => setIsLeaveDialogOpen(false)}
+          title="Leave Team"
+          position="center"
+          size="small"
+          closeOnBackdrop={!leaveLoading}
+          closeOnEscape={!leaveLoading}
+          showCloseButton={!leaveLoading}
+        >
+          <div className="py-4">
+            <p className="text-base-content">Really want to leave this team?</p>
+            {isOwner && (
+              <p className="text-warning text-sm mt-2">
+                Note: As an owner, you can only leave if there's another owner
+                to manage the team.
+              </p>
+            )}
+          </div>
+          <div className="flex justify-end gap-3 mt-4">
+            <Button
+              variant="ghost"
+              onClick={() => setIsLeaveDialogOpen(false)}
+              disabled={leaveLoading}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="error"
+              onClick={handleLeaveTeam}
+              disabled={leaveLoading}
+              className="bg-red-500 hover:bg-red-600 text-white"
+            >
+              {leaveLoading ? (
+                <span className="loading loading-spinner loading-sm"></span>
+              ) : (
+                "Leave Team"
+              )}
+            </Button>
+          </div>
+        </Modal>
+      )}
     </>
   );
 };

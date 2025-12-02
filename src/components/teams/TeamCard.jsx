@@ -27,12 +27,12 @@ import { format } from "date-fns";
 
 /**
  * Unified TeamCard Component
- * 
+ *
  * Handles three variants:
  * - "member" (default): Teams you're part of
  * - "application": Your pending applications to join teams
  * - "invitation": Invitations you've received from teams
- * 
+ *
  * @param {Object} props
  * @param {Object} props.team - Team data (for member variant)
  * @param {Object} props.application - Application data (for application variant)
@@ -40,6 +40,7 @@ import { format } from "date-fns";
  * @param {string} props.variant - "member" | "application" | "invitation"
  * @param {Function} props.onUpdate - Callback when team is updated
  * @param {Function} props.onDelete - Callback when team is deleted
+ * @param {Function} props.onLeave - Callback when user leaves a team
  * @param {Function} props.onCancel - Callback to cancel application
  * @param {Function} props.onSendReminder - Callback to send reminder for application
  * @param {Function} props.onAccept - Callback to accept invitation
@@ -51,33 +52,34 @@ const TeamCard = ({
   team,
   application,
   invitation,
-  
+
   // Variant control
   variant = "member", // "member" | "application" | "invitation"
-  
+
   // Legacy prop support (maps to variant="application")
   isPendingApplication = false,
-  
+
   // Common handlers
   onUpdate,
   onDelete,
+  onLeave,
   isSearchResult = false,
-  
+
   // Application-specific handlers
   onCancel,
   onCancelApplication, // Legacy prop name
   onSendReminder,
-  
+
   // Invitation-specific handlers
   onAccept,
   onDecline,
-  
+
   // Loading state
   loading = false,
 }) => {
   // Determine effective variant (support legacy isPendingApplication prop)
   const effectiveVariant = isPendingApplication ? "application" : variant;
-  
+
   // Normalize data based on variant
   const getNormalizedData = () => {
     if (effectiveVariant === "invitation" && invitation) {
@@ -116,7 +118,9 @@ const TeamCard = ({
   };
 
   const normalizedData = getNormalizedData();
-  
+
+  // ========= ALL HOOKS (useState, useAuth, useCallback, useEffect) =========
+
   // State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isApplicationModalOpen, setIsApplicationModalOpen] = useState(false);
@@ -130,10 +134,8 @@ const TeamCard = ({
   const [isApplicationsModalOpen, setIsApplicationsModalOpen] = useState(false);
 
   // Check if current user is the owner of the team
-  const isOwner = user && (
-    teamData.owner_id === user.id || 
-    teamData.ownerId === user.id
-  );
+  const isOwner =
+    user && (teamData?.owner_id === user.id || teamData?.ownerId === user.id);
 
   // Update local team data when props change
   useEffect(() => {
@@ -144,13 +146,16 @@ const TeamCard = ({
   useEffect(() => {
     const fetchUserRole = async () => {
       if (
-        user && 
-        teamData.id && 
-        !isSearchResult && 
+        user &&
+        teamData?.id &&
+        !isSearchResult &&
         effectiveVariant === "member"
       ) {
         try {
-          const response = await teamService.getUserRoleInTeam(teamData.id, user.id);
+          const response = await teamService.getUserRoleInTeam(
+            teamData.id,
+            user.id
+          );
           setUserRole(response.data.role);
         } catch (err) {
           console.error("Error fetching user role:", err);
@@ -158,11 +163,11 @@ const TeamCard = ({
       }
     };
     fetchUserRole();
-  }, [user, teamData.id, isSearchResult, effectiveVariant]);
+  }, [user, teamData?.id, isSearchResult, effectiveVariant]);
 
   // Fetch pending applications (only for team owners)
   const fetchPendingApplications = useCallback(async () => {
-    if (isOwner && teamData.id && effectiveVariant === "member") {
+    if (isOwner && teamData?.id && effectiveVariant === "member") {
       try {
         const response = await teamService.getTeamApplications(teamData.id);
         setPendingApplications(response.data || []);
@@ -170,7 +175,7 @@ const TeamCard = ({
         console.error("Error fetching applications:", error);
       }
     }
-  }, [isOwner, teamData.id, effectiveVariant]);
+  }, [isOwner, teamData?.id, effectiveVariant]);
 
   useEffect(() => {
     fetchPendingApplications();
@@ -204,7 +209,13 @@ const TeamCard = ({
       }
     };
     fetchCompleteTeamData();
-  }, [teamData.id, effectiveVariant]);
+  }, [teamData?.id, effectiveVariant]);
+
+  // ================= GUARD CLAUSE – AFTER ALL HOOKS =================
+
+  if (!teamData) {
+    return null;
+  }
 
   // ============ Helper Functions ============
 
@@ -219,10 +230,12 @@ const TeamCard = ({
   };
 
   const getMemberCount = () => {
-    return teamData.current_members_count ?? 
-           teamData.currentMembersCount ?? 
-           teamData.members?.length ?? 
-           0;
+    return (
+      teamData.current_members_count ??
+      teamData.currentMembersCount ??
+      teamData.members?.length ??
+      0
+    );
   };
 
   const getMaxMembers = () => {
@@ -271,21 +284,26 @@ const TeamCard = ({
           try {
             displayTags = JSON.parse(teamData.tags);
           } catch (e) {
-            displayTags = teamData.tags.split(",").map((name) => ({ name: name.trim() }));
+            displayTags = teamData.tags
+              .split(",")
+              .map((name) => ({ name: name.trim() }));
           }
         }
       }
     } catch (e) {
       displayTags = [];
     }
-    return displayTags.filter((tag) => tag && (tag.name || typeof tag === "string"));
+    return displayTags.filter(
+      (tag) => tag && (tag.name || typeof tag === "string")
+    );
   };
 
   const shouldShowVisibilityIcon = () => {
     if (!isAuthenticated || !user) return false;
     if (effectiveVariant !== "member") return false;
     if (isOwner) return true;
-    if (teamData.owner_id === user.id || teamData.ownerId === user.id) return true;
+    if (teamData.owner_id === user.id || teamData.ownerId === user.id)
+      return true;
     if (teamData.members && Array.isArray(teamData.members)) {
       const foundInMembers = teamData.members.some(
         (member) => member.user_id === user.id || member.userId === user.id
@@ -339,7 +357,11 @@ const TeamCard = ({
   // Member variant handlers
   const handleDeleteClick = async (e) => {
     e.stopPropagation();
-    if (!window.confirm("Are you sure you want to delete this team? This action cannot be undone.")) {
+    if (
+      !window.confirm(
+        "Are you sure you want to delete this team? This action cannot be undone."
+      )
+    ) {
       return;
     }
     try {
@@ -354,10 +376,20 @@ const TeamCard = ({
     }
   };
 
+  // Handler for when user leaves a team (called from TeamDetailsModal)
+  const handleLeaveTeam = (teamId) => {
+    console.log("TeamCard handleLeaveTeam called with teamId:", teamId);
+    if (onLeave) onLeave(teamId);
+  };
+
   // Application variant handlers
   const handleCancelApplication = async (e) => {
     e.stopPropagation();
-    if (!window.confirm("Are you sure you want to cancel your application to this team?")) {
+    if (
+      !window.confirm(
+        "Are you sure you want to cancel your application to this team?"
+      )
+    ) {
       return;
     }
     setActionLoading("cancel");
@@ -447,14 +479,17 @@ const TeamCard = ({
         )}
 
         {/* Date badge */}
-        {formattedDate && (effectiveVariant === "application" || effectiveVariant === "invitation") && (
-          <div className="flex items-center text-sm text-base-content/70 bg-base-200/50 py-1 px-2 rounded-full">
-            <Calendar size={14} className="mr-1" />
-            <span>
-              {effectiveVariant === "invitation" ? "Invited" : "Applied"} {formattedDate}
-            </span>
-          </div>
-        )}
+        {formattedDate &&
+          (effectiveVariant === "application" ||
+            effectiveVariant === "invitation") && (
+            <div className="flex items-center text-sm text-base-content/70 bg-base-200/50 py-1 px-2 rounded-full">
+              <Calendar size={14} className="mr-1" />
+              <span>
+                {effectiveVariant === "invitation" ? "Invited" : "Applied"}{" "}
+                {formattedDate}
+              </span>
+            </div>
+          )}
 
         {/* User role badge (member variant only) */}
         {userRole && effectiveVariant === "member" && !isSearchResult && (
@@ -467,7 +502,8 @@ const TeamCard = ({
             <Tag size={14} className="mr-1 text-base-content/70" />
             <span className="truncate">
               {displayTags.slice(0, 2).map((tag, index) => {
-                const tagName = typeof tag === "string" ? tag : tag.name || tag.tag || "";
+                const tagName =
+                  typeof tag === "string" ? tag : tag.name || tag.tag || "";
                 return (
                   <span key={index}>
                     {index > 0 ? ", " : ""}
@@ -484,13 +520,15 @@ const TeamCard = ({
   };
 
   const renderInviterInfo = () => {
-    if (effectiveVariant !== "invitation" || !normalizedData.inviter) return null;
+    if (effectiveVariant !== "invitation" || !normalizedData.inviter)
+      return null;
 
     const inviter = normalizedData.inviter;
     const avatarUrl = inviter.avatar_url || inviter.avatarUrl;
     const firstName = inviter.first_name || inviter.firstName;
     const lastName = inviter.last_name || inviter.lastName;
-    const displayName = firstName && lastName ? `${firstName} ${lastName}` : inviter.username;
+    const displayName =
+      firstName && lastName ? `${firstName} ${lastName}` : inviter.username;
 
     return (
       <div className="flex items-center gap-2 mb-4 p-3 bg-base-200 rounded-lg">
@@ -519,7 +557,8 @@ const TeamCard = ({
 
   const renderMessage = () => {
     if (!normalizedData.message) return null;
-    if (effectiveVariant !== "invitation" && effectiveVariant !== "application") return null;
+    if (effectiveVariant !== "invitation" && effectiveVariant !== "application")
+      return null;
 
     return (
       <div className="mb-4 p-3 bg-base-100 border border-base-300 rounded-lg">
@@ -668,13 +707,13 @@ const TeamCard = ({
         {renderActionButtons()}
       </Card>
 
-      {/* Team Details Modal */}
       <TeamDetailsModal
         isOpen={isModalOpen}
         teamId={getTeamId()}
         onClose={handleModalClose}
         onUpdate={handleTeamUpdate}
         onDelete={onDelete}
+        onLeave={handleLeaveTeam}
         userRole={userRole}
         isFromSearch={isSearchResult || effectiveVariant !== "member"}
       />
