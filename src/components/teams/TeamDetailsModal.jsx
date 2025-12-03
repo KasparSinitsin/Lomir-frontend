@@ -79,171 +79,170 @@ const TeamDetailsModal = ({
   const [isLeaveDialogOpen, setIsLeaveDialogOpen] = useState(false);
   const [leaveLoading, setLeaveLoading] = useState(false);
 
-  const fetchTeamDetails = useCallback(async () => {
-    if (!effectiveTeamId) return;
+const fetchTeamDetails = useCallback(async () => {
+  if (!effectiveTeamId) return null;
 
-    try {
-      setLoading(true);
-      setNotification({ type: null, message: null });
+  try {
+    setLoading(true);
+    setNotification({ type: null, message: null });
 
-      // Get the team details
-      console.log(`Fetching details for team ID: ${effectiveTeamId}`);
-      const response = await teamService.getTeamById(effectiveTeamId);
+    // Get the team details
+    console.log(`Fetching details for team ID: ${effectiveTeamId}`);
+    const response = await teamService.getTeamById(effectiveTeamId);
 
-      // Log full response for debugging
-      console.log("Raw API response:", response);
+    // Log full response for debugging
+    console.log("Raw API response:", response);
 
-      // Get team data from response
-      let teamData;
-      if (response.data && typeof response.data === "object") {
-        teamData = response.data;
-      } else if (response.data && response.data.data) {
-        teamData = response.data.data;
-      } else {
-        teamData = {};
+    // Get team data from response
+    let teamData;
+    if (response.data && typeof response.data === "object") {
+      teamData = response.data;
+    } else if (response.data && response.data.data) {
+      teamData = response.data.data;
+    } else {
+      teamData = {};
+    }
+
+    console.log("Team data extracted:", teamData);
+
+    // Look for owner ID in multiple possible locations
+    let ownerId = null;
+
+    // 1. Try direct owner_id field
+    if (teamData.owner_id !== undefined) {
+      ownerId = parseInt(teamData.owner_id, 10);
+    }
+    // 2. Try ownerId field (camelCase variation)
+    else if (teamData.ownerId !== undefined) {
+      ownerId = parseInt(teamData.ownerId, 10);
+    }
+
+    // 3. If not found or invalid, check members array for owner role
+    if (
+      isNaN(ownerId) &&
+      teamData.members &&
+      Array.isArray(teamData.members)
+    ) {
+      console.log("Searching for owner in members array:", teamData.members);
+
+      const ownerMember = teamData.members.find(
+        (m) => m.role === "owner" || m.role === "Owner"
+      );
+
+      if (ownerMember) {
+        ownerId = parseInt(ownerMember.user_id || ownerMember.userId, 10);
+        console.log("Found owner ID from members array:", ownerId);
       }
+    }
 
-      console.log("Team data extracted:", teamData);
+    // 4. Ensure ownerId is valid, use logged-in user as fallback for owner's own teams
+    if (isNaN(ownerId) && user && teamData.members) {
+      const isCurrentUserOwner = teamData.members.some(
+        (member) =>
+          (member.user_id === user.id || member.userId === user.id) &&
+          (member.role === "owner" || member.role === "Owner")
+      );
 
-      // Look for owner ID in multiple possible locations
-      let ownerId = null;
-
-      // 1. Try direct owner_id field
-      if (teamData.owner_id !== undefined) {
-        ownerId = parseInt(teamData.owner_id, 10);
+      if (isCurrentUserOwner) {
+        ownerId = parseInt(user.id, 10);
+        console.log("Using current user as owner ID:", ownerId);
       }
-      // 2. Try ownerId field (camelCase variation)
-      else if (teamData.ownerId !== undefined) {
-        ownerId = parseInt(teamData.ownerId, 10);
-      }
+    }
 
-      // 3. If not found or invalid, check members array for owner role
-      if (
-        isNaN(ownerId) &&
-        teamData.members &&
-        Array.isArray(teamData.members)
-      ) {
-        console.log("Searching for owner in members array:", teamData.members);
+    console.log("Final owner ID determination:", ownerId);
 
-        const ownerMember = teamData.members.find(
-          (m) => m.role === "owner" || m.role === "Owner"
-        );
+    // Process visibility
+    let isPublicValue = false;
+    const isPublicRaw = teamData.is_public || teamData.isPublic;
 
-        if (ownerMember) {
-          // Use either user_id or userId depending on which exists
-          ownerId = parseInt(ownerMember.user_id || ownerMember.userId, 10);
-          console.log("Found owner ID from members array:", ownerId);
-        }
-      }
+    if (isPublicRaw === true || isPublicRaw === "true" || isPublicRaw === 1) {
+      isPublicValue = true;
+    }
 
-      // 4. Ensure ownerId is valid, use logged-in user as fallback for owner's own teams
-      if (isNaN(ownerId) && user && teamData.members) {
-        // Check if current user is listed as owner under members
-        const isCurrentUserOwner = teamData.members.some(
+    // Enhance team data with normalized values
+    const enhancedTeamData = {
+      ...teamData,
+      owner_id: ownerId,
+      is_public: isPublicValue,
+    };
+
+    console.log("Enhanced team data:", enhancedTeamData);
+
+    // Store the enhanced team data
+    setTeam(enhancedTeamData);
+    setIsPublic(isPublicValue);
+
+    // Determine if current user is owner
+    const isUserAuthenticated = isAuthenticated && user && user.id;
+
+    const isOwnerById =
+      isUserAuthenticated &&
+      !isNaN(ownerId) &&
+      parseInt(user.id, 10) === ownerId;
+
+    const isOwnerByRole =
+      (isUserAuthenticated &&
+        teamData.members?.some(
           (member) =>
             (member.user_id === user.id || member.userId === user.id) &&
             (member.role === "owner" || member.role === "Owner")
-        );
+        )) ||
+      false;
 
-        if (isCurrentUserOwner) {
-          ownerId = parseInt(user.id, 10);
-          console.log("Using current user as owner ID:", ownerId);
-        }
+    const finalOwnerStatus =
+      isUserAuthenticated && (isOwnerById || isOwnerByRole);
+
+    console.log("Owner check:", {
+      isUserAuthenticated,
+      userId: user?.id,
+      ownerId,
+      isOwnerById,
+      isOwnerByRole,
+      finalOwnerStatus,
+    });
+
+    setIsOwner(finalOwnerStatus);
+
+    // Determine user's role from members list
+    if (isUserAuthenticated && teamData.members) {
+      const currentUserMember = teamData.members.find(
+        (member) => member.user_id === user.id || member.userId === user.id
+      );
+      if (currentUserMember) {
+        setInternalUserRole(currentUserMember.role);
+        console.log("User role set to:", currentUserMember.role);
       }
-
-      console.log("Final owner ID determination:", ownerId);
-
-      // Process visibility
-      let isPublicValue = false;
-      const isPublicRaw = teamData.is_public || teamData.isPublic;
-
-      if (isPublicRaw === true || isPublicRaw === "true" || isPublicRaw === 1) {
-        isPublicValue = true;
-      }
-
-      // Enhance team data with normalized values
-      const enhancedTeamData = {
-        ...teamData,
-        owner_id: ownerId, // Set the corrected owner ID
-        is_public: isPublicValue,
-      };
-
-      console.log("Enhanced team data:", enhancedTeamData);
-
-      // Store the enhanced team data
-      setTeam(enhancedTeamData);
-      setIsPublic(isPublicValue);
-
-      // Determine if current user is owner - REQUIRE AUTHENTICATION FIRST
-      const isUserAuthenticated = isAuthenticated && user && user.id;
-
-      // Calculate if user is owner by ID comparison (only if authenticated)
-      const isOwnerById =
-        isUserAuthenticated &&
-        !isNaN(ownerId) &&
-        parseInt(user.id, 10) === ownerId;
-
-      // Calculate if user is owner by role (only if authenticated)
-      const isOwnerByRole =
-        (isUserAuthenticated &&
-          teamData.members?.some(
-            (member) =>
-              (member.user_id === user.id || member.userId === user.id) &&
-              (member.role === "owner" || member.role === "Owner")
-          )) ||
-        false;
-
-      // Final owner determination - must be authenticated AND either method confirms
-      const finalOwnerStatus =
-        isUserAuthenticated && (isOwnerById || isOwnerByRole);
-
-      console.log("Owner check:", {
-        isUserAuthenticated,
-        userId: user?.id,
-        ownerId,
-        isOwnerById,
-        isOwnerByRole,
-        finalOwnerStatus,
-      });
-
-      setIsOwner(finalOwnerStatus);
-
-      // Determine user's role from members list
-      if (isUserAuthenticated && teamData.members) {
-        const currentUserMember = teamData.members.find(
-          (member) => member.user_id === user.id || member.userId === user.id
-        );
-        if (currentUserMember) {
-          setInternalUserRole(currentUserMember.role);
-          console.log("User role set to:", currentUserMember.role);
-        }
-      }
-
-      console.log("Team tags data:", teamData.tags);
-
-      // Set form data with the normalized values from team data
-      setFormData({
-        name: teamData.name || "",
-        description: teamData.description || "",
-        isPublic: isPublicValue,
-        maxMembers: teamData.max_members || teamData.maxMembers || 5,
-        teamavatarUrl: teamData.teamavatar_url || teamData.teamavatarUrl || "",
-        selectedTags: (teamData.tags || [])
-          .map((tag) => parseInt(tag.id || tag.tag_id, 10))
-          .filter((id) => !isNaN(id)),
-      });
-    } catch (err) {
-      console.error("Error fetching team details:", err);
-      setNotification({
-        type: "error",
-        message:
-          "Server error: " +
-          (err.response?.data?.error || err.message || "Unknown error"),
-      });
-    } finally {
-      setLoading(false);
     }
-  }, [effectiveTeamId, user, isAuthenticated]);
+
+    console.log("Team tags data:", teamData.tags);
+
+    // Set form data with the normalized values from team data
+    setFormData({
+      name: teamData.name || "",
+      description: teamData.description || "",
+      isPublic: isPublicValue,
+      maxMembers: teamData.max_members || teamData.maxMembers || 5,
+      teamavatarUrl: teamData.teamavatar_url || teamData.teamavatarUrl || "",
+      selectedTags: (teamData.tags || [])
+        .map((tag) => parseInt(tag.id || tag.tag_id, 10))
+        .filter((id) => !isNaN(id)),
+    });
+
+    // Return the enhanced team data so callers know it completed
+    return enhancedTeamData;
+  } catch (err) {
+    console.error("Error fetching team details:", err);
+    setNotification({
+      type: "error",
+      message:
+        "Server error: " +
+        (err.response?.data?.error || err.message || "Unknown error"),
+    });
+    return null;
+  } finally {
+    setLoading(false);
+  }
+}, [effectiveTeamId, user, isAuthenticated]);
 
   // Add effect to check team data after it's set
   useEffect(() => {

@@ -2,6 +2,7 @@ import React from "react";
 import { Users } from "lucide-react";
 import RoleBadgeDropdown from "./RoleBadgeDropdown";
 import LocationDisplay from "../common/LocationDisplay";
+import Alert from "../common/Alert";
 import { teamService } from "../../services/teamService";
 
 /**
@@ -11,8 +12,8 @@ import { teamService } from "../../services/teamService";
  */
 const TeamMembersSection = ({
   team,
-  // isEditing: isEditing = false,        
-  // isAuthenticated: isAuthenticated = false,  
+  // isEditing: isEditing = false,
+  // isAuthenticated: isAuthenticated = false,
   user = null,
   onMemberClick = () => {},
   shouldAnonymizeMember = () => false,
@@ -21,7 +22,7 @@ const TeamMembersSection = ({
   onMemberRemoved = null,
   className = "",
 }) => {
-  const [setNotification] = React.useState({
+  const [notification, setNotification] = React.useState({
     type: null,
     message: null,
   });
@@ -36,8 +37,21 @@ const TeamMembersSection = ({
       {/* Section Header */}
       <h2 className="text-xl font-semibold mb-4">Team Members</h2>
 
-      {/* Members Grid - EXACT original layout */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      {/* Notification Alert */}
+      {notification.type && (
+        <Alert
+          type={notification.type}
+          message={notification.message}
+          onClose={() => setNotification({ type: null, message: null })}
+          className="mb-4"
+        />
+      )}
+
+      {/* Members Grid - using key to force re-render when roles change */}
+      <div 
+        className="grid grid-cols-1 sm:grid-cols-2 gap-4"
+        key={team.members.map(m => `${m.user_id || m.userId}-${m.role}`).join(',')}
+      >
         {team.members.map((member) => {
           console.log("Member data:", member); // Debug info
 
@@ -119,33 +133,33 @@ const TeamMembersSection = ({
                       canManage={canManageThisMember}
                       isOwner={isOwner}
                       onRoleChange={async (newRole) => {
-                        if (onRoleChange) {
-                          try {
-                            await teamService.updateMemberRole(
-                              team.id,
-                              memberId,
-                              newRole
-                            );
-                            setNotification({
-                              type: "success",
-                              message: `${member.username || "Member"} ${
-                                newRole === "admin"
-                                  ? "promoted to Admin"
-                                  : "demoted to Member"
-                              } successfully!`,
-                            });
-                            onRoleChange(); // Refresh team data
-                          } catch (error) {
-                            setNotification({
-                              type: "error",
-                              message:
-                                error.response?.data?.message ||
-                                "Failed to update role",
-                            });
+                        try {
+                          await teamService.updateMemberRole(
+                            team.id,
+                            memberId,
+                            newRole
+                          );
+                          setNotification({
+                            type: "success",
+                            message: `${member.username || "Member"} has been ${
+                              newRole === "admin"
+                                ? "promoted to Admin"
+                                : "demoted to Member"
+                            } successfully!`,
+                          });
+                          // Refresh team data from parent
+                          if (onRoleChange) {
+                            await onRoleChange();
                           }
+                        } catch (error) {
+                          setNotification({
+                            type: "error",
+                            message:
+                              error.response?.data?.message ||
+                              "Failed to update role",
+                          });
                         }
                       }}
-                      // Add onRemoveMember handler
                       onRemoveMember={async () => {
                         try {
                           await teamService.removeTeamMember(team.id, memberId);
@@ -156,7 +170,7 @@ const TeamMembersSection = ({
                             } has been removed from the team.`,
                           });
                           if (onMemberRemoved) {
-                            onMemberRemoved(); // Refresh team data
+                            await onMemberRemoved();
                           }
                         } catch (error) {
                           setNotification({
