@@ -1,12 +1,12 @@
-import React, { useState } from 'react';
-import Section from '../layout/Section';
-import Button from '../common/Button';
-import TagInputV2 from './TagInputV2';
+import React, { useState } from "react";
+import Section from "../layout/Section";
+import Button from "../common/Button";
+import TagInputV2 from "./TagInputV2";
 
 /**
  * Reusable Focus Areas Section
  * Can be used for user profiles, team profiles, etc.
- * 
+ *
  * @param {string} title - Section title (e.g., "Focus Areas", "Team Focus Areas")
  * @param {Array} selectedTags - Array of selected tag IDs
  * @param {Array} allTags - All available tags (structured format)
@@ -24,7 +24,7 @@ const FocusAreasSection = ({
   canEdit = true,
   emptyMessage = "No focus areas added yet.",
   placeholder = "Add focus areas...",
-  className = ""
+  className = "",
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [localSelectedTags, setLocalSelectedTags] = useState(selectedTags);
@@ -45,14 +45,14 @@ const FocusAreasSection = ({
 
       await onSave(localSelectedTags);
 
-      setSuccess('Focus areas updated successfully!');
+      setSuccess("Focus areas updated successfully!");
       setIsEditing(false);
 
       // Clear success message after 3 seconds
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
-      console.error('Error saving focus areas:', err);
-      setError(err.message || 'Failed to update focus areas');
+      console.error("Error saving focus areas:", err);
+      setError(err.message || "Failed to update focus areas");
     } finally {
       setLoading(false);
     }
@@ -99,10 +99,16 @@ const FocusAreasSection = ({
         <div className="flex flex-wrap gap-2">
           {localSelectedTags.length > 0 ? (
             localSelectedTags.map((tagId) => {
-              const tag = allTags
-                .flatMap((supercat) => supercat.categories)
-                .flatMap((cat) => cat.tags)
-                .find((t) => t.id === tagId);
+              const numericId = Number(tagId);
+
+              const tag = (allTags || [])
+                .flatMap((supercat) => supercat.categories || [])
+                .flatMap((cat) => cat.tags || [])
+                .find((t) => {
+                  const tId = Number(t.id ?? t.tag_id ?? t.tagId);
+                  return !Number.isNaN(tId) && tId === numericId;
+                });
+
               return tag ? (
                 <span
                   key={tagId}
@@ -127,18 +133,10 @@ const FocusAreasSection = ({
             maxSuggestions={10}
           />
           <div className="flex justify-end space-x-2 mt-4">
-            <Button 
-              variant="ghost" 
-              onClick={handleCancel}
-              disabled={loading}
-            >
+            <Button variant="ghost" onClick={handleCancel} disabled={loading}>
               Cancel
             </Button>
-            <Button
-              variant="primary"
-              onClick={handleSave}
-              disabled={loading}
-            >
+            <Button variant="primary" onClick={handleSave} disabled={loading}>
               {loading ? "Saving..." : "Save"}
             </Button>
           </div>
