@@ -388,17 +388,35 @@ const TeamDetailsModal = ({
     return false;
   };
 
-  // Helper function to determine if a member profile should be anonymized
-  const shouldAnonymizeMember = (member) => {
-    // Don't anonymize the current user's own profile
-    if (user && (member.user_id === user.id || member.userId === user.id)) {
-      return false;
-    }
+const shouldAnonymizeMember = (member) => {
+  // Don't anonymize the current user's own profile
+  if (user && (member.user_id === user.id || member.userId === user.id)) {
+    return false;
+  }
 
-    // Check if the member has a private profile
-    // Look for is_public property in both camelCase and snake_case formats
-    return member.is_public === false || member.isPublic === false;
-  };
+  // Check if the member has a private profile
+  const isPrivateProfile = member.is_public === false || member.isPublic === false;
+  
+  // If profile is public, never anonymize
+  if (!isPrivateProfile) {
+    return false;
+  }
+  
+  // Profile is private from here on...
+  
+  // If not logged in, always anonymize private profiles
+  if (!isAuthenticated || !user) {
+    return true;
+  }
+  
+  // If logged in, check if current user is a team member
+  const isCurrentUserTeamMember = team?.members?.some(
+    (m) => m.user_id === user.id || m.userId === user.id
+  );
+  
+  // Anonymize if viewer is NOT a team member
+  return !isCurrentUserTeamMember;
+};
 
   const handleClose = useCallback(() => {
     setIsModalVisible(false);
