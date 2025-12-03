@@ -388,35 +388,36 @@ const TeamDetailsModal = ({
     return false;
   };
 
-const shouldAnonymizeMember = (member) => {
-  // Don't anonymize the current user's own profile
-  if (user && (member.user_id === user.id || member.userId === user.id)) {
-    return false;
-  }
+  const shouldAnonymizeMember = (member) => {
+    // Don't anonymize the current user's own profile
+    if (user && (member.user_id === user.id || member.userId === user.id)) {
+      return false;
+    }
 
-  // Check if the member has a private profile
-  const isPrivateProfile = member.is_public === false || member.isPublic === false;
-  
-  // If profile is public, never anonymize
-  if (!isPrivateProfile) {
-    return false;
-  }
-  
-  // Profile is private from here on...
-  
-  // If not logged in, always anonymize private profiles
-  if (!isAuthenticated || !user) {
-    return true;
-  }
-  
-  // If logged in, check if current user is a team member
-  const isCurrentUserTeamMember = team?.members?.some(
-    (m) => m.user_id === user.id || m.userId === user.id
-  );
-  
-  // Anonymize if viewer is NOT a team member
-  return !isCurrentUserTeamMember;
-};
+    // Check if the member has a private profile
+    const isPrivateProfile =
+      member.is_public === false || member.isPublic === false;
+
+    // If profile is public, never anonymize
+    if (!isPrivateProfile) {
+      return false;
+    }
+
+    // Profile is private from here on...
+
+    // If not logged in, always anonymize private profiles
+    if (!isAuthenticated || !user) {
+      return true;
+    }
+
+    // If logged in, check if current user is a team member
+    const isCurrentUserTeamMember = team?.members?.some(
+      (m) => m.user_id === user.id || m.userId === user.id
+    );
+
+    // Anonymize if viewer is NOT a team member
+    return !isCurrentUserTeamMember;
+  };
 
   const handleClose = useCallback(() => {
     setIsModalVisible(false);
@@ -477,26 +478,34 @@ const shouldAnonymizeMember = (member) => {
     }));
   }, []);
 
-  // Fetch structured tags only when entering edit mode
+  // Fetch structured tags when modal opens (needed for display AND edit mode)
   useEffect(() => {
+    // Only run when the modal is actually visible
+    if (!isModalVisible) return;
+
+    // If we already have tags, no need to fetch again
+    if (allTags.length > 0) return;
+
     const fetchTags = async () => {
-      if (isEditing && allTags.length === 0) {
-        try {
-          const structuredTags = await tagService.getStructuredTags();
-          setAllTags(structuredTags);
-        } catch (error) {
-          console.error("Error fetching tags:", error);
-        }
+      try {
+        const structuredTags = await tagService.getStructuredTags();
+        setAllTags(structuredTags);
+      } catch (error) {
+        console.error("Error fetching tags:", error);
       }
     };
+
     fetchTags();
-  }, [isEditing, allTags.length]);
+  }, [isModalVisible, allTags.length]);
 
   // Handle team tags update
   const handleTeamTagsUpdate = async (newTagIds) => {
     try {
-      // Format tags for the API
-      const tagsPayload = newTagIds.map((tagId) => ({ tag_id: tagId }));
+      // Normalize tag IDs to numbers and format for the API
+      const tagsPayload = newTagIds
+        .map((tagId) => Number(tagId))
+        .filter((id) => !Number.isNaN(id))
+        .map((tag_id) => ({ tag_id }));
 
       await teamService.updateTeam(effectiveTeamId, { tags: tagsPayload });
 
@@ -1074,11 +1083,9 @@ const shouldAnonymizeMember = (member) => {
                 {!isEditing && (
                   <FocusAreasSection
                     title="Team Focus Areas"
-                    selectedTags={
-                      team?.tags
-                        ?.map((tag) => tag.id || tag.tag_id || tag.tagId)
-                        .filter((id) => !isNaN(id)) || []
-                    }
+                    selectedTags={(team?.tags || [])
+                      .map((tag) => Number(tag.id ?? tag.tag_id ?? tag.tagId))
+                      .filter((id) => !Number.isNaN(id))}
                     allTags={allTags}
                     onSave={handleTeamTagsUpdate}
                     canEdit={canEditTeam}
