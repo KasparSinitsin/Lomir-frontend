@@ -34,10 +34,11 @@ import Modal from "../common/Modal";
 const TeamDetailsModal = ({
   isOpen = true,
   teamId: propTeamId,
+  initialTeamData = null,
   onClose,
   onUpdate,
   onDelete,
-  onLeave, // ← neu
+  onLeave,
   userRole,
   isFromSearch = false,
 }) => {
@@ -51,12 +52,15 @@ const TeamDetailsModal = ({
   );
 
   const [isModalVisible, setIsModalVisible] = useState(isOpen);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!initialTeamData); // Don't show loading if we have initial data
   const [notification, setNotification] = useState({
     type: null,
     message: null,
   });
-  const [team, setTeam] = useState(null);
+  const [team, setTeam] = useState(initialTeamData); // Initialize with passed data
+
+  // Track if we've done the full fetch (initial data may be partial)
+  const [hasFullData, setHasFullData] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
@@ -79,170 +83,193 @@ const TeamDetailsModal = ({
   const [isLeaveDialogOpen, setIsLeaveDialogOpen] = useState(false);
   const [leaveLoading, setLeaveLoading] = useState(false);
 
-const fetchTeamDetails = useCallback(async () => {
-  if (!effectiveTeamId) return null;
+  const fetchTeamDetails = useCallback(
+    async (forceRefresh = false) => {
+      if (!effectiveTeamId) return null;
 
-  try {
-    setLoading(true);
-    setNotification({ type: null, message: null });
+      // If we already have data and don't need a refresh, skip the loading state
+      const hasExistingData = team !== null;
 
-    // Get the team details
-    console.log(`Fetching details for team ID: ${effectiveTeamId}`);
-    const response = await teamService.getTeamById(effectiveTeamId);
+      try {
+        // Only show loading spinner if we don't have any data yet
+        if (!hasExistingData) {
+          setLoading(true);
+        }
+        setNotification({ type: null, message: null });
 
-    // Log full response for debugging
-    console.log("Raw API response:", response);
+        // Get the team details
+        console.log(`Fetching details for team ID: ${effectiveTeamId}`);
+        const response = await teamService.getTeamById(effectiveTeamId);
 
-    // Get team data from response
-    let teamData;
-    if (response.data && typeof response.data === "object") {
-      teamData = response.data;
-    } else if (response.data && response.data.data) {
-      teamData = response.data.data;
-    } else {
-      teamData = {};
-    }
+        // Log full response for debugging
+        console.log("Raw API response:", response);
 
-    console.log("Team data extracted:", teamData);
+        // Get team data from response
+        let teamData;
+        if (response.data && typeof response.data === "object") {
+          teamData = response.data;
+        } else if (response.data && response.data.data) {
+          teamData = response.data.data;
+        } else {
+          teamData = {};
+        }
 
-    // Look for owner ID in multiple possible locations
-    let ownerId = null;
+        console.log("Team data extracted:", teamData);
 
-    // 1. Try direct owner_id field
-    if (teamData.owner_id !== undefined) {
-      ownerId = parseInt(teamData.owner_id, 10);
-    }
-    // 2. Try ownerId field (camelCase variation)
-    else if (teamData.ownerId !== undefined) {
-      ownerId = parseInt(teamData.ownerId, 10);
-    }
+        // Look for owner ID in multiple possible locations
+        let ownerId = null;
 
-    // 3. If not found or invalid, check members array for owner role
-    if (
-      isNaN(ownerId) &&
-      teamData.members &&
-      Array.isArray(teamData.members)
-    ) {
-      console.log("Searching for owner in members array:", teamData.members);
+        // 1. Try direct owner_id field
+        if (teamData.owner_id !== undefined) {
+          ownerId = parseInt(teamData.owner_id, 10);
+        }
+        // 2. Try ownerId field (camelCase variation)
+        else if (teamData.ownerId !== undefined) {
+          ownerId = parseInt(teamData.ownerId, 10);
+        }
 
-      const ownerMember = teamData.members.find(
-        (m) => m.role === "owner" || m.role === "Owner"
-      );
+        // 3. If not found or invalid, check members array for owner role
+        if (
+          isNaN(ownerId) &&
+          teamData.members &&
+          Array.isArray(teamData.members)
+        ) {
+          console.log(
+            "Searching for owner in members array:",
+            teamData.members
+          );
 
-      if (ownerMember) {
-        ownerId = parseInt(ownerMember.user_id || ownerMember.userId, 10);
-        console.log("Found owner ID from members array:", ownerId);
+          const ownerMember = teamData.members.find(
+            (m) => m.role === "owner" || m.role === "Owner"
+          );
+
+          if (ownerMember) {
+            ownerId = parseInt(ownerMember.user_id || ownerMember.userId, 10);
+            console.log("Found owner ID from members array:", ownerId);
+          }
+        }
+
+        // 4. Ensure ownerId is valid, use logged-in user as fallback for owner's own teams
+        if (isNaN(ownerId) && user && teamData.members) {
+          const isCurrentUserOwner = teamData.members.some(
+            (member) =>
+              (member.user_id === user.id || member.userId === user.id) &&
+              (member.role === "owner" || member.role === "Owner")
+          );
+
+          if (isCurrentUserOwner) {
+            ownerId = parseInt(user.id, 10);
+            console.log("Using current user as owner ID:", ownerId);
+          }
+        }
+
+        console.log("Final owner ID determination:", ownerId);
+
+        // Process visibility
+        let isPublicValue = false;
+        const isPublicRaw = teamData.is_public || teamData.isPublic;
+
+        if (
+          isPublicRaw === true ||
+          isPublicRaw === "true" ||
+          isPublicRaw === 1
+        ) {
+          isPublicValue = true;
+        }
+
+        // Enhance team data with normalized values
+        const enhancedTeamData = {
+          ...teamData,
+          owner_id: ownerId,
+          is_public: isPublicValue,
+        };
+
+        console.log("Enhanced team data:", enhancedTeamData);
+
+        // Store the enhanced team data
+        setTeam(enhancedTeamData);
+        setIsPublic(isPublicValue);
+
+        // Determine if current user is owner
+        const isUserAuthenticated = isAuthenticated && user && user.id;
+
+        const isOwnerById =
+          isUserAuthenticated &&
+          !isNaN(ownerId) &&
+          parseInt(user.id, 10) === ownerId;
+
+        const isOwnerByRole =
+          (isUserAuthenticated &&
+            teamData.members?.some(
+              (member) =>
+                (member.user_id === user.id || member.userId === user.id) &&
+                (member.role === "owner" || member.role === "Owner")
+            )) ||
+          false;
+
+        const finalOwnerStatus =
+          isUserAuthenticated && (isOwnerById || isOwnerByRole);
+
+        console.log("Owner check:", {
+          isUserAuthenticated,
+          userId: user?.id,
+          ownerId,
+          isOwnerById,
+          isOwnerByRole,
+          finalOwnerStatus,
+        });
+
+        setIsOwner(finalOwnerStatus);
+
+        // Determine user's role from members list
+        if (isUserAuthenticated && teamData.members) {
+          const currentUserMember = teamData.members.find(
+            (member) => member.user_id === user.id || member.userId === user.id
+          );
+          if (currentUserMember) {
+            setInternalUserRole(currentUserMember.role);
+            console.log("User role set to:", currentUserMember.role);
+          }
+        }
+
+        console.log("Team tags data:", teamData.tags);
+
+        // Set form data with the normalized values from team data
+        setFormData({
+          name: teamData.name || "",
+          description: teamData.description || "",
+          isPublic: isPublicValue,
+          maxMembers: teamData.max_members || teamData.maxMembers || 5,
+          teamavatarUrl:
+            teamData.teamavatar_url || teamData.teamavatarUrl || "",
+          selectedTags: (teamData.tags || [])
+            .map((tag) => parseInt(tag.id || tag.tag_id, 10))
+            .filter((id) => !isNaN(id)),
+        });
+
+        // Mark that we now have the full data
+        setHasFullData(true);
+
+        // Return the enhanced team data so callers know it completed
+        return enhancedTeamData;
+      } catch (err) {
+        console.error("Error fetching team details:", err);
+        // Only show error if we don't have any data to display
+        if (!team) {
+          setNotification({
+            type: "error",
+            message:
+              "Server error: " +
+              (err.response?.data?.error || err.message || "Unknown error"),
+          });
+        }
+        return null;
+      } finally {
+        setLoading(false);
       }
-    }
-
-    // 4. Ensure ownerId is valid, use logged-in user as fallback for owner's own teams
-    if (isNaN(ownerId) && user && teamData.members) {
-      const isCurrentUserOwner = teamData.members.some(
-        (member) =>
-          (member.user_id === user.id || member.userId === user.id) &&
-          (member.role === "owner" || member.role === "Owner")
-      );
-
-      if (isCurrentUserOwner) {
-        ownerId = parseInt(user.id, 10);
-        console.log("Using current user as owner ID:", ownerId);
-      }
-    }
-
-    console.log("Final owner ID determination:", ownerId);
-
-    // Process visibility
-    let isPublicValue = false;
-    const isPublicRaw = teamData.is_public || teamData.isPublic;
-
-    if (isPublicRaw === true || isPublicRaw === "true" || isPublicRaw === 1) {
-      isPublicValue = true;
-    }
-
-    // Enhance team data with normalized values
-    const enhancedTeamData = {
-      ...teamData,
-      owner_id: ownerId,
-      is_public: isPublicValue,
-    };
-
-    console.log("Enhanced team data:", enhancedTeamData);
-
-    // Store the enhanced team data
-    setTeam(enhancedTeamData);
-    setIsPublic(isPublicValue);
-
-    // Determine if current user is owner
-    const isUserAuthenticated = isAuthenticated && user && user.id;
-
-    const isOwnerById =
-      isUserAuthenticated &&
-      !isNaN(ownerId) &&
-      parseInt(user.id, 10) === ownerId;
-
-    const isOwnerByRole =
-      (isUserAuthenticated &&
-        teamData.members?.some(
-          (member) =>
-            (member.user_id === user.id || member.userId === user.id) &&
-            (member.role === "owner" || member.role === "Owner")
-        )) ||
-      false;
-
-    const finalOwnerStatus =
-      isUserAuthenticated && (isOwnerById || isOwnerByRole);
-
-    console.log("Owner check:", {
-      isUserAuthenticated,
-      userId: user?.id,
-      ownerId,
-      isOwnerById,
-      isOwnerByRole,
-      finalOwnerStatus,
-    });
-
-    setIsOwner(finalOwnerStatus);
-
-    // Determine user's role from members list
-    if (isUserAuthenticated && teamData.members) {
-      const currentUserMember = teamData.members.find(
-        (member) => member.user_id === user.id || member.userId === user.id
-      );
-      if (currentUserMember) {
-        setInternalUserRole(currentUserMember.role);
-        console.log("User role set to:", currentUserMember.role);
-      }
-    }
-
-    console.log("Team tags data:", teamData.tags);
-
-    // Set form data with the normalized values from team data
-    setFormData({
-      name: teamData.name || "",
-      description: teamData.description || "",
-      isPublic: isPublicValue,
-      maxMembers: teamData.max_members || teamData.maxMembers || 5,
-      teamavatarUrl: teamData.teamavatar_url || teamData.teamavatarUrl || "",
-      selectedTags: (teamData.tags || [])
-        .map((tag) => parseInt(tag.id || tag.tag_id, 10))
-        .filter((id) => !isNaN(id)),
-    });
-
-    // Return the enhanced team data so callers know it completed
-    return enhancedTeamData;
-  } catch (err) {
-    console.error("Error fetching team details:", err);
-    setNotification({
-      type: "error",
-      message:
-        "Server error: " +
-        (err.response?.data?.error || err.message || "Unknown error"),
-    });
-    return null;
-  } finally {
-    setLoading(false);
-  }
-}, [effectiveTeamId, user, isAuthenticated]);
+    },
+    [effectiveTeamId, user, isAuthenticated, team]
+  );
 
   // Add effect to check team data after it's set
   useEffect(() => {
@@ -271,12 +298,27 @@ const fetchTeamDetails = useCallback(async () => {
 
   useEffect(() => {
     if (isModalVisible && effectiveTeamId) {
-      fetchTeamDetails();
+      // If we have initial data but haven't fetched full details yet,
+      // fetch complete data silently in background
+      if (initialTeamData && !hasFullData) {
+        fetchTeamDetails();
+      }
+      // If we have no data at all, fetch with loading state
+      else if (!team) {
+        fetchTeamDetails();
+      }
     } else if (isModalVisible && !effectiveTeamId) {
       // Handle the case where teamId is not yet available (e.g., just created)
       setLoading(false); // Don't show loading indefinitely
     }
-  }, [isModalVisible, effectiveTeamId, fetchTeamDetails]);
+  }, [
+    isModalVisible,
+    effectiveTeamId,
+    initialTeamData,
+    hasFullData,
+    team,
+    fetchTeamDetails,
+  ]);
 
   useEffect(() => {
     // Reset state when modal closes
@@ -417,18 +459,20 @@ const fetchTeamDetails = useCallback(async () => {
     }));
   }, []);
 
-  // Fetch structured tags for FocusAreasSection
+  // Fetch structured tags only when entering edit mode
   useEffect(() => {
     const fetchTags = async () => {
-      try {
-        const structuredTags = await tagService.getStructuredTags();
-        setAllTags(structuredTags);
-      } catch (error) {
-        console.error("Error fetching tags:", error);
+      if (isEditing && allTags.length === 0) {
+        try {
+          const structuredTags = await tagService.getStructuredTags();
+          setAllTags(structuredTags);
+        } catch (error) {
+          console.error("Error fetching tags:", error);
+        }
       }
     };
     fetchTags();
-  }, []);
+  }, [isEditing, allTags.length]);
 
   // Handle team tags update
   const handleTeamTagsUpdate = async (newTagIds) => {

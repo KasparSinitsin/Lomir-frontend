@@ -710,6 +710,7 @@ const TeamCard = ({
       <TeamDetailsModal
         isOpen={isModalOpen}
         teamId={getTeamId()}
+        initialTeamData={teamData}
         onClose={handleModalClose}
         onUpdate={handleTeamUpdate}
         onDelete={onDelete}
