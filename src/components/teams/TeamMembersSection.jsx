@@ -33,9 +33,12 @@ const TeamMembersSection = ({
   }
 
   return (
-    <div className={`mb-6 ${className}`}>
+    <div className={`mt-6 mb-6 ${className}`}>
       {/* Section Header */}
-      <h2 className="text-xl font-semibold mb-4">Team Members</h2>
+      <div className="flex items-center mb-4">
+        <Users size={18} className="mr-2 text-primary flex-shrink-0" />
+        <h3 className="font-medium">Team Members</h3>
+      </div>
 
       {/* Notification Alert */}
       {notification.type && (
@@ -48,9 +51,11 @@ const TeamMembersSection = ({
       )}
 
       {/* Members Grid - using key to force re-render when roles change */}
-      <div 
+      <div
         className="grid grid-cols-1 sm:grid-cols-2 gap-4"
-        key={team.members.map(m => `${m.user_id || m.userId}-${m.role}`).join(',')}
+        key={team.members
+          .map((m) => `${m.user_id || m.userId}-${m.role}`)
+          .join(",")}
       >
         {team.members.map((member) => {
           console.log("Member data:", member); // Debug info
