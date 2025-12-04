@@ -1046,8 +1046,8 @@ const TeamDetailsModal = ({
                           {team.current_members_count ??
                             team.currentMembersCount ??
                             team.members?.length ??
-                            0}{" "}
-                          / {team.max_members ?? team.maxMembers ?? "∞"}
+                            0}
+                          {""}/{team.max_members ?? team.maxMembers ?? "∞"}
                         </span>
                       </div>
                       {shouldShowVisibilityStatus() && (

@@ -95,20 +95,20 @@ const UserCard = ({ user, onUpdate }) => {
       <Card
         title={displayName()}
         subtitle={
-          <span className="flex items-center gap-3 text-sm">
+          <span className="flex items-center text-base-content/70 text-sm gap-1.5">
             {user.username && <span>@{user.username}</span>}
 
             {shouldShowVisibilityIcon() && (
-              <span className="flex items-center text-base-content/70">
+              <span className="flex items-center text-base-content/70 text-sm gap-0.5">
                 {isUserProfilePublic() ? (
                   <>
-                    <Eye size={14} className="mr-1 text-green-600" />
-                    <span>Public</span>
+                    <Eye size={14} className="text-green-600" />
+                    {/* <span>Public</span> */}
                   </>
                 ) : (
                   <>
-                    <EyeClosed size={14} className="mr-1 text-gray-500" />
-                    <span>Private</span>
+                    <EyeClosed size={14} className="text-gray-500" />
+                    {/* <span>Private</span> */}
                   </>
                 )}
               </span>
