@@ -94,7 +94,27 @@ const UserCard = ({ user, onUpdate }) => {
     <>
       <Card
         title={displayName()}
-        subtitle={user.username ? `@${user.username}` : ""}
+        subtitle={
+          <span className="flex items-center gap-3 text-sm">
+            {user.username && <span>@{user.username}</span>}
+
+            {shouldShowVisibilityIcon() && (
+              <span className="flex items-center text-base-content/70">
+                {isUserProfilePublic() ? (
+                  <>
+                    <Eye size={14} className="mr-1 text-green-600" />
+                    <span>Public</span>
+                  </>
+                ) : (
+                  <>
+                    <EyeClosed size={14} className="mr-1 text-gray-500" />
+                    <span>Private</span>
+                  </>
+                )}
+              </span>
+            )}
+          </span>
+        }
         hoverable
         image={getProfileImage()}
         imageAlt={`${user.username || "User"}'s profile`}
@@ -107,7 +127,7 @@ const UserCard = ({ user, onUpdate }) => {
         )}
 
         <div className="flex flex-wrap items-center gap-2 mb-4">
-          {/* Visibility indicator - only show for current user's own profile */}
+          {/* Visibility indicator - only show for current user's own profile
           {shouldShowVisibilityIcon() && (
             <div className="flex items-center text-sm text-base-content/70 bg-base-200/50 py-1 rounded-full">
               {isUserProfilePublic() ? (
@@ -120,7 +140,7 @@ const UserCard = ({ user, onUpdate }) => {
                   <EyeClosed size={16} className="mr-1 text-grey-600" />
                   <span>Private</span>
                 </>
-              )}
+              )} 
             </div>
           )}
 
@@ -131,7 +151,7 @@ const UserCard = ({ user, onUpdate }) => {
               className="bg-base-200/50 py-1"
               iconSize={16}
               showPostalCode={true} // Show postal code in the display
-              displayType="detailed" 
+              displayType="detailed"
             />
           )}
 
@@ -142,15 +162,6 @@ const UserCard = ({ user, onUpdate }) => {
               <span>{user.tags}</span>
             </div>
           )}
-
-          {/* Debug info - add this AFTER the existing elements in the flex container
-          {import.meta.env.DEV && currentUser && (
-            <div className="text-xs bg-blue-100 px-2 py-1 rounded text-black">
-              Debug: CurrentUser={currentUser.id}, CardUser={user.id},
-              ShouldShow={shouldShowVisibilityIcon()}, IsPublic=
-              {isUserProfilePublic()}
-            </div>
-          )} */}
         </div>
 
         <div className="mt-auto">

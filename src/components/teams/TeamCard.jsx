@@ -453,7 +453,7 @@ const TeamCard = ({
 
     return (
       <div className="flex flex-wrap items-center gap-2 mb-4">
-        {/* Visibility badge (member variant only) */}
+        {/* Visibility badge (member variant only)
         {shouldShowVisibilityIcon() && (
           <div className="flex items-center text-sm text-base-content/70 bg-base-200/50 py-1 px-2 rounded-full">
             {isPublic ? (
@@ -468,7 +468,7 @@ const TeamCard = ({
               </>
             )}
           </div>
-        )}
+        )} */}
 
         {/* Application pending badge */}
         {effectiveVariant === "application" && (
@@ -665,14 +665,32 @@ const TeamCard = ({
     <>
       <Card
         title={teamData.name || "Unknown Team"}
-        subtitle={
-          <span className="flex items-center space-x-1 text-sm">
-            <Users size={16} className="text-primary" />
-            <span>
-              {getMemberCount()} / {getMaxMembers()} Members
-            </span>
-          </span>
-        }
+subtitle={
+  <span className="flex items-center gap-3 text-sm">
+    {/* Members count */}
+    <span className="flex items-center space-x-1">
+      <Users size={16} className="text-primary" />
+      <span>{getMemberCount()} / {getMaxMembers()}</span>
+    </span>
+    
+    {/* Privacy status */}
+    {shouldShowVisibilityIcon() && (
+      <span className="flex items-center text-base-content/70">
+        {(teamData.is_public ?? teamData.isPublic) ? (
+          <>
+            <EyeIcon size={14} className="mr-1 text-green-600" />
+            <span>Public</span>
+          </>
+        ) : (
+          <>
+            <EyeClosed size={14} className="mr-1 text-gray-500" />
+            <span>Private</span>
+          </>
+        )}
+      </span>
+    )}
+  </span>
+}
         hoverable
         image={getTeamImage()}
         imageAlt={`${teamData.name} team`}
