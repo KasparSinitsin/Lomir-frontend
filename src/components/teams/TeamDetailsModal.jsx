@@ -1038,16 +1038,36 @@ const TeamDetailsModal = ({
                   </div>
                   <div>
                     <h1 className="text-2xl font-bold">{team?.name}</h1>
-                    {/* Members count */}
-                    <div className="flex items-center space-x-1 text-sm">
-                      <Users size={18} className="text-primary" />
-                      <span>
-                        {team.current_members_count ??
-                          team.currentMembersCount ??
-                          team.members?.length ??
-                          0}{" "}
-                        / {team.max_members ?? team.maxMembers ?? "∞"} Members
-                      </span>
+                    {/* Members count and visibility */}
+                    <div className="flex items-center space-x-4 text-sm">
+                      <div className="flex items-center space-x-1">
+                        <Users size={18} className="text-primary" />
+                        <span>
+                          {team.current_members_count ??
+                            team.currentMembersCount ??
+                            team.members?.length ??
+                            0}{" "}
+                          / {team.max_members ?? team.maxMembers ?? "∞"}
+                        </span>
+                      </div>
+                      {shouldShowVisibilityStatus() && (
+                        <div className="flex items-center text-base-content/70">
+                          {isPublic ? (
+                            <>
+                              <Eye size={16} className="mr-1 text-green-600" />
+                              <span>Public</span>
+                            </>
+                          ) : (
+                            <>
+                              <EyeClosed
+                                size={16}
+                                className="mr-1 text-gray-500"
+                              />
+                              <span>Private</span>
+                            </>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1058,23 +1078,6 @@ const TeamDetailsModal = ({
                     <p className="text-base-content/90 my-6">
                       {team.description}
                     </p>
-                  </div>
-                )}
-
-                {/* Visibility info - only show to authenticated members/owners */}
-                {shouldShowVisibilityStatus() && (
-                  <div className="flex items-center space-x-1 text-sm text-base-content/70">
-                    {isPublic ? (
-                      <>
-                        <Eye size={16} className="mr-1 text-green-600" />
-                        <span>Public Team</span>
-                      </>
-                    ) : (
-                      <>
-                        <EyeClosed size={16} className="mr-1 text-grey-600" />
-                        <span>Private Team</span>
-                      </>
-                    )}
                   </div>
                 )}
 
