@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import Modal from "../common/Modal";
 import UserBioSection from "./UserBioSection";
 import UserLocationSection from "./UserLocationSection";
-import UserSkillsSection from "./UserSkillsSection";
+import TagsDisplaySection from "../tags/TagsDisplaySection";
 import UserProfileHeaderSection from "./UserProfileHeaderSection";
 import { messageService } from "../../services/messageService";
 import { userService } from "../../services/userService";
@@ -303,7 +303,11 @@ const UserDetailsModal = ({
               <UserLocationSection user={user} />
             </div>
 
-            <UserSkillsSection user={user} />
+            <TagsDisplaySection
+              title="Skills & Interests"
+              tags={user?.tags}
+              emptyMessage="No tags yet"
+            />
           </div>
         )}
       </Modal>

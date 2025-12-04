@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import IconToggle from "../common/IconToggle";
 import UserDetailsModal from "../users/UserDetailsModal";
-import FocusAreasSection from "../tags/FocusAreasSection";
+import TagsDisplaySection from "../tags/TagsDisplaySection";
 import { tagService } from "../../services/tagService";
 import RoleBadgeDropdown from "./RoleBadgeDropdown";
 import TeamApplicationModal from "./TeamApplicationModal";
@@ -1081,17 +1081,14 @@ const TeamDetailsModal = ({
                 {/* Team Focus Areas */}
                 {console.log("Team tags for FocusAreasSection:", team?.tags)}
                 {!isEditing && (
-                  <FocusAreasSection
+                  <TagsDisplaySection
                     title="Team Focus Areas"
-                    selectedTags={(team?.tags || [])
-                      .map((tag) => Number(tag.id ?? tag.tag_id ?? tag.tagId))
-                      .filter((id) => !Number.isNaN(id))}
+                    tags={team?.tags || []}
                     allTags={allTags}
-                    onSave={handleTeamTagsUpdate}
                     canEdit={canEditTeam}
+                    onSave={handleTeamTagsUpdate}
                     emptyMessage="No focus areas added yet."
                     placeholder="Add team focus areas..."
-                    className="px-6"
                   />
                 )}
 
