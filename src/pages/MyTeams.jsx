@@ -253,7 +253,8 @@ const MyTeams = () => {
                 variant="member"
                 team={{
                   ...team,
-                  is_public: team.is_public === true,
+                  // Check both snake_case and camelCase versions
+                  is_public: team.is_public === true || team.isPublic === true,
                 }}
                 onUpdate={handleTeamUpdate}
                 onDelete={handleTeamDelete}

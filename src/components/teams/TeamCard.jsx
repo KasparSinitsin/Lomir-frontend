@@ -15,6 +15,8 @@ import {
   Send,
   MessageSquare,
   User,
+  Crown,
+  ShieldCheck,
 } from "lucide-react";
 import TeamDetailsModal from "./TeamDetailsModal";
 import TeamApplicationDetailsModal from "./TeamApplicationDetailsModal";
@@ -453,7 +455,7 @@ const TeamCard = ({
 
     return (
       <div className="flex flex-wrap items-center gap-2 mb-4">
-        {/* Visibility badge (member variant only) */}
+        {/* Visibility badge (member variant only)
         {shouldShowVisibilityIcon() && (
           <div className="flex items-center text-sm text-base-content/70 bg-base-200/50 py-1 px-2 rounded-full">
             {isPublic ? (
@@ -468,7 +470,7 @@ const TeamCard = ({
               </>
             )}
           </div>
-        )}
+        )} */}
 
         {/* Application pending badge */}
         {effectiveVariant === "application" && (
@@ -491,27 +493,34 @@ const TeamCard = ({
             </div>
           )}
 
-        {/* User role badge (member variant only) */}
-        {userRole && effectiveVariant === "member" && !isSearchResult && (
-          <span className="badge badge-primary badge-outline">{userRole}</span>
-        )}
-
         {/* Tags display (member variant only) */}
         {effectiveVariant === "member" && displayTags.length > 0 && (
-          <div className="flex items-center text-sm text-base-content/70 bg-base-200/50 py-1 px-2 rounded-full">
-            <Tag size={14} className="mr-1 text-base-content/70" />
-            <span className="truncate">
-              {displayTags.slice(0, 2).map((tag, index) => {
-                const tagName =
-                  typeof tag === "string" ? tag : tag.name || tag.tag || "";
+          <div className="flex items-start text-sm text-base-content/70">
+            <Tag size={16} className="mr-1 flex-shrink-0 mt-0.5" />
+            <span>
+              {(() => {
+                const maxVisible = 5;
+                const visibleTags = displayTags.slice(0, maxVisible);
+                const remainingCount = displayTags.length - maxVisible;
+
                 return (
-                  <span key={index}>
-                    {index > 0 ? ", " : ""}
-                    {tagName}
-                  </span>
+                  <>
+                    {visibleTags.map((tag, index) => {
+                      const tagName =
+                        typeof tag === "string"
+                          ? tag
+                          : tag.name || tag.tag || "";
+                      return (
+                        <span key={index}>
+                          {index > 0 ? ", " : ""}
+                          {tagName}
+                        </span>
+                      );
+                    })}
+                    {remainingCount > 0 && ` +${remainingCount}`}
+                  </>
                 );
-              })}
-              {displayTags.length > 2 && ` +${displayTags.length - 2}`}
+              })()}
             </span>
           </div>
         )}
@@ -666,11 +675,65 @@ const TeamCard = ({
       <Card
         title={teamData.name || "Unknown Team"}
         subtitle={
-          <span className="flex items-center space-x-1 text-sm">
-            <Users size={16} className="text-primary" />
-            <span>
-              {getMemberCount()} / {getMaxMembers()} Members
+          <span className="flex items-center text-base-content/70 text-sm gap-1.5">
+
+            {/* Members count */}
+            <span className="flex items-center">
+              <Users size={14} className="text-primary mr-0.5" />
+              <span>
+                {getMemberCount()}/{getMaxMembers()}
+              </span>
             </span>
+
+            {/* Privacy status */}
+            {shouldShowVisibilityIcon() && (
+              <span>
+                {teamData.is_public ?? teamData.isPublic ? (
+                  <>
+                    <EyeIcon size={14} className="text-green-600" />
+                    {/* <span>Public</span> */}
+                  </>
+                ) : (
+                  <>
+                    <EyeClosed size={14} className="text-gray-500" />
+                    {/* <span>Private</span> */}
+                  </>
+                )}
+              </span>
+            )}
+
+            {/* User role - only show for member variant when not a search result */}
+            {userRole && effectiveVariant === "member" && !isSearchResult && (
+              <span className="flex items-center text-base-content/70">
+                {userRole === "owner" && (
+                  <>
+                    <Crown
+                      size={14}
+                      className="text-[var(--color-role-owner-bg)]"
+                    />
+                    {/* <span>Owner</span> */}
+                  </>
+                )}
+                {userRole === "admin" && (
+                  <>
+                    <ShieldCheck
+                      size={14}
+                      className="text-[var(--color-role-admin-bg)]"
+                    />
+                    {/* <span>Admin</span> */}
+                  </>
+                )}
+                {userRole === "member" && (
+                  <>
+                    <User
+                      size={14}
+                      className="text-[var(--color-role-member-bg)]"
+                    />
+                    {/* <span>Member</span> */}
+                  </>
+                )}
+              </span>
+            )}
           </span>
         }
         hoverable

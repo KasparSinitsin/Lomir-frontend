@@ -94,7 +94,27 @@ const UserCard = ({ user, onUpdate }) => {
     <>
       <Card
         title={displayName()}
-        subtitle={user.username ? `@${user.username}` : ""}
+        subtitle={
+          <span className="flex items-center text-base-content/70 text-sm gap-1.5">
+            {user.username && <span>@{user.username}</span>}
+
+            {shouldShowVisibilityIcon() && (
+              <span className="flex items-center text-base-content/70 text-sm gap-0.5">
+                {isUserProfilePublic() ? (
+                  <>
+                    <Eye size={14} className="text-green-600" />
+                    {/* <span>Public</span> */}
+                  </>
+                ) : (
+                  <>
+                    <EyeClosed size={14} className="text-gray-500" />
+                    {/* <span>Private</span> */}
+                  </>
+                )}
+              </span>
+            )}
+          </span>
+        }
         hoverable
         image={getProfileImage()}
         imageAlt={`${user.username || "User"}'s profile`}
@@ -107,23 +127,6 @@ const UserCard = ({ user, onUpdate }) => {
         )}
 
         <div className="flex flex-wrap items-center gap-2 mb-4">
-          {/* Visibility indicator - only show for current user's own profile */}
-          {shouldShowVisibilityIcon() && (
-            <div className="flex items-center text-sm text-base-content/70 bg-base-200/50 py-1 rounded-full">
-              {isUserProfilePublic() ? (
-                <>
-                  <Eye size={16} className="mr-1 text-green-600" />
-                  <span>Public</span>
-                </>
-              ) : (
-                <>
-                  <EyeClosed size={16} className="mr-1 text-grey-600" />
-                  <span>Private</span>
-                </>
-              )}
-            </div>
-          )}
-
           {/* Location display with geocoding */}
           {(user.postal_code || user.postalCode) && (
             <LocationDisplay
@@ -131,26 +134,44 @@ const UserCard = ({ user, onUpdate }) => {
               className="bg-base-200/50 py-1"
               iconSize={16}
               showPostalCode={true} // Show postal code in the display
-              displayType="detailed" 
+              displayType="detailed"
             />
           )}
 
           {/* Tags */}
           {user.tags && (
-            <div className="flex items-center text-sm text-base-content/70">
-              <Tag size={16} className="mr-1" />
-              <span>{user.tags}</span>
+            <div className="flex items-start text-sm text-base-content/70">
+              <Tag size={16} className="mr-1 flex-shrink-0 mt-0.5" />
+              <span>
+                {(() => {
+                  // Parse tags - handle both string and array formats
+                  const tagsArray = Array.isArray(user.tags)
+                    ? user.tags.map((tag) =>
+                        typeof tag === "string"
+                          ? tag
+                          : tag.name || tag.tag || ""
+                      )
+                    : typeof user.tags === "string"
+                    ? user.tags
+                        .split(",")
+                        .map((t) => t.trim())
+                        .filter(Boolean)
+                    : [];
+
+                  const maxVisible = 5; // Number of tags to show before truncating
+                  const visibleTags = tagsArray.slice(0, maxVisible);
+                  const remainingCount = tagsArray.length - maxVisible;
+
+                  return (
+                    <>
+                      {visibleTags.join(", ")}
+                      {remainingCount > 0 && ` +${remainingCount}`}
+                    </>
+                  );
+                })()}
+              </span>
             </div>
           )}
-
-          {/* Debug info - add this AFTER the existing elements in the flex container
-          {import.meta.env.DEV && currentUser && (
-            <div className="text-xs bg-blue-100 px-2 py-1 rounded text-black">
-              Debug: CurrentUser={currentUser.id}, CardUser={user.id},
-              ShouldShow={shouldShowVisibilityIcon()}, IsPublic=
-              {isUserProfilePublic()}
-            </div>
-          )} */}
         </div>
 
         <div className="mt-auto">

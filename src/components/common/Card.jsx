@@ -13,7 +13,7 @@ const Card = ({
   imageAlt = "",
   imageSize = "medium",
   imageShape = "circle",
-  onClick = null, // NEW: Optional click handler
+  onClick = null, 
 }) => {
   // Function to generate initials from a name
   const generateInitials = (name) => {
@@ -95,7 +95,7 @@ const Card = ({
     >
       {title && (
         <div className="p-6 sm:p-7 border-base-200">
-          <div className="flex border-0 gap-4">
+          <div className="flex gap-3">
             <div>
               {renderImage()}
             </div>
@@ -103,7 +103,7 @@ const Card = ({
             <div>
               <h3 className="text-lg font-medium text-primary">{title}</h3>
               {subtitle && (
-                <p className="mt-1 text-sm text-base-content/70">{subtitle}</p>
+                <p>{subtitle}</p>
               )}
             </div>
           </div>
