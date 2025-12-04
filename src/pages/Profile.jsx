@@ -15,7 +15,7 @@ import { userService } from "../services/userService";
 import BadgeCard from "../components/badges/BadgeCard";
 import TagSelector from "../components/tags/TagSelector";
 import TagInputV2 from "../components/tags/TagInputV2";
-import FocusAreasSection from "../components/tags/FocusAreasSection";
+import TagsDisplaySection from "../components/tags/TagsDisplaySection";
 import IconToggle from "../components/common/IconToggle";
 import LocationDisplay from "../components/common/LocationDisplay";
 
@@ -775,15 +775,13 @@ const Profile = () => {
               </Section>
             )}
 
-            <FocusAreasSection
+            <TagsDisplaySection
               title="Focus Areas"
-              selectedTags={selectedTags}
+              tags={selectedTags}
               allTags={tags}
               onSave={handleTagsUpdate}
               canEdit={true}
               emptyMessage="No focus areas added yet."
-              placeholder="Add your skills and interests..."
-              className="px-6"
             />
 
             <Section title="My Badges" className="px-6">
