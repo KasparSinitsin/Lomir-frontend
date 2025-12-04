@@ -18,24 +18,27 @@ const UserLocationSection = ({
 
   const postalCode = user?.postal_code || user?.postalCode;
 
-  return (
-    <div className={`flex items-start space-x-2 ${className}`}>
-      <MapPin size={18} className="mt-1 text-primary flex-shrink-0" />
-      <div>
+return (
+    <div className={className}>
+      {/* Title row - icon and title together */}
+      <div className="flex items-center mb-2">
+        <MapPin size={18} className="mr-2 text-primary flex-shrink-0" />
         <h3 className="font-medium">Location</h3>
-        <div>
-          {postalCode ? (
-            <LocationDisplay
-              postalCode={postalCode}
-              className="bg-base-200/50 py-1"
-              showIcon={false}
-              showPostalCode={true}
-              displayType="detailed"
-            />
-          ) : (
-            <p>Not specified</p>
-          )}
-        </div>
+      </div>
+      
+      {/* Content below - aligns with icon */}
+      <div>
+        {postalCode ? (
+          <LocationDisplay
+            postalCode={postalCode}
+            className="bg-base-200/50 py-1"
+            showIcon={false}
+            showPostalCode={true}
+            displayType="detailed"
+          />
+        ) : (
+          <p>Not specified</p>
+        )}
       </div>
     </div>
   );

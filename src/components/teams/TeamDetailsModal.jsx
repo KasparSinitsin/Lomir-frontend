@@ -1012,7 +1012,7 @@ const TeamDetailsModal = ({
                 isOwner={isOwner}
               />
             ) : (
-              <div className="space-y-1">
+              <div className="space-y-6">
                 {/* Team header with avatar */}
                 {console.log("Team avatar debug:", {
                   teamavatar_url: team?.teamavatar_url,
