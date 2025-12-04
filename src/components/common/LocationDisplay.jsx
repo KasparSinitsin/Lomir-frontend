@@ -51,10 +51,10 @@ const LocationDisplay = ({
   const displayText = getDisplayText();
 
   return (
-    <div
-      className={`flex items-center text-sm text-base-content/70 ${className}`}
-    >
-      {showIcon && <MapPin size={iconSize} className="mr-1 mt-0.5 items-start flex-shrink-0" />}
+  <div
+    className={`flex items-start text-sm text-base-content/70 ${className}`}
+  >
+    {showIcon && <MapPin size={iconSize} className="mr-1 flex-shrink-0 mt-0.5" />}
       <span
         title={
           location?.rawAddress
