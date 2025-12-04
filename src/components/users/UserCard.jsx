@@ -127,23 +127,6 @@ const UserCard = ({ user, onUpdate }) => {
         )}
 
         <div className="flex flex-wrap items-center gap-2 mb-4">
-          {/* Visibility indicator - only show for current user's own profile
-          {shouldShowVisibilityIcon() && (
-            <div className="flex items-center text-sm text-base-content/70 bg-base-200/50 py-1 rounded-full">
-              {isUserProfilePublic() ? (
-                <>
-                  <Eye size={16} className="mr-1 text-green-600" />
-                  <span>Public</span>
-                </>
-              ) : (
-                <>
-                  <EyeClosed size={16} className="mr-1 text-grey-600" />
-                  <span>Private</span>
-                </>
-              )} 
-            </div>
-          )}
-
           {/* Location display with geocoding */}
           {(user.postal_code || user.postalCode) && (
             <LocationDisplay
@@ -157,9 +140,36 @@ const UserCard = ({ user, onUpdate }) => {
 
           {/* Tags */}
           {user.tags && (
-            <div className="flex items-center text-sm text-base-content/70">
-              <Tag size={16} className="mr-1" />
-              <span>{user.tags}</span>
+            <div className="flex items-start text-sm text-base-content/70">
+              <Tag size={16} className="mr-1 flex-shrink-0 mt-0.5" />
+              <span>
+                {(() => {
+                  // Parse tags - handle both string and array formats
+                  const tagsArray = Array.isArray(user.tags)
+                    ? user.tags.map((tag) =>
+                        typeof tag === "string"
+                          ? tag
+                          : tag.name || tag.tag || ""
+                      )
+                    : typeof user.tags === "string"
+                    ? user.tags
+                        .split(",")
+                        .map((t) => t.trim())
+                        .filter(Boolean)
+                    : [];
+
+                  const maxVisible = 5; // Number of tags to show before truncating
+                  const visibleTags = tagsArray.slice(0, maxVisible);
+                  const remainingCount = tagsArray.length - maxVisible;
+
+                  return (
+                    <>
+                      {visibleTags.join(", ")}
+                      {remainingCount > 0 && ` +${remainingCount}`}
+                    </>
+                  );
+                })()}
+              </span>
             </div>
           )}
         </div>

@@ -496,25 +496,34 @@ const TeamCard = ({
           <span className="badge badge-primary badge-outline">{userRole}</span>
         )}
 
-        {/* Tags display (member variant only) */}
-        {effectiveVariant === "member" && displayTags.length > 0 && (
-          <div className="flex items-center text-sm text-base-content/70 bg-base-200/50 py-1 px-2 rounded-full">
-            <Tag size={14} className="mr-1 text-base-content/70" />
-            <span className="truncate">
-              {displayTags.slice(0, 2).map((tag, index) => {
-                const tagName =
-                  typeof tag === "string" ? tag : tag.name || tag.tag || "";
-                return (
-                  <span key={index}>
-                    {index > 0 ? ", " : ""}
-                    {tagName}
-                  </span>
-                );
-              })}
-              {displayTags.length > 2 && ` +${displayTags.length - 2}`}
-            </span>
-          </div>
-        )}
+{/* Tags display (member variant only) */}
+{effectiveVariant === "member" && displayTags.length > 0 && (
+  <div className="flex items-start text-sm text-base-content/70">
+    <Tag size={16} className="mr-1 flex-shrink-0 mt-0.5" />
+    <span>
+      {(() => {
+        const maxVisible = 5;
+        const visibleTags = displayTags.slice(0, maxVisible);
+        const remainingCount = displayTags.length - maxVisible;
+        
+        return (
+          <>
+            {visibleTags.map((tag, index) => {
+              const tagName = typeof tag === "string" ? tag : tag.name || tag.tag || "";
+              return (
+                <span key={index}>
+                  {index > 0 ? ", " : ""}
+                  {tagName}
+                </span>
+              );
+            })}
+            {remainingCount > 0 && ` +${remainingCount}`}
+          </>
+        );
+      })()}
+    </span>
+  </div>
+)}
       </div>
     );
   };
