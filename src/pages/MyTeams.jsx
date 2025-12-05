@@ -165,7 +165,6 @@ if (loading && loadingApplications) {
   );
 }
 
-
 if (error) {
   return (
     <PageContainer variant="muted">
