@@ -1,168 +1,102 @@
-import React from "react";
-import { X } from "lucide-react";
+// src/components/common/Modal.jsx
+import React, { useEffect } from "react";
+import { createPortal } from "react-dom";
 
-/**
- * Enhanced Modal that preserves unique styling while centralizing scroll behavior
- * Supports multiple positioning modes and custom styling
- */
 const Modal = ({
   isOpen,
   onClose,
   title,
   children,
   footer,
-  
-  // Size options
-  size = "default", // "sm", "default", "lg", "xl"
-  
-  // Position options
-  position = "center", // "center", "right", "left", "custom"
-  customPosition = "", // For custom positioning classes
-  
-  // Z-index control
-  zIndex = "z-50", // "z-50", "z-[60]", etc.
-  
-  // Container styling
-  containerClassName = "",
-  backdropClassName = "",
-  modalClassName = "",
-  headerClassName = "",
-  contentClassName = "",
-  footerClassName = "",
-  
-  // Behavior options
-  showCloseButton = true,
+  position = "center",          // "center" | "top"
+  size = "default",             // "small" | "default" | "large"
+  maxHeight = "max-h-[90vh]",
+  minHeight = "",
   closeOnBackdrop = true,
   closeOnEscape = true,
-  
-  // Advanced options
-  hideBackdrop = false,
-  customBackdrop = null,
-  maxHeight = "max-h-[90vh]",
-  minHeight = "min-h-[300px]",
-  
-  ...props
+  showCloseButton = true,
 }) => {
-  React.useEffect(() => {
+  // Handle ESC key
+  useEffect(() => {
+    if (!isOpen || !closeOnEscape) return;
+
     const handleKeyDown = (e) => {
-      if (e.key === 'Escape' && closeOnEscape && onClose) {
-        onClose();
+      if (e.key === "Escape") {
+        onClose?.();
       }
     };
 
-    if (isOpen) {
-      if (closeOnEscape) {
-        document.addEventListener('keydown', handleKeyDown);
-      }
-      // Prevent body scroll when modal is open
-      document.body.style.overflow = 'hidden';
-      
-      return () => {
-        document.removeEventListener('keydown', handleKeyDown);
-        document.body.style.overflow = 'unset';
-      };
-    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, closeOnEscape, onClose]);
 
-  // NOW we can do conditional return and regular functions
   if (!isOpen) return null;
 
-  // Size configurations
-  const sizeClasses = {
-    sm: "max-w-md",
-    default: "max-w-2xl", 
-    lg: "max-w-4xl",
-    xl: "max-w-6xl",
-  };
+  const sizeClass =
+    size === "small"
+      ? "max-w-md"
+      : size === "large"
+      ? "max-w-4xl"
+      : "max-w-2xl"; // default
 
-  // Position configurations
-  const positionClasses = {
-    center: "fixed inset-0 flex items-center justify-center",
-    right: "fixed top-1/2 right-8 transform -translate-y-1/2",
-    left: "fixed top-1/2 left-8 transform -translate-y-1/2", 
-    custom: customPosition,
-  };
+  const positionClass =
+    position === "top" ? "items-start mt-10" : "items-center";
 
-  const handleBackdropClick = (e) => {
-    if (closeOnBackdrop && e.target === e.currentTarget) {
-      onClose();
-    }
-  };
+  return createPortal(
+    <div className={`fixed inset-0 z-[999] flex ${positionClass} justify-center`}>
+      {/* Backdrop */}
+      <div
+        className="absolute inset-0 bg-black/50"
+        onClick={closeOnBackdrop ? onClose : undefined}
+      />
 
-  return (
-    <div 
-      className={`${positionClasses[position]} ${zIndex} ${containerClassName}`}
-      onClick={position === 'center' ? handleBackdropClick : undefined}
-      role="dialog"
-      aria-modal="true"
-      {...props}
-    >
-      {/* Backdrop - only for center position, or custom backdrop */}
-      {!hideBackdrop && (position === 'center' || customBackdrop) && (
-        customBackdrop || (
-          <div className={`absolute inset-0 bg-black bg-opacity-40 ${backdropClassName}`} />
-        )
-      )}
-      
-      {/* Modal Container with Flexible Styling */}
-      <div className={`
-        relative w-full ${sizeClasses[size]} 
-        ${maxHeight} ${minHeight}
-        rounded-xl bg-base-100 shadow-lg 
-        flex flex-col
-        ${position === 'right' || position === 'left' ? 'max-w-md' : ''}
-        ${modalClassName}
-      `}>
-        
-        {/* Fixed Header */}
+      {/* Modal box */}
+      <div
+        className={`
+          relative z-[1000]
+          bg-base-100 rounded-xl shadow-soft
+          w-full ${sizeClass} mx-4
+          ${maxHeight} ${minHeight}
+          overflow-y-auto
+        `}
+      >
+        {/* Header */}
         {(title || showCloseButton) && (
-          <div className={`
-            flex-none px-6 py-4 border-b border-base-300 
-            flex justify-between items-center
-            ${headerClassName}
-          `}>
-            {/* Title can be string or custom JSX */}
-            {title && (
-              typeof title === 'string' ? (
-                <h2 className="text-xl font-medium text-primary">
+          <div className="flex items-start justify-between p-4 border-b border-base-200">
+            <div className="flex-1 min-w-0">
+              {typeof title === "string" ? (
+                <h2 className="text-lg font-semibold text-primary truncate">
                   {title}
                 </h2>
               ) : (
                 title
-              )
-            )}
-            
+              )}
+            </div>
             {showCloseButton && (
-              <button 
+              <button
+                type="button"
+                className="btn btn-sm btn-ghost ml-2"
                 onClick={onClose}
-                className="btn btn-ghost btn-sm btn-circle"
                 aria-label="Close modal"
               >
-                <X size={20} />
+                ✕
               </button>
             )}
           </div>
         )}
 
-        {/* Scrollable Content Area */}
-        <div className={`
-          flex-1 overflow-y-auto p-6
-          ${contentClassName}
-        `}>
-          {children}
-        </div>
+        {/* Body */}
+        <div className="p-6">{children}</div>
 
-        {/* Fixed Footer */}
+        {/* Footer (optional) */}
         {footer && (
-          <div className={`
-            flex-none px-6 py-4 border-t border-base-300
-            ${footerClassName}
-          `}>
+          <div className="p-4 border-t border-base-200 bg-base-100/80">
             {footer}
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

@@ -148,7 +148,7 @@ const SearchPage = () => {
     !loading;
 
   return (
-    <PageContainer title="Search teams or users" titleAlignment="center">
+    <PageContainer title="Search teams or users" titleAlignment="center" variant="muted">
       <div className="max-w-xl mx-auto mb-8">
         {/* Toggle */}
         <div className="flex justify-center space-x-2 pt-2 mb-2">
