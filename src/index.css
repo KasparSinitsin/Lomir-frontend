@@ -410,3 +410,25 @@ body {
 .animate-slide-in {
   animation: slide-in 0.3s ease-out forwards;
 }
+
+/* Custom Tooltip Styles - Lomir themed */
+.tooltip.tooltip-lomir::before {
+  background-color: white !important;
+  color: var(--color-primary-focus) !important;
+  font-weight: 450 !important;
+  border-radius: 0.5rem !important;
+  padding: 0.5rem 0.75rem !important;
+  font-size: 0.775rem !important;
+  box-shadow: 0 2px 8px rgba(4, 80, 20, 0.15) !important;
+}
+
+/* Arrow styling - override all border colors explicitly */
+.tooltip.tooltip-lomir::after {
+  background-color: white !important;
+  border-top-color: transparent !important;
+  border-right-color: transparent !important;
+  border-bottom-color: var(--color-role-member-text) !important;
+  border-left-color: transparent !important;
+}
+
+

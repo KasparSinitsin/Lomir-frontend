@@ -681,17 +681,18 @@ const TeamCard = ({
 
             {/* Privacy status */}
             {shouldShowVisibilityIcon() && (
-              <span>
+              <span
+                className="tooltip tooltip-bottom tooltip-lomir"
+                data-tip={
+                  teamData.is_public ?? teamData.isPublic
+                    ? "Public Team - visible for everyone"
+                    : "Private Team - only visible for Members"
+                }
+              >
                 {teamData.is_public ?? teamData.isPublic ? (
-                  <>
-                    <EyeIcon size={14} className="text-green-600" />
-                    {/* <span>Public</span> */}
-                  </>
+                  <EyeIcon size={14} className="text-green-600" />
                 ) : (
-                  <>
-                    <EyeClosed size={14} className="text-gray-500" />
-                    {/* <span>Private</span> */}
-                  </>
+                  <EyeClosed size={14} className="text-gray-500" />
                 )}
               </span>
             )}
@@ -700,31 +701,37 @@ const TeamCard = ({
             {userRole && effectiveVariant === "member" && (
               <span className="flex items-center text-base-content/70">
                 {userRole === "owner" && (
-                  <>
+                  <span
+                    className="tooltip tooltip-bottom tooltip-lomir"
+                    data-tip="You are the owner of this team"
+                  >
                     <Crown
                       size={14}
                       className="text-[var(--color-role-owner-bg)]"
                     />
-                    {/* <span>Owner</span> */}
-                  </>
+                  </span>
                 )}
                 {userRole === "admin" && (
-                  <>
+                  <span
+                    className="tooltip tooltip-bottom tooltip-lomir"
+                    data-tip="You are an admin of this team"
+                  >
                     <ShieldCheck
                       size={14}
                       className="text-[var(--color-role-admin-bg)]"
                     />
-                    {/* <span>Admin</span> */}
-                  </>
+                  </span>
                 )}
                 {userRole === "member" && (
-                  <>
+                  <span
+                    className="tooltip tooltip-bottom tooltip-lomir"
+                    data-tip="You are a member of this team"
+                  >
                     <User
                       size={14}
                       className="text-[var(--color-role-member-bg)]"
                     />
-                    {/* <span>Member</span> */}
-                  </>
+                  </span>
                 )}
               </span>
             )}
