@@ -155,28 +155,30 @@ const MyTeams = () => {
     </div>
   );
 
-  if (loading && loadingApplications) {
-    return (
-      <PageContainer>
-        <div className="flex justify-center items-center h-64">
-          <div className="loading loading-spinner loading-lg text-primary"></div>
-        </div>
-      </PageContainer>
-    );
-  }
+if (loading && loadingApplications) {
+  return (
+    <PageContainer variant="muted">
+      <div className="flex justify-center items-center h-64">
+        <div className="loading loading-spinner loading-lg text-primary"></div>
+      </div>
+    </PageContainer>
+  );
+}
 
-  if (error) {
-    return (
-      <PageContainer>
-        <div className="alert alert-error">
-          <span>{error}</span>
-        </div>
-      </PageContainer>
-    );
-  }
+
+if (error) {
+  return (
+    <PageContainer variant="muted">
+      <div className="alert alert-error">
+        <span>{error}</span>
+      </div>
+    </PageContainer>
+  );
+}
+
 
   return (
-    <PageContainer title="My Teams" action={CreateTeamAction}>
+    <PageContainer title="My Teams" action={CreateTeamAction} variant="muted">
       {/* Pending Invitations Section */}
       {pendingInvitations.length > 0 && (
         <Section
