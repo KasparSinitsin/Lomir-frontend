@@ -99,17 +99,18 @@ const UserCard = ({ user, onUpdate }) => {
             {user.username && <span>@{user.username}</span>}
 
             {shouldShowVisibilityIcon() && (
-              <span className="flex items-center text-base-content/70 text-sm gap-0.5">
+              <span
+                className="tooltip tooltip-bottom tooltip-lomir"
+                data-tip={
+                  isUserProfilePublic()
+                    ? "Public Profile - visible for everyone"
+                    : "Private Profile - only visible for you"
+                }
+              >
                 {isUserProfilePublic() ? (
-                  <>
-                    <Eye size={14} className="text-green-600" />
-                    {/* <span>Public</span> */}
-                  </>
+                  <Eye size={14} className="text-green-600" />
                 ) : (
-                  <>
-                    <EyeClosed size={14} className="text-gray-500" />
-                    {/* <span>Private</span> */}
-                  </>
+                  <EyeClosed size={14} className="text-gray-500" />
                 )}
               </span>
             )}
@@ -119,6 +120,8 @@ const UserCard = ({ user, onUpdate }) => {
         image={getProfileImage()}
         imageAlt={`${user.username || "User"}'s profile`}
         imageSize="medium"
+        imageShape="circle"
+        onClick={openUserDetails}
       >
         {(user.bio || user.biography) && (
           <p className="text-base-content/80 mb-4">
