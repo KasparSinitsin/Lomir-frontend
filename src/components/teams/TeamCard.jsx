@@ -147,12 +147,7 @@ const TeamCard = ({
   // Fetch user's role in this team (only for member variant)
   useEffect(() => {
     const fetchUserRole = async () => {
-      if (
-        user &&
-        teamData?.id &&
-        !isSearchResult &&
-        effectiveVariant === "member"
-      ) {
+      if (user && teamData?.id && effectiveVariant === "member") {
         try {
           const response = await teamService.getUserRoleInTeam(
             teamData.id,
@@ -676,7 +671,6 @@ const TeamCard = ({
         title={teamData.name || "Unknown Team"}
         subtitle={
           <span className="flex items-center text-base-content/70 text-sm gap-1.5">
-
             {/* Members count */}
             <span className="flex items-center">
               <Users size={14} className="text-primary mr-0.5" />
@@ -702,8 +696,8 @@ const TeamCard = ({
               </span>
             )}
 
-            {/* User role - only show for member variant when not a search result */}
-            {userRole && effectiveVariant === "member" && !isSearchResult && (
+            {/* User role - show for member variant when user has a role */}
+            {userRole && effectiveVariant === "member" && (
               <span className="flex items-center text-base-content/70">
                 {userRole === "owner" && (
                   <>
