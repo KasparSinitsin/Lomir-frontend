@@ -122,6 +122,7 @@ const UserCard = ({ user, onUpdate }) => {
         imageSize="medium"
         imageShape="circle"
         onClick={openUserDetails}
+        truncateContent={true} 
       >
         {(user.bio || user.biography) && (
           <p className="text-base-content/80 mb-4">

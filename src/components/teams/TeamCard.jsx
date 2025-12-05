@@ -743,6 +743,7 @@ const TeamCard = ({
         imageSize="medium"
         imageShape="circle"
         onClick={handleCardClick}
+        truncateContent={true}
       >
         {error && (
           <Alert
@@ -752,11 +753,10 @@ const TeamCard = ({
             className="mb-4"
           />
         )}
-
-        {/* Team description */}
-        <p className="text-base-content/80 mb-4 -mt-4 line-clamp-2">
-          {teamData.description || "No description"}
-        </p>
+{/* Team description */}
+<p className="text-base-content/80 mb-4">
+  {teamData.description || "No description"}
+</p>
 
         {/* Badges (status, date, tags, etc.) */}
         {renderBadges()}
