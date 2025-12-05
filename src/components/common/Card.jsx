@@ -13,7 +13,8 @@ const Card = ({
   imageAlt = "",
   imageSize = "medium",
   imageShape = "circle",
-  onClick = null, 
+  onClick = null,
+  truncateContent = 3, // 🔹 boolean OR number (e.g. 2, 3)
 }) => {
   // Function to generate initials from a name
   const generateInitials = (name) => {
@@ -67,6 +68,25 @@ const Card = ({
     );
   };
 
+  // 🔹 Helper to compute truncation classes for the first direct <p>
+  const getTruncateClasses = () => {
+    if (!truncateContent) return "";
+
+    const lines =
+      typeof truncateContent === "number" && truncateContent > 0
+        ? truncateContent
+        : 3; // default: 3 lines
+
+    if (lines === 1) {
+      return "[&>p:first-of-type]:line-clamp-1 [&>p:first-of-type]:-mt-4";
+    }
+    if (lines === 2) {
+      return "[&>p:first-of-type]:line-clamp-2 [&>p:first-of-type]:-mt-4";
+    }
+    // fallback + default: 3 lines
+    return "[&>p:first-of-type]:line-clamp-3 [&>p:first-of-type]:-mt-4";
+  };
+
   return (
     <div
       className={`
@@ -86,31 +106,32 @@ const Card = ({
       onClick={onClick}
       role={onClick ? "button" : undefined}
       tabIndex={onClick ? 0 : undefined}
-      onKeyDown={onClick ? (e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          onClick(e);
-        }
-      } : undefined}
+      onKeyDown={
+        onClick
+          ? (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onClick(e);
+              }
+            }
+          : undefined
+      }
     >
       {title && (
         <div className="p-6 sm:p-7 border-base-200">
           <div className="flex gap-3">
-            <div>
-              {renderImage()}
-            </div>
+            <div>{renderImage()}</div>
 
             <div>
               <h3 className="text-lg font-medium text-primary">{title}</h3>
-              {subtitle && (
-                <p>{subtitle}</p>
-              )}
+              {subtitle && <p>{subtitle}</p>}
             </div>
           </div>
         </div>
       )}
 
-      <div className="p-4 sm:p-7">{children}</div>
+      {/* 🔹 Only the first direct <p> inside this wrapper will be clamped */}
+      <div className={`p-4 sm:p-7 ${getTruncateClasses()}`}>{children}</div>
 
       {footer && (
         <div className="p-6 sm:p-7 bg-base-200/50 border-t border-base-200">
