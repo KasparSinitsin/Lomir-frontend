@@ -828,14 +828,20 @@ const Profile = () => {
                 <Award size={18} className="mr-2 text-primary flex-shrink-0" />
                 <h3 className="font-medium">My Badges</h3>
               </div>
-              <Grid cols={2} md={3} lg={4} gap={4}>
-                {tags.map(
-                  (tag) =>
-                    tag.type === "badge" && (
-                      <BadgeCard key={tag.id} badge={tag} />
-                    )
-                )}
-              </Grid>
+              {tags.filter((tag) => tag.type === "badge").length > 0 ? (
+                <Grid cols={2} md={3} lg={4} gap={4}>
+                  {tags.map(
+                    (tag) =>
+                      tag.type === "badge" && (
+                        <BadgeCard key={tag.id} badge={tag} />
+                      )
+                  )}
+                </Grid>
+              ) : (
+                <span className="badge badge-warning">
+                  No badges earned yet.
+                </span>
+              )}
             </div>
           </div>
         )}
