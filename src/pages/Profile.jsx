@@ -30,6 +30,7 @@ const Profile = () => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
+
   // Add form errors state
   const [formErrors, setFormErrors] = useState({});
   const [formData, setFormData] = useState({
@@ -37,6 +38,7 @@ const Profile = () => {
     lastName: "",
     email: "",
     bio: "",
+    city: "",
     postalCode: "",
     isPublic: true,
     profileImage: null,
@@ -134,11 +136,12 @@ const Profile = () => {
       console.log("Initializing form with user data from context:", user);
 
       setFormData({
-        firstName: user.first_name || user.firstName || "",
-        lastName: user.last_name || user.lastName || "",
+        firstName: user.firstName || user.first_name || "",
+        lastName: user.lastName || user.last_name || "",
         email: user.email || "",
         bio: user.bio || "",
-        postalCode: user.postal_code || user.postalCode || "",
+        city: user.city || "",
+        postalCode: user.postalCode || user.postal_code || "",
         isPublic:
           user.is_public !== undefined
             ? user.is_public
@@ -290,6 +293,7 @@ const Profile = () => {
         email: formData.email,
         bio: formData.bio,
         postal_code: formData.postalCode,
+        city: formData.city,
         is_public: formData.isPublic,
       };
 
@@ -366,6 +370,7 @@ const Profile = () => {
           email: formData.email, // Include email in the updated user object
           bio: formData.bio,
           postal_code: formData.postalCode,
+          city: formData.city,
           // Use the avatar URL from Cloudinary if we uploaded a new image,
           // otherwise use the response data or keep the existing avatar
           avatar_url: avatarUrl || response.data?.avatar_url || user.avatar_url,
@@ -644,6 +649,26 @@ const Profile = () => {
               />
             </div>
 
+            <div className="form-control w-full mb-4">
+              <label className="label">
+                <span className="label-text">City / Town</span>
+              </label>
+              <input
+                type="text"
+                name="city"
+                value={formData.city}
+                onChange={handleChange}
+                className="input input-bordered w-full"
+                placeholder="e.g. Berlin, London, New York"
+              />
+              <label className="label">
+                <span className="label-text-alt text-base-content/60">
+                  Optional - if left empty, city will be derived from postal
+                  code
+                </span>
+              </label>
+            </div>
+
             {/* Profile visibility toggle */}
             <div className="form-control w-full mb-6">
               <IconToggle
@@ -680,6 +705,10 @@ const Profile = () => {
           </div>
         ) : (
           <div>
+            {/* Temporary debug - remove after testing */}
+            {console.log("User data in view mode:", user)}
+            {console.log("City value:", user?.city)}
+            {console.log("Postal code:", user?.postal_code || user?.postalCode)}
             <div className="flex flex-col md:flex-row md:items-top p-6">
               <div className="mb-6 md:mb-0 md:mr-8">
                 <div className="avatar placeholder">
@@ -777,7 +806,7 @@ const Profile = () => {
                 </div>
 
                 {/* Location */}
-                {(user.postalCode || user.postal_code) && (
+                {(user.postalCode || user.postal_code || user.city) && (
                   <div>
                     <div className="flex items-center mb-2">
                       <MapPin
@@ -788,6 +817,7 @@ const Profile = () => {
                     </div>
                     <LocationDisplay
                       postalCode={user.postal_code || user.postalCode}
+                      city={user.city}
                       className="bg-base-200/50 py-1"
                       showIcon={false}
                       showPostalCode={true}
