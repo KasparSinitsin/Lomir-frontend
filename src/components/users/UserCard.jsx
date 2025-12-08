@@ -122,7 +122,7 @@ const UserCard = ({ user, onUpdate }) => {
         imageSize="medium"
         imageShape="circle"
         onClick={openUserDetails}
-        truncateContent={true} 
+        truncateContent={true}
       >
         {(user.bio || user.biography) && (
           <p className="text-base-content/80 mb-4">
@@ -132,12 +132,13 @@ const UserCard = ({ user, onUpdate }) => {
 
         <div className="flex flex-wrap items-center gap-2 mb-4">
           {/* Location display with geocoding */}
-          {(user.postal_code || user.postalCode) && (
+          {(user.postal_code || user.postalCode || user.city) && (
             <LocationDisplay
               postalCode={user.postal_code || user.postalCode}
+              city={user.city}
               className="bg-base-200/50 py-1"
               iconSize={16}
-              showPostalCode={true} // Show postal code in the display
+              showPostalCode={true}
               displayType="detailed"
             />
           )}

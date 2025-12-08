@@ -9,7 +9,7 @@ import Card from "../components/common/Card";
 import Button from "../components/common/Button";
 import DataDisplay from "../components/common/DataDisplay";
 import Alert from "../components/common/Alert";
-import { Mail, MapPin, User, Edit, Eye, EyeClosed } from "lucide-react";
+import { Mail, MapPin, User, Edit, Eye, EyeClosed, Award } from "lucide-react";
 import { tagService } from "../services/tagService";
 import { userService } from "../services/userService";
 import BadgeCard from "../components/badges/BadgeCard";
@@ -30,6 +30,7 @@ const Profile = () => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
+
   // Add form errors state
   const [formErrors, setFormErrors] = useState({});
   const [formData, setFormData] = useState({
@@ -37,6 +38,7 @@ const Profile = () => {
     lastName: "",
     email: "",
     bio: "",
+    city: "",
     postalCode: "",
     isPublic: true,
     profileImage: null,
@@ -134,11 +136,12 @@ const Profile = () => {
       console.log("Initializing form with user data from context:", user);
 
       setFormData({
-        firstName: user.first_name || user.firstName || "",
-        lastName: user.last_name || user.lastName || "",
+        firstName: user.firstName || user.first_name || "",
+        lastName: user.lastName || user.last_name || "",
         email: user.email || "",
         bio: user.bio || "",
-        postalCode: user.postal_code || user.postalCode || "",
+        city: user.city || "",
+        postalCode: user.postalCode || user.postal_code || "",
         isPublic:
           user.is_public !== undefined
             ? user.is_public
@@ -290,6 +293,7 @@ const Profile = () => {
         email: formData.email,
         bio: formData.bio,
         postal_code: formData.postalCode,
+        city: formData.city,
         is_public: formData.isPublic,
       };
 
@@ -366,6 +370,7 @@ const Profile = () => {
           email: formData.email, // Include email in the updated user object
           bio: formData.bio,
           postal_code: formData.postalCode,
+          city: formData.city,
           // Use the avatar URL from Cloudinary if we uploaded a new image,
           // otherwise use the response data or keep the existing avatar
           avatar_url: avatarUrl || response.data?.avatar_url || user.avatar_url,
@@ -644,6 +649,26 @@ const Profile = () => {
               />
             </div>
 
+            <div className="form-control w-full mb-4">
+              <label className="label">
+                <span className="label-text">City / Town</span>
+              </label>
+              <input
+                type="text"
+                name="city"
+                value={formData.city}
+                onChange={handleChange}
+                className="input input-bordered w-full"
+                placeholder="e.g. Berlin, London, New York"
+              />
+              <label className="label">
+                <span className="label-text-alt text-base-content/60">
+                  Optional - if left empty, city will be derived from postal
+                  code
+                </span>
+              </label>
+            </div>
+
             {/* Profile visibility toggle */}
             <div className="form-control w-full mb-6">
               <IconToggle
@@ -680,6 +705,10 @@ const Profile = () => {
           </div>
         ) : (
           <div>
+            {/* Temporary debug - remove after testing */}
+            {console.log("User data in view mode:", user)}
+            {console.log("City value:", user?.city)}
+            {console.log("Postal code:", user?.postal_code || user?.postalCode)}
             <div className="flex flex-col md:flex-row md:items-top p-6">
               <div className="mb-6 md:mb-0 md:mr-8">
                 <div className="avatar placeholder">
@@ -709,23 +738,35 @@ const Profile = () => {
                       {user.firstName || user.first_name || ""}{" "}
                       {user.lastName || user.last_name || ""}
                     </h2>
-                    <p className="text-base-content/70">@{user.username}</p>
-                    {/* Display profile visibility status with eye icon */}
 
-                    <div className="mt-1 flex items-center">
-                      {isProfilePublic() ? (
-                        <Eye size={16} className="text-primary mr-1" />
-                      ) : (
-                        <EyeClosed
-                          size={16}
-                          className="text-base-content/70 mr-1"
-                        />
-                      )}
-                      <span className="text-sm text-base-content/70">
-                        {isProfilePublic()
-                          ? "Public Profile"
-                          : "Private Profile"}
+                    {/* Username and visibility status inline - matching UserDetailsModal layout */}
+                    <div className="flex items-center space-x-4 text-sm">
+                      <span className="text-base-content/70">
+                        @{user.username}
                       </span>
+                      <div
+                        className="flex items-center text-base-content/70 tooltip tooltip-bottom tooltip-lomir cursor-help"
+                        data-tip={
+                          isProfilePublic()
+                            ? "Public Profile - visible for everyone"
+                            : "Private Profile - only visible for you"
+                        }
+                      >
+                        {isProfilePublic() ? (
+                          <>
+                            <Eye size={16} className="mr-1 text-green-600" />
+                            <span>Public</span>
+                          </>
+                        ) : (
+                          <>
+                            <EyeClosed
+                              size={16}
+                              className="mr-1 text-gray-500"
+                            />
+                            <span>Private</span>
+                          </>
+                        )}
+                      </div>
                     </div>
                   </div>
                   <div className="mt-4 sm:mt-0">
@@ -739,61 +780,99 @@ const Profile = () => {
                     </Button>
                   </div>
                 </div>
-
-                <Grid cols={1} md={3} gap={4}>
-                  <DataDisplay
-                    label="Email"
-                    value={user.email}
-                    icon={<Mail size={16} />}
-                  />
-                  {(user.postalCode || user.postal_code) && (
-                    <DataDisplay
-                      label="Location"
-                      value={
-                        <LocationDisplay
-                          postalCode={user.postal_code || user.postalCode}
-                          showIcon={false} // Hide icon here
-                          showPostalCode={true} // Show postal code in the display
-                          displayType="detailed"
-                        />
-                      }
-                      icon={<MapPin size={16} />}
-                    />
-                  )}
-                  <DataDisplay
-                    label="Member Since"
-                    value="April 2025"
-                    icon={<User size={16} />}
-                  />
-                </Grid>
               </div>
             </div>
 
+            {/* Bio Section */}
             {user.bio && (
-              <Section title="About Me" className="px-6">
+              <div className="px-6">
                 <p className="text-base-content/90">{user.bio}</p>
-              </Section>
+              </div>
             )}
 
-            <TagsDisplaySection
-              title="Focus Areas"
-              tags={selectedTags}
-              allTags={tags}
-              onSave={handleTagsUpdate}
-              canEdit={true}
-              emptyMessage="No focus areas added yet."
-            />
+            {/* Contact & Info Section */}
+            <div className="px-6 mt-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* Email */}
+                <div>
+                  <div className="flex items-center mb-2">
+                    <Mail
+                      size={18}
+                      className="mr-2 text-primary flex-shrink-0"
+                    />
+                    <h3 className="font-medium">Email</h3>
+                  </div>
+                  <p className="text-base-content/80">{user.email}</p>
+                </div>
 
-            <Section title="My Badges" className="px-6">
-              <Grid cols={2} md={3} lg={4} gap={4}>
-                {tags.map(
-                  (tag) =>
-                    tag.type === "badge" && (
-                      <BadgeCard key={tag.id} badge={tag} />
-                    )
+                {/* Location */}
+                {(user.postalCode || user.postal_code || user.city) && (
+                  <div>
+                    <div className="flex items-center mb-2">
+                      <MapPin
+                        size={18}
+                        className="mr-2 text-primary flex-shrink-0"
+                      />
+                      <h3 className="font-medium">Location</h3>
+                    </div>
+                    <LocationDisplay
+                      postalCode={user.postal_code || user.postalCode}
+                      city={user.city}
+                      className="bg-base-200/50 py-1"
+                      showIcon={false}
+                      showPostalCode={true}
+                      displayType="detailed"
+                    />
+                  </div>
                 )}
-              </Grid>
-            </Section>
+
+                {/* Member Since */}
+                <div>
+                  <div className="flex items-center mb-2">
+                    <User
+                      size={18}
+                      className="mr-2 text-primary flex-shrink-0"
+                    />
+                    <h3 className="font-medium">Member Since</h3>
+                  </div>
+                  <p className="text-base-content/80">April 2025</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Focus Areas - already using consistent TagsDisplaySection */}
+            <div className="px-6 mt-6">
+              <TagsDisplaySection
+                title="Focus Areas"
+                tags={selectedTags}
+                allTags={tags}
+                onSave={handleTagsUpdate}
+                canEdit={true}
+                emptyMessage="No focus areas added yet."
+              />
+            </div>
+
+            {/* Badges Section */}
+            <div className="px-6 mt-6 pb-6">
+              <div className="flex items-center mb-4">
+                <Award size={18} className="mr-2 text-primary flex-shrink-0" />
+                <h3 className="font-medium">My Badges</h3>
+              </div>
+              {tags.filter((tag) => tag.type === "badge").length > 0 ? (
+                <Grid cols={2} md={3} lg={4} gap={4}>
+                  {tags.map(
+                    (tag) =>
+                      tag.type === "badge" && (
+                        <BadgeCard key={tag.id} badge={tag} />
+                      )
+                  )}
+                </Grid>
+              ) : (
+                <span className="badge badge-warning">
+                  No badges earned yet.
+                </span>
+              )}
+            </div>
           </div>
         )}
       </Card>
