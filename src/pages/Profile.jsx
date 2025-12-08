@@ -709,23 +709,35 @@ const Profile = () => {
                       {user.firstName || user.first_name || ""}{" "}
                       {user.lastName || user.last_name || ""}
                     </h2>
-                    <p className="text-base-content/70">@{user.username}</p>
-                    {/* Display profile visibility status with eye icon */}
 
-                    <div className="mt-1 flex items-center">
-                      {isProfilePublic() ? (
-                        <Eye size={16} className="text-primary mr-1" />
-                      ) : (
-                        <EyeClosed
-                          size={16}
-                          className="text-base-content/70 mr-1"
-                        />
-                      )}
-                      <span className="text-sm text-base-content/70">
-                        {isProfilePublic()
-                          ? "Public Profile"
-                          : "Private Profile"}
+                    {/* Username and visibility status inline - matching UserDetailsModal layout */}
+                    <div className="flex items-center space-x-4 text-sm">
+                      <span className="text-base-content/70">
+                        @{user.username}
                       </span>
+                      <div
+                        className="flex items-center text-base-content/70 tooltip tooltip-bottom tooltip-lomir cursor-help"
+                        data-tip={
+                          isProfilePublic()
+                            ? "Public Profile - visible for everyone"
+                            : "Private Profile - only visible for you"
+                        }
+                      >
+                        {isProfilePublic() ? (
+                          <>
+                            <Eye size={16} className="mr-1 text-green-600" />
+                            <span>Public</span>
+                          </>
+                        ) : (
+                          <>
+                            <EyeClosed
+                              size={16}
+                              className="mr-1 text-gray-500"
+                            />
+                            <span>Private</span>
+                          </>
+                        )}
+                      </div>
                     </div>
                   </div>
                   <div className="mt-4 sm:mt-0">
