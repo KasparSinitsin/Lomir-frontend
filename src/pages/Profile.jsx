@@ -9,7 +9,7 @@ import Card from "../components/common/Card";
 import Button from "../components/common/Button";
 import DataDisplay from "../components/common/DataDisplay";
 import Alert from "../components/common/Alert";
-import { Mail, MapPin, User, Edit, Eye, EyeClosed } from "lucide-react";
+import { Mail, MapPin, User, Edit, Eye, EyeClosed, Award } from "lucide-react";
 import { tagService } from "../services/tagService";
 import { userService } from "../services/userService";
 import BadgeCard from "../components/badges/BadgeCard";
@@ -751,52 +751,83 @@ const Profile = () => {
                     </Button>
                   </div>
                 </div>
-
-                <Grid cols={1} md={3} gap={4}>
-                  <DataDisplay
-                    label="Email"
-                    value={user.email}
-                    icon={<Mail size={16} />}
-                  />
-                  {(user.postalCode || user.postal_code) && (
-                    <DataDisplay
-                      label="Location"
-                      value={
-                        <LocationDisplay
-                          postalCode={user.postal_code || user.postalCode}
-                          showIcon={false} // Hide icon here
-                          showPostalCode={true} // Show postal code in the display
-                          displayType="detailed"
-                        />
-                      }
-                      icon={<MapPin size={16} />}
-                    />
-                  )}
-                  <DataDisplay
-                    label="Member Since"
-                    value="April 2025"
-                    icon={<User size={16} />}
-                  />
-                </Grid>
               </div>
             </div>
 
+            {/* Bio Section */}
             {user.bio && (
-              <Section title="About Me" className="px-6">
+              <div className="px-6">
                 <p className="text-base-content/90">{user.bio}</p>
-              </Section>
+              </div>
             )}
 
-            <TagsDisplaySection
-              title="Focus Areas"
-              tags={selectedTags}
-              allTags={tags}
-              onSave={handleTagsUpdate}
-              canEdit={true}
-              emptyMessage="No focus areas added yet."
-            />
+            {/* Contact & Info Section */}
+            <div className="px-6 mt-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* Email */}
+                <div>
+                  <div className="flex items-center mb-2">
+                    <Mail
+                      size={18}
+                      className="mr-2 text-primary flex-shrink-0"
+                    />
+                    <h3 className="font-medium">Email</h3>
+                  </div>
+                  <p className="text-base-content/80">{user.email}</p>
+                </div>
 
-            <Section title="My Badges" className="px-6">
+                {/* Location */}
+                {(user.postalCode || user.postal_code) && (
+                  <div>
+                    <div className="flex items-center mb-2">
+                      <MapPin
+                        size={18}
+                        className="mr-2 text-primary flex-shrink-0"
+                      />
+                      <h3 className="font-medium">Location</h3>
+                    </div>
+                    <LocationDisplay
+                      postalCode={user.postal_code || user.postalCode}
+                      className="bg-base-200/50 py-1"
+                      showIcon={false}
+                      showPostalCode={true}
+                      displayType="detailed"
+                    />
+                  </div>
+                )}
+
+                {/* Member Since */}
+                <div>
+                  <div className="flex items-center mb-2">
+                    <User
+                      size={18}
+                      className="mr-2 text-primary flex-shrink-0"
+                    />
+                    <h3 className="font-medium">Member Since</h3>
+                  </div>
+                  <p className="text-base-content/80">April 2025</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Focus Areas - already using consistent TagsDisplaySection */}
+            <div className="px-6 mt-6">
+              <TagsDisplaySection
+                title="Focus Areas"
+                tags={selectedTags}
+                allTags={tags}
+                onSave={handleTagsUpdate}
+                canEdit={true}
+                emptyMessage="No focus areas added yet."
+              />
+            </div>
+
+            {/* Badges Section */}
+            <div className="px-6 mt-6 pb-6">
+              <div className="flex items-center mb-4">
+                <Award size={18} className="mr-2 text-primary flex-shrink-0" />
+                <h3 className="font-medium">My Badges</h3>
+              </div>
               <Grid cols={2} md={3} lg={4} gap={4}>
                 {tags.map(
                   (tag) =>
@@ -805,7 +836,7 @@ const Profile = () => {
                     )
                 )}
               </Grid>
-            </Section>
+            </div>
           </div>
         )}
       </Card>
