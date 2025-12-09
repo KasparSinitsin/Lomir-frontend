@@ -3,11 +3,11 @@ import { SendHorizontal } from "lucide-react";
 
 /**
  * InvitationNotificationBadge Component
- * 
+ *
  * Displays a badge showing the count of pending outgoing team invitations.
  * Visible for team owners and admins.
  * Uses a blue/info color scheme to differentiate from the red application badge.
- * 
+ *
  * @param {number} count - Number of pending invitations
  * @param {Function} onClick - Click handler to open invitations modal
  */
