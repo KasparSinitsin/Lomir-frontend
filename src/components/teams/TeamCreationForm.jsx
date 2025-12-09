@@ -13,8 +13,9 @@ const TeamCreationForm = () => {
   const [formData, setFormData] = useState({
     name: "",
     description: "",
-    isPublic: false, // Changed default to false (hidden)
+    isPublic: false, // Default hidden
     maxMembers: 5,
+    maxMembersMode: "preset", // NEW: preset / custom / unlimited
     selectedTags: [],
     teamImage: null,
   });
@@ -28,34 +29,55 @@ const TeamCreationForm = () => {
 
   const validateForm = useCallback(() => {
     const newErrors = {};
+
     if (!formData.name) {
       newErrors.name = "Team name is required";
     } else if (formData.name.length < 3) {
       newErrors.name = "Team name must be at least 3 characters";
     }
+
     if (!formData.description) {
       newErrors.description = "Team description is required";
     } else if (formData.description.length < 10) {
       newErrors.description = "Description must be at least 10 characters";
     }
-    if (formData.maxMembers < 2 || formData.maxMembers > 20) {
-      newErrors.maxMembers = "Team size must be between 2 and 20 members";
+
+    // Allow null for unlimited; validate only when there's a numeric limit
+    let numericMaxMembers = null;
+
+    if (formData.maxMembersMode !== "unlimited") {
+      const parsed =
+        typeof formData.maxMembers === "number"
+          ? formData.maxMembers
+          : parseInt(formData.maxMembers, 10);
+
+      numericMaxMembers = Number.isNaN(parsed) ? null : parsed;
     }
+
+    // Only validate when there is a numeric value
+    if (numericMaxMembers !== null && numericMaxMembers < 2) {
+      newErrors.maxMembers = "Team size must be at least 2 members";
+    }
+
     return newErrors;
   }, [formData.name, formData.description, formData.maxMembers]);
 
   const handleChange = useCallback((e) => {
     const { name, value, type, checked } = e.target;
     let newValue = value;
+
     if (name === "maxMembers") {
-      newValue = parseInt(value, 10);
+      const parsed = parseInt(value, 10);
+      newValue = Number.isNaN(parsed) ? "" : parsed;
     } else if (type === "checkbox") {
       newValue = checked;
     }
+
     setFormData((prev) => ({
       ...prev,
       [name]: newValue,
     }));
+
     // Clear any existing error for the changed field
     setErrors((prevErrors) => ({ ...prevErrors, [name]: "" }));
   }, []);
@@ -104,6 +126,7 @@ const TeamCreationForm = () => {
         "Starting team creation with image:",
         formData.teamImage ? "Image selected" : "No image"
       );
+
       // Ensure tag IDs are valid integers
       const formattedTags = formData.selectedTags.map((tagId) => {
         const numericId = parseInt(tagId, 10);
@@ -112,12 +135,38 @@ const TeamCreationForm = () => {
       });
 
       // Create the team data object
+      console.log("TeamCreationForm handleSubmit formData:", formData);
+
+      // Decide what to send based on the mode
+      let maxMembersForSubmit = null;
+
+      if (formData.maxMembersMode === "unlimited") {
+        maxMembersForSubmit = null; // ✅ unlimited
+      } else {
+        const parsed =
+          typeof formData.maxMembers === "number"
+            ? formData.maxMembers
+            : parseInt(formData.maxMembers, 10);
+
+        maxMembersForSubmit = Number.isNaN(parsed) ? 5 : parsed; // fallback just in case
+      }
+
+      console.log(
+        "TeamCreationForm handleSubmit - mode:",
+        formData.maxMembersMode
+      );
+      console.log(
+        "TeamCreationForm handleSubmit - maxMembersForSubmit:",
+        maxMembersForSubmit
+      );
+
       const submissionData = {
         name: formData.name,
         description: formData.description,
         is_public: formData.isPublic,
-        max_members: formData.maxMembers,
+        max_members: maxMembersForSubmit,
         tags: formattedTags,
+        teamavatar_url: formData.teamImage ? null : null,
       };
 
       console.log("Initial submission data:", submissionData);
@@ -157,7 +206,6 @@ const TeamCreationForm = () => {
           console.log("Cloudinary upload success:", cloudinaryResponse.data);
 
           // Set the avatar URL in the submission data
-          // Using both field names to ensure compatibility with your API interceptors
           submissionData.teamavatar_url = cloudinaryResponse.data.secure_url;
           submissionData.teamavatarUrl = cloudinaryResponse.data.secure_url;
 
@@ -249,6 +297,7 @@ const TeamCreationForm = () => {
             <p className="text-red-500 text-xs italic">{errors.name}</p>
           )}
         </div>
+
         <div className="mb-4">
           <label
             htmlFor="description"
@@ -271,6 +320,8 @@ const TeamCreationForm = () => {
             <p className="text-red-500 text-xs italic">{errors.description}</p>
           )}
         </div>
+
+        {/* Maximum Members - Preset / Custom / Unlimited */}
         <div className="mb-4">
           <label
             htmlFor="maxMembers"
@@ -278,22 +329,137 @@ const TeamCreationForm = () => {
           >
             Maximum Members
           </label>
-          <input
-            type="number"
-            id="maxMembers"
-            name="maxMembers"
-            value={formData.maxMembers}
-            onChange={handleChange}
-            min="2"
-            max="20"
-            className={`shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline ${
-              errors.maxMembers ? "border-red-500" : ""
-            }`}
-          />
+
+          {/* Mode buttons */}
+          <div className="flex gap-2 mb-2">
+            <button
+              type="button"
+              onClick={() =>
+                setFormData((prev) => ({
+                  ...prev,
+                  maxMembersMode: "preset",
+                  maxMembers: 5,
+                }))
+              }
+              className={`btn btn-sm ${
+                formData.maxMembersMode === "preset"
+                  ? "btn-primary"
+                  : "btn-outline"
+              }`}
+            >
+              Preset
+            </button>
+
+            <button
+              type="button"
+              onClick={() =>
+                setFormData((prev) => ({
+                  ...prev,
+                  maxMembersMode: "custom",
+                  maxMembers:
+                    prev.maxMembers && prev.maxMembers !== null
+                      ? prev.maxMembers
+                      : 25,
+                }))
+              }
+              className={`btn btn-sm ${
+                formData.maxMembersMode === "custom"
+                  ? "btn-primary"
+                  : "btn-outline"
+              }`}
+            >
+              Custom
+            </button>
+
+            <button
+              type="button"
+              onClick={() =>
+                setFormData((prev) => ({
+                  ...prev,
+                  maxMembersMode: "unlimited",
+                  maxMembers: null,
+                }))
+              }
+              className={`btn btn-sm ${
+                formData.maxMembersMode === "unlimited"
+                  ? "btn-primary"
+                  : "btn-outline"
+              }`}
+            >
+              {/* Infinity icon */}
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-4 w-4 mr-1"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                viewBox="0 0 24 24"
+              >
+                <path d="M18.178 8c5.096 0 5.096 8 0 8-5.095 0-7.133-8-12.739-8-4.585 0-4.585 8 0 8 5.606 0 7.644-8 12.739-8z" />
+              </svg>
+              Unlimited
+            </button>
+          </div>
+
+          {/* Preset dropdown */}
+          {formData.maxMembersMode === "preset" && (
+            <select
+              id="maxMembers"
+              name="maxMembers"
+              value={formData.maxMembers}
+              onChange={handleChange}
+              className={`shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline ${
+                errors.maxMembers ? "border-red-500" : ""
+              }`}
+            >
+              {[2, 3, 4, 5, 6, 8, 10, 12, 15, 20].map((size) => (
+                <option key={size} value={size}>
+                  {size} members
+                </option>
+              ))}
+            </select>
+          )}
+
+          {/* Custom input */}
+          {formData.maxMembersMode === "custom" && (
+            <input
+              type="number"
+              id="maxMembers"
+              name="maxMembers"
+              value={formData.maxMembers ?? ""}
+              onChange={handleChange}
+              min="2"
+              className={`shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline ${
+                errors.maxMembers ? "border-red-500" : ""
+              }`}
+              placeholder="Enter custom number (min. 2)"
+            />
+          )}
+
+          {/* Unlimited display */}
+          {formData.maxMembersMode === "unlimited" && (
+            <div className="shadow border rounded w-full py-2 px-3 bg-gray-50 flex items-center gap-2">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-5 w-5 text-primary"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                viewBox="0 0 24 24"
+              >
+                <path d="M18.178 8c5.096 0 5.096 8 0 8-5.095 0-7.133-8-12.739-8-4.585 0-4.585 8 0 8 5.606 0 7.644-8 12.739-8z" />
+              </svg>
+              <span className="text-gray-700">No member limit</span>
+            </div>
+          )}
+
           {errors.maxMembers && (
-            <p className="text-red-500 text-xs italic">{errors.maxMembers}</p>
+            <p className="text-red-500 text-xs italic mt-1">
+              {errors.maxMembers}
+            </p>
           )}
         </div>
+
         <div className="mb-4">
           {/* IconToggle switch to choose visibility */}
           <IconToggle
@@ -305,6 +471,7 @@ const TeamCreationForm = () => {
             className="toggle-visibility"
           />
         </div>
+
         <div className="mb-4">
           <label className="block text-gray-700 text-sm font-bold mb-2">
             Team Focus Areas (Optional)
@@ -316,11 +483,10 @@ const TeamCreationForm = () => {
             showPopularTags={true}
             maxSuggestions={8}
           />
-
         </div>
       </div>
     );
-  }, [formData, errors, handleTagSelection, handleChange]);
+  }, [formData, errors, handleTagSelection, handleChange, imagePreview]);
 
   return (
     <div className="max-w-xl mx-auto p-4 bg-white shadow-md rounded-lg">

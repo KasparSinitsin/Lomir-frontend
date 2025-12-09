@@ -30,12 +30,30 @@ export const teamService = {
       // Make sure is_public is properly set as a boolean
       const isPublic = teamData.is_public === true;
 
+      // 🔧 Correct handling of max_members:
+      // - null  -> stays null       (unlimited)
+      // - number/string -> parsed
+      // - undefined/empty -> default (20)
+      let maxMembers;
+
+      if (teamData.max_members === null) {
+        maxMembers = null; // unlimited
+      } else if (
+        teamData.max_members === undefined ||
+        teamData.max_members === ""
+      ) {
+        maxMembers = 20; // fallback default
+      } else {
+        const parsed = parseInt(teamData.max_members, 10);
+        maxMembers = Number.isNaN(parsed) ? 20 : parsed;
+      }
+
       // Create validated team data with the avatar URL
       const validatedTeamData = {
         name: teamData.name,
         description: teamData.description || "",
         is_public: isPublic, // Ensure it's a boolean
-        max_members: parseInt(teamData.max_members || 20, 10),
+        max_members: maxMembers,
         tags: formattedTags,
         // Include the team avatar URL - try both possible field names
         teamavatar_url:

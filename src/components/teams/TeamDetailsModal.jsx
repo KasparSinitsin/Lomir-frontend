@@ -236,14 +236,29 @@ const TeamDetailsModal = ({
         console.log("Team tags data:", teamData.tags);
 
         // Determine the maxMembersMode based on current value
-        const currentMaxMembers =
-          teamData.max_members ?? teamData.maxMembers ?? 5;
+        // Determine the maxMembers value from backend data
+        let currentMaxMembers;
+
+        // Prefer camelCase (what your enhanced team data/logs show)
+        // and allow it to be null for unlimited
+        if (teamData.maxMembers !== undefined) {
+          currentMaxMembers = teamData.maxMembers; // can be number OR null
+        } else if (teamData.max_members !== undefined) {
+          // Fallback in case snake_case is ever used
+          currentMaxMembers = teamData.max_members;
+        } else {
+          // Only default if the field is truly missing
+          currentMaxMembers = 5;
+        }
+
         const presetValues = [2, 3, 4, 5, 6, 8, 10, 12, 15, 20];
 
-        let maxMembersMode = "preset";
+        let maxMembersMode;
         if (currentMaxMembers === null) {
           maxMembersMode = "unlimited";
-        } else if (!presetValues.includes(currentMaxMembers)) {
+        } else if (presetValues.includes(currentMaxMembers)) {
+          maxMembersMode = "preset";
+        } else {
           maxMembersMode = "custom";
         }
 
@@ -252,8 +267,8 @@ const TeamDetailsModal = ({
           name: teamData.name || "",
           description: teamData.description || "",
           isPublic: isPublicValue,
-          maxMembers: currentMaxMembers,
-          maxMembersMode: maxMembersMode,
+          maxMembers: currentMaxMembers, // stays null for unlimited
+          maxMembersMode: maxMembersMode, // 'unlimited' when null
           teamavatarUrl:
             teamData.teamavatar_url || teamData.teamavatarUrl || "",
           selectedTags: (teamData.tags || [])
@@ -649,13 +664,29 @@ const TeamDetailsModal = ({
         typeof isPublicBoolean
       );
 
+      // Decide what to send for max_members based on the mode
+      let maxMembersForSubmit = null;
+
+      if (formData.maxMembersMode === "unlimited") {
+        maxMembersForSubmit = null; // unlimited
+      } else {
+        const parsed =
+          typeof formData.maxMembers === "number"
+            ? formData.maxMembers
+            : parseInt(formData.maxMembers, 10);
+
+        maxMembersForSubmit = Number.isNaN(parsed) ? null : parsed;
+      }
+
+      console.log("Edit Team - mode:", formData.maxMembersMode);
+      console.log("Edit Team - maxMembersForSubmit:", maxMembersForSubmit);
+
       // Prepare the submission data - PRESERVE EXISTING IMAGE URL
       const submissionData = {
         name: formData.name.trim(),
         description: formData.description.trim(),
         is_public: isPublicBoolean,
-        max_members: formData.maxMembers,
-        // ✅ FIX: Always include the existing teamavatar_url to preserve it
+        max_members: maxMembersForSubmit,
         teamavatar_url:
           formData.teamavatarUrl ||
           team?.teamavatar_url ||
