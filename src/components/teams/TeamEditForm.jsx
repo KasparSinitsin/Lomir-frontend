@@ -211,21 +211,135 @@ const TeamEditForm = ({
         <label className="label">
           <span className="label-text">Maximum Members *</span>
         </label>
-        <select
-          name="maxMembers"
-          value={formData.maxMembers}
-          onChange={handleChange}
-          className={`select select-bordered w-full ${
-            formErrors.maxMembers ? "select-error" : ""
-          }`}
-          disabled={loading}
-        >
-          {[2, 3, 4, 5, 6, 8, 10, 12, 15, 20].map((size) => (
-            <option key={size} value={size}>
-              {size} members
-            </option>
-          ))}
-        </select>
+
+        {/* Selection Mode Tabs */}
+        <div className="flex gap-2 mb-2">
+          <button
+            type="button"
+            onClick={() => {
+              setFormData((prev) => ({
+                ...prev,
+                maxMembersMode: "preset",
+                maxMembers: 5,
+              }));
+            }}
+            className={`btn btn-sm ${
+              formData.maxMembersMode !== "custom" &&
+              formData.maxMembersMode !== "unlimited" &&
+              formData.maxMembers !== null
+                ? "btn-primary"
+                : "btn-outline"
+            }`}
+            disabled={loading}
+          >
+            Preset
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setFormData((prev) => ({
+                ...prev,
+                maxMembersMode: "custom",
+                maxMembers: prev.maxMembers || 25,
+              }));
+            }}
+            className={`btn btn-sm ${
+              formData.maxMembersMode === "custom"
+                ? "btn-primary"
+                : "btn-outline"
+            }`}
+            disabled={loading}
+          >
+            Custom
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setFormData((prev) => ({
+                ...prev,
+                maxMembersMode: "unlimited",
+                maxMembers: null,
+              }));
+            }}
+            className={`btn btn-sm ${
+              formData.maxMembers === null ||
+              formData.maxMembersMode === "unlimited"
+                ? "btn-primary"
+                : "btn-outline"
+            }`}
+            disabled={loading}
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-4 w-4 mr-1"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <path d="M18.178 8c5.096 0 5.096 8 0 8-5.095 0-7.133-8-12.739-8-4.585 0-4.585 8 0 8 5.606 0 7.644-8 12.739-8z" />
+            </svg>
+            Unlimited
+          </button>
+        </div>
+
+        {/* Preset Dropdown */}
+        {formData.maxMembersMode !== "custom" &&
+          formData.maxMembersMode !== "unlimited" &&
+          formData.maxMembers !== null && (
+            <select
+              name="maxMembers"
+              value={formData.maxMembers}
+              onChange={handleChange}
+              className={`select select-bordered w-full ${
+                formErrors.maxMembers ? "select-error" : ""
+              }`}
+              disabled={loading}
+            >
+              {[2, 3, 4, 5, 6, 8, 10, 12, 15, 20].map((size) => (
+                <option key={size} value={size}>
+                  {size} members
+                </option>
+              ))}
+            </select>
+          )}
+
+        {/* Custom Number Input */}
+        {formData.maxMembersMode === "custom" && (
+          <input
+            type="number"
+            name="maxMembers"
+            value={formData.maxMembers || ""}
+            onChange={handleChange}
+            min="2"
+            placeholder="Enter custom number (min. 2)"
+            className={`input input-bordered w-full ${
+              formErrors.maxMembers ? "input-error" : ""
+            }`}
+            disabled={loading}
+          />
+        )}
+
+        {/* Unlimited Display */}
+        {(formData.maxMembers === null ||
+          formData.maxMembersMode === "unlimited") &&
+          formData.maxMembersMode !== "custom" &&
+          formData.maxMembersMode !== "preset" && (
+            <div className="flex items-center gap-2 p-3 bg-base-200 rounded-lg">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-5 w-5 text-primary"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <path d="M18.178 8c5.096 0 5.096 8 0 8-5.095 0-7.133-8-12.739-8-4.585 0-4.585 8 0 8 5.606 0 7.644-8 12.739-8z" />
+              </svg>
+              <span className="text-base-content">No member limit</span>
+            </div>
+          )}
+
         {formErrors.maxMembers && (
           <label className="label">
             <span className="label-text-alt text-error">

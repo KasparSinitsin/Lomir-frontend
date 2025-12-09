@@ -218,7 +218,9 @@ const TeamInviteModal = ({
                     <p className="font-medium truncate">{team.name}</p>
                     <p className="text-xs text-base-content/70">
                       <Users size={12} className="inline mr-1" />
-                      {team.current_members_count}/{team.max_members} members
+                      {team.current_members_count}/
+                      {team.max_members === null ? "∞" : team.max_members}{" "}
+                      members
                       {team.available_spots && (
                         <span className="ml-2 text-success">
                           ({team.available_spots} spots available)
