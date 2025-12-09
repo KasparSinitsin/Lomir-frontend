@@ -859,6 +859,7 @@ const TeamCard = ({
           }}
           invitations={pendingSentInvitations}
           onCancelInvitation={handleCancelInvitation}
+          teamName={team.name}
         />
       )}
     </>
