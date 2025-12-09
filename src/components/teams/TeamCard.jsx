@@ -17,9 +17,12 @@ import {
   User,
   Crown,
   ShieldCheck,
+  SendHorizontal,
 } from "lucide-react";
 import TeamDetailsModal from "./TeamDetailsModal";
 import TeamApplicationDetailsModal from "./TeamApplicationDetailsModal";
+import InvitationNotificationBadge from "./InvitationNotificationBadge";
+import TeamInvitesModal from "./TeamInvitesModal";
 import { teamService } from "../../services/teamService";
 import { useAuth } from "../../contexts/AuthContext";
 import Alert from "../common/Alert";
@@ -134,10 +137,16 @@ const TeamCard = ({
   const { user, isAuthenticated } = useAuth();
   const [pendingApplications, setPendingApplications] = useState([]);
   const [isApplicationsModalOpen, setIsApplicationsModalOpen] = useState(false);
+  const [pendingSentInvitations, setPendingSentInvitations] = useState([]);
+  const [isInvitesModalOpen, setIsInvitesModalOpen] = useState(false);
 
   // Check if current user is the owner of the team
   const isOwner =
     user && (teamData?.owner_id === user.id || teamData?.ownerId === user.id);
+
+  // Check if user is admin (owner or admin role can manage invitations)
+  const isAdmin = userRole === "admin";
+  const canManageInvitations = isOwner || isAdmin;
 
   // Update local team data when props change
   useEffect(() => {
@@ -174,9 +183,27 @@ const TeamCard = ({
     }
   }, [isOwner, teamData?.id, effectiveVariant]);
 
+  // Fetch sent invitations (for team owners and admins)
+  const fetchSentInvitations = useCallback(async () => {
+    if (canManageInvitations && teamData?.id && effectiveVariant === "member") {
+      try {
+        const response = await teamService.getTeamSentInvitations(teamData.id);
+        setPendingSentInvitations(response.data || []);
+      } catch (error) {
+        console.error("Error fetching sent invitations:", error);
+        setPendingSentInvitations([]);
+      }
+    }
+  }, [canManageInvitations, teamData?.id, effectiveVariant]);
+
   useEffect(() => {
     fetchPendingApplications();
   }, [fetchPendingApplications]);
+
+  // Fetch sent invitations
+  useEffect(() => {
+    fetchSentInvitations();
+  }, [fetchSentInvitations]);
 
   // Fetch complete team data for tags (only for member variant)
   useEffect(() => {
@@ -348,6 +375,18 @@ const TeamCard = ({
         onUpdate(updatedTeam.data);
       }
     } catch (error) {
+      throw error;
+    }
+  };
+
+  // Handler for canceling a sent invitation
+  const handleCancelInvitation = async (invitationId) => {
+    try {
+      await teamService.cancelInvitation(invitationId);
+      // Refresh the invitations list
+      await fetchSentInvitations();
+    } catch (error) {
+      console.error("Error canceling invitation:", error);
       throw error;
     }
   };
@@ -648,16 +687,30 @@ const TeamCard = ({
           View Details
         </Button>
 
-        {/* Team Management Actions (owner only) */}
-        {isAuthenticated && isOwner && !isSearchResult && (
+        {/* Team Management Actions (owner and admin) */}
+        {isAuthenticated && !isSearchResult && (
           <div className="flex items-center space-x-2 ml-2">
-            <ApplicationNotificationBadge
-              count={pendingApplications.length}
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsApplicationsModalOpen(true);
-              }}
-            />
+            {/* Application badge - owners only */}
+            {isOwner && (
+              <ApplicationNotificationBadge
+                count={pendingApplications.length}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsApplicationsModalOpen(true);
+                }}
+              />
+            )}
+
+            {/* NEW: Sent invitations badge - owners and admins */}
+            {canManageInvitations && (
+              <InvitationNotificationBadge
+                count={pendingSentInvitations.length}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsInvitesModalOpen(true);
+                }}
+              />
+            )}
           </div>
         )}
       </div>
@@ -792,6 +845,20 @@ const TeamCard = ({
           teamId={teamData.id}
           applications={pendingApplications}
           onApplicationAction={handleApplicationAction}
+        />
+      )}
+
+      {/* Invites Modal (for team owners and admins) */}
+      {effectiveVariant === "member" && (
+        <TeamInvitesModal
+          isOpen={isInvitesModalOpen}
+          onClose={() => {
+            setIsInvitesModalOpen(false);
+            // Optionally refresh the list when closing
+            fetchSentInvitations();
+          }}
+          invitations={pendingSentInvitations}
+          onCancelInvitation={handleCancelInvitation}
         />
       )}
     </>
