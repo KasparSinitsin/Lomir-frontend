@@ -24,6 +24,7 @@ const TeamInvitesModal = ({
   onClose,
   invitations = [],
   onCancelInvitation,
+  teamName,
 }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -121,6 +122,21 @@ const TeamInvitesModal = ({
     const lastName = user.last_name || user.lastName;
     const username = user.username;
 
+    // Helper to format invitee full name with graceful fallback
+    const formatFullName = (user) => {
+      if (!user) return "Unknown User";
+
+      const first = user.first_name || user.firstName || "";
+      const last = user.last_name || user.lastName || "";
+
+      // If user has at least one name, return what is available
+      const full = `${first} ${last}`.trim();
+      if (full.length > 0) return full;
+
+      // Fallback to username
+      return user.username || "Unknown User";
+    };
+
     // If we have both first and last name, use both initials
     if (firstName && lastName) {
       return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
@@ -142,7 +158,9 @@ const TeamInvitesModal = ({
   // Custom header with invitation count
   const customHeader = (
     <div>
-      <h2 className="text-xl font-medium text-primary">Sent Invitations</h2>
+      <h2 className="text-xl font-medium text-primary">
+        {teamName ? `Invitations sent to ${teamName}` : "Sent Invitations"}
+      </h2>
       <p className="text-sm text-base-content/70 mt-1">
         {invitations.length} pending invitation
         {invitations.length !== 1 ? "s" : ""}
@@ -259,11 +277,22 @@ const TeamInvitesModal = ({
                       onClick={() => handleUserClick(invitation.invitee?.id)}
                       title="View profile"
                     >
-                      {invitation.invitee?.first_name &&
-                      invitation.invitee?.last_name
-                        ? `${invitation.invitee.first_name} ${invitation.invitee.last_name}`
-                        : invitation.invitee?.username || "Unknown User"}
+                      {(() => {
+                        const user = invitation.invitee || {};
+                        const first = user.first_name || user.firstName || "";
+                        const last = user.last_name || user.lastName || "";
+
+                        // If we have at least one of first/last name, show that
+                        const fullName = `${first} ${last}`.trim();
+                        if (fullName.length > 0) {
+                          return fullName;
+                        }
+
+                        // Fallback: username, then "Unknown User"
+                        return user.username || "Unknown User";
+                      })()}
                     </h4>
+
                     <p
                       className="text-sm text-base-content/70 cursor-pointer hover:text-primary transition-colors"
                       onClick={() => handleUserClick(invitation.invitee?.id)}
