@@ -67,6 +67,7 @@ const TeamDetailsModal = ({
     description: "",
     isPublic: false, // Default is invisible
     maxMembers: 5,
+    maxMembersMode: "preset",
     selectedTags: [],
   });
   const [formErrors, setFormErrors] = useState({});
@@ -234,12 +235,25 @@ const TeamDetailsModal = ({
 
         console.log("Team tags data:", teamData.tags);
 
+        // Determine the maxMembersMode based on current value
+        const currentMaxMembers =
+          teamData.max_members ?? teamData.maxMembers ?? 5;
+        const presetValues = [2, 3, 4, 5, 6, 8, 10, 12, 15, 20];
+
+        let maxMembersMode = "preset";
+        if (currentMaxMembers === null) {
+          maxMembersMode = "unlimited";
+        } else if (!presetValues.includes(currentMaxMembers)) {
+          maxMembersMode = "custom";
+        }
+
         // Set form data with the normalized values from team data
         setFormData({
           name: teamData.name || "",
           description: teamData.description || "",
           isPublic: isPublicValue,
-          maxMembers: teamData.max_members || teamData.maxMembers || 5,
+          maxMembers: currentMaxMembers,
+          maxMembersMode: maxMembersMode,
           teamavatarUrl:
             teamData.teamavatar_url || teamData.teamavatarUrl || "",
           selectedTags: (teamData.tags || [])
@@ -461,7 +475,12 @@ const TeamDetailsModal = ({
 
     setFormData((prev) => ({
       ...prev,
-      [name]: name === "maxMembers" ? parseInt(newValue, 10) : newValue,
+      [name]:
+        name === "maxMembers"
+          ? newValue === null
+            ? null
+            : parseInt(newValue, 10)
+          : newValue,
     }));
   };
 
@@ -592,8 +611,9 @@ const TeamDetailsModal = ({
       errors.description = "Description must be at least 10 characters";
     }
 
-    if (formData.maxMembers < 2 || formData.maxMembers > 20) {
-      errors.maxMembers = "Team size must be between 2 and 20 members";
+    // Only validate maxMembers if it's not unlimited (null)
+    if (formData.maxMembers !== null && formData.maxMembers < 2) {
+      errors.maxMembers = "Team size must be at least 2 members";
     }
 
     setFormErrors(errors);
@@ -1047,7 +1067,10 @@ const TeamDetailsModal = ({
                             team.currentMembersCount ??
                             team.members?.length ??
                             0}
-                          {""}/{team.max_members ?? team.maxMembers ?? "∞"}
+                          {""}/
+                          {team.max_members === null
+                            ? "∞"
+                            : team.max_members ?? team.maxMembers ?? "∞"}
                         </span>
                       </div>
                       {shouldShowVisibilityStatus() && (

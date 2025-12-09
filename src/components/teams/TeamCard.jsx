@@ -236,7 +236,8 @@ const TeamCard = ({
   };
 
   const getMaxMembers = () => {
-    return teamData.max_members ?? teamData.maxMembers ?? "∞";
+    const maxMembers = teamData.max_members ?? teamData.maxMembers;
+    return maxMembers === null || maxMembers === undefined ? "∞" : maxMembers;
   };
 
   const getFormattedDate = () => {
@@ -753,10 +754,10 @@ const TeamCard = ({
             className="mb-4"
           />
         )}
-{/* Team description */}
-<p className="text-base-content/80 mb-4">
-  {teamData.description || "No description"}
-</p>
+        {/* Team description */}
+        <p className="text-base-content/80 mb-4">
+          {teamData.description || "No description"}
+        </p>
 
         {/* Badges (status, date, tags, etc.) */}
         {renderBadges()}
