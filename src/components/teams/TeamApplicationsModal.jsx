@@ -1,5 +1,13 @@
 import React, { useState } from "react";
-import { Check, X as Decline, User } from "lucide-react";
+import {
+  Check,
+  X as Decline,
+  User,
+  Calendar,
+  Mail,
+  MessageSquare,
+} from "lucide-react";
+import { format } from "date-fns";
 import Modal from "../common/Modal";
 import Button from "../common/Button";
 import Alert from "../common/Alert";
@@ -10,6 +18,7 @@ const TeamApplicationsModal = ({
   onClose,
   applications = [],
   onApplicationAction,
+  teamName,
 }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -53,10 +62,34 @@ const TeamApplicationsModal = ({
     }
   };
 
+  // Format date helper - handles multiple possible property names
+  const getApplicationDate = (application) => {
+    const dateValue =
+      application?.created_at ||
+      application?.createdAt ||
+      application?.date ||
+      application?.applied_at;
+
+    if (!dateValue) {
+      return "Unknown date";
+    }
+
+    try {
+      return format(new Date(dateValue), "MMM d, yyyy");
+    } catch (error) {
+      console.error("Error formatting date:", error);
+      return "Unknown date";
+    }
+  };
+
   // Custom header with application count
   const customHeader = (
     <div>
-      <h2 className="text-xl font-medium text-primary">Team Applications</h2>
+      <h2 className="text-xl font-medium text-primary">
+        {teamName
+          ? `Applications received for ${teamName}`
+          : "Team Applications"}
+      </h2>
       <p className="text-sm text-base-content/70 mt-1">
         {applications.length} pending application
         {applications.length !== 1 ? "s" : ""}
@@ -99,18 +132,18 @@ const TeamApplicationsModal = ({
   }
 
   // Debug avatar data - add this before the return statement
-console.log("=== AVATAR DEBUG ===");
-if (applications.length > 0) {
-  applications.forEach((app, index) => {
-    console.log(`Application ${index + 1}:`, {
-      applicant_id: app.applicant?.id,
-      username: app.applicant?.username,
-      avatar_url: app.applicant?.avatar_url,
-      avatar_url_type: typeof app.applicant?.avatar_url,
-      full_applicant: app.applicant
+  console.log("=== AVATAR DEBUG ===");
+  if (applications.length > 0) {
+    applications.forEach((app, index) => {
+      console.log(`Application ${index + 1}:`, {
+        applicant_id: app.applicant?.id,
+        username: app.applicant?.username,
+        avatar_url: app.applicant?.avatar_url,
+        avatar_url_type: typeof app.applicant?.avatar_url,
+        full_applicant: app.applicant,
+      });
     });
-  });
-}
+  }
 
   return (
     <Modal
@@ -127,7 +160,7 @@ if (applications.length > 0) {
       minHeight="min-h-[400px]"
       footerClassName="bg-base-50"
     >
-      {/* Content - All the business logic, now with proper scrolling! */}
+      {/* Content */}
       {error && (
         <Alert
           type="error"
@@ -163,85 +196,94 @@ if (applications.length > 0) {
               key={application.id}
               className="bg-base-200/30 rounded-lg border border-base-300 p-4"
             >
-              {/* Temporary Debug - Remove after fixing */}
-              {console.log("Debug applicant data:", {
-                applicant: application.applicant,
-                avatar_url: application.applicant?.avatar_url,
-                avatar_url_type: typeof application.applicant?.avatar_url,
-              })}
+              {/* Applicant Info */}
+              <div className="flex items-start space-x-4 mb-4">
+                {/* Avatar */}
+                <div className="avatar">
+                  <div className="w-12 h-12 rounded-full">
+                    {application.applicant?.avatarUrl ? (
+                      <img
+                        src={application.applicant.avatarUrl}
+                        alt={
+                          application.applicant.firstName ||
+                          application.applicant.username
+                        }
+                        className="object-cover w-full h-full rounded-full"
+                        onError={(e) => {
+                          console.log(
+                            "Avatar failed to load:",
+                            application.applicant.avatarUrl
+                          );
+                          // If image fails to load, hide it and show the fallback
+                          e.target.style.display = "none";
+                          const fallback =
+                            e.target.parentElement.querySelector(
+                              ".avatar-fallback"
+                            );
+                          if (fallback) fallback.style.display = "flex";
+                        }}
+                      />
+                    ) : null}
 
-{/* Applicant Info */}
-<div className="flex items-start space-x-4 mb-4">
-  <div className="avatar">
-    <div className="w-12 h-12 rounded-full">
-      {application.applicant?.avatarUrl ? (
-        <img
-          src={application.applicant.avatarUrl}
-          alt={application.applicant.firstName || application.applicant.username}
-          className="object-cover w-full h-full rounded-full"
-          onError={(e) => {
-            console.log("Avatar failed to load:", application.applicant.avatarUrl);
-            // If image fails to load, hide it and show the fallback
-            e.target.style.display = 'none';
-            const fallback = e.target.parentElement.querySelector('.avatar-fallback');
-            if (fallback) fallback.style.display = 'flex';
-          }}
-        />
-      ) : null}
-      
-      {/* Fallback initial */}
-      <div 
-        className="avatar-fallback bg-primary text-primary-content flex items-center justify-center w-full h-full rounded-full absolute inset-0"
-        style={{ 
-          display: application.applicant?.avatarUrl ? 'none' : 'flex' 
-        }}
-      >
-        <span className="text-lg font-medium">
-          {(application.applicant?.firstName || application.applicant?.username)?.charAt(0)?.toUpperCase() || "?"}
-        </span>
-      </div>
-    </div>
-  </div>
+                    {/* Fallback initial */}
+                    <div
+                      className="avatar-fallback bg-primary text-primary-content flex items-center justify-center w-full h-full rounded-full absolute inset-0"
+                      style={{
+                        display: application.applicant?.avatarUrl
+                          ? "none"
+                          : "flex",
+                      }}
+                    >
+                      <span className="text-lg font-medium">
+                        {(
+                          application.applicant?.firstName ||
+                          application.applicant?.username
+                        )
+                          ?.charAt(0)
+                          ?.toUpperCase() || "?"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
 
-  <div className="flex-1 min-w-0">
-    <h4 className="font-medium text-base-content">
-      {application.applicant?.firstName && application.applicant?.lastName
-        ? `${application.applicant.firstName} ${application.applicant.lastName}`
-        : application.applicant?.username || "Unknown User"}
-    </h4>
-    
-    {application.applicant?.username && 
-     application.applicant?.firstName && 
-     application.applicant?.lastName && (
-      <p className="text-sm text-base-content/70">
-        @{application.applicant.username}
-      </p>
-    )}
+                <div className="flex-1 min-w-0">
+                  <h4 className="font-medium text-base-content">
+                    {application.applicant?.firstName &&
+                    application.applicant?.lastName
+                      ? `${application.applicant.firstName} ${application.applicant.lastName}`
+                      : application.applicant?.username || "Unknown User"}
+                  </h4>
 
-    {application.applicant?.bio && (
-      <p className="text-sm text-base-content/70 mt-1 line-clamp-2">
-        {application.applicant.bio}
-      </p>
-    )}
+                  {application.applicant?.username &&
+                    application.applicant?.firstName &&
+                    application.applicant?.lastName && (
+                      <p className="text-sm text-base-content/70">
+                        @{application.applicant.username}
+                      </p>
+                    )}
+                </div>
 
-    {/* Location if available */}
-    {application.applicant?.postalCode && (
-      <LocationDisplay 
-        postalCode={application.applicant.postalCode} 
-        className="text-xs mt-1"
-        showIcon={true}
-        displayType="short"
-      />
-    )}
-  </div>
-</div>
+                {/* Application Date - top right */}
+                <div className="flex items-center text-xs text-base-content/60 flex-shrink-0">
+                  <Calendar size={12} className="mr-1" />
+                  <span>{getApplicationDate(application)}</span>
+                </div>
+              </div>
+
+              {/* Bio if available */}
+              {application.applicant?.bio && (
+                <div className="mb-5 text-sm text-base-content/80">
+                  <p className="line-clamp-2">{application.applicant.bio}</p>
+                </div>
+              )}
 
               {/* Application Message */}
-              <div className="bg-base-100 rounded-lg p-3 mb-4">
-                <h5 className="font-medium text-sm text-base-content/80 mb-2">
-                  Application Message:
-                </h5>
-                <p className="text-base-content whitespace-pre-wrap text-sm">
+              <div className="mb-5">
+                <p className="text-xs text-base-content/60 mb-1 flex items-center">
+                  <Mail size={12} className="text-pink-500 mr-1" />
+                  Application message:
+                </p>
+                <p className="text-sm text-base-content/90">
                   {application.message || "No message provided."}
                 </p>
               </div>
@@ -272,12 +314,11 @@ if (applications.length > 0) {
                 )}
 
               {/* Response Textarea */}
-              <div className="mb-4">
-                <label className="label">
-                  <span className="label-text text-sm font-medium">
-                    Response message (optional):
-                  </span>
-                </label>
+              <div className="mb-5">
+                <p className="text-xs text-base-content/60 mb-1 flex items-center">
+                  <MessageSquare size={12} className="text-primary mr-1" />
+                  Your response message (optional):
+                </p>
                 <textarea
                   value={responses[application.id] || ""}
                   onChange={(e) =>
