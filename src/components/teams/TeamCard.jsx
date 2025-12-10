@@ -845,6 +845,7 @@ const TeamCard = ({
           teamId={teamData.id}
           applications={pendingApplications}
           onApplicationAction={handleApplicationAction}
+          teamName={team.name}
         />
       )}
 
