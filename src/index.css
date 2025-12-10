@@ -18,14 +18,14 @@
   --color-badge-personal: #f59e0b; /* Yellow */
 
   /* Team Role Badge Colors - Light backgrounds with lighter text */
---color-role-owner-bg: #e86a86;     
---color-role-owner-text: #fce8ec;     
+  --color-role-owner-bg: #e86a86;
+  --color-role-owner-text: #fce8ec;
 
---color-role-admin-bg: #9a8ef0;      
---color-role-admin-text: #ede9fe;    
+  --color-role-admin-bg: #9a8ef0;
+  --color-role-admin-text: #ede9fe;
 
---color-role-member-bg: #33a742;     
---color-role-member-text: #dcfce7;   
+  --color-role-member-bg: #33a742;
+  --color-role-member-text: #dcfce7;
 
   /* UI Colors */
   --color-background: #ffffff;
@@ -317,7 +317,6 @@ body {
   border: none;
 }
 
-
 /* Neon Effect */
 .neon {
   color: var(--color-primary);
@@ -353,7 +352,6 @@ body {
 .shadow-card {
   box-shadow: var(--shadow-card);
 }
-
 
 /* Chat styles */
 .chat-active {
@@ -431,6 +429,8 @@ body {
   border-left-color: transparent !important;
 }
 
+/* Button Success Outline Style */
+
 .btn.btn-success-outline.btn-outline {
   background-color: #f0fdf4 !important; /* green-50 */
   color: var(--color-primary) !important;
@@ -445,3 +445,22 @@ body {
   background-image: none !important;
 }
 
+/* Button Error Outline Style - Using existing color variables */
+.btn.btn-error-outline.btn-outline {
+  background-color: var(
+    --color-role-owner-text
+  ) !important; /* light pink #fce8ec */
+  color: var(--color-error) !important; /* darker red/pink #df385b */
+  border: 1px solid var(--color-error) !important;
+  background-image: none !important;
+  box-shadow: none !important;
+}
+
+.btn.btn-error-outline.btn-outline:hover {
+  background-color: #f9d5dc !important; /* slightly darker pink */
+  color: var(--color-error) !important; /* same darker red/pink #df385b */
+  border-color: var(--color-error) !important;
+  background-image: none !important;
+  box-shadow: 0 0.5px 0 0.5px oklch(100% 0 0 / calc(var(--depth) * 6%)) inset,
+    0 1px 2px 0 rgba(223, 56, 91, 0.4) !important; /* #df385b with opacity */
+}

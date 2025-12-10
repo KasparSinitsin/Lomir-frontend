@@ -172,7 +172,7 @@ const TeamApplicationsModal = ({
           actions={
             <div className="flex justify-end space-x-2">
               <Button
-                variant="error"
+                variant="errorOutline"
                 size="sm"
                 onClick={() =>
                   handleApplicationAction(

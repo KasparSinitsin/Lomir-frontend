@@ -26,7 +26,10 @@ const Button = ({
     success: 'btn-success',
     warning: 'btn-warning',
     info: 'btn-info',
+    // Light green background with green border/text (like member cards)
     successOutline: 'btn-outline btn-primary btn-success-outline',
+    // Light red background with red border/text (for decline/cancel actions)
+    errorOutline: 'btn-outline btn-primary btn-error-outline',
   };
   
   const sizeClasses = {
