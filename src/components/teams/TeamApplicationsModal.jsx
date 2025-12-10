@@ -187,7 +187,7 @@ const TeamApplicationsModal = ({
                 Decline
               </Button>
               <Button
-                variant="success"
+                variant="successOutline"
                 size="sm"
                 onClick={() =>
                   handleApplicationAction(

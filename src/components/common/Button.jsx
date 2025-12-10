@@ -26,6 +26,7 @@ const Button = ({
     success: 'btn-success',
     warning: 'btn-warning',
     info: 'btn-info',
+    successOutline: 'btn-outline btn-primary btn-success-outline',
   };
   
   const sizeClasses = {
