@@ -406,7 +406,7 @@ const TeamInvitesModal = ({
 
                   {/* Action Button - right side */}
                   <Button
-                    variant="error"
+                    variant="errorOutline"
                     size="sm"
                     onClick={() => handleCancelInvitation(invitation.id)}
                     disabled={loading}
