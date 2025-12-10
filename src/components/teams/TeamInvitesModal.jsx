@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { X, User, MapPin, Calendar, MessageSquare } from "lucide-react";
+import { X, User, MapPin, Calendar, SendHorizontal } from "lucide-react";
 import Modal from "../common/Modal";
 import Button from "../common/Button";
 import Alert from "../common/Alert";
@@ -330,7 +330,7 @@ const TeamInvitesModal = ({
                 {invitation.message && (
                   <div className="mb-5">
                     <p className="text-xs text-base-content/60 mb-1 flex items-center">
-                      <MessageSquare size={12} className="text-info mr-1" />
+                      <SendHorizontal size={12} className="text-info mr-1" />
                       Invitation message:
                     </p>
                     <p className="text-sm text-base-content/90">
