@@ -121,71 +121,82 @@ const MyTeams = () => {
   };
 
   // Invitation handlers
-const handleInvitationAccept = async (invitationId, responseMessage = "") => {
-  try {
-    await teamService.respondToInvitation(invitationId, "accept", responseMessage);
-    
-    // Show success message (if you have a toast/alert system)
-    console.log("Invitation accepted successfully");
-    
-    // Refresh the data
-    fetchPendingInvitations();
-    fetchUserTeams();
-  } catch (error) {
-    console.error("Error accepting invitation:", error);
-    // Handle error (show alert, etc.)
+  const handleInvitationAccept = async (invitationId, responseMessage = "") => {
+    try {
+      await teamService.respondToInvitation(
+        invitationId,
+        "accept",
+        responseMessage
+      );
+
+      // Show success message (if you have a toast/alert system)
+      console.log("Invitation accepted successfully");
+
+      // Refresh the data
+      fetchPendingInvitations();
+      fetchUserTeams();
+    } catch (error) {
+      console.error("Error accepting invitation:", error);
+      // Handle error (show alert, etc.)
+    }
+  };
+
+  const handleInvitationDecline = async (
+    invitationId,
+    responseMessage = ""
+  ) => {
+    try {
+      await teamService.respondToInvitation(
+        invitationId,
+        "decline",
+        responseMessage
+      );
+
+      // Show success message
+      console.log("Invitation declined");
+
+      // Refresh the data
+      fetchPendingInvitations();
+    } catch (error) {
+      console.error("Error declining invitation:", error);
+      // Handle error
+    }
+  };
+
+  if (loading && loadingApplications) {
+    return (
+      <PageContainer variant="muted">
+        <div className="flex justify-center items-center h-64">
+          <div className="loading loading-spinner loading-lg text-primary"></div>
+        </div>
+      </PageContainer>
+    );
   }
-};
 
-const handleInvitationDecline = async (invitationId, responseMessage = "") => {
-  try {
-    await teamService.respondToInvitation(invitationId, "decline", responseMessage);
-    
-    // Show success message
-    console.log("Invitation declined");
-    
-    // Refresh the data
-    fetchPendingInvitations();
-  } catch (error) {
-    console.error("Error declining invitation:", error);
-    // Handle error
+  if (error) {
+    return (
+      <PageContainer variant="muted">
+        <div className="alert alert-error">
+          <span>{error}</span>
+        </div>
+      </PageContainer>
+    );
   }
-};
 
-if (loading && loadingApplications) {
-  return (
-    <PageContainer variant="muted">
-      <div className="flex justify-center items-center h-64">
-        <div className="loading loading-spinner loading-lg text-primary"></div>
-      </div>
-    </PageContainer>
+  const CreateTeamAction = (
+    <div className="flex flex-col gap-2 mt-8">
+      <Link to="/teams/create">
+        <Button variant="primary" icon={<Plus size={16} />}>
+          Create New Team
+        </Button>
+      </Link>
+      <Link to="/search">
+        <Button variant="primary" icon={<SearchIcon size={16} />}>
+          Search for Teams
+        </Button>
+      </Link>
+    </div>
   );
-}
-
-if (error) {
-  return (
-    <PageContainer variant="muted">
-      <div className="alert alert-error">
-        <span>{error}</span>
-      </div>
-    </PageContainer>
-  );
-}
-
-const CreateTeamAction = (
-  <div className="flex flex-col gap-2 mt-8">
-    <Link to="/teams/create">
-      <Button variant="primary" icon={<Plus size={16} />}>
-        Create New Team
-      </Button>
-    </Link>
-    <Link to="/search">
-      <Button variant="primary" icon={<SearchIcon size={16} />}>
-        Search for Teams
-      </Button>
-    </Link>
-  </div>
-);
 
   return (
     <PageContainer title="My Teams" action={CreateTeamAction} variant="muted">
