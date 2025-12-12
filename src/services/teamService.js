@@ -400,18 +400,18 @@ export const teamService = {
     }
   },
 
-respondToInvitation: async (invitationId, action, responseMessage = "") => {
-  try {
-    const response = await api.put(`/api/teams/invitations/${invitationId}`, {
-      action,
-      response_message: responseMessage,
-    });
-    return response.data;
-  } catch (error) {
-    console.error(`Error responding to invitation ${invitationId}:`, error);
-    throw error;
-  }
-},
+  respondToInvitation: async (invitationId, action, responseMessage = "") => {
+    try {
+      const response = await api.put(`/api/teams/invitations/${invitationId}`, {
+        action,
+        response_message: responseMessage,
+      });
+      return response.data;
+    } catch (error) {
+      console.error(`Error responding to invitation ${invitationId}:`, error);
+      throw error;
+    }
+  },
 
   cancelInvitation: async (invitationId) => {
     try {

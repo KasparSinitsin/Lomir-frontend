@@ -18,12 +18,14 @@ import {
   Crown,
   ShieldCheck,
   SendHorizontal,
+  Mail,
 } from "lucide-react";
 import TeamDetailsModal from "./TeamDetailsModal";
 import UserDetailsModal from "../users/UserDetailsModal";
 import TeamApplicationDetailsModal from "./TeamApplicationDetailsModal";
 import InvitationNotificationBadge from "./InvitationNotificationBadge";
 import TeamInvitesModal from "./TeamInvitesModal";
+import TeamInvitationDetailsModal from "./TeamInvitationDetailsModal";
 import { teamService } from "../../services/teamService";
 import { useAuth } from "../../contexts/AuthContext";
 import Alert from "../common/Alert";
@@ -142,6 +144,8 @@ const TeamCard = ({
   const [isInvitesModalOpen, setIsInvitesModalOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState(null);
   const [responses, setResponses] = useState({});
+  const [isInvitationDetailsModalOpen, setIsInvitationDetailsModalOpen] =
+    useState(false);
 
   // Check if current user is the owner of the team
   const isOwner =
@@ -211,7 +215,11 @@ const TeamCard = ({
   // Fetch complete team data for tags (only for member variant)
   useEffect(() => {
     const fetchCompleteTeamData = async () => {
-      if (teamData && teamData.id && effectiveVariant === "member") {
+      if (
+        teamData &&
+        teamData.id &&
+        (effectiveVariant === "member" || effectiveVariant === "invitation")
+      ) {
         try {
           if (
             teamData.tags &&
@@ -355,11 +363,11 @@ const TeamCard = ({
   };
 
   const handleResponseChange = (id, response) => {
-  setResponses((prev) => ({
-    ...prev,
-    [id]: response,
-  }));
-};
+    setResponses((prev) => ({
+      ...prev,
+      [id]: response,
+    }));
+  };
 
   const handleModalClose = async () => {
     if (effectiveVariant === "member") {
@@ -477,45 +485,45 @@ const TeamCard = ({
   };
 
   // Invitation variant handlers
-const handleAccept = async () => {
-  if (!onAccept) return;
-  try {
-    setActionLoading("accept");
-    const invitationId = invitation?.id;
-    const responseMessage = responses[invitationId] || "";
-    await onAccept(invitationId, responseMessage);
-    // Clear the response after successful action
-    setResponses((prev) => {
-      const newResponses = { ...prev };
-      delete newResponses[invitationId];
-      return newResponses;
-    });
-  } catch (error) {
-    console.error("Error accepting invitation:", error);
-  } finally {
-    setActionLoading(null);
-  }
-};
+  const handleAccept = async () => {
+    if (!onAccept) return;
+    try {
+      setActionLoading("accept");
+      const invitationId = invitation?.id;
+      const responseMessage = responses[invitationId] || "";
+      await onAccept(invitationId, responseMessage);
+      // Clear the response after successful action
+      setResponses((prev) => {
+        const newResponses = { ...prev };
+        delete newResponses[invitationId];
+        return newResponses;
+      });
+    } catch (error) {
+      console.error("Error accepting invitation:", error);
+    } finally {
+      setActionLoading(null);
+    }
+  };
 
-const handleDecline = async () => {
-  if (!onDecline) return;
-  try {
-    setActionLoading("decline");
-    const invitationId = invitation?.id;
-    const responseMessage = responses[invitationId] || "";
-    await onDecline(invitationId, responseMessage);
-    // Clear the response after successful action
-    setResponses((prev) => {
-      const newResponses = { ...prev };
-      delete newResponses[invitationId];
-      return newResponses;
-    });
-  } catch (error) {
-    console.error("Error declining invitation:", error);
-  } finally {
-    setActionLoading(null);
-  }
-};
+  const handleDecline = async () => {
+    if (!onDecline) return;
+    try {
+      setActionLoading("decline");
+      const invitationId = invitation?.id;
+      const responseMessage = responses[invitationId] || "";
+      await onDecline(invitationId, responseMessage);
+      // Clear the response after successful action
+      setResponses((prev) => {
+        const newResponses = { ...prev };
+        delete newResponses[invitationId];
+        return newResponses;
+      });
+    } catch (error) {
+      console.error("Error declining invitation:", error);
+    } finally {
+      setActionLoading(null);
+    }
+  };
 
   // ============ Render Helpers ============
 
@@ -534,123 +542,54 @@ const handleDecline = async () => {
           </div>
         )}
 
-        {/* Date badge */}
-        {formattedDate &&
-          (effectiveVariant === "application" ||
-            effectiveVariant === "invitation") && (
-            <div className="flex items-center text-sm text-base-content/70">
-              <Calendar size={14} className="mr-1" />
-              <span className="flex items-center">
-                {effectiveVariant === "invitation" ? "Invited" : "Applied"}{" "}
-                {formattedDate}
-                {effectiveVariant === "invitation" &&
-                  normalizedData.inviter && (
+        {/* Date badge - application variant only */}
+        {formattedDate && effectiveVariant === "application" && (
+          <div className="flex items-center text-sm text-base-content/70 bg-base-200/50 py-1 px-2 rounded-full">
+            <Calendar size={14} className="mr-1" />
+            <span>Applied {formattedDate}</span>
+          </div>
+        )}
+
+        {/* Tags display (member variant only) */}
+        {(effectiveVariant === "member" || effectiveVariant === "invitation") &&
+          displayTags.length > 0 && (
+            <div className="flex items-start text-sm text-base-content/70">
+              <Tag size={16} className="mr-1 flex-shrink-0 mt-0.5" />
+              <span>
+                {(() => {
+                  const maxVisible = 5;
+                  const visibleTags = displayTags.slice(0, maxVisible);
+                  const remainingCount = displayTags.length - maxVisible;
+
+                  return (
                     <>
-                      {" by "}
-                      <span className="inline-flex items-center ml-1">
-                        <div
-                          className="avatar cursor-pointer hover:opacity-80 transition-opacity mr-1"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleUserClick(normalizedData.inviter.id);
-                          }}
-                          title="View profile"
-                        >
-                          <div className="w-4 h-4 rounded-full relative">
-                            {normalizedData.inviter.avatar_url ||
-                            normalizedData.inviter.avatarUrl ? (
-                              <img
-                                src={
-                                  normalizedData.inviter.avatar_url ||
-                                  normalizedData.inviter.avatarUrl
-                                }
-                                alt={
-                                  normalizedData.inviter.username || "Inviter"
-                                }
-                                className="object-cover w-full h-full rounded-full"
-                              />
-                            ) : (
-                              <div
-                                className="bg-primary text-primary-content flex items-center justify-center w-full h-full rounded-full"
-                                style={{ fontSize: "8px" }}
-                              >
-                                <span className="font-medium">
-                                  {(() => {
-                                    const firstName =
-                                      normalizedData.inviter.first_name ||
-                                      normalizedData.inviter.firstName;
-                                    const lastName =
-                                      normalizedData.inviter.last_name ||
-                                      normalizedData.inviter.lastName;
-                                    if (firstName && lastName) {
-                                      return `${firstName.charAt(
-                                        0
-                                      )}${lastName.charAt(0)}`.toUpperCase();
-                                    }
-                                    if (firstName)
-                                      return firstName.charAt(0).toUpperCase();
-                                    if (normalizedData.inviter.username)
-                                      return normalizedData.inviter.username
-                                        .charAt(0)
-                                        .toUpperCase();
-                                    return "?";
-                                  })()}
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                        <span
-                          className="font-semibold cursor-pointer hover:text-primary transition-colors"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleUserClick(normalizedData.inviter.id);
-                          }}
-                          title="View profile"
-                        >
-                          {normalizedData.inviter.first_name &&
-                          normalizedData.inviter.last_name
-                            ? `${normalizedData.inviter.first_name} ${normalizedData.inviter.last_name}`
-                            : normalizedData.inviter.firstName &&
-                              normalizedData.inviter.lastName
-                            ? `${normalizedData.inviter.firstName} ${normalizedData.inviter.lastName}`
-                            : normalizedData.inviter.username || "Unknown"}
-                        </span>
-                      </span>
+                      {visibleTags.map((tag, index) => {
+                        const tagName =
+                          typeof tag === "string"
+                            ? tag
+                            : tag.name || tag.tag || "";
+                        return (
+                          <span key={index}>
+                            {index > 0 ? ", " : ""}
+                            {tagName}
+                          </span>
+                        );
+                      })}
+                      {remainingCount > 0 && ` +${remainingCount}`}
                     </>
-                  )}
+                  );
+                })()}
               </span>
             </div>
           )}
 
-        {/* Tags display (member variant only) */}
-        {effectiveVariant === "member" && displayTags.length > 0 && (
-          <div className="flex items-start text-sm text-base-content/70">
-            <Tag size={16} className="mr-1 flex-shrink-0 mt-0.5" />
+        {/* Date badge with inviter - invitation variant */}
+        {formattedDate && effectiveVariant === "invitation" && (
+          <div className="flex items-center text-sm text-base-content/70">
+            <Calendar size={14} className="mr-1" />
             <span>
-              {(() => {
-                const maxVisible = 5;
-                const visibleTags = displayTags.slice(0, maxVisible);
-                const remainingCount = displayTags.length - maxVisible;
-
-                return (
-                  <>
-                    {visibleTags.map((tag, index) => {
-                      const tagName =
-                        typeof tag === "string"
-                          ? tag
-                          : tag.name || tag.tag || "";
-                      return (
-                        <span key={index}>
-                          {index > 0 ? ", " : ""}
-                          {tagName}
-                        </span>
-                      );
-                    })}
-                    {remainingCount > 0 && ` +${remainingCount}`}
-                  </>
-                );
-              })()}
+              Invited {formattedDate}
+              {normalizedData.inviter && <></>}
             </span>
           </div>
         )}
@@ -709,16 +648,14 @@ const handleDecline = async () => {
 
   const renderMessage = () => {
     if (!normalizedData.message) return null;
-    if (effectiveVariant !== "invitation" && effectiveVariant !== "application")
-      return null;
+    // Only show message preview for application variant (invitation message is in modal now)
+    if (effectiveVariant !== "application") return null;
 
     return (
       <div className="mb-4">
         <p className="text-xs text-base-content/60 mb-1 flex items-center">
           <SendHorizontal size={12} className="text-info mr-1" />
-          {effectiveVariant === "invitation"
-            ? "Invitation message:"
-            : "Application message:"}
+          Application message:
         </p>
         <p className="text-sm text-base-content/90 line-clamp-2">
           {normalizedData.message}
@@ -727,52 +664,22 @@ const handleDecline = async () => {
     );
   };
 
-  const renderResponseTextarea = () => {
-  if (effectiveVariant !== "invitation") return null;
-
-  const invitationId = invitation?.id;
-
-  return (
-    <div className="mb-4">
-      <p className="text-xs text-base-content/60 mb-1 flex items-center">
-        <MessageSquare size={12} className="text-primary mr-1" />
-        Your response message (optional):
-      </p>
-<textarea
-  value={responses[invitationId] || ""}
-  onChange={(e) => handleResponseChange(invitationId, e.target.value)}
-  className="textarea textarea-bordered textarea-sm w-full h-20 resize-none text-sm"
-  placeholder="Add a personal message to your decision..."
-  disabled={loading || actionLoading !== null}
-  onClick={(e) => e.stopPropagation()}
-  onKeyDown={(e) => e.stopPropagation()}
-/>
-    </div>
-  );
-};
-
   const renderActionButtons = () => {
     // Invitation variant: Accept / Decline
+    // Invitation variant: View Invite Details & Respond button
     if (effectiveVariant === "invitation") {
       return (
-        <div className="flex gap-3">
+        <div className="mt-auto">
           <Button
             variant="primary"
-            className="flex-1"
-            onClick={handleAccept}
-            disabled={loading || actionLoading !== null}
-            icon={<Check size={16} />}
+            className="w-full"
+            icon={<Mail size={16} />}
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsInvitationDetailsModalOpen(true);
+            }}
           >
-            {actionLoading === "accept" ? "Accepting..." : "Accept"}
-          </Button>
-          <Button
-            variant="ghost"
-            className="flex-1 hover:bg-red-100 hover:text-red-700"
-            onClick={handleDecline}
-            disabled={loading || actionLoading !== null}
-            icon={<X size={16} />}
-          >
-            {actionLoading === "decline" ? "Declining..." : "Decline"}
+            Open Invite to Respond
           </Button>
         </div>
       );
@@ -947,11 +854,8 @@ const handleDecline = async () => {
         {/* Badges (status, date, tags, etc.) */}
         {renderBadges()}
 
-{/* Message preview (invitation/application variants) */}
-{renderMessage()}
-
-{/* Response textarea (invitation variant only) */}
-{renderResponseTextarea()}
+        {/* Message preview (invitation/application variants) */}
+        {renderMessage()}
 
         {/* Action buttons */}
         {renderActionButtons()}
@@ -977,7 +881,7 @@ const handleDecline = async () => {
           teamId={teamData.id}
           applications={pendingApplications}
           onApplicationAction={handleApplicationAction}
-          teamName={team.name}
+          teamName={teamData.name}
         />
       )}
 
@@ -992,7 +896,18 @@ const handleDecline = async () => {
           }}
           invitations={pendingSentInvitations}
           onCancelInvitation={handleCancelInvitation}
-          teamName={team.name}
+          teamName={teamData.name}
+        />
+      )}
+
+      {/* Invitation Details Modal */}
+      {effectiveVariant === "invitation" && (
+        <TeamInvitationDetailsModal
+          isOpen={isInvitationDetailsModalOpen}
+          invitation={invitation}
+          onClose={() => setIsInvitationDetailsModalOpen(false)}
+          onAccept={onAccept}
+          onDecline={onDecline}
         />
       )}
 
