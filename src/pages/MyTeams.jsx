@@ -121,39 +121,36 @@ const MyTeams = () => {
   };
 
   // Invitation handlers
-  const handleInvitationAccept = async (invitationId) => {
-    try {
-      await teamService.respondToInvitation(invitationId, "accept");
-      fetchUserTeams();
-      fetchPendingInvitations();
-    } catch (error) {
-      console.error("Error accepting invitation:", error);
-    }
-  };
+const handleInvitationAccept = async (invitationId, responseMessage = "") => {
+  try {
+    await teamService.respondToInvitation(invitationId, "accept", responseMessage);
+    
+    // Show success message (if you have a toast/alert system)
+    console.log("Invitation accepted successfully");
+    
+    // Refresh the data
+    fetchPendingInvitations();
+    fetchUserTeams();
+  } catch (error) {
+    console.error("Error accepting invitation:", error);
+    // Handle error (show alert, etc.)
+  }
+};
 
-  const handleInvitationDecline = async (invitationId) => {
-    try {
-      await teamService.respondToInvitation(invitationId, "decline");
-      fetchPendingInvitations();
-    } catch (error) {
-      console.error("Error declining invitation:", error);
-    }
-  };
-
-  const CreateTeamAction = (
-    <div className="flex flex-col gap-2 mt-8">
-      <Link to="/teams/create">
-        <Button variant="primary" icon={<Plus size={16} />}>
-          Create New Team
-        </Button>
-      </Link>
-      <Link to="/search">
-        <Button variant="primary" icon={<SearchIcon size={16} />}>
-          Search for Teams
-        </Button>
-      </Link>
-    </div>
-  );
+const handleInvitationDecline = async (invitationId, responseMessage = "") => {
+  try {
+    await teamService.respondToInvitation(invitationId, "decline", responseMessage);
+    
+    // Show success message
+    console.log("Invitation declined");
+    
+    // Refresh the data
+    fetchPendingInvitations();
+  } catch (error) {
+    console.error("Error declining invitation:", error);
+    // Handle error
+  }
+};
 
 if (loading && loadingApplications) {
   return (
@@ -175,6 +172,20 @@ if (error) {
   );
 }
 
+const CreateTeamAction = (
+  <div className="flex flex-col gap-2 mt-8">
+    <Link to="/teams/create">
+      <Button variant="primary" icon={<Plus size={16} />}>
+        Create New Team
+      </Button>
+    </Link>
+    <Link to="/search">
+      <Button variant="primary" icon={<SearchIcon size={16} />}>
+        Search for Teams
+      </Button>
+    </Link>
+  </div>
+);
 
   return (
     <PageContainer title="My Teams" action={CreateTeamAction} variant="muted">

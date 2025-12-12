@@ -20,6 +20,7 @@ import {
   SendHorizontal,
 } from "lucide-react";
 import TeamDetailsModal from "./TeamDetailsModal";
+import UserDetailsModal from "../users/UserDetailsModal";
 import TeamApplicationDetailsModal from "./TeamApplicationDetailsModal";
 import InvitationNotificationBadge from "./InvitationNotificationBadge";
 import TeamInvitesModal from "./TeamInvitesModal";
@@ -139,6 +140,8 @@ const TeamCard = ({
   const [isApplicationsModalOpen, setIsApplicationsModalOpen] = useState(false);
   const [pendingSentInvitations, setPendingSentInvitations] = useState([]);
   const [isInvitesModalOpen, setIsInvitesModalOpen] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState(null);
+  const [responses, setResponses] = useState({});
 
   // Check if current user is the owner of the team
   const isOwner =
@@ -341,9 +344,22 @@ const TeamCard = ({
 
   // ============ Event Handlers ============
 
+  const handleUserClick = (userId) => {
+    if (userId) {
+      setSelectedUserId(userId);
+    }
+  };
+
   const handleCardClick = () => {
     setIsModalOpen(true);
   };
+
+  const handleResponseChange = (id, response) => {
+  setResponses((prev) => ({
+    ...prev,
+    [id]: response,
+  }));
+};
 
   const handleModalClose = async () => {
     if (effectiveVariant === "member") {
@@ -461,25 +477,45 @@ const TeamCard = ({
   };
 
   // Invitation variant handlers
-  const handleAccept = async (e) => {
-    e.stopPropagation();
+const handleAccept = async () => {
+  if (!onAccept) return;
+  try {
     setActionLoading("accept");
-    try {
-      if (onAccept) await onAccept(normalizedData.id);
-    } finally {
-      setActionLoading(null);
-    }
-  };
+    const invitationId = invitation?.id;
+    const responseMessage = responses[invitationId] || "";
+    await onAccept(invitationId, responseMessage);
+    // Clear the response after successful action
+    setResponses((prev) => {
+      const newResponses = { ...prev };
+      delete newResponses[invitationId];
+      return newResponses;
+    });
+  } catch (error) {
+    console.error("Error accepting invitation:", error);
+  } finally {
+    setActionLoading(null);
+  }
+};
 
-  const handleDecline = async (e) => {
-    e.stopPropagation();
+const handleDecline = async () => {
+  if (!onDecline) return;
+  try {
     setActionLoading("decline");
-    try {
-      if (onDecline) await onDecline(normalizedData.id);
-    } finally {
-      setActionLoading(null);
-    }
-  };
+    const invitationId = invitation?.id;
+    const responseMessage = responses[invitationId] || "";
+    await onDecline(invitationId, responseMessage);
+    // Clear the response after successful action
+    setResponses((prev) => {
+      const newResponses = { ...prev };
+      delete newResponses[invitationId];
+      return newResponses;
+    });
+  } catch (error) {
+    console.error("Error declining invitation:", error);
+  } finally {
+    setActionLoading(null);
+  }
+};
 
   // ============ Render Helpers ============
 
@@ -490,23 +526,6 @@ const TeamCard = ({
 
     return (
       <div className="flex flex-wrap items-center gap-2 mb-4">
-        {/* Visibility badge (member variant only)
-        {shouldShowVisibilityIcon() && (
-          <div className="flex items-center text-sm text-base-content/70 bg-base-200/50 py-1 px-2 rounded-full">
-            {isPublic ? (
-              <>
-                <EyeIcon size={14} className="mr-1 text-green-600" />
-                <span>Public</span>
-              </>
-            ) : (
-              <>
-                <EyeClosed size={14} className="mr-1 text-grey-600" />
-                <span>Private</span>
-              </>
-            )}
-          </div>
-        )} */}
-
         {/* Application pending badge */}
         {effectiveVariant === "application" && (
           <div className="flex items-center text-sm text-base-content/70 bg-yellow-100 py-1 px-2 rounded-full">
@@ -519,11 +538,87 @@ const TeamCard = ({
         {formattedDate &&
           (effectiveVariant === "application" ||
             effectiveVariant === "invitation") && (
-            <div className="flex items-center text-sm text-base-content/70 bg-base-200/50 py-1 px-2 rounded-full">
+            <div className="flex items-center text-sm text-base-content/70">
               <Calendar size={14} className="mr-1" />
-              <span>
+              <span className="flex items-center">
                 {effectiveVariant === "invitation" ? "Invited" : "Applied"}{" "}
                 {formattedDate}
+                {effectiveVariant === "invitation" &&
+                  normalizedData.inviter && (
+                    <>
+                      {" by "}
+                      <span className="inline-flex items-center ml-1">
+                        <div
+                          className="avatar cursor-pointer hover:opacity-80 transition-opacity mr-1"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleUserClick(normalizedData.inviter.id);
+                          }}
+                          title="View profile"
+                        >
+                          <div className="w-4 h-4 rounded-full relative">
+                            {normalizedData.inviter.avatar_url ||
+                            normalizedData.inviter.avatarUrl ? (
+                              <img
+                                src={
+                                  normalizedData.inviter.avatar_url ||
+                                  normalizedData.inviter.avatarUrl
+                                }
+                                alt={
+                                  normalizedData.inviter.username || "Inviter"
+                                }
+                                className="object-cover w-full h-full rounded-full"
+                              />
+                            ) : (
+                              <div
+                                className="bg-primary text-primary-content flex items-center justify-center w-full h-full rounded-full"
+                                style={{ fontSize: "8px" }}
+                              >
+                                <span className="font-medium">
+                                  {(() => {
+                                    const firstName =
+                                      normalizedData.inviter.first_name ||
+                                      normalizedData.inviter.firstName;
+                                    const lastName =
+                                      normalizedData.inviter.last_name ||
+                                      normalizedData.inviter.lastName;
+                                    if (firstName && lastName) {
+                                      return `${firstName.charAt(
+                                        0
+                                      )}${lastName.charAt(0)}`.toUpperCase();
+                                    }
+                                    if (firstName)
+                                      return firstName.charAt(0).toUpperCase();
+                                    if (normalizedData.inviter.username)
+                                      return normalizedData.inviter.username
+                                        .charAt(0)
+                                        .toUpperCase();
+                                    return "?";
+                                  })()}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <span
+                          className="font-semibold cursor-pointer hover:text-primary transition-colors"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleUserClick(normalizedData.inviter.id);
+                          }}
+                          title="View profile"
+                        >
+                          {normalizedData.inviter.first_name &&
+                          normalizedData.inviter.last_name
+                            ? `${normalizedData.inviter.first_name} ${normalizedData.inviter.last_name}`
+                            : normalizedData.inviter.firstName &&
+                              normalizedData.inviter.lastName
+                            ? `${normalizedData.inviter.firstName} ${normalizedData.inviter.lastName}`
+                            : normalizedData.inviter.username || "Unknown"}
+                        </span>
+                      </span>
+                    </>
+                  )}
               </span>
             </div>
           )}
@@ -572,29 +667,42 @@ const TeamCard = ({
     const firstName = inviter.first_name || inviter.firstName;
     const lastName = inviter.last_name || inviter.lastName;
     const displayName =
-      firstName && lastName ? `${firstName} ${lastName}` : inviter.username;
+      firstName && lastName
+        ? `${firstName} ${lastName}`
+        : inviter.username || "Unknown";
+
+    // Get initials for avatar fallback
+    const getInitials = () => {
+      if (firstName && lastName) {
+        return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
+      }
+      if (firstName) return firstName.charAt(0).toUpperCase();
+      if (inviter.username) return inviter.username.charAt(0).toUpperCase();
+      return "?";
+    };
 
     return (
-      <div className="flex items-center gap-2 mb-4 p-3 bg-base-200 rounded-lg">
-        <div className="avatar">
-          <div className="w-8 h-8 rounded-full">
+      <div className="flex items-center text-xs text-base-content/60 mb-4">
+        <span className="mr-1">Sent by</span>
+        <div className="avatar mr-1">
+          <div className="w-4 h-4 rounded-full relative">
             {avatarUrl ? (
               <img
                 src={avatarUrl}
-                alt={inviter.username}
+                alt={inviter.username || "Inviter"}
                 className="object-cover w-full h-full rounded-full"
               />
             ) : (
-              <div className="bg-secondary text-secondary-content flex items-center justify-center w-full h-full rounded-full">
-                <User size={14} />
+              <div
+                className="bg-primary text-primary-content flex items-center justify-center w-full h-full rounded-full"
+                style={{ fontSize: "8px" }}
+              >
+                <span className="font-medium">{getInitials()}</span>
               </div>
             )}
           </div>
         </div>
-        <div className="text-sm">
-          <span className="text-base-content/70">Invited by </span>
-          <span className="font-medium">{displayName}</span>
-        </div>
+        <span className="font-medium text-base-content/80">{displayName}</span>
       </div>
     );
   };
@@ -605,19 +713,43 @@ const TeamCard = ({
       return null;
 
     return (
-      <div className="mb-4 p-3 bg-base-100 border border-base-300 rounded-lg">
-        <div className="flex items-start gap-2">
-          <MessageSquare
-            size={14}
-            className="text-base-content/50 mt-0.5 flex-shrink-0"
-          />
-          <p className="text-sm text-base-content/80 italic line-clamp-2">
-            "{normalizedData.message}"
-          </p>
-        </div>
+      <div className="mb-4">
+        <p className="text-xs text-base-content/60 mb-1 flex items-center">
+          <SendHorizontal size={12} className="text-info mr-1" />
+          {effectiveVariant === "invitation"
+            ? "Invitation message:"
+            : "Application message:"}
+        </p>
+        <p className="text-sm text-base-content/90 line-clamp-2">
+          {normalizedData.message}
+        </p>
       </div>
     );
   };
+
+  const renderResponseTextarea = () => {
+  if (effectiveVariant !== "invitation") return null;
+
+  const invitationId = invitation?.id;
+
+  return (
+    <div className="mb-4">
+      <p className="text-xs text-base-content/60 mb-1 flex items-center">
+        <MessageSquare size={12} className="text-primary mr-1" />
+        Your response message (optional):
+      </p>
+<textarea
+  value={responses[invitationId] || ""}
+  onChange={(e) => handleResponseChange(invitationId, e.target.value)}
+  className="textarea textarea-bordered textarea-sm w-full h-20 resize-none text-sm"
+  placeholder="Add a personal message to your decision..."
+  disabled={loading || actionLoading !== null}
+  onClick={(e) => e.stopPropagation()}
+  onKeyDown={(e) => e.stopPropagation()}
+/>
+    </div>
+  );
+};
 
   const renderActionButtons = () => {
     // Invitation variant: Accept / Decline
@@ -701,7 +833,7 @@ const TeamCard = ({
               />
             )}
 
-            {/* NEW: Sent invitations badge - owners and admins */}
+            {/* Sent invitations badge - owners and admins */}
             {canManageInvitations && (
               <InvitationNotificationBadge
                 count={pendingSentInvitations.length}
@@ -815,11 +947,11 @@ const TeamCard = ({
         {/* Badges (status, date, tags, etc.) */}
         {renderBadges()}
 
-        {/* Inviter info (invitation variant only) */}
-        {renderInviterInfo()}
+{/* Message preview (invitation/application variants) */}
+{renderMessage()}
 
-        {/* Message preview (invitation/application variants) */}
-        {renderMessage()}
+{/* Response textarea (invitation variant only) */}
+{renderResponseTextarea()}
 
         {/* Action buttons */}
         {renderActionButtons()}
@@ -863,6 +995,13 @@ const TeamCard = ({
           teamName={team.name}
         />
       )}
+
+      {/* User Details Modal (for viewing inviter profile) */}
+      <UserDetailsModal
+        isOpen={!!selectedUserId}
+        userId={selectedUserId}
+        onClose={() => setSelectedUserId(null)}
+      />
     </>
   );
 };
