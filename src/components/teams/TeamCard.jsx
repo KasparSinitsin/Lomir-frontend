@@ -222,7 +222,9 @@ const TeamCard = ({
       if (
         teamData &&
         teamData.id &&
-        (effectiveVariant === "member" || effectiveVariant === "invitation")
+        (effectiveVariant === "member" ||
+          effectiveVariant === "invitation" ||
+          effectiveVariant === "application")
       ) {
         try {
           if (
@@ -233,6 +235,7 @@ const TeamCard = ({
           ) {
             return;
           }
+
           const response = await teamService.getTeamById(teamData.id);
           if (response && response.data) {
             if (response.data.tags && Array.isArray(response.data.tags)) {
@@ -247,6 +250,7 @@ const TeamCard = ({
         }
       }
     };
+
     fetchCompleteTeamData();
   }, [teamData?.id, effectiveVariant]);
 
@@ -563,24 +567,10 @@ const TeamCard = ({
 
     return (
       <div className="flex flex-wrap items-center gap-2 mb-4">
-        {/* Application pending badge */}
-        {effectiveVariant === "application" && (
-          <div className="flex items-center text-sm text-base-content/70 bg-yellow-100 py-1 px-2 rounded-full">
-            <AlertCircle size={14} className="mr-1 text-yellow-600" />
-            <span>Application Pending</span>
-          </div>
-        )}
-
-        {/* Date badge - application variant only */}
-        {formattedDate && effectiveVariant === "application" && (
-          <div className="flex items-center text-sm text-base-content/70 bg-base-200/50 py-1 px-2 rounded-full">
-            <Calendar size={14} className="mr-1" />
-            <span>Applied {formattedDate}</span>
-          </div>
-        )}
-
-        {/* Tags display (member variant only) */}
-        {(effectiveVariant === "member" || effectiveVariant === "invitation") &&
+        {/* Tags display (member / invitation / application) */}
+        {(effectiveVariant === "member" ||
+          effectiveVariant === "invitation" ||
+          effectiveVariant === "application") &&
           displayTags.length > 0 && (
             <div className="flex items-start text-sm text-base-content/70">
               <Tag size={16} className="mr-1 flex-shrink-0 mt-0.5" />
@@ -611,6 +601,14 @@ const TeamCard = ({
               </span>
             </div>
           )}
+
+        {/* Date badge - application variant only */}
+        {formattedDate && effectiveVariant === "application" && (
+          <div className="flex items-center text-sm text-base-content/70">
+            <Calendar size={14} className="mr-1" />
+            <span>Applied {formattedDate}</span>
+          </div>
+        )}
 
         {/* Date badge with inviter - invitation variant */}
         {formattedDate && effectiveVariant === "invitation" && (
@@ -680,17 +678,7 @@ const TeamCard = ({
     // Only show message preview for application variant (invitation message is in modal now)
     if (effectiveVariant !== "application") return null;
 
-    return (
-      <div className="mb-4">
-        <p className="text-xs text-base-content/60 mb-1 flex items-center">
-          <SendHorizontal size={12} className="text-info mr-1" />
-          Application message:
-        </p>
-        <p className="text-sm text-base-content/90 line-clamp-2">
-          {normalizedData.message}
-        </p>
-      </div>
-    );
+    return <div className="mb-4"></div>;
   };
 
   const renderActionButtons = () => {
@@ -714,27 +702,20 @@ const TeamCard = ({
       );
     }
 
-    // Application variant: Send Reminder / Cancel
+    // Application variant: View Application Details button (consistent with invitation variant)
     if (effectiveVariant === "application") {
       return (
-        <div className="flex gap-3">
+        <div className="mt-auto">
           <Button
             variant="primary"
-            className="flex-1"
-            onClick={handleSendReminder}
-            disabled={loading || actionLoading !== null}
-            icon={<Send size={16} />}
+            className="w-full"
+            icon={<SendHorizontal size={16} />}
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsApplicationModalOpen(true);
+            }}
           >
-            {actionLoading === "reminder" ? "Sending..." : "Send Reminder"}
-          </Button>
-          <Button
-            variant="ghost"
-            className="flex-1 hover:bg-red-100 hover:text-red-700"
-            onClick={handleCancelApplication}
-            disabled={loading || actionLoading !== null}
-            icon={<X size={16} />}
-          >
-            {actionLoading === "cancel" ? "Canceling..." : "Cancel Application"}
+            View Application Details
           </Button>
         </div>
       );
@@ -967,6 +948,17 @@ const TeamCard = ({
           onClose={() => setIsInvitationDetailsModalOpen(false)}
           onAccept={onAccept}
           onDecline={onDecline}
+        />
+      )}
+
+      {/* Application Details Modal */}
+      {effectiveVariant === "application" && (
+        <TeamApplicationDetailsModal
+          isOpen={isApplicationModalOpen}
+          application={application}
+          onClose={() => setIsApplicationModalOpen(false)}
+          onCancel={onCancel || onCancelApplication}
+          onSendReminder={onSendReminder}
         />
       )}
 
