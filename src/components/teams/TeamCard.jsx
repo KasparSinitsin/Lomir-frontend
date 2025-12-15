@@ -146,6 +146,8 @@ const TeamCard = ({
   const [responses, setResponses] = useState({});
   const [isInvitationDetailsModalOpen, setIsInvitationDetailsModalOpen] =
     useState(false);
+  const [pendingInvitationForTeam, setPendingInvitationForTeam] =
+    useState(null);
 
   // Check if current user is the owner of the team
   const isOwner =
@@ -245,6 +247,31 @@ const TeamCard = ({
     };
     fetchCompleteTeamData();
   }, [teamData?.id, effectiveVariant]);
+
+  // Check if user has a pending invitation for this team (for search results)
+  useEffect(() => {
+    const checkPendingInvitation = async () => {
+      if (!isSearchResult || !isAuthenticated || !teamData?.id) {
+        return;
+      }
+
+      try {
+        const response = await teamService.getUserReceivedInvitations();
+        const pendingInvitations = response.data || [];
+
+        // Find the invitation for this team (if any)
+        const foundInvitation = pendingInvitations.find(
+          (inv) => inv.team_id === teamData.id || inv.team?.id === teamData.id
+        );
+
+        setPendingInvitationForTeam(foundInvitation || null);
+      } catch (error) {
+        console.error("Error checking pending invitations:", error);
+      }
+    };
+
+    checkPendingInvitation();
+  }, [isSearchResult, isAuthenticated, teamData?.id]);
 
   // ================= GUARD CLAUSE – AFTER ALL HOOKS =================
 
@@ -790,6 +817,17 @@ const TeamCard = ({
               </span>
             )}
 
+            {/* Pending invitation indicator */}
+            {(effectiveVariant === "invitation" ||
+              pendingInvitationForTeam) && (
+              <span
+                className="tooltip tooltip-bottom tooltip-lomir"
+                data-tip="You are invited to this team"
+              >
+                <Mail size={14} className="text-pink-500" />
+              </span>
+            )}
+
             {/* User role - show for member variant when user has a role */}
             {userRole && effectiveVariant === "member" && (
               <span className="flex items-center text-base-content/70">
@@ -871,6 +909,14 @@ const TeamCard = ({
         onLeave={handleLeaveTeam}
         userRole={userRole}
         isFromSearch={isSearchResult || effectiveVariant !== "member"}
+        hasPendingInvitation={
+          effectiveVariant === "invitation" || !!pendingInvitationForTeam
+        }
+        pendingInvitation={
+          effectiveVariant === "invitation"
+            ? invitation
+            : pendingInvitationForTeam
+        }
       />
 
       {/* Applications Modal (for team owners) */}

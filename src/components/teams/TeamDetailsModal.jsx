@@ -19,6 +19,7 @@ import {
   EyeClosed,
   Tag,
   LogOut,
+  Mail,
 } from "lucide-react";
 import IconToggle from "../common/IconToggle";
 import UserDetailsModal from "../users/UserDetailsModal";
@@ -26,6 +27,7 @@ import TagsDisplaySection from "../tags/TagsDisplaySection";
 import { tagService } from "../../services/tagService";
 import RoleBadgeDropdown from "./RoleBadgeDropdown";
 import TeamApplicationModal from "./TeamApplicationModal";
+import TeamInvitationDetailsModal from "./TeamInvitationDetailsModal";
 import TeamMembersSection from "./TeamMembersSection";
 import TeamFocusAreaSection from "./TeamFocusAreaSection";
 import axios from "axios";
@@ -41,7 +43,8 @@ const TeamDetailsModal = ({
   onLeave,
   userRole,
   isFromSearch = false,
-  hasPendingInvitation = false, 
+  hasPendingInvitation = false,
+  pendingInvitation = null,
 }) => {
   const navigate = useNavigate();
   const { id: urlTeamId } = useParams();
@@ -76,7 +79,6 @@ const TeamDetailsModal = ({
   const [internalUserRole, setInternalUserRole] = useState(null);
   const [isPublic, setIsPublic] = useState(false);
 
-  // New state for application modal
   const [isApplicationModalOpen, setIsApplicationModalOpen] = useState(false);
   const [applicationLoading, setApplicationLoading] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState(null);
@@ -84,6 +86,7 @@ const TeamDetailsModal = ({
   const [allTags, setAllTags] = useState([]);
   const [isLeaveDialogOpen, setIsLeaveDialogOpen] = useState(false);
   const [leaveLoading, setLeaveLoading] = useState(false);
+  const [isInvitationModalOpen, setIsInvitationModalOpen] = useState(false);
 
   const fetchTeamDetails = useCallback(
     async (forceRefresh = false) => {
@@ -593,6 +596,62 @@ const TeamDetailsModal = ({
     }
   };
 
+  // Invitation response handlers
+  const handleInvitationAccept = async (invitationId, responseMessage = "") => {
+    try {
+      await teamService.respondToInvitation(
+        invitationId,
+        "accept",
+        responseMessage
+      );
+      setNotification({
+        type: "success",
+        message: "Invitation accepted! You are now a member of this team.",
+      });
+      setIsInvitationModalOpen(false);
+      // Refresh team details to show updated membership
+      await fetchTeamDetails();
+      // Close the modal after a short delay
+      setTimeout(() => {
+        if (onClose) onClose();
+      }, 1500);
+    } catch (error) {
+      console.error("Error accepting invitation:", error);
+      setNotification({
+        type: "error",
+        message: "Failed to accept invitation. Please try again.",
+      });
+    }
+  };
+
+  const handleInvitationDecline = async (
+    invitationId,
+    responseMessage = ""
+  ) => {
+    try {
+      await teamService.respondToInvitation(
+        invitationId,
+        "decline",
+        responseMessage
+      );
+      setNotification({
+        type: "success",
+        message: "Invitation declined.",
+      });
+      setIsInvitationModalOpen(false);
+      // Close the modal after a short delay
+      setTimeout(() => {
+        if (onClose) onClose();
+      }, 1500);
+    } catch (error) {
+      console.error("Error declining invitation:", error);
+      setNotification({
+        type: "error",
+        message: "Failed to decline invitation. Please try again.",
+      });
+    }
+  };
+
   // Check if user can leave (is a member but not the sole owner)
   const canLeaveTeam = useMemo(() => {
     if (!user?.id || !team?.members) return false;
@@ -887,61 +946,72 @@ const TeamDetailsModal = ({
   }, [team, user, isOwner, userRole]);
 
   const renderJoinButton = () => {
-  if (!isAuthenticated) {
-    return null;
-  }
+    if (!isAuthenticated) {
+      return null;
+    }
 
-  // Don't show apply button if user already has a pending invitation
-  if (hasPendingInvitation) {
-    return null;
-  }
+    const isMember = team?.members?.some(
+      (m) => m.user_id === user?.id || m.userId === user?.id
+    );
 
-  const isMember = team?.members?.some(
-    (m) => m.user_id === user?.id || m.userId === user?.id
-  );
-
-  return (
-    <div className="mt-6 border-t border-base-200 pt-4">
-      {isMember ? (
-        <div className="flex items-center gap-2">
-          {/* Send Message to Team Button */}
-          <SendMessageButton
-            type="team"
-            teamId={team?.id}
-            teamName={team?.name}
+    // Show "Open Invite to Respond" button if user has a pending invitation
+    if (hasPendingInvitation && pendingInvitation) {
+      return (
+        <div className="mt-6 border-t border-base-200 pt-4">
+          <Button
             variant="primary"
-            className="flex-1"
+            onClick={() => setIsInvitationModalOpen(true)}
+            className="w-full"
+            icon={<Mail size={16} />}
           >
-            Send Message to Team
-          </SendMessageButton>
-
-          {/* Leave Team Button */}
-          {canLeaveTeam && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setIsLeaveDialogOpen(true)}
-              className="hover:bg-red-100 hover:text-red-700 p-2"
-              aria-label="Leave team"
-              title="Leave team"
-            >
-              <LogOut size={20} />
-            </Button>
-          )}
+            Open Invite to Respond
+          </Button>
         </div>
-      ) : (
-        <Button
-          variant="primary"
-          onClick={handleApplyToJoin}
-          disabled={loading}
-          className="w-full"
-        >
-          Apply to Join Team
-        </Button>
-      )}
-    </div>
-  );
-};
+      );
+    }
+
+    return (
+      <div className="mt-6 border-t border-base-200 pt-4">
+        {isMember ? (
+          <div className="flex items-center gap-2">
+            {/* Send Message to Team Button */}
+            <SendMessageButton
+              type="team"
+              teamId={team?.id}
+              teamName={team?.name}
+              variant="primary"
+              className="flex-1"
+            >
+              Send Message to Team
+            </SendMessageButton>
+
+            {/* Leave Team Button */}
+            {canLeaveTeam && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsLeaveDialogOpen(true)}
+                className="hover:bg-red-100 hover:text-red-700 p-2"
+                aria-label="Leave team"
+                title="Leave team"
+              >
+                <LogOut size={20} />
+              </Button>
+            )}
+          </div>
+        ) : (
+          <Button
+            variant="primary"
+            onClick={handleApplyToJoin}
+            disabled={loading}
+            className="w-full"
+          >
+            Apply to Join Team
+          </Button>
+        )}
+      </div>
+    );
+  };
 
   const renderNotification = () => {
     if (!notification.type || !notification.message) return null;
@@ -1238,6 +1308,17 @@ const TeamDetailsModal = ({
             </Button>
           </div>
         </Modal>
+      )}
+
+      {/* Invitation Details Modal */}
+      {pendingInvitation && (
+        <TeamInvitationDetailsModal
+          isOpen={isInvitationModalOpen}
+          invitation={pendingInvitation}
+          onClose={() => setIsInvitationModalOpen(false)}
+          onAccept={handleInvitationAccept}
+          onDecline={handleInvitationDecline}
+        />
       )}
     </>
   );
