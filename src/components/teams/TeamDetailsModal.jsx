@@ -41,6 +41,7 @@ const TeamDetailsModal = ({
   onLeave,
   userRole,
   isFromSearch = false,
+  hasPendingInvitation = false, 
 }) => {
   const navigate = useNavigate();
   const { id: urlTeamId } = useParams();
@@ -886,56 +887,61 @@ const TeamDetailsModal = ({
   }, [team, user, isOwner, userRole]);
 
   const renderJoinButton = () => {
-    if (!isAuthenticated) {
-      return null;
-    }
+  if (!isAuthenticated) {
+    return null;
+  }
 
-    const isMember = team?.members?.some(
-      (m) => m.user_id === user?.id || m.userId === user?.id
-    );
+  // Don't show apply button if user already has a pending invitation
+  if (hasPendingInvitation) {
+    return null;
+  }
 
-    return (
-      <div className="mt-6 border-t border-base-200 pt-4">
-        {isMember ? (
-          <div className="flex items-center gap-2">
-            {/* Send Message to Team Button */}
-            <SendMessageButton
-              type="team"
-              teamId={team?.id}
-              teamName={team?.name}
-              variant="primary"
-              className="flex-1"
-            >
-              Send Message to Team
-            </SendMessageButton>
+  const isMember = team?.members?.some(
+    (m) => m.user_id === user?.id || m.userId === user?.id
+  );
 
-            {/* Leave Team Button */}
-            {canLeaveTeam && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setIsLeaveDialogOpen(true)}
-                className="hover:bg-red-100 hover:text-red-700 p-2"
-                aria-label="Leave team"
-                title="Leave team"
-              >
-                <LogOut size={20} />
-              </Button>
-            )}
-          </div>
-        ) : (
-          <Button
+  return (
+    <div className="mt-6 border-t border-base-200 pt-4">
+      {isMember ? (
+        <div className="flex items-center gap-2">
+          {/* Send Message to Team Button */}
+          <SendMessageButton
+            type="team"
+            teamId={team?.id}
+            teamName={team?.name}
             variant="primary"
-            onClick={handleApplyToJoin}
-            disabled={loading}
-            className="w-full"
+            className="flex-1"
           >
-            Apply to Join Team
-          </Button>
-        )}
-      </div>
-    );
-  };
+            Send Message to Team
+          </SendMessageButton>
+
+          {/* Leave Team Button */}
+          {canLeaveTeam && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsLeaveDialogOpen(true)}
+              className="hover:bg-red-100 hover:text-red-700 p-2"
+              aria-label="Leave team"
+              title="Leave team"
+            >
+              <LogOut size={20} />
+            </Button>
+          )}
+        </div>
+      ) : (
+        <Button
+          variant="primary"
+          onClick={handleApplyToJoin}
+          disabled={loading}
+          className="w-full"
+        >
+          Apply to Join Team
+        </Button>
+      )}
+    </div>
+  );
+};
 
   const renderNotification = () => {
     if (!notification.type || !notification.message) return null;

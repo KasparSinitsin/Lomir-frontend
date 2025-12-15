@@ -384,6 +384,7 @@ const TeamInvitationDetailsModal = ({
         initialTeamData={team}
         onClose={() => setIsTeamDetailsOpen(false)}
         isFromSearch={true}
+        hasPendingInvitation={true}
       />
 
       {/* User Details Modal */}
