@@ -182,9 +182,9 @@ const TeamCard = ({
     fetchUserRole();
   }, [user, teamData?.id, isSearchResult, effectiveVariant]);
 
-  // Fetch pending applications (only for team owners)
+  // Fetch pending applications (for team owners and admins)
   const fetchPendingApplications = useCallback(async () => {
-    if (isOwner && teamData?.id && effectiveVariant === "member") {
+    if (canManageInvitations && teamData?.id && effectiveVariant === "member") {
       try {
         const response = await teamService.getTeamApplications(teamData.id);
         setPendingApplications(response.data || []);
@@ -782,8 +782,8 @@ const TeamCard = ({
         {/* Team Management Actions (owner and admin) */}
         {isAuthenticated && !isSearchResult && (
           <div className="flex items-center space-x-2 ml-2">
-            {/* Application badge - owners only */}
-            {isOwner && (
+            {/* Application badge - owners and admins */}
+            {canManageInvitations && (
               <ApplicationNotificationBadge
                 count={pendingApplications.length}
                 onClick={(e) => {
@@ -965,7 +965,7 @@ const TeamCard = ({
         onViewApplicationDetails={() => setIsApplicationModalOpen(true)}
       />
 
-      {/* Applications Modal (for team owners) */}
+      {/* Applications Modal (for team owners and admins) */}
       {effectiveVariant === "member" && (
         <TeamApplicationsModal
           isOpen={isApplicationsModalOpen}
