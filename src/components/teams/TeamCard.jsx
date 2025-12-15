@@ -148,6 +148,8 @@ const TeamCard = ({
     useState(false);
   const [pendingInvitationForTeam, setPendingInvitationForTeam] =
     useState(null);
+  const [pendingApplicationForTeam, setPendingApplicationForTeam] =
+    useState(null);
 
   // Check if current user is the owner of the team
   const isOwner =
@@ -220,7 +222,9 @@ const TeamCard = ({
       if (
         teamData &&
         teamData.id &&
-        (effectiveVariant === "member" || effectiveVariant === "invitation")
+        (effectiveVariant === "member" ||
+          effectiveVariant === "invitation" ||
+          effectiveVariant === "application")
       ) {
         try {
           if (
@@ -231,6 +235,7 @@ const TeamCard = ({
           ) {
             return;
           }
+
           const response = await teamService.getTeamById(teamData.id);
           if (response && response.data) {
             if (response.data.tags && Array.isArray(response.data.tags)) {
@@ -245,28 +250,54 @@ const TeamCard = ({
         }
       }
     };
+
     fetchCompleteTeamData();
   }, [teamData?.id, effectiveVariant]);
 
-  // Check if user has a pending invitation for this team (for search results)
+  // Check if user has a pending application for this team (for search results)
   useEffect(() => {
-    const checkPendingInvitation = async () => {
+    const checkPendingApplication = async () => {
       if (!isSearchResult || !isAuthenticated || !teamData?.id) {
         return;
       }
 
       try {
+        const response = await teamService.getUserPendingApplications();
+        const pendingApplications = response.data || [];
+
+        // Find the application for this team (if any)
+        const foundApplication = pendingApplications.find(
+          (app) => app.team?.id === teamData.id || app.team_id === teamData.id
+        );
+
+        setPendingApplicationForTeam(foundApplication || null);
+      } catch (error) {
+        console.error("Error checking pending applications:", error);
+      }
+    };
+
+    checkPendingApplication();
+  }, [isSearchResult, isAuthenticated, teamData?.id]);
+
+  // Check if user has a pending invitation for this team (for search results)
+  useEffect(() => {
+    const checkPendingInvitation = async () => {
+      if (!isSearchResult || !isAuthenticated || !teamData?.id) return;
+
+      try {
+        // IMPORTANT: use whatever your actual service method is called
+        // Common naming pattern (matching getUserPendingApplications):
         const response = await teamService.getUserReceivedInvitations();
         const pendingInvitations = response.data || [];
 
-        // Find the invitation for this team (if any)
         const foundInvitation = pendingInvitations.find(
-          (inv) => inv.team_id === teamData.id || inv.team?.id === teamData.id
+          (inv) => inv.team?.id === teamData.id || inv.team_id === teamData.id
         );
 
         setPendingInvitationForTeam(foundInvitation || null);
       } catch (error) {
         console.error("Error checking pending invitations:", error);
+        setPendingInvitationForTeam(null);
       }
     };
 
@@ -561,24 +592,10 @@ const TeamCard = ({
 
     return (
       <div className="flex flex-wrap items-center gap-2 mb-4">
-        {/* Application pending badge */}
-        {effectiveVariant === "application" && (
-          <div className="flex items-center text-sm text-base-content/70 bg-yellow-100 py-1 px-2 rounded-full">
-            <AlertCircle size={14} className="mr-1 text-yellow-600" />
-            <span>Application Pending</span>
-          </div>
-        )}
-
-        {/* Date badge - application variant only */}
-        {formattedDate && effectiveVariant === "application" && (
-          <div className="flex items-center text-sm text-base-content/70 bg-base-200/50 py-1 px-2 rounded-full">
-            <Calendar size={14} className="mr-1" />
-            <span>Applied {formattedDate}</span>
-          </div>
-        )}
-
-        {/* Tags display (member variant only) */}
-        {(effectiveVariant === "member" || effectiveVariant === "invitation") &&
+        {/* Tags display (member / invitation / application) */}
+        {(effectiveVariant === "member" ||
+          effectiveVariant === "invitation" ||
+          effectiveVariant === "application") &&
           displayTags.length > 0 && (
             <div className="flex items-start text-sm text-base-content/70">
               <Tag size={16} className="mr-1 flex-shrink-0 mt-0.5" />
@@ -609,6 +626,14 @@ const TeamCard = ({
               </span>
             </div>
           )}
+
+        {/* Date badge - application variant only */}
+        {formattedDate && effectiveVariant === "application" && (
+          <div className="flex items-center text-sm text-base-content/70">
+            <Calendar size={14} className="mr-1" />
+            <span>Applied {formattedDate}</span>
+          </div>
+        )}
 
         {/* Date badge with inviter - invitation variant */}
         {formattedDate && effectiveVariant === "invitation" && (
@@ -678,23 +703,31 @@ const TeamCard = ({
     // Only show message preview for application variant (invitation message is in modal now)
     if (effectiveVariant !== "application") return null;
 
-    return (
-      <div className="mb-4">
-        <p className="text-xs text-base-content/60 mb-1 flex items-center">
-          <SendHorizontal size={12} className="text-info mr-1" />
-          Application message:
-        </p>
-        <p className="text-sm text-base-content/90 line-clamp-2">
-          {normalizedData.message}
-        </p>
-      </div>
-    );
+    return <div className="mb-4"></div>;
   };
 
   const renderActionButtons = () => {
-    // Invitation variant: Accept / Decline
-    // Invitation variant: View Invite Details & Respond button
-    if (effectiveVariant === "invitation") {
+    // If user has a pending invitation (search or invitation variant)
+
+    // Search page: always show View Details button on the card
+    if (isSearchResult) {
+      return (
+        <div className="mt-auto">
+          <Button
+            variant="primary"
+            className="w-full"
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsModalOpen(true);
+            }}
+          >
+            View Details
+          </Button>
+        </div>
+      );
+    }
+
+    if (effectiveVariant === "invitation" || pendingInvitationForTeam) {
       return (
         <div className="mt-auto">
           <Button
@@ -712,27 +745,20 @@ const TeamCard = ({
       );
     }
 
-    // Application variant: Send Reminder / Cancel
-    if (effectiveVariant === "application") {
+    // If user has a pending application (search or application variant)
+    if (effectiveVariant === "application" || pendingApplicationForTeam) {
       return (
-        <div className="flex gap-3">
+        <div className="mt-auto">
           <Button
             variant="primary"
-            className="flex-1"
-            onClick={handleSendReminder}
-            disabled={loading || actionLoading !== null}
-            icon={<Send size={16} />}
+            className="w-full"
+            icon={<SendHorizontal size={16} />}
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsApplicationModalOpen(true);
+            }}
           >
-            {actionLoading === "reminder" ? "Sending..." : "Send Reminder"}
-          </Button>
-          <Button
-            variant="ghost"
-            className="flex-1 hover:bg-red-100 hover:text-red-700"
-            onClick={handleCancelApplication}
-            disabled={loading || actionLoading !== null}
-            icon={<X size={16} />}
-          >
-            {actionLoading === "cancel" ? "Canceling..." : "Cancel Application"}
+            View Application Details
           </Button>
         </div>
       );
@@ -828,6 +854,17 @@ const TeamCard = ({
               </span>
             )}
 
+            {/* Pending application indicator */}
+            {(effectiveVariant === "application" ||
+              pendingApplicationForTeam) && (
+              <span
+                className="tooltip tooltip-bottom tooltip-lomir"
+                data-tip="You applied to join this team"
+              >
+                <SendHorizontal size={14} className="text-info" />
+              </span>
+            )}
+
             {/* User role - show for member variant when user has a role */}
             {userRole && effectiveVariant === "member" && (
               <span className="flex items-center text-base-content/70">
@@ -917,6 +954,15 @@ const TeamCard = ({
             ? invitation
             : pendingInvitationForTeam
         }
+        hasPendingApplication={
+          effectiveVariant === "application" || !!pendingApplicationForTeam
+        }
+        pendingApplication={
+          effectiveVariant === "application"
+            ? application
+            : pendingApplicationForTeam
+        }
+        onViewApplicationDetails={() => setIsApplicationModalOpen(true)}
       />
 
       {/* Applications Modal (for team owners) */}
@@ -946,14 +992,33 @@ const TeamCard = ({
         />
       )}
 
-      {/* Invitation Details Modal */}
-      {effectiveVariant === "invitation" && (
-        <TeamInvitationDetailsModal
-          isOpen={isInvitationDetailsModalOpen}
-          invitation={invitation}
-          onClose={() => setIsInvitationDetailsModalOpen(false)}
-          onAccept={onAccept}
-          onDecline={onDecline}
+      {isInvitationDetailsModalOpen &&
+        (invitation || pendingInvitationForTeam) && (
+          <TeamInvitationDetailsModal
+            isOpen={isInvitationDetailsModalOpen}
+            invitation={
+              effectiveVariant === "invitation"
+                ? invitation
+                : pendingInvitationForTeam
+            }
+            onClose={() => setIsInvitationDetailsModalOpen(false)}
+            onAccept={onAccept}
+            onDecline={onDecline}
+          />
+        )}
+
+      {/* Application Details Modal (works for application-variant AND search results with pendingApplicationForTeam) */}
+      {isApplicationModalOpen && (application || pendingApplicationForTeam) && (
+        <TeamApplicationDetailsModal
+          isOpen={isApplicationModalOpen}
+          application={
+            effectiveVariant === "application"
+              ? application
+              : pendingApplicationForTeam
+          }
+          onClose={() => setIsApplicationModalOpen(false)}
+          onCancel={onCancel || onCancelApplication}
+          onSendReminder={onSendReminder}
         />
       )}
 
