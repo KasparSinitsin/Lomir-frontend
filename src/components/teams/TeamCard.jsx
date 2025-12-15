@@ -148,6 +148,8 @@ const TeamCard = ({
     useState(false);
   const [pendingInvitationForTeam, setPendingInvitationForTeam] =
     useState(null);
+  const [pendingApplicationForTeam, setPendingApplicationForTeam] =
+    useState(null);
 
   // Check if current user is the owner of the team
   const isOwner =
@@ -248,29 +250,29 @@ const TeamCard = ({
     fetchCompleteTeamData();
   }, [teamData?.id, effectiveVariant]);
 
-  // Check if user has a pending invitation for this team (for search results)
+  // Check if user has a pending application for this team (for search results)
   useEffect(() => {
-    const checkPendingInvitation = async () => {
+    const checkPendingApplication = async () => {
       if (!isSearchResult || !isAuthenticated || !teamData?.id) {
         return;
       }
 
       try {
-        const response = await teamService.getUserReceivedInvitations();
-        const pendingInvitations = response.data || [];
+        const response = await teamService.getUserPendingApplications();
+        const pendingApplications = response.data || [];
 
-        // Find the invitation for this team (if any)
-        const foundInvitation = pendingInvitations.find(
-          (inv) => inv.team_id === teamData.id || inv.team?.id === teamData.id
+        // Find the application for this team (if any)
+        const foundApplication = pendingApplications.find(
+          (app) => app.team?.id === teamData.id || app.team_id === teamData.id
         );
 
-        setPendingInvitationForTeam(foundInvitation || null);
+        setPendingApplicationForTeam(foundApplication || null);
       } catch (error) {
-        console.error("Error checking pending invitations:", error);
+        console.error("Error checking pending applications:", error);
       }
     };
 
-    checkPendingInvitation();
+    checkPendingApplication();
   }, [isSearchResult, isAuthenticated, teamData?.id]);
 
   // ================= GUARD CLAUSE – AFTER ALL HOOKS =================
@@ -829,7 +831,8 @@ const TeamCard = ({
             )}
 
             {/* Pending application indicator */}
-            {effectiveVariant === "application" && (
+            {(effectiveVariant === "application" ||
+              pendingApplicationForTeam) && (
               <span
                 className="tooltip tooltip-bottom tooltip-lomir"
                 data-tip="You applied to join this team"
