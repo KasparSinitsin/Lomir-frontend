@@ -81,17 +81,7 @@ const TeamApplicationDetailsModal = ({
     return max === null || max === undefined ? "∞" : max;
   };
 
-  // Get owner (receiver) display info
-  const getOwnerName = () => {
-    const firstName = owner.first_name || owner.firstName;
-    const lastName = owner.last_name || owner.lastName;
-
-    if (firstName && lastName) {
-      return `${firstName} ${lastName}`;
-    }
-    return owner.username || "Team Owner";
-  };
-
+  // Get owner (receiver) initials - consistent with inviter pattern
   const getOwnerInitials = () => {
     const firstName = owner.first_name || owner.firstName;
     const lastName = owner.last_name || owner.lastName;
@@ -174,6 +164,7 @@ const TeamApplicationDetailsModal = ({
   );
 
   // Footer with "Received by" (left) and buttons (right)
+  // Owner display now matches the inviter display pattern in TeamInvitationDetailsModal
   const footer = (
     <div className="flex items-center justify-between gap-3">
       {/* Received by (left) */}
@@ -190,7 +181,7 @@ const TeamApplicationDetailsModal = ({
             {getOwnerAvatar() ? (
               <img
                 src={getOwnerAvatar()}
-                alt={getOwnerName()}
+                alt="Owner"
                 className="object-cover w-full h-full rounded-full"
                 onError={(e) => {
                   e.target.style.display = "none";
@@ -214,13 +205,18 @@ const TeamApplicationDetailsModal = ({
           </div>
         </div>
 
-        {/* Owner Name */}
+        {/* Owner Name - consistent with TeamInvitationDetailsModal pattern */}
         <span
           className="font-medium text-base-content/80 cursor-pointer hover:text-primary transition-colors"
           onClick={() => handleUserClick(owner?.id)}
           title="View profile"
         >
-          {getOwnerName()}
+          {(() => {
+            const firstName = owner.first_name || owner.firstName;
+            const lastName = owner.last_name || owner.lastName;
+            const full = `${firstName || ""} ${lastName || ""}`.trim();
+            return full.length > 0 ? full : "Unknown";
+          })()}
         </span>
       </div>
 
