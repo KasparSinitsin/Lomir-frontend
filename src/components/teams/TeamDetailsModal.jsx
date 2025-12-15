@@ -20,6 +20,7 @@ import {
   Tag,
   LogOut,
   Mail,
+  SendHorizontal
 } from "lucide-react";
 import IconToggle from "../common/IconToggle";
 import UserDetailsModal from "../users/UserDetailsModal";
@@ -45,6 +46,9 @@ const TeamDetailsModal = ({
   isFromSearch = false,
   hasPendingInvitation = false,
   pendingInvitation = null,
+  hasPendingApplication = false,
+  pendingApplication = null,
+  onViewApplicationDetails,
 }) => {
   const navigate = useNavigate();
   const { id: urlTeamId } = useParams();
@@ -56,7 +60,7 @@ const TeamDetailsModal = ({
   );
 
   const [isModalVisible, setIsModalVisible] = useState(isOpen);
-  const [loading, setLoading] = useState(!initialTeamData); // Don't show loading if we have initial data
+  const [loading, setLoading] = useState(!initialTeamData); 
   const [notification, setNotification] = useState({
     type: null,
     message: null,
@@ -945,30 +949,47 @@ const TeamDetailsModal = ({
     );
   }, [team, user, isOwner, userRole]);
 
-  const renderJoinButton = () => {
-    if (!isAuthenticated) {
-      return null;
-    }
+const renderJoinButton = () => {
+  if (!isAuthenticated) return null;
 
-    const isMember = team?.members?.some(
-      (m) => m.user_id === user?.id || m.userId === user?.id
+  const isMember = team?.members?.some(
+    (m) => m.user_id === user?.id || m.userId === user?.id
+  );
+
+  if (hasPendingInvitation && pendingInvitation) {
+    return (
+      <div className="mt-6 border-t border-base-200 pt-4">
+        <Button
+          variant="primary"
+          onClick={() => setIsInvitationModalOpen(true)}
+          className="w-full"
+          icon={<Mail size={16} />}
+        >
+          Open Invite to Respond
+        </Button>
+      </div>
     );
+  }
 
-    // Show "Open Invite to Respond" button if user has a pending invitation
-    if (hasPendingInvitation && pendingInvitation) {
-      return (
-        <div className="mt-6 border-t border-base-200 pt-4">
-          <Button
-            variant="primary"
-            onClick={() => setIsInvitationModalOpen(true)}
-            className="w-full"
-            icon={<Mail size={16} />}
-          >
-            Open Invite to Respond
-          </Button>
-        </div>
-      );
-    }
+  // Pending application CTA
+const hasApp = Boolean(hasPendingApplication || pendingApplication);
+
+if (hasApp) {
+  return (
+    <div className="mt-6 border-t border-base-200 pt-4">
+      <Button
+        variant="primary"
+        onClick={() => onViewApplicationDetails?.()}
+        className="w-full"
+        icon={<SendHorizontal size={16} />}
+      >
+        View Application Details
+      </Button>
+    </div>
+  );
+}
+
+
 
     return (
       <div className="mt-6 border-t border-base-200 pt-4">

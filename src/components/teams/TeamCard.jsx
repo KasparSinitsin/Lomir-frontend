@@ -893,25 +893,32 @@ const TeamCard = ({
         {renderActionButtons()}
       </Card>
 
-      <TeamDetailsModal
-        isOpen={isModalOpen}
-        teamId={getTeamId()}
-        initialTeamData={teamData}
-        onClose={handleModalClose}
-        onUpdate={handleTeamUpdate}
-        onDelete={onDelete}
-        onLeave={handleLeaveTeam}
-        userRole={userRole}
-        isFromSearch={isSearchResult || effectiveVariant !== "member"}
-        hasPendingInvitation={
-          effectiveVariant === "invitation" || !!pendingInvitationForTeam
-        }
-        pendingInvitation={
-          effectiveVariant === "invitation"
-            ? invitation
-            : pendingInvitationForTeam
-        }
-      />
+<TeamDetailsModal
+  isOpen={isModalOpen}
+  teamId={getTeamId()}
+  initialTeamData={teamData}
+  onClose={handleModalClose}
+  onUpdate={handleTeamUpdate}
+  onDelete={onDelete}
+  onLeave={handleLeaveTeam}
+  userRole={userRole}
+  isFromSearch={isSearchResult || effectiveVariant !== "member"}
+  hasPendingInvitation={
+    effectiveVariant === "invitation" || !!pendingInvitationForTeam
+  }
+  pendingInvitation={
+    effectiveVariant === "invitation" ? invitation : pendingInvitationForTeam
+  }
+
+  hasPendingApplication={
+    effectiveVariant === "application" || !!pendingApplicationForTeam
+  }
+  pendingApplication={
+    effectiveVariant === "application" ? application : pendingApplicationForTeam
+  }
+  onViewApplicationDetails={() => setIsApplicationModalOpen(true)}
+/>
+
 
       {/* Applications Modal (for team owners) */}
       {effectiveVariant === "member" && (
@@ -951,16 +958,16 @@ const TeamCard = ({
         />
       )}
 
-      {/* Application Details Modal */}
-      {effectiveVariant === "application" && (
-        <TeamApplicationDetailsModal
-          isOpen={isApplicationModalOpen}
-          application={application}
-          onClose={() => setIsApplicationModalOpen(false)}
-          onCancel={onCancel || onCancelApplication}
-          onSendReminder={onSendReminder}
-        />
-      )}
+{/* Application Details Modal (works for application-variant AND search results with pendingApplicationForTeam) */}
+{isApplicationModalOpen && (application || pendingApplicationForTeam) && (
+  <TeamApplicationDetailsModal
+    isOpen={isApplicationModalOpen}
+    application={effectiveVariant === "application" ? application : pendingApplicationForTeam}
+    onClose={() => setIsApplicationModalOpen(false)}
+    onCancel={onCancel || onCancelApplication}
+    onSendReminder={onSendReminder}
+  />
+)}
 
       {/* User Details Modal (for viewing inviter profile) */}
       <UserDetailsModal
