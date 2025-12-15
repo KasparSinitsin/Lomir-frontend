@@ -146,9 +146,9 @@ const TeamApplicationDetailsModal = ({
       setActionLoading("reminder");
       setError(null);
 
-          if (!onSendReminder) {
-      throw new Error("onSendReminder is not provided");
-    }
+      if (!onSendReminder) {
+        throw new Error("onSendReminder is not provided");
+      }
 
       await onSendReminder(application.id);
     } catch (err) {
