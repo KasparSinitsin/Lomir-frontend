@@ -828,6 +828,16 @@ const TeamCard = ({
               </span>
             )}
 
+            {/* Pending application indicator */}
+            {effectiveVariant === "application" && (
+              <span
+                className="tooltip tooltip-bottom tooltip-lomir"
+                data-tip="You applied to join this team"
+              >
+                <SendHorizontal size={14} className="text-info" />
+              </span>
+            )}
+
             {/* User role - show for member variant when user has a role */}
             {userRole && effectiveVariant === "member" && (
               <span className="flex items-center text-base-content/70">

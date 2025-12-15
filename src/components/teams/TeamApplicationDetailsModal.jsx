@@ -15,7 +15,10 @@ const TeamApplicationDetailsModal = ({
   // Debug: Log the application object to see its structure
   React.useEffect(() => {
     if (application) {
-      console.log("TeamApplicationDetailsModal - Application object:", application);
+      console.log(
+        "TeamApplicationDetailsModal - Application object:",
+        application
+      );
       console.log("Available date properties:", {
         created_at: application.created_at,
         createdAt: application.createdAt,
@@ -44,10 +47,11 @@ const TeamApplicationDetailsModal = ({
 
   // Format application date - check multiple possible property names
   const getApplicationDate = () => {
-    const date = application?.created_at || application?.createdAt || application?.date;
-    
+    const date =
+      application?.created_at || application?.createdAt || application?.date;
+
     if (!date) return "Unknown date";
-    
+
     try {
       return format(new Date(date), "MMMM d, yyyy");
     } catch (error) {
@@ -55,7 +59,7 @@ const TeamApplicationDetailsModal = ({
       return "Unknown date";
     }
   };
-  
+
   const formattedDate = getApplicationDate();
 
   // Footer with action buttons
@@ -80,12 +84,10 @@ const TeamApplicationDetailsModal = ({
       onClose={onClose}
       title="Pending Application"
       footer={footer}
-      
       // Modal settings
       position="center"
       size="default" // max-w-2xl
       maxHeight="max-h-[90vh]"
-      
       // Standard center modal behavior
       closeOnBackdrop={true}
       closeOnEscape={true}
