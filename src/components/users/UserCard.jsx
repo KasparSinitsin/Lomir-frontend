@@ -53,6 +53,23 @@ const UserCard = ({ user, onUpdate }) => {
     );
   };
 
+  // Get user initials for avatar fallback (2 letters: "VL" for Valentina Lopez)
+  const getUserInitials = () => {
+    const firstName = user.first_name || user.firstName;
+    const lastName = user.last_name || user.lastName;
+
+    if (firstName && lastName) {
+      return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
+    }
+    if (firstName) {
+      return firstName.charAt(0).toUpperCase();
+    }
+    if (user.username) {
+      return user.username.charAt(0).toUpperCase();
+    }
+    return "?";
+  };
+
   // Fix the shouldShowVisibilityIcon function
   const shouldShowVisibilityIcon = () => {
     // Only show for authenticated users viewing their own profile
@@ -118,6 +135,7 @@ const UserCard = ({ user, onUpdate }) => {
         }
         hoverable
         image={getProfileImage()}
+        imageFallback={getUserInitials()}
         imageAlt={`${user.username || "User"}'s profile`}
         imageSize="medium"
         imageShape="circle"

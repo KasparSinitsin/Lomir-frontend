@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { Eye, EyeClosed } from "lucide-react";
 
 /**
@@ -13,6 +13,7 @@ const UserProfileHeaderSection = ({
   isAuthenticated = false,
   className = "",
 }) => {
+  const [imageError, setImageError] = useState(false);
   // Helper function to get the avatar image URL or return null for fallback
   const getProfileImage = () => {
     // Check snake_case (from API)
@@ -49,14 +50,21 @@ const UserProfileHeaderSection = ({
     return false;
   };
 
-  // Get user's initial for avatar fallback
-  const getUserInitial = () => {
-    return (
-      user?.first_name?.charAt(0) ||
-      user?.firstName?.charAt(0) ||
-      user?.username?.charAt(0) ||
-      "?"
-    );
+  // Get user's initials for avatar fallback (2 letters: "VL" for Valentina Lopez)
+  const getUserInitials = () => {
+    const firstName = user?.first_name || user?.firstName;
+    const lastName = user?.last_name || user?.lastName;
+
+    if (firstName && lastName) {
+      return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
+    }
+    if (firstName) {
+      return firstName.charAt(0).toUpperCase();
+    }
+    if (user?.username) {
+      return user.username.charAt(0).toUpperCase();
+    }
+    return "?";
   };
 
   // Get full display name
@@ -74,15 +82,16 @@ const UserProfileHeaderSection = ({
       {/* Avatar */}
       <div className="avatar">
         <div className="w-20 h-20 rounded-full">
-          {getProfileImage() ? (
+          {getProfileImage() && !imageError ? (
             <img
               src={getProfileImage()}
               alt="Profile"
-              className="object-cover"
+              className="object-cover w-full h-full rounded-full"
+              onError={() => setImageError(true)}
             />
           ) : (
-            <div className="bg-primary text-primary-content flex items-center justify-center">
-              <span className="text-2xl">{getUserInitial()}</span>
+            <div className="bg-primary text-primary-content flex items-center justify-center w-full h-full rounded-full">
+              <span className="text-2xl">{getUserInitials()}</span>
             </div>
           )}
         </div>

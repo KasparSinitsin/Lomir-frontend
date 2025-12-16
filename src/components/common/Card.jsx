@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 
 const Card = ({
   title,
@@ -10,12 +10,14 @@ const Card = ({
   hoverable = true,
   bordered = true,
   image = null,
+  imageFallback = null,
   imageAlt = "",
   imageSize = "medium",
   imageShape = "circle",
   onClick = null,
-  truncateContent = 3, // 🔹 boolean OR number (e.g. 2, 3)
+  truncateContent = 3,
 }) => {
+  const [imageError, setImageError] = useState(false);
   // Function to generate initials from a name
   const generateInitials = (name) => {
     if (typeof name !== "string") {
@@ -26,8 +28,9 @@ const Card = ({
   };
 
   // Function to render the image/avatar
+  // Function to render the image/avatar
   const renderImage = () => {
-    if (!image) return null;
+    if (!image && !imageFallback) return null;
 
     // Determine image size class
     const sizeClass =
@@ -40,26 +43,36 @@ const Card = ({
     // Determine shape class
     const shapeClass = imageShape === "circle" ? "rounded-full" : "rounded-lg";
 
+    // Check if image is a URL
+    const isUrl =
+      typeof image === "string" &&
+      (image.startsWith("http") ||
+        image.startsWith("https") ||
+        image.startsWith("data:"));
+
+    // Determine fallback content (use imageFallback prop, or generate from image string, or "?")
+    const fallbackContent =
+      imageFallback ||
+      (typeof image === "string" && !isUrl ? generateInitials(image) : "?");
+
     return (
       <div className="flex justify-top mb-4 pb-4">
         <div className="avatar placeholder">
           <div
             className={`bg-primary text-primary-content ${shapeClass} ${sizeClass} flex items-center justify-center`}
           >
-            {typeof image === "string" &&
-            (image.startsWith("http") ||
-              image.startsWith("https") ||
-              image.startsWith("data:")) ? (
-              // If image is a URL, render an img tag
+            {isUrl && !imageError ? (
+              // If image is a URL and hasn't errored, render an img tag
               <img
                 src={image}
                 alt={imageAlt}
                 className={`${shapeClass} object-cover w-full h-full`}
+                onError={() => setImageError(true)}
               />
             ) : (
               // Otherwise render the initials/placeholder
               <span className={imageSize === "large" ? "text-2xl" : "text-xl"}>
-                {typeof image === "string" ? generateInitials(image) : image}
+                {fallbackContent}
               </span>
             )}
           </div>
