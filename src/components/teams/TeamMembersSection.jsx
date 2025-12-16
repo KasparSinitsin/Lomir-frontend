@@ -27,6 +27,23 @@ const TeamMembersSection = ({
     message: null,
   });
 
+  // Helper function to get member initials (2 letters: "NK" for Nam Khoa)
+  const getMemberInitials = (member) => {
+    const firstName = member.firstName || member.first_name;
+    const lastName = member.lastName || member.last_name;
+
+    if (firstName && lastName) {
+      return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
+    }
+    if (firstName) {
+      return firstName.charAt(0).toUpperCase();
+    }
+    if (member.username) {
+      return member.username.charAt(0).toUpperCase();
+    }
+    return "?";
+  };
+
   // Early return if no members
   if (!team?.members || team.members.length === 0) {
     return null;
@@ -102,7 +119,7 @@ const TeamMembersSection = ({
                         span.className = "text-lg";
                         span.textContent = anonymize
                           ? "PP"
-                          : (member.username || "").charAt(0) || "?";
+                          : getMemberInitials(member);
                         parentDiv.appendChild(span);
                       }}
                     />
@@ -110,9 +127,7 @@ const TeamMembersSection = ({
                 ) : (
                   <div className="placeholder bg-primary text-primary-content rounded-full w-12 h-12">
                     <span className="text-lg">
-                      {anonymize
-                        ? "PP"
-                        : (member.username || "").charAt(0) || "?"}
+                      {anonymize ? "PP" : getMemberInitials(member)}
                     </span>
                   </div>
                 )}
