@@ -128,7 +128,15 @@ const TeamMembersSection = ({
                       <h3 className="font-medium text-base truncate">
                         {anonymize
                           ? "Private Profile"
-                          : member.username || "Unknown"}
+                          : (() => {
+                              const firstName =
+                                member.firstName || member.first_name || "";
+                              const lastName =
+                                member.lastName || member.last_name || "";
+                              const fullName =
+                                `${firstName} ${lastName}`.trim();
+                              return fullName || member.username || "Unknown";
+                            })()}
                       </h3>
                     </div>
 
@@ -191,14 +199,10 @@ const TeamMembersSection = ({
 
                   {!anonymize && (
                     <>
-                      {(member.firstName ||
-                        member.first_name ||
-                        member.lastName ||
-                        member.last_name) && (
+                      {/* Username - now shown as subtitle */}
+                      {member.username && (
                         <p className="text-sm text-base-content/70 truncate">
-                          {(member.firstName || member.first_name || "") +
-                            " " +
-                            (member.lastName || member.last_name || "")}
+                          @{member.username}
                         </p>
                       )}
 
