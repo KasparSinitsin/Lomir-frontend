@@ -31,7 +31,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import Alert from "../common/Alert";
 import ApplicationNotificationBadge from "./ApplicationNotificationBadge";
 import TeamApplicationsModal from "./TeamApplicationsModal";
-import { getUserInitials } from '../../utils/userHelpers';
+import { getUserInitials } from "../../utils/userHelpers";
 import { format } from "date-fns";
 
 /**
@@ -259,7 +259,7 @@ const TeamCard = ({
         console.error("Error fetching applications:", error);
       }
     }
-  }, [isOwner, teamData?.id, effectiveVariant]);
+  }, [canManageInvitations, teamData?.id, effectiveVariant]);
 
   // Fetch sent invitations (for team owners and admins)
   const fetchSentInvitations = useCallback(async () => {
@@ -786,7 +786,6 @@ const TeamCard = ({
       firstName && lastName
         ? `${firstName} ${lastName}`
         : inviter.username || "Unknown";
-
 
     return (
       <div className="flex items-center text-xs text-base-content/60 mb-4">
