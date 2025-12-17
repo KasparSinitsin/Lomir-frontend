@@ -22,11 +22,6 @@ const IconToggle = ({
   // Force the checked prop to be a boolean
   const isChecked = checked === true;
   
-  // Debug logging in development environments
-  if (import.meta.env.DEV) {
-    console.log(`IconToggle ${name}: checked=${checked}, isChecked=${isChecked}, type=${typeof checked}`);
-  }
-  
   // Customize descriptions based on entityType if provided
   const getVisibleDescription = () => {
     if (entityType === "team") return "Anyone can find and view your team";
@@ -71,13 +66,6 @@ const IconToggle = ({
         <p className="text-sm text-base-content/70 mt-2">
           {isChecked ? getVisibleDescription() : getHiddenDescription()}
         </p>
-      )}
-
-      {/* Add debug info in development */}
-      {import.meta.env.DEV && (
-        <div className="text-xs text-base-content/50 mt-1">
-          Debug: checked={String(checked)}, isChecked={String(isChecked)}, type={typeof checked}
-        </div>
       )}
     </div>
   );

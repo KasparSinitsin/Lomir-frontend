@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { X, Send, Save, MessageCircle } from "lucide-react";
+import { Send, Save, MessageCircle } from "lucide-react";
+import Modal from "../common/Modal";
 import Button from "../common/Button";
 import Alert from "../common/Alert";
 
@@ -17,7 +18,7 @@ const TeamApplicationModal = ({
 
   const handleSubmit = async (saveAsDraft = false) => {
     if (!message.trim() && !saveAsDraft) {
-      setError("Please write a message to the team creator");
+      setError("Please write a message to the team owner");
       return;
     }
 
@@ -25,7 +26,7 @@ const TeamApplicationModal = ({
       setError(null);
       await onSubmit({
         message: message.trim(),
-        isDraft: saveAsDraft, // This should be false when sending
+        isDraft: saveAsDraft,
       });
 
       if (saveAsDraft) {
@@ -33,7 +34,6 @@ const TeamApplicationModal = ({
         setIsDraft(true);
       } else {
         setSuccess("Application sent successfully!");
-        // Close modal after a brief delay
         setTimeout(() => {
           onClose();
         }, 1500);
@@ -51,116 +51,132 @@ const TeamApplicationModal = ({
     onClose();
   };
 
-  if (!isOpen) return null;
+  // Custom header preserving original complex structure
+  const customHeader = (
+    <div>
+      <h2 className="text-lg font-medium text-primary mb-1">
+        Apply to join the Team
+      </h2>
+      <h3 className="text-xl font-bold text-primary leading-[120%]">"{team?.name}"</h3>
+    </div>
+  );
+
+  // Footer with action buttons
+  const footer = (
+    <div className="flex justify-end space-x-3">
+      <Button
+        variant="ghost"
+        onClick={handleClose}
+        disabled={loading}
+        size="sm"
+      >
+        Cancel
+      </Button>
+
+      <Button
+        variant="secondary"
+        onClick={() => handleSubmit(true)}
+        disabled={loading || !message.trim()}
+        size="sm"
+        icon={<Save size={16} />}
+      >
+        Save Draft
+      </Button>
+
+      <Button
+        variant="primary"
+        onClick={() => handleSubmit(false)}
+        disabled={loading || !message.trim()}
+        size="sm"
+        icon={<Send size={16} />}
+      >
+        {loading ? "Sending..." : "Send Application"}
+      </Button>
+    </div>
+  );
 
   return (
-    <div className="fixed top-1/2 right-8 transform -translate-y-1/2 z-[60] w-full max-w-md">
-      <div className="bg-base-100 shadow-xl rounded-xl overflow-hidden border border-base-300">
-        {/* Header */}
-        <div className="px-6 py-4 border-b border-base-300 flex justify-between items-center">
-          <div>
-            <h2 className="text-lg font-medium text-primary mb-1">
-              Apply to join the Team
-            </h2>
-            <h3 className="text-xl font-bold text-primary">"{team?.name}"</h3>
-          </div>
-          <button
-            onClick={handleClose}
-            className="btn btn-ghost btn-sm btn-circle"
+    <Modal
+      isOpen={isOpen}
+      onClose={handleClose}
+      title={customHeader}
+      footer={footer}
+      
+      // PRESERVE ORIGINAL POSITIONING: Right side, not center!
+      position="right"
+      zIndex="z-[60]"
+      size="sm"
+      
+      // PRESERVE ORIGINAL STYLING
+      modalClassName="border border-base-300"
+      maxHeight="max-h-[80vh]"
+      minHeight="min-h-[400px]"
+      
+      // No backdrop since it's positioned on the right
+      hideBackdrop={true}
+      closeOnBackdrop={false}
+    >
+      {/* COMPLETE CONTENT - This was missing! */}
+      {error && (
+        <Alert
+          type="error"
+          message={error}
+          onClose={() => setError(null)}
+          className="mb-4"
+        />
+      )}
+
+      {success && (
+        <Alert
+          type="success"
+          message={success}
+          onClose={() => setSuccess(null)}
+          className="mb-4"
+        />
+      )}
+
+      <div className="space-y-4">
+        <div className="form-control">
+          <label className="label">
+            <span className="label-text font-medium">
+              Your message to the team owner:
+            </span>
+          </label>
+          <textarea
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            className="textarea textarea-bordered h-32 w-full resize-none"
+            placeholder="Tell the team owner why you'd like to join this team, what skills you bring, and what you hope to contribute..."
             disabled={loading}
-          >
-            <X size={20} />
-          </button>
+            maxLength={500}
+          />
+          <div className="label">
+            <span className="label-text-alt text-base-content/60">
+              {message.length}/500 characters
+              {isDraft && (
+                <span className="ml-2 text-warning">• Draft saved</span>
+              )}
+            </span>
+          </div>
         </div>
 
-        {/* Modal Body */}
-        <div className="flex-1 overflow-auto p-6">
-          {error && (
-            <Alert
-              type="error"
-              message={error}
-              onClose={() => setError(null)}
-              className="mb-4"
-            />
-          )}
-
-          {success && (
-            <Alert
-              type="success"
-              message={success}
-              onClose={() => setSuccess(null)}
-              className="mb-4"
-            />
-          )}
-
-          <div className="space-y-4">
-            <div className="form-control">
-              <label className="label">
-                <span className="label-text font-medium">
-                  Your message to the team creator:
-                </span>
-              </label>
-              <textarea
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                className="textarea textarea-bordered h-32 w-full resize-none"
-                placeholder="Tell the team creator why you'd like to join this team, what skills you bring, and what you hope to contribute..."
-                disabled={loading}
-              />
-              <div className="label">
-                <span className="label-text-alt text-base-content/60">
-                  {message.length}/500 characters
-                </span>
-              </div>
+        {/* Team info for context */}
+        {team?.description && (
+          <div className="bg-base-200/50 rounded-lg p-3">
+            <div className="flex items-center space-x-2 mb-2">
+              <MessageCircle size={16} className="text-primary" />
+              <span className="text-sm font-medium">Team Info</span>
             </div>
-
-            {/* Show team info briefly for context
-            <div className="bg-base-200/50 rounded-lg p-3">
-              <div className="flex items-center space-x-2 mb-2">
-                <MessageCircle size={16} className="text-primary" />
-                <span className="text-sm font-medium">Team Info</span>
-              </div>
-              <p className="text-sm text-base-content/80">
-                {team?.description?.substring(0, 100)}
-                {team?.description?.length > 100 ? '...' : ''}
-              </p>
-            </div> */}
+            <p className="text-sm text-base-content/80">
+              {team.description.length > 100 
+                ? `${team.description.substring(0, 100)}...` 
+                : team.description
+              }
+            </p>
           </div>
-        </div>
-
-        {/* Footer */}
-        <div className="px-6 py-4 border-t border-base-300 flex justify-end space-x-3">
-          <Button
-            variant="ghost"
-            onClick={handleClose}
-            disabled={loading}
-            size="sm"
-          >
-            Cancel
-          </Button>
-
-          <Button
-            variant="secondary"
-            onClick={() => handleSubmit(true)}
-            disabled={loading || !message.trim()}
-            size="sm"
-            icon={<Save size={16} />}
-          >
-            Save Draft
-          </Button>
-
-          <Button
-            variant="primary"
-            onClick={() => handleSubmit(false)}
-            disabled={loading || !message.trim()}
-            size="sm"
-            icon={<Send size={16} />}
-          >
-            {loading ? "Sending..." : "Send Application"}
-          </Button>
-        </div>
+        )}
       </div>
-    </div>
+    </Modal>
   );
 };
 

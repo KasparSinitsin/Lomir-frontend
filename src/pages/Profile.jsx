@@ -9,13 +9,16 @@ import Card from "../components/common/Card";
 import Button from "../components/common/Button";
 import DataDisplay from "../components/common/DataDisplay";
 import Alert from "../components/common/Alert";
-import { Mail, MapPin, User, Edit, Eye, EyeClosed } from "lucide-react";
+import { Mail, MapPin, User, Edit, Eye, EyeClosed, Award } from "lucide-react";
 import { tagService } from "../services/tagService";
 import { userService } from "../services/userService";
 import BadgeCard from "../components/badges/BadgeCard";
 import TagSelector from "../components/tags/TagSelector";
+import TagInputV2 from "../components/tags/TagInputV2";
+import TagsDisplaySection from "../components/tags/TagsDisplaySection";
 import IconToggle from "../components/common/IconToggle";
 import LocationDisplay from "../components/common/LocationDisplay";
+import { getUserInitials } from "../utils/userHelpers";
 
 const Profile = () => {
   const { user, updateUser } = useAuth();
@@ -28,6 +31,8 @@ const Profile = () => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
+  const [imageError, setImageError] = useState(false);
+
   // Add form errors state
   const [formErrors, setFormErrors] = useState({});
   const [formData, setFormData] = useState({
@@ -35,6 +40,7 @@ const Profile = () => {
     lastName: "",
     email: "",
     bio: "",
+    city: "",
     postalCode: "",
     isPublic: true,
     profileImage: null,
@@ -132,11 +138,12 @@ const Profile = () => {
       console.log("Initializing form with user data from context:", user);
 
       setFormData({
-        firstName: user.first_name || user.firstName || "",
-        lastName: user.last_name || user.lastName || "",
+        firstName: user.firstName || user.first_name || "",
+        lastName: user.lastName || user.last_name || "",
         email: user.email || "",
         bio: user.bio || "",
-        postalCode: user.postal_code || user.postalCode || "",
+        city: user.city || "",
+        postalCode: user.postalCode || user.postal_code || "",
         isPublic:
           user.is_public !== undefined
             ? user.is_public
@@ -186,6 +193,11 @@ const Profile = () => {
     });
   }, [user]);
 
+  // Reset image error state when user changes
+useEffect(() => {
+  setImageError(false);
+}, [user?.avatarUrl, user?.avatar_url]);
+
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     const newValue = type === "checkbox" ? checked : value;
@@ -223,14 +235,19 @@ const Profile = () => {
     }
   };
 
-  const handleTagsUpdate = async () => {
+  const handleTagsUpdate = async (newTags) => {
     if (!user) return;
 
     try {
       setLoading(true);
       setError(null);
 
-      await userService.updateUserTags(user.id, selectedTags);
+      // Use the newTags parameter instead of selectedTags
+      await userService.updateUserTags(user.id, newTags);
+
+      // Update Profile's state with the new tags
+      setSelectedTags(newTags);
+
       setSuccess("Tags updated successfully");
     } catch (error) {
       console.error("Error updating user tags:", error);
@@ -283,6 +300,7 @@ const Profile = () => {
         email: formData.email,
         bio: formData.bio,
         postal_code: formData.postalCode,
+        city: formData.city,
         is_public: formData.isPublic,
       };
 
@@ -359,6 +377,7 @@ const Profile = () => {
           email: formData.email, // Include email in the updated user object
           bio: formData.bio,
           postal_code: formData.postalCode,
+          city: formData.city,
           // Use the avatar URL from Cloudinary if we uploaded a new image,
           // otherwise use the response data or keep the existing avatar
           avatar_url: avatarUrl || response.data?.avatar_url || user.avatar_url,
@@ -516,25 +535,20 @@ const Profile = () => {
             <h2 className="text-2xl font-bold mb-6">Edit Profile</h2>
 
             <div className="mb-6 flex justify-top">
-              <div className="avatar placeholder">
-                <div className="bg-primary text-primary-content rounded-full w-24 h-24 relative">
-                  {imagePreview ? (
-                    <img
-                      src={imagePreview}
-                      alt="Profile"
-                      className="rounded-full object-cover w-full h-full"
-                    />
-                  ) : (
-                    <span className="text-3xl">
-                      {formData.firstName?.charAt(0) ||
-                        user.firstName?.charAt(0) ||
-                        user.first_name?.charAt(0) ||
-                        user.username?.charAt(0) ||
-                        "?"}
-                    </span>
-                  )}
-                </div>
-              </div>
+            <div className="avatar placeholder">
+  <div className="bg-primary text-primary-content rounded-full w-24 h-24 relative">
+    {imagePreview && !imageError ? (
+      <img
+        src={imagePreview}
+        alt="Profile"
+        className="rounded-full object-cover w-full h-full"
+        onError={() => setImageError(true)}
+      />
+    ) : (
+      <span className="text-3xl">{getUserInitials(user)}</span>
+    )}
+  </div>
+</div>
             </div>
 
             <div className="form-control w-full mb-4">
@@ -637,6 +651,26 @@ const Profile = () => {
               />
             </div>
 
+            <div className="form-control w-full mb-4">
+              <label className="label">
+                <span className="label-text">City / Town</span>
+              </label>
+              <input
+                type="text"
+                name="city"
+                value={formData.city}
+                onChange={handleChange}
+                className="input input-bordered w-full"
+                placeholder="e.g. Berlin, London, New York"
+              />
+              <label className="label">
+                <span className="label-text-alt text-base-content/60">
+                  Optional - if left empty, city will be derived from postal
+                  code
+                </span>
+              </label>
+            </div>
+
             {/* Profile visibility toggle */}
             <div className="form-control w-full mb-6">
               <IconToggle
@@ -673,23 +707,23 @@ const Profile = () => {
           </div>
         ) : (
           <div>
+            {/* Temporary debug - remove after testing */}
+            {console.log("User data in view mode:", user)}
+            {console.log("City value:", user?.city)}
+            {console.log("Postal code:", user?.postal_code || user?.postalCode)}
             <div className="flex flex-col md:flex-row md:items-top p-6">
               <div className="mb-6 md:mb-0 md:mr-8">
                 <div className="avatar placeholder">
                   <div className="bg-primary text-primary-content rounded-full w-24 h-24">
-                    {user.avatarUrl || user.avatar_url ? (
+                    {(user.avatarUrl || user.avatar_url) && !imageError ? (
                       <img
                         src={user.avatarUrl || user.avatar_url}
                         alt="Profile"
                         className="rounded-full object-cover w-full h-full"
+                        onError={() => setImageError(true)}
                       />
                     ) : (
-                      <span className="text-3xl">
-                        {user.firstName?.charAt(0) ||
-                          user.first_name?.charAt(0) ||
-                          user.username?.charAt(0) ||
-                          "?"}
-                      </span>
+                      <span className="text-3xl">{getUserInitials(user)}</span>
                     )}
                   </div>
                 </div>
@@ -698,27 +732,39 @@ const Profile = () => {
               <div className="flex-grow">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4">
                   <div>
-                    <h2 className="text-2xl font-bold">
+                    <h2 className="text-2xl font-bold leading-[120%] mb-[0.2em]">
                       {user.firstName || user.first_name || ""}{" "}
                       {user.lastName || user.last_name || ""}
                     </h2>
-                    <p className="text-base-content/70">@{user.username}</p>
-                    {/* Display profile visibility status with eye icon */}
 
-                    <div className="mt-1 flex items-center">
-                      {isProfilePublic() ? (
-                        <Eye size={16} className="text-primary mr-1" />
-                      ) : (
-                        <EyeClosed
-                          size={16}
-                          className="text-base-content/70 mr-1"
-                        />
-                      )}
-                      <span className="text-sm text-base-content/70">
-                        {isProfilePublic()
-                          ? "Public Profile"
-                          : "Private Profile"}
+                    {/* Username and visibility status inline - matching UserDetailsModal layout */}
+                    <div className="flex items-center space-x-4 text-sm">
+                      <span className="text-base-content/70">
+                        @{user.username}
                       </span>
+                      <div
+                        className="flex items-center text-base-content/70 tooltip tooltip-bottom tooltip-lomir cursor-help"
+                        data-tip={
+                          isProfilePublic()
+                            ? "Public Profile - visible for everyone"
+                            : "Private Profile - only visible for you"
+                        }
+                      >
+                        {isProfilePublic() ? (
+                          <>
+                            <Eye size={16} className="mr-1 text-green-600" />
+                            <span>Public</span>
+                          </>
+                        ) : (
+                          <>
+                            <EyeClosed
+                              size={16}
+                              className="mr-1 text-gray-500"
+                            />
+                            <span>Private</span>
+                          </>
+                        )}
+                      </div>
                     </div>
                   </div>
                   <div className="mt-4 sm:mt-0">
@@ -732,113 +778,99 @@ const Profile = () => {
                     </Button>
                   </div>
                 </div>
-
-                <Grid cols={1} md={3} gap={4}>
-                  <DataDisplay
-                    label="Email"
-                    value={user.email}
-                    icon={<Mail size={16} />}
-                  />
-                  {(user.postalCode || user.postal_code) && (
-                    <DataDisplay
-                      label="Location"
-                      value={
-                        <LocationDisplay
-                          postalCode={user.postal_code || user.postalCode}
-                          showIcon={false} // Hide icon here
-                          showPostalCode={true} // Show postal code in the display
-                          displayType="detailed"
-                        />
-                      }
-                      icon={<MapPin size={16} />}
-                    />
-                  )}
-                  <DataDisplay
-                    label="Member Since"
-                    value="April 2025"
-                    icon={<User size={16} />}
-                  />
-                </Grid>
               </div>
             </div>
 
+            {/* Bio Section */}
             {user.bio && (
-              <Section title="About Me" className="px-6">
+              <div className="px-6">
                 <p className="text-base-content/90">{user.bio}</p>
-              </Section>
+              </div>
             )}
 
-            <Section
-              title="My Skills & Interests"
-              className="px-6"
-              action={
-                !isEditing ? (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="hover:bg-violet-200 hover:text-violet-700"
-                    onClick={() => setIsEditing(true)}
-                  >
-                    Edit Skills & Interest Tags
-                  </Button>
-                ) : null
-              }
-            >
-              {!isEditing ? (
-                <div className="flex flex-wrap gap-2">
-                  {selectedTags.length > 0 ? (
-                    selectedTags.map((tagId) => {
-                      const tag = tags
-                        .flatMap((supercat) => supercat.categories)
-                        .flatMap((cat) => cat.tags)
-                        .find((t) => t.id === tagId);
-                      return tag ? (
-                        <span
-                          key={tagId}
-                          className="badge badge-primary badge-outline p-3"
-                        >
-                          {tag.name}
-                        </span>
-                      ) : null;
-                    })
-                  ) : (
-                    <p className="text-base-content/70">
-                      No skills or interests added yet.
-                    </p>
-                  )}
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <TagSelector
-                    selectedTags={selectedTags}
-                    onTagsSelected={(tags) => setSelectedTags(tags)}
-                  />
-                  <div className="flex justify-end space-x-2 mt-4">
-                    <Button variant="ghost" onClick={() => setIsEditing(false)}>
-                      Cancel
-                    </Button>
-                    <Button
-                      variant="primary"
-                      onClick={handleTagsUpdate}
-                      disabled={loading}
-                    >
-                      {loading ? "Saving..." : "Save Tags"}
-                    </Button>
+            {/* Contact & Info Section */}
+            <div className="px-6 mt-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* Email */}
+                <div>
+                  <div className="flex items-center mb-2">
+                    <Mail
+                      size={18}
+                      className="mr-2 text-primary flex-shrink-0"
+                    />
+                    <h3 className="font-medium">Email</h3>
                   </div>
+                  <p className="text-base-content/80">{user.email}</p>
                 </div>
-              )}
-            </Section>
 
-            <Section title="My Badges" className="px-6">
-              <Grid cols={2} md={3} lg={4} gap={4}>
-                {tags.map(
-                  (tag) =>
-                    tag.type === "badge" && (
-                      <BadgeCard key={tag.id} badge={tag} />
-                    )
+                {/* Location */}
+                {(user.postalCode || user.postal_code || user.city) && (
+                  <div>
+                    <div className="flex items-center mb-2">
+                      <MapPin
+                        size={18}
+                        className="mr-2 text-primary flex-shrink-0"
+                      />
+                      <h3 className="font-medium">Location</h3>
+                    </div>
+                    <LocationDisplay
+                      postalCode={user.postal_code || user.postalCode}
+                      city={user.city}
+                      className="bg-base-200/50 py-1"
+                      showIcon={false}
+                      showPostalCode={true}
+                      displayType="detailed"
+                    />
+                  </div>
                 )}
-              </Grid>
-            </Section>
+
+                {/* Member Since */}
+                <div>
+                  <div className="flex items-center mb-2">
+                    <User
+                      size={18}
+                      className="mr-2 text-primary flex-shrink-0"
+                    />
+                    <h3 className="font-medium">Member Since</h3>
+                  </div>
+                  <p className="text-base-content/80">April 2025</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Focus Areas - already using consistent TagsDisplaySection */}
+            <div className="px-6 mt-6">
+              <TagsDisplaySection
+                title="Focus Areas"
+                tags={selectedTags}
+                allTags={tags}
+                onSave={handleTagsUpdate}
+                canEdit={true}
+                emptyMessage="No focus areas added yet."
+              />
+            </div>
+
+            {/* Badges Section */}
+            <div className="px-6 mt-6 pb-6">
+              <div className="flex items-center mb-4">
+                <Award size={18} className="mr-2 text-primary flex-shrink-0" />
+                <h3 className="font-medium">My Badges</h3>
+              </div>
+              {tags.filter((tag) => tag.type === "badge").length > 0 ? (
+                <Grid cols={2} md={3} lg={4} gap={4}>
+                  {tags.map(
+                    (tag) =>
+                      tag.type === "badge" && (
+                        <BadgeCard key={tag.id} badge={tag} />
+                      )
+                  )}
+                </Grid>
+              ) : (
+                <span className="badge badge-warning">
+                  No badges earned yet.
+                </span>
+              )}
+            </div>
           </div>
         )}
       </Card>

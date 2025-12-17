@@ -1,3 +1,22 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Production builds
+dist/
+dist-ssr/
+build/
+out/
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.local
+
 # Logs
 logs
 *.log
@@ -7,19 +26,201 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-dist
-dist-ssr
-*.local
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
 
-# Editor directories and files
+# Coverage directory used by tools like istanbul
+coverage/
+*.lcov
+.nyc_output
+
+# Storybook build outputs
+.out
+.storybook-out
+storybook-static/
+
+# Vite specific
+.vite/
+.vite-inspect/
+
+# Rollup cache
+.rollup.cache/
+
+# Parcel cache
+.cache/
+.parcel-cache/
+
+# Next.js (if you ever migrate)
+.next/
+next-env.d.ts
+
+# Nuxt.js (if you ever use)
+.nuxt/
+
+# Gatsby (if you ever use)
+.cache/
+public/
+
+# SvelteKit (if you ever use)
+.svelte-kit/
+
+# TypeScript
+*.tsbuildinfo
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Optional stylelint cache
+.stylelintcache
+
+# Microbundle cache
+.rpt2_cache/
+.rts2_cache_cjs/
+.rts2_cache_es/
+.rts2_cache_umd/
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn files
+.yarn-integrity
+.yarn/cache/
+.yarn/unplugged/
+.yarn/build-state.yml
+.yarn/install-state.gz
+.pnp.*
+
+# IDE and Editor files
 .vscode/*
 !.vscode/extensions.json
-.idea
+# !.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+*.sublime-project
+
+# OS generated files
 .DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
-.env
-node_modules/
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Windows image file caches
+Thumbs.db
+ehthumbs.db
+
+# Folder config file
+Desktop.ini
+
+# Recycle Bin used on file shares
+$RECYCLE.BIN/
+
+# VS Code workspace files
+*.code-workspace
+
+# Temporary folders
+tmp/
+temp/
+
+# CSS/SCSS compiled files (if you're using Sass)
+*.css.map
+*.sass.map
+*.scss.map
+
+# Tailwind CSS compiled files (if you compile separately)
+# Usually not needed since Vite handles this
+# dist/css/
+
+# PWA files
+sw.js
+workbox-*.js
+
+# Firebase (if you use it)
+.firebase/
+firebase-debug.log
+firestore-debug.log
+
+# Vercel (if you deploy there)
+.vercel
+
+# Netlify (if you deploy there)
+.netlify/
+
+# Sentry
+.sentryclirc
+
+# Local API documentation
+api-docs/
+
+# Screenshots and recordings (common in frontend projects)
+screenshots/
+recordings/
+cypress/screenshots/
+cypress/videos/
+
+# Testing
+test-results/
+playwright-report/
+playwright/.cache/
+
+# Chromatic (if you use it for Storybook)
+chromatic.log
+
+# Backup files
+*.bak
+*.backup
+*.old
+
+# Temporary files created by editors
+*.tmp
+*.temp
+
+# Mock data files (if temporary)
+# mock-data.json
+
+# Local database files (if using local storage for development)
+*.sqlite
+*.sqlite3
+*.db
+
+# Generated API documentation
+docs/api/
+
+# ESLint cache
+.eslintcache
+
+# Prettier cache
+.prettier-cache
+
+# Stylelint cache
+.stylelintcache
+
+# Bundle analyzer reports
+bundle-report.html
+stats.json
+
+# Webpack bundle analyzer
+webpack-bundle-analyzer-report.html

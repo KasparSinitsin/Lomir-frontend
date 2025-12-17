@@ -6,35 +6,48 @@
   /* Primary Brand Colors */
   --color-primary: #009213;
   --color-primary-focus: #036b0c;
-  --color-primary-content: #FFFFFF;
-  
+  --color-primary-content: #ffffff;
+  --color-chat-active: #bbf7d0; /* Light green for active chat */
+  --color-chat-active-border: #009213; /* Green border for active chat */
+
   /* Badge Category Colors */
-  --color-badge-collaboration: #009213; /* Green */ 
-  --color-badge-technical: #199bff;     /* Blue */
-  --color-badge-creative: #766aea;      /* Purple */
-  --color-badge-leadership: #df385b;    /* Red */
-  --color-badge-personal: #F59E0B;      /* Yellow */
-  
+  --color-badge-collaboration: #009213; /* Green */
+  --color-badge-technical: #199bff; /* Blue */
+  --color-badge-creative: #766aea; /* Purple */
+  --color-badge-leadership: #df385b; /* Red */
+  --color-badge-personal: #f59e0b; /* Yellow */
+
+  /* Team Role Badge Colors - Light backgrounds with lighter text */
+  --color-role-owner-bg: #e86a86;
+  --color-role-owner-text: #fce8ec;
+
+  --color-role-admin-bg: #9a8ef0;
+  --color-role-admin-text: #ede9fe;
+
+  --color-role-member-bg: #33a742;
+  --color-role-member-text: #dcfce7;
+
   /* UI Colors */
-  --color-background: #FFFFFF;
-  --color-background-soft: #F8FAFC;
+  --color-background: #ffffff;
+  --color-background-soft: #f8fafc;
   --color-background-soft-green: #bbeabf;
   --color-background-muted: rgba(255, 255, 255, 0.5);
   --color-text: #033f05;
   --color-text-soft: rgba(3, 63, 5, 0.7);
   --color-border: rgba(3, 63, 5, 0.2);
-  
+
   /* Semantic Colors */
   --color-success: var(--color-primary);
   --color-warning: #df385b;
   --color-error: #df385b;
   --color-info: #766aea;
-  
+
   /* UI Element Specific */
   --shadow-soft: 0 2px 15px rgba(0, 0, 0, 0.04);
-  --shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06);
   --blur-amount: 8px;
-  
+
   /* Animation Speeds */
   --transition-speed-fast: 200ms;
   --transition-speed-normal: 300ms;
@@ -49,12 +62,15 @@ body {
   background-color: transparent !important;
 }
 
-html, body {
+html,
+body {
   background: none !important;
   background-color: transparent !important;
 }
 
-html, body, #root {
+html,
+body,
+#root {
   height: 100%;
 }
 
@@ -99,31 +115,43 @@ html, body, #root {
 
 /* Typography */
 @layer base {
-  html, body {
-    font-family: 'Roboto', sans-serif;
+  html,
+  body {
+    font-family: "Roboto", sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     color: var(--color-text);
   }
 
   /* Font weights for various heading levels */
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     font-weight: 500;
     color: var(--color-text);
   }
 
   /* Additional styling to optimize Roboto appearance */
-  .text-xs, .text-sm {
+  .text-xs,
+  .text-sm {
     letter-spacing: 0.01em;
   }
 
-  .text-lg, .text-xl, .text-2xl, .text-3xl, .text-4xl, .text-5xl {
+  .text-lg,
+  .text-xl,
+  .text-2xl,
+  .text-3xl,
+  .text-4xl,
+  .text-5xl {
     letter-spacing: -0.01em;
   }
 }
 
 .h3-smaller-line-height {
-  line-height: 1.1; 
+  line-height: 1.1;
 }
 
 .h3-centered {
@@ -209,7 +237,7 @@ body {
 .checkbox {
   --chkbg: var(--color-primary);
   --chkfg: var(--color-primary-content);
-  border-radius: 50% !important; 
+  border-radius: 50% !important;
 }
 
 .checkbox:checked {
@@ -226,7 +254,6 @@ body {
   opacity: 0.5;
   cursor: not-allowed;
 }
-
 
 .checkbox-sm {
   width: 1rem;
@@ -259,8 +286,7 @@ body {
 
 .toggle {
   border: var(--border) solid currentColor;
-  color: var(--input-color); 
-
+  color: var(--input-color);
 }
 
 .toggle-visibility:checked {
@@ -272,9 +298,24 @@ body {
   background-color: var(--off-background) !important;
 }
 
+/* Team Role Badge Styles */
+.badge-role-owner {
+  background-color: var(--color-role-owner-bg) !important;
+  color: var(--color-role-owner-text) !important;
+  border: none;
+}
 
+.badge-role-admin {
+  background-color: var(--color-role-admin-bg) !important;
+  color: var(--color-role-admin-text) !important;
+  border: none;
+}
 
-
+.badge-role-member {
+  background-color: var(--color-role-member-bg) !important;
+  color: var(--color-role-member-text) !important;
+  border: none;
+}
 
 /* Neon Effect */
 .neon {
@@ -290,9 +331,8 @@ body {
   background-color: transparent;
   color: var(--color-primary-focus);
   font-weight: 600;
-  box-shadow: 0 0 1px var(--color-primary), 
-              0 0 2px var(--color-primary-focus), 
-              0 0 1px var(--color-primary-focus); 
+  box-shadow: 0 0 1px var(--color-primary), 0 0 2px var(--color-primary-focus),
+    0 0 1px var(--color-primary-focus);
 }
 
 .background-opacity {
@@ -311,4 +351,116 @@ body {
 
 .shadow-card {
   box-shadow: var(--shadow-card);
+}
+
+/* Chat styles */
+.chat-active {
+  background-color: var(--color-chat-active);
+  border-left: 4px solid var(--color-chat-active-border);
+}
+
+/* Typing indicator animation */
+.typing-indicator {
+  display: flex;
+  align-items: center;
+}
+
+.typing-indicator span {
+  height: 8px;
+  width: 8px;
+  margin: 0 1px;
+  background-color: var(--color-primary);
+  border-radius: 50%;
+  display: inline-block;
+  animation: typing-bounce 1.4s infinite ease-in-out both;
+}
+
+.typing-indicator span:nth-child(1) {
+  animation-delay: -0.32s;
+}
+
+.typing-indicator span:nth-child(2) {
+  animation-delay: -0.16s;
+}
+
+@keyframes typing-bounce {
+  0%,
+  80%,
+  100% {
+    transform: scale(0);
+  }
+  40% {
+    transform: scale(1);
+  }
+}
+
+@keyframes slide-in {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-in {
+  animation: slide-in 0.3s ease-out forwards;
+}
+
+/* Custom Tooltip Styles - Lomir themed */
+.tooltip.tooltip-lomir::before {
+  background-color: white !important;
+  color: var(--color-primary-focus) !important;
+  font-weight: 450 !important;
+  border-radius: 0.5rem !important;
+  padding: 0.5rem 0.75rem !important;
+  font-size: 0.775rem !important;
+  box-shadow: 0 2px 8px rgba(4, 80, 20, 0.15) !important;
+}
+
+/* Arrow styling - override all border colors explicitly */
+.tooltip.tooltip-lomir::after {
+  background-color: white !important;
+  border-top-color: transparent !important;
+  border-right-color: transparent !important;
+  border-bottom-color: var(--color-role-member-text) !important;
+  border-left-color: transparent !important;
+}
+
+/* Button Success Outline Style */
+
+.btn.btn-success-outline.btn-outline {
+  background-color: #f0fdf4 !important; /* green-50 */
+  color: var(--color-primary) !important;
+  border: 1px solid var(--color-primary) !important;
+  background-image: none !important;
+}
+
+.btn.btn-success-outline.btn-outline:hover {
+  background-color: #dcfce7 !important; /* green-100 */
+  color: var(--color-primary-focus) !important;
+  border-color: var(--color-primary-focus) !important;
+  background-image: none !important;
+}
+
+/* Button Error Outline Style - Using existing color variables */
+.btn.btn-error-outline.btn-outline {
+  background-color: var(
+    --color-role-owner-text
+  ) !important; /* light pink #fce8ec */
+  color: var(--color-error) !important; /* darker red/pink #df385b */
+  border: 1px solid var(--color-error) !important;
+  background-image: none !important;
+  box-shadow: none !important;
+}
+
+.btn.btn-error-outline.btn-outline:hover {
+  background-color: #f9d5dc !important; /* slightly darker pink */
+  color: var(--color-error) !important; /* same darker red/pink #df385b */
+  border-color: var(--color-error) !important;
+  background-image: none !important;
+  box-shadow: 0 0.5px 0 0.5px oklch(100% 0 0 / calc(var(--depth) * 6%)) inset,
+    0 1px 2px 0 rgba(223, 56, 91, 0.4) !important; /* #df385b with opacity */
 }

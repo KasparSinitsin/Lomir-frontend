@@ -15,6 +15,8 @@ const MyTeams = () => {
   const [pendingApplications, setPendingApplications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingApplications, setLoadingApplications] = useState(true);
+  const [pendingInvitations, setPendingInvitations] = useState([]);
+  const [loadingInvitations, setLoadingInvitations] = useState(true);
   const [error, setError] = useState(null);
   const { user } = useAuth();
 
@@ -47,12 +49,30 @@ const MyTeams = () => {
     }
   }, [user]);
 
+  const fetchPendingInvitations = useCallback(async () => {
+    try {
+      setLoadingInvitations(true);
+      const response = await teamService.getUserReceivedInvitations();
+      setPendingInvitations(response.data || []);
+    } catch (err) {
+      console.error("Error fetching pending invitations:", err);
+    } finally {
+      setLoadingInvitations(false);
+    }
+  }, []);
+
   useEffect(() => {
-    if (user) {
+    if (user?.id) {
       fetchUserTeams();
       fetchPendingApplications();
+      fetchPendingInvitations();
     }
-  }, [user, fetchUserTeams, fetchPendingApplications]);
+  }, [
+    user?.id,
+    fetchUserTeams,
+    fetchPendingApplications,
+    fetchPendingInvitations,
+  ]);
 
   const handleTeamUpdate = (updatedTeam) => {
     if (!updatedTeam) {
@@ -66,19 +86,102 @@ const MyTeams = () => {
     );
   };
 
-  const handleTeamDelete = (teamId) => {
+  const handleTeamDelete = async (teamId) => {
+    try {
+      await teamService.deleteTeam(teamId);
+      setTeams((prevTeams) => prevTeams.filter((team) => team.id !== teamId));
+      return true;
+    } catch (error) {
+      console.error("Error deleting team:", error);
+      return false;
+    }
+  };
+
+  // Handler for when user LEAVES a team (not deletes it)
+  const handleTeamLeave = (teamId) => {
+    // Server-side removal already happened in TeamDetailsModal
+    console.log("handleTeamLeave called with teamId:", teamId);
     setTeams((prevTeams) => prevTeams.filter((team) => team.id !== teamId));
   };
 
+  // Application handlers
   const handleApplicationCancel = async (applicationId) => {
     try {
       await teamService.cancelApplication(applicationId);
-      // Refresh applications after cancellation
       fetchPendingApplications();
     } catch (error) {
       console.error("Error canceling application:", error);
     }
   };
+
+  const handleSendReminder = async (applicationId) => {
+    // TODO: Implement send reminder functionality
+    console.log("Send reminder for application:", applicationId);
+    alert("Reminder feature coming soon!");
+  };
+
+  // Invitation handlers
+  const handleInvitationAccept = async (invitationId, responseMessage = "") => {
+    try {
+      await teamService.respondToInvitation(
+        invitationId,
+        "accept",
+        responseMessage
+      );
+
+      // Show success message (if you have a toast/alert system)
+      console.log("Invitation accepted successfully");
+
+      // Refresh the data
+      fetchPendingInvitations();
+      fetchUserTeams();
+    } catch (error) {
+      console.error("Error accepting invitation:", error);
+      // Handle error (show alert, etc.)
+    }
+  };
+
+  const handleInvitationDecline = async (
+    invitationId,
+    responseMessage = ""
+  ) => {
+    try {
+      await teamService.respondToInvitation(
+        invitationId,
+        "decline",
+        responseMessage
+      );
+
+      // Show success message
+      console.log("Invitation declined");
+
+      // Refresh the data
+      fetchPendingInvitations();
+    } catch (error) {
+      console.error("Error declining invitation:", error);
+      // Handle error
+    }
+  };
+
+  if (loading && loadingApplications) {
+    return (
+      <PageContainer variant="muted">
+        <div className="flex justify-center items-center h-64">
+          <div className="loading loading-spinner loading-lg text-primary"></div>
+        </div>
+      </PageContainer>
+    );
+  }
+
+  if (error) {
+    return (
+      <PageContainer variant="muted">
+        <div className="alert alert-error">
+          <span>{error}</span>
+        </div>
+      </PageContainer>
+    );
+  }
 
   const CreateTeamAction = (
     <div className="flex flex-col gap-2 mt-8">
@@ -95,40 +198,37 @@ const MyTeams = () => {
     </div>
   );
 
-  if (loading && loadingApplications) {
-    return (
-      <PageContainer>
-        <div className="flex justify-center items-center h-64">
-          <div className="loading loading-spinner loading-lg text-primary"></div>
-        </div>
-      </PageContainer>
-    );
-  }
-
-  if (error) {
-    return (
-      <PageContainer>
-        <div className="alert alert-error">
-          <span>{error}</span>
-        </div>
-      </PageContainer>
-    );
-  }
-
-  // Process application data to create team cards with application info
-  const applicationTeams = pendingApplications.map((application) => ({
-    ...application.team,
-    applicationId: application.id,
-    applicationStatus: application.status,
-    applicationMessage: application.message,
-    applicationDate: application.created_at,
-    isPendingApplication: true, // Flag to indicate this is a pending application
-  }));
-
   return (
-    <PageContainer title="My Teams" action={CreateTeamAction}>
+    <PageContainer title="My Teams" action={CreateTeamAction} variant="muted">
+      {/* Pending Invitations Section */}
+      {pendingInvitations.length > 0 && (
+        <Section
+          title="My Pending Membership Invitations"
+          subtitle="Teams that have invited you to join"
+          className="mb-10"
+        >
+          {loadingInvitations ? (
+            <div className="flex justify-center py-8">
+              <div className="loading loading-spinner loading-md"></div>
+            </div>
+          ) : (
+            <Grid cols={1} md={2} lg={3} gap={6}>
+              {pendingInvitations.filter(Boolean).map((invitation) => (
+                <TeamCard
+                  key={`invitation-${invitation.id}`}
+                  variant="invitation"
+                  invitation={invitation}
+                  onAccept={handleInvitationAccept}
+                  onDecline={handleInvitationDecline}
+                />
+              ))}
+            </Grid>
+          )}
+        </Section>
+      )}
+
       {/* Pending Applications Section */}
-      {applicationTeams.length > 0 && (
+      {pendingApplications.length > 0 && (
         <Section
           title="My Pending Membership Applications"
           subtitle="Teams that I would like to join"
@@ -140,14 +240,13 @@ const MyTeams = () => {
             </div>
           ) : (
             <Grid cols={1} md={2} lg={3} gap={6}>
-              {applicationTeams.map((team) => (
+              {pendingApplications.filter(Boolean).map((application) => (
                 <TeamCard
-                  key={`application-${team.applicationId}`}
-                  team={team}
-                  isPendingApplication={true}
-                  onCancelApplication={() =>
-                    handleApplicationCancel(team.applicationId)
-                  }
+                  key={`application-${application.id}`}
+                  variant="application"
+                  application={application}
+                  onCancel={handleApplicationCancel}
+                  onSendReminder={handleSendReminder}
                 />
               ))}
             </Grid>
@@ -171,15 +270,18 @@ const MyTeams = () => {
           </div>
         ) : (
           <Grid cols={1} md={2} lg={3} gap={6}>
-            {teams.map((team) => (
+            {teams.filter(Boolean).map((team) => (
               <TeamCard
                 key={team.id}
+                variant="member"
                 team={{
                   ...team,
-                  is_public: team.is_public === true,
+                  // Check both snake_case and camelCase versions
+                  is_public: team.is_public === true || team.isPublic === true,
                 }}
                 onUpdate={handleTeamUpdate}
                 onDelete={handleTeamDelete}
+                onLeave={handleTeamLeave}
               />
             ))}
           </Grid>

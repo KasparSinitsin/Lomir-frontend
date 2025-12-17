@@ -1,25 +1,54 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import TeamRoleManager from "./TeamRoleManager";
+import TeamEditForm from "./TeamEditForm";
 import { useAuth } from "../../contexts/AuthContext";
 import { teamService } from "../../services/teamService";
 import TagSelector from "../tags/TagSelector";
 import Button from "../common/Button";
+import SendMessageButton from "../common/SendMessageButton";
 import Alert from "../common/Alert";
 import TagDisplay from "../common/TagDisplay";
 import LocationDisplay from "../common/LocationDisplay";
-import { X, Edit, Users, Trash2, Eye, EyeClosed, Tag } from "lucide-react";
+import {
+  X,
+  Edit,
+  Users,
+  Trash2,
+  Eye,
+  EyeClosed,
+  Tag,
+  LogOut,
+  Mail,
+  SendHorizontal,
+} from "lucide-react";
 import IconToggle from "../common/IconToggle";
+import UserDetailsModal from "../users/UserDetailsModal";
+import TagsDisplaySection from "../tags/TagsDisplaySection";
+import { tagService } from "../../services/tagService";
+import RoleBadgeDropdown from "./RoleBadgeDropdown";
 import TeamApplicationModal from "./TeamApplicationModal";
+import TeamInvitationDetailsModal from "./TeamInvitationDetailsModal";
+import TeamMembersSection from "./TeamMembersSection";
+import TeamFocusAreaSection from "./TeamFocusAreaSection";
 import axios from "axios";
+import Modal from "../common/Modal";
 
 const TeamDetailsModal = ({
   isOpen = true,
   teamId: propTeamId,
+  initialTeamData = null,
   onClose,
   onUpdate,
   onDelete,
+  onLeave,
   userRole,
   isFromSearch = false,
+  hasPendingInvitation = false,
+  pendingInvitation = null,
+  hasPendingApplication = false,
+  pendingApplication = null,
+  onViewApplicationDetails,
 }) => {
   const navigate = useNavigate();
   const { id: urlTeamId } = useParams();
@@ -31,193 +60,262 @@ const TeamDetailsModal = ({
   );
 
   const [isModalVisible, setIsModalVisible] = useState(isOpen);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!initialTeamData);
   const [notification, setNotification] = useState({
     type: null,
     message: null,
   });
-  const [team, setTeam] = useState(null);
+  const [team, setTeam] = useState(initialTeamData); // Initialize with passed data
+
+  // Track if we've done the full fetch (initial data may be partial)
+  const [hasFullData, setHasFullData] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     description: "",
     isPublic: false, // Default is invisible
     maxMembers: 5,
+    maxMembersMode: "preset",
     selectedTags: [],
   });
   const [formErrors, setFormErrors] = useState({});
-  const [isCreator, setIsCreator] = useState(false);
+  const [isOwner, setIsOwner] = useState(false);
+  const [internalUserRole, setInternalUserRole] = useState(null);
   const [isPublic, setIsPublic] = useState(false);
 
-  // New state for application modal
   const [isApplicationModalOpen, setIsApplicationModalOpen] = useState(false);
   const [applicationLoading, setApplicationLoading] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState(null);
+  const [isUserModalOpen, setIsUserModalOpen] = useState(false);
+  const [allTags, setAllTags] = useState([]);
+  const [isLeaveDialogOpen, setIsLeaveDialogOpen] = useState(false);
+  const [leaveLoading, setLeaveLoading] = useState(false);
+  const [isInvitationModalOpen, setIsInvitationModalOpen] = useState(false);
 
-  const fetchTeamDetails = useCallback(async () => {
-    if (!effectiveTeamId) return;
+  const [teamImageError, setTeamImageError] = useState(false);
 
-    try {
-      setLoading(true);
-      setNotification({ type: null, message: null });
+  const fetchTeamDetails = useCallback(
+    async (forceRefresh = false) => {
+      if (!effectiveTeamId) return null;
 
-      // Get the team details
-      console.log(`Fetching details for team ID: ${effectiveTeamId}`);
-      const response = await teamService.getTeamById(effectiveTeamId);
+      // If we already have data and don't need a refresh, skip the loading state
+      const hasExistingData = team !== null;
 
-      // Log full response for debugging
-      console.log("Raw API response:", response);
+      try {
+        // Only show loading spinner if we don't have any data yet
+        if (!hasExistingData) {
+          setLoading(true);
+        }
+        setNotification({ type: null, message: null });
 
-      // Get team data from response
-      let teamData;
-      if (response.data && typeof response.data === "object") {
-        teamData = response.data;
-      } else if (response.data && response.data.data) {
-        teamData = response.data.data;
-      } else {
-        teamData = {};
-      }
+        // Get the team details
+        console.log(`Fetching details for team ID: ${effectiveTeamId}`);
+        const response = await teamService.getTeamById(effectiveTeamId);
 
-      console.log("Team data extracted:", teamData);
+        // Log full response for debugging
+        console.log("Raw API response:", response);
 
-      // Look for creator ID in multiple possible locations
-      let creatorId = null;
+        // Get team data from response
+        let teamData;
+        if (response.data && typeof response.data === "object") {
+          teamData = response.data;
+        } else if (response.data && response.data.data) {
+          teamData = response.data.data;
+        } else {
+          teamData = {};
+        }
 
-      // 1. Try direct creator_id field
-      if (teamData.creator_id !== undefined) {
-        creatorId = parseInt(teamData.creator_id, 10);
-      }
-      // 2. Try creatorId field (camelCase variation)
-      else if (teamData.creatorId !== undefined) {
-        creatorId = parseInt(teamData.creatorId, 10);
-      }
+        console.log("Team data extracted:", teamData);
 
-      // 3. If still not found or invalid, check members array for creator role
-      if (
-        isNaN(creatorId) &&
-        teamData.members &&
-        Array.isArray(teamData.members)
-      ) {
-        console.log(
-          "Searching for creator in members array:",
-          teamData.members
-        );
+        // Look for owner ID in multiple possible locations
+        let ownerId = null;
 
-        const creatorMember = teamData.members.find(
-          (m) => m.role === "creator" || m.role === "Creator"
-        );
+        // 1. Try direct owner_id field
+        if (teamData.owner_id !== undefined) {
+          ownerId = parseInt(teamData.owner_id, 10);
+        }
+        // 2. Try ownerId field (camelCase variation)
+        else if (teamData.ownerId !== undefined) {
+          ownerId = parseInt(teamData.ownerId, 10);
+        }
 
-        if (creatorMember) {
-          // Use either user_id or userId depending on which exists
-          creatorId = parseInt(
-            creatorMember.user_id || creatorMember.userId,
-            10
+        // 3. If not found or invalid, check members array for owner role
+        if (
+          isNaN(ownerId) &&
+          teamData.members &&
+          Array.isArray(teamData.members)
+        ) {
+          console.log(
+            "Searching for owner in members array:",
+            teamData.members
           );
-          console.log("Found creator ID from members array:", creatorId);
+
+          const ownerMember = teamData.members.find(
+            (m) => m.role === "owner" || m.role === "Owner"
+          );
+
+          if (ownerMember) {
+            ownerId = parseInt(ownerMember.user_id || ownerMember.userId, 10);
+            console.log("Found owner ID from members array:", ownerId);
+          }
         }
-      }
 
-      // 4. Ensure creatorId is valid, use logged-in user as fallback for creator's own teams
-      if (isNaN(creatorId) && user && teamData.members) {
-        // Check if current user is listed as creator in members
-        const isCurrentUserCreator = teamData.members.some(
-          (member) =>
-            (member.user_id === user.id || member.userId === user.id) &&
-            (member.role === "creator" || member.role === "Creator")
-        );
-
-        if (isCurrentUserCreator) {
-          creatorId = parseInt(user.id, 10);
-          console.log("Using current user as creator ID:", creatorId);
-        }
-      }
-
-      console.log("Final creator ID determination:", creatorId);
-
-      // Process visibility
-      let isPublicValue = false;
-      const isPublicRaw = teamData.is_public || teamData.isPublic;
-
-      if (isPublicRaw === true || isPublicRaw === "true" || isPublicRaw === 1) {
-        isPublicValue = true;
-      }
-
-      // Enhance team data with normalized values
-      const enhancedTeamData = {
-        ...teamData,
-        creator_id: creatorId, // Set the corrected creator ID
-        is_public: isPublicValue,
-      };
-
-      console.log("Enhanced team data:", enhancedTeamData);
-
-      // Store the enhanced team data
-      setTeam(enhancedTeamData);
-      setIsPublic(isPublicValue);
-
-      // Determine if current user is creator - REQUIRE AUTHENTICATION FIRST
-      const isUserAuthenticated = isAuthenticated && user && user.id;
-
-      // Calculate if user is creator by ID comparison (only if authenticated)
-      const isCreatorById =
-        isUserAuthenticated &&
-        !isNaN(creatorId) &&
-        parseInt(user.id, 10) === creatorId;
-
-      // Calculate if user is creator by role (only if authenticated)
-      const isCreatorByRole =
-        (isUserAuthenticated &&
-          teamData.members?.some(
+        // 4. Ensure ownerId is valid, use logged-in user as fallback for owner's own teams
+        if (isNaN(ownerId) && user && teamData.members) {
+          const isCurrentUserOwner = teamData.members.some(
             (member) =>
               (member.user_id === user.id || member.userId === user.id) &&
-              (member.role === "creator" || member.role === "Creator")
-          )) ||
-        false;
+              (member.role === "owner" || member.role === "Owner")
+          );
 
-      // Final creator determination - must be authenticated AND either method confirms
-      const finalCreatorStatus =
-        isUserAuthenticated && (isCreatorById || isCreatorByRole);
+          if (isCurrentUserOwner) {
+            ownerId = parseInt(user.id, 10);
+            console.log("Using current user as owner ID:", ownerId);
+          }
+        }
 
-      console.log("Creator check:", {
-        isUserAuthenticated,
-        userId: user?.id,
-        creatorId,
-        isCreatorById,
-        isCreatorByRole,
-        finalCreatorStatus,
-      });
+        console.log("Final owner ID determination:", ownerId);
 
-      setIsCreator(finalCreatorStatus);
+        // Process visibility
+        let isPublicValue = false;
+        const isPublicRaw = teamData.is_public || teamData.isPublic;
 
-      // Set form data with the normalized values from team data
-      setFormData({
-        name: teamData.name || "",
-        description: teamData.description || "",
-        isPublic: isPublicValue,
-        maxMembers: teamData.max_members || teamData.maxMembers || 5,
-        teamavatarUrl: teamData.teamavatar_url || teamData.teamavatarUrl || "",
-        selectedTags: (teamData.tags || []).map((tag) =>
-          parseInt(tag.id || tag.tag_id, 10)
-        ),
-      });
-    } catch (err) {
-      console.error("Error fetching team details:", err);
-      setNotification({
-        type: "error",
-        message:
-          "Server error: " +
-          (err.response?.data?.error || err.message || "Unknown error"),
-      });
-    } finally {
-      setLoading(false);
-    }
-  }, [effectiveTeamId, user, isAuthenticated]);
+        if (
+          isPublicRaw === true ||
+          isPublicRaw === "true" ||
+          isPublicRaw === 1
+        ) {
+          isPublicValue = true;
+        }
+
+        // Enhance team data with normalized values
+        const enhancedTeamData = {
+          ...teamData,
+          owner_id: ownerId,
+          is_public: isPublicValue,
+        };
+
+        console.log("Enhanced team data:", enhancedTeamData);
+
+        // Store the enhanced team data
+        setTeam(enhancedTeamData);
+        setIsPublic(isPublicValue);
+
+        // Determine if current user is owner
+        const isUserAuthenticated = isAuthenticated && user && user.id;
+
+        const isOwnerById =
+          isUserAuthenticated &&
+          !isNaN(ownerId) &&
+          parseInt(user.id, 10) === ownerId;
+
+        const isOwnerByRole =
+          (isUserAuthenticated &&
+            teamData.members?.some(
+              (member) =>
+                (member.user_id === user.id || member.userId === user.id) &&
+                (member.role === "owner" || member.role === "Owner")
+            )) ||
+          false;
+
+        const finalOwnerStatus =
+          isUserAuthenticated && (isOwnerById || isOwnerByRole);
+
+        console.log("Owner check:", {
+          isUserAuthenticated,
+          userId: user?.id,
+          ownerId,
+          isOwnerById,
+          isOwnerByRole,
+          finalOwnerStatus,
+        });
+
+        setIsOwner(finalOwnerStatus);
+
+        // Determine user's role from members list
+        if (isUserAuthenticated && teamData.members) {
+          const currentUserMember = teamData.members.find(
+            (member) => member.user_id === user.id || member.userId === user.id
+          );
+          if (currentUserMember) {
+            setInternalUserRole(currentUserMember.role);
+            console.log("User role set to:", currentUserMember.role);
+          }
+        }
+
+        console.log("Team tags data:", teamData.tags);
+
+        // Determine the maxMembersMode based on current value
+        // Determine the maxMembers value from backend data
+        let currentMaxMembers;
+
+        // Prefer camelCase (what your enhanced team data/logs show)
+        // and allow it to be null for unlimited
+        if (teamData.maxMembers !== undefined) {
+          currentMaxMembers = teamData.maxMembers; // can be number OR null
+        } else if (teamData.max_members !== undefined) {
+          // Fallback in case snake_case is ever used
+          currentMaxMembers = teamData.max_members;
+        } else {
+          // Only default if the field is truly missing
+          currentMaxMembers = 5;
+        }
+
+        const presetValues = [2, 3, 4, 5, 6, 8, 10, 12, 15, 20];
+
+        let maxMembersMode;
+        if (currentMaxMembers === null) {
+          maxMembersMode = "unlimited";
+        } else if (presetValues.includes(currentMaxMembers)) {
+          maxMembersMode = "preset";
+        } else {
+          maxMembersMode = "custom";
+        }
+
+        // Set form data with the normalized values from team data
+        setFormData({
+          name: teamData.name || "",
+          description: teamData.description || "",
+          isPublic: isPublicValue,
+          maxMembers: currentMaxMembers, // stays null for unlimited
+          maxMembersMode: maxMembersMode, // 'unlimited' when null
+          teamavatarUrl:
+            teamData.teamavatar_url || teamData.teamavatarUrl || "",
+          selectedTags: (teamData.tags || [])
+            .map((tag) => parseInt(tag.id || tag.tag_id, 10))
+            .filter((id) => !isNaN(id)),
+        });
+
+        // Mark that we now have the full data
+        setHasFullData(true);
+
+        // Return the enhanced team data so callers know it completed
+        return enhancedTeamData;
+      } catch (err) {
+        console.error("Error fetching team details:", err);
+        // Only show error if we don't have any data to display
+        if (!team) {
+          setNotification({
+            type: "error",
+            message:
+              "Server error: " +
+              (err.response?.data?.error || err.message || "Unknown error"),
+          });
+        }
+        return null;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [effectiveTeamId, user, isAuthenticated, team]
+  );
 
   // Add effect to check team data after it's set
   useEffect(() => {
     if (team) {
       console.log("Current team data in state:", team);
       console.log("Team visibility value:", team.is_public);
-      console.log("Team creator:", team.creator_id, "Current user:", user?.id);
+      console.log("Team owner:", team.owner_id, "Current user:", user?.id);
     }
   }, [team, user]);
 
@@ -239,12 +337,27 @@ const TeamDetailsModal = ({
 
   useEffect(() => {
     if (isModalVisible && effectiveTeamId) {
-      fetchTeamDetails();
+      // If we have initial data but haven't fetched full details yet,
+      // fetch complete data silently in background
+      if (initialTeamData && !hasFullData) {
+        fetchTeamDetails();
+      }
+      // If we have no data at all, fetch with loading state
+      else if (!team) {
+        fetchTeamDetails();
+      }
     } else if (isModalVisible && !effectiveTeamId) {
       // Handle the case where teamId is not yet available (e.g., just created)
       setLoading(false); // Don't show loading indefinitely
     }
-  }, [isModalVisible, effectiveTeamId, fetchTeamDetails]);
+  }, [
+    isModalVisible,
+    effectiveTeamId,
+    initialTeamData,
+    hasFullData,
+    team,
+    fetchTeamDetails,
+  ]);
 
   useEffect(() => {
     // Reset state when modal closes
@@ -254,22 +367,56 @@ const TeamDetailsModal = ({
     }
   }, [isModalVisible]);
 
-  // Use our independent isCreator state for more reliability
-  const isTeamCreator = useMemo(() => isCreator, [isCreator]);
+  // Use internal role state, fall back to prop
+  const effectiveUserRole = internalUserRole || userRole;
 
-  const isTeamAdmin = useMemo(() => userRole === "admin", [userRole]);
+  // Use independent isOwner state for more reliability
+  const isTeamOwner = useMemo(() => isOwner, [isOwner]);
 
-  const canEditTeam = isTeamCreator || isTeamAdmin;
+  const isTeamAdmin = useMemo(
+    () => effectiveUserRole === "admin",
+    [effectiveUserRole]
+  );
 
-  // Check if user is already a member of this team
-  const isTeamMember = useMemo(() => {
-    if (!team || !user) return false;
-    return (
-      team.members?.some((member) => member.user_id === user.id) ||
-      isTeamCreator ||
-      userRole
-    );
-  }, [team, user, isTeamCreator, userRole]);
+  const canEditTeam = useMemo(() => {
+    if (!isAuthenticated || !user || !team) {
+      return false;
+    }
+
+    // Owners can always edit
+    if (isOwner) {
+      return true;
+    }
+
+    // Admins can also edit (but not delete)
+    if (effectiveUserRole === "admin") {
+      return true;
+    }
+
+    return false;
+  }, [isAuthenticated, user, team, isOwner, effectiveUserRole]);
+
+  const canDeleteTeam = useMemo(() => {
+    return isAuthenticated && user && team && isOwner; // Only owners can delete
+  }, [isAuthenticated, user, team, isOwner]);
+
+  // Get team initials from name (e.g., "Urban Gardeners Berlin" → "UGB")
+  const getTeamInitials = () => {
+    const name = team?.name;
+    if (!name || typeof name !== "string") return "?";
+
+    const words = name.trim().split(/\s+/);
+
+    if (words.length === 1) {
+      return name.slice(0, 2).toUpperCase();
+    }
+
+    return words
+      .slice(0, 3)
+      .map((word) => word.charAt(0))
+      .join("")
+      .toUpperCase();
+  };
 
   // Helper function to determine if visibility status should be shown
   const shouldShowVisibilityStatus = () => {
@@ -278,8 +425,8 @@ const TeamDetailsModal = ({
       return false;
     }
 
-    // Show for creators
-    if (isCreator) {
+    // Show for owners
+    if (isOwner) {
       return true;
     }
 
@@ -298,7 +445,6 @@ const TeamDetailsModal = ({
     return false;
   };
 
-  // Helper function to determine if a member profile should be anonymized
   const shouldAnonymizeMember = (member) => {
     // Don't anonymize the current user's own profile
     if (user && (member.user_id === user.id || member.userId === user.id)) {
@@ -306,8 +452,28 @@ const TeamDetailsModal = ({
     }
 
     // Check if the member has a private profile
-    // Look for is_public property in both camelCase and snake_case formats
-    return member.is_public === false || member.isPublic === false;
+    const isPrivateProfile =
+      member.is_public === false || member.isPublic === false;
+
+    // If profile is public, never anonymize
+    if (!isPrivateProfile) {
+      return false;
+    }
+
+    // Profile is private from here on...
+
+    // If not logged in, always anonymize private profiles
+    if (!isAuthenticated || !user) {
+      return true;
+    }
+
+    // If logged in, check if current user is a team member
+    const isCurrentUserTeamMember = team?.members?.some(
+      (m) => m.user_id === user.id || m.userId === user.id
+    );
+
+    // Anonymize if viewer is NOT a team member
+    return !isCurrentUserTeamMember;
   };
 
   const handleClose = useCallback(() => {
@@ -352,7 +518,12 @@ const TeamDetailsModal = ({
 
     setFormData((prev) => ({
       ...prev,
-      [name]: name === "maxMembers" ? parseInt(newValue, 10) : newValue,
+      [name]:
+        name === "maxMembers"
+          ? newValue === null
+            ? null
+            : parseInt(newValue, 10)
+          : newValue,
     }));
   };
 
@@ -369,6 +540,161 @@ const TeamDetailsModal = ({
     }));
   }, []);
 
+  // Fetch structured tags when modal opens (needed for display AND edit mode)
+  useEffect(() => {
+    // Only run when the modal is actually visible
+    if (!isModalVisible) return;
+
+    // If we already have tags, no need to fetch again
+    if (allTags.length > 0) return;
+
+    const fetchTags = async () => {
+      try {
+        const structuredTags = await tagService.getStructuredTags();
+        setAllTags(structuredTags);
+      } catch (error) {
+        console.error("Error fetching tags:", error);
+      }
+    };
+
+    fetchTags();
+  }, [isModalVisible, allTags.length]);
+
+  // Handle team tags update
+  const handleTeamTagsUpdate = async (newTagIds) => {
+    try {
+      // Normalize tag IDs to numbers and format for the API
+      const tagsPayload = newTagIds
+        .map((tagId) => Number(tagId))
+        .filter((id) => !Number.isNaN(id))
+        .map((tag_id) => ({ tag_id }));
+
+      await teamService.updateTeam(effectiveTeamId, { tags: tagsPayload });
+
+      // Refresh team details to show updated tags
+      await fetchTeamDetails();
+
+      setNotification({
+        type: "success",
+        message: "Team focus areas updated successfully!",
+      });
+    } catch (error) {
+      console.error("Error updating team tags:", error);
+      throw new Error("Failed to update team focus areas");
+    }
+  };
+
+  const handleLeaveTeam = async () => {
+    if (!user?.id || !team?.id) return;
+
+    setLeaveLoading(true);
+    try {
+      await teamService.removeTeamMember(team.id, user.id);
+      setNotification({
+        type: "success",
+        message: "You have left the team successfully.",
+      });
+      setIsLeaveDialogOpen(false);
+
+      // Close modal and trigger leave callback after a short delay
+      setTimeout(() => {
+        console.log(
+          "TeamDetailsModal: about to call onLeave with team.id:",
+          team.id
+        );
+        console.log("TeamDetailsModal: onLeave is:", onLeave);
+        if (onLeave) onLeave(team.id);
+        if (onClose) onClose();
+      }, 1500);
+    } catch (error) {
+      console.error("Error leaving team:", error);
+      setNotification({
+        type: "error",
+        message:
+          error.response?.data?.message ||
+          "Failed to leave team. Please try again.",
+      });
+      setIsLeaveDialogOpen(false);
+    } finally {
+      setLeaveLoading(false);
+    }
+  };
+
+  // Invitation response handlers
+  const handleInvitationAccept = async (invitationId, responseMessage = "") => {
+    try {
+      await teamService.respondToInvitation(
+        invitationId,
+        "accept",
+        responseMessage
+      );
+      setNotification({
+        type: "success",
+        message: "Invitation accepted! You are now a member of this team.",
+      });
+      setIsInvitationModalOpen(false);
+      // Refresh team details to show updated membership
+      await fetchTeamDetails();
+      // Close the modal after a short delay
+      setTimeout(() => {
+        if (onClose) onClose();
+      }, 1500);
+    } catch (error) {
+      console.error("Error accepting invitation:", error);
+      setNotification({
+        type: "error",
+        message: "Failed to accept invitation. Please try again.",
+      });
+    }
+  };
+
+  const handleInvitationDecline = async (
+    invitationId,
+    responseMessage = ""
+  ) => {
+    try {
+      await teamService.respondToInvitation(
+        invitationId,
+        "decline",
+        responseMessage
+      );
+      setNotification({
+        type: "success",
+        message: "Invitation declined.",
+      });
+      setIsInvitationModalOpen(false);
+      // Close the modal after a short delay
+      setTimeout(() => {
+        if (onClose) onClose();
+      }, 1500);
+    } catch (error) {
+      console.error("Error declining invitation:", error);
+      setNotification({
+        type: "error",
+        message: "Failed to decline invitation. Please try again.",
+      });
+    }
+  };
+
+  // Check if user can leave (is a member but not the sole owner)
+  const canLeaveTeam = useMemo(() => {
+    if (!user?.id || !team?.members) return false;
+
+    const currentMember = team.members.find(
+      (m) => m.user_id === user.id || m.userId === user.id
+    );
+
+    if (!currentMember) return false;
+
+    // If user is owner, check if they're the only owner
+    if (currentMember.role === "owner") {
+      const ownerCount = team.members.filter((m) => m.role === "owner").length;
+      return ownerCount > 1; // Can only leave if there's another owner
+    }
+
+    return true; // Members and admins can always leave
+  }, [user?.id, team?.members]);
+
   const validateForm = () => {
     const errors = {};
 
@@ -384,8 +710,9 @@ const TeamDetailsModal = ({
       errors.description = "Description must be at least 10 characters";
     }
 
-    if (formData.maxMembers < 2 || formData.maxMembers > 20) {
-      errors.maxMembers = "Team size must be between 2 and 20 members";
+    // Only validate maxMembers if it's not unlimited (null)
+    if (formData.maxMembers !== null && formData.maxMembers < 2) {
+      errors.maxMembers = "Team size must be at least 2 members";
     }
 
     setFormErrors(errors);
@@ -395,8 +722,8 @@ const TeamDetailsModal = ({
   const handleSubmit = async (e) => {
     if (e) e.preventDefault();
 
-    // Prevent non-creators from submitting form updates
-    if (!isCreator) {
+    // Prevent non-owners from submitting form updates
+    if (!canEditTeam) {
       setNotification({
         type: "error",
         message: "You do not have permission to edit this team.",
@@ -421,13 +748,29 @@ const TeamDetailsModal = ({
         typeof isPublicBoolean
       );
 
+      // Decide what to send for max_members based on the mode
+      let maxMembersForSubmit = null;
+
+      if (formData.maxMembersMode === "unlimited") {
+        maxMembersForSubmit = null; // unlimited
+      } else {
+        const parsed =
+          typeof formData.maxMembers === "number"
+            ? formData.maxMembers
+            : parseInt(formData.maxMembers, 10);
+
+        maxMembersForSubmit = Number.isNaN(parsed) ? null : parsed;
+      }
+
+      console.log("Edit Team - mode:", formData.maxMembersMode);
+      console.log("Edit Team - maxMembersForSubmit:", maxMembersForSubmit);
+
       // Prepare the submission data - PRESERVE EXISTING IMAGE URL
       const submissionData = {
         name: formData.name.trim(),
         description: formData.description.trim(),
         is_public: isPublicBoolean,
-        max_members: formData.maxMembers,
-        // ✅ FIX: Always include the existing teamavatar_url to preserve it
+        max_members: maxMembersForSubmit,
         teamavatar_url:
           formData.teamavatarUrl ||
           team?.teamavatar_url ||
@@ -459,7 +802,7 @@ const TeamDetailsModal = ({
             }
           );
 
-          // ✅ UPDATE: Only override the avatar URL if upload was successful
+          // Only override the avatar URL if upload was successful
           submissionData.teamavatar_url = cloudinaryResponse.data.secure_url;
           console.log("New avatar uploaded:", submissionData.teamavatar_url);
         } catch (uploadError) {
@@ -617,21 +960,94 @@ const TeamDetailsModal = ({
     }
   };
 
+  const isTeamMember = useMemo(() => {
+    if (!team || !user) return false;
+    return (
+      team.members?.some((member) => member.user_id === user.id) ||
+      isOwner || // Make sure this matches your variable name
+      userRole
+    );
+  }, [team, user, isOwner, userRole]);
+
   const renderJoinButton = () => {
-    if (!isAuthenticated || !user || isTeamMember || loading) {
-      return null;
+    if (!isAuthenticated) return null;
+
+    const isMember = team?.members?.some(
+      (m) => m.user_id === user?.id || m.userId === user?.id
+    );
+
+    if (hasPendingInvitation && pendingInvitation) {
+      return (
+        <div className="mt-6 border-t border-base-200 pt-4">
+          <Button
+            variant="primary"
+            onClick={() => setIsInvitationModalOpen(true)}
+            className="w-full"
+            icon={<Mail size={16} />}
+          >
+            Open Invite to Respond
+          </Button>
+        </div>
+      );
+    }
+
+    // Pending application CTA
+    const hasApp = Boolean(hasPendingApplication || pendingApplication);
+
+    if (hasApp) {
+      return (
+        <div className="mt-6 border-t border-base-200 pt-4">
+          <Button
+            variant="primary"
+            onClick={() => onViewApplicationDetails?.()}
+            className="w-full"
+            icon={<SendHorizontal size={16} />}
+          >
+            View Application Details
+          </Button>
+        </div>
+      );
     }
 
     return (
-      <div className="pt-6">
-        <Button
-          variant="primary"
-          onClick={handleApplyToJoin}
-          disabled={loading}
-          className="w-full"
-        >
-          Apply to Join Team
-        </Button>
+      <div className="mt-6 border-t border-base-200 pt-4">
+        {isMember ? (
+          <div className="flex items-center gap-2">
+            {/* Send Message to Team Button */}
+            <SendMessageButton
+              type="team"
+              teamId={team?.id}
+              teamName={team?.name}
+              variant="primary"
+              className="flex-1"
+            >
+              Send Message to Team
+            </SendMessageButton>
+
+            {/* Leave Team Button */}
+            {canLeaveTeam && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsLeaveDialogOpen(true)}
+                className="hover:bg-red-100 hover:text-red-700 p-2"
+                aria-label="Leave team"
+                title="Leave team"
+              >
+                <LogOut size={20} />
+              </Button>
+            )}
+          </div>
+        ) : (
+          <Button
+            variant="primary"
+            onClick={handleApplyToJoin}
+            disabled={loading}
+            className="w-full"
+          >
+            Apply to Join Team
+          </Button>
+        )}
       </div>
     );
   };
@@ -649,6 +1065,16 @@ const TeamDetailsModal = ({
     );
   };
 
+  const handleMemberClick = (memberId) => {
+    setSelectedUserId(memberId);
+    setIsUserModalOpen(true);
+  };
+
+  const handleUserModalClose = () => {
+    setIsUserModalOpen(false);
+    setSelectedUserId(null);
+  };
+
   // Add detailed debugging
   console.log("Team Details Debug:", {
     // User information
@@ -656,14 +1082,14 @@ const TeamDetailsModal = ({
     "User Object": user,
 
     // Team information
-    "Team Creator ID": team?.creator_id,
+    "Team Owner ID": team?.owner_id,
     "Team Object": team,
 
     // Role information
     "User Role": userRole,
 
     // Computed values
-    "Is Creator": isCreator,
+    "Is Owner": isOwner,
     "Is Admin": userRole === "admin",
     "Can Edit": canEditTeam,
     "Is Public": isPublic,
@@ -676,486 +1102,199 @@ const TeamDetailsModal = ({
     "Form Data": formData,
   });
 
+  // Create custom title with buttons
+  const modalTitle = (
+    <div className="flex justify-between items-center w-full">
+      <h2 className="text-xl font-medium text-primary">
+        {isEditing ? "Edit Team" : "Team Details"}
+      </h2>
+      <div className="flex items-center space-x-2">
+        {!isEditing && (
+          <>
+            {canEditTeam && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsEditing(true)}
+                className="hover:bg-[#7ace82] hover:text-[#036b0c]"
+                icon={<Edit size={16} />}
+              >
+                Edit
+              </Button>
+            )}
+            {canDeleteTeam && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleDeleteTeam}
+                disabled={loading}
+                className="hover:bg-red-100 hover:text-red-700"
+                icon={<Trash2 size={16} />}
+                aria-label="Delete team"
+              >
+                Delete
+              </Button>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+
   if (!isModalVisible) return null;
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center">
-        {/* Backdrop overlay */}
-        <div
-          className="absolute inset-0 bg-black bg-opacity-40"
-          onClick={(e) => {
-            // Don't close if application modal is open
-            if (!isApplicationModalOpen) {
-              handleClose();
-            }
-          }}
-        ></div>
-
-        {/* Modal container */}
-        <div className="relative w-full max-w-2xl max-h-[90vh] rounded-xl overflow-hidden bg-base-100 shadow-lg">
-          <div className="px-6 py-4 border-b border-base-300 flex justify-between items-center">
-            <h2 className="text-xl font-medium text-primary">
-              {isEditing ? "Edit Team" : "Team Details"}
-            </h2>
-            <div className="flex items-center space-x-2">
-              {/* Only show edit/delete buttons if user is authenticated AND creator */}
-              {!isEditing && (
-                <>
-                  {/* Edit button - only shown to authenticated creators */}
-                  {isAuthenticated && isCreator && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setIsEditing(true)}
-                      className="hover:bg-[#7ace82] hover:text-[#036b0c]"
-                      icon={<Edit size={16} />}
-                    >
-                      Edit
-                    </Button>
-                  )}
-
-                  {/* Delete button - only shown to authenticated creators */}
-                  {isAuthenticated && isCreator && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleDeleteTeam}
-                      className="hover:bg-[#7ace82] hover:text-[#036b0c]"
-                      icon={<Trash2 size={16} />}
-                      disabled={loading}
-                    >
-                      Delete
-                    </Button>
-                  )}
-                </>
-              )}
-              <button
-                onClick={handleClose}
-                className="btn btn-ghost btn-sm btn-circle"
-              >
-                <X size={20} />
-              </button>
-            </div>
+      {/* Main Modal using Modal.jsx component */}
+      <Modal
+        isOpen={isModalVisible && !isApplicationModalOpen}
+        onClose={handleClose}
+        title={modalTitle}
+        position="center"
+        size="default"
+        maxHeight="max-h-[90vh]"
+        minHeight="min-h-[300px]"
+        closeOnBackdrop={true}
+        closeOnEscape={true}
+        showCloseButton={true}
+      >
+        {renderNotification()}
+        {loading ? (
+          <div className="flex justify-center items-center py-12">
+            <div className="loading loading-spinner loading-lg text-primary"></div>
           </div>
-
-          <div className="flex-1 overflow-auto p-6">
-            {renderNotification()}
-            {loading ? (
-              <div className="flex justify-center items-center py-12">
-                <div className="loading loading-spinner loading-lg text-primary"></div>
-              </div>
+        ) : (
+          <>
+            {isEditing ? (
+              <TeamEditForm
+                team={team}
+                formData={formData}
+                setFormData={setFormData}
+                formErrors={formErrors}
+                setFormErrors={setFormErrors}
+                onSubmit={handleSubmit}
+                onCancel={() => setIsEditing(false)}
+                loading={loading}
+                isOwner={isOwner}
+              />
             ) : (
-              <>
-                {isEditing ? (
-                  <form onSubmit={handleSubmit} className="space-y-4">
-                    <div className="form-control">
-                      <label className="label">Team Avatar</label>
-                      <div className="flex items-center space-x-4">
-                        <div className="avatar placeholder">
-                          <div className="bg-primary text-primary-content rounded-full w-16 h-16">
-                            {formData.teamavatarUrl ? (
-                              <img
-                                src={formData.teamavatarUrl}
-                                alt="Team Preview"
-                                className="rounded-full object-cover w-full h-full"
-                              />
-                            ) : (
-                              <span className="text-2xl">
-                                {formData.name?.charAt(0) || "?"}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        <input
-                          type="file"
-                          name="teamavatar"
-                          onChange={(e) => {
-                            if (e.target.files && e.target.files[0]) {
-                              // Preview the image
-                              const reader = new FileReader();
-                              reader.onload = (event) => {
-                                setFormData((prev) => ({
-                                  ...prev,
-                                  teamavatarUrl: event.target.result,
-                                  teamavatarFile: e.target.files[0], // Store the file for upload
-                                }));
-                              };
-                              reader.readAsDataURL(e.target.files[0]);
-                            }
-                          }}
-                          accept="image/*"
-                          className="file-input file-input-bordered w-full max-w-xs"
+              <div className="space-y-6">
+                {/* Team header with avatar */}
+                {console.log("Team avatar debug:", {
+                  teamavatar_url: team?.teamavatar_url,
+                  teamavatarUrl: team?.teamavatarUrl,
+                  fullTeam: team,
+                })}
+                <div className="flex items-start space-x-4 mb-6">
+                  <div className="avatar placeholder">
+                    <div className="bg-primary text-primary-content rounded-full w-16 h-16 flex items-center justify-center">
+                      {(team?.teamavatar_url || team?.teamavatarUrl) &&
+                      !teamImageError ? (
+                        <img
+                          src={team?.teamavatar_url || team?.teamavatarUrl}
+                          alt="Team"
+                          className="rounded-full object-cover w-full h-full"
+                          onError={() => setTeamImageError(true)}
                         />
-                      </div>
-                    </div>
-
-                    <div className="form-control">
-                      <label className="label">Team Name</label>
-                      <input
-                        type="text"
-                        name="name"
-                        value={formData.name}
-                        onChange={handleChange}
-                        className={`input input-bordered w-full ${
-                          formErrors.name ? "input-error" : ""
-                        }`}
-                        placeholder="Team Name"
-                      />
-                      {formErrors.name && (
-                        <label className="label">
-                          <span className="label-text-alt text-error">
-                            {formErrors.name}
-                          </span>
-                        </label>
-                      )}
-                    </div>
-
-                    <div className="form-control">
-                      <label className="label">Team Description</label>
-                      <textarea
-                        name="description"
-                        value={formData.description}
-                        onChange={handleChange}
-                        className={`textarea textarea-bordered h-24 w-full ${
-                          formErrors.description ? "textarea-error" : ""
-                        }`}
-                        placeholder="Team Description"
-                      ></textarea>
-                      {formErrors.description && (
-                        <label className="label">
-                          <span className="label-text-alt text-error">
-                            {formErrors.description}
-                          </span>
-                        </label>
-                      )}
-                    </div>
-
-                    {/* Toggle visibility with IconToggle */}
-                    <IconToggle
-                      name="isPublic"
-                      checked={formData.isPublic === true}
-                      onChange={handleChange}
-                      title="Team Visibility"
-                      entityType="team"
-                      visibleLabel="Public Team"
-                      hiddenLabel="Private Team"
-                      visibleDescription="Anyone can find and view your team"
-                      hiddenDescription="Only members can see this team"
-                      className="toggle-visibility"
-                    />
-
-                    <div className="form-control">
-                      <label className="label">Maximum Members</label>
-                      <select
-                        name="maxMembers"
-                        value={formData.maxMembers}
-                        onChange={handleChange}
-                        className={`select select-bordered w-full ${
-                          formErrors.maxMembers ? "select-error" : ""
-                        }`}
-                      >
-                        {[2, 3, 4, 5, 6, 8, 10, 12, 15, 20].map((size) => (
-                          <option key={size} value={size}>
-                            {size} members
-                          </option>
-                        ))}
-                      </select>
-                      {formErrors.maxMembers && (
-                        <label className="label">
-                          <span className="label-text-alt text-error">
-                            {formErrors.maxMembers}
-                          </span>
-                        </label>
-                      )}
-                    </div>
-
-                    <div className="form-control">
-                      <label className="label">Team Tags (Optional)</label>
-                      <TagSelector
-                        selectedTags={formData.selectedTags}
-                        onTagsSelected={handleTagSelection}
-                      />
-                      {import.meta.env.DEV && (
-                        <div className="mt-2 text-sm text-base-content/70">
-                          <p>
-                            Debug: Selected tag IDs:{" "}
-                            {formData.selectedTags.join(", ")}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="flex justify-end space-x-2 mt-6">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        onClick={() => setIsEditing(false)}
-                      >
-                        Cancel
-                      </Button>
-                      <Button
-                        type="submit"
-                        variant="primary"
-                        disabled={loading}
-                      >
-                        Save Changes
-                      </Button>
-                    </div>
-                  </form>
-                ) : (
-                  <div className="space-y-1">
-                    {/* Team header with avatar */}
-                    <div className="flex items-center space-x-4 mb-6">
-                      <div className="avatar placeholder">
-                        <div className="bg-primary text-primary-content rounded-full w-16 h-16">
-                          {/* Check for both snake_case and camelCase versions of avatar URL */}
-                          {team?.teamavatar_url || team?.teamavatarUrl ? (
-                            <img
-                              src={team?.teamavatar_url || team?.teamavatarUrl}
-                              alt="Team"
-                              className="rounded-full object-cover w-full h-full"
-                            />
-                          ) : (
-                            <span className="text-2xl">
-                              {team?.name?.charAt(0) || "?"}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      <div>
-                        <h1 className="text-2xl font-bold">{team?.name}</h1>
-                        {/* Members count */}
-                        <div className="flex items-center space-x-1 text-sm">
-                          <Users size={18} className="text-primary" />
-                          <span>
-                            {team.current_members_count ??
-                              team.currentMembersCount ??
-                              team.members?.length ??
-                              0}{" "}
-                            / {team.max_members ?? team.maxMembers ?? "∞"}{" "}
-                            Members
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Team description */}
-                    {team?.description && (
-                      <div>
-                        <p className="text-base-content/90 my-6">
-                          {team.description}
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Visibility info - only show to authenticated members/creators */}
-                    {shouldShowVisibilityStatus() && (
-                      <div className="flex items-center space-x-1 text-sm text-base-content/70">
-                        {isPublic ? (
-                          <>
-                            <Eye size={16} className="mr-1 text-green-600" />
-                            <span>Public Team</span>
-                          </>
-                        ) : (
-                          <>
-                            <EyeClosed
-                              size={16}
-                              className="mr-1 text-grey-600"
-                            />
-                            <span>Private Team</span>
-                          </>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Team Tags - Enhanced Display */}
-                    <div className="mb-6">
-                      <h3 className="font-semibold text-lg mb-3 flex items-center">
-                        <Tag size={18} className="mr-2 text-primary" />
-                        Team Focus Areas
-                      </h3>
-
-                      {team?.tags?.length > 0 ? (
-                        <div className="space-y-3">
-                          {/* Group tags by category if available */}
-                          {(() => {
-                            const tagsByCategory = {};
-                            team.tags.forEach((tag) => {
-                              const category = tag.category || "Other";
-                              if (!tagsByCategory[category]) {
-                                tagsByCategory[category] = [];
-                              }
-                              tagsByCategory[category].push(tag);
-                            });
-
-                            return Object.entries(tagsByCategory).map(
-                              ([category, categoryTags]) => (
-                                <div
-                                  key={category}
-                                  className="bg-base-200/30 rounded-lg p-3"
-                                >
-                                  <h4 className="font-medium text-sm text-base-content/80 mb-2">
-                                    {category}
-                                  </h4>
-                                  <TagDisplay
-                                    tags={categoryTags}
-                                    size="md"
-                                    variant="primary"
-                                    showCategory={false}
-                                  />
-                                </div>
-                              )
-                            );
-                          })()}
-                        </div>
                       ) : (
-                        <div className="bg-base-200/20 rounded-lg p-4 text-center">
-                          <Tag
-                            size={24}
-                            className="mx-auto mb-2 text-base-content/40"
-                          />
-                          <p className="text-sm text-base-content/60">
-                            No focus areas specified yet
-                          </p>
-                          {isCreator && !isEditing && (
-                            <p className="text-xs text-base-content/50 mt-1">
-                              Add tags to help others find your team
-                            </p>
+                        <span className="text-xl">{getTeamInitials()}</span>
+                      )}
+                    </div>
+                  </div>
+                  <div>
+                    <h1 className="text-2xl font-bold leading-[120%] mb-[0.2em]">
+                      {team?.name}
+                    </h1>
+                    {/* Members count and visibility */}
+                    <div className="flex items-center space-x-4 text-sm">
+                      <div className="flex items-center space-x-1">
+                        <Users size={18} className="text-primary" />
+                        <span>
+                          {team.current_members_count ??
+                            team.currentMembersCount ??
+                            team.members?.length ??
+                            0}
+                          {""}/
+                          {team.max_members === null
+                            ? "∞"
+                            : team.max_members ?? team.maxMembers ?? "∞"}
+                        </span>
+                      </div>
+                      {shouldShowVisibilityStatus() && (
+                        <div className="flex items-center text-base-content/70">
+                          {isPublic ? (
+                            <>
+                              <Eye size={16} className="mr-1 text-green-600" />
+                              <span>Public</span>
+                            </>
+                          ) : (
+                            <>
+                              <EyeClosed
+                                size={16}
+                                className="mr-1 text-gray-500"
+                              />
+                              <span>Private</span>
+                            </>
                           )}
                         </div>
                       )}
                     </div>
+                  </div>
+                </div>
 
-                    {/* Members */}
-                    {team?.members && team.members.length > 0 && (
-                      <div className="mb-6">
-                        <h2 className="text-xl font-semibold mb-4">
-                          Team Members
-                        </h2>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          {team.members.map((member) => {
-                            console.log("Member data:", member); // Debug info
-
-                            // Check which property is available (userId or user_id)
-                            const memberId = member.userId || member.user_id;
-
-                            // Determine if this member should be anonymized
-                            const anonymize = shouldAnonymizeMember(member);
-
-                            return (
-                              <div
-                                key={memberId}
-                                className="flex items-start bg-green-50 rounded-xl shadow p-4 gap-4"
-                              >
-                                <div className="avatar">
-                                  {!anonymize &&
-                                  (member.avatarUrl || member.avatar_url) ? (
-                                    <div className="rounded-full w-12 h-12">
-                                      <img
-                                        src={
-                                          member.avatarUrl || member.avatar_url
-                                        }
-                                        alt={member.username}
-                                        className="object-cover w-full h-full"
-                                        onError={(e) => {
-                                          e.target.onerror = null;
-                                          // Fall back to placeholder on error
-                                          e.target.style.display = "none";
-                                          const parentDiv = e.target.parentNode;
-                                          parentDiv.classList.add(
-                                            "placeholder",
-                                            "bg-primary",
-                                            "text-primary-content"
-                                          );
-                                          const span =
-                                            document.createElement("span");
-                                          span.className = "text-lg";
-                                          span.textContent = anonymize
-                                            ? "PP"
-                                            : (member.username || "").charAt(
-                                                0
-                                              ) || "?";
-                                          parentDiv.appendChild(span);
-                                        }}
-                                      />
-                                    </div>
-                                  ) : (
-                                    <div className="placeholder bg-primary text-primary-content rounded-full w-12 h-12">
-                                      <span className="text-lg">
-                                        {anonymize
-                                          ? "PP"
-                                          : (member.username || "").charAt(0) ||
-                                            "?"}
-                                      </span>
-                                    </div>
-                                  )}
-                                </div>
-
-                                <div className="flex flex-col">
-                                  <span className="font-medium text-primary">
-                                    {anonymize
-                                      ? "Private Profile"
-                                      : member.firstName && member.lastName
-                                      ? `${member.firstName} ${member.lastName}`
-                                      : member.first_name && member.last_name
-                                      ? `${member.first_name} ${member.last_name}`
-                                      : member.username}
-                                  </span>
-                                  <div className="flex items-center">
-                                    <span className="text-xs text-base-content/70">
-                                      {member.role}
-                                    </span>
-                                    {/* Add location display if the member has a postal code */}
-                                    {!anonymize &&
-                                      (member.postal_code ||
-                                        member.postalCode) && (
-                                        <>
-                                          <span className="text-xs text-base-content/70 mx-1">
-                                            •
-                                          </span>
-                                          <LocationDisplay
-                                            postalCode={
-                                              member.postal_code ||
-                                              member.postalCode
-                                            }
-                                            showIcon={false}
-                                            displayType="short"
-                                            className="text-xs text-base-content/70"
-                                          />
-                                        </>
-                                      )}
-                                  </div>
-
-                                  {!anonymize && member.tags?.length > 0 && (
-                                    <div className="flex flex-wrap gap-1 mt-1">
-                                      {member.tags.map((tag) => (
-                                        <span
-                                          key={tag.id}
-                                          className="badge badge-outline badge-sm text-xs"
-                                        >
-                                          {tag.name}
-                                        </span>
-                                      ))}
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Join Team Button for non-members */}
-                    {renderJoinButton()}
+                {/* Team description */}
+                {team?.description && (
+                  <div>
+                    <p className="text-base-content/90 my-6">
+                      {team.description}
+                    </p>
                   </div>
                 )}
-              </>
+
+                {/* Team Focus Areas */}
+                {console.log("Team tags for FocusAreasSection:", team?.tags)}
+                {!isEditing && (
+                  <TagsDisplaySection
+                    title="Team Focus Areas"
+                    tags={team?.tags || []}
+                    allTags={allTags}
+                    canEdit={canEditTeam}
+                    onSave={handleTeamTagsUpdate}
+                    emptyMessage="No focus areas added yet."
+                    placeholder="Add team focus areas..."
+                  />
+                )}
+
+                {/* Team Members */}
+                <TeamMembersSection
+                  team={team}
+                  isEditing={isEditing}
+                  isAuthenticated={isAuthenticated}
+                  user={user}
+                  onMemberClick={handleMemberClick}
+                  shouldAnonymizeMember={shouldAnonymizeMember}
+                  isOwner={isOwner}
+                  onRoleChange={fetchTeamDetails}
+                  onMemberRemoved={fetchTeamDetails}
+                />
+
+                {/* Join / Leave / Message Buttons */}
+                {renderJoinButton()}
+              </div>
             )}
-          </div>
-        </div>
-      </div>
+          </>
+        )}
+      </Modal>
+
+      {/* User Details Modal */}
+      {isUserModalOpen && selectedUserId && (
+        <UserDetailsModal
+          isOpen={isUserModalOpen}
+          userId={selectedUserId}
+          onClose={handleUserModalClose}
+          mode="view"
+        />
+      )}
 
       {/* Application Modal */}
       <TeamApplicationModal
@@ -1165,6 +1304,62 @@ const TeamDetailsModal = ({
         onSubmit={handleApplicationSubmit}
         loading={applicationLoading}
       />
+
+      {/* Leave Team Confirmation Dialog */}
+      {isLeaveDialogOpen && (
+        <Modal
+          isOpen={isLeaveDialogOpen}
+          onClose={() => setIsLeaveDialogOpen(false)}
+          title="Leave Team"
+          position="center"
+          size="small"
+          closeOnBackdrop={!leaveLoading}
+          closeOnEscape={!leaveLoading}
+          showCloseButton={!leaveLoading}
+        >
+          <div className="py-4">
+            <p className="text-base-content">Really want to leave this team?</p>
+            {isOwner && (
+              <p className="text-warning text-sm mt-2">
+                Note: As an owner, you can only leave if there's another owner
+                to manage the team.
+              </p>
+            )}
+          </div>
+          <div className="flex justify-end gap-3 mt-4">
+            <Button
+              variant="ghost"
+              onClick={() => setIsLeaveDialogOpen(false)}
+              disabled={leaveLoading}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="error"
+              onClick={handleLeaveTeam}
+              disabled={leaveLoading}
+              className="bg-red-500 hover:bg-red-600 text-white"
+            >
+              {leaveLoading ? (
+                <span className="loading loading-spinner loading-sm"></span>
+              ) : (
+                "Leave Team"
+              )}
+            </Button>
+          </div>
+        </Modal>
+      )}
+
+      {/* Invitation Details Modal */}
+      {pendingInvitation && (
+        <TeamInvitationDetailsModal
+          isOpen={isInvitationModalOpen}
+          invitation={pendingInvitation}
+          onClose={() => setIsInvitationModalOpen(false)}
+          onAccept={handleInvitationAccept}
+          onDecline={handleInvitationDecline}
+        />
+      )}
     </>
   );
 };

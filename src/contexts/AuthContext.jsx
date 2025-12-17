@@ -1,5 +1,6 @@
 import { createContext, useState, useEffect, useContext } from "react";
 import api from "../services/api";
+import socketService from "../services/socketService";
 
 const AuthContext = createContext(null);
 
@@ -14,6 +15,7 @@ export const AuthProvider = ({ children }) => {
     const loadUser = async () => {
       if (token) {
         try {
+          console.log("Loading user with token:", token);
           const response = await api.get("/api/auth/me", {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -51,6 +53,14 @@ export const AuthProvider = ({ children }) => {
           console.log("Enhanced user data:", enhancedUserData);
           setUser(enhancedUserData);
           setError(null);
+
+          // Connect socket AFTER user is loaded
+          console.log("Connecting socket after user load");
+          try {
+            socketService.connect(token);
+          } catch (socketError) {
+            console.error("Failed to connect socket on load:", socketError);
+          }
         } catch (err) {
           console.error("Failed to load user:", err);
           // If token is invalid, clear it
@@ -112,6 +122,19 @@ export const AuthProvider = ({ children }) => {
       setToken(token);
       setUser(enhancedUser);
       setError(null);
+
+      // Initialize socket connection AFTER user is set
+      console.log("Initializing socket connection after registration");
+      try {
+        socketService.connect(token);
+      } catch (socketError) {
+        console.error(
+          "Failed to connect socket after registration:",
+          socketError
+        );
+        // Don't fail registration if socket fails
+      }
+
       return { success: true };
     } catch (err) {
       console.error("Registration error:", err);
@@ -165,6 +188,16 @@ export const AuthProvider = ({ children }) => {
       setToken(token);
       setUser(enhancedUser);
       setError(null);
+
+      // Initialize socket connection AFTER user is set
+      console.log("Initializing socket connection after login");
+      try {
+        socketService.connect(token);
+      } catch (socketError) {
+        console.error("Failed to connect socket after login:", socketError);
+        // Don't fail login if socket fails
+      }
+
       return { success: true };
     } catch (err) {
       console.error("Login error:", err);
@@ -259,7 +292,17 @@ export const AuthProvider = ({ children }) => {
     setToken(null);
     setUser(null);
     setError(null); // Clear error when logging out
+    // Disconnect socket
+    console.log("Disconnecting socket on logout");
+    socketService.disconnect();
   };
+
+  // Add cleanup on unmount
+  useEffect(() => {
+    return () => {
+      socketService.disconnect();
+    };
+  }, []);
 
   // Provide the authentication context
   return (

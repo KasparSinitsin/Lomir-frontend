@@ -1,5 +1,3 @@
-// Update src/components/teams/TeamCard.jsx
-
 import React, { useState, useEffect, useCallback } from "react";
 import Card from "../common/Card";
 import Button from "../common/Button";
@@ -10,79 +8,250 @@ import {
   EyeClosed,
   EyeIcon,
   Tag,
-  Clock,
+  Calendar,
   AlertCircle,
+  Check,
+  X,
+  Send,
+  MessageSquare,
+  User,
+  Crown,
+  ShieldCheck,
+  SendHorizontal,
+  Mail,
 } from "lucide-react";
 import TeamDetailsModal from "./TeamDetailsModal";
-import TeamApplicationDetailsModal from "./TeamApplicationDetailsModal"; // We'll create this
+import UserDetailsModal from "../users/UserDetailsModal";
+import TeamApplicationDetailsModal from "./TeamApplicationDetailsModal";
+import InvitationNotificationBadge from "./InvitationNotificationBadge";
+import TeamInvitesModal from "./TeamInvitesModal";
+import TeamInvitationDetailsModal from "./TeamInvitationDetailsModal";
 import { teamService } from "../../services/teamService";
 import { useAuth } from "../../contexts/AuthContext";
 import Alert from "../common/Alert";
 import ApplicationNotificationBadge from "./ApplicationNotificationBadge";
 import TeamApplicationsModal from "./TeamApplicationsModal";
+import { getUserInitials, getDisplayName } from "../../utils/userHelpers";
 import { format } from "date-fns";
 
+/**
+ * Unified TeamCard Component
+ *
+ * Handles three variants:
+ * - "member" (default): Teams you're part of
+ * - "application": Your pending applications to join teams
+ * - "invitation": Invitations you've received from teams
+ *
+ * @param {Object} props
+ * @param {Object} props.team - Team data (for member variant)
+ * @param {Object} props.application - Application data (for application variant)
+ * @param {Object} props.invitation - Invitation data (for invitation variant)
+ * @param {string} props.variant - "member" | "application" | "invitation"
+ * @param {Function} props.onUpdate - Callback when team is updated
+ * @param {Function} props.onDelete - Callback when team is deleted
+ * @param {Function} props.onLeave - Callback when user leaves a team
+ * @param {Function} props.onCancel - Callback to cancel application
+ * @param {Function} props.onSendReminder - Callback to send reminder for application
+ * @param {Function} props.onAccept - Callback to accept invitation
+ * @param {Function} props.onDecline - Callback to decline invitation
+ * @param {boolean} props.isSearchResult - Whether this card is shown in search results
+ */
 const TeamCard = ({
+  // Data props - use the appropriate one based on variant
   team,
+  application,
+  invitation,
+
+  // Variant control
+  variant = "member", // "member" | "application" | "invitation"
+
+  // Legacy prop support (maps to variant="application")
+  isPendingApplication = false,
+
+  // Common handlers
   onUpdate,
   onDelete,
+  onLeave,
   isSearchResult = false,
-  isPendingApplication = false,
-  onCancelApplication,
+
+  // Application-specific handlers
+  onCancel,
+  onCancelApplication, // Legacy prop name
+  onSendReminder,
+
+  // Invitation-specific handlers
+  onAccept,
+  onDecline,
+
+  // Loading state
+  loading = false,
 }) => {
+  // Determine effective variant (support legacy isPendingApplication prop)
+  const effectiveVariant = isPendingApplication ? "application" : variant;
+
+  // Normalize data based on variant
+  const getNormalizedData = () => {
+    if (effectiveVariant === "invitation" && invitation) {
+      return {
+        team: invitation.team || {},
+        id: invitation.id,
+        message: invitation.message,
+        date: invitation.created_at || invitation.createdAt,
+        inviter: invitation.inviter,
+      };
+    }
+    if (effectiveVariant === "application" && application) {
+      return {
+        team: application.team || {},
+        id: application.id,
+        message: application.message,
+        date: application.created_at || application.createdAt,
+      };
+    }
+    // For legacy application support via team prop with application data
+    if (effectiveVariant === "application" && team) {
+      return {
+        team: team,
+        id: team.applicationId,
+        message: team.applicationMessage,
+        date: team.applicationDate || team.created_at || team.createdAt,
+      };
+    }
+    // Default: member variant
+    return {
+      team: team || {},
+      id: null,
+      message: null,
+      date: null,
+    };
+  };
+
+  const normalizedData = getNormalizedData();
+
+  // ========= ALL HOOKS (useState, useAuth, useCallback, useEffect) =========
+
+  // State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isApplicationModalOpen, setIsApplicationModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [actionLoading, setActionLoading] = useState(null);
   const [error, setError] = useState(null);
   const [userRole, setUserRole] = useState(null);
-  const [teamData, setTeamData] = useState(team);
+  const [teamData, setTeamData] = useState(normalizedData.team);
   const { user, isAuthenticated } = useAuth();
   const [pendingApplications, setPendingApplications] = useState([]);
   const [isApplicationsModalOpen, setIsApplicationsModalOpen] = useState(false);
+  const [pendingSentInvitations, setPendingSentInvitations] = useState([]);
+  const [isInvitesModalOpen, setIsInvitesModalOpen] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState(null);
+  const [responses, setResponses] = useState({});
+  const [isInvitationDetailsModalOpen, setIsInvitationDetailsModalOpen] =
+    useState(false);
+  const [pendingInvitationForTeam, setPendingInvitationForTeam] =
+    useState(null);
+  const [pendingApplicationForTeam, setPendingApplicationForTeam] =
+    useState(null);
 
-  // Get the team image or initial for the avatar
-  const getTeamImage = () => {
-    if (teamData.teamavatar_url) {
-      return teamData.teamavatar_url;
-    }
+  // Check if current user is the owner of the team
+  const isOwner =
+    user && (teamData?.owner_id === user.id || teamData?.ownerId === user.id);
 
-    if (teamData.teamavatarUrl) {
-      return teamData.teamavatarUrl;
-    }
+  // Check if user is admin (owner or admin role can manage invitations)
+  const isAdmin = userRole === "admin";
+  const canManageInvitations = isOwner || isAdmin;
 
-    return teamData.name?.charAt(0) || "?";
-  };
-
-  // Check if current user is the creator of the team
-  const isCreator =
-    user && (teamData.creator_id === user.id || teamData.creatorId === user.id);
-
-  // Update local team data when the prop changes
+  // Update local team data when props change
   useEffect(() => {
-    setTeamData(team);
-  }, [team]);
+    const incoming = getNormalizedData().team;
 
-  // Fetch the user's role in this team on component mount
+    setTeamData((prev) => {
+      // If we already have the same team loaded, merge so we don't lose `members`, etc.
+      if (prev?.id && incoming?.id && prev.id === incoming.id) {
+        return { ...prev, ...incoming };
+      }
+      return incoming;
+    });
+  }, [team, application, invitation]);
+
+  //   // Fetch user's role in this team (only for member variant)
+  //   useEffect(() => {
+  //     const fetchUserRole = async () => {
+  //       if (user && teamData?.id && effectiveVariant === "member") {
+  //         try {
+  //           const response = await teamService.getUserRoleInTeam(
+  //             teamData.id,
+  //             user.id
+  //           );
+
+  // const payload = response?.data;
+  // const data = payload?.data ?? payload; // supports {success,data:{...}} and {...}
+
+  // const isMember = data?.isMember ?? payload?.isMember; // supports both shapes
+  // const role = data?.role ?? payload?.role ?? null;
+
+  // if (isMember === false) {
+  //   setUserRole(null);
+  // } else {
+  //   setUserRole(role);
+  // }
+
+  //         } catch (err) {
+  //           console.error("Error fetching user role:", err);
+  //           setUserRole(null); // optional: keeps UI clean on errors
+  //         }
+  //       }
+  //     };
+  //     fetchUserRole();
+  //   }, [user, teamData?.id, effectiveVariant]);
+
+  // Fetch user's role in this team (member cards only)
   useEffect(() => {
     const fetchUserRole = async () => {
-      if (user && teamData.id && !isSearchResult && !isPendingApplication) {
-        try {
-          const response = await teamService.getUserRoleInTeam(
-            teamData.id,
-            user.id
-          );
-          setUserRole(response.data.role);
-        } catch (err) {
-          console.error("Error fetching user role:", err);
+      if (!user?.id || !teamData?.id) return;
+      if (effectiveVariant !== "member") return;
+      if (userRole) return;
+
+      // Owner shortcut (no request needed)
+      if (teamData.owner_id === user.id || teamData.ownerId === user.id) {
+        setUserRole("owner");
+        return;
+      }
+
+      try {
+        const response = await teamService.getUserRoleInTeam(
+          teamData.id,
+          user.id
+        );
+
+        const payload = response?.data;
+        const data = payload?.data ?? payload; // supports both shapes
+
+        const isMember = data?.isMember ?? payload?.isMember;
+        const role = data?.role ?? payload?.role ?? null;
+
+        if (isMember === false) {
+          setUserRole(null);
+        } else {
+          setUserRole(role);
         }
+      } catch (err) {
+        console.error("Error fetching user role:", err);
+        setUserRole(null);
       }
     };
 
     fetchUserRole();
-  }, [user, teamData.id, isSearchResult, isPendingApplication]);
+  }, [
+    user?.id,
+    teamData?.id,
+    teamData?.owner_id,
+    teamData?.ownerId,
+    effectiveVariant,
+  ]);
 
+  // Fetch pending applications (for team owners and admins)
   const fetchPendingApplications = useCallback(async () => {
-    if (isCreator && teamData.id && !isPendingApplication) {
+    if (canManageInvitations && teamData?.id && effectiveVariant === "member") {
       try {
         const response = await teamService.getTeamApplications(teamData.id);
         setPendingApplications(response.data || []);
@@ -90,166 +259,65 @@ const TeamCard = ({
         console.error("Error fetching applications:", error);
       }
     }
-  }, [isCreator, teamData.id, isPendingApplication]);
+  }, [canManageInvitations, teamData?.id, effectiveVariant]);
+
+  // Fetch sent invitations (for team owners and admins)
+  const fetchSentInvitations = useCallback(async () => {
+    if (canManageInvitations && teamData?.id && effectiveVariant === "member") {
+      try {
+        const response = await teamService.getTeamSentInvitations(teamData.id);
+        setPendingSentInvitations(response.data || []);
+      } catch (error) {
+        console.error("Error fetching sent invitations:", error);
+        setPendingSentInvitations([]);
+      }
+    }
+  }, [canManageInvitations, teamData?.id, effectiveVariant]);
 
   useEffect(() => {
     fetchPendingApplications();
   }, [fetchPendingApplications]);
 
-  const handleApplicationAction = async (applicationId, action, response) => {
-    try {
-      await teamService.handleTeamApplication(applicationId, action, response);
-      await fetchPendingApplications();
-      if (onUpdate) {
-        const updatedTeam = await teamService.getTeamById(teamData.id);
-        onUpdate(updatedTeam.data);
-      }
-    } catch (error) {
-      throw error;
-    }
-  };
-
-  const openTeamDetails = () => {
-    if (isPendingApplication) {
-      setIsApplicationModalOpen(true);
-    } else {
-      setIsModalOpen(true);
-    }
-  };
-
-  const closeTeamDetails = () => {
-    setIsModalOpen(false);
-  };
-
-  const closeApplicationDetails = () => {
-    setIsApplicationModalOpen(false);
-  };
-
-  const handleTeamUpdate = (updatedTeam) => {
-    setTeamData(updatedTeam);
-    if (onUpdate) {
-      onUpdate(updatedTeam);
-    }
-  };
-
-  const handleDeleteClick = async (e) => {
-    e.stopPropagation();
-
-    if (
-      window.confirm(
-        "Are you sure you want to delete this team? This action cannot be undone."
-      )
-    ) {
-      try {
-        setIsDeleting(true);
-        await teamService.deleteTeam(teamData.id);
-
-        if (onDelete) {
-          onDelete(teamData.id);
-        }
-      } catch (err) {
-        console.error("Error deleting team:", err);
-        setError("Failed to delete team. Please try again.");
-      } finally {
-        setIsDeleting(false);
-      }
-    }
-  };
-
-  const handleCancelApplication = async (e) => {
-    e.stopPropagation();
-
-    if (
-      window.confirm(
-        "Are you sure you want to cancel your application to this team?"
-      )
-    ) {
-      try {
-        setIsDeleting(true);
-        if (onCancelApplication) {
-          await onCancelApplication(teamData.applicationId);
-        }
-      } catch (err) {
-        console.error("Error canceling application:", err);
-        setError("Failed to cancel application. Please try again.");
-      } finally {
-        setIsDeleting(false);
-      }
-    }
-  };
-
-  const handleModalClose = async () => {
-    try {
-      if (!isPendingApplication) {
-        const response = await teamService.getTeamById(teamData.id);
-        if (response && response.data) {
-          const freshTeamData = response.data;
-          setTeamData(freshTeamData);
-
-          if (onUpdate) {
-            onUpdate(freshTeamData);
-          }
-        }
-      }
-    } catch (error) {
-      console.error("Error refreshing team data:", error);
-    }
-
-    closeTeamDetails();
-    closeApplicationDetails();
-  };
-
-  const isPublic = teamData.is_public === true;
-
-  const shouldShowVisibilityIcon = () => {
-    if (!isAuthenticated || !user) {
-      return false;
-    }
-
-    if (isCreator) {
-      return true;
-    }
-
-    if (teamData.creator_id === user.id || teamData.creatorId === user.id) {
-      return true;
-    }
-
-    if (teamData.members && Array.isArray(teamData.members)) {
-      const foundInMembers = teamData.members.some(
-        (member) => member.user_id === user.id || member.userId === user.id
-      );
-      if (foundInMembers) {
-        return true;
-      }
-    }
-
-    if (userRole && userRole !== null) {
-      return true;
-    }
-
-    return false;
-  };
+  // Fetch sent invitations
+  useEffect(() => {
+    fetchSentInvitations();
+  }, [fetchSentInvitations]);
 
   useEffect(() => {
     const fetchCompleteTeamData = async () => {
-      if (teamData && teamData.id && !isPendingApplication) {
+      if (
+        teamData &&
+        teamData.id &&
+        (effectiveVariant === "member" ||
+          effectiveVariant === "invitation" ||
+          effectiveVariant === "application")
+      ) {
         try {
-          if (
-            teamData.tags &&
-            Array.isArray(teamData.tags) &&
-            teamData.tags.length > 0 &&
-            teamData.tags.every((tag) => tag.name || typeof tag === "string")
-          ) {
-            return;
-          }
+          // if (
+          //   teamData.tags &&
+          //   Array.isArray(teamData.tags) &&
+          //   teamData.tags.length > 0 &&
+          //   teamData.tags.every((tag) => tag.name || typeof tag === "string")
+          // ) {
+          //   return;
+          // }
 
           const response = await teamService.getTeamById(teamData.id);
-          if (response && response.data) {
-            if (response.data.tags && Array.isArray(response.data.tags)) {
-              setTeamData((prev) => ({
-                ...prev,
-                tags: response.data.tags,
-              }));
+          const fullTeam = response?.data?.data ?? response?.data;
+
+          if (fullTeam) {
+            setTeamData((prev) => ({
+              ...prev,
+              ...fullTeam,
+              tags: Array.isArray(fullTeam.tags) ? fullTeam.tags : prev.tags,
+            }));
+
+            // Compute role from members list
+            if (user?.id && Array.isArray(fullTeam.members)) {
+              const me = fullTeam.members.find(
+                (m) => (m.user_id ?? m.userId) === user.id
+              );
+              setUserRole(me?.role ?? null);
             }
           }
         } catch (error) {
@@ -259,11 +327,151 @@ const TeamCard = ({
     };
 
     fetchCompleteTeamData();
-  }, [teamData.id, isPendingApplication]);
+  }, [teamData?.id, effectiveVariant, user?.id]);
+
+  // Check if user has a pending application for this team (for search results)
+  useEffect(() => {
+    const checkPendingApplication = async () => {
+      if (!isSearchResult || !isAuthenticated || !teamData?.id) {
+        return;
+      }
+
+      try {
+        const response = await teamService.getUserPendingApplications();
+        const pendingApplications = response.data || [];
+
+        // Find the application for this team (if any)
+        const foundApplication = pendingApplications.find(
+          (app) => app.team?.id === teamData.id || app.team_id === teamData.id
+        );
+
+        setPendingApplicationForTeam(foundApplication || null);
+      } catch (error) {
+        console.error("Error checking pending applications:", error);
+      }
+    };
+
+    checkPendingApplication();
+  }, [isSearchResult, isAuthenticated, teamData?.id]);
+
+  // Check if user has a pending invitation for this team (for search results)
+  useEffect(() => {
+    const checkPendingInvitation = async () => {
+      if (!isSearchResult || !isAuthenticated || !teamData?.id) return;
+
+      try {
+        // IMPORTANT: use whatever your actual service method is called
+        // Common naming pattern (matching getUserPendingApplications):
+        const response = await teamService.getUserReceivedInvitations();
+        const pendingInvitations = response.data || [];
+
+        const foundInvitation = pendingInvitations.find(
+          (inv) => inv.team?.id === teamData.id || inv.team_id === teamData.id
+        );
+
+        setPendingInvitationForTeam(foundInvitation || null);
+      } catch (error) {
+        console.error("Error checking pending invitations:", error);
+        setPendingInvitationForTeam(null);
+      }
+    };
+
+    checkPendingInvitation();
+  }, [isSearchResult, isAuthenticated, teamData?.id]);
+
+  // useEffect(() => {
+  //   if (effectiveVariant !== "member") return;
+
+  //   // Owner shortcut (works even if members are missing)
+  //   if (user?.id && (teamData?.owner_id === user.id || teamData?.ownerId === user.id)) {
+  //     setUserRole("owner");
+  //     return;
+  //   }
+
+  //   if (!user?.id || !Array.isArray(teamData?.members)) {
+  //     setUserRole(null);
+  //     return;
+  //   }
+
+  //   const me = teamData.members.find(
+  //     (m) => m.user_id === user.id || m.userId === user.id
+  //   );
+
+  //   setUserRole(me?.role ?? null);
+  // }, [effectiveVariant, user?.id, teamData?.owner_id, teamData?.ownerId, teamData?.members]);
+
+  // ================= GUARD CLAUSE – AFTER ALL HOOKS =================
+
+  if (!teamData) {
+    return null;
+  }
+
+  // ============ Helper Functions ============
+
+  // Get team initials from name (e.g., "Urban Gardeners Berlin" → "UGB")
+  const getTeamInitials = () => {
+    const name = teamData.name;
+    if (!name || typeof name !== "string") return "?";
+
+    const words = name.trim().split(/\s+/);
+
+    if (words.length === 1) {
+      // Single word: take first 2 characters
+      return name.slice(0, 2).toUpperCase();
+    }
+
+    // Multiple words: take first letter of each word (max 3)
+    return words
+      .slice(0, 3)
+      .map((word) => word.charAt(0))
+      .join("")
+      .toUpperCase();
+  };
+
+  // Get team image URL (return null for fallback)
+  const getTeamImage = () => {
+    // Add this debug line
+    console.log("Team avatar debug:", {
+      name: teamData.name,
+      teamavatar_url: teamData.teamavatar_url,
+      teamavatarUrl: teamData.teamavatarUrl,
+    });
+
+    if (teamData.teamavatar_url) return teamData.teamavatar_url;
+    if (teamData.teamavatarUrl) return teamData.teamavatarUrl;
+    return null;
+  };
+
+  const getTeamId = () => {
+    return teamData.id || normalizedData.team?.id;
+  };
+
+  const getMemberCount = () => {
+    return (
+      teamData.current_members_count ??
+      teamData.currentMembersCount ??
+      teamData.members?.length ??
+      0
+    );
+  };
+
+  const getMaxMembers = () => {
+    const maxMembers = teamData.max_members ?? teamData.maxMembers;
+    return maxMembers === null || maxMembers === undefined ? "∞" : maxMembers;
+  };
+
+  const getFormattedDate = () => {
+    const date = normalizedData.date;
+    if (!date) return null;
+    try {
+      return format(new Date(date), "MMM d, yyyy");
+    } catch (e) {
+      return null;
+    }
+  };
 
   const getDisplayTags = () => {
     let displayTags = [];
-
     try {
       if (teamData.tags_json) {
         const tagStrings = teamData.tags_json.split(",");
@@ -273,7 +481,6 @@ const TeamCard = ({
             try {
               return JSON.parse(tagStr.trim());
             } catch (e) {
-              console.warn("Failed to parse tag JSON:", tagStr);
               return null;
             }
           })
@@ -281,15 +488,10 @@ const TeamCard = ({
       } else if (teamData.tags) {
         if (Array.isArray(teamData.tags)) {
           displayTags = teamData.tags.map((tag) => {
-            if (typeof tag === "string") {
-              return { name: tag };
-            } else if (tag && typeof tag === "object") {
+            if (typeof tag === "string") return { name: tag };
+            if (tag && typeof tag === "object") {
               return {
-                id:
-                  tag.id ||
-                  tag.tag_id ||
-                  tag.tagId ||
-                  Math.random().toString(36).substr(2, 9),
+                id: tag.id || tag.tag_id || tag.tagId,
                 name: tag.name || (typeof tag.tag === "string" ? tag.tag : ""),
                 category: tag.category || tag.supercategory || "",
               };
@@ -307,43 +509,522 @@ const TeamCard = ({
         }
       }
     } catch (e) {
-      console.error("Error processing tags for display:", e);
       displayTags = [];
     }
-
-    displayTags = displayTags.filter(
+    return displayTags.filter(
       (tag) => tag && (tag.name || typeof tag === "string")
     );
-
-    return displayTags;
   };
 
-  // Format the application date if this is a pending application
-  const formattedApplicationDate = teamData.applicationDate
-    ? format(new Date(teamData.applicationDate), "MMM d, yyyy")
-    : null;
+  const shouldShowVisibilityIcon = () => {
+    if (!isAuthenticated || !user) return false;
+    if (effectiveVariant !== "member") return false;
+    if (isOwner) return true;
+    if (teamData.owner_id === user.id || teamData.ownerId === user.id)
+      return true;
+    if (teamData.members && Array.isArray(teamData.members)) {
+      const foundInMembers = teamData.members.some(
+        (member) => member.user_id === user.id || member.userId === user.id
+      );
+      if (foundInMembers) return true;
+    }
+    if (userRole && userRole !== null) return true;
+    return false;
+  };
+
+  // ============ Event Handlers ============
+
+  const handleUserClick = (userId) => {
+    if (userId) {
+      setSelectedUserId(userId);
+    }
+  };
+
+  const handleCardClick = () => {
+    setIsModalOpen(true);
+  };
+
+  const handleResponseChange = (id, response) => {
+    setResponses((prev) => ({
+      ...prev,
+      [id]: response,
+    }));
+  };
+
+  const handleModalClose = async () => {
+    if (effectiveVariant === "member") {
+      try {
+        const response = await teamService.getTeamById(teamData.id);
+        if (response && response.data) {
+          const fullTeam = response?.data?.data ?? response?.data;
+          setTeamData(fullTeam);
+          if (onUpdate) onUpdate(fullTeam);
+        }
+      } catch (error) {
+        console.error("Error refreshing team data:", error);
+      }
+    }
+    setIsModalOpen(false);
+    setIsApplicationModalOpen(false);
+  };
+
+  const handleTeamUpdate = (updatedTeam) => {
+    setTeamData(updatedTeam);
+    if (onUpdate) onUpdate(updatedTeam);
+  };
+
+  const handleApplicationAction = async (applicationId, action, response) => {
+    try {
+      await teamService.handleTeamApplication(applicationId, action, response);
+      await fetchPendingApplications();
+      if (onUpdate) {
+        const updatedTeam = await teamService.getTeamById(teamData.id);
+        onUpdate(updatedTeam.data);
+      }
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  // Handler for canceling a sent invitation
+  const handleCancelInvitation = async (invitationId) => {
+    try {
+      await teamService.cancelInvitation(invitationId);
+      // Refresh the invitations list
+      await fetchSentInvitations();
+    } catch (error) {
+      console.error("Error canceling invitation:", error);
+      throw error;
+    }
+  };
+
+  // Member variant handlers
+  const handleDeleteClick = async (e) => {
+    e.stopPropagation();
+    if (
+      !window.confirm(
+        "Are you sure you want to delete this team? This action cannot be undone."
+      )
+    ) {
+      return;
+    }
+    try {
+      setIsDeleting(true);
+      await teamService.deleteTeam(teamData.id);
+      if (onDelete) onDelete(teamData.id);
+    } catch (err) {
+      console.error("Error deleting team:", err);
+      setError("Failed to delete team. Please try again.");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  // Handler for when user leaves a team (called from TeamDetailsModal)
+  const handleLeaveTeam = (teamId) => {
+    console.log("TeamCard handleLeaveTeam called with teamId:", teamId);
+    if (onLeave) onLeave(teamId);
+  };
+
+  // Application variant handlers
+  const handleCancelApplication = async (e) => {
+    e.stopPropagation();
+    if (
+      !window.confirm(
+        "Are you sure you want to cancel your application to this team?"
+      )
+    ) {
+      return;
+    }
+    setActionLoading("cancel");
+    try {
+      const cancelHandler = onCancel || onCancelApplication;
+      if (cancelHandler) {
+        await cancelHandler(normalizedData.id);
+      }
+    } catch (err) {
+      console.error("Error canceling application:", err);
+      setError("Failed to cancel application. Please try again.");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleSendReminder = async (e) => {
+    e.stopPropagation();
+    setActionLoading("reminder");
+    try {
+      if (onSendReminder) {
+        await onSendReminder(normalizedData.id);
+      } else {
+        alert("Reminder feature coming soon!");
+      }
+    } catch (err) {
+      console.error("Error sending reminder:", err);
+      setError("Failed to send reminder. Please try again.");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  // Invitation variant handlers
+  const handleAccept = async () => {
+    if (!onAccept) return;
+    try {
+      setActionLoading("accept");
+      const invitationId = invitation?.id;
+      const responseMessage = responses[invitationId] || "";
+      await onAccept(invitationId, responseMessage);
+      // Clear the response after successful action
+      setResponses((prev) => {
+        const newResponses = { ...prev };
+        delete newResponses[invitationId];
+        return newResponses;
+      });
+    } catch (error) {
+      console.error("Error accepting invitation:", error);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleDecline = async () => {
+    if (!onDecline) return;
+    try {
+      setActionLoading("decline");
+      const invitationId = invitation?.id;
+      const responseMessage = responses[invitationId] || "";
+      await onDecline(invitationId, responseMessage);
+      // Clear the response after successful action
+      setResponses((prev) => {
+        const newResponses = { ...prev };
+        delete newResponses[invitationId];
+        return newResponses;
+      });
+    } catch (error) {
+      console.error("Error declining invitation:", error);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  // ============ Render Helpers ============
+
+  const renderBadges = () => {
+    const formattedDate = getFormattedDate();
+    const displayTags = getDisplayTags();
+    const isPublic = teamData.is_public === true || teamData.isPublic === true;
+
+    return (
+      <div className="flex flex-wrap items-center gap-2 mb-4">
+        {/* Tags display (member / invitation / application) */}
+        {(effectiveVariant === "member" ||
+          effectiveVariant === "invitation" ||
+          effectiveVariant === "application") &&
+          displayTags.length > 0 && (
+            <div className="flex items-start text-sm text-base-content/70">
+              <Tag size={16} className="mr-1 flex-shrink-0 mt-0.5" />
+              <span>
+                {(() => {
+                  const maxVisible = 5;
+                  const visibleTags = displayTags.slice(0, maxVisible);
+                  const remainingCount = displayTags.length - maxVisible;
+
+                  return (
+                    <>
+                      {visibleTags.map((tag, index) => {
+                        const tagName =
+                          typeof tag === "string"
+                            ? tag
+                            : tag.name || tag.tag || "";
+                        return (
+                          <span key={index}>
+                            {index > 0 ? ", " : ""}
+                            {tagName}
+                          </span>
+                        );
+                      })}
+                      {remainingCount > 0 && ` +${remainingCount}`}
+                    </>
+                  );
+                })()}
+              </span>
+            </div>
+          )}
+
+        {/* Date badge - application variant only */}
+        {formattedDate && effectiveVariant === "application" && (
+          <div className="flex items-center text-sm text-base-content/70">
+            <Calendar size={14} className="mr-1" />
+            <span>Applied {formattedDate}</span>
+          </div>
+        )}
+
+        {/* Date badge with inviter - invitation variant */}
+        {formattedDate && effectiveVariant === "invitation" && (
+          <div className="flex items-center text-sm text-base-content/70">
+            <Calendar size={14} className="mr-1" />
+            <span>
+              Invited {formattedDate}
+              {normalizedData.inviter && <></>}
+            </span>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderInviterInfo = () => {
+    if (effectiveVariant !== "invitation" || !normalizedData.inviter)
+      return null;
+
+    const inviter = normalizedData.inviter;
+    const avatarUrl = inviter.avatar_url || inviter.avatarUrl;
+    const firstName = inviter.first_name || inviter.firstName;
+    const lastName = inviter.last_name || inviter.lastName;
+    const displayName = getDisplayName(inviter);
+
+    return (
+      <div className="flex items-center text-xs text-base-content/60 mb-4">
+        <span className="mr-1">Sent by</span>
+        <div className="avatar mr-1">
+          <div className="w-4 h-4 rounded-full relative">
+            {avatarUrl ? (
+              <img
+                src={avatarUrl}
+                alt={inviter.username || "Inviter"}
+                className="object-cover w-full h-full rounded-full"
+              />
+            ) : (
+              <div
+                className="bg-primary text-primary-content flex items-center justify-center w-full h-full rounded-full"
+                style={{ fontSize: "8px" }}
+              >
+                <span className="font-medium">{getUserInitials(inviter)}</span>
+              </div>
+            )}
+          </div>
+        </div>
+        <span className="font-medium text-base-content/80">{displayName}</span>
+      </div>
+    );
+  };
+
+  const renderMessage = () => {
+    if (!normalizedData.message) return null;
+    // Only show message preview for application variant (invitation message is in modal now)
+    if (effectiveVariant !== "application") return null;
+
+    return <div className="mb-4"></div>;
+  };
+
+  const renderActionButtons = () => {
+    // If user has a pending invitation (search or invitation variant)
+
+    // Search page: always show View Details button on the card
+    if (isSearchResult) {
+      return (
+        <div className="mt-auto">
+          <Button
+            variant="primary"
+            className="w-full"
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsModalOpen(true);
+            }}
+          >
+            View Details
+          </Button>
+        </div>
+      );
+    }
+
+    if (effectiveVariant === "invitation" || pendingInvitationForTeam) {
+      return (
+        <div className="mt-auto">
+          <Button
+            variant="primary"
+            className="w-full"
+            icon={<Mail size={16} />}
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsInvitationDetailsModalOpen(true);
+            }}
+          >
+            Open Invite to Respond
+          </Button>
+        </div>
+      );
+    }
+
+    // If user has a pending application (search or application variant)
+    if (effectiveVariant === "application" || pendingApplicationForTeam) {
+      return (
+        <div className="mt-auto">
+          <Button
+            variant="primary"
+            className="w-full"
+            icon={<SendHorizontal size={16} />}
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsApplicationModalOpen(true);
+            }}
+          >
+            View Application Details
+          </Button>
+        </div>
+      );
+    }
+
+    // Member variant: View Details + management actions
+    return (
+      <div className="mt-auto flex justify-between items-center">
+        <Button
+          variant="primary"
+          size="sm"
+          onClick={(e) => {
+            e.stopPropagation();
+            handleCardClick();
+          }}
+          className="flex-grow"
+        >
+          View Details
+        </Button>
+
+        {/* Team Management Actions (owner and admin) */}
+        {isAuthenticated && !isSearchResult && (
+          <div className="flex items-center space-x-2 ml-2">
+            {/* Application badge - owners and admins */}
+            {canManageInvitations && (
+              <ApplicationNotificationBadge
+                count={pendingApplications.length}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsApplicationsModalOpen(true);
+                }}
+              />
+            )}
+
+            {/* Sent invitations badge - owners and admins */}
+            {canManageInvitations && (
+              <InvitationNotificationBadge
+                count={pendingSentInvitations.length}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsInvitesModalOpen(true);
+                }}
+              />
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // ============ Main Render ============
 
   return (
     <>
       <Card
-        title={teamData.name}
+        title={teamData.name || "Unknown Team"}
         subtitle={
-          <div className="flex items-center space-x-1 text-sm">
-            <Users size={16} className="text-primary" />
-            <span>
-              {teamData.current_members_count ??
-                teamData.currentMembersCount ??
-                teamData.members?.length ??
-                0}{" "}
-              / {teamData.max_members ?? teamData.maxMembers ?? "∞"} Members
+          <span className="flex items-center text-base-content/70 text-sm gap-1.5">
+            {/* Members count */}
+            <span className="flex items-center">
+              <Users size={14} className="text-primary mr-0.5" />
+              <span>
+                {getMemberCount()}/{getMaxMembers()}
+              </span>
             </span>
-          </div>
+
+            {/* Privacy status */}
+            {shouldShowVisibilityIcon() && (
+              <span
+                className="tooltip tooltip-bottom tooltip-lomir"
+                data-tip={
+                  teamData.is_public ?? teamData.isPublic
+                    ? "Public Team - visible for everyone"
+                    : "Private Team - only visible for Members"
+                }
+              >
+                {teamData.is_public ?? teamData.isPublic ? (
+                  <EyeIcon size={14} className="text-green-600" />
+                ) : (
+                  <EyeClosed size={14} className="text-gray-500" />
+                )}
+              </span>
+            )}
+
+            {/* Pending invitation indicator */}
+            {(effectiveVariant === "invitation" ||
+              pendingInvitationForTeam) && (
+              <span
+                className="tooltip tooltip-bottom tooltip-lomir"
+                data-tip="You are invited to this team"
+              >
+                <Mail size={14} className="text-pink-500" />
+              </span>
+            )}
+
+            {/* Pending application indicator */}
+            {(effectiveVariant === "application" ||
+              pendingApplicationForTeam) && (
+              <span
+                className="tooltip tooltip-bottom tooltip-lomir"
+                data-tip="You applied to join this team"
+              >
+                <SendHorizontal size={14} className="text-info" />
+              </span>
+            )}
+
+            {/* User role - show for member variant when user has a role */}
+            {userRole && effectiveVariant === "member" && (
+              <span className="flex items-center text-base-content/70">
+                {userRole === "owner" && (
+                  <span
+                    className="tooltip tooltip-bottom tooltip-lomir"
+                    data-tip="You are the owner of this team"
+                  >
+                    <Crown
+                      size={14}
+                      className="text-[var(--color-role-owner-bg)]"
+                    />
+                  </span>
+                )}
+                {userRole === "admin" && (
+                  <span
+                    className="tooltip tooltip-bottom tooltip-lomir"
+                    data-tip="You are an admin of this team"
+                  >
+                    <ShieldCheck
+                      size={14}
+                      className="text-[var(--color-role-admin-bg)]"
+                    />
+                  </span>
+                )}
+                {userRole === "member" && (
+                  <span
+                    className="tooltip tooltip-bottom tooltip-lomir"
+                    data-tip="You are a member of this team"
+                  >
+                    <User
+                      size={14}
+                      className="text-[var(--color-role-member-bg)]"
+                    />
+                  </span>
+                )}
+              </span>
+            )}
+          </span>
         }
         hoverable
         image={getTeamImage()}
+        imageFallback={getTeamInitials()}
         imageAlt={`${teamData.name} team`}
         imageSize="medium"
         imageShape="circle"
+        onClick={handleCardClick}
+        truncateContent={true}
       >
         {error && (
           <Alert
@@ -353,177 +1034,112 @@ const TeamCard = ({
             className="mb-4"
           />
         )}
-
-        <p className="text-base-content/80 mb-4 -mt-4">
-          {teamData.description}
+        {/* Team description */}
+        <p className="text-base-content/80 mb-4">
+          {teamData.description || "No description"}
         </p>
 
-        <div className="flex flex-wrap items-center gap-2 mb-4">
-          {shouldShowVisibilityIcon() && !isPendingApplication && (
-            <div className="flex items-center text-sm text-base-content/70 bg-base-200/50 py-1 rounded-full">
-              {team.isPublic === true || team.is_public === true ? (
-                <>
-                  <EyeIcon size={16} className="mr-1 text-green-600" />
-                  <span>Public</span>
-                </>
-              ) : (
-                <>
-                  <EyeClosed size={16} className="mr-1 text-grey-600" />
-                  <span>Private</span>
-                </>
-              )}
-            </div>
-          )}
+        {/* Badges (status, date, tags, etc.) */}
+        {renderBadges()}
 
-          {isPendingApplication && (
-            <div className="flex items-center text-sm text-base-content/70 bg-yellow-100 py-1 px-2 rounded-full">
-              <AlertCircle size={16} className="mr-1 text-yellow-600" />
-              <span>Application Pending</span>
-            </div>
-          )}
+        {/* Message preview (invitation/application variants) */}
+        {renderMessage()}
 
-          {isPendingApplication && formattedApplicationDate && (
-            <div className="flex items-center text-sm text-base-content/70 bg-base-200/50 py-1 px-2 rounded-full">
-              <Clock size={16} className="mr-1" />
-              <span>Applied on {formattedApplicationDate}</span>
-            </div>
-          )}
-
-          {userRole && !isSearchResult && !isPendingApplication && (
-            <span className="badge badge-primary badge-outline">
-              {userRole}
-            </span>
-          )}
-
-          {/* Team Tags Display */}
-          {(() => {
-            const displayTags = getDisplayTags();
-
-            if (displayTags && displayTags.length > 0) {
-              return (
-                <div className="flex items-center text-sm text-base-content/70 bg-base-200/50 py-1 rounded-full">
-                  <Tag size={16} className="mr-1 text-base-content/70" />
-                  <span className="truncate">
-                    {displayTags.slice(0, 2).map((tag, index) => {
-                      const tagName =
-                        typeof tag === "string"
-                          ? tag
-                          : tag.name || tag.tag || "";
-
-                      return (
-                        <span key={index}>
-                          {index > 0 ? ", " : ""}
-                          {tagName}
-                        </span>
-                      );
-                    })}
-                    {displayTags.length > 2 && ` +${displayTags.length - 2}`}
-                  </span>
-                </div>
-              );
-            }
-            return null;
-          })()}
-        </div>
-
-        <div className="mt-auto flex justify-between items-center">
-          {/* Show View Details button to ALL users */}
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={openTeamDetails}
-            className="flex-grow"
-          >
-            View Details
-          </Button>
-
-          {/* Pending Application Cancel Button */}
-          {isPendingApplication && (
-            <div className="flex items-center space-x-2 ml-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleCancelApplication}
-                disabled={isDeleting}
-                className="hover:bg-red-100 hover:text-red-700"
-                icon={<Trash2 size={16} />}
-                aria-label="Cancel application"
-              >
-                {isDeleting ? "Canceling..." : ""}
-              </Button>
-            </div>
-          )}
-
-          {/* Team Management Actions */}
-          {isAuthenticated &&
-            isCreator &&
-            !isSearchResult &&
-            !isPendingApplication && (
-              <div className="flex items-center space-x-2 ml-2">
-                {/* Application notification badge */}
-                <ApplicationNotificationBadge
-                  count={pendingApplications.length}
-                  onClick={() => setIsApplicationsModalOpen(true)}
-                />
-
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleDeleteClick}
-                  disabled={isDeleting}
-                  className="hover:bg-[#C7D2FE] hover:text-[#1E40AF]"
-                  icon={<Trash2 size={16} />}
-                  aria-label="Delete team"
-                >
-                  {isDeleting ? "Deleting..." : ""}
-                </Button>
-              </div>
-            )}
-        </div>
+        {/* Action buttons */}
+        {renderActionButtons()}
       </Card>
 
-      {/* Team Details Modal */}
-      {!isPendingApplication && (
-        <TeamDetailsModal
-          isOpen={isModalOpen}
+      <TeamDetailsModal
+        isOpen={isModalOpen}
+        teamId={getTeamId()}
+        initialTeamData={teamData}
+        onClose={handleModalClose}
+        onUpdate={handleTeamUpdate}
+        onDelete={onDelete}
+        onLeave={handleLeaveTeam}
+        userRole={userRole}
+        isFromSearch={isSearchResult || effectiveVariant !== "member"}
+        hasPendingInvitation={
+          effectiveVariant === "invitation" || !!pendingInvitationForTeam
+        }
+        pendingInvitation={
+          effectiveVariant === "invitation"
+            ? invitation
+            : pendingInvitationForTeam
+        }
+        hasPendingApplication={
+          effectiveVariant === "application" || !!pendingApplicationForTeam
+        }
+        pendingApplication={
+          effectiveVariant === "application"
+            ? application
+            : pendingApplicationForTeam
+        }
+        onViewApplicationDetails={() => setIsApplicationModalOpen(true)}
+      />
+
+      {/* Applications Modal (for team owners and admins) */}
+      {effectiveVariant === "member" && (
+        <TeamApplicationsModal
+          isOpen={isApplicationsModalOpen}
+          onClose={() => setIsApplicationsModalOpen(false)}
           teamId={teamData.id}
-          onClose={handleModalClose}
-          onUpdate={handleTeamUpdate}
-          onDelete={onDelete}
-          userRole={userRole}
-          isFromSearch={isSearchResult}
+          applications={pendingApplications}
+          onApplicationAction={handleApplicationAction}
+          teamName={teamData.name}
         />
       )}
 
-      {/* Application Details Modal */}
-      {isPendingApplication && (
+      {/* Invites Modal (for team owners and admins) */}
+      {effectiveVariant === "member" && (
+        <TeamInvitesModal
+          isOpen={isInvitesModalOpen}
+          onClose={() => {
+            setIsInvitesModalOpen(false);
+            // Optionally refresh the list when closing
+            fetchSentInvitations();
+          }}
+          invitations={pendingSentInvitations}
+          onCancelInvitation={handleCancelInvitation}
+          teamName={teamData.name}
+        />
+      )}
+
+      {isInvitationDetailsModalOpen &&
+        (invitation || pendingInvitationForTeam) && (
+          <TeamInvitationDetailsModal
+            isOpen={isInvitationDetailsModalOpen}
+            invitation={
+              effectiveVariant === "invitation"
+                ? invitation
+                : pendingInvitationForTeam
+            }
+            onClose={() => setIsInvitationDetailsModalOpen(false)}
+            onAccept={onAccept}
+            onDecline={onDecline}
+          />
+        )}
+
+      {/* Application Details Modal (works for application-variant AND search results with pendingApplicationForTeam) */}
+      {isApplicationModalOpen && (application || pendingApplicationForTeam) && (
         <TeamApplicationDetailsModal
           isOpen={isApplicationModalOpen}
-          application={{
-            id: teamData.applicationId,
-            message: teamData.applicationMessage,
-            status: teamData.applicationStatus,
-            created_at: teamData.applicationDate,
-            team: {
-              id: teamData.id,
-              name: teamData.name,
-              description: teamData.description,
-              teamavatar_url: teamData.teamavatar_url || teamData.teamavatarUrl,
-              max_members: teamData.max_members || teamData.maxMembers,
-              is_public: teamData.is_public === true,
-            },
-          }}
-          onClose={closeApplicationDetails}
-          onCancel={onCancelApplication}
+          application={
+            effectiveVariant === "application"
+              ? application
+              : pendingApplicationForTeam
+          }
+          onClose={() => setIsApplicationModalOpen(false)}
+          onCancel={onCancel || onCancelApplication}
+          onSendReminder={onSendReminder}
         />
       )}
 
-      <TeamApplicationsModal
-        isOpen={isApplicationsModalOpen}
-        onClose={() => setIsApplicationsModalOpen(false)}
-        teamId={teamData.id}
-        applications={pendingApplications}
-        onApplicationAction={handleApplicationAction}
+      {/* User Details Modal (for viewing inviter profile) */}
+      <UserDetailsModal
+        isOpen={!!selectedUserId}
+        userId={selectedUserId}
+        onClose={() => setSelectedUserId(null)}
       />
     </>
   );

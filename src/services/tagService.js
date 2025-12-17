@@ -54,6 +54,70 @@ export const tagService = {
       throw error;
     }
   }
+,
+
+ // NEW METHODS FOR AUTOCOMPLETE
+
+  /**
+   * Get popular tags with usage counts
+   */
+  getPopularTags: async (limit = 10, supercategory = null) => {
+    try {
+      const params = { limit };
+      if (supercategory) {
+        params.supercategory = supercategory;
+      }
+      const response = await api.get('/api/tags/popular', { params });
+      return response.data.data || [];
+    } catch (error) {
+      console.error('Error fetching popular tags:', error);
+      return [];
+    }
+  },
+
+  /**
+   * Get tag suggestions based on search query
+   */
+  getSuggestions: async (query, limit = 10, excludeIds = []) => {
+    try {
+      if (!query || query.trim().length === 0) {
+        return [];
+      }
+      const params = { 
+        query: query.trim(), 
+        limit 
+      };
+      if (excludeIds.length > 0) {
+        params.exclude = excludeIds.join(',');
+      }
+      const response = await api.get('/api/tags/suggestions', { params });
+      return response.data.data || [];
+    } catch (error) {
+      console.error('Error fetching tag suggestions:', error);
+      return [];
+    }
+  },
+
+  /**
+   * Get related tags from same category or supercategory
+   */
+  getRelatedTags: async (tagId, limit = 5, excludeIds = []) => {
+    try {
+      const params = { limit };
+      if (excludeIds.length > 0) {
+        params.exclude = excludeIds.join(',');
+      }
+      const response = await api.get(`/api/tags/related/${tagId}`, { params });
+      return {
+        tags: response.data.data || [],
+        context: response.data.context || {}
+      };
+    } catch (error) {
+      console.error('Error fetching related tags:', error);
+      return { tags: [], context: {} };
+    }
+  }
+
 };
 
 export default tagService;
