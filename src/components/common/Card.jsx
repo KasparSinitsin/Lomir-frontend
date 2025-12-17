@@ -86,7 +86,7 @@ const Card = ({
     );
   };
 
-  // 🔹 Helper to compute truncation classes for the first direct <p>
+  // Helper to compute truncation classes for the first direct <p>
   const getTruncateClasses = () => {
     if (!truncateContent) return "";
 
@@ -141,7 +141,7 @@ const Card = ({
             <div>{renderImage()}</div>
 
             <div>
-              <h3 className="text-lg font-medium text-primary leading-[120%] mb-[0.2em]">
+              <h3 className="text-lg font-medium text-primary leading-[120%] mb-1">
                 {title}
               </h3>
               {subtitle && <p>{subtitle}</p>}
