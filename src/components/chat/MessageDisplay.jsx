@@ -5,14 +5,12 @@ const MessageDisplay = ({
   messages,
   currentUserId,
   conversationPartner,
-  teamData, 
+  teamData,
   loading,
   typingUsers = [],
   conversationType = "direct",
   teamMembers = [],
 }) => {
-
-
   const messagesEndRef = useRef(null);
 
   useEffect(() => {
@@ -48,74 +46,76 @@ const MessageDisplay = ({
     );
   }
 
-if (messages.length === 0 && typingUsers.length === 0) {
-  return (
-    <div className="space-y-6">
-      {/* Show conversation partner header for direct messages */}
-      {conversationPartner && conversationType === "direct" && (
-        <div className="text-center pb-4 mb-4 border-b border-base-200">
-          <div className="avatar mb-2">
-            <div className="w-16 h-16 rounded-full mx-auto">
-              {conversationPartner.avatarUrl ? (
-                <img
-                  src={conversationPartner.avatarUrl}
-                  alt={conversationPartner.username}
-                  className="object-cover"
-                />
-              ) : (
-                <div className="bg-primary text-primary-content flex items-center justify-center">
-                  <span className="text-xl">
-                    {conversationPartner.firstName?.charAt(0) ||
-                      conversationPartner.username?.charAt(0) ||
-                      "?"}
-                  </span>
-                </div>
-              )}
+  if (messages.length === 0 && typingUsers.length === 0) {
+    return (
+      <div className="space-y-6">
+        {/* Show conversation partner header for direct messages */}
+        {conversationPartner && conversationType === "direct" && (
+          <div className="text-center pb-4 mb-4 border-b border-base-200">
+            <div className="avatar mb-2">
+              <div className="w-16 h-16 rounded-full mx-auto">
+                {conversationPartner.avatarUrl ? (
+                  <img
+                    src={conversationPartner.avatarUrl}
+                    alt={conversationPartner.username}
+                    className="object-cover"
+                  />
+                ) : (
+                  <div className="bg-primary text-primary-content flex items-center justify-center">
+                    <span className="text-xl">
+                      {conversationPartner.firstName?.charAt(0) ||
+                        conversationPartner.username?.charAt(0) ||
+                        "?"}
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
+            <h3 className="font-medium leading-[120%] mb-[0.2em]">
+              {conversationPartner.firstName && conversationPartner.lastName
+                ? `${conversationPartner.firstName} ${conversationPartner.lastName}`
+                : conversationPartner.username}
+            </h3>
           </div>
-          <h3 className="font-medium">
-            {conversationPartner.firstName && conversationPartner.lastName
-              ? `${conversationPartner.firstName} ${conversationPartner.lastName}`
-              : conversationPartner.username}
-          </h3>
-        </div>
-      )}
+        )}
 
-      {/* Show team header for team conversations */}
-      {teamData && conversationType === "team" && (
-        <div className="text-center pb-4 mb-4 border-b border-base-200">
-          <div className="avatar mb-2">
-            <div className="w-16 h-16 rounded-full mx-auto">
-              {teamData.avatarUrl ? (
-                <img
-                  src={teamData.avatarUrl}
-                  alt={teamData.name}
-                  className="object-cover"
-                />
-              ) : (
-                <div className="bg-primary text-primary-content flex items-center justify-center">
-                  <span className="text-xl">
-                    {teamData.name?.charAt(0) || "T"}
-                  </span>
-                </div>
-              )}
+        {/* Show team header for team conversations */}
+        {teamData && conversationType === "team" && (
+          <div className="text-center pb-4 mb-4 border-b border-base-200">
+            <div className="avatar mb-2">
+              <div className="w-16 h-16 rounded-full mx-auto">
+                {teamData.avatarUrl ? (
+                  <img
+                    src={teamData.avatarUrl}
+                    alt={teamData.name}
+                    className="object-cover"
+                  />
+                ) : (
+                  <div className="bg-primary text-primary-content flex items-center justify-center">
+                    <span className="text-xl">
+                      {teamData.name?.charAt(0) || "T"}
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
+            <h3 className="font-medium leading-[120%] mb-[0.2em]">
+              {teamData.name}
+            </h3>
+            <p className="text-sm text-base-content/70">Team Chat</p>
           </div>
-          <h3 className="font-medium">{teamData.name}</h3>
-          <p className="text-sm text-base-content/70">Team Chat</p>
-        </div>
-      )}
+        )}
 
-      {/* No messages message */}
-      <div className="flex flex-col items-center justify-center h-full">
-        <p className="text-base-content/70">No messages yet</p>
-        <p className="text-sm text-base-content/50 mt-2">
-          Send a message to start the conversation
-        </p>
+        {/* No messages message */}
+        <div className="flex flex-col items-center justify-center h-full">
+          <p className="text-base-content/70">No messages yet</p>
+          <p className="text-sm text-base-content/50 mt-2">
+            Send a message to start the conversation
+          </p>
+        </div>
       </div>
-    </div>
-  );
-}
+    );
+  }
 
   // Helper function to group consecutive messages by sender (max 3 per group)
   const groupMessages = (messages) => {
@@ -179,54 +179,59 @@ if (messages.length === 0 && typingUsers.length === 0) {
   };
 
   // Helper function to get sender information
-const getSenderInfo = (senderId) => {
-  if (conversationType === "direct") {
-    return conversationPartner;
-  }
+  const getSenderInfo = (senderId) => {
+    if (conversationType === "direct") {
+      return conversationPartner;
+    }
 
-  // For team chats, find the sender in team members
-  console.log(`Looking for sender ID: ${senderId} (type: ${typeof senderId})`);
-  console.log("Available team members:", teamMembers.map((m) => ({
-    user_id: m.user_id || m.userId, // Handle both property names
-    type: typeof (m.user_id || m.userId),
-    username: m.username,
-    first_name: m.first_name || m.firstName,
-    avatar_url: m.avatar_url || m.avatarUrl,
-  })));
+    // For team chats, find the sender in team members
+    console.log(
+      `Looking for sender ID: ${senderId} (type: ${typeof senderId})`
+    );
+    console.log(
+      "Available team members:",
+      teamMembers.map((m) => ({
+        user_id: m.user_id || m.userId, // Handle both property names
+        type: typeof (m.user_id || m.userId),
+        username: m.username,
+        first_name: m.first_name || m.firstName,
+        avatar_url: m.avatar_url || m.avatarUrl,
+      }))
+    );
 
-  // Convert senderId to number if it's a string
-  const senderIdNum = parseInt(senderId, 10);
+    // Convert senderId to number if it's a string
+    const senderIdNum = parseInt(senderId, 10);
 
-  const member = teamMembers.find((m) => {
-    // Handle both userId and user_id property names
-    const memberId = parseInt(m.user_id || m.userId || m.id, 10);
-    return memberId === senderIdNum;
-  });
+    const member = teamMembers.find((m) => {
+      // Handle both userId and user_id property names
+      const memberId = parseInt(m.user_id || m.userId || m.id, 10);
+      return memberId === senderIdNum;
+    });
 
-  console.log(`Found member for sender ${senderId}:`, member);
+    console.log(`Found member for sender ${senderId}:`, member);
 
-  if (member) {
-    const senderInfo = {
-      id: member.user_id || member.userId || member.id,
-      username: member.username,
-      firstName: member.first_name || member.firstName,
-      lastName: member.last_name || member.lastName,
-      avatarUrl: member.avatar_url || member.avatarUrl,
+    if (member) {
+      const senderInfo = {
+        id: member.user_id || member.userId || member.id,
+        username: member.username,
+        firstName: member.first_name || member.firstName,
+        lastName: member.last_name || member.lastName,
+        avatarUrl: member.avatar_url || member.avatarUrl,
+      };
+      console.log("Returning sender info:", senderInfo);
+      return senderInfo;
+    }
+
+    // Fallback
+    console.log(`No member found for sender ${senderId}, using fallback`);
+    return {
+      id: senderId,
+      username: `User ${senderId}`,
+      firstName: null,
+      lastName: null,
+      avatarUrl: null,
     };
-    console.log("Returning sender info:", senderInfo);
-    return senderInfo;
-  }
-
-  // Fallback
-  console.log(`No member found for sender ${senderId}, using fallback`);
-  return {
-    id: senderId,
-    username: `User ${senderId}`,
-    firstName: null,
-    lastName: null,
-    avatarUrl: null,
   };
-};
 
   // Helper function to get display name
   const getDisplayName = (senderInfo) => {
@@ -275,7 +280,6 @@ const getSenderInfo = (senderId) => {
 
   return (
     <div className="space-y-6">
-
       {/* Debug information
       {conversationType === "team" && import.meta.env.DEV && (
         <div className="bg-yellow-100 p-2 rounded text-xs">
@@ -297,7 +301,6 @@ const getSenderInfo = (senderId) => {
           )}
         </div>
       )} */}
-
 
       {conversationPartner && conversationType === "direct" && (
         <div className="text-center pb-4 mb-4 border-b border-base-200">
@@ -328,31 +331,31 @@ const getSenderInfo = (senderId) => {
         </div>
       )}
 
-{teamData && conversationType === "team" && (
-  <div className="text-center pb-4 mb-4 border-b border-base-200">
-    <div className="avatar mb-2">
-      <div className="w-16 h-16 rounded-full mx-auto">
-        {teamData.avatarUrl ? (
-          <img
-            src={teamData.avatarUrl}
-            alt={teamData.name}
-            className="object-cover"
-          />
-        ) : (
-          <div className="bg-primary text-primary-content flex items-center justify-center">
-            <span className="text-xl">
-              {teamData.name?.charAt(0) || "T"}
-            </span>
+      {teamData && conversationType === "team" && (
+        <div className="text-center pb-4 mb-4 border-b border-base-200">
+          <div className="avatar mb-2">
+            <div className="w-16 h-16 rounded-full mx-auto">
+              {teamData.avatarUrl ? (
+                <img
+                  src={teamData.avatarUrl}
+                  alt={teamData.name}
+                  className="object-cover"
+                />
+              ) : (
+                <div className="bg-primary text-primary-content flex items-center justify-center">
+                  <span className="text-xl">
+                    {teamData.name?.charAt(0) || "T"}
+                  </span>
+                </div>
+              )}
+            </div>
           </div>
-        )}
-      </div>
-    </div>
-    <h3 className="font-medium">{teamData.name}</h3>
-    <p className="text-sm text-base-content/70">Team Chat</p>
-  </div>
-)}
-
-      
+          <h3 className="font-medium leading-[120%] mb-[0.2em]">
+            {teamData.name}
+          </h3>
+          <p className="text-sm text-base-content/70">Team Chat</p>
+        </div>
+      )}
 
       {/* Group messages by date */}
       {Object.entries(messagesByDate).map(([dateString, messagesForDate]) => (
