@@ -68,7 +68,7 @@ const RequestListModal = ({
   // Custom header with count
   const customHeader = (
     <div>
-      <h2 className="text-xl font-medium text-primary">
+      <h2 className="text-xl font-medium text-primary leading-[120%] mb-[0.2em]">
         {subtitle ? `${title} ${subtitle}` : title}
       </h2>
       <p className="text-sm text-base-content/70 mt-1">

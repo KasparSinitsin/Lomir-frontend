@@ -57,7 +57,7 @@ const TeamApplicationModal = ({
       <h2 className="text-lg font-medium text-primary mb-1">
         Apply to join the Team
       </h2>
-      <h3 className="text-xl font-bold text-primary">"{team?.name}"</h3>
+      <h3 className="text-xl font-bold text-primary leading-[120%]">"{team?.name}"</h3>
     </div>
   );
 

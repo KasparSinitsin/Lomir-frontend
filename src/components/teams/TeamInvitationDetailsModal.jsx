@@ -183,7 +183,7 @@ const TeamInvitationDetailsModal = ({
   // Custom header
   const customHeader = (
     <div>
-      <h2 className="text-xl font-medium text-primary">
+      <h2 className="text-xl font-medium text-primary leading-[120%] mb-[0.2em]">
         {team.name || "Unknown Team"}
       </h2>
       <p className="text-sm text-base-content/70 flex items-center">
@@ -303,7 +303,7 @@ const TeamInvitationDetailsModal = ({
         <div className="flex items-start justify-between gap-4 mb-5">
           {/* Team info (hover + onClick like in TeamInvitesModal) */}
           <div
-            className="flex items-center space-x-3 cursor-pointer hover:opacity-80 transition-opacity"
+            className="flex items-start space-x-3 cursor-pointer hover:opacity-80 transition-opacity"
             onClick={handleTeamClick}
             title="View team details"
           >
@@ -338,7 +338,7 @@ const TeamInvitationDetailsModal = ({
             </div>
 
             <div className="flex-1 min-w-0">
-              <h4 className="font-medium text-base-content hover:text-primary transition-colors">
+              <h4 className="font-medium text-base-content hover:text-primary transition-colors leading-[120%] mb-[0.2em]">
                 {team.name || "Unknown Team"}
               </h4>
               <p className="text-sm text-base-content/70 flex items-center">

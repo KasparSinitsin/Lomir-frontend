@@ -158,7 +158,7 @@ const TeamInvitesModal = ({
   // Custom header with invitation count
   const customHeader = (
     <div>
-      <h2 className="text-xl font-medium text-primary">
+      <h2 className="text-xl font-medium text-primary leading-[120%] mb-[0.2em]">
         {teamName ? `Invitations sent to ${teamName}` : "Sent Invitations"}
       </h2>
       <p className="text-sm text-base-content/70 mt-1">
@@ -273,7 +273,7 @@ const TeamInvitesModal = ({
                   {/* Name and Details */}
                   <div className="flex-1 min-w-0">
                     <h4
-                      className="font-medium text-base-content cursor-pointer hover:text-primary transition-colors"
+                      className="font-medium text-base-content cursor-pointer hover:text-primary transition-colors leading-[120%] mb-[0.2em]"
                       onClick={() => handleUserClick(invitation.invitee?.id)}
                       title="View profile"
                     >

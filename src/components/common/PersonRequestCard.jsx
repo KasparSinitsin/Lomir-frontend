@@ -151,7 +151,7 @@ const PersonRequestCard = ({
         {/* Name and Details */}
         <div className="flex-1 min-w-0">
           <h4
-            className={`font-medium text-base-content ${clickableTextStyles}`}
+            className={`font-medium text-base-content leading-[120%] mb-[0.2em] ${clickableTextStyles}`}
             onClick={handleUserClick}
             title={clickable ? "View profile" : undefined}
           >
