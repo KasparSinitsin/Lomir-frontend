@@ -802,7 +802,7 @@ const TeamDetailsModal = ({
             }
           );
 
-          // ✅ UPDATE: Only override the avatar URL if upload was successful
+          // Only override the avatar URL if upload was successful
           submissionData.teamavatar_url = cloudinaryResponse.data.secure_url;
           console.log("New avatar uploaded:", submissionData.teamavatar_url);
         } catch (uploadError) {
