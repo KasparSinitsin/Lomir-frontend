@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 
 const Card = ({
   title,
@@ -18,6 +18,11 @@ const Card = ({
   truncateContent = 3,
 }) => {
   const [imageError, setImageError] = useState(false);
+
+  // Reset error state when image prop changes
+  useEffect(() => {
+    setImageError(false);
+  }, [image]);
   // Function to generate initials from a name
   const generateInitials = (name) => {
     if (typeof name !== "string") {

@@ -104,8 +104,23 @@ const TeamInvitationDetailsModal = ({
     );
   };
 
-  const getTeamInitial = () =>
-    team.name ? team.name.charAt(0).toUpperCase() : "?";
+  // Get team initials from name (e.g., "Urban Gardeners Berlin" → "UGB")
+  const getTeamInitials = () => {
+    const name = team?.name;
+    if (!name || typeof name !== "string") return "?";
+
+    const words = name.trim().split(/\s+/);
+
+    if (words.length === 1) {
+      return name.slice(0, 2).toUpperCase();
+    }
+
+    return words
+      .slice(0, 3)
+      .map((word) => word.charAt(0))
+      .join("")
+      .toUpperCase();
+  };
 
   const getMemberCount = () => {
     return (
@@ -316,7 +331,7 @@ const TeamInvitationDetailsModal = ({
                   style={{ display: getTeamAvatar() ? "none" : "flex" }}
                 >
                   <span className="text-lg font-medium">
-                    {getTeamInitial()}
+                    {getTeamInitials()}
                   </span>
                 </div>
               </div>

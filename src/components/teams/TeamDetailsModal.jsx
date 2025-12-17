@@ -92,6 +92,8 @@ const TeamDetailsModal = ({
   const [leaveLoading, setLeaveLoading] = useState(false);
   const [isInvitationModalOpen, setIsInvitationModalOpen] = useState(false);
 
+  const [teamImageError, setTeamImageError] = useState(false);
+
   const fetchTeamDetails = useCallback(
     async (forceRefresh = false) => {
       if (!effectiveTeamId) return null;
@@ -397,6 +399,24 @@ const TeamDetailsModal = ({
   const canDeleteTeam = useMemo(() => {
     return isAuthenticated && user && team && isOwner; // Only owners can delete
   }, [isAuthenticated, user, team, isOwner]);
+
+  // Get team initials from name (e.g., "Urban Gardeners Berlin" → "UGB")
+  const getTeamInitials = () => {
+    const name = team?.name;
+    if (!name || typeof name !== "string") return "?";
+
+    const words = name.trim().split(/\s+/);
+
+    if (words.length === 1) {
+      return name.slice(0, 2).toUpperCase();
+    }
+
+    return words
+      .slice(0, 3)
+      .map((word) => word.charAt(0))
+      .join("")
+      .toUpperCase();
+  };
 
   // Helper function to determine if visibility status should be shown
   const shouldShowVisibilityStatus = () => {
@@ -1167,18 +1187,17 @@ const TeamDetailsModal = ({
                 })}
                 <div className="flex items-center space-x-4 mb-6">
                   <div className="avatar placeholder">
-                    <div className="bg-primary text-primary-content rounded-full w-16 h-16">
-                      {/* Check for both snake_case and camelCase versions of avatar URL */}
-                      {team?.teamavatar_url || team?.teamavatarUrl ? (
+                    <div className="bg-primary text-primary-content rounded-full w-16 h-16 flex items-center justify-center">
+                      {(team?.teamavatar_url || team?.teamavatarUrl) &&
+                      !teamImageError ? (
                         <img
                           src={team?.teamavatar_url || team?.teamavatarUrl}
                           alt="Team"
                           className="rounded-full object-cover w-full h-full"
+                          onError={() => setTeamImageError(true)}
                         />
                       ) : (
-                        <span className="text-2xl">
-                          {team?.name?.charAt(0) || "?"}
-                        </span>
+                        <span className="text-xl">{getTeamInitials()}</span>
                       )}
                     </div>
                   </div>

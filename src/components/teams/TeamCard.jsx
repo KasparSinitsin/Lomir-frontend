@@ -312,10 +312,38 @@ const TeamCard = ({
 
   // ============ Helper Functions ============
 
+  // Get team initials from name (e.g., "Urban Gardeners Berlin" → "UGB")
+  const getTeamInitials = () => {
+    const name = teamData.name;
+    if (!name || typeof name !== "string") return "?";
+
+    const words = name.trim().split(/\s+/);
+
+    if (words.length === 1) {
+      // Single word: take first 2 characters
+      return name.slice(0, 2).toUpperCase();
+    }
+
+    // Multiple words: take first letter of each word (max 3)
+    return words
+      .slice(0, 3)
+      .map((word) => word.charAt(0))
+      .join("")
+      .toUpperCase();
+  };
+
+  // Get team image URL (return null for fallback)
   const getTeamImage = () => {
+    // Add this debug line
+    console.log("Team avatar debug:", {
+      name: teamData.name,
+      teamavatar_url: teamData.teamavatar_url,
+      teamavatarUrl: teamData.teamavatarUrl,
+    });
+
     if (teamData.teamavatar_url) return teamData.teamavatar_url;
     if (teamData.teamavatarUrl) return teamData.teamavatarUrl;
-    return teamData.name?.charAt(0) || "?";
+    return null;
   };
 
   const getTeamId = () => {
@@ -907,6 +935,7 @@ const TeamCard = ({
         }
         hoverable
         image={getTeamImage()}
+        imageFallback={getTeamInitials()}
         imageAlt={`${teamData.name} team`}
         imageSize="medium"
         imageShape="circle"

@@ -76,6 +76,24 @@ const TeamEditForm = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Get team initials from name (e.g., "Urban Gardeners Berlin" → "UGB")
+    const getTeamInitials = () => {
+      const name = formData.name;
+      if (!name || typeof name !== "string") return "?";
+
+      const words = name.trim().split(/\s+/);
+
+      if (words.length === 1) {
+        return name.slice(0, 2).toUpperCase();
+      }
+
+      return words
+        .slice(0, 3)
+        .map((word) => word.charAt(0))
+        .join("")
+        .toUpperCase();
+    };
+
     // Validate file type
     if (!file.type.startsWith("image/")) {
       alert("Please select an image file");
@@ -113,7 +131,7 @@ const TeamEditForm = ({
         <div className="flex items-center space-x-4">
           {/* Avatar Preview */}
           <div className="avatar placeholder">
-            <div className="bg-primary text-primary-content rounded-full w-16 h-16">
+            <div className="bg-primary text-primary-content rounded-full w-16 h-16 flex items-center justify-center">
               {formData.teamavatarUrl ? (
                 <img
                   src={formData.teamavatarUrl}
@@ -121,9 +139,7 @@ const TeamEditForm = ({
                   className="rounded-full object-cover w-full h-full"
                 />
               ) : (
-                <span className="text-2xl">
-                  {formData.name?.charAt(0) || "?"}
-                </span>
+                <span className="text-xl">{getTeamInitials()}</span>
               )}
             </div>
           </div>
