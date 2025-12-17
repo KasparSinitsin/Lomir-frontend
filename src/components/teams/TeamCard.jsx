@@ -161,26 +161,92 @@ const TeamCard = ({
 
   // Update local team data when props change
   useEffect(() => {
-    setTeamData(getNormalizedData().team);
+    const incoming = getNormalizedData().team;
+
+    setTeamData((prev) => {
+      // If we already have the same team loaded, merge so we don't lose `members`, etc.
+      if (prev?.id && incoming?.id && prev.id === incoming.id) {
+        return { ...prev, ...incoming };
+      }
+      return incoming;
+    });
   }, [team, application, invitation]);
 
-  // Fetch user's role in this team (only for member variant)
+  //   // Fetch user's role in this team (only for member variant)
+  //   useEffect(() => {
+  //     const fetchUserRole = async () => {
+  //       if (user && teamData?.id && effectiveVariant === "member") {
+  //         try {
+  //           const response = await teamService.getUserRoleInTeam(
+  //             teamData.id,
+  //             user.id
+  //           );
+
+  // const payload = response?.data;
+  // const data = payload?.data ?? payload; // supports {success,data:{...}} and {...}
+
+  // const isMember = data?.isMember ?? payload?.isMember; // supports both shapes
+  // const role = data?.role ?? payload?.role ?? null;
+
+  // if (isMember === false) {
+  //   setUserRole(null);
+  // } else {
+  //   setUserRole(role);
+  // }
+
+  //         } catch (err) {
+  //           console.error("Error fetching user role:", err);
+  //           setUserRole(null); // optional: keeps UI clean on errors
+  //         }
+  //       }
+  //     };
+  //     fetchUserRole();
+  //   }, [user, teamData?.id, effectiveVariant]);
+
+  // Fetch user's role in this team (member cards only)
   useEffect(() => {
     const fetchUserRole = async () => {
-      if (user && teamData?.id && effectiveVariant === "member") {
-        try {
-          const response = await teamService.getUserRoleInTeam(
-            teamData.id,
-            user.id
-          );
-          setUserRole(response.data.role);
-        } catch (err) {
-          console.error("Error fetching user role:", err);
+      if (!user?.id || !teamData?.id) return;
+      if (effectiveVariant !== "member") return;
+      if (userRole) return;
+
+      // Owner shortcut (no request needed)
+      if (teamData.owner_id === user.id || teamData.ownerId === user.id) {
+        setUserRole("owner");
+        return;
+      }
+
+      try {
+        const response = await teamService.getUserRoleInTeam(
+          teamData.id,
+          user.id
+        );
+
+        const payload = response?.data;
+        const data = payload?.data ?? payload; // supports both shapes
+
+        const isMember = data?.isMember ?? payload?.isMember;
+        const role = data?.role ?? payload?.role ?? null;
+
+        if (isMember === false) {
+          setUserRole(null);
+        } else {
+          setUserRole(role);
         }
+      } catch (err) {
+        console.error("Error fetching user role:", err);
+        setUserRole(null);
       }
     };
+
     fetchUserRole();
-  }, [user, teamData?.id, isSearchResult, effectiveVariant]);
+  }, [
+    user?.id,
+    teamData?.id,
+    teamData?.owner_id,
+    teamData?.ownerId,
+    effectiveVariant,
+  ]);
 
   // Fetch pending applications (for team owners and admins)
   const fetchPendingApplications = useCallback(async () => {
@@ -216,7 +282,6 @@ const TeamCard = ({
     fetchSentInvitations();
   }, [fetchSentInvitations]);
 
-  // Fetch complete team data for tags (only for member variant)
   useEffect(() => {
     const fetchCompleteTeamData = async () => {
       if (
@@ -227,22 +292,31 @@ const TeamCard = ({
           effectiveVariant === "application")
       ) {
         try {
-          if (
-            teamData.tags &&
-            Array.isArray(teamData.tags) &&
-            teamData.tags.length > 0 &&
-            teamData.tags.every((tag) => tag.name || typeof tag === "string")
-          ) {
-            return;
-          }
+          // if (
+          //   teamData.tags &&
+          //   Array.isArray(teamData.tags) &&
+          //   teamData.tags.length > 0 &&
+          //   teamData.tags.every((tag) => tag.name || typeof tag === "string")
+          // ) {
+          //   return;
+          // }
 
           const response = await teamService.getTeamById(teamData.id);
-          if (response && response.data) {
-            if (response.data.tags && Array.isArray(response.data.tags)) {
-              setTeamData((prev) => ({
-                ...prev,
-                tags: response.data.tags,
-              }));
+          const fullTeam = response?.data?.data ?? response?.data;
+
+          if (fullTeam) {
+            setTeamData((prev) => ({
+              ...prev,
+              ...fullTeam,
+              tags: Array.isArray(fullTeam.tags) ? fullTeam.tags : prev.tags,
+            }));
+
+            // Compute role from members list
+            if (user?.id && Array.isArray(fullTeam.members)) {
+              const me = fullTeam.members.find(
+                (m) => (m.user_id ?? m.userId) === user.id
+              );
+              setUserRole(me?.role ?? null);
             }
           }
         } catch (error) {
@@ -252,7 +326,7 @@ const TeamCard = ({
     };
 
     fetchCompleteTeamData();
-  }, [teamData?.id, effectiveVariant]);
+  }, [teamData?.id, effectiveVariant, user?.id]);
 
   // Check if user has a pending application for this team (for search results)
   useEffect(() => {
@@ -303,6 +377,27 @@ const TeamCard = ({
 
     checkPendingInvitation();
   }, [isSearchResult, isAuthenticated, teamData?.id]);
+
+  // useEffect(() => {
+  //   if (effectiveVariant !== "member") return;
+
+  //   // Owner shortcut (works even if members are missing)
+  //   if (user?.id && (teamData?.owner_id === user.id || teamData?.ownerId === user.id)) {
+  //     setUserRole("owner");
+  //     return;
+  //   }
+
+  //   if (!user?.id || !Array.isArray(teamData?.members)) {
+  //     setUserRole(null);
+  //     return;
+  //   }
+
+  //   const me = teamData.members.find(
+  //     (m) => m.user_id === user.id || m.userId === user.id
+  //   );
+
+  //   setUserRole(me?.role ?? null);
+  // }, [effectiveVariant, user?.id, teamData?.owner_id, teamData?.ownerId, teamData?.members]);
 
   // ================= GUARD CLAUSE – AFTER ALL HOOKS =================
 
@@ -460,8 +555,9 @@ const TeamCard = ({
       try {
         const response = await teamService.getTeamById(teamData.id);
         if (response && response.data) {
-          setTeamData(response.data);
-          if (onUpdate) onUpdate(response.data);
+          const fullTeam = response?.data?.data ?? response?.data;
+          setTeamData(fullTeam);
+          if (onUpdate) onUpdate(fullTeam);
         }
       } catch (error) {
         console.error("Error refreshing team data:", error);
