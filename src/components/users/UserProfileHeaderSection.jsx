@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Eye, EyeClosed } from "lucide-react";
+import { getUserInitials } from '../../utils/userHelpers';
 
 /**
  * UserProfileHeaderSection Component
@@ -50,22 +51,7 @@ const UserProfileHeaderSection = ({
     return false;
   };
 
-  // Get user's initials for avatar fallback (2 letters: "VL" for Valentina Lopez)
-  const getUserInitials = () => {
-    const firstName = user?.first_name || user?.firstName;
-    const lastName = user?.last_name || user?.lastName;
 
-    if (firstName && lastName) {
-      return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
-    }
-    if (firstName) {
-      return firstName.charAt(0).toUpperCase();
-    }
-    if (user?.username) {
-      return user.username.charAt(0).toUpperCase();
-    }
-    return "?";
-  };
 
   // Get full display name
   const getDisplayName = () => {
@@ -91,7 +77,7 @@ const UserProfileHeaderSection = ({
             />
           ) : (
             <div className="bg-primary text-primary-content flex items-center justify-center w-full h-full rounded-full">
-              <span className="text-2xl">{getUserInitials()}</span>
+              <span className="text-2xl">{getUserInitials(user)}</span>
             </div>
           )}
         </div>

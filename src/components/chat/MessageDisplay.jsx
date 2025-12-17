@@ -1,5 +1,6 @@
 import React, { useRef, useEffect } from "react";
 import { format, isToday, isYesterday } from "date-fns";
+import { getUserInitials } from '../../utils/userHelpers';
 
 const MessageDisplay = ({
   messages,
@@ -267,9 +268,7 @@ const MessageDisplay = ({
           ) : (
             <div className="bg-primary text-primary-content flex items-center justify-center w-full h-full rounded-full">
               <span className="text-sm font-medium">
-                {senderInfo.firstName?.charAt(0)?.toUpperCase() ||
-                  senderInfo.username?.charAt(0)?.toUpperCase() ||
-                  "?"}
+                {getUserInitials(senderInfo)}
               </span>
             </div>
           )}

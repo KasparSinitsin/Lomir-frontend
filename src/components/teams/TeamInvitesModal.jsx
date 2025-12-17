@@ -5,6 +5,7 @@ import Button from "../common/Button";
 import Alert from "../common/Alert";
 import LocationDisplay from "../common/LocationDisplay";
 import UserDetailsModal from "../users/UserDetailsModal";
+import { getUserInitials } from '../../utils/userHelpers';
 import { format } from "date-fns";
 
 /**
@@ -112,47 +113,6 @@ const TeamInvitesModal = ({
   const getAvatarUrl = (user) => {
     if (!user) return null;
     return user.avatar_url || user.avatarUrl || null;
-  };
-
-  // Helper to get user initials for avatar fallback
-  const getUserInitials = (user) => {
-    if (!user) return "?";
-
-    const firstName = user.first_name || user.firstName;
-    const lastName = user.last_name || user.lastName;
-    const username = user.username;
-
-    // Helper to format invitee full name with graceful fallback
-    const formatFullName = (user) => {
-      if (!user) return "Unknown User";
-
-      const first = user.first_name || user.firstName || "";
-      const last = user.last_name || user.lastName || "";
-
-      // If user has at least one name, return what is available
-      const full = `${first} ${last}`.trim();
-      if (full.length > 0) return full;
-
-      // Fallback to username
-      return user.username || "Unknown User";
-    };
-
-    // If we have both first and last name, use both initials
-    if (firstName && lastName) {
-      return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
-    }
-
-    // If we only have first name, use that
-    if (firstName) {
-      return firstName.charAt(0).toUpperCase();
-    }
-
-    // Fall back to username initial
-    if (username) {
-      return username.charAt(0).toUpperCase();
-    }
-
-    return "?";
   };
 
   // Custom header with invitation count

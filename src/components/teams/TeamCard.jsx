@@ -31,6 +31,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import Alert from "../common/Alert";
 import ApplicationNotificationBadge from "./ApplicationNotificationBadge";
 import TeamApplicationsModal from "./TeamApplicationsModal";
+import { getUserInitials } from '../../utils/userHelpers';
 import { format } from "date-fns";
 
 /**
@@ -786,15 +787,6 @@ const TeamCard = ({
         ? `${firstName} ${lastName}`
         : inviter.username || "Unknown";
 
-    // Get initials for avatar fallback
-    const getInitials = () => {
-      if (firstName && lastName) {
-        return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
-      }
-      if (firstName) return firstName.charAt(0).toUpperCase();
-      if (inviter.username) return inviter.username.charAt(0).toUpperCase();
-      return "?";
-    };
 
     return (
       <div className="flex items-center text-xs text-base-content/60 mb-4">
@@ -812,7 +804,7 @@ const TeamCard = ({
                 className="bg-primary text-primary-content flex items-center justify-center w-full h-full rounded-full"
                 style={{ fontSize: "8px" }}
               >
-                <span className="font-medium">{getInitials()}</span>
+                <span className="font-medium">{getUserInitials(inviter)}</span>
               </div>
             )}
           </div>

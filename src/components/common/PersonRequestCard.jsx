@@ -2,6 +2,7 @@ import React from "react";
 import { Calendar, MapPin } from "lucide-react";
 import { format } from "date-fns";
 import LocationDisplay from "./LocationDisplay";
+import { getUserInitials } from '../../utils/userHelpers';
 
 /**
  * PersonRequestCard Component
@@ -45,25 +46,7 @@ const PersonRequestCard = ({
     return user.avatar_url || user.avatarUrl || null;
   };
 
-  // Get user initials for avatar fallback
-  const getUserInitials = () => {
-    if (!user) return "?";
 
-    const firstName = user.first_name || user.firstName;
-    const lastName = user.last_name || user.lastName;
-    const username = user.username;
-
-    if (firstName && lastName) {
-      return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
-    }
-    if (firstName) {
-      return firstName.charAt(0).toUpperCase();
-    }
-    if (username) {
-      return username.charAt(0).toUpperCase();
-    }
-    return "?";
-  };
 
   // Get display name
   const getDisplayName = () => {
@@ -143,7 +126,7 @@ const PersonRequestCard = ({
                 display: getAvatarUrl() ? "none" : "flex",
               }}
             >
-              <span className="text-lg font-medium">{getUserInitials()}</span>
+              <span className="text-lg font-medium">{getUserInitials(user)}</span>
             </div>
           </div>
         </div>
