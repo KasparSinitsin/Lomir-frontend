@@ -5,7 +5,7 @@ import Button from "../common/Button";
 import Alert from "../common/Alert";
 import LocationDisplay from "../common/LocationDisplay";
 import UserDetailsModal from "../users/UserDetailsModal";
-import { getUserInitials } from '../../utils/userHelpers';
+import { getUserInitials, getDisplayName } from "../../utils/userHelpers";
 import { format } from "date-fns";
 
 /**
@@ -352,12 +352,7 @@ const TeamInvitesModal = ({
                         onClick={() => handleUserClick(invitation.inviter?.id)}
                         title="View profile"
                       >
-                        {invitation.inviter?.first_name &&
-                        invitation.inviter?.last_name
-                          ? `${invitation.inviter.first_name} ${invitation.inviter.last_name}`
-                          : invitation.inviter?.username ||
-                            invitation.inviter_username ||
-                            "Unknown"}
+                        {getDisplayName(invitation.inviter)}
                       </span>
                     </div>
                   ) : (

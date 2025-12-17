@@ -11,7 +11,7 @@ import Modal from "../common/Modal";
 import Button from "../common/Button";
 import UserDetailsModal from "../users/UserDetailsModal";
 import TeamDetailsModal from "./TeamDetailsModal";
-import { getUserInitials } from '../../utils/userHelpers';
+import { getUserInitials, getDisplayName } from "../../utils/userHelpers";
 import Alert from "../common/Alert";
 import { format } from "date-fns";
 
@@ -68,13 +68,7 @@ const TeamInvitationDetailsModal = ({
 
   // Get inviter display name
   const getInviterName = () => {
-    const firstName = inviter.first_name || inviter.firstName;
-    const lastName = inviter.last_name || inviter.lastName;
-
-    if (firstName && lastName) {
-      return `${firstName} ${lastName}`;
-    }
-    return inviter.username || invitation?.inviter_username || "Unknown";
+    return getDisplayName(inviter);
   };
 
   // Get inviter avatar

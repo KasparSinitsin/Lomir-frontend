@@ -31,7 +31,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import Alert from "../common/Alert";
 import ApplicationNotificationBadge from "./ApplicationNotificationBadge";
 import TeamApplicationsModal from "./TeamApplicationsModal";
-import { getUserInitials } from "../../utils/userHelpers";
+import { getUserInitials, getDisplayName } from "../../utils/userHelpers";
 import { format } from "date-fns";
 
 /**
@@ -782,10 +782,7 @@ const TeamCard = ({
     const avatarUrl = inviter.avatar_url || inviter.avatarUrl;
     const firstName = inviter.first_name || inviter.firstName;
     const lastName = inviter.last_name || inviter.lastName;
-    const displayName =
-      firstName && lastName
-        ? `${firstName} ${lastName}`
-        : inviter.username || "Unknown";
+    const displayName = getDisplayName(inviter);
 
     return (
       <div className="flex items-center text-xs text-base-content/60 mb-4">

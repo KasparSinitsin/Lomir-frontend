@@ -20,3 +20,19 @@ export const getUserInitials = (user) => {
   }
   return "?";
 };
+
+/**
+ * Get display name for a user
+ * Prioritizes first name + last name over username
+ * Returns full name if at least one name part is available
+ */
+export const getDisplayName = (user) => {
+  if (!user) return "Unknown";
+  
+  const firstName = user.first_name || user.firstName || "";
+  const lastName = user.last_name || user.lastName || "";
+  const fullName = `${firstName} ${lastName}`.trim();
+  
+  if (fullName.length > 0) return fullName;
+  return user.username || "Unknown";
+};
