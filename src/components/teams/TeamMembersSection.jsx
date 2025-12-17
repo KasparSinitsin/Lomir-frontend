@@ -140,7 +140,7 @@ const TeamMembersSection = ({
                       className={`${!anonymize ? "cursor-pointer" : ""}`}
                       onClick={() => !anonymize && onMemberClick(memberId)}
                     >
-                      <h3 className="font-medium text-base truncate">
+                      <h3 className="font-medium text-base truncate leading-[120%]">
                         {anonymize
                           ? "Private Profile"
                           : (() => {
@@ -216,7 +216,7 @@ const TeamMembersSection = ({
                     <>
                       {/* Username - now shown as subtitle */}
                       {member.username && (
-                        <p className="text-sm text-base-content/70 truncate">
+                        <p className="text-sm text-base-content/30 truncate mb-1.5">
                           @{member.username}
                         </p>
                       )}
@@ -226,7 +226,7 @@ const TeamMembersSection = ({
                           postalCode={member.postal_code || member.postalCode}
                           showIcon={false}
                           displayType="short"
-                          className="text-xs text-base-content/70"
+                          className="text-xs text-base-content/50"
                         />
                       )}
                     </>

@@ -734,7 +734,7 @@ const Profile = () => {
               <div className="flex-grow">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4">
                   <div>
-                    <h2 className="text-2xl font-bold">
+                    <h2 className="text-2xl font-bold leading-[120%] mb-[0.2em]">
                       {user.firstName || user.first_name || ""}{" "}
                       {user.lastName || user.last_name || ""}
                     </h2>
