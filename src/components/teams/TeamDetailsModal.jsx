@@ -1185,7 +1185,7 @@ const TeamDetailsModal = ({
                   teamavatarUrl: team?.teamavatarUrl,
                   fullTeam: team,
                 })}
-                <div className="flex items-center space-x-4 mb-6">
+                <div className="flex items-start space-x-4 mb-6">
                   <div className="avatar placeholder">
                     <div className="bg-primary text-primary-content rounded-full w-16 h-16 flex items-center justify-center">
                       {(team?.teamavatar_url || team?.teamavatarUrl) &&
@@ -1202,7 +1202,9 @@ const TeamDetailsModal = ({
                     </div>
                   </div>
                   <div>
-                    <h1 className="text-2xl font-bold">{team?.name}</h1>
+                    <h1 className="text-2xl font-bold leading-[120%] mb-[0.2em]">
+                      {team?.name}
+                    </h1>
                     {/* Members count and visibility */}
                     <div className="flex items-center space-x-4 text-sm">
                       <div className="flex items-center space-x-1">

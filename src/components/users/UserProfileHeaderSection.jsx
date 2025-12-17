@@ -99,7 +99,9 @@ const UserProfileHeaderSection = ({
 
       {/* User Info */}
       <div className="flex-1">
-        <h1 className="text-2xl font-bold">{getDisplayName()}</h1>
+        <h1 className="text-2xl font-bold leading-[120%] mb-[0.2em]">
+          {getDisplayName()}
+        </h1>
         <div className="flex items-center space-x-4 text-sm">
           <span className="text-base-content/70">@{user?.username}</span>
 
