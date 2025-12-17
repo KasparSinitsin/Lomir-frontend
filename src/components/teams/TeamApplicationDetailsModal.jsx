@@ -4,6 +4,7 @@ import Modal from "../common/Modal";
 import Button from "../common/Button";
 import TeamDetailsModal from "./TeamDetailsModal";
 import UserDetailsModal from "../users/UserDetailsModal";
+import { getUserInitials } from '../../utils/userHelpers';
 import Alert from "../common/Alert";
 import { format } from "date-fns";
 
@@ -215,7 +216,7 @@ const TeamApplicationDetailsModal = ({
                 fontSize: "8px",
               }}
             >
-              <span className="font-medium">{getOwnerInitials()}</span>
+              <span className="font-medium">{getUserInitials(owner)}</span>
             </div>
           </div>
         </div>

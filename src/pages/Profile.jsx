@@ -18,6 +18,7 @@ import TagInputV2 from "../components/tags/TagInputV2";
 import TagsDisplaySection from "../components/tags/TagsDisplaySection";
 import IconToggle from "../components/common/IconToggle";
 import LocationDisplay from "../components/common/LocationDisplay";
+import { getUserInitials } from "../utils/userHelpers";
 
 const Profile = () => {
   const { user, updateUser } = useAuth();
@@ -30,6 +31,7 @@ const Profile = () => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
+  const [imageError, setImageError] = useState(false);
 
   // Add form errors state
   const [formErrors, setFormErrors] = useState({});
@@ -190,6 +192,11 @@ const Profile = () => {
       isPublic: user?.isPublic,
     });
   }, [user]);
+
+  // Reset image error state when user changes
+useEffect(() => {
+  setImageError(false);
+}, [user?.avatarUrl, user?.avatar_url]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -528,25 +535,20 @@ const Profile = () => {
             <h2 className="text-2xl font-bold mb-6">Edit Profile</h2>
 
             <div className="mb-6 flex justify-top">
-              <div className="avatar placeholder">
-                <div className="bg-primary text-primary-content rounded-full w-24 h-24 relative">
-                  {imagePreview ? (
-                    <img
-                      src={imagePreview}
-                      alt="Profile"
-                      className="rounded-full object-cover w-full h-full"
-                    />
-                  ) : (
-                    <span className="text-3xl">
-                      {formData.firstName?.charAt(0) ||
-                        user.firstName?.charAt(0) ||
-                        user.first_name?.charAt(0) ||
-                        user.username?.charAt(0) ||
-                        "?"}
-                    </span>
-                  )}
-                </div>
-              </div>
+            <div className="avatar placeholder">
+  <div className="bg-primary text-primary-content rounded-full w-24 h-24 relative">
+    {imagePreview && !imageError ? (
+      <img
+        src={imagePreview}
+        alt="Profile"
+        className="rounded-full object-cover w-full h-full"
+        onError={() => setImageError(true)}
+      />
+    ) : (
+      <span className="text-3xl">{getUserInitials(user)}</span>
+    )}
+  </div>
+</div>
             </div>
 
             <div className="form-control w-full mb-4">
@@ -713,19 +715,15 @@ const Profile = () => {
               <div className="mb-6 md:mb-0 md:mr-8">
                 <div className="avatar placeholder">
                   <div className="bg-primary text-primary-content rounded-full w-24 h-24">
-                    {user.avatarUrl || user.avatar_url ? (
+                    {(user.avatarUrl || user.avatar_url) && !imageError ? (
                       <img
                         src={user.avatarUrl || user.avatar_url}
                         alt="Profile"
                         className="rounded-full object-cover w-full h-full"
+                        onError={() => setImageError(true)}
                       />
                     ) : (
-                      <span className="text-3xl">
-                        {user.firstName?.charAt(0) ||
-                          user.first_name?.charAt(0) ||
-                          user.username?.charAt(0) ||
-                          "?"}
-                      </span>
+                      <span className="text-3xl">{getUserInitials(user)}</span>
                     )}
                   </div>
                 </div>

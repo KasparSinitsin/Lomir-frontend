@@ -1,11 +1,14 @@
 import { Link } from "react-router-dom";
+import React, { useState } from "react";
 import { useAuth } from "../../contexts/AuthContext";
 import LomirLogo from "../../assets/images/Lomir-logowordmark-color.svg";
 import { Bell, MessageCircle, Search } from "lucide-react";
 import Colors from "../../utils/Colors";
+import { getUserInitials } from "../../utils/userHelpers";
 
 const Navbar = () => {
   const { isAuthenticated, user, logout } = useAuth();
+  const [imageError, setImageError] = useState(false);
 
   // Define Tailwind class strings using CSS variables for consistent colors
   const iconClasses =
@@ -68,19 +71,15 @@ const Navbar = () => {
                 className="btn btn-circle avatar bg-primary text-white btn-sm sm:btn-md"
               >
                 <div className="rounded-full flex items-center justify-center text-sm sm:text-base">
-                  {user.avatarUrl || user.avatar_url ? (
+                  {(user.avatarUrl || user.avatar_url) && !imageError ? (
                     <img
                       src={user.avatarUrl || user.avatar_url}
                       alt="Profile"
                       className="rounded-full object-cover w-full h-full"
+                      onError={() => setImageError(true)}
                     />
                   ) : (
-                    <span>
-                      {user.firstName?.charAt(0) ||
-                        user.first_name?.charAt(0) ||
-                        user.username?.charAt(0) ||
-                        "?"}
-                    </span>
+                    <span>{getUserInitials(user)}</span>
                   )}
                 </div>
               </label>

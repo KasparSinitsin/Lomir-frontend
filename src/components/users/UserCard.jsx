@@ -5,6 +5,7 @@ import { Tag, MessageCircle, Eye, EyeClosed } from "lucide-react";
 import UserDetailsModal from "./UserDetailsModal";
 import { useAuth } from "../../contexts/AuthContext";
 import LocationDisplay from "../common/LocationDisplay";
+import { getUserInitials } from "../../utils/userHelpers";
 
 const UserCard = ({ user, onUpdate }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -51,23 +52,6 @@ const UserCard = ({ user, onUpdate }) => {
       user.username?.charAt(0) ||
       "?"
     );
-  };
-
-  // Get user initials for avatar fallback (2 letters: "VL" for Valentina Lopez)
-  const getUserInitials = () => {
-    const firstName = user.first_name || user.firstName;
-    const lastName = user.last_name || user.lastName;
-
-    if (firstName && lastName) {
-      return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
-    }
-    if (firstName) {
-      return firstName.charAt(0).toUpperCase();
-    }
-    if (user.username) {
-      return user.username.charAt(0).toUpperCase();
-    }
-    return "?";
   };
 
   // Fix the shouldShowVisibilityIcon function
@@ -135,7 +119,7 @@ const UserCard = ({ user, onUpdate }) => {
         }
         hoverable
         image={getProfileImage()}
-        imageFallback={getUserInitials()}
+        imageFallback={getUserInitials(user)}
         imageAlt={`${user.username || "User"}'s profile`}
         imageSize="medium"
         imageShape="circle"
