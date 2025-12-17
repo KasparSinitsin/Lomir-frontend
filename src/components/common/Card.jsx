@@ -141,14 +141,16 @@ const Card = ({
             <div>{renderImage()}</div>
 
             <div>
-              <h3 className="text-lg font-medium text-primary">{title}</h3>
+              <h3 className="text-lg font-medium text-primary leading-[120%] mb-[0.2em]">
+                {title}
+              </h3>
               {subtitle && <p>{subtitle}</p>}
             </div>
           </div>
         </div>
       )}
 
-      {/* 🔹 Only the first direct <p> inside this wrapper will be clamped */}
+      {/* Only the first direct <p> inside this wrapper will be clamped */}
       <div className={`p-4 sm:p-7 ${getTruncateClasses()}`}>{children}</div>
 
       {footer && (
