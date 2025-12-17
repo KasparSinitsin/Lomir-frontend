@@ -98,6 +98,23 @@ const TeamInviteModal = ({
     </div>
   );
 
+  // Get team initials from name (e.g., "Urban Gardeners Berlin" → "UGB")
+  const getTeamInitials = (teamName) => {
+    if (!teamName || typeof teamName !== "string") return "?";
+
+    const words = teamName.trim().split(/\s+/);
+
+    if (words.length === 1) {
+      return teamName.slice(0, 2).toUpperCase();
+    }
+
+    return words
+      .slice(0, 3)
+      .map((word) => word.charAt(0))
+      .join("")
+      .toUpperCase();
+  };
+
   // Footer with action buttons
   const footer = (
     <div className="flex justify-end gap-3">
@@ -198,18 +215,26 @@ const TeamInviteModal = ({
                 >
                   {/* Team avatar */}
                   <div className="avatar placeholder">
-                    <div className="w-10 h-10 rounded-full bg-primary text-primary-content">
+                    <div className="w-10 h-10 rounded-full bg-primary text-primary-content flex items-center justify-center">
                       {team.teamavatar_url ? (
                         <img
                           src={team.teamavatar_url}
                           alt={team.name}
-                          className="object-cover"
+                          className="object-cover w-full h-full rounded-full"
+                          onError={(e) => {
+                            e.target.style.display = "none";
+                            e.target.nextSibling.style.display = "flex";
+                          }}
                         />
-                      ) : (
-                        <span className="text-sm">
-                          {team.name?.charAt(0)?.toUpperCase() || "T"}
-                        </span>
-                      )}
+                      ) : null}
+                      <span
+                        className="text-sm"
+                        style={{
+                          display: team.teamavatar_url ? "none" : "flex",
+                        }}
+                      >
+                        {getTeamInitials(team.name)}
+                      </span>
                     </div>
                   </div>
 
