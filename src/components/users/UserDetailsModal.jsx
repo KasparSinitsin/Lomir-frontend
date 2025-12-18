@@ -319,7 +319,11 @@ const UserDetailsModal = ({
           onClose={handleInviteModalClose}
           inviteeId={user.id}
           inviteeName={getUserDisplayName()}
+          inviteeFirstName={user.first_name || user.firstName}
+          inviteeLastName={user.last_name || user.lastName}
+          inviteeUsername={user.username}
           inviteeAvatar={user.avatar_url || user.avatarUrl}
+          inviteeBio={user.bio}
         />
       )}
     </>
