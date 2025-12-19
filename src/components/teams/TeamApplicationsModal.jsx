@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Check, X as Decline, User, Mail, MessageSquare } from "lucide-react";
 import RequestListModal from "../common/RequestListModal";
 import PersonRequestCard from "../common/PersonRequestCard";
@@ -16,6 +16,7 @@ import UserDetailsModal from "../users/UserDetailsModal";
  * @param {Array} applications - Array of pending application objects
  * @param {Function} onApplicationAction - Callback to handle approve/decline
  * @param {string} teamName - Name of the team (for display)
+ * @param {string|number|null} highlightUserId - User ID to scroll to + highlight (optional)
  */
 const TeamApplicationsModal = ({
   isOpen,
@@ -23,6 +24,7 @@ const TeamApplicationsModal = ({
   applications = [],
   onApplicationAction,
   teamName,
+  highlightUserId = null, // NEW PROP
 }) => {
   // ============ State ============
   const [loading, setLoading] = useState(false);
@@ -31,8 +33,10 @@ const TeamApplicationsModal = ({
   const [responses, setResponses] = useState({});
   const [selectedUserId, setSelectedUserId] = useState(null);
 
-  // ============ Handlers ============
+  // ============ Refs ============
+  const highlightedRef = useRef(null);
 
+  // ============ Handlers ============
   const handleResponseChange = (applicationId, response) => {
     setResponses((prev) => ({
       ...prev,
@@ -77,8 +81,6 @@ const TeamApplicationsModal = ({
   };
 
   // ============ Helper Functions ============
-
-  // Get the date from application (handles multiple field names)
   const getApplicationDate = (application) => {
     return (
       application?.created_at ||
@@ -88,8 +90,22 @@ const TeamApplicationsModal = ({
     );
   };
 
-  // ============ Render ============
+  // ============ Effects ============
+  useEffect(() => {
+    if (isOpen && highlightUserId && highlightedRef.current) {
+      // Small delay to ensure modal is rendered
+      const t = setTimeout(() => {
+        highlightedRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+      }, 100);
 
+      return () => clearTimeout(t);
+    }
+  }, [isOpen, highlightUserId]);
+
+  // ============ Render ============
   return (
     <RequestListModal
       isOpen={isOpen}
@@ -114,97 +130,117 @@ const TeamApplicationsModal = ({
         />
       }
     >
-      {applications.map((application) => (
-        <PersonRequestCard
-          key={application.id}
-          user={application.applicant}
-          date={getApplicationDate(application)}
-          message={application.message || "No message provided."}
-          messageLabel="Application message:"
-          messageIcon={<Mail size={12} className="text-pink-500 mr-1" />}
-          onUserClick={handleUserClick}
-          showLocation={false}
-          extraContent={
-            <>
-              {/* User Tags/Skills if available */}
-              {application.applicant?.tags &&
-                application.applicant.tags.length > 0 && (
-                  <div className="mb-4">
-                    <h5 className="font-medium text-sm text-base-content/80 mb-2">
-                      Skills & Interests:
-                    </h5>
-                    <div className="flex flex-wrap gap-1">
-                      {application.applicant.tags.slice(0, 6).map((tag) => (
-                        <span
-                          key={tag.id}
-                          className="badge badge-outline badge-sm text-xs"
-                        >
-                          {tag.name}
-                        </span>
-                      ))}
-                      {application.applicant.tags.length > 6 && (
-                        <span className="badge badge-ghost badge-sm text-xs">
-                          +{application.applicant.tags.length - 6} more
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                )}
+      {applications.map((application) => {
+        const applicantId =
+          application?.applicant?.id ?? application?.applicant_id ?? null;
 
-              {/* Response Textarea */}
-              <div className="mb-5">
-                <p className="text-xs text-base-content/60 mb-1 flex items-center">
-                  <MessageSquare size={12} className="text-primary mr-1" />
-                  Your response message (optional):
-                </p>
-                <textarea
-                  value={responses[application.id] || ""}
-                  onChange={(e) =>
-                    handleResponseChange(application.id, e.target.value)
-                  }
-                  className="textarea textarea-bordered textarea-sm w-full h-20 resize-none text-sm"
-                  placeholder="Add a personal message to your decision..."
-                  disabled={loading}
-                />
-              </div>
-            </>
-          }
-          actions={
-            <div className="flex justify-end space-x-2">
-              <Button
-                variant="errorOutline"
-                size="sm"
-                onClick={() =>
-                  handleApplicationAction(
-                    application.id,
-                    "decline",
-                    responses[application.id] || ""
-                  )
-                }
-                disabled={loading}
-                icon={<Decline size={16} />}
-              >
-                Decline
-              </Button>
-              <Button
-                variant="successOutline"
-                size="sm"
-                onClick={() =>
-                  handleApplicationAction(
-                    application.id,
-                    "approve",
-                    responses[application.id] || ""
-                  )
-                }
-                disabled={loading}
-                icon={<Check size={16} />}
-              >
-                Accept & Add to Team
-              </Button>
-            </div>
-          }
-        />
-      ))}
+        // Normalize types to avoid "1" vs 1 mismatches
+        const isHighlighted =
+          highlightUserId != null &&
+          applicantId != null &&
+          String(applicantId) === String(highlightUserId);
+
+        return (
+          <div
+            key={application.id}
+            ref={isHighlighted ? highlightedRef : null}
+            className={`transition-all duration-300 ${
+              isHighlighted
+                ? "ring-2 ring-primary/30 rounded-xl bg-primary/5"
+                : ""
+            }`}
+          >
+            <PersonRequestCard
+              user={application.applicant}
+              date={getApplicationDate(application)}
+              message={application.message || "No message provided."}
+              messageLabel="Application message:"
+              messageIcon={<Mail size={12} className="text-pink-500 mr-1" />}
+              onUserClick={handleUserClick}
+              showLocation={false}
+              extraContent={
+                <>
+                  {/* User Tags/Skills if available */}
+                  {application.applicant?.tags &&
+                    application.applicant.tags.length > 0 && (
+                      <div className="mb-4">
+                        <h5 className="font-medium text-sm text-base-content/80 mb-2">
+                          Skills & Interests:
+                        </h5>
+                        <div className="flex flex-wrap gap-1">
+                          {application.applicant.tags.slice(0, 6).map((tag) => (
+                            <span
+                              key={tag.id}
+                              className="badge badge-outline badge-sm text-xs"
+                            >
+                              {tag.name}
+                            </span>
+                          ))}
+                          {application.applicant.tags.length > 6 && (
+                            <span className="badge badge-ghost badge-sm text-xs">
+                              +{application.applicant.tags.length - 6} more
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                  {/* Response Textarea */}
+                  <div className="mb-5">
+                    <p className="text-xs text-base-content/60 mb-1 flex items-center">
+                      <MessageSquare size={12} className="text-primary mr-1" />
+                      Your response message (optional):
+                    </p>
+                    <textarea
+                      value={responses[application.id] || ""}
+                      onChange={(e) =>
+                        handleResponseChange(application.id, e.target.value)
+                      }
+                      className="textarea textarea-bordered textarea-sm w-full h-20 resize-none text-sm"
+                      placeholder="Add a personal message to your decision..."
+                      disabled={loading}
+                    />
+                  </div>
+                </>
+              }
+              actions={
+                <div className="flex justify-end space-x-2">
+                  <Button
+                    variant="errorOutline"
+                    size="sm"
+                    onClick={() =>
+                      handleApplicationAction(
+                        application.id,
+                        "decline",
+                        responses[application.id] || ""
+                      )
+                    }
+                    disabled={loading}
+                    icon={<Decline size={16} />}
+                  >
+                    Decline
+                  </Button>
+                  <Button
+                    variant="successOutline"
+                    size="sm"
+                    onClick={() =>
+                      handleApplicationAction(
+                        application.id,
+                        "approve",
+                        responses[application.id] || ""
+                      )
+                    }
+                    disabled={loading}
+                    icon={<Check size={16} />}
+                  >
+                    Accept & Add to Team
+                  </Button>
+                </div>
+              }
+            />
+          </div>
+        );
+      })}
     </RequestListModal>
   );
 };
