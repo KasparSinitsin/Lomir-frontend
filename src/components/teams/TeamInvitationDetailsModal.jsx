@@ -170,7 +170,7 @@ const TeamInvitationDetailsModal = ({
       </h2>
       <p className="text-sm text-base-content/70 flex items-center">
         <MailOpen size={14} className="mr-1.5" />
-        You are invited
+        You are invited!
       </p>
     </div>
   );
