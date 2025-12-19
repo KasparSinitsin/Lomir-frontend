@@ -1,9 +1,20 @@
 import React, { useState, useEffect } from "react";
-import { Users, Send, UserPlus, AlertCircle } from "lucide-react";
+import {
+  Users,
+  Send,
+  UserPlus,
+  AlertCircle,
+  SendHorizontal,
+  Mail,
+  Check,
+} from "lucide-react";
 import Modal from "../common/Modal";
 import Button from "../common/Button";
 import Alert from "../common/Alert";
 import UserDetailsModal from "../users/UserDetailsModal";
+import TeamDetailsModal from "../teams/TeamDetailsModal";
+import TeamInvitesModal from "../teams/TeamInvitesModal";
+import TeamApplicationsModal from "../teams/TeamApplicationsModal";
 import { getUserInitials } from "../../utils/userHelpers";
 import { teamService } from "../../services/teamService";
 
@@ -43,16 +54,86 @@ const TeamInviteModal = ({
   const [success, setSuccess] = useState(null);
   const [selectedUserId, setSelectedUserId] = useState(null);
 
+  // Team details modal state
+  const [selectedTeamForDetails, setSelectedTeamForDetails] = useState(null);
+  const [isTeamDetailsOpen, setIsTeamDetailsOpen] = useState(false);
+
+  // Store invitation/application data per team
+  // { teamId: { hasInviteForUser: bool, hasApplicationFromUser: bool, allInvitations: [], allApplications: [] } }
+  const [teamStatusData, setTeamStatusData] = useState({});
+
+  // Invites and Applications modal state
+  const [isInvitesModalOpen, setIsInvitesModalOpen] = useState(false);
+  const [isApplicationsModalOpen, setIsApplicationsModalOpen] = useState(false);
+  const [selectedTeamForModal, setSelectedTeamForModal] = useState(null);
+  const [selectedTeamInvitations, setSelectedTeamInvitations] = useState([]);
+  const [selectedTeamApplications, setSelectedTeamApplications] = useState([]);
+
   // Fetch teams where user can invite
   useEffect(() => {
-    const fetchTeams = async () => {
-      if (!isOpen) return;
+    const fetchTeamsAndStatus = async () => {
+      if (!isOpen || !inviteeId) return;
 
       try {
         setLoading(true);
         setError(null);
-        const response = await teamService.getTeamsWhereUserCanInvite();
-        setTeams(response.data || []);
+
+        // Fetch teams where current user can invite
+        const teamsResponse = await teamService.getTeamsWhereUserCanInvite();
+        const teamsData = teamsResponse.data || [];
+        setTeams(teamsData);
+
+        // Fetch pending invitations and applications for each team
+        const statusData = {};
+
+        await Promise.all(
+          teamsData.map(async (team) => {
+            try {
+              // Fetch all sent invitations for this team
+              const invitationsResponse =
+                await teamService.getTeamSentInvitations(team.id);
+              const allInvitations = invitationsResponse.data || [];
+
+              // Check if invitee has a pending invitation
+              const hasInviteForUser = allInvitations.some(
+                (inv) =>
+                  (inv.invitee?.id === inviteeId ||
+                    inv.invitee_id === inviteeId) &&
+                  inv.status === "pending"
+              );
+
+              // Fetch all applications for this team
+              const applicationsResponse =
+                await teamService.getTeamApplications(team.id);
+              const allApplications = applicationsResponse.data || [];
+
+              // Check if invitee has a pending application
+              const hasApplicationFromUser = allApplications.some(
+                (app) =>
+                  (app.applicant?.id === inviteeId ||
+                    app.applicant_id === inviteeId) &&
+                  app.status === "pending"
+              );
+
+              statusData[team.id] = {
+                hasInviteForUser,
+                hasApplicationFromUser,
+                allInvitations,
+                allApplications,
+              };
+            } catch (err) {
+              console.warn(`Could not fetch status for team ${team.id}:`, err);
+              statusData[team.id] = {
+                hasInviteForUser: false,
+                hasApplicationFromUser: false,
+                allInvitations: [],
+                allApplications: [],
+              };
+            }
+          })
+        );
+
+        setTeamStatusData(statusData);
       } catch (err) {
         console.error("Error fetching teams:", err);
         setError("Failed to load your teams. Please try again.");
@@ -61,8 +142,8 @@ const TeamInviteModal = ({
       }
     };
 
-    fetchTeams();
-  }, [isOpen]);
+    fetchTeamsAndStatus();
+  }, [isOpen, inviteeId]);
 
   // Reset state when modal opens
   useEffect(() => {
@@ -77,7 +158,7 @@ const TeamInviteModal = ({
   // ============ Helper Functions ============
 
   // Get full display name from first/last name or fallback to inviteeName
-  const getDisplayName = () => {
+  const getInviteeDisplayName = () => {
     const first = inviteeFirstName || "";
     const last = inviteeLastName || "";
     const fullName = `${first} ${last}`.trim();
@@ -86,11 +167,10 @@ const TeamInviteModal = ({
       return fullName;
     }
 
-    // Fallback to inviteeName prop, then username, then "Unknown User"
     return inviteeName || inviteeUsername || "Unknown User";
   };
 
-  // Get username with @ prefix
+  // Get username
   const getUsername = () => {
     return inviteeUsername || "unknown";
   };
@@ -104,12 +184,12 @@ const TeamInviteModal = ({
     };
   };
 
-  // Get team avatar URL - handles both snake_case and camelCase
+  // Get team avatar URL
   const getTeamAvatarUrl = (team) => {
     return team.teamavatar_url || team.teamavatarUrl || null;
   };
 
-  // Get current member count - handles both snake_case and camelCase
+  // Get current member count
   const getMemberCount = (team) => {
     return (
       team.current_members_count ??
@@ -120,13 +200,21 @@ const TeamInviteModal = ({
     );
   };
 
-  // Get max members - handles both snake_case and camelCase, returns "∞" for unlimited
+  // Get max members
   const getMaxMembers = (team) => {
     const max = team.max_members ?? team.maxMembers;
     return max === null || max === undefined ? "∞" : max;
   };
 
-  // Get team initials from name (e.g., "Urban Gardeners Berlin" → "UGB")
+  // Check if team has capacity
+  const hasCapacity = (team) => {
+    const max = team.max_members ?? team.maxMembers;
+    if (max === null || max === undefined) return true;
+    const current = getMemberCount(team);
+    return current < max;
+  };
+
+  // Get team initials
   const getTeamInitials = (teamName) => {
     if (!teamName || typeof teamName !== "string") return "?";
 
@@ -143,6 +231,72 @@ const TeamInviteModal = ({
       .toUpperCase();
   };
 
+  // Get the status badge for a team
+  const getTeamStatusBadge = (teamId, team) => {
+    const isSelected = selectedTeamId === teamId;
+    const status = teamStatusData[teamId] || {};
+    const hasPendingInvite = status.hasInviteForUser;
+    const hasPendingApplication = status.hasApplicationFromUser;
+    const teamHasCapacity = hasCapacity(team);
+
+    if (hasPendingInvite) {
+      return {
+        type: "pending-invite",
+        label: "Invited",
+        icon: SendHorizontal,
+        badgeClass: "badge-role-admin",
+        clickable: true,
+      };
+    }
+
+    if (hasPendingApplication) {
+      return {
+        type: "pending-application",
+        label: "Applied",
+        icon: Mail,
+        badgeClass: "badge-role-owner",
+        clickable: true,
+      };
+    }
+
+    if (teamHasCapacity) {
+      if (isSelected) {
+        return {
+          type: "selected",
+          label: "Invite",
+          icon: Check,
+          customStyle: {
+            backgroundColor: "var(--color-primary-focus)",
+            color: "#ffffff",
+          },
+          clickable: true,
+        };
+      } else {
+        return {
+          type: "available",
+          label: "Invite",
+          icon: UserPlus,
+          badgeClass: "badge-role-member",
+          clickable: true,
+        };
+      }
+    }
+
+    return null;
+  };
+
+  // Check if team is selectable for new invite
+  const isTeamSelectable = (teamId, team) => {
+    const status = teamStatusData[teamId] || {};
+    return (
+      !status.hasInviteForUser &&
+      !status.hasApplicationFromUser &&
+      hasCapacity(team)
+    );
+  };
+
+  // ============ Handlers ============
+
   const handleSendInvitation = async () => {
     if (!selectedTeamId) {
       setError("Please select a team");
@@ -155,9 +309,8 @@ const TeamInviteModal = ({
 
       await teamService.sendInvitation(selectedTeamId, inviteeId, message);
 
-      setSuccess(`Invitation sent to ${getDisplayName()}!`);
+      setSuccess(`Invitation sent to ${getInviteeDisplayName()}!`);
 
-      // Close modal after a short delay
       setTimeout(() => {
         onClose();
       }, 1500);
@@ -172,44 +325,168 @@ const TeamInviteModal = ({
     }
   };
 
-  const handleTeamSelect = (teamId) => {
-    setSelectedTeamId(teamId);
-    setError(null);
+  // Handle badge click
+  const handleBadgeClick = (e, teamId, team, statusBadge) => {
+    e.stopPropagation();
+
+    const status = teamStatusData[teamId] || {};
+
+    if (statusBadge.type === "pending-invite") {
+      // Open TeamInvitesModal with this team's invitations
+      setSelectedTeamForModal(team);
+      setSelectedTeamInvitations(status.allInvitations || []);
+      setIsInvitesModalOpen(true);
+    } else if (statusBadge.type === "pending-application") {
+      // Open TeamApplicationsModal with this team's applications
+      setSelectedTeamForModal(team);
+      setSelectedTeamApplications(status.allApplications || []);
+      setIsApplicationsModalOpen(true);
+    } else if (
+      statusBadge.type === "available" ||
+      statusBadge.type === "selected"
+    ) {
+      if (isTeamSelectable(teamId, team)) {
+        setSelectedTeamId(selectedTeamId === teamId ? null : teamId);
+        setError(null);
+      }
+    }
   };
 
-  // Handler to open user profile modal
+  // Handle card click
+  const handleCardClick = (team) => {
+    setSelectedTeamForDetails(team);
+    setIsTeamDetailsOpen(true);
+  };
+
+  // Handle team details modal close
+  const handleTeamDetailsClose = () => {
+    setIsTeamDetailsOpen(false);
+    setSelectedTeamForDetails(null);
+  };
+
+  // Handle user click
   const handleUserClick = (userId) => {
     if (userId) {
       setSelectedUserId(userId);
     }
   };
 
-  // Handler to close user profile modal
+  // Handle user modal close
   const handleUserModalClose = () => {
     setSelectedUserId(null);
   };
 
-  // Custom header
+  // Handle cancel invitation (called from TeamInvitesModal)
+  const handleCancelInvitation = async (invitationId) => {
+    try {
+      await teamService.cancelInvitation(invitationId);
+
+      // Update local state - remove the cancelled invitation
+      if (selectedTeamForModal) {
+        const teamId = selectedTeamForModal.id;
+        const updatedInvitations = selectedTeamInvitations.filter(
+          (inv) => inv.id !== invitationId
+        );
+        setSelectedTeamInvitations(updatedInvitations);
+
+        // Update teamStatusData
+        setTeamStatusData((prev) => ({
+          ...prev,
+          [teamId]: {
+            ...prev[teamId],
+            allInvitations: updatedInvitations,
+            hasInviteForUser: updatedInvitations.some(
+              (inv) =>
+                (inv.invitee?.id === inviteeId ||
+                  inv.invitee_id === inviteeId) &&
+                inv.status === "pending"
+            ),
+          },
+        }));
+      }
+    } catch (err) {
+      console.error("Error canceling invitation:", err);
+      throw err;
+    }
+  };
+
+  // Handle application action (called from TeamApplicationsModal)
+  const handleApplicationAction = async (
+    applicationId,
+    action,
+    response = ""
+  ) => {
+    try {
+      if (action === "approve") {
+        await teamService.acceptApplication(applicationId, response);
+      } else {
+        await teamService.declineApplication(applicationId, response);
+      }
+
+      // Update local state - remove the processed application
+      if (selectedTeamForModal) {
+        const teamId = selectedTeamForModal.id;
+        const updatedApplications = selectedTeamApplications.filter(
+          (app) => app.id !== applicationId
+        );
+        setSelectedTeamApplications(updatedApplications);
+
+        // Update teamStatusData
+        setTeamStatusData((prev) => ({
+          ...prev,
+          [teamId]: {
+            ...prev[teamId],
+            allApplications: updatedApplications,
+            hasApplicationFromUser: updatedApplications.some(
+              (app) =>
+                (app.applicant?.id === inviteeId ||
+                  app.applicant_id === inviteeId) &&
+                app.status === "pending"
+            ),
+          },
+        }));
+      }
+    } catch (err) {
+      console.error(`Error ${action}ing application:`, err);
+      throw err;
+    }
+  };
+
+  // Close invites modal
+  const handleInvitesModalClose = () => {
+    setIsInvitesModalOpen(false);
+    setSelectedTeamForModal(null);
+    setSelectedTeamInvitations([]);
+  };
+
+  // Close applications modal
+  const handleApplicationsModalClose = () => {
+    setIsApplicationsModalOpen(false);
+    setSelectedTeamForModal(null);
+    setSelectedTeamApplications([]);
+  };
+
+  // ============ Render ============
+
   const customHeader = (
     <div className="flex items-center gap-3">
       <UserPlus className="text-primary" size={24} />
       <div>
-        <h2 className="text-xl font-medium text-primary">Invite to Team</h2>
-        <p className="text-sm text-base-content/70">
-          Invite {getDisplayName()} to join your team
-        </p>
+        <h2 className="text-xl font-medium text-primary">Invite {getInviteeDisplayName()} to a Team</h2>
+        {/* <p className="text-sm text-base-content/70">
+          Invite {getInviteeDisplayName()} to join your team
+        </p> */}
       </div>
     </div>
   );
 
-  // Footer with action buttons
   const footer = (
     <div className="flex justify-end gap-3">
-      <Button variant="ghost" onClick={onClose} disabled={sending}>
+      <Button variant="errorOutline" onClick={onClose} disabled={sending}>
         Cancel
       </Button>
       <Button
-        variant="primary"
+        variant="successOutline"
         onClick={handleSendInvitation}
         disabled={!selectedTeamId || sending || success}
         icon={<Send size={16} />}
@@ -245,9 +522,8 @@ const TeamInviteModal = ({
             />
           )}
 
-          {/* Invitee info - No box, matching TeamInvitationDetailsModal style */}
+          {/* Invitee info */}
           <div className="flex items-start space-x-3 mb-3">
-            {/* Avatar - Clickable */}
             <div
               className="avatar cursor-pointer hover:opacity-80 transition-opacity"
               onClick={() => handleUserClick(inviteeId)}
@@ -260,7 +536,6 @@ const TeamInviteModal = ({
                     alt={getUsername()}
                     className="object-cover w-full h-full rounded-full"
                     onError={(e) => {
-                      // If image fails to load, hide it and show fallback
                       e.target.style.display = "none";
                       const fallback =
                         e.target.parentElement.querySelector(
@@ -270,7 +545,6 @@ const TeamInviteModal = ({
                     }}
                   />
                 ) : null}
-                {/* Fallback initials */}
                 <div
                   className="avatar-fallback bg-primary text-primary-content flex items-center justify-center w-full h-full rounded-full absolute inset-0"
                   style={{
@@ -284,14 +558,13 @@ const TeamInviteModal = ({
               </div>
             </div>
 
-            {/* Name and Details */}
             <div className="flex-1 min-w-0">
               <h4
                 className="font-medium text-base-content cursor-pointer hover:text-primary transition-colors leading-[120%] mb-[0.2em]"
                 onClick={() => handleUserClick(inviteeId)}
                 title="View profile"
               >
-                {getDisplayName()}
+                {getInviteeDisplayName()}
               </h4>
 
               <p
@@ -313,46 +586,68 @@ const TeamInviteModal = ({
 
           {/* Team selection */}
           <div>
-            {/* Label outside the box */}
-            <p className="text-xs text-base-content/60 mb-1 flex items-center">
+            <p className="text-xs text-base-content/60 mb-2 flex items-center">
               <Users size={12} className="text-primary mr-1" />
               Select a team to invite them to:
             </p>
 
-            {/* Team list inside grey box */}
-            <div className="p-3 bg-base-200/30 rounded-lg border border-base-300">
-              {loading ? (
-                <div className="flex justify-center py-6">
-                  <div className="loading loading-spinner loading-md text-primary"></div>
-                </div>
-              ) : teams.length === 0 ? (
-                <div className="text-center py-6">
-                  <AlertCircle
-                    className="mx-auto mb-2 text-warning"
-                    size={28}
-                  />
-                  <p className="text-sm text-base-content/70">
-                    You don't have any teams where you can invite members.
-                  </p>
-                  <p className="text-xs text-base-content/50 mt-1">
-                    Create a team or become an admin to send invitations.
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-2 max-h-48 overflow-y-auto">
-                  {teams.map((team) => (
+            {loading ? (
+              <div className="flex justify-center py-6">
+                <div className="loading loading-spinner loading-md text-primary"></div>
+              </div>
+            ) : teams.length === 0 ? (
+              <div className="text-center py-6 bg-base-200/30 rounded-lg border border-base-300">
+                <AlertCircle className="mx-auto mb-2 text-warning" size={28} />
+                <p className="text-sm text-base-content/70">
+                  You don't have any teams where you can invite members.
+                </p>
+                <p className="text-xs text-base-content/50 mt-1">
+                  Create a team or become an admin to send invitations.
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-64 overflow-y-auto">
+                {teams.map((team) => {
+                  const statusBadge = getTeamStatusBadge(team.id, team);
+                  const BadgeIcon = statusBadge?.icon;
+
+                  return (
                     <div
                       key={team.id}
-                      onClick={() => handleTeamSelect(team.id)}
-                      className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-all duration-200 
+                      onClick={() => handleCardClick(team)}
+                      className={`relative flex items-center gap-3 p-3 rounded-xl shadow cursor-pointer transition-all duration-200 
                         ${
                           selectedTeamId === team.id
-                            ? "bg-primary/10 border border-primary"
-                            : "bg-base-100 border border-transparent hover:bg-base-200"
+                            ? "bg-green-100 ring-2 ring-primary shadow-md"
+                            : "bg-green-50 hover:bg-green-100 hover:shadow-md"
                         }`}
                     >
+                      {/* Status badge */}
+                      {statusBadge && (
+                        <div
+                          className="absolute top-2 right-2"
+                          onClick={(e) =>
+                            handleBadgeClick(e, team.id, team, statusBadge)
+                          }
+                        >
+                          <span
+                            className={`badge badge-sm gap-1 ${
+                              statusBadge.badgeClass || ""
+                            } ${
+                              statusBadge.clickable
+                                ? "cursor-pointer hover:shadow-md transition-all duration-200"
+                                : ""
+                            }`}
+                            style={statusBadge.customStyle || {}}
+                          >
+                            <BadgeIcon className="w-3 h-3" />
+                            {statusBadge.label}
+                          </span>
+                        </div>
+                      )}
+
                       {/* Team avatar */}
-                      <div className="avatar">
+                      <div className="avatar flex-shrink-0">
                         <div className="w-10 h-10 rounded-full relative">
                           {getTeamAvatarUrl(team) ? (
                             <img
@@ -360,7 +655,6 @@ const TeamInviteModal = ({
                               alt={team.name}
                               className="object-cover w-full h-full rounded-full"
                               onError={(e) => {
-                                // If image fails to load, hide it and show fallback
                                 e.target.style.display = "none";
                                 const fallback =
                                   e.target.parentElement.querySelector(
@@ -370,7 +664,6 @@ const TeamInviteModal = ({
                               }}
                             />
                           ) : null}
-                          {/* Fallback initials */}
                           <div
                             className="avatar-fallback bg-primary text-primary-content flex items-center justify-center w-full h-full rounded-full absolute inset-0"
                             style={{
@@ -385,43 +678,20 @@ const TeamInviteModal = ({
                       </div>
 
                       {/* Team info */}
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium truncate">{team.name}</p>
+                      <div className="flex-1 min-w-0 pr-2">
+                        <p className="font-medium truncate leading-tight pr-16">
+                          {team.name}
+                        </p>
                         <p className="text-xs text-base-content/70">
                           <Users size={12} className="inline mr-1" />
                           {getMemberCount(team)}/{getMaxMembers(team)} members
-                          {team.available_spots !== null &&
-                            team.available_spots !== undefined && (
-                              <span className="ml-2 text-success">
-                                ({team.available_spots} spots available)
-                              </span>
-                            )}
                         </p>
                       </div>
-
-                      {/* Selection indicator */}
-                      {selectedTeamId === team.id && (
-                        <div className="w-5 h-5 bg-primary rounded-full flex items-center justify-center">
-                          <svg
-                            className="w-3 h-3 text-primary-content"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={3}
-                              d="M5 13l4 4L19 7"
-                            />
-                          </svg>
-                        </div>
-                      )}
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* Optional message */}
@@ -431,17 +701,15 @@ const TeamInviteModal = ({
                 <Send size={12} className="text-info mr-1" />
                 Add a message (optional):
               </p>
-              {/* Textarea wrapper with character count inside */}
               <div className="relative">
                 <textarea
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
-                  placeholder={`Hi ${getDisplayName()}, I'd like to invite you to join our team...`}
+                  placeholder={`Hi ${getInviteeDisplayName()}, I'd like to invite you to join our team...`}
                   className="textarea textarea-bordered w-full h-24 resize-none text-sm pb-6"
                   maxLength={500}
                 />
-                {/* Character count positioned inside textarea at bottom-left */}
-                <span className="absolute bottom-2 left-3 text-sm text-base-content/40 pointer-events-none">
+                <span className="absolute bottom-2 left-3 text-xs text-base-content/40 pointer-events-none">
                   {message.length}/500 characters
                 </span>
               </div>
@@ -455,6 +723,34 @@ const TeamInviteModal = ({
         isOpen={!!selectedUserId}
         userId={selectedUserId}
         onClose={handleUserModalClose}
+      />
+
+      {/* Team Details Modal */}
+      <TeamDetailsModal
+        isOpen={isTeamDetailsOpen}
+        teamId={selectedTeamForDetails?.id}
+        initialTeamData={selectedTeamForDetails}
+        onClose={handleTeamDetailsClose}
+      />
+
+      {/* Team Invites Modal */}
+      <TeamInvitesModal
+        isOpen={isInvitesModalOpen}
+        onClose={handleInvitesModalClose}
+        invitations={selectedTeamInvitations}
+        onCancelInvitation={handleCancelInvitation}
+        teamName={selectedTeamForModal?.name}
+        highlightUserId={inviteeId}
+      />
+
+      {/* Team Applications Modal */}
+      <TeamApplicationsModal
+        isOpen={isApplicationsModalOpen}
+        onClose={handleApplicationsModalClose}
+        applications={selectedTeamApplications}
+        onApplicationAction={handleApplicationAction}
+        teamName={selectedTeamForModal?.name}
+        highlightUserId={inviteeId}
       />
     </>
   );
