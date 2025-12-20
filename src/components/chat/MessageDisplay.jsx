@@ -1,7 +1,9 @@
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useEffect, useState } from "react";
 import { format, isToday, isYesterday } from "date-fns";
 import { getUserInitials } from "../../utils/userHelpers";
 import { UserPlus, PartyPopper } from "lucide-react";
+import TeamDetailsModal from "../teams/TeamDetailsModal";
+import UserDetailsModal from "../users/UserDetailsModal";
 
 /**
  * Parse system messages (join notifications, invitation responses)
@@ -51,6 +53,13 @@ const MessageDisplay = ({
 }) => {
   const messagesEndRef = useRef(null);
 
+  // State for team details modal
+  const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
+
+  // State for user details modal
+  const [isUserModalOpen, setIsUserModalOpen] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState(null);
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, typingUsers]);
@@ -75,6 +84,32 @@ const MessageDisplay = ({
       }
     }
   }, [teamMembers, messages, conversationType]);
+
+  // Handle team avatar/name click
+  const handleTeamClick = () => {
+    if (teamData?.id) {
+      setIsTeamModalOpen(true);
+    }
+  };
+
+  // Handle closing the team details modal
+  const handleTeamModalClose = () => {
+    setIsTeamModalOpen(false);
+  };
+
+  // Handle user avatar/name click
+  const handleUserClick = (userId) => {
+    if (userId) {
+      setSelectedUserId(userId);
+      setIsUserModalOpen(true);
+    }
+  };
+
+  // Handle closing the user details modal
+  const handleUserModalClose = () => {
+    setIsUserModalOpen(false);
+    setSelectedUserId(null);
+  };
 
   if (loading) {
     return (
@@ -143,12 +178,20 @@ const MessageDisplay = ({
     return senderInfo.username || "Unknown";
   };
 
-  // Render avatar
-  const renderAvatar = (senderInfo) => {
+  // Render avatar (optionally clickable)
+  const renderAvatar = (senderInfo, clickable = false, userId = null) => {
     if (!senderInfo) return null;
 
+    const handleClick = clickable && userId ? () => handleUserClick(userId) : undefined;
+
     return (
-      <div className="avatar mr-2 flex-shrink-0">
+      <div
+        className={`avatar mr-2 flex-shrink-0 ${
+          clickable ? "cursor-pointer hover:opacity-80 transition-opacity" : ""
+        }`}
+        onClick={handleClick}
+        title={clickable ? `View ${getDisplayName(senderInfo)} details` : undefined}
+      >
         <div className="w-8 h-8 rounded-full">
           {senderInfo.avatarUrl ? (
             <img
@@ -183,7 +226,8 @@ const MessageDisplay = ({
     message,
     parsedMessage,
     senderInfo,
-    isCurrentUser
+    isCurrentUser,
+    senderId
   ) => {
     const displayName = getDisplayName(senderInfo);
 
@@ -209,15 +253,17 @@ const MessageDisplay = ({
               isCurrentUser ? "justify-end" : "justify-start"
             } w-full`}
           >
-            {/* Avatar for others' messages */}
-            {!isCurrentUser && renderAvatar(senderInfo)}
+            {/* Avatar for others' messages - clickable */}
+            {!isCurrentUser && renderAvatar(senderInfo, true, senderId)}
 
             <div className="flex flex-col max-w-[70%]">
-              {/* Sender name for team chats */}
+              {/* Sender name for team chats - clickable */}
               {!isCurrentUser && (
                 <div
-                  className="text-xs font-medium mb-1 ml-3"
+                  className="text-xs font-medium mb-1 ml-3 cursor-pointer hover:text-primary transition-colors"
                   style={{ color: "#036b0c" }}
+                  onClick={() => handleUserClick(senderId)}
+                  title={`View ${displayName} details`}
                 >
                   {displayName}
                 </div>
@@ -265,7 +311,8 @@ const MessageDisplay = ({
     message,
     parsedMessage,
     senderInfo,
-    isCurrentUser
+    isCurrentUser,
+    senderId
   ) => {
     const displayName = getDisplayName(senderInfo);
 
@@ -286,10 +333,10 @@ const MessageDisplay = ({
               isCurrentUser ? "justify-end" : "justify-start"
             } w-full`}
           >
-            {/* Avatar for others' messages */}
+            {/* Avatar for others' messages - clickable */}
             {!isCurrentUser &&
               conversationType === "direct" &&
-              renderAvatar(senderInfo)}
+              renderAvatar(senderInfo, true, senderId)}
 
             <div className="flex flex-col max-w-[70%]">
               {/* Message bubble */}
@@ -329,92 +376,125 @@ const MessageDisplay = ({
 
   if (messages.length === 0 && typingUsers.length === 0) {
     return (
-      <div className="space-y-6">
-        {/* Show conversation partner header for direct messages */}
-        {conversationPartner && conversationType === "direct" && (
-          <div className="text-center pb-4 mb-4 border-b border-base-200">
-            <div className="avatar mb-2">
-              <div className="w-16 h-16 rounded-full mx-auto">
-                {conversationPartner.avatarUrl ? (
-                  <img
-                    src={conversationPartner.avatarUrl}
-                    alt={conversationPartner.username}
-                    className="object-cover"
-                  />
-                ) : (
-                  <div className="bg-primary text-primary-content flex items-center justify-center">
-                    <span className="text-xl">
-                      {conversationPartner.firstName?.charAt(0) ||
-                        conversationPartner.username?.charAt(0) ||
-                        "?"}
-                    </span>
-                  </div>
-                )}
+      <>
+        <div className="space-y-6">
+          {/* Show conversation partner header for direct messages - CLICKABLE */}
+          {conversationPartner && conversationType === "direct" && (
+            <div className="text-center pb-4 mb-4 border-b border-base-200">
+              <div
+                className="avatar mb-2 cursor-pointer hover:opacity-80 transition-opacity"
+                onClick={() => handleUserClick(conversationPartner.id)}
+                title={`View ${conversationPartner.firstName || conversationPartner.username} details`}
+              >
+                <div className="w-16 h-16 rounded-full mx-auto">
+                  {conversationPartner.avatarUrl ? (
+                    <img
+                      src={conversationPartner.avatarUrl}
+                      alt={conversationPartner.username}
+                      className="object-cover"
+                    />
+                  ) : (
+                    <div className="bg-primary text-primary-content flex items-center justify-center">
+                      <span className="text-xl">
+                        {conversationPartner.firstName?.charAt(0) ||
+                          conversationPartner.username?.charAt(0) ||
+                          "?"}
+                      </span>
+                    </div>
+                  )}
+                </div>
               </div>
+              <h3
+                className="font-medium leading-[120%] mb-[0.2em] cursor-pointer hover:text-primary transition-colors"
+                onClick={() => handleUserClick(conversationPartner.id)}
+                title={`View ${conversationPartner.firstName || conversationPartner.username} details`}
+              >
+                {conversationPartner.firstName && conversationPartner.lastName
+                  ? `${conversationPartner.firstName} ${conversationPartner.lastName}`
+                  : conversationPartner.username}
+              </h3>
             </div>
-            <h3 className="font-medium leading-[120%] mb-[0.2em]">
-              {conversationPartner.firstName && conversationPartner.lastName
-                ? `${conversationPartner.firstName} ${conversationPartner.lastName}`
-                : conversationPartner.username}
-            </h3>
-          </div>
-        )}
+          )}
 
-        {/* Show team header for team conversations */}
-        {teamData && conversationType === "team" && (
-          <div className="text-center pb-4 mb-4 border-b border-base-200">
-            <div className="avatar mb-2">
-              <div className="w-16 h-16 rounded-full mx-auto">
-                {teamData.avatarUrl ? (
-                  <img
-                    src={teamData.avatarUrl}
-                    alt={teamData.name}
-                    className="object-cover"
-                  />
-                ) : (
-                  <div className="bg-primary text-primary-content flex items-center justify-center">
-                    <span className="text-xl">
-                      {teamData.name?.charAt(0) || "T"}
-                    </span>
-                  </div>
-                )}
+          {/* Show team header for team conversations - CLICKABLE */}
+          {teamData && conversationType === "team" && (
+            <div className="text-center pb-4 mb-4 border-b border-base-200">
+              <div
+                className="avatar mb-2 cursor-pointer hover:opacity-80 transition-opacity"
+                onClick={handleTeamClick}
+                title={`View ${teamData.name} details`}
+              >
+                <div className="w-16 h-16 rounded-full mx-auto">
+                  {teamData.avatarUrl ? (
+                    <img
+                      src={teamData.avatarUrl}
+                      alt={teamData.name}
+                      className="object-cover"
+                    />
+                  ) : (
+                    <div className="bg-primary text-primary-content flex items-center justify-center">
+                      <span className="text-xl">
+                        {teamData.name?.charAt(0) || "T"}
+                      </span>
+                    </div>
+                  )}
+                </div>
               </div>
+              <h3
+                className="font-medium leading-[120%] mb-[0.2em] cursor-pointer hover:text-primary transition-colors"
+                onClick={handleTeamClick}
+                title={`View ${teamData.name} details`}
+              >
+                {teamData.name}
+              </h3>
+              <p className="text-sm text-base-content/70">Team Chat</p>
             </div>
-            <h3 className="font-medium leading-[120%] mb-[0.2em]">
-              {teamData.name}
-            </h3>
-            <p className="text-sm text-base-content/70">Team Chat</p>
-          </div>
-        )}
+          )}
 
-        {/* No messages message */}
-        <div className="flex flex-col items-center justify-center h-full">
-          <p className="text-base-content/70">No messages yet</p>
-          <p className="text-sm text-base-content/50 mt-2">
-            Send a message to start the conversation
-          </p>
+          {/* No messages message */}
+          <div className="flex flex-col items-center justify-center h-full">
+            <p className="text-base-content/70">No messages yet</p>
+            <p className="text-sm text-base-content/50 mt-2">
+              Send a message to start the conversation
+            </p>
+          </div>
         </div>
-      </div>
+
+        {/* Team Details Modal */}
+        <TeamDetailsModal
+          isOpen={isTeamModalOpen}
+          teamId={teamData?.id}
+          initialTeamData={teamData}
+          onClose={handleTeamModalClose}
+        />
+
+        {/* User Details Modal */}
+        <UserDetailsModal
+          isOpen={isUserModalOpen}
+          userId={selectedUserId}
+          onClose={handleUserModalClose}
+        />
+      </>
     );
   }
 
   // Helper function to group consecutive messages by sender (max 3 per group)
-  const groupMessages = (messages) => {
-    if (!messages.length) return [];
+  const groupMessages = (messagesForDate) => {
+    if (!messagesForDate.length) return [];
 
     const groups = [];
     let currentGroup = {
-      senderId: messages[0].senderId,
-      messages: [messages[0]],
+      senderId: messagesForDate[0].senderId,
+      messages: [messagesForDate[0]],
       showSenderInfo: true,
     };
 
-    for (let i = 1; i < messages.length; i++) {
-      const message = messages[i];
+    for (let i = 1; i < messagesForDate.length; i++) {
+      const message = messagesForDate[i];
 
       // Check if this message is a system message (join/response) - don't group these
       const parsedMessage = parseSystemMessage(message.content);
-      const prevParsedMessage = parseSystemMessage(messages[i - 1].content);
+      const prevParsedMessage = parseSystemMessage(messagesForDate[i - 1].content);
 
       const shouldStartNewGroup =
         message.senderId !== currentGroup.senderId ||
@@ -439,211 +519,250 @@ const MessageDisplay = ({
   };
 
   return (
-    <div className="space-y-6">
-      {conversationPartner && conversationType === "direct" && (
-        <div className="text-center pb-4 mb-4 border-b border-base-200">
-          <div className="avatar mb-2">
-            <div className="w-16 h-16 rounded-full mx-auto">
-              {conversationPartner.avatarUrl ? (
-                <img
-                  src={conversationPartner.avatarUrl}
-                  alt={conversationPartner.username}
-                  className="object-cover"
-                />
-              ) : (
-                <div className="bg-primary text-primary-content flex items-center justify-center">
-                  <span className="text-xl">
-                    {conversationPartner.firstName?.charAt(0) ||
-                      conversationPartner.username?.charAt(0) ||
-                      "?"}
-                  </span>
-                </div>
-              )}
+    <>
+      <div className="space-y-6">
+        {/* Show conversation partner header for direct messages - CLICKABLE */}
+        {conversationPartner && conversationType === "direct" && (
+          <div className="text-center pb-4 mb-4 border-b border-base-200">
+            <div
+              className="avatar mb-2 cursor-pointer hover:opacity-80 transition-opacity"
+              onClick={() => handleUserClick(conversationPartner.id)}
+              title={`View ${conversationPartner.firstName || conversationPartner.username} details`}
+            >
+              <div className="w-16 h-16 rounded-full mx-auto">
+                {conversationPartner.avatarUrl ? (
+                  <img
+                    src={conversationPartner.avatarUrl}
+                    alt={conversationPartner.username}
+                    className="object-cover"
+                  />
+                ) : (
+                  <div className="bg-primary text-primary-content flex items-center justify-center">
+                    <span className="text-xl">
+                      {conversationPartner.firstName?.charAt(0) ||
+                        conversationPartner.username?.charAt(0) ||
+                        "?"}
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
+            <h3
+              className="font-medium leading-[120%] mb-[0.2em] cursor-pointer hover:text-primary transition-colors"
+              onClick={() => handleUserClick(conversationPartner.id)}
+              title={`View ${conversationPartner.firstName || conversationPartner.username} details`}
+            >
+              {conversationPartner.firstName && conversationPartner.lastName
+                ? `${conversationPartner.firstName} ${conversationPartner.lastName}`
+                : conversationPartner.username}
+            </h3>
           </div>
-          <h3 className="font-medium">
-            {conversationPartner.firstName && conversationPartner.lastName
-              ? `${conversationPartner.firstName} ${conversationPartner.lastName}`
-              : conversationPartner.username}
-          </h3>
-        </div>
-      )}
+        )}
 
-      {teamData && conversationType === "team" && (
-        <div className="text-center pb-4 mb-4 border-b border-base-200">
-          <div className="avatar mb-2">
-            <div className="w-16 h-16 rounded-full mx-auto">
-              {teamData.avatarUrl ? (
-                <img
-                  src={teamData.avatarUrl}
-                  alt={teamData.name}
-                  className="object-cover"
-                />
-              ) : (
-                <div className="bg-primary text-primary-content flex items-center justify-center">
-                  <span className="text-xl">
-                    {teamData.name?.charAt(0) || "T"}
-                  </span>
-                </div>
-              )}
+        {/* Show team header for team conversations - CLICKABLE */}
+        {teamData && conversationType === "team" && (
+          <div className="text-center pb-4 mb-4 border-b border-base-200">
+            <div
+              className="avatar mb-2 cursor-pointer hover:opacity-80 transition-opacity"
+              onClick={handleTeamClick}
+              title={`View ${teamData.name} details`}
+            >
+              <div className="w-16 h-16 rounded-full mx-auto">
+                {teamData.avatarUrl ? (
+                  <img
+                    src={teamData.avatarUrl}
+                    alt={teamData.name}
+                    className="object-cover"
+                  />
+                ) : (
+                  <div className="bg-primary text-primary-content flex items-center justify-center">
+                    <span className="text-xl">
+                      {teamData.name?.charAt(0) || "T"}
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
+            <h3
+              className="font-medium leading-[120%] mb-[0.2em] cursor-pointer hover:text-primary transition-colors"
+              onClick={handleTeamClick}
+              title={`View ${teamData.name} details`}
+            >
+              {teamData.name}
+            </h3>
+            <p className="text-sm text-base-content/70">Team Chat</p>
           </div>
-          <h3 className="font-medium leading-[120%] mb-[0.2em]">
-            {teamData.name}
-          </h3>
-          <p className="text-sm text-base-content/70">Team Chat</p>
-        </div>
-      )}
+        )}
 
-      {/* Group messages by date */}
-      {Object.entries(messagesByDate).map(([dateString, messagesForDate]) => (
-        <div key={dateString} className="space-y-4">
-          <div className="text-center">
-            <div className="badge badge-neutral badge-sm">
-              {formatDateHeading(dateString)}
+        {/* Group messages by date */}
+        {Object.entries(messagesByDate).map(([dateString, messagesForDate]) => (
+          <div key={dateString} className="space-y-4">
+            <div className="text-center">
+              <div className="badge badge-neutral badge-sm">
+                {formatDateHeading(dateString)}
+              </div>
             </div>
-          </div>
 
-          {/* Group consecutive messages by sender */}
-          {groupMessages(messagesForDate).map((messageGroup, groupIndex) => {
-            const isCurrentUser = messageGroup.senderId === currentUserId;
-            const senderInfo = getSenderInfo(messageGroup.senderId);
-            const displayName = getDisplayName(senderInfo);
+            {/* Group consecutive messages by sender */}
+            {groupMessages(messagesForDate).map((messageGroup, groupIndex) => {
+              const isCurrentUser = messageGroup.senderId === currentUserId;
+              const senderInfo = getSenderInfo(messageGroup.senderId);
+              const displayName = getDisplayName(senderInfo);
 
-            // Check if this is a single system message group
-            if (messageGroup.messages.length === 1) {
-              const message = messageGroup.messages[0];
-              const parsedMessage = parseSystemMessage(message.content);
+              // Check if this is a single system message group
+              if (messageGroup.messages.length === 1) {
+                const message = messageGroup.messages[0];
+                const parsedMessage = parseSystemMessage(message.content);
 
-              if (parsedMessage) {
-                if (parsedMessage.type === "team_join") {
-                  return (
-                    <div key={`${dateString}-group-${groupIndex}`}>
-                      {renderJoinMessage(
-                        message,
-                        parsedMessage,
-                        senderInfo,
-                        isCurrentUser
-                      )}
-                    </div>
-                  );
-                } else if (parsedMessage.type === "invitation_response") {
-                  return (
-                    <div key={`${dateString}-group-${groupIndex}`}>
-                      {renderInvitationResponseMessage(
-                        message,
-                        parsedMessage,
-                        senderInfo,
-                        isCurrentUser
-                      )}
-                    </div>
-                  );
-                }
-              }
-            }
-
-            // Regular message rendering
-            return (
-              <div
-                key={`${dateString}-group-${groupIndex}`}
-                className={`flex ${
-                  isCurrentUser ? "justify-end" : "justify-start"
-                }`}
-              >
-                {/* Avatar for team chats (left side for others) */}
-                {conversationType === "team" &&
-                  !isCurrentUser &&
-                  messageGroup.showSenderInfo &&
-                  renderAvatar(senderInfo)}
-
-                <div className="flex flex-col max-w-[70%]">
-                  {/* Show sender name for team chats and non-current users */}
-                  {conversationType === "team" &&
-                    !isCurrentUser &&
-                    messageGroup.showSenderInfo && (
-                      <div
-                        className="text-xs font-medium mb-1 ml-3"
-                        style={{ color: "#036b0c" }}
-                      >
-                        {displayName}
-                      </div>
-                    )}
-
-                  {/* Messages in this group */}
-                  <div className="space-y-1">
-                    {messageGroup.messages.map((message, messageIndex) => (
-                      <div
-                        key={`${message.id}-${dateString}-${groupIndex}-${messageIndex}`}
-                        className={`
-                          rounded-lg p-3 
-                          ${
-                            isCurrentUser
-                              ? "bg-primary text-primary-content rounded-br-none ml-auto"
-                              : "bg-base-200 rounded-bl-none"
-                          }
-                          ${
-                            messageIndex === 0
-                              ? ""
-                              : isCurrentUser
-                              ? "rounded-tr-lg"
-                              : "rounded-tl-lg"
-                          }
-                        `}
-                      >
-                        <p>{message.content}</p>
-                        {/* Only show timestamp on the last message of the group */}
-                        {messageIndex === messageGroup.messages.length - 1 && (
-                          <div
-                            className={`
-                              flex justify-between items-center text-xs mt-1 
-                              ${
-                                isCurrentUser
-                                  ? "text-primary-content/80"
-                                  : "text-base-content/50"
-                              }
-                            `}
-                          >
-                            <span>
-                              {format(new Date(message.createdAt), "p")}
-                            </span>
-                            {isCurrentUser && message.readAt && (
-                              <span className="ml-2">✓</span>
-                            )}
-                          </div>
+                if (parsedMessage) {
+                  if (parsedMessage.type === "team_join") {
+                    return (
+                      <div key={`${dateString}-group-${groupIndex}`}>
+                        {renderJoinMessage(
+                          message,
+                          parsedMessage,
+                          senderInfo,
+                          isCurrentUser,
+                          messageGroup.senderId
                         )}
                       </div>
-                    ))}
+                    );
+                  } else if (parsedMessage.type === "invitation_response") {
+                    return (
+                      <div key={`${dateString}-group-${groupIndex}`}>
+                        {renderInvitationResponseMessage(
+                          message,
+                          parsedMessage,
+                          senderInfo,
+                          isCurrentUser,
+                          messageGroup.senderId
+                        )}
+                      </div>
+                    );
+                  }
+                }
+              }
+
+              // Regular message rendering
+              return (
+                <div
+                  key={`${dateString}-group-${groupIndex}`}
+                  className={`flex ${
+                    isCurrentUser ? "justify-end" : "justify-start"
+                  }`}
+                >
+                  {/* Avatar for team chats (left side for others) - clickable */}
+                  {conversationType === "team" &&
+                    !isCurrentUser &&
+                    messageGroup.showSenderInfo &&
+                    renderAvatar(senderInfo, true, messageGroup.senderId)}
+
+                  <div className="flex flex-col max-w-[70%]">
+                    {/* Show sender name for team chats and non-current users - clickable */}
+                    {conversationType === "team" &&
+                      !isCurrentUser &&
+                      messageGroup.showSenderInfo && (
+                        <div
+                          className="text-xs font-medium mb-1 ml-3 cursor-pointer hover:text-primary transition-colors"
+                          style={{ color: "#036b0c" }}
+                          onClick={() => handleUserClick(messageGroup.senderId)}
+                          title={`View ${displayName} details`}
+                        >
+                          {displayName}
+                        </div>
+                      )}
+
+                    {/* Messages in this group */}
+                    <div className="space-y-1">
+                      {messageGroup.messages.map((message, messageIndex) => (
+                        <div
+                          key={`${message.id}-${dateString}-${groupIndex}-${messageIndex}`}
+                          className={`
+                            rounded-lg p-3 
+                            ${
+                              isCurrentUser
+                                ? "bg-primary text-primary-content rounded-br-none ml-auto"
+                                : "bg-base-200 rounded-bl-none"
+                            }
+                            ${
+                              messageIndex === 0
+                                ? ""
+                                : isCurrentUser
+                                ? "rounded-tr-lg"
+                                : "rounded-tl-lg"
+                            }
+                          `}
+                        >
+                          <p>{message.content}</p>
+                          {/* Only show timestamp on the last message of the group */}
+                          {messageIndex === messageGroup.messages.length - 1 && (
+                            <div
+                              className={`
+                                flex justify-between items-center text-xs mt-1 
+                                ${
+                                  isCurrentUser
+                                    ? "text-primary-content/80"
+                                    : "text-base-content/50"
+                                }
+                              `}
+                            >
+                              <span>
+                                {format(new Date(message.createdAt), "p")}
+                              </span>
+                              {isCurrentUser && message.readAt && (
+                                <span className="ml-2">✓</span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
-      ))}
+              );
+            })}
+          </div>
+        ))}
 
-      {/* Typing animation */}
-      {typingUsers.length > 0 && (
-        <div className="flex justify-start">
-          <div className="bg-base-200 rounded-lg p-3 rounded-bl-none">
-            <div className="flex items-center">
-              <div className="typing-indicator">
-                <span></span>
-                <span></span>
-                <span></span>
+        {/* Typing animation */}
+        {typingUsers.length > 0 && (
+          <div className="flex justify-start">
+            <div className="bg-base-200 rounded-lg p-3 rounded-bl-none">
+              <div className="flex items-center">
+                <div className="typing-indicator">
+                  <span></span>
+                  <span></span>
+                  <span></span>
+                </div>
+                <span className="text-sm ml-2">
+                  {typingUsers.length === 1
+                    ? `${typingUsers[0]} is typing...`
+                    : `${typingUsers.length} people are typing...`}
+                </span>
               </div>
-              <span className="text-sm ml-2">
-                {typingUsers.length === 1
-                  ? `${typingUsers[0]} is typing...`
-                  : `${typingUsers.length} people are typing...`}
-              </span>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Scroll anchor */}
-      <div ref={messagesEndRef} />
-    </div>
+        {/* Scroll anchor */}
+        <div ref={messagesEndRef} />
+      </div>
+
+      {/* Team Details Modal */}
+      <TeamDetailsModal
+        isOpen={isTeamModalOpen}
+        teamId={teamData?.id}
+        initialTeamData={teamData}
+        onClose={handleTeamModalClose}
+      />
+
+      {/* User Details Modal */}
+      <UserDetailsModal
+        isOpen={isUserModalOpen}
+        userId={selectedUserId}
+        onClose={handleUserModalClose}
+      />
+    </>
   );
 };
 
