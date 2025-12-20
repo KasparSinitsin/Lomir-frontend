@@ -464,7 +464,7 @@ const TeamCard = ({
     const date = normalizedData.date;
     if (!date) return null;
     try {
-      return format(new Date(date), "MMM d, yyyy");
+      return format(new Date(date), "MM/dd/yy");
     } catch (e) {
       return null;
     }
@@ -751,25 +751,6 @@ const TeamCard = ({
               </span>
             </div>
           )}
-
-        {/* Date badge - application variant only */}
-        {formattedDate && effectiveVariant === "application" && (
-          <div className="flex items-center text-sm text-base-content/70">
-            <Calendar size={14} className="mr-1" />
-            <span>Applied {formattedDate}</span>
-          </div>
-        )}
-
-        {/* Date badge with inviter - invitation variant */}
-        {formattedDate && effectiveVariant === "invitation" && (
-          <div className="flex items-center text-sm text-base-content/70">
-            <Calendar size={14} className="mr-1" />
-            <span>
-              Invited {formattedDate}
-              {normalizedData.inviter && <></>}
-            </span>
-          </div>
-        )}
       </div>
     );
   };
@@ -955,25 +936,45 @@ const TeamCard = ({
               </span>
             )}
 
-            {/* Pending invitation indicator */}
+            {/* Pending invitation indicator with date */}
             {(effectiveVariant === "invitation" ||
               pendingInvitationForTeam) && (
               <span
-                className="tooltip tooltip-bottom tooltip-lomir"
-                data-tip="You are invited to this team"
+                className="flex items-center tooltip tooltip-bottom tooltip-lomir"
+                data-tip={`You were invited to this team${
+                  getFormattedDate()
+                    ? ` on ${format(
+                        new Date(normalizedData.date),
+                        "MMM d, yyyy"
+                      )}`
+                    : ""
+                }`}
               >
                 <Mail size={14} className="text-pink-500" />
+                {getFormattedDate() && (
+                  <span className="ml-0.5">{getFormattedDate()}</span>
+                )}
               </span>
             )}
 
-            {/* Pending application indicator */}
+            {/* Pending application indicator with date */}
             {(effectiveVariant === "application" ||
               pendingApplicationForTeam) && (
               <span
-                className="tooltip tooltip-bottom tooltip-lomir"
-                data-tip="You applied to join this team"
+                className="flex items-center tooltip tooltip-bottom tooltip-lomir"
+                data-tip={`You applied to join this team${
+                  getFormattedDate()
+                    ? ` on ${format(
+                        new Date(normalizedData.date),
+                        "MMM d, yyyy"
+                      )}`
+                    : ""
+                }`}
               >
                 <SendHorizontal size={14} className="text-info" />
+                {getFormattedDate() && (
+                  <span className="ml-0.5">{getFormattedDate()}</span>
+                )}
               </span>
             )}
 
