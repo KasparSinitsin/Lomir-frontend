@@ -15,7 +15,7 @@ const ApplicationNotificationBadge = ({ count, onClick }) => {
       title={`${count} pending application${count > 1 ? "s" : ""}`}
     >
       <Mail size={16} className="text-error" />
-      <span className="absolute -top-1 -right-1 bg-warning text-warning-content text-xs rounded-full min-w-5 h-5 flex items-center justify-center">
+      <span className="absolute -top-1 -right-1 bg-warning text-white text-xs font-medium rounded-full min-w-5 h-5 flex items-center justify-center">
         {count > 9 ? "9+" : count}
       </span>
     </button>
