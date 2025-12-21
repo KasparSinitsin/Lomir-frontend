@@ -80,7 +80,8 @@ const ConversationList = ({
           const conversationData = isTeam
             ? conversation.team
             : conversation.partner;
-          const isOnline = !isTeam && onlineUsers.includes(conversationData?.id);
+          const isOnline =
+            !isTeam && onlineUsers.includes(conversationData?.id);
 
           // Get display name
           const displayName = isTeam
@@ -109,8 +110,16 @@ const ConversationList = ({
                 {/* Avatar - Clickable for both team and direct conversations */}
                 <div
                   className="avatar indicator mr-3 cursor-pointer hover:opacity-80 transition-opacity"
-                  onClick={isTeam ? (e) => handleTeamClick(e, conversationData) : (e) => handleUserClick(e, conversationData)}
-                  title={isTeam ? `View ${conversationData?.name} details` : `View ${displayName} details`}
+                  onClick={
+                    isTeam
+                      ? (e) => handleTeamClick(e, conversationData)
+                      : (e) => handleUserClick(e, conversationData)
+                  }
+                  title={
+                    isTeam
+                      ? `View ${conversationData?.name} details`
+                      : `View ${displayName} details`
+                  }
                 >
                   <div className="w-12 h-12 rounded-full">
                     {conversationData?.avatarUrl ? (
@@ -134,11 +143,6 @@ const ConversationList = ({
                   {isOnline && (
                     <span className="indicator-item badge badge-success badge-xs"></span>
                   )}
-                  {isTeam && (
-                    <span className="indicator-item badge badge-primary badge-xs">
-                      T
-                    </span>
-                  )}
                 </div>
 
                 <div className="flex-grow min-w-0">
@@ -146,23 +150,34 @@ const ConversationList = ({
                     {/* Name - Clickable for both team and direct conversations */}
                     <h3
                       className="font-medium truncate cursor-pointer hover:text-primary transition-colors"
-                      onClick={isTeam ? (e) => handleTeamClick(e, conversationData) : (e) => handleUserClick(e, conversationData)}
-                      title={isTeam ? `View ${conversationData?.name} details` : `View ${displayName} details`}
+                      onClick={
+                        isTeam
+                          ? (e) => handleTeamClick(e, conversationData)
+                          : (e) => handleUserClick(e, conversationData)
+                      }
+                      title={
+                        isTeam
+                          ? `View ${conversationData?.name} details`
+                          : `View ${displayName} details`
+                      }
                     >
                       {displayName || "Unknown"}
                     </h3>
                     <span className="text-xs text-base-content/50 whitespace-nowrap ml-2">
                       {conversation.updatedAt
-                        ? formatDistanceToNow(new Date(conversation.updatedAt), {
-                            addSuffix: true,
-                          })
+                        ? formatDistanceToNow(
+                            new Date(conversation.updatedAt),
+                            {
+                              addSuffix: true,
+                            }
+                          )
                         : ""}
                     </span>
                   </div>
                   <p className="text-sm text-base-content/70 truncate">
                     {conversation.lastMessage || "No messages yet"}
                   </p>
-                  <p className="text-xs text-base-content/50">
+                  <p className="text-xs" style={{ color: "#036b0c" }}>
                     {isTeam ? "Team Chat" : "Direct Message"}
                   </p>
                 </div>

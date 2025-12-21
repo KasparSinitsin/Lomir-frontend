@@ -182,7 +182,8 @@ const MessageDisplay = ({
   const renderAvatar = (senderInfo, clickable = false, userId = null) => {
     if (!senderInfo) return null;
 
-    const handleClick = clickable && userId ? () => handleUserClick(userId) : undefined;
+    const handleClick =
+      clickable && userId ? () => handleUserClick(userId) : undefined;
 
     return (
       <div
@@ -190,7 +191,9 @@ const MessageDisplay = ({
           clickable ? "cursor-pointer hover:opacity-80 transition-opacity" : ""
         }`}
         onClick={handleClick}
-        title={clickable ? `View ${getDisplayName(senderInfo)} details` : undefined}
+        title={
+          clickable ? `View ${getDisplayName(senderInfo)} details` : undefined
+        }
       >
         <div className="w-8 h-8 rounded-full">
           {senderInfo.avatarUrl ? (
@@ -275,7 +278,7 @@ const MessageDisplay = ({
                   rounded-lg p-3 
                   ${
                     isCurrentUser
-                      ? "bg-primary text-primary-content rounded-br-none ml-auto"
+                      ? "bg-green-100 text-base-content rounded-br-none ml-auto"
                       : "bg-base-200 rounded-bl-none"
                   }
                 `}
@@ -286,7 +289,7 @@ const MessageDisplay = ({
                     flex justify-end items-center text-xs mt-1 
                     ${
                       isCurrentUser
-                        ? "text-primary-content/80"
+                        ? "text-base-content/60"
                         : "text-base-content/50"
                     }
                   `}
@@ -345,7 +348,7 @@ const MessageDisplay = ({
                   rounded-lg p-3 
                   ${
                     isCurrentUser
-                      ? "bg-primary text-primary-content rounded-br-none ml-auto"
+                      ? "bg-green-100 text-base-content rounded-br-none ml-auto"
                       : "bg-base-200 rounded-bl-none"
                   }
                 `}
@@ -356,7 +359,7 @@ const MessageDisplay = ({
                     flex justify-end items-center text-xs mt-1 
                     ${
                       isCurrentUser
-                        ? "text-primary-content/80"
+                        ? "text-base-content/60"
                         : "text-base-content/50"
                     }
                   `}
@@ -384,7 +387,9 @@ const MessageDisplay = ({
               <div
                 className="avatar mb-2 cursor-pointer hover:opacity-80 transition-opacity"
                 onClick={() => handleUserClick(conversationPartner.id)}
-                title={`View ${conversationPartner.firstName || conversationPartner.username} details`}
+                title={`View ${
+                  conversationPartner.firstName || conversationPartner.username
+                } details`}
               >
                 <div className="w-16 h-16 rounded-full mx-auto">
                   {conversationPartner.avatarUrl ? (
@@ -405,9 +410,11 @@ const MessageDisplay = ({
                 </div>
               </div>
               <h3
-                className="font-medium leading-[120%] mb-[0.2em] cursor-pointer hover:text-primary transition-colors"
+                className="text-lg font-medium leading-[120%] mb-[0.2em] cursor-pointer hover:text-primary transition-colors"
                 onClick={() => handleUserClick(conversationPartner.id)}
-                title={`View ${conversationPartner.firstName || conversationPartner.username} details`}
+                title={`View ${
+                  conversationPartner.firstName || conversationPartner.username
+                } details`}
               >
                 {conversationPartner.firstName && conversationPartner.lastName
                   ? `${conversationPartner.firstName} ${conversationPartner.lastName}`
@@ -441,7 +448,7 @@ const MessageDisplay = ({
                 </div>
               </div>
               <h3
-                className="font-medium leading-[120%] mb-[0.2em] cursor-pointer hover:text-primary transition-colors"
+                className="text-lg font-medium leading-[120%] mb-[0.2em] cursor-pointer hover:text-primary transition-colors"
                 onClick={handleTeamClick}
                 title={`View ${teamData.name} details`}
               >
@@ -494,7 +501,9 @@ const MessageDisplay = ({
 
       // Check if this message is a system message (join/response) - don't group these
       const parsedMessage = parseSystemMessage(message.content);
-      const prevParsedMessage = parseSystemMessage(messagesForDate[i - 1].content);
+      const prevParsedMessage = parseSystemMessage(
+        messagesForDate[i - 1].content
+      );
 
       const shouldStartNewGroup =
         message.senderId !== currentGroup.senderId ||
@@ -527,7 +536,9 @@ const MessageDisplay = ({
             <div
               className="avatar mb-2 cursor-pointer hover:opacity-80 transition-opacity"
               onClick={() => handleUserClick(conversationPartner.id)}
-              title={`View ${conversationPartner.firstName || conversationPartner.username} details`}
+              title={`View ${
+                conversationPartner.firstName || conversationPartner.username
+              } details`}
             >
               <div className="w-16 h-16 rounded-full mx-auto">
                 {conversationPartner.avatarUrl ? (
@@ -548,9 +559,11 @@ const MessageDisplay = ({
               </div>
             </div>
             <h3
-              className="font-medium leading-[120%] mb-[0.2em] cursor-pointer hover:text-primary transition-colors"
+              className="text-lg font-medium leading-[120%] mb-[0.2em] cursor-pointer hover:text-primary transition-colors"
               onClick={() => handleUserClick(conversationPartner.id)}
-              title={`View ${conversationPartner.firstName || conversationPartner.username} details`}
+              title={`View ${
+                conversationPartner.firstName || conversationPartner.username
+              } details`}
             >
               {conversationPartner.firstName && conversationPartner.lastName
                 ? `${conversationPartner.firstName} ${conversationPartner.lastName}`
@@ -584,7 +597,7 @@ const MessageDisplay = ({
               </div>
             </div>
             <h3
-              className="font-medium leading-[120%] mb-[0.2em] cursor-pointer hover:text-primary transition-colors"
+              className="text-lg font-medium leading-[120%] mb-[0.2em] cursor-pointer hover:text-primary transition-colors"
               onClick={handleTeamClick}
               title={`View ${teamData.name} details`}
             >
@@ -598,7 +611,7 @@ const MessageDisplay = ({
         {Object.entries(messagesByDate).map(([dateString, messagesForDate]) => (
           <div key={dateString} className="space-y-4">
             <div className="text-center">
-              <div className="badge badge-neutral badge-sm">
+              <div className="badge badge-sm bg-base-300 text-base-content border-none">
                 {formatDateHeading(dateString)}
               </div>
             </div>
@@ -681,7 +694,7 @@ const MessageDisplay = ({
                             rounded-lg p-3 
                             ${
                               isCurrentUser
-                                ? "bg-primary text-primary-content rounded-br-none ml-auto"
+                                ? "bg-green-100 text-base-content rounded-br-none ml-auto"
                                 : "bg-base-200 rounded-bl-none"
                             }
                             ${
@@ -695,13 +708,14 @@ const MessageDisplay = ({
                         >
                           <p>{message.content}</p>
                           {/* Only show timestamp on the last message of the group */}
-                          {messageIndex === messageGroup.messages.length - 1 && (
+                          {messageIndex ===
+                            messageGroup.messages.length - 1 && (
                             <div
                               className={`
                                 flex justify-between items-center text-xs mt-1 
                                 ${
                                   isCurrentUser
-                                    ? "text-primary-content/80"
+                                    ? "text-base-content/60"
                                     : "text-base-content/50"
                                 }
                               `}
