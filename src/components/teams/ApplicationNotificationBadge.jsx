@@ -8,8 +8,9 @@ const ApplicationNotificationBadge = ({ count, onClick }) => {
     <button
       onClick={onClick}
       className="relative inline-flex items-center justify-center w-8 h-8 rounded-full hover:opacity-80 transition-all"
-      style={{ 
-        backgroundColor: '#fce8ec',  /* Light pink - same as --color-role-owner-text */
+      style={{
+        backgroundColor:
+          "#fce8ec" /* Light pink - same as --color-role-owner-text */,
       }}
       title={`${count} pending application${count > 1 ? "s" : ""}`}
     >
