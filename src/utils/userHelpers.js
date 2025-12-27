@@ -5,7 +5,7 @@
  */
 export const getUserInitials = (user) => {
   if (!user) return "?";
-  
+
   const firstName = user.first_name || user.firstName;
   const lastName = user.last_name || user.lastName;
 
@@ -22,17 +22,40 @@ export const getUserInitials = (user) => {
 };
 
 /**
+ * Get team initials for avatar fallback
+ * Returns up to 3 letters from the first 3 words of the team name
+ * e.g., "Gardening Gnomes" -> "GG", "Remote Language & Culture Exchange" -> "RLC"
+ */
+export const getTeamInitials = (team) => {
+  const name = team?.name || team;
+
+  if (!name || typeof name !== "string") return "?";
+
+  const words = name.trim().split(/\s+/);
+
+  if (words.length === 1) {
+    return name.slice(0, 2).toUpperCase();
+  }
+
+  return words
+    .slice(0, 3)
+    .map((word) => word.charAt(0))
+    .join("")
+    .toUpperCase();
+};
+
+/**
  * Get display name for a user
  * Prioritizes first name + last name over username
  * Returns full name if at least one name part is available
  */
 export const getDisplayName = (user) => {
   if (!user) return "Unknown";
-  
+
   const firstName = user.first_name || user.firstName || "";
   const lastName = user.last_name || user.lastName || "";
   const fullName = `${firstName} ${lastName}`.trim();
-  
+
   if (fullName.length > 0) return fullName;
   return user.username || "Unknown";
 };

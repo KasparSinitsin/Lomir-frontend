@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { getUserInitials, getTeamInitials } from "../../utils/userHelpers";
 import { formatDistanceToNow } from "date-fns";
 import TeamDetailsModal from "../teams/TeamDetailsModal";
 import UserDetailsModal from "../users/UserDetailsModal";
@@ -121,24 +122,35 @@ const ConversationList = ({
                       : `View ${displayName} details`
                   }
                 >
-                  <div className="w-12 h-12 rounded-full">
+                  <div className="w-12 h-12 rounded-full relative">
                     {conversationData?.avatarUrl ? (
                       <img
                         src={conversationData.avatarUrl}
                         alt={displayName}
-                        className="object-cover"
+                        className="object-cover w-full h-full rounded-full"
+                        onError={(e) => {
+                          e.target.style.display = "none";
+                          const fallback =
+                            e.target.parentElement.querySelector(
+                              ".avatar-fallback"
+                            );
+                          if (fallback) fallback.style.display = "flex";
+                        }}
                       />
-                    ) : (
-                      <div className="bg-primary text-primary-content flex items-center justify-center">
-                        <span className="text-lg">
-                          {isTeam
-                            ? conversationData?.name?.charAt(0) || "T"
-                            : conversationData?.firstName?.charAt(0) ||
-                              conversationData?.username?.charAt(0) ||
-                              "?"}
-                        </span>
-                      </div>
-                    )}
+                    ) : null}
+                    {/* Fallback initials */}
+                    <div
+                      className="avatar-fallback bg-primary text-primary-content flex items-center justify-center w-full h-full rounded-full absolute inset-0"
+                      style={{
+                        display: conversationData?.avatarUrl ? "none" : "flex",
+                      }}
+                    >
+                      <span className="text-lg font-medium">
+                        {isTeam
+                          ? getTeamInitials(conversationData)
+                          : getUserInitials(conversationData)}
+                      </span>
+                    </div>
                   </div>
                   {isOnline && (
                     <span className="indicator-item badge badge-success badge-xs"></span>
