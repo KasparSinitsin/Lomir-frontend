@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState } from "react";
 import { format, isToday, isYesterday } from "date-fns";
-import { getUserInitials } from "../../utils/userHelpers";
+import { getUserInitials, getTeamInitials } from "../../utils/userHelpers";
 import { UserPlus, PartyPopper } from "lucide-react";
 import TeamDetailsModal from "../teams/TeamDetailsModal";
 import UserDetailsModal from "../users/UserDetailsModal";
@@ -221,27 +221,29 @@ const MessageDisplay = ({
           clickable ? `View ${getDisplayName(senderInfo)} details` : undefined
         }
       >
-        <div className="w-8 h-8 rounded-full">
+        <div className="w-8 h-8 rounded-full relative">
           {senderInfo.avatarUrl ? (
             <img
               src={senderInfo.avatarUrl}
               alt={senderInfo.username || "User"}
               className="object-cover w-full h-full rounded-full"
               onError={(e) => {
-                console.log(
-                  "Avatar image failed to load:",
-                  senderInfo.avatarUrl
-                );
                 e.target.style.display = "none";
+                const fallback =
+                  e.target.parentElement.querySelector(".avatar-fallback");
+                if (fallback) fallback.style.display = "flex";
               }}
             />
-          ) : (
-            <div className="bg-primary text-primary-content flex items-center justify-center w-full h-full rounded-full">
-              <span className="text-sm font-medium">
-                {getUserInitials(senderInfo)}
-              </span>
-            </div>
-          )}
+          ) : null}
+          {/* Fallback initials - always rendered, shown when no image or image fails */}
+          <div
+            className="avatar-fallback bg-primary text-primary-content flex items-center justify-center w-full h-full rounded-full absolute inset-0"
+            style={{ display: senderInfo.avatarUrl ? "none" : "flex" }}
+          >
+            <span className="text-sm font-medium">
+              {getUserInitials(senderInfo)}
+            </span>
+          </div>
         </div>
       </div>
     );
@@ -532,22 +534,33 @@ const MessageDisplay = ({
                   conversationPartner.firstName || conversationPartner.username
                 } details`}
               >
-                <div className="w-16 h-16 rounded-full mx-auto">
+                <div className="w-16 h-16 rounded-full mx-auto relative">
                   {conversationPartner.avatarUrl ? (
                     <img
                       src={conversationPartner.avatarUrl}
                       alt={conversationPartner.username}
-                      className="object-cover"
+                      className="object-cover w-full h-full rounded-full"
+                      onError={(e) => {
+                        e.target.style.display = "none";
+                        const fallback =
+                          e.target.parentElement.querySelector(
+                            ".avatar-fallback"
+                          );
+                        if (fallback) fallback.style.display = "flex";
+                      }}
                     />
-                  ) : (
-                    <div className="bg-primary text-primary-content flex items-center justify-center">
-                      <span className="text-xl">
-                        {conversationPartner.firstName?.charAt(0) ||
-                          conversationPartner.username?.charAt(0) ||
-                          "?"}
-                      </span>
-                    </div>
-                  )}
+                  ) : null}
+                  {/* Fallback initials */}
+                  <div
+                    className="avatar-fallback bg-primary text-primary-content flex items-center justify-center w-full h-full rounded-full absolute inset-0"
+                    style={{
+                      display: conversationPartner.avatarUrl ? "none" : "flex",
+                    }}
+                  >
+                    <span className="text-xl font-medium">
+                      {getUserInitials(conversationPartner)}
+                    </span>
+                  </div>
                 </div>
               </div>
               <h3
@@ -572,20 +585,31 @@ const MessageDisplay = ({
                 onClick={handleTeamClick}
                 title={`View ${teamData.name} details`}
               >
-                <div className="w-16 h-16 rounded-full mx-auto">
+                <div className="w-16 h-16 rounded-full mx-auto relative">
                   {teamData.avatarUrl ? (
                     <img
                       src={teamData.avatarUrl}
                       alt={teamData.name}
-                      className="object-cover"
+                      className="object-cover w-full h-full rounded-full"
+                      onError={(e) => {
+                        e.target.style.display = "none";
+                        const fallback =
+                          e.target.parentElement.querySelector(
+                            ".avatar-fallback"
+                          );
+                        if (fallback) fallback.style.display = "flex";
+                      }}
                     />
-                  ) : (
-                    <div className="bg-primary text-primary-content flex items-center justify-center">
-                      <span className="text-xl">
-                        {teamData.name?.charAt(0) || "T"}
-                      </span>
-                    </div>
-                  )}
+                  ) : null}
+                  {/* Fallback initials */}
+                  <div
+                    className="avatar-fallback bg-primary text-primary-content flex items-center justify-center w-full h-full rounded-full absolute inset-0"
+                    style={{ display: teamData.avatarUrl ? "none" : "flex" }}
+                  >
+                    <span className="text-xl font-medium">
+                      {getTeamInitials(teamData)}
+                    </span>
+                  </div>
                 </div>
               </div>
               <h3
@@ -595,7 +619,6 @@ const MessageDisplay = ({
               >
                 {teamData.name}
               </h3>
-              <p className="text-sm text-base-content/70">Team Chat</p>
             </div>
           )}
 
@@ -681,22 +704,33 @@ const MessageDisplay = ({
                 conversationPartner.firstName || conversationPartner.username
               } details`}
             >
-              <div className="w-16 h-16 rounded-full mx-auto">
+              <div className="w-16 h-16 rounded-full mx-auto relative">
                 {conversationPartner.avatarUrl ? (
                   <img
                     src={conversationPartner.avatarUrl}
                     alt={conversationPartner.username}
-                    className="object-cover"
+                    className="object-cover w-full h-full rounded-full"
+                    onError={(e) => {
+                      e.target.style.display = "none";
+                      const fallback =
+                        e.target.parentElement.querySelector(
+                          ".avatar-fallback"
+                        );
+                      if (fallback) fallback.style.display = "flex";
+                    }}
                   />
-                ) : (
-                  <div className="bg-primary text-primary-content flex items-center justify-center">
-                    <span className="text-xl">
-                      {conversationPartner.firstName?.charAt(0) ||
-                        conversationPartner.username?.charAt(0) ||
-                        "?"}
-                    </span>
-                  </div>
-                )}
+                ) : null}
+                {/* Fallback initials */}
+                <div
+                  className="avatar-fallback bg-primary text-primary-content flex items-center justify-center w-full h-full rounded-full absolute inset-0"
+                  style={{
+                    display: conversationPartner.avatarUrl ? "none" : "flex",
+                  }}
+                >
+                  <span className="text-xl font-medium">
+                    {getUserInitials(conversationPartner)}
+                  </span>
+                </div>
               </div>
             </div>
             <h3
@@ -721,20 +755,31 @@ const MessageDisplay = ({
               onClick={handleTeamClick}
               title={`View ${teamData.name} details`}
             >
-              <div className="w-16 h-16 rounded-full mx-auto">
+              <div className="w-16 h-16 rounded-full mx-auto relative">
                 {teamData.avatarUrl ? (
                   <img
                     src={teamData.avatarUrl}
                     alt={teamData.name}
-                    className="object-cover"
+                    className="object-cover w-full h-full rounded-full"
+                    onError={(e) => {
+                      e.target.style.display = "none";
+                      const fallback =
+                        e.target.parentElement.querySelector(
+                          ".avatar-fallback"
+                        );
+                      if (fallback) fallback.style.display = "flex";
+                    }}
                   />
-                ) : (
-                  <div className="bg-primary text-primary-content flex items-center justify-center">
-                    <span className="text-xl">
-                      {teamData.name?.charAt(0) || "T"}
-                    </span>
-                  </div>
-                )}
+                ) : null}
+                {/* Fallback initials */}
+                <div
+                  className="avatar-fallback bg-primary text-primary-content flex items-center justify-center w-full h-full rounded-full absolute inset-0"
+                  style={{ display: teamData.avatarUrl ? "none" : "flex" }}
+                >
+                  <span className="text-xl font-medium">
+                    {getTeamInitials(teamData)}
+                  </span>
+                </div>
               </div>
             </div>
             <h3
@@ -744,7 +789,6 @@ const MessageDisplay = ({
             >
               {teamData.name}
             </h3>
-            <p className="text-sm text-base-content/70">Team Chat</p>
           </div>
         )}
 
