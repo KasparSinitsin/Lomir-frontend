@@ -51,15 +51,16 @@ const parseSystemMessage = (content) => {
   }
 
   // Pattern 4: Application decline response (direct message to applicant)
-  // Format: 📋 Response to your application for "Team Name":\n\n"personal message"
+  // Format: 📋 Application declined: [Applicant] for "[Team]":\n\n"personal message"
   const applicationDeclineMatch = content.match(
-    /^📋\s+Response to your application for "(.+?)":\s*\n\n"(.+)"$/s
+    /^📋\s+Application declined:\s+(.+?)\s+for\s+"(.+?)":\s*\n\n"(.+)"$/s
   );
   if (applicationDeclineMatch) {
     return {
       type: "application_response",
-      teamName: applicationDeclineMatch[1].trim(),
-      personalMessage: applicationDeclineMatch[2].trim(),
+      applicantName: applicationDeclineMatch[1].trim(),
+      teamName: applicationDeclineMatch[2].trim(),
+      personalMessage: applicationDeclineMatch[3].trim(),
     };
   }
 
@@ -382,14 +383,24 @@ const MessageDisplay = ({
     isCurrentUser,
     senderId
   ) => {
+    // Different banner text based on who is viewing
+    const bannerContent = isCurrentUser ? (
+      <>
+        Your decline response to {parsedMessage.applicantName}'s application for{" "}
+        <span className="font-medium">{parsedMessage.teamName}</span>
+      </>
+    ) : (
+      <>
+        Response to your application for{" "}
+        <span className="font-medium">{parsedMessage.teamName}</span>
+      </>
+    );
+
     return (
       <div className="flex flex-col w-full my-4">
-        {/* Info banner about the application response */}
-        <div className="flex items-center justify-center gap-2 bg-info/10 text-info px-4 py-2 rounded-full mb-3 mx-auto text-center">
-          <span className="text-sm">
-            Response to your application for{" "}
-            <span className="font-medium">{parsedMessage.teamName}</span>
-          </span>
+        {/* Info banner */}
+        <div className="flex items-center justify-center gap-2 bg-info/10 text-info px-4 py-2 rounded-full mb-3 mx-auto">
+          <span className="text-sm">{bannerContent}</span>
         </div>
 
         {/* Personal message bubble */}
