@@ -244,6 +244,13 @@ const TeamInvitesModal = ({
               </div>
             </div>
 
+            {/* Invitee Bio (if available) */}
+            {invitation.invitee?.bio && (
+              <div className="mb-3 text-sm text-base-content/80">
+                <p className="line-clamp-2">{invitation.invitee.bio}</p>
+              </div>
+            )}
+
             {/* Invitation Message (if any) */}
             {invitation.message && (
               <div className="mb-3">
@@ -269,26 +276,87 @@ const TeamInvitesModal = ({
               </div>
             )}
 
-            {/* Inviter info (if available) */}
-            {(invitation.inviter || invitation.inviter_username) && (
-              <div className="text-xs text-base-content/50 mb-3">
-                Invited by{" "}
-                {invitation.inviter?.username ||
-                  invitation.inviter_username ||
-                  "team admin"}
-              </div>
-            )}
+            {/* Bottom row: Inviter info (left) + Action Button (right) */}
+            <div className="flex items-center justify-between gap-3">
+              {/* Inviter info (left) */}
+              {invitation.inviter || invitation.inviter_username ? (
+                <div className="flex items-center text-xs text-base-content/50">
+                  <span className="mr-1">Invited by</span>
 
-            {/* Action Buttons */}
-            <div className="flex justify-end">
-              <Button
-                variant="errorOutline"
-                size="sm"
-                onClick={() => handleCancelInvitation(invitation.id)}
-                disabled={loading}
-              >
-                {loading ? "Canceling..." : "Cancel Invitation"}
-              </Button>
+                  {/* Inviter Avatar */}
+                  <div
+                    className="avatar cursor-pointer hover:opacity-80 transition-opacity mr-1"
+                    onClick={() => handleUserClick(invitation.inviter?.id)}
+                    title="View profile"
+                  >
+                    <div className="w-4 h-4 rounded-full relative">
+                      {getAvatarUrl(invitation.inviter) ? (
+                        <img
+                          src={getAvatarUrl(invitation.inviter)}
+                          alt="Inviter"
+                          className="object-cover w-full h-full rounded-full"
+                          onError={(e) => {
+                            e.target.style.display = "none";
+                            const fallback =
+                              e.target.parentElement.querySelector(
+                                ".avatar-fallback"
+                              );
+                            if (fallback) fallback.style.display = "flex";
+                          }}
+                        />
+                      ) : null}
+
+                      {/* Fallback initials */}
+                      <div
+                        className="avatar-fallback bg-primary text-primary-content flex items-center justify-center w-full h-full rounded-full absolute inset-0"
+                        style={{
+                          display: getAvatarUrl(invitation.inviter)
+                            ? "none"
+                            : "flex",
+                          fontSize: "8px",
+                        }}
+                      >
+                        <span className="font-medium">
+                          {getUserInitials(invitation.inviter)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Full name */}
+                  <span
+                    className="font-medium text-base-content/80 cursor-pointer hover:text-primary transition-colors"
+                    onClick={() => handleUserClick(invitation.inviter?.id)}
+                    title="View profile"
+                  >
+                    {(() => {
+                      const inviter = invitation.inviter || {};
+                      const firstName = inviter.first_name || inviter.firstName;
+                      const lastName = inviter.last_name || inviter.lastName;
+                      const full = `${firstName || ""} ${
+                        lastName || ""
+                      }`.trim();
+                      return full.length > 0
+                        ? full
+                        : invitation.inviter_username || "Team Admin";
+                    })()}
+                  </span>
+                </div>
+              ) : (
+                <div />
+              )}
+
+              {/* Action Button (right) */}
+              <div className="flex justify-end">
+                <Button
+                  variant="errorOutline"
+                  size="sm"
+                  onClick={() => handleCancelInvitation(invitation.id)}
+                  disabled={loading}
+                >
+                  {loading ? "Canceling..." : "Cancel Invitation"}
+                </Button>
+              </div>
             </div>
           </div>
         );
