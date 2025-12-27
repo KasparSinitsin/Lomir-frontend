@@ -367,9 +367,10 @@ export const teamService = {
     }
   },
 
-  getTeamsWhereUserCanInvite: async () => {
+  getTeamsWhereUserCanInvite: async (inviteeId = null) => {
     try {
-      const response = await api.get("/api/teams/can-invite");
+      const params = inviteeId ? { inviteeId } : {};
+      const response = await api.get("/api/teams/can-invite", { params });
       return response.data;
     } catch (error) {
       console.error("Error fetching teams for invite:", error);
