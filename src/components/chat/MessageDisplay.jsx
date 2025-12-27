@@ -38,6 +38,31 @@ const parseSystemMessage = (content) => {
     };
   }
 
+  // Pattern 3: Application approved message
+  const applicationApprovedMatch = content.match(
+    /^🎉\s+(.+?)\s+has applied successfully to your team and has been added as a team member by (.+?)\.\s*Say hello to them!$/
+  );
+  if (applicationApprovedMatch) {
+    return {
+      type: "application_approved",
+      applicantName: applicationApprovedMatch[1].trim(),
+      approverName: applicationApprovedMatch[2].trim(),
+    };
+  }
+
+  // Pattern 4: Application decline response (direct message to applicant)
+  // Format: 📋 Response to your application for "Team Name":\n\n"personal message"
+  const applicationDeclineMatch = content.match(
+    /^📋\s+Response to your application for "(.+?)":\s*\n\n"(.+)"$/s
+  );
+  if (applicationDeclineMatch) {
+    return {
+      type: "application_response",
+      teamName: applicationDeclineMatch[1].trim(),
+      personalMessage: applicationDeclineMatch[2].trim(),
+    };
+  }
+
   return null;
 };
 
@@ -222,6 +247,46 @@ const MessageDisplay = ({
   };
 
   /**
+   * Render an application approved message with special formatting
+   * Shows announcement banner for when someone joins via application approval
+   */
+  const renderApplicationApprovedMessage = (
+    message,
+    parsedMessage,
+    senderInfo,
+    isCurrentUser,
+    senderId
+  ) => {
+    const welcomeText = isCurrentUser
+      ? `Your application was approved by ${parsedMessage.approverName}. Welcome to the team!`
+      : `${parsedMessage.applicantName} has applied successfully and was added by ${parsedMessage.approverName}. Say hello to them!`;
+
+    return (
+      <div className="flex flex-col items-center w-full my-4">
+        {/* Announcement Banner */}
+        <div className="bg-success/10 text-success px-4 py-2 rounded-full mb-3 text-center">
+          <span className="text-sm font-medium">
+            <UserPlus
+              size={16}
+              className="inline-block align-text-bottom mr-1"
+            />
+            {welcomeText}
+            <PartyPopper
+              size={16}
+              className="inline-block align-text-bottom ml-1"
+            />
+          </span>
+        </div>
+
+        {/* Timestamp */}
+        <div className="text-xs text-base-content/50">
+          {format(new Date(message.createdAt), "p")}
+        </div>
+      </div>
+    );
+  };
+
+  /**
    * Render a team join message with special formatting
    * Shows announcement banner + personal message in bubble
    */
@@ -293,6 +358,71 @@ const MessageDisplay = ({
                         : "text-base-content/50"
                     }
                   `}
+                >
+                  <span>{format(new Date(message.createdAt), "p")}</span>
+                  {isCurrentUser && message.readAt && (
+                    <span className="ml-2">✓</span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  /**
+   * Render an application decline response message (DM to applicant)
+   */
+  const renderApplicationResponseMessage = (
+    message,
+    parsedMessage,
+    senderInfo,
+    isCurrentUser,
+    senderId
+  ) => {
+    return (
+      <div className="flex flex-col w-full my-4">
+        {/* Info banner about the application response */}
+        <div className="flex items-center justify-center gap-2 bg-info/10 text-info px-4 py-2 rounded-full mb-3 mx-auto text-center">
+          <span className="text-sm">
+            Response to your application for{" "}
+            <span className="font-medium">{parsedMessage.teamName}</span>
+          </span>
+        </div>
+
+        {/* Personal message bubble */}
+        {parsedMessage.personalMessage && (
+          <div
+            className={`flex ${
+              isCurrentUser ? "justify-end" : "justify-start"
+            } w-full`}
+          >
+            {/* Avatar for others' messages */}
+            {!isCurrentUser && renderAvatar(senderInfo, true, senderId)}
+
+            <div className="flex flex-col max-w-[70%]">
+              <div
+                className={`
+                rounded-lg p-3 
+                ${
+                  isCurrentUser
+                    ? "bg-green-100 text-base-content rounded-br-none ml-auto"
+                    : "bg-base-200 rounded-bl-none"
+                }
+              `}
+              >
+                <p>{parsedMessage.personalMessage}</p>
+                <div
+                  className={`
+                  flex justify-end items-center text-xs mt-1 
+                  ${
+                    isCurrentUser
+                      ? "text-base-content/60"
+                      : "text-base-content/50"
+                  }
+                `}
                 >
                   <span>{format(new Date(message.createdAt), "p")}</span>
                   {isCurrentUser && message.readAt && (
@@ -644,6 +774,30 @@ const MessageDisplay = ({
                     return (
                       <div key={`${dateString}-group-${groupIndex}`}>
                         {renderInvitationResponseMessage(
+                          message,
+                          parsedMessage,
+                          senderInfo,
+                          isCurrentUser,
+                          messageGroup.senderId
+                        )}
+                      </div>
+                    );
+                  } else if (parsedMessage.type === "application_approved") {
+                    return (
+                      <div key={`${dateString}-group-${groupIndex}`}>
+                        {renderApplicationApprovedMessage(
+                          message,
+                          parsedMessage,
+                          senderInfo,
+                          isCurrentUser,
+                          messageGroup.senderId
+                        )}
+                      </div>
+                    );
+                  } else if (parsedMessage.type === "application_response") {
+                    return (
+                      <div key={`${dateString}-group-${groupIndex}`}>
+                        {renderApplicationResponseMessage(
                           message,
                           parsedMessage,
                           senderInfo,
