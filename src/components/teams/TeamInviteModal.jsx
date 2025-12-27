@@ -78,8 +78,10 @@ const TeamInviteModal = ({
         setLoading(true);
         setError(null);
 
-        // Fetch teams where current user can invite
-        const teamsResponse = await teamService.getTeamsWhereUserCanInvite();
+        // Fetch teams where current user can invite (excluding teams where invitee is already a member)
+        const teamsResponse = await teamService.getTeamsWhereUserCanInvite(
+          inviteeId
+        );
         const teamsData = teamsResponse.data || [];
         setTeams(teamsData);
 
@@ -472,7 +474,9 @@ const TeamInviteModal = ({
     <div className="flex items-center gap-3">
       <UserPlus className="text-primary" size={24} />
       <div>
-        <h2 className="text-xl font-medium text-primary">Invite {getInviteeDisplayName()} to a Team</h2>
+        <h2 className="text-xl font-medium text-primary">
+          Invite {getInviteeDisplayName()} to a Team
+        </h2>
         {/* <p className="text-sm text-base-content/70">
           Invite {getInviteeDisplayName()} to join your team
         </p> */}
