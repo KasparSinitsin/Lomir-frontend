@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState } from "react";
 import { format, isToday, isYesterday } from "date-fns";
 import { getUserInitials, getTeamInitials } from "../../utils/userHelpers";
-import { UserPlus, PartyPopper } from "lucide-react";
+import { UserPlus, UserMinus, PartyPopper } from "lucide-react";
 import TeamDetailsModal from "../teams/TeamDetailsModal";
 import UserDetailsModal from "../users/UserDetailsModal";
 
@@ -11,6 +11,11 @@ import UserDetailsModal from "../users/UserDetailsModal";
  */
 const parseSystemMessage = (content) => {
   if (!content) return null;
+
+  // DEBUG - remove after testing
+  if (content.includes("left the team")) {
+    console.log("Leave message content:", JSON.stringify(content));
+  }
 
   // Pattern 1: Team join message
   // Format: 👋 Name joined the team!\n\n"personal message"
@@ -61,6 +66,16 @@ const parseSystemMessage = (content) => {
       applicantName: applicationDeclineMatch[1].trim(),
       teamName: applicationDeclineMatch[2].trim(),
       personalMessage: applicationDeclineMatch[3].trim(),
+    };
+  }
+
+  // Pattern 5: Team leave message
+  // Format: 🚪 Name has left the team.
+  const leaveMatch = content.match(/^🚪\s+(.+?)\s+has left the team\.$/);
+  if (leaveMatch) {
+    return {
+      type: "team_leave",
+      userName: leaveMatch[1].trim(),
     };
   }
 
@@ -318,6 +333,33 @@ const MessageDisplay = ({
               className="inline-block align-text-bottom ml-1"
             />
           </span>
+        </div>
+
+        {/* Timestamp */}
+        <div className="text-xs text-base-content/50">
+          {format(new Date(message.createdAt), "p")}
+        </div>
+      </div>
+    );
+  };
+
+  const renderLeaveMessage = (message, parsedMessage, isCurrentUser) => {
+    const leaveText = isCurrentUser
+      ? "You have left the team."
+      : `${parsedMessage.userName} has left the team.`;
+
+    return (
+      <div className="flex flex-col items-center w-full my-4">
+        {/* Announcement Banner */}
+        <div
+          className="flex items-center justify-center gap-2 px-4 py-2 rounded-full mb-3"
+          style={{
+            backgroundColor: "rgba(107, 114, 128, 0.1)",
+            color: "#6b7280",
+          }}
+        >
+          <UserMinus size={16} />
+          <span className="text-sm font-medium">{leaveText}</span>
         </div>
 
         {/* Timestamp */}
@@ -900,6 +942,16 @@ const MessageDisplay = ({
                           senderInfo,
                           isCurrentUser,
                           messageGroup.senderId
+                        )}
+                      </div>
+                    );
+                  } else if (parsedMessage.type === "team_leave") {
+                    return (
+                      <div key={`${dateString}-group-${groupIndex}`}>
+                        {renderLeaveMessage(
+                          message,
+                          parsedMessage,
+                          isCurrentUser
                         )}
                       </div>
                     );
