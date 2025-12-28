@@ -163,8 +163,8 @@ const MessageDisplay = ({
     return format(date, "MMMM d, yyyy");
   };
 
-  // Get sender info from team members
-  const getSenderInfo = (senderId) => {
+  // Get sender info from team members or message data
+  const getSenderInfo = (senderId, message = null) => {
     if (conversationType === "team" && teamMembers.length > 0) {
       const member = teamMembers.find(
         (m) =>
@@ -180,49 +180,85 @@ const MessageDisplay = ({
           firstName: member.first_name || member.firstName,
           lastName: member.last_name || member.lastName,
           avatarUrl: member.avatar_url || member.avatarUrl,
+          isCurrentMember: true,
         };
       }
     }
 
     if (conversationPartner && senderId === conversationPartner.id) {
-      return conversationPartner;
+      return { ...conversationPartner, isCurrentMember: true };
+    }
+
+    // Fallback: Use sender info embedded in the message (for former team members)
+    if (message && conversationType === "team") {
+      const hasMessageSenderInfo =
+        message.senderUsername || message.senderFirstName;
+      if (hasMessageSenderInfo) {
+        return {
+          username: message.senderUsername,
+          firstName: message.senderFirstName,
+          lastName: message.senderLastName,
+          avatarUrl: message.senderAvatarUrl,
+          isCurrentMember: message.isCurrentMember === true,
+        };
+      }
     }
 
     return null;
   };
 
-  // Get display name
-  const getDisplayName = (senderInfo) => {
+  // Get display name with former member indicator
+
+  const getDisplayName = (senderInfo, includeFormerLabel = true) => {
     if (!senderInfo) return "Unknown";
 
+    let name;
     if (senderInfo.firstName && senderInfo.lastName) {
-      return `${senderInfo.firstName} ${senderInfo.lastName}`;
+      name = `${senderInfo.firstName} ${senderInfo.lastName}`;
+    } else if (senderInfo.firstName) {
+      name = senderInfo.firstName;
+    } else {
+      name = senderInfo.username || "Unknown";
     }
-    if (senderInfo.firstName) {
-      return senderInfo.firstName;
+
+    // Add "(former team member)" suffix if they're no longer a member
+    if (includeFormerLabel && senderInfo.isCurrentMember === false) {
+      name += " (former team member)";
     }
-    return senderInfo.username || "Unknown";
+    return name;
   };
 
-  // Render avatar (optionally clickable)
+  // Render avatar (optionally clickable) - with former member handling
   const renderAvatar = (senderInfo, clickable = false, userId = null) => {
     if (!senderInfo) return null;
 
+    const isFormerMember = senderInfo.isCurrentMember === false;
     const handleClick =
       clickable && userId ? () => handleUserClick(userId) : undefined;
+
+    // Former members: lighter colors and "FM" initials
+    const avatarBgClass = isFormerMember ? "bg-base-300" : "bg-primary";
+    const avatarTextClass = isFormerMember
+      ? "text-base-content/60"
+      : "text-primary-content";
 
     return (
       <div
         className={`avatar mr-2 flex-shrink-0 ${
           clickable ? "cursor-pointer hover:opacity-80 transition-opacity" : ""
-        }`}
+        } ${isFormerMember ? "opacity-70" : ""}`}
         onClick={handleClick}
         title={
-          clickable ? `View ${getDisplayName(senderInfo)} details` : undefined
+          clickable
+            ? `View ${getDisplayName(senderInfo, false)} details`
+            : isFormerMember
+            ? "Former team member"
+            : undefined
         }
       >
         <div className="w-8 h-8 rounded-full relative">
-          {senderInfo.avatarUrl ? (
+          {/* For former members, always show "FM" - don't use their avatar */}
+          {!isFormerMember && senderInfo.avatarUrl ? (
             <img
               src={senderInfo.avatarUrl}
               alt={senderInfo.username || "User"}
@@ -235,13 +271,16 @@ const MessageDisplay = ({
               }}
             />
           ) : null}
-          {/* Fallback initials - always rendered, shown when no image or image fails */}
+          {/* Fallback: "FM" for former members, initials for current members */}
           <div
-            className="avatar-fallback bg-primary text-primary-content flex items-center justify-center w-full h-full rounded-full absolute inset-0"
-            style={{ display: senderInfo.avatarUrl ? "none" : "flex" }}
+            className={`avatar-fallback ${avatarBgClass} ${avatarTextClass} flex items-center justify-center w-full h-full rounded-full absolute inset-0`}
+            style={{
+              display:
+                isFormerMember || !senderInfo.avatarUrl ? "flex" : "none",
+            }}
           >
             <span className="text-sm font-medium">
-              {getUserInitials(senderInfo)}
+              {isFormerMember ? "FM" : getUserInitials(senderInfo)}
             </span>
           </div>
         </div>
@@ -804,7 +843,10 @@ const MessageDisplay = ({
             {/* Group consecutive messages by sender */}
             {groupMessages(messagesForDate).map((messageGroup, groupIndex) => {
               const isCurrentUser = messageGroup.senderId === currentUserId;
-              const senderInfo = getSenderInfo(messageGroup.senderId);
+              const senderInfo = getSenderInfo(
+                messageGroup.senderId,
+                messageGroup.messages[0] // Pass the first message for fallback info
+              );
               const displayName = getDisplayName(senderInfo);
 
               // Check if this is a single system message group
@@ -885,10 +927,22 @@ const MessageDisplay = ({
                       !isCurrentUser &&
                       messageGroup.showSenderInfo && (
                         <div
-                          className="text-xs font-medium mb-1 ml-3 cursor-pointer hover:text-primary transition-colors"
-                          style={{ color: "#036b0c" }}
+                          className={`text-xs font-medium mb-1 ml-3 cursor-pointer hover:text-primary transition-colors ${
+                            senderInfo?.isCurrentMember === false
+                              ? "opacity-70"
+                              : ""
+                          }`}
+                          style={{
+                            color:
+                              senderInfo?.isCurrentMember === false
+                                ? "#6b7280"
+                                : "#036b0c",
+                          }}
                           onClick={() => handleUserClick(messageGroup.senderId)}
-                          title={`View ${displayName} details`}
+                          title={`View ${getDisplayName(
+                            senderInfo,
+                            false
+                          )} details`}
                         >
                           {displayName}
                         </div>
