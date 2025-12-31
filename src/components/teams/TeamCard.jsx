@@ -23,13 +23,12 @@ import {
 import TeamDetailsModal from "./TeamDetailsModal";
 import UserDetailsModal from "../users/UserDetailsModal";
 import TeamApplicationDetailsModal from "./TeamApplicationDetailsModal";
-import InvitationNotificationBadge from "./InvitationNotificationBadge";
 import TeamInvitesModal from "./TeamInvitesModal";
 import TeamInvitationDetailsModal from "./TeamInvitationDetailsModal";
 import { teamService } from "../../services/teamService";
 import { useAuth } from "../../contexts/AuthContext";
 import Alert from "../common/Alert";
-import ApplicationNotificationBadge from "./ApplicationNotificationBadge";
+import NotificationBadge from "./NotificationBadge";
 import TeamApplicationsModal from "./TeamApplicationsModal";
 import { getUserInitials, getDisplayName } from "../../utils/userHelpers";
 import { format } from "date-fns";
@@ -877,7 +876,8 @@ const TeamCard = ({
           <div className="flex items-center space-x-2 ml-2">
             {/* Application badge - owners and admins */}
             {canManageInvitations && (
-              <ApplicationNotificationBadge
+              <NotificationBadge
+                variant="application"
                 count={pendingApplications.length}
                 onClick={(e) => {
                   e.stopPropagation();
@@ -888,7 +888,8 @@ const TeamCard = ({
 
             {/* Sent invitations badge - owners and admins */}
             {canManageInvitations && (
-              <InvitationNotificationBadge
+              <NotificationBadge
+                variant="invitation"
                 count={pendingSentInvitations.length}
                 onClick={(e) => {
                   e.stopPropagation();
