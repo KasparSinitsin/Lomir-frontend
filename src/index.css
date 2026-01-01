@@ -409,6 +409,66 @@ body {
   animation: slide-in 0.3s ease-out forwards;
 }
 
+/* Highlight animation for unread messages - fading green outline */
+@keyframes messageHighlightFade {
+  0% {
+    box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.6);
+    background-color: rgba(34, 197, 94, 0.15);
+  }
+  50% {
+    box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.4);
+    background-color: rgba(34, 197, 94, 0.08);
+  }
+  100% {
+    box-shadow: none;
+    background-color: transparent;
+  }
+}
+
+.message-highlight {
+  animation: messageHighlightFade 3s ease-out forwards;
+  position: relative;
+}
+
+/* Ensure the highlight doesn't affect the original background color */
+.message-highlight.bg-green-100 {
+  animation: messageHighlightFadeSent 3s ease-out forwards;
+}
+
+@keyframes messageHighlightFadeSent {
+  0% {
+    box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.6);
+  }
+  50% {
+    box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.3);
+  }
+  100% {
+    box-shadow: none;
+  }
+}
+
+/* For received messages (bg-base-200) */
+.message-highlight.bg-base-200 {
+  animation: messageHighlightFadeReceived 3s ease-out forwards;
+}
+
+@keyframes messageHighlightFadeReceived {
+  0% {
+    box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.6);
+    background-color: rgba(34, 197, 94, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.3);
+    background-color: rgba(34, 197, 94, 0.1);
+  }
+  100% {
+    box-shadow: none;
+    background-color: rgb(
+      var(--b2, 229 231 235) / 1
+    ); /* Returns to bg-base-200 */
+  }
+}
+
 /* Custom Tooltip Styles - Lomir themed */
 .tooltip.tooltip-lomir::before {
   background-color: white !important;
@@ -463,4 +523,21 @@ body {
   background-image: none !important;
   box-shadow: 0 0.5px 0 0.5px oklch(100% 0 0 / calc(var(--depth) * 6%)) inset,
     0 1px 2px 0 rgba(223, 56, 91, 0.4) !important; /* #df385b with opacity */
+}
+
+/* Message Highlight Animation */
+@keyframes messageHighlightFade {
+  0% {
+    box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.6);
+  }
+  50% {
+    box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.3);
+  }
+  100% {
+    box-shadow: none;
+  }
+}
+
+.message-highlight {
+  animation: messageHighlightFade 3s ease-out forwards;
 }

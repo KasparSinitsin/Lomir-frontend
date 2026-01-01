@@ -28,7 +28,7 @@ import TeamInvitationDetailsModal from "./TeamInvitationDetailsModal";
 import { teamService } from "../../services/teamService";
 import { useAuth } from "../../contexts/AuthContext";
 import Alert from "../common/Alert";
-import NotificationBadge from "./NotificationBadge";
+import NotificationBadge from "../common/NotificationBadge";
 import TeamApplicationsModal from "./TeamApplicationsModal";
 import { getUserInitials, getDisplayName } from "../../utils/userHelpers";
 import { format } from "date-fns";
