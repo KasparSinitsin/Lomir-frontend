@@ -22,6 +22,7 @@ const Chat = () => {
   const [error, setError] = useState(null);
   const [onlineUsers, setOnlineUsers] = useState([]);
   const [typingUsers, setTypingUsers] = useState({});
+  const [highlightMessageIds, setHighlightMessageIds] = useState([]);
 
   const typingTimeoutRef = useRef(null);
 
@@ -66,9 +67,10 @@ const Chat = () => {
                     lastName: userData.lastName || userData.last_name,
                     avatarUrl: userData.avatarUrl || userData.avatar_url,
                   },
-                  lastMessage: "Start your conversation...", // Placeholder text
+                  lastMessage: "Start your conversation...",
                   updatedAt: new Date().toISOString(),
-                  isVirtual: true, // Flag to identify virtual conversations
+                  isVirtual: true,
+                  unreadCount: 0,
                 };
 
                 // Add to the beginning of the conversations list
@@ -79,7 +81,6 @@ const Chat = () => {
                 );
               } catch (error) {
                 console.error("Error creating virtual conversation:", error);
-                // Continue without the virtual conversation if user fetch fails
               }
             }
           }
@@ -163,7 +164,6 @@ const Chat = () => {
           // Ensure team conversation appears in conversation list
           if (type === "team" && conversationDetails.data) {
             setConversations((prev) => {
-              // Check if this team conversation already exists in the list
               const existingConversation = prev.find(
                 (conv) =>
                   String(conv.id) === String(conversationId) &&
@@ -171,7 +171,6 @@ const Chat = () => {
               );
 
               if (!existingConversation) {
-                // Create a new team conversation entry
                 const newTeamConversation = {
                   id: parseInt(conversationId),
                   type: "team",
@@ -182,10 +181,10 @@ const Chat = () => {
                   },
                   lastMessage: "Start your team conversation...",
                   updatedAt: new Date().toISOString(),
-                  isVirtual: true, // Flag to identify virtual conversations
+                  isVirtual: true,
+                  unreadCount: 0,
                 };
 
-                // Add to the beginning of the conversations list
                 return [newTeamConversation, ...prev];
               }
 
@@ -196,7 +195,6 @@ const Chat = () => {
           console.log("Conversation doesn't exist yet, creating it...");
 
           if (type === "team" && conversationDetails?.data) {
-            // Fetch team members if it's a team conversation
             try {
               const teamDetails = await teamService.getTeamById(conversationId);
               if (teamDetails?.data?.members) {
@@ -210,7 +208,6 @@ const Chat = () => {
             }
           }
 
-          // If conversation doesn't exist and it's a direct message, create it
           if (type === "direct") {
             try {
               await messageService.startConversation(
@@ -218,14 +215,12 @@ const Chat = () => {
                 ""
               );
 
-              // Now try to get the conversation details again
               conversationDetails = await messageService.getConversationById(
                 conversationId,
                 type
               );
               setActiveConversation(conversationDetails.data);
 
-              // Also refresh the conversations list to show the new conversation
               const conversationsResponse =
                 await messageService.getConversations();
               setConversations(conversationsResponse.data || []);
@@ -241,8 +236,23 @@ const Chat = () => {
             conversationId,
             type
           );
-          setMessages(messagesResponse.data || []);
-          console.log("Messages fetched:", messagesResponse.data);
+          const fetchedMessages = messagesResponse.data || [];
+          setMessages(fetchedMessages);
+          console.log("Messages fetched:", fetchedMessages);
+
+          // Identify unread messages (not sent by current user, no readAt)
+          // These will be highlighted temporarily
+          const unreadIds = fetchedMessages
+            .filter((msg) => msg.senderId !== user?.id && !msg.readAt)
+            .map((msg) => msg.id);
+
+          if (unreadIds.length > 0) {
+            setHighlightMessageIds(unreadIds);
+            // Clear highlights after 3 seconds
+            setTimeout(() => {
+              setHighlightMessageIds([]);
+            }, 3000);
+          }
         } catch (messagesError) {
           console.log("No messages yet, starting with empty conversation");
           setMessages([]);
@@ -256,7 +266,6 @@ const Chat = () => {
           socketService.joinConversation(conversationId, type);
           socketService.markMessagesAsRead(conversationId, type);
         } else {
-          // Wait for socket connection and then join
           console.log("Socket not connected, waiting for connection...");
           const checkConnection = setInterval(() => {
             const socket = socketService.getSocket();
@@ -269,7 +278,6 @@ const Chat = () => {
             }
           }, 100);
 
-          // Clear interval after 5 seconds to prevent infinite checking
           setTimeout(() => clearInterval(checkConnection), 5000);
         }
       } catch (err) {
@@ -282,7 +290,6 @@ const Chat = () => {
     if (isAuthenticated && conversationId) {
       fetchMessages();
 
-      // When leaving, leave the conversation room
       return () => {
         if (conversationId) {
           const urlParams = new URLSearchParams(window.location.search);
@@ -331,12 +338,10 @@ const Chat = () => {
         setMessages((prev) => {
           // If this is our own message, replace the optimistic version
           if (message.senderId === user.id) {
-            // Remove optimistic message and add real one
             const withoutOptimistic = prev.filter(
               (msg) => !msg.isOptimistic || msg.senderId !== user.id
             );
 
-            // Check if real message already exists
             const messageExists = withoutOptimistic.some(
               (msg) => msg.id === message.id
             );
@@ -355,7 +360,6 @@ const Chat = () => {
 
             return [...withoutOptimistic, newMessage];
           } else {
-            // For other users' messages, just add normally
             const messageExists = prev.some((msg) => msg.id === message.id);
             if (messageExists) {
               return prev;
@@ -391,6 +395,11 @@ const Chat = () => {
               lastMessage: message.content,
               updatedAt: message.createdAt,
               isVirtual: false,
+              // Increment unread count if not current conversation
+              unreadCount:
+                messageConvId !== currentConvId && message.senderId !== user.id
+                  ? (conv.unreadCount || 0) + 1
+                  : conv.unreadCount,
             };
           }
           return conv;
@@ -418,7 +427,6 @@ const Chat = () => {
             ...prev,
             [data.userId]: data.isTyping ? data.username : null,
           };
-          // Clean up null values
           Object.keys(updated).forEach((key) => {
             if (updated[key] === null) {
               delete updated[key];
@@ -434,8 +442,6 @@ const Chat = () => {
 
     // Handle message status updates
     const handleMessageStatus = (data) => {
-      const currentType =
-        new URLSearchParams(window.location.search).get("type") || "direct";
       if (String(data.conversationId) === String(conversationId)) {
         setMessages((prev) =>
           prev.map((msg) => ({
@@ -505,13 +511,13 @@ const Chat = () => {
 
     // Create optimistic message (show immediately)
     const optimisticMessage = {
-      id: `temp-${Date.now()}`, // Temporary ID
+      id: `temp-${Date.now()}`,
       senderId: user.id,
       content: content,
       createdAt: new Date().toISOString(),
       senderUsername: user.username,
       type: type,
-      isOptimistic: true, // Flag to identify optimistic messages
+      isOptimistic: true,
     };
 
     // Add optimistic message to UI immediately
@@ -547,6 +553,11 @@ const Chat = () => {
     // Find the conversation to get its type
     const conversation = conversations.find((c) => c.id === id);
     const type = conversation?.type || "direct";
+
+    // Reset unread count for selected conversation
+    setConversations((prev) =>
+      prev.map((conv) => (conv.id === id ? { ...conv, unreadCount: 0 } : conv))
+    );
 
     // Navigate with type parameter
     navigate(`/chat/${id}?type=${type}`);
@@ -589,6 +600,7 @@ const Chat = () => {
                   typingUsers={activeTypingUsers}
                   conversationType={activeConversation?.type || "direct"}
                   teamMembers={activeConversation?.team?.members || []}
+                  highlightMessageIds={highlightMessageIds}
                 />
               </div>
               <div className="p-4 border-t border-base-200">

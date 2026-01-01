@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { getUserInitials, getTeamInitials } from "../../utils/userHelpers";
 import { formatDistanceToNow } from "date-fns";
 import TeamDetailsModal from "../teams/TeamDetailsModal";
@@ -19,6 +19,23 @@ const ConversationList = ({
   // State for user details modal
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState(null);
+
+  // Ref for the active conversation item
+  const activeConversationRef = useRef(null);
+
+  // Scroll active conversation into view when it changes
+  useEffect(() => {
+    if (activeConversationRef.current) {
+      // Small delay to ensure DOM is updated
+      const timer = setTimeout(() => {
+        activeConversationRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "nearest",
+        });
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [activeConversationId]);
 
   // Handle team avatar/name click to open TeamDetailsModal
   const handleTeamClick = (e, team) => {
@@ -97,6 +114,7 @@ const ConversationList = ({
           return (
             <div
               key={conversation.id}
+              ref={isActive ? activeConversationRef : null}
               className={`
                 p-4 cursor-pointer transition-colors duration-200
                 ${

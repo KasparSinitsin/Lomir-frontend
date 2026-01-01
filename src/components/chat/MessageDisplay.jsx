@@ -91,8 +91,10 @@ const MessageDisplay = ({
   typingUsers = [],
   conversationType = "direct",
   teamMembers = [],
+  highlightMessageIds = [],
 }) => {
   const messagesEndRef = useRef(null);
+  const highlightedMessageRef = useRef(null);
 
   // State for team details modal
   const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
@@ -104,6 +106,19 @@ const MessageDisplay = ({
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, typingUsers]);
+
+  // Scroll to first highlighted (unread) message
+  useEffect(() => {
+    if (highlightMessageIds.length > 0 && highlightedMessageRef.current) {
+      const timer = setTimeout(() => {
+        highlightedMessageRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+      }, 150);
+      return () => clearTimeout(timer);
+    }
+  }, [highlightMessageIds]);
 
   // Add debugging
   useEffect(() => {
@@ -1002,31 +1017,43 @@ const MessageDisplay = ({
 
                     {/* Messages in this group */}
                     <div className="space-y-1">
-                      {messageGroup.messages.map((message, messageIndex) => (
-                        <div
-                          key={`${message.id}-${dateString}-${groupIndex}-${messageIndex}`}
-                          className={`
-                            rounded-lg p-3 
-                            ${
-                              isCurrentUser
-                                ? "bg-green-100 text-base-content rounded-br-none ml-auto"
-                                : "bg-base-200 rounded-bl-none"
+                      {messageGroup.messages.map((message, messageIndex) => {
+                        const isHighlighted = highlightMessageIds.includes(
+                          message.id
+                        );
+                        const isFirstHighlighted =
+                          isHighlighted &&
+                          message.id === highlightMessageIds[0];
+
+                        return (
+                          <div
+                            key={`${message.id}-${dateString}-${groupIndex}-${messageIndex}`}
+                            ref={
+                              isFirstHighlighted ? highlightedMessageRef : null
                             }
-                            ${
-                              messageIndex === 0
-                                ? ""
-                                : isCurrentUser
-                                ? "rounded-tr-lg"
-                                : "rounded-tl-lg"
-                            }
-                          `}
-                        >
-                          <p>{message.content}</p>
-                          {/* Only show timestamp on the last message of the group */}
-                          {messageIndex ===
-                            messageGroup.messages.length - 1 && (
-                            <div
-                              className={`
+                            className={`
+        rounded-lg p-3 
+        ${
+          isCurrentUser
+            ? "bg-green-100 text-base-content rounded-br-none ml-auto"
+            : "bg-base-200 rounded-bl-none"
+        }
+        ${
+          messageIndex === 0
+            ? ""
+            : isCurrentUser
+            ? "rounded-tr-lg"
+            : "rounded-tl-lg"
+        }
+        ${isHighlighted ? "message-highlight" : ""}
+      `}
+                          >
+                            <p>{message.content}</p>
+                            {/* Only show timestamp on the last message of the group */}
+                            {messageIndex ===
+                              messageGroup.messages.length - 1 && (
+                              <div
+                                className={`
                                 flex justify-between items-center text-xs mt-1 
                                 ${
                                   isCurrentUser
@@ -1034,17 +1061,18 @@ const MessageDisplay = ({
                                     : "text-base-content/50"
                                 }
                               `}
-                            >
-                              <span>
-                                {format(new Date(message.createdAt), "p")}
-                              </span>
-                              {isCurrentUser && message.readAt && (
-                                <span className="ml-2">✓</span>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      ))}
+                              >
+                                <span>
+                                  {format(new Date(message.createdAt), "p")}
+                                </span>
+                                {isCurrentUser && message.readAt && (
+                                  <span className="ml-2">✓</span>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 </div>
