@@ -79,6 +79,36 @@ const parseSystemMessage = (content) => {
     };
   }
 
+  // Pattern 6: Application declined message
+  // Format: 🚫 APPLICATION_DECLINED: Team Name | Approver Name | Applicant Name | hasPersonalMessage
+  const applicationDeclinedMatch = content.match(
+    /^🚫\s+APPLICATION_DECLINED:\s+(.+?)\s+\|\s+(.+?)\s+\|\s+(.+?)\s+\|\s+(true|false)$/
+  );
+  if (applicationDeclinedMatch) {
+    return {
+      type: "application_declined",
+      teamName: applicationDeclinedMatch[1].trim(),
+      approverName: applicationDeclinedMatch[2].trim(),
+      applicantName: applicationDeclinedMatch[3].trim(),
+      hasPersonalMessage: applicationDeclinedMatch[4] === "true",
+    };
+  }
+
+  // Pattern 7: Application approved DM message
+  // Format: ✅ APPLICATION_APPROVED: Team Name | Approver Name | Applicant Name | hasPersonalMessage
+  const applicationApprovedDmMatch = content.match(
+    /^✅\s+APPLICATION_APPROVED:\s+(.+?)\s+\|\s+(.+?)\s+\|\s+(.+?)\s+\|\s+(true|false)$/
+  );
+  if (applicationApprovedDmMatch) {
+    return {
+      type: "application_approved_dm",
+      teamName: applicationApprovedDmMatch[1].trim(),
+      approverName: applicationApprovedDmMatch[2].trim(),
+      applicantName: applicationApprovedDmMatch[3].trim(),
+      hasPersonalMessage: applicationApprovedDmMatch[4] === "true",
+    };
+  }
+
   return null;
 };
 
@@ -238,7 +268,6 @@ const MessageDisplay = ({
   };
 
   // Get display name with former member indicator
-
   const getDisplayName = (senderInfo, includeFormerLabel = true) => {
     if (!senderInfo) return "Unknown";
 
@@ -313,6 +342,55 @@ const MessageDisplay = ({
               {isFormerMember ? "FM" : getUserInitials(senderInfo)}
             </span>
           </div>
+        </div>
+      </div>
+    );
+  };
+
+  /**
+   * Render an application approved DM message with special formatting (green theme)
+   * Shows different text based on whether viewer is the approver or the applicant
+   */
+  const renderApplicationApprovedDmMessage = (
+    message,
+    parsedMessage,
+    isCurrentUser
+  ) => {
+    // isCurrentUser means the current user is the sender (the one who approved)
+    let messageText;
+
+    if (isCurrentUser) {
+      // Approver's perspective
+      if (parsedMessage.hasPersonalMessage) {
+        messageText = `You approved ${parsedMessage.applicantName}'s application for "${parsedMessage.teamName}" and added this message:`;
+      } else {
+        messageText = `You approved ${parsedMessage.applicantName}'s application for "${parsedMessage.teamName}".`;
+      }
+    } else {
+      // Applicant's perspective
+      if (parsedMessage.hasPersonalMessage) {
+        messageText = `Your application to "${parsedMessage.teamName}" was approved by ${parsedMessage.approverName}, who added this message:`;
+      } else {
+        messageText = `Your application to "${parsedMessage.teamName}" was approved by ${parsedMessage.approverName}. Welcome to the team! 🎉`;
+      }
+    }
+
+    return (
+      <div className="flex flex-col items-center w-full my-4">
+        {/* Announcement Banner - Green theme */}
+        <div
+          className="flex items-center justify-center gap-2 px-4 py-3 rounded-2xl mb-3 max-w-md text-center"
+          style={{
+            backgroundColor: "rgba(34, 197, 94, 0.1)",
+            color: "#16a34a",
+          }}
+        >
+          <span className="text-sm font-medium">{messageText}</span>
+        </div>
+
+        {/* Timestamp */}
+        <div className="text-xs text-base-content/50">
+          {format(new Date(message.createdAt), "p")}
         </div>
       </div>
     );
@@ -542,6 +620,55 @@ const MessageDisplay = ({
             </div>
           </div>
         )}
+      </div>
+    );
+  };
+
+  /**
+   * Render an application declined message with special formatting (violet theme)
+   * Shows different text based on whether viewer is the approver or the applicant
+   */
+  const renderApplicationDeclinedMessage = (
+    message,
+    parsedMessage,
+    isCurrentUser
+  ) => {
+    // isCurrentUser means the current user is the sender (the one who declined)
+    let messageText;
+
+    if (isCurrentUser) {
+      // Approver's perspective (Bob viewing)
+      if (parsedMessage.hasPersonalMessage) {
+        messageText = `You declined ${parsedMessage.applicantName}'s application for "${parsedMessage.teamName}" and added this message:`;
+      } else {
+        messageText = `You declined ${parsedMessage.applicantName}'s application for "${parsedMessage.teamName}". Consider adding a personal message to explain your decision.`;
+      }
+    } else {
+      // Applicant's perspective (Michael viewing)
+      if (parsedMessage.hasPersonalMessage) {
+        messageText = `Your application to "${parsedMessage.teamName}" was declined by ${parsedMessage.approverName}, who added this message:`;
+      } else {
+        messageText = `Your application to "${parsedMessage.teamName}" was declined by ${parsedMessage.approverName}. Want to reach out to them in this chat?`;
+      }
+    }
+
+    return (
+      <div className="flex flex-col items-center w-full my-4">
+        {/* Announcement Banner - Violet theme */}
+        <div
+          className="flex items-center justify-center gap-2 px-4 py-3 rounded-2xl mb-3 max-w-md text-center"
+          style={{
+            backgroundColor: "rgba(139, 92, 246, 0.1)",
+            color: "#7c3aed",
+          }}
+        >
+          <span className="text-sm font-medium">{messageText}</span>
+        </div>
+
+        {/* Timestamp */}
+        <div className="text-xs text-base-content/50">
+          {format(new Date(message.createdAt), "p")}
+        </div>
       </div>
     );
   };
@@ -912,9 +1039,22 @@ const MessageDisplay = ({
                 const parsedMessage = parseSystemMessage(message.content);
 
                 if (parsedMessage) {
+                  // Check if this system message should be highlighted
+                  const isHighlighted = highlightMessageIds.includes(message.id);
+                  const isFirstHighlighted =
+                    isHighlighted && message.id === highlightMessageIds[0];
+
+                  const wrapperClass = isHighlighted
+                    ? "message-highlight rounded-xl p-2"
+                    : "";
+
                   if (parsedMessage.type === "team_join") {
                     return (
-                      <div key={`${dateString}-group-${groupIndex}`}>
+                      <div
+                        key={`${dateString}-group-${groupIndex}`}
+                        ref={isFirstHighlighted ? highlightedMessageRef : null}
+                        className={wrapperClass}
+                      >
                         {renderJoinMessage(
                           message,
                           parsedMessage,
@@ -926,7 +1066,11 @@ const MessageDisplay = ({
                     );
                   } else if (parsedMessage.type === "invitation_response") {
                     return (
-                      <div key={`${dateString}-group-${groupIndex}`}>
+                      <div
+                        key={`${dateString}-group-${groupIndex}`}
+                        ref={isFirstHighlighted ? highlightedMessageRef : null}
+                        className={wrapperClass}
+                      >
                         {renderInvitationResponseMessage(
                           message,
                           parsedMessage,
@@ -938,7 +1082,11 @@ const MessageDisplay = ({
                     );
                   } else if (parsedMessage.type === "application_approved") {
                     return (
-                      <div key={`${dateString}-group-${groupIndex}`}>
+                      <div
+                        key={`${dateString}-group-${groupIndex}`}
+                        ref={isFirstHighlighted ? highlightedMessageRef : null}
+                        className={wrapperClass}
+                      >
                         {renderApplicationApprovedMessage(
                           message,
                           parsedMessage,
@@ -950,7 +1098,11 @@ const MessageDisplay = ({
                     );
                   } else if (parsedMessage.type === "application_response") {
                     return (
-                      <div key={`${dateString}-group-${groupIndex}`}>
+                      <div
+                        key={`${dateString}-group-${groupIndex}`}
+                        ref={isFirstHighlighted ? highlightedMessageRef : null}
+                        className={wrapperClass}
+                      >
                         {renderApplicationResponseMessage(
                           message,
                           parsedMessage,
@@ -962,8 +1114,36 @@ const MessageDisplay = ({
                     );
                   } else if (parsedMessage.type === "team_leave") {
                     return (
-                      <div key={`${dateString}-group-${groupIndex}`}>
-                        {renderLeaveMessage(
+                      <div
+                        key={`${dateString}-group-${groupIndex}`}
+                        ref={isFirstHighlighted ? highlightedMessageRef : null}
+                        className={wrapperClass}
+                      >
+                        {renderLeaveMessage(message, parsedMessage, isCurrentUser)}
+                      </div>
+                    );
+                  } else if (parsedMessage.type === "application_declined") {
+                    return (
+                      <div
+                        key={`${dateString}-group-${groupIndex}`}
+                        ref={isFirstHighlighted ? highlightedMessageRef : null}
+                        className={wrapperClass}
+                      >
+                        {renderApplicationDeclinedMessage(
+                          message,
+                          parsedMessage,
+                          isCurrentUser
+                        )}
+                      </div>
+                    );
+                  } else if (parsedMessage.type === "application_approved_dm") {
+                    return (
+                      <div
+                        key={`${dateString}-group-${groupIndex}`}
+                        ref={isFirstHighlighted ? highlightedMessageRef : null}
+                        className={wrapperClass}
+                      >
+                        {renderApplicationApprovedDmMessage(
                           message,
                           parsedMessage,
                           isCurrentUser
@@ -1006,10 +1186,7 @@ const MessageDisplay = ({
                                 : "#036b0c",
                           }}
                           onClick={() => handleUserClick(messageGroup.senderId)}
-                          title={`View ${getDisplayName(
-                            senderInfo,
-                            false
-                          )} details`}
+                          title={`View ${getDisplayName(senderInfo, false)} details`}
                         >
                           {displayName}
                         </div>
@@ -1032,21 +1209,21 @@ const MessageDisplay = ({
                               isFirstHighlighted ? highlightedMessageRef : null
                             }
                             className={`
-        rounded-lg p-3 
-        ${
-          isCurrentUser
-            ? "bg-green-100 text-base-content rounded-br-none ml-auto"
-            : "bg-base-200 rounded-bl-none"
-        }
-        ${
-          messageIndex === 0
-            ? ""
-            : isCurrentUser
-            ? "rounded-tr-lg"
-            : "rounded-tl-lg"
-        }
-        ${isHighlighted ? "message-highlight" : ""}
-      `}
+                              rounded-lg p-3 
+                              ${
+                                isCurrentUser
+                                  ? "bg-green-100 text-base-content rounded-br-none ml-auto"
+                                  : "bg-base-200 rounded-bl-none"
+                              }
+                              ${
+                                messageIndex === 0
+                                  ? ""
+                                  : isCurrentUser
+                                  ? "rounded-tr-lg"
+                                  : "rounded-tl-lg"
+                              }
+                              ${isHighlighted ? "message-highlight" : ""}
+                            `}
                           >
                             <p>{message.content}</p>
                             {/* Only show timestamp on the last message of the group */}
@@ -1054,13 +1231,13 @@ const MessageDisplay = ({
                               messageGroup.messages.length - 1 && (
                               <div
                                 className={`
-                                flex justify-between items-center text-xs mt-1 
-                                ${
-                                  isCurrentUser
-                                    ? "text-base-content/60"
-                                    : "text-base-content/50"
-                                }
-                              `}
+                                  flex justify-between items-center text-xs mt-1 
+                                  ${
+                                    isCurrentUser
+                                      ? "text-base-content/60"
+                                      : "text-base-content/50"
+                                  }
+                                `}
                               >
                                 <span>
                                   {format(new Date(message.createdAt), "p")}

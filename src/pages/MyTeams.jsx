@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { Link } from "react-router-dom";
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import PageContainer from "../components/layout/PageContainer";
 import Grid from "../components/layout/Grid";
 import Button from "../components/common/Button";
@@ -19,6 +19,20 @@ const MyTeams = () => {
   const [loadingInvitations, setLoadingInvitations] = useState(true);
   const [error, setError] = useState(null);
   const { user } = useAuth();
+
+  // URL params for highlighting
+  const [searchParams, setSearchParams] = useSearchParams();
+  const highlightId = searchParams.get("highlight");
+  const openTeamId = searchParams.get("team");
+  const shouldOpenApplications =
+    searchParams.get("openApplications") === "true";
+
+  // Ref for scrolling to highlighted invitation
+  const highlightedInvitationRef = useRef(null);
+
+  // State for auto-opening applications modal
+  const [autoOpenApplicationsTeamId, setAutoOpenApplicationsTeamId] =
+    useState(null);
 
   const fetchUserTeams = useCallback(async () => {
     try {
@@ -73,6 +87,32 @@ const MyTeams = () => {
     fetchPendingApplications,
     fetchPendingInvitations,
   ]);
+
+  // Handle URL params for highlighting and auto-opening modals
+  useEffect(() => {
+    // If we need to open applications modal for a specific team
+    if (openTeamId && shouldOpenApplications) {
+      setAutoOpenApplicationsTeamId(parseInt(openTeamId));
+    }
+
+    // Scroll to highlighted invitation after a short delay
+    if (highlightId && highlightedInvitationRef.current) {
+      setTimeout(() => {
+        highlightedInvitationRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+      }, 300);
+    }
+
+    // Clear URL params after 5 seconds (so refresh doesn't keep highlighting)
+    if (highlightId || openTeamId) {
+      const timer = setTimeout(() => {
+        setSearchParams({});
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [highlightId, openTeamId, shouldOpenApplications, setSearchParams]);
 
   const handleTeamUpdate = (updatedTeam) => {
     if (!updatedTeam) {
@@ -214,13 +254,26 @@ const MyTeams = () => {
           ) : (
             <Grid cols={1} md={2} lg={3} gap={6}>
               {pendingInvitations.filter(Boolean).map((invitation) => (
-                <TeamCard
+                <div
                   key={`invitation-${invitation.id}`}
-                  variant="invitation"
-                  invitation={invitation}
-                  onAccept={handleInvitationAccept}
-                  onDecline={handleInvitationDecline}
-                />
+                  ref={
+                    String(invitation.id) === highlightId
+                      ? highlightedInvitationRef
+                      : null
+                  }
+                  className={
+                    String(invitation.id) === highlightId
+                      ? "message-highlight rounded-xl"
+                      : ""
+                  }
+                >
+                  <TeamCard
+                    variant="invitation"
+                    invitation={invitation}
+                    onAccept={handleInvitationAccept}
+                    onDecline={handleInvitationDecline}
+                  />
+                </div>
               ))}
             </Grid>
           )}
@@ -276,12 +329,18 @@ const MyTeams = () => {
                 variant="member"
                 team={{
                   ...team,
-                  // Check both snake_case and camelCase versions
                   is_public: team.is_public === true || team.isPublic === true,
                 }}
                 onUpdate={handleTeamUpdate}
                 onDelete={handleTeamDelete}
                 onLeave={handleTeamLeave}
+                autoOpenApplications={team.id === autoOpenApplicationsTeamId}
+                highlightApplicantId={
+                  team.id === autoOpenApplicationsTeamId ? highlightId : null
+                }
+                onApplicationsModalClosed={() =>
+                  setAutoOpenApplicationsTeamId(null)
+                }
               />
             ))}
           </Grid>

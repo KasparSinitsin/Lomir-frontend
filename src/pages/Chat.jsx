@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import PageContainer from "../components/layout/PageContainer";
 import ConversationList from "../components/chat/ConversationList";
 import MessageDisplay from "../components/chat/MessageDisplay";
@@ -14,6 +14,7 @@ import Alert from "../components/common/Alert";
 const Chat = () => {
   const { conversationId } = useParams();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user, isAuthenticated } = useAuth();
   const [conversations, setConversations] = useState([]);
   const [activeConversation, setActiveConversation] = useState(null);
@@ -242,16 +243,41 @@ const Chat = () => {
 
           // Identify unread messages (not sent by current user, no readAt)
           // These will be highlighted temporarily
-          const unreadIds = fetchedMessages
-            .filter((msg) => msg.senderId !== user?.id && !msg.readAt)
-            .map((msg) => msg.id);
+          // Check if we need to highlight messages from a specific user (from notification)
+          const highlightUser = searchParams.get("highlightUser");
 
-          if (unreadIds.length > 0) {
-            setHighlightMessageIds(unreadIds);
-            // Clear highlights after 3 seconds
-            setTimeout(() => {
-              setHighlightMessageIds([]);
-            }, 3000);
+          if (highlightUser) {
+            // Highlight the most recent messages from this user (join message + response)
+            const userMessages = fetchedMessages
+              .filter((msg) => String(msg.senderId) === String(highlightUser))
+              .slice(-3) // Get last 3 messages from this user
+              .map((msg) => msg.id);
+
+            if (userMessages.length > 0) {
+              setHighlightMessageIds(userMessages);
+              // Clear highlights after 4 seconds
+              setTimeout(() => {
+                setHighlightMessageIds([]);
+                // Clear the URL parameter
+                setSearchParams((prev) => {
+                  prev.delete("highlightUser");
+                  return prev;
+                });
+              }, 4000);
+            }
+          } else {
+            // Default behavior: highlight unread messages
+            const unreadIds = fetchedMessages
+              .filter((msg) => msg.senderId !== user?.id && !msg.readAt)
+              .map((msg) => msg.id);
+
+            if (unreadIds.length > 0) {
+              setHighlightMessageIds(unreadIds);
+              // Clear highlights after 3 seconds
+              setTimeout(() => {
+                setHighlightMessageIds([]);
+              }, 3000);
+            }
           }
         } catch (messagesError) {
           console.log("No messages yet, starting with empty conversation");
@@ -298,7 +324,7 @@ const Chat = () => {
         }
       };
     }
-  }, [isAuthenticated, conversationId]);
+  }, [isAuthenticated, conversationId, searchParams]);
 
   // Set up WebSocket event listeners
   useEffect(() => {

@@ -6,14 +6,21 @@ import { Bell, MessageCircle, Search } from "lucide-react";
 import Colors from "../../utils/Colors";
 import { getUserInitials } from "../../utils/userHelpers";
 import { messageService } from "../../services/messageService";
+import { notificationService } from "../../services/notificationService";
 import socketService from "../../services/socketService";
 import NotificationBadge from "../common/NotificationBadge";
 
 const Navbar = () => {
   const { isAuthenticated, user, logout } = useAuth();
   const [imageError, setImageError] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [firstUnread, setFirstUnread] = useState(null);
+  // Message notification state
+  const [unreadMessageCount, setUnreadMessageCount] = useState(0);
+  const [firstUnreadMessage, setFirstUnreadMessage] = useState(null);
+
+  // General notification state (invitations, applications, etc.)
+  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
+  const [firstUnreadNotification, setFirstUnreadNotification] = useState(null);
+
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -24,27 +31,40 @@ const Navbar = () => {
     "text-[var(--color-primary)] text-center border-2 border-transparent rounded-full px-2 py-1 transition-all duration-300";
 
   // Fetch unread message count
-  const fetchUnreadCount = useCallback(async () => {
+  const fetchUnreadMessageCount = useCallback(async () => {
     if (!isAuthenticated) return;
 
     try {
       const response = await messageService.getUnreadCount();
-      setUnreadCount(response.data?.count || 0);
-      setFirstUnread(response.data?.firstUnread || null);
+      setUnreadMessageCount(response.data?.count || 0);
+      setFirstUnreadMessage(response.data?.firstUnread || null);
     } catch (error) {
-      console.error("Error fetching unread count:", error);
+      console.error("Error fetching unread message count:", error);
     }
   }, [isAuthenticated]);
 
-  // Initial fetch and socket setup
+  // Fetch unread notification count
+  const fetchUnreadNotificationCount = useCallback(async () => {
+    if (!isAuthenticated) return;
+
+    try {
+      const response = await notificationService.getUnreadCount();
+      setUnreadNotificationCount(response.data?.count || 0);
+      setFirstUnreadNotification(response.data?.firstUnread || null);
+    } catch (error) {
+      console.error("Error fetching unread notification count:", error);
+    }
+  }, [isAuthenticated]);
+
+  // Initial fetch and socket setup for messages
   useEffect(() => {
     if (!isAuthenticated) {
-      setUnreadCount(0);
-      setFirstUnread(null);
+      setUnreadMessageCount(0);
+      setFirstUnreadMessage(null);
       return;
     }
 
-    fetchUnreadCount();
+    fetchUnreadMessageCount();
 
     // Set up socket listener for new messages
     const socket = socketService.getSocket();
@@ -67,10 +87,10 @@ const Navbar = () => {
           String(currentConversationId) === String(messageConversationId);
 
         if (!isInThisConversation) {
-          setUnreadCount((prev) => prev + 1);
+          setUnreadMessageCount((prev) => prev + 1);
           // Set this as the first unread conversation
           const isTeamMessage = !!(message.teamId || message.team_id);
-          setFirstUnread({
+          setFirstUnreadMessage({
             conversationId: isTeamMessage
               ? message.teamId || message.team_id
               : message.conversationId || message.senderId,
@@ -81,7 +101,7 @@ const Navbar = () => {
 
       const handleMessagesRead = () => {
         // Refetch count when messages are marked as read
-        fetchUnreadCount();
+        fetchUnreadMessageCount();
       };
 
       socket.on("message:received", handleNewMessage);
@@ -92,22 +112,96 @@ const Navbar = () => {
         socket.off("messages:read", handleMessagesRead);
       };
     }
-  }, [isAuthenticated, fetchUnreadCount, location.pathname]);
+  }, [isAuthenticated, fetchUnreadMessageCount, location.pathname]);
 
-  // Refetch when path changes (entering chat, changing conversations, or leaving chat)
-  // Use a small delay when entering a chat conversation to allow messages to be marked as read first
+  // Initial fetch and socket setup for notifications
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setUnreadNotificationCount(0);
+      setFirstUnreadNotification(null);
+      return;
+    }
+
+    fetchUnreadNotificationCount();
+
+    // Set up socket listener for new notifications
+    const socket = socketService.getSocket();
+
+    if (socket) {
+      const handleNewNotification = () => {
+        // Refetch to get the latest count and firstUnread
+        fetchUnreadNotificationCount();
+      };
+
+      socket.on("notification:new", handleNewNotification);
+
+      return () => {
+        socket.off("notification:new", handleNewNotification);
+      };
+    }
+  }, [isAuthenticated, fetchUnreadNotificationCount]);
+
+  // Refetch message count when path changes
   useEffect(() => {
     if (location.pathname.startsWith("/chat/")) {
       // When entering/changing a conversation, wait a moment for messages to be marked as read
       const timer = setTimeout(() => {
-        fetchUnreadCount();
+        fetchUnreadMessageCount();
       }, 500);
       return () => clearTimeout(timer);
     } else {
       // When not in a specific conversation, refetch immediately
-      fetchUnreadCount();
+      fetchUnreadMessageCount();
     }
-  }, [location.pathname, fetchUnreadCount]);
+  }, [location.pathname, fetchUnreadMessageCount]);
+
+  // Refetch notification count when on my-teams page (after viewing invitations/applications)
+  useEffect(() => {
+    if (location.pathname.startsWith("/teams/my-teams")) {
+      const timer = setTimeout(() => {
+        fetchUnreadNotificationCount();
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [location.pathname, location.search, fetchUnreadNotificationCount]);
+
+  // Handle notification badge click
+  const handleNotificationClick = async () => {
+    if (unreadNotificationCount > 0 && firstUnreadNotification) {
+      // Mark this notification as read
+      try {
+        await notificationService.markAsRead(firstUnreadNotification.id);
+      } catch (error) {
+        console.error("Error marking notification as read:", error);
+      }
+
+      // Navigate to the notification target
+      navigate(firstUnreadNotification.navigateTo);
+
+      // Refetch after a delay to get the NEXT unread notification
+      setTimeout(() => {
+        fetchUnreadNotificationCount();
+      }, 1000);
+    } else {
+      // No unread notifications, go to my-teams page
+      navigate("/teams/my-teams");
+    }
+  };
+
+  // Handle message badge click
+  const handleMessageClick = () => {
+    if (unreadMessageCount > 0 && firstUnreadMessage) {
+      navigate(
+        `/chat/${firstUnreadMessage.conversationId}?type=${firstUnreadMessage.type}`
+      );
+      // Refetch after a delay to get the NEXT unread conversation
+      setTimeout(() => {
+        fetchUnreadMessageCount();
+      }, 1000);
+    } else {
+      navigate("/chat");
+    }
+  };
 
   return (
     <div className="navbar glass-navbar sticky top-0 z-10">
@@ -122,35 +216,34 @@ const Navbar = () => {
         {/* Navigation & Auth - Right aligned */}
         <div className="flex items-center space-x-3">
           <div className="flex items-center space-x-4">
+            {/* Notification Bell */}
             <nav>
               {isAuthenticated && (
-                <div className={`${iconClasses} cursor-pointer`}>
-                  <Bell size={22} strokeWidth={2.2} />
+                <div
+                  onClick={handleNotificationClick}
+                  className={`${iconClasses} cursor-pointer`}
+                >
+                  <NotificationBadge
+                    variant="alert"
+                    count={unreadNotificationCount}
+                  >
+                    <Bell size={22} strokeWidth={2.2} />
+                  </NotificationBadge>
                 </div>
               )}
             </nav>
 
+            {/* Message Icon */}
             <nav>
               {isAuthenticated && (
                 <div
-                  onClick={() => {
-                    // Navigate directly to the conversation with unread messages
-                    if (unreadCount > 0 && firstUnread) {
-                      navigate(
-                        `/chat/${firstUnread.conversationId}?type=${firstUnread.type}`
-                      );
-                      // Refetch after a delay to get the NEXT unread conversation
-                      // (allows time for current messages to be marked as read)
-                      setTimeout(() => {
-                        fetchUnreadCount();
-                      }, 1000);
-                    } else {
-                      navigate("/chat");
-                    }
-                  }}
+                  onClick={handleMessageClick}
                   className={`${iconClasses} cursor-pointer`}
                 >
-                  <NotificationBadge variant="message" count={unreadCount}>
+                  <NotificationBadge
+                    variant="message"
+                    count={unreadMessageCount}
+                  >
                     <MessageCircle size={22} strokeWidth={2.2} />
                   </NotificationBadge>
                 </div>
