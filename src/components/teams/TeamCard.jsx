@@ -84,6 +84,10 @@ const TeamCard = ({
 
   // Loading state
   loading = false,
+
+  autoOpenApplications = false,
+  highlightApplicantId = null,
+  onApplicationsModalClosed,
 }) => {
   // Determine effective variant (support legacy isPendingApplication prop)
   const effectiveVariant = isPendingApplication ? "application" : variant;
@@ -398,6 +402,13 @@ const TeamCard = ({
 
   //   setUserRole(me?.role ?? null);
   // }, [effectiveVariant, user?.id, teamData?.owner_id, teamData?.ownerId, teamData?.members]);
+
+  // Auto-open applications modal if triggered from URL params
+  useEffect(() => {
+    if (autoOpenApplications && effectiveVariant === "member") {
+      setIsApplicationsModalOpen(true);
+    }
+  }, [autoOpenApplications, effectiveVariant]);
 
   // ================= GUARD CLAUSE – AFTER ALL HOOKS =================
 
@@ -1084,11 +1095,17 @@ const TeamCard = ({
       {effectiveVariant === "member" && (
         <TeamApplicationsModal
           isOpen={isApplicationsModalOpen}
-          onClose={() => setIsApplicationsModalOpen(false)}
+          onClose={() => {
+            setIsApplicationsModalOpen(false);
+            if (onApplicationsModalClosed) {
+              onApplicationsModalClosed();
+            }
+          }}
           teamId={teamData.id}
           applications={pendingApplications}
           onApplicationAction={handleApplicationAction}
           teamName={teamData.name}
+          highlightUserId={highlightApplicantId}
         />
       )}
 
