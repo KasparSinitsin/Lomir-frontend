@@ -87,7 +87,22 @@ const Chat = () => {
           }
         }
 
-        setConversations(conversationsList);
+        // Deduplicate conversations by partner id (for direct) or id (for team)
+        const deduplicatedList = conversationsList.filter(
+          (conv, index, self) => {
+            if (conv.type === "direct") {
+              return (
+                index ===
+                self.findIndex(
+                  (c) =>
+                    c.type === "direct" && c.partner?.id === conv.partner?.id
+                )
+              );
+            }
+            return index === self.findIndex((c) => c.id === conv.id);
+          }
+        );
+        setConversations(deduplicatedList);
 
         // If there are conversations but none is selected, select the first one
         if (conversationsList.length > 0 && !conversationId) {
@@ -431,7 +446,20 @@ const Chat = () => {
           return conv;
         });
 
-        return updatedList.sort(
+        // Deduplicate by partner id (for direct) or conversation id (for team)
+        const deduplicatedList = updatedList.filter((conv, index, self) => {
+          if (conv.type === "direct") {
+            return (
+              index ===
+              self.findIndex(
+                (c) => c.type === "direct" && c.partner?.id === conv.partner?.id
+              )
+            );
+          }
+          return index === self.findIndex((c) => c.id === conv.id);
+        });
+
+        return deduplicatedList.sort(
           (a, b) => new Date(b.updatedAt) - new Date(a.updatedAt)
         );
       });
@@ -491,7 +519,23 @@ const Chat = () => {
           console.log("Conversation not found, refreshing all conversations");
           messageService
             .getConversations()
-            .then((response) => setConversations(response.data || []))
+            .then((response) => {
+              const list = response.data || [];
+              const deduplicatedList = list.filter((conv, index, self) => {
+                if (conv.type === "direct") {
+                  return (
+                    index ===
+                    self.findIndex(
+                      (c) =>
+                        c.type === "direct" &&
+                        c.partner?.id === conv.partner?.id
+                    )
+                  );
+                }
+                return index === self.findIndex((c) => c.id === conv.id);
+              });
+              setConversations(deduplicatedList);
+            })
             .catch((err) =>
               console.error("Error refreshing conversations:", err)
             );
@@ -505,7 +549,20 @@ const Chat = () => {
           updatedAt: data.updatedAt,
         };
 
-        return updatedList.sort(
+        // Deduplicate by partner id (for direct) or conversation id (for team)
+        const deduplicatedList = updatedList.filter((conv, index, self) => {
+          if (conv.type === "direct") {
+            return (
+              index ===
+              self.findIndex(
+                (c) => c.type === "direct" && c.partner?.id === conv.partner?.id
+              )
+            );
+          }
+          return index === self.findIndex((c) => c.id === conv.id);
+        });
+
+        return deduplicatedList.sort(
           (a, b) => new Date(b.updatedAt) - new Date(a.updatedAt)
         );
       });
