@@ -109,6 +109,35 @@ const parseSystemMessage = (content) => {
     };
   }
 
+  // Pattern 8: Invitation declined message
+  // Format: 🚫 INVITATION_DECLINED: Team Name | Inviter Name | Invitee Name | hasPersonalMessage
+  const invitationDeclinedMatch = content.match(
+    /^🚫\s+INVITATION_DECLINED:\s+(.+?)\s+\|\s+(.+?)\s+\|\s+(.+?)\s+\|\s+(true|false)$/
+  );
+  if (invitationDeclinedMatch) {
+    return {
+      type: "invitation_declined",
+      teamName: invitationDeclinedMatch[1].trim(),
+      inviterName: invitationDeclinedMatch[2].trim(),
+      inviteeName: invitationDeclinedMatch[3].trim(),
+      hasPersonalMessage: invitationDeclinedMatch[4] === "true",
+    };
+  }
+
+  // Pattern 9: Invitation cancelled message
+  // Format: 🚫 INVITATION_CANCELLED: Team Name | Canceller Name | Invitee Name
+  const invitationCancelledMatch = content.match(
+    /^🚫\s+INVITATION_CANCELLED:\s+(.+?)\s+\|\s+(.+?)\s+\|\s+(.+)$/
+  );
+  if (invitationCancelledMatch) {
+    return {
+      type: "invitation_cancelled",
+      teamName: invitationCancelledMatch[1].trim(),
+      cancellerName: invitationCancelledMatch[2].trim(),
+      inviteeName: invitationCancelledMatch[3].trim(),
+    };
+  }
+
   return null;
 };
 
@@ -545,6 +574,96 @@ const MessageDisplay = ({
             </div>
           </div>
         )}
+      </div>
+    );
+  };
+
+  /**
+   * Render an invitation cancelled message with special formatting (violet theme)
+   * Shows different text based on whether viewer is the canceller or the invitee
+   */
+  const renderInvitationCancelledMessage = (
+    message,
+    parsedMessage,
+    isCurrentUser
+  ) => {
+    // isCurrentUser means the current user is the sender (the one who cancelled)
+    let messageText;
+
+    if (isCurrentUser) {
+      // Canceller's perspective
+      messageText = `You cancelled your invitation for ${parsedMessage.inviteeName} to join "${parsedMessage.teamName}".`;
+    } else {
+      // Invitee's perspective
+      messageText = `${parsedMessage.cancellerName} cancelled your invitation to join "${parsedMessage.teamName}". Want to reach out to them in this chat?`;
+    }
+
+    return (
+      <div className="flex flex-col items-center w-full my-4">
+        {/* Announcement Banner - Violet theme */}
+        <div
+          className="flex items-center justify-center gap-2 px-4 py-3 rounded-2xl mb-3 max-w-md text-center"
+          style={{
+            backgroundColor: "rgba(139, 92, 246, 0.1)",
+            color: "#7c3aed",
+          }}
+        >
+          <span className="text-sm font-medium">{messageText}</span>
+        </div>
+
+        {/* Timestamp */}
+        <div className="text-xs text-base-content/50">
+          {format(new Date(message.createdAt), "p")}
+        </div>
+      </div>
+    );
+  };
+
+  /**
+   * Render an invitation declined message with special formatting (violet theme)
+   * Shows different text based on whether viewer is the inviter or the invitee
+   */
+  const renderInvitationDeclinedMessage = (
+    message,
+    parsedMessage,
+    isCurrentUser
+  ) => {
+    // isCurrentUser means the current user is the sender (the one who declined = invitee)
+    let messageText;
+
+    if (isCurrentUser) {
+      // Invitee's perspective (the one who declined)
+      if (parsedMessage.hasPersonalMessage) {
+        messageText = `You declined ${parsedMessage.inviterName}'s invitation for "${parsedMessage.teamName}" and added this message:`;
+      } else {
+        messageText = `You declined ${parsedMessage.inviterName}'s invitation for "${parsedMessage.teamName}". Consider adding a personal message to explain your decision.`;
+      }
+    } else {
+      // Inviter's perspective (the one who sent the invite)
+      if (parsedMessage.hasPersonalMessage) {
+        messageText = `Your invitation for "${parsedMessage.teamName}" was declined by ${parsedMessage.inviteeName}, who added this message:`;
+      } else {
+        messageText = `Your invitation for "${parsedMessage.teamName}" was declined by ${parsedMessage.inviteeName}. Want to reach out to them in this chat?`;
+      }
+    }
+
+    return (
+      <div className="flex flex-col items-center w-full my-4">
+        {/* Announcement Banner - Violet theme */}
+        <div
+          className="flex items-center justify-center gap-2 px-4 py-3 rounded-2xl mb-3 max-w-md text-center"
+          style={{
+            backgroundColor: "rgba(139, 92, 246, 0.1)",
+            color: "#7c3aed",
+          }}
+        >
+          <span className="text-sm font-medium">{messageText}</span>
+        </div>
+
+        {/* Timestamp */}
+        <div className="text-xs text-base-content/50">
+          {format(new Date(message.createdAt), "p")}
+        </div>
       </div>
     );
   };
@@ -1040,7 +1159,9 @@ const MessageDisplay = ({
 
                 if (parsedMessage) {
                   // Check if this system message should be highlighted
-                  const isHighlighted = highlightMessageIds.includes(message.id);
+                  const isHighlighted = highlightMessageIds.includes(
+                    message.id
+                  );
                   const isFirstHighlighted =
                     isHighlighted && message.id === highlightMessageIds[0];
 
@@ -1119,7 +1240,11 @@ const MessageDisplay = ({
                         ref={isFirstHighlighted ? highlightedMessageRef : null}
                         className={wrapperClass}
                       >
-                        {renderLeaveMessage(message, parsedMessage, isCurrentUser)}
+                        {renderLeaveMessage(
+                          message,
+                          parsedMessage,
+                          isCurrentUser
+                        )}
                       </div>
                     );
                   } else if (parsedMessage.type === "application_declined") {
@@ -1144,6 +1269,34 @@ const MessageDisplay = ({
                         className={wrapperClass}
                       >
                         {renderApplicationApprovedDmMessage(
+                          message,
+                          parsedMessage,
+                          isCurrentUser
+                        )}
+                      </div>
+                    );
+                  } else if (parsedMessage.type === "invitation_declined") {
+                    return (
+                      <div
+                        key={`${dateString}-group-${groupIndex}`}
+                        ref={isFirstHighlighted ? highlightedMessageRef : null}
+                        className={wrapperClass}
+                      >
+                        {renderInvitationDeclinedMessage(
+                          message,
+                          parsedMessage,
+                          isCurrentUser
+                        )}
+                      </div>
+                    );
+                  } else if (parsedMessage.type === "invitation_cancelled") {
+                    return (
+                      <div
+                        key={`${dateString}-group-${groupIndex}`}
+                        ref={isFirstHighlighted ? highlightedMessageRef : null}
+                        className={wrapperClass}
+                      >
+                        {renderInvitationCancelledMessage(
                           message,
                           parsedMessage,
                           isCurrentUser
@@ -1186,7 +1339,10 @@ const MessageDisplay = ({
                                 : "#036b0c",
                           }}
                           onClick={() => handleUserClick(messageGroup.senderId)}
-                          title={`View ${getDisplayName(senderInfo, false)} details`}
+                          title={`View ${getDisplayName(
+                            senderInfo,
+                            false
+                          )} details`}
                         >
                           {displayName}
                         </div>
