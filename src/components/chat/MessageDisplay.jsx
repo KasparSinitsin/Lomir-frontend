@@ -138,6 +138,90 @@ const parseSystemMessage = (content) => {
     };
   }
 
+  // Pattern 10: Application cancelled message
+  // Format: 🚫 APPLICATION_CANCELLED: Team Name | Applicant Name | Admin Name
+  const applicationCancelledMatch = content.match(
+    /^🚫\s+APPLICATION_CANCELLED:\s+(.+?)\s+\|\s+(.+?)\s+\|\s+(.+)$/
+  );
+  if (applicationCancelledMatch) {
+    return {
+      type: "application_cancelled",
+      teamName: applicationCancelledMatch[1].trim(),
+      applicantName: applicationCancelledMatch[2].trim(),
+      adminName: applicationCancelledMatch[3].trim(),
+    };
+  }
+
+  // Pattern 11: Member removed message
+  // Format: 🚫 MEMBER_REMOVED: Team Name | Remover Name | Member Name
+  const memberRemovedMatch = content.match(
+    /^🚫\s+MEMBER_REMOVED:\s+(.+?)\s+\|\s+(.+?)\s+\|\s+(.+)$/
+  );
+  if (memberRemovedMatch) {
+    return {
+      type: "member_removed",
+      teamName: memberRemovedMatch[1].trim(),
+      removerName: memberRemovedMatch[2].trim(),
+      memberName: memberRemovedMatch[3].trim(),
+    };
+  }
+
+  // Pattern 12: Role changed message
+  // Format: 🔄 ROLE_CHANGED: Team Name | Changer Name | Member Name | Old Role | New Role
+  const roleChangedMatch = content.match(
+    /^🔄\s+ROLE_CHANGED:\s+(.+?)\s+\|\s+(.+?)\s+\|\s+(.+?)\s+\|\s+(.+?)\s+\|\s+(.+)$/
+  );
+  if (roleChangedMatch) {
+    return {
+      type: "role_changed",
+      teamName: roleChangedMatch[1].trim(),
+      changerName: roleChangedMatch[2].trim(),
+      memberName: roleChangedMatch[3].trim(),
+      oldRole: roleChangedMatch[4].trim(),
+      newRole: roleChangedMatch[5].trim(),
+    };
+  }
+
+  // Pattern 13: Ownership transferred message
+  // Format: 👑 OWNERSHIP_TRANSFERRED: Team Name | Previous Owner Name | New Owner Name
+  const ownershipTransferredMatch = content.match(
+    /^👑\s+OWNERSHIP_TRANSFERRED:\s+(.+?)\s+\|\s+(.+?)\s+\|\s+(.+)$/
+  );
+  if (ownershipTransferredMatch) {
+    return {
+      type: "ownership_transferred",
+      teamName: ownershipTransferredMatch[1].trim(),
+      prevOwnerName: ownershipTransferredMatch[2].trim(),
+      newOwnerName: ownershipTransferredMatch[3].trim(),
+    };
+  }
+
+  // Pattern 14: Ownership transferred team chat message
+  // Format: 👑 OWNERSHIP_TEAM: Previous Owner Name | New Owner Name
+  const ownershipTeamMatch = content.match(
+    /^👑\s+OWNERSHIP_TEAM:\s+(.+?)\s+\|\s+(.+)$/
+  );
+  if (ownershipTeamMatch) {
+    return {
+      type: "ownership_team",
+      prevOwnerName: ownershipTeamMatch[1].trim(),
+      newOwnerName: ownershipTeamMatch[2].trim(),
+    };
+  }
+
+  // Pattern 15: Team deleted message
+  // Format: 🗑️ TEAM_DELETED: Team Name | Owner Name
+  const teamDeletedMatch = content.match(
+    /^🗑️\s+TEAM_DELETED:\s+(.+?)\s+\|\s+(.+)$/
+  );
+  if (teamDeletedMatch) {
+    return {
+      type: "team_deleted",
+      teamName: teamDeletedMatch[1].trim(),
+      ownerName: teamDeletedMatch[2].trim(),
+    };
+  }
+
   return null;
 };
 
@@ -862,6 +946,247 @@ const MessageDisplay = ({
     );
   };
 
+  /**
+   * Render an application cancelled message with special formatting (violet theme)
+   * Shows different text based on whether viewer is the applicant or the admin
+   */
+  const renderApplicationCancelledMessage = (
+    message,
+    parsedMessage,
+    isCurrentUser
+  ) => {
+    // isCurrentUser means the current user is the sender (the applicant who cancelled)
+    let messageText;
+
+    if (isCurrentUser) {
+      // Applicant's perspective
+      messageText = `You withdrew your application for "${parsedMessage.teamName}".`;
+    } else {
+      // Admin's perspective
+      messageText = `${parsedMessage.applicantName} withdrew their application for "${parsedMessage.teamName}". Want to reach out to them in this chat?`;
+    }
+
+    return (
+      <div className="flex flex-col items-center w-full my-4">
+        {/* Announcement Banner - Violet theme */}
+        <div
+          className="flex items-center justify-center gap-2 px-4 py-3 rounded-2xl mb-3 max-w-md text-center"
+          style={{
+            backgroundColor: "rgba(139, 92, 246, 0.1)",
+            color: "#7c3aed",
+          }}
+        >
+          <span className="text-sm font-medium">{messageText}</span>
+        </div>
+
+        {/* Timestamp */}
+        <div className="text-xs text-base-content/50">
+          {format(new Date(message.createdAt), "p")}
+        </div>
+      </div>
+    );
+  };
+
+  /**
+   * Render a role changed message with special formatting
+   * Uses green for promotion, violet for demotion
+   */
+  const renderRoleChangedMessage = (message, parsedMessage, isCurrentUser) => {
+    const isPromotion = parsedMessage.newRole === "admin";
+    const actionWord = isPromotion ? "promoted" : "changed";
+
+    // isCurrentUser means the current user is the sender (the one who changed the role)
+    let messageText;
+
+    if (isCurrentUser) {
+      // Changer's perspective (admin/owner)
+      messageText = isPromotion
+        ? `You promoted ${parsedMessage.memberName} to Admin in "${parsedMessage.teamName}".`
+        : `You changed ${parsedMessage.memberName}'s role to Member in "${parsedMessage.teamName}".`;
+    } else {
+      // Affected member's perspective
+      messageText = isPromotion
+        ? `You were promoted to Admin in "${parsedMessage.teamName}" by ${parsedMessage.changerName}. Congratulations! 🎉`
+        : `Your role in "${parsedMessage.teamName}" was changed to Member by ${parsedMessage.changerName}.`;
+    }
+
+    // Use green for promotion, violet for demotion
+    const backgroundColor = isPromotion
+      ? "rgba(34, 197, 94, 0.1)"
+      : "rgba(139, 92, 246, 0.1)";
+    const textColor = isPromotion ? "#16a34a" : "#7c3aed";
+
+    return (
+      <div className="flex flex-col items-center w-full my-4">
+        {/* Announcement Banner */}
+        <div
+          className="flex items-center justify-center gap-2 px-4 py-3 rounded-2xl mb-3 max-w-md text-center"
+          style={{
+            backgroundColor: backgroundColor,
+            color: textColor,
+          }}
+        >
+          <span className="text-sm font-medium">{messageText}</span>
+        </div>
+
+        {/* Timestamp */}
+        <div className="text-xs text-base-content/50">
+          {format(new Date(message.createdAt), "p")}
+        </div>
+      </div>
+    );
+  };
+
+  /**
+   * Render an ownership transferred message for team chat (gold/yellow theme, centered)
+   */
+  const renderOwnershipTeamMessage = (message, parsedMessage) => {
+    return (
+      <div className="flex flex-col items-center w-full my-4">
+        {/* Announcement Banner - Gold/Yellow theme */}
+        <div
+          className="flex items-center justify-center gap-2 px-4 py-2 rounded-full mb-3"
+          style={{
+            backgroundColor: "rgba(234, 179, 8, 0.15)",
+            color: "#b45309",
+          }}
+        >
+          <span className="text-sm font-medium">
+            👑 {parsedMessage.prevOwnerName} transferred ownership to{" "}
+            {parsedMessage.newOwnerName}
+          </span>
+        </div>
+
+        {/* Timestamp */}
+        <div className="text-xs text-base-content/50">
+          {format(new Date(message.createdAt), "p")}
+        </div>
+      </div>
+    );
+  };
+
+  /**
+   * Render an ownership transferred message with special formatting (gold/yellow theme)
+   */
+  const renderOwnershipTransferredMessage = (
+    message,
+    parsedMessage,
+    isCurrentUser
+  ) => {
+    // isCurrentUser means the current user is the sender (the previous owner who transferred)
+    let messageText;
+
+    if (isCurrentUser) {
+      // Previous owner's perspective
+      messageText = `You transferred ownership of "${parsedMessage.teamName}" to ${parsedMessage.newOwnerName}.`;
+    } else {
+      // New owner's perspective
+      messageText = `${parsedMessage.prevOwnerName} transferred ownership of "${parsedMessage.teamName}" to you. Congratulations! 👑`;
+    }
+
+    return (
+      <div className="flex flex-col items-center w-full my-4">
+        {/* Announcement Banner - Gold/Yellow theme */}
+        <div
+          className="flex items-center justify-center gap-2 px-4 py-3 rounded-2xl mb-3 max-w-md text-center"
+          style={{
+            backgroundColor: "rgba(234, 179, 8, 0.15)",
+            color: "#b45309",
+          }}
+        >
+          <span className="text-sm font-medium">{messageText}</span>
+        </div>
+
+        {/* Timestamp */}
+        <div className="text-xs text-base-content/50">
+          {format(new Date(message.createdAt), "p")}
+        </div>
+      </div>
+    );
+  };
+
+  /**
+   * Render a member removed message with special formatting (violet theme)
+   * Shows different text based on whether viewer is the remover or the removed member
+   */
+  const renderMemberRemovedMessage = (
+    message,
+    parsedMessage,
+    isCurrentUser
+  ) => {
+    // isCurrentUser means the current user is the sender (the admin who removed)
+    let messageText;
+
+    if (isCurrentUser) {
+      // Remover's perspective (admin/owner)
+      messageText = `You removed ${parsedMessage.memberName} from "${parsedMessage.teamName}".`;
+    } else {
+      // Removed member's perspective
+      messageText = `You were removed from "${parsedMessage.teamName}" by ${parsedMessage.removerName}. Want to reach out to them in this chat?`;
+    }
+
+    return (
+      <div className="flex flex-col items-center w-full my-4">
+        {/* Announcement Banner - Violet theme */}
+        <div
+          className="flex items-center justify-center gap-2 px-4 py-3 rounded-2xl mb-3 max-w-md text-center"
+          style={{
+            backgroundColor: "rgba(139, 92, 246, 0.1)",
+            color: "#7c3aed",
+          }}
+        >
+          <span className="text-sm font-medium">{messageText}</span>
+        </div>
+
+        {/* Timestamp */}
+        <div className="text-xs text-base-content/50">
+          {format(new Date(message.createdAt), "p")}
+        </div>
+      </div>
+    );
+  };
+
+/**
+   * Render a team deleted message with special formatting (red/error theme)
+   * Shows in team chat with option to delete from conversation list
+   */
+  const renderTeamDeletedMessage = (
+    message,
+    parsedMessage,
+    isCurrentUser
+  ) => {
+    // isCurrentUser means the current user is the sender (the owner who deleted)
+    let messageText;
+    
+    if (isCurrentUser) {
+      // Owner's perspective
+      messageText = `You deleted the team "${parsedMessage.teamName}". Former members are not able to answer here anymore.`;
+    } else {
+      // Member's perspective
+      messageText = `${parsedMessage.ownerName} has deleted the team "${parsedMessage.teamName}". Former members are not able to answer here anymore.`;
+    }
+
+    return (
+      <div className="flex flex-col items-center w-full my-4">
+        {/* Announcement Banner - Red/Error theme */}
+        <div
+          className="flex flex-col items-center gap-2 px-4 py-3 rounded-2xl mb-3 max-w-md text-center"
+          style={{
+            backgroundColor: "rgba(239, 68, 68, 0.1)",
+            color: "#dc2626",
+          }}
+        >
+          <span className="text-sm font-medium">{messageText}</span>
+        </div>
+
+        {/* Timestamp */}
+        <div className="text-xs text-base-content/50">
+          {format(new Date(message.createdAt), "p")}
+        </div>
+      </div>
+    );
+  };
+
   if (messages.length === 0 && typingUsers.length === 0) {
     return (
       <>
@@ -1297,6 +1622,86 @@ const MessageDisplay = ({
                         className={wrapperClass}
                       >
                         {renderInvitationCancelledMessage(
+                          message,
+                          parsedMessage,
+                          isCurrentUser
+                        )}
+                      </div>
+                    );
+                  } else if (parsedMessage.type === "application_cancelled") {
+                    return (
+                      <div
+                        key={`${dateString}-group-${groupIndex}`}
+                        ref={isFirstHighlighted ? highlightedMessageRef : null}
+                        className={wrapperClass}
+                      >
+                        {renderApplicationCancelledMessage(
+                          message,
+                          parsedMessage,
+                          isCurrentUser
+                        )}
+                      </div>
+                    );
+                  } else if (parsedMessage.type === "member_removed") {
+                    return (
+                      <div
+                        key={`${dateString}-group-${groupIndex}`}
+                        ref={isFirstHighlighted ? highlightedMessageRef : null}
+                        className={wrapperClass}
+                      >
+                        {renderMemberRemovedMessage(
+                          message,
+                          parsedMessage,
+                          isCurrentUser
+                        )}
+                      </div>
+                    );
+                  } else if (parsedMessage.type === "role_changed") {
+                    return (
+                      <div
+                        key={`${dateString}-group-${groupIndex}`}
+                        ref={isFirstHighlighted ? highlightedMessageRef : null}
+                        className={wrapperClass}
+                      >
+                        {renderRoleChangedMessage(
+                          message,
+                          parsedMessage,
+                          isCurrentUser
+                        )}
+                      </div>
+                    );
+                  } else if (parsedMessage.type === "ownership_transferred") {
+                    return (
+                      <div
+                        key={`${dateString}-group-${groupIndex}`}
+                        ref={isFirstHighlighted ? highlightedMessageRef : null}
+                        className={wrapperClass}
+                      >
+                        {renderOwnershipTransferredMessage(
+                          message,
+                          parsedMessage,
+                          isCurrentUser
+                        )}
+                      </div>
+                    );
+                  } else if (parsedMessage.type === "ownership_team") {
+                    return (
+                      <div
+                        key={`${dateString}-group-${groupIndex}`}
+                        ref={isFirstHighlighted ? highlightedMessageRef : null}
+                        className={wrapperClass}
+                      >
+                        {renderOwnershipTeamMessage(message, parsedMessage)}
+                      </div>
+                    );
+                  } else if (parsedMessage.type === "team_deleted") {
+                    return (
+                      <div
+                        key={`${dateString}-group-${groupIndex}`}
+                        ref={isFirstHighlighted ? highlightedMessageRef : null}
+                        className={wrapperClass}
+                      >
+                        {renderTeamDeletedMessage(
                           message,
                           parsedMessage,
                           isCurrentUser
