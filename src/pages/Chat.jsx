@@ -24,8 +24,15 @@ const Chat = () => {
   const [onlineUsers, setOnlineUsers] = useState([]);
   const [typingUsers, setTypingUsers] = useState({});
   const [highlightMessageIds, setHighlightMessageIds] = useState([]);
+  const [isTeamArchived, setIsTeamArchived] = useState(false);
 
   const typingTimeoutRef = useRef(null);
+
+  // Conversation type (used for read-only rendering)
+  const conversationType =
+    activeConversation?.type ||
+    new URLSearchParams(window.location.search).get("type") ||
+    "direct";
 
   // Fetch conversations
   useEffect(() => {
@@ -133,6 +140,9 @@ const Chat = () => {
       try {
         setLoading(true);
 
+        // ✅ Reset archived state when switching conversations
+        setIsTeamArchived(false);
+
         const urlParams = new URLSearchParams(window.location.search);
         const type = urlParams.get("type") || "direct";
 
@@ -155,6 +165,13 @@ const Chat = () => {
               console.log("Fetching team details for team ID:", conversationId);
               const teamDetails = await teamService.getTeamById(conversationId);
               console.log("Team details fetched:", teamDetails);
+
+              // ✅ Check if team is archived
+              if (teamDetails.data?.archived_at) {
+                setIsTeamArchived(true);
+              } else {
+                setIsTeamArchived(false);
+              }
 
               if (teamDetails?.data?.members) {
                 console.log("Team members found:", teamDetails.data.members);
@@ -208,11 +225,31 @@ const Chat = () => {
             });
           }
         } catch (error) {
+          // Check if it's an access denied error (user was removed from team)
+          if (error.response?.status === 403) {
+            console.log(
+              "Access denied to this conversation - user may have been removed"
+            );
+            setError("You no longer have access to this conversation.");
+            setLoading(false);
+            // Navigate back to chat list or my teams
+            navigate("/chat");
+            return;
+          }
+
           console.log("Conversation doesn't exist yet, creating it...");
 
           if (type === "team" && conversationDetails?.data) {
             try {
               const teamDetails = await teamService.getTeamById(conversationId);
+
+              // ✅ Check if team is archived (also in fallback path)
+              if (teamDetails.data?.archived_at) {
+                setIsTeamArchived(true);
+              } else {
+                setIsTeamArchived(false);
+              }
+
               if (teamDetails?.data?.members) {
                 conversationDetails.data.team = {
                   ...conversationDetails.data.team,
@@ -256,8 +293,6 @@ const Chat = () => {
           setMessages(fetchedMessages);
           console.log("Messages fetched:", fetchedMessages);
 
-          // Identify unread messages (not sent by current user, no readAt)
-          // These will be highlighted temporarily
           // Check if we need to highlight messages from a specific user (from notification)
           const highlightUser = searchParams.get("highlightUser");
 
@@ -339,7 +374,7 @@ const Chat = () => {
         }
       };
     }
-  }, [isAuthenticated, conversationId, searchParams]);
+  }, [isAuthenticated, conversationId, searchParams, setSearchParams, navigate, user?.id]);
 
   // Set up WebSocket event listeners
   useEffect(() => {
@@ -686,11 +721,21 @@ const Chat = () => {
                   highlightMessageIds={highlightMessageIds}
                 />
               </div>
+
+              {/* ✅ Conditionally render message input for archived team */}
               <div className="p-4 border-t border-base-200">
-                <MessageInput
-                  onSendMessage={handleSendMessage}
-                  onTyping={handleTyping}
-                />
+                {isTeamArchived && conversationType === "team" ? (
+                  <div className="flex items-center justify-center gap-2 py-2 px-4 bg-base-200 rounded-lg text-base-content/60">
+                    <span className="text-sm">
+                      This team has been deleted. Chat is read-only.
+                    </span>
+                  </div>
+                ) : (
+                  <MessageInput
+                    onSendMessage={handleSendMessage}
+                    onTyping={handleTyping}
+                  />
+                )}
               </div>
             </>
           ) : (
