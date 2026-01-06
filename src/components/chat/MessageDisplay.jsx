@@ -235,6 +235,7 @@ const MessageDisplay = ({
   conversationType = "direct",
   teamMembers = [],
   highlightMessageIds = [],
+  onDeleteConversation,
 }) => {
   const messagesEndRef = useRef(null);
   const highlightedMessageRef = useRef(null);
@@ -1146,18 +1147,14 @@ const MessageDisplay = ({
     );
   };
 
-/**
+  /**
    * Render a team deleted message with special formatting (red/error theme)
    * Shows in team chat with option to delete from conversation list
    */
-  const renderTeamDeletedMessage = (
-    message,
-    parsedMessage,
-    isCurrentUser
-  ) => {
+  const renderTeamDeletedMessage = (message, parsedMessage, isCurrentUser) => {
     // isCurrentUser means the current user is the sender (the owner who deleted)
     let messageText;
-    
+
     if (isCurrentUser) {
       // Owner's perspective
       messageText = `You deleted the team "${parsedMessage.teamName}". Former members are not able to answer here anymore.`;
@@ -1170,13 +1167,23 @@ const MessageDisplay = ({
       <div className="flex flex-col items-center w-full my-4">
         {/* Announcement Banner - Red/Error theme */}
         <div
-          className="flex flex-col items-center gap-2 px-4 py-3 rounded-2xl mb-3 max-w-md text-center"
+          className="flex flex-col items-center gap-3 px-5 py-4 rounded-2xl mb-3 max-w-md text-center"
           style={{
             backgroundColor: "rgba(239, 68, 68, 0.1)",
             color: "#dc2626",
           }}
         >
           <span className="text-sm font-medium">{messageText}</span>
+
+          {/* Delete from conversation list link */}
+          {onDeleteConversation && (
+            <button
+              onClick={() => onDeleteConversation()}
+              className="text-xs underline hover:no-underline opacity-80 hover:opacity-100 transition-opacity cursor-pointer"
+            >
+              Delete this chat from your conversation list?
+            </button>
+          )}
         </div>
 
         {/* Timestamp */}

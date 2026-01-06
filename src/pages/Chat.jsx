@@ -374,7 +374,14 @@ const Chat = () => {
         }
       };
     }
-  }, [isAuthenticated, conversationId, searchParams, setSearchParams, navigate, user?.id]);
+  }, [
+    isAuthenticated,
+    conversationId,
+    searchParams,
+    setSearchParams,
+    navigate,
+    user?.id,
+  ]);
 
   // Set up WebSocket event listeners
   useEffect(() => {
@@ -620,6 +627,34 @@ const Chat = () => {
     };
   }, [isAuthenticated, conversationId, user]);
 
+  // Handle deleting a conversation from the list
+  const handleDeleteConversation = async () => {
+    if (!activeConversation) return;
+
+    const confirmDelete = window.confirm(
+      "Are you sure you want to remove this chat from your conversation list?"
+    );
+
+    if (!confirmDelete) return;
+
+    try {
+      const convId = activeConversation.id;
+      const type = activeConversation.type || conversationType;
+
+      // Remove from local state
+      setConversations((prev) => prev.filter((c) => c.id !== convId));
+
+      // Navigate away
+      navigate("/chat");
+
+      setActiveConversation(null);
+      setMessages([]);
+    } catch (error) {
+      console.error("Error deleting conversation:", error);
+      setError("Failed to delete conversation. Please try again.");
+    }
+  };
+
   const handleSendMessage = (content) => {
     if (!content.trim() || !conversationId) return;
 
@@ -719,6 +754,7 @@ const Chat = () => {
                   conversationType={activeConversation?.type || "direct"}
                   teamMembers={activeConversation?.team?.members || []}
                   highlightMessageIds={highlightMessageIds}
+                  onDeleteConversation={handleDeleteConversation}
                 />
               </div>
 
