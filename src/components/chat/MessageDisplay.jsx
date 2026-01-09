@@ -526,10 +526,9 @@ const MessageDisplay = ({
     );
   };
 
-  /**
-   * Render an application approved message with special formatting
-   * Shows announcement banner for when someone joins via application approval
-   */
+  // =============================================================================
+  // renderApplicationApprovedMessage - Green success theme
+  // =============================================================================
   const renderApplicationApprovedMessage = (
     message,
     parsedMessage,
@@ -543,14 +542,8 @@ const MessageDisplay = ({
 
     return (
       <div className="flex flex-col items-center w-full my-4">
-        {/* Announcement Banner - Green theme */}
-        <div
-          className="event-banner mb-3"
-          style={{
-            backgroundColor: "rgba(34, 197, 94, 0.1)",
-            color: "#16a34a",
-          }}
-        >
+        {/* Announcement Banner - Green success theme */}
+        <div className="event-banner event-banner--success mb-3">
           <span className="text-sm font-medium event-message-text">
             <UserPlus size={16} className="event-inline-icon mr-1" />
             {welcomeText}
@@ -566,6 +559,9 @@ const MessageDisplay = ({
     );
   };
 
+  // =============================================================================
+  // renderLeaveMessage - Neutral grey theme (pill shape)
+  // =============================================================================
   const renderLeaveMessage = (message, parsedMessage, isCurrentUser) => {
     const leaveText = isCurrentUser
       ? "You have left the team."
@@ -573,14 +569,47 @@ const MessageDisplay = ({
 
     return (
       <div className="flex flex-col items-center w-full my-4">
-        {/* Announcement Banner */}
-        <div
-          className="event-banner event-banner--neutral mb-3"
-          style={{ borderRadius: "9999px" }}
-        >
+        {/* Announcement Banner - Neutral theme */}
+        <div className="event-banner event-banner--neutral mb-3">
           <span className="text-sm font-medium event-message-text">
             <UserMinus size={16} className="event-inline-icon mr-1" />
             {leaveText}
+          </span>
+        </div>
+
+        {/* Timestamp */}
+        <div className="text-xs text-base-content/50">
+          {format(new Date(message.createdAt), "p")}
+        </div>
+      </div>
+    );
+  };
+
+  // =============================================================================
+  // renderInvitationAcceptedMessage - Green success theme
+  // =============================================================================
+  const renderInvitationAcceptedMessage = (
+    message,
+    parsedMessage,
+    isCurrentUser
+  ) => {
+    let messageText;
+
+    if (isCurrentUser) {
+      // Invitee's perspective (the one who accepted)
+      messageText = `You accepted ${parsedMessage.inviterName}'s invitation for "${parsedMessage.teamName}". Welcome to the team!`;
+    } else {
+      // Inviter's perspective
+      messageText = `${parsedMessage.inviteeName} accepted your invitation for "${parsedMessage.teamName}". Welcome to the team!`;
+    }
+
+    return (
+      <div className="flex flex-col items-center w-full my-4">
+        {/* Announcement Banner - Green success theme */}
+        <div className="event-banner event-banner--success mb-3">
+          <span className="text-sm font-medium event-message-text">
+            {messageText}
+            <PartyPopper size={16} className="event-inline-icon ml-1" />
           </span>
         </div>
 
@@ -613,14 +642,8 @@ const MessageDisplay = ({
 
     return (
       <div className="flex flex-col items-center w-full my-4">
-        {/* Announcement Banner - Green theme */}
-        <div
-          className="event-banner mb-3"
-          style={{
-            backgroundColor: "rgba(34, 197, 94, 0.1)",
-            color: "#16a34a",
-          }}
-        >
+        {/* Announcement Banner - Green success theme */}
+        <div className="event-banner event-banner--success mb-3">
           <span className="text-sm font-medium event-message-text">
             <UserPlus size={16} className="event-inline-icon mr-1" />
             {welcomeText}
@@ -654,24 +677,24 @@ const MessageDisplay = ({
               {/* Message bubble */}
               <div
                 className={`
-                  rounded-lg p-3 
-                  ${
-                    isCurrentUser
-                      ? "bg-green-100 text-base-content rounded-br-none ml-auto"
-                      : "bg-base-200 rounded-bl-none"
-                  }
-                `}
+                rounded-lg p-3 
+                ${
+                  isCurrentUser
+                    ? "bg-green-100 text-base-content rounded-br-none ml-auto"
+                    : "bg-base-200 rounded-bl-none"
+                }
+              `}
               >
                 <p>{parsedMessage.personalMessage}</p>
                 <div
                   className={`
-                    flex justify-end items-center text-xs mt-1 
-                    ${
-                      isCurrentUser
-                        ? "text-base-content/60"
-                        : "text-base-content/50"
-                    }
-                  `}
+                  flex justify-end items-center text-xs mt-1 
+                  ${
+                    isCurrentUser
+                      ? "text-base-content/60"
+                      : "text-base-content/50"
+                  }
+                `}
                 >
                   <span>{format(new Date(message.createdAt), "p")}</span>
                   {isCurrentUser && message.readAt && (
@@ -682,14 +705,20 @@ const MessageDisplay = ({
             </div>
           </div>
         )}
+
+        {/* Timestamp (only if no personal message) */}
+        {!parsedMessage.personalMessage && (
+          <div className="text-xs text-base-content/50">
+            {format(new Date(message.createdAt), "p")}
+          </div>
+        )}
       </div>
     );
   };
 
-  /**
-   * Render an invitation cancelled message with special formatting (violet theme)
-   * Shows different text based on whether viewer is the canceller or the invitee
-   */
+  // =============================================================================
+  // renderInvitationCancelledMessage - Neutral grey theme
+  // =============================================================================
   const renderInvitationCancelledMessage = (
     message,
     parsedMessage,
@@ -708,7 +737,7 @@ const MessageDisplay = ({
 
     return (
       <div className="flex flex-col items-center w-full my-4">
-        {/* Announcement Banner - Violet theme */}
+        {/* Announcement Banner - Neutral grey theme */}
         <div className="event-banner event-banner--neutral mb-3">
           <span className="text-sm font-medium event-message-text">
             {messageText}
@@ -723,10 +752,9 @@ const MessageDisplay = ({
     );
   };
 
-  /**
-   * Render an invitation declined message with special formatting (violet theme)
-   * Shows different text based on whether viewer is the inviter or the invitee
-   */
+  // =============================================================================
+  // renderInvitationDeclinedMessage - Neutral grey theme
+  // =============================================================================
   const renderInvitationDeclinedMessage = (
     message,
     parsedMessage,
@@ -753,7 +781,7 @@ const MessageDisplay = ({
 
     return (
       <div className="flex flex-col items-center w-full my-4">
-        {/* Announcement Banner - grey theme */}
+        {/* Announcement Banner - Neutral grey theme */}
         <div className="event-banner event-banner--neutral mb-3">
           <span className="text-sm font-medium event-message-text">
             {messageText}
@@ -768,9 +796,9 @@ const MessageDisplay = ({
     );
   };
 
-  /**
-   * Render an application decline response message (DM to applicant)
-   */
+  // =============================================================================
+  // renderApplicationResponseMessage - Neutral grey theme
+  // =============================================================================
   const renderApplicationResponseMessage = (
     message,
     parsedMessage,
@@ -795,7 +823,7 @@ const MessageDisplay = ({
       <div className="flex flex-col w-full my-4">
         {/* Info banner */}
         <div className="event-banner event-banner--neutral mb-3 mx-auto">
-          <span className="text-sm">{bannerContent}</span>
+          <span className="text-sm event-message-text">{bannerContent}</span>
         </div>
 
         {/* Personal message bubble */}
@@ -809,6 +837,120 @@ const MessageDisplay = ({
             {!isCurrentUser && renderAvatar(senderInfo, true, senderId)}
 
             <div className="flex flex-col max-w-[70%]">
+              <div
+                className={`
+              rounded-lg p-3 
+              ${
+                isCurrentUser
+                  ? "bg-green-100 text-base-content rounded-br-none ml-auto"
+                  : "bg-base-200 rounded-bl-none"
+              }
+            `}
+              >
+                <p>{parsedMessage.personalMessage}</p>
+                <div
+                  className={`
+                flex justify-end items-center text-xs mt-1 
+                ${
+                  isCurrentUser
+                    ? "text-base-content/60"
+                    : "text-base-content/50"
+                }
+              `}
+                >
+                  <span>{format(new Date(message.createdAt), "p")}</span>
+                  {isCurrentUser && message.readAt && (
+                    <span className="ml-2">✓</span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // =============================================================================
+  // renderApplicationDeclinedMessage - Neutral grey theme
+  // =============================================================================
+  const renderApplicationDeclinedMessage = (
+    message,
+    parsedMessage,
+    isCurrentUser
+  ) => {
+    // isCurrentUser means the current user is the sender (the admin who declined)
+    let messageText;
+
+    if (isCurrentUser) {
+      // Admin's perspective (the one who declined)
+      if (parsedMessage.hasPersonalMessage) {
+        messageText = `You declined ${parsedMessage.applicantName}'s application for "${parsedMessage.teamName}" and added this message:`;
+      } else {
+        messageText = `You declined ${parsedMessage.applicantName}'s application for "${parsedMessage.teamName}". Consider adding a personal message to explain your decision.`;
+      }
+    } else {
+      // Applicant's perspective
+      if (parsedMessage.hasPersonalMessage) {
+        messageText = `Your application to "${parsedMessage.teamName}" was declined by ${parsedMessage.approverName}, who added this message:`;
+      } else {
+        messageText = `Your application to "${parsedMessage.teamName}" was declined by ${parsedMessage.approverName}. Want to reach out to them in this chat?`;
+      }
+    }
+
+    return (
+      <div className="flex flex-col items-center w-full my-4">
+        {/* Announcement Banner - Neutral grey theme */}
+        <div className="event-banner event-banner--neutral mb-3">
+          <span className="text-sm font-medium event-message-text">
+            {messageText}
+          </span>
+        </div>
+
+        {/* Timestamp */}
+        <div className="text-xs text-base-content/50">
+          {format(new Date(message.createdAt), "p")}
+        </div>
+      </div>
+    );
+  };
+
+  // =============================================================================
+  // renderInvitationResponseMessage - Info blue theme
+  // =============================================================================
+  const renderInvitationResponseMessage = (
+    message,
+    parsedMessage,
+    senderInfo,
+    isCurrentUser,
+    senderId
+  ) => {
+    const displayName = getDisplayName(senderInfo);
+
+    return (
+      <div className="flex flex-col w-full my-4">
+        {/* Info banner about the invitation response */}
+        <div className="event-banner event-banner--info mb-3 mx-auto">
+          <span className="text-sm event-message-text">
+            Response to invitation for{" "}
+            <span className="font-medium">{parsedMessage.teamName}</span>
+          </span>
+        </div>
+
+        {/* Personal message bubble */}
+        {parsedMessage.personalMessage && (
+          <div
+            className={`flex ${
+              isCurrentUser ? "justify-end" : "justify-start"
+            } w-full`}
+          >
+            {/* Avatar for others' messages - clickable */}
+            {!isCurrentUser &&
+              conversationType === "direct" &&
+              renderAvatar(senderInfo, true, senderId)}
+
+            <div className="flex flex-col max-w-[70%]">
+              {/* Message bubble */}
               <div
                 className={`
                 rounded-lg p-3 
@@ -843,144 +985,28 @@ const MessageDisplay = ({
     );
   };
 
-  /**
-   * Render an application declined message with special formatting (violet theme)
-   * Shows different text based on whether viewer is the approver or the applicant
-   */
-  const renderApplicationDeclinedMessage = (
-    message,
-    parsedMessage,
-    isCurrentUser
-  ) => {
-    // isCurrentUser means the current user is the sender (the one who declined)
-    let messageText;
-
-    if (isCurrentUser) {
-      // Approver's perspective (Bob viewing)
-      if (parsedMessage.hasPersonalMessage) {
-        messageText = `You declined ${parsedMessage.applicantName}'s application for "${parsedMessage.teamName}" and added this message:`;
-      } else {
-        messageText = `You declined ${parsedMessage.applicantName}'s application for "${parsedMessage.teamName}". Consider adding a personal message to explain your decision.`;
-      }
-    } else {
-      // Applicant's perspective (Michael viewing)
-      if (parsedMessage.hasPersonalMessage) {
-        messageText = `Your application to "${parsedMessage.teamName}" was declined by ${parsedMessage.approverName}, who added this message:`;
-      } else {
-        messageText = `Your application to "${parsedMessage.teamName}" was declined by ${parsedMessage.approverName}. Want to reach out to them in this chat?`;
-      }
-    }
-
-    return (
-      <div className="flex flex-col items-center w-full my-4">
-        {/* Announcement Banner - Grey theme */}
-        <div className="event-banner event-banner--neutral mb-3">
-          <span className="text-sm font-medium event-message-text">
-            {messageText}
-          </span>
-        </div>
-
-        {/* Timestamp */}
-        <div className="text-xs text-base-content/50">
-          {format(new Date(message.createdAt), "p")}
-        </div>
-      </div>
-    );
-  };
-
-  /**
-   * Render an invitation response message (for decline messages in DMs)
-   */
-  const renderInvitationResponseMessage = (
-    message,
-    parsedMessage,
-    senderInfo,
-    isCurrentUser,
-    senderId
-  ) => {
-    const displayName = getDisplayName(senderInfo);
-
-    return (
-      <div className="flex flex-col w-full my-4">
-        {/* Info banner about the invitation response */}
-        <div className="flex items-center justify-center gap-2 bg-info/10 text-info px-4 py-2 rounded-full mb-3 mx-auto">
-          <span className="text-sm">
-            Response to invitation for{" "}
-            <span className="font-medium">{parsedMessage.teamName}</span>
-          </span>
-        </div>
-
-        {/* Personal message bubble */}
-        {parsedMessage.personalMessage && (
-          <div
-            className={`flex ${
-              isCurrentUser ? "justify-end" : "justify-start"
-            } w-full`}
-          >
-            {/* Avatar for others' messages - clickable */}
-            {!isCurrentUser &&
-              conversationType === "direct" &&
-              renderAvatar(senderInfo, true, senderId)}
-
-            <div className="flex flex-col max-w-[70%]">
-              {/* Message bubble */}
-              <div
-                className={`
-                  rounded-lg p-3 
-                  ${
-                    isCurrentUser
-                      ? "bg-green-100 text-base-content rounded-br-none ml-auto"
-                      : "bg-base-200 rounded-bl-none"
-                  }
-                `}
-              >
-                <p>{parsedMessage.personalMessage}</p>
-                <div
-                  className={`
-                    flex justify-end items-center text-xs mt-1 
-                    ${
-                      isCurrentUser
-                        ? "text-base-content/60"
-                        : "text-base-content/50"
-                    }
-                  `}
-                >
-                  <span>{format(new Date(message.createdAt), "p")}</span>
-                  {isCurrentUser && message.readAt && (
-                    <span className="ml-2">✓</span>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  /**
-   * Render an application cancelled message with special formatting (violet theme)
-   * Shows different text based on whether viewer is the applicant or the admin
-   */
+  // =============================================================================
+  // renderApplicationCancelledMessage - Neutral grey theme
+  // =============================================================================
   const renderApplicationCancelledMessage = (
     message,
     parsedMessage,
     isCurrentUser
   ) => {
-    // isCurrentUser means the current user is the sender (the applicant who cancelled)
+    // isCurrentUser means the current user is the sender (the admin who cancelled/withdrew)
     let messageText;
 
     if (isCurrentUser) {
-      // Applicant's perspective
-      messageText = `You withdrew your application for "${parsedMessage.teamName}".`;
-    } else {
       // Admin's perspective
-      messageText = `${parsedMessage.applicantName} withdrew their application for "${parsedMessage.teamName}". Want to reach out to them in this chat?`;
+      messageText = `You cancelled ${parsedMessage.applicantName}'s application for "${parsedMessage.teamName}". Want to tell them why in this chat?`;
+    } else {
+      // Applicant's perspective
+      messageText = `${parsedMessage.adminName} cancelled your application to "${parsedMessage.teamName}". Want to reach out to them in this chat?`;
     }
 
     return (
       <div className="flex flex-col items-center w-full my-4">
-        {/* Announcement Banner - Grey theme */}
+        {/* Announcement Banner - Neutral grey theme */}
         <div className="event-banner event-banner--neutral mb-3">
           <span className="text-sm font-medium event-message-text">
             {messageText}
@@ -995,45 +1021,41 @@ const MessageDisplay = ({
     );
   };
 
-  /**
-   * Render a role changed message with special formatting
-   * Uses green for promotion, violet for demotion
-   */
-  /**
-   * Render a role changed message with special formatting
-   * Uses role-specific colors and icons matching TeamMembersSection
-   */
+  // =============================================================================
+  // renderRoleChangedMessage - Dynamic theme based on new role
+  // =============================================================================
   const renderRoleChangedMessage = (message, parsedMessage, isCurrentUser) => {
     const isPromotion = parsedMessage.newRole === "admin";
     const newRole = parsedMessage.newRole;
 
-    // Get role-specific styling (matching CSS variables from index.css)
-    const getRoleStyle = (role) => {
+    // Get role-specific styling class
+    const getRoleBannerClass = (role) => {
       switch (role) {
         case "owner":
-          return {
-            backgroundColor: "rgba(232, 106, 134, 0.15)", // --color-role-owner-bg
-            color: "#e86a86",
-            Icon: Crown,
-          };
+          return "event-banner--owner";
         case "admin":
-          return {
-            backgroundColor: "rgba(154, 142, 240, 0.15)", // --color-role-admin-bg
-            color: "#9a8ef0",
-            Icon: Shield,
-          };
+          return "event-banner--admin";
         case "member":
         default:
-          return {
-            backgroundColor: "rgba(51, 167, 66, 0.15)", // --color-role-member-bg
-            color: "#33a742",
-            Icon: User,
-          };
+          return "event-banner--member";
       }
     };
 
-    const roleStyle = getRoleStyle(newRole);
-    const RoleIcon = roleStyle.Icon;
+    // Get role icon
+    const getRoleIcon = (role) => {
+      switch (role) {
+        case "owner":
+          return Crown;
+        case "admin":
+          return Shield;
+        case "member":
+        default:
+          return User;
+      }
+    };
+
+    const bannerClass = getRoleBannerClass(newRole);
+    const RoleIcon = getRoleIcon(newRole);
 
     // Build message text
     let messageText;
@@ -1052,17 +1074,10 @@ const MessageDisplay = ({
 
     return (
       <div className="flex flex-col items-center w-full my-4">
-        {/* Announcement Banner */}
-        <div
-          className="px-4 py-3 rounded-2xl mb-3 max-w-md text-center"
-          style={{
-            backgroundColor: roleStyle.backgroundColor,
-            color: roleStyle.color,
-          }}
-        >
+        {/* Announcement Banner - Role-specific theme */}
+        <div className={`event-banner ${bannerClass} mb-3`}>
           <span className="text-sm font-medium event-message-text">
-            <RoleIcon size={18} className="event-inline-icon mr-1" />
-
+            <RoleIcon size={16} className="event-inline-icon mr-1" />
             {messageText}
             {isPromotion && !isCurrentUser && (
               <PartyPopper size={16} className="event-inline-icon ml-1" />
@@ -1078,22 +1093,16 @@ const MessageDisplay = ({
     );
   };
 
-  /**
-   * Render an ownership transferred message for team chat (gold/yellow theme, centered)
-   */
+  // =============================================================================
+  // renderOwnershipTeamMessage - Pink owner theme (team chat)
+  // =============================================================================
   const renderOwnershipTeamMessage = (message, parsedMessage) => {
     return (
       <div className="flex flex-col items-center w-full my-4">
-        {/* Announcement Banner - Gold/Yellow theme */}
-        <div
-          className="px-4 py-3 rounded-2xl mb-3 max-w-md text-center"
-          style={{
-            backgroundColor: "rgba(234, 179, 8, 0.15)",
-            color: "#b45309",
-          }}
-        >
+        {/* Announcement Banner - Pink owner theme */}
+        <div className="event-banner event-banner--owner mb-3">
           <span className="text-sm font-medium event-message-text">
-            <Crown size={18} className="event-inline-icon mr-1" />
+            <Crown size={16} className="event-inline-icon mr-1" />
             {parsedMessage.prevOwnerName} transferred ownership to{" "}
             {parsedMessage.newOwnerName}
           </span>
@@ -1107,9 +1116,9 @@ const MessageDisplay = ({
     );
   };
 
-  /**
-   * Render an ownership transferred message with special formatting (gold/yellow theme)
-   */
+  // =============================================================================
+  // renderOwnershipTransferredMessage - Pink owner theme (DM)
+  // =============================================================================
   const renderOwnershipTransferredMessage = (
     message,
     parsedMessage,
@@ -1128,14 +1137,8 @@ const MessageDisplay = ({
 
     return (
       <div className="flex flex-col items-center w-full my-4">
-        {/* Announcement Banner - Gold/Yellow theme */}
-        <div
-          className="flex items-center justify-center gap-2 px-4 py-3 rounded-2xl mb-3 max-w-md text-center"
-          style={{
-            backgroundColor: "rgba(234, 179, 8, 0.15)",
-            color: "#b45309",
-          }}
-        >
+        {/* Announcement Banner - Pink owner theme */}
+        <div className="event-banner event-banner--owner mb-3">
           <span className="text-sm font-medium event-message-text">
             <Crown size={16} className="event-inline-icon mr-1" />
             {messageText}
