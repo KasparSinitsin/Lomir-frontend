@@ -1,7 +1,15 @@
 import React, { useRef, useEffect, useState } from "react";
 import { format, isToday, isYesterday } from "date-fns";
 import { getUserInitials, getTeamInitials } from "../../utils/userHelpers";
-import { UserPlus, UserMinus, PartyPopper } from "lucide-react";
+import {
+  UserPlus,
+  UserMinus,
+  LogOut,
+  PartyPopper,
+  Crown,
+  Shield,
+  User,
+} from "lucide-react";
 import TeamDetailsModal from "../teams/TeamDetailsModal";
 import UserDetailsModal from "../users/UserDetailsModal";
 
@@ -44,9 +52,11 @@ const parseSystemMessage = (content) => {
   }
 
   // Pattern 3: Application approved message
+  // Supports legacy messages with or without 🎉
   const applicationApprovedMatch = content.match(
-    /^🎉\s+(.+?)\s+has applied successfully to your team and has been added as a team member by (.+?)\.\s*Say hello to them!$/
+    /^(?:🎉\s*)?(.+?)\s+has applied successfully to your team and has been added as a team member by (.+?)\.\s*Say hello to them!$/
   );
+
   if (applicationApprovedMatch) {
     return {
       type: "application_approved",
@@ -183,9 +193,10 @@ const parseSystemMessage = (content) => {
   }
 
   // Pattern 13: Ownership transferred message
-  // Format: 👑 OWNERSHIP_TRANSFERRED: Team Name | Previous Owner Name | New Owner Name
+  // Format (legacy): 👑 OWNERSHIP_TRANSFERRED: Team Name | Previous Owner Name | New Owner Name
+  // Format (new):    OWNERSHIP_TRANSFERRED: Team Name | Previous Owner Name | New Owner Name
   const ownershipTransferredMatch = content.match(
-    /^👑\s+OWNERSHIP_TRANSFERRED:\s+(.+?)\s+\|\s+(.+?)\s+\|\s+(.+)$/
+    /^(?:👑\s*)?OWNERSHIP_TRANSFERRED:\s+(.+?)\s+\|\s+(.+?)\s+\|\s+(.+)$/
   );
   if (ownershipTransferredMatch) {
     return {
@@ -197,9 +208,10 @@ const parseSystemMessage = (content) => {
   }
 
   // Pattern 14: Ownership transferred team chat message
-  // Format: 👑 OWNERSHIP_TEAM: Previous Owner Name | New Owner Name
+  // Format (legacy): 👑 OWNERSHIP_TEAM: Previous Owner Name | New Owner Name
+  // Format (new):    OWNERSHIP_TEAM: Previous Owner Name | New Owner Name
   const ownershipTeamMatch = content.match(
-    /^👑\s+OWNERSHIP_TEAM:\s+(.+?)\s+\|\s+(.+)$/
+    /^(?:👑\s*)?OWNERSHIP_TEAM:\s+(.+?)\s+\|\s+(.+)$/
   );
   if (ownershipTeamMatch) {
     return {
@@ -236,6 +248,7 @@ const MessageDisplay = ({
   teamMembers = [],
   highlightMessageIds = [],
   onDeleteConversation,
+  onLeaveTeam,
 }) => {
   const messagesEndRef = useRef(null);
   const highlightedMessageRef = useRef(null);
@@ -452,7 +465,7 @@ const MessageDisplay = ({
                 isFormerMember || !senderInfo.avatarUrl ? "flex" : "none",
             }}
           >
-            <span className="text-sm font-medium">
+            <span className="text-sm font-medium event-message-text">
               {isFormerMember ? "FM" : getUserInitials(senderInfo)}
             </span>
           </div>
@@ -478,14 +491,14 @@ const MessageDisplay = ({
       if (parsedMessage.hasPersonalMessage) {
         messageText = `You approved ${parsedMessage.applicantName}'s application for "${parsedMessage.teamName}" and added this message:`;
       } else {
-        messageText = `You approved ${parsedMessage.applicantName}'s application for "${parsedMessage.teamName}".`;
+        messageText = `You approved ${parsedMessage.applicantName}'s application for "${parsedMessage.teamName}"`;
       }
     } else {
       // Applicant's perspective
       if (parsedMessage.hasPersonalMessage) {
         messageText = `Your application to "${parsedMessage.teamName}" was approved by ${parsedMessage.approverName}, who added this message:`;
       } else {
-        messageText = `Your application to "${parsedMessage.teamName}" was approved by ${parsedMessage.approverName}. Welcome to the team! 🎉`;
+        messageText = `Your application to "${parsedMessage.teamName}" was approved by ${parsedMessage.approverName}. Welcome to the team!`;
       }
     }
 
@@ -499,7 +512,10 @@ const MessageDisplay = ({
             color: "#16a34a",
           }}
         >
-          <span className="text-sm font-medium">{messageText}</span>
+          <span className="text-sm font-medium event-message-text">
+            {messageText}
+            <PartyPopper size={16} className="event-inline-icon ml-1" />
+          </span>
         </div>
 
         {/* Timestamp */}
@@ -527,18 +543,18 @@ const MessageDisplay = ({
 
     return (
       <div className="flex flex-col items-center w-full my-4">
-        {/* Announcement Banner */}
-        <div className="bg-success/10 text-success px-4 py-2 rounded-full mb-3 text-center">
-          <span className="text-sm font-medium">
-            <UserPlus
-              size={16}
-              className="inline-block align-text-bottom mr-1"
-            />
+        {/* Announcement Banner - Green theme */}
+        <div
+          className="event-banner mb-3"
+          style={{
+            backgroundColor: "rgba(34, 197, 94, 0.1)",
+            color: "#16a34a",
+          }}
+        >
+          <span className="text-sm font-medium event-message-text">
+            <UserPlus size={16} className="event-inline-icon mr-1" />
             {welcomeText}
-            <PartyPopper
-              size={16}
-              className="inline-block align-text-bottom ml-1"
-            />
+            <PartyPopper size={16} className="event-inline-icon ml-1" />
           </span>
         </div>
 
@@ -559,14 +575,13 @@ const MessageDisplay = ({
       <div className="flex flex-col items-center w-full my-4">
         {/* Announcement Banner */}
         <div
-          className="flex items-center justify-center gap-2 px-4 py-2 rounded-full mb-3"
-          style={{
-            backgroundColor: "rgba(107, 114, 128, 0.1)",
-            color: "#6b7280",
-          }}
+          className="event-banner event-banner--neutral mb-3"
+          style={{ borderRadius: "9999px" }}
         >
-          <UserMinus size={16} />
-          <span className="text-sm font-medium">{leaveText}</span>
+          <span className="text-sm font-medium event-message-text">
+            <UserMinus size={16} className="event-inline-icon mr-1" />
+            {leaveText}
+          </span>
         </div>
 
         {/* Timestamp */}
@@ -594,15 +609,23 @@ const MessageDisplay = ({
     const pronoun = isCurrentUser ? "you" : "them";
     const welcomeText = isCurrentUser
       ? `You joined the team. Welcome aboard!`
-      : `${parsedMessage.userName} has joined your team. Say hello to ${pronoun}!`;
+      : `${parsedMessage.userName} has followed your invite and joined your team. Say hello to ${pronoun}!`;
 
     return (
       <div className="flex flex-col items-center w-full my-4">
-        {/* Announcement Banner */}
-        <div className="flex items-center justify-center gap-2 bg-success/10 text-success px-4 py-2 rounded-full mb-3">
-          <UserPlus size={16} />
-          <span className="text-sm font-medium">{welcomeText}</span>
-          <PartyPopper size={16} />
+        {/* Announcement Banner - Green theme */}
+        <div
+          className="event-banner mb-3"
+          style={{
+            backgroundColor: "rgba(34, 197, 94, 0.1)",
+            color: "#16a34a",
+          }}
+        >
+          <span className="text-sm font-medium event-message-text">
+            <UserPlus size={16} className="event-inline-icon mr-1" />
+            {welcomeText}
+            <PartyPopper size={16} className="event-inline-icon ml-1" />
+          </span>
         </div>
 
         {/* Personal message bubble */}
@@ -677,7 +700,7 @@ const MessageDisplay = ({
 
     if (isCurrentUser) {
       // Canceller's perspective
-      messageText = `You cancelled your invitation for ${parsedMessage.inviteeName} to join "${parsedMessage.teamName}".`;
+      messageText = `You cancelled your invitation for ${parsedMessage.inviteeName} to join "${parsedMessage.teamName}". Want to tell them why in this chat?`;
     } else {
       // Invitee's perspective
       messageText = `${parsedMessage.cancellerName} cancelled your invitation to join "${parsedMessage.teamName}". Want to reach out to them in this chat?`;
@@ -686,14 +709,10 @@ const MessageDisplay = ({
     return (
       <div className="flex flex-col items-center w-full my-4">
         {/* Announcement Banner - Violet theme */}
-        <div
-          className="flex items-center justify-center gap-2 px-4 py-3 rounded-2xl mb-3 max-w-md text-center"
-          style={{
-            backgroundColor: "rgba(139, 92, 246, 0.1)",
-            color: "#7c3aed",
-          }}
-        >
-          <span className="text-sm font-medium">{messageText}</span>
+        <div className="event-banner event-banner--neutral mb-3">
+          <span className="text-sm font-medium event-message-text">
+            {messageText}
+          </span>
         </div>
 
         {/* Timestamp */}
@@ -734,15 +753,11 @@ const MessageDisplay = ({
 
     return (
       <div className="flex flex-col items-center w-full my-4">
-        {/* Announcement Banner - Violet theme */}
-        <div
-          className="flex items-center justify-center gap-2 px-4 py-3 rounded-2xl mb-3 max-w-md text-center"
-          style={{
-            backgroundColor: "rgba(139, 92, 246, 0.1)",
-            color: "#7c3aed",
-          }}
-        >
-          <span className="text-sm font-medium">{messageText}</span>
+        {/* Announcement Banner - grey theme */}
+        <div className="event-banner event-banner--neutral mb-3">
+          <span className="text-sm font-medium event-message-text">
+            {messageText}
+          </span>
         </div>
 
         {/* Timestamp */}
@@ -779,7 +794,7 @@ const MessageDisplay = ({
     return (
       <div className="flex flex-col w-full my-4">
         {/* Info banner */}
-        <div className="flex items-center justify-center gap-2 bg-info/10 text-info px-4 py-2 rounded-full mb-3 mx-auto">
+        <div className="event-banner event-banner--neutral mb-3 mx-auto">
           <span className="text-sm">{bannerContent}</span>
         </div>
 
@@ -858,15 +873,11 @@ const MessageDisplay = ({
 
     return (
       <div className="flex flex-col items-center w-full my-4">
-        {/* Announcement Banner - Violet theme */}
-        <div
-          className="flex items-center justify-center gap-2 px-4 py-3 rounded-2xl mb-3 max-w-md text-center"
-          style={{
-            backgroundColor: "rgba(139, 92, 246, 0.1)",
-            color: "#7c3aed",
-          }}
-        >
-          <span className="text-sm font-medium">{messageText}</span>
+        {/* Announcement Banner - Grey theme */}
+        <div className="event-banner event-banner--neutral mb-3">
+          <span className="text-sm font-medium event-message-text">
+            {messageText}
+          </span>
         </div>
 
         {/* Timestamp */}
@@ -969,15 +980,11 @@ const MessageDisplay = ({
 
     return (
       <div className="flex flex-col items-center w-full my-4">
-        {/* Announcement Banner - Violet theme */}
-        <div
-          className="flex items-center justify-center gap-2 px-4 py-3 rounded-2xl mb-3 max-w-md text-center"
-          style={{
-            backgroundColor: "rgba(139, 92, 246, 0.1)",
-            color: "#7c3aed",
-          }}
-        >
-          <span className="text-sm font-medium">{messageText}</span>
+        {/* Announcement Banner - Grey theme */}
+        <div className="event-banner event-banner--neutral mb-3">
+          <span className="text-sm font-medium event-message-text">
+            {messageText}
+          </span>
         </div>
 
         {/* Timestamp */}
@@ -992,11 +999,43 @@ const MessageDisplay = ({
    * Render a role changed message with special formatting
    * Uses green for promotion, violet for demotion
    */
+  /**
+   * Render a role changed message with special formatting
+   * Uses role-specific colors and icons matching TeamMembersSection
+   */
   const renderRoleChangedMessage = (message, parsedMessage, isCurrentUser) => {
     const isPromotion = parsedMessage.newRole === "admin";
-    const actionWord = isPromotion ? "promoted" : "changed";
+    const newRole = parsedMessage.newRole;
 
-    // isCurrentUser means the current user is the sender (the one who changed the role)
+    // Get role-specific styling (matching CSS variables from index.css)
+    const getRoleStyle = (role) => {
+      switch (role) {
+        case "owner":
+          return {
+            backgroundColor: "rgba(232, 106, 134, 0.15)", // --color-role-owner-bg
+            color: "#e86a86",
+            Icon: Crown,
+          };
+        case "admin":
+          return {
+            backgroundColor: "rgba(154, 142, 240, 0.15)", // --color-role-admin-bg
+            color: "#9a8ef0",
+            Icon: Shield,
+          };
+        case "member":
+        default:
+          return {
+            backgroundColor: "rgba(51, 167, 66, 0.15)", // --color-role-member-bg
+            color: "#33a742",
+            Icon: User,
+          };
+      }
+    };
+
+    const roleStyle = getRoleStyle(newRole);
+    const RoleIcon = roleStyle.Icon;
+
+    // Build message text
     let messageText;
 
     if (isCurrentUser) {
@@ -1007,27 +1046,28 @@ const MessageDisplay = ({
     } else {
       // Affected member's perspective
       messageText = isPromotion
-        ? `You were promoted to Admin in "${parsedMessage.teamName}" by ${parsedMessage.changerName}. Congratulations! 🎉`
+        ? `You were promoted to Admin in "${parsedMessage.teamName}" by ${parsedMessage.changerName}.`
         : `Your role in "${parsedMessage.teamName}" was changed to Member by ${parsedMessage.changerName}.`;
     }
-
-    // Use green for promotion, violet for demotion
-    const backgroundColor = isPromotion
-      ? "rgba(34, 197, 94, 0.1)"
-      : "rgba(139, 92, 246, 0.1)";
-    const textColor = isPromotion ? "#16a34a" : "#7c3aed";
 
     return (
       <div className="flex flex-col items-center w-full my-4">
         {/* Announcement Banner */}
         <div
-          className="flex items-center justify-center gap-2 px-4 py-3 rounded-2xl mb-3 max-w-md text-center"
+          className="px-4 py-3 rounded-2xl mb-3 max-w-md text-center"
           style={{
-            backgroundColor: backgroundColor,
-            color: textColor,
+            backgroundColor: roleStyle.backgroundColor,
+            color: roleStyle.color,
           }}
         >
-          <span className="text-sm font-medium">{messageText}</span>
+          <span className="text-sm font-medium event-message-text">
+            <RoleIcon size={18} className="event-inline-icon mr-1" />
+
+            {messageText}
+            {isPromotion && !isCurrentUser && (
+              <PartyPopper size={16} className="event-inline-icon ml-1" />
+            )}
+          </span>
         </div>
 
         {/* Timestamp */}
@@ -1046,14 +1086,15 @@ const MessageDisplay = ({
       <div className="flex flex-col items-center w-full my-4">
         {/* Announcement Banner - Gold/Yellow theme */}
         <div
-          className="flex items-center justify-center gap-2 px-4 py-2 rounded-full mb-3"
+          className="px-4 py-3 rounded-2xl mb-3 max-w-md text-center"
           style={{
             backgroundColor: "rgba(234, 179, 8, 0.15)",
             color: "#b45309",
           }}
         >
-          <span className="text-sm font-medium">
-            👑 {parsedMessage.prevOwnerName} transferred ownership to{" "}
+          <span className="text-sm font-medium event-message-text">
+            <Crown size={18} className="event-inline-icon mr-1" />
+            {parsedMessage.prevOwnerName} transferred ownership to{" "}
             {parsedMessage.newOwnerName}
           </span>
         </div>
@@ -1079,10 +1120,10 @@ const MessageDisplay = ({
 
     if (isCurrentUser) {
       // Previous owner's perspective
-      messageText = `You transferred ownership of "${parsedMessage.teamName}" to ${parsedMessage.newOwnerName}.`;
+      messageText = `You transferred team ownership of "${parsedMessage.teamName}" to ${parsedMessage.newOwnerName}.`;
     } else {
       // New owner's perspective
-      messageText = `${parsedMessage.prevOwnerName} transferred ownership of "${parsedMessage.teamName}" to you. Congratulations! 👑`;
+      messageText = `${parsedMessage.prevOwnerName} transferred ownership of "${parsedMessage.teamName}" to you. Congratulations!`;
     }
 
     return (
@@ -1095,7 +1136,11 @@ const MessageDisplay = ({
             color: "#b45309",
           }}
         >
-          <span className="text-sm font-medium">{messageText}</span>
+          <span className="text-sm font-medium event-message-text">
+            <Crown size={16} className="event-inline-icon mr-1" />
+            {messageText}
+            <PartyPopper size={16} className="event-inline-icon ml-1" />
+          </span>
         </div>
 
         {/* Timestamp */}
@@ -1128,15 +1173,11 @@ const MessageDisplay = ({
 
     return (
       <div className="flex flex-col items-center w-full my-4">
-        {/* Announcement Banner - Violet theme */}
-        <div
-          className="flex items-center justify-center gap-2 px-4 py-3 rounded-2xl mb-3 max-w-md text-center"
-          style={{
-            backgroundColor: "rgba(139, 92, 246, 0.1)",
-            color: "#7c3aed",
-          }}
-        >
-          <span className="text-sm font-medium">{messageText}</span>
+        {/* Announcement Banner - Grey theme */}
+        <div className="event-banner event-banner--neutral mb-3">
+          <span className="text-sm font-medium event-message-text">
+            {messageText}
+          </span>
         </div>
 
         {/* Timestamp */}
@@ -1157,10 +1198,10 @@ const MessageDisplay = ({
 
     if (isCurrentUser) {
       // Owner's perspective
-      messageText = `You deleted the team "${parsedMessage.teamName}". Former members are not able to answer here anymore.`;
+      messageText = `You deleted the team "${parsedMessage.teamName}". Remaining members are able to text in this chat until the last member leaves.`;
     } else {
       // Member's perspective
-      messageText = `${parsedMessage.ownerName} has deleted the team "${parsedMessage.teamName}". Former members are not able to answer here anymore.`;
+      messageText = `${parsedMessage.ownerName} has deleted the team "${parsedMessage.teamName}". Remaining members are able to text in this chat until the last member leaves.`;
     }
 
     return (
@@ -1173,15 +1214,18 @@ const MessageDisplay = ({
             color: "#dc2626",
           }}
         >
-          <span className="text-sm font-medium">{messageText}</span>
+          <span className="text-sm font-medium event-message-text">
+            {messageText}
+          </span>
 
-          {/* Delete from conversation list link */}
-          {onDeleteConversation && (
+          {/* Leave Team Button */}
+          {onLeaveTeam && (
             <button
-              onClick={() => onDeleteConversation()}
-              className="text-xs underline hover:no-underline opacity-80 hover:opacity-100 transition-opacity cursor-pointer"
+              onClick={() => onLeaveTeam()}
+              className="flex items-center gap-1 text-xs underline hover:no-underline opacity-80 hover:opacity-100 transition-opacity cursor-pointer"
             >
-              Delete this chat from your conversation list?
+              <LogOut size={14} />
+              Leave team and remove from chat list
             </button>
           )}
         </div>
@@ -1702,19 +1746,8 @@ const MessageDisplay = ({
                       </div>
                     );
                   } else if (parsedMessage.type === "team_deleted") {
-                    return (
-                      <div
-                        key={`${dateString}-group-${groupIndex}`}
-                        ref={isFirstHighlighted ? highlightedMessageRef : null}
-                        className={wrapperClass}
-                      >
-                        {renderTeamDeletedMessage(
-                          message,
-                          parsedMessage,
-                          isCurrentUser
-                        )}
-                      </div>
-                    );
+                    // Don't render in message history - shown as fixed banner above input
+                    return null;
                   }
                 }
               }
