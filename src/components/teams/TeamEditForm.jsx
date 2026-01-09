@@ -2,6 +2,7 @@ import React, { useState, useCallback } from "react";
 import Button from "../common/Button";
 import IconToggle from "../common/IconToggle";
 import axios from "axios";
+import { getTeamInitials } from "../../utils/userHelpers";
 
 /**
  * TeamEditForm Component

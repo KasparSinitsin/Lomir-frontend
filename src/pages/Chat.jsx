@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { LogOut } from "lucide-react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import PageContainer from "../components/layout/PageContainer";
 import ConversationList from "../components/chat/ConversationList";
@@ -27,6 +28,62 @@ const Chat = () => {
   const [isTeamArchived, setIsTeamArchived] = useState(false);
 
   const typingTimeoutRef = useRef(null);
+
+  // ---- Message de-duplication (focus: ownership/system duplicates) ----
+  const toMinuteBucket = (isoOrDate) => {
+    try {
+      const d = isoOrDate ? new Date(isoOrDate) : null;
+      if (!d || Number.isNaN(d.getTime())) return "";
+      return d.toISOString().slice(0, 16); // YYYY-MM-DDTHH:MM
+    } catch {
+      return "";
+    }
+  };
+
+  const buildMessageDedupeKey = (msg) => {
+    const content = (msg?.content || "").trim();
+    const minute = toMinuteBucket(msg?.createdAt);
+    const senderId = msg?.senderId ?? "";
+
+    // OWNERSHIP_TEAM (legacy emoji optional)
+    let m = content.match(/^(?:👑\s*)?OWNERSHIP_TEAM:\s*(.+?)\s*\|\s*(.+)\s*$/);
+    if (m) return `ownership_team|${m[1].trim()}|${m[2].trim()}|${minute}`;
+
+    // OWNERSHIP_TRANSFERRED (legacy emoji optional)
+    m = content.match(
+      /^(?:👑\s*)?OWNERSHIP_TRANSFERRED:\s*(.+?)\s*\|\s*(.+?)\s*\|\s*(.+)\s*$/
+    );
+    if (m)
+      return `ownership_transferred|${m[1].trim()}|${m[2].trim()}|${m[3].trim()}|${minute}`;
+
+    // Plain team chat sentence variant
+    m = content.match(
+      /^(.+?)\s+transferred\s+(?:team\s+)?ownership\s+to\s+(.+?)\.?$/i
+    );
+    if (m)
+      return `ownership_team_plain|${m[1].trim()}|${m[2].trim()}|${minute}`;
+
+    // Plain DM sentence variant
+    m = content.match(
+      /^(.+?)\s+transferred\s+ownership\s+of\s+"(.+?)"\s+to\s+you\.\s*Congratulations!?\.?$/i
+    );
+    if (m) return `ownership_dm_plain|${m[1].trim()}|${m[2].trim()}|${minute}`;
+
+    // Fallback: exact duplicates per minute
+    return `generic|${senderId}|${content}|${minute}`;
+  };
+
+  const dedupeMessages = (list) => {
+    const seen = new Set();
+    const out = [];
+    for (const msg of list || []) {
+      const key = buildMessageDedupeKey(msg);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(msg);
+    }
+    return out;
+  };
 
   // Conversation type (used for read-only rendering)
   const conversationType =
@@ -164,10 +221,20 @@ const Chat = () => {
             try {
               console.log("Fetching team details for team ID:", conversationId);
               const teamDetails = await teamService.getTeamById(conversationId);
+              console.log("=== ARCHIVED TEAM DEBUG ===");
+              console.log("teamDetails.data:", teamDetails.data);
+              console.log("archived_at:", teamDetails.data?.archived_at);
+              console.log(
+                "isTeamArchived will be:",
+                !!teamDetails.data?.archived_at
+              );
               console.log("Team details fetched:", teamDetails);
 
               // ✅ Check if team is archived
-              if (teamDetails.data?.archived_at) {
+              if (
+                teamDetails.data?.archived_at ||
+                teamDetails.data?.status === "inactive"
+              ) {
                 setIsTeamArchived(true);
               } else {
                 setIsTeamArchived(false);
@@ -242,9 +309,19 @@ const Chat = () => {
           if (type === "team" && conversationDetails?.data) {
             try {
               const teamDetails = await teamService.getTeamById(conversationId);
+              console.log("=== ARCHIVED TEAM DEBUG ===");
+              console.log("teamDetails.data:", teamDetails.data);
+              console.log("archived_at:", teamDetails.data?.archived_at);
+              console.log(
+                "isTeamArchived will be:",
+                !!teamDetails.data?.archived_at
+              );
 
               // ✅ Check if team is archived (also in fallback path)
-              if (teamDetails.data?.archived_at) {
+              if (
+                teamDetails.data?.archived_at ||
+                teamDetails.data?.status === "inactive"
+              ) {
                 setIsTeamArchived(true);
               } else {
                 setIsTeamArchived(false);
@@ -290,7 +367,8 @@ const Chat = () => {
             type
           );
           const fetchedMessages = messagesResponse.data || [];
-          setMessages(fetchedMessages);
+          setMessages(dedupeMessages(fetchedMessages));
+
           console.log("Messages fetched:", fetchedMessages);
 
           // Check if we need to highlight messages from a specific user (from notification)
@@ -441,7 +519,7 @@ const Chat = () => {
               type: message.type,
             };
 
-            return [...withoutOptimistic, newMessage];
+            return dedupeMessages([...withoutOptimistic, newMessage]);
           } else {
             const messageExists = prev.some((msg) => msg.id === message.id);
             if (messageExists) {
@@ -457,7 +535,7 @@ const Chat = () => {
               type: message.type,
             };
 
-            return [...prev, newMessage];
+            return dedupeMessages([...prev, newMessage]);
           }
         });
 
@@ -627,9 +705,49 @@ const Chat = () => {
     };
   }, [isAuthenticated, conversationId, user]);
 
+  // Handle leaving a deleted team (removes from conversation list)
+  const handleLeaveTeam = async () => {
+    if (!activeConversation?.team?.id) {
+      console.log("No team ID found");
+      return;
+    }
+
+    const teamId = activeConversation.team.id;
+    const teamName = activeConversation.team.name || "this team";
+
+    const confirmLeave = window.confirm(
+      `Are you sure you want to leave "${teamName}"? This will remove the chat from your conversation list.`
+    );
+
+    if (!confirmLeave) return;
+
+    try {
+      // Call the existing leave team API
+      await teamService.removeTeamMember(teamId, user.id);
+
+      // Remove from local conversation list
+      setConversations((prev) => prev.filter((c) => c.id !== teamId));
+
+      // Navigate away
+      navigate("/chat");
+
+      setActiveConversation(null);
+      setMessages([]);
+    } catch (error) {
+      console.error("Error leaving team:", error);
+      setError("Failed to leave team. Please try again.");
+    }
+  };
+
   // Handle deleting a conversation from the list
   const handleDeleteConversation = async () => {
-    if (!activeConversation) return;
+    console.log("=== handleDeleteConversation CALLED ===");
+    console.log("activeConversation:", activeConversation);
+
+    if (!activeConversation) {
+      console.log("❌ No active conversation - returning early");
+      return;
+    }
 
     const confirmDelete = window.confirm(
       "Are you sure you want to remove this chat from your conversation list?"
@@ -755,23 +873,51 @@ const Chat = () => {
                   teamMembers={activeConversation?.team?.members || []}
                   highlightMessageIds={highlightMessageIds}
                   onDeleteConversation={handleDeleteConversation}
+                  onLeaveTeam={handleLeaveTeam}
                 />
               </div>
 
-              {/* ✅ Conditionally render message input for archived team */}
-              <div className="p-4 border-t border-base-200">
-                {isTeamArchived && conversationType === "team" ? (
-                  <div className="flex items-center justify-center gap-2 py-2 px-4 bg-base-200 rounded-lg text-base-content/60">
-                    <span className="text-sm">
-                      This team has been deleted. Chat is read-only.
+              {/* Deleted team banner + message input */}
+              <div className="border-t border-base-200">
+                {/* Show banner for archived teams */}
+                {isTeamArchived && conversationType === "team" && (
+                  <div
+                    className="flex flex-col items-center gap-3 px-5 py-4 mx-4 mt-4 rounded-2xl text-center"
+                    style={{
+                      backgroundColor: "rgba(239, 68, 68, 0.1)",
+                      color: "#dc2626",
+                    }}
+                  >
+                    <span className="text-sm font-medium">
+                      {activeConversation?.team?.ownerId === user?.id
+                        ? `You deleted the team "${
+                            activeConversation?.team?.name || "this team"
+                          }". Remaining members are able to text in this chat until the last member leaves.`
+                        : `${
+                            activeConversation?.team?.ownerName || "The owner"
+                          } has deleted the team "${
+                            activeConversation?.team?.name || "this team"
+                          }". Remaining members are able to text in this chat until the last member leaves.`}
                     </span>
+
+                    {/* Leave Team Button */}
+                    <button
+                      onClick={() => handleLeaveTeam()}
+                      className="flex items-center gap-1 text-xs underline hover:no-underline opacity-80 hover:opacity-100 transition-opacity cursor-pointer"
+                    >
+                      <LogOut size={14} />
+                      Leave team and remove from chat list
+                    </button>
                   </div>
-                ) : (
+                )}
+
+                {/* Always show message input */}
+                <div className="p-4">
                   <MessageInput
                     onSendMessage={handleSendMessage}
                     onTyping={handleTyping}
                   />
-                )}
+                </div>
               </div>
             </>
           ) : (
