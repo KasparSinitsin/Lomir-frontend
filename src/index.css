@@ -547,27 +547,27 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1rem; /* matches px-4 py-3 */
-  border-radius: 1rem; /* matches rounded-2xl */
-  max-width: 28rem; /* matches max-w-md */
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  padding: 0.75rem 1rem;
+  border-radius: 1rem;
+  max-width: 28rem;
   text-align: center;
 }
 
-.event-banner--neutral {
-  background-color: rgba(107, 114, 128, 0.1); /* same as leave message */
-  color: #6b7280; /* same as leave message */
-}
+
 
 /* Inline icons inside event messages (baseline aligned, fixed sizing) */
 .event-inline-icon {
   display: inline-block;
-  vertical-align: -0.15em; /* nudges svg down to sit nicely on the text baseline */
+  vertical-align: -0.15em;
+  flex-shrink: 0;
 }
 
-/* Event message typography */
+/* Event message typography - UPDATED for consistency */
 .event-message-text {
-  line-height: 1.4; /* Matches "You joined the team. Welcome aboard!" */
+  line-height: 1.5;
+  display: inline;
 }
 
 /* Success / positive event banner */
@@ -576,8 +576,51 @@ body {
   color: #16a34a; /* green-600 */
 }
 
-/* Violet admin / authority event messages */
-.event-banner--admin {
-  background-color: rgba(139, 92, 246, 0.1);
-  color: #7c3aed;
+/* Owner / ownership transfer event banner (pink theme) */
+.event-banner--owner {
+  background-color: rgba(232, 106, 134, 0.15); /* --color-role-owner-bg @ 15% */
+  color: #e86a86; /* --color-role-owner-bg (full pink) */
 }
+
+/* ===== Event Banner Color Variants ===== */
+
+.event-banner--neutral {
+  background-color: rgba(107, 114, 128, 0.1); /* same as leave message */
+  color: #6b7280; /* same as leave message */
+}
+
+/* Success / green theme (join, approved, accepted) */
+.event-banner--success {
+  background-color: rgba(34, 197, 94, 0.1);
+  color: #16a34a;
+}
+
+/* Owner / pink theme (ownership transfer) */
+.event-banner--owner {
+  background-color: rgba(232, 106, 134, 0.15);
+  color: #e86a86;
+}
+
+/* Admin / violet theme (role changes to admin) */
+.event-banner--admin {
+  background-color: rgba(154, 142, 240, 0.15);
+  color: #9a8ef0;
+}
+
+/* Member / green theme (role changes to member) */
+.event-banner--member {
+  background-color: rgba(51, 167, 66, 0.15);
+  color: #33a742;
+}
+
+/* Info / blue theme (invitation responses, general info) */
+.event-banner--info {
+  background-color: rgba(59, 130, 246, 0.1);
+  color: #2563eb;
+}
+
+
+
+
+
+
