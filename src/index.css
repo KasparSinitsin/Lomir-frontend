@@ -555,8 +555,6 @@ body {
   text-align: center;
 }
 
-
-
 /* Inline icons inside event messages (baseline aligned, fixed sizing) */
 .event-inline-icon {
   display: inline-block;
@@ -618,9 +616,3 @@ body {
   background-color: rgba(59, 130, 246, 0.1);
   color: #2563eb;
 }
-
-
-
-
-
-
