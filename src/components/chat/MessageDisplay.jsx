@@ -12,6 +12,14 @@ import {
 } from "lucide-react";
 import TeamDetailsModal from "../teams/TeamDetailsModal";
 import UserDetailsModal from "../users/UserDetailsModal";
+import { userService } from "../../services/userService";
+
+const parseIdNameToken = (token) => {
+  const t = (token || "").trim();
+  const m = t.match(/^(\d+)\s*:(.+)$/);
+  if (!m) return { id: null, name: t };
+  return { id: Number(m[1]), name: m[2].trim() };
+};
 
 /**
  * Parse system messages (join notifications, invitation responses)
@@ -19,11 +27,6 @@ import UserDetailsModal from "../users/UserDetailsModal";
  */
 const parseSystemMessage = (content) => {
   if (!content) return null;
-
-  // DEBUG - remove after testing
-  if (content.includes("left the team")) {
-    console.log("Leave message content:", JSON.stringify(content));
-  }
 
   // Pattern 1: Team join message
   // Format: 👋 Name joined the team!\n\n"personal message"
@@ -79,12 +82,24 @@ const parseSystemMessage = (content) => {
     };
   }
 
-  // Pattern 5: Team leave message
+  // Pattern 5A (NEW): Team leave message with userId
+  // Format: 🚪 MEMBER_LEFT:<userId>:<displayName>
+  const leaveIdMatch = content.match(/^🚪\s*MEMBER_LEFT:(\d+):(.+)$/);
+  if (leaveIdMatch) {
+    return {
+      type: "team_leave",
+      userId: Number(leaveIdMatch[1]),
+      userName: leaveIdMatch[2].trim(),
+    };
+  }
+
+  // Pattern 5B (LEGACY): Team leave message
   // Format: 🚪 Name has left the team.
   const leaveMatch = content.match(/^🚪\s+(.+?)\s+has left the team\.$/);
   if (leaveMatch) {
     return {
       type: "team_leave",
+      userId: null,
       userName: leaveMatch[1].trim(),
     };
   }
@@ -94,12 +109,22 @@ const parseSystemMessage = (content) => {
   const applicationDeclinedMatch = content.match(
     /^🚫\s+APPLICATION_DECLINED:\s+(.+?)\s+\|\s+(.+?)\s+\|\s+(.+?)\s+\|\s+(true|false)$/
   );
+
   if (applicationDeclinedMatch) {
+    const teamName = applicationDeclinedMatch[1].trim();
+    const approverToken = applicationDeclinedMatch[2].trim();
+    const applicantToken = applicationDeclinedMatch[3].trim();
+
+    const approver = parseIdNameToken(approverToken);
+    const applicant = parseIdNameToken(applicantToken);
+
     return {
       type: "application_declined",
-      teamName: applicationDeclinedMatch[1].trim(),
-      approverName: applicationDeclinedMatch[2].trim(),
-      applicantName: applicationDeclinedMatch[3].trim(),
+      teamName,
+      approverId: approver.id,
+      approverName: approver.name,
+      applicantId: applicant.id,
+      applicantName: applicant.name,
       hasPersonalMessage: applicationDeclinedMatch[4] === "true",
     };
   }
@@ -110,11 +135,21 @@ const parseSystemMessage = (content) => {
     /^✅\s+APPLICATION_APPROVED:\s+(.+?)\s+\|\s+(.+?)\s+\|\s+(.+?)\s+\|\s+(true|false)$/
   );
   if (applicationApprovedDmMatch) {
+    const teamName = applicationApprovedDmMatch[1].trim();
+
+    const approverToken = applicationApprovedDmMatch[2].trim(); // "id:name" or "name"
+    const applicantToken = applicationApprovedDmMatch[3].trim(); // "id:name" or "name"
+
+    const approver = parseIdNameToken(approverToken);
+    const applicant = parseIdNameToken(applicantToken);
+
     return {
       type: "application_approved_dm",
-      teamName: applicationApprovedDmMatch[1].trim(),
-      approverName: applicationApprovedDmMatch[2].trim(),
-      applicantName: applicationApprovedDmMatch[3].trim(),
+      teamName,
+      approverId: approver.id,
+      approverName: approver.name,
+      applicantId: applicant.id,
+      applicantName: applicant.name,
       hasPersonalMessage: applicationApprovedDmMatch[4] === "true",
     };
   }
@@ -168,11 +203,20 @@ const parseSystemMessage = (content) => {
     /^🚫\s+MEMBER_REMOVED:\s+(.+?)\s+\|\s+(.+?)\s+\|\s+(.+)$/
   );
   if (memberRemovedMatch) {
+    const teamName = memberRemovedMatch[1].trim();
+    const removerToken = memberRemovedMatch[2].trim(); // "id:name" or "name"
+    const memberToken = memberRemovedMatch[3].trim(); // "id:name" or "name"
+
+    const remover = parseIdNameToken(removerToken);
+    const member = parseIdNameToken(memberToken);
+
     return {
       type: "member_removed",
-      teamName: memberRemovedMatch[1].trim(),
-      removerName: memberRemovedMatch[2].trim(),
-      memberName: memberRemovedMatch[3].trim(),
+      teamName,
+      removerId: remover.id,
+      removerName: remover.name,
+      memberId: member.id,
+      memberName: member.name,
     };
   }
 
@@ -182,34 +226,48 @@ const parseSystemMessage = (content) => {
     /^🔄\s+ROLE_CHANGED:\s+(.+?)\s+\|\s+(.+?)\s+\|\s+(.+?)\s+\|\s+(.+?)\s+\|\s+(.+)$/
   );
   if (roleChangedMatch) {
+    const teamName = roleChangedMatch[1].trim();
+    const changerToken = roleChangedMatch[2].trim(); // "id:name" or "name"
+    const memberToken = roleChangedMatch[3].trim(); // "id:name" or "name"
+
+    const changer = parseIdNameToken(changerToken);
+    const member = parseIdNameToken(memberToken);
+
     return {
       type: "role_changed",
-      teamName: roleChangedMatch[1].trim(),
-      changerName: roleChangedMatch[2].trim(),
-      memberName: roleChangedMatch[3].trim(),
+      teamName,
+      changerId: changer.id,
+      changerName: changer.name,
+      memberId: member.id,
+      memberName: member.name,
       oldRole: roleChangedMatch[4].trim(),
       newRole: roleChangedMatch[5].trim(),
     };
   }
 
-  // Pattern 13: Ownership transferred message
-  // Format (legacy): 👑 OWNERSHIP_TRANSFERRED: Team Name | Previous Owner Name | New Owner Name
-  // Format (new):    OWNERSHIP_TRANSFERRED: Team Name | Previous Owner Name | New Owner Name
+  // Pattern 13: Ownership transferred message (DM)
   const ownershipTransferredMatch = content.match(
     /^(?:👑\s*)?OWNERSHIP_TRANSFERRED:\s+(.+?)\s+\|\s+(.+?)\s+\|\s+(.+)$/
   );
   if (ownershipTransferredMatch) {
+    const teamName = ownershipTransferredMatch[1].trim();
+    const prevToken = ownershipTransferredMatch[2].trim(); // "id:name" or "name"
+    const newToken = ownershipTransferredMatch[3].trim(); // "id:name" or "name"
+
+    const prev = parseIdNameToken(prevToken);
+    const next = parseIdNameToken(newToken);
+
     return {
       type: "ownership_transferred",
-      teamName: ownershipTransferredMatch[1].trim(),
-      prevOwnerName: ownershipTransferredMatch[2].trim(),
-      newOwnerName: ownershipTransferredMatch[3].trim(),
+      teamName,
+      prevOwnerId: prev.id,
+      prevOwnerName: prev.name,
+      newOwnerId: next.id,
+      newOwnerName: next.name,
     };
   }
 
   // Pattern 14: Ownership transferred team chat message
-  // Format (legacy): 👑 OWNERSHIP_TEAM: Previous Owner Name | New Owner Name
-  // Format (new):    OWNERSHIP_TEAM: Previous Owner Name | New Owner Name
   const ownershipTeamMatch = content.match(
     /^(?:👑\s*)?OWNERSHIP_TEAM:\s+(.+?)\s+\|\s+(.+)$/
   );
@@ -222,7 +280,6 @@ const parseSystemMessage = (content) => {
   }
 
   // Pattern 15: Team deleted message
-  // Format: 🗑️ TEAM_DELETED: Team Name | Owner Name
   const teamDeletedMatch = content.match(
     /^🗑️\s+TEAM_DELETED:\s+(.+?)\s+\|\s+(.+)$/
   );
@@ -259,6 +316,12 @@ const MessageDisplay = ({
   // State for user details modal
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState(null);
+
+  // Mention lookup (frontend-only)
+  const [resolvingName, setResolvingName] = useState(false);
+  const [nameResolveError, setNameResolveError] = useState(null);
+
+  const [nameToIdCache, setNameToIdCache] = useState({});
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -300,9 +363,9 @@ const MessageDisplay = ({
 
   // Handle team avatar/name click
   const handleTeamClick = () => {
-    if (teamData?.id) {
-      setIsTeamModalOpen(true);
-    }
+    if (conversationType !== "team") return;
+    if (!teamData?.id) return;
+    setIsTeamModalOpen(true);
   };
 
   // Handle closing the team details modal
@@ -310,18 +373,140 @@ const MessageDisplay = ({
     setIsTeamModalOpen(false);
   };
 
+  // -----------------------
+  // Mention lookup helpers
+  // -----------------------
+  const normalizeName = (s = "") =>
+    s
+      .trim()
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "") // remove accents
+      .replace(/\s+/g, " ");
+
   // Handle user avatar/name click
-  const handleUserClick = (userId) => {
-    if (userId) {
-      setSelectedUserId(userId);
-      setIsUserModalOpen(true);
+  const handleUserClick = (userId, knownName = null) => {
+    if (!userId) return;
+
+    // Cache if we know a display name
+    if (knownName) {
+      setNameToIdCache((prev) => ({
+        ...prev,
+        [normalizeName(knownName)]: userId,
+      }));
     }
+
+    setSelectedUserId(userId);
+    setIsUserModalOpen(true);
   };
 
   // Handle closing the user details modal
   const handleUserModalClose = () => {
     setIsUserModalOpen(false);
     setSelectedUserId(null);
+  };
+
+  const getTeamMemberFullName = (m) => {
+    const first = m.first_name ?? m.firstName;
+    const last = m.last_name ?? m.lastName;
+    if (first && last) return `${first} ${last}`;
+    if (first) return first;
+    return m.username ?? "";
+  };
+
+  const resolveUserIdFromTeamMembers = (name) => {
+    const target = normalizeName(name);
+    if (!target) return null;
+
+    const match = (teamMembers || []).find((m) => {
+      const full = getTeamMemberFullName(m);
+      return normalizeName(full) === target;
+    });
+
+    return match?.user_id ?? match?.userId ?? null;
+  };
+
+  const resolveUserIdByName = async (name) => {
+    // 1) best: teamMembers (team chat)
+    const cached = nameToIdCache[normalizeName(name)];
+    if (cached) return cached;
+
+    const fromTeam = resolveUserIdFromTeamMembers(name);
+    if (fromTeam) return fromTeam;
+
+    // 2) fallback: backend search (your endpoint currently returns placeholder [])
+    const res = await userService.searchUsers(name);
+    const users = res?.data?.data || [];
+
+    if (users.length === 1) return users[0].id;
+
+    // try exact match when multiple results
+    const target = normalizeName(name);
+    const exact = users.find((u) => {
+      const full =
+        u.firstName && u.lastName ? `${u.firstName} ${u.lastName}` : u.username;
+      return normalizeName(full) === target;
+    });
+
+    return exact?.id ?? null;
+  };
+
+  const handleMentionClick = async (name) => {
+    const safe = (name || "").trim().replace(/\s+/g, " ");
+
+    if (!safe) return;
+
+    try {
+      setNameResolveError(null);
+      setResolvingName(true);
+
+      const userId = await resolveUserIdByName(safe);
+
+      if (!userId) {
+        setNameResolveError(`Could not open "${safe}" (user not found).`);
+        return;
+      }
+
+      handleUserClick(userId, safe);
+    } catch (err) {
+      console.error("Error resolving user by name:", err);
+      setNameResolveError(`Could not look up "${safe}".`);
+    } finally {
+      setResolvingName(false);
+    }
+  };
+
+  const Mention = ({ name }) => {
+    const safe = (name || "").trim();
+    if (!safe) return null;
+
+    return (
+      <button
+        type="button"
+        className="font-medium underline underline-offset-2 hover:no-underline hover:text-primary transition-colors"
+        onClick={() => handleMentionClick(safe)}
+        disabled={resolvingName}
+        title={`Open ${safe}`}
+      >
+        {safe}
+      </button>
+    );
+  };
+
+  const MentionById = ({ userId, name }) => {
+    const safeName = (name || "").trim() || "User";
+    if (!userId) return <Mention name={safeName} />;
+
+    return (
+      <button
+        type="button"
+        className="font-medium underline underline-offset-2 hover:no-underline hover:text-primary transition-colors"
+        onClick={() => handleUserClick(userId, safeName)}
+        title={`Open ${safeName}`}
+      >
+        {safeName}
+      </button>
+    );
   };
 
   if (loading) {
@@ -483,28 +668,57 @@ const MessageDisplay = ({
     parsedMessage,
     isCurrentUser
   ) => {
-    // isCurrentUser means the current user is the sender (the one who approved)
-    let messageText;
+    const approver = parsedMessage.approverName;
+    const applicant = parsedMessage.applicantName;
+    const teamName = parsedMessage.teamName;
 
-    if (isCurrentUser) {
-      // Approver's perspective
-      if (parsedMessage.hasPersonalMessage) {
-        messageText = `You approved ${parsedMessage.applicantName}'s application for "${parsedMessage.teamName}" and added this message:`;
-      } else {
-        messageText = `You approved ${parsedMessage.applicantName}'s application for "${parsedMessage.teamName}"`;
-      }
-    } else {
-      // Applicant's perspective
-      if (parsedMessage.hasPersonalMessage) {
-        messageText = `Your application to "${parsedMessage.teamName}" was approved by ${parsedMessage.approverName}, who added this message:`;
-      } else {
-        messageText = `Your application to "${parsedMessage.teamName}" was approved by ${parsedMessage.approverName}. Welcome to the team!`;
-      }
-    }
+    const messageText = isCurrentUser ? (
+      parsedMessage.hasPersonalMessage ? (
+        <>
+          You approved{" "}
+          <MentionById
+            userId={parsedMessage.applicantId}
+            name={parsedMessage.applicantName}
+          />
+          {"'s"} application for{" "}
+          <span className="font-medium">"{teamName}"</span> and added this
+          message:
+        </>
+      ) : (
+        <>
+          You approved{" "}
+          <MentionById
+            userId={parsedMessage.applicantId}
+            name={parsedMessage.applicantName}
+          />
+          {"'s"} application for{" "}
+          <span className="font-medium">"{teamName}"</span>
+        </>
+      )
+    ) : parsedMessage.hasPersonalMessage ? (
+      <>
+        Your application to <span className="font-medium">"{teamName}"</span>{" "}
+        was approved by{" "}
+        <MentionById
+          userId={parsedMessage.approverId}
+          name={parsedMessage.approverName}
+        />
+        , who added this message:
+      </>
+    ) : (
+      <>
+        Your application to <span className="font-medium">"{teamName}"</span>{" "}
+        was approved by{" "}
+        <MentionById
+          userId={parsedMessage.approverId}
+          name={parsedMessage.approverName}
+        />
+        . Welcome to the team!
+      </>
+    );
 
     return (
       <div className="flex flex-col items-center w-full my-4">
-        {/* Announcement Banner - Green theme */}
         <div
           className="flex items-center justify-center gap-2 px-4 py-3 rounded-2xl mb-3 max-w-md text-center"
           style={{
@@ -518,7 +732,6 @@ const MessageDisplay = ({
           </span>
         </div>
 
-        {/* Timestamp */}
         <div className="text-xs text-base-content/50">
           {format(new Date(message.createdAt), "p")}
         </div>
@@ -536,13 +749,23 @@ const MessageDisplay = ({
     isCurrentUser,
     senderId
   ) => {
-    const welcomeText = isCurrentUser
-      ? `Your application was approved by ${parsedMessage.approverName}. Welcome to the team!`
-      : `${parsedMessage.applicantName} has applied successfully and was added by ${parsedMessage.approverName}. Say hello to them!`;
+    const applicant = parsedMessage.applicantName;
+    const approver = parsedMessage.approverName;
+
+    const welcomeText = isCurrentUser ? (
+      <>
+        Your application was approved by <Mention name={approver} />. Welcome to
+        the team!
+      </>
+    ) : (
+      <>
+        <Mention name={applicant} /> has applied successfully and was added by{" "}
+        <Mention name={approver} />. Say hello to them!
+      </>
+    );
 
     return (
       <div className="flex flex-col items-center w-full my-4">
-        {/* Announcement Banner - Green success theme */}
         <div className="event-banner event-banner--success mb-3">
           <span className="text-sm font-medium event-message-text">
             <UserPlus size={16} className="event-inline-icon mr-1" />
@@ -551,7 +774,6 @@ const MessageDisplay = ({
           </span>
         </div>
 
-        {/* Timestamp */}
         <div className="text-xs text-base-content/50">
           {format(new Date(message.createdAt), "p")}
         </div>
@@ -563,13 +785,20 @@ const MessageDisplay = ({
   // renderLeaveMessage - Neutral grey theme (pill shape)
   // =============================================================================
   const renderLeaveMessage = (message, parsedMessage, isCurrentUser) => {
-    const leaveText = isCurrentUser
-      ? "You have left the team."
-      : `${parsedMessage.userName} has left the team.`;
+    const leaveText = isCurrentUser ? (
+      "You have left the team."
+    ) : (
+      <>
+        <MentionById
+          userId={parsedMessage.userId}
+          name={parsedMessage.userName}
+        />{" "}
+        has left the team.
+      </>
+    );
 
     return (
       <div className="flex flex-col items-center w-full my-4">
-        {/* Announcement Banner - Neutral theme */}
         <div className="event-banner event-banner--neutral mb-3">
           <span className="text-sm font-medium event-message-text">
             <UserMinus size={16} className="event-inline-icon mr-1" />
@@ -577,7 +806,6 @@ const MessageDisplay = ({
           </span>
         </div>
 
-        {/* Timestamp */}
         <div className="text-xs text-base-content/50">
           {format(new Date(message.createdAt), "p")}
         </div>
@@ -593,19 +821,23 @@ const MessageDisplay = ({
     parsedMessage,
     isCurrentUser
   ) => {
-    let messageText;
-
-    if (isCurrentUser) {
-      // Invitee's perspective (the one who accepted)
-      messageText = `You accepted ${parsedMessage.inviterName}'s invitation for "${parsedMessage.teamName}". Welcome to the team!`;
-    } else {
-      // Inviter's perspective
-      messageText = `${parsedMessage.inviteeName} accepted your invitation for "${parsedMessage.teamName}". Welcome to the team!`;
-    }
+    const messageText = isCurrentUser ? (
+      <>
+        You accepted <Mention name={parsedMessage.inviterName} />
+        {"'s"} invitation for{" "}
+        <span className="font-medium">"{parsedMessage.teamName}"</span>. Welcome
+        to the team!
+      </>
+    ) : (
+      <>
+        <Mention name={parsedMessage.inviteeName} /> accepted your invitation
+        for <span className="font-medium">"{parsedMessage.teamName}"</span>.
+        Welcome to the team!
+      </>
+    );
 
     return (
       <div className="flex flex-col items-center w-full my-4">
-        {/* Announcement Banner - Green success theme */}
         <div className="event-banner event-banner--success mb-3">
           <span className="text-sm font-medium event-message-text">
             {messageText}
@@ -613,7 +845,6 @@ const MessageDisplay = ({
           </span>
         </div>
 
-        {/* Timestamp */}
         <div className="text-xs text-base-content/50">
           {format(new Date(message.createdAt), "p")}
         </div>
@@ -634,15 +865,18 @@ const MessageDisplay = ({
   ) => {
     const displayName = getDisplayName(senderInfo);
 
-    // Determine the pronoun based on whether it's the current user
     const pronoun = isCurrentUser ? "you" : "them";
-    const welcomeText = isCurrentUser
-      ? `You joined the team. Welcome aboard!`
-      : `${parsedMessage.userName} has followed your invite and joined your team. Say hello to ${pronoun}!`;
+    const welcomeText = isCurrentUser ? (
+      <>You joined the team. Welcome aboard!</>
+    ) : (
+      <>
+        <Mention name={parsedMessage.userName} /> has followed your invite and
+        joined your team. Say hello to {pronoun}!
+      </>
+    );
 
     return (
       <div className="flex flex-col items-center w-full my-4">
-        {/* Announcement Banner - Green success theme */}
         <div className="event-banner event-banner--success mb-3">
           <span className="text-sm font-medium event-message-text">
             <UserPlus size={16} className="event-inline-icon mr-1" />
@@ -651,50 +885,46 @@ const MessageDisplay = ({
           </span>
         </div>
 
-        {/* Personal message bubble */}
         {parsedMessage.personalMessage && (
           <div
             className={`flex ${
               isCurrentUser ? "justify-end" : "justify-start"
             } w-full`}
           >
-            {/* Avatar for others' messages - clickable */}
             {!isCurrentUser && renderAvatar(senderInfo, true, senderId)}
 
             <div className="flex flex-col max-w-[70%]">
-              {/* Sender name for team chats - clickable */}
               {!isCurrentUser && (
                 <div
                   className="text-xs font-medium mb-1 ml-3 cursor-pointer hover:text-primary transition-colors"
                   style={{ color: "#036b0c" }}
-                  onClick={() => handleUserClick(senderId)}
+                  onClick={() => handleUserClick(senderId, displayName)}
                   title={`View ${displayName} details`}
                 >
                   {displayName}
                 </div>
               )}
 
-              {/* Message bubble */}
               <div
                 className={`
-                rounded-lg p-3 
-                ${
-                  isCurrentUser
-                    ? "bg-green-100 text-base-content rounded-br-none ml-auto"
-                    : "bg-base-200 rounded-bl-none"
-                }
-              `}
+                  rounded-lg p-3 
+                  ${
+                    isCurrentUser
+                      ? "bg-green-100 text-base-content rounded-br-none ml-auto"
+                      : "bg-base-200 rounded-bl-none"
+                  }
+                `}
               >
                 <p>{parsedMessage.personalMessage}</p>
                 <div
                   className={`
-                  flex justify-end items-center text-xs mt-1 
-                  ${
-                    isCurrentUser
-                      ? "text-base-content/60"
-                      : "text-base-content/50"
-                  }
-                `}
+                    flex justify-end items-center text-xs mt-1 
+                    ${
+                      isCurrentUser
+                        ? "text-base-content/60"
+                        : "text-base-content/50"
+                    }
+                  `}
                 >
                   <span>{format(new Date(message.createdAt), "p")}</span>
                   {isCurrentUser && message.readAt && (
@@ -706,7 +936,6 @@ const MessageDisplay = ({
           </div>
         )}
 
-        {/* Timestamp (only if no personal message) */}
         {!parsedMessage.personalMessage && (
           <div className="text-xs text-base-content/50">
             {format(new Date(message.createdAt), "p")}
@@ -724,27 +953,29 @@ const MessageDisplay = ({
     parsedMessage,
     isCurrentUser
   ) => {
-    // isCurrentUser means the current user is the sender (the one who cancelled)
-    let messageText;
-
-    if (isCurrentUser) {
-      // Canceller's perspective
-      messageText = `You cancelled your invitation for ${parsedMessage.inviteeName} to join "${parsedMessage.teamName}". Want to tell them why in this chat?`;
-    } else {
-      // Invitee's perspective
-      messageText = `${parsedMessage.cancellerName} cancelled your invitation to join "${parsedMessage.teamName}". Want to reach out to them in this chat?`;
-    }
+    const messageText = isCurrentUser ? (
+      <>
+        You cancelled your invitation for{" "}
+        <Mention name={parsedMessage.inviteeName} /> to join{" "}
+        <span className="font-medium">"{parsedMessage.teamName}"</span>. Want to
+        tell them why in this chat?
+      </>
+    ) : (
+      <>
+        <Mention name={parsedMessage.cancellerName} /> cancelled your invitation
+        to join <span className="font-medium">"{parsedMessage.teamName}"</span>
+        {". "}Want to reach out to them in this chat?
+      </>
+    );
 
     return (
       <div className="flex flex-col items-center w-full my-4">
-        {/* Announcement Banner - Neutral grey theme */}
         <div className="event-banner event-banner--neutral mb-3">
           <span className="text-sm font-medium event-message-text">
             {messageText}
           </span>
         </div>
 
-        {/* Timestamp */}
         <div className="text-xs text-base-content/50">
           {format(new Date(message.createdAt), "p")}
         </div>
@@ -760,35 +991,44 @@ const MessageDisplay = ({
     parsedMessage,
     isCurrentUser
   ) => {
-    // isCurrentUser means the current user is the sender (the one who declined = invitee)
-    let messageText;
+    const team = parsedMessage.teamName;
 
-    if (isCurrentUser) {
-      // Invitee's perspective (the one who declined)
-      if (parsedMessage.hasPersonalMessage) {
-        messageText = `You declined ${parsedMessage.inviterName}'s invitation for "${parsedMessage.teamName}" and added this message:`;
-      } else {
-        messageText = `You declined ${parsedMessage.inviterName}'s invitation for "${parsedMessage.teamName}". Consider adding a personal message to explain your decision.`;
-      }
-    } else {
-      // Inviter's perspective (the one who sent the invite)
-      if (parsedMessage.hasPersonalMessage) {
-        messageText = `Your invitation for "${parsedMessage.teamName}" was declined by ${parsedMessage.inviteeName}, who added this message:`;
-      } else {
-        messageText = `Your invitation for "${parsedMessage.teamName}" was declined by ${parsedMessage.inviteeName}. Want to reach out to them in this chat?`;
-      }
-    }
+    const messageText = isCurrentUser ? (
+      parsedMessage.hasPersonalMessage ? (
+        <>
+          You declined <Mention name={parsedMessage.inviterName} />
+          {"'s"} invitation for <span className="font-medium">"{team}"</span>{" "}
+          and added this message:
+        </>
+      ) : (
+        <>
+          You declined <Mention name={parsedMessage.inviterName} />
+          {"'s"} invitation for <span className="font-medium">"{team}"</span>.
+          Consider adding a personal message to explain your decision.
+        </>
+      )
+    ) : parsedMessage.hasPersonalMessage ? (
+      <>
+        Your invitation for <span className="font-medium">"{team}"</span> was
+        declined by <Mention name={parsedMessage.inviteeName} />, who added this
+        message:
+      </>
+    ) : (
+      <>
+        Your invitation for <span className="font-medium">"{team}"</span> was
+        declined by <Mention name={parsedMessage.inviteeName} />. Want to reach
+        out to them in this chat?
+      </>
+    );
 
     return (
       <div className="flex flex-col items-center w-full my-4">
-        {/* Announcement Banner - Neutral grey theme */}
         <div className="event-banner event-banner--neutral mb-3">
           <span className="text-sm font-medium event-message-text">
             {messageText}
           </span>
         </div>
 
-        {/* Timestamp */}
         <div className="text-xs text-base-content/50">
           {format(new Date(message.createdAt), "p")}
         </div>
@@ -806,10 +1046,10 @@ const MessageDisplay = ({
     isCurrentUser,
     senderId
   ) => {
-    // Different banner text based on who is viewing
     const bannerContent = isCurrentUser ? (
       <>
-        Your decline response to {parsedMessage.applicantName}'s application for{" "}
+        Your decline response to <Mention name={parsedMessage.applicantName} />
+        {"'s"} application for{" "}
         <span className="font-medium">{parsedMessage.teamName}</span>
       </>
     ) : (
@@ -821,42 +1061,39 @@ const MessageDisplay = ({
 
     return (
       <div className="flex flex-col w-full my-4">
-        {/* Info banner */}
         <div className="event-banner event-banner--neutral mb-3 mx-auto">
           <span className="text-sm event-message-text">{bannerContent}</span>
         </div>
 
-        {/* Personal message bubble */}
         {parsedMessage.personalMessage && (
           <div
             className={`flex ${
               isCurrentUser ? "justify-end" : "justify-start"
             } w-full`}
           >
-            {/* Avatar for others' messages */}
             {!isCurrentUser && renderAvatar(senderInfo, true, senderId)}
 
             <div className="flex flex-col max-w-[70%]">
               <div
                 className={`
-              rounded-lg p-3 
-              ${
-                isCurrentUser
-                  ? "bg-green-100 text-base-content rounded-br-none ml-auto"
-                  : "bg-base-200 rounded-bl-none"
-              }
-            `}
+                  rounded-lg p-3 
+                  ${
+                    isCurrentUser
+                      ? "bg-green-100 text-base-content rounded-br-none ml-auto"
+                      : "bg-base-200 rounded-bl-none"
+                  }
+                `}
               >
                 <p>{parsedMessage.personalMessage}</p>
                 <div
                   className={`
-                flex justify-end items-center text-xs mt-1 
-                ${
-                  isCurrentUser
-                    ? "text-base-content/60"
-                    : "text-base-content/50"
-                }
-              `}
+                    flex justify-end items-center text-xs mt-1 
+                    ${
+                      isCurrentUser
+                        ? "text-base-content/60"
+                        : "text-base-content/50"
+                    }
+                  `}
                 >
                   <span>{format(new Date(message.createdAt), "p")}</span>
                   {isCurrentUser && message.readAt && (
@@ -879,35 +1116,60 @@ const MessageDisplay = ({
     parsedMessage,
     isCurrentUser
   ) => {
-    // isCurrentUser means the current user is the sender (the admin who declined)
-    let messageText;
+    const team = parsedMessage.teamName;
 
-    if (isCurrentUser) {
-      // Admin's perspective (the one who declined)
-      if (parsedMessage.hasPersonalMessage) {
-        messageText = `You declined ${parsedMessage.applicantName}'s application for "${parsedMessage.teamName}" and added this message:`;
-      } else {
-        messageText = `You declined ${parsedMessage.applicantName}'s application for "${parsedMessage.teamName}". Consider adding a personal message to explain your decision.`;
-      }
-    } else {
-      // Applicant's perspective
-      if (parsedMessage.hasPersonalMessage) {
-        messageText = `Your application to "${parsedMessage.teamName}" was declined by ${parsedMessage.approverName}, who added this message:`;
-      } else {
-        messageText = `Your application to "${parsedMessage.teamName}" was declined by ${parsedMessage.approverName}. Want to reach out to them in this chat?`;
-      }
-    }
+    const messageText = isCurrentUser ? (
+      parsedMessage.hasPersonalMessage ? (
+        <>
+          You declined{" "}
+          <MentionById
+            userId={parsedMessage.applicantId}
+            name={parsedMessage.applicantName}
+          />
+          {"'s"} application for <span className="font-medium">"{team}"</span>{" "}
+          and added this message:
+        </>
+      ) : (
+        <>
+          You declined{" "}
+          <MentionById
+            userId={parsedMessage.applicantId}
+            name={parsedMessage.applicantName}
+          />
+          {"'s"} application for <span className="font-medium">"{team}"</span>.
+          Consider adding a personal message to explain your decision.
+        </>
+      )
+    ) : parsedMessage.hasPersonalMessage ? (
+      <>
+        Your application to <span className="font-medium">"{team}"</span> was
+        declined by{" "}
+        <MentionById
+          userId={parsedMessage.approverId}
+          name={parsedMessage.approverName}
+        />
+        {", "}who added this message:
+      </>
+    ) : (
+      <>
+        Your application to <span className="font-medium">"{team}"</span> was
+        declined by{" "}
+        <MentionById
+          userId={parsedMessage.approverId}
+          name={parsedMessage.approverName}
+        />
+        {". "}Want to reach out to them in this chat?
+      </>
+    );
 
     return (
       <div className="flex flex-col items-center w-full my-4">
-        {/* Announcement Banner - Neutral grey theme */}
         <div className="event-banner event-banner--neutral mb-3">
           <span className="text-sm font-medium event-message-text">
             {messageText}
           </span>
         </div>
 
-        {/* Timestamp */}
         <div className="text-xs text-base-content/50">
           {format(new Date(message.createdAt), "p")}
         </div>
@@ -925,11 +1187,8 @@ const MessageDisplay = ({
     isCurrentUser,
     senderId
   ) => {
-    const displayName = getDisplayName(senderInfo);
-
     return (
       <div className="flex flex-col w-full my-4">
-        {/* Info banner about the invitation response */}
         <div className="event-banner event-banner--info mb-3 mx-auto">
           <span className="text-sm event-message-text">
             Response to invitation for{" "}
@@ -937,40 +1196,37 @@ const MessageDisplay = ({
           </span>
         </div>
 
-        {/* Personal message bubble */}
         {parsedMessage.personalMessage && (
           <div
             className={`flex ${
               isCurrentUser ? "justify-end" : "justify-start"
             } w-full`}
           >
-            {/* Avatar for others' messages - clickable */}
             {!isCurrentUser &&
               conversationType === "direct" &&
               renderAvatar(senderInfo, true, senderId)}
 
             <div className="flex flex-col max-w-[70%]">
-              {/* Message bubble */}
               <div
                 className={`
-                rounded-lg p-3 
-                ${
-                  isCurrentUser
-                    ? "bg-green-100 text-base-content rounded-br-none ml-auto"
-                    : "bg-base-200 rounded-bl-none"
-                }
-              `}
+                  rounded-lg p-3 
+                  ${
+                    isCurrentUser
+                      ? "bg-green-100 text-base-content rounded-br-none ml-auto"
+                      : "bg-base-200 rounded-bl-none"
+                  }
+                `}
               >
                 <p>{parsedMessage.personalMessage}</p>
                 <div
                   className={`
-                  flex justify-end items-center text-xs mt-1 
-                  ${
-                    isCurrentUser
-                      ? "text-base-content/60"
-                      : "text-base-content/50"
-                  }
-                `}
+                    flex justify-end items-center text-xs mt-1 
+                    ${
+                      isCurrentUser
+                        ? "text-base-content/60"
+                        : "text-base-content/50"
+                    }
+                  `}
                 >
                   <span>{format(new Date(message.createdAt), "p")}</span>
                   {isCurrentUser && message.readAt && (
@@ -993,27 +1249,29 @@ const MessageDisplay = ({
     parsedMessage,
     isCurrentUser
   ) => {
-    // isCurrentUser means the current user is the sender (the admin who cancelled/withdrew)
-    let messageText;
-
-    if (isCurrentUser) {
-      // Admin's perspective
-      messageText = `You cancelled ${parsedMessage.applicantName}'s application for "${parsedMessage.teamName}". Want to tell them why in this chat?`;
-    } else {
-      // Applicant's perspective
-      messageText = `${parsedMessage.adminName} cancelled your application to "${parsedMessage.teamName}". Want to reach out to them in this chat?`;
-    }
+    const messageText = isCurrentUser ? (
+      <>
+        You cancelled <Mention name={parsedMessage.applicantName} />
+        {"'s"} application for{" "}
+        <span className="font-medium">"{parsedMessage.teamName}"</span>. Want to
+        tell them why in this chat?
+      </>
+    ) : (
+      <>
+        <Mention name={parsedMessage.adminName} /> cancelled your application to{" "}
+        <span className="font-medium">"{parsedMessage.teamName}"</span>. Want to
+        reach out to them in this chat?
+      </>
+    );
 
     return (
       <div className="flex flex-col items-center w-full my-4">
-        {/* Announcement Banner - Neutral grey theme */}
         <div className="event-banner event-banner--neutral mb-3">
           <span className="text-sm font-medium event-message-text">
             {messageText}
           </span>
         </div>
 
-        {/* Timestamp */}
         <div className="text-xs text-base-content/50">
           {format(new Date(message.createdAt), "p")}
         </div>
@@ -1028,7 +1286,6 @@ const MessageDisplay = ({
     const isPromotion = parsedMessage.newRole === "admin";
     const newRole = parsedMessage.newRole;
 
-    // Get role-specific styling class
     const getRoleBannerClass = (role) => {
       switch (role) {
         case "owner":
@@ -1041,7 +1298,6 @@ const MessageDisplay = ({
       }
     };
 
-    // Get role icon
     const getRoleIcon = (role) => {
       switch (role) {
         case "owner":
@@ -1057,24 +1313,53 @@ const MessageDisplay = ({
     const bannerClass = getRoleBannerClass(newRole);
     const RoleIcon = getRoleIcon(newRole);
 
-    // Build message text
-    let messageText;
-
-    if (isCurrentUser) {
-      // Changer's perspective (admin/owner)
-      messageText = isPromotion
-        ? `You promoted ${parsedMessage.memberName} to Admin in "${parsedMessage.teamName}".`
-        : `You changed ${parsedMessage.memberName}'s role to Member in "${parsedMessage.teamName}".`;
-    } else {
-      // Affected member's perspective
-      messageText = isPromotion
-        ? `You were promoted to Admin in "${parsedMessage.teamName}" by ${parsedMessage.changerName}.`
-        : `Your role in "${parsedMessage.teamName}" was changed to Member by ${parsedMessage.changerName}.`;
-    }
+    const messageText = isCurrentUser ? (
+      isPromotion ? (
+        <>
+          You promoted{" "}
+          <MentionById
+            userId={parsedMessage.memberId}
+            name={parsedMessage.memberName}
+          />{" "}
+          to Admin in{" "}
+          <span className="font-medium">"{parsedMessage.teamName}"</span>.
+        </>
+      ) : (
+        <>
+          You changed{" "}
+          <MentionById
+            userId={parsedMessage.memberId}
+            name={parsedMessage.memberName}
+          />
+          {"'s"} role to Member in{" "}
+          <span className="font-medium">"{parsedMessage.teamName}"</span>.
+        </>
+      )
+    ) : isPromotion ? (
+      <>
+        You were promoted to Admin in{" "}
+        <span className="font-medium">"{parsedMessage.teamName}"</span> by{" "}
+        <MentionById
+          userId={parsedMessage.changerId}
+          name={parsedMessage.changerName}
+        />
+        .
+      </>
+    ) : (
+      <>
+        Your role in{" "}
+        <span className="font-medium">"{parsedMessage.teamName}"</span> was
+        changed to Member by{" "}
+        <MentionById
+          userId={parsedMessage.changerId}
+          name={parsedMessage.changerName}
+        />
+        .
+      </>
+    );
 
     return (
       <div className="flex flex-col items-center w-full my-4">
-        {/* Announcement Banner - Role-specific theme */}
         <div className={`event-banner ${bannerClass} mb-3`}>
           <span className="text-sm font-medium event-message-text">
             <RoleIcon size={16} className="event-inline-icon mr-1" />
@@ -1085,7 +1370,6 @@ const MessageDisplay = ({
           </span>
         </div>
 
-        {/* Timestamp */}
         <div className="text-xs text-base-content/50">
           {format(new Date(message.createdAt), "p")}
         </div>
@@ -1099,16 +1383,18 @@ const MessageDisplay = ({
   const renderOwnershipTeamMessage = (message, parsedMessage) => {
     return (
       <div className="flex flex-col items-center w-full my-4">
-        {/* Announcement Banner - Pink owner theme */}
         <div className="event-banner event-banner--owner mb-3">
           <span className="text-sm font-medium event-message-text">
             <Crown size={16} className="event-inline-icon mr-1" />
-            {parsedMessage.prevOwnerName} transferred ownership to{" "}
-            {parsedMessage.newOwnerName}
+            <Mention name={parsedMessage.prevOwnerName} /> transferred ownership
+            to{" "}
+            <MentionById
+              userId={parsedMessage.newOwnerId}
+              name={parsedMessage.newOwnerName}
+            />
           </span>
         </div>
 
-        {/* Timestamp */}
         <div className="text-xs text-base-content/50">
           {format(new Date(message.createdAt), "p")}
         </div>
@@ -1124,20 +1410,26 @@ const MessageDisplay = ({
     parsedMessage,
     isCurrentUser
   ) => {
-    // isCurrentUser means the current user is the sender (the previous owner who transferred)
-    let messageText;
-
-    if (isCurrentUser) {
-      // Previous owner's perspective
-      messageText = `You transferred team ownership of "${parsedMessage.teamName}" to ${parsedMessage.newOwnerName}.`;
-    } else {
-      // New owner's perspective
-      messageText = `${parsedMessage.prevOwnerName} transferred ownership of "${parsedMessage.teamName}" to you. Congratulations!`;
-    }
+    const messageText = isCurrentUser ? (
+      <>
+        You transferred team ownership of{" "}
+        <span className="font-medium">"{parsedMessage.teamName}"</span> to{" "}
+        <Mention name={parsedMessage.newOwnerName} />.
+      </>
+    ) : (
+      <>
+        <MentionById
+          userId={parsedMessage.prevOwnerId}
+          name={parsedMessage.prevOwnerName}
+        />
+        transferred ownership of{" "}
+        <span className="font-medium">"{parsedMessage.teamName}"</span> to you.
+        Congratulations!
+      </>
+    );
 
     return (
       <div className="flex flex-col items-center w-full my-4">
-        {/* Announcement Banner - Pink owner theme */}
         <div className="event-banner event-banner--owner mb-3">
           <span className="text-sm font-medium event-message-text">
             <Crown size={16} className="event-inline-icon mr-1" />
@@ -1146,7 +1438,6 @@ const MessageDisplay = ({
           </span>
         </div>
 
-        {/* Timestamp */}
         <div className="text-xs text-base-content/50">
           {format(new Date(message.createdAt), "p")}
         </div>
@@ -1155,35 +1446,42 @@ const MessageDisplay = ({
   };
 
   /**
-   * Render a member removed message with special formatting (violet theme)
-   * Shows different text based on whether viewer is the remover or the removed member
+   * Render a member removed message with special formatting
    */
   const renderMemberRemovedMessage = (
     message,
     parsedMessage,
     isCurrentUser
   ) => {
-    // isCurrentUser means the current user is the sender (the admin who removed)
-    let messageText;
-
-    if (isCurrentUser) {
-      // Remover's perspective (admin/owner)
-      messageText = `You removed ${parsedMessage.memberName} from "${parsedMessage.teamName}".`;
-    } else {
-      // Removed member's perspective
-      messageText = `You were removed from "${parsedMessage.teamName}" by ${parsedMessage.removerName}. Want to reach out to them in this chat?`;
-    }
+    const messageText = isCurrentUser ? (
+      <>
+        You removed{" "}
+        <MentionById
+          userId={parsedMessage.memberId}
+          name={parsedMessage.memberName}
+        />{" "}
+        from <span className="font-medium">"{parsedMessage.teamName}"</span>.
+      </>
+    ) : (
+      <>
+        You were removed from{" "}
+        <span className="font-medium">"{parsedMessage.teamName}"</span> by{" "}
+        <MentionById
+          userId={parsedMessage.removerId}
+          name={parsedMessage.removerName}
+        />
+        {". "}Want to reach out to them in this chat?
+      </>
+    );
 
     return (
       <div className="flex flex-col items-center w-full my-4">
-        {/* Announcement Banner - Grey theme */}
         <div className="event-banner event-banner--neutral mb-3">
           <span className="text-sm font-medium event-message-text">
             {messageText}
           </span>
         </div>
 
-        {/* Timestamp */}
         <div className="text-xs text-base-content/50">
           {format(new Date(message.createdAt), "p")}
         </div>
@@ -1193,23 +1491,19 @@ const MessageDisplay = ({
 
   /**
    * Render a team deleted message with special formatting (red/error theme)
-   * Shows in team chat with option to delete from conversation list
+   * Shows in team chat with option to leave team
    */
   const renderTeamDeletedMessage = (message, parsedMessage, isCurrentUser) => {
-    // isCurrentUser means the current user is the sender (the owner who deleted)
     let messageText;
 
     if (isCurrentUser) {
-      // Owner's perspective
       messageText = `You deleted the team "${parsedMessage.teamName}". Remaining members are able to text in this chat until the last member leaves.`;
     } else {
-      // Member's perspective
       messageText = `${parsedMessage.ownerName} has deleted the team "${parsedMessage.teamName}". Remaining members are able to text in this chat until the last member leaves.`;
     }
 
     return (
       <div className="flex flex-col items-center w-full my-4">
-        {/* Announcement Banner - Red/Error theme */}
         <div
           className="flex flex-col items-center gap-3 px-5 py-4 rounded-2xl mb-3 max-w-md text-center"
           style={{
@@ -1221,7 +1515,6 @@ const MessageDisplay = ({
             {messageText}
           </span>
 
-          {/* Leave Team Button */}
           {onLeaveTeam && (
             <button
               onClick={() => onLeaveTeam()}
@@ -1233,7 +1526,6 @@ const MessageDisplay = ({
           )}
         </div>
 
-        {/* Timestamp */}
         <div className="text-xs text-base-content/50">
           {format(new Date(message.createdAt), "p")}
         </div>
@@ -1241,11 +1533,17 @@ const MessageDisplay = ({
     );
   };
 
+  // --------------------------------------------
+  // NO MESSAGES STATE
+  // --------------------------------------------
   if (messages.length === 0 && typingUsers.length === 0) {
     return (
       <>
         <div className="space-y-6">
-          {/* Show conversation partner header for direct messages - CLICKABLE */}
+          {nameResolveError && (
+            <div className="mb-2 text-sm text-warning">{nameResolveError}</div>
+          )}
+
           {conversationPartner && conversationType === "direct" && (
             <div className="text-center pb-4 mb-4 border-b border-base-200">
               <div
@@ -1271,7 +1569,6 @@ const MessageDisplay = ({
                       }}
                     />
                   ) : null}
-                  {/* Fallback initials */}
                   <div
                     className="avatar-fallback bg-primary text-primary-content flex items-center justify-center w-full h-full rounded-full absolute inset-0"
                     style={{
@@ -1298,7 +1595,6 @@ const MessageDisplay = ({
             </div>
           )}
 
-          {/* Show team header for team conversations - CLICKABLE */}
           {teamData && conversationType === "team" && (
             <div className="text-center pb-4 mb-4 border-b border-base-200">
               <div
@@ -1322,7 +1618,6 @@ const MessageDisplay = ({
                       }}
                     />
                   ) : null}
-                  {/* Fallback initials */}
                   <div
                     className="avatar-fallback bg-primary text-primary-content flex items-center justify-center w-full h-full rounded-full absolute inset-0"
                     style={{ display: teamData.avatarUrl ? "none" : "flex" }}
@@ -1343,7 +1638,6 @@ const MessageDisplay = ({
             </div>
           )}
 
-          {/* No messages message */}
           <div className="flex flex-col items-center justify-center h-full">
             <p className="text-base-content/70">No messages yet</p>
             <p className="text-sm text-base-content/50 mt-2">
@@ -1352,15 +1646,15 @@ const MessageDisplay = ({
           </div>
         </div>
 
-        {/* Team Details Modal */}
-        <TeamDetailsModal
-          isOpen={isTeamModalOpen}
-          teamId={teamData?.id}
-          initialTeamData={teamData}
-          onClose={handleTeamModalClose}
-        />
+        {conversationType === "team" && teamData?.id ? (
+          <TeamDetailsModal
+            isOpen={isTeamModalOpen}
+            teamId={teamData.id}
+            initialTeamData={teamData}
+            onClose={handleTeamModalClose}
+          />
+        ) : null}
 
-        {/* User Details Modal */}
         <UserDetailsModal
           isOpen={isUserModalOpen}
           userId={selectedUserId}
@@ -1384,7 +1678,6 @@ const MessageDisplay = ({
     for (let i = 1; i < messagesForDate.length; i++) {
       const message = messagesForDate[i];
 
-      // Check if this message is a system message (join/response) - don't group these
       const parsedMessage = parseSystemMessage(message.content);
       const prevParsedMessage = parseSystemMessage(
         messagesForDate[i - 1].content
@@ -1415,6 +1708,10 @@ const MessageDisplay = ({
   return (
     <>
       <div className="space-y-6">
+        {nameResolveError && (
+          <div className="mb-2 text-sm text-warning">{nameResolveError}</div>
+        )}
+
         {/* Show conversation partner header for direct messages - CLICKABLE */}
         {conversationPartner && conversationType === "direct" && (
           <div className="text-center pb-4 mb-4 border-b border-base-200">
@@ -1441,7 +1738,6 @@ const MessageDisplay = ({
                     }}
                   />
                 ) : null}
-                {/* Fallback initials */}
                 <div
                   className="avatar-fallback bg-primary text-primary-content flex items-center justify-center w-full h-full rounded-full absolute inset-0"
                   style={{
@@ -1492,7 +1788,6 @@ const MessageDisplay = ({
                     }}
                   />
                 ) : null}
-                {/* Fallback initials */}
                 <div
                   className="avatar-fallback bg-primary text-primary-content flex items-center justify-center w-full h-full rounded-full absolute inset-0"
                   style={{ display: teamData.avatarUrl ? "none" : "flex" }}
@@ -1527,17 +1822,16 @@ const MessageDisplay = ({
               const isCurrentUser = messageGroup.senderId === currentUserId;
               const senderInfo = getSenderInfo(
                 messageGroup.senderId,
-                messageGroup.messages[0] // Pass the first message for fallback info
+                messageGroup.messages[0]
               );
               const displayName = getDisplayName(senderInfo);
 
-              // Check if this is a single system message group
+              // System message rendering
               if (messageGroup.messages.length === 1) {
                 const message = messageGroup.messages[0];
                 const parsedMessage = parseSystemMessage(message.content);
 
                 if (parsedMessage) {
-                  // Check if this system message should be highlighted
                   const isHighlighted = highlightMessageIds.includes(
                     message.id
                   );
@@ -1749,13 +2043,13 @@ const MessageDisplay = ({
                       </div>
                     );
                   } else if (parsedMessage.type === "team_deleted") {
-                    // Don't render in message history - shown as fixed banner above input
+                    // not rendered here (fixed banner elsewhere)
                     return null;
                   }
                 }
               }
 
-              // Regular message rendering
+              // Regular messages
               return (
                 <div
                   key={`${dateString}-group-${groupIndex}`}
@@ -1763,14 +2057,12 @@ const MessageDisplay = ({
                     isCurrentUser ? "justify-end" : "justify-start"
                   }`}
                 >
-                  {/* Avatar for team chats (left side for others) - clickable */}
                   {conversationType === "team" &&
                     !isCurrentUser &&
                     messageGroup.showSenderInfo &&
                     renderAvatar(senderInfo, true, messageGroup.senderId)}
 
                   <div className="flex flex-col max-w-[70%]">
-                    {/* Show sender name for team chats and non-current users - clickable */}
                     {conversationType === "team" &&
                       !isCurrentUser &&
                       messageGroup.showSenderInfo && (
@@ -1786,7 +2078,9 @@ const MessageDisplay = ({
                                 ? "#6b7280"
                                 : "#036b0c",
                           }}
-                          onClick={() => handleUserClick(messageGroup.senderId)}
+                          onClick={() =>
+                            handleUserClick(messageGroup.senderId, displayName)
+                          }
                           title={`View ${getDisplayName(
                             senderInfo,
                             false
@@ -1796,7 +2090,6 @@ const MessageDisplay = ({
                         </div>
                       )}
 
-                    {/* Messages in this group */}
                     <div className="space-y-1">
                       {messageGroup.messages.map((message, messageIndex) => {
                         const isHighlighted = highlightMessageIds.includes(
@@ -1830,7 +2123,7 @@ const MessageDisplay = ({
                             `}
                           >
                             <p>{message.content}</p>
-                            {/* Only show timestamp on the last message of the group */}
+
                             {messageIndex ===
                               messageGroup.messages.length - 1 && (
                               <div
@@ -1882,19 +2175,18 @@ const MessageDisplay = ({
           </div>
         )}
 
-        {/* Scroll anchor */}
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Team Details Modal */}
-      <TeamDetailsModal
-        isOpen={isTeamModalOpen}
-        teamId={teamData?.id}
-        initialTeamData={teamData}
-        onClose={handleTeamModalClose}
-      />
+      {conversationType === "team" && teamData?.id ? (
+        <TeamDetailsModal
+          isOpen={isTeamModalOpen}
+          teamId={teamData.id}
+          initialTeamData={teamData}
+          onClose={handleTeamModalClose}
+        />
+      ) : null}
 
-      {/* User Details Modal */}
       <UserDetailsModal
         isOpen={isUserModalOpen}
         userId={selectedUserId}
