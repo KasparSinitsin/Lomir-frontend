@@ -104,23 +104,41 @@ const parseSystemMessage = (content) => {
     };
   }
 
+  // Pattern 5C (NEW): Member removed public message (team chat)
+  // Format: 🚫 MEMBER_REMOVED_PUBLIC: <teamId>:<teamName> | <memberId>:<memberName>
+  const removedPublicMatch = content.match(
+    /^🚫\s*MEMBER_REMOVED_PUBLIC:\s*(\d+):(.+?)\s*\|\s*(\d+):(.+)$/
+  );
+
+  if (removedPublicMatch) {
+    return {
+      type: "member_removed_public",
+      teamId: Number(removedPublicMatch[1]),
+      teamName: removedPublicMatch[2].trim(),
+      userId: Number(removedPublicMatch[3]),
+      userName: removedPublicMatch[4].trim(),
+    };
+  }
+
   // Pattern 6: Application declined message
-  // Format: 🚫 APPLICATION_DECLINED: Team Name | Approver Name | Applicant Name | hasPersonalMessage
+  // Format: 🚫 APPLICATION_DECLINED: teamId:teamName | approverId:approverName | applicantId:applicantName | hasPersonalMessage
   const applicationDeclinedMatch = content.match(
     /^🚫\s+APPLICATION_DECLINED:\s+(.+?)\s+\|\s+(.+?)\s+\|\s+(.+?)\s+\|\s+(true|false)$/
   );
 
   if (applicationDeclinedMatch) {
-    const teamName = applicationDeclinedMatch[1].trim();
+    const teamToken = applicationDeclinedMatch[1].trim(); // "id:name" OR legacy "name"
     const approverToken = applicationDeclinedMatch[2].trim();
     const applicantToken = applicationDeclinedMatch[3].trim();
 
+    const team = parseIdNameToken(teamToken);
     const approver = parseIdNameToken(approverToken);
     const applicant = parseIdNameToken(applicantToken);
 
     return {
       type: "application_declined",
-      teamName,
+      teamId: team.id,
+      teamName: team.name,
       approverId: approver.id,
       approverName: approver.name,
       applicantId: applicant.id,
@@ -130,22 +148,23 @@ const parseSystemMessage = (content) => {
   }
 
   // Pattern 7: Application approved DM message
-  // Format: ✅ APPLICATION_APPROVED: Team Name | Approver Name | Applicant Name | hasPersonalMessage
+  // Format: ✅ APPLICATION_APPROVED: teamId:teamName | approverId:approverName | applicantId:applicantName | hasPersonalMessage
   const applicationApprovedDmMatch = content.match(
     /^✅\s+APPLICATION_APPROVED:\s+(.+?)\s+\|\s+(.+?)\s+\|\s+(.+?)\s+\|\s+(true|false)$/
   );
   if (applicationApprovedDmMatch) {
-    const teamName = applicationApprovedDmMatch[1].trim();
+    const teamToken = applicationApprovedDmMatch[1].trim(); // "id:name" OR legacy "name"
+    const approverToken = applicationApprovedDmMatch[2].trim();
+    const applicantToken = applicationApprovedDmMatch[3].trim();
 
-    const approverToken = applicationApprovedDmMatch[2].trim(); // "id:name" or "name"
-    const applicantToken = applicationApprovedDmMatch[3].trim(); // "id:name" or "name"
-
+    const team = parseIdNameToken(teamToken);
     const approver = parseIdNameToken(approverToken);
     const applicant = parseIdNameToken(applicantToken);
 
     return {
       type: "application_approved_dm",
-      teamName,
+      teamId: team.id, // ✅ new
+      teamName: team.name, // ✅ now without "124:"
       approverId: approver.id,
       approverName: approver.name,
       applicantId: applicant.id,
@@ -160,59 +179,100 @@ const parseSystemMessage = (content) => {
     /^🚫\s+INVITATION_DECLINED:\s+(.+?)\s+\|\s+(.+?)\s+\|\s+(.+?)\s+\|\s+(true|false)$/
   );
   if (invitationDeclinedMatch) {
+    const teamToken = invitationDeclinedMatch[1].trim(); // "id:name" or legacy "name"
+    const inviterToken = invitationDeclinedMatch[2].trim(); // "id:name" or legacy "name"
+    const inviteeToken = invitationDeclinedMatch[3].trim(); // "id:name" or legacy "name"
+
+    const team = parseIdNameToken(teamToken);
+    const inviter = parseIdNameToken(inviterToken);
+    const invitee = parseIdNameToken(inviteeToken);
+
     return {
       type: "invitation_declined",
-      teamName: invitationDeclinedMatch[1].trim(),
-      inviterName: invitationDeclinedMatch[2].trim(),
-      inviteeName: invitationDeclinedMatch[3].trim(),
+      teamId: team.id,
+      teamName: team.name,
+      inviterId: inviter.id,
+      inviterName: inviter.name,
+      inviteeId: invitee.id,
+      inviteeName: invitee.name,
       hasPersonalMessage: invitationDeclinedMatch[4] === "true",
     };
   }
 
   // Pattern 9: Invitation cancelled message
-  // Format: 🚫 INVITATION_CANCELLED: Team Name | Canceller Name | Invitee Name
+  // Format: 🚫 INVITATION_CANCELLED: teamId:teamName | cancellerId:cancellerName | inviteeId:inviteeName
+  // (Legacy tolerated: names without ids)
   const invitationCancelledMatch = content.match(
     /^🚫\s+INVITATION_CANCELLED:\s+(.+?)\s+\|\s+(.+?)\s+\|\s+(.+)$/
   );
+
   if (invitationCancelledMatch) {
+    const teamToken = invitationCancelledMatch[1].trim();
+    const cancellerToken = invitationCancelledMatch[2].trim();
+    const inviteeToken = invitationCancelledMatch[3].trim();
+
+    const team = parseIdNameToken(teamToken);
+    const canceller = parseIdNameToken(cancellerToken);
+    const invitee = parseIdNameToken(inviteeToken);
+
     return {
       type: "invitation_cancelled",
-      teamName: invitationCancelledMatch[1].trim(),
-      cancellerName: invitationCancelledMatch[2].trim(),
-      inviteeName: invitationCancelledMatch[3].trim(),
+      teamId: team.id,
+      teamName: team.name,
+      cancellerId: canceller.id,
+      cancellerName: canceller.name,
+      inviteeId: invitee.id,
+      inviteeName: invitee.name,
     };
   }
 
   // Pattern 10: Application cancelled message
-  // Format: 🚫 APPLICATION_CANCELLED: Team Name | Applicant Name | Admin Name
+  // Format: 🚫 APPLICATION_CANCELLED: teamId:teamName | applicantId:applicantName | adminId:adminName
+  // (Legacy tolerated: teamName | applicantName | adminName)
   const applicationCancelledMatch = content.match(
     /^🚫\s+APPLICATION_CANCELLED:\s+(.+?)\s+\|\s+(.+?)\s+\|\s+(.+)$/
   );
+
   if (applicationCancelledMatch) {
+    const teamToken = applicationCancelledMatch[1].trim();
+    const applicantToken = applicationCancelledMatch[2].trim();
+    const adminToken = applicationCancelledMatch[3].trim();
+
+    const team = parseIdNameToken(teamToken);
+    const applicant = parseIdNameToken(applicantToken);
+    const admin = parseIdNameToken(adminToken);
+
     return {
       type: "application_cancelled",
-      teamName: applicationCancelledMatch[1].trim(),
-      applicantName: applicationCancelledMatch[2].trim(),
-      adminName: applicationCancelledMatch[3].trim(),
+      teamId: team.id,
+      teamName: team.name,
+      applicantId: applicant.id,
+      applicantName: applicant.name,
+      adminId: admin.id,
+      adminName: admin.name,
     };
   }
 
   // Pattern 11: Member removed message
-  // Format: 🚫 MEMBER_REMOVED: Team Name | Remover Name | Member Name
+  // Format: 🚫 MEMBER_REMOVED: teamId:teamName | removerId:removerName | memberId:memberName
+  // (Legacy tolerated: "teamName" without id)
   const memberRemovedMatch = content.match(
     /^🚫\s+MEMBER_REMOVED:\s+(.+?)\s+\|\s+(.+?)\s+\|\s+(.+)$/
   );
-  if (memberRemovedMatch) {
-    const teamName = memberRemovedMatch[1].trim();
-    const removerToken = memberRemovedMatch[2].trim(); // "id:name" or "name"
-    const memberToken = memberRemovedMatch[3].trim(); // "id:name" or "name"
 
+  if (memberRemovedMatch) {
+    const teamToken = memberRemovedMatch[1].trim(); // "id:name" OR "name"
+    const removerToken = memberRemovedMatch[2].trim(); // "id:name" OR "name"
+    const memberToken = memberRemovedMatch[3].trim(); // "id:name" OR "name"
+
+    const team = parseIdNameToken(teamToken);
     const remover = parseIdNameToken(removerToken);
     const member = parseIdNameToken(memberToken);
 
     return {
       type: "member_removed",
-      teamName,
+      teamId: team.id,
+      teamName: team.name,
       removerId: remover.id,
       removerName: remover.name,
       memberId: member.id,
@@ -226,16 +286,18 @@ const parseSystemMessage = (content) => {
     /^🔄\s+ROLE_CHANGED:\s+(.+?)\s+\|\s+(.+?)\s+\|\s+(.+?)\s+\|\s+(.+?)\s+\|\s+(.+)$/
   );
   if (roleChangedMatch) {
-    const teamName = roleChangedMatch[1].trim();
+    const teamToken = roleChangedMatch[1].trim(); // "teamId:teamName" OR just "teamName" (legacy)
     const changerToken = roleChangedMatch[2].trim(); // "id:name" or "name"
     const memberToken = roleChangedMatch[3].trim(); // "id:name" or "name"
 
+    const team = parseIdNameToken(teamToken);
     const changer = parseIdNameToken(changerToken);
     const member = parseIdNameToken(memberToken);
 
     return {
       type: "role_changed",
-      teamName,
+      teamId: team.id,
+      teamName: team.name,
       changerId: changer.id,
       changerName: changer.name,
       memberId: member.id,
@@ -244,22 +306,26 @@ const parseSystemMessage = (content) => {
       newRole: roleChangedMatch[5].trim(),
     };
   }
-
   // Pattern 13: Ownership transferred message (DM)
+  // Format (new): 👑 OWNERSHIP_TRANSFERRED: teamId:teamName | prevOwnerId:prevOwnerName | newOwnerId:newOwnerName
+  // Format (legacy): 👑 OWNERSHIP_TRANSFERRED: teamName | prevOwnerName | newOwnerName
   const ownershipTransferredMatch = content.match(
     /^(?:👑\s*)?OWNERSHIP_TRANSFERRED:\s+(.+?)\s+\|\s+(.+?)\s+\|\s+(.+)$/
   );
+
   if (ownershipTransferredMatch) {
-    const teamName = ownershipTransferredMatch[1].trim();
+    const teamToken = ownershipTransferredMatch[1].trim(); // "id:name" or "name"
     const prevToken = ownershipTransferredMatch[2].trim(); // "id:name" or "name"
     const newToken = ownershipTransferredMatch[3].trim(); // "id:name" or "name"
 
+    const team = parseIdNameToken(teamToken);
     const prev = parseIdNameToken(prevToken);
     const next = parseIdNameToken(newToken);
 
     return {
       type: "ownership_transferred",
-      teamName,
+      teamId: team.id,
+      teamName: team.name,
       prevOwnerId: prev.id,
       prevOwnerName: prev.name,
       newOwnerId: next.id,
@@ -312,6 +378,8 @@ const MessageDisplay = ({
 
   // State for team details modal
   const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
+
+  const [selectedTeamId, setSelectedTeamId] = useState(null);
 
   // State for user details modal
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
@@ -371,6 +439,7 @@ const MessageDisplay = ({
   // Handle closing the team details modal
   const handleTeamModalClose = () => {
     setIsTeamModalOpen(false);
+    setSelectedTeamId(null);
   };
 
   // -----------------------
@@ -516,6 +585,30 @@ const MessageDisplay = ({
       </div>
     );
   }
+
+  const openTeamModal = (teamId) => {
+    if (!teamId) return;
+    setSelectedTeamId(teamId);
+    setIsTeamModalOpen(true);
+  };
+
+  const TeamMentionById = ({ teamId, name }) => {
+    const safeName = (name || "").trim() || "Team";
+
+    // legacy / missing id => non-clickable fallback
+    if (!teamId) return <span className="font-medium">"{safeName}"</span>;
+
+    return (
+      <button
+        type="button"
+        className="font-medium underline underline-offset-2 hover:no-underline hover:text-primary transition-colors"
+        onClick={() => openTeamModal(teamId)}
+        title={`Open ${safeName}`}
+      >
+        "{safeName}"
+      </button>
+    );
+  };
 
   // Group messages by date
   const messagesByDate = messages.reduce((groups, message) => {
@@ -681,8 +774,11 @@ const MessageDisplay = ({
             name={parsedMessage.applicantName}
           />
           {"'s"} application for{" "}
-          <span className="font-medium">"{teamName}"</span> and added this
-          message:
+          <TeamMentionById
+            teamId={parsedMessage.teamId}
+            name={parsedMessage.teamName}
+          />{" "}
+          and added this message:
         </>
       ) : (
         <>
@@ -692,12 +788,19 @@ const MessageDisplay = ({
             name={parsedMessage.applicantName}
           />
           {"'s"} application for{" "}
-          <span className="font-medium">"{teamName}"</span>
+          <TeamMentionById
+            teamId={parsedMessage.teamId}
+            name={parsedMessage.teamName}
+          />
         </>
       )
     ) : parsedMessage.hasPersonalMessage ? (
       <>
-        Your application to <span className="font-medium">"{teamName}"</span>{" "}
+        Your application to{" "}
+        <TeamMentionById
+          teamId={parsedMessage.teamId}
+          name={parsedMessage.teamName}
+        />{" "}
         was approved by{" "}
         <MentionById
           userId={parsedMessage.approverId}
@@ -707,7 +810,11 @@ const MessageDisplay = ({
       </>
     ) : (
       <>
-        Your application to <span className="font-medium">"{teamName}"</span>{" "}
+        Your application to{" "}
+        <TeamMentionById
+          teamId={parsedMessage.teamId}
+          name={parsedMessage.teamName}
+        />{" "}
         was approved by{" "}
         <MentionById
           userId={parsedMessage.approverId}
@@ -727,8 +834,8 @@ const MessageDisplay = ({
           }}
         >
           <span className="text-sm font-medium event-message-text">
-            {messageText}
-            <PartyPopper size={16} className="event-inline-icon ml-1" />
+            <PartyPopper size={16} className="event-inline-icon ml-1" />{" "}
+            {messageText}.
           </span>
         </div>
 
@@ -813,6 +920,47 @@ const MessageDisplay = ({
     );
   };
 
+  const renderMemberRemovedPublicMessage = (
+    message,
+    parsedMessage,
+    isCurrentUser
+  ) => {
+    // If the remover is the sender of the system message (likely), they are "current user" here.
+    const text = isCurrentUser ? (
+      <>
+        You removed{" "}
+        <MentionById
+          userId={parsedMessage.userId}
+          name={parsedMessage.userName}
+        />{" "}
+        from the team.
+      </>
+    ) : (
+      <>
+        <MentionById
+          userId={parsedMessage.userId}
+          name={parsedMessage.userName}
+        />{" "}
+        has been removed from the team.
+      </>
+    );
+
+    return (
+      <div className="flex flex-col items-center w-full my-4">
+        <div className="event-banner event-banner--neutral mb-3">
+          <span className="text-sm font-medium event-message-text">
+            <UserMinus size={16} className="event-inline-icon mr-1" />
+            {text}
+          </span>
+        </div>
+
+        <div className="text-xs text-base-content/50">
+          {format(new Date(message.createdAt), "p")}
+        </div>
+      </div>
+    );
+  };
+
   // =============================================================================
   // renderInvitationAcceptedMessage - Green success theme
   // =============================================================================
@@ -825,14 +973,21 @@ const MessageDisplay = ({
       <>
         You accepted <Mention name={parsedMessage.inviterName} />
         {"'s"} invitation for{" "}
-        <span className="font-medium">"{parsedMessage.teamName}"</span>. Welcome
-        to the team!
+        <TeamMentionById
+          teamId={parsedMessage.teamId}
+          name={parsedMessage.teamName}
+        />
+        . Welcome to the team!
       </>
     ) : (
       <>
         <Mention name={parsedMessage.inviteeName} /> accepted your invitation
-        for <span className="font-medium">"{parsedMessage.teamName}"</span>.
-        Welcome to the team!
+        for{" "}
+        <TeamMentionById
+          teamId={parsedMessage.teamId}
+          name={parsedMessage.teamName}
+        />
+        . Welcome to the team!
       </>
     );
 
@@ -956,14 +1111,36 @@ const MessageDisplay = ({
     const messageText = isCurrentUser ? (
       <>
         You cancelled your invitation for{" "}
-        <Mention name={parsedMessage.inviteeName} /> to join{" "}
-        <span className="font-medium">"{parsedMessage.teamName}"</span>. Want to
-        tell them why in this chat?
+        {parsedMessage.inviteeId ? (
+          <MentionById
+            userId={parsedMessage.inviteeId}
+            name={parsedMessage.inviteeName}
+          />
+        ) : (
+          <Mention name={parsedMessage.inviteeName} />
+        )}{" "}
+        to join{" "}
+        <TeamMentionById
+          teamId={parsedMessage.teamId}
+          name={parsedMessage.teamName}
+        />
+        . Want to tell them why in this chat?
       </>
     ) : (
       <>
-        <Mention name={parsedMessage.cancellerName} /> cancelled your invitation
-        to join <span className="font-medium">"{parsedMessage.teamName}"</span>
+        {parsedMessage.cancellerId ? (
+          <MentionById
+            userId={parsedMessage.cancellerId}
+            name={parsedMessage.cancellerName}
+          />
+        ) : (
+          <Mention name={parsedMessage.cancellerName} />
+        )}{" "}
+        cancelled your invitation to join{" "}
+        <TeamMentionById
+          teamId={parsedMessage.teamId}
+          name={parsedMessage.teamName}
+        />
         {". "}Want to reach out to them in this chat?
       </>
     );
@@ -996,28 +1173,60 @@ const MessageDisplay = ({
     const messageText = isCurrentUser ? (
       parsedMessage.hasPersonalMessage ? (
         <>
-          You declined <Mention name={parsedMessage.inviterName} />
-          {"'s"} invitation for <span className="font-medium">"{team}"</span>{" "}
+          You declined{" "}
+          <MentionById
+            userId={parsedMessage.inviterId}
+            name={parsedMessage.inviterName}
+          />
+          {"'s"} invitation for{" "}
+          <TeamMentionById
+            teamId={parsedMessage.teamId}
+            name={parsedMessage.teamName}
+          />{" "}
           and added this message:
         </>
       ) : (
         <>
-          You declined <Mention name={parsedMessage.inviterName} />
-          {"'s"} invitation for <span className="font-medium">"{team}"</span>.
-          Consider adding a personal message to explain your decision.
+          You declined{" "}
+          <MentionById
+            userId={parsedMessage.inviterId}
+            name={parsedMessage.inviterName}
+          />
+          {"'s"} invitation for{" "}
+          <TeamMentionById
+            teamId={parsedMessage.teamId}
+            name={parsedMessage.teamName}
+          />
+          . Consider adding a personal message to explain your decision.
         </>
       )
     ) : parsedMessage.hasPersonalMessage ? (
       <>
-        Your invitation for <span className="font-medium">"{team}"</span> was
-        declined by <Mention name={parsedMessage.inviteeName} />, who added this
-        message:
+        Your invitation for{" "}
+        <TeamMentionById
+          teamId={parsedMessage.teamId}
+          name={parsedMessage.teamName}
+        />{" "}
+        was declined by{" "}
+        <MentionById
+          userId={parsedMessage.inviteeId}
+          name={parsedMessage.inviteeName}
+        />
+        , who added this message:
       </>
     ) : (
       <>
-        Your invitation for <span className="font-medium">"{team}"</span> was
-        declined by <Mention name={parsedMessage.inviteeName} />. Want to reach
-        out to them in this chat?
+        Your invitation for{" "}
+        <TeamMentionById
+          teamId={parsedMessage.teamId}
+          name={parsedMessage.teamName}
+        />{" "}
+        was declined by{" "}
+        <MentionById
+          userId={parsedMessage.inviteeId}
+          name={parsedMessage.inviteeName}
+        />
+        . Want to reach out to them in this chat?
       </>
     );
 
@@ -1126,7 +1335,11 @@ const MessageDisplay = ({
             userId={parsedMessage.applicantId}
             name={parsedMessage.applicantName}
           />
-          {"'s"} application for <span className="font-medium">"{team}"</span>{" "}
+          {"'s"} application for{" "}
+          <TeamMentionById
+            teamId={parsedMessage.teamId}
+            name={parsedMessage.teamName}
+          />{" "}
           and added this message:
         </>
       ) : (
@@ -1136,14 +1349,22 @@ const MessageDisplay = ({
             userId={parsedMessage.applicantId}
             name={parsedMessage.applicantName}
           />
-          {"'s"} application for <span className="font-medium">"{team}"</span>.
-          Consider adding a personal message to explain your decision.
+          {"'s"} application for{" "}
+          <TeamMentionById
+            teamId={parsedMessage.teamId}
+            name={parsedMessage.teamName}
+          />
+          . Consider adding a personal message to explain your decision.
         </>
       )
     ) : parsedMessage.hasPersonalMessage ? (
       <>
-        Your application to <span className="font-medium">"{team}"</span> was
-        declined by{" "}
+        Your application to{" "}
+        <TeamMentionById
+          teamId={parsedMessage.teamId}
+          name={parsedMessage.teamName}
+        />{" "}
+        was declined by{" "}
         <MentionById
           userId={parsedMessage.approverId}
           name={parsedMessage.approverName}
@@ -1152,8 +1373,12 @@ const MessageDisplay = ({
       </>
     ) : (
       <>
-        Your application to <span className="font-medium">"{team}"</span> was
-        declined by{" "}
+        Your application to{" "}
+        <TeamMentionById
+          teamId={parsedMessage.teamId}
+          name={parsedMessage.teamName}
+        />{" "}
+        was declined by{" "}
         <MentionById
           userId={parsedMessage.approverId}
           name={parsedMessage.approverName}
@@ -1251,16 +1476,25 @@ const MessageDisplay = ({
   ) => {
     const messageText = isCurrentUser ? (
       <>
-        You cancelled <Mention name={parsedMessage.applicantName} />
-        {"'s"} application for{" "}
-        <span className="font-medium">"{parsedMessage.teamName}"</span>. Want to
-        tell them why in this chat?
+        You cancelled your application for{" "}
+        <TeamMentionById
+          teamId={parsedMessage.teamId}
+          name={parsedMessage.teamName}
+        />
+        . Want to tell them why in this chat?
       </>
     ) : (
       <>
-        <Mention name={parsedMessage.adminName} /> cancelled your application to{" "}
-        <span className="font-medium">"{parsedMessage.teamName}"</span>. Want to
-        reach out to them in this chat?
+        <MentionById
+          userId={parsedMessage.applicantId}
+          name={parsedMessage.applicantName}
+        />{" "}
+        cancelled their application for{" "}
+        <TeamMentionById
+          teamId={parsedMessage.teamId}
+          name={parsedMessage.teamName}
+        />
+        . Want to reach out to them in this chat?
       </>
     );
 
@@ -1322,7 +1556,11 @@ const MessageDisplay = ({
             name={parsedMessage.memberName}
           />{" "}
           to Admin in{" "}
-          <span className="font-medium">"{parsedMessage.teamName}"</span>.
+          <TeamMentionById
+            teamId={parsedMessage.teamId}
+            name={parsedMessage.teamName}
+          />
+          .
         </>
       ) : (
         <>
@@ -1332,13 +1570,21 @@ const MessageDisplay = ({
             name={parsedMessage.memberName}
           />
           {"'s"} role to Member in{" "}
-          <span className="font-medium">"{parsedMessage.teamName}"</span>.
+          <TeamMentionById
+            teamId={parsedMessage.teamId}
+            name={parsedMessage.teamName}
+          />
+          .
         </>
       )
     ) : isPromotion ? (
       <>
         You were promoted to Admin in{" "}
-        <span className="font-medium">"{parsedMessage.teamName}"</span> by{" "}
+        <TeamMentionById
+          teamId={parsedMessage.teamId}
+          name={parsedMessage.teamName}
+        />{" "}
+        by{" "}
         <MentionById
           userId={parsedMessage.changerId}
           name={parsedMessage.changerName}
@@ -1348,8 +1594,11 @@ const MessageDisplay = ({
     ) : (
       <>
         Your role in{" "}
-        <span className="font-medium">"{parsedMessage.teamName}"</span> was
-        changed to Member by{" "}
+        <TeamMentionById
+          teamId={parsedMessage.teamId}
+          name={parsedMessage.teamName}
+        />{" "}
+        was changed to Member by{" "}
         <MentionById
           userId={parsedMessage.changerId}
           name={parsedMessage.changerName}
@@ -1413,18 +1662,24 @@ const MessageDisplay = ({
     const messageText = isCurrentUser ? (
       <>
         You transferred team ownership of{" "}
-        <span className="font-medium">"{parsedMessage.teamName}"</span> to{" "}
-        <Mention name={parsedMessage.newOwnerName} />.
+        <TeamMentionById
+          teamId={parsedMessage.teamId}
+          name={parsedMessage.teamName}
+        />{" "}
+        to <Mention name={parsedMessage.newOwnerName} />.
       </>
     ) : (
       <>
         <MentionById
           userId={parsedMessage.prevOwnerId}
           name={parsedMessage.prevOwnerName}
-        />
+        />{" "}
         transferred ownership of{" "}
-        <span className="font-medium">"{parsedMessage.teamName}"</span> to you.
-        Congratulations!
+        <TeamMentionById
+          teamId={parsedMessage.teamId}
+          name={parsedMessage.teamName}
+        />{" "}
+        to you. Congratulations!
       </>
     );
 
@@ -1460,17 +1715,26 @@ const MessageDisplay = ({
           userId={parsedMessage.memberId}
           name={parsedMessage.memberName}
         />{" "}
-        from <span className="font-medium">"{parsedMessage.teamName}"</span>.
+        from{" "}
+        <TeamMentionById
+          teamId={parsedMessage.teamId}
+          name={parsedMessage.teamName}
+        />
+        .
       </>
     ) : (
       <>
         You were removed from{" "}
-        <span className="font-medium">"{parsedMessage.teamName}"</span> by{" "}
+        <TeamMentionById
+          teamId={parsedMessage.teamId}
+          name={parsedMessage.teamName}
+        />{" "}
+        by{" "}
         <MentionById
           userId={parsedMessage.removerId}
           name={parsedMessage.removerName}
         />
-        {". "}Want to reach out to them in this chat?
+        . Want to reach out to them in this chat?
       </>
     );
 
@@ -1646,14 +1910,12 @@ const MessageDisplay = ({
           </div>
         </div>
 
-        {conversationType === "team" && teamData?.id ? (
-          <TeamDetailsModal
-            isOpen={isTeamModalOpen}
-            teamId={teamData.id}
-            initialTeamData={teamData}
-            onClose={handleTeamModalClose}
-          />
-        ) : null}
+        <TeamDetailsModal
+          isOpen={isTeamModalOpen}
+          teamId={conversationType === "team" ? teamData?.id : selectedTeamId}
+          initialTeamData={conversationType === "team" ? teamData : null}
+          onClose={handleTeamModalClose}
+        />
 
         <UserDetailsModal
           isOpen={isUserModalOpen}
@@ -1920,6 +2182,20 @@ const MessageDisplay = ({
                         )}
                       </div>
                     );
+                  } else if (parsedMessage.type === "member_removed_public") {
+                    return (
+                      <div
+                        key={`${dateString}-group-${groupIndex}`}
+                        ref={isFirstHighlighted ? highlightedMessageRef : null}
+                        className={wrapperClass}
+                      >
+                        {renderMemberRemovedPublicMessage(
+                          message,
+                          parsedMessage,
+                          isCurrentUser
+                        )}
+                      </div>
+                    );
                   } else if (parsedMessage.type === "application_declined") {
                     return (
                       <div
@@ -2178,14 +2454,12 @@ const MessageDisplay = ({
         <div ref={messagesEndRef} />
       </div>
 
-      {conversationType === "team" && teamData?.id ? (
-        <TeamDetailsModal
-          isOpen={isTeamModalOpen}
-          teamId={teamData.id}
-          initialTeamData={teamData}
-          onClose={handleTeamModalClose}
-        />
-      ) : null}
+      <TeamDetailsModal
+        isOpen={isTeamModalOpen}
+        teamId={conversationType === "team" ? teamData?.id : selectedTeamId}
+        initialTeamData={conversationType === "team" ? teamData : null}
+        onClose={handleTeamModalClose}
+      />
 
       <UserDetailsModal
         isOpen={isUserModalOpen}
