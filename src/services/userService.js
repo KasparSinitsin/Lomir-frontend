@@ -98,6 +98,21 @@ export const userService = {
       throw error;
     }
   },
+
+  /**
+   * Deletes the current user's profile and all associated data.
+   * @param {string|number} userId - The ID of the user to delete.
+   * @returns {Promise<object>} A promise resolving to the deletion result.
+   */
+  deleteUser: async (userId) => {
+    try {
+      const response = await api.delete(`/api/users/${userId}`);
+      return response.data;
+    } catch (error) {
+      console.error(`Error deleting user ${userId}:`, error);
+      throw error;
+    }
+  },
 };
 
 // Export the service object as the default export
