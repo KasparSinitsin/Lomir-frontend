@@ -986,6 +986,12 @@ const TeamDetailsModal = ({
       (m) => m.user_id === user?.id || m.userId === user?.id
     );
 
+    const isTeamArchived = team?.archived_at || team?.status === "inactive";
+
+    if (isTeamArchived && !isMember) {
+      return null;
+    }
+
     if (hasPendingInvitation && pendingInvitation) {
       return (
         <div className="mt-6 border-t border-base-200 pt-4">
@@ -1230,29 +1236,38 @@ const TeamDetailsModal = ({
                             : team.max_members ?? team.maxMembers ?? "∞"}
                         </span>
                       </div>
-                      {shouldShowVisibilityStatus() && (
+
+                      {/* Archived status - ALWAYS show for archived teams */}
+                      {(team?.archived_at || team?.status === "inactive") && (
                         <div className="flex items-center text-base-content/70">
-                          {team?.archived_at || team?.status === "inactive" ? (
-                            <>
-                              <Archive size={16} className="mr-1" />
-                              <span className="">Archived</span>
-                            </>
-                          ) : isPublic ? (
-                            <>
-                              <Eye size={16} className="mr-1 text-green-600" />
-                              <span>Public</span>
-                            </>
-                          ) : (
-                            <>
-                              <EyeClosed
-                                size={16}
-                                className="mr-1 text-gray-500"
-                              />
-                              <span>Private</span>
-                            </>
-                          )}
+                          <Archive size={16} className="mr-1" />
+                          <span>Archived</span>
                         </div>
                       )}
+
+                      {/* Public/Private status - only for members of NON-archived teams */}
+                      {shouldShowVisibilityStatus() &&
+                        !(team?.archived_at || team?.status === "inactive") && (
+                          <div className="flex items-center text-base-content/70">
+                            {isPublic ? (
+                              <>
+                                <Eye
+                                  size={16}
+                                  className="mr-1 text-green-600"
+                                />
+                                <span>Public</span>
+                              </>
+                            ) : (
+                              <>
+                                <EyeClosed
+                                  size={16}
+                                  className="mr-1 text-gray-500"
+                                />
+                                <span>Private</span>
+                              </>
+                            )}
+                          </div>
+                        )}
                     </div>
                   </div>
                 </div>

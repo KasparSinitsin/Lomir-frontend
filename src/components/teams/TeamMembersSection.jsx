@@ -160,6 +160,9 @@ const TeamMembersSection = ({
                       member={member}
                       canManage={canManageThisMember}
                       isOwner={isOwner}
+                      isTeamArchived={
+                        team?.archived_at || team?.status === "inactive"
+                      }
                       onRoleChange={async (newRole) => {
                         try {
                           await teamService.updateMemberRole(
