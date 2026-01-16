@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { useAuth } from "../contexts/AuthContext";
 import PageContainer from "../components/layout/PageContainer";
@@ -9,7 +9,16 @@ import Card from "../components/common/Card";
 import Button from "../components/common/Button";
 import DataDisplay from "../components/common/DataDisplay";
 import Alert from "../components/common/Alert";
-import { Mail, MapPin, User, Edit, Eye, EyeClosed, Award } from "lucide-react";
+import {
+  Mail,
+  MapPin,
+  User,
+  Edit,
+  Eye,
+  EyeClosed,
+  Award,
+  Trash2,
+} from "lucide-react";
 import { tagService } from "../services/tagService";
 import { userService } from "../services/userService";
 import BadgeCard from "../components/badges/BadgeCard";
@@ -19,9 +28,10 @@ import TagsDisplaySection from "../components/tags/TagsDisplaySection";
 import IconToggle from "../components/common/IconToggle";
 import LocationDisplay from "../components/common/LocationDisplay";
 import { getUserInitials } from "../utils/userHelpers";
+import Modal from "../components/common/Modal";
 
 const Profile = () => {
-  const { user, updateUser } = useAuth();
+  const { user, updateUser, logout } = useAuth();
   const [localUser, setUser] = useState(null);
   const [registrationMessage, setRegistrationMessage] = useState("");
   const [tags, setTags] = useState([]);
@@ -32,6 +42,9 @@ const Profile = () => {
   const [success, setSuccess] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [imageError, setImageError] = useState(false);
+  const navigate = useNavigate();
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   // Add form errors state
   const [formErrors, setFormErrors] = useState({});
@@ -194,9 +207,9 @@ const Profile = () => {
   }, [user]);
 
   // Reset image error state when user changes
-useEffect(() => {
-  setImageError(false);
-}, [user?.avatarUrl, user?.avatar_url]);
+  useEffect(() => {
+    setImageError(false);
+  }, [user?.avatarUrl, user?.avatar_url]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -254,6 +267,33 @@ useEffect(() => {
       setError("Failed to update tags. Please try again.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeleteProfile = async () => {
+    if (!user) return;
+
+    try {
+      setDeleteLoading(true);
+      setError(null);
+
+      const result = await userService.deleteUser(user.id);
+
+      if (result.success) {
+        // Close modal and logout
+        setIsDeleteModalOpen(false);
+        logout();
+        navigate("/", { replace: true });
+      }
+    } catch (err) {
+      console.error("Error deleting profile:", err);
+      const errorMessage =
+        err.response?.data?.message ||
+        "Failed to delete profile. Please try again.";
+      setError(errorMessage);
+      setIsDeleteModalOpen(false);
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -485,70 +525,26 @@ useEffect(() => {
         <Alert type="error" message={error} onClose={() => setError(null)} />
       )}
 
-      {/* Debug section - keep this in development for troubleshooting
-      {import.meta.env.DEV && (
-        <Card className="mb-4">
-          <div className="p-4">
-            <h3 className="text-lg font-semibold mb-2">Debug User Data</h3>
-            {displayUserData()}
-
-            <div className="mt-4">
-              <h3 className="text-lg font-semibold mb-2">Debug Form Data</h3>
-              {displayFormData()}
-            </div>
-
-            <div className="mt-4">
-              <h3 className="text-lg font-semibold mb-2">Debug State</h3>
-              <p>Initial Data Loaded: {initialDataLoaded ? "Yes" : "No"}</p>
-              <p>Is Editing: {isEditing ? "Yes" : "No"}</p>
-              <p>Loading: {loading ? "Yes" : "No"}</p>
-              <p>Is Profile Public: {isProfilePublic() ? "Yes" : "No"}</p>
-              <p>user.is_public: {String(user?.is_public)}</p>
-              <p>user.isPublic: {String(user?.isPublic)}</p>
-              <p>Form Errors: {JSON.stringify(formErrors)}</p>
-            </div>
-
-            <div className="mt-4">
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={handleManualRefresh}
-              >
-                Manual Refresh
-              </Button>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => console.log("Current user state:", user)}
-                className="ml-2"
-              >
-                Log User State
-              </Button>
-            </div>
-          </div>
-        </Card>
-      )} */}
-
       <Card className="overflow-visible">
         {isEditing ? (
           <div className="p-6">
             <h2 className="text-2xl font-bold mb-6">Edit Profile</h2>
 
             <div className="mb-6 flex justify-top">
-            <div className="avatar placeholder">
-  <div className="bg-primary text-primary-content rounded-full w-24 h-24 relative">
-    {imagePreview && !imageError ? (
-      <img
-        src={imagePreview}
-        alt="Profile"
-        className="rounded-full object-cover w-full h-full"
-        onError={() => setImageError(true)}
-      />
-    ) : (
-      <span className="text-3xl">{getUserInitials(user)}</span>
-    )}
-  </div>
-</div>
+              <div className="avatar placeholder">
+                <div className="bg-primary text-primary-content rounded-full w-24 h-24 relative">
+                  {imagePreview && !imageError ? (
+                    <img
+                      src={imagePreview}
+                      alt="Profile"
+                      className="rounded-full object-cover w-full h-full"
+                      onError={() => setImageError(true)}
+                    />
+                  ) : (
+                    <span className="text-3xl">{getUserInitials(user)}</span>
+                  )}
+                </div>
+              </div>
             </div>
 
             <div className="form-control w-full mb-4">
@@ -767,7 +763,7 @@ useEffect(() => {
                       </div>
                     </div>
                   </div>
-                  <div className="mt-4 sm:mt-0">
+                  <div className="mt-4 sm:mt-0 flex gap-2">
                     <Button
                       variant="outline"
                       size="sm"
@@ -775,6 +771,15 @@ useEffect(() => {
                       icon={<Edit size={16} />}
                     >
                       Edit Profile
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setIsDeleteModalOpen(true)}
+                      icon={<Trash2 size={16} />}
+                      className="text-error hover:bg-error/10"
+                    >
+                      Delete Profile
                     </Button>
                   </div>
                 </div>
@@ -874,6 +879,52 @@ useEffect(() => {
           </div>
         )}
       </Card>
+
+      {/* Delete Profile Confirmation Modal */}
+      {isDeleteModalOpen && (
+        <Modal
+          isOpen={isDeleteModalOpen}
+          onClose={() => !deleteLoading && setIsDeleteModalOpen(false)}
+          title="Delete Profile"
+          position="center"
+          size="small"
+          closeOnBackdrop={!deleteLoading}
+          closeOnEscape={!deleteLoading}
+          showCloseButton={!deleteLoading}
+        >
+          <div className="py-4">
+            <p className="text-base-content">
+              You are about to delete your profile. This action cannot be
+              reversed and all data in your profile will be deleted from our
+              database.
+            </p>
+            <p className="text-warning text-sm mt-2">
+              This includes your messages, team memberships, badges, and all
+              other associated data.
+            </p>
+          </div>
+          <div className="flex justify-end gap-3 mt-4">
+            <Button
+              variant="ghost"
+              onClick={() => setIsDeleteModalOpen(false)}
+              disabled={deleteLoading}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="errorOutline"
+              onClick={handleDeleteProfile}
+              disabled={deleteLoading}
+            >
+              {deleteLoading ? (
+                <span className="loading loading-spinner loading-sm"></span>
+              ) : (
+                "Confirm"
+              )}
+            </Button>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 };
