@@ -495,7 +495,27 @@ const Chat = () => {
       const messageConvId = String(message.conversationId);
       const currentConvId = String(conversationId);
 
-      if (messageConvId === currentConvId) {
+      // Get current conversation type from URL
+      const urlParams = new URLSearchParams(window.location.search);
+      const currentType = urlParams.get("type") || "direct";
+
+      // Check if message belongs to current conversation
+      let isForCurrentConversation = false;
+
+      if (message.type === currentType) {
+        if (currentType === "team") {
+          // For team chats: conversationId must match
+          isForCurrentConversation = messageConvId === currentConvId;
+        } else {
+          // For DMs: either I sent it to this person, or this person sent it to me
+          const isSentByMe =
+            message.senderId === user?.id && messageConvId === currentConvId;
+          const isReceivedFromThem = String(message.senderId) === currentConvId;
+          isForCurrentConversation = isSentByMe || isReceivedFromThem;
+        }
+      }
+
+      if (isForCurrentConversation) {
         setMessages((prev) => {
           // If this is our own message, replace the optimistic version
           if (message.senderId === user.id) {
@@ -694,6 +714,7 @@ const Chat = () => {
     socket.on("typing:update", handleTypingUpdate);
     socket.on("message:status", handleMessageStatus);
     socket.on("conversation:updated", handleConversationUpdate);
+    socket.on("team:member_kicked", handleKickedFromTeam);
 
     // Cleanup function to remove listeners
     return () => {
@@ -702,6 +723,7 @@ const Chat = () => {
       socket.off("typing:update", handleTypingUpdate);
       socket.off("message:status", handleMessageStatus);
       socket.off("conversation:updated", handleConversationUpdate);
+      socket.off("team:member_kicked", handleKickedFromTeam);
     };
   }, [isAuthenticated, conversationId, user]);
 
@@ -736,6 +758,34 @@ const Chat = () => {
     } catch (error) {
       console.error("Error leaving team:", error);
       setError("Failed to leave team. Please try again.");
+    }
+  };
+
+  // Handle being kicked from a team
+  const handleKickedFromTeam = (data) => {
+    console.log("Kicked from team:", data);
+
+    // If currently viewing this team's chat, navigate away
+    if (
+      conversationType === "team" &&
+      parseInt(conversationId) === data.teamId
+    ) {
+      setError("You have been removed from this team.");
+
+      // Remove from conversation list
+      setConversations((prev) =>
+        prev.filter((c) => !(c.type === "team" && c.id === data.teamId))
+      );
+
+      // Navigate away
+      navigate("/chat");
+      setActiveConversation(null);
+      setMessages([]);
+    } else {
+      // Just remove from conversation list if not currently viewing
+      setConversations((prev) =>
+        prev.filter((c) => !(c.type === "team" && c.id === data.teamId))
+      );
     }
   };
 
@@ -879,6 +929,13 @@ const Chat = () => {
 
               {/* Deleted team banner + message input */}
               <div className="border-t border-base-200">
+                {/* DEBUG - remove after testing */}
+                {console.log("DEBUG team deletion banner:", {
+                  teamOwnerId: activeConversation?.team?.ownerId,
+                  teamOwner_id: activeConversation?.team?.owner_id,
+                  userId: user?.id,
+                  fullTeamObject: activeConversation?.team,
+                })}
                 {/* Show banner for archived teams */}
                 {isTeamArchived && conversationType === "team" && (
                   <div
@@ -889,15 +946,19 @@ const Chat = () => {
                     }}
                   >
                     <span className="text-sm font-medium">
-                      {activeConversation?.team?.ownerId === user?.id
-                        ? `You deleted the team "${
-                            activeConversation?.team?.name || "this team"
-                          }". Remaining members are able to text in this chat until the last member leaves.`
-                        : `${
-                            activeConversation?.team?.ownerName || "The owner"
-                          } has deleted the team "${
-                            activeConversation?.team?.name || "this team"
-                          }". Remaining members are able to text in this chat until the last member leaves.`}
+                      {activeConversation?.team?.members?.some(
+                        (m) => m.userId === user?.id && m.role === "owner"
+                      )
+                        ? `You initiated the deletion of this team. The team is archived and inactive now. Remaining members are able to text in this chat until the last member leaves.`
+                        : `${(() => {
+                            const owner =
+                              activeConversation?.team?.members?.find(
+                                (m) => m.role === "owner"
+                              );
+                            return owner
+                              ? `${owner.firstName} ${owner.lastName}`
+                              : "The owner";
+                          })()} has initiated the deletion of this team. The team is archived and inactive now. Remaining members are able to text in this chat until the last member leaves.`}
                     </span>
 
                     {/* Leave Team Button */}

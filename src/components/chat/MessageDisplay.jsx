@@ -1761,9 +1761,9 @@ const MessageDisplay = ({
     let messageText;
 
     if (isCurrentUser) {
-      messageText = `You deleted the team "${parsedMessage.teamName}". Remaining members are able to text in this chat until the last member leaves.`;
+      messageText = `You initiated the deletion of the team "${parsedMessage.teamName}". The team is archived and inactive now. Remaining members are able to text in this chat until the last member leaves.`;
     } else {
-      messageText = `${parsedMessage.ownerName} has deleted the team "${parsedMessage.teamName}". Remaining members are able to text in this chat until the last member leaves.`;
+      messageText = `${parsedMessage.ownerName} has initiated the deletion of the team "${parsedMessage.teamName}". The team is archived and inactive now. Remaining members are able to text in this chat until the last member leaves.`;
     }
 
     return (

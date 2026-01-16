@@ -21,6 +21,7 @@ import {
   LogOut,
   Mail,
   SendHorizontal,
+  Archive,
 } from "lucide-react";
 import IconToggle from "../common/IconToggle";
 import UserDetailsModal from "../users/UserDetailsModal";
@@ -383,6 +384,11 @@ const TeamDetailsModal = ({
       return false;
     }
 
+    // Can't edit archived/deleted teams
+    if (team?.archived_at || team?.status === "inactive") {
+      return false;
+    }
+
     // Owners can always edit
     if (isOwner) {
       return true;
@@ -397,7 +403,11 @@ const TeamDetailsModal = ({
   }, [isAuthenticated, user, team, isOwner, effectiveUserRole]);
 
   const canDeleteTeam = useMemo(() => {
-    return isAuthenticated && user && team && isOwner; // Only owners can delete
+    // Can't delete already archived/deleted teams
+    if (team?.archived_at || team?.status === "inactive") {
+      return false;
+    }
+    return isAuthenticated && user && team && isOwner;
   }, [isAuthenticated, user, team, isOwner]);
 
   // Get team initials from name (e.g., "Urban Gardeners Berlin" → "UGB")
@@ -1222,7 +1232,12 @@ const TeamDetailsModal = ({
                       </div>
                       {shouldShowVisibilityStatus() && (
                         <div className="flex items-center text-base-content/70">
-                          {isPublic ? (
+                          {team?.archived_at || team?.status === "inactive" ? (
+                            <>
+                              <Archive size={16} className="mr-1" />
+                              <span className="">Archived</span>
+                            </>
+                          ) : isPublic ? (
                             <>
                               <Eye size={16} className="mr-1 text-green-600" />
                               <span>Public</span>
