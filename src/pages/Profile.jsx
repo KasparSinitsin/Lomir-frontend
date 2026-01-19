@@ -27,6 +27,7 @@ import TagInputV2 from "../components/tags/TagInputV2";
 import TagsDisplaySection from "../components/tags/TagsDisplaySection";
 import IconToggle from "../components/common/IconToggle";
 import LocationDisplay from "../components/common/LocationDisplay";
+import ImageUploader from "../components/common/ImageUploader";
 import { getUserInitials } from "../utils/userHelpers";
 import Modal from "../components/common/Modal";
 
@@ -229,23 +230,6 @@ const Profile = () => {
         delete newErrors[name];
         return newErrors;
       });
-    }
-  };
-
-  const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setFormData((prevData) => ({
-        ...prevData,
-        profileImage: file,
-      }));
-
-      // For preview
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result);
-      };
-      reader.readAsDataURL(file);
     }
   };
 
@@ -583,65 +567,32 @@ const Profile = () => {
           <div className="p-6">
             <h2 className="text-2xl font-bold mb-6">Edit Profile</h2>
 
-            <div className="mb-6 flex justify-top">
-              <div className="avatar placeholder">
-                <div className="bg-primary text-primary-content rounded-full w-24 h-24 relative">
-                  {imagePreview && !imageError ? (
-                    <img
-                      src={imagePreview}
-                      alt="Profile"
-                      className="rounded-full object-cover w-full h-full"
-                      onError={() => setImageError(true)}
-                    />
-                  ) : (
-                    <span className="text-3xl">{getUserInitials(user)}</span>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <div className="form-control w-full mb-4">
-              <label className="label">
-                <span className="label-text">Profile Image</span>
-              </label>
-              <div className="flex flex-col gap-3">
-                <input
-                  type="file"
-                  className="file-input file-input-bordered w-full"
-                  onChange={handleImageChange}
-                  accept="image/*"
-                />
-
-                {/* Show Remove Avatar button only if there's an existing avatar */}
-                {(imagePreview || user?.avatar_url || user?.avatarUrl) &&
-                  !formData.profileImage && (
-                    <button
-                      type="button"
-                      onClick={handleAvatarDelete}
-                      disabled={avatarDeleteLoading || loading}
-                      className="btn btn-outline btn-error btn-sm w-fit"
-                    >
-                      {avatarDeleteLoading ? (
-                        <>
-                          <span className="loading loading-spinner loading-xs"></span>
-                          Removing...
-                        </>
-                      ) : (
-                        <>
-                          <Trash2 size={16} />
-                          Remove Current Picture
-                        </>
-                      )}
-                    </button>
-                  )}
-
-                {/* Help text */}
-                <p className="text-xs text-base-content/60">
-                  {formData.profileImage
-                    ? "New image selected. Save changes to upload."
-                    : "Select a new image to replace your current profile picture."}
-                </p>
-              </div>
+            {/* Profile Image Upload */}
+            <div className="form-control w-full mb-6">
+              <ImageUploader
+                currentImage={
+                  imagePreview || user?.avatar_url || user?.avatarUrl
+                }
+                onImageSelect={(file, previewUrl) => {
+                  setFormData((prev) => ({
+                    ...prev,
+                    profileImage: file,
+                  }));
+                  setImagePreview(previewUrl);
+                }}
+                onImageRemove={handleAvatarDelete}
+                fallbackText={getUserInitials(user)}
+                shape="circle"
+                size="lg"
+                label="Profile Image"
+                disabled={loading}
+                loading={avatarDeleteLoading}
+                showRemoveButton={
+                  !!(imagePreview || user?.avatar_url || user?.avatarUrl) &&
+                  !formData.profileImage
+                }
+                removeButtonText="Remove Current Picture"
+              />
             </div>
 
             <div className="form-control w-full mb-4">

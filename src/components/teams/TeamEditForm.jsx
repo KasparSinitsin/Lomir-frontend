@@ -3,8 +3,8 @@ import Button from "../common/Button";
 import IconToggle from "../common/IconToggle";
 import axios from "axios";
 import { getTeamInitials } from "../../utils/userHelpers";
-import { Trash2 } from "lucide-react";
 import { teamService } from "../../services/teamService";
+import ImageUploader from "../common/ImageUploader";
 
 /**
  * TeamEditForm Component
@@ -76,51 +76,7 @@ const TeamEditForm = ({
     }));
   }, []); // Empty dependency array - only created once
 
-  // Handle avatar file selection
-  const handleAvatarFileChange = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    // Get team initials from name (e.g., "Urban Gardeners Berlin" → "UGB")
-    const getTeamInitials = () => {
-      const name = formData.name;
-      if (!name || typeof name !== "string") return "?";
-
-      const words = name.trim().split(/\s+/);
-
-      if (words.length === 1) {
-        return name.slice(0, 2).toUpperCase();
-      }
-
-      return words
-        .slice(0, 3)
-        .map((word) => word.charAt(0))
-        .join("")
-        .toUpperCase();
-    };
-
-    // Validate file type
-    if (!file.type.startsWith("image/")) {
-      alert("Please select an image file");
-      return;
-    }
-
-    // Validate file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      alert("Image size must be less than 5MB");
-      return;
-    }
-
-    // Create preview URL
-    const previewUrl = URL.createObjectURL(file);
-
-    setFormData((prev) => ({
-      ...prev,
-      teamavatarFile: file,
-      teamavatarUrl: previewUrl, // Show preview
-    }));
-  };
-
+  // Handle form submission
   const handleFormSubmit = (e) => {
     e.preventDefault();
     onSubmit(e);
@@ -131,7 +87,9 @@ const TeamEditForm = ({
     if (!team?.id) return;
 
     // Confirm deletion
-    if (!window.confirm("Are you sure you want to remove the team picture?")) {
+    if (
+      !window.confirm("Are you sure you want to remove the team picture?")
+    ) {
       return;
     }
 
@@ -169,70 +127,35 @@ const TeamEditForm = ({
     <form onSubmit={handleFormSubmit} className="space-y-4">
       {/* Team Avatar */}
       <div className="form-control">
-        <label className="label">
-          <span className="label-text">Team Avatar</span>
-        </label>
-        <div className="flex items-center space-x-4">
-          {/* Avatar Preview */}
-          <div className="avatar placeholder">
-            <div className="bg-primary text-primary-content rounded-full w-16 h-16 flex items-center justify-center">
-              {formData.teamavatarUrl ? (
-                <img
-                  src={formData.teamavatarUrl}
-                  alt="Team Preview"
-                  className="rounded-full object-cover w-full h-full"
-                />
-              ) : (
-                <span className="text-xl">{getTeamInitials()}</span>
-              )}
-            </div>
-          </div>
-
-          {/* File Upload and Remove Button */}
-          <div className="flex-1 space-y-2">
-            {/* Row containing input and remove button */}
-            <div className="flex items-center gap-2 flex-wrap">
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleAvatarFileChange}
-                className="file-input file-input-bordered file-input-sm w-full max-w-xs"
-                disabled={loading || uploadingImage || avatarDeleteLoading}
-              />
-
-              {/* Show Remove Avatar button only if there's an existing avatar and no new file selected */}
-              {(formData.teamavatarUrl ||
-                team?.teamavatar_url ||
-                team?.teamavatarUrl) &&
-                !formData.teamavatarFile && (
-                  <button
-                    type="button"
-                    onClick={handleAvatarDelete}
-                    disabled={avatarDeleteLoading || loading || uploadingImage}
-                    className="btn btn-outline btn-error btn-sm"
-                  >
-                    {avatarDeleteLoading ? (
-                      <>
-                        <span className="loading loading-spinner loading-xs"></span>
-                        Removing...
-                      </>
-                    ) : (
-                      <>
-                        <Trash2 size={14} />
-                        Remove Current Picture
-                      </>
-                    )}
-                  </button>
-                )}
-            </div>
-
-            <p className="text-xs text-base-content/60">
-              {formData.teamavatarFile
-                ? "New image selected. Save changes to upload."
-                : "Max size: 5MB. Recommended: Square image."}
-            </p>
-          </div>
-        </div>
+        <ImageUploader
+          currentImage={
+            formData.teamavatarUrl ||
+            team?.teamavatar_url ||
+            team?.teamavatarUrl
+          }
+          onImageSelect={(file, previewUrl) => {
+            setFormData((prev) => ({
+              ...prev,
+              teamavatarFile: file,
+              teamavatarUrl: previewUrl,
+            }));
+          }}
+          onImageRemove={handleAvatarDelete}
+          fallbackText={getTeamInitials(team)}
+          shape="circle"
+          size="md"
+          label="Team Avatar"
+          disabled={loading || uploadingImage}
+          loading={avatarDeleteLoading}
+          showRemoveButton={
+            !!(
+              formData.teamavatarUrl ||
+              team?.teamavatar_url ||
+              team?.teamavatarUrl
+            ) && !formData.teamavatarFile
+          }
+          removeButtonText="Remove Team Picture"
+        />
       </div>
 
       {/* Team Name */}
@@ -254,7 +177,9 @@ const TeamEditForm = ({
         />
         {formErrors.name && (
           <label className="label">
-            <span className="label-text-alt text-error">{formErrors.name}</span>
+            <span className="label-text-alt text-error">
+              {formErrors.name}
+            </span>
           </label>
         )}
       </div>

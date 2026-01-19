@@ -7,6 +7,7 @@ import Card from "../common/Card";
 import Button from "../common/Button";
 import FormGroup from "../common/FormGroup";
 import { Tag } from "lucide-react";
+import ImageUploader from "../common/ImageUploader";
 
 const RegisterForm = () => {
   const navigate = useNavigate();
@@ -69,21 +70,13 @@ const RegisterForm = () => {
     }
   };
 
-  const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setFormData({
-        ...formData,
-        profile_image: file,
-      });
-
-      // Create preview
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result);
-      };
-      reader.readAsDataURL(file);
+  const getUserInitialsFromForm = () => {
+    const first = formData.first_name?.charAt(0) || "";
+    const last = formData.last_name?.charAt(0) || "";
+    if (first || last) {
+      return (first + last).toUpperCase();
     }
+    return formData.username?.charAt(0)?.toUpperCase() || "?";
   };
 
   const handleTagsChange = (newTags) => {
@@ -124,7 +117,7 @@ const RegisterForm = () => {
         cloudinaryFormData.append("file", formData.profile_image);
         cloudinaryFormData.append(
           "upload_preset",
-          import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET
+          import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET,
         );
 
         const cloudinaryResponse = await axios.post(
@@ -136,7 +129,7 @@ const RegisterForm = () => {
             headers: {
               "Content-Type": "multipart/form-data",
             },
-          }
+          },
         );
 
         userData.avatar_url = cloudinaryResponse.data.secure_url;
@@ -147,7 +140,7 @@ const RegisterForm = () => {
       if (result.success) {
         localStorage.setItem(
           "registrationMessage",
-          "Profile created successfully!"
+          "Profile created successfully!",
         );
         navigate("/profile");
       } else {
@@ -353,26 +346,30 @@ const RegisterForm = () => {
               />
             </div>
 
+            {/* Profile Image Upload */}
             <div className="form-control w-full">
-              <label className="label">
-                <span className="label-text">Profile Image</span>
-              </label>
-              <div className="flex items-center gap-4">
-                {imagePreview && (
-                  <div className="avatar">
-                    <div className="w-16 h-16 rounded-full">
-                      <img src={imagePreview} alt="Preview" />
-                    </div>
-                  </div>
-                )}
-                <input
-                  type="file"
-                  className="file-input file-input-bordered w-full"
-                  onChange={handleImageChange}
-                  accept="image/*"
-                  name="profile_image"
-                />
-              </div>
+              <ImageUploader
+                currentImage={imagePreview}
+                onImageSelect={(file, previewUrl) => {
+                  setFormData({
+                    ...formData,
+                    profile_image: file,
+                  });
+                  setImagePreview(previewUrl);
+                }}
+                onImageRemove={() => {
+                  setFormData({
+                    ...formData,
+                    profile_image: null,
+                  });
+                  setImagePreview(null);
+                }}
+                fallbackText={getUserInitialsFromForm()}
+                shape="circle"
+                size="lg"
+                label="Profile Image (Optional)"
+                disabled={isSubmitting}
+              />
             </div>
 
             {/* Skills & Interests Section */}
