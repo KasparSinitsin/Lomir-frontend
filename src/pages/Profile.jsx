@@ -45,6 +45,7 @@ const Profile = () => {
   const navigate = useNavigate();
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [avatarDeleteLoading, setAvatarDeleteLoading] = useState(false);
 
   // Add form errors state
   const [formErrors, setFormErrors] = useState({});
@@ -113,8 +114,8 @@ const Profile = () => {
             apiUserData.isPublic !== undefined
               ? apiUserData.isPublic
               : apiUserData.is_public !== undefined
-              ? apiUserData.is_public
-              : true,
+                ? apiUserData.is_public
+                : true,
           profileImage: null,
         });
 
@@ -161,8 +162,8 @@ const Profile = () => {
           user.is_public !== undefined
             ? user.is_public
             : user.isPublic !== undefined
-            ? user.isPublic
-            : true,
+              ? user.isPublic
+              : true,
         profileImage: null,
       });
 
@@ -245,6 +246,58 @@ const Profile = () => {
         setImagePreview(reader.result);
       };
       reader.readAsDataURL(file);
+    }
+  };
+
+  // Handle avatar deletion
+  const handleAvatarDelete = async () => {
+    if (!user) return;
+
+    // Confirm deletion
+    if (
+      !window.confirm("Are you sure you want to remove your profile picture?")
+    ) {
+      return;
+    }
+
+    try {
+      setAvatarDeleteLoading(true);
+      setError(null);
+
+      const response = await userService.deleteUserAvatar(user.id);
+
+      if (response.success) {
+        // Clear the image preview
+        setImagePreview(null);
+
+        // Update the user context to remove avatar
+        const updatedUser = {
+          ...user,
+          avatar_url: null,
+          avatarUrl: null,
+        };
+        updateUser(updatedUser);
+        setUser(updatedUser);
+
+        // Reset the file input in form data
+        setFormData((prev) => ({
+          ...prev,
+          profileImage: null,
+        }));
+
+        setSuccess("Profile picture removed successfully");
+      } else {
+        setError(response.message || "Failed to remove profile picture");
+      }
+    } catch (error) {
+      console.error("Error deleting avatar:", error);
+      setError(
+        error.response?.data?.message ||
+          error.message ||
+          "Failed to remove profile picture. Please try again.",
+      );
+    } finally {
+      setAvatarDeleteLoading(false);
     }
   };
 
@@ -351,7 +404,7 @@ const Profile = () => {
         cloudinaryData.append("file", formData.profileImage);
         cloudinaryData.append(
           "upload_preset",
-          import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET
+          import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET,
         );
 
         console.log("Uploading image to Cloudinary");
@@ -366,7 +419,7 @@ const Profile = () => {
               headers: {
                 "Content-Type": "multipart/form-data",
               },
-            }
+            },
           );
 
           console.log("Cloudinary response:", cloudinaryResponse.data);
@@ -382,7 +435,7 @@ const Profile = () => {
         } catch (cloudinaryError) {
           console.error("Error uploading to Cloudinary:", cloudinaryError);
           setError(
-            "Failed to upload image. Please try a different image or try again later."
+            "Failed to upload image. Please try a different image or try again later.",
           );
           setLoading(false);
           return;
@@ -398,10 +451,10 @@ const Profile = () => {
       if (!response || response.success === false) {
         console.error(
           "Update failed:",
-          response?.message || "No response received"
+          response?.message || "No response received",
         );
         setError(
-          "Failed to update profile: " + (response?.message || "Unknown error")
+          "Failed to update profile: " + (response?.message || "Unknown error"),
         );
       } else {
         setIsEditing(false);
@@ -451,7 +504,7 @@ const Profile = () => {
     } catch (error) {
       console.error("Error updating profile:", error);
       setError(
-        "Failed to update profile: " + (error.message || "Unknown error")
+        "Failed to update profile: " + (error.message || "Unknown error"),
       );
     } finally {
       setLoading(false);
@@ -551,12 +604,44 @@ const Profile = () => {
               <label className="label">
                 <span className="label-text">Profile Image</span>
               </label>
-              <input
-                type="file"
-                className="file-input file-input-bordered w-full"
-                onChange={handleImageChange}
-                accept="image/*"
-              />
+              <div className="flex flex-col gap-3">
+                <input
+                  type="file"
+                  className="file-input file-input-bordered w-full"
+                  onChange={handleImageChange}
+                  accept="image/*"
+                />
+
+                {/* Show Remove Avatar button only if there's an existing avatar */}
+                {(imagePreview || user?.avatar_url || user?.avatarUrl) &&
+                  !formData.profileImage && (
+                    <button
+                      type="button"
+                      onClick={handleAvatarDelete}
+                      disabled={avatarDeleteLoading || loading}
+                      className="btn btn-outline btn-error btn-sm w-fit"
+                    >
+                      {avatarDeleteLoading ? (
+                        <>
+                          <span className="loading loading-spinner loading-xs"></span>
+                          Removing...
+                        </>
+                      ) : (
+                        <>
+                          <Trash2 size={16} />
+                          Remove Current Picture
+                        </>
+                      )}
+                    </button>
+                  )}
+
+                {/* Help text */}
+                <p className="text-xs text-base-content/60">
+                  {formData.profileImage
+                    ? "New image selected. Save changes to upload."
+                    : "Select a new image to replace your current profile picture."}
+                </p>
+              </div>
             </div>
 
             <div className="form-control w-full mb-4">
@@ -867,7 +952,7 @@ const Profile = () => {
                     (tag) =>
                       tag.type === "badge" && (
                         <BadgeCard key={tag.id} badge={tag} />
-                      )
+                      ),
                   )}
                 </Grid>
               ) : (

@@ -113,7 +113,22 @@ export const userService = {
       throw error;
     }
   },
-};
+
+  /**
+   * Deletes the user's avatar image from Cloudinary and removes it from the profile.
+   * @param {string|number} userId - The ID of the user whose avatar to delete.
+   * @returns {Promise<object>} A promise resolving to the deletion result.
+   */
+  deleteUserAvatar: async (userId) => {
+    try {
+      const response = await api.delete(`/api/users/${userId}/avatar`);
+      return response.data;
+    } catch (error) {
+      console.error(`Error deleting avatar for user ${userId}:`, error);
+      throw error;
+    }
+  },
+};  
 
 // Export the service object as the default export
 export default userService;
