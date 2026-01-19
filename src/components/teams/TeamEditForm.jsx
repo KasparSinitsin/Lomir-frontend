@@ -3,6 +3,8 @@ import Button from "../common/Button";
 import IconToggle from "../common/IconToggle";
 import axios from "axios";
 import { getTeamInitials } from "../../utils/userHelpers";
+import { Trash2 } from "lucide-react";
+import { teamService } from "../../services/teamService";
 
 /**
  * TeamEditForm Component
@@ -19,8 +21,10 @@ const TeamEditForm = ({
   onCancel,
   loading = false,
   isOwner = false,
+  onAvatarDeleted,
 }) => {
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [avatarDeleteLoading, setAvatarDeleteLoading] = useState(false);
 
   // Handle regular form field changes
   const handleChange = (e) => {
@@ -54,13 +58,13 @@ const TeamEditForm = ({
     }));
   };
 
-  // Handle tag selection - PROPERLY MEMOIZED
+  // Handle tag selection
   const handleTagSelection = useCallback((selected) => {
     // akzeptiert: [number|string|object], z.B. { id, value }
     const ids = (selected ?? [])
-      .map((t) => (typeof t === "object" ? t.id ?? t.value ?? t : t))
+      .map((t) => (typeof t === "object" ? (t.id ?? t.value ?? t) : t))
       .map((x) =>
-        x === "" || x === null || x === undefined ? null : Number(x)
+        x === "" || x === null || x === undefined ? null : Number(x),
       )
       .filter((x) => Number.isFinite(x)); // <- NaN, null etc. raus
 
@@ -122,6 +126,45 @@ const TeamEditForm = ({
     onSubmit(e);
   };
 
+  // Handle avatar deletion
+  const handleAvatarDelete = async () => {
+    if (!team?.id) return;
+
+    // Confirm deletion
+    if (!window.confirm("Are you sure you want to remove the team picture?")) {
+      return;
+    }
+
+    try {
+      setAvatarDeleteLoading(true);
+
+      const response = await teamService.deleteTeamAvatar(team.id);
+
+      if (response.success) {
+        // Clear the avatar URL in form data
+        setFormData((prev) => ({
+          ...prev,
+          teamavatarUrl: null,
+          teamavatarFile: null,
+        }));
+
+        // Notify parent component if callback provided
+        if (onAvatarDeleted) {
+          onAvatarDeleted();
+        }
+      }
+    } catch (error) {
+      console.error("Error deleting team avatar:", error);
+      alert(
+        error.response?.data?.message ||
+          error.message ||
+          "Failed to remove team picture. Please try again.",
+      );
+    } finally {
+      setAvatarDeleteLoading(false);
+    }
+  };
+
   return (
     <form onSubmit={handleFormSubmit} className="space-y-4">
       {/* Team Avatar */}
@@ -145,17 +188,48 @@ const TeamEditForm = ({
             </div>
           </div>
 
-          {/* File Upload Input */}
-          <div className="flex-1">
-            <input
-              type="file"
-              accept="image/*"
-              onChange={handleAvatarFileChange}
-              className="file-input file-input-bordered file-input-sm w-full max-w-xs"
-              disabled={loading || uploadingImage}
-            />
-            <p className="text-xs text-base-content/60 mt-1">
-              Max size: 5MB. Supported: JPG, PNG, GIF
+          {/* File Upload and Remove Button */}
+          <div className="flex-1 space-y-2">
+            {/* Row containing input and remove button */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleAvatarFileChange}
+                className="file-input file-input-bordered file-input-sm w-full max-w-xs"
+                disabled={loading || uploadingImage || avatarDeleteLoading}
+              />
+
+              {/* Show Remove Avatar button only if there's an existing avatar and no new file selected */}
+              {(formData.teamavatarUrl ||
+                team?.teamavatar_url ||
+                team?.teamavatarUrl) &&
+                !formData.teamavatarFile && (
+                  <button
+                    type="button"
+                    onClick={handleAvatarDelete}
+                    disabled={avatarDeleteLoading || loading || uploadingImage}
+                    className="btn btn-outline btn-error btn-sm"
+                  >
+                    {avatarDeleteLoading ? (
+                      <>
+                        <span className="loading loading-spinner loading-xs"></span>
+                        Removing...
+                      </>
+                    ) : (
+                      <>
+                        <Trash2 size={14} />
+                        Remove Current Picture
+                      </>
+                    )}
+                  </button>
+                )}
+            </div>
+
+            <p className="text-xs text-base-content/60">
+              {formData.teamavatarFile
+                ? "New image selected. Save changes to upload."
+                : "Max size: 5MB. Recommended: Square image."}
             </p>
           </div>
         </div>

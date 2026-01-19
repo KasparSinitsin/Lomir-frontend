@@ -9,7 +9,7 @@ export const teamService = {
       // Debug the teamavatar_url field
       console.log(
         "Team avatar URL field:",
-        teamData.teamavatar_url || teamData.teamavatarUrl || "Not provided"
+        teamData.teamavatar_url || teamData.teamavatarUrl || "Not provided",
       );
 
       // Ensure tags are properly formatted
@@ -84,7 +84,7 @@ export const teamService = {
   cancelApplication: async (applicationId) => {
     try {
       const response = await api.delete(
-        `/api/teams/applications/${applicationId}`
+        `/api/teams/applications/${applicationId}`,
       );
       return response.data;
     } catch (error) {
@@ -110,7 +110,7 @@ export const teamService = {
         {
           action,
           response,
-        }
+        },
       );
       return apiResponse.data;
     } catch (error) {
@@ -123,7 +123,7 @@ export const teamService = {
     try {
       const response = await api.post(
         `/api/teams/${teamId}/apply`,
-        applicationData
+        applicationData,
       );
       return response.data;
     } catch (error) {
@@ -140,7 +140,7 @@ export const teamService = {
     } catch (error) {
       console.error(
         `Error deleting team ${teamId}:`,
-        error.response ? error.response.data : error.message
+        error.response ? error.response.data : error.message,
       );
       throw error;
     }
@@ -154,7 +154,7 @@ export const teamService = {
     } catch (error) {
       console.error(
         "Error fetching teams:",
-        error.response ? error.response.data : error.message
+        error.response ? error.response.data : error.message,
       );
       throw error;
     }
@@ -257,8 +257,23 @@ export const teamService = {
     } catch (error) {
       console.error(
         `Error updating team ${teamId}:`,
-        error.response ? error.response.data : error.message
+        error.response ? error.response.data : error.message,
       );
+      throw error;
+    }
+  },
+
+  /**
+   * Deletes the team's avatar image from Cloudinary and removes it from the team.
+   * @param {string|number} teamId - The ID of the team whose avatar to delete.
+   * @returns {Promise<object>} A promise resolving to the deletion result.
+   */
+  deleteTeamAvatar: async (teamId) => {
+    try {
+      const response = await api.delete(`/api/teams/${teamId}/avatar`);
+      return response.data;
+    } catch (error) {
+      console.error(`Error deleting avatar for team ${teamId}:`, error);
       throw error;
     }
   },
@@ -273,7 +288,7 @@ export const teamService = {
     } catch (error) {
       console.error(
         `Error adding member to team ${teamId}:`,
-        error.response ? error.response.data : error.message
+        error.response ? error.response.data : error.message,
       );
       throw error;
     }
@@ -283,13 +298,13 @@ export const teamService = {
   removeTeamMember: async (teamId, userId) => {
     try {
       const response = await api.delete(
-        `/api/teams/${teamId}/members/${userId}`
+        `/api/teams/${teamId}/members/${userId}`,
       );
       return response.data;
     } catch (error) {
       console.error(
         `Error removing member from team ${teamId}:`,
-        error.response ? error.response.data : error.message
+        error.response ? error.response.data : error.message,
       );
       throw error;
     }
@@ -308,7 +323,7 @@ export const teamService = {
     } catch (error) {
       console.error(
         "Error fetching user teams:",
-        error.response ? error.response.data : error.message
+        error.response ? error.response.data : error.message,
       );
       throw error;
     }
@@ -318,13 +333,13 @@ export const teamService = {
   getUserRoleInTeam: async (teamId, userId) => {
     try {
       const response = await api.get(
-        `/api/teams/${teamId}/members/${userId}/role`
+        `/api/teams/${teamId}/members/${userId}/role`,
       );
       return response.data;
     } catch (error) {
       console.error(
         `Error fetching user role in team ${teamId}:`,
-        error.response ? error.response.data : error.message
+        error.response ? error.response.data : error.message,
       );
       return { data: { role: null } }; // Return a default response on error
     }
@@ -337,13 +352,13 @@ export const teamService = {
         `/api/teams/${teamId}/members/${memberId}/role`,
         {
           newRole: newRole,
-        }
+        },
       );
       return response.data;
     } catch (error) {
       console.error(
         `Error updating member role in team ${teamId}:`,
-        error.response ? error.response.data : error.message
+        error.response ? error.response.data : error.message,
       );
       throw error;
     }
@@ -361,7 +376,7 @@ export const teamService = {
     } catch (error) {
       console.error(
         `Error fetching sent invitations for team ${teamId}:`,
-        error
+        error,
       );
       throw error;
     }
@@ -417,7 +432,7 @@ export const teamService = {
   cancelInvitation: async (invitationId) => {
     try {
       const response = await api.delete(
-        `/api/teams/invitations/${invitationId}`
+        `/api/teams/invitations/${invitationId}`,
       );
       return response.data;
     } catch (error) {
