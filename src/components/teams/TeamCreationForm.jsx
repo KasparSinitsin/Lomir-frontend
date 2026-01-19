@@ -7,6 +7,7 @@ import Alert from "../common/Alert";
 import { teamService } from "../../services/teamService";
 import TeamDetailsModal from "./TeamDetailsModal";
 import IconToggle from "../common/IconToggle";
+import ImageUploader from "../common/ImageUploader";
 
 const TeamCreationForm = () => {
   const navigate = useNavigate();
@@ -82,23 +83,6 @@ const TeamCreationForm = () => {
     setErrors((prevErrors) => ({ ...prevErrors, [name]: "" }));
   }, []);
 
-  const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setFormData({
-        ...formData,
-        teamImage: file,
-      });
-
-      // For preview
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
   const handleTagSelection = useCallback((selectedTags) => {
     console.log("Team Creation - Tags selected:", selectedTags);
     setFormData((prev) => ({
@@ -106,6 +90,24 @@ const TeamCreationForm = () => {
       selectedTags,
     }));
   }, []);
+
+  // Get team initials from current name input for avatar fallback
+  const getTeamInitialsFromName = () => {
+    const name = formData.name;
+    if (!name || typeof name !== "string") return "T";
+
+    const words = name.trim().split(/\s+/);
+
+    if (words.length === 1) {
+      return name.slice(0, 2).toUpperCase();
+    }
+
+    return words
+      .slice(0, 3)
+      .map((word) => word.charAt(0))
+      .join("")
+      .toUpperCase();
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -124,7 +126,7 @@ const TeamCreationForm = () => {
     try {
       console.log(
         "Starting team creation with image:",
-        formData.teamImage ? "Image selected" : "No image"
+        formData.teamImage ? "Image selected" : "No image",
       );
 
       // Ensure tag IDs are valid integers
@@ -153,11 +155,11 @@ const TeamCreationForm = () => {
 
       console.log(
         "TeamCreationForm handleSubmit - mode:",
-        formData.maxMembersMode
+        formData.maxMembersMode,
       );
       console.log(
         "TeamCreationForm handleSubmit - maxMembersForSubmit:",
-        maxMembersForSubmit
+        maxMembersForSubmit,
       );
 
       const submissionData = {
@@ -178,16 +180,16 @@ const TeamCreationForm = () => {
         cloudinaryFormData.append("file", formData.teamImage);
         cloudinaryFormData.append(
           "upload_preset",
-          import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET
+          import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET,
         );
 
         console.log(
           "Cloudinary upload preset:",
-          import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET
+          import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET,
         );
         console.log(
           "Cloudinary cloud name:",
-          import.meta.env.VITE_CLOUDINARY_CLOUD_NAME
+          import.meta.env.VITE_CLOUDINARY_CLOUD_NAME,
         );
 
         try {
@@ -200,7 +202,7 @@ const TeamCreationForm = () => {
               headers: {
                 "Content-Type": "multipart/form-data",
               },
-            }
+            },
           );
 
           console.log("Cloudinary upload success:", cloudinaryResponse.data);
@@ -233,7 +235,7 @@ const TeamCreationForm = () => {
       setSubmitError(
         error.response?.data?.message ||
           error.message ||
-          "Failed to create team. Please try again."
+          "Failed to create team. Please try again.",
       );
       setSubmitSuccess(false);
     } finally {
@@ -247,31 +249,28 @@ const TeamCreationForm = () => {
         <h2 className="text-xl font-semibold mb-4">Create a New Team</h2>
 
         {/* Team Image Upload */}
-        <div className="mb-6 flex justify-center">
-          <div className="avatar">
-            <div className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center cursor-pointer border relative overflow-hidden">
-              {imagePreview ? (
-                <img
-                  src={imagePreview}
-                  alt="Team Preview"
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <span className="text-gray-400">Team Image</span>
-              )}
-            </div>
-          </div>
-        </div>
-
-        <div className="mb-4">
-          <label className="block text-gray-700 text-sm font-bold mb-2">
-            Team Image (Optional)
-          </label>
-          <input
-            type="file"
-            onChange={handleImageChange}
-            className="file-input file-input-bordered w-full"
-            accept="image/*"
+        <div className="mb-6">
+          <ImageUploader
+            currentImage={imagePreview}
+            onImageSelect={(file, previewUrl) => {
+              setFormData((prev) => ({
+                ...prev,
+                teamImage: file,
+              }));
+              setImagePreview(previewUrl);
+            }}
+            onImageRemove={() => {
+              setFormData((prev) => ({
+                ...prev,
+                teamImage: null,
+              }));
+              setImagePreview(null);
+            }}
+            fallbackText={getTeamInitialsFromName() || "T"}
+            shape="circle"
+            size="lg"
+            label="Team Image (Optional)"
+            disabled={isSubmitting}
           />
         </div>
 
