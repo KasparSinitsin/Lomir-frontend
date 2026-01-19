@@ -11,6 +11,7 @@ import socketService from "../services/socketService";
 import { userService } from "../services/userService";
 import { teamService } from "../services/teamService";
 import Alert from "../components/common/Alert";
+import axios from "axios";
 
 const Chat = () => {
   const { conversationId } = useParams();
@@ -51,21 +52,21 @@ const Chat = () => {
 
     // OWNERSHIP_TRANSFERRED (legacy emoji optional)
     m = content.match(
-      /^(?:👑\s*)?OWNERSHIP_TRANSFERRED:\s*(.+?)\s*\|\s*(.+?)\s*\|\s*(.+)\s*$/
+      /^(?:👑\s*)?OWNERSHIP_TRANSFERRED:\s*(.+?)\s*\|\s*(.+?)\s*\|\s*(.+)\s*$/,
     );
     if (m)
       return `ownership_transferred|${m[1].trim()}|${m[2].trim()}|${m[3].trim()}|${minute}`;
 
     // Plain team chat sentence variant
     m = content.match(
-      /^(.+?)\s+transferred\s+(?:team\s+)?ownership\s+to\s+(.+?)\.?$/i
+      /^(.+?)\s+transferred\s+(?:team\s+)?ownership\s+to\s+(.+?)\.?$/i,
     );
     if (m)
       return `ownership_team_plain|${m[1].trim()}|${m[2].trim()}|${minute}`;
 
     // Plain DM sentence variant
     m = content.match(
-      /^(.+?)\s+transferred\s+ownership\s+of\s+"(.+?)"\s+to\s+you\.\s*Congratulations!?\.?$/i
+      /^(.+?)\s+transferred\s+ownership\s+of\s+"(.+?)"\s+to\s+you\.\s*Congratulations!?\.?$/i,
     );
     if (m) return `ownership_dm_plain|${m[1].trim()}|${m[2].trim()}|${minute}`;
 
@@ -103,7 +104,7 @@ const Chat = () => {
         // create a virtual conversation entry
         if (conversationId && conversationsList.length >= 0) {
           const conversationExists = conversationsList.some(
-            (conv) => String(conv.id) === String(conversationId)
+            (conv) => String(conv.id) === String(conversationId),
           );
 
           if (!conversationExists) {
@@ -114,9 +115,8 @@ const Chat = () => {
               console.log("Creating virtual conversation for new contact...");
               try {
                 // Get the user details for the virtual conversation
-                const userResponse = await userService.getUserById(
-                  conversationId
-                );
+                const userResponse =
+                  await userService.getUserById(conversationId);
                 console.log("User details fetched:", userResponse.data);
 
                 const userData = userResponse.data;
@@ -142,7 +142,7 @@ const Chat = () => {
                 conversationsList = [virtualConversation, ...conversationsList];
                 console.log(
                   "Virtual conversation created:",
-                  virtualConversation
+                  virtualConversation,
                 );
               } catch (error) {
                 console.error("Error creating virtual conversation:", error);
@@ -159,12 +159,12 @@ const Chat = () => {
                 index ===
                 self.findIndex(
                   (c) =>
-                    c.type === "direct" && c.partner?.id === conv.partner?.id
+                    c.type === "direct" && c.partner?.id === conv.partner?.id,
                 )
               );
             }
             return index === self.findIndex((c) => c.id === conv.id);
-          }
+          },
         );
         setConversations(deduplicatedList);
 
@@ -172,7 +172,7 @@ const Chat = () => {
         if (conversationsList.length > 0 && !conversationId) {
           const firstConversationType = conversationsList[0].type || "direct";
           navigate(
-            `/chat/${conversationsList[0].id}?type=${firstConversationType}`
+            `/chat/${conversationsList[0].id}?type=${firstConversationType}`,
           );
         }
 
@@ -211,7 +211,7 @@ const Chat = () => {
         try {
           conversationDetails = await messageService.getConversationById(
             conversationId,
-            type
+            type,
           );
 
           console.log("Initial conversation details:", conversationDetails);
@@ -226,7 +226,7 @@ const Chat = () => {
               console.log("archived_at:", teamDetails.data?.archived_at);
               console.log(
                 "isTeamArchived will be:",
-                !!teamDetails.data?.archived_at
+                !!teamDetails.data?.archived_at,
               );
               console.log("Team details fetched:", teamDetails);
 
@@ -248,7 +248,7 @@ const Chat = () => {
                 };
                 console.log(
                   "Updated conversation with team members:",
-                  conversationDetails.data
+                  conversationDetails.data,
                 );
               } else {
                 console.log("No team members in team details response");
@@ -267,7 +267,7 @@ const Chat = () => {
               const existingConversation = prev.find(
                 (conv) =>
                   String(conv.id) === String(conversationId) &&
-                  conv.type === "team"
+                  conv.type === "team",
               );
 
               if (!existingConversation) {
@@ -295,7 +295,7 @@ const Chat = () => {
           // Check if it's an access denied error (user was removed from team)
           if (error.response?.status === 403) {
             console.log(
-              "Access denied to this conversation - user may have been removed"
+              "Access denied to this conversation - user may have been removed",
             );
             setError("You no longer have access to this conversation.");
             setLoading(false);
@@ -314,7 +314,7 @@ const Chat = () => {
               console.log("archived_at:", teamDetails.data?.archived_at);
               console.log(
                 "isTeamArchived will be:",
-                !!teamDetails.data?.archived_at
+                !!teamDetails.data?.archived_at,
               );
 
               // ✅ Check if team is archived (also in fallback path)
@@ -342,12 +342,12 @@ const Chat = () => {
             try {
               await messageService.startConversation(
                 parseInt(conversationId),
-                ""
+                "",
               );
 
               conversationDetails = await messageService.getConversationById(
                 conversationId,
-                type
+                type,
               );
               setActiveConversation(conversationDetails.data);
 
@@ -364,7 +364,7 @@ const Chat = () => {
         try {
           const messagesResponse = await messageService.getMessages(
             conversationId,
-            type
+            type,
           );
           const fetchedMessages = messagesResponse.data || [];
           setMessages(dedupeMessages(fetchedMessages));
@@ -472,7 +472,7 @@ const Chat = () => {
 
     console.log(
       "Setting up socket listeners for conversationId:",
-      conversationId
+      conversationId,
     );
 
     // Remove any existing listeners first to prevent duplicates
@@ -485,6 +485,39 @@ const Chat = () => {
     // Handle online users
     const handleOnlineUsers = (users) => {
       setOnlineUsers(users);
+    };
+
+    const handleSendImage = async (file, previewUrl) => {
+      if (!activeConversation || !file) return;
+
+      try {
+        // Upload to Cloudinary
+        const cloudinaryFormData = new FormData();
+        cloudinaryFormData.append("file", file);
+        cloudinaryFormData.append(
+          "upload_preset",
+          import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET,
+        );
+
+        const cloudinaryResponse = await axios.post(
+          `https://api.cloudinary.com/v1_1/${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME}/image/upload`,
+          cloudinaryFormData,
+        );
+
+        const imageUrl = cloudinaryResponse.data.secure_url;
+
+        // Send message with image via socket
+        const type = searchParams.get("type") || "direct";
+        const targetId =
+          type === "team"
+            ? activeConversation.team?.id
+            : activeConversation.partner?.id;
+
+        socketService.sendMessage(targetId, null, type, imageUrl);
+      } catch (error) {
+        console.error("Error uploading image:", error);
+        setError("Failed to upload image. Please try again.");
+      }
     };
 
     // Handle new messages
@@ -520,11 +553,11 @@ const Chat = () => {
           // If this is our own message, replace the optimistic version
           if (message.senderId === user.id) {
             const withoutOptimistic = prev.filter(
-              (msg) => !msg.isOptimistic || msg.senderId !== user.id
+              (msg) => !msg.isOptimistic || msg.senderId !== user.id,
             );
 
             const messageExists = withoutOptimistic.some(
-              (msg) => msg.id === message.id
+              (msg) => msg.id === message.id,
             );
             if (messageExists) {
               return prev;
@@ -592,7 +625,8 @@ const Chat = () => {
             return (
               index ===
               self.findIndex(
-                (c) => c.type === "direct" && c.partner?.id === conv.partner?.id
+                (c) =>
+                  c.type === "direct" && c.partner?.id === conv.partner?.id,
               )
             );
           }
@@ -600,7 +634,7 @@ const Chat = () => {
         });
 
         return deduplicatedList.sort(
-          (a, b) => new Date(b.updatedAt) - new Date(a.updatedAt)
+          (a, b) => new Date(b.updatedAt) - new Date(a.updatedAt),
         );
       });
     };
@@ -642,7 +676,7 @@ const Chat = () => {
             ...msg,
             readAt:
               msg.readAt || (msg.senderId !== user.id ? data.readAt : null),
-          }))
+          })),
         );
       }
     };
@@ -652,7 +686,7 @@ const Chat = () => {
       console.log("Conversation update:", data);
       setConversations((prev) => {
         const conversationIndex = prev.findIndex(
-          (c) => String(c.id) === String(data.id)
+          (c) => String(c.id) === String(data.id),
         );
 
         if (conversationIndex === -1) {
@@ -668,7 +702,7 @@ const Chat = () => {
                     self.findIndex(
                       (c) =>
                         c.type === "direct" &&
-                        c.partner?.id === conv.partner?.id
+                        c.partner?.id === conv.partner?.id,
                     )
                   );
                 }
@@ -677,7 +711,7 @@ const Chat = () => {
               setConversations(deduplicatedList);
             })
             .catch((err) =>
-              console.error("Error refreshing conversations:", err)
+              console.error("Error refreshing conversations:", err),
             );
           return prev;
         }
@@ -695,7 +729,8 @@ const Chat = () => {
             return (
               index ===
               self.findIndex(
-                (c) => c.type === "direct" && c.partner?.id === conv.partner?.id
+                (c) =>
+                  c.type === "direct" && c.partner?.id === conv.partner?.id,
               )
             );
           }
@@ -703,7 +738,7 @@ const Chat = () => {
         });
 
         return deduplicatedList.sort(
-          (a, b) => new Date(b.updatedAt) - new Date(a.updatedAt)
+          (a, b) => new Date(b.updatedAt) - new Date(a.updatedAt),
         );
       });
     };
@@ -738,7 +773,7 @@ const Chat = () => {
     const teamName = activeConversation.team.name || "this team";
 
     const confirmLeave = window.confirm(
-      `Are you sure you want to leave "${teamName}"? This will remove the chat from your conversation list.`
+      `Are you sure you want to leave "${teamName}"? This will remove the chat from your conversation list.`,
     );
 
     if (!confirmLeave) return;
@@ -774,7 +809,7 @@ const Chat = () => {
 
       // Remove from conversation list
       setConversations((prev) =>
-        prev.filter((c) => !(c.type === "team" && c.id === data.teamId))
+        prev.filter((c) => !(c.type === "team" && c.id === data.teamId)),
       );
 
       // Navigate away
@@ -784,7 +819,7 @@ const Chat = () => {
     } else {
       // Just remove from conversation list if not currently viewing
       setConversations((prev) =>
-        prev.filter((c) => !(c.type === "team" && c.id === data.teamId))
+        prev.filter((c) => !(c.type === "team" && c.id === data.teamId)),
       );
     }
   };
@@ -800,7 +835,7 @@ const Chat = () => {
     }
 
     const confirmDelete = window.confirm(
-      "Are you sure you want to remove this chat from your conversation list?"
+      "Are you sure you want to remove this chat from your conversation list?",
     );
 
     if (!confirmDelete) return;
@@ -820,6 +855,40 @@ const Chat = () => {
     } catch (error) {
       console.error("Error deleting conversation:", error);
       setError("Failed to delete conversation. Please try again.");
+    }
+  };
+
+  const handleSendImage = async (file, previewUrl) => {
+    if (!activeConversation || !file) return;
+
+    try {
+      // Upload to Cloudinary
+      const cloudinaryFormData = new FormData();
+      cloudinaryFormData.append("file", file);
+      cloudinaryFormData.append(
+        "upload_preset",
+        import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET,
+      );
+
+      const cloudinaryResponse = await axios.post(
+        `https://api.cloudinary.com/v1_1/${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME}/image/upload`,
+        cloudinaryFormData,
+      );
+
+      const imageUrl = cloudinaryResponse.data.secure_url;
+
+      // Get conversation type and target ID
+      const type = searchParams.get("type") || "direct";
+      const targetId =
+        type === "team"
+          ? activeConversation.team?.id
+          : activeConversation.partner?.id;
+
+      // Send message with image via socket
+      socketService.sendMessage(targetId, null, type, imageUrl);
+    } catch (error) {
+      console.error("Error uploading image:", error);
+      setError("Failed to upload image. Please try again.");
     }
   };
 
@@ -877,7 +946,7 @@ const Chat = () => {
 
     // Reset unread count for selected conversation
     setConversations((prev) =>
-      prev.map((conv) => (conv.id === id ? { ...conv, unreadCount: 0 } : conv))
+      prev.map((conv) => (conv.id === id ? { ...conv, unreadCount: 0 } : conv)),
     );
 
     // Navigate with type parameter
@@ -947,13 +1016,13 @@ const Chat = () => {
                   >
                     <span className="text-sm font-medium">
                       {activeConversation?.team?.members?.some(
-                        (m) => m.userId === user?.id && m.role === "owner"
+                        (m) => m.userId === user?.id && m.role === "owner",
                       )
                         ? `You initiated the deletion of this team. The team is archived and inactive now. Remaining members are able to text in this chat until the last member leaves.`
                         : `${(() => {
                             const owner =
                               activeConversation?.team?.members?.find(
-                                (m) => m.role === "owner"
+                                (m) => m.role === "owner",
                               );
                             return owner
                               ? `${owner.firstName} ${owner.lastName}`
@@ -976,6 +1045,7 @@ const Chat = () => {
                 <div className="p-4">
                   <MessageInput
                     onSendMessage={handleSendMessage}
+                    onSendImage={handleSendImage}
                     onTyping={handleTyping}
                   />
                 </div>

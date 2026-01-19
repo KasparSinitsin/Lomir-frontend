@@ -105,15 +105,15 @@ const ConversationList = ({
           const displayName = isTeam
             ? conversationData?.name
             : conversationData?.firstName && conversationData?.lastName
-            ? `${conversationData.firstName} ${conversationData.lastName}`
-            : conversationData?.username;
+              ? `${conversationData.firstName} ${conversationData.lastName}`
+              : conversationData?.username;
 
           const isActive =
             String(activeConversationId) === String(conversation.id);
 
           return (
             <div
-              key={conversation.id}
+              key={`${conversation.type}-${conversation.id}`}
               ref={isActive ? activeConversationRef : null}
               className={`
                 p-4 cursor-pointer transition-colors duration-200
@@ -150,7 +150,7 @@ const ConversationList = ({
                           e.target.style.display = "none";
                           const fallback =
                             e.target.parentElement.querySelector(
-                              ".avatar-fallback"
+                              ".avatar-fallback",
                             );
                           if (fallback) fallback.style.display = "flex";
                         }}
@@ -199,7 +199,7 @@ const ConversationList = ({
                             new Date(conversation.updatedAt),
                             {
                               addSuffix: true,
-                            }
+                            },
                           )
                         : ""}
                     </span>

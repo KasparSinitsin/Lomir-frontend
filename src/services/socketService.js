@@ -10,10 +10,16 @@ const socketService = {
       return socket;
     }
 
+    // Disconnect existing socket if any
+    if (socket) {
+      socket.disconnect();
+      socket = null;
+    }
+
     const SOCKET_URL =
       import.meta.env.VITE_SOCKET_URL || "http://localhost:5001";
 
-    socket = io(SOCKET_URL, {
+    const newSocket = io(SOCKET_URL, {
       auth: { token },
       transports: ["websocket", "polling"],
       reconnection: true,
@@ -21,19 +27,23 @@ const socketService = {
       reconnectionDelay: 1000,
     });
 
-    socket.on("connect", () => {
-      console.log("Socket connected:", socket.id);
+    // Assign to global variable
+    socket = newSocket;
+
+    // Use newSocket in callbacks to avoid race conditions
+    newSocket.on("connect", () => {
+      console.log("Socket connected:", newSocket.id);
     });
 
-    socket.on("connect_error", (error) => {
+    newSocket.on("connect_error", (error) => {
       console.error("Socket connection error:", error.message);
     });
 
-    socket.on("disconnect", (reason) => {
+    newSocket.on("disconnect", (reason) => {
       console.log("Socket disconnected:", reason);
     });
 
-    return socket;
+    return newSocket;
   },
 
   // Disconnect from the socket server
@@ -65,10 +75,15 @@ const socketService = {
   },
 
   // Send a new message
-  sendMessage: (conversationId, content, type = "direct") => {
+  sendMessage: (conversationId, content, type = "direct", imageUrl = null) => {
     if (socket && socket.connected) {
-      socket.emit("message:new", { conversationId, content, type });
-      console.log("Sending message:", { conversationId, content, type });
+      socket.emit("message:new", { conversationId, content, type, imageUrl });
+      console.log("Sending message:", {
+        conversationId,
+        content,
+        type,
+        imageUrl,
+      });
     } else {
       console.error("Cannot send message - socket not connected");
     }
