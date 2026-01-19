@@ -31,7 +31,7 @@ const parseSystemMessage = (content) => {
   // Pattern 1: Team join message
   // Format: 👋 Name joined the team!\n\n"personal message"
   const joinMatch = content.match(
-    /^👋\s+(.+?)\s+joined the team!\s*\n\n"(.+)"$/s
+    /^👋\s+(.+?)\s+joined the team!\s*\n\n"(.+)"$/s,
   );
   if (joinMatch) {
     return {
@@ -44,7 +44,7 @@ const parseSystemMessage = (content) => {
   // Pattern 2: Invitation decline response (direct message to inviter)
   // Format: 📋 Response to your invitation for "Team Name":\n\n"personal message"
   const declineMatch = content.match(
-    /^📋\s+Response to your invitation for "(.+?)":\s*\n\n"(.+)"$/s
+    /^📋\s+Response to your invitation for "(.+?)":\s*\n\n"(.+)"$/s,
   );
   if (declineMatch) {
     return {
@@ -57,7 +57,7 @@ const parseSystemMessage = (content) => {
   // Pattern 3: Application approved message
   // Supports legacy messages with or without 🎉
   const applicationApprovedMatch = content.match(
-    /^(?:🎉\s*)?(.+?)\s+has applied successfully to your team and has been added as a team member by (.+?)\.\s*Say hello to them!$/
+    /^(?:🎉\s*)?(.+?)\s+has applied successfully to your team and has been added as a team member by (.+?)\.\s*Say hello to them!$/,
   );
 
   if (applicationApprovedMatch) {
@@ -71,7 +71,7 @@ const parseSystemMessage = (content) => {
   // Pattern 4: Application decline response (direct message to applicant)
   // Format: 📋 Application declined: [Applicant] for "[Team]":\n\n"personal message"
   const applicationDeclineMatch = content.match(
-    /^📋\s+Application declined:\s+(.+?)\s+for\s+"(.+?)":\s*\n\n"(.+)"$/s
+    /^📋\s+Application declined:\s+(.+?)\s+for\s+"(.+?)":\s*\n\n"(.+)"$/s,
   );
   if (applicationDeclineMatch) {
     return {
@@ -107,7 +107,7 @@ const parseSystemMessage = (content) => {
   // Pattern 5C (NEW): Member removed public message (team chat)
   // Format: 🚫 MEMBER_REMOVED_PUBLIC: <teamId>:<teamName> | <memberId>:<memberName>
   const removedPublicMatch = content.match(
-    /^🚫\s*MEMBER_REMOVED_PUBLIC:\s*(\d+):(.+?)\s*\|\s*(\d+):(.+)$/
+    /^🚫\s*MEMBER_REMOVED_PUBLIC:\s*(\d+):(.+?)\s*\|\s*(\d+):(.+)$/,
   );
 
   if (removedPublicMatch) {
@@ -123,7 +123,7 @@ const parseSystemMessage = (content) => {
   // Pattern 6: Application declined message
   // Format: 🚫 APPLICATION_DECLINED: teamId:teamName | approverId:approverName | applicantId:applicantName | hasPersonalMessage
   const applicationDeclinedMatch = content.match(
-    /^🚫\s+APPLICATION_DECLINED:\s+(.+?)\s+\|\s+(.+?)\s+\|\s+(.+?)\s+\|\s+(true|false)$/
+    /^🚫\s+APPLICATION_DECLINED:\s+(.+?)\s+\|\s+(.+?)\s+\|\s+(.+?)\s+\|\s+(true|false)$/,
   );
 
   if (applicationDeclinedMatch) {
@@ -150,7 +150,7 @@ const parseSystemMessage = (content) => {
   // Pattern 7: Application approved DM message
   // Format: ✅ APPLICATION_APPROVED: teamId:teamName | approverId:approverName | applicantId:applicantName | hasPersonalMessage
   const applicationApprovedDmMatch = content.match(
-    /^✅\s+APPLICATION_APPROVED:\s+(.+?)\s+\|\s+(.+?)\s+\|\s+(.+?)\s+\|\s+(true|false)$/
+    /^✅\s+APPLICATION_APPROVED:\s+(.+?)\s+\|\s+(.+?)\s+\|\s+(.+?)\s+\|\s+(true|false)$/,
   );
   if (applicationApprovedDmMatch) {
     const teamToken = applicationApprovedDmMatch[1].trim(); // "id:name" OR legacy "name"
@@ -176,7 +176,7 @@ const parseSystemMessage = (content) => {
   // Pattern 8: Invitation declined message
   // Format: 🚫 INVITATION_DECLINED: Team Name | Inviter Name | Invitee Name | hasPersonalMessage
   const invitationDeclinedMatch = content.match(
-    /^🚫\s+INVITATION_DECLINED:\s+(.+?)\s+\|\s+(.+?)\s+\|\s+(.+?)\s+\|\s+(true|false)$/
+    /^🚫\s+INVITATION_DECLINED:\s+(.+?)\s+\|\s+(.+?)\s+\|\s+(.+?)\s+\|\s+(true|false)$/,
   );
   if (invitationDeclinedMatch) {
     const teamToken = invitationDeclinedMatch[1].trim(); // "id:name" or legacy "name"
@@ -203,7 +203,7 @@ const parseSystemMessage = (content) => {
   // Format: 🚫 INVITATION_CANCELLED: teamId:teamName | cancellerId:cancellerName | inviteeId:inviteeName
   // (Legacy tolerated: names without ids)
   const invitationCancelledMatch = content.match(
-    /^🚫\s+INVITATION_CANCELLED:\s+(.+?)\s+\|\s+(.+?)\s+\|\s+(.+)$/
+    /^🚫\s+INVITATION_CANCELLED:\s+(.+?)\s+\|\s+(.+?)\s+\|\s+(.+)$/,
   );
 
   if (invitationCancelledMatch) {
@@ -230,7 +230,7 @@ const parseSystemMessage = (content) => {
   // Format: 🚫 APPLICATION_CANCELLED: teamId:teamName | applicantId:applicantName | adminId:adminName
   // (Legacy tolerated: teamName | applicantName | adminName)
   const applicationCancelledMatch = content.match(
-    /^🚫\s+APPLICATION_CANCELLED:\s+(.+?)\s+\|\s+(.+?)\s+\|\s+(.+)$/
+    /^🚫\s+APPLICATION_CANCELLED:\s+(.+?)\s+\|\s+(.+?)\s+\|\s+(.+)$/,
   );
 
   if (applicationCancelledMatch) {
@@ -257,7 +257,7 @@ const parseSystemMessage = (content) => {
   // Format: 🚫 MEMBER_REMOVED: teamId:teamName | removerId:removerName | memberId:memberName
   // (Legacy tolerated: "teamName" without id)
   const memberRemovedMatch = content.match(
-    /^🚫\s+MEMBER_REMOVED:\s+(.+?)\s+\|\s+(.+?)\s+\|\s+(.+)$/
+    /^🚫\s+MEMBER_REMOVED:\s+(.+?)\s+\|\s+(.+?)\s+\|\s+(.+)$/,
   );
 
   if (memberRemovedMatch) {
@@ -283,7 +283,7 @@ const parseSystemMessage = (content) => {
   // Pattern 12: Role changed message
   // Format: 🔄 ROLE_CHANGED: Team Name | Changer Name | Member Name | Old Role | New Role
   const roleChangedMatch = content.match(
-    /^🔄\s+ROLE_CHANGED:\s+(.+?)\s+\|\s+(.+?)\s+\|\s+(.+?)\s+\|\s+(.+?)\s+\|\s+(.+)$/
+    /^🔄\s+ROLE_CHANGED:\s+(.+?)\s+\|\s+(.+?)\s+\|\s+(.+?)\s+\|\s+(.+?)\s+\|\s+(.+)$/,
   );
   if (roleChangedMatch) {
     const teamToken = roleChangedMatch[1].trim(); // "teamId:teamName" OR just "teamName" (legacy)
@@ -310,7 +310,7 @@ const parseSystemMessage = (content) => {
   // Format (new): 👑 OWNERSHIP_TRANSFERRED: teamId:teamName | prevOwnerId:prevOwnerName | newOwnerId:newOwnerName
   // Format (legacy): 👑 OWNERSHIP_TRANSFERRED: teamName | prevOwnerName | newOwnerName
   const ownershipTransferredMatch = content.match(
-    /^(?:👑\s*)?OWNERSHIP_TRANSFERRED:\s+(.+?)\s+\|\s+(.+?)\s+\|\s+(.+)$/
+    /^(?:👑\s*)?OWNERSHIP_TRANSFERRED:\s+(.+?)\s+\|\s+(.+?)\s+\|\s+(.+)$/,
   );
 
   if (ownershipTransferredMatch) {
@@ -335,7 +335,7 @@ const parseSystemMessage = (content) => {
 
   // Pattern 14: Ownership transferred team chat message
   const ownershipTeamMatch = content.match(
-    /^(?:👑\s*)?OWNERSHIP_TEAM:\s+(.+?)\s+\|\s+(.+)$/
+    /^(?:👑\s*)?OWNERSHIP_TEAM:\s+(.+?)\s+\|\s+(.+)$/,
   );
   if (ownershipTeamMatch) {
     return {
@@ -347,7 +347,7 @@ const parseSystemMessage = (content) => {
 
   // Pattern 15: Team deleted message
   const teamDeletedMatch = content.match(
-    /^🗑️\s+TEAM_DELETED:\s+(.+?)\s+\|\s+(.+)$/
+    /^🗑️\s+TEAM_DELETED:\s+(.+?)\s+\|\s+(.+)$/,
   );
   if (teamDeletedMatch) {
     return {
@@ -417,13 +417,13 @@ const MessageDisplay = ({
       console.log(
         "Sample message senderId:",
         messages[0]?.senderId,
-        typeof messages[0]?.senderId
+        typeof messages[0]?.senderId,
       );
       if (teamMembers.length > 0) {
         console.log(
           "Sample team member user_id:",
           teamMembers[0]?.user_id,
-          typeof teamMembers[0]?.user_id
+          typeof teamMembers[0]?.user_id,
         );
       }
     }
@@ -636,7 +636,7 @@ const MessageDisplay = ({
           m.user_id === senderId ||
           m.userId === senderId ||
           String(m.user_id) === String(senderId) ||
-          String(m.userId) === String(senderId)
+          String(m.userId) === String(senderId),
       );
 
       if (member) {
@@ -716,8 +716,8 @@ const MessageDisplay = ({
           clickable
             ? `View ${getDisplayName(senderInfo, false)} details`
             : isFormerMember
-            ? "Former team member"
-            : undefined
+              ? "Former team member"
+              : undefined
         }
       >
         <div className="w-8 h-8 rounded-full relative">
@@ -759,7 +759,7 @@ const MessageDisplay = ({
   const renderApplicationApprovedDmMessage = (
     message,
     parsedMessage,
-    isCurrentUser
+    isCurrentUser,
   ) => {
     const approver = parsedMessage.approverName;
     const applicant = parsedMessage.applicantName;
@@ -854,7 +854,7 @@ const MessageDisplay = ({
     parsedMessage,
     senderInfo,
     isCurrentUser,
-    senderId
+    senderId,
   ) => {
     const applicant = parsedMessage.applicantName;
     const approver = parsedMessage.approverName;
@@ -923,7 +923,7 @@ const MessageDisplay = ({
   const renderMemberRemovedPublicMessage = (
     message,
     parsedMessage,
-    isCurrentUser
+    isCurrentUser,
   ) => {
     // If the remover is the sender of the system message (likely), they are "current user" here.
     const text = isCurrentUser ? (
@@ -967,7 +967,7 @@ const MessageDisplay = ({
   const renderInvitationAcceptedMessage = (
     message,
     parsedMessage,
-    isCurrentUser
+    isCurrentUser,
   ) => {
     const messageText = isCurrentUser ? (
       <>
@@ -1016,7 +1016,7 @@ const MessageDisplay = ({
     parsedMessage,
     senderInfo,
     isCurrentUser,
-    senderId
+    senderId,
   ) => {
     const displayName = getDisplayName(senderInfo);
 
@@ -1106,7 +1106,7 @@ const MessageDisplay = ({
   const renderInvitationCancelledMessage = (
     message,
     parsedMessage,
-    isCurrentUser
+    isCurrentUser,
   ) => {
     const messageText = isCurrentUser ? (
       <>
@@ -1166,7 +1166,7 @@ const MessageDisplay = ({
   const renderInvitationDeclinedMessage = (
     message,
     parsedMessage,
-    isCurrentUser
+    isCurrentUser,
   ) => {
     const team = parsedMessage.teamName;
 
@@ -1253,7 +1253,7 @@ const MessageDisplay = ({
     parsedMessage,
     senderInfo,
     isCurrentUser,
-    senderId
+    senderId,
   ) => {
     const bannerContent = isCurrentUser ? (
       <>
@@ -1323,7 +1323,7 @@ const MessageDisplay = ({
   const renderApplicationDeclinedMessage = (
     message,
     parsedMessage,
-    isCurrentUser
+    isCurrentUser,
   ) => {
     const team = parsedMessage.teamName;
 
@@ -1410,7 +1410,7 @@ const MessageDisplay = ({
     parsedMessage,
     senderInfo,
     isCurrentUser,
-    senderId
+    senderId,
   ) => {
     return (
       <div className="flex flex-col w-full my-4">
@@ -1472,7 +1472,7 @@ const MessageDisplay = ({
   const renderApplicationCancelledMessage = (
     message,
     parsedMessage,
-    isCurrentUser
+    isCurrentUser,
   ) => {
     const messageText = isCurrentUser ? (
       <>
@@ -1657,7 +1657,7 @@ const MessageDisplay = ({
   const renderOwnershipTransferredMessage = (
     message,
     parsedMessage,
-    isCurrentUser
+    isCurrentUser,
   ) => {
     const messageText = isCurrentUser ? (
       <>
@@ -1706,7 +1706,7 @@ const MessageDisplay = ({
   const renderMemberRemovedMessage = (
     message,
     parsedMessage,
-    isCurrentUser
+    isCurrentUser,
   ) => {
     const messageText = isCurrentUser ? (
       <>
@@ -1827,7 +1827,7 @@ const MessageDisplay = ({
                         e.target.style.display = "none";
                         const fallback =
                           e.target.parentElement.querySelector(
-                            ".avatar-fallback"
+                            ".avatar-fallback",
                           );
                         if (fallback) fallback.style.display = "flex";
                       }}
@@ -1876,7 +1876,7 @@ const MessageDisplay = ({
                         e.target.style.display = "none";
                         const fallback =
                           e.target.parentElement.querySelector(
-                            ".avatar-fallback"
+                            ".avatar-fallback",
                           );
                         if (fallback) fallback.style.display = "flex";
                       }}
@@ -1942,7 +1942,7 @@ const MessageDisplay = ({
 
       const parsedMessage = parseSystemMessage(message.content);
       const prevParsedMessage = parseSystemMessage(
-        messagesForDate[i - 1].content
+        messagesForDate[i - 1].content,
       );
 
       const shouldStartNewGroup =
@@ -1994,7 +1994,7 @@ const MessageDisplay = ({
                       e.target.style.display = "none";
                       const fallback =
                         e.target.parentElement.querySelector(
-                          ".avatar-fallback"
+                          ".avatar-fallback",
                         );
                       if (fallback) fallback.style.display = "flex";
                     }}
@@ -2044,7 +2044,7 @@ const MessageDisplay = ({
                       e.target.style.display = "none";
                       const fallback =
                         e.target.parentElement.querySelector(
-                          ".avatar-fallback"
+                          ".avatar-fallback",
                         );
                       if (fallback) fallback.style.display = "flex";
                     }}
@@ -2084,7 +2084,7 @@ const MessageDisplay = ({
               const isCurrentUser = messageGroup.senderId === currentUserId;
               const senderInfo = getSenderInfo(
                 messageGroup.senderId,
-                messageGroup.messages[0]
+                messageGroup.messages[0],
               );
               const displayName = getDisplayName(senderInfo);
 
@@ -2095,7 +2095,7 @@ const MessageDisplay = ({
 
                 if (parsedMessage) {
                   const isHighlighted = highlightMessageIds.includes(
-                    message.id
+                    message.id,
                   );
                   const isFirstHighlighted =
                     isHighlighted && message.id === highlightMessageIds[0];
@@ -2116,7 +2116,7 @@ const MessageDisplay = ({
                           parsedMessage,
                           senderInfo,
                           isCurrentUser,
-                          messageGroup.senderId
+                          messageGroup.senderId,
                         )}
                       </div>
                     );
@@ -2132,7 +2132,7 @@ const MessageDisplay = ({
                           parsedMessage,
                           senderInfo,
                           isCurrentUser,
-                          messageGroup.senderId
+                          messageGroup.senderId,
                         )}
                       </div>
                     );
@@ -2148,7 +2148,7 @@ const MessageDisplay = ({
                           parsedMessage,
                           senderInfo,
                           isCurrentUser,
-                          messageGroup.senderId
+                          messageGroup.senderId,
                         )}
                       </div>
                     );
@@ -2164,7 +2164,7 @@ const MessageDisplay = ({
                           parsedMessage,
                           senderInfo,
                           isCurrentUser,
-                          messageGroup.senderId
+                          messageGroup.senderId,
                         )}
                       </div>
                     );
@@ -2178,7 +2178,7 @@ const MessageDisplay = ({
                         {renderLeaveMessage(
                           message,
                           parsedMessage,
-                          isCurrentUser
+                          isCurrentUser,
                         )}
                       </div>
                     );
@@ -2192,7 +2192,7 @@ const MessageDisplay = ({
                         {renderMemberRemovedPublicMessage(
                           message,
                           parsedMessage,
-                          isCurrentUser
+                          isCurrentUser,
                         )}
                       </div>
                     );
@@ -2206,7 +2206,7 @@ const MessageDisplay = ({
                         {renderApplicationDeclinedMessage(
                           message,
                           parsedMessage,
-                          isCurrentUser
+                          isCurrentUser,
                         )}
                       </div>
                     );
@@ -2220,7 +2220,7 @@ const MessageDisplay = ({
                         {renderApplicationApprovedDmMessage(
                           message,
                           parsedMessage,
-                          isCurrentUser
+                          isCurrentUser,
                         )}
                       </div>
                     );
@@ -2234,7 +2234,7 @@ const MessageDisplay = ({
                         {renderInvitationDeclinedMessage(
                           message,
                           parsedMessage,
-                          isCurrentUser
+                          isCurrentUser,
                         )}
                       </div>
                     );
@@ -2248,7 +2248,7 @@ const MessageDisplay = ({
                         {renderInvitationCancelledMessage(
                           message,
                           parsedMessage,
-                          isCurrentUser
+                          isCurrentUser,
                         )}
                       </div>
                     );
@@ -2262,7 +2262,7 @@ const MessageDisplay = ({
                         {renderApplicationCancelledMessage(
                           message,
                           parsedMessage,
-                          isCurrentUser
+                          isCurrentUser,
                         )}
                       </div>
                     );
@@ -2276,7 +2276,7 @@ const MessageDisplay = ({
                         {renderMemberRemovedMessage(
                           message,
                           parsedMessage,
-                          isCurrentUser
+                          isCurrentUser,
                         )}
                       </div>
                     );
@@ -2290,7 +2290,7 @@ const MessageDisplay = ({
                         {renderRoleChangedMessage(
                           message,
                           parsedMessage,
-                          isCurrentUser
+                          isCurrentUser,
                         )}
                       </div>
                     );
@@ -2304,7 +2304,7 @@ const MessageDisplay = ({
                         {renderOwnershipTransferredMessage(
                           message,
                           parsedMessage,
-                          isCurrentUser
+                          isCurrentUser,
                         )}
                       </div>
                     );
@@ -2359,7 +2359,7 @@ const MessageDisplay = ({
                           }
                           title={`View ${getDisplayName(
                             senderInfo,
-                            false
+                            false,
                           )} details`}
                         >
                           {displayName}
@@ -2369,7 +2369,7 @@ const MessageDisplay = ({
                     <div className="space-y-1">
                       {messageGroup.messages.map((message, messageIndex) => {
                         const isHighlighted = highlightMessageIds.includes(
-                          message.id
+                          message.id,
                         );
                         const isFirstHighlighted =
                           isHighlighted &&
@@ -2382,35 +2382,47 @@ const MessageDisplay = ({
                               isFirstHighlighted ? highlightedMessageRef : null
                             }
                             className={`
-                              rounded-lg p-3 
-                              ${
-                                isCurrentUser
-                                  ? "bg-green-100 text-base-content rounded-br-none ml-auto"
-                                  : "bg-base-200 rounded-bl-none"
-                              }
-                              ${
-                                messageIndex === 0
-                                  ? ""
-                                  : isCurrentUser
-                                  ? "rounded-tr-lg"
-                                  : "rounded-tl-lg"
-                              }
-                              ${isHighlighted ? "message-highlight" : ""}
-                            `}
+    rounded-lg p-3 
+    ${
+      isCurrentUser
+        ? "bg-green-100 text-base-content rounded-br-none ml-auto"
+        : "bg-base-200 rounded-bl-none"
+    }
+    ${
+      messageIndex === 0
+        ? ""
+        : isCurrentUser
+          ? "rounded-tr-lg"
+          : "rounded-tl-lg"
+    }
+    ${isHighlighted ? "message-highlight" : ""}
+  `}
                           >
-                            <p>{message.content}</p>
+                            {/* Image if present */}
+                            {message.imageUrl && (
+                              <div className={message.content ? "mb-2" : ""}>
+                                <img
+                                  src={message.imageUrl}
+                                  alt="Shared image"
+                                  className="rounded-lg max-w-full max-h-64 object-contain cursor-pointer hover:opacity-90 transition-opacity"
+                                  onClick={() =>
+                                    window.open(message.imageUrl, "_blank")
+                                  }
+                                  loading="lazy"
+                                />
+                              </div>
+                            )}
+
+                            {/* Text content - only render if there's actual content */}
+                            {message.content && <p>{message.content}</p>}
 
                             {messageIndex ===
                               messageGroup.messages.length - 1 && (
                               <div
                                 className={`
-                                  flex justify-between items-center text-xs mt-1 
-                                  ${
-                                    isCurrentUser
-                                      ? "text-base-content/60"
-                                      : "text-base-content/50"
-                                  }
-                                `}
+        flex justify-between items-center text-xs mt-1 
+        ${isCurrentUser ? "text-base-content/60" : "text-base-content/50"}
+      `}
                               >
                                 <span>
                                   {format(new Date(message.createdAt), "p")}
