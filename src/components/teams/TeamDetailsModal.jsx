@@ -57,7 +57,7 @@ const TeamDetailsModal = ({
 
   const effectiveTeamId = useMemo(
     () => propTeamId || urlTeamId,
-    [propTeamId, urlTeamId]
+    [propTeamId, urlTeamId],
   );
 
   const [isModalVisible, setIsModalVisible] = useState(isOpen);
@@ -148,11 +148,11 @@ const TeamDetailsModal = ({
         ) {
           console.log(
             "Searching for owner in members array:",
-            teamData.members
+            teamData.members,
           );
 
           const ownerMember = teamData.members.find(
-            (m) => m.role === "owner" || m.role === "Owner"
+            (m) => m.role === "owner" || m.role === "Owner",
           );
 
           if (ownerMember) {
@@ -166,7 +166,7 @@ const TeamDetailsModal = ({
           const isCurrentUserOwner = teamData.members.some(
             (member) =>
               (member.user_id === user.id || member.userId === user.id) &&
-              (member.role === "owner" || member.role === "Owner")
+              (member.role === "owner" || member.role === "Owner"),
           );
 
           if (isCurrentUserOwner) {
@@ -215,7 +215,7 @@ const TeamDetailsModal = ({
             teamData.members?.some(
               (member) =>
                 (member.user_id === user.id || member.userId === user.id) &&
-                (member.role === "owner" || member.role === "Owner")
+                (member.role === "owner" || member.role === "Owner"),
             )) ||
           false;
 
@@ -236,7 +236,7 @@ const TeamDetailsModal = ({
         // Determine user's role from members list
         if (isUserAuthenticated && teamData.members) {
           const currentUserMember = teamData.members.find(
-            (member) => member.user_id === user.id || member.userId === user.id
+            (member) => member.user_id === user.id || member.userId === user.id,
           );
           if (currentUserMember) {
             setInternalUserRole(currentUserMember.role);
@@ -308,7 +308,7 @@ const TeamDetailsModal = ({
         setLoading(false);
       }
     },
-    [effectiveTeamId, user, isAuthenticated, team]
+    [effectiveTeamId, user, isAuthenticated, team],
   );
 
   // Add effect to check team data after it's set
@@ -376,7 +376,7 @@ const TeamDetailsModal = ({
 
   const isTeamAdmin = useMemo(
     () => effectiveUserRole === "admin",
-    [effectiveUserRole]
+    [effectiveUserRole],
   );
 
   const canEditTeam = useMemo(() => {
@@ -443,7 +443,7 @@ const TeamDetailsModal = ({
     // Show for team members
     if (team && team.members && Array.isArray(team.members)) {
       return team.members.some(
-        (member) => member.user_id === user.id || member.userId === user.id
+        (member) => member.user_id === user.id || member.userId === user.id,
       );
     }
 
@@ -479,7 +479,7 @@ const TeamDetailsModal = ({
 
     // If logged in, check if current user is a team member
     const isCurrentUserTeamMember = team?.members?.some(
-      (m) => m.user_id === user.id || m.userId === user.id
+      (m) => m.user_id === user.id || m.userId === user.id,
     );
 
     // Anonymize if viewer is NOT a team member
@@ -610,7 +610,7 @@ const TeamDetailsModal = ({
       setTimeout(() => {
         console.log(
           "TeamDetailsModal: about to call onLeave with team.id:",
-          team.id
+          team.id,
         );
         console.log("TeamDetailsModal: onLeave is:", onLeave);
         if (onLeave) onLeave(team.id);
@@ -636,7 +636,7 @@ const TeamDetailsModal = ({
       await teamService.respondToInvitation(
         invitationId,
         "accept",
-        responseMessage
+        responseMessage,
       );
       setNotification({
         type: "success",
@@ -660,13 +660,13 @@ const TeamDetailsModal = ({
 
   const handleInvitationDecline = async (
     invitationId,
-    responseMessage = ""
+    responseMessage = "",
   ) => {
     try {
       await teamService.respondToInvitation(
         invitationId,
         "decline",
-        responseMessage
+        responseMessage,
       );
       setNotification({
         type: "success",
@@ -691,7 +691,7 @@ const TeamDetailsModal = ({
     if (!user?.id || !team?.members) return false;
 
     const currentMember = team.members.find(
-      (m) => m.user_id === user.id || m.userId === user.id
+      (m) => m.user_id === user.id || m.userId === user.id,
     );
 
     if (!currentMember) return false;
@@ -755,7 +755,7 @@ const TeamDetailsModal = ({
       console.log(
         "Visibility value computed:",
         isPublicBoolean,
-        typeof isPublicBoolean
+        typeof isPublicBoolean,
       );
 
       // Decide what to send for max_members based on the mode
@@ -795,7 +795,7 @@ const TeamDetailsModal = ({
         avatarFormData.append("file", formData.teamavatarFile);
         avatarFormData.append(
           "upload_preset",
-          import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET
+          import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET,
         );
 
         try {
@@ -809,7 +809,7 @@ const TeamDetailsModal = ({
               headers: {
                 "Content-Type": "multipart/form-data",
               },
-            }
+            },
           );
 
           // Only override the avatar URL if upload was successful
@@ -826,7 +826,7 @@ const TeamDetailsModal = ({
       } else {
         console.log(
           "No new image selected, preserving existing avatar URL:",
-          submissionData.teamavatar_url
+          submissionData.teamavatar_url,
         );
       }
 
@@ -852,7 +852,7 @@ const TeamDetailsModal = ({
 
       const response = await teamService.updateTeam(
         effectiveTeamId,
-        submissionData
+        submissionData,
       );
       console.log("Update response:", response);
 
@@ -904,7 +904,7 @@ const TeamDetailsModal = ({
   const handleDeleteTeam = async () => {
     if (
       window.confirm(
-        "Are you sure you want to delete this team? This action cannot be undone."
+        "Are you sure you want to delete this team? This action cannot be undone.",
       )
     ) {
       try {
@@ -963,7 +963,7 @@ const TeamDetailsModal = ({
     } catch (error) {
       console.error("Error submitting application:", error);
       throw new Error(
-        error.response?.data?.message || "Failed to submit application"
+        error.response?.data?.message || "Failed to submit application",
       );
     } finally {
       setApplicationLoading(false);
@@ -983,7 +983,7 @@ const TeamDetailsModal = ({
     if (!isAuthenticated) return null;
 
     const isMember = team?.members?.some(
-      (m) => m.user_id === user?.id || m.userId === user?.id
+      (m) => m.user_id === user?.id || m.userId === user?.id,
     );
 
     const isTeamArchived = team?.archived_at || team?.status === "inactive";
@@ -1192,6 +1192,14 @@ const TeamDetailsModal = ({
                 onCancel={() => setIsEditing(false)}
                 loading={loading}
                 isOwner={isOwner}
+                onAvatarDeleted={() => {
+                  // Refresh team details after avatar deletion
+                  fetchTeamDetails();
+                  setNotification({
+                    type: "success",
+                    message: "Team picture removed successfully!",
+                  });
+                }}
               />
             ) : (
               <div className="space-y-6">
@@ -1233,7 +1241,7 @@ const TeamDetailsModal = ({
                           {""}/
                           {team.max_members === null
                             ? "∞"
-                            : team.max_members ?? team.maxMembers ?? "∞"}
+                            : (team.max_members ?? team.maxMembers ?? "∞")}
                         </span>
                       </div>
 
