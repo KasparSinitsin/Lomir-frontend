@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from "react";
+import React, { useState, useRef, useCallback, useEffect } from "react";
 import { Upload, X, ImagePlus } from "lucide-react";
 
 const ChatImageUploader = ({ onImageSelect, onClose }) => {
@@ -94,7 +94,7 @@ const ChatImageUploader = ({ onImageSelect, onClose }) => {
   }, [handleFile]);
 
   // Add paste listener on mount
-  React.useEffect(() => {
+  useEffect(() => {
     document.addEventListener("paste", handlePaste);
     return () => document.removeEventListener("paste", handlePaste);
   }, [handlePaste]);

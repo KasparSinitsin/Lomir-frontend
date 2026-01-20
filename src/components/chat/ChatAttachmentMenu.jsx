@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Plus, Smile, Image, X } from "lucide-react";
+import ChatImageUploader from "./ChatImageUploader";
 
 const ChatAttachmentMenu = ({
   onEmojiSelect,
