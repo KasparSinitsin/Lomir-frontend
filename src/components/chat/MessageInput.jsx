@@ -2,9 +2,14 @@ import React, { useState, useEffect, useRef } from "react";
 import { Send } from "lucide-react";
 import ChatAttachmentMenu from "./ChatAttachmentMenu";
 
-const MessageInput = ({ onSendMessage, onSendImage, onTyping, disabled = false }) => {
+const MessageInput = ({
+  onSendMessage,
+  onSendImage,
+  onSendFile,
+  onTyping,
+  disabled = false,
+}) => {
   const [message, setMessage] = useState("");
-  const [pendingImage, setPendingImage] = useState(null);
   const typingTimerRef = useRef(null);
   const isTypingRef = useRef(false);
 
@@ -41,16 +46,13 @@ const MessageInput = ({ onSendMessage, onSendImage, onTyping, disabled = false }
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!message.trim() && !pendingImage) return;
+    if (!message.trim()) return;
 
     const urlParams = new URLSearchParams(window.location.search);
     const type = urlParams.get("type") || "direct";
 
-    // Send text message
-    if (message.trim()) {
-      onSendMessage(message);
-      setMessage("");
-    }
+    onSendMessage(message);
+    setMessage("");
 
     // Stop typing indicator
     onTyping(false, type);
@@ -66,19 +68,25 @@ const MessageInput = ({ onSendMessage, onSendImage, onTyping, disabled = false }
   };
 
   const handleImageSelect = async (file, previewUrl) => {
-    // Call the parent's onSendImage handler
     if (onSendImage) {
       await onSendImage(file, previewUrl);
+    }
+  };
+
+  const handleFileSelect = async (file) => {
+    if (onSendFile) {
+      await onSendFile(file);
     }
   };
 
   return (
     <div className="relative">
       <form onSubmit={handleSubmit} className="flex items-center gap-1">
-        {/* Attachment Menu (Plus button with Emoji/Image options) */}
+        {/* Attachment Menu */}
         <ChatAttachmentMenu
           onEmojiSelect={handleEmojiSelect}
           onImageSelect={handleImageSelect}
+          onFileSelect={handleFileSelect}
           disabled={disabled}
         />
 

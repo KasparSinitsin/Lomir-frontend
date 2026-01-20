@@ -75,14 +75,30 @@ const socketService = {
   },
 
   // Send a new message
-  sendMessage: (conversationId, content, type = "direct", imageUrl = null) => {
+  sendMessage: (
+    conversationId,
+    content,
+    type = "direct",
+    imageUrl = null,
+    fileUrl = null,
+    fileName = null,
+  ) => {
     if (socket && socket.connected) {
-      socket.emit("message:new", { conversationId, content, type, imageUrl });
+      socket.emit("message:new", {
+        conversationId,
+        content,
+        type,
+        imageUrl,
+        fileUrl,
+        fileName,
+      });
       console.log("Sending message:", {
         conversationId,
         content,
         type,
         imageUrl,
+        fileUrl,
+        fileName,
       });
     } else {
       console.error("Cannot send message - socket not connected");
