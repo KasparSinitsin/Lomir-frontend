@@ -2398,15 +2398,18 @@ const MessageDisplay = ({
     ${isHighlighted ? "message-highlight" : ""}
   `}
                           >
-                            {/* Image if present */}
-                            {message.imageUrl && (
+                            {/* Image if present - handle both camelCase and snake_case */}
+                            {(message.imageUrl || message.image_url) && (
                               <div className={message.content ? "mb-2" : ""}>
                                 <img
-                                  src={message.imageUrl}
+                                  src={message.imageUrl || message.image_url}
                                   alt="Shared image"
                                   className="rounded-lg max-w-full max-h-64 object-contain cursor-pointer hover:opacity-90 transition-opacity"
                                   onClick={() =>
-                                    window.open(message.imageUrl, "_blank")
+                                    window.open(
+                                      message.imageUrl || message.image_url,
+                                      "_blank",
+                                    )
                                   }
                                   loading="lazy"
                                 />
