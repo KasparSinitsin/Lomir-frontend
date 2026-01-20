@@ -1,15 +1,18 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Plus, Smile, Image, X } from "lucide-react";
+import { Plus, Smile, Image, X, FileText } from "lucide-react";
 import ChatImageUploader from "./ChatImageUploader";
+import ChatFileUploader from "./ChatFileUploader";
 
 const ChatAttachmentMenu = ({
   onEmojiSelect,
   onImageSelect,
+  onFileSelect,
   disabled = false,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showImageUploader, setShowImageUploader] = useState(false);
+  const [showFileUploader, setShowFileUploader] = useState(false);
   const menuRef = useRef(null);
 
   // Close menu when clicking outside
@@ -19,6 +22,7 @@ const ChatAttachmentMenu = ({
         setIsOpen(false);
         setShowEmojiPicker(false);
         setShowImageUploader(false);
+        setShowFileUploader(false);
       }
     };
 
@@ -56,13 +60,9 @@ const ChatAttachmentMenu = ({
   };
 
   const handleOptionClick = (option) => {
-    if (option === "emoji") {
-      setShowEmojiPicker(true);
-      setShowImageUploader(false);
-    } else if (option === "image") {
-      setShowImageUploader(true);
-      setShowEmojiPicker(false);
-    }
+    setShowEmojiPicker(option === "emoji");
+    setShowImageUploader(option === "image");
+    setShowFileUploader(option === "file");
   };
 
   return (
@@ -79,26 +79,37 @@ const ChatAttachmentMenu = ({
       </button>
 
       {/* Options Menu */}
-      {isOpen && !showEmojiPicker && !showImageUploader && (
-        <div className="absolute bottom-full mb-2 left-0 bg-base-100 rounded-lg shadow-lg border border-base-300 p-2 min-w-[140px] z-50">
-          <button
-            type="button"
-            className="flex items-center gap-2 w-full px-3 py-2 hover:bg-base-200 rounded-lg transition-colors text-left"
-            onClick={() => handleOptionClick("emoji")}
-          >
-            <Smile size={18} className="text-yellow-500" />
-            <span className="text-sm">Emoji</span>
-          </button>
-          <button
-            type="button"
-            className="flex items-center gap-2 w-full px-3 py-2 hover:bg-base-200 rounded-lg transition-colors text-left"
-            onClick={() => handleOptionClick("image")}
-          >
-            <Image size={18} className="text-blue-500" />
-            <span className="text-sm">Image</span>
-          </button>
-        </div>
-      )}
+      {isOpen &&
+        !showEmojiPicker &&
+        !showImageUploader &&
+        !showFileUploader && (
+          <div className="absolute bottom-full mb-2 left-0 bg-base-100 rounded-lg shadow-lg border border-base-300 p-2 min-w-[140px] z-50">
+            <button
+              type="button"
+              className="flex items-center gap-2 w-full px-3 py-2 hover:bg-base-200 rounded-lg transition-colors text-left"
+              onClick={() => handleOptionClick("emoji")}
+            >
+              <Smile size={18} className="text-yellow-500" />
+              <span className="text-sm">Emoji</span>
+            </button>
+            <button
+              type="button"
+              className="flex items-center gap-2 w-full px-3 py-2 hover:bg-base-200 rounded-lg transition-colors text-left"
+              onClick={() => handleOptionClick("image")}
+            >
+              <Image size={18} className="text-blue-500" />
+              <span className="text-sm">Image</span>
+            </button>
+            <button
+              type="button"
+              className="flex items-center gap-2 w-full px-3 py-2 hover:bg-base-200 rounded-lg transition-colors text-left"
+              onClick={() => handleOptionClick("file")}
+            >
+              <FileText size={18} className="text-green-500" />
+              <span className="text-sm">File</span>
+            </button>
+          </div>
+        )}
 
       {/* Emoji Picker */}
       {showEmojiPicker && (
@@ -128,6 +139,21 @@ const ChatAttachmentMenu = ({
           }}
           onClose={() => {
             setShowImageUploader(false);
+            setIsOpen(false);
+          }}
+        />
+      )}
+
+      {/* File Upload Panel */}
+      {showFileUploader && (
+        <ChatFileUploader
+          onFileSelect={(file) => {
+            onFileSelect(file);
+            setShowFileUploader(false);
+            setIsOpen(false);
+          }}
+          onClose={() => {
+            setShowFileUploader(false);
             setIsOpen(false);
           }}
         />

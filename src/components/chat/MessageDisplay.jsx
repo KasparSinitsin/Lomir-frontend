@@ -9,6 +9,10 @@ import {
   Crown,
   Shield,
   User,
+  FileText,
+  File,
+  FileSpreadsheet,
+  Download,
 } from "lucide-react";
 import TeamDetailsModal from "../teams/TeamDetailsModal";
 import UserDetailsModal from "../users/UserDetailsModal";
@@ -748,6 +752,62 @@ const MessageDisplay = ({
             </span>
           </div>
         </div>
+      </div>
+    );
+  };
+
+  const getFileIcon = (fileName) => {
+    if (!fileName) return File;
+    const ext = fileName.split(".").pop().toLowerCase();
+
+    if (["pdf", "doc", "docx", "txt"].includes(ext)) return FileText;
+    if (["xls", "xlsx", "csv"].includes(ext)) return FileSpreadsheet;
+    return File;
+  };
+
+  const formatFileSize = (url) => {
+    // Since we don't have file size from Cloudinary in the URL,
+    // we'll just show the file type
+    return null;
+  };
+
+  const renderFileAttachment = (message) => {
+    const fileUrl = message?.fileUrl || message?.file_url;
+    if (!fileUrl) return null;
+
+    const fileName = message?.fileName || message?.file_name;
+
+    // call it so it isn't "dead code" (and future-proof if you later implement it)
+    const meta = formatFileSize(fileUrl);
+
+    return (
+      <div className={message.content ? "mb-2" : ""}>
+        <a
+          href={fileUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-3 p-3 bg-base-100/50 rounded-lg hover:bg-base-100 transition-colors group"
+          download={fileName}
+        >
+          {React.createElement(getFileIcon(fileName), {
+            size: 24,
+            className: "text-primary flex-shrink-0",
+          })}
+
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium truncate">
+              {fileName || "Download file"}
+            </p>
+            <p className="text-xs text-base-content/60">
+              {meta || "Click to download"}
+            </p>
+          </div>
+
+          <Download
+            size={18}
+            className="text-base-content/40 group-hover:text-primary transition-colors flex-shrink-0"
+          />
+        </a>
       </div>
     );
   };
@@ -2415,6 +2475,9 @@ const MessageDisplay = ({
                                 />
                               </div>
                             )}
+
+                            {/* File attachment if present */}
+                            {renderFileAttachment(message)}
 
                             {/* Text content - only render if there's actual content */}
                             {message.content && <p>{message.content}</p>}

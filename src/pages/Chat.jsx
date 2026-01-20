@@ -860,6 +860,41 @@ const Chat = () => {
     }
   };
 
+  const handleSendFile = async (file) => {
+    if (!activeConversation || !file) return;
+
+    try {
+      // Upload to Cloudinary using "raw" resource type for non-image files
+      const cloudinaryFormData = new FormData();
+      cloudinaryFormData.append("file", file);
+      cloudinaryFormData.append(
+        "upload_preset",
+        import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET,
+      );
+
+      // Use "raw" endpoint for non-image files
+      const cloudinaryResponse = await axios.post(
+        `https://api.cloudinary.com/v1_1/${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME}/raw/upload`,
+        cloudinaryFormData,
+      );
+
+      const fileUrl = cloudinaryResponse.data.secure_url;
+
+      // Get conversation type and target ID
+      const type = searchParams.get("type") || "direct";
+      const targetId =
+        type === "team"
+          ? activeConversation.team?.id
+          : activeConversation.partner?.id;
+
+      // Send message with file via socket
+      socketService.sendMessage(targetId, null, type, null, fileUrl, file.name);
+    } catch (error) {
+      console.error("Error uploading file:", error);
+      setError("Failed to upload file. Please try again.");
+    }
+  };
+
   const handleSendImage = async (file, previewUrl) => {
     if (!activeConversation || !file) return;
 
@@ -1048,7 +1083,9 @@ const Chat = () => {
                   <MessageInput
                     onSendMessage={handleSendMessage}
                     onSendImage={handleSendImage}
+                    onSendFile={handleSendFile}
                     onTyping={handleTyping}
+                    disabled={!activeConversation}
                   />
                 </div>
               </div>
