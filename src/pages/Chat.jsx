@@ -579,6 +579,9 @@ const Chat = () => {
               createdAt: message.createdAt,
               senderUsername: message.senderUsername,
               type: message.type,
+              fileSize: message.fileSize,
+              fileExpiresAt: message.fileExpiresAt,
+              fileDeletedAt: message.fileDeletedAt,
             };
 
             return dedupeMessages([...withoutOptimistic, newMessage]);
@@ -598,6 +601,9 @@ const Chat = () => {
               createdAt: message.createdAt,
               senderUsername: message.senderUsername,
               type: message.type,
+              fileSize: message.fileSize,
+              fileExpiresAt: message.fileExpiresAt,
+              fileDeletedAt: message.fileDeletedAt,
             };
 
             return dedupeMessages([...prev, newMessage]);
