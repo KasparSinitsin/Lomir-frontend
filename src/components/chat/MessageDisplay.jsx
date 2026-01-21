@@ -13,10 +13,16 @@ import {
   File,
   FileSpreadsheet,
   Download,
+  AlertTriangle,
+  Clock,
 } from "lucide-react";
 import TeamDetailsModal from "../teams/TeamDetailsModal";
 import UserDetailsModal from "../users/UserDetailsModal";
 import { userService } from "../../services/userService";
+import {
+  getFileExpirationStatus,
+  formatFileSize,
+} from "../../utils/fileExpiration";
 
 const parseIdNameToken = (token) => {
   const t = (token || "").trim();
@@ -765,31 +771,59 @@ const MessageDisplay = ({
     return File;
   };
 
-  const formatFileSize = (url) => {
-    // Since we don't have file size from Cloudinary in the URL,
-    // we'll just show the file type
-    return null;
-  };
-
   const renderFileAttachment = (message) => {
     const fileUrl = message?.fileUrl || message?.file_url;
+    const fileName = message?.fileName || message?.file_name;
+    const fileSize = message?.fileSize || message?.file_size;
+    const fileDeletedAt = message?.fileDeletedAt || message?.file_deleted_at;
+
+    const expirationStatus = getFileExpirationStatus(message);
+
+    // If file was deleted/expired, show placeholder
+    if (expirationStatus.status === "expired" || fileDeletedAt) {
+      return (
+        <div className={message.content ? "mb-2" : ""}>
+          <div className="flex items-center gap-3 p-3 bg-base-200/50 rounded-lg border border-base-300">
+            <AlertTriangle
+              size={24}
+              className="text-base-content/40 flex-shrink-0"
+            />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-base-content/60">
+                File no longer available
+              </p>
+              <p className="text-xs text-base-content/40">
+                {expirationStatus.message}
+              </p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     if (!fileUrl) return null;
 
-    const fileName = message?.fileName || message?.file_name;
-
-    // call it so it isn't "dead code" (and future-proof if you later implement it)
-    const meta = formatFileSize(fileUrl);
+    const FileIcon = getFileIcon(fileName);
+    const fileSizeDisplay = formatFileSize(fileSize);
 
     return (
       <div className={message.content ? "mb-2" : ""}>
+        {/* Warning banner for files expiring soon (≤7 days) */}
+        {expirationStatus.status === "expiring-soon" && (
+          <div className="flex items-center gap-2 p-2 mb-2 bg-warning/10 border border-warning/30 rounded-lg">
+            <Clock size={16} className="text-warning flex-shrink-0" />
+            <p className="text-xs text-warning">{expirationStatus.message}</p>
+          </div>
+        )}
+
         <a
           href={fileUrl}
           target="_blank"
           rel="noopener noreferrer"
           className="flex items-center gap-3 p-3 bg-base-100/50 rounded-lg hover:bg-base-100 transition-colors group"
-          download={fileName}
+          download={fileName || undefined}
         >
-          {React.createElement(getFileIcon(fileName), {
+          {React.createElement(FileIcon, {
             size: 24,
             className: "text-primary flex-shrink-0",
           })}
@@ -799,7 +833,7 @@ const MessageDisplay = ({
               {fileName || "Download file"}
             </p>
             <p className="text-xs text-base-content/60">
-              {meta || "Click to download"}
+              {fileSizeDisplay || "Click to download"}
             </p>
           </div>
 
@@ -808,6 +842,17 @@ const MessageDisplay = ({
             className="text-base-content/40 group-hover:text-primary transition-colors flex-shrink-0"
           />
         </a>
+
+        {/* Grey expiration info for files NOT expiring soon (>7 days) */}
+        {expirationStatus.status === "active" &&
+          expirationStatus.daysLeft !== null && (
+            <div className="flex items-center gap-2 mt-1 ml-1">
+              <Clock size={12} className="text-base-content/40 flex-shrink-0" />
+              <p className="text-xs text-base-content/40">
+                {expirationStatus.message}
+              </p>
+            </div>
+          )}
       </div>
     );
   };
@@ -2459,22 +2504,91 @@ const MessageDisplay = ({
   `}
                           >
                             {/* Image if present - handle both camelCase and snake_case */}
-                            {(message.imageUrl || message.image_url) && (
-                              <div className={message.content ? "mb-2" : ""}>
-                                <img
-                                  src={message.imageUrl || message.image_url}
-                                  alt="Shared image"
-                                  className="rounded-lg max-w-full max-h-64 object-contain cursor-pointer hover:opacity-90 transition-opacity"
-                                  onClick={() =>
-                                    window.open(
-                                      message.imageUrl || message.image_url,
-                                      "_blank",
-                                    )
-                                  }
-                                  loading="lazy"
-                                />
-                              </div>
-                            )}
+                            {(() => {
+                              const imageUrl =
+                                message.imageUrl || message.image_url;
+                              const imageDeletedAt =
+                                message.fileDeletedAt ||
+                                message.file_deleted_at;
+                              const imageExpirationStatus =
+                                getFileExpirationStatus(message);
+
+                              // If image was deleted/expired, show placeholder
+                              if (
+                                imageUrl &&
+                                (imageExpirationStatus.status === "expired" ||
+                                  imageDeletedAt)
+                              ) {
+                                return (
+                                  <div
+                                    className={message.content ? "mb-2" : ""}
+                                  >
+                                    <div className="flex items-center gap-3 p-3 bg-base-200/50 rounded-lg border border-base-300 max-w-xs">
+                                      <AlertTriangle
+                                        size={24}
+                                        className="text-warning flex-shrink-0"
+                                      />
+                                      <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-medium text-base-content/60">
+                                          Image no longer available
+                                        </p>
+                                        <p className="text-xs text-base-content/40">
+                                          This image has expired.
+                                        </p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              }
+
+                              // Show image with expiration warning if expiring soon
+                              if (imageUrl) {
+                                return (
+                                  <div
+                                    className={message.content ? "mb-2" : ""}
+                                  >
+                                    {imageExpirationStatus.status ===
+                                      "expiring-soon" && (
+                                      <div className="flex items-center gap-2 p-2 mb-2 bg-warning/10 border border-warning/30 rounded-lg max-w-xs">
+                                        <Clock
+                                          size={16}
+                                          className="text-warning flex-shrink-0"
+                                        />
+                                        <p className="text-xs text-warning">
+                                          {imageExpirationStatus.message}
+                                        </p>
+                                      </div>
+                                    )}
+                                    <img
+                                      src={imageUrl}
+                                      alt="Shared image"
+                                      className="rounded-lg max-w-full max-h-64 object-contain cursor-pointer hover:opacity-90 transition-opacity"
+                                      onClick={() =>
+                                        window.open(imageUrl, "_blank")
+                                      }
+                                      loading="lazy"
+                                    />
+                                    {/* Grey expiration info for images NOT expiring soon (>7 days) */}
+                                    {imageExpirationStatus.status ===
+                                      "active" &&
+                                      imageExpirationStatus.daysLeft !==
+                                        null && (
+                                        <div className="flex items-center gap-2 mt-1 ml-1">
+                                          <Clock
+                                            size={12}
+                                            className="text-base-content/40 flex-shrink-0"
+                                          />
+                                          <p className="text-xs text-base-content/40">
+                                            {imageExpirationStatus.message}
+                                          </p>
+                                        </div>
+                                      )}
+                                  </div>
+                                );
+                              }
+
+                              return null;
+                            })()}
 
                             {/* File attachment if present */}
                             {renderFileAttachment(message)}
