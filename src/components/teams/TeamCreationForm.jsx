@@ -8,6 +8,7 @@ import { teamService } from "../../services/teamService";
 import TeamDetailsModal from "./TeamDetailsModal";
 import IconToggle from "../common/IconToggle";
 import ImageUploader from "../common/ImageUploader";
+import { uploadToCloudinary } from "../../config/cloudinary";
 
 const TeamCreationForm = () => {
   const navigate = useNavigate();
@@ -175,46 +176,20 @@ const TeamCreationForm = () => {
 
       // Upload image to Cloudinary if one is selected
       if (formData.teamImage) {
-        console.log("Preparing to upload image to Cloudinary");
-        const cloudinaryFormData = new FormData();
-        cloudinaryFormData.append("file", formData.teamImage);
-        cloudinaryFormData.append(
-          "upload_preset",
-          import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET,
+        console.log("Preparing to upload team image to Cloudinary");
+
+        const uploadResult = await uploadToCloudinary(
+          formData.teamImage,
+          "teamAvatars",
         );
 
-        console.log(
-          "Cloudinary upload preset:",
-          import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET,
-        );
-        console.log(
-          "Cloudinary cloud name:",
-          import.meta.env.VITE_CLOUDINARY_CLOUD_NAME,
-        );
-
-        try {
-          const cloudinaryResponse = await axios.post(
-            `https://api.cloudinary.com/v1_1/${
-              import.meta.env.VITE_CLOUDINARY_CLOUD_NAME
-            }/image/upload`,
-            cloudinaryFormData,
-            {
-              headers: {
-                "Content-Type": "multipart/form-data",
-              },
-            },
-          );
-
-          console.log("Cloudinary upload success:", cloudinaryResponse.data);
-
-          // Set the avatar URL in the submission data
-          submissionData.teamavatar_url = cloudinaryResponse.data.secure_url;
-          submissionData.teamavatarUrl = cloudinaryResponse.data.secure_url;
-
+        if (uploadResult.success) {
+          console.log("Cloudinary upload success:", uploadResult.url);
+          submissionData.teamavatar_url = uploadResult.url;
+          submissionData.teamavatarUrl = uploadResult.url;
           console.log("Team data with avatar URL:", submissionData);
-        } catch (cloudinaryError) {
-          console.error("Cloudinary upload failed:", cloudinaryError);
-          console.error("Response:", cloudinaryError.response?.data);
+        } else {
+          console.error("Cloudinary upload failed:", uploadResult.error);
           // Continue with team creation without the avatar
         }
       }

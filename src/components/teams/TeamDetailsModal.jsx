@@ -10,6 +10,7 @@ import SendMessageButton from "../common/SendMessageButton";
 import Alert from "../common/Alert";
 import TagDisplay from "../common/TagDisplay";
 import LocationDisplay from "../common/LocationDisplay";
+import { uploadToCloudinary } from "../../config/cloudinary";
 import {
   X,
   Edit,
@@ -790,33 +791,16 @@ const TeamDetailsModal = ({
 
       // Handle avatar file upload if a new file was selected
       if (formData.teamavatarFile) {
-        // Create FormData for file upload
-        const avatarFormData = new FormData();
-        avatarFormData.append("file", formData.teamavatarFile);
-        avatarFormData.append(
-          "upload_preset",
-          import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET,
+        const uploadResult = await uploadToCloudinary(
+          formData.teamavatarFile,
+          "teamAvatars",
         );
 
-        try {
-          // Upload to Cloudinary
-          const cloudinaryResponse = await axios.post(
-            `https://api.cloudinary.com/v1_1/${
-              import.meta.env.VITE_CLOUDINARY_CLOUD_NAME
-            }/image/upload`,
-            avatarFormData,
-            {
-              headers: {
-                "Content-Type": "multipart/form-data",
-              },
-            },
-          );
-
-          // Only override the avatar URL if upload was successful
-          submissionData.teamavatar_url = cloudinaryResponse.data.secure_url;
+        if (uploadResult.success) {
+          submissionData.teamavatar_url = uploadResult.url;
           console.log("New avatar uploaded:", submissionData.teamavatar_url);
-        } catch (uploadError) {
-          console.error("Error uploading team avatar:", uploadError);
+        } else {
+          console.error("Error uploading team avatar:", uploadResult.error);
           // Continue with the update even if image upload fails
           setNotification({
             type: "warning",

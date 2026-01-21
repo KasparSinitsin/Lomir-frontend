@@ -8,6 +8,7 @@ import Button from "../common/Button";
 import FormGroup from "../common/FormGroup";
 import { Tag } from "lucide-react";
 import ImageUploader from "../common/ImageUploader";
+import { uploadToCloudinary } from "../../config/cloudinary";
 
 const RegisterForm = () => {
   const navigate = useNavigate();
@@ -113,26 +114,17 @@ const RegisterForm = () => {
       };
 
       if (formData.profile_image) {
-        const cloudinaryFormData = new FormData();
-        cloudinaryFormData.append("file", formData.profile_image);
-        cloudinaryFormData.append(
-          "upload_preset",
-          import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET,
+        const uploadResult = await uploadToCloudinary(
+          formData.profile_image,
+          "avatars",
         );
 
-        const cloudinaryResponse = await axios.post(
-          `https://api.cloudinary.com/v1_1/${
-            import.meta.env.VITE_CLOUDINARY_CLOUD_NAME
-          }/image/upload`,
-          cloudinaryFormData,
-          {
-            headers: {
-              "Content-Type": "multipart/form-data",
-            },
-          },
-        );
-
-        userData.avatar_url = cloudinaryResponse.data.secure_url;
+        if (uploadResult.success) {
+          userData.avatar_url = uploadResult.url;
+        } else {
+          console.error("Avatar upload failed:", uploadResult.error);
+          // Continue with registration without avatar
+        }
       }
 
       const result = await register(userData);

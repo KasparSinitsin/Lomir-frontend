@@ -12,6 +12,7 @@ import { userService } from "../services/userService";
 import { teamService } from "../services/teamService";
 import Alert from "../components/common/Alert";
 import axios from "axios";
+import { uploadToCloudinary } from "../config/cloudinary";
 
 const Chat = () => {
   const { conversationId } = useParams();
@@ -523,6 +524,11 @@ const Chat = () => {
     // Handle new messages
     const handleNewMessage = (message) => {
       console.log("=== NEW MESSAGE RECEIVED ===");
+      console.log("Full message object:", message);
+      console.log("Has fileUrl:", !!message.fileUrl);
+      console.log("Has fileName:", !!message.fileName);
+
+      console.log("=== NEW MESSAGE RECEIVED ===");
       console.log("Message:", message);
 
       const messageConvId = String(message.conversationId);
@@ -568,6 +574,8 @@ const Chat = () => {
               senderId: message.senderId,
               content: message.content,
               imageUrl: message.imageUrl,
+              fileUrl: message.fileUrl,
+              fileName: message.fileName,
               createdAt: message.createdAt,
               senderUsername: message.senderUsername,
               type: message.type,
@@ -585,6 +593,8 @@ const Chat = () => {
               senderId: message.senderId,
               content: message.content,
               imageUrl: message.imageUrl,
+              fileUrl: message.fileUrl,
+              fileName: message.fileName,
               createdAt: message.createdAt,
               senderUsername: message.senderUsername,
               type: message.type,
@@ -864,21 +874,13 @@ const Chat = () => {
     if (!activeConversation || !file) return;
 
     try {
-      // Upload to Cloudinary using "raw" resource type for non-image files
-      const cloudinaryFormData = new FormData();
-      cloudinaryFormData.append("file", file);
-      cloudinaryFormData.append(
-        "upload_preset",
-        import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET,
-      );
+      // Upload to Cloudinary using chat-files preset
+      const uploadResult = await uploadToCloudinary(file, "chatFiles");
 
-      // Use "raw" endpoint for non-image files
-      const cloudinaryResponse = await axios.post(
-        `https://api.cloudinary.com/v1_1/${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME}/raw/upload`,
-        cloudinaryFormData,
-      );
-
-      const fileUrl = cloudinaryResponse.data.secure_url;
+      if (!uploadResult.success) {
+        setError(uploadResult.error || "Failed to upload file");
+        return;
+      }
 
       // Get conversation type and target ID
       const type = searchParams.get("type") || "direct";
@@ -888,7 +890,14 @@ const Chat = () => {
           : activeConversation.partner?.id;
 
       // Send message with file via socket
-      socketService.sendMessage(targetId, null, type, null, fileUrl, file.name);
+      socketService.sendMessage(
+        targetId,
+        null,
+        type,
+        null,
+        uploadResult.url,
+        file.name,
+      );
     } catch (error) {
       console.error("Error uploading file:", error);
       setError("Failed to upload file. Please try again.");
@@ -899,20 +908,13 @@ const Chat = () => {
     if (!activeConversation || !file) return;
 
     try {
-      // Upload to Cloudinary
-      const cloudinaryFormData = new FormData();
-      cloudinaryFormData.append("file", file);
-      cloudinaryFormData.append(
-        "upload_preset",
-        import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET,
-      );
+      // Upload to Cloudinary using chat-images preset
+      const uploadResult = await uploadToCloudinary(file, "chatImages");
 
-      const cloudinaryResponse = await axios.post(
-        `https://api.cloudinary.com/v1_1/${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME}/image/upload`,
-        cloudinaryFormData,
-      );
-
-      const imageUrl = cloudinaryResponse.data.secure_url;
+      if (!uploadResult.success) {
+        setError(uploadResult.error || "Failed to upload image");
+        return;
+      }
 
       // Get conversation type and target ID
       const type = searchParams.get("type") || "direct";
@@ -922,7 +924,7 @@ const Chat = () => {
           : activeConversation.partner?.id;
 
       // Send message with image via socket
-      socketService.sendMessage(targetId, null, type, imageUrl);
+      socketService.sendMessage(targetId, null, type, uploadResult.url);
     } catch (error) {
       console.error("Error uploading image:", error);
       setError("Failed to upload image. Please try again.");

@@ -9,6 +9,7 @@ import Card from "../components/common/Card";
 import Button from "../components/common/Button";
 import DataDisplay from "../components/common/DataDisplay";
 import Alert from "../components/common/Alert";
+import { uploadToCloudinary } from "../config/cloudinary";
 import {
   Mail,
   MapPin,
