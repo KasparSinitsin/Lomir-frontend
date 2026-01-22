@@ -23,6 +23,7 @@ import {
   getFileExpirationStatus,
   formatFileSize,
 } from "../../utils/fileExpiration";
+import MessageText from "./MessageText";
 
 const parseIdNameToken = (token) => {
   const t = (token || "").trim();
@@ -2594,7 +2595,11 @@ const MessageDisplay = ({
                             {renderFileAttachment(message)}
 
                             {/* Text content - only render if there's actual content */}
-                            {message.content && <p>{message.content}</p>}
+                            {message.content && (
+                              <p>
+                                <MessageText content={message.content} />
+                              </p>
+                            )}
 
                             {messageIndex ===
                               messageGroup.messages.length - 1 && (
