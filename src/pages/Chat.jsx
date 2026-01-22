@@ -30,6 +30,7 @@ const Chat = () => {
   const [isTeamArchived, setIsTeamArchived] = useState(false);
 
   const typingTimeoutRef = useRef(null);
+  const [loadingMessages, setLoadingMessages] = useState(false);
 
   // ---- Message de-duplication (focus: ownership/system duplicates) ----
   const toMinuteBucket = (isoOrDate) => {
@@ -92,6 +93,17 @@ const Chat = () => {
     activeConversation?.type ||
     new URLSearchParams(window.location.search).get("type") ||
     "direct";
+
+  const conversationPartner =
+    conversationType === "direct"
+      ? activeConversation?.partner || activeConversation?.partnerUser || null
+      : null;
+
+  const teamData =
+    conversationType === "team" ? activeConversation?.team || null : null;
+
+  const teamMembers =
+    conversationType === "team" ? activeConversation?.team?.members || [] : [];
 
   // Fetch conversations
   useEffect(() => {
@@ -196,7 +208,7 @@ const Chat = () => {
       if (!conversationId) return;
 
       try {
-        setLoading(true);
+        setLoadingMessages(true);
 
         // ✅ Reset archived state when switching conversations
         setIsTeamArchived(false);
@@ -299,7 +311,7 @@ const Chat = () => {
               "Access denied to this conversation - user may have been removed",
             );
             setError("You no longer have access to this conversation.");
-            setLoading(false);
+            setLoadingMessages(false);
             // Navigate back to chat list or my teams
             navigate("/chat");
             return;
@@ -413,7 +425,7 @@ const Chat = () => {
           setMessages([]);
         }
 
-        setLoading(false);
+        setLoadingMessages(false);
 
         // Wait for socket to be connected before joining
         const socket = socketService.getSocket();
@@ -438,7 +450,7 @@ const Chat = () => {
       } catch (err) {
         console.error("Error fetching messages:", err);
         setError("Failed to load messages. Please try again.");
-        setLoading(false);
+        setLoadingMessages(false);
       }
     };
 
@@ -479,6 +491,7 @@ const Chat = () => {
     // Remove any existing listeners first to prevent duplicates
     socket.off("users:online");
     socket.off("message:received");
+    socket.off("message:deleted");
     socket.off("typing:update");
     socket.off("message:status");
     socket.off("conversation:updated");
@@ -488,48 +501,12 @@ const Chat = () => {
       setOnlineUsers(users);
     };
 
-    const handleSendImage = async (file, previewUrl) => {
-      if (!activeConversation || !file) return;
-
-      try {
-        // Upload to Cloudinary
-        const cloudinaryFormData = new FormData();
-        cloudinaryFormData.append("file", file);
-        cloudinaryFormData.append(
-          "upload_preset",
-          import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET,
-        );
-
-        const cloudinaryResponse = await axios.post(
-          `https://api.cloudinary.com/v1_1/${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME}/image/upload`,
-          cloudinaryFormData,
-        );
-
-        const imageUrl = cloudinaryResponse.data.secure_url;
-
-        // Send message with image via socket
-        const type = searchParams.get("type") || "direct";
-        const targetId =
-          type === "team"
-            ? activeConversation.team?.id
-            : activeConversation.partner?.id;
-
-        socketService.sendMessage(targetId, null, type, imageUrl);
-      } catch (error) {
-        console.error("Error uploading image:", error);
-        setError("Failed to upload image. Please try again.");
-      }
-    };
-
     // Handle new messages
     const handleNewMessage = (message) => {
       console.log("=== NEW MESSAGE RECEIVED ===");
       console.log("Full message object:", message);
       console.log("Has fileUrl:", !!message.fileUrl);
       console.log("Has fileName:", !!message.fileName);
-
-      console.log("=== NEW MESSAGE RECEIVED ===");
-      console.log("Message:", message);
 
       const messageConvId = String(message.conversationId);
       const currentConvId = String(conversationId);
@@ -761,6 +738,27 @@ const Chat = () => {
       });
     };
 
+    // Handle message deleted (soft delete broadcast)
+    const handleMessageDeleted = (payload) => {
+      // payload: { messageId, deletedAt, deletedBy, type, teamId, senderId, receiverId }
+      setMessages((prev) =>
+        prev.map((m) =>
+          String(m.id) === String(payload.messageId)
+            ? {
+                ...m,
+                deletedAt: payload.deletedAt || new Date().toISOString(),
+                deletedBy: payload.deletedBy,
+                content: null,
+                imageUrl: null,
+                fileUrl: null,
+                fileName: null,
+                fileSize: null,
+              }
+            : m,
+        ),
+      );
+    };
+
     // Subscribe to events
     socket.on("users:online", handleOnlineUsers);
     socket.on("message:received", handleNewMessage);
@@ -768,6 +766,7 @@ const Chat = () => {
     socket.on("message:status", handleMessageStatus);
     socket.on("conversation:updated", handleConversationUpdate);
     socket.on("team:member_kicked", handleKickedFromTeam);
+    socket.on("message:deleted", handleMessageDeleted);
 
     // Cleanup function to remove listeners
     return () => {
@@ -777,8 +776,9 @@ const Chat = () => {
       socket.off("message:status", handleMessageStatus);
       socket.off("conversation:updated", handleConversationUpdate);
       socket.off("team:member_kicked", handleKickedFromTeam);
+      socket.off("message:deleted", handleMessageDeleted);
     };
-  }, [isAuthenticated, conversationId, user]);
+  }, [isAuthenticated, conversationId, user?.id, user?.username, searchParams]);
 
   // Handle leaving a deleted team (removes from conversation list)
   const handleLeaveTeam = async () => {
@@ -937,6 +937,52 @@ const Chat = () => {
     }
   };
 
+  // Delete message (soft delete)
+  const handleDeleteMessage = async (messageId) => {
+    if (!messageId) return;
+
+    const ok = window.confirm("Delete this message?");
+    if (!ok) return;
+
+    try {
+      // Optimistic UI update
+      setMessages((prev) =>
+        prev.map((m) =>
+          String(m.id) === String(messageId)
+            ? {
+                ...m,
+                deletedAt: new Date().toISOString(),
+                deletedBy: user?.id,
+                content: null,
+                imageUrl: null,
+                fileUrl: null,
+                fileName: null,
+                fileSize: null,
+              }
+            : m,
+        ),
+      );
+
+      // Use your service if you have it
+      // await messageService.deleteMessage(messageId);
+
+      // Or your fetch (as you wrote)
+      await fetch(`${import.meta.env.VITE_API_URL}/messages/${messageId}`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+    } catch (err) {
+      console.error("Failed to delete message:", err);
+      setError("Failed to delete message. Please try again.");
+
+      // Optional: re-fetch messages for correctness after failure
+      // (you can leave this out if you don’t want)
+    }
+  };
+
   const handleSendMessage = (content) => {
     if (!content.trim() || !conversationId) return;
 
@@ -1029,14 +1075,15 @@ const Chat = () => {
                 <MessageDisplay
                   messages={messages}
                   currentUserId={user?.id}
-                  conversationPartner={activeConversation?.partner}
-                  teamData={activeConversation?.team}
-                  loading={loading}
+                  conversationPartner={conversationPartner}
+                  teamData={teamData}
+                  loading={loadingMessages}
                   typingUsers={activeTypingUsers}
-                  conversationType={activeConversation?.type || "direct"}
-                  teamMembers={activeConversation?.team?.members || []}
+                  conversationType={conversationType}
+                  teamMembers={teamMembers}
                   highlightMessageIds={highlightMessageIds}
                   onDeleteConversation={handleDeleteConversation}
+                  onDeleteMessage={handleDeleteMessage}
                   onLeaveTeam={handleLeaveTeam}
                 />
               </div>
