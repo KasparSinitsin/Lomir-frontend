@@ -15,6 +15,7 @@ import {
   Download,
   AlertTriangle,
   Clock,
+  Trash2,
 } from "lucide-react";
 import TeamDetailsModal from "../teams/TeamDetailsModal";
 import UserDetailsModal from "../users/UserDetailsModal";
@@ -382,6 +383,7 @@ const MessageDisplay = ({
   teamMembers = [],
   highlightMessageIds = [],
   onDeleteConversation,
+  onDeleteMessage,
   onLeaveTeam,
 }) => {
   const messagesEndRef = useRef(null);
@@ -420,6 +422,11 @@ const MessageDisplay = ({
   }, [highlightMessageIds]);
 
   // Add debugging
+
+  useEffect(() => {
+    console.log("onDeleteMessage prop:", onDeleteMessage);
+  }, [onDeleteMessage]);
+
   useEffect(() => {
     if (conversationType === "team") {
       console.log("=== TEAM CHAT DEBUG ===");
@@ -2435,9 +2442,7 @@ const MessageDisplay = ({
               return (
                 <div
                   key={`${dateString}-group-${groupIndex}`}
-                  className={`flex ${
-                    isCurrentUser ? "justify-end" : "justify-start"
-                  }`}
+                  className={`flex ${isCurrentUser ? "justify-end" : "justify-start"}`}
                 >
                   {conversationType === "team" &&
                     !isCurrentUser &&
@@ -2463,10 +2468,7 @@ const MessageDisplay = ({
                           onClick={() =>
                             handleUserClick(messageGroup.senderId, displayName)
                           }
-                          title={`View ${getDisplayName(
-                            senderInfo,
-                            false,
-                          )} details`}
+                          title={`View ${getDisplayName(senderInfo, false)} details`}
                         >
                           {displayName}
                         </div>
@@ -2481,6 +2483,10 @@ const MessageDisplay = ({
                           isHighlighted &&
                           message.id === highlightMessageIds[0];
 
+                        const isDeleted = !!(
+                          message.deletedAt || message.deleted_at
+                        );
+
                         return (
                           <div
                             key={`${message.id}-${dateString}-${groupIndex}-${messageIndex}`}
@@ -2488,116 +2494,156 @@ const MessageDisplay = ({
                               isFirstHighlighted ? highlightedMessageRef : null
                             }
                             className={`
-    rounded-lg p-3 
-    ${
-      isCurrentUser
-        ? "bg-green-100 text-base-content rounded-br-none ml-auto"
-        : "bg-base-200 rounded-bl-none"
-    }
-    ${
-      messageIndex === 0
-        ? ""
-        : isCurrentUser
-          ? "rounded-tr-lg"
-          : "rounded-tl-lg"
-    }
-    ${isHighlighted ? "message-highlight" : ""}
-  `}
+                      relative group rounded-lg p-3
+                      ${
+                        isCurrentUser
+                          ? "bg-green-100 text-base-content rounded-br-none ml-auto"
+                          : "bg-base-200 rounded-bl-none"
+                      }
+                      ${
+                        messageIndex === 0
+                          ? ""
+                          : isCurrentUser
+                            ? "rounded-tr-lg"
+                            : "rounded-tl-lg"
+                      }
+                      ${isHighlighted ? "message-highlight" : ""}
+                    `}
                           >
-                            {/* Image if present - handle both camelCase and snake_case */}
-                            {(() => {
-                              const imageUrl =
-                                message.imageUrl || message.image_url;
-                              const imageDeletedAt =
-                                message.fileDeletedAt ||
-                                message.file_deleted_at;
-                              const imageExpirationStatus =
-                                getFileExpirationStatus(message);
+                            {/* DELETE BUTTON for messages */}
+                            {isCurrentUser &&
+                              !isDeleted &&
+                              !String(message.id).startsWith("temp-") &&
+                              typeof onDeleteMessage === "function" && (
+                                <button
+                                  type="button"
+                                  onClick={() => onDeleteMessage(message.id)}
+                                  className="
+          absolute -top-2 -right-2
+          opacity-0 group-hover:opacity-100 transition-opacity
+          bg-base-100 border border-base-300 rounded-full p-1 shadow-sm
+          hover:shadow
+        "
+                                  title="Delete message"
+                                >
+                                  <Trash2
+                                    size={14}
+                                    className="text-base-content/50 hover:text-error"
+                                  />
+                                </button>
+                              )}
 
-                              // If image was deleted/expired, show placeholder
-                              if (
-                                imageUrl &&
-                                (imageExpirationStatus.status === "expired" ||
-                                  imageDeletedAt)
-                              ) {
-                                return (
-                                  <div
-                                    className={message.content ? "mb-2" : ""}
-                                  >
-                                    <div className="flex items-center gap-3 p-3 bg-base-200/50 rounded-lg border border-base-300 max-w-xs">
-                                      <AlertTriangle
-                                        size={24}
-                                        className="text-warning flex-shrink-0"
-                                      />
-                                      <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-medium text-base-content/60">
-                                          Image or file no longer available
-                                        </p>
-                                        <p className="text-xs text-base-content/40">
-                                          This data has expired.
-                                        </p>
-                                      </div>
-                                    </div>
-                                  </div>
-                                );
-                              }
+                            {/* Only render media/text when NOT deleted */}
+                            {!isDeleted && (
+                              <>
+                                {/* Image if present - handle both camelCase and snake_case */}
+                                {(() => {
+                                  const imageUrl =
+                                    message.imageUrl || message.image_url;
+                                  const imageDeletedAt =
+                                    message.fileDeletedAt ||
+                                    message.file_deleted_at;
+                                  const imageExpirationStatus =
+                                    getFileExpirationStatus(message);
 
-                              // Show image with expiration warning if expiring soon
-                              if (imageUrl) {
-                                return (
-                                  <div
-                                    className={message.content ? "mb-2" : ""}
-                                  >
-                                    {imageExpirationStatus.status ===
-                                      "expiring-soon" && (
-                                      <div className="flex items-center gap-2 p-2 mb-2 bg-warning/10 border border-warning/30 rounded-lg max-w-xs">
-                                        <Clock
-                                          size={16}
-                                          className="text-warning flex-shrink-0"
-                                        />
-                                        <p className="text-xs text-warning">
-                                          {imageExpirationStatus.message}
-                                        </p>
-                                      </div>
-                                    )}
-                                    <img
-                                      src={imageUrl}
-                                      alt="Shared image"
-                                      className="rounded-lg max-w-full max-h-64 object-contain cursor-pointer hover:opacity-90 transition-opacity"
-                                      onClick={() =>
-                                        window.open(imageUrl, "_blank")
-                                      }
-                                      loading="lazy"
-                                    />
-                                    {/* Grey expiration info for images NOT expiring soon (>7 days) */}
-                                    {imageExpirationStatus.status ===
-                                      "active" &&
-                                      imageExpirationStatus.daysLeft !==
-                                        null && (
-                                        <div className="flex items-center gap-2 mt-1 ml-1">
-                                          <Clock
-                                            size={12}
-                                            className="text-base-content/40 flex-shrink-0"
+                                  // If image was deleted/expired, show placeholder
+                                  if (
+                                    imageUrl &&
+                                    (imageExpirationStatus.status ===
+                                      "expired" ||
+                                      imageDeletedAt)
+                                  ) {
+                                    return (
+                                      <div
+                                        className={
+                                          message.content ? "mb-2" : ""
+                                        }
+                                      >
+                                        <div className="flex items-center gap-3 p-3 bg-base-200/50 rounded-lg border border-base-300 max-w-xs">
+                                          <AlertTriangle
+                                            size={24}
+                                            className="text-warning flex-shrink-0"
                                           />
-                                          <p className="text-xs text-base-content/40">
-                                            {imageExpirationStatus.message}
-                                          </p>
+                                          <div className="flex-1 min-w-0">
+                                            <p className="text-sm font-medium text-base-content/60">
+                                              Image or file no longer available
+                                            </p>
+                                            <p className="text-xs text-base-content/40">
+                                              This data has expired.
+                                            </p>
+                                          </div>
                                         </div>
-                                      )}
-                                  </div>
-                                );
-                              }
+                                      </div>
+                                    );
+                                  }
 
-                              return null;
-                            })()}
+                                  // Show image with expiration warning if expiring soon
+                                  if (imageUrl) {
+                                    return (
+                                      <div
+                                        className={
+                                          message.content ? "mb-2" : ""
+                                        }
+                                      >
+                                        {imageExpirationStatus.status ===
+                                          "expiring-soon" && (
+                                          <div className="flex items-center gap-2 p-2 mb-2 bg-warning/10 border border-warning/30 rounded-lg max-w-xs">
+                                            <Clock
+                                              size={16}
+                                              className="text-warning flex-shrink-0"
+                                            />
+                                            <p className="text-xs text-warning">
+                                              {imageExpirationStatus.message}
+                                            </p>
+                                          </div>
+                                        )}
+                                        <img
+                                          src={imageUrl}
+                                          alt="Shared image"
+                                          className="rounded-lg max-w-full max-h-64 object-contain cursor-pointer hover:opacity-90 transition-opacity"
+                                          onClick={() =>
+                                            window.open(imageUrl, "_blank")
+                                          }
+                                          loading="lazy"
+                                        />
+                                        {/* Grey expiration info for images NOT expiring soon (>7 days) */}
+                                        {imageExpirationStatus.status ===
+                                          "active" &&
+                                          imageExpirationStatus.daysLeft !==
+                                            null && (
+                                            <div className="flex items-center gap-2 mt-1 ml-1">
+                                              <Clock
+                                                size={12}
+                                                className="text-base-content/40 flex-shrink-0"
+                                              />
+                                              <p className="text-xs text-base-content/40">
+                                                {imageExpirationStatus.message}
+                                              </p>
+                                            </div>
+                                          )}
+                                      </div>
+                                    );
+                                  }
 
-                            {/* File attachment if present */}
-                            {renderFileAttachment(message)}
+                                  return null;
+                                })()}
 
-                            {/* Text content - only render if there's actual content */}
-                            {message.content && (
-                              <p>
-                                <MessageText content={message.content} />
+                                {/* File attachment if present */}
+                                {renderFileAttachment(message)}
+
+                                {/* Text content */}
+                                {message.content && (
+                                  <p>
+                                    <MessageText content={message.content} />
+                                  </p>
+                                )}
+                              </>
+                            )}
+
+                            {/* Deleted placeholder (ONLY when deleted) */}
+                            {isDeleted && (
+                              <p className="text-sm text-base-content/50 italic">
+                                This message was deleted.
                               </p>
                             )}
 
@@ -2605,9 +2651,9 @@ const MessageDisplay = ({
                               messageGroup.messages.length - 1 && (
                               <div
                                 className={`
-        flex justify-between items-center text-xs mt-1 
-        ${isCurrentUser ? "text-base-content/60" : "text-base-content/50"}
-      `}
+                          flex justify-between items-center text-xs mt-1
+                          ${isCurrentUser ? "text-base-content/60" : "text-base-content/50"}
+                        `}
                               >
                                 <span>
                                   {format(new Date(message.createdAt), "p")}
