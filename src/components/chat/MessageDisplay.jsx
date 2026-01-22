@@ -776,24 +776,24 @@ const MessageDisplay = ({
     const fileName = message?.fileName || message?.file_name;
     const fileSize = message?.fileSize || message?.file_size;
     const fileDeletedAt = message?.fileDeletedAt || message?.file_deleted_at;
+    const imageUrl = message?.imageUrl || message?.image_url;
 
     const expirationStatus = getFileExpirationStatus(message);
 
     // If file was deleted/expired, show placeholder
-    if (expirationStatus.status === "expired" || fileDeletedAt) {
+    // But only if there's no imageUrl (to avoid duplicate with image placeholder)
+    // OR if there was specifically a file (fileName exists)
+    if ((expirationStatus.status === "expired" || fileDeletedAt) && !imageUrl) {
       return (
         <div className={message.content ? "mb-2" : ""}>
           <div className="flex items-center gap-3 p-3 bg-base-200/50 rounded-lg border border-base-300">
-            <AlertTriangle
-              size={24}
-              className="text-base-content/40 flex-shrink-0"
-            />
+            <AlertTriangle size={24} className="text-warning flex-shrink-0" />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-base-content/60">
-                File no longer available
+                Image or file no longer available
               </p>
               <p className="text-xs text-base-content/40">
-                {expirationStatus.message}
+                This data has expired.
               </p>
             </div>
           </div>
@@ -2530,10 +2530,10 @@ const MessageDisplay = ({
                                       />
                                       <div className="flex-1 min-w-0">
                                         <p className="text-sm font-medium text-base-content/60">
-                                          Image no longer available
+                                          Image or file no longer available
                                         </p>
                                         <p className="text-xs text-base-content/40">
-                                          This image has expired.
+                                          This data has expired.
                                         </p>
                                       </div>
                                     </div>

@@ -47,7 +47,7 @@ export const getFileExpirationStatus = (message) => {
     return {
       status: "expired",
       daysLeft: null,
-      message: "This file has expired and is no longer available.",
+      message: "This data has expired and is no longer available.",
     };
   }
 
@@ -80,7 +80,7 @@ export const getFileExpirationStatus = (message) => {
     return {
       status: "expired",
       daysLeft: 0,
-      message: "This file has expired and is no longer available.",
+      message: "This data has expired and is no longer available.",
     };
   }
 
