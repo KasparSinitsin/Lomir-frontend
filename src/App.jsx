@@ -11,13 +11,13 @@ import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Profile from "./pages/Profile";
+import VerifyEmail from "./pages/VerifyEmail";
 import BadgeOverview from "./pages/BadgeOverview";
 import CreateTeam from "./pages/CreateTeam";
 import MyTeams from "./pages/MyTeams";
 import SearchPage from "./pages/SearchPage";
 import DesignSystem from "./pages/DesignSystem";
 import "./index.css";
-
 import backgroundImage from "./assets/images/Gradient-peach-yellow-violet-inverted-light.svg";
 
 function App() {
@@ -43,6 +43,7 @@ function App() {
                 <Route path="/" element={<Home />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
+                <Route path="/verify-email" element={<VerifyEmail />} />
                 <Route path="/badges" element={<BadgeOverview />} />
                 <Route
                   path="/garden"

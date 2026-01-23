@@ -1,12 +1,7 @@
-import LoginForm from '../components/auth/LoginForm';
-import PageContainer from '../components/layout/PageContainer';
+import LoginForm from "../components/auth/LoginForm";
 
 const Login = () => {
-  return (
-    <PageContainer>
-      <LoginForm />
-    </PageContainer>
-  );
+  return <LoginForm />;
 };
 
 export default Login;

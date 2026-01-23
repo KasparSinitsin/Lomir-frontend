@@ -6,7 +6,7 @@ import TagInputV2 from "../tags/TagInputV2";
 import Card from "../common/Card";
 import Button from "../common/Button";
 import FormGroup from "../common/FormGroup";
-import { Tag } from "lucide-react";
+import { Tag, MailCheck } from "lucide-react";
 import ImageUploader from "../common/ImageUploader";
 import { uploadToCloudinary } from "../../config/cloudinary";
 
@@ -28,6 +28,7 @@ const RegisterForm = () => {
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [imagePreview, setImagePreview] = useState(null);
+  const [registrationSuccess, setRegistrationSuccess] = useState(false);
 
   const validateForm = () => {
     const newErrors = {};
@@ -130,11 +131,17 @@ const RegisterForm = () => {
       const result = await register(userData);
 
       if (result.success) {
-        localStorage.setItem(
-          "registrationMessage",
-          "Profile created successfully!",
-        );
-        navigate("/profile");
+        if (result.requiresVerification) {
+          // Show verification message instead of redirecting
+          setRegistrationSuccess(true);
+        } else {
+          // Fallback for if verification is not required
+          localStorage.setItem(
+            "registrationMessage",
+            "Profile created successfully!",
+          );
+          navigate("/profile");
+        }
       } else {
         setErrors((prev) => ({
           ...prev,
@@ -151,6 +158,40 @@ const RegisterForm = () => {
       setIsSubmitting(false);
     }
   };
+
+  // Show success message if registration completed
+  if (registrationSuccess) {
+    return (
+      <div className="max-w-md mx-auto">
+        <Card className="w-full">
+          <div className="card-body text-center py-10 px-8">
+            <MailCheck size={56} className="mx-auto mb-4 text-primary" />
+            <h2 className="card-title text-2xl font-bold justify-center mb-3">
+              Check your email
+            </h2>
+            <p className="text-base-content/70 mb-3">
+              We've sent a verification link to{" "}
+              <strong>{formData.email}</strong>
+            </p>
+            <p className="text-sm text-base-content/60 mb-6">
+              Click the link in the email to verify your account and complete
+              registration. Don't forget to check your spam folder!
+            </p>
+            <div className="divider"></div>
+            <p className="text-sm text-base-content/60">
+              Didn't receive the email?{" "}
+              <button
+                className="link link-primary"
+                onClick={() => setRegistrationSuccess(false)}
+              >
+                Try again
+              </button>
+            </p>
+          </div>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-md mx-auto">
