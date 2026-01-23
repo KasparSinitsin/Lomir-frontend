@@ -35,8 +35,8 @@ export const AuthProvider = ({ children }) => {
               userData.is_public !== undefined
                 ? userData.is_public
                 : userData.isPublic !== undefined
-                ? userData.isPublic
-                : true,
+                  ? userData.isPublic
+                  : true,
             // Add snake_case versions if missing
             first_name: userData.first_name || userData.firstName,
             last_name: userData.last_name || userData.lastName,
@@ -46,8 +46,8 @@ export const AuthProvider = ({ children }) => {
               userData.is_public !== undefined
                 ? userData.is_public
                 : userData.isPublic !== undefined
-                ? userData.isPublic
-                : true,
+                  ? userData.isPublic
+                  : true,
           };
 
           console.log("Enhanced user data:", enhancedUserData);
@@ -89,12 +89,22 @@ export const AuthProvider = ({ children }) => {
     try {
       setLoading(true);
       const response = await api.post("/api/auth/register", userData);
+
+      // Check if email verification is required
+      if (response.data.data?.requiresVerification) {
+        // Don't log in - return success with verification flag
+        return {
+          success: true,
+          requiresVerification: true,
+          message: response.data.message,
+        };
+      }
+
+      // If no verification required (shouldn't happen with new flow, but just in case)
       const { token, user } = response.data.data;
 
-      // Enhance user data with both snake_case and camelCase
       const enhancedUser = {
         ...user,
-        // Add camelCase versions
         firstName: user.first_name || user.firstName,
         lastName: user.last_name || user.lastName,
         postalCode: user.postal_code || user.postalCode,
@@ -103,9 +113,8 @@ export const AuthProvider = ({ children }) => {
           user.is_public !== undefined
             ? user.is_public
             : user.isPublic !== undefined
-            ? user.isPublic
-            : false,
-        // Add snake_case versions
+              ? user.isPublic
+              : false,
         first_name: user.first_name || user.firstName,
         last_name: user.last_name || user.lastName,
         postal_code: user.postal_code || user.postalCode,
@@ -114,8 +123,8 @@ export const AuthProvider = ({ children }) => {
           user.is_public !== undefined
             ? user.is_public
             : user.isPublic !== undefined
-            ? user.isPublic
-            : false,
+              ? user.isPublic
+              : false,
       };
 
       localStorage.setItem("token", token);
@@ -123,23 +132,20 @@ export const AuthProvider = ({ children }) => {
       setUser(enhancedUser);
       setError(null);
 
-      // Initialize socket connection AFTER user is set
-      console.log("Initializing socket connection after registration");
       try {
         socketService.connect(token);
       } catch (socketError) {
         console.error(
           "Failed to connect socket after registration:",
-          socketError
+          socketError,
         );
-        // Don't fail registration if socket fails
       }
 
       return { success: true };
     } catch (err) {
       console.error("Registration error:", err);
       setError(
-        err.response?.data?.message || "Registration failed. Please try again."
+        err.response?.data?.message || "Registration failed. Please try again.",
       );
       return {
         success: false,
@@ -169,8 +175,8 @@ export const AuthProvider = ({ children }) => {
           user.is_public !== undefined
             ? user.is_public
             : user.isPublic !== undefined
-            ? user.isPublic
-            : false,
+              ? user.isPublic
+              : false,
         // Add snake_case versions
         first_name: user.first_name || user.firstName,
         last_name: user.last_name || user.lastName,
@@ -180,8 +186,8 @@ export const AuthProvider = ({ children }) => {
           user.is_public !== undefined
             ? user.is_public
             : user.isPublic !== undefined
-            ? user.isPublic
-            : false,
+              ? user.isPublic
+              : false,
       };
 
       localStorage.setItem("token", token);
@@ -203,7 +209,7 @@ export const AuthProvider = ({ children }) => {
       console.error("Login error:", err);
       setError(
         err.response?.data?.message ||
-          "Login failed. Please check your credentials."
+          "Login failed. Please check your credentials.",
       );
       return {
         success: false,
