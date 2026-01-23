@@ -19,6 +19,8 @@ import SearchPage from "./pages/SearchPage";
 import DesignSystem from "./pages/DesignSystem";
 import "./index.css";
 import backgroundImage from "./assets/images/Gradient-peach-yellow-violet-inverted-light.svg";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 
 function App() {
   return (
@@ -55,6 +57,8 @@ function App() {
                 />
                 <Route path="/search" element={<SearchPage />} />
                 <Route path="/design-system" element={<DesignSystem />} />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
 
                 {/* Protected routes */}
                 <Route element={<ProtectedRoute />}>
