@@ -9,6 +9,7 @@ import FormGroup from "../common/FormGroup";
 import { Tag, MailCheck } from "lucide-react";
 import ImageUploader from "../common/ImageUploader";
 import { uploadToCloudinary } from "../../config/cloudinary";
+import api from "../../services/api";
 
 const RegisterForm = () => {
   const navigate = useNavigate();
@@ -29,6 +30,9 @@ const RegisterForm = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [imagePreview, setImagePreview] = useState(null);
   const [registrationSuccess, setRegistrationSuccess] = useState(false);
+  const [resendStatus, setResendStatus] = useState("idle"); // 'idle' | 'sending' | 'sent' | 'error'
+  const [resendMessage, setResendMessage] = useState("");
+  const [resendCooldown, setResendCooldown] = useState(0);
 
   const validateForm = () => {
     const newErrors = {};
@@ -159,6 +163,39 @@ const RegisterForm = () => {
     }
   };
 
+  const handleResendVerification = async () => {
+    setResendStatus("sending");
+    setResendMessage("");
+
+    try {
+      const response = await api.post("/api/auth/resend-verification", {
+        email: formData.email,
+      });
+
+      setResendStatus("sent");
+      setResendMessage("Verification email sent! Please check your inbox.");
+
+      // Start 30 second cooldown
+      setResendCooldown(30);
+      const timer = setInterval(() => {
+        setResendCooldown((prev) => {
+          if (prev <= 1) {
+            clearInterval(timer);
+            setResendStatus("idle");
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    } catch (error) {
+      setResendStatus("error");
+      setResendMessage(
+        error.response?.data?.message ||
+          "Failed to resend email. Please try again.",
+      );
+    }
+  };
+
   // Show success message if registration completed
   if (registrationSuccess) {
     return (
@@ -177,16 +214,42 @@ const RegisterForm = () => {
               Click the link in the email to verify your account and complete
               registration. Don't forget to check your spam folder!
             </p>
+
             <div className="divider"></div>
-            <p className="text-sm text-base-content/60">
-              Didn't receive the email?{" "}
+
+            {/* Resend verification section */}
+            <div className="text-sm text-base-content/60">
+              <p className="mb-3">Didn't receive the email?</p>
+
+              {resendStatus === "sent" && (
+                <div className="alert alert-success mb-3">
+                  <span className="text-white">{resendMessage}</span>
+                </div>
+              )}
+
+              {resendStatus === "error" && (
+                <div className="alert alert-error mb-3">
+                  <span className="text-white">{resendMessage}</span>
+                </div>
+              )}
+
               <button
-                className="link link-primary"
-                onClick={() => setRegistrationSuccess(false)}
+                className="btn btn-outline btn-primary btn-sm"
+                onClick={handleResendVerification}
+                disabled={resendStatus === "sending" || resendCooldown > 0}
               >
-                Try again
+                {resendStatus === "sending" ? (
+                  <>
+                    <span className="loading loading-spinner loading-sm"></span>
+                    Sending...
+                  </>
+                ) : resendCooldown > 0 ? (
+                  `Resend available in ${resendCooldown}s`
+                ) : (
+                  "Resend verification email"
+                )}
               </button>
-            </p>
+            </div>
           </div>
         </Card>
       </div>
