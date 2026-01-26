@@ -5,6 +5,7 @@ import Grid from "../components/layout/Grid";
 import Button from "../components/common/Button";
 import TeamCard from "../components/teams/TeamCard";
 import Section from "../components/layout/Section";
+import Pagination from "../components/common/Pagination";
 import { teamService } from "../services/teamService";
 import { useAuth } from "../contexts/AuthContext";
 import { Plus, Search as SearchIcon } from "lucide-react";
@@ -20,6 +21,18 @@ const MyTeams = () => {
   const [error, setError] = useState(null);
   const { user } = useAuth();
 
+  // ===== PAGINATION STATE =====
+  const [currentPage, setCurrentPage] = useState(1);
+  const [resultsPerPage, setResultsPerPage] = useState(10);
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 10,
+    totalTeams: 0,
+    totalPages: 1,
+    hasNextPage: false,
+    hasPrevPage: false,
+  });
+
   // URL params for highlighting
   const [searchParams, setSearchParams] = useSearchParams();
   const highlightId = searchParams.get("highlight");
@@ -34,12 +47,17 @@ const MyTeams = () => {
   const [autoOpenApplicationsTeamId, setAutoOpenApplicationsTeamId] =
     useState(null);
 
-  const fetchUserTeams = useCallback(async () => {
+  const fetchUserTeams = useCallback(async (page = 1, limit = 10) => {
     try {
       setLoading(true);
       if (user && user.id) {
-        const response = await teamService.getUserTeams(user.id);
+        const response = await teamService.getUserTeams(user.id, page, limit);
         setTeams(response.data);
+        
+        // Update pagination metadata from response
+        if (response.pagination) {
+          setPagination(response.pagination);
+        }
       }
     } catch (err) {
       console.error("Failed to fetch teams:", err);
@@ -77,16 +95,22 @@ const MyTeams = () => {
 
   useEffect(() => {
     if (user?.id) {
-      fetchUserTeams();
+      fetchUserTeams(currentPage, resultsPerPage);
       fetchPendingApplications();
       fetchPendingInvitations();
     }
   }, [
     user?.id,
-    fetchUserTeams,
     fetchPendingApplications,
     fetchPendingInvitations,
   ]);
+
+  // Refetch teams when pagination changes
+  useEffect(() => {
+    if (user?.id) {
+      fetchUserTeams(currentPage, resultsPerPage);
+    }
+  }, [currentPage, resultsPerPage, user?.id]);
 
   // Handle URL params for highlighting and auto-opening modals
   useEffect(() => {
@@ -114,10 +138,27 @@ const MyTeams = () => {
     }
   }, [highlightId, openTeamId, shouldOpenApplications, setSearchParams]);
 
+  // Handler for page changes
+  const handlePageChange = (newPage) => {
+    setCurrentPage(newPage);
+    
+    // Scroll to the My Teams section when page changes
+    const teamsSection = document.getElementById("my-teams-section");
+    if (teamsSection) {
+      teamsSection.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
+
+  // Handler for changing results per page
+  const handleResultsPerPageChange = (newLimit) => {
+    setResultsPerPage(newLimit);
+    setCurrentPage(1); // Reset to page 1 when changing limit
+  };
+
   const handleTeamUpdate = (updatedTeam) => {
     if (!updatedTeam) {
       console.warn("Received undefined team data in handleTeamUpdate");
-      fetchUserTeams();
+      fetchUserTeams(currentPage, resultsPerPage);
       return;
     }
 
@@ -129,7 +170,8 @@ const MyTeams = () => {
   const handleTeamDelete = async (teamId) => {
     try {
       await teamService.deleteTeam(teamId);
-      setTeams((prevTeams) => prevTeams.filter((team) => team.id !== teamId));
+      // Refetch to update pagination correctly
+      fetchUserTeams(currentPage, resultsPerPage);
       return true;
     } catch (error) {
       console.error("Error deleting team:", error);
@@ -139,9 +181,9 @@ const MyTeams = () => {
 
   // Handler for when user LEAVES a team (not deletes it)
   const handleTeamLeave = (teamId) => {
-    // Server-side removal already happened in TeamDetailsModal
     console.log("handleTeamLeave called with teamId:", teamId);
-    setTeams((prevTeams) => prevTeams.filter((team) => team.id !== teamId));
+    // Refetch to update pagination correctly
+    fetchUserTeams(currentPage, resultsPerPage);
   };
 
   // Application handlers
@@ -169,15 +211,13 @@ const MyTeams = () => {
         responseMessage
       );
 
-      // Show success message (if you have a toast/alert system)
       console.log("Invitation accepted successfully");
 
       // Refresh the data
       fetchPendingInvitations();
-      fetchUserTeams();
+      fetchUserTeams(currentPage, resultsPerPage);
     } catch (error) {
       console.error("Error accepting invitation:", error);
-      // Handle error (show alert, etc.)
     }
   };
 
@@ -192,18 +232,16 @@ const MyTeams = () => {
         responseMessage
       );
 
-      // Show success message
       console.log("Invitation declined");
 
       // Refresh the data
       fetchPendingInvitations();
     } catch (error) {
       console.error("Error declining invitation:", error);
-      // Handle error
     }
   };
 
-  if (loading && loadingApplications) {
+  if (loading && loadingApplications && loadingInvitations) {
     return (
       <PageContainer variant="muted">
         <div className="flex justify-center items-center h-64">
@@ -309,10 +347,15 @@ const MyTeams = () => {
 
       {/* My Teams Section */}
       <Section
+        id="my-teams-section"
         title="Teams You're A Part Of"
         subtitle="Teams you've created or joined as a member"
       >
-        {teams.length === 0 ? (
+        {loading ? (
+          <div className="flex justify-center py-8">
+            <div className="loading loading-spinner loading-md"></div>
+          </div>
+        ) : teams.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-base-content/70 mb-4">
               You haven't joined any teams yet.
@@ -322,28 +365,43 @@ const MyTeams = () => {
             </Link>
           </div>
         ) : (
-          <Grid cols={1} md={2} lg={3} gap={6}>
-            {teams.filter(Boolean).map((team) => (
-              <TeamCard
-                key={team.id}
-                variant="member"
-                team={{
-                  ...team,
-                  is_public: team.is_public === true || team.isPublic === true,
-                }}
-                onUpdate={handleTeamUpdate}
-                onDelete={handleTeamDelete}
-                onLeave={handleTeamLeave}
-                autoOpenApplications={team.id === autoOpenApplicationsTeamId}
-                highlightApplicantId={
-                  team.id === autoOpenApplicationsTeamId ? highlightId : null
-                }
-                onApplicationsModalClosed={() =>
-                  setAutoOpenApplicationsTeamId(null)
-                }
+          <>
+            <Grid cols={1} md={2} lg={3} gap={6}>
+              {teams.filter(Boolean).map((team) => (
+                <TeamCard
+                  key={team.id}
+                  variant="member"
+                  team={{
+                    ...team,
+                    is_public: team.is_public === true || team.isPublic === true,
+                  }}
+                  onUpdate={handleTeamUpdate}
+                  onDelete={handleTeamDelete}
+                  onLeave={handleTeamLeave}
+                  autoOpenApplications={team.id === autoOpenApplicationsTeamId}
+                  highlightApplicantId={
+                    team.id === autoOpenApplicationsTeamId ? highlightId : null
+                  }
+                  onApplicationsModalClosed={() =>
+                    setAutoOpenApplicationsTeamId(null)
+                  }
+                />
+              ))}
+            </Grid>
+
+            {/* Pagination for My Teams */}
+            {pagination.totalPages > 1 && (
+              <Pagination
+                currentPage={currentPage}
+                totalPages={pagination.totalPages}
+                totalItems={pagination.totalTeams}
+                onPageChange={handlePageChange}
+                resultsPerPage={resultsPerPage}
+                onResultsPerPageChange={handleResultsPerPageChange}
+                resultsPerPageOptions={[10, 20, 30, 40]}
               />
-            ))}
-          </Grid>
+            )}
+          </>
         )}
       </Section>
     </PageContainer>
