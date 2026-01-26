@@ -310,24 +310,34 @@ export const teamService = {
     }
   },
 
-  // Get all teams of the user
-  getUserTeams: async (userId) => {
-    try {
-      if (!userId) {
-        throw new Error("User ID is required");
-      }
-      const response = await api.get(`/api/teams/my-teams`, {
-        params: { userId },
-      });
-      return response.data;
-    } catch (error) {
-      console.error(
-        "Error fetching user teams:",
-        error.response ? error.response.data : error.message,
-      );
-      throw error;
+/**
+ * Get all teams of the user with pagination
+ * @param {number} userId - User ID
+ * @param {number} page - Page number (default: 1)
+ * @param {number} limit - Results per page (default: 10)
+ * @returns {Promise<Object>} User teams with pagination metadata
+ */
+getUserTeams: async (userId, page = 1, limit = 10) => {
+  try {
+    if (!userId) {
+      throw new Error("User ID is required");
     }
-  },
+    const response = await api.get(`/api/teams/my-teams`, {
+      params: { 
+        userId,
+        page,
+        limit,
+      },
+    });
+    return response.data;
+  } catch (error) {
+    console.error(
+      "Error fetching user teams:",
+      error.response ? error.response.data : error.message,
+    );
+    throw error;
+  }
+},
 
   // Get user role in a team
   getUserRoleInTeam: async (teamId, userId) => {
