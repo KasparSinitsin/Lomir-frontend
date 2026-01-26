@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import PageContainer from "../components/layout/PageContainer";
@@ -16,6 +16,7 @@ import {
   Clock,
   Sparkles,
   ArrowDownAZ,
+  ArrowUpZA,
   SlidersHorizontal,
 } from "lucide-react";
 import Alert from "../components/common/Alert";
@@ -43,6 +44,9 @@ const SearchPage = () => {
 
   // ===== SORTING STATE =====
   const [sortBy, setSortBy] = useState("name"); // 'name', 'recent', 'newest'
+  const [sortDir, setSortDir] = useState("asc"); // 'asc' or 'desc'
+  const [showSortDropdown, setShowSortDropdown] = useState(false);
+  const sortFilterRef = useRef(null);
 
   // ===== PAGINATION STATE =====
   const [currentPage, setCurrentPage] = useState(1);
@@ -60,9 +64,33 @@ const SearchPage = () => {
 
   // Sort options configuration
   const sortOptions = [
-    { value: "name", label: "Name (A-Z)", icon: ArrowDownAZ },
-    { value: "recent", label: "Recently Active", icon: Clock },
-    { value: "newest", label: "Newest First", icon: Sparkles },
+    {
+      value: "name",
+      labelAsc: "Name (A-Z)",
+      labelDesc: "Name (Z-A)",
+      shortLabelAsc: "A-Z",
+      shortLabelDesc: "Z-A",
+      iconAsc: ArrowDownAZ,
+      iconDesc: ArrowUpZA,
+    },
+    {
+      value: "recent",
+      labelAsc: "Least Active",
+      labelDesc: "Recently Active",
+      shortLabelAsc: "Inactive",
+      shortLabelDesc: "Active",
+      iconAsc: Clock,
+      iconDesc: Clock,
+    },
+    {
+      value: "newest",
+      labelAsc: "Oldest First",
+      labelDesc: "Newest First",
+      shortLabelAsc: "Oldest",
+      shortLabelDesc: "Newest",
+      iconAsc: Sparkles,
+      iconDesc: Sparkles,
+    },
   ];
 
   // Effect to load initial data when the component mounts
@@ -76,7 +104,8 @@ const SearchPage = () => {
           isAuthenticated,
           currentPage,
           resultsPerPage,
-          sortBy
+          sortBy,
+          sortDir,
         );
         setSearchResults(results.data);
 
@@ -93,7 +122,7 @@ const SearchPage = () => {
     };
 
     fetchInitialData();
-  }, [isAuthenticated, currentPage, resultsPerPage, sortBy]);
+  }, [isAuthenticated, currentPage, resultsPerPage, sortBy, sortDir]);
 
   // Effect to handle URL parameter changes
   useEffect(() => {
@@ -108,6 +137,22 @@ const SearchPage = () => {
       setSearchType("all");
     }
   }, [location.search]);
+
+  // Effect to close sort dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        showSortDropdown &&
+        sortFilterRef.current &&
+        !sortFilterRef.current.contains(event.target)
+      ) {
+        setShowSortDropdown(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showSortDropdown]);
 
   // Handler for search form submission
   const handleSearch = async (e) => {
@@ -127,7 +172,8 @@ const SearchPage = () => {
           isAuthenticated,
           1, // Reset to page 1
           resultsPerPage,
-          sortBy
+          sortBy,
+          sortDir,
         );
         setSearchResults(results.data);
 
@@ -153,7 +199,8 @@ const SearchPage = () => {
         isAuthenticated,
         1, // Reset to page 1 for new search
         resultsPerPage,
-        sortBy
+        sortBy,
+        sortDir,
       );
       setSearchResults(results.data);
 
@@ -187,7 +234,8 @@ const SearchPage = () => {
           isAuthenticated,
           newPage,
           resultsPerPage,
-          sortBy
+          sortBy,
+          sortDir,
         );
       } else {
         // Otherwise, get all users and teams
@@ -195,7 +243,8 @@ const SearchPage = () => {
           isAuthenticated,
           newPage,
           resultsPerPage,
-          sortBy
+          sortBy,
+          sortDir,
         );
       }
 
@@ -228,14 +277,16 @@ const SearchPage = () => {
           isAuthenticated,
           1, // Reset to page 1
           newLimit,
-          sortBy
+          sortBy,
+          sortDir,
         );
       } else {
         results = await searchService.getAllUsersAndTeams(
           isAuthenticated,
           1, // Reset to page 1
           newLimit,
-          sortBy
+          sortBy,
+          sortDir,
         );
       }
 
@@ -254,7 +305,19 @@ const SearchPage = () => {
 
   // Handler for changing sort option
   const handleSortChange = async (newSortBy) => {
+    let newSortDir = sortDir;
+
+    // If clicking the same sort option, toggle direction
+    if (newSortBy === sortBy) {
+      newSortDir = sortDir === "asc" ? "desc" : "asc";
+    } else {
+      // For new sort option, set default direction
+      // 'name' defaults to 'asc' (A-Z), others default to 'desc' (most recent/newest first)
+      newSortDir = newSortBy === "name" ? "asc" : "desc";
+    }
+
     setSortBy(newSortBy);
+    setSortDir(newSortDir);
     setCurrentPage(1); // Reset to page 1 when changing sort
 
     try {
@@ -268,14 +331,16 @@ const SearchPage = () => {
           isAuthenticated,
           1, // Reset to page 1
           resultsPerPage,
-          newSortBy
+          newSortBy,
+          newSortDir,
         );
       } else {
         results = await searchService.getAllUsersAndTeams(
           isAuthenticated,
           1, // Reset to page 1
           resultsPerPage,
-          newSortBy
+          newSortBy,
+          newSortDir,
         );
       }
 
@@ -305,7 +370,7 @@ const SearchPage = () => {
     setSearchResults((prev) => ({
       ...prev,
       users: prev.users.map((user) =>
-        user.id === updatedUser.id ? updatedUser : user
+        user.id === updatedUser.id ? updatedUser : user,
       ),
     }));
   };
@@ -319,7 +384,7 @@ const SearchPage = () => {
               ...updatedTeam,
               is_public: updatedTeam.is_public === true,
             }
-          : team
+          : team,
       ),
     }));
   };
@@ -390,61 +455,81 @@ const SearchPage = () => {
           </div>
         </div>
 
-        {/* Search Form */}
-        <form onSubmit={handleSearch} className="flex gap-2">
-          <div className="flex-1">
-            <Input
-              type="text"
-              placeholder="Search by name, description, or tags..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full"
-              icon={<SearchIcon className="w-4 h-4" />}
-            />
-          </div>
-          <Button type="submit" variant="primary" disabled={loading}>
-            {loading ? (
-              <span className="loading loading-spinner loading-sm"></span>
-            ) : (
-              "Search"
-            )}
-          </Button>
-        </form>
+        {/* Search Form with Sort Filter */}
+        <div ref={sortFilterRef}>
+          <form onSubmit={handleSearch} className="flex gap-2 items-center">
+            {/* Sort Toggle Button */}
+            <button
+              type="button"
+              onClick={() => setShowSortDropdown(!showSortDropdown)}
+              className={`p-2 rounded-lg transition-colors ${
+                showSortDropdown
+                  ? "text-[var(--color-text)]"
+                  : "text-[var(--color-text)]/60 hover:text-[var(--color-text)]"
+              }`}
+              title="Sort options"
+            >
+              <SlidersHorizontal className="w-5 h-5" />
+            </button>
 
-        {/* Sort Filter */}
-        <div className="flex items-center justify-between mt-4 py-2 px-1">
-          <div className="flex items-center gap-2 text-sm text-base-content/70">
-            <SlidersHorizontal className="w-4 h-4" />
-            <span>Sort by:</span>
-          </div>
-          <div className="flex gap-1">
-            {sortOptions.map((option) => {
-              const IconComponent = option.icon;
-              return (
-                <button
-                  key={option.value}
-                  type="button"
-                  onClick={() => handleSortChange(option.value)}
-                  className={`btn btn-xs gap-1 ${
-                    sortBy === option.value
-                      ? "btn-primary"
-                      : "btn-ghost hover:bg-base-200"
-                  }`}
-                  disabled={loading}
-                >
-                  <IconComponent className="w-3 h-3" />
-                  <span className="hidden sm:inline">{option.label}</span>
-                  <span className="sm:hidden">
-                    {option.value === "name"
-                      ? "A-Z"
-                      : option.value === "recent"
-                        ? "Active"
-                        : "New"}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
+            <div className="flex-1">
+              <Input
+                type="text"
+                placeholder="Search by name, description, or tags..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full"
+                icon={<SearchIcon className="w-4 h-4" />}
+              />
+            </div>
+            <Button type="submit" variant="primary" disabled={loading}>
+              {loading ? (
+                <span className="loading loading-spinner loading-sm"></span>
+              ) : (
+                "Search"
+              )}
+            </Button>
+          </form>
+
+          {/* Sort Options - Horizontal row below search */}
+          {showSortDropdown && (
+            <div className="flex items-center gap-1 mt-2 py-1 ml-10">
+              {sortOptions.map((option) => {
+                const isActive = sortBy === option.value;
+                const currentDir = isActive
+                  ? sortDir
+                  : option.value === "name"
+                    ? "asc"
+                    : "desc";
+                const IconComponent =
+                  currentDir === "asc" ? option.iconAsc : option.iconDesc;
+                const label =
+                  currentDir === "asc" ? option.labelAsc : option.labelDesc;
+                const shortLabel =
+                  currentDir === "asc"
+                    ? option.shortLabelAsc
+                    : option.shortLabelDesc;
+
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => handleSortChange(option.value)}
+                    className={`flex items-center gap-1 px-1 text-xs rounded transition-colors ${
+                      isActive
+                        ? "text-[var(--color-success)] font-medium"
+                        : "text-[var(--color-text)]/60 hover:text-[var(--color-text)]"
+                    }`}
+                    disabled={loading}
+                  >
+                    <IconComponent className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">{label}</span>
+                    <span className="sm:hidden">{shortLabel}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
 

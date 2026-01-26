@@ -32,6 +32,7 @@ export const searchService = {
    * @param {number} page - Current page number (default: 1)
    * @param {number} limit - Results per page (default: 20)
    * @param {string} sortBy - Sort option: 'recent', 'newest', or 'name' (default: 'name')
+   * @param {string} sortDir - Sort direction: 'asc' or 'desc' (default: 'asc')
    * @returns {Promise<Object>} Search results with pagination metadata
    */
   async globalSearch(
@@ -40,10 +41,11 @@ export const searchService = {
     page = 1,
     limit = 20,
     sortBy = "name",
+    sortDir = "asc",
   ) {
     try {
       console.log(
-        `Performing global search: "${query}", authenticated: ${isAuthenticated}, page: ${page}, limit: ${limit}, sortBy: ${sortBy}`,
+        `Performing global search: "${query}", authenticated: ${isAuthenticated}, page: ${page}, limit: ${limit}, sortBy: ${sortBy}, sortDir: ${sortDir}`,
       );
       const response = await api.get("/api/search/global", {
         params: {
@@ -52,6 +54,7 @@ export const searchService = {
           page,
           limit,
           sortBy,
+          sortDir,
         },
       });
 
@@ -103,6 +106,7 @@ export const searchService = {
    * @param {number} page - Current page number (default: 1)
    * @param {number} limit - Results per page (default: 20)
    * @param {string} sortBy - Sort option: 'recent', 'newest', or 'name' (default: 'name')
+   * @param {string} sortDir - Sort direction: 'asc' or 'desc' (default: 'asc')
    * @returns {Promise<Object>} All users and teams with pagination metadata
    */
   async getAllUsersAndTeams(
@@ -110,10 +114,11 @@ export const searchService = {
     page = 1,
     limit = 20,
     sortBy = "name",
+    sortDir = "asc",
   ) {
     try {
       console.log(
-        `Fetching all users and teams: authenticated: ${isAuthenticated}, page: ${page}, limit: ${limit}, sortBy: ${sortBy}`,
+        `Fetching all users and teams: authenticated: ${isAuthenticated}, page: ${page}, limit: ${limit}, sortBy: ${sortBy}, sortDir: ${sortDir}`,
       );
       const response = await api.get("/api/search/all", {
         params: {
@@ -121,6 +126,7 @@ export const searchService = {
           page,
           limit,
           sortBy,
+          sortDir,
         },
       });
 
