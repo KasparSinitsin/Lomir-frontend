@@ -8,6 +8,7 @@ import UserCard from "../components/users/UserCard";
 import { searchService } from "../services/searchService";
 import Input from "../components/common/Input";
 import Button from "../components/common/Button";
+import Pagination from "../components/common/Pagination";
 import { Search as SearchIcon, Users, Users2 } from "lucide-react";
 import Alert from "../components/common/Alert";
 
@@ -23,14 +24,28 @@ const SearchPage = () => {
     return typeParam === "teams"
       ? "teams"
       : typeParam === "users"
-      ? "users"
-      : "all";
+        ? "users"
+        : "all";
   });
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [hasSearched, setHasSearched] = useState(false);
   const { isAuthenticated } = useAuth();
+
+  // ===== PAGINATION STATE =====
+  const [currentPage, setCurrentPage] = useState(1);
+  const [resultsPerPage, setResultsPerPage] = useState(10);
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 10,
+    totalTeams: 0,
+    totalUsers: 0,
+    totalItems: 0,
+    totalPages: 1,
+    hasNextPage: false,
+    hasPrevPage: false,
+  });
 
   // Effect to load initial data when the component mounts
   useEffect(() => {
@@ -40,9 +55,16 @@ const SearchPage = () => {
         setError(null);
 
         const results = await searchService.getAllUsersAndTeams(
-          isAuthenticated
+          isAuthenticated,
+          currentPage,
+          resultsPerPage,
         );
         setSearchResults(results.data);
+
+        // Update pagination metadata from response
+        if (results.pagination) {
+          setPagination(results.pagination);
+        }
       } catch (err) {
         console.error("Error fetching initial data:", err);
         setError("Failed to load initial data. Please try again.");
@@ -52,7 +74,7 @@ const SearchPage = () => {
     };
 
     fetchInitialData();
-  }, [isAuthenticated]);
+  }, [isAuthenticated, currentPage, resultsPerPage]);
 
   // Effect to handle URL parameter changes
   useEffect(() => {
@@ -68,8 +90,12 @@ const SearchPage = () => {
     }
   }, [location.search]);
 
+  // Handler for search form submission
   const handleSearch = async (e) => {
     e.preventDefault();
+
+    // Reset to page 1 when performing a new search
+    setCurrentPage(1);
 
     if (!searchQuery.trim()) {
       // If search query is empty, reload all data
@@ -79,9 +105,15 @@ const SearchPage = () => {
         setHasSearched(false);
 
         const results = await searchService.getAllUsersAndTeams(
-          isAuthenticated
+          isAuthenticated,
+          1, // Reset to page 1
+          resultsPerPage,
         );
         setSearchResults(results.data);
+
+        if (results.pagination) {
+          setPagination(results.pagination);
+        }
       } catch (err) {
         console.error("Error reloading data:", err);
         setError("Failed to reload data. Please try again.");
@@ -98,12 +130,98 @@ const SearchPage = () => {
 
       const results = await searchService.globalSearch(
         searchQuery,
-        isAuthenticated
+        isAuthenticated,
+        1, // Reset to page 1 for new search
+        resultsPerPage,
       );
       setSearchResults(results.data);
+
+      if (results.pagination) {
+        setPagination(results.pagination);
+      }
     } catch (err) {
       console.error("Search error:", err);
       setError("An error occurred while searching. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handler for page changes
+  const handlePageChange = async (newPage) => {
+    setCurrentPage(newPage);
+
+    // Scroll to top of results when page changes
+    window.scrollTo({ top: 0, behavior: "smooth" });
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      let results;
+      if (hasSearched && searchQuery.trim()) {
+        // If we have an active search, use globalSearch
+        results = await searchService.globalSearch(
+          searchQuery,
+          isAuthenticated,
+          newPage,
+          resultsPerPage,
+        );
+      } else {
+        // Otherwise, get all users and teams
+        results = await searchService.getAllUsersAndTeams(
+          isAuthenticated,
+          newPage,
+          resultsPerPage,
+        );
+      }
+
+      setSearchResults(results.data);
+
+      if (results.pagination) {
+        setPagination(results.pagination);
+      }
+    } catch (err) {
+      console.error("Error changing page:", err);
+      setError("Failed to load page. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handler for changing results per page
+  const handleResultsPerPageChange = async (newLimit) => {
+    setResultsPerPage(newLimit);
+    setCurrentPage(1); // Reset to page 1 when changing limit
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      let results;
+      if (hasSearched && searchQuery.trim()) {
+        results = await searchService.globalSearch(
+          searchQuery,
+          isAuthenticated,
+          1, // Reset to page 1
+          newLimit,
+        );
+      } else {
+        results = await searchService.getAllUsersAndTeams(
+          isAuthenticated,
+          1, // Reset to page 1
+          newLimit,
+        );
+      }
+
+      setSearchResults(results.data);
+
+      if (results.pagination) {
+        setPagination(results.pagination);
+      }
+    } catch (err) {
+      console.error("Error changing results per page:", err);
+      setError("Failed to update results. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -122,7 +240,7 @@ const SearchPage = () => {
     setSearchResults((prev) => ({
       ...prev,
       users: prev.users.map((user) =>
-        user.id === updatedUser.id ? updatedUser : user
+        user.id === updatedUser.id ? updatedUser : user,
       ),
     }));
   };
@@ -134,9 +252,9 @@ const SearchPage = () => {
         team.id === updatedTeam.id
           ? {
               ...updatedTeam,
-              is_public: updatedTeam.is_public === true, // Ensure proper boolean
+              is_public: updatedTeam.is_public === true,
             }
-          : team
+          : team,
       ),
     }));
   };
@@ -147,8 +265,24 @@ const SearchPage = () => {
     filteredResults.users.length === 0 &&
     !loading;
 
+  // Calculate total items for current filter
+  const getTotalItemsForFilter = () => {
+    switch (searchType) {
+      case "teams":
+        return pagination.totalTeams || 0;
+      case "users":
+        return pagination.totalUsers || 0;
+      default:
+        return pagination.totalItems || 0;
+    }
+  };
+
   return (
-    <PageContainer title="Search teams or users" titleAlignment="center" variant="muted">
+    <PageContainer
+      title="Search teams or users"
+      titleAlignment="center"
+      variant="muted"
+    >
       <div className="max-w-xl mx-auto mb-8">
         {/* Toggle */}
         <div className="flex justify-center space-x-2 pt-2 mb-2">
@@ -225,7 +359,14 @@ const SearchPage = () => {
           {/* Teams */}
           {filteredResults.teams.length > 0 && (
             <section className="mb-8">
-              <h2 className="text-xl font-semibold mb-4">Teams</h2>
+              <h2 className="text-xl font-semibold mb-4">
+                Teams
+                {searchType === "teams" && (
+                  <span className="text-sm font-normal text-base-content/60 ml-2">
+                    ({pagination.totalTeams} total)
+                  </span>
+                )}
+              </h2>
               <Grid cols={1} md={2} lg={3} gap={6}>
                 {filteredResults.teams.map((team) => (
                   <TeamCard
@@ -242,7 +383,14 @@ const SearchPage = () => {
           {/* Users Results */}
           {filteredResults.users.length > 0 && (
             <section>
-              <h2 className="text-xl font-semibold mb-4">People</h2>
+              <h2 className="text-xl font-semibold mb-4">
+                People
+                {searchType === "users" && (
+                  <span className="text-sm font-normal text-base-content/60 ml-2">
+                    ({pagination.totalUsers} total)
+                  </span>
+                )}
+              </h2>
               <Grid cols={1} md={2} lg={3} gap={6}>
                 {filteredResults.users.map((user) => (
                   <UserCard
@@ -253,6 +401,20 @@ const SearchPage = () => {
                 ))}
               </Grid>
             </section>
+          )}
+
+          {/* Pagination */}
+          {(filteredResults.teams.length > 0 ||
+            filteredResults.users.length > 0) && (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={pagination.totalPages}
+              totalItems={getTotalItemsForFilter()}
+              onPageChange={handlePageChange}
+              resultsPerPage={resultsPerPage}
+              onResultsPerPageChange={handleResultsPerPageChange}
+              resultsPerPageOptions={[10, 20, 30, 40]}
+            />
           )}
         </div>
       )}
