@@ -9,7 +9,15 @@ import { searchService } from "../services/searchService";
 import Input from "../components/common/Input";
 import Button from "../components/common/Button";
 import Pagination from "../components/common/Pagination";
-import { Search as SearchIcon, Users, Users2 } from "lucide-react";
+import {
+  Search as SearchIcon,
+  Users,
+  Users2,
+  Clock,
+  Sparkles,
+  ArrowDownAZ,
+  SlidersHorizontal,
+} from "lucide-react";
 import Alert from "../components/common/Alert";
 
 const SearchPage = () => {
@@ -33,6 +41,9 @@ const SearchPage = () => {
   const [hasSearched, setHasSearched] = useState(false);
   const { isAuthenticated } = useAuth();
 
+  // ===== SORTING STATE =====
+  const [sortBy, setSortBy] = useState("name"); // 'name', 'recent', 'newest'
+
   // ===== PAGINATION STATE =====
   const [currentPage, setCurrentPage] = useState(1);
   const [resultsPerPage, setResultsPerPage] = useState(10);
@@ -47,6 +58,13 @@ const SearchPage = () => {
     hasPrevPage: false,
   });
 
+  // Sort options configuration
+  const sortOptions = [
+    { value: "name", label: "Name (A-Z)", icon: ArrowDownAZ },
+    { value: "recent", label: "Recently Active", icon: Clock },
+    { value: "newest", label: "Newest First", icon: Sparkles },
+  ];
+
   // Effect to load initial data when the component mounts
   useEffect(() => {
     const fetchInitialData = async () => {
@@ -58,6 +76,7 @@ const SearchPage = () => {
           isAuthenticated,
           currentPage,
           resultsPerPage,
+          sortBy
         );
         setSearchResults(results.data);
 
@@ -74,7 +93,7 @@ const SearchPage = () => {
     };
 
     fetchInitialData();
-  }, [isAuthenticated, currentPage, resultsPerPage]);
+  }, [isAuthenticated, currentPage, resultsPerPage, sortBy]);
 
   // Effect to handle URL parameter changes
   useEffect(() => {
@@ -108,6 +127,7 @@ const SearchPage = () => {
           isAuthenticated,
           1, // Reset to page 1
           resultsPerPage,
+          sortBy
         );
         setSearchResults(results.data);
 
@@ -133,6 +153,7 @@ const SearchPage = () => {
         isAuthenticated,
         1, // Reset to page 1 for new search
         resultsPerPage,
+        sortBy
       );
       setSearchResults(results.data);
 
@@ -166,6 +187,7 @@ const SearchPage = () => {
           isAuthenticated,
           newPage,
           resultsPerPage,
+          sortBy
         );
       } else {
         // Otherwise, get all users and teams
@@ -173,6 +195,7 @@ const SearchPage = () => {
           isAuthenticated,
           newPage,
           resultsPerPage,
+          sortBy
         );
       }
 
@@ -205,12 +228,14 @@ const SearchPage = () => {
           isAuthenticated,
           1, // Reset to page 1
           newLimit,
+          sortBy
         );
       } else {
         results = await searchService.getAllUsersAndTeams(
           isAuthenticated,
           1, // Reset to page 1
           newLimit,
+          sortBy
         );
       }
 
@@ -221,6 +246,46 @@ const SearchPage = () => {
       }
     } catch (err) {
       console.error("Error changing results per page:", err);
+      setError("Failed to update results. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handler for changing sort option
+  const handleSortChange = async (newSortBy) => {
+    setSortBy(newSortBy);
+    setCurrentPage(1); // Reset to page 1 when changing sort
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      let results;
+      if (hasSearched && searchQuery.trim()) {
+        results = await searchService.globalSearch(
+          searchQuery,
+          isAuthenticated,
+          1, // Reset to page 1
+          resultsPerPage,
+          newSortBy
+        );
+      } else {
+        results = await searchService.getAllUsersAndTeams(
+          isAuthenticated,
+          1, // Reset to page 1
+          resultsPerPage,
+          newSortBy
+        );
+      }
+
+      setSearchResults(results.data);
+
+      if (results.pagination) {
+        setPagination(results.pagination);
+      }
+    } catch (err) {
+      console.error("Error changing sort:", err);
       setError("Failed to update results. Please try again.");
     } finally {
       setLoading(false);
@@ -240,7 +305,7 @@ const SearchPage = () => {
     setSearchResults((prev) => ({
       ...prev,
       users: prev.users.map((user) =>
-        user.id === updatedUser.id ? updatedUser : user,
+        user.id === updatedUser.id ? updatedUser : user
       ),
     }));
   };
@@ -254,7 +319,7 @@ const SearchPage = () => {
               ...updatedTeam,
               is_public: updatedTeam.is_public === true,
             }
-          : team,
+          : team
       ),
     }));
   };
@@ -284,13 +349,15 @@ const SearchPage = () => {
       variant="muted"
     >
       <div className="max-w-xl mx-auto mb-8">
-        {/* Toggle */}
+        {/* Toggle for All/Teams/Users */}
         <div className="flex justify-center space-x-2 pt-2 mb-2">
           <div className="btn-group">
             <button
               type="button"
               className={`btn btn-sm ${
-                searchType === "all" ? "btn-active" : ""
+                searchType === "all"
+                  ? "btn-primary"
+                  : "btn-ghost hover:bg-base-200"
               }`}
               onClick={() => handleToggleChange("all")}
             >
@@ -299,53 +366,101 @@ const SearchPage = () => {
             <button
               type="button"
               className={`btn btn-sm ${
-                searchType === "users" ? "btn-active" : ""
+                searchType === "teams"
+                  ? "btn-primary"
+                  : "btn-ghost hover:bg-base-200"
               }`}
-              onClick={() => handleToggleChange("users")}
+              onClick={() => handleToggleChange("teams")}
             >
-              <Users size={16} className="mr-1" />
-              People
+              <Users2 className="w-4 h-4 mr-1" />
+              Teams
             </button>
             <button
               type="button"
               className={`btn btn-sm ${
-                searchType === "teams" ? "btn-active" : ""
+                searchType === "users"
+                  ? "btn-primary"
+                  : "btn-ghost hover:bg-base-200"
               }`}
-              onClick={() => handleToggleChange("teams")}
+              onClick={() => handleToggleChange("users")}
             >
-              <Users2 size={16} className="mr-1" />
-              Teams
+              <Users className="w-4 h-4 mr-1" />
+              People
             </button>
           </div>
         </div>
 
-        <form onSubmit={handleSearch} className="flex space-x-2">
-          {/* Search input and button */}
-          <Input
-            placeholder="Search teams, users, skills..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="flex-grow"
-          />
-          <Button
-            type="submit"
-            variant="primary"
-            icon={<SearchIcon className="h-5 w-5" />}
-            disabled={loading}
-            className="p-2 flex items-center justify-center"
-            aria-label="Search"
-          />
+        {/* Search Form */}
+        <form onSubmit={handleSearch} className="flex gap-2">
+          <div className="flex-1">
+            <Input
+              type="text"
+              placeholder="Search by name, description, or tags..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full"
+              icon={<SearchIcon className="w-4 h-4" />}
+            />
+          </div>
+          <Button type="submit" variant="primary" disabled={loading}>
+            {loading ? (
+              <span className="loading loading-spinner loading-sm"></span>
+            ) : (
+              "Search"
+            )}
+          </Button>
         </form>
+
+        {/* Sort Filter */}
+        <div className="flex items-center justify-between mt-4 py-2 px-1">
+          <div className="flex items-center gap-2 text-sm text-base-content/70">
+            <SlidersHorizontal className="w-4 h-4" />
+            <span>Sort by:</span>
+          </div>
+          <div className="flex gap-1">
+            {sortOptions.map((option) => {
+              const IconComponent = option.icon;
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => handleSortChange(option.value)}
+                  className={`btn btn-xs gap-1 ${
+                    sortBy === option.value
+                      ? "btn-primary"
+                      : "btn-ghost hover:bg-base-200"
+                  }`}
+                  disabled={loading}
+                >
+                  <IconComponent className="w-3 h-3" />
+                  <span className="hidden sm:inline">{option.label}</span>
+                  <span className="sm:hidden">
+                    {option.value === "name"
+                      ? "A-Z"
+                      : option.value === "recent"
+                        ? "Active"
+                        : "New"}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
       </div>
 
+      {/* Error Message */}
       {error && (
-        <Alert type="error" message={error} onClose={() => setError(null)} />
+        <Alert variant="error" className="max-w-xl mx-auto mb-4">
+          {error}
+        </Alert>
       )}
 
+      {/* No Results Message */}
       {noResultsFound && (
         <Alert
-          type="info"
-          message={`No results found for "${searchQuery}". Try a different search term.`}
+          variant="info"
+          title="No results found"
+          message={`No ${searchType === "all" ? "teams or users" : searchType} found matching "${searchQuery}". Try a different search term.`}
           className="max-w-xl mx-auto"
         />
       )}

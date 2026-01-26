@@ -1,69 +1,49 @@
 import api from "./api";
 
 /**
- * Normalizes team data to ensure consistent tag structure
- * @param {Object} team - Team object from API
- * @returns {Object} Normalized team object
+ * Normalize team data to ensure consistent property names
+ * @param {Object} team - Raw team data from API
+ * @returns {Object} Normalized team data
  */
 const normalizeTeamData = (team) => {
   if (!team) return team;
 
-  // Create a copy to avoid mutating the original
   const normalizedTeam = { ...team };
 
-  // Handle missing tags
-  if (!normalizedTeam.tags) {
-    normalizedTeam.tags = [];
+  // Normalize avatar URL property name
+  if (team.teamavatar_url && !team.teamavatarUrl) {
+    normalizedTeam.teamavatarUrl = team.teamavatar_url;
   }
-  // Handle tags that might be a string (JSON or comma-separated)
-  else if (typeof normalizedTeam.tags === "string") {
-    try {
-      // Try to parse as JSON
-      normalizedTeam.tags = JSON.parse(normalizedTeam.tags);
-    } catch (e) {
-      // If not valid JSON, treat as comma-separated list
-      normalizedTeam.tags = normalizedTeam.tags.split(",").map((tag) => ({
-        id: Math.random().toString(36).substr(2, 9), // Temporary ID if none exists
-        name: tag.trim(),
-      }));
-    }
-  }
-  // Ensure tags is always an array
-  else if (!Array.isArray(normalizedTeam.tags)) {
-    normalizedTeam.tags = [];
+  if (team.teamavatarUrl && !team.teamavatar_url) {
+    normalizedTeam.teamavatar_url = team.teamavatarUrl;
   }
 
-  // Ensure each tag has at least a name property
-  normalizedTeam.tags = normalizedTeam.tags
-    .map((tag) => {
-      if (typeof tag === "string") {
-        return { id: Math.random().toString(36).substr(2, 9), name: tag };
-      }
-      return tag;
-    })
-    .filter((tag) => tag && (tag.name || tag.id)); // Filter out any invalid tags
-
-  // Ensure is_public is a proper boolean
-  if (normalizedTeam.is_public !== undefined) {
-    normalizedTeam.is_public = normalizedTeam.is_public === true;
-  }
+  // Normalize is_public to boolean
+  normalizedTeam.is_public = team.is_public === true;
 
   return normalizedTeam;
 };
 
 export const searchService = {
   /**
-   * Perform a global search across teams and users with pagination
+   * Perform a global search across teams and users with pagination and sorting
    * @param {string} query - Search query
    * @param {boolean} isAuthenticated - Whether user is authenticated
    * @param {number} page - Current page number (default: 1)
    * @param {number} limit - Results per page (default: 20)
+   * @param {string} sortBy - Sort option: 'recent', 'newest', or 'name' (default: 'name')
    * @returns {Promise<Object>} Search results with pagination metadata
    */
-  async globalSearch(query, isAuthenticated = false, page = 1, limit = 20) {
+  async globalSearch(
+    query,
+    isAuthenticated = false,
+    page = 1,
+    limit = 20,
+    sortBy = "name",
+  ) {
     try {
       console.log(
-        `Performing global search: "${query}", authenticated: ${isAuthenticated}, page: ${page}, limit: ${limit}`,
+        `Performing global search: "${query}", authenticated: ${isAuthenticated}, page: ${page}, limit: ${limit}, sortBy: ${sortBy}`,
       );
       const response = await api.get("/api/search/global", {
         params: {
@@ -71,6 +51,7 @@ export const searchService = {
           authenticated: isAuthenticated,
           page,
           limit,
+          sortBy,
         },
       });
 
@@ -117,22 +98,29 @@ export const searchService = {
   },
 
   /**
-   * Fetch all users and teams with pagination
+   * Fetch all users and teams with pagination and sorting
    * @param {boolean} isAuthenticated - Whether user is authenticated
    * @param {number} page - Current page number (default: 1)
    * @param {number} limit - Results per page (default: 20)
+   * @param {string} sortBy - Sort option: 'recent', 'newest', or 'name' (default: 'name')
    * @returns {Promise<Object>} All users and teams with pagination metadata
    */
-  async getAllUsersAndTeams(isAuthenticated = false, page = 1, limit = 20) {
+  async getAllUsersAndTeams(
+    isAuthenticated = false,
+    page = 1,
+    limit = 20,
+    sortBy = "name",
+  ) {
     try {
       console.log(
-        `Fetching all users and teams: authenticated: ${isAuthenticated}, page: ${page}, limit: ${limit}`,
+        `Fetching all users and teams: authenticated: ${isAuthenticated}, page: ${page}, limit: ${limit}, sortBy: ${sortBy}`,
       );
       const response = await api.get("/api/search/all", {
         params: {
           authenticated: isAuthenticated,
           page,
           limit,
+          sortBy,
         },
       });
 
