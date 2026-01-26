@@ -53,20 +53,24 @@ const normalizeTeamData = (team) => {
 
 export const searchService = {
   /**
-   * Perform a global search across teams and users
+   * Perform a global search across teams and users with pagination
    * @param {string} query - Search query
    * @param {boolean} isAuthenticated - Whether user is authenticated
-   * @returns {Promise<Object>} Search results
+   * @param {number} page - Current page number (default: 1)
+   * @param {number} limit - Results per page (default: 20)
+   * @returns {Promise<Object>} Search results with pagination metadata
    */
-  async globalSearch(query, isAuthenticated = false) {
+  async globalSearch(query, isAuthenticated = false, page = 1, limit = 20) {
     try {
       console.log(
-        `Performing global search: "${query}", authenticated: ${isAuthenticated}`
+        `Performing global search: "${query}", authenticated: ${isAuthenticated}, page: ${page}, limit: ${limit}`,
       );
       const response = await api.get("/api/search/global", {
         params: {
           query,
           authenticated: isAuthenticated,
+          page,
+          limit,
         },
       });
 
@@ -113,14 +117,23 @@ export const searchService = {
   },
 
   /**
-   * Fetch all users and teams
+   * Fetch all users and teams with pagination
    * @param {boolean} isAuthenticated - Whether user is authenticated
-   * @returns {Promise<Object>} All users and teams
+   * @param {number} page - Current page number (default: 1)
+   * @param {number} limit - Results per page (default: 20)
+   * @returns {Promise<Object>} All users and teams with pagination metadata
    */
-  async getAllUsersAndTeams(isAuthenticated = false) {
+  async getAllUsersAndTeams(isAuthenticated = false, page = 1, limit = 20) {
     try {
+      console.log(
+        `Fetching all users and teams: authenticated: ${isAuthenticated}, page: ${page}, limit: ${limit}`,
+      );
       const response = await api.get("/api/search/all", {
-        params: { authenticated: isAuthenticated },
+        params: {
+          authenticated: isAuthenticated,
+          page,
+          limit,
+        },
       });
 
       // Normalize all teams in the response
