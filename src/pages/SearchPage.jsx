@@ -20,6 +20,7 @@ import {
   SlidersHorizontal,
   UserPlus,
   UserMinus,
+  MapPin,
 } from "lucide-react";
 import Alert from "../components/common/Alert";
 
@@ -43,6 +44,7 @@ const SearchPage = () => {
   const [error, setError] = useState(null);
   const [hasSearched, setHasSearched] = useState(false);
   const { isAuthenticated } = useAuth();
+  const [userHasLocation, setUserHasLocation] = useState(false);
 
   // ===== SORTING STATE =====
   const [sortBy, setSortBy] = useState("name"); // 'name', 'recent', 'newest', 'capacity'
@@ -68,6 +70,7 @@ const SearchPage = () => {
   const sortOptions = [
     {
       value: "name",
+      defaultDir: "asc",
       labelAsc: "Name (A-Z)",
       labelDesc: "Name (Z-A)",
       shortLabelAsc: "A-Z",
@@ -78,6 +81,7 @@ const SearchPage = () => {
     },
     {
       value: "recent",
+      defaultDir: "desc",
       labelAsc: "Least Active",
       labelDesc: "Recently Active",
       shortLabelAsc: "Inactive",
@@ -88,6 +92,7 @@ const SearchPage = () => {
     },
     {
       value: "newest",
+      defaultDir: "desc",
       labelAsc: "Oldest First",
       labelDesc: "Newest First",
       shortLabelAsc: "Oldest",
@@ -98,6 +103,7 @@ const SearchPage = () => {
     },
     {
       value: "capacity",
+      defaultDir: "desc",
       labelAsc: "Almost Full",
       labelDesc: "Most Capacity",
       shortLabelAsc: "Full",
@@ -106,15 +112,36 @@ const SearchPage = () => {
       iconDesc: UserPlus,
       teamsOnly: true,
     },
+    {
+      value: "proximity",
+      defaultDir: "asc",
+      labelAsc: "Nearest First",
+      labelDesc: "Farthest First",
+      shortLabelAsc: "Near",
+      shortLabelDesc: "Far",
+      iconAsc: MapPin,
+      iconDesc: MapPin,
+      usersOnly: true,
+    },
   ];
 
   // Filter sort options based on searchType
   const getVisibleSortOptions = () => {
-    if (searchType === "users") {
-      // Hide capacity option when viewing only users
-      return sortOptions.filter((option) => !option.teamsOnly);
-    }
-    return sortOptions;
+    return sortOptions.filter((option) => {
+      // teams-only options should not show on users view
+      if (option.teamsOnly && searchType === "users") return false;
+
+      // users-only options should not show on teams view
+      if (option.usersOnly && searchType === "teams") return false;
+
+      // proximity requires auth + location
+      if (option.value === "proximity") {
+        if (!isAuthenticated) return false;
+        if (!userHasLocation) return false;
+      }
+
+      return true;
+    });
   };
 
   // Effect to load initial data when the component mounts
@@ -131,7 +158,17 @@ const SearchPage = () => {
           sortBy,
           sortDir,
         );
+
         setSearchResults(results.data);
+
+        const hasLoc = !!results.userLocation?.hasLocation;
+        setUserHasLocation(hasLoc);
+
+        console.log("AUTH + LOCATION (initial load):", {
+          isAuthenticated,
+          hasLoc,
+          userLocation: results.userLocation,
+        });
 
         // Update pagination metadata from response
         if (results.pagination) {
@@ -205,6 +242,7 @@ const SearchPage = () => {
           sortDir,
         );
         setSearchResults(results.data);
+        setUserHasLocation(!!results.userLocation?.hasLocation);
 
         if (results.pagination) {
           setPagination(results.pagination);
@@ -232,6 +270,7 @@ const SearchPage = () => {
         sortDir,
       );
       setSearchResults(results.data);
+      setUserHasLocation(!!results.userLocation?.hasLocation);
 
       if (results.pagination) {
         setPagination(results.pagination);
@@ -278,6 +317,7 @@ const SearchPage = () => {
       }
 
       setSearchResults(results.data);
+      setUserHasLocation(!!results.userLocation?.hasLocation);
 
       if (results.pagination) {
         setPagination(results.pagination);
@@ -320,6 +360,7 @@ const SearchPage = () => {
       }
 
       setSearchResults(results.data);
+      setUserHasLocation(!!results.userLocation?.hasLocation);
 
       if (results.pagination) {
         setPagination(results.pagination);
@@ -334,15 +375,26 @@ const SearchPage = () => {
 
   // Handler for changing sort option
   const handleSortChange = async (newSortBy) => {
+    if (newSortBy === "proximity" && searchType === "all") {
+      setSearchType("users");
+    }
     let newSortDir = sortDir;
 
     // If clicking the same sort option, toggle direction
     if (newSortBy === sortBy) {
       newSortDir = sortDir === "asc" ? "desc" : "asc";
     } else {
-      // For new sort option, set default direction
-      // 'name' defaults to 'asc' (A-Z), others default to 'desc' (most recent/newest/capacity first)
-      newSortDir = newSortBy === "name" ? "asc" : "desc";
+      // Set correct default direction per sort type
+      switch (newSortBy) {
+        case "name":
+          newSortDir = "asc"; // A–Z
+          break;
+        case "proximity":
+          newSortDir = "asc"; // Nearest first ✅
+          break;
+        default:
+          newSortDir = "desc"; // recent, newest, capacity
+      }
     }
 
     setSortBy(newSortBy);
@@ -534,9 +586,8 @@ const SearchPage = () => {
                 const isActive = sortBy === option.value;
                 const currentDir = isActive
                   ? sortDir
-                  : option.value === "name"
-                    ? "asc"
-                    : "desc";
+                  : option.defaultDir || "desc";
+
                 const IconComponent =
                   currentDir === "asc" ? option.iconAsc : option.iconDesc;
                 const label =
