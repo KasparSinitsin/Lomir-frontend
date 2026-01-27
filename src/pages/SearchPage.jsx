@@ -18,6 +18,8 @@ import {
   ArrowDownAZ,
   ArrowUpZA,
   SlidersHorizontal,
+  UserPlus,
+  UserMinus,
 } from "lucide-react";
 import Alert from "../components/common/Alert";
 
@@ -43,7 +45,7 @@ const SearchPage = () => {
   const { isAuthenticated } = useAuth();
 
   // ===== SORTING STATE =====
-  const [sortBy, setSortBy] = useState("name"); // 'name', 'recent', 'newest'
+  const [sortBy, setSortBy] = useState("name"); // 'name', 'recent', 'newest', 'capacity'
   const [sortDir, setSortDir] = useState("asc"); // 'asc' or 'desc'
   const [showSortDropdown, setShowSortDropdown] = useState(false);
   const sortFilterRef = useRef(null);
@@ -72,6 +74,7 @@ const SearchPage = () => {
       shortLabelDesc: "Z-A",
       iconAsc: ArrowDownAZ,
       iconDesc: ArrowUpZA,
+      teamsOnly: false,
     },
     {
       value: "recent",
@@ -81,6 +84,7 @@ const SearchPage = () => {
       shortLabelDesc: "Active",
       iconAsc: Clock,
       iconDesc: Clock,
+      teamsOnly: false,
     },
     {
       value: "newest",
@@ -90,8 +94,28 @@ const SearchPage = () => {
       shortLabelDesc: "Newest",
       iconAsc: Sparkles,
       iconDesc: Sparkles,
+      teamsOnly: false,
+    },
+    {
+      value: "capacity",
+      labelAsc: "Almost Full",
+      labelDesc: "Most Capacity",
+      shortLabelAsc: "Full",
+      shortLabelDesc: "Capacity",
+      iconAsc: UserMinus,
+      iconDesc: UserPlus,
+      teamsOnly: true,
     },
   ];
+
+  // Filter sort options based on searchType
+  const getVisibleSortOptions = () => {
+    if (searchType === "users") {
+      // Hide capacity option when viewing only users
+      return sortOptions.filter((option) => !option.teamsOnly);
+    }
+    return sortOptions;
+  };
 
   // Effect to load initial data when the component mounts
   useEffect(() => {
@@ -133,10 +157,15 @@ const SearchPage = () => {
       setSearchType("teams");
     } else if (typeParam === "users") {
       setSearchType("users");
+      // If switching to users and capacity is selected, switch to name sort
+      if (sortBy === "capacity") {
+        setSortBy("name");
+        setSortDir("asc");
+      }
     } else if (typeParam === "all") {
       setSearchType("all");
     }
-  }, [location.search]);
+  }, [location.search, sortBy]);
 
   // Effect to close sort dropdown when clicking outside
   useEffect(() => {
@@ -312,7 +341,7 @@ const SearchPage = () => {
       newSortDir = sortDir === "asc" ? "desc" : "asc";
     } else {
       // For new sort option, set default direction
-      // 'name' defaults to 'asc' (A-Z), others default to 'desc' (most recent/newest first)
+      // 'name' defaults to 'asc' (A-Z), others default to 'desc' (most recent/newest/capacity first)
       newSortDir = newSortBy === "name" ? "asc" : "desc";
     }
 
@@ -357,7 +386,14 @@ const SearchPage = () => {
     }
   };
 
-  const handleToggleChange = (type) => setSearchType(type);
+  const handleToggleChange = (type) => {
+    setSearchType(type);
+    // If switching to users and capacity is selected, switch to name sort
+    if (type === "users" && sortBy === "capacity") {
+      setSortBy("name");
+      setSortDir("asc");
+    }
+  };
 
   const filteredResults = {
     users:
@@ -494,7 +530,7 @@ const SearchPage = () => {
           {/* Sort Options - Horizontal row below search */}
           {showSortDropdown && (
             <div className="flex items-center gap-1 mt-2 py-1 ml-10">
-              {sortOptions.map((option) => {
+              {getVisibleSortOptions().map((option) => {
                 const isActive = sortBy === option.value;
                 const currentDir = isActive
                   ? sortDir
@@ -521,6 +557,7 @@ const SearchPage = () => {
                         : "text-[var(--color-text)]/60 hover:text-[var(--color-text)]"
                     }`}
                     disabled={loading}
+                    title={option.teamsOnly ? "Teams only" : ""}
                   >
                     <IconComponent className="w-3.5 h-3.5" />
                     <span className="hidden sm:inline">{label}</span>
