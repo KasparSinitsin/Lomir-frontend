@@ -31,6 +31,7 @@ import LocationDisplay from "../components/common/LocationDisplay";
 import ImageUploader from "../components/common/ImageUploader";
 import { getUserInitials } from "../utils/userHelpers";
 import Modal from "../components/common/Modal";
+import CountrySelect from "../components/common/CountrySelect";
 
 const Profile = () => {
   const { user, updateUser, logout } = useAuth();
@@ -58,6 +59,7 @@ const Profile = () => {
     bio: "",
     city: "",
     postalCode: "",
+    country: "",
     isPublic: true,
     profileImage: null,
   });
@@ -112,6 +114,7 @@ const Profile = () => {
           email: apiUserData.email || apiUserData.email || "",
           bio: apiUserData.bio || "",
           postalCode: apiUserData.postalCode || apiUserData.postal_code || "",
+          country: apiUserData.country || "",
           isPublic:
             apiUserData.isPublic !== undefined
               ? apiUserData.isPublic
@@ -160,6 +163,7 @@ const Profile = () => {
         bio: user.bio || "",
         city: user.city || "",
         postalCode: user.postalCode || user.postal_code || "",
+        country: user.country || "",
         isPublic:
           user.is_public !== undefined
             ? user.is_public
@@ -379,6 +383,7 @@ const Profile = () => {
         bio: formData.bio,
         postal_code: formData.postalCode,
         city: formData.city,
+        country: formData.country,
         is_public: formData.isPublic,
       };
 
@@ -482,6 +487,8 @@ const Profile = () => {
           email: updatedUser.email || "", // Keep the email in the form data
           bio: updatedUser.bio || "",
           postalCode: updatedUser.postal_code || updatedUser.postalCode || "",
+          city: updatedUser.city || "",
+          country: updatedUser.country || "",
           isPublic: updatedUser.is_public || updatedUser.isPublic || false,
           profileImage: null, // Reset profile image after successful update
         }));
@@ -696,13 +703,25 @@ const Profile = () => {
                 className="input input-bordered w-full"
                 placeholder="e.g. Berlin, London, New York"
               />
-              <label className="label">
-                <span className="label-text-alt text-base-content/60">
-                  Optional - if left empty, city will be derived from postal
-                  code
-                </span>
-              </label>
             </div>
+
+            <div className="form-control w-full mb-4">
+              <label className="label">
+                <span className="label-text">Country</span>
+              </label>
+              <CountrySelect
+                value={formData.country}
+                onChange={handleChange}
+                name="country"
+                placeholder="Select your country"
+              />
+            </div>
+
+            {/* Location fine print */}
+            <p className="text-xs text-base-content/50 -mt-2 mb-4 px-1">
+              Location info is optional but helps you find and connect with
+              people nearby.
+            </p>
 
             {/* Profile visibility toggle */}
             <div className="form-control w-full mb-6">
