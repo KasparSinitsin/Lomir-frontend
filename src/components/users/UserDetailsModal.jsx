@@ -90,7 +90,7 @@ const UserDetailsModal = ({
   const handleTagSelection = (
     selectedTags,
     experienceLevels,
-    interestLevels
+    interestLevels,
   ) => {
     setFormData((prev) => ({
       ...prev,
@@ -153,7 +153,7 @@ const UserDetailsModal = ({
       // Create conversation with the user and send an empty message to ensure it appears
       const conversationResponse = await messageService.startConversation(
         user.id,
-        ""
+        "",
       );
       console.log("Conversation created:", conversationResponse);
 
@@ -293,6 +293,7 @@ const UserDetailsModal = ({
               user={user}
               currentUser={currentUser}
               isAuthenticated={isAuthenticated}
+              memberSince={user?.created_at || user?.createdAt}
             />
 
             {/* Bio */}
