@@ -86,7 +86,7 @@ const TeamMembersSection = ({
 
           // Role management logic - Owners and admins can manage roles
           const currentUserMember = team.members?.find(
-            (m) => m.user_id === user?.id || m.userId === user?.id
+            (m) => m.user_id === user?.id || m.userId === user?.id,
           );
           const isAdmin = currentUserMember?.role === "admin";
 
@@ -113,7 +113,7 @@ const TeamMembersSection = ({
                         parentDiv.classList.add(
                           "placeholder",
                           "bg-primary",
-                          "text-primary-content"
+                          "text-primary-content",
                         );
                         const span = document.createElement("span");
                         span.className = "text-lg";
@@ -168,7 +168,7 @@ const TeamMembersSection = ({
                           await teamService.updateMemberRole(
                             team.id,
                             memberId,
-                            newRole
+                            newRole,
                           );
                           setNotification({
                             type: "success",
@@ -224,10 +224,15 @@ const TeamMembersSection = ({
                         </p>
                       )}
 
-                      {(member.postal_code || member.postalCode) && (
+                      {(member.postal_code ||
+                        member.postalCode ||
+                        member.city) && (
                         <LocationDisplay
                           postalCode={member.postal_code || member.postalCode}
+                          city={member.city}
+                          country={member.country}
                           showIcon={false}
+                          showPostalCode={false}
                           displayType="short"
                           className="text-xs text-base-content/50"
                         />
