@@ -6,7 +6,8 @@ import TagInputV2 from "../tags/TagInputV2";
 import Card from "../common/Card";
 import Button from "../common/Button";
 import FormGroup from "../common/FormGroup";
-import { Tag, MailCheck } from "lucide-react";
+import CountrySelect from "../common/CountrySelect";
+import { Tag, MailCheck, MapPin } from "lucide-react";
 import ImageUploader from "../common/ImageUploader";
 import { uploadToCloudinary } from "../../config/cloudinary";
 import api from "../../services/api";
@@ -23,6 +24,8 @@ const RegisterForm = () => {
     last_name: "",
     bio: "",
     postal_code: "",
+    city: "",
+    country: "",
     profile_image: null,
     selectedTags: [],
   });
@@ -109,6 +112,8 @@ const RegisterForm = () => {
         last_name: formData.last_name || "",
         bio: formData.bio || "",
         postal_code: formData.postal_code || "",
+        city: formData.city || "",
+        country: formData.country || "",
         // Backend only expects tag_id (experience_level and interest_level are commented out in schema)
         tags:
           formData.selectedTags.length > 0
@@ -196,45 +201,40 @@ const RegisterForm = () => {
     }
   };
 
-  // Show success message if registration completed
+  // Show success message after registration
   if (registrationSuccess) {
     return (
       <div className="max-w-md mx-auto">
         <Card className="w-full">
-          <div className="card-body text-center py-10 px-8">
-            <MailCheck size={56} className="mx-auto mb-4 text-primary" />
-            <h2 className="card-title text-2xl font-bold justify-center mb-3">
+          <div className="card-body items-center text-center">
+            <MailCheck className="w-16 h-16 text-success mb-4" />
+            <h2 className="card-title text-2xl font-bold mb-2">
               Check your email
             </h2>
-            <p className="text-base-content/70 mb-3">
+            <p className="text-base-content/70 mb-4">
               We've sent a verification link to{" "}
-              <strong>{formData.email}</strong>
+              <span className="font-medium">{formData.email}</span>
             </p>
             <p className="text-sm text-base-content/60 mb-6">
-              Click the link in the email to verify your account and complete
-              registration. Don't forget to check your spam folder!
+              Please click the link in the email to verify your account. The
+              link will expire in 24 hours.
             </p>
 
-            <div className="divider"></div>
+            {resendMessage && (
+              <div
+                className={`alert ${resendStatus === "sent" ? "alert-success" : "alert-error"} mb-4`}
+              >
+                <span>{resendMessage}</span>
+              </div>
+            )}
 
-            {/* Resend verification section */}
-            <div className="text-sm text-base-content/60">
-              <p className="mb-3">Didn't receive the email?</p>
-
-              {resendStatus === "sent" && (
-                <div className="alert alert-success mb-3">
-                  <span className="text-white">{resendMessage}</span>
-                </div>
-              )}
-
-              {resendStatus === "error" && (
-                <div className="alert alert-error mb-3">
-                  <span className="text-white">{resendMessage}</span>
-                </div>
-              )}
-
+            <div className="flex flex-col gap-2 w-full">
+              <Link to="/login" className="btn btn-primary w-full">
+                Go to Login
+              </Link>
               <button
-                className="btn btn-outline btn-primary btn-sm"
+                type="button"
+                className="btn btn-ghost btn-sm"
                 onClick={handleResendVerification}
                 disabled={resendStatus === "sending" || resendCooldown > 0}
               >
@@ -428,19 +428,59 @@ const RegisterForm = () => {
               />
             </div>
 
+            {/* Location Section */}
+            <div className="divider text-sm text-base-content/60">
+              <MapPin size={14} className="mr-1" />
+              Location
+            </div>
+
             <div className="form-control w-full">
               <label className="label">
-                <span className="label-text">Postal Code</span>
+                <span className="label-text">Country</span>
               </label>
-              <input
-                type="text"
-                placeholder="e.g., 12345"
-                className="input input-bordered w-full"
-                value={formData.postal_code}
+              <CountrySelect
+                value={formData.country}
                 onChange={handleChange}
-                name="postal_code"
+                name="country"
+                placeholder="Select your country"
               />
             </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="form-control w-full">
+                <label className="label">
+                  <span className="label-text">Postal Code</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g., 12345"
+                  className="input input-bordered w-full"
+                  value={formData.postal_code}
+                  onChange={handleChange}
+                  name="postal_code"
+                />
+              </div>
+
+              <div className="form-control w-full">
+                <label className="label">
+                  <span className="label-text">City / Town</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g., Berlin"
+                  className="input input-bordered w-full"
+                  value={formData.city}
+                  onChange={handleChange}
+                  name="city"
+                />
+              </div>
+            </div>
+
+            {/* Location fine print */}
+            <p className="text-xs text-base-content/50 -mt-2 px-1">
+              Location info is optional but helps you find and connect with
+              people nearby.
+            </p>
 
             {/* Profile Image Upload */}
             <div className="form-control w-full">
@@ -460,46 +500,34 @@ const RegisterForm = () => {
                   });
                   setImagePreview(null);
                 }}
-                fallbackText={getUserInitialsFromForm()}
-                shape="circle"
-                size="lg"
-                label="Profile Image (Optional)"
-                disabled={isSubmitting}
+                previewSize="md"
+                previewShape="circle"
+                fallbackInitials={getUserInitialsFromForm()}
+                label="Profile Picture"
               />
             </div>
 
-            {/* Skills & Interests Section */}
+            {/* Interests Section */}
             <div className="divider text-sm text-base-content/60">
-              Skills & Interests
+              <Tag size={14} className="mr-1" />
+              Interests
             </div>
 
             <div className="form-control w-full">
               <label className="label">
-                <span className="label-text flex items-center gap-2">
-                  <Tag size={16} className="text-primary" />
-                  Add your skills and interests
-                </span>
+                <span className="label-text">Select your interests</span>
               </label>
               <TagInputV2
                 selectedTags={formData.selectedTags}
-                onTagsChange={handleTagsChange}
-                placeholder="Type to search tags..."
-                showPopularTags={true}
-                maxSuggestions={8}
+                onChange={handleTagsChange}
               />
-              <label className="label">
-                <span className="label-text-alt text-base-content/60">
-                  You can add or edit tags later in your profile
-                </span>
-              </label>
             </div>
 
             <Button
               type="submit"
               variant="primary"
-              fullWidth
+              className="w-full mt-6"
               disabled={isSubmitting}
-              className="mt-6"
             >
               {isSubmitting ? (
                 <>
@@ -510,16 +538,14 @@ const RegisterForm = () => {
                 "Create Account"
               )}
             </Button>
+
+            <p className="text-center text-sm mt-4">
+              Already have an account?{" "}
+              <Link to="/login" className="link link-primary">
+                Login
+              </Link>
+            </p>
           </form>
-
-          <div className="divider my-6">OR</div>
-
-          <div className="text-center">
-            <p className="mb-2">Already have an account?</p>
-            <Link to="/login" className="link link-primary">
-              Login
-            </Link>
-          </div>
         </div>
       </Card>
     </div>
