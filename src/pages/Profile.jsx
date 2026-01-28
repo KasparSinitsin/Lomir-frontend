@@ -32,6 +32,7 @@ import ImageUploader from "../components/common/ImageUploader";
 import { getUserInitials } from "../utils/userHelpers";
 import Modal from "../components/common/Modal";
 import CountrySelect from "../components/common/CountrySelect";
+import { format } from "date-fns";
 
 const Profile = () => {
   const { user, updateUser, logout } = useAuth();
@@ -65,6 +66,18 @@ const Profile = () => {
   });
   // Add a flag to track if initial data load has happened
   const [initialDataLoaded, setInitialDataLoaded] = useState(false);
+
+  // Format member since date
+  const getMemberSinceDate = () => {
+    const date = user?.created_at || user?.createdAt;
+    if (!date) return "Unknown";
+    try {
+      return format(new Date(date), "MMMM yyyy");
+    } catch (error) {
+      console.error("Error formatting member since date:", error);
+      return "Unknown";
+    }
+  };
 
   // Helper function to robustly check if profile is public
   const isProfilePublic = () => {
@@ -896,7 +909,7 @@ const Profile = () => {
                     />
                     <h3 className="font-medium">Member Since</h3>
                   </div>
-                  <p className="text-base-content/80">April 2025</p>
+                  <p className="text-base-content/80">{getMemberSinceDate()}</p>
                 </div>
               </div>
             </div>
