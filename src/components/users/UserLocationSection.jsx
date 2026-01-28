@@ -33,10 +33,12 @@ const UserLocationSection = ({ user, className = "" }) => {
           <LocationDisplay
             postalCode={postalCode}
             city={city}
+            state={user?.state}
+            country={user?.country}
             className="bg-base-200/50 py-1"
             showIcon={false}
             showPostalCode={true}
-            displayType="detailed"
+            displayType="full"
           />
         ) : (
           <p>Not specified</p>
