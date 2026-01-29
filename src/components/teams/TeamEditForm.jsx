@@ -1,10 +1,10 @@
 import React, { useState, useCallback } from "react";
 import Button from "../common/Button";
 import IconToggle from "../common/IconToggle";
-import axios from "axios";
 import { getTeamInitials } from "../../utils/userHelpers";
 import { teamService } from "../../services/teamService";
 import ImageUploader from "../common/ImageUploader";
+import TeamLocationInput from "./TeamLocationInput";
 
 /**
  * TeamEditForm Component
@@ -58,6 +58,48 @@ const TeamEditForm = ({
     }));
   };
 
+  const handleLocationChange = (e) => {
+    const { name, value, checked } = e.target;
+
+    const map = {
+      is_remote: "isRemote",
+      postal_code: "postalCode",
+      city: "city",
+      state: "state",
+      country: "country",
+    };
+
+    const mappedKey = map[name] || name;
+    const newValue = name === "is_remote" ? Boolean(checked) : value;
+
+    // Clear errors for these fields if present
+    if (formErrors[mappedKey] || formErrors[name]) {
+      setFormErrors((prev) => {
+        const next = { ...prev };
+        delete next[mappedKey];
+        delete next[name];
+        return next;
+      });
+    }
+
+    setFormData((prev) => {
+      const nextState = {
+        ...prev,
+        [mappedKey]: newValue,
+      };
+
+      // If remote turned on, clear physical fields in the form state
+      if (mappedKey === "isRemote" && newValue === true) {
+        nextState.postalCode = "";
+        nextState.city = "";
+        nextState.state = "";
+        nextState.country = "";
+      }
+
+      return nextState;
+    });
+  };
+
   // Handle tag selection
   const handleTagSelection = useCallback((selected) => {
     // akzeptiert: [number|string|object], z.B. { id, value }
@@ -87,9 +129,7 @@ const TeamEditForm = ({
     if (!team?.id) return;
 
     // Confirm deletion
-    if (
-      !window.confirm("Are you sure you want to remove the team picture?")
-    ) {
+    if (!window.confirm("Are you sure you want to remove the team picture?")) {
       return;
     }
 
@@ -177,9 +217,7 @@ const TeamEditForm = ({
         />
         {formErrors.name && (
           <label className="label">
-            <span className="label-text-alt text-error">
-              {formErrors.name}
-            </span>
+            <span className="label-text-alt text-error">{formErrors.name}</span>
           </label>
         )}
       </div>
@@ -363,6 +401,27 @@ const TeamEditForm = ({
             </span>
           </label>
         )}
+      </div>
+
+      {/* Team Location */}
+      <div className="form-control">
+        <TeamLocationInput
+          formData={{
+            is_remote: !!formData.isRemote,
+            postal_code: formData.postalCode ?? "",
+            city: formData.city ?? "",
+            state: formData.state ?? "",
+            country: formData.country ?? "",
+          }}
+          onChange={handleLocationChange}
+          errors={{
+            postal_code: formErrors.postalCode || formErrors.postal_code,
+            city: formErrors.city,
+            state: formErrors.state,
+            country: formErrors.country,
+          }}
+          disabled={loading}
+        />
       </div>
 
       {/* Form Actions */}

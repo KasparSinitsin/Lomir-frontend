@@ -19,6 +19,7 @@ import {
   ShieldCheck,
   SendHorizontal,
   Mail,
+  Globe,
 } from "lucide-react";
 import TeamDetailsModal from "./TeamDetailsModal";
 import UserDetailsModal from "../users/UserDetailsModal";
@@ -32,6 +33,7 @@ import NotificationBadge from "../common/NotificationBadge";
 import TeamApplicationsModal from "./TeamApplicationsModal";
 import { getUserInitials, getDisplayName } from "../../utils/userHelpers";
 import { format } from "date-fns";
+import TeamLocationSection from "./TeamLocationSection";
 
 /**
  * Unified TeamCard Component
@@ -1051,6 +1053,8 @@ const TeamCard = ({
         <p className="text-base-content/80 mb-4">
           {teamData.description || "No description"}
         </p>
+
+        <TeamLocationSection team={teamData} compact={true} />
 
         {/* Badges (status, date, tags, etc.) */}
         {renderBadges()}

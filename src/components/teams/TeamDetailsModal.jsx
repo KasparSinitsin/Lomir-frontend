@@ -35,6 +35,7 @@ import TeamMembersSection from "./TeamMembersSection";
 import TeamFocusAreaSection from "./TeamFocusAreaSection";
 import axios from "axios";
 import Modal from "../common/Modal";
+import TeamLocationSection from "./TeamLocationSection";
 
 const TeamDetailsModal = ({
   isOpen = true,
@@ -79,7 +80,13 @@ const TeamDetailsModal = ({
     maxMembers: 5,
     maxMembersMode: "preset",
     selectedTags: [],
+    isRemote: false,
+    postalCode: "",
+    city: "",
+    state: "",
+    country: "",
   });
+
   const [formErrors, setFormErrors] = useState({});
   const [isOwner, setIsOwner] = useState(false);
   const [internalUserRole, setInternalUserRole] = useState(null);
@@ -118,11 +125,13 @@ const TeamDetailsModal = ({
         console.log("Raw API response:", response);
 
         // Get team data from response
+        // response is already the JSON payload (not axios response)
         let teamData;
-        if (response.data && typeof response.data === "object") {
-          teamData = response.data;
-        } else if (response.data && response.data.data) {
-          teamData = response.data.data;
+        if (response && typeof response === "object") {
+          teamData =
+            response.data && typeof response.data === "object"
+              ? response.data
+              : response;
         } else {
           teamData = {};
         }
@@ -180,7 +189,7 @@ const TeamDetailsModal = ({
 
         // Process visibility
         let isPublicValue = false;
-        const isPublicRaw = teamData.is_public || teamData.isPublic;
+        const isPublicRaw = teamData.is_public ?? teamData.isPublic;
 
         if (
           isPublicRaw === true ||
@@ -195,6 +204,19 @@ const TeamDetailsModal = ({
           ...teamData,
           owner_id: ownerId,
           is_public: isPublicValue,
+
+          // normalize for consistent UI usage
+          is_remote: teamData.is_remote ?? teamData.isRemote ?? false,
+          postal_code: teamData.postal_code ?? teamData.postalCode ?? null,
+          city: teamData.city ?? null,
+          state: teamData.state ?? null,
+          country: teamData.country ?? null,
+          max_members:
+            teamData.max_members !== undefined
+              ? teamData.max_members
+              : teamData.maxMembers !== undefined
+                ? teamData.maxMembers
+                : undefined,
         };
 
         console.log("Enhanced team data:", enhancedTeamData);
@@ -275,6 +297,10 @@ const TeamDetailsModal = ({
         }
 
         // Set form data with the normalized values from team data
+        // Location (support snake_case + camelCase)
+        const isRemoteVal = enhancedTeamData.is_remote === true;
+
+        // Set form data with the normalized values from team data
         setFormData({
           name: teamData.name || "",
           description: teamData.description || "",
@@ -286,6 +312,13 @@ const TeamDetailsModal = ({
           selectedTags: (teamData.tags || [])
             .map((tag) => parseInt(tag.id || tag.tag_id, 10))
             .filter((id) => !isNaN(id)),
+
+          // ✅ location fields
+          isRemote: isRemoteVal === true,
+          postalCode: (teamData.postal_code ?? teamData.postalCode ?? "") || "",
+          city: (teamData.city ?? "") || "",
+          state: (teamData.state ?? "") || "",
+          country: (teamData.country ?? "") || "",
         });
 
         // Mark that we now have the full data
@@ -777,6 +810,8 @@ const TeamDetailsModal = ({
       console.log("Edit Team - maxMembersForSubmit:", maxMembersForSubmit);
 
       // Prepare the submission data - PRESERVE EXISTING IMAGE URL
+      const isRemoteBoolean = formData.isRemote === true;
+
       const submissionData = {
         name: formData.name.trim(),
         description: formData.description.trim(),
@@ -787,6 +822,13 @@ const TeamDetailsModal = ({
           team?.teamavatar_url ||
           team?.teamavatarUrl ||
           null,
+        is_remote: isRemoteBoolean,
+        postal_code: isRemoteBoolean
+          ? null
+          : formData.postalCode?.trim() || null,
+        city: isRemoteBoolean ? null : formData.city?.trim() || null,
+        state: isRemoteBoolean ? null : formData.state?.trim() || null,
+        country: isRemoteBoolean ? null : formData.country?.trim() || null,
       };
 
       // Handle avatar file upload if a new file was selected
@@ -1273,6 +1315,9 @@ const TeamDetailsModal = ({
                   </div>
                 )}
 
+                {/* Team Location */}
+                <TeamLocationSection team={team} className="my-6" />
+
                 {/* Team Focus Areas */}
                 {console.log("Team tags for FocusAreasSection:", team?.tags)}
                 {!isEditing && (
@@ -1344,7 +1389,7 @@ const TeamDetailsModal = ({
             {isOwner && (
               <p className="text-warning text-sm mt-2">
                 Note: As an owner, you can only leave if there's another owner
-                to manage the team.
+                to manage the team. Pass ownership before leaving.
               </p>
             )}
           </div>
