@@ -9,6 +9,7 @@ import TeamDetailsModal from "./TeamDetailsModal";
 import IconToggle from "../common/IconToggle";
 import ImageUploader from "../common/ImageUploader";
 import { uploadToCloudinary } from "../../config/cloudinary";
+import TeamLocationInput from "./TeamLocationInput";
 
 const TeamCreationForm = () => {
   const navigate = useNavigate();
@@ -17,9 +18,13 @@ const TeamCreationForm = () => {
     description: "",
     isPublic: false, // Default hidden
     maxMembers: 5,
-    maxMembersMode: "preset", // NEW: preset / custom / unlimited
+    maxMembersMode: "preset", // preset / custom / unlimited
     selectedTags: [],
     teamImage: null,
+    is_remote: false,
+    postal_code: "",
+    city: "",
+    country: "",
   });
   const [imagePreview, setImagePreview] = useState(null);
   const [errors, setErrors] = useState({});
@@ -170,6 +175,10 @@ const TeamCreationForm = () => {
         max_members: maxMembersForSubmit,
         tags: formattedTags,
         teamavatar_url: formData.teamImage ? null : null,
+        is_remote: formData.is_remote,
+        postal_code: formData.is_remote ? null : formData.postal_code || null,
+        city: formData.is_remote ? null : formData.city || null,
+        country: formData.is_remote ? null : formData.country || null,
       };
 
       console.log("Initial submission data:", submissionData);
@@ -445,6 +454,13 @@ const TeamCreationForm = () => {
             className="toggle-visibility"
           />
         </div>
+
+        <TeamLocationInput
+          formData={formData}
+          onChange={handleChange}
+          errors={errors}
+          disabled={isSubmitting}
+        />
 
         <div className="mb-4">
           <label className="block text-gray-700 text-sm font-bold mb-2">

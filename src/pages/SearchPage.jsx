@@ -121,7 +121,6 @@ const SearchPage = () => {
       shortLabelDesc: "Far",
       iconAsc: MapPin,
       iconDesc: MapPin,
-      usersOnly: true,
     },
   ];
 

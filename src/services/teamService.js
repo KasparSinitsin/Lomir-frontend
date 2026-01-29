@@ -215,53 +215,80 @@ export const teamService = {
   //   }
   // },
 
+
   // Update team details
-  updateTeam: async (teamId, teamData) => {
-    try {
-      console.log("updateTeam: Updating team with data:", teamData);
+updateTeam: async (teamId, teamData) => {
+  try {
+    console.log("updateTeam: Updating team with data:", teamData);
 
-      // Ensure tags are properly formatted
-      const formattedTags =
-        teamData.tags?.map((tag) => {
-          if (typeof tag === "object" && tag.tag_id) {
-            // If it's already an object with tag_id, ensure it's a number
-            return { tag_id: parseInt(tag.tag_id, 10) };
-          } else if (typeof tag === "number") {
-            // If it's already a number, use it directly
-            return { tag_id: tag };
-          } else {
-            // Otherwise, try to parse it as a number
-            return { tag_id: parseInt(tag, 10) };
-          }
-        }) || [];
+    // Ensure tags are properly formatted
+    const formattedTags =
+      teamData.tags?.map((tag) => {
+        if (typeof tag === "object" && tag.tag_id) {
+          return { tag_id: parseInt(tag.tag_id, 10) };
+        } else if (typeof tag === "number") {
+          return { tag_id: tag };
+        } else {
+          return { tag_id: parseInt(tag, 10) };
+        }
+      }) || [];
 
-      // Create a new object with formatted tags
-      const dataToSend = {
-        ...teamData,
-        tags: formattedTags,
-      };
+    // --- Location normalization (accept snake_case or camelCase) ---
+    const isRemote =
+      teamData.is_remote ??
+      teamData.isRemote ??
+      false;
 
-      // Only include avatar URL if it was explicitly provided
-      if (
-        teamData.teamavatar_url !== undefined ||
-        teamData.teamavatarUrl !== undefined
-      ) {
-        dataToSend.teamavatar_url =
-          teamData.teamavatar_url || teamData.teamavatarUrl || null;
-      }
+    const toNullOrTrimmed = (v) => {
+      if (v === null || v === undefined) return null;
+      const s = String(v).trim();
+      return s === "" ? null : s;
+    };
 
-      console.log("updateTeam: Sending formatted data:", dataToSend);
+    const postal_code = isRemote ? null : toNullOrTrimmed(teamData.postal_code ?? teamData.postalCode);
+    const city        = isRemote ? null : toNullOrTrimmed(teamData.city);
+    const state       = isRemote ? null : toNullOrTrimmed(teamData.state);
+    const country     = isRemote ? null : toNullOrTrimmed(teamData.country);
 
-      const response = await api.put(`/api/teams/${teamId}`, dataToSend);
-      return response.data;
-    } catch (error) {
-      console.error(
-        `Error updating team ${teamId}:`,
-        error.response ? error.response.data : error.message,
-      );
-      throw error;
+    // Create payload (prefer snake_case for backend)
+    const dataToSend = {
+      ...teamData,
+      tags: formattedTags,
+
+      // ensure backend gets the right fields
+      is_remote: Boolean(isRemote),
+      postal_code,
+      city,
+      state,
+      country,
+    };
+
+    // Only include avatar URL if it was explicitly provided
+    if (
+      teamData.teamavatar_url !== undefined ||
+      teamData.teamavatarUrl !== undefined
+    ) {
+      dataToSend.teamavatar_url =
+        teamData.teamavatar_url || teamData.teamavatarUrl || null;
     }
-  },
+
+    // Optional: remove camelCase duplicates so you don't send both
+    delete dataToSend.isRemote;
+    delete dataToSend.postalCode;
+
+    console.log("updateTeam: Sending formatted data:", dataToSend);
+
+    const response = await api.put(`/api/teams/${teamId}`, dataToSend);
+    return response.data;
+  } catch (error) {
+    console.error(
+      `Error updating team ${teamId}:`,
+      error.response ? error.response.data : error.message,
+    );
+    throw error;
+  }
+},
+
 
   /**
    * Deletes the team's avatar image from Cloudinary and removes it from the team.
