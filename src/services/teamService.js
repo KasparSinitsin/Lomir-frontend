@@ -52,12 +52,16 @@ export const teamService = {
       const validatedTeamData = {
         name: teamData.name,
         description: teamData.description || "",
-        is_public: isPublic, // Ensure it's a boolean
+        is_public: isPublic,
         max_members: maxMembers,
         tags: formattedTags,
-        // Include the team avatar URL - try both possible field names
         teamavatar_url:
           teamData.teamavatar_url || teamData.teamavatarUrl || null,
+        // ADD THESE LOCATION FIELDS:
+        is_remote: teamData.is_remote ?? false,
+        postal_code: teamData.is_remote ? null : teamData.postal_code || null,
+        city: teamData.is_remote ? null : teamData.city || null,
+        country: teamData.is_remote ? null : teamData.country || null,
       };
 
       console.log("createTeam: Sending validated data:", validatedTeamData);
@@ -215,80 +219,77 @@ export const teamService = {
   //   }
   // },
 
-
   // Update team details
-updateTeam: async (teamId, teamData) => {
-  try {
-    console.log("updateTeam: Updating team with data:", teamData);
+  updateTeam: async (teamId, teamData) => {
+    try {
+      console.log("updateTeam: Updating team with data:", teamData);
 
-    // Ensure tags are properly formatted
-    const formattedTags =
-      teamData.tags?.map((tag) => {
-        if (typeof tag === "object" && tag.tag_id) {
-          return { tag_id: parseInt(tag.tag_id, 10) };
-        } else if (typeof tag === "number") {
-          return { tag_id: tag };
-        } else {
-          return { tag_id: parseInt(tag, 10) };
-        }
-      }) || [];
+      // Ensure tags are properly formatted
+      const formattedTags =
+        teamData.tags?.map((tag) => {
+          if (typeof tag === "object" && tag.tag_id) {
+            return { tag_id: parseInt(tag.tag_id, 10) };
+          } else if (typeof tag === "number") {
+            return { tag_id: tag };
+          } else {
+            return { tag_id: parseInt(tag, 10) };
+          }
+        }) || [];
 
-    // --- Location normalization (accept snake_case or camelCase) ---
-    const isRemote =
-      teamData.is_remote ??
-      teamData.isRemote ??
-      false;
+      // --- Location normalization (accept snake_case or camelCase) ---
+      const isRemote = teamData.is_remote ?? teamData.isRemote ?? false;
 
-    const toNullOrTrimmed = (v) => {
-      if (v === null || v === undefined) return null;
-      const s = String(v).trim();
-      return s === "" ? null : s;
-    };
+      const toNullOrTrimmed = (v) => {
+        if (v === null || v === undefined) return null;
+        const s = String(v).trim();
+        return s === "" ? null : s;
+      };
 
-    const postal_code = isRemote ? null : toNullOrTrimmed(teamData.postal_code ?? teamData.postalCode);
-    const city        = isRemote ? null : toNullOrTrimmed(teamData.city);
-    const state       = isRemote ? null : toNullOrTrimmed(teamData.state);
-    const country     = isRemote ? null : toNullOrTrimmed(teamData.country);
+      const postal_code = isRemote
+        ? null
+        : toNullOrTrimmed(teamData.postal_code ?? teamData.postalCode);
+      const city = isRemote ? null : toNullOrTrimmed(teamData.city);
+      const state = isRemote ? null : toNullOrTrimmed(teamData.state);
+      const country = isRemote ? null : toNullOrTrimmed(teamData.country);
 
-    // Create payload (prefer snake_case for backend)
-    const dataToSend = {
-      ...teamData,
-      tags: formattedTags,
+      // Create payload (prefer snake_case for backend)
+      const dataToSend = {
+        ...teamData,
+        tags: formattedTags,
 
-      // ensure backend gets the right fields
-      is_remote: Boolean(isRemote),
-      postal_code,
-      city,
-      state,
-      country,
-    };
+        // ensure backend gets the right fields
+        is_remote: Boolean(isRemote),
+        postal_code,
+        city,
+        state,
+        country,
+      };
 
-    // Only include avatar URL if it was explicitly provided
-    if (
-      teamData.teamavatar_url !== undefined ||
-      teamData.teamavatarUrl !== undefined
-    ) {
-      dataToSend.teamavatar_url =
-        teamData.teamavatar_url || teamData.teamavatarUrl || null;
+      // Only include avatar URL if it was explicitly provided
+      if (
+        teamData.teamavatar_url !== undefined ||
+        teamData.teamavatarUrl !== undefined
+      ) {
+        dataToSend.teamavatar_url =
+          teamData.teamavatar_url || teamData.teamavatarUrl || null;
+      }
+
+      // Optional: remove camelCase duplicates so you don't send both
+      delete dataToSend.isRemote;
+      delete dataToSend.postalCode;
+
+      console.log("updateTeam: Sending formatted data:", dataToSend);
+
+      const response = await api.put(`/api/teams/${teamId}`, dataToSend);
+      return response.data;
+    } catch (error) {
+      console.error(
+        `Error updating team ${teamId}:`,
+        error.response ? error.response.data : error.message,
+      );
+      throw error;
     }
-
-    // Optional: remove camelCase duplicates so you don't send both
-    delete dataToSend.isRemote;
-    delete dataToSend.postalCode;
-
-    console.log("updateTeam: Sending formatted data:", dataToSend);
-
-    const response = await api.put(`/api/teams/${teamId}`, dataToSend);
-    return response.data;
-  } catch (error) {
-    console.error(
-      `Error updating team ${teamId}:`,
-      error.response ? error.response.data : error.message,
-    );
-    throw error;
-  }
-},
-
+  },
 
   /**
    * Deletes the team's avatar image from Cloudinary and removes it from the team.
@@ -337,34 +338,34 @@ updateTeam: async (teamId, teamData) => {
     }
   },
 
-/**
- * Get all teams of the user with pagination
- * @param {number} userId - User ID
- * @param {number} page - Page number (default: 1)
- * @param {number} limit - Results per page (default: 10)
- * @returns {Promise<Object>} User teams with pagination metadata
- */
-getUserTeams: async (userId, page = 1, limit = 10) => {
-  try {
-    if (!userId) {
-      throw new Error("User ID is required");
+  /**
+   * Get all teams of the user with pagination
+   * @param {number} userId - User ID
+   * @param {number} page - Page number (default: 1)
+   * @param {number} limit - Results per page (default: 10)
+   * @returns {Promise<Object>} User teams with pagination metadata
+   */
+  getUserTeams: async (userId, page = 1, limit = 10) => {
+    try {
+      if (!userId) {
+        throw new Error("User ID is required");
+      }
+      const response = await api.get(`/api/teams/my-teams`, {
+        params: {
+          userId,
+          page,
+          limit,
+        },
+      });
+      return response.data;
+    } catch (error) {
+      console.error(
+        "Error fetching user teams:",
+        error.response ? error.response.data : error.message,
+      );
+      throw error;
     }
-    const response = await api.get(`/api/teams/my-teams`, {
-      params: { 
-        userId,
-        page,
-        limit,
-      },
-    });
-    return response.data;
-  } catch (error) {
-    console.error(
-      "Error fetching user teams:",
-      error.response ? error.response.data : error.message,
-    );
-    throw error;
-  }
-},
+  },
 
   // Get user role in a team
   getUserRoleInTeam: async (teamId, userId) => {

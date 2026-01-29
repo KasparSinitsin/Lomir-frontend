@@ -71,6 +71,7 @@ const TeamCreationForm = () => {
 
   const handleChange = useCallback((e) => {
     const { name, value, type, checked } = e.target;
+    console.log("handleChange called:", { name, value, type, checked });
     let newValue = value;
 
     if (name === "maxMembers") {
@@ -167,6 +168,14 @@ const TeamCreationForm = () => {
         "TeamCreationForm handleSubmit - maxMembersForSubmit:",
         maxMembersForSubmit,
       );
+
+      console.log("formData before submission:", formData);
+      console.log("Location fields:", {
+        is_remote: formData.is_remote,
+        postal_code: formData.postal_code,
+        city: formData.city,
+        country: formData.country,
+      });
 
       const submissionData = {
         name: formData.name,

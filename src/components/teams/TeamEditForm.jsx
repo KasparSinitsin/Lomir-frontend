@@ -58,48 +58,47 @@ const TeamEditForm = ({
     }));
   };
 
-const handleLocationChange = (e) => {
-  const { name, value, checked } = e.target;
+  const handleLocationChange = (e) => {
+    const { name, value, checked } = e.target;
 
-  const map = {
-    is_remote: "isRemote",
-    postal_code: "postalCode",
-    city: "city",
-    state: "state",
-    country: "country",
-  };
-
-  const mappedKey = map[name] || name;
-  const newValue = name === "is_remote" ? Boolean(checked) : value;
-
-  // Clear errors for these fields if present
-  if (formErrors[mappedKey] || formErrors[name]) {
-    setFormErrors((prev) => {
-      const next = { ...prev };
-      delete next[mappedKey];
-      delete next[name];
-      return next;
-    });
-  }
-
-  setFormData((prev) => {
-    const nextState = {
-      ...prev,
-      [mappedKey]: newValue,
+    const map = {
+      is_remote: "isRemote",
+      postal_code: "postalCode",
+      city: "city",
+      state: "state",
+      country: "country",
     };
 
-    // If remote turned on, clear physical fields in the form state
-    if (mappedKey === "isRemote" && newValue === true) {
-      nextState.postalCode = "";
-      nextState.city = "";
-      nextState.state = "";
-      nextState.country = "";
+    const mappedKey = map[name] || name;
+    const newValue = name === "is_remote" ? Boolean(checked) : value;
+
+    // Clear errors for these fields if present
+    if (formErrors[mappedKey] || formErrors[name]) {
+      setFormErrors((prev) => {
+        const next = { ...prev };
+        delete next[mappedKey];
+        delete next[name];
+        return next;
+      });
     }
 
-    return nextState;
-  });
-};
+    setFormData((prev) => {
+      const nextState = {
+        ...prev,
+        [mappedKey]: newValue,
+      };
 
+      // If remote turned on, clear physical fields in the form state
+      if (mappedKey === "isRemote" && newValue === true) {
+        nextState.postalCode = "";
+        nextState.city = "";
+        nextState.state = "";
+        nextState.country = "";
+      }
+
+      return nextState;
+    });
+  };
 
   // Handle tag selection
   const handleTagSelection = useCallback((selected) => {

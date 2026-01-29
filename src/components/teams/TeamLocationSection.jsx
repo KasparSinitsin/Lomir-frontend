@@ -22,7 +22,6 @@ const TeamLocationSection = ({ team, className = "", compact = false }) => {
   // Show section if we have remote flag OR location data
   const hasLocation = isRemote || city || postalCode || state || country;
 
-
   if (!hasLocation) {
     return null;
   }
