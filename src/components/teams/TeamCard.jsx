@@ -225,7 +225,7 @@ const TeamCard = ({
       try {
         const response = await teamService.getUserRoleInTeam(
           teamData.id,
-          user.id
+          user.id,
         );
 
         const payload = response?.data;
@@ -320,7 +320,7 @@ const TeamCard = ({
             // Compute role from members list
             if (user?.id && Array.isArray(fullTeam.members)) {
               const me = fullTeam.members.find(
-                (m) => (m.user_id ?? m.userId) === user.id
+                (m) => (m.user_id ?? m.userId) === user.id,
               );
               setUserRole(me?.role ?? null);
             }
@@ -347,7 +347,7 @@ const TeamCard = ({
 
         // Find the application for this team (if any)
         const foundApplication = pendingApplications.find(
-          (app) => app.team?.id === teamData.id || app.team_id === teamData.id
+          (app) => app.team?.id === teamData.id || app.team_id === teamData.id,
         );
 
         setPendingApplicationForTeam(foundApplication || null);
@@ -371,7 +371,7 @@ const TeamCard = ({
         const pendingInvitations = response.data || [];
 
         const foundInvitation = pendingInvitations.find(
-          (inv) => inv.team?.id === teamData.id || inv.team_id === teamData.id
+          (inv) => inv.team?.id === teamData.id || inv.team_id === teamData.id,
         );
 
         setPendingInvitationForTeam(foundInvitation || null);
@@ -524,7 +524,7 @@ const TeamCard = ({
       displayTags = [];
     }
     return displayTags.filter(
-      (tag) => tag && (tag.name || typeof tag === "string")
+      (tag) => tag && (tag.name || typeof tag === "string"),
     );
   };
 
@@ -536,7 +536,7 @@ const TeamCard = ({
       return true;
     if (teamData.members && Array.isArray(teamData.members)) {
       const foundInMembers = teamData.members.some(
-        (member) => member.user_id === user.id || member.userId === user.id
+        (member) => member.user_id === user.id || member.userId === user.id,
       );
       if (foundInMembers) return true;
     }
@@ -615,7 +615,7 @@ const TeamCard = ({
     e.stopPropagation();
     if (
       !window.confirm(
-        "Are you sure you want to delete this team? This action cannot be undone."
+        "Are you sure you want to delete this team? This action cannot be undone.",
       )
     ) {
       return;
@@ -643,7 +643,7 @@ const TeamCard = ({
     e.stopPropagation();
     if (
       !window.confirm(
-        "Are you sure you want to cancel your application to this team?"
+        "Are you sure you want to cancel your application to this team?",
       )
     ) {
       return;
@@ -937,12 +937,12 @@ const TeamCard = ({
               <span
                 className="tooltip tooltip-bottom tooltip-lomir"
                 data-tip={
-                  teamData.is_public ?? teamData.isPublic
+                  (teamData.is_public ?? teamData.isPublic)
                     ? "Public Team - visible for everyone"
                     : "Private Team - only visible for Members"
                 }
               >
-                {teamData.is_public ?? teamData.isPublic ? (
+                {(teamData.is_public ?? teamData.isPublic) ? (
                   <EyeIcon size={14} className="text-green-600" />
                 ) : (
                   <EyeClosed size={14} className="text-gray-500" />
@@ -959,7 +959,7 @@ const TeamCard = ({
                   getFormattedDate()
                     ? ` on ${format(
                         new Date(normalizedData.date),
-                        "MMM d, yyyy"
+                        "MMM d, yyyy",
                       )}`
                     : ""
                 }`}
@@ -980,7 +980,7 @@ const TeamCard = ({
                   getFormattedDate()
                     ? ` on ${format(
                         new Date(normalizedData.date),
-                        "MMM d, yyyy"
+                        "MMM d, yyyy",
                       )}`
                     : ""
                 }`}
@@ -1054,7 +1054,7 @@ const TeamCard = ({
           {teamData.description || "No description"}
         </p>
 
-        <TeamLocationSection team={teamData} compact={true} />
+        <TeamLocationSection team={teamData} compact={true} className="mb-4" />
 
         {/* Badges (status, date, tags, etc.) */}
         {renderBadges()}
