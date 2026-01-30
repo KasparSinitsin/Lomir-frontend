@@ -43,9 +43,10 @@ const TagInputV2 = ({
       try {
         const allTags = await tagService.getStructuredTags();
         // Flatten the structure to get all tags
-        const flatTags = allTags
-          .flatMap((supercat) => supercat.categories)
-          .flatMap((cat) => cat.tags);
+        const flatTags = allTags.flatMap((category) => [
+          category,
+          ...(category.children || []),
+        ]);
         updateTagMap(flatTags);
       } catch (error) {
         console.error("Error fetching structured tags:", error);
@@ -55,34 +56,50 @@ const TagInputV2 = ({
     fetchInitialData();
   }, [showPopularTags, updateTagMap]);
 
-  const fetchRelatedTags = useCallback(
-    async (tagId) => {
-      const excludeIds = selectedTags;
-      const { tags } = await tagService.getRelatedTags(tagId, 5, excludeIds);
-      setRelatedTags(tags);
-      updateTagMap(tags);
-    },
-    [selectedTags, updateTagMap]
-  );
-
+  // Debounced search function
   const debouncedSearch = useCallback(
     debounce(async (query) => {
-      if (!query || query.trim().length < 2) {
+      if (query.length < 2) {
         setSuggestions([]);
         return;
       }
 
       setLoading(true);
-      const results = await tagService.getSuggestions(
-        query,
-        maxSuggestions,
-        selectedTags
-      );
-      setSuggestions(results);
-      updateTagMap(results);
-      setLoading(false);
+      try {
+        const results = await tagService.searchTags(query);
+        // Filter out already selected tags
+        const filteredResults = results.filter(
+          (tag) => !selectedTags.includes(tag.id),
+        );
+        setSuggestions(filteredResults.slice(0, maxSuggestions));
+        updateTagMap(filteredResults);
+      } catch (error) {
+        console.error("Error searching tags:", error);
+        setSuggestions([]);
+      } finally {
+        setLoading(false);
+      }
     }, 300),
-    [selectedTags, maxSuggestions, updateTagMap]
+    [selectedTags, maxSuggestions, updateTagMap],
+  );
+
+  // Fetch related tags based on selected tags
+  const fetchRelatedTags = useCallback(
+    async (tagId) => {
+      try {
+        // getRelatedTags returns { tags: [], context: {} }
+        const { tags } = await tagService.getRelatedTags(
+          tagId,
+          5,
+          selectedTags,
+        );
+        setRelatedTags(tags);
+        updateTagMap(tags);
+      } catch (error) {
+        console.error("Error fetching related tags:", error);
+      }
+    },
+    [selectedTags, updateTagMap],
   );
 
   const handleInputChange = (value) => {
@@ -92,16 +109,15 @@ const TagInputV2 = ({
       debouncedSearch(value);
     } else {
       setSuggestions([]);
-      setShowSuggestions(false);
+      // Show popular/related when input is cleared
+      if (value.length === 0) {
+        setShowSuggestions(true);
+      }
     }
   };
 
   const handleSelectTag = (tag) => {
-    if (!tag) return;
-
-    const isAlreadySelected = selectedTags.includes(tag.id);
-
-    if (!isAlreadySelected) {
+    if (tag && !selectedTags.includes(tag.id)) {
       const newTags = [...selectedTags, tag.id];
       onTagsChange(newTags);
       updateTagMap([tag]);
@@ -122,7 +138,7 @@ const TagInputV2 = ({
     }
   };
 
-// Determine which tags to show - MUST be before useCombobox
+  // Determine which tags to show - MUST be before useCombobox
   const getCurrentSuggestions = () => {
     if (inputValue.length >= 2 && suggestions.length > 0) {
       return { type: "search", tags: suggestions, icon: TagIcon };
@@ -147,7 +163,7 @@ const TagInputV2 = ({
     getItemProps,
     closeMenu,
   } = useCombobox({
-    items: currentSuggestionsForCombobox.tags,  
+    items: currentSuggestionsForCombobox.tags,
     inputValue,
     onInputValueChange: ({ inputValue }) => {
       handleInputChange(inputValue);
@@ -253,63 +269,72 @@ const TagInputV2 = ({
         </div>
       </div>
 
-      {shouldShowDropdown && (
-        <ul
-          {...getMenuProps()}
-          className="menu bg-base-100 border border-base-300 rounded-box mt-2 p-2 shadow-xl max-h-64 overflow-y-auto absolute z-50 w-full"
-        >
-          <li className="menu-title flex items-center gap-2 px-3 py-2">
-            {React.createElement(currentSuggestions.icon, {
-              size: 16,
-              className:
-                currentSuggestions.type === "popular"
-                  ? "text-warning"
-                  : currentSuggestions.type === "related"
-                  ? "text-secondary"
-                  : "text-primary",
-            })}
-            <span className="font-semibold">{getSuggestionTitle()}</span>
-          </li>
-
-          {currentSuggestions.tags.map((tag, index) => (
-            <li key={tag.id} {...getItemProps({ item: tag, index })}>
-              <button
-                type="button"
-                className={`flex items-center justify-between w-full ${
-                  highlightedIndex === index ? "active" : ""
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  <TagIcon size={14} />
-                  <span className="font-medium">{tag.name}</span>
-                </div>
-                <div className="flex items-center gap-2 text-xs">
-                  <span className="badge badge-sm badge-ghost">
-                    {tag.category}
-                  </span>
-                  {tag.usage_count !== undefined && tag.usage_count > 0 && (
-                    <span className="badge badge-sm badge-primary">
-                      {tag.usage_count}
-                    </span>
-                  )}
-                </div>
-              </button>
+      {/* 
+        IMPORTANT: Always render the menu element to satisfy downshift's getMenuProps requirement.
+        Use CSS to hide it when not needed instead of conditional rendering.
+        This fixes the warning: "You forgot to call the getMenuProps getter function"
+      */}
+      <ul
+        {...getMenuProps()}
+        className={`menu bg-base-100 border border-base-300 rounded-box mt-2 p-2 shadow-xl max-h-64 overflow-y-auto absolute z-50 w-full ${
+          shouldShowDropdown ? "" : "hidden"
+        }`}
+      >
+        {shouldShowDropdown && (
+          <>
+            <li className="menu-title flex items-center gap-2 px-3 py-2">
+              {React.createElement(currentSuggestions.icon, {
+                size: 16,
+                className:
+                  currentSuggestions.type === "popular"
+                    ? "text-warning"
+                    : currentSuggestions.type === "related"
+                      ? "text-secondary"
+                      : "text-primary",
+              })}
+              <span className="font-semibold">{getSuggestionTitle()}</span>
             </li>
-          ))}
-        </ul>
-      )}
+
+            {currentSuggestions.tags.map((tag, index) => (
+              <li key={tag.id} {...getItemProps({ item: tag, index })}>
+                <button
+                  type="button"
+                  className={`flex items-center justify-between w-full ${
+                    highlightedIndex === index ? "active" : ""
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <TagIcon size={14} />
+                    <span className="font-medium">{tag.name}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className="badge badge-sm badge-ghost">
+                      {tag.category}
+                    </span>
+                    {tag.usage_count !== undefined && tag.usage_count > 0 && (
+                      <span className="badge badge-sm badge-primary">
+                        {tag.usage_count}
+                      </span>
+                    )}
+                  </div>
+                </button>
+              </li>
+            ))}
+          </>
+        )}
+      </ul>
 
       <div className="label">
         <span className="label-text-alt text-base-content/60">
           {inputValue.length < 2 && currentSuggestions.type === "none"
             ? "Type at least 2 characters to search"
             : inputValue.length >= 2 && suggestions.length === 0 && !loading
-            ? "No tags found"
-            : currentSuggestions.type === "popular"
-            ? "Click a popular tag or start typing to search"
-            : currentSuggestions.type === "related"
-            ? "Suggested tags based on your selection"
-            : "Press Enter or click to select"}
+              ? "No tags found"
+              : currentSuggestions.type === "popular"
+                ? "Click a popular tag or start typing to search"
+                : currentSuggestions.type === "related"
+                  ? "Suggested tags based on your selection"
+                  : "Press Enter or click to select"}
         </span>
       </div>
     </div>
