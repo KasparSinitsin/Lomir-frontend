@@ -4,7 +4,7 @@ import IconToggle from "../common/IconToggle";
 import { getTeamInitials } from "../../utils/userHelpers";
 import { teamService } from "../../services/teamService";
 import ImageUploader from "../common/ImageUploader";
-import TeamLocationInput from "./TeamLocationInput";
+import LocationInput from "../common/LocationInput";
 
 /**
  * TeamEditForm Component
@@ -405,22 +405,21 @@ const TeamEditForm = ({
 
       {/* Team Location */}
       <div className="form-control">
-        <TeamLocationInput
+        <LocationInput
           formData={{
             is_remote: !!formData.isRemote,
             postal_code: formData.postalCode ?? "",
             city: formData.city ?? "",
-            state: formData.state ?? "",
             country: formData.country ?? "",
           }}
           onChange={handleLocationChange}
           errors={{
             postal_code: formErrors.postalCode || formErrors.postal_code,
             city: formErrors.city,
-            state: formErrors.state,
             country: formErrors.country,
           }}
           disabled={loading}
+          showRemoteToggle={true}
         />
       </div>
 

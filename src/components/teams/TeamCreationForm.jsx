@@ -9,7 +9,7 @@ import TeamDetailsModal from "./TeamDetailsModal";
 import IconToggle from "../common/IconToggle";
 import ImageUploader from "../common/ImageUploader";
 import { uploadToCloudinary } from "../../config/cloudinary";
-import TeamLocationInput from "./TeamLocationInput";
+import LocationInput from "../common/LocationInput";
 
 const TeamCreationForm = () => {
   const navigate = useNavigate();
@@ -464,11 +464,12 @@ const TeamCreationForm = () => {
           />
         </div>
 
-        <TeamLocationInput
+        <LocationInput
           formData={formData}
-          onChange={handleChange}
-          errors={errors}
-          disabled={isSubmitting}
+          onChange={handleLocationChange}
+          errors={formErrors}
+          disabled={loading}
+          showRemoteToggle={true}
         />
 
         <div className="mb-4">

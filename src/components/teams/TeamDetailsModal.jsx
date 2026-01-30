@@ -35,7 +35,7 @@ import TeamMembersSection from "./TeamMembersSection";
 import TeamFocusAreaSection from "./TeamFocusAreaSection";
 import axios from "axios";
 import Modal from "../common/Modal";
-import TeamLocationSection from "./TeamLocationSection";
+import LocationSection from "../common/LocationSection";
 
 const TeamDetailsModal = ({
   isOpen = true,
@@ -1316,7 +1316,11 @@ const TeamDetailsModal = ({
                 )}
 
                 {/* Team Location */}
-                <TeamLocationSection team={team} className="my-6" />
+                <LocationSection
+                  entity={team}
+                  entityType="team"
+                  className="my-6"
+                />
 
                 {/* Team Focus Areas */}
                 {console.log("Team tags for FocusAreasSection:", team?.tags)}
