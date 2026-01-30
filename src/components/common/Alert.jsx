@@ -10,7 +10,8 @@ const Alert = ({ type = "info", message, onClose, className = "" }) => {
 
   return (
     <div
-      className={`alert ${alertClasses[type]} text-white shadow-sm w-fit ${className}`}
+      className={`alert ${alertClasses[type]} !text-white shadow-sm w-fit ${className}`}
+
     >
       <div className="flex items-center gap-2">
         {type === "info" && (
