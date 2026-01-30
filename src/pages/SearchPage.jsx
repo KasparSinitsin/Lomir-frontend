@@ -9,6 +9,7 @@ import { searchService } from "../services/searchService";
 import Input from "../components/common/Input";
 import Button from "../components/common/Button";
 import Pagination from "../components/common/Pagination";
+import BooleanSearchInput from "../components/BooleanSearchInput";
 import {
   Search as SearchIcon,
   Users,
@@ -268,6 +269,52 @@ const SearchPage = () => {
         sortBy,
         sortDir,
       );
+      setSearchResults(results.data);
+      setUserHasLocation(!!results.userLocation?.hasLocation);
+
+      if (results.pagination) {
+        setPagination(results.pagination);
+      }
+    } catch (err) {
+      console.error("Search error:", err);
+      setError("An error occurred while searching. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleBooleanSearch = async (q) => {
+    setSearchQuery(q);
+    setCurrentPage(1);
+
+    if (!q.trim()) {
+      setHasSearched(false);
+      const results = await searchService.getAllUsersAndTeams(
+        isAuthenticated,
+        1,
+        resultsPerPage,
+        sortBy,
+        sortDir,
+      );
+      setSearchResults(results.data);
+      if (results.pagination) setPagination(results.pagination);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+      setHasSearched(true);
+
+      const results = await searchService.globalSearch(
+        q,
+        isAuthenticated,
+        1,
+        resultsPerPage,
+        sortBy,
+        sortDir,
+      );
+
       setSearchResults(results.data);
       setUserHasLocation(!!results.userLocation?.hasLocation);
 
@@ -542,10 +589,10 @@ const SearchPage = () => {
           </div>
         </div>
 
-        {/* Search Form with Sort Filter */}
+        {/* Search + Sort */}
         <div ref={sortFilterRef}>
-          <form onSubmit={handleSearch} className="flex gap-2 items-center">
-            {/* Sort Toggle Button */}
+          <div className="flex gap-2 items-start">
+            {/* Sort Toggle Button (THIS brings your filters back) */}
             <button
               type="button"
               onClick={() => setShowSortDropdown(!showSortDropdown)}
@@ -559,24 +606,16 @@ const SearchPage = () => {
               <SlidersHorizontal className="w-5 h-5" />
             </button>
 
+            {/* Boolean Search Input */}
             <div className="flex-1">
-              <Input
-                type="text"
+              <BooleanSearchInput
+                initialQuery={searchQuery}
+                onSearch={handleBooleanSearch}
                 placeholder="Search by name, description, or tags..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full"
-                icon={<SearchIcon className="w-4 h-4" />}
               />
             </div>
-            <Button type="submit" variant="primary" disabled={loading}>
-              {loading ? (
-                <span className="loading loading-spinner loading-sm"></span>
-              ) : (
-                "Search"
-              )}
-            </Button>
-          </form>
+          </div>
 
           {/* Sort Options - Horizontal row below search */}
           {showSortDropdown && (
