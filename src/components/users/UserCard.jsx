@@ -138,12 +138,10 @@ const UserCard = ({ user, onUpdate }) => {
             <LocationDisplay
               postalCode={user.postal_code || user.postalCode}
               city={user.city}
-              state={user.state}
               country={user.country}
-              className="bg-base-200/50 py-1"
-              iconSize={16}
-              showPostalCode={true}
               displayType="full"
+              showPostalCode={true}
+              className="bg-base-200/50 py-1"
             />
           )}
 

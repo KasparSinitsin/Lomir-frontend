@@ -33,7 +33,7 @@ import NotificationBadge from "../common/NotificationBadge";
 import TeamApplicationsModal from "./TeamApplicationsModal";
 import { getUserInitials, getDisplayName } from "../../utils/userHelpers";
 import { format } from "date-fns";
-import TeamLocationSection from "./TeamLocationSection";
+import LocationSection from "../common/LocationSection";
 
 /**
  * Unified TeamCard Component
@@ -1054,7 +1054,12 @@ const TeamCard = ({
           {teamData.description || "No description"}
         </p>
 
-        <TeamLocationSection team={teamData} compact={true} className="mb-4" />
+        <LocationSection
+          entity={teamData}
+          entityType="team"
+          compact={true}
+          className="mb-4"
+        />
 
         {/* Badges (status, date, tags, etc.) */}
         {renderBadges()}

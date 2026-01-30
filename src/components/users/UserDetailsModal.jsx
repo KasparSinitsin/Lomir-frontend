@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import Modal from "../common/Modal";
 import UserBioSection from "./UserBioSection";
-import UserLocationSection from "./UserLocationSection";
+import LocationSection from "../common/LocationSection";
 import TagsDisplaySection from "../tags/TagsDisplaySection";
 import UserProfileHeaderSection from "./UserProfileHeaderSection";
 import { messageService } from "../../services/messageService";
@@ -301,7 +301,11 @@ const UserDetailsModal = ({
 
             {/* Location and Skills */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <UserLocationSection user={user} />
+              <LocationSection
+                entity={user}
+                entityType="user"
+                className="mb-6"
+              />
             </div>
 
             <TagsDisplaySection
