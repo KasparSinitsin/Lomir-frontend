@@ -4,9 +4,9 @@ import { createPortal } from "react-dom";
 
 /**
  * SearchHelp (Inline)
- * - Shows only info icon by default
- * - On hover: shows "Search Tips"
- * - Click icon/text to toggle popup
+ * - Shows only info icon by default (no layout text)
+ * - Tooltip on hover/focus: "Search Tips"
+ * - Click icon to toggle popup
  * - Popup uses a portal so it always appears on top of everything
  */
 const SearchHelp = ({ className = "", anchorRef }) => {
@@ -15,34 +15,20 @@ const SearchHelp = ({ className = "", anchorRef }) => {
   const [popupStyle, setPopupStyle] = useState({});
 
   const examples = [
-    {
-      query: "react AND node",
-      description: 'Must contain both "react" AND "node"',
-    },
-    {
-      query: "react OR vue",
-      description: 'Must contain either "react" OR "vue"',
-    },
-    {
-      query: "javascript NOT jquery",
-      description: 'Must contain "javascript" but NOT "jquery"',
-    },
-    {
-      query: "python -django",
-      description: 'Same as NOT: contains "python" but not "django"',
-    },
+    { query: "react AND node", description: 'Must contain both "react" AND "node"' },
+    { query: "react OR vue", description: 'Must contain either "react" OR "vue"' },
+    { query: "javascript NOT jquery", description: 'Must contain "javascript" but NOT "jquery"' },
+    { query: "python -django", description: 'Same as NOT: contains "python" but not "django"' },
     { query: '"full stack developer"', description: "Exact phrase match" },
-    {
-      query: '"web development" OR backend',
-      description: "Combine phrases with operators",
-    },
+    { query: '"web development" OR backend', description: "Combine phrases with operators" },
   ];
 
   return (
     <>
       {/* Inline trigger inside the input */}
       <div className={`relative ${className}`}>
-        <div className="group flex items-center">
+        {/* DaisyUI tooltip (doesn't take space in the input) */}
+        <div className="tooltip tooltip-left" data-tip="Search tips">
           <button
             ref={triggerRef}
             type="button"
@@ -59,19 +45,13 @@ const SearchHelp = ({ className = "", anchorRef }) => {
 
               setIsOpen(true);
             }}
-            className="flex flex-row-reverse items-center gap-1"
+            className="btn btn-ghost btn-sm p-1 min-h-0 h-auto"
+            aria-label="Search tips"
           >
             <Info
               className="h-4 w-4"
               style={{ color: "var(--color-primary-focus)" }}
             />
-
-            <span
-              className="text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity"
-              style={{ color: "var(--color-primary-focus)" }}
-            >
-              Search Tips
-            </span>
           </button>
         </div>
       </div>

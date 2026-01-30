@@ -1,17 +1,13 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import PageContainer from "../components/layout/PageContainer";
 import Grid from "../components/layout/Grid";
 import TeamCard from "../components/teams/TeamCard";
 import UserCard from "../components/users/UserCard";
-import { searchService } from "../services/searchService";
-import Input from "../components/common/Input";
-import Button from "../components/common/Button";
 import Pagination from "../components/common/Pagination";
 import BooleanSearchInput from "../components/BooleanSearchInput";
 import {
-  Search as SearchIcon,
   Users,
   Users2,
   Clock,
@@ -25,12 +21,16 @@ import {
 } from "lucide-react";
 import Alert from "../components/common/Alert";
 
+// ✅ import BOTH from the same module, and DO NOT redeclare getApiErrorMessage locally
+import { searchService, getApiErrorMessage } from "../services/searchService";
+
 const SearchPage = () => {
   const location = useLocation();
+  const { isAuthenticated } = useAuth();
+
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState({ teams: [], users: [] });
 
-  // Initialize searchType based on URL parameters
   const [searchType, setSearchType] = useState(() => {
     const urlParams = new URLSearchParams(location.search);
     const typeParam = urlParams.get("type");
@@ -44,12 +44,11 @@ const SearchPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [hasSearched, setHasSearched] = useState(false);
-  const { isAuthenticated } = useAuth();
   const [userHasLocation, setUserHasLocation] = useState(false);
 
   // ===== SORTING STATE =====
-  const [sortBy, setSortBy] = useState("name"); // 'name', 'recent', 'newest', 'capacity'
-  const [sortDir, setSortDir] = useState("asc"); // 'asc' or 'desc'
+  const [sortBy, setSortBy] = useState("name");
+  const [sortDir, setSortDir] = useState("asc");
   const [showSortDropdown, setShowSortDropdown] = useState(false);
   const sortFilterRef = useRef(null);
 
@@ -67,7 +66,6 @@ const SearchPage = () => {
     hasPrevPage: false,
   });
 
-  // Sort options configuration
   const sortOptions = [
     {
       value: "name",
@@ -125,16 +123,11 @@ const SearchPage = () => {
     },
   ];
 
-  // Filter sort options based on searchType
   const getVisibleSortOptions = () => {
     return sortOptions.filter((option) => {
-      // teams-only options should not show on users view
       if (option.teamsOnly && searchType === "users") return false;
-
-      // users-only options should not show on teams view
       if (option.usersOnly && searchType === "teams") return false;
 
-      // proximity requires auth + location
       if (option.value === "proximity") {
         if (!isAuthenticated) return false;
         if (!userHasLocation) return false;
@@ -144,48 +137,81 @@ const SearchPage = () => {
     });
   };
 
-  // Effect to load initial data when the component mounts
+  // Centralized fetch to avoid duplicated logic
+  const fetchData = useCallback(
+    async ({ mode, queryString, page, limit, sBy, sDir }) => {
+      if (mode === "search") {
+        return await searchService.globalSearch(
+          queryString,
+          isAuthenticated,
+          page,
+          limit,
+          sBy,
+          sDir,
+        );
+      }
+      return await searchService.getAllUsersAndTeams(
+        isAuthenticated,
+        page,
+        limit,
+        sBy,
+        sDir,
+      );
+    },
+    [isAuthenticated],
+  );
+
+  // Effect: load data when auth/pagination/sort/search changes
   useEffect(() => {
-    const fetchInitialData = async () => {
+    const run = async () => {
       try {
         setLoading(true);
         setError(null);
 
-        const results = await searchService.getAllUsersAndTeams(
-          isAuthenticated,
-          currentPage,
-          resultsPerPage,
-          sortBy,
-          sortDir,
-        );
+        const mode = hasSearched && searchQuery.trim() ? "search" : "all";
 
-        setSearchResults(results.data);
-
-        const hasLoc = !!results.userLocation?.hasLocation;
-        setUserHasLocation(hasLoc);
-
-        console.log("AUTH + LOCATION (initial load):", {
-          isAuthenticated,
-          hasLoc,
-          userLocation: results.userLocation,
+        const results = await fetchData({
+          mode,
+          queryString: searchQuery.trim(),
+          page: currentPage,
+          limit: resultsPerPage,
+          sBy: sortBy,
+          sDir: sortDir,
         });
 
-        // Update pagination metadata from response
-        if (results.pagination) {
-          setPagination(results.pagination);
-        }
+        setSearchResults(results.data);
+        setUserHasLocation(!!results.userLocation?.hasLocation);
+        if (results.pagination) setPagination(results.pagination);
       } catch (err) {
-        console.error("Error fetching initial data:", err);
-        setError("Failed to load initial data. Please try again.");
+        console.error("Error fetching data:", err);
+        setSearchResults({ teams: [], users: [] });
+        setPagination((p) => ({
+          ...p,
+          totalTeams: 0,
+          totalUsers: 0,
+          totalItems: 0,
+          totalPages: 1,
+          hasNextPage: false,
+          hasPrevPage: false,
+        })); // optional but nice
+        setError(getApiErrorMessage(err));
       } finally {
         setLoading(false);
       }
     };
 
-    fetchInitialData();
-  }, [isAuthenticated, currentPage, resultsPerPage, sortBy, sortDir]);
+    run();
+  }, [
+    fetchData,
+    currentPage,
+    resultsPerPage,
+    sortBy,
+    sortDir,
+    hasSearched,
+    searchQuery,
+  ]);
 
-  // Effect to handle URL parameter changes
+  // Effect: handle URL param changes
   useEffect(() => {
     const urlParams = new URLSearchParams(location.search);
     const typeParam = urlParams.get("type");
@@ -194,17 +220,16 @@ const SearchPage = () => {
       setSearchType("teams");
     } else if (typeParam === "users") {
       setSearchType("users");
-      // If switching to users and capacity is selected, switch to name sort
       if (sortBy === "capacity") {
         setSortBy("name");
         setSortDir("asc");
       }
-    } else if (typeParam === "all") {
+    } else {
       setSearchType("all");
     }
   }, [location.search, sortBy]);
 
-  // Effect to close sort dropdown when clicking outside
+  // Close sort dropdown on outside click
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (
@@ -220,273 +245,60 @@ const SearchPage = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [showSortDropdown]);
 
-  // Handler for search form submission
-  const handleSearch = async (e) => {
-    e.preventDefault();
-
-    // Reset to page 1 when performing a new search
-    setCurrentPage(1);
-
-    if (!searchQuery.trim()) {
-      // If search query is empty, reload all data
-      try {
-        setLoading(true);
-        setError(null);
-        setHasSearched(false);
-
-        const results = await searchService.getAllUsersAndTeams(
-          isAuthenticated,
-          1, // Reset to page 1
-          resultsPerPage,
-          sortBy,
-          sortDir,
-        );
-        setSearchResults(results.data);
-        setUserHasLocation(!!results.userLocation?.hasLocation);
-
-        if (results.pagination) {
-          setPagination(results.pagination);
-        }
-      } catch (err) {
-        console.error("Error reloading data:", err);
-        setError("Failed to reload data. Please try again.");
-      } finally {
-        setLoading(false);
-      }
-      return;
-    }
-
-    try {
-      setLoading(true);
-      setError(null);
-      setHasSearched(true);
-
-      const results = await searchService.globalSearch(
-        searchQuery,
-        isAuthenticated,
-        1, // Reset to page 1 for new search
-        resultsPerPage,
-        sortBy,
-        sortDir,
-      );
-      setSearchResults(results.data);
-      setUserHasLocation(!!results.userLocation?.hasLocation);
-
-      if (results.pagination) {
-        setPagination(results.pagination);
-      }
-    } catch (err) {
-      console.error("Search error:", err);
-      setError("An error occurred while searching. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // BooleanSearchInput callback
   const handleBooleanSearch = async (q) => {
+    const trimmed = (q || "").trim();
     setSearchQuery(q);
     setCurrentPage(1);
 
-    if (!q.trim()) {
+    if (!trimmed) {
       setHasSearched(false);
-      const results = await searchService.getAllUsersAndTeams(
-        isAuthenticated,
-        1,
-        resultsPerPage,
-        sortBy,
-        sortDir,
-      );
-      setSearchResults(results.data);
-      if (results.pagination) setPagination(results.pagination);
-      return;
-    }
-
-    try {
-      setLoading(true);
       setError(null);
-      setHasSearched(true);
-
-      const results = await searchService.globalSearch(
-        q,
-        isAuthenticated,
-        1,
-        resultsPerPage,
-        sortBy,
-        sortDir,
-      );
-
-      setSearchResults(results.data);
-      setUserHasLocation(!!results.userLocation?.hasLocation);
-
-      if (results.pagination) {
-        setPagination(results.pagination);
-      }
-    } catch (err) {
-      console.error("Search error:", err);
-      setError("An error occurred while searching. Please try again.");
-    } finally {
-      setLoading(false);
+      return; // effect will load "all"
     }
+
+    setHasSearched(true);
+    setError(null);
+    // effect will load "search"
   };
 
-  // Handler for page changes
-  const handlePageChange = async (newPage) => {
+  const handlePageChange = (newPage) => {
     setCurrentPage(newPage);
-
-    // Scroll to top of results when page changes
     window.scrollTo({ top: 0, behavior: "smooth" });
-
-    try {
-      setLoading(true);
-      setError(null);
-
-      let results;
-      if (hasSearched && searchQuery.trim()) {
-        // If we have an active search, use globalSearch
-        results = await searchService.globalSearch(
-          searchQuery,
-          isAuthenticated,
-          newPage,
-          resultsPerPage,
-          sortBy,
-          sortDir,
-        );
-      } else {
-        // Otherwise, get all users and teams
-        results = await searchService.getAllUsersAndTeams(
-          isAuthenticated,
-          newPage,
-          resultsPerPage,
-          sortBy,
-          sortDir,
-        );
-      }
-
-      setSearchResults(results.data);
-      setUserHasLocation(!!results.userLocation?.hasLocation);
-
-      if (results.pagination) {
-        setPagination(results.pagination);
-      }
-    } catch (err) {
-      console.error("Error changing page:", err);
-      setError("Failed to load page. Please try again.");
-    } finally {
-      setLoading(false);
-    }
   };
 
-  // Handler for changing results per page
-  const handleResultsPerPageChange = async (newLimit) => {
+  const handleResultsPerPageChange = (newLimit) => {
     setResultsPerPage(newLimit);
-    setCurrentPage(1); // Reset to page 1 when changing limit
-
-    try {
-      setLoading(true);
-      setError(null);
-
-      let results;
-      if (hasSearched && searchQuery.trim()) {
-        results = await searchService.globalSearch(
-          searchQuery,
-          isAuthenticated,
-          1, // Reset to page 1
-          newLimit,
-          sortBy,
-          sortDir,
-        );
-      } else {
-        results = await searchService.getAllUsersAndTeams(
-          isAuthenticated,
-          1, // Reset to page 1
-          newLimit,
-          sortBy,
-          sortDir,
-        );
-      }
-
-      setSearchResults(results.data);
-      setUserHasLocation(!!results.userLocation?.hasLocation);
-
-      if (results.pagination) {
-        setPagination(results.pagination);
-      }
-    } catch (err) {
-      console.error("Error changing results per page:", err);
-      setError("Failed to update results. Please try again.");
-    } finally {
-      setLoading(false);
-    }
+    setCurrentPage(1);
   };
 
-  // Handler for changing sort option
-  const handleSortChange = async (newSortBy) => {
+  const handleSortChange = (newSortBy) => {
     if (newSortBy === "proximity" && searchType === "all") {
       setSearchType("users");
     }
+
     let newSortDir = sortDir;
 
-    // If clicking the same sort option, toggle direction
     if (newSortBy === sortBy) {
       newSortDir = sortDir === "asc" ? "desc" : "asc";
     } else {
-      // Set correct default direction per sort type
       switch (newSortBy) {
         case "name":
-          newSortDir = "asc"; // A–Z
-          break;
         case "proximity":
-          newSortDir = "asc"; // Nearest first ✅
+          newSortDir = "asc";
           break;
         default:
-          newSortDir = "desc"; // recent, newest, capacity
+          newSortDir = "desc";
       }
     }
 
     setSortBy(newSortBy);
     setSortDir(newSortDir);
-    setCurrentPage(1); // Reset to page 1 when changing sort
-
-    try {
-      setLoading(true);
-      setError(null);
-
-      let results;
-      if (hasSearched && searchQuery.trim()) {
-        results = await searchService.globalSearch(
-          searchQuery,
-          isAuthenticated,
-          1, // Reset to page 1
-          resultsPerPage,
-          newSortBy,
-          newSortDir,
-        );
-      } else {
-        results = await searchService.getAllUsersAndTeams(
-          isAuthenticated,
-          1, // Reset to page 1
-          resultsPerPage,
-          newSortBy,
-          newSortDir,
-        );
-      }
-
-      setSearchResults(results.data);
-
-      if (results.pagination) {
-        setPagination(results.pagination);
-      }
-    } catch (err) {
-      console.error("Error changing sort:", err);
-      setError("Failed to update results. Please try again.");
-    } finally {
-      setLoading(false);
-    }
+    setCurrentPage(1);
   };
 
   const handleToggleChange = (type) => {
     setSearchType(type);
-    // If switching to users and capacity is selected, switch to name sort
     if (type === "users" && sortBy === "capacity") {
       setSortBy("name");
       setSortDir("asc");
@@ -503,22 +315,17 @@ const SearchPage = () => {
   const handleUserUpdate = (updatedUser) => {
     setSearchResults((prev) => ({
       ...prev,
-      users: prev.users.map((user) =>
-        user.id === updatedUser.id ? updatedUser : user,
-      ),
+      users: prev.users.map((u) => (u.id === updatedUser.id ? updatedUser : u)),
     }));
   };
 
   const handleTeamUpdate = (updatedTeam) => {
     setSearchResults((prev) => ({
       ...prev,
-      teams: prev.teams.map((team) =>
-        team.id === updatedTeam.id
-          ? {
-              ...updatedTeam,
-              is_public: updatedTeam.is_public === true,
-            }
-          : team,
+      teams: prev.teams.map((t) =>
+        t.id === updatedTeam.id
+          ? { ...updatedTeam, is_public: updatedTeam.is_public === true }
+          : t,
       ),
     }));
   };
@@ -529,7 +336,6 @@ const SearchPage = () => {
     filteredResults.users.length === 0 &&
     !loading;
 
-  // Calculate total items for current filter
   const getTotalItemsForFilter = () => {
     switch (searchType) {
       case "teams":
@@ -562,6 +368,7 @@ const SearchPage = () => {
             >
               All
             </button>
+
             <button
               type="button"
               className={`btn btn-sm ${
@@ -574,6 +381,7 @@ const SearchPage = () => {
               <Users2 className="w-4 h-4 mr-1" />
               Teams
             </button>
+
             <button
               type="button"
               className={`btn btn-sm ${
@@ -592,7 +400,6 @@ const SearchPage = () => {
         {/* Search + Sort */}
         <div ref={sortFilterRef}>
           <div className="flex gap-2 items-start">
-            {/* Sort Toggle Button (THIS brings your filters back) */}
             <button
               type="button"
               onClick={() => setShowSortDropdown(!showSortDropdown)}
@@ -606,18 +413,16 @@ const SearchPage = () => {
               <SlidersHorizontal className="w-5 h-5" />
             </button>
 
-            {/* Boolean Search Input */}
             <div className="flex-1">
               <BooleanSearchInput
                 initialQuery={searchQuery}
                 onSearch={handleBooleanSearch}
-                placeholder="Search by name, description, or tags..."
+                placeholder="Try: hiking AND photography, or hiking NOT photography"
                 className="w-full"
               />
             </div>
           </div>
 
-          {/* Sort Options - Horizontal row below search */}
           {showSortDropdown && (
             <div className="flex items-center gap-1 mt-2 py-1 ml-10">
               {getVisibleSortOptions().map((option) => {
@@ -659,19 +464,23 @@ const SearchPage = () => {
         </div>
       </div>
 
-      {/* Error Message */}
+      {/* Error */}
       {error && (
-        <Alert variant="error" className="max-w-xl mx-auto mb-4">
-          {error}
-        </Alert>
+        <Alert
+          type="error"
+          message={error}
+          className="max-w-xl mx-auto mb-4"
+          onClose={() => setError(null)}
+        />
       )}
 
-      {/* No Results Message */}
+      {/* No results */}
       {noResultsFound && (
         <Alert
-          variant="info"
-          title="No results found"
-          message={`No ${searchType === "all" ? "teams or users" : searchType} found matching "${searchQuery}". Try a different search term.`}
+          type="info"
+          message={`No ${
+            searchType === "all" ? "teams or users" : searchType
+          } found matching "${searchQuery}". Try a different search term.`}
           className="max-w-xl mx-auto"
         />
       )}
@@ -693,6 +502,7 @@ const SearchPage = () => {
                   </span>
                 )}
               </h2>
+
               <Grid cols={1} md={2} lg={3} gap={6}>
                 {filteredResults.teams.map((team) => (
                   <TeamCard
@@ -706,7 +516,7 @@ const SearchPage = () => {
             </section>
           )}
 
-          {/* Users Results */}
+          {/* Users */}
           {filteredResults.users.length > 0 && (
             <section>
               <h2 className="text-xl font-semibold mb-4">
@@ -717,6 +527,7 @@ const SearchPage = () => {
                   </span>
                 )}
               </h2>
+
               <Grid cols={1} md={2} lg={3} gap={6}>
                 {filteredResults.users.map((user) => (
                   <UserCard
