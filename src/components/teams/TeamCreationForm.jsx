@@ -98,6 +98,30 @@ const TeamCreationForm = () => {
     }));
   }, []);
 
+  const handleLocationChange = useCallback((e) => {
+    const { name, value, type, checked } = e.target;
+    const newValue = type === "checkbox" ? checked : value;
+
+    setFormData((prev) => {
+      const nextState = {
+        ...prev,
+        [name]: newValue,
+      };
+
+      // If remote turned on, clear physical fields
+      if (name === "is_remote" && newValue === true) {
+        nextState.postal_code = "";
+        nextState.city = "";
+        nextState.country = "";
+      }
+
+      return nextState;
+    });
+
+    // Clear any existing error for the changed field
+    setErrors((prevErrors) => ({ ...prevErrors, [name]: "" }));
+  }, []);
+
   // Get team initials from current name input for avatar fallback
   const getTeamInitialsFromName = () => {
     const name = formData.name;
@@ -467,8 +491,8 @@ const TeamCreationForm = () => {
         <LocationInput
           formData={formData}
           onChange={handleLocationChange}
-          errors={formErrors}
-          disabled={loading}
+          errors={errors}
+          disabled={isSubmitting}
           showRemoteToggle={true}
         />
 
