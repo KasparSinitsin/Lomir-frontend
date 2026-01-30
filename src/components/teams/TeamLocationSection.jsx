@@ -6,7 +6,7 @@ import LocationDisplay from "../common/LocationDisplay";
  * TeamLocationSection Component
  * Displays team's location or "Remote" status
  *
- * Consistent with UserLocationSection styling
+ * Consistent with UserLocationSection and UserCard styling
  */
 const TeamLocationSection = ({ team, className = "", compact = false }) => {
   if (!team) {
@@ -26,7 +26,7 @@ const TeamLocationSection = ({ team, className = "", compact = false }) => {
     return null;
   }
 
-  // Compact version for cards
+  // Compact version for cards - consistent with UserCard location display
   if (compact) {
     return (
       <div
@@ -34,12 +34,12 @@ const TeamLocationSection = ({ team, className = "", compact = false }) => {
       >
         {isRemote ? (
           <>
-            <Globe size={14} className="mr-1 text-primary flex-shrink-0" />
+            <Globe size={16} className="mr-1 flex-shrink-0" />
             <span>Remote</span>
           </>
         ) : (
           <>
-            <MapPin size={14} className="mr-1 text-primary flex-shrink-0" />
+            <MapPin size={16} className="mr-1 flex-shrink-0" />
             <LocationDisplay
               postalCode={postalCode}
               city={city}
