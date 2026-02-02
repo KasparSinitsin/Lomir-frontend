@@ -432,6 +432,21 @@ const SearchPage = () => {
     }
   };
 
+  const showDistanceRow =
+    sortBy === "proximity" && sortDir !== "remote" && userHasCoordinates;
+
+  // ===== SORT ICON COLOR STATE =====
+  // "Modified" means the user changed any default sort or distance filter
+  const isSortModified =
+    sortBy !== "name" ||
+    sortDir !== "asc" ||
+    maxDistance !== null ||
+    (customDistanceInput && customDistanceInput.trim() !== "");
+
+  const sortIconColor = isSortModified
+    ? "var(--color-primary)" // light green (active / modified)
+    : "var(--color-primary-focus)"; // dark green (default)
+
   return (
     <PageContainer
       title="Search teams or users"
@@ -488,14 +503,10 @@ const SearchPage = () => {
             <button
               type="button"
               onClick={() => setShowSortDropdown(!showSortDropdown)}
-              className={`p-2 rounded-lg transition-colors ${
-                showSortDropdown
-                  ? "text-[var(--color-text)]"
-                  : "text-[var(--color-text)]/60 hover:text-[var(--color-text)]"
-              }`}
+              className="p-2 rounded-lg transition-colors"
               title="Sort options"
             >
-              <SlidersHorizontal className="w-5 h-5" />
+              <SlidersHorizontal className="w-5 h-5" color={sortIconColor} />
             </button>
 
             <div className="flex-1">
@@ -510,95 +521,127 @@ const SearchPage = () => {
 
           {showSortDropdown && (
             <>
-              <div className="mt-2 py-1 ml-10 inline-flex flex-col items-end">
-                <div className="flex items-center gap-1 overflow-x-auto no-scrollbar">
-                  {getVisibleSortOptions().map((option) => {
-                    const isActive = sortBy === option.value;
-                    const currentDir = isActive
-                      ? sortDir
-                      : option.defaultDir || "desc";
+              <div className="mt-2 py-1 ml-10">
+                <div className="flex">
+                  <div className="flex flex-col items-end">
+                    {/* Sort buttons row — SAME CONTENT as before */}
+                    <div className="flex items-center gap-1 overflow-x-auto no-scrollbar">
+                      {getVisibleSortOptions().map((option) => {
+                        const isActive = sortBy === option.value;
+                        const isModified =
+                          isActive &&
+                          option.defaultDir &&
+                          sortDir !== option.defaultDir;
 
-                    let IconComponent, label, shortLabel;
-                    if (currentDir === "remote" && option.iconRemote) {
-                      IconComponent = option.iconRemote;
-                      label = option.labelRemote;
-                      shortLabel = option.shortLabelRemote;
-                    } else if (currentDir === "asc") {
-                      IconComponent = option.iconAsc;
-                      label = option.labelAsc;
-                      shortLabel = option.shortLabelAsc;
-                    } else {
-                      IconComponent = option.iconDesc;
-                      label = option.labelDesc;
-                      shortLabel = option.shortLabelDesc;
-                    }
+                        const iconColor = isModified
+                          ? "var(--color-primary)"
+                          : "var(--color-primary-focus)";
 
-                    return (
-                      <button
-                        key={option.value}
-                        type="button"
-                        onClick={() => handleSortChange(option.value)}
-                        className={`flex items-center gap-1 px-1 text-xs rounded transition-colors ${
-                          isActive
-                            ? "text-[var(--color-success)] font-medium"
-                            : "text-[var(--color-text)]/60 hover:text-[var(--color-text)]"
-                        }`}
-                        disabled={loading}
-                        title={option.teamsOnly ? "Teams only" : ""}
-                      >
-                        <IconComponent className="w-3.5 h-3.5" />
-                        <span className="hidden sm:inline">{label}</span>
-                        <span className="sm:hidden">{shortLabel}</span>
-                      </button>
-                    );
-                  })}
-                </div>
+                        const currentDir = isActive
+                          ? sortDir
+                          : option.defaultDir || "desc";
 
-                {/* DISTANCE FILTER ROW */}
-                {sortBy === "proximity" &&
-                  sortDir !== "remote" &&
-                  userHasCoordinates && (
-                    <div className="flex items-center gap-1 mt-1 flex-wrap justify-end self-stretch overflow-x-auto no-scrollbar">
-                      {distancePresets.map((km) => (
-                        <button
-                          key={km}
-                          type="button"
-                          onClick={() => handleDistancePreset(km)}
-                          className={`px-1.5 py-0.5 text-xs rounded transition-colors ${
-                            maxDistance === km
-                              ? "text-[var(--color-success)] font-medium"
-                              : "text-[var(--color-text)]/60 hover:text-[var(--color-text)]"
-                          }`}
-                          disabled={loading}
-                        >
-                          {km}km
-                        </button>
-                      ))}
+                        let IconComponent, label, shortLabel;
+                        if (currentDir === "remote" && option.iconRemote) {
+                          IconComponent = option.iconRemote;
+                          label = option.labelRemote;
+                          shortLabel = option.shortLabelRemote;
+                        } else if (currentDir === "asc") {
+                          IconComponent = option.iconAsc;
+                          label = option.labelAsc;
+                          shortLabel = option.shortLabelAsc;
+                        } else {
+                          IconComponent = option.iconDesc;
+                          label = option.labelDesc;
+                          shortLabel = option.shortLabelDesc;
+                        }
 
-                      <div className="flex items-center gap-0.5">
-                        <input
-                          type="number"
-                          min="1"
-                          placeholder="..."
-                          value={customDistanceInput}
-                          onChange={handleCustomDistanceChange}
-                          onBlur={handleCustomDistanceSubmit}
-                          onKeyDown={handleCustomDistanceKeyDown}
-                          className={`w-12 px-1 py-0.5 text-xs rounded border transition-colors
+                        return (
+                          <button
+                            key={option.value}
+                            type="button"
+                            onClick={() => handleSortChange(option.value)}
+                            className={`flex items-center gap-1 px-1 text-xs rounded transition-colors ${
+                              isActive
+                                ? "text-[var(--color-primary)] font-bold"
+                                : "text-[var(--color-primary-focus)]/70 hover:text-[var(--color-primary-focus)] hover:font-medium"
+                            }`}
+                            disabled={loading}
+                            title={option.teamsOnly ? "Teams only" : ""}
+                          >
+                            <IconComponent className="w-3.5 h-3.5 shrink-0" />
+
+                            <span className="hidden sm:inline">{label}</span>
+                            <span className="sm:hidden">{shortLabel}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Distance row wrapped in showDistanceRow */}
+                    {showDistanceRow && (
+                      <div className="flex items-center gap-px mt-1 flex-wrap justify-end self-stretch overflow-x-auto no-scrollbar">
+                        {distancePresets.map((km) => (
+                          <button
+                            key={km}
+                            type="button"
+                            onClick={() => handleDistancePreset(km)}
+                            disabled={loading}
+                            className={`px-1 py-0.5 text-xs rounded transition-colors transition-font-weight
+      ${
+        maxDistance === km
+          ? "text-[var(--color-primary)] font-bold"
+          : "text-[var(--color-primary-focus)] hover:text-[var(--color-primary-focus)] hover:font-medium"
+      }`}
+                          >
+                            {km}km
+                          </button>
+                        ))}
+
+                        <div className="flex items-center gap-0.5">
+                          <input
+                            type="number"
+                            min="1"
+                            placeholder="..."
+                            value={customDistanceInput}
+                            onChange={handleCustomDistanceChange}
+                            onBlur={handleCustomDistanceSubmit}
+                            onKeyDown={handleCustomDistanceKeyDown}
+                            style={{
+                              width: `${Math.max(
+                                4.5,
+                                (customDistanceInput?.length || 0) + 2,
+                              )}ch`,
+                            }}
+                            className={`px-1 py-0.5 text-xs rounded border transition-colors
+                [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none
                 ${
                   maxDistance && !distancePresets.includes(maxDistance)
                     ? "border-[var(--color-success)] text-[var(--color-success)] font-medium"
                     : "border-[var(--color-text)]/20 text-[var(--color-text)]/60"
                 }
                 bg-transparent focus:outline-none focus:border-[var(--color-success)]`}
-                          disabled={loading}
-                        />
-                        <span className="text-xs text-[var(--color-text)]/40">
-                          km
-                        </span>
+                            disabled={loading}
+                          />
+                          <span className="text-xs text-[var(--color-primary-focus)]">
+                            km
+                          </span>
+                        </div>
                       </div>
-                    </div>
+                    )}
+                  </div>
+
+                  {/* The bracket */}
+                  {showDistanceRow && (
+                    <div
+                      className={`border-t border-r border-b rounded-r-sm w-1.5 my-0.5 ml-1.5 transition-colors ${
+                        maxDistance
+                          ? "border-[var(--color-primary)]"
+                          : "border-[var(--color-primary-focus)]"
+                      }`}
+                    />
                   )}
+                </div>
               </div>
             </>
           )}
