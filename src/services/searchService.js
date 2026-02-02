@@ -53,20 +53,25 @@ export const searchService = {
     limit = 20,
     sortBy = "name",
     sortDir = "asc",
+    maxDistance = null, // ← ADD
   ) {
-    const response = await api.get("/api/search/global", {
-      params: {
-        query,
-        authenticated: isAuthenticated,
-        page,
-        limit,
-        sortBy,
-        sortDir,
-      },
-    });
+    const params = {
+      query,
+      authenticated: isAuthenticated,
+      page,
+      limit,
+      sortBy,
+      sortDir,
+    };
+
+    // Only include when set (matches your colleague's direction)
+    if (maxDistance) params.maxDistance = maxDistance;
+
+    const response = await api.get("/api/search/global", { params });
 
     if (response.data?.data?.teams) {
-      response.data.data.teams = response.data.data.teams.map(normalizeTeamData);
+      response.data.data.teams =
+        response.data.data.teams.map(normalizeTeamData);
     }
 
     return response.data;
@@ -81,7 +86,8 @@ export const searchService = {
     });
 
     if (response.data?.data?.teams) {
-      response.data.data.teams = response.data.data.teams.map(normalizeTeamData);
+      response.data.data.teams =
+        response.data.data.teams.map(normalizeTeamData);
     }
 
     return response.data;
@@ -93,19 +99,24 @@ export const searchService = {
     limit = 20,
     sortBy = "name",
     sortDir = "asc",
+    maxDistance = null,
   ) {
-    const response = await api.get("/api/search/all", {
-      params: {
-        authenticated: isAuthenticated,
-        page,
-        limit,
-        sortBy,
-        sortDir,
-      },
-    });
+    const params = {
+      authenticated: isAuthenticated,
+      page,
+      limit,
+      sortBy,
+      sortDir,
+    };
+
+    // Only include when set
+    if (maxDistance) params.maxDistance = maxDistance;
+
+    const response = await api.get("/api/search/all", { params });
 
     if (response.data?.data?.teams) {
-      response.data.data.teams = response.data.data.teams.map(normalizeTeamData);
+      response.data.data.teams =
+        response.data.data.teams.map(normalizeTeamData);
     }
 
     return response.data;

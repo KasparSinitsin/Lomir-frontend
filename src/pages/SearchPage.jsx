@@ -22,7 +22,6 @@ import {
 } from "lucide-react";
 import Alert from "../components/common/Alert";
 
-// Import BOTH from the same module, and DO NOT redeclare getApiErrorMessage locally
 import { searchService, getApiErrorMessage } from "../services/searchService";
 
 const SearchPage = () => {
@@ -52,6 +51,11 @@ const SearchPage = () => {
   const [sortDir, setSortDir] = useState("asc");
   const [showSortDropdown, setShowSortDropdown] = useState(false);
   const sortFilterRef = useRef(null);
+
+  // ===== DISTANCE FILTER STATE =====
+  const [maxDistance, setMaxDistance] = useState(null);
+  const [customDistanceInput, setCustomDistanceInput] = useState("");
+  const [userHasCoordinates, setUserHasCoordinates] = useState(false);
 
   // ===== PAGINATION STATE =====
   const [currentPage, setCurrentPage] = useState(1);
@@ -143,7 +147,7 @@ const SearchPage = () => {
 
   // Centralized fetch to avoid duplicated logic
   const fetchData = useCallback(
-    async ({ mode, queryString, page, limit, sBy, sDir }) => {
+    async ({ mode, queryString, page, limit, sBy, sDir, maxDist }) => {
       if (mode === "search") {
         return await searchService.globalSearch(
           queryString,
@@ -152,6 +156,7 @@ const SearchPage = () => {
           limit,
           sBy,
           sDir,
+          maxDist,
         );
       }
       return await searchService.getAllUsersAndTeams(
@@ -160,6 +165,7 @@ const SearchPage = () => {
         limit,
         sBy,
         sDir,
+        maxDist,
       );
     },
     [isAuthenticated],
@@ -181,10 +187,12 @@ const SearchPage = () => {
           limit: resultsPerPage,
           sBy: sortBy,
           sDir: sortDir,
+          maxDist: maxDistance,
         });
 
         setSearchResults(results.data);
         setUserHasLocation(!!results.userLocation?.hasLocation);
+        setUserHasCoordinates(!!results.userLocation?.hasCoordinates);
         if (results.pagination) setPagination(results.pagination);
       } catch (err) {
         console.error("Error fetching data:", err);
@@ -211,6 +219,7 @@ const SearchPage = () => {
     resultsPerPage,
     sortBy,
     sortDir,
+    maxDistance,
     hasSearched,
     searchQuery,
   ]);
@@ -314,9 +323,57 @@ const SearchPage = () => {
       }
     }
 
+    // Reset distance filter when leaving proximity sort
+    if (newSortBy !== "proximity") {
+      setMaxDistance(null);
+      setCustomDistanceInput("");
+    }
+
+    // Also reset when entering remote mode
+    if (newSortBy === "proximity" && newSortDir === "remote") {
+      setMaxDistance(null);
+      setCustomDistanceInput("");
+    }
+
     setSortBy(newSortBy);
     setSortDir(newSortDir);
     setCurrentPage(1);
+  };
+
+  // ===== DISTANCE FILTER HANDLERS =====
+  const distancePresets = [5, 10, 25, 50, 100];
+
+  const handleDistancePreset = (km) => {
+    if (maxDistance === km) {
+      // Toggle off
+      setMaxDistance(null);
+      setCustomDistanceInput("");
+    } else {
+      setMaxDistance(km);
+      setCustomDistanceInput("");
+    }
+    setCurrentPage(1);
+  };
+
+  const handleCustomDistanceChange = (e) => {
+    setCustomDistanceInput(e.target.value);
+  };
+
+  const handleCustomDistanceSubmit = () => {
+    const value = parseFloat(customDistanceInput);
+    if (value > 0 && Number.isFinite(value)) {
+      setMaxDistance(value);
+      setCurrentPage(1);
+    } else if (customDistanceInput === "") {
+      setMaxDistance(null);
+      setCurrentPage(1);
+    }
+  };
+
+  const handleCustomDistanceKeyDown = (e) => {
+    if (e.key === "Enter") {
+      handleCustomDistanceSubmit();
+    }
   };
 
   const handleToggleChange = (type) => {
@@ -328,6 +385,8 @@ const SearchPage = () => {
     // Reset remote sort when switching away from teams-only view
     if (type !== "teams" && sortBy === "proximity" && sortDir === "remote") {
       setSortDir("asc");
+      setMaxDistance(null);
+      setCustomDistanceInput("");
     }
   };
 
@@ -450,48 +509,98 @@ const SearchPage = () => {
           </div>
 
           {showSortDropdown && (
-            <div className="flex items-center gap-1 mt-2 py-1 ml-10">
-              {getVisibleSortOptions().map((option) => {
-                const isActive = sortBy === option.value;
-                const currentDir = isActive
-                  ? sortDir
-                  : option.defaultDir || "desc";
+            <>
+              <div className="mt-2 py-1 ml-10 inline-flex flex-col items-end">
+                <div className="flex items-center gap-1 overflow-x-auto no-scrollbar">
+                  {getVisibleSortOptions().map((option) => {
+                    const isActive = sortBy === option.value;
+                    const currentDir = isActive
+                      ? sortDir
+                      : option.defaultDir || "desc";
 
-                let IconComponent, label, shortLabel;
-                if (currentDir === "remote" && option.iconRemote) {
-                  IconComponent = option.iconRemote;
-                  label = option.labelRemote;
-                  shortLabel = option.shortLabelRemote;
-                } else if (currentDir === "asc") {
-                  IconComponent = option.iconAsc;
-                  label = option.labelAsc;
-                  shortLabel = option.shortLabelAsc;
-                } else {
-                  IconComponent = option.iconDesc;
-                  label = option.labelDesc;
-                  shortLabel = option.shortLabelDesc;
+                    let IconComponent, label, shortLabel;
+                    if (currentDir === "remote" && option.iconRemote) {
+                      IconComponent = option.iconRemote;
+                      label = option.labelRemote;
+                      shortLabel = option.shortLabelRemote;
+                    } else if (currentDir === "asc") {
+                      IconComponent = option.iconAsc;
+                      label = option.labelAsc;
+                      shortLabel = option.shortLabelAsc;
+                    } else {
+                      IconComponent = option.iconDesc;
+                      label = option.labelDesc;
+                      shortLabel = option.shortLabelDesc;
+                    }
+
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => handleSortChange(option.value)}
+                        className={`flex items-center gap-1 px-1 text-xs rounded transition-colors ${
+                          isActive
+                            ? "text-[var(--color-success)] font-medium"
+                            : "text-[var(--color-text)]/60 hover:text-[var(--color-text)]"
+                        }`}
+                        disabled={loading}
+                        title={option.teamsOnly ? "Teams only" : ""}
+                      >
+                        <IconComponent className="w-3.5 h-3.5" />
+                        <span className="hidden sm:inline">{label}</span>
+                        <span className="sm:hidden">{shortLabel}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* DISTANCE FILTER ROW */}
+                {sortBy === "proximity" &&
+                  sortDir !== "remote" &&
+                  userHasCoordinates && (
+                    <div className="flex items-center gap-1 mt-1 flex-wrap justify-end self-stretch overflow-x-auto no-scrollbar">
+                      {distancePresets.map((km) => (
+                        <button
+                          key={km}
+                          type="button"
+                          onClick={() => handleDistancePreset(km)}
+                          className={`px-1.5 py-0.5 text-xs rounded transition-colors ${
+                            maxDistance === km
+                              ? "text-[var(--color-success)] font-medium"
+                              : "text-[var(--color-text)]/60 hover:text-[var(--color-text)]"
+                          }`}
+                          disabled={loading}
+                        >
+                          {km}km
+                        </button>
+                      ))}
+
+                      <div className="flex items-center gap-0.5">
+                        <input
+                          type="number"
+                          min="1"
+                          placeholder="..."
+                          value={customDistanceInput}
+                          onChange={handleCustomDistanceChange}
+                          onBlur={handleCustomDistanceSubmit}
+                          onKeyDown={handleCustomDistanceKeyDown}
+                          className={`w-12 px-1 py-0.5 text-xs rounded border transition-colors
+                ${
+                  maxDistance && !distancePresets.includes(maxDistance)
+                    ? "border-[var(--color-success)] text-[var(--color-success)] font-medium"
+                    : "border-[var(--color-text)]/20 text-[var(--color-text)]/60"
                 }
-
-                return (
-                  <button
-                    key={option.value}
-                    type="button"
-                    onClick={() => handleSortChange(option.value)}
-                    className={`flex items-center gap-1 px-1 text-xs rounded transition-colors ${
-                      isActive
-                        ? "text-[var(--color-success)] font-medium"
-                        : "text-[var(--color-text)]/60 hover:text-[var(--color-text)]"
-                    }`}
-                    disabled={loading}
-                    title={option.teamsOnly ? "Teams only" : ""}
-                  >
-                    <IconComponent className="w-3.5 h-3.5" />
-                    <span className="hidden sm:inline">{label}</span>
-                    <span className="sm:hidden">{shortLabel}</span>
-                  </button>
-                );
-              })}
-            </div>
+                bg-transparent focus:outline-none focus:border-[var(--color-success)]`}
+                          disabled={loading}
+                        />
+                        <span className="text-xs text-[var(--color-text)]/40">
+                          km
+                        </span>
+                      </div>
+                    </div>
+                  )}
+              </div>
+            </>
           )}
         </div>
       </div>
