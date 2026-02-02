@@ -18,10 +18,11 @@ import {
   UserPlus,
   UserMinus,
   MapPin,
+  Globe,
 } from "lucide-react";
 import Alert from "../components/common/Alert";
 
-// ✅ import BOTH from the same module, and DO NOT redeclare getApiErrorMessage locally
+// Import BOTH from the same module, and DO NOT redeclare getApiErrorMessage locally
 import { searchService, getApiErrorMessage } from "../services/searchService";
 
 const SearchPage = () => {
@@ -116,10 +117,13 @@ const SearchPage = () => {
       defaultDir: "asc",
       labelAsc: "Nearest First",
       labelDesc: "Farthest First",
+      labelRemote: "Remote Only",
       shortLabelAsc: "Near",
       shortLabelDesc: "Far",
+      shortLabelRemote: "Remote",
       iconAsc: MapPin,
       iconDesc: MapPin,
+      iconRemote: Globe,
     },
   ];
 
@@ -273,15 +277,24 @@ const SearchPage = () => {
   };
 
   const handleSortChange = (newSortBy) => {
-    if (newSortBy === "proximity" && searchType === "all") {
-      setSearchType("users");
-    }
-
     let newSortDir = sortDir;
 
     if (newSortBy === sortBy) {
-      newSortDir = sortDir === "asc" ? "desc" : "asc";
+      // Cycling within the same sort option
+      if (newSortBy === "proximity") {
+        // Three-state cycle: asc → desc → remote → asc
+        if (sortDir === "asc") {
+          newSortDir = "desc";
+        } else if (sortDir === "desc") {
+          newSortDir = "remote";
+        } else {
+          newSortDir = "asc";
+        }
+      } else {
+        newSortDir = sortDir === "asc" ? "desc" : "asc";
+      }
     } else {
+      // Switching to a different sort option
       switch (newSortBy) {
         case "name":
         case "proximity":
@@ -289,6 +302,15 @@ const SearchPage = () => {
           break;
         default:
           newSortDir = "desc";
+      }
+    }
+
+    // Handle searchType switching for proximity
+    if (newSortBy === "proximity") {
+      if (newSortDir === "remote") {
+        setSearchType("teams"); // Remote only applies to teams
+      } else if (searchType === "all") {
+        setSearchType("users"); // Original behavior for Near/Far
       }
     }
 
@@ -301,6 +323,10 @@ const SearchPage = () => {
     setSearchType(type);
     if (type === "users" && sortBy === "capacity") {
       setSortBy("name");
+      setSortDir("asc");
+    }
+    // Reset remote sort when switching away from teams-only view
+    if (type !== "teams" && sortBy === "proximity" && sortDir === "remote") {
       setSortDir("asc");
     }
   };
@@ -431,14 +457,20 @@ const SearchPage = () => {
                   ? sortDir
                   : option.defaultDir || "desc";
 
-                const IconComponent =
-                  currentDir === "asc" ? option.iconAsc : option.iconDesc;
-                const label =
-                  currentDir === "asc" ? option.labelAsc : option.labelDesc;
-                const shortLabel =
-                  currentDir === "asc"
-                    ? option.shortLabelAsc
-                    : option.shortLabelDesc;
+                let IconComponent, label, shortLabel;
+                if (currentDir === "remote" && option.iconRemote) {
+                  IconComponent = option.iconRemote;
+                  label = option.labelRemote;
+                  shortLabel = option.shortLabelRemote;
+                } else if (currentDir === "asc") {
+                  IconComponent = option.iconAsc;
+                  label = option.labelAsc;
+                  shortLabel = option.shortLabelAsc;
+                } else {
+                  IconComponent = option.iconDesc;
+                  label = option.labelDesc;
+                  shortLabel = option.shortLabelDesc;
+                }
 
                 return (
                   <button
