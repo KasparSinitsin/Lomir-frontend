@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import Card from "../common/Card";
 import Button from "../common/Button";
+import Tooltip from "../common/Tooltip";
 import {
   Users,
   MapPin,
@@ -934,9 +935,8 @@ const TeamCard = ({
 
             {/* Privacy status */}
             {shouldShowVisibilityIcon() && (
-              <span
-                className="tooltip tooltip-bottom tooltip-lomir"
-                data-tip={
+              <Tooltip
+                content={
                   (teamData.is_public ?? teamData.isPublic)
                     ? "Public Team - visible for everyone"
                     : "Private Team - only visible for Members"
@@ -947,86 +947,79 @@ const TeamCard = ({
                 ) : (
                   <EyeClosed size={14} className="text-gray-500" />
                 )}
-              </span>
+              </Tooltip>
             )}
 
             {/* Pending invitation indicator with date */}
             {(effectiveVariant === "invitation" ||
               pendingInvitationForTeam) && (
-              <span
-                className="flex items-center tooltip tooltip-bottom tooltip-lomir"
-                data-tip={`You were invited to this team${
+              <Tooltip
+                content={`You were invited to this team${
                   getFormattedDate()
-                    ? ` on ${format(
+                    ? `\non ${format(
                         new Date(normalizedData.date),
                         "MMM d, yyyy",
                       )}`
                     : ""
                 }`}
               >
-                <Mail size={14} className="text-pink-500" />
-                {getFormattedDate() && (
-                  <span className="ml-0.5">{getFormattedDate()}</span>
-                )}
-              </span>
+                <span className="flex items-center">
+                  <Mail size={14} className="text-pink-500" />
+                  {getFormattedDate() && (
+                    <span className="ml-0.5">{getFormattedDate()}</span>
+                  )}
+                </span>
+              </Tooltip>
             )}
 
             {/* Pending application indicator with date */}
             {(effectiveVariant === "application" ||
               pendingApplicationForTeam) && (
-              <span
-                className="flex items-center tooltip tooltip-bottom tooltip-lomir"
-                data-tip={`You applied to join this team${
+              <Tooltip
+                content={`You applied to join this team${
                   getFormattedDate()
-                    ? ` on ${format(
+                    ? `\non ${format(
                         new Date(normalizedData.date),
                         "MMM d, yyyy",
                       )}`
                     : ""
                 }`}
               >
-                <SendHorizontal size={14} className="text-info" />
-                {getFormattedDate() && (
-                  <span className="ml-0.5">{getFormattedDate()}</span>
-                )}
-              </span>
+                <span className="flex items-center">
+                  <SendHorizontal size={14} className="text-info" />
+                  {getFormattedDate() && (
+                    <span className="ml-0.5">{getFormattedDate()}</span>
+                  )}
+                </span>
+              </Tooltip>
             )}
 
             {/* User role - show for member variant when user has a role */}
             {userRole && effectiveVariant === "member" && (
               <span className="flex items-center text-base-content/70">
                 {userRole === "owner" && (
-                  <span
-                    className="tooltip tooltip-bottom tooltip-lomir"
-                    data-tip="You are the owner of this team"
-                  >
+                  <Tooltip content="You are the owner of this team">
                     <Crown
                       size={14}
                       className="text-[var(--color-role-owner-bg)]"
                     />
-                  </span>
+                  </Tooltip>
                 )}
                 {userRole === "admin" && (
-                  <span
-                    className="tooltip tooltip-bottom tooltip-lomir"
-                    data-tip="You are an admin of this team"
-                  >
+                  <Tooltip content="You are an admin of this team">
                     <ShieldCheck
                       size={14}
                       className="text-[var(--color-role-admin-bg)]"
                     />
-                  </span>
+                  </Tooltip>
                 )}
                 {userRole === "member" && (
-                  <span
-                    className="tooltip tooltip-bottom tooltip-lomir"
-                    data-tip="You are a member of this team"
-                  >
+                  <Tooltip content="You are a member of this team">
                     <User
                       size={14}
                       className="text-[var(--color-role-member-bg)]"
                     />
-                  </span>
+                  </Tooltip>
                 )}
               </span>
             )}
