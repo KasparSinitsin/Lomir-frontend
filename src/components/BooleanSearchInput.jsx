@@ -19,7 +19,6 @@ const BooleanSearchInput = ({
   const [hasBooleanOperators, setHasBooleanOperators] = useState(false);
   const inputRef = useRef(null);
 
-
   // Check if query contains boolean operators
   const checkBooleanOperators = useCallback((value) => {
     if (!value) return false;
@@ -62,19 +61,19 @@ const BooleanSearchInput = ({
         <div className="flex gap-2">
           <div className="relative flex-1">
             <input
-            ref={inputRef}
+              ref={inputRef}
               type="text"
               value={query}
               onChange={handleChange}
               onKeyDown={handleKeyDown}
               placeholder={placeholder}
-              className={`input input-bordered w-full pr-24 ${
+              className={`input input-bordered w-full pr-12 ${
                 hasBooleanOperators ? "border-primary" : ""
               }`}
               minLength={2}
             />
 
-            <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
+            <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 pointer-events-auto">
               {hasBooleanOperators && (
                 <span className="badge badge-primary badge-sm">Advanced</span>
               )}
