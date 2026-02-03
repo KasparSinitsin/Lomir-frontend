@@ -171,12 +171,21 @@ export const teamService = {
       console.log(`Fetching team details for ID: ${teamId}`);
       const response = await api.get(`/api/teams/${teamId}`);
 
-      // Ensure we preserve the privacy flag for members
-      if (response.data && response.data.members) {
-        response.data.members = response.data.members.map((member) => ({
-          ...member,
-          is_public: member.is_public === true, // Ensure it's a boolean
-        }));
+      // Extract the actual team data from the response
+      // Backend returns: { success: true, data: team }
+      const teamData = response.data?.data || response.data;
+
+      // Ensure the team's is_public is a boolean
+      if (teamData && typeof teamData === "object") {
+        teamData.is_public = teamData.is_public === true;
+
+        // Ensure we preserve the privacy flag for members
+        if (teamData.members && Array.isArray(teamData.members)) {
+          teamData.members = teamData.members.map((member) => ({
+            ...member,
+            is_public: member.is_public === true,
+          }));
+        }
       }
 
       return response.data;
@@ -185,39 +194,6 @@ export const teamService = {
       throw error;
     }
   },
-
-  // getTeamById: async (teamId) => {
-  //   try {
-  //     console.log(`Fetching team details for ID: ${teamId}`);
-  //     const response = await api.get(`/api/teams/${teamId}`);
-
-  //     // Log the complete raw response including headers
-  //     console.log('Raw API response from getTeamById:', {
-  //       status: response.status,
-  //       statusText: response.statusText,
-  //       headers: response.headers,
-  //       data: response.data
-  //     });
-
-  //     // Examine response structure
-  //     if (response.data) {
-  //       console.log('Response data structure:', {
-  //         hasData: Boolean(response.data),
-  //         dataType: typeof response.data,
-  //         keys: Object.keys(response.data),
-  //         hasNestedData: Boolean(response.data.data),
-  //         hasTeamId: Boolean(response.data.id || (response.data.data && response.data.data.id)),
-  //         hasOwnerId: Boolean(response.data.owner_id || (response.data.data && response.data.data.owner_id)),
-  //         hasIsPublic: Boolean(response.data.is_public !== undefined || (response.data.data && response.data.data.is_public !== undefined))
-  //       });
-  //     }
-
-  //     return response.data;
-  //   } catch (error) {
-  //     console.error(`Error fetching team ${teamId}:`, error);
-  //     throw error;
-  //   }
-  // },
 
   // Update team details
   updateTeam: async (teamId, teamData) => {

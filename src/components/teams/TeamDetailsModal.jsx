@@ -187,17 +187,12 @@ const TeamDetailsModal = ({
 
         console.log("Final owner ID determination:", ownerId);
 
-        // Process visibility
-        let isPublicValue = false;
-        const isPublicRaw = teamData.is_public ?? teamData.isPublic;
-
-        if (
-          isPublicRaw === true ||
-          isPublicRaw === "true" ||
-          isPublicRaw === 1
-        ) {
-          isPublicValue = true;
-        }
+        // Process visibility - check both property names with OR logic
+        const isPublicValue =
+          teamData.is_public === true ||
+          teamData.isPublic === true ||
+          teamData.is_public === "true" ||
+          teamData.isPublic === "true";
 
         // Enhance team data with normalized values
         const enhancedTeamData = {
