@@ -167,23 +167,36 @@ export const teamService = {
   // Fetch a single team by ID
 
   getTeamById: async (teamId) => {
+    const normalizeBoolean = (v) => {
+      if (v === true) return true;
+      if (v === false) return false;
+
+      if (typeof v === "string") {
+        const s = v.trim().toLowerCase();
+        if (["true", "1", "t", "yes", "y"].includes(s)) return true;
+        if (["false", "0", "f", "no", "n"].includes(s)) return false;
+      }
+
+      if (typeof v === "number") return v === 1;
+
+      return undefined;
+    };
+
     try {
       console.log(`Fetching team details for ID: ${teamId}`);
       const response = await api.get(`/api/teams/${teamId}`);
 
-      // Extract the actual team data from the response
       // Backend returns: { success: true, data: team }
       const teamData = response.data?.data || response.data;
+      if (!Array.isArray(teamData.members)) teamData.members = [];
 
-      // Ensure the team's is_public is a boolean
       if (teamData && typeof teamData === "object") {
-        teamData.is_public = teamData.is_public === true;
+        teamData.is_public = normalizeBoolean(teamData.is_public);
 
-        // Ensure we preserve the privacy flag for members
         if (teamData.members && Array.isArray(teamData.members)) {
           teamData.members = teamData.members.map((member) => ({
             ...member,
-            is_public: member.is_public === true,
+            is_public: normalizeBoolean(member.is_public),
           }));
         }
       }
