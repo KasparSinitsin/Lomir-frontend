@@ -142,8 +142,8 @@ const UserDetailsModal = ({
   };
 
   const handleStartChat = async () => {
-    if (!user?.id) {
-      console.error("User ID is required to start chat");
+    if (!isAuthenticated) {
+      console.warn("Attempted to start chat while not authenticated");
       return;
     }
 
@@ -215,21 +215,23 @@ const UserDetailsModal = ({
               // Show invite and chat buttons for other users' profiles
               <>
                 {isAuthenticated && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleInviteToTeam}
-                    icon={<UserPlus size={16} />}
-                    title="Invite to team"
-                  />
+                  <>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleInviteToTeam}
+                      icon={<UserPlus size={16} />}
+                      title="Invite to team"
+                    />
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleStartChat}
+                      icon={<MessageCircle size={16} />}
+                      title="Send message"
+                    />
+                  </>
                 )}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleStartChat}
-                  icon={<MessageCircle size={16} />}
-                  title="Send message"
-                />
               </>
             )}
           </>
@@ -240,7 +242,7 @@ const UserDetailsModal = ({
 
   // FOOTER for Send Message button (only for other users)
   const footer =
-    !isOwnProfile() && !loading && user ? (
+    isAuthenticated && !isOwnProfile() && !loading && user ? (
       <div className="flex justify-end">
         <Button
           variant="primary"
