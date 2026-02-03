@@ -8,8 +8,8 @@ const Modal = ({
   title,
   children,
   footer,
-  position = "center",          // "center" | "top"
-  size = "default",             // "small" | "default" | "large"
+  position = "center", // "center" | "top"
+  size = "default", // "small" | "default" | "large"
   maxHeight = "max-h-[90vh]",
   minHeight = "",
   closeOnBackdrop = true,
@@ -36,14 +36,16 @@ const Modal = ({
     size === "small"
       ? "max-w-md"
       : size === "large"
-      ? "max-w-4xl"
-      : "max-w-2xl"; // default
+        ? "max-w-4xl"
+        : "max-w-2xl"; // default
 
   const positionClass =
     position === "top" ? "items-start mt-10" : "items-center";
 
   return createPortal(
-    <div className={`fixed inset-0 z-[999] flex ${positionClass} justify-center`}>
+    <div
+      className={`fixed inset-0 z-[999] flex ${positionClass} justify-center`}
+    >
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/50"
@@ -53,12 +55,12 @@ const Modal = ({
       {/* Modal box */}
       <div
         className={`
-          relative z-[1000]
-          bg-base-100 rounded-xl shadow-soft
-          w-full ${sizeClass} mx-4
-          ${maxHeight} ${minHeight}
-          overflow-y-auto
-        `}
+    relative z-[1000]
+    bg-base-100 rounded-xl shadow-soft
+    w-full ${sizeClass} mx-4
+    ${maxHeight} ${minHeight}
+    overflow-y-auto overflow-x-hidden
+  `}
       >
         {/* Header */}
         {(title || showCloseButton) && (
@@ -96,7 +98,7 @@ const Modal = ({
         )}
       </div>
     </div>,
-    document.body
+    document.body,
   );
 };
 
