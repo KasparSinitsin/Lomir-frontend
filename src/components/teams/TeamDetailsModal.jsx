@@ -308,7 +308,7 @@ const TeamDetailsModal = ({
             .map((tag) => parseInt(tag.id || tag.tag_id, 10))
             .filter((id) => !isNaN(id)),
 
-          // ✅ location fields
+          // location fields
           isRemote: isRemoteVal === true,
           postalCode: (teamData.postal_code ?? teamData.postalCode ?? "") || "",
           city: (teamData.city ?? "") || "",
@@ -485,34 +485,45 @@ const TeamDetailsModal = ({
   };
 
   const shouldAnonymizeMember = (member) => {
-    // Don't anonymize the current user's own profile
-    if (user && (member.user_id === user.id || member.userId === user.id)) {
+    const viewerId = user?.id;
+    const memberId = member?.user_id ?? member?.userId;
+
+    // Never anonymize your own entry
+    if (
+      viewerId != null &&
+      memberId != null &&
+      String(memberId) === String(viewerId)
+    ) {
       return false;
     }
 
-    // Check if the member has a private profile
-    const isPrivateProfile =
-      member.is_public === false || member.isPublic === false;
+    // Determine profile visibility flags (support snake_case + camelCase)
+    const memberIsPublic =
+      member?.is_public === true || member?.isPublic === true;
+    const memberIsPrivate =
+      member?.is_public === false || member?.isPublic === false;
 
-    // If profile is public, never anonymize
-    if (!isPrivateProfile) {
-      return false;
+    // Public profile: always show full info
+    if (memberIsPublic) return false;
+
+    // Are we authenticated AND a member of this team?
+    const viewerIsTeamMember =
+      Boolean(isAuthenticated && viewerId != null) &&
+      Array.isArray(team?.members) &&
+      team.members.some((m) => {
+        const id = m?.user_id ?? m?.userId;
+        return id != null && String(id) === String(viewerId);
+      });
+
+    // Private (or unknown): show full info only to fellow team members
+    // - logged out => anonymize
+    // - logged in but not on this team => anonymize
+    // - logged in and on this team => DO NOT anonymize
+    if (memberIsPrivate || (!memberIsPublic && !memberIsPrivate)) {
+      return !viewerIsTeamMember;
     }
 
-    // Profile is private from here on...
-
-    // If not logged in, always anonymize private profiles
-    if (!isAuthenticated || !user) {
-      return true;
-    }
-
-    // If logged in, check if current user is a team member
-    const isCurrentUserTeamMember = team?.members?.some(
-      (m) => m.user_id === user.id || m.userId === user.id,
-    );
-
-    // Anonymize if viewer is NOT a team member
-    return !isCurrentUserTeamMember;
+    return false;
   };
 
   const handleClose = useCallback(() => {
