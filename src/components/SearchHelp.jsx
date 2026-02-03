@@ -27,8 +27,8 @@ const SearchHelp = ({ className = "", anchorRef }) => {
     <>
       {/* Inline trigger inside the input */}
       <div className={`relative ${className}`}>
-        {/* DaisyUI tooltip (doesn't take space in the input) */}
-        <div className="tooltip tooltip-left" data-tip="Search tips">
+        {/* DaisyUI tooltip with Lomir theme */}
+        <div className="tooltip tooltip-left tooltip-lomir" data-tip="Search tips">
           <button
             ref={triggerRef}
             type="button"
