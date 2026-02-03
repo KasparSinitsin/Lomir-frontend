@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import Card from "../common/Card";
 import Button from "../common/Button";
+import Tooltip from "../common/Tooltip";
 import { Tag, MessageCircle, Eye, EyeClosed } from "lucide-react";
 import UserDetailsModal from "./UserDetailsModal";
 import { useAuth } from "../../contexts/AuthContext";
@@ -9,7 +10,7 @@ import { getUserInitials } from "../../utils/userHelpers";
 
 const UserCard = ({ user, onUpdate }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const { user: currentUser, isAuthenticated } = useAuth(); // Add this line
+  const { user: currentUser, isAuthenticated } = useAuth();
 
   // For debugging
   console.log("User data in UserCard:", user);
@@ -98,11 +99,9 @@ const UserCard = ({ user, onUpdate }) => {
         subtitle={
           <span className="flex items-center text-base-content/70 text-sm gap-1.5">
             {user.username && <span>@{user.username}</span>}
-
             {shouldShowVisibilityIcon() && (
-              <span
-                className="tooltip tooltip-bottom tooltip-lomir"
-                data-tip={
+              <Tooltip
+                content={
                   isUserProfilePublic()
                     ? "Public Profile - visible for everyone"
                     : "Private Profile - only visible for you"
@@ -113,7 +112,7 @@ const UserCard = ({ user, onUpdate }) => {
                 ) : (
                   <EyeClosed size={14} className="text-gray-500" />
                 )}
-              </span>
+              </Tooltip>
             )}
           </span>
         }
