@@ -311,10 +311,20 @@ const TeamCard = ({
           const response = await teamService.getTeamById(teamData.id);
           const fullTeam = response?.data?.data ?? response?.data;
 
+          console.log("DEBUG is_public:", {
+            teamId: fullTeam?.id,
+            teamName: fullTeam?.name,
+            is_public_raw: fullTeam?.is_public,
+            is_public_type: typeof fullTeam?.is_public,
+            is_public_normalized: fullTeam?.is_public === true,
+          });
+
           if (fullTeam) {
             setTeamData((prev) => ({
               ...prev,
               ...fullTeam,
+              is_public:
+                fullTeam.is_public === true || fullTeam.is_public === "true",
               tags: Array.isArray(fullTeam.tags) ? fullTeam.tags : prev.tags,
             }));
 
@@ -570,8 +580,14 @@ const TeamCard = ({
         const response = await teamService.getTeamById(teamData.id);
         if (response && response.data) {
           const fullTeam = response?.data?.data ?? response?.data;
-          setTeamData(fullTeam);
-          if (onUpdate) onUpdate(fullTeam);
+          // Normalize is_public to ensure it's a boolean
+          const normalizedTeam = {
+            ...fullTeam,
+            is_public:
+              fullTeam.is_public === true || fullTeam.is_public === "true",
+          };
+          setTeamData(normalizedTeam);
+          if (onUpdate) onUpdate(normalizedTeam);
         }
       } catch (error) {
         console.error("Error refreshing team data:", error);
@@ -937,12 +953,12 @@ const TeamCard = ({
             {shouldShowVisibilityIcon() && (
               <Tooltip
                 content={
-                  (teamData.is_public ?? teamData.isPublic)
+                  teamData.is_public === true || teamData.isPublic === true
                     ? "Public Team - visible for everyone"
                     : "Private Team - only visible for Members"
                 }
               >
-                {(teamData.is_public ?? teamData.isPublic) ? (
+                {teamData.is_public === true || teamData.isPublic === true ? (
                   <EyeIcon size={14} className="text-green-600" />
                 ) : (
                   <EyeClosed size={14} className="text-gray-500" />
