@@ -42,7 +42,7 @@ export const userService = {
   updateUser: async (userId, userData) => {
     try {
       console.log(
-        `Sending request to: ${api.defaults.baseURL}/api/users/${userId}`
+        `Sending request to: ${api.defaults.baseURL}/api/users/${userId}`,
       );
       console.log("With data:", userData);
 
@@ -100,6 +100,21 @@ export const userService = {
   },
 
   /**
+   * Fetches badges for a specific user.
+   * @param {string|number} userId - The ID of the user whose badges to fetch.
+   * @returns {Promise<object>} A promise resolving to the user's badges.
+   */
+  getUserBadges: async (userId) => {
+    try {
+      const response = await api.get(`/api/users/${userId}/badges`);
+      return response.data;
+    } catch (error) {
+      console.error(`Error fetching badges for user ${userId}:`, error);
+      throw error;
+    }
+  },
+
+  /**
    * Deletes the current user's profile and all associated data.
    * @param {string|number} userId - The ID of the user to delete.
    * @returns {Promise<object>} A promise resolving to the deletion result.
@@ -128,7 +143,7 @@ export const userService = {
       throw error;
     }
   },
-};  
+};
 
 // Export the service object as the default export
 export default userService;

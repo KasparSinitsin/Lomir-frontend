@@ -3,11 +3,11 @@ import Modal from "../common/Modal";
 import UserBioSection from "./UserBioSection";
 import LocationSection from "../common/LocationSection";
 import TagsDisplaySection from "../tags/TagsDisplaySection";
+import BadgesDisplaySection from "../badges/BadgesDisplaySection";
 import UserProfileHeaderSection from "./UserProfileHeaderSection";
 import { messageService } from "../../services/messageService";
 import { userService } from "../../services/userService";
 import Button from "../common/Button";
-import TagSelector from "../tags/TagSelector";
 import Alert from "../common/Alert";
 import { useAuth } from "../../contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
@@ -315,6 +315,14 @@ const UserDetailsModal = ({
               tags={user?.tags}
               emptyMessage="No tags yet"
             />
+
+            <BadgesDisplaySection
+              title="Badges"
+              badges={user?.badges}
+              emptyMessage="No badges earned yet"
+              maxVisible={8}
+            />
+            
           </div>
         )}
       </Modal>

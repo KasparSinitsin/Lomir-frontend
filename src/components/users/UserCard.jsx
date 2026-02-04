@@ -135,6 +135,7 @@ const UserCard = ({ user, onUpdate }) => {
           entityType="user"
           distance={user.distance_km ?? user.distanceKm}
           tags={user.tags}
+          badges={user.badges}
         />
 
         <div className="mt-auto">

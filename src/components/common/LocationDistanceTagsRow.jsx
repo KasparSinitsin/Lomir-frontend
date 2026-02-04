@@ -1,5 +1,5 @@
 import React from "react";
-import { Tag } from "lucide-react";
+import { Tag, Award } from "lucide-react";
 import LocationSection from "./LocationSection";
 
 /**
@@ -20,6 +20,7 @@ const LocationDistanceTagsRow = ({
   entityType = "user",
   distance = null,
   tags = null,
+  badges = null,
   getDisplayTags = null,
   className = "",
   maxVisible = 5,
@@ -50,6 +51,14 @@ const LocationDistanceTagsRow = ({
     return [];
   };
 
+  const normalizeBadges = (input) => {
+    if (!input || !Array.isArray(input)) return [];
+    return input.filter((b) => b && b.name);
+  };
+
+  const badgeList = normalizeBadges(badges);
+  const hasBadges = badgeList.length > 0;
+
   // TeamCard path: you already have a robust getDisplayTags() there
   // UserCard path: you pass tags directly (string or array)
   const tagList =
@@ -64,11 +73,13 @@ const LocationDistanceTagsRow = ({
   if (!hasTags && !entity) return null;
 
   const visibleTags = tagList.slice(0, maxVisible);
-  const remainingCount = tagList.length - maxVisible;
+  const remainingTagCount = tagList.length - maxVisible;
+
+  const visibleBadges = badgeList.slice(0, 3);
+  const remainingBadgeCount = badgeList.length - 3;
 
   return (
     <div className={`space-y-2 mb-4 ${className}`}>
-      {/* Location + Distance (wraps in one line if space is available) */}
       <LocationSection
         entity={entity}
         entityType={entityType}
@@ -76,13 +87,29 @@ const LocationDistanceTagsRow = ({
         distance={distance}
       />
 
-      {/* Tags / Interests & Skills */}
       {hasTags && (
         <div className="flex items-start text-sm text-base-content/70">
           <Tag size={16} className="mr-1 flex-shrink-0 mt-0.5" />
           <span>
             {visibleTags.join(", ")}
-            {remainingCount > 0 && ` +${remainingCount}`}
+            {remainingTagCount > 0 && ` +${remainingTagCount}`}
+          </span>
+        </div>
+      )}
+
+      {hasBadges && (
+        <div className="flex items-start text-sm text-base-content/70">
+          <Award size={16} className="mr-1 flex-shrink-0 mt-0.5" />
+          <span>
+            {visibleBadges.map((badge, index) => (
+              <span key={badge.id}>
+                <span style={{ color: badge.color }} className="font-medium">
+                  {badge.name}
+                </span>
+                {index < visibleBadges.length - 1 && ", "}
+              </span>
+            ))}
+            {remainingBadgeCount > 0 && ` +${remainingBadgeCount}`}
           </span>
         </div>
       )}
