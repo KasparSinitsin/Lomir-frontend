@@ -2,18 +2,15 @@ import React, { useState } from "react";
 import Card from "../common/Card";
 import Button from "../common/Button";
 import Tooltip from "../common/Tooltip";
-import { Tag, MessageCircle, Eye, EyeClosed } from "lucide-react";
+import { Tag, Eye, EyeClosed } from "lucide-react";
 import UserDetailsModal from "./UserDetailsModal";
 import { useAuth } from "../../contexts/AuthContext";
-import LocationDisplay from "../common/LocationDisplay";
 import { getUserInitials } from "../../utils/userHelpers";
+import LocationSection from "../common/LocationSection";
 
 const UserCard = ({ user, onUpdate }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const { user: currentUser, isAuthenticated } = useAuth();
-
-  // For debugging
-  console.log("User data in UserCard:", user);
 
   // Create a display name with fallbacks
   const displayName = () => {
@@ -92,6 +89,8 @@ const UserCard = ({ user, onUpdate }) => {
     }
   };
 
+  console.log("UserCard data:", user, "distance_km:", user.distance_km);
+
   return (
     <>
       <Card
@@ -131,26 +130,22 @@ const UserCard = ({ user, onUpdate }) => {
           </p>
         )}
 
-        <div className="flex flex-wrap items-center gap-2 mb-4">
-          {/* Location display with geocoding */}
-          {(user.postal_code || user.postalCode || user.city) && (
-            <LocationDisplay
-              postalCode={user.postal_code || user.postalCode}
-              city={user.city}
-              country={user.country}
-              displayType="full"
-              showPostalCode={true}
-              className="bg-base-200/50 py-1"
-            />
-          )}
+        <div className="space-y-2 mb-4">
+          {/* Location and Distance */}
+          <LocationSection
+            entity={user}
+            entityType="user"
+            compact={true}
+            distance={user.distance_km ?? user.distanceKm}
+          />
 
-          {/* Tags */}
-          {user.tags && (
+          {/* Tags / Interests & Skills */}
+          {((Array.isArray(user.tags) && user.tags.length > 0) ||
+            (typeof user.tags === "string" && user.tags.trim().length > 0)) && (
             <div className="flex items-start text-sm text-base-content/70">
               <Tag size={16} className="mr-1 flex-shrink-0 mt-0.5" />
               <span>
                 {(() => {
-                  // Parse tags - handle both string and array formats
                   const tagsArray = Array.isArray(user.tags)
                     ? user.tags.map((tag) =>
                         typeof tag === "string"
@@ -164,7 +159,7 @@ const UserCard = ({ user, onUpdate }) => {
                           .filter(Boolean)
                       : [];
 
-                  const maxVisible = 5; // Number of tags to show before truncating
+                  const maxVisible = 5;
                   const visibleTags = tagsArray.slice(0, maxVisible);
                   const remainingCount = tagsArray.length - maxVisible;
 

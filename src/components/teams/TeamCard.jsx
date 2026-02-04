@@ -4,23 +4,14 @@ import Button from "../common/Button";
 import Tooltip from "../common/Tooltip";
 import {
   Users,
-  MapPin,
-  Trash2,
   EyeClosed,
   EyeIcon,
   Tag,
-  Calendar,
-  AlertCircle,
-  Check,
-  X,
-  Send,
-  MessageSquare,
   User,
   Crown,
   ShieldCheck,
   SendHorizontal,
   Mail,
-  Globe,
 } from "lucide-react";
 import TeamDetailsModal from "./TeamDetailsModal";
 import UserDetailsModal from "../users/UserDetailsModal";
@@ -933,6 +924,8 @@ const TeamCard = ({
     );
   };
 
+  console.log("TeamCard data:", teamData, "distance_km:", teamData.distance_km);
+
   // ============ Main Render ============
 
   return (
@@ -1063,15 +1056,53 @@ const TeamCard = ({
           {teamData.description || "No description"}
         </p>
 
-        <LocationSection
-          entity={teamData}
-          entityType="team"
-          compact={true}
-          className="mb-4"
-        />
+        {(() => {
+          const displayTags = getDisplayTags();
 
-        {/* Badges (status, date, tags, etc.) */}
-        {renderBadges()}
+          return (
+            <div className="space-y-2 mb-4">
+              {/* Location and Distance */}
+              <LocationSection
+                entity={teamData}
+                entityType="team"
+                compact={true}
+                distance={teamData.distance_km ?? teamData.distanceKm}
+              />
+
+              {/* Tags / Interests & Skills */}
+              {displayTags.length > 0 && (
+                <div className="flex items-start text-sm text-base-content/70">
+                  <Tag size={16} className="mr-1 flex-shrink-0 mt-0.5" />
+                  <span>
+                    {(() => {
+                      const maxVisible = 5;
+                      const visibleTags = displayTags.slice(0, maxVisible);
+                      const remainingCount = displayTags.length - maxVisible;
+
+                      return (
+                        <>
+                          {visibleTags.map((tag, index) => {
+                            const tagName =
+                              typeof tag === "string"
+                                ? tag
+                                : tag.name || tag.tag || "";
+                            return (
+                              <span key={index}>
+                                {index > 0 ? ", " : ""}
+                                {tagName}
+                              </span>
+                            );
+                          })}
+                          {remainingCount > 0 && ` +${remainingCount}`}
+                        </>
+                      );
+                    })()}
+                  </span>
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {/* Message preview (invitation/application variants) */}
         {renderMessage()}
