@@ -39,6 +39,7 @@ const Profile = () => {
   const [localUser, setUser] = useState(null);
   const [registrationMessage, setRegistrationMessage] = useState("");
   const [tags, setTags] = useState([]);
+  const [userBadges, setUserBadges] = useState([]);
   const [isEditing, setIsEditing] = useState(false);
   const [selectedTags, setSelectedTags] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -211,6 +212,20 @@ const Profile = () => {
         }
       }
     };
+
+    const fetchUserBadges = async () => {
+      if (user) {
+        try {
+          const badgesResponse = await userService.getUserBadges(user.id);
+          setUserBadges(badgesResponse.data || []);
+        } catch (error) {
+          console.error("Error fetching user badges:", error);
+          setUserBadges([]);
+        }
+      }
+    };
+
+    fetchUserBadges();
 
     fetchTags();
     fetchUserTags();
@@ -927,19 +942,17 @@ const Profile = () => {
             </div>
 
             {/* Badges Section */}
+
             <div className="px-6 mt-6 pb-6">
               <div className="flex items-center mb-4">
                 <Award size={18} className="mr-2 text-primary flex-shrink-0" />
                 <h3 className="font-medium">My Badges</h3>
               </div>
-              {tags.filter((tag) => tag.type === "badge").length > 0 ? (
+              {userBadges.length > 0 ? (
                 <Grid cols={2} md={3} lg={4} gap={4}>
-                  {tags.map(
-                    (tag) =>
-                      tag.type === "badge" && (
-                        <BadgeCard key={tag.id} badge={tag} />
-                      ),
-                  )}
+                  {userBadges.map((badge) => (
+                    <BadgeCard key={badge.id} badge={badge} />
+                  ))}
                 </Grid>
               ) : (
                 <span className="badge badge-warning">
