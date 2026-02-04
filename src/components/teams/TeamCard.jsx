@@ -4,23 +4,14 @@ import Button from "../common/Button";
 import Tooltip from "../common/Tooltip";
 import {
   Users,
-  MapPin,
-  Trash2,
   EyeClosed,
   EyeIcon,
   Tag,
-  Calendar,
-  AlertCircle,
-  Check,
-  X,
-  Send,
-  MessageSquare,
   User,
   Crown,
   ShieldCheck,
   SendHorizontal,
   Mail,
-  Globe,
 } from "lucide-react";
 import TeamDetailsModal from "./TeamDetailsModal";
 import UserDetailsModal from "../users/UserDetailsModal";
@@ -34,7 +25,7 @@ import NotificationBadge from "../common/NotificationBadge";
 import TeamApplicationsModal from "./TeamApplicationsModal";
 import { getUserInitials, getDisplayName } from "../../utils/userHelpers";
 import { format } from "date-fns";
-import LocationSection from "../common/LocationSection";
+import LocationDistanceTagsRow from "../common/LocationDistanceTagsRow";
 
 /**
  * Unified TeamCard Component
@@ -933,6 +924,8 @@ const TeamCard = ({
     );
   };
 
+  console.log("TeamCard data:", teamData, "distance_km:", teamData.distance_km);
+
   // ============ Main Render ============
 
   return (
@@ -1063,15 +1056,12 @@ const TeamCard = ({
           {teamData.description || "No description"}
         </p>
 
-        <LocationSection
+        <LocationDistanceTagsRow
           entity={teamData}
           entityType="team"
-          compact={true}
-          className="mb-4"
+          distance={teamData.distance_km ?? teamData.distanceKm}
+          getDisplayTags={getDisplayTags}
         />
-
-        {/* Badges (status, date, tags, etc.) */}
-        {renderBadges()}
 
         {/* Message preview (invitation/application variants) */}
         {renderMessage()}

@@ -1,5 +1,5 @@
 import React from "react";
-import { MapPin, Globe } from "lucide-react";
+import { MapPin, Globe, Ruler } from "lucide-react";
 import {
   normalizeLocationData,
   formatLocation,
@@ -18,6 +18,7 @@ import {
  * @param {string} props.className - Additional CSS classes
  * @param {string} props.title - Section title (default: "Location")
  * @param {boolean} props.showTitle - Whether to show section title (default: true for full, false for compact)
+ *  * @param {number} props.distance - Distance in km (optional, for search results)
  */
 const LocationSection = ({
   entity,
@@ -26,6 +27,7 @@ const LocationSection = ({
   className = "",
   title = "Location",
   showTitle,
+  distance = null,
 }) => {
   // Normalize the location data (handles snake_case/camelCase)
   const location = normalizeLocationData(entity);
@@ -48,21 +50,36 @@ const LocationSection = ({
   if (compact) {
     return (
       <div
-        className={`flex items-start text-sm text-base-content/70 ${className}`}
+        className={`flex flex-wrap items-start gap-x-3 gap-y-2 text-sm text-base-content/70 ${className}`}
+
       >
-        <IconComponent size={16} className="mr-1 flex-shrink-0 mt-0.5" />
-        {isRemote ? (
-          <span>Remote</span>
-        ) : (
-          <span>
-            {formatLocation(location, {
-              displayType: "full",
-              showPostalCode: true,
-              showState: false,
-              showCountry: true,
-            })}
-          </span>
-        )}
+        {/* Location info */}
+        <div className="flex items-start">
+          <IconComponent size={16} className="mr-1 flex-shrink-0 mt-0.5" />
+          {isRemote ? (
+            <span>Remote</span>
+          ) : (
+            <span>
+              {formatLocation(location, {
+                displayType: "full",
+                showPostalCode: true,
+                showState: false,
+                showCountry: true,
+              })}
+            </span>
+          )}
+        </div>
+
+        {/* Distance info - only show for non-remote entities with valid distance */}
+        {!isRemote &&
+          distance !== null &&
+          distance !== undefined &&
+          distance < 999999 && (
+            <div className="flex items-start">
+              <Ruler size={16} className="mr-1 flex-shrink-0 mt-0.5" />
+              <span>{Math.round(distance)} km away</span>
+            </div>
+          )}
       </div>
     );
   }
