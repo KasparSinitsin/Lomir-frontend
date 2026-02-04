@@ -25,7 +25,7 @@ import NotificationBadge from "../common/NotificationBadge";
 import TeamApplicationsModal from "./TeamApplicationsModal";
 import { getUserInitials, getDisplayName } from "../../utils/userHelpers";
 import { format } from "date-fns";
-import LocationSection from "../common/LocationSection";
+import LocationDistanceTagsRow from "../common/LocationDistanceTagsRow";
 
 /**
  * Unified TeamCard Component
@@ -1056,53 +1056,12 @@ const TeamCard = ({
           {teamData.description || "No description"}
         </p>
 
-        {(() => {
-          const displayTags = getDisplayTags();
-
-          return (
-            <div className="space-y-2 mb-4">
-              {/* Location and Distance */}
-              <LocationSection
-                entity={teamData}
-                entityType="team"
-                compact={true}
-                distance={teamData.distance_km ?? teamData.distanceKm}
-              />
-
-              {/* Tags / Interests & Skills */}
-              {displayTags.length > 0 && (
-                <div className="flex items-start text-sm text-base-content/70">
-                  <Tag size={16} className="mr-1 flex-shrink-0 mt-0.5" />
-                  <span>
-                    {(() => {
-                      const maxVisible = 5;
-                      const visibleTags = displayTags.slice(0, maxVisible);
-                      const remainingCount = displayTags.length - maxVisible;
-
-                      return (
-                        <>
-                          {visibleTags.map((tag, index) => {
-                            const tagName =
-                              typeof tag === "string"
-                                ? tag
-                                : tag.name || tag.tag || "";
-                            return (
-                              <span key={index}>
-                                {index > 0 ? ", " : ""}
-                                {tagName}
-                              </span>
-                            );
-                          })}
-                          {remainingCount > 0 && ` +${remainingCount}`}
-                        </>
-                      );
-                    })()}
-                  </span>
-                </div>
-              )}
-            </div>
-          );
-        })()}
+        <LocationDistanceTagsRow
+          entity={teamData}
+          entityType="team"
+          distance={teamData.distance_km ?? teamData.distanceKm}
+          getDisplayTags={getDisplayTags}
+        />
 
         {/* Message preview (invitation/application variants) */}
         {renderMessage()}
