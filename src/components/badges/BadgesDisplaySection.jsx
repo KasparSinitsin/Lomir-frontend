@@ -8,6 +8,7 @@ const BadgesDisplaySection = ({
   maxVisible = 6,
   compact = false,
   className = "",
+  groupByCategory = false, // ✅ new
 }) => {
   if (!badges || badges.length === 0) {
     if (compact) return null;
@@ -44,23 +45,44 @@ const BadgesDisplaySection = ({
     );
   }
 
+  // ✅ FULL MODE: optionally order badges by category (alphabetical) without headings
+  const normalizeCategory = (c) => (c ? String(c).trim() : "Other");
+
+  const badgesForDisplay = groupByCategory
+    ? [...visibleBadges].sort((a, b) => {
+        const ca = normalizeCategory(a.category);
+        const cb = normalizeCategory(b.category);
+
+        const catCmp = ca.localeCompare(cb, undefined, { sensitivity: "base" });
+        if (catCmp !== 0) return catCmp;
+
+        // Optional: stable-ish ordering within category
+        return String(a.name || "").localeCompare(String(b.name || ""), undefined, {
+          sensitivity: "base",
+        });
+      })
+    : visibleBadges;
+
   return (
     <div className={className}>
       <div className="flex items-center mb-3">
         <Award size={18} className="mr-2 text-primary flex-shrink-0" />
         <h3 className="font-medium">{title}</h3>
       </div>
+
+      {/* “Pearls on a thread”: same pill shape/size as TagsDisplaySection */}
       <div className="flex flex-wrap gap-2">
-        {visibleBadges.map((badge) => (
+        {badgesForDisplay.map((badge) => (
           <span
             key={badge.id}
-            className="badge badge-outline badge-sm text-xs px-2 py-1"
+            className="badge badge-primary badge-outline p-3"
             style={{ borderColor: badge.color, color: badge.color }}
             title={badge.description || badge.category}
           >
             {badge.name}
           </span>
         ))}
+
         {remainingCount > 0 && (
           <span className="badge badge-ghost badge-sm text-xs">
             +{remainingCount} more
@@ -69,6 +91,7 @@ const BadgesDisplaySection = ({
       </div>
     </div>
   );
+
 };
 
 export default BadgesDisplaySection;
