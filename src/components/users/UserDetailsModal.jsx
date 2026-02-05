@@ -321,8 +321,8 @@ const UserDetailsModal = ({
               badges={user?.badges}
               emptyMessage="No badges earned yet"
               maxVisible={8}
+              groupByCategory={true}
             />
-            
           </div>
         )}
       </Modal>
