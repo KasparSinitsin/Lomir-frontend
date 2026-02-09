@@ -317,11 +317,15 @@ const UserDetailsModal = ({
             />
 
             <BadgesDisplaySection
-              title="Badges"
+              title={`Badges${
+                Number.isFinite(user?.total_badge_credits)
+                  ? ` · ${user.total_badge_credits} ct.`
+                  : ""
+              }`}
               badges={user?.badges}
               emptyMessage="No badges earned yet"
               maxVisible={8}
-              groupByCategory={true}
+              groupByCategory={false}
             />
           </div>
         )}

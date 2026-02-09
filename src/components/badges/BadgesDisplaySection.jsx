@@ -8,7 +8,7 @@ const BadgesDisplaySection = ({
   maxVisible = 6,
   compact = false,
   className = "",
-  groupByCategory = false, // ✅ new
+  groupByCategory = false,
 }) => {
   if (!badges || badges.length === 0) {
     if (compact) return null;
@@ -28,7 +28,9 @@ const BadgesDisplaySection = ({
 
   if (compact) {
     return (
-      <div className={`flex items-start text-sm text-base-content/70 ${className}`}>
+      <div
+        className={`flex items-start text-sm text-base-content/70 ${className}`}
+      >
         <Award size={16} className="mr-1 flex-shrink-0 mt-0.5" />
         <span>
           {visibleBadges.map((badge, index) => (
@@ -45,7 +47,7 @@ const BadgesDisplaySection = ({
     );
   }
 
-  // ✅ FULL MODE: optionally order badges by category (alphabetical) without headings
+  // FULL MODE: optionally order badges by category (alphabetical) without headings
   const normalizeCategory = (c) => (c ? String(c).trim() : "Other");
 
   const badgesForDisplay = groupByCategory
@@ -57,9 +59,13 @@ const BadgesDisplaySection = ({
         if (catCmp !== 0) return catCmp;
 
         // Optional: stable-ish ordering within category
-        return String(a.name || "").localeCompare(String(b.name || ""), undefined, {
-          sensitivity: "base",
-        });
+        return String(a.name || "").localeCompare(
+          String(b.name || ""),
+          undefined,
+          {
+            sensitivity: "base",
+          },
+        );
       })
     : visibleBadges;
 
@@ -74,12 +80,17 @@ const BadgesDisplaySection = ({
       <div className="flex flex-wrap gap-2">
         {badgesForDisplay.map((badge) => (
           <span
-            key={badge.id}
+            key={badge.id ?? badge.badge_id ?? badge.name}
             className="badge badge-primary badge-outline p-3"
             style={{ borderColor: badge.color, color: badge.color }}
             title={badge.description || badge.category}
           >
             {badge.name}
+            {Number.isFinite(badge.total_credits) && (
+              <span className="ml-2 text-xs opacity-80">
+                · {badge.total_credits} ct.
+              </span>
+            )}
           </span>
         ))}
 
@@ -91,7 +102,6 @@ const BadgesDisplaySection = ({
       </div>
     </div>
   );
-
 };
 
 export default BadgesDisplaySection;

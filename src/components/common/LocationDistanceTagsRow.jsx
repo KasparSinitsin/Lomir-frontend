@@ -53,7 +53,14 @@ const LocationDistanceTagsRow = ({
 
   const normalizeBadges = (input) => {
     if (!input || !Array.isArray(input)) return [];
-    return input.filter((b) => b && b.name);
+
+    return input
+      .filter((b) => b && b.name)
+      .map((b) => ({
+        ...b,
+        id: b.id ?? b.badge_id,
+      }))
+      .filter((b) => b.id);
   };
 
   const badgeList = normalizeBadges(badges);
@@ -102,7 +109,7 @@ const LocationDistanceTagsRow = ({
           <Award size={16} className="mr-1 flex-shrink-0 mt-0.5" />
           <span>
             {visibleBadges.map((badge, index) => (
-              <span key={badge.id}>
+              <span key={badge.id ?? badge.name}>
                 <span style={{ color: badge.color }} className="font-medium">
                   {badge.name}
                 </span>

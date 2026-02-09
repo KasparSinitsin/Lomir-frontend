@@ -23,8 +23,6 @@ import {
 import { tagService } from "../services/tagService";
 import { userService } from "../services/userService";
 import BadgeCard from "../components/badges/BadgeCard";
-import TagSelector from "../components/tags/TagSelector";
-import TagInputV2 from "../components/tags/TagInputV2";
 import TagsDisplaySection from "../components/tags/TagsDisplaySection";
 import IconToggle from "../components/common/IconToggle";
 import LocationDisplay from "../components/common/LocationDisplay";
@@ -36,10 +34,10 @@ import { format } from "date-fns";
 
 const Profile = () => {
   const { user, updateUser, logout } = useAuth();
-  const [localUser, setUser] = useState(null);
+  const [localUser, setLocalUser] = useState(null);
   const [registrationMessage, setRegistrationMessage] = useState("");
   const [tags, setTags] = useState([]);
-  const [userBadges, setUserBadges] = useState([]);
+  // badges come from GET /api/users/:id as totals in user.badges
   const [isEditing, setIsEditing] = useState(false);
   const [selectedTags, setSelectedTags] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -67,6 +65,9 @@ const Profile = () => {
   });
   // Add a flag to track if initial data load has happened
   const [initialDataLoaded, setInitialDataLoaded] = useState(false);
+
+  // Prefer freshest API user (includes badges totals). Fall back to auth context.
+  const displayUser = localUser || user;
 
   // Format member since date
   const getMemberSinceDate = () => {
@@ -143,6 +144,9 @@ const Profile = () => {
           setImagePreview(apiUserData.avatarUrl || apiUserData.avatar_url);
         }
 
+        // Store API user locally (includes badges totals as `badges`)
+        setLocalUser(apiUserData);
+
         // Mark initial data as loaded
         setInitialDataLoaded(true);
       }
@@ -213,19 +217,7 @@ const Profile = () => {
       }
     };
 
-    const fetchUserBadges = async () => {
-      if (user) {
-        try {
-          const badgesResponse = await userService.getUserBadges(user.id);
-          setUserBadges(badgesResponse.data || []);
-        } catch (error) {
-          console.error("Error fetching user badges:", error);
-          setUserBadges([]);
-        }
-      }
-    };
-
-    fetchUserBadges();
+    // Badges are loaded via userService.getUserById(user.id) (totals -> user.badges)
 
     fetchTags();
     fetchUserTags();
@@ -294,7 +286,7 @@ const Profile = () => {
           avatarUrl: null,
         };
         updateUser(updatedUser);
-        setUser(updatedUser);
+        setLocalUser(updatedUser);
 
         // Reset the file input in form data
         setFormData((prev) => ({
@@ -505,7 +497,7 @@ const Profile = () => {
         updateUser(updatedUser);
 
         // Force a local state update
-        setUser(updatedUser);
+        setLocalUser(updatedUser);
 
         // Reset form data with updated values
         setFormData((prev) => ({
@@ -556,7 +548,7 @@ const Profile = () => {
     );
   };
 
-  if (!user) {
+  if (!displayUser) {
     return (
       <PageContainer>
         <div className="w-full max-w-lg mx-auto">
@@ -941,17 +933,21 @@ const Profile = () => {
               />
             </div>
 
-            {/* Badges Section */}
-
+            {/* Badges Section (totals from GET /api/users/:id) */}
             <div className="px-6 mt-6 pb-6">
               <div className="flex items-center mb-4">
                 <Award size={18} className="mr-2 text-primary flex-shrink-0" />
                 <h3 className="font-medium">My Badges</h3>
               </div>
-              {userBadges.length > 0 ? (
+
+              {Array.isArray(displayUser?.badges) &&
+              displayUser.badges.length > 0 ? (
                 <Grid cols={2} md={3} lg={4} gap={4}>
-                  {userBadges.map((badge) => (
-                    <BadgeCard key={badge.id} badge={badge} />
+                  {displayUser.badges.map((badge) => (
+                    <BadgeCard
+                      key={`${badge.id}-${badge.last_awarded_at || ""}`}
+                      badge={badge}
+                    />
                   ))}
                 </Grid>
               ) : (
