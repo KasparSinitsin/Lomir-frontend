@@ -73,7 +73,7 @@ const BadgesDisplaySection = ({
         return String(a.name || "").localeCompare(
           String(b.name || ""),
           undefined,
-          { sensitivity: "base" }
+          { sensitivity: "base" },
         );
       })
     : visibleBadges;
