@@ -105,21 +105,14 @@ const LocationDistanceTagsRow = ({
       )}
 
       {hasBadges && (
-        <div className="flex items-start text-sm text-base-content/70">
-          <Award size={16} className="mr-1 flex-shrink-0 mt-0.5" />
-          <span>
-            {visibleBadges.map((badge, index) => (
-              <span key={badge.id ?? badge.name}>
-                <span style={{ color: badge.color }} className="font-medium">
-                  {badge.name}
-                </span>
-                {index < visibleBadges.length - 1 && ", "}
-              </span>
-            ))}
-            {remainingBadgeCount > 0 && ` +${remainingBadgeCount}`}
-          </span>
-        </div>
-      )}
+  <div className="flex items-start text-sm text-base-content/70">
+    <Award size={16} className="mr-1 flex-shrink-0 mt-0.5" />
+    <span>
+      {visibleBadges.map((b) => b.name).join(", ")}
+      {remainingBadgeCount > 0 && ` +${remainingBadgeCount}`}
+    </span>
+  </div>
+)}
     </div>
   );
 };
