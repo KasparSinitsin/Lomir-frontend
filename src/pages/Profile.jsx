@@ -22,7 +22,8 @@ import {
 } from "lucide-react";
 import { tagService } from "../services/tagService";
 import { userService } from "../services/userService";
-import BadgeCard from "../components/badges/BadgeCard";
+import BadgeCategoryCard from "../components/badges/BadgeCategoryCard";
+import BadgeCategoryModal from "../components/badges/BadgeCategoryModal";
 import TagsDisplaySection from "../components/tags/TagsDisplaySection";
 import IconToggle from "../components/common/IconToggle";
 import LocationDisplay from "../components/common/LocationDisplay";
@@ -49,6 +50,16 @@ const Profile = () => {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [avatarDeleteLoading, setAvatarDeleteLoading] = useState(false);
+
+  const [badgeCategoryModal, setBadgeCategoryModal] = useState({
+    isOpen: false,
+    category: null,
+    color: null,
+    badges: [],
+    totalCredits: 0,
+  });
+  const [detailedBadgeAwards, setDetailedBadgeAwards] = useState([]);
+  const [badgeModalLoading, setBadgeModalLoading] = useState(false);
 
   // Add form errors state
   const [formErrors, setFormErrors] = useState({});
@@ -237,6 +248,61 @@ const Profile = () => {
   useEffect(() => {
     setImageError(false);
   }, [user?.avatarUrl, user?.avatar_url]);
+
+  const handleBadgeCategoryClick = async (
+    category,
+    color,
+    badges,
+    totalCredits,
+  ) => {
+    setBadgeCategoryModal({
+      isOpen: true,
+      category,
+      color,
+      badges,
+      totalCredits,
+    });
+    setBadgeModalLoading(true);
+
+    try {
+      const userId = localUser?.id ?? user?.id;
+      const response = await userService.getUserBadges(userId);
+
+      const payload =
+        response?.success !== undefined
+          ? response
+          : response?.data?.success !== undefined
+            ? response.data
+            : (response?.data ?? response);
+
+      const rows = Array.isArray(payload)
+        ? payload
+        : Array.isArray(payload?.data)
+          ? payload.data
+          : [];
+
+      const categoryAwards = rows.filter(
+        (award) => award.badgeCategory === category,
+      );
+      setDetailedBadgeAwards(categoryAwards);
+    } catch (error) {
+      console.error("Error fetching detailed badge awards:", error);
+      setDetailedBadgeAwards([]);
+    } finally {
+      setBadgeModalLoading(false);
+    }
+  };
+
+  const closeBadgeCategoryModal = () => {
+    setBadgeCategoryModal({
+      isOpen: false,
+      category: null,
+      color: null,
+      badges: [],
+      totalCredits: 0,
+    });
+    setDetailedBadgeAwards([]);
+  };
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -933,7 +999,7 @@ const Profile = () => {
               />
             </div>
 
-            {/* Badges Section (totals from GET /api/users/:id) */}
+            {/* Badges Section - Grouped by Category */}
             <div className="px-6 mt-6 pb-6">
               <div className="flex items-center mb-4">
                 <Award size={18} className="mr-2 text-primary flex-shrink-0" />
@@ -942,14 +1008,53 @@ const Profile = () => {
 
               {Array.isArray(displayUser?.badges) &&
               displayUser.badges.length > 0 ? (
-                <Grid cols={2} md={3} lg={4} gap={4}>
-                  {displayUser.badges.map((badge) => (
-                    <BadgeCard
-                      key={`${badge.id}-${badge.last_awarded_at || ""}`}
-                      badge={badge}
-                    />
-                  ))}
-                </Grid>
+                (() => {
+                  // Group badges by category
+                  const badgesByCategory = displayUser.badges.reduce(
+                    (acc, badge) => {
+                      const category = badge.category || "Other";
+                      if (!acc[category]) {
+                        acc[category] = {
+                          badges: [],
+                          color: badge.color,
+                          totalCredits: 0,
+                        };
+                      }
+                      acc[category].badges.push(badge);
+                      acc[category].totalCredits +=
+                        badge.total_credits ?? badge.totalCredits ?? 0;
+                      return acc;
+                    },
+                    {},
+                  );
+
+                  // Sort categories by total credits (descending)
+                  const sortedCategories = Object.entries(
+                    badgesByCategory,
+                  ).sort(([, a], [, b]) => b.totalCredits - a.totalCredits);
+
+                  return (
+                    <Grid cols={1} md={2} gap={4}>
+                      {sortedCategories.map(([category, data]) => (
+                        <BadgeCategoryCard
+                          key={category}
+                          category={category}
+                          color={data.color}
+                          badges={data.badges}
+                          totalCredits={data.totalCredits}
+                          onClick={() =>
+                            handleBadgeCategoryClick(
+                              category,
+                              data.color,
+                              data.badges,
+                              data.totalCredits,
+                            )
+                          }
+                        />
+                      ))}
+                    </Grid>
+                  );
+                })()
               ) : (
                 <span className="badge badge-warning">
                   No badges earned yet.
@@ -959,6 +1064,18 @@ const Profile = () => {
           </div>
         )}
       </Card>
+
+      {/* Badge Category Detail Modal */}
+      <BadgeCategoryModal
+        isOpen={badgeCategoryModal.isOpen}
+        onClose={closeBadgeCategoryModal}
+        category={badgeCategoryModal.category}
+        color={badgeCategoryModal.color}
+        badges={badgeCategoryModal.badges}
+        detailedAwards={detailedBadgeAwards}
+        totalCredits={badgeCategoryModal.totalCredits}
+        loading={badgeModalLoading}
+      />
 
       {/* Delete Profile Confirmation Modal */}
       {isDeleteModalOpen && (
