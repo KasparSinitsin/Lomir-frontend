@@ -26,6 +26,12 @@ const BadgesDisplaySection = ({
   const visibleBadges = badges.slice(0, maxVisible);
   const remainingCount = badges.length - maxVisible;
 
+  // Helper to get credits (handles both snake_case and camelCase)
+  const getCredits = (badge) => {
+    const credits = badge.total_credits ?? badge.totalCredits;
+    return Number.isFinite(credits) && credits > 0 ? credits : null;
+  };
+
   if (compact) {
     return (
       <div
@@ -33,14 +39,20 @@ const BadgesDisplaySection = ({
       >
         <Award size={16} className="mr-1 flex-shrink-0 mt-0.5" />
         <span>
-          {visibleBadges.map((badge, index) => (
-            <span key={badge.id}>
-              <span style={{ color: badge.color }} className="font-medium">
-                {badge.name}
+          {visibleBadges.map((badge, index) => {
+            const credits = getCredits(badge);
+            return (
+              <span key={badge.id ?? badge.badge_id ?? badge.name}>
+                <span style={{ color: badge.color }} className="font-medium">
+                  {badge.name}
+                  {credits && (
+                    <span className="opacity-70">| {credits}ct.</span>
+                  )}
+                </span>
+                {index < visibleBadges.length - 1 && ", "}
               </span>
-              {index < visibleBadges.length - 1 && ", "}
-            </span>
-          ))}
+            );
+          })}
           {remainingCount > 0 && ` +${remainingCount}`}
         </span>
       </div>
@@ -58,13 +70,10 @@ const BadgesDisplaySection = ({
         const catCmp = ca.localeCompare(cb, undefined, { sensitivity: "base" });
         if (catCmp !== 0) return catCmp;
 
-        // Optional: stable-ish ordering within category
         return String(a.name || "").localeCompare(
           String(b.name || ""),
           undefined,
-          {
-            sensitivity: "base",
-          },
+          { sensitivity: "base" }
         );
       })
     : visibleBadges;
@@ -76,23 +85,24 @@ const BadgesDisplaySection = ({
         <h3 className="font-medium">{title}</h3>
       </div>
 
-      {/* “Pearls on a thread”: same pill shape/size as TagsDisplaySection */}
+      {/* Badge pills with credits */}
       <div className="flex flex-wrap gap-2">
-        {badgesForDisplay.map((badge) => (
-          <span
-            key={badge.id ?? badge.badge_id ?? badge.name}
-            className="badge badge-primary badge-outline p-3"
-            style={{ borderColor: badge.color, color: badge.color }}
-            title={badge.description || badge.category}
-          >
-            {badge.name}
-            {Number.isFinite(badge.total_credits) && (
-              <span className="ml-2 text-xs opacity-80">
-                · {badge.total_credits} ct.
-              </span>
-            )}
-          </span>
-        ))}
+        {badgesForDisplay.map((badge) => {
+          const credits = getCredits(badge);
+          return (
+            <span
+              key={badge.id ?? badge.badge_id ?? badge.name}
+              className="badge badge-primary badge-outline p-3"
+              style={{ borderColor: badge.color, color: badge.color }}
+              title={badge.description || badge.category}
+            >
+              {badge.name}
+              {credits && (
+                <span className="ml-1 opacity-80">| {credits}ct.</span>
+              )}
+            </span>
+          );
+        })}
 
         {remainingCount > 0 && (
           <span className="badge badge-ghost badge-sm text-xs">
