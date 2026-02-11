@@ -49,6 +49,7 @@ const UserDetailsModal = ({
     color: null,
     badges: [],
     totalCredits: 0,
+    focusedBadgeName: null,
   });
   const [detailedBadgeAwards, setDetailedBadgeAwards] = useState([]);
   const [badgeModalLoading, setBadgeModalLoading] = useState(false);
@@ -158,6 +159,7 @@ const UserDetailsModal = ({
       color,
       badges,
       totalCredits,
+      focusedBadgeName: null, // Show all badges in category
     });
     setBadgeModalLoading(true);
 
@@ -195,6 +197,56 @@ const UserDetailsModal = ({
     }
   };
 
+  // Handler for clicking on individual badge pills
+  const handleBadgeClick = async (badge, category, color) => {
+    // Calculate total credits for just this badge
+    const badgeCredits = badge.total_credits ?? badge.totalCredits ?? 0;
+
+    setBadgeCategoryModal({
+      isOpen: true,
+      category,
+      color,
+      badges: [badge],
+      totalCredits: badgeCredits,
+      focusedBadgeName: badge.name, // Track which badge to focus on
+    });
+    setBadgeModalLoading(true);
+
+    try {
+      const response = await userService.getUserBadges(userId);
+
+      const payload =
+        response?.success !== undefined
+          ? response
+          : response?.data?.success !== undefined
+            ? response.data
+            : (response?.data ?? response);
+
+      const rows = Array.isArray(payload)
+        ? payload
+        : Array.isArray(payload?.data)
+          ? payload.data
+          : [];
+
+      // Filter to only this badge's awards
+      const badgeAwards = rows.filter((award) => {
+        const awardBadgeName =
+          award.badgeName ?? award.badge_name ?? award.name;
+        return (
+          String(awardBadgeName ?? "").trim() ===
+          String(badge.name ?? "").trim()
+        );
+      });
+
+      setDetailedBadgeAwards(badgeAwards);
+    } catch (error) {
+      console.error("Error fetching badge awards:", error);
+      setDetailedBadgeAwards([]);
+    } finally {
+      setBadgeModalLoading(false);
+    }
+  };
+
   const closeBadgeCategoryModal = () => {
     setBadgeCategoryModal({
       isOpen: false,
@@ -202,6 +254,7 @@ const UserDetailsModal = ({
       color: null,
       badges: [],
       totalCredits: 0,
+      focusedBadgeName: null,
     });
     setDetailedBadgeAwards([]);
   };
@@ -338,6 +391,7 @@ const UserDetailsModal = ({
               groupByCategory={true}
               showCredits={false}
               onCategoryClick={handleBadgeCategoryClick}
+              onBadgeClick={handleBadgeClick}
             />
 
             {/* Bottom CTA (TeamDetailsModal style) */}
@@ -383,6 +437,7 @@ const UserDetailsModal = ({
         totalCredits={badgeCategoryModal.totalCredits}
         loading={badgeModalLoading}
         onOpenUser={handleOpenUserFromBadgeModal}
+        focusedBadgeName={badgeCategoryModal.focusedBadgeName}
       />
     </>
   );
