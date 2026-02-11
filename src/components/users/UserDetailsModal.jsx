@@ -4,6 +4,7 @@ import UserBioSection from "./UserBioSection";
 import LocationSection from "../common/LocationSection";
 import TagsDisplaySection from "../tags/TagsDisplaySection";
 import BadgesDisplaySection from "../badges/BadgesDisplaySection";
+import BadgeCategoryModal from "../badges/BadgeCategoryModal";
 import UserProfileHeaderSection from "./UserProfileHeaderSection";
 import { messageService } from "../../services/messageService";
 import { userService } from "../../services/userService";
@@ -21,13 +22,16 @@ const UserDetailsModal = ({
   onUpdate,
   mode = "view",
 }) => {
-  const { user: currentUser, isAuthenticated, updateUser } = useAuth();
+  const { user: currentUser, isAuthenticated } = useAuth();
   const navigate = useNavigate();
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [user, setUser] = useState(null);
+
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(mode === "edit");
+
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -37,6 +41,18 @@ const UserDetailsModal = ({
     tagExperienceLevels: {},
     tagInterestLevels: {},
   });
+
+  // ========= Badge Category Modal state =========
+  const [badgeCategoryModal, setBadgeCategoryModal] = useState({
+    isOpen: false,
+    category: null,
+    color: null,
+    badges: [],
+    totalCredits: 0,
+  });
+  const [detailedBadgeAwards, setDetailedBadgeAwards] = useState([]);
+  const [badgeModalLoading, setBadgeModalLoading] = useState(false);
+  // ==============================================
 
   const isOwnProfile = () => {
     return currentUser && user && currentUser.id === user.id;
@@ -48,17 +64,25 @@ const UserDetailsModal = ({
       setError(null);
 
       const response = await userService.getUserById(userId);
-      const userData = response.data;
+
+      // Robustly unwrap common response shapes:
+      // - axios: response.data
+      // - API wrapper: { success, message, data: user }
+      const payload = response?.data ?? response;
+      const userData =
+        payload?.success !== undefined
+          ? payload?.data
+          : (payload?.data?.data ?? payload?.data ?? payload);
 
       console.log("Full user details from API:", userData);
 
       setUser(userData);
 
       setFormData({
-        firstName: userData.first_name || userData.firstName || "",
-        lastName: userData.last_name || userData.lastName || "",
-        bio: userData.bio || "",
-        postalCode: userData.postal_code || userData.postalCode || "",
+        firstName: userData?.first_name || userData?.firstName || "",
+        lastName: userData?.last_name || userData?.lastName || "",
+        bio: userData?.bio || "",
+        postalCode: userData?.postal_code || userData?.postalCode || "",
         selectedTags: [],
         tagExperienceLevels: {},
         tagInterestLevels: {},
@@ -77,69 +101,9 @@ const UserDetailsModal = ({
     }
   }, [isOpen, userId, fetchUserDetails]);
 
-  // eslint-disable-next-line no-unused-vars
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
-
-  // eslint-disable-next-line no-unused-vars
-  const handleTagSelection = (
-    selectedTags,
-    experienceLevels,
-    interestLevels,
-  ) => {
-    setFormData((prev) => ({
-      ...prev,
-      selectedTags,
-      tagExperienceLevels: experienceLevels,
-      tagInterestLevels: interestLevels,
-    }));
-  };
-
-  // eslint-disable-next-line no-unused-vars
-  const handleSubmit = async (e) => {
-    if (e) e.preventDefault(); // Prevent form submission
-
-    try {
-      setLoading(true);
-      setError(null);
-
-      const submissionData = {
-        first_name: formData.firstName,
-        last_name: formData.lastName,
-        bio: formData.bio,
-        postal_code: formData.postalCode,
-        tags: formData.selectedTags.map((tagId) => ({
-          tag_id: tagId,
-          experience_level: formData.tagExperienceLevels[tagId] || "beginner",
-          interest_level: formData.tagInterestLevels[tagId] || "medium",
-        })),
-      };
-
-      const response = await userService.updateUser(userId, submissionData);
-
-      setUser(response.data);
-      setIsEditing(false);
-
-      // If this is the current user's own profile, update the global context
-      if (isOwnProfile() && currentUser) {
-        updateUser(response.data);
-      }
-
-      if (onUpdate) {
-        onUpdate(response.data);
-      }
-    } catch (err) {
-      console.error("Error updating user:", err);
-      setError("Failed to update user. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
+  useEffect(() => {
+    setIsEditing(mode === "edit");
+  }, [mode]);
 
   const handleStartChat = async () => {
     if (!isAuthenticated) {
@@ -148,28 +112,24 @@ const UserDetailsModal = ({
     }
 
     try {
-      console.log("Starting chat with user:", user.id);
+      console.log("Starting chat with user:", user?.id);
 
-      // Create conversation with the user and send an empty message to ensure it appears
       const conversationResponse = await messageService.startConversation(
-        user.id,
+        user?.id,
         "",
       );
       console.log("Conversation created:", conversationResponse);
 
-      // Give a bit more time for the conversation to be created
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
-      // Open chat in new tab with direct message type
-      const chatUrl = `${window.location.origin}/chat/${user.id}?type=direct`;
+      const chatUrl = `${window.location.origin}/chat/${user?.id}?type=direct`;
       console.log("Opening chat URL:", chatUrl);
 
       window.open(chatUrl, "_blank", "noopener,noreferrer");
     } catch (error) {
       console.error("Error starting conversation:", error);
 
-      // Fallback: still open chat page even if API call fails
-      const chatUrl = `${window.location.origin}/chat/${user.id}?type=direct`;
+      const chatUrl = `${window.location.origin}/chat/${user?.id}?type=direct`;
       window.open(chatUrl, "_blank", "noopener,noreferrer");
     }
   };
@@ -189,6 +149,79 @@ const UserDetailsModal = ({
     return user?.username || "User";
   };
 
+  // ========= Badge Category Modal handlers =========
+  const handleBadgeCategoryClick = async (
+    category,
+    color,
+    badges,
+    totalCredits,
+  ) => {
+    setBadgeCategoryModal({
+      isOpen: true,
+      category,
+      color,
+      badges,
+      totalCredits,
+    });
+    setBadgeModalLoading(true);
+
+    try {
+      const response = await userService.getUserBadges(userId);
+
+      const payload =
+        response?.success !== undefined
+          ? response
+          : response?.data?.success !== undefined
+            ? response.data
+            : (response?.data ?? response);
+
+      const rows = Array.isArray(payload)
+        ? payload
+        : Array.isArray(payload?.data)
+          ? payload.data
+          : [];
+
+      const categoryAwards = rows.filter((award) => {
+        const c =
+          award.badgeCategory ??
+          award.badge_category ??
+          award.category ??
+          award.badge_category_name;
+        return String(c ?? "").trim() === String(category ?? "").trim();
+      });
+
+      setDetailedBadgeAwards(categoryAwards);
+    } catch (error) {
+      console.error("Error fetching detailed badge awards:", error);
+      setDetailedBadgeAwards([]);
+    } finally {
+      setBadgeModalLoading(false);
+    }
+  };
+
+  const closeBadgeCategoryModal = () => {
+    setBadgeCategoryModal({
+      isOpen: false,
+      category: null,
+      color: null,
+      badges: [],
+      totalCredits: 0,
+    });
+    setDetailedBadgeAwards([]);
+  };
+
+  const handleOpenUserFromBadgeModal = (clickedUserId) => {
+    if (!clickedUserId) return;
+
+    // Close modals first to avoid stacked modals / focus traps
+    closeBadgeCategoryModal();
+    onClose?.();
+
+    // Navigate to user page (adjust route if needed)
+    navigate(`/users/${clickedUserId}`);
+  };
+  // =================================================
+
   // CUSTOM HEADER with dynamic title and action buttons
   const customHeader = (
     <div className="flex justify-between items-center w-full">
@@ -199,40 +232,38 @@ const UserDetailsModal = ({
         {!isEditing && (
           <>
             {isOwnProfile() ? (
-              // Navigate to profile page for comprehensive editing
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => {
-                  onClose(); // Close the modal first
-                  navigate("/profile"); // Then navigate to profile page
-                }}
-                icon={<Edit size={16} />}
+                onClick={() => navigate("/profile")}
+                className="flex items-center gap-1"
               >
-                Edit Profile
+                <Edit size={16} />
+                <span className="hidden sm:inline">Edit</span>
               </Button>
             ) : (
-              // Show invite and chat buttons for other users' profiles
-              <>
-                {isAuthenticated && (
-                  <>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleInviteToTeam}
-                      icon={<UserPlus size={16} />}
-                      title="Invite to team"
-                    />
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleStartChat}
-                      icon={<MessageCircle size={16} />}
-                      title="Send message"
-                    />
-                  </>
-                )}
-              </>
+              isAuthenticated && (
+                <>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleStartChat}
+                    className="flex items-center gap-1"
+                  >
+                    <MessageCircle size={16} />
+                    <span className="hidden sm:inline">Chat</span>
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleInviteToTeam}
+                    className="flex items-center gap-1"
+                  >
+                    <UserPlus size={16} />
+                    <span className="hidden sm:inline">Invite</span>
+                  </Button>
+                </>
+              )
             )}
           </>
         )}
@@ -240,37 +271,14 @@ const UserDetailsModal = ({
     </div>
   );
 
-  // FOOTER for Send Message button (only for other users)
-  const footer =
-    isAuthenticated && !isOwnProfile() && !loading && user ? (
-      <div className="flex justify-end">
-        <Button
-          variant="primary"
-          onClick={handleStartChat}
-          className="w-full"
-          icon={<MessageCircle size={16} />}
-        >
-          Send Message
-        </Button>
-      </div>
-    ) : null;
-
   return (
     <>
       <Modal
         isOpen={isOpen}
         onClose={onClose}
-        title={customHeader}
-        footer={footer}
-        // PRESERVE ORIGINAL STYLING
-        position="center"
-        size="default" // max-w-2xl
-        // Standard modal settings
-        closeOnBackdrop={true}
-        closeOnEscape={true}
-        showCloseButton={true}
+        customHeader={customHeader}
+        size="md"
       >
-        {/* CONTENT - All business logic preserved */}
         {loading ? (
           <div className="flex justify-center items-center py-12">
             <div className="loading loading-spinner loading-lg text-primary"></div>
@@ -278,19 +286,14 @@ const UserDetailsModal = ({
         ) : error ? (
           <Alert type="error" message={error} />
         ) : isEditing ? (
-          // EDIT MODE - Future implementation could use TagSelector here
           <div className="space-y-6">
             <p className="text-base-content/70">
               For comprehensive profile editing, you'll be redirected to the
               full profile page.
             </p>
-            {/* Future: Add TagSelector and form fields here */}
-            {/* <TagSelector onSelectionChange={handleTagSelection} /> */}
           </div>
         ) : (
-          // VIEW MODE - User profile information
           <div className="space-y-6">
-            {/* User Profile Header */}
             <UserProfileHeaderSection
               user={user}
               currentUser={currentUser}
@@ -298,10 +301,8 @@ const UserDetailsModal = ({
               memberSince={user?.created_at || user?.createdAt}
             />
 
-            {/* Bio */}
             <UserBioSection bio={user?.bio || user?.biography} />
 
-            {/* Location and Skills */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <LocationSection
                 entity={user}
@@ -327,6 +328,7 @@ const UserDetailsModal = ({
               maxVisible={8}
               groupByCategory={true}
               showCredits={false}
+              onCategoryClick={handleBadgeCategoryClick}
             />
           </div>
         )}
@@ -346,6 +348,19 @@ const UserDetailsModal = ({
           inviteeBio={user.bio}
         />
       )}
+
+      {/* Badge Category Modal */}
+      <BadgeCategoryModal
+        isOpen={badgeCategoryModal.isOpen}
+        onClose={closeBadgeCategoryModal}
+        category={badgeCategoryModal.category}
+        color={badgeCategoryModal.color}
+        badges={badgeCategoryModal.badges}
+        detailedAwards={detailedBadgeAwards}
+        totalCredits={badgeCategoryModal.totalCredits}
+        loading={badgeModalLoading}
+        onOpenUser={handleOpenUserFromBadgeModal}
+      />
     </>
   );
 };
