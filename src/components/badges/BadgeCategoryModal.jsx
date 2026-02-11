@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import { format } from "date-fns";
 import {
   Users,
@@ -37,7 +37,6 @@ import {
   Calendar,
 } from "lucide-react";
 import Modal from "../common/Modal";
-import UserDetailsModal from "../users/UserDetailsModal";
 import { getUserInitials } from "../../utils/userHelpers";
 
 /**
@@ -67,19 +66,8 @@ const BadgeCategoryModal = ({
   detailedAwards = [],
   totalCredits = 0,
   loading = false,
+  onOpenUser,
 }) => {
-  // ========= User Details Modal state =========
-  const [selectedUserId, setSelectedUserId] = useState(null);
-
-  const handleUserClick = (userId) => {
-    if (userId) setSelectedUserId(userId);
-  };
-
-  const handleUserModalClose = () => {
-    setSelectedUserId(null);
-  };
-  // ============================================
-
   // Get category icon
   const getCategoryIcon = (size = 24) => {
     const iconProps = { size, style: { color } };
@@ -243,194 +231,178 @@ const BadgeCategoryModal = ({
   );
 
   return (
-    <>
-      <Modal
-        isOpen={isOpen}
-        onClose={onClose}
-        title={titleNode}
-        size="large"
-        position="center"
-      >
-        <div className="space-y-4 max-h-[60vh] overflow-y-auto">
-          {loading ? (
-            <div className="flex justify-center items-center py-12">
-              <div className="loading loading-spinner loading-lg text-primary"></div>
-            </div>
-          ) : sortedBadges.length === 0 ? (
-            <p className="text-base-content/60 text-center py-8">
-              No detailed award information available.
-            </p>
-          ) : (
-            sortedBadges.map(([badgeName, data]) => (
-              <div
-                key={badgeName}
-                className="rounded-lg overflow-hidden"
-                style={{ backgroundColor: pastelBg }}
-              >
-                {/* Badge header */}
-                <div className="flex items-center justify-between p-3">
-                  <div className="flex items-center gap-2 min-w-0">
-                    {getBadgeIcon(badgeName)}
-                    <span className="font-medium truncate" style={{ color }}>
-                      {badgeName}
-                    </span>
-                  </div>
-
-                  <span
-                    className="text-sm font-medium px-2 py-0.5 rounded-full bg-white/70 whitespace-nowrap"
-                    style={{ color }}
-                  >
-                    {data.totalCredits} ct.
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={titleNode}
+      size="large"
+      position="center"
+    >
+      <div className="space-y-4 max-h-[60vh] overflow-y-auto">
+        {loading ? (
+          <div className="flex justify-center items-center py-12">
+            <div className="loading loading-spinner loading-lg text-primary"></div>
+          </div>
+        ) : sortedBadges.length === 0 ? (
+          <p className="text-base-content/60 text-center py-8">
+            No detailed award information available.
+          </p>
+        ) : (
+          sortedBadges.map(([badgeName, data]) => (
+            <div
+              key={badgeName}
+              className="rounded-lg overflow-hidden"
+              style={{ backgroundColor: pastelBg }}
+            >
+              {/* Badge header */}
+              <div className="flex items-center justify-between p-3">
+                <div className="flex items-center gap-2 min-w-0">
+                  {getBadgeIcon(badgeName)}
+                  <span className="font-medium truncate" style={{ color }}>
+                    {badgeName}
                   </span>
                 </div>
 
-                {/* Badge description */}
-                {data.badge?.description && (
-                  <p
-                    className="px-3 -mt-1 pb-3 text-sm"
-                    style={{ color, opacity: 0.8 }}
+                <span
+                  className="text-sm font-medium px-2 py-0.5 rounded-full bg-white/70 whitespace-nowrap"
+                  style={{ color }}
+                >
+                  {data.totalCredits} ct.
+                </span>
+              </div>
+
+              {/* Badge description */}
+              {data.badge?.description && (
+                <p
+                  className="px-3 -mt-1 pb-3 text-sm"
+                  style={{ color, opacity: 0.8 }}
+                >
+                  {data.badge.description}
+                </p>
+              )}
+
+              {/* Individual awards - responsive grid */}
+              <div className="px-3 pb-3 grid grid-cols-1 md:grid-cols-2 gap-2">
+                {data.awards.map((award, index) => (
+                  <div
+                    key={`${award.awardId ?? award.awardedAt}-${index}`}
+                    className="bg-white/60 rounded-lg p-3 flex flex-col"
                   >
-                    {data.badge.description}
-                  </p>
-                )}
+                    {/* Top row: context title + date (left) + credits pill (right) */}
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        {award.contextType && (
+                          <div
+                            className="font-medium leading-tight truncate"
+                            style={{ color }}
+                          >
+                            {formatContextType(award.contextType)}
+                          </div>
+                        )}
 
-                {/* Individual awards - responsive grid */}
-                <div className="px-3 pb-3 grid grid-cols-1 md:grid-cols-2 gap-2">
-                  {data.awards.map((award, index) => (
-                    <div
-                      key={`${award.awardId ?? award.awardedAt}-${index}`}
-                      className="bg-white/60 rounded-lg p-3 flex flex-col"
-                    >
-                      {/* Top row: context title + date (left) + credits pill (right) */}
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          {award.contextType && (
+                        <div className="flex items-center gap-1 text-xs text-base-content/50 leading-tight">
+                          <Calendar size={12} />
+                          <span>
+                            {award.awardedAt
+                              ? format(new Date(award.awardedAt), "MMM d, yyyy")
+                              : "Unknown date"}
+                          </span>
+                        </div>
+                      </div>
+
+                      <span
+                        className="px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap text-white"
+                        style={{ backgroundColor: color }}
+                      >
+                        +{award.credits} ct.
+                      </span>
+                    </div>
+
+                    {/* Reason */}
+                    {award.reason && (
+                      <p className="mt-2 text-sm text-base-content/80 italic">
+                        "{award.reason}"
+                      </p>
+                    )}
+
+                    {/* Bottom row: Awarded by (left) + Team name (right) */}
+                    <div className="flex items-center justify-between mt-2">
+                      {/* Awarded by */}
+                      <div className="flex items-center text-xs text-base-content/50">
+                        <span className="mr-1">Awarded by</span>
+
+                        {/* Awarder Avatar */}
+                        <div
+                          className="avatar cursor-pointer hover:opacity-80 transition-opacity mr-1"
+                          onClick={() => onOpenUser?.(award.awardedByUserId)}
+                          title="View profile"
+                        >
+                          <div className="w-4 h-4 rounded-full relative">
+                            {award.awardedByAvatarUrl ? (
+                              <img
+                                src={award.awardedByAvatarUrl}
+                                alt={award.awardedByUsername || "Awarder"}
+                                className="object-cover w-full h-full rounded-full"
+                                onError={(e) => {
+                                  e.target.style.display = "none";
+                                  const fallback =
+                                    e.target.parentElement.querySelector(
+                                      ".avatar-fallback",
+                                    );
+                                  if (fallback) fallback.style.display = "flex";
+                                }}
+                              />
+                            ) : null}
+
+                            {/* Fallback initials */}
                             <div
-                              className="font-medium leading-tight truncate"
-                              style={{ color }}
+                              className="avatar-fallback bg-primary text-primary-content flex items-center justify-center w-full h-full rounded-full absolute inset-0"
+                              style={{
+                                display: award.awardedByAvatarUrl
+                                  ? "none"
+                                  : "flex",
+                                fontSize: "8px",
+                              }}
                             >
-                              {formatContextType(award.contextType)}
+                              <span className="font-medium">
+                                {getUserInitials({
+                                  first_name: award.awardedByFirstName,
+                                  last_name: award.awardedByLastName,
+                                  username: award.awardedByUsername,
+                                })}
+                              </span>
                             </div>
-                          )}
-
-                          <div className="flex items-center gap-1 text-xs text-base-content/50 leading-tight">
-                            <Calendar size={12} />
-                            <span>
-                              {award.awardedAt
-                                ? format(
-                                    new Date(award.awardedAt),
-                                    "MMM d, yyyy",
-                                  )
-                                : "Unknown date"}
-                            </span>
                           </div>
                         </div>
 
+                        {/* Full name */}
                         <span
-                          className="px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap text-white"
-                          style={{ backgroundColor: color }}
+                          className="font-medium text-base-content/80 cursor-pointer hover:text-primary transition-colors"
+                          onClick={() => onOpenUser?.(award.awardedByUserId)}
+                          title="View profile"
                         >
-                          +{award.credits} ct.
+                          {award.awardedByFirstName && award.awardedByLastName
+                            ? `${award.awardedByFirstName} ${award.awardedByLastName}`
+                            : award.awardedByUsername || "Unknown user"}
                         </span>
                       </div>
 
-                      {/* Reason */}
-                      {award.reason && (
-                        <p className="mt-2 text-sm text-base-content/80 italic">
-                          "{award.reason}"
-                        </p>
-                      )}
-
-                      {/* Bottom row: Awarded by (left) + Team name (right) */}
-                      <div className="flex items-center justify-between mt-2">
-                        {/* Awarded by */}
-                        <div className="flex items-center text-xs text-base-content/50">
-                          <span className="mr-1">Awarded by</span>
-
-                          {/* Awarder Avatar (same hover as invites modal) */}
-                          <div
-                            className="avatar cursor-pointer hover:opacity-80 transition-opacity mr-1"
-                            onClick={() =>
-                              handleUserClick(award.awardedByUserId)
-                            }
-                            title="View profile"
-                          >
-                            <div className="w-4 h-4 rounded-full relative">
-                              {award.awardedByAvatarUrl ? (
-                                <img
-                                  src={award.awardedByAvatarUrl}
-                                  alt={award.awardedByUsername || "Awarder"}
-                                  className="object-cover w-full h-full rounded-full"
-                                  onError={(e) => {
-                                    e.target.style.display = "none";
-                                    const fallback =
-                                      e.target.parentElement.querySelector(
-                                        ".avatar-fallback",
-                                      );
-                                    if (fallback)
-                                      fallback.style.display = "flex";
-                                  }}
-                                />
-                              ) : null}
-
-                              {/* Fallback initials (same pattern as invites modal) */}
-                              <div
-                                className="avatar-fallback bg-primary text-primary-content flex items-center justify-center w-full h-full rounded-full absolute inset-0"
-                                style={{
-                                  display: award.awardedByAvatarUrl
-                                    ? "none"
-                                    : "flex",
-                                  fontSize: "8px",
-                                }}
-                              >
-                                <span className="font-medium">
-                                  {getUserInitials({
-                                    first_name: award.awardedByFirstName,
-                                    last_name: award.awardedByLastName,
-                                    username: award.awardedByUsername,
-                                  })}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Full name (same hover as invites modal) */}
-                          <span
-                            className="font-medium text-base-content/80 cursor-pointer hover:text-primary transition-colors"
-                            onClick={() =>
-                              handleUserClick(award.awardedByUserId)
-                            }
-                            title="View profile"
-                          >
-                            {award.awardedByFirstName && award.awardedByLastName
-                              ? `${award.awardedByFirstName} ${award.awardedByLastName}`
-                              : award.awardedByUsername || "Unknown user"}
-                          </span>
+                      {/* Team name if present */}
+                      {award.teamName && (
+                        <div className="flex items-center gap-1 text-xs text-base-content/50">
+                          <Users size={12} />
+                          {award.teamName}
                         </div>
-
-                        {/* Team name if present */}
-                        {award.teamName && (
-                          <div className="flex items-center gap-1 text-xs text-base-content/50">
-                            <Users size={12} />
-                            {award.teamName}
-                          </div>
-                        )}
-                      </div>
+                      )}
                     </div>
-                  ))}
-                </div>
+                  </div>
+                ))}
               </div>
-            ))
-          )}
-        </div>
-      </Modal>
-
-      <UserDetailsModal
-        isOpen={!!selectedUserId}
-        userId={selectedUserId}
-        onClose={handleUserModalClose}
-      />
-    </>
+            </div>
+          ))
+        )}
+      </div>
+    </Modal>
   );
 };
 

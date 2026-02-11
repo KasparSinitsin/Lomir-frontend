@@ -21,6 +21,8 @@ import {
  * @param {boolean} compact - Compact inline display mode
  * @param {string} className - Additional CSS classes
  * @param {boolean} groupByCategory - Group badges by category with icons
+ * @param {boolean} showCredits - Show credit counts on badge pills
+ * @param {Function} onCategoryClick - Callback when category icon is clicked (category, color, badges, totalCredits)
  */
 
 // Category colors (matching BadgeCategoryCard/BadgeCategoryModal)
@@ -43,6 +45,7 @@ const BadgesDisplaySection = ({
   className = "",
   groupByCategory = true,
   showCredits = true,
+  onCategoryClick = null,
 }) => {
   if (!badges || badges.length === 0) {
     if (compact) return null;
@@ -67,9 +70,14 @@ const BadgesDisplaySection = ({
   };
 
   // Get category icon based on category name
-  const getCategoryIcon = (category, size = 16) => {
+  const getCategoryIcon = (category, size = 14) => {
     const color = CATEGORY_COLORS[category] || DEFAULT_COLOR;
-    const iconProps = { size, style: { color }, className: "flex-shrink-0" };
+    const isClickable = !!onCategoryClick;
+    const iconProps = {
+      size,
+      style: { color },
+      className: `flex-shrink-0 ${isClickable ? "cursor-pointer hover:opacity-70 transition-opacity" : ""}`,
+    };
     const categoryLower = category?.toLowerCase() || "";
 
     if (categoryLower.includes("collaboration"))
@@ -140,11 +148,28 @@ const BadgesDisplaySection = ({
   const sortedCategories = Object.keys(badgesByCategory).sort((a, b) => {
     const indexA = categoryOrder.indexOf(a);
     const indexB = categoryOrder.indexOf(b);
-    // If not found in order, put at end
     const posA = indexA === -1 ? 999 : indexA;
     const posB = indexB === -1 ? 999 : indexB;
     return posA - posB;
   });
+
+  // Calculate total credits for a category
+  const getCategoryTotalCredits = (categoryBadges) => {
+    return categoryBadges.reduce((sum, badge) => {
+      const credits = badge.total_credits ?? badge.totalCredits ?? 0;
+      return sum + credits;
+    }, 0);
+  };
+
+  // Handle category icon click
+  const handleCategoryClick = (category, categoryBadges) => {
+    if (!onCategoryClick) return;
+
+    const color = getCategoryColor(category);
+    const totalCredits = getCategoryTotalCredits(categoryBadges);
+
+    onCategoryClick(category, color, categoryBadges, totalCredits);
+  };
 
   // If not grouping by category, render flat list (original behavior)
   if (!groupByCategory) {
@@ -203,8 +228,13 @@ const BadgesDisplaySection = ({
               className="flex items-center gap-1.5"
               title={category}
             >
-              {/* Category Icon */}
-              {getCategoryIcon(category, 14)}
+              {/* Category Icon - clickable if onCategoryClick provided */}
+              <span
+                onClick={() => handleCategoryClick(category, categoryBadges)}
+                className={onCategoryClick ? "cursor-pointer" : ""}
+              >
+                {getCategoryIcon(category, 14)}
+              </span>
 
               {/* Badge pills for this category */}
               <div className="flex flex-wrap gap-1.5">
