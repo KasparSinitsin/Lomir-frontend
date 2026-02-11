@@ -15,6 +15,8 @@ const Modal = ({
   closeOnBackdrop = true,
   closeOnEscape = true,
   showCloseButton = true,
+  zIndexClass = "z-[999]",
+  boxZIndexClass = "z-[1000]",
 }) => {
   // Handle ESC key
   useEffect(() => {
@@ -44,7 +46,7 @@ const Modal = ({
 
   return createPortal(
     <div
-      className={`fixed inset-0 z-[999] flex ${positionClass} justify-center`}
+      className={`fixed inset-0 ${zIndexClass} flex ${positionClass} justify-center`}
     >
       {/* Backdrop */}
       <div
@@ -55,7 +57,7 @@ const Modal = ({
       {/* Modal box */}
       <div
         className={`
-    relative z-[1000]
+    relative ${boxZIndexClass}
     bg-base-100 rounded-xl shadow-soft
     w-full ${sizeClass} mx-4
     ${maxHeight} ${minHeight}

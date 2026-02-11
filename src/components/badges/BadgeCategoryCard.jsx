@@ -38,6 +38,7 @@ const BadgeCategoryCard = ({
   badges = [],
   totalCredits = 0,
   onClick,
+  onBadgeClick,
 }) => {
   // Get category icon based on category name
   const getCategoryIcon = () => {
@@ -103,12 +104,27 @@ const BadgeCategoryCard = ({
             return (
               <span
                 key={badge.id ?? badge.badge_id ?? badge.name}
-                className="badge badge-outline p-3 bg-white/60"
-                style={{
-                  borderColor: color,
-                  color,
-                }}
+                className={`badge badge-outline p-3 bg-white/60 ${
+                  onBadgeClick
+                    ? "cursor-pointer hover:opacity-90 transition-opacity"
+                    : ""
+                }`}
+                style={{ borderColor: color, color }}
                 title={badge.description || badge.name}
+                onClick={(e) => {
+                  if (!onBadgeClick) return;
+                  e.stopPropagation();
+                  onBadgeClick(badge);
+                }}
+                role={onBadgeClick ? "button" : undefined}
+                tabIndex={onBadgeClick ? 0 : undefined}
+                onKeyDown={(e) => {
+                  if (!onBadgeClick) return;
+                  if (e.key === "Enter") {
+                    e.stopPropagation();
+                    onBadgeClick(badge);
+                  }
+                }}
               >
                 {badge.name}
                 {credits && (

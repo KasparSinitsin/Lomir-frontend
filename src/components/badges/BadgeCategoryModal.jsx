@@ -37,7 +37,7 @@ import {
   Calendar,
 } from "lucide-react";
 import Modal from "../common/Modal";
-import { getUserInitials } from "../../utils/userHelpers";
+import InlineUserLink from "../users/InlineUserLink";
 
 /**
  * BadgeCategoryModal Component
@@ -219,10 +219,7 @@ const BadgeCategoryModal = ({
       <div className="flex items-center gap-2 min-w-0">
         <span className="flex-shrink-0">{getCategoryIcon(20)}</span>
 
-        <span 
-          className="text-xl font-medium truncate" 
-          style={{ color }}
-        >
+        <span className="text-xl font-medium truncate" style={{ color }}>
           {focusedBadgeName
             ? category
             : `Earned badges for ${category || "this category"}`}
@@ -257,8 +254,10 @@ const BadgeCategoryModal = ({
       title={titleNode}
       size="large"
       position="center"
+      zIndexClass="z-[1000]"
+      boxZIndexClass="z-[1001]"
     >
-      <div 
+      <div
         className={`space-y-4 max-h-[60vh] overflow-y-auto ${focusedBadgeName ? "-mx-6 -mb-6 -mt-6 px-6 pb-6 pt-4" : ""}`}
         style={focusedBadgeName ? { backgroundColor: pastelBg } : {}}
       >
@@ -303,7 +302,10 @@ const BadgeCategoryModal = ({
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2 min-w-0">
                       {getBadgeIcon(badgeName, 24)}
-                      <span className="text-2xl font-bold truncate" style={{ color }}>
+                      <span
+                        className="text-2xl font-bold truncate"
+                        style={{ color }}
+                      >
                         {badgeName} Badge
                       </span>
                     </div>
@@ -387,65 +389,17 @@ const BadgeCategoryModal = ({
                       {/* Bottom row: Awarded by (left) + Team name (right) */}
                       <div className="flex items-center justify-between mt-2">
                         {/* Awarded by */}
-                        <div className="flex items-center text-xs text-base-content/50">
-                          <span className="mr-1">Awarded by</span>
-
-                          {/* Awarder Avatar */}
-                          <div
-                            className="avatar cursor-pointer hover:opacity-80 transition-opacity mr-1"
-                            onClick={() => onOpenUser?.(award.awardedByUserId)}
-                            title="View profile"
-                          >
-                            <div className="w-4 h-4 rounded-full relative">
-                              {award.awardedByAvatarUrl ? (
-                                <img
-                                  src={award.awardedByAvatarUrl}
-                                  alt={award.awardedByUsername || "Awarder"}
-                                  className="object-cover w-full h-full rounded-full"
-                                  onError={(e) => {
-                                    e.target.style.display = "none";
-                                    const fallback =
-                                      e.target.parentElement.querySelector(
-                                        ".avatar-fallback",
-                                      );
-                                    if (fallback)
-                                      fallback.style.display = "flex";
-                                  }}
-                                />
-                              ) : null}
-
-                              {/* Fallback initials */}
-                              <div
-                                className="avatar-fallback bg-primary text-primary-content flex items-center justify-center w-full h-full rounded-full absolute inset-0"
-                                style={{
-                                  display: award.awardedByAvatarUrl
-                                    ? "none"
-                                    : "flex",
-                                  fontSize: "8px",
-                                }}
-                              >
-                                <span className="font-medium">
-                                  {getUserInitials({
-                                    first_name: award.awardedByFirstName,
-                                    last_name: award.awardedByLastName,
-                                    username: award.awardedByUsername,
-                                  })}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Full name */}
-                          <span
-                            className="font-medium text-base-content/80 cursor-pointer hover:text-primary transition-colors"
-                            onClick={() => onOpenUser?.(award.awardedByUserId)}
-                            title="View profile"
-                          >
-                            {award.awardedByFirstName && award.awardedByLastName
-                              ? `${award.awardedByFirstName} ${award.awardedByLastName}`
-                              : award.awardedByUsername || "Unknown user"}
-                          </span>
-                        </div>
+                        <InlineUserLink
+                          label="Awarded by"
+                          user={{
+                            id: award.awardedByUserId,
+                            first_name: award.awardedByFirstName,
+                            last_name: award.awardedByLastName,
+                            username: award.awardedByUsername,
+                            avatar_url: award.awardedByAvatarUrl,
+                          }}
+                          onOpenUser={onOpenUser}
+                        />
 
                         {/* Team name if present */}
                         {award.teamName && (

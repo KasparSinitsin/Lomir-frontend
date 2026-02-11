@@ -14,6 +14,7 @@ import TeamDetailsModal from "./TeamDetailsModal";
 import { getUserInitials, getDisplayName } from "../../utils/userHelpers";
 import Alert from "../common/Alert";
 import { format } from "date-fns";
+import InlineUserLink from "../users/InlineUserLink";
 
 /**
  * TeamInvitationDetailsModal Component
@@ -180,57 +181,11 @@ const TeamInvitationDetailsModal = ({
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-3">
         {/* Sent by (left) */}
-        <div className="flex items-center text-xs text-base-content/60">
-          <span className="mr-1">Invite sent by</span>
-
-          {/* Inviter Avatar */}
-          <div
-            className="avatar cursor-pointer hover:opacity-80 transition-opacity mr-1"
-            onClick={() => handleUserClick(inviter?.id)}
-            title="View profile"
-          >
-            <div className="w-4 h-4 rounded-full relative">
-              {getInviterAvatar() ? (
-                <img
-                  src={getInviterAvatar()}
-                  alt={getInviterName()}
-                  className="object-cover w-full h-full rounded-full"
-                  onError={(e) => {
-                    e.target.style.display = "none";
-                    const fallback =
-                      e.target.parentElement.querySelector(".avatar-fallback");
-                    if (fallback) fallback.style.display = "flex";
-                  }}
-                />
-              ) : null}
-
-              {/* Fallback initials */}
-              <div
-                className="avatar-fallback bg-primary text-primary-content flex items-center justify-center w-full h-full rounded-full absolute inset-0"
-                style={{
-                  display: getInviterAvatar() ? "none" : "flex",
-                  fontSize: "8px",
-                }}
-              >
-                <span className="font-medium">{getUserInitials(inviter)}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Full name only (no username) */}
-          <span
-            className="font-medium text-base-content/80 cursor-pointer hover:text-primary transition-colors"
-            onClick={() => handleUserClick(inviter?.id)}
-            title="View profile"
-          >
-            {(() => {
-              const firstName = inviter.first_name || inviter.firstName;
-              const lastName = inviter.last_name || inviter.lastName;
-              const full = `${firstName || ""} ${lastName || ""}`.trim();
-              return full.length > 0 ? full : "Unknown";
-            })()}
-          </span>
-        </div>
+        <InlineUserLink
+          label="Invite sent by"
+          user={inviter}
+          onOpenUser={handleUserClick}
+        />
 
         {/* Buttons (right) */}
         <div className="flex justify-end gap-2">
@@ -300,7 +255,7 @@ const TeamInvitationDetailsModal = ({
                       e.target.style.display = "none";
                       const fallback =
                         e.target.parentElement.querySelector(
-                          ".avatar-fallback"
+                          ".avatar-fallback",
                         );
                       if (fallback) fallback.style.display = "flex";
                     }}

@@ -10,6 +10,7 @@ import LocationDistanceTagsRow from "../common/LocationDistanceTagsRow";
 
 const UserCard = ({ user, onUpdate }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [overlayUserStack, setOverlayUserStack] = useState([]);
   const { user: currentUser, isAuthenticated } = useAuth();
 
   // Create a display name with fallbacks
@@ -76,11 +77,13 @@ const UserCard = ({ user, onUpdate }) => {
   };
 
   const openUserDetails = () => {
+    setOverlayUserStack([]);
     setIsModalOpen(true);
   };
 
   const closeUserDetails = () => {
     setIsModalOpen(false);
+    setOverlayUserStack([]); // close everything above
   };
 
   const handleUserUpdate = (updatedUser) => {
@@ -88,6 +91,20 @@ const UserCard = ({ user, onUpdate }) => {
       onUpdate(updatedUser);
     }
   };
+
+const handleOpenUserOverlay = (userId) => {
+  if (!userId) return;
+
+  // don't open overlay for the base user
+  if (userId === user.id) return;
+
+  setOverlayUserStack((prev) => {
+    const last = prev[prev.length - 1];
+    if (last === userId) return prev;
+    return [...prev, userId];
+  });
+};
+
 
   console.log("UserCard data:", user, "distance_km:", user.distance_km);
 
@@ -150,13 +167,43 @@ const UserCard = ({ user, onUpdate }) => {
         </div>
       </Card>
 
+      {/* Base user modal (awardee) */}
+
       <UserDetailsModal
         isOpen={isModalOpen}
         userId={user.id}
         onClose={closeUserDetails}
         onUpdate={handleUserUpdate}
         mode="profile"
+        onOpenUser={handleOpenUserOverlay}
+        zIndexClass="z-[900]"
+        boxZIndexClass="z-[901]"
       />
+
+      {overlayUserStack.map((id, idx) => {
+        const baseZ = 1200;
+        const step = 20; // spacing between stacked modals
+        const z = baseZ + idx * step;
+
+        const isTop = idx === overlayUserStack.length - 1;
+
+        return (
+          <UserDetailsModal
+            key={`${id}-${idx}`}
+            isOpen={isModalOpen} // render only while base is open
+            userId={id}
+            onClose={() => {
+              // close only the top overlay (LIFO)
+              if (!isTop) return;
+              setOverlayUserStack((prev) => prev.slice(0, -1));
+            }}
+            mode="profile"
+            onOpenUser={handleOpenUserOverlay} // enables infinite chaining
+            zIndexClass={`z-[${z}]`}
+            boxZIndexClass={`z-[${z + 1}]`}
+          />
+        );
+      })}
     </>
   );
 };

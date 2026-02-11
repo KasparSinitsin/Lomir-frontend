@@ -1,21 +1,26 @@
-import React from 'react';
-import BadgeCard from './BadgeCard';
+import React from "react";
+import BadgeCard from "./BadgeCard";
 
-const BadgeCategorySection = ({ category, badges }) => {
+const BadgeCategorySection = ({ category, badges, onOpenUser }) => {
   // Get the first badge's color for the category header
-  const categoryColor = badges[0]?.color || '#6B7280';
-  
+  const categoryColor = badges?.[0]?.color || "#6B7280";
+
   return (
     <div className="mb-12">
-      <h2 
-        className="text-xl font-bold mb-4 pb-2 border-b-2" 
+      <h2
+        className="text-xl font-bold mb-4 pb-2 border-b-2"
         style={{ borderColor: categoryColor, color: categoryColor }}
       >
         {category}
       </h2>
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {badges.map(badge => (
-          <BadgeCard key={badge.id} badge={badge} />
+        {badges.map((badge) => (
+          <BadgeCard
+            key={badge.id}
+            badge={badge}
+            onOpenUser={onOpenUser}
+          />
         ))}
       </div>
     </div>
