@@ -32,6 +32,7 @@ import { getUserInitials } from "../utils/userHelpers";
 import Modal from "../components/common/Modal";
 import CountrySelect from "../components/common/CountrySelect";
 import { format } from "date-fns";
+import UserDetailsModal from "../components/users/UserDetailsModal";
 
 const Profile = () => {
   const { user, updateUser, logout } = useAuth();
@@ -50,6 +51,7 @@ const Profile = () => {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [avatarDeleteLoading, setAvatarDeleteLoading] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState(null);
 
   const [badgeCategoryModal, setBadgeCategoryModal] = useState({
     isOpen: false,
@@ -1075,6 +1077,13 @@ const Profile = () => {
         detailedAwards={detailedBadgeAwards}
         totalCredits={badgeCategoryModal.totalCredits}
         loading={badgeModalLoading}
+        onOpenUser={(id) => setSelectedUserId(id)}
+      />
+
+      <UserDetailsModal
+        isOpen={!!selectedUserId}
+        userId={selectedUserId}
+        onClose={() => setSelectedUserId(null)}
       />
 
       {/* Delete Profile Confirmation Modal */}

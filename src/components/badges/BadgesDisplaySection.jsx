@@ -48,6 +48,7 @@ const BadgesDisplaySection = ({
   showCredits = true,
   onCategoryClick = null,
   onBadgeClick = null,
+  onOpenUser = null,
 }) => {
   if (!badges || badges.length === 0) {
     if (compact) return null;
@@ -232,7 +233,10 @@ const BadgesDisplaySection = ({
             >
               {/* Category Icon - clickable if onCategoryClick provided */}
               <span
-                onClick={() => handleCategoryClick(category, categoryBadges)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleCategoryClick(category, categoryBadges);
+                }}
                 className={onCategoryClick ? "cursor-pointer" : ""}
               >
                 {getCategoryIcon(category, 14)}
@@ -241,21 +245,31 @@ const BadgesDisplaySection = ({
               {/* Badge pills for this category */}
               <div className="flex flex-wrap gap-1.5">
                 {/* Badge pills */}
-              {categoryBadges.map((badge) => {
-                const credits = getCredits(badge);
-                const isClickable = !!onBadgeClick;
-                return (
-                  <span
-                    key={badge.id ?? badge.badge_id ?? badge.name}
-                    className={`badge badge-outline p-3 ${isClickable ? "cursor-pointer hover:opacity-80 transition-opacity" : ""}`}
-                    style={{ borderColor: categoryColor, color: categoryColor }}
-                    title={badge.description || category}
-                    onClick={isClickable ? () => onBadgeClick(badge, category, categoryColor) : undefined}
-                  >
-                    {badge.name}
-                  </span>
-                );
-              })}
+                {categoryBadges.map((badge) => {
+                  const credits = getCredits(badge);
+                  const isClickable = !!onBadgeClick;
+                  return (
+                    <span
+                      key={badge.id ?? badge.badge_id ?? badge.name}
+                      className={`badge badge-outline p-3 ${isClickable ? "cursor-pointer hover:opacity-80 transition-opacity" : ""}`}
+                      style={{
+                        borderColor: categoryColor,
+                        color: categoryColor,
+                      }}
+                      title={badge.description || category}
+                      onClick={
+                        isClickable
+                          ? (e) => {
+                              e.stopPropagation();
+                              onBadgeClick(badge, category, categoryColor);
+                            }
+                          : undefined
+                      }
+                    >
+                      {badge.name}
+                    </span>
+                  );
+                })}
               </div>
             </div>
           );

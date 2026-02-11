@@ -20,7 +20,10 @@ const UserDetailsModal = ({
   userId,
   onClose,
   onUpdate,
-  mode = "view",
+  mode,
+  onOpenUser,
+  zIndexClass,
+  boxZIndexClass,
 }) => {
   const { user: currentUser, isAuthenticated } = useAuth();
   const navigate = useNavigate();
@@ -259,14 +262,6 @@ const UserDetailsModal = ({
     setDetailedBadgeAwards([]);
   };
 
-  const handleOpenUserFromBadgeModal = (clickedUserId) => {
-    if (!clickedUserId) return;
-
-    closeBadgeCategoryModal();
-    onClose?.();
-
-    navigate(`/users/${clickedUserId}`);
-  };
   // =================================================
 
   // Title node (TeamDetailsModal style)
@@ -333,6 +328,8 @@ const UserDetailsModal = ({
         closeOnBackdrop={true}
         closeOnEscape={true}
         showCloseButton={true}
+        zIndexClass={zIndexClass}
+        boxZIndexClass={boxZIndexClass}
       >
         {loading ? (
           <div className="flex justify-center items-center py-12">
@@ -392,6 +389,7 @@ const UserDetailsModal = ({
               showCredits={false}
               onCategoryClick={handleBadgeCategoryClick}
               onBadgeClick={handleBadgeClick}
+              onOpenUser={onOpenUser}
             />
 
             {/* Bottom CTA (TeamDetailsModal style) */}
@@ -436,8 +434,8 @@ const UserDetailsModal = ({
         detailedAwards={detailedBadgeAwards}
         totalCredits={badgeCategoryModal.totalCredits}
         loading={badgeModalLoading}
-        onOpenUser={handleOpenUserFromBadgeModal}
         focusedBadgeName={badgeCategoryModal.focusedBadgeName}
+        onOpenUser={onOpenUser}
       />
     </>
   );
