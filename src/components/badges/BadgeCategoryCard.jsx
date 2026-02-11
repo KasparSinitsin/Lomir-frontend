@@ -10,10 +10,10 @@ import {
 
 /**
  * BadgeCategoryCard Component
- * 
+ *
  * Displays a category card with all badges earned in that category.
  * Used on the Profile page to group badges by category.
- * 
+ *
  * @param {string} category - Category name (e.g., "Collaboration Skills")
  * @param {string} color - Category color (hex)
  * @param {Array} badges - Array of badges in this category
@@ -22,29 +22,36 @@ import {
 
 // Pastel background colors for each category (solid, no transparency)
 const CATEGORY_PASTELS = {
-  "Collaboration Skills": "#DBEAFE",  // Light blue
-  "Technical Expertise": "#D1FAE5",   // Light green
-  "Creative Thinking": "#EDE9FE",     // Light purple
-  "Leadership Qualities": "#FEE2E2",  // Light red/pink
-  "Personal Attributes": "#FEF3C7",   // Light yellow
+  "Collaboration Skills": "#DBEAFE", // Light blue
+  "Technical Expertise": "#D1FAE5", // Light green
+  "Creative Thinking": "#EDE9FE", // Light purple
+  "Leadership Qualities": "#FEE2E2", // Light red/pink
+  "Personal Attributes": "#FEF3C7", // Light yellow
 };
 
 // Default pastel for unknown categories
-const DEFAULT_PASTEL = "#F3F4F6";  // Light gray
+const DEFAULT_PASTEL = "#F3F4F6"; // Light gray
 
-const BadgeCategoryCard = ({ category, color, badges = [], totalCredits = 0, onClick }) => {
+const BadgeCategoryCard = ({
+  category,
+  color,
+  badges = [],
+  totalCredits = 0,
+  onClick,
+}) => {
   // Get category icon based on category name
   const getCategoryIcon = () => {
     const iconProps = { size: 20, style: { color } };
-    
+
     const categoryLower = category?.toLowerCase() || "";
-    
-    if (categoryLower.includes("collaboration")) return <Users {...iconProps} />;
+
+    if (categoryLower.includes("collaboration"))
+      return <Users {...iconProps} />;
     if (categoryLower.includes("technical")) return <Settings {...iconProps} />;
     if (categoryLower.includes("creative")) return <Lightbulb {...iconProps} />;
     if (categoryLower.includes("leadership")) return <Compass {...iconProps} />;
     if (categoryLower.includes("personal")) return <Heart {...iconProps} />;
-    
+
     return <Award {...iconProps} />;
   };
 
@@ -68,7 +75,7 @@ const BadgeCategoryCard = ({ category, color, badges = [], totalCredits = 0, onC
 
   return (
     <div
-      className={`card shadow-soft hover:shadow-md transition-shadow duration-300 overflow-hidden ${onClick ? 'cursor-pointer' : ''}`}
+      className={`card shadow-soft hover:shadow-md transition-shadow duration-300 overflow-hidden ${onClick ? "cursor-pointer" : ""}`}
       style={{ backgroundColor: getPastelBackground() }}
       onClick={onClick}
     >
@@ -81,7 +88,7 @@ const BadgeCategoryCard = ({ category, color, badges = [], totalCredits = 0, onC
               {category}
             </h3>
           </div>
-          <span 
+          <span
             className="text-sm font-medium px-2 py-0.5 rounded-full bg-white/50"
             style={{ color }}
           >
@@ -97,8 +104,8 @@ const BadgeCategoryCard = ({ category, color, badges = [], totalCredits = 0, onC
               <span
                 key={badge.id ?? badge.badge_id ?? badge.name}
                 className="badge badge-outline p-3 bg-white/60"
-                style={{ 
-                  borderColor: color, 
+                style={{
+                  borderColor: color,
                   color,
                 }}
                 title={badge.description || badge.name}
