@@ -54,9 +54,12 @@ const UserDetailsModal = ({
   const [badgeModalLoading, setBadgeModalLoading] = useState(false);
   // ==============================================
 
-  const isOwnProfile = () => {
-    return currentUser && user && currentUser.id === user.id;
-  };
+  // Determine if this modal is showing the current user (more reliable than comparing fetched user)
+  const ownProfile =
+    !!currentUser?.id && !!userId && Number(currentUser.id) === Number(userId);
+
+  const showEdit = !isEditing && isAuthenticated && ownProfile;
+  const showChatInvite = !isEditing && isAuthenticated && !ownProfile;
 
   const fetchUserDetails = useCallback(async () => {
     try {
@@ -65,16 +68,12 @@ const UserDetailsModal = ({
 
       const response = await userService.getUserById(userId);
 
-      // Robustly unwrap common response shapes:
-      // - axios: response.data
-      // - API wrapper: { success, message, data: user }
+      // Robust unwrap: axios response + API wrapper { success, data }
       const payload = response?.data ?? response;
       const userData =
         payload?.success !== undefined
           ? payload?.data
           : (payload?.data?.data ?? payload?.data ?? payload);
-
-      console.log("Full user details from API:", userData);
 
       setUser(userData);
 
@@ -110,26 +109,23 @@ const UserDetailsModal = ({
       console.warn("Attempted to start chat while not authenticated");
       return;
     }
+    if (!userId) return;
 
     try {
-      console.log("Starting chat with user:", user?.id);
+      // Create conversation with the user and send an empty message to ensure it appears
+      await messageService.startConversation(userId, "");
 
-      const conversationResponse = await messageService.startConversation(
-        user?.id,
-        "",
-      );
-      console.log("Conversation created:", conversationResponse);
+      // Give a bit more time for the conversation to be created
+      await new Promise((resolve) => setTimeout(resolve, 600));
 
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      const chatUrl = `${window.location.origin}/chat/${user?.id}?type=direct`;
-      console.log("Opening chat URL:", chatUrl);
-
+      // Open chat in new tab with direct message type
+      const chatUrl = `${window.location.origin}/chat/${userId}?type=direct`;
       window.open(chatUrl, "_blank", "noopener,noreferrer");
     } catch (error) {
       console.error("Error starting conversation:", error);
 
-      const chatUrl = `${window.location.origin}/chat/${user?.id}?type=direct`;
+      // Fallback: still open chat page even if API call fails
+      const chatUrl = `${window.location.origin}/chat/${userId}?type=direct`;
       window.open(chatUrl, "_blank", "noopener,noreferrer");
     }
   };
@@ -213,57 +209,57 @@ const UserDetailsModal = ({
   const handleOpenUserFromBadgeModal = (clickedUserId) => {
     if (!clickedUserId) return;
 
-    // Close modals first to avoid stacked modals / focus traps
     closeBadgeCategoryModal();
     onClose?.();
 
-    // Navigate to user page (adjust route if needed)
     navigate(`/users/${clickedUserId}`);
   };
   // =================================================
 
-  // CUSTOM HEADER with dynamic title and action buttons
-  const customHeader = (
+  // Title node (TeamDetailsModal style)
+  const modalTitle = (
     <div className="flex justify-between items-center w-full">
       <h2 className="text-xl font-medium text-primary">
         {isEditing ? "Edit Profile" : "User Details"}
       </h2>
+
       <div className="flex items-center space-x-2">
         {!isEditing && (
           <>
-            {isOwnProfile() ? (
+            {showEdit && (
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => navigate("/profile")}
-                className="flex items-center gap-1"
+                className="hover:bg-[#7ace82] hover:text-[#036b0c]"
+                icon={<Edit size={16} />}
               >
-                <Edit size={16} />
-                <span className="hidden sm:inline">Edit</span>
+                Edit
               </Button>
-            ) : (
-              isAuthenticated && (
-                <>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleStartChat}
-                    className="flex items-center gap-1"
-                  >
-                    <MessageCircle size={16} />
-                    <span className="hidden sm:inline">Chat</span>
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleInviteToTeam}
-                    className="flex items-center gap-1"
-                  >
-                    <UserPlus size={16} />
-                    <span className="hidden sm:inline">Invite</span>
-                  </Button>
-                </>
-              )
+            )}
+
+            {showChatInvite && (
+              <>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleStartChat}
+                  className="flex items-center gap-1"
+                >
+                  <MessageCircle size={16} />
+                  <span className="hidden sm:inline">Chat</span>
+                </Button>
+
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleInviteToTeam}
+                  className="flex items-center gap-1"
+                >
+                  <UserPlus size={16} />
+                  <span className="hidden sm:inline">Invite</span>
+                </Button>
+              </>
             )}
           </>
         )}
@@ -276,8 +272,14 @@ const UserDetailsModal = ({
       <Modal
         isOpen={isOpen}
         onClose={onClose}
-        customHeader={customHeader}
-        size="md"
+        title={modalTitle}
+        position="center"
+        size="default"
+        maxHeight="max-h-[90vh]"
+        minHeight="min-h-[300px]"
+        closeOnBackdrop={true}
+        closeOnEscape={true}
+        showCloseButton={true}
       >
         {loading ? (
           <div className="flex justify-center items-center py-12">
@@ -286,6 +288,7 @@ const UserDetailsModal = ({
         ) : error ? (
           <Alert type="error" message={error} />
         ) : isEditing ? (
+          // EDIT MODE - Future implementation could use TagSelector here
           <div className="space-y-6">
             <p className="text-base-content/70">
               For comprehensive profile editing, you'll be redirected to the
@@ -293,7 +296,9 @@ const UserDetailsModal = ({
             </p>
           </div>
         ) : (
+          // VIEW MODE - User profile information
           <div className="space-y-6">
+            {/* User Profile Header */}
             <UserProfileHeaderSection
               user={user}
               currentUser={currentUser}
@@ -301,8 +306,10 @@ const UserDetailsModal = ({
               memberSince={user?.created_at || user?.createdAt}
             />
 
+            {/* Bio */}
             <UserBioSection bio={user?.bio || user?.biography} />
 
+            {/* Location */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <LocationSection
                 entity={user}
@@ -311,12 +318,14 @@ const UserDetailsModal = ({
               />
             </div>
 
+            {/* Skills & Interests */}
             <TagsDisplaySection
               title="Skills & Interests"
               tags={user?.tags}
               emptyMessage="No tags yet"
             />
 
+            {/* Badges */}
             <BadgesDisplaySection
               title={`Badges${
                 Number.isFinite(user?.total_badge_credits)
@@ -330,6 +339,20 @@ const UserDetailsModal = ({
               showCredits={false}
               onCategoryClick={handleBadgeCategoryClick}
             />
+
+            {/* Bottom CTA (TeamDetailsModal style) */}
+            {showChatInvite && (
+              <div className="mt-6 border-t border-base-200 pt-4">
+                <Button
+                  variant="primary"
+                  onClick={handleStartChat}
+                  className="w-full flex items-center justify-center gap-2"
+                >
+                  <MessageCircle size={18} />
+                  Send Chat Message
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </Modal>
