@@ -23,6 +23,7 @@ import {
  * @param {boolean} groupByCategory - Group badges by category with icons
  * @param {boolean} showCredits - Show credit counts on badge pills
  * @param {Function} onCategoryClick - Callback when category icon is clicked (category, color, badges, totalCredits)
+ * @param {Function} onBadgeClick - Callback when individual badge pill is clicked (badge, category, color)
  */
 
 // Category colors (matching BadgeCategoryCard/BadgeCategoryModal)
@@ -46,6 +47,7 @@ const BadgesDisplaySection = ({
   groupByCategory = true,
   showCredits = true,
   onCategoryClick = null,
+  onBadgeClick = null,
 }) => {
   if (!badges || badges.length === 0) {
     if (compact) return null;
@@ -238,25 +240,22 @@ const BadgesDisplaySection = ({
 
               {/* Badge pills for this category */}
               <div className="flex flex-wrap gap-1.5">
-                {categoryBadges.map((badge) => {
-                  const credits = getCredits(badge);
-                  return (
-                    <span
-                      key={badge.id ?? badge.badge_id ?? badge.name}
-                      className="badge badge-outline p-2.5 text-sm"
-                      style={{
-                        borderColor: categoryColor,
-                        color: categoryColor,
-                      }}
-                      title={badge.description || category}
-                    >
-                      {badge.name}
-                      {credits && showCredits && (
-                        <span className="ml-1 opacity-80">| {credits}ct.</span>
-                      )}
-                    </span>
-                  );
-                })}
+                {/* Badge pills */}
+              {categoryBadges.map((badge) => {
+                const credits = getCredits(badge);
+                const isClickable = !!onBadgeClick;
+                return (
+                  <span
+                    key={badge.id ?? badge.badge_id ?? badge.name}
+                    className={`badge badge-outline p-3 ${isClickable ? "cursor-pointer hover:opacity-80 transition-opacity" : ""}`}
+                    style={{ borderColor: categoryColor, color: categoryColor }}
+                    title={badge.description || category}
+                    onClick={isClickable ? () => onBadgeClick(badge, category, categoryColor) : undefined}
+                  >
+                    {badge.name}
+                  </span>
+                );
+              })}
               </div>
             </div>
           );
