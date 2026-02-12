@@ -24,6 +24,8 @@ const UserDetailsModal = ({
   onOpenUser,
   zIndexClass,
   boxZIndexClass,
+  zIndexStyle,
+  boxZIndexStyle,
 }) => {
   const { user: currentUser, isAuthenticated } = useAuth();
   const navigate = useNavigate();
@@ -330,6 +332,8 @@ const UserDetailsModal = ({
         showCloseButton={true}
         zIndexClass={zIndexClass}
         boxZIndexClass={boxZIndexClass}
+        zIndexStyle={zIndexStyle}
+        boxZIndexStyle={boxZIndexStyle}
       >
         {loading ? (
           <div className="flex justify-center items-center py-12">

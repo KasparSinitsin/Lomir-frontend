@@ -18,12 +18,13 @@ import UserDetailsModal from "../users/UserDetailsModal";
 import TeamApplicationDetailsModal from "./TeamApplicationDetailsModal";
 import TeamInvitesModal from "./TeamInvitesModal";
 import TeamInvitationDetailsModal from "./TeamInvitationDetailsModal";
+import { SentByLink } from "../users/InlineUserLink";
 import { teamService } from "../../services/teamService";
 import { useAuth } from "../../contexts/AuthContext";
 import Alert from "../common/Alert";
 import NotificationBadge from "../common/NotificationBadge";
 import TeamApplicationsModal from "./TeamApplicationsModal";
-import { getUserInitials, getDisplayName } from "../../utils/userHelpers";
+// import { getUserInitials, getDisplayName } from "../../utils/userHelpers";
 import { format } from "date-fns";
 import LocationDistanceTagsRow from "../common/LocationDistanceTagsRow";
 
@@ -779,34 +780,9 @@ const TeamCard = ({
     if (effectiveVariant !== "invitation" || !normalizedData.inviter)
       return null;
 
-    const inviter = normalizedData.inviter;
-    const avatarUrl = inviter.avatar_url || inviter.avatarUrl;
-    const firstName = inviter.first_name || inviter.firstName;
-    const lastName = inviter.last_name || inviter.lastName;
-    const displayName = getDisplayName(inviter);
-
     return (
-      <div className="flex items-center text-xs text-base-content/60 mb-4">
-        <span className="mr-1">Sent by</span>
-        <div className="avatar mr-1">
-          <div className="w-4 h-4 rounded-full relative">
-            {avatarUrl ? (
-              <img
-                src={avatarUrl}
-                alt={inviter.username || "Inviter"}
-                className="object-cover w-full h-full rounded-full"
-              />
-            ) : (
-              <div
-                className="bg-primary text-primary-content flex items-center justify-center w-full h-full rounded-full"
-                style={{ fontSize: "8px" }}
-              >
-                <span className="font-medium">{getUserInitials(inviter)}</span>
-              </div>
-            )}
-          </div>
-        </div>
-        <span className="font-medium text-base-content/80">{displayName}</span>
+      <div className="mb-4">
+        <SentByLink user={normalizedData.inviter} />
       </div>
     );
   };

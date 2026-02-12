@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from "react";
 import { User, MapPin, Calendar, SendHorizontal } from "lucide-react";
 import RequestListModal from "../common/RequestListModal";
-import PersonRequestCard from "../common/PersonRequestCard";
 import Button from "../common/Button";
-import UserDetailsModal from "../users/UserDetailsModal";
+import InlineUserLink, { InvitedByLink } from "../users/InlineUserLink";
+import { useUserModal } from "../../contexts/UserModalContext";
 import { getUserInitials, getDisplayName } from "../../utils/userHelpers";
 import { format } from "date-fns";
 
@@ -29,27 +29,19 @@ const TeamInvitesModal = ({
   teamName,
   highlightUserId = null,
 }) => {
+  // ============ State ============
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
-  const [selectedUserId, setSelectedUserId] = useState(null);
 
   // ============ Refs ============
   const highlightedRef = useRef(null);
 
-  // Handler to open user profile modal
-  const handleUserClick = (userId) => {
-    if (userId) {
-      setSelectedUserId(userId);
-    }
-  };
+  // ============ Context ============
+  // Get global user modal opener (for clicking on invitee avatar/name)
+  const { openUserModal } = useUserModal();
 
-  // Handler to close user profile modal
-  const handleUserModalClose = () => {
-    setSelectedUserId(null);
-  };
-
-  // Debug: Log invitation data to check structure
+  // ============ Debug Logging ============
   useEffect(() => {
     if (invitations && invitations.length > 0) {
       console.log("TeamInvitesModal - Invitations data:", invitations);
@@ -87,6 +79,8 @@ const TeamInvitesModal = ({
     }
   }, [isOpen, highlightUserId]);
 
+  // ============ Handlers ============
+
   const handleCancelInvitation = async (invitationId) => {
     if (!window.confirm("Are you sure you want to cancel this invitation?")) {
       return;
@@ -108,6 +102,15 @@ const TeamInvitesModal = ({
       setLoading(false);
     }
   };
+
+  // Handler for clicking on invitee avatar/name
+  const handleInviteeClick = (userId) => {
+    if (userId) {
+      openUserModal(userId);
+    }
+  };
+
+  // ============ Helpers ============
 
   // Helper to get avatar URL
   const getAvatarUrl = (user) => {
@@ -149,20 +152,14 @@ const TeamInvitesModal = ({
       emptyIcon={User}
       emptyTitle="No pending invitations"
       emptyMessage="Invitations you send to users will appear here."
-      extraModals={
-        <UserDetailsModal
-          isOpen={!!selectedUserId}
-          userId={selectedUserId}
-          onClose={handleUserModalClose}
-        />
-      }
+      // No extraModals needed - UserModalContext handles it globally
     >
       {invitations.map((invitation) => {
         // Get invitee ID for highlighting comparison
         const inviteeId =
           invitation?.invitee?.id ?? invitation?.invitee_id ?? null;
 
-        // Normalize types to avoid "1" vs 1 mismatches (same as TeamApplicationsModal)
+        // Normalize types to avoid "1" vs 1 mismatches
         const isHighlighted =
           highlightUserId != null &&
           inviteeId != null &&
@@ -174,26 +171,25 @@ const TeamInvitesModal = ({
             ref={isHighlighted ? highlightedRef : null}
             className={`bg-base-200/30 rounded-lg border border-base-300 p-4 transition-all duration-300 ${
               isHighlighted
-                ? "ring-2 ring-primary/30 rounded-xl bg-primary/5"
+                ? "ring-2 ring-primary ring-offset-2 bg-primary/5"
                 : ""
             }`}
           >
-            {/* Invitee Info Header */}
-            <div className="flex items-start space-x-3 mb-3">
-              {/* Avatar - Clickable */}
+            {/* Top row: Avatar + Name/Username + Date */}
+            <div className="flex items-start gap-3 mb-3">
+              {/* Invitee Avatar - Clickable */}
               <div
-                className="avatar cursor-pointer hover:opacity-80 transition-opacity"
-                onClick={() => handleUserClick(invitation.invitee?.id)}
+                className="avatar cursor-pointer hover:opacity-80 transition-opacity flex-shrink-0"
+                onClick={() => handleInviteeClick(invitation.invitee?.id)}
                 title="View profile"
               >
-                <div className="w-12 h-12 rounded-full relative">
+                <div className="w-10 h-10 rounded-full relative">
                   {getAvatarUrl(invitation.invitee) ? (
                     <img
                       src={getAvatarUrl(invitation.invitee)}
-                      alt={invitation.invitee?.username || "User"}
+                      alt={getDisplayName(invitation.invitee)}
                       className="object-cover w-full h-full rounded-full"
                       onError={(e) => {
-                        // If image fails to load, hide it and show fallback
                         e.target.style.display = "none";
                         const fallback =
                           e.target.parentElement.querySelector(
@@ -224,7 +220,7 @@ const TeamInvitesModal = ({
                 {/* Name - Clickable */}
                 <h4
                   className="font-medium text-base-content cursor-pointer hover:text-primary transition-colors leading-[120%] mb-[0.2em]"
-                  onClick={() => handleUserClick(invitation.invitee?.id)}
+                  onClick={() => handleInviteeClick(invitation.invitee?.id)}
                   title="View profile"
                 >
                   {getDisplayName(invitation.invitee)}
@@ -278,70 +274,13 @@ const TeamInvitesModal = ({
 
             {/* Bottom row: Inviter info (left) + Action Button (right) */}
             <div className="flex items-center justify-between gap-3">
-              {/* Inviter info (left) */}
-              {invitation.inviter || invitation.inviter_username ? (
-                <div className="flex items-center text-xs text-base-content/50">
-                  <span className="mr-1">Invited by</span>
-
-                  {/* Inviter Avatar */}
-                  <div
-                    className="avatar cursor-pointer hover:opacity-80 transition-opacity mr-1"
-                    onClick={() => handleUserClick(invitation.inviter?.id)}
-                    title="View profile"
-                  >
-                    <div className="w-4 h-4 rounded-full relative">
-                      {getAvatarUrl(invitation.inviter) ? (
-                        <img
-                          src={getAvatarUrl(invitation.inviter)}
-                          alt="Inviter"
-                          className="object-cover w-full h-full rounded-full"
-                          onError={(e) => {
-                            e.target.style.display = "none";
-                            const fallback =
-                              e.target.parentElement.querySelector(
-                                ".avatar-fallback"
-                              );
-                            if (fallback) fallback.style.display = "flex";
-                          }}
-                        />
-                      ) : null}
-
-                      {/* Fallback initials */}
-                      <div
-                        className="avatar-fallback bg-primary text-primary-content flex items-center justify-center w-full h-full rounded-full absolute inset-0"
-                        style={{
-                          display: getAvatarUrl(invitation.inviter)
-                            ? "none"
-                            : "flex",
-                          fontSize: "8px",
-                        }}
-                      >
-                        <span className="font-medium">
-                          {getUserInitials(invitation.inviter)}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Full name */}
-                  <span
-                    className="font-medium text-base-content/80 cursor-pointer hover:text-primary transition-colors"
-                    onClick={() => handleUserClick(invitation.inviter?.id)}
-                    title="View profile"
-                  >
-                    {(() => {
-                      const inviter = invitation.inviter || {};
-                      const firstName = inviter.first_name || inviter.firstName;
-                      const lastName = inviter.last_name || inviter.lastName;
-                      const full = `${firstName || ""} ${
-                        lastName || ""
-                      }`.trim();
-                      return full.length > 0
-                        ? full
-                        : invitation.inviter_username || "Team Admin";
-                    })()}
-                  </span>
-                </div>
+              {/* Inviter info (left) - Using InlineUserLink */}
+              {invitation.inviter ? (
+                <InvitedByLink user={invitation.inviter} />
+              ) : invitation.inviter_username ? (
+                <span className="text-xs text-base-content/50">
+                  Invited by {invitation.inviter_username}
+                </span>
               ) : (
                 <div />
               )}

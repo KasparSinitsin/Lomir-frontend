@@ -1,15 +1,41 @@
-// src/components/common/Modal.jsx
 import React, { useEffect } from "react";
 import { createPortal } from "react-dom";
 
+/**
+ * Modal Component
+ *
+ * A flexible modal component that renders via portal to document.body.
+ *
+ * Z-Index Options:
+ * - Use zIndexClass/boxZIndexClass for static Tailwind classes (e.g., "z-[999]")
+ * - Use zIndexStyle/boxZIndexStyle for dynamic inline styles (e.g., { zIndex: 1100 })
+ * - Inline styles take precedence over classes when both are provided
+ *
+ * @param {boolean} isOpen - Whether the modal is visible
+ * @param {Function} onClose - Callback when modal should close
+ * @param {ReactNode} title - Modal title (string or JSX)
+ * @param {ReactNode} children - Modal content
+ * @param {ReactNode} footer - Optional footer content
+ * @param {string} position - "center" or "top"
+ * @param {string} size - "small", "default", "large", or "lg"
+ * @param {string} maxHeight - Max height class (default: "max-h-[90vh]")
+ * @param {string} minHeight - Min height class
+ * @param {boolean} closeOnBackdrop - Close when clicking backdrop
+ * @param {boolean} closeOnEscape - Close when pressing ESC
+ * @param {boolean} showCloseButton - Show X button in header
+ * @param {string} zIndexClass - Tailwind z-index class for backdrop (default: "z-[999]")
+ * @param {string} boxZIndexClass - Tailwind z-index class for modal box (default: "z-[1000]")
+ * @param {Object} zIndexStyle - Inline style for backdrop z-index (overrides zIndexClass)
+ * @param {Object} boxZIndexStyle - Inline style for modal box z-index (overrides boxZIndexClass)
+ */
 const Modal = ({
   isOpen,
   onClose,
   title,
   children,
   footer,
-  position = "center", // "center" | "top"
-  size = "default", // "small" | "default" | "large"
+  position = "center",
+  size = "default",
   maxHeight = "max-h-[90vh]",
   minHeight = "",
   closeOnBackdrop = true,
@@ -17,6 +43,8 @@ const Modal = ({
   showCloseButton = true,
   zIndexClass = "z-[999]",
   boxZIndexClass = "z-[1000]",
+  zIndexStyle = null,
+  boxZIndexStyle = null,
 }) => {
   // Handle ESC key
   useEffect(() => {
@@ -37,16 +65,34 @@ const Modal = ({
   const sizeClass =
     size === "small"
       ? "max-w-md"
-      : size === "large"
+      : size === "large" || size === "lg"
         ? "max-w-4xl"
         : "max-w-2xl"; // default
 
   const positionClass =
     position === "top" ? "items-start mt-10" : "items-center";
 
+  // Determine whether to use inline styles or classes for z-index
+  // Inline styles take precedence when provided
+  const useInlineZIndex = zIndexStyle !== null;
+  const useInlineBoxZIndex = boxZIndexStyle !== null;
+
+  // Build backdrop className - exclude zIndexClass if using inline style
+  const backdropClassName = `fixed inset-0 ${useInlineZIndex ? "" : zIndexClass} flex ${positionClass} justify-center`;
+
+  // Build modal box className - exclude boxZIndexClass if using inline style
+  const boxClassName = `
+    relative ${useInlineBoxZIndex ? "" : boxZIndexClass}
+    bg-base-100 rounded-xl shadow-soft
+    w-full ${sizeClass} mx-4
+    ${maxHeight} ${minHeight}
+    overflow-y-auto overflow-x-hidden
+  `;
+
   return createPortal(
     <div
-      className={`fixed inset-0 ${zIndexClass} flex ${positionClass} justify-center`}
+      className={backdropClassName}
+      style={useInlineZIndex ? zIndexStyle : undefined}
     >
       {/* Backdrop */}
       <div
@@ -56,13 +102,8 @@ const Modal = ({
 
       {/* Modal box */}
       <div
-        className={`
-    relative ${boxZIndexClass}
-    bg-base-100 rounded-xl shadow-soft
-    w-full ${sizeClass} mx-4
-    ${maxHeight} ${minHeight}
-    overflow-y-auto overflow-x-hidden
-  `}
+        className={boxClassName}
+        style={useInlineBoxZIndex ? boxZIndexStyle : undefined}
       >
         {/* Header */}
         {(title || showCloseButton) && (
@@ -100,7 +141,7 @@ const Modal = ({
         )}
       </div>
     </div>,
-    document.body,
+    document.body
   );
 };
 

@@ -52,7 +52,6 @@ const Profile = () => {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [avatarDeleteLoading, setAvatarDeleteLoading] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState(null);
-
   const [badgeCategoryModal, setBadgeCategoryModal] = useState({
     isOpen: false,
     category: null,
@@ -1077,13 +1076,6 @@ const Profile = () => {
         detailedAwards={detailedBadgeAwards}
         totalCredits={badgeCategoryModal.totalCredits}
         loading={badgeModalLoading}
-        onOpenUser={(id) => setSelectedUserId(id)}
-      />
-
-      <UserDetailsModal
-        isOpen={!!selectedUserId}
-        userId={selectedUserId}
-        onClose={() => setSelectedUserId(null)}
       />
 
       {/* Delete Profile Confirmation Modal */}
