@@ -67,6 +67,7 @@ const Profile = () => {
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
+    username: "",
     email: "",
     bio: "",
     city: "",
@@ -138,6 +139,7 @@ const Profile = () => {
         setFormData({
           firstName: apiUserData.firstName || apiUserData.first_name || "",
           lastName: apiUserData.lastName || apiUserData.last_name || "",
+          username: apiUserData.username || "",
           email: apiUserData.email || apiUserData.email || "",
           bio: apiUserData.bio || "",
           postalCode: apiUserData.postalCode || apiUserData.postal_code || "",
@@ -189,6 +191,7 @@ const Profile = () => {
       setFormData({
         firstName: user.firstName || user.first_name || "",
         lastName: user.lastName || user.last_name || "",
+        username: user.username || "",
         email: user.email || "",
         bio: user.bio || "",
         city: user.city || "",
@@ -430,6 +433,13 @@ const Profile = () => {
   const validateForm = () => {
     const errors = {};
 
+    // Username validation
+    if (!formData.username.trim()) {
+      errors.username = "Username is required";
+    } else if (!/^[a-zA-Z0-9_]{3,20}$/.test(formData.username.trim())) {
+      errors.username = "Use 3–20 chars: letters, numbers, underscore";
+    }
+
     // Email validation
     if (!formData.email.trim()) {
       errors.email = "Email is required";
@@ -466,6 +476,7 @@ const Profile = () => {
       const userData = {
         first_name: formData.firstName,
         last_name: formData.lastName,
+        username: formData.username.trim(),
         email: formData.email,
         bio: formData.bio,
         postal_code: formData.postalCode,
@@ -544,6 +555,7 @@ const Profile = () => {
           isPublic: formData.isPublic,
           first_name: formData.firstName,
           last_name: formData.lastName,
+          username: formData.username.trim(),
           email: formData.email, // Include email in the updated user object
           bio: formData.bio,
           postal_code: formData.postalCode,
@@ -555,6 +567,7 @@ const Profile = () => {
           // Also set camelCase versions
           firstName: formData.firstName,
           lastName: formData.lastName,
+          userName: formData.username,
           postalCode: formData.postalCode,
         };
 
@@ -571,6 +584,7 @@ const Profile = () => {
           ...prev,
           firstName: updatedUser.first_name || updatedUser.firstName || "",
           lastName: updatedUser.last_name || updatedUser.lastName || "",
+          username: updatedUser.username || "",
           email: updatedUser.email || "", // Keep the email in the form data
           bio: updatedUser.bio || "",
           postalCode: updatedUser.postal_code || updatedUser.postalCode || "",
@@ -725,6 +739,33 @@ const Profile = () => {
                 className="input input-bordered w-full"
                 placeholder="Last Name"
               />
+            </div>
+
+            <div className="form-control w-full mb-4">
+              <label className="label">
+                <span className="label-text">Username</span>
+              </label>
+              <input
+                type="text"
+                name="username"
+                value={formData.username}
+                onChange={handleChange}
+                className={`input input-bordered w-full ${
+                  formErrors.username ? "input-error" : ""
+                }`}
+                placeholder="Username"
+                autoComplete="off"
+              />
+              {formErrors.username && (
+                <label className="label">
+                  <span className="label-text-alt text-error">
+                    {formErrors.username}
+                  </span>
+                </label>
+              )}
+              <p className="text-xs text-base-content/50 mt-1">
+                3–20 characters, letters/numbers/underscore. Must be unique.
+              </p>
             </div>
 
             <div className="form-control w-full mb-4">
