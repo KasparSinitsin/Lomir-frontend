@@ -1,15 +1,23 @@
 import React, { useEffect } from "react";
 import { createPortal } from "react-dom";
+import {
+  useModalLayer,
+  ModalLayerProvider,
+  MODAL_Z_STEP,
+} from "../../contexts/ModalLayerContext";
 
 /**
  * Modal Component
  *
  * A flexible modal component that renders via portal to document.body.
+ * Integrates with ModalLayerContext for automatic z-index management.
  *
- * Z-Index Options:
- * - Use zIndexClass/boxZIndexClass for static Tailwind classes (e.g., "z-[999]")
- * - Use zIndexStyle/boxZIndexStyle for dynamic inline styles (e.g., { zIndex: 1100 })
- * - Inline styles take precedence over classes when both are provided
+ * Z-Index Priority (highest to lowest):
+ * 1. Explicit zIndexStyle prop (inline style)
+ * 2. ModalLayerContext value (if > default)
+ * 3. Explicit zIndexClass prop (Tailwind class)
+ *
+ * Child modals automatically get a higher z-index via ModalLayerProvider.
  *
  * @param {boolean} isOpen - Whether the modal is visible
  * @param {Function} onClose - Callback when modal should close
@@ -23,10 +31,10 @@ import { createPortal } from "react-dom";
  * @param {boolean} closeOnBackdrop - Close when clicking backdrop
  * @param {boolean} closeOnEscape - Close when pressing ESC
  * @param {boolean} showCloseButton - Show X button in header
- * @param {string} zIndexClass - Tailwind z-index class for backdrop (default: "z-[999]")
- * @param {string} boxZIndexClass - Tailwind z-index class for modal box (default: "z-[1000]")
- * @param {Object} zIndexStyle - Inline style for backdrop z-index (overrides zIndexClass)
- * @param {Object} boxZIndexStyle - Inline style for modal box z-index (overrides boxZIndexClass)
+ * @param {string} zIndexClass - Tailwind z-index class for backdrop (fallback)
+ * @param {string} boxZIndexClass - Tailwind z-index class for modal box (fallback)
+ * @param {Object} zIndexStyle - Inline style for backdrop z-index (highest priority)
+ * @param {Object} boxZIndexStyle - Inline style for modal box z-index (highest priority)
  */
 const Modal = ({
   isOpen,
@@ -41,11 +49,14 @@ const Modal = ({
   closeOnBackdrop = true,
   closeOnEscape = true,
   showCloseButton = true,
-  zIndexClass = "z-[999]",
-  boxZIndexClass = "z-[1000]",
+  zIndexClass = "z-[50]",
+  boxZIndexClass = "z-[51]",
   zIndexStyle = null,
   boxZIndexStyle = null,
 }) => {
+  // Get z-index from context (will be default 50 if no provider above)
+  const layerZIndex = useModalLayer();
+
   // Handle ESC key
   useEffect(() => {
     if (!isOpen || !closeOnEscape) return;
@@ -72,27 +83,45 @@ const Modal = ({
   const positionClass =
     position === "top" ? "items-start mt-10" : "items-center";
 
-  // Determine whether to use inline styles or classes for z-index
-  // Inline styles take precedence when provided
-  const useInlineZIndex = zIndexStyle !== null;
-  const useInlineBoxZIndex = boxZIndexStyle !== null;
+  // Determine effective z-index
+  // Priority: explicit style > layer context (if elevated) > class
+  const hasExplicitStyle = zIndexStyle !== null;
+  const hasElevatedLayer = layerZIndex > 50;
 
-  // Build backdrop className - exclude zIndexClass if using inline style
-  const backdropClassName = `fixed inset-0 ${useInlineZIndex ? "" : zIndexClass} flex ${positionClass} justify-center`;
+  let effectiveZIndex = null;
+  let effectiveBoxZIndex = null;
+  let useInlineStyle = false;
 
-  // Build modal box className - exclude boxZIndexClass if using inline style
+  if (hasExplicitStyle) {
+    // Explicit style takes highest priority
+    effectiveZIndex = zIndexStyle.zIndex;
+    effectiveBoxZIndex = boxZIndexStyle?.zIndex ?? effectiveZIndex + 1;
+    useInlineStyle = true;
+  } else if (hasElevatedLayer) {
+    // Use layer context if elevated above default
+    effectiveZIndex = layerZIndex;
+    effectiveBoxZIndex = layerZIndex + 1;
+    useInlineStyle = true;
+  }
+  // Otherwise, fall back to zIndexClass (no inline style)
+
+  // Build class names
+  const backdropClassName = `fixed inset-0 ${useInlineStyle ? "" : zIndexClass} flex ${positionClass} justify-center`;
   const boxClassName = `
-    relative ${useInlineBoxZIndex ? "" : boxZIndexClass}
+    relative ${useInlineStyle ? "" : boxZIndexClass}
     bg-base-100 rounded-xl shadow-soft
     w-full ${sizeClass} mx-4
     ${maxHeight} ${minHeight}
     overflow-y-auto overflow-x-hidden
   `;
 
+  // Z-index for child modals (this modal's z + step)
+  const childLayerZIndex = (effectiveZIndex ?? 50) + MODAL_Z_STEP;
+
   return createPortal(
     <div
       className={backdropClassName}
-      style={useInlineZIndex ? zIndexStyle : undefined}
+      style={useInlineStyle ? { zIndex: effectiveZIndex } : undefined}
     >
       {/* Backdrop */}
       <div
@@ -103,7 +132,7 @@ const Modal = ({
       {/* Modal box */}
       <div
         className={boxClassName}
-        style={useInlineBoxZIndex ? boxZIndexStyle : undefined}
+        style={useInlineStyle ? { zIndex: effectiveBoxZIndex } : undefined}
       >
         {/* Header */}
         {(title || showCloseButton) && (
@@ -130,13 +159,19 @@ const Modal = ({
           </div>
         )}
 
-        {/* Body */}
-        <div className="p-6">{children}</div>
+        {/* Body - wrapped in ModalLayerProvider for child modals */}
+        <div className="p-6">
+          <ModalLayerProvider zIndex={childLayerZIndex}>
+            {children}
+          </ModalLayerProvider>
+        </div>
 
         {/* Footer (optional) */}
         {footer && (
           <div className="p-4 border-t border-base-200 bg-base-100/80">
-            {footer}
+            <ModalLayerProvider zIndex={childLayerZIndex}>
+              {footer}
+            </ModalLayerProvider>
           </div>
         )}
       </div>
