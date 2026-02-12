@@ -27,6 +27,8 @@ import BadgeCategoryModal from "../components/badges/BadgeCategoryModal";
 import TagsDisplaySection from "../components/tags/TagsDisplaySection";
 import IconToggle from "../components/common/IconToggle";
 import LocationDisplay from "../components/common/LocationDisplay";
+import { geocodingService } from "../services/geocodingService";
+import { useLocation } from "../hooks/useLocation";
 import ImageUploader from "../components/common/ImageUploader";
 import { getUserInitials } from "../utils/userHelpers";
 import Modal from "../components/common/Modal";
@@ -81,6 +83,12 @@ const Profile = () => {
 
   // Prefer freshest API user (includes badges totals). Fall back to auth context.
   const displayUser = localUser || user;
+
+  // Auto-fill city from postal code lookup
+  const { location: lookedUpLocation } = useLocation(
+    formData.postalCode,
+    formData.country || null,
+  );
 
   // Format member since date
   const getMemberSinceDate = () => {
@@ -252,6 +260,78 @@ const Profile = () => {
   useEffect(() => {
     setImageError(false);
   }, [user?.avatarUrl, user?.avatar_url]);
+
+  // Auto-fill city and country when postal code lookup returns a result
+  useEffect(() => {
+    if (lookedUpLocation && isEditing) {
+      setFormData((prev) => {
+        const updates = {};
+
+        // Auto-fill city if empty
+        if (lookedUpLocation.city && !prev.city) {
+          updates.city = lookedUpLocation.city;
+        }
+
+        // Auto-fill country if empty
+        if (lookedUpLocation.country && !prev.country) {
+          // Map country name to country code for the dropdown
+          const countryNameToCode = {
+            Germany: "DE",
+            Deutschland: "DE",
+            Austria: "AT",
+            Österreich: "AT",
+            Switzerland: "CH",
+            Schweiz: "CH",
+            Netherlands: "NL",
+            France: "FR",
+            "United Kingdom": "GB",
+            Italy: "IT",
+            Spain: "ES",
+            Poland: "PL",
+            Belgium: "BE",
+            Denmark: "DK",
+            Sweden: "SE",
+            Norway: "NO",
+            Finland: "FI",
+            "Czech Republic": "CZ",
+            Portugal: "PT",
+            Ireland: "IE",
+            Greece: "GR",
+            Hungary: "HU",
+            Romania: "RO",
+            Bulgaria: "BG",
+            Croatia: "HR",
+            Slovakia: "SK",
+            Slovenia: "SI",
+            Lithuania: "LT",
+            Latvia: "LV",
+            Estonia: "EE",
+            Luxembourg: "LU",
+            "United States": "US",
+            Canada: "CA",
+            Australia: "AU",
+            Japan: "JP",
+            China: "CN",
+            India: "IN",
+            Brazil: "BR",
+            Mexico: "MX",
+            "South Africa": "ZA",
+          };
+
+          const countryCode = countryNameToCode[lookedUpLocation.country];
+          if (countryCode) {
+            updates.country = countryCode;
+          }
+        }
+
+        // Only update if there are changes
+        if (Object.keys(updates).length > 0) {
+          return { ...prev, ...updates };
+        }
+        return prev;
+      });
+    }
+  }, [lookedUpLocation, isEditing]);
 
   const handleBadgeCategoryClick = async (
     category,
