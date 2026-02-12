@@ -254,8 +254,6 @@ const BadgeCategoryModal = ({
       title={titleNode}
       size="large"
       position="center"
-      zIndexClass="z-[1000]"
-      boxZIndexClass="z-[1001]"
     >
       <div
         className={`space-y-4 max-h-[60vh] overflow-y-auto ${focusedBadgeName ? "-mx-6 -mb-6 -mt-6 px-6 pb-6 pt-4" : ""}`}

@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useCallback } from "react";
 import { createPortal } from "react-dom";
 import UserDetailsModal from "../components/users/UserDetailsModal";
+import { ModalLayerProvider, MODAL_Z_STEP } from "./ModalLayerContext";
 
 /**
  * UserModalContext
@@ -9,23 +10,23 @@ import UserDetailsModal from "../components/users/UserDetailsModal";
  * Manages a stack of modals with deterministic z-indexing to support infinite
  * chaining (e.g., awarder → awarder → awarder).
  *
+ * Integrates with ModalLayerContext to ensure child modals (BadgeCategoryModal,
+ * TeamInviteModal, etc.) opened from within a UserDetailsModal stack correctly.
+ *
  * Usage:
  *   const { openUserModal } = useUserModal();
  *   openUserModal(userId);
  *
  * Z-Index Layering Policy:
  *   Base z-index: 1100 (above BadgeCategoryModal at 1000)
- *   Each stacked modal: +20 (1100, 1120, 1140, ...)
- *
- * This ensures user modals opened via InlineUserLink always appear
- * above any other modals (BadgeCategoryModal, TeamInvitesModal, etc.)
+ *   Each stacked modal: +100 (1100, 1200, 1300, ...)
+ *   Child modals within each: +100 from their parent
  */
 
 const UserModalContext = createContext(null);
 
 // Base z-index for global user modals (above BadgeCategoryModal at z-1000)
 const BASE_Z_INDEX = 1100;
-const Z_INDEX_STEP = 20;
 
 export const UserModalProvider = ({ children }) => {
   // Stack of user IDs currently open
@@ -110,7 +111,7 @@ export const UserModalProvider = ({ children }) => {
             onClose={closeTopModal}
             onOpenUser={openUserModal}
           />,
-          document.body
+          document.body,
         )}
     </UserModalContext.Provider>
   );
@@ -118,32 +119,36 @@ export const UserModalProvider = ({ children }) => {
 
 /**
  * Renders the stack of UserDetailsModals with proper z-indexing.
- * Uses inline style props for z-index to support dynamic values.
+ * Each modal is wrapped in ModalLayerProvider so child modals stack correctly.
  */
 const UserModalStack = ({ stack, onClose, onOpenUser }) => {
   return (
     <>
       {stack.map((userId, idx) => {
-        const zIndex = BASE_Z_INDEX + idx * Z_INDEX_STEP;
+        const zIndex = BASE_Z_INDEX + idx * MODAL_Z_STEP;
         const isTop = idx === stack.length - 1;
 
         return (
-          <UserDetailsModal
-            key={`global-user-modal-${userId}-${idx}`}
-            isOpen={true}
-            userId={userId}
-            onClose={() => {
-              // Only allow closing the topmost modal
-              if (isTop) {
-                onClose();
-              }
-            }}
-            mode="profile"
-            onOpenUser={onOpenUser}
-            // Use inline style props for dynamic z-index
-            zIndexStyle={{ zIndex }}
-            boxZIndexStyle={{ zIndex: zIndex + 1 }}
-          />
+          <ModalLayerProvider
+            key={`global-user-modal-layer-${userId}-${idx}`}
+            zIndex={zIndex + MODAL_Z_STEP} // Child modals get this z-index
+          >
+            <UserDetailsModal
+              isOpen={true}
+              userId={userId}
+              onClose={() => {
+                // Only allow closing the topmost modal
+                if (isTop) {
+                  onClose();
+                }
+              }}
+              mode="profile"
+              onOpenUser={onOpenUser}
+              // Pass the z-index for this modal
+              zIndexStyle={{ zIndex }}
+              boxZIndexStyle={{ zIndex: zIndex + 1 }}
+            />
+          </ModalLayerProvider>
         );
       })}
     </>

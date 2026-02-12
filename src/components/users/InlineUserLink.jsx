@@ -69,7 +69,9 @@ const InlineUserLink = ({
   };
 
   return (
-    <div className={`flex items-center text-xs text-base-content/60 ${className}`}>
+    <div
+      className={`flex items-center text-xs text-base-content/60 ${className}`}
+    >
       {/* Label (e.g., "Awarded by", "Invited by") */}
       {label && <span className="mr-1">{label}</span>}
 
