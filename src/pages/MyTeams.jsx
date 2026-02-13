@@ -47,25 +47,28 @@ const MyTeams = () => {
   const [autoOpenApplicationsTeamId, setAutoOpenApplicationsTeamId] =
     useState(null);
 
-  const fetchUserTeams = useCallback(async (page = 1, limit = 10) => {
-    try {
-      setLoading(true);
-      if (user && user.id) {
-        const response = await teamService.getUserTeams(user.id, page, limit);
-        setTeams(response.data);
-        
-        // Update pagination metadata from response
-        if (response.pagination) {
-          setPagination(response.pagination);
+  const fetchUserTeams = useCallback(
+    async (page = 1, limit = 10) => {
+      try {
+        setLoading(true);
+        if (user && user.id) {
+          const response = await teamService.getUserTeams(user.id, page, limit);
+          setTeams(response.data);
+
+          // Update pagination metadata from response
+          if (response.pagination) {
+            setPagination(response.pagination);
+          }
         }
+      } catch (err) {
+        console.error("Failed to fetch teams:", err);
+        setError("Could not load teams");
+      } finally {
+        setLoading(false);
       }
-    } catch (err) {
-      console.error("Failed to fetch teams:", err);
-      setError("Could not load teams");
-    } finally {
-      setLoading(false);
-    }
-  }, [user]);
+    },
+    [user],
+  );
 
   const fetchPendingApplications = useCallback(async () => {
     try {
@@ -99,11 +102,7 @@ const MyTeams = () => {
       fetchPendingApplications();
       fetchPendingInvitations();
     }
-  }, [
-    user?.id,
-    fetchPendingApplications,
-    fetchPendingInvitations,
-  ]);
+  }, [user?.id, fetchPendingApplications, fetchPendingInvitations]);
 
   // Refetch teams when pagination changes
   useEffect(() => {
@@ -141,7 +140,7 @@ const MyTeams = () => {
   // Handler for page changes
   const handlePageChange = (newPage) => {
     setCurrentPage(newPage);
-    
+
     // Scroll to the My Teams section when page changes
     const teamsSection = document.getElementById("my-teams-section");
     if (teamsSection) {
@@ -163,7 +162,9 @@ const MyTeams = () => {
     }
 
     setTeams((prevTeams) =>
-      prevTeams.map((team) => (team.id === updatedTeam.id ? updatedTeam : team))
+      prevTeams.map((team) =>
+        team.id === updatedTeam.id ? updatedTeam : team,
+      ),
     );
   };
 
@@ -208,7 +209,7 @@ const MyTeams = () => {
       await teamService.respondToInvitation(
         invitationId,
         "accept",
-        responseMessage
+        responseMessage,
       );
 
       console.log("Invitation accepted successfully");
@@ -223,13 +224,13 @@ const MyTeams = () => {
 
   const handleInvitationDecline = async (
     invitationId,
-    responseMessage = ""
+    responseMessage = "",
   ) => {
     try {
       await teamService.respondToInvitation(
         invitationId,
         "decline",
-        responseMessage
+        responseMessage,
       );
 
       console.log("Invitation declined");
@@ -268,7 +269,7 @@ const MyTeams = () => {
           Create New Team
         </Button>
       </Link>
-      <Link to="/search">
+      <Link to="/search?type=teams">
         <Button variant="primary" icon={<SearchIcon size={16} />}>
           Search for Teams
         </Button>
@@ -373,7 +374,8 @@ const MyTeams = () => {
                   variant="member"
                   team={{
                     ...team,
-                    is_public: team.is_public === true || team.isPublic === true,
+                    is_public:
+                      team.is_public === true || team.isPublic === true,
                   }}
                   onUpdate={handleTeamUpdate}
                   onDelete={handleTeamDelete}
