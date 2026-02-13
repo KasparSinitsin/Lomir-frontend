@@ -343,7 +343,7 @@ const UserDetailsModal = ({
         ) : error ? (
           <Alert type="error" message={error} />
         ) : isEditing ? (
-          // EDIT MODE - Future implementation could use TagSelector here
+          // EDIT MODE - Future implementation could use TagInput here (canonical focus area selector)
           <div className="space-y-6">
             <p className="text-base-content/70">
               For comprehensive profile editing, you'll be redirected to the

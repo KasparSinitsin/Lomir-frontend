@@ -2,7 +2,7 @@ import React, { useState, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { FiCheck } from "react-icons/fi";
 import axios from "axios";
-import TagInputV2 from "../tags/TagInputV2";
+import TagInput from "../tags/TagInput";
 import { UI_TEXT } from "../../constants/uiText";
 import Alert from "../common/Alert";
 import { teamService } from "../../services/teamService";
@@ -528,7 +528,7 @@ const TeamCreationForm = () => {
           <label className="block text-gray-700 text-sm font-bold mb-2">
             Focus Areas (Optional)
           </label>
-          <TagInputV2
+          <TagInput
             selectedTags={formData.selectedTags}
             onTagsChange={handleTagSelection}
             placeholder={UI_TEXT.focusAreas.searchPlaceholder}

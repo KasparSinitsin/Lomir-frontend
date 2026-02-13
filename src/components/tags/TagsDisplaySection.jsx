@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Tag } from "lucide-react";
 import Button from "../common/Button";
-import TagInputV2 from "./TagInputV2";
+import TagInput from "./TagInput";
 import { UI_TEXT } from "../../constants/uiText";
 
 /**
@@ -187,7 +187,7 @@ const TagsDisplaySection = ({
         )}
 
         {/* Tag Input */}
-        <TagInputV2
+        <TagInput
           selectedTags={localSelectedTags}
           onTagsChange={(newTags) => setLocalSelectedTags(newTags)}
           placeholder={placeholder}

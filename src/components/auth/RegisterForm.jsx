@@ -3,7 +3,7 @@ import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { UI_TEXT } from "../../constants/uiText";
-import TagInputV2 from "../tags/TagInputV2";
+import TagInput from "../tags/TagInput";
 import Card from "../common/Card";
 import Button from "../common/Button";
 import FormGroup from "../common/FormGroup";
@@ -511,7 +511,7 @@ const RegisterForm = () => {
                 </span>
               </label>
 
-              <TagInputV2
+              <TagInput
                 selectedTags={formData.selectedTags}
                 onTagsChange={handleTagsChange}
                 placeholder={UI_TEXT.focusAreas.searchPlaceholder}
