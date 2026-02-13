@@ -5,14 +5,19 @@ import { tagService } from "../../services/tagService";
 import { UI_TEXT } from "../../constants/uiText";
 import { debounce } from "lodash";
 
-const TagInputV2 = ({
+const TagInput = ({
   selectedTags = [],
   onTagsChange,
+  onChange,
   placeholder = UI_TEXT.focusAreas.searchPlaceholder,
   showPopularTags = true,
   maxSuggestions = 8,
   className = "",
 }) => {
+  const handleChange = onTagsChange ?? onChange;
+  if (!handleChange) {
+    console.warn("TagInput requires onTagsChange (or legacy onChange).");
+  }
   const [inputValue, setInputValue] = useState("");
   const [suggestions, setSuggestions] = useState([]);
   const [popularTags, setPopularTags] = useState([]);
@@ -84,6 +89,12 @@ const TagInputV2 = ({
     [selectedTags, maxSuggestions, updateTagMap],
   );
 
+  useEffect(() => {
+    return () => {
+      debouncedSearch.cancel?.();
+    };
+  }, [debouncedSearch]);
+
   // Fetch related tags based on selected tags
   const fetchRelatedTags = useCallback(
     async (tagId) => {
@@ -104,14 +115,15 @@ const TagInputV2 = ({
   );
 
   const handleInputChange = (value) => {
-    setInputValue(value);
-    if (value.length >= 2) {
+    const next = value ?? "";
+    setInputValue(next);
+    if (next.length >= 2) {
       setShowSuggestions(true);
-      debouncedSearch(value);
+      debouncedSearch(next);
     } else {
       setSuggestions([]);
       // Show popular/related when input is cleared
-      if (value.length === 0) {
+      if (next.length === 0) {
         setShowSuggestions(true);
       }
     }
@@ -120,7 +132,7 @@ const TagInputV2 = ({
   const handleSelectTag = (tag) => {
     if (tag && !selectedTags.includes(tag.id)) {
       const newTags = [...selectedTags, tag.id];
-      onTagsChange(newTags);
+      handleChange?.(newTags);
       updateTagMap([tag]);
       fetchRelatedTags(tag.id);
     }
@@ -132,7 +144,7 @@ const TagInputV2 = ({
 
   const handleRemoveTag = (tagId) => {
     const newTags = selectedTags.filter((id) => id !== tagId);
-    onTagsChange(newTags);
+    handleChange?.(newTags);
 
     if (newTags.length === 0) {
       setRelatedTags([]);
@@ -167,7 +179,7 @@ const TagInputV2 = ({
     items: currentSuggestionsForCombobox.tags,
     inputValue,
     onInputValueChange: ({ inputValue }) => {
-      handleInputChange(inputValue);
+      handleInputChange(inputValue ?? "");
     },
     onSelectedItemChange: ({ selectedItem }) => {
       if (selectedItem) {
@@ -214,7 +226,7 @@ const TagInputV2 = ({
                   type="button"
                   onClick={() => handleRemoveTag(tagId)}
                   className="hover:text-error transition-colors"
-                  aria-label={`Remove ${tag ? tag.name : "tag"}`}
+                  aria-label={`Remove ${tag ? tag.name : "focus area"}`}
                 >
                   <X size={14} />
                 </button>
@@ -342,4 +354,4 @@ const TagInputV2 = ({
   );
 };
 
-export default TagInputV2;
+export default TagInput;

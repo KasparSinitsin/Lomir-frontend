@@ -4,7 +4,6 @@ import TeamRoleManager from "./TeamRoleManager";
 import TeamEditForm from "./TeamEditForm";
 import { useAuth } from "../../contexts/AuthContext";
 import { teamService } from "../../services/teamService";
-import TagSelector from "../tags/TagSelector";
 import Button from "../common/Button";
 import SendMessageButton from "../common/SendMessageButton";
 import Alert from "../common/Alert";
