@@ -10,6 +10,7 @@ import { teamService } from "../services/teamService";
 import { useAuth } from "../contexts/AuthContext";
 import { Plus, Search as SearchIcon } from "lucide-react";
 import Alert from "../components/common/Alert";
+import CreateTeamModal from "../components/teams/CreateTeamModal";
 
 const MyTeams = () => {
   const [teams, setTeams] = useState([]);
@@ -20,6 +21,9 @@ const MyTeams = () => {
   const [loadingInvitations, setLoadingInvitations] = useState(true);
   const [error, setError] = useState(null);
   const { user } = useAuth();
+
+  // ===== CREATE TEAM MODAL STATE =====
+  const [isCreateTeamModalOpen, setIsCreateTeamModalOpen] = useState(false);
 
   // ===== PAGINATION STATE =====
   const [currentPage, setCurrentPage] = useState(1);
@@ -43,68 +47,88 @@ const MyTeams = () => {
   // Ref for scrolling to highlighted invitation
   const highlightedInvitationRef = useRef(null);
 
-  // State for auto-opening applications modal
+  // State to track which team should auto-open its applications modal
   const [autoOpenApplicationsTeamId, setAutoOpenApplicationsTeamId] =
     useState(null);
 
+  // Fetch user's teams with pagination
   const fetchUserTeams = useCallback(
     async (page = 1, limit = 10) => {
+      if (!user?.id) return;
+
       try {
         setLoading(true);
-        if (user && user.id) {
-          const response = await teamService.getUserTeams(user.id, page, limit);
-          setTeams(response.data);
+        const response = await teamService.getUserTeams(user.id, {
+          page,
+          limit,
+        });
 
-          // Update pagination metadata from response
-          if (response.pagination) {
-            setPagination(response.pagination);
-          }
+        if (response.success) {
+          setTeams(response.data || []);
+          setPagination(
+            response.pagination || {
+              page: 1,
+              limit: 10,
+              totalTeams: response.data?.length || 0,
+              totalPages: 1,
+              hasNextPage: false,
+              hasPrevPage: false,
+            }
+          );
         }
       } catch (err) {
-        console.error("Failed to fetch teams:", err);
-        setError("Could not load teams");
+        console.error("Error fetching teams:", err);
+        setError("Failed to load teams. Please try again.");
       } finally {
         setLoading(false);
       }
     },
-    [user],
+    [user?.id]
   );
 
+  // Fetch pending applications
   const fetchPendingApplications = useCallback(async () => {
+    if (!user?.id) return;
+
     try {
       setLoadingApplications(true);
-      if (user && user.id) {
-        const response = await teamService.getUserPendingApplications();
+      const response = await teamService.getUserPendingApplications();
+
+      if (response.success) {
         setPendingApplications(response.data || []);
       }
     } catch (err) {
-      console.error("Failed to fetch pending applications:", err);
+      console.error("Error fetching pending applications:", err);
     } finally {
       setLoadingApplications(false);
     }
-  }, [user]);
+  }, [user?.id]);
 
+  // Fetch pending invitations
   const fetchPendingInvitations = useCallback(async () => {
+    if (!user?.id) return;
+
     try {
       setLoadingInvitations(true);
-      const response = await teamService.getUserReceivedInvitations();
-      setPendingInvitations(response.data || []);
+      const response = await teamService.getUserPendingInvitations();
+
+      if (response.success) {
+        setPendingInvitations(response.data || []);
+      }
     } catch (err) {
       console.error("Error fetching pending invitations:", err);
     } finally {
       setLoadingInvitations(false);
     }
-  }, []);
+  }, [user?.id]);
 
+  // Initial data fetch
   useEffect(() => {
-    if (user?.id) {
-      fetchUserTeams(currentPage, resultsPerPage);
-      fetchPendingApplications();
-      fetchPendingInvitations();
-    }
-  }, [user?.id, fetchPendingApplications, fetchPendingInvitations]);
+    fetchPendingApplications();
+    fetchPendingInvitations();
+  }, [fetchPendingApplications, fetchPendingInvitations]);
 
-  // Refetch teams when pagination changes
+  // Fetch teams when page or limit changes
   useEffect(() => {
     if (user?.id) {
       fetchUserTeams(currentPage, resultsPerPage);
@@ -162,9 +186,7 @@ const MyTeams = () => {
     }
 
     setTeams((prevTeams) =>
-      prevTeams.map((team) =>
-        team.id === updatedTeam.id ? updatedTeam : team,
-      ),
+      prevTeams.map((team) => (team.id === updatedTeam.id ? updatedTeam : team))
     );
   };
 
@@ -209,7 +231,7 @@ const MyTeams = () => {
       await teamService.respondToInvitation(
         invitationId,
         "accept",
-        responseMessage,
+        responseMessage
       );
 
       console.log("Invitation accepted successfully");
@@ -224,13 +246,13 @@ const MyTeams = () => {
 
   const handleInvitationDecline = async (
     invitationId,
-    responseMessage = "",
+    responseMessage = ""
   ) => {
     try {
       await teamService.respondToInvitation(
         invitationId,
         "decline",
-        responseMessage,
+        responseMessage
       );
 
       console.log("Invitation declined");
@@ -240,6 +262,14 @@ const MyTeams = () => {
     } catch (error) {
       console.error("Error declining invitation:", error);
     }
+  };
+
+  // Handler for when a new team is created
+  const handleTeamCreated = (newTeam) => {
+    console.log("New team created:", newTeam);
+    // Refresh the teams list
+    fetchUserTeams(1, resultsPerPage);
+    setCurrentPage(1);
   };
 
   if (loading && loadingApplications && loadingInvitations) {
@@ -264,11 +294,13 @@ const MyTeams = () => {
 
   const CreateTeamAction = (
     <div className="flex flex-col gap-2 mt-8">
-      <Link to="/teams/create">
-        <Button variant="primary" icon={<Plus size={16} />}>
-          Create New Team
-        </Button>
-      </Link>
+      <Button 
+        variant="primary" 
+        icon={<Plus size={16} />}
+        onClick={() => setIsCreateTeamModalOpen(true)}
+      >
+        Create New Team
+      </Button>
       <Link to="/search?type=teams">
         <Button variant="primary" icon={<SearchIcon size={16} />}>
           Search for Teams
@@ -361,9 +393,12 @@ const MyTeams = () => {
             <p className="text-base-content/70 mb-4">
               You haven't joined any teams yet.
             </p>
-            <Link to="/teams/create" className="btn btn-primary">
+            <Button 
+              variant="primary"
+              onClick={() => setIsCreateTeamModalOpen(true)}
+            >
               Create Your First Team
-            </Link>
+            </Button>
           </div>
         ) : (
           <>
@@ -374,8 +409,7 @@ const MyTeams = () => {
                   variant="member"
                   team={{
                     ...team,
-                    is_public:
-                      team.is_public === true || team.isPublic === true,
+                    is_public: team.is_public === true || team.isPublic === true,
                   }}
                   onUpdate={handleTeamUpdate}
                   onDelete={handleTeamDelete}
@@ -406,6 +440,13 @@ const MyTeams = () => {
           </>
         )}
       </Section>
+
+      {/* Create Team Modal */}
+      <CreateTeamModal
+        isOpen={isCreateTeamModalOpen}
+        onClose={() => setIsCreateTeamModalOpen(false)}
+        onTeamCreated={handleTeamCreated}
+      />
     </PageContainer>
   );
 };
