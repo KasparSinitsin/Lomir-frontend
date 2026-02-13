@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { FiCheck } from "react-icons/fi";
 import axios from "axios";
@@ -10,15 +10,16 @@ import IconToggle from "../common/IconToggle";
 import ImageUploader from "../common/ImageUploader";
 import { uploadToCloudinary } from "../../config/cloudinary";
 import LocationInput from "../common/LocationInput";
+import { useLocationAutoFill } from "../../hooks/useLocationAutoFill";
 
 const TeamCreationForm = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     name: "",
     description: "",
-    isPublic: false, // Default hidden
+    isPublic: false,
     maxMembers: 5,
-    maxMembersMode: "preset", // preset / custom / unlimited
+    maxMembersMode: "preset",
     selectedTags: [],
     teamImage: null,
     is_remote: false,
@@ -33,6 +34,32 @@ const TeamCreationForm = () => {
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [newTeamId, setNewTeamId] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Location auto-fill hook
+  const { getSuggestedUpdates } = useLocationAutoFill({
+    postalCode: formData.postal_code || "",
+    city: formData.city || "",
+    country: formData.country || "",
+    isEditing: true,
+    isRemote: formData.is_remote || false,
+  });
+
+  // Auto-fill city and country from postal code lookup
+  useEffect(() => {
+    if (formData.is_remote) return;
+
+    const updates = getSuggestedUpdates();
+    if (Object.keys(updates).length > 0) {
+      // Map camelCase updates to snake_case for this form
+      const mappedUpdates = {};
+      if (updates.city) mappedUpdates.city = updates.city;
+      if (updates.country) mappedUpdates.country = updates.country;
+
+      if (Object.keys(mappedUpdates).length > 0) {
+        setFormData((prev) => ({ ...prev, ...mappedUpdates }));
+      }
+    }
+  }, [getSuggestedUpdates, formData.is_remote]);
 
   const validateForm = useCallback(() => {
     const newErrors = {};
