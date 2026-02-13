@@ -2,7 +2,7 @@ import React from "react";
 import Chat from "./pages/Chat";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
-import { UserModalProvider } from "./contexts/UserModalContext"; 
+import { UserModalProvider } from "./contexts/UserModalContext";
 import Navbar from "./components/layout/Navbar";
 import Footer from "./components/layout/Footer";
 import ProtectedRoute from "./components/layout/ProtectedRoute";
@@ -14,7 +14,6 @@ import Register from "./pages/Register";
 import Profile from "./pages/Profile";
 import VerifyEmail from "./pages/VerifyEmail";
 import BadgeOverview from "./pages/BadgeOverview";
-import CreateTeam from "./pages/CreateTeam";
 import MyTeams from "./pages/MyTeams";
 import SearchPage from "./pages/SearchPage";
 import DesignSystem from "./pages/DesignSystem";
@@ -69,7 +68,6 @@ function App() {
                       path="/profile/edit"
                       element={<Placeholder pageName="Edit Profile" />}
                     />
-                    <Route path="/teams/create" element={<CreateTeam />} />
                     <Route path="/teams/my-teams" element={<MyTeams />} />
                     <Route path="/chat" element={<Chat />} />
                     <Route path="/chat/:conversationId" element={<Chat />} />
