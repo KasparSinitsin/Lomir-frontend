@@ -4,7 +4,7 @@ import TagDisplay from "../common/TagDisplay";
 
 /**
  * TeamFocusAreaSection Component
- * 
+ *
  * @param {Object} props
  * @param {Object} props.team - Team object containing tags
  * @param {boolean} props.isEditing - Whether the team is in edit mode
@@ -46,10 +46,7 @@ const TeamFocusAreaSection = ({
 
             return Object.entries(tagsByCategory).map(
               ([category, categoryTags]) => (
-                <div
-                  key={category}
-                  className="bg-base-200/30 rounded-lg p-3"
-                >
+                <div key={category} className="bg-base-200/30 rounded-lg p-3">
                   <h4 className="font-medium text-sm text-base-content/80 mb-2">
                     {category}
                   </h4>
@@ -60,22 +57,19 @@ const TeamFocusAreaSection = ({
                     showCategory={false}
                   />
                 </div>
-              )
+              ),
             );
           })()}
         </div>
       ) : (
         <div className="bg-base-200/20 rounded-lg p-4 text-center">
-          <Tag
-            size={24}
-            className="mx-auto mb-2 text-base-content/40"
-          />
+          <Tag size={24} className="mx-auto mb-2 text-base-content/40" />
           <p className="text-sm text-base-content/60">
             No focus areas specified yet
           </p>
           {isOwner && !isEditing && (
             <p className="text-xs text-base-content/50 mt-1">
-              Add tags to help others find your team
+              Add focus areas to help others find your team
             </p>
           )}
         </div>

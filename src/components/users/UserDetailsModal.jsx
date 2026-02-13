@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { UI_TEXT } from "../../constants/uiText";
 import Modal from "../common/Modal";
 import UserBioSection from "./UserBioSection";
 import LocationSection from "../common/LocationSection";
@@ -372,11 +373,11 @@ const UserDetailsModal = ({
               />
             </div>
 
-            {/* Skills & Interests */}
+            {/* Focus Areas */}
             <TagsDisplaySection
-              title="Skills & Interests"
+              title={UI_TEXT.focusAreas.title}
               tags={user?.tags}
-              emptyMessage="No tags yet"
+              emptyMessage={UI_TEXT.focusAreas.empty}
             />
 
             {/* Badges */}

@@ -27,6 +27,7 @@ import {
 import IconToggle from "../common/IconToggle";
 import UserDetailsModal from "../users/UserDetailsModal";
 import TagsDisplaySection from "../tags/TagsDisplaySection";
+import { UI_TEXT } from "../../constants/uiText";
 import { tagService } from "../../services/tagService";
 import RoleBadgeDropdown from "./RoleBadgeDropdown";
 import TeamApplicationModal from "./TeamApplicationModal";
@@ -626,7 +627,7 @@ const TeamDetailsModal = ({
 
       setNotification({
         type: "success",
-        message: "Team focus areas updated successfully!",
+        message: "Focus areas updated successfully!",
       });
     } catch (error) {
       console.error("Error updating team tags:", error);
@@ -1332,13 +1333,13 @@ const TeamDetailsModal = ({
                 {console.log("Team tags for FocusAreasSection:", team?.tags)}
                 {!isEditing && (
                   <TagsDisplaySection
-                    title="Team Focus Areas"
+                    title={UI_TEXT.focusAreas.title}
                     tags={team?.tags || []}
                     allTags={allTags}
                     canEdit={canEditTeam}
                     onSave={handleTeamTagsUpdate}
-                    emptyMessage="No focus areas added yet."
-                    placeholder="Add team focus areas..."
+                    emptyMessage={UI_TEXT.focusAreas.emptyTeam}
+                    placeholder={UI_TEXT.focusAreas.placeholderTeam}
                   />
                 )}
 

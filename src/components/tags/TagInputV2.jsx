@@ -2,12 +2,13 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useCombobox } from "downshift";
 import { X, Tag as TagIcon, TrendingUp, Sparkles } from "lucide-react";
 import { tagService } from "../../services/tagService";
+import { UI_TEXT } from "../../constants/uiText";
 import { debounce } from "lodash";
 
 const TagInputV2 = ({
   selectedTags = [],
   onTagsChange,
-  placeholder = "Type to search tags...",
+  placeholder = UI_TEXT.focusAreas.searchPlaceholder,
   showPopularTags = true,
   maxSuggestions = 8,
   className = "",
@@ -189,11 +190,11 @@ const TagInputV2 = ({
   const getSuggestionTitle = () => {
     switch (currentSuggestions.type) {
       case "popular":
-        return "Popular Tags";
+        return UI_TEXT.focusAreas.popularTitle;
       case "related":
-        return "Related Tags";
+        return UI_TEXT.focusAreas.relatedTitle;
       case "search":
-        return "Search Results";
+        return UI_TEXT.focusAreas.searchResultsTitle;
       default:
         return "";
     }
@@ -208,7 +209,7 @@ const TagInputV2 = ({
             return (
               <span key={tagId} className="badge badge-primary badge-lg gap-2">
                 <TagIcon size={14} />
-                {tag ? tag.name : `Tag ${tagId}`}
+                {tag ? tag.name : `Focus Area ${tagId}`}
                 <button
                   type="button"
                   onClick={() => handleRemoveTag(tagId)}
@@ -327,13 +328,13 @@ const TagInputV2 = ({
       <div className="label">
         <span className="label-text-alt text-base-content/60">
           {inputValue.length < 2 && currentSuggestions.type === "none"
-            ? "Type at least 2 characters to search"
+            ? UI_TEXT.focusAreas.helperType2Chars
             : inputValue.length >= 2 && suggestions.length === 0 && !loading
-              ? "No tags found"
+              ? UI_TEXT.focusAreas.helperNoneFound
               : currentSuggestions.type === "popular"
-                ? "Click a popular tag or start typing to search"
+                ? UI_TEXT.focusAreas.helperPopular
                 : currentSuggestions.type === "related"
-                  ? "Suggested tags based on your selection"
+                  ? UI_TEXT.focusAreas.helperRelated
                   : "Press Enter or click to select"}
         </span>
       </div>

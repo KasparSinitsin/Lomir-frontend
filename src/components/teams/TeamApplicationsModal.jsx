@@ -24,7 +24,7 @@ const TeamApplicationsModal = ({
   applications = [],
   onApplicationAction,
   teamName,
-  highlightUserId = null, // NEW PROP
+  highlightUserId = null, 
 }) => {
   // ============ State ============
   const [loading, setLoading] = useState(false);
@@ -165,7 +165,7 @@ const TeamApplicationsModal = ({
                     application.applicant.tags.length > 0 && (
                       <div className="mb-4">
                         <h5 className="font-medium text-sm text-base-content/80 mb-2">
-                          Skills & Interests:
+                          Focus Areas:
                         </h5>
                         <div className="flex flex-wrap gap-1">
                           {application.applicant.tags.slice(0, 6).map((tag) => (
