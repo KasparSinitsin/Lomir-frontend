@@ -1,16 +1,17 @@
 import axios from "axios";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import TagInputV2 from "../tags/TagInputV2";
 import Card from "../common/Card";
 import Button from "../common/Button";
 import FormGroup from "../common/FormGroup";
-import CountrySelect from "../common/CountrySelect";
-import { Tag, MailCheck, MapPin } from "lucide-react";
+import { Tag, MailCheck } from "lucide-react";
 import ImageUploader from "../common/ImageUploader";
 import { uploadToCloudinary } from "../../config/cloudinary";
 import api from "../../services/api";
+import LocationInput from "../common/LocationInput";
+import { useLocationAutoFill } from "../../hooks/useLocationAutoFill";
 
 const RegisterForm = () => {
   const navigate = useNavigate();
@@ -36,6 +37,30 @@ const RegisterForm = () => {
   const [resendStatus, setResendStatus] = useState("idle"); // 'idle' | 'sending' | 'sent' | 'error'
   const [resendMessage, setResendMessage] = useState("");
   const [resendCooldown, setResendCooldown] = useState(0);
+
+  // Location auto-fill hook
+  const { getSuggestedUpdates } = useLocationAutoFill({
+    postalCode: formData.postal_code || "",
+    city: formData.city || "",
+    country: formData.country || "",
+    isEditing: true,
+    isRemote: false,
+  });
+
+  // Auto-fill city and country from postal code lookup
+  useEffect(() => {
+    const updates = getSuggestedUpdates();
+    if (Object.keys(updates).length > 0) {
+      // Map camelCase updates to snake_case for this form
+      const mappedUpdates = {};
+      if (updates.city) mappedUpdates.city = updates.city;
+      if (updates.country) mappedUpdates.country = updates.country;
+
+      if (Object.keys(mappedUpdates).length > 0) {
+        setFormData((prev) => ({ ...prev, ...mappedUpdates }));
+      }
+    }
+  }, [getSuggestedUpdates]);
 
   const validateForm = () => {
     const newErrors = {};
@@ -429,58 +454,23 @@ const RegisterForm = () => {
             </div>
 
             {/* Location Section */}
-            <div className="divider text-sm text-base-content/60">
-              <MapPin size={14} className="mr-1" />
-              Location
-            </div>
-
-            <div className="form-control w-full">
-              <label className="label">
-                <span className="label-text">Country</span>
-              </label>
-              <CountrySelect
-                value={formData.country}
-                onChange={handleChange}
-                name="country"
-                placeholder="Select your country"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="form-control w-full">
-                <label className="label">
-                  <span className="label-text">Postal Code</span>
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g., 12345"
-                  className="input input-bordered w-full"
-                  value={formData.postal_code}
-                  onChange={handleChange}
-                  name="postal_code"
-                />
-              </div>
-
-              <div className="form-control w-full">
-                <label className="label">
-                  <span className="label-text">City / Town</span>
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g., Berlin"
-                  className="input input-bordered w-full"
-                  value={formData.city}
-                  onChange={handleChange}
-                  name="city"
-                />
-              </div>
-            </div>
-
-            {/* Location fine print */}
-            <p className="text-xs text-base-content/50 -mt-2 px-1">
-              Location info is optional but helps you find and connect with
-              people nearby.
-            </p>
+            <LocationInput
+              formData={{
+                postal_code: formData.postal_code,
+                city: formData.city,
+                country: formData.country,
+              }}
+              onChange={handleChange}
+              errors={{
+                postal_code: errors.postal_code,
+                city: errors.city,
+                country: errors.country,
+              }}
+              disabled={isSubmitting}
+              showRemoteToggle={false}
+              showDivider={true}
+              dividerText="Location"
+            />
 
             {/* Profile Image Upload */}
             <div className="form-control w-full">

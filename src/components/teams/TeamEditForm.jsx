@@ -1,10 +1,11 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import Button from "../common/Button";
 import IconToggle from "../common/IconToggle";
 import { getTeamInitials } from "../../utils/userHelpers";
 import { teamService } from "../../services/teamService";
 import ImageUploader from "../common/ImageUploader";
 import LocationInput from "../common/LocationInput";
+import { useLocationAutoFill } from "../../hooks/useLocationAutoFill";
 
 /**
  * TeamEditForm Component
@@ -25,6 +26,25 @@ const TeamEditForm = ({
 }) => {
   const [uploadingImage, setUploadingImage] = useState(false);
   const [avatarDeleteLoading, setAvatarDeleteLoading] = useState(false);
+
+  // Location auto-fill hook
+  const { getSuggestedUpdates } = useLocationAutoFill({
+    postalCode: formData.postalCode || "",
+    city: formData.city || "",
+    country: formData.country || "",
+    isEditing: true,
+    isRemote: formData.isRemote || false,
+  });
+
+  // Auto-fill city and country from postal code lookup
+  useEffect(() => {
+    if (formData.isRemote) return;
+
+    const updates = getSuggestedUpdates();
+    if (Object.keys(updates).length > 0) {
+      setFormData((prev) => ({ ...prev, ...updates }));
+    }
+  }, [getSuggestedUpdates, formData.isRemote, setFormData]);
 
   // Handle regular form field changes
   const handleChange = (e) => {
