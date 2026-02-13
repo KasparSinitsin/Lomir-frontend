@@ -48,6 +48,90 @@ export const COUNTRY_NAMES = {
 };
 
 /**
+ * Reverse mapping: Country name to ISO code
+ * Includes common variations and local names
+ * Used for converting geocoding results to dropdown-compatible codes
+ */
+export const COUNTRY_NAME_TO_CODE = {
+  // English names (from COUNTRY_NAMES)
+  Germany: "DE",
+  Austria: "AT",
+  Switzerland: "CH",
+  Netherlands: "NL",
+  Belgium: "BE",
+  France: "FR",
+  "United Kingdom": "GB",
+  Italy: "IT",
+  Spain: "ES",
+  Poland: "PL",
+  "Czech Republic": "CZ",
+  Denmark: "DK",
+  Sweden: "SE",
+  Norway: "NO",
+  Finland: "FI",
+  "United States": "US",
+  Canada: "CA",
+  Australia: "AU",
+  Japan: "JP",
+  China: "CN",
+  India: "IN",
+  Brazil: "BR",
+  Mexico: "MX",
+  "South Africa": "ZA",
+  Portugal: "PT",
+  Ireland: "IE",
+  Greece: "GR",
+  Hungary: "HU",
+  Romania: "RO",
+  Bulgaria: "BG",
+  Croatia: "HR",
+  Slovakia: "SK",
+  Slovenia: "SI",
+  Lithuania: "LT",
+  Latvia: "LV",
+  Estonia: "EE",
+  Luxembourg: "LU",
+  Bahamas: "BS",
+
+  // Local language variations
+  Deutschland: "DE",
+  Österreich: "AT",
+  Schweiz: "CH",
+  "Schweiz/Suisse/Svizzera": "CH",
+  Suisse: "CH",
+  Svizzera: "CH",
+  Nederland: "NL",
+  "The Netherlands": "NL",
+  "Belgique/België": "BE",
+  België: "BE",
+  Belgique: "BE",
+  Italia: "IT",
+  España: "ES",
+  Polska: "PL",
+  "Česká republika": "CZ",
+  Czechia: "CZ",
+  Danmark: "DK",
+  Sverige: "SE",
+  Norge: "NO",
+  Suomi: "FI",
+  "United States of America": "US",
+  USA: "US",
+  UK: "GB",
+  "Great Britain": "GB",
+  England: "GB",
+  Éire: "IE",
+  Magyarország: "HU",
+  România: "RO",
+  България: "BG",
+  Hrvatska: "HR",
+  Slovensko: "SK",
+  Slovenija: "SI",
+  Lietuva: "LT",
+  Latvija: "LV",
+  Eesti: "EE",
+};
+
+/**
  * Get the display name for a country
  * @param {string} countryCode - ISO country code (e.g., "DE") or full name
  * @returns {string|null} - Country name in English or null
@@ -60,6 +144,39 @@ export const getCountryDisplayName = (countryCode) => {
 
   // Look up the code
   return COUNTRY_NAMES[countryCode.toUpperCase()] || countryCode;
+};
+
+/**
+ * Get the ISO country code from a country name
+ * Handles various name formats and local language variations
+ *
+ * @param {string} countryName - Country name in any supported language
+ * @returns {string|null} - ISO country code (e.g., "DE") or null if not found
+ */
+export const getCountryCode = (countryName) => {
+  if (!countryName) return null;
+
+  // If it's already a 2-letter code, validate and return
+  if (countryName.length === 2) {
+    const upperCode = countryName.toUpperCase();
+    if (COUNTRY_NAMES[upperCode]) {
+      return upperCode;
+    }
+  }
+
+  // Look up the name in our mapping
+  const code = COUNTRY_NAME_TO_CODE[countryName];
+  if (code) return code;
+
+  // Try case-insensitive search
+  const lowerName = countryName.toLowerCase();
+  for (const [name, code] of Object.entries(COUNTRY_NAME_TO_CODE)) {
+    if (name.toLowerCase() === lowerName) {
+      return code;
+    }
+  }
+
+  return null;
 };
 
 /**
@@ -198,7 +315,9 @@ export const hasLocationChanged = (newData, oldData) => {
 
 export default {
   COUNTRY_NAMES,
+  COUNTRY_NAME_TO_CODE,
   getCountryDisplayName,
+  getCountryCode,
   normalizeLocationData,
   formatLocation,
   hasLocationChanged,
