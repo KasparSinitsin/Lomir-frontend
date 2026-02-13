@@ -32,7 +32,7 @@ import { useLocationAutoFill } from "../hooks/useLocationAutoFill";
 import ImageUploader from "../components/common/ImageUploader";
 import { getUserInitials } from "../utils/userHelpers";
 import Modal from "../components/common/Modal";
-import CountrySelect from "../components/common/CountrySelect";
+import LocationInput from "../components/common/LocationInput";
 import { format } from "date-fns";
 import UserDetailsModal from "../components/users/UserDetailsModal";
 
@@ -342,6 +342,35 @@ const Profile = () => {
     if (formErrors[name]) {
       setFormErrors((prev) => {
         const newErrors = { ...prev };
+        delete newErrors[name];
+        return newErrors;
+      });
+    }
+  };
+
+  // Handle location field changes (maps snake_case to camelCase)
+  const handleLocationChange = (e) => {
+    const { name, value } = e.target;
+
+    // Map snake_case field names to camelCase
+    const fieldMap = {
+      postal_code: "postalCode",
+      city: "city",
+      country: "country",
+    };
+
+    const mappedName = fieldMap[name] || name;
+
+    setFormData((prev) => ({
+      ...prev,
+      [mappedName]: value,
+    }));
+
+    // Clear any error for this field
+    if (formErrors[mappedName] || formErrors[name]) {
+      setFormErrors((prev) => {
+        const newErrors = { ...prev };
+        delete newErrors[mappedName];
         delete newErrors[name];
         return newErrors;
       });
@@ -825,51 +854,26 @@ const Profile = () => {
               />
             </div>
 
-            <div className="form-control w-full mb-4">
-              <label className="label">
-                <span className="label-text">Postal Code</span>
-              </label>
-              <input
-                type="text"
-                name="postalCode"
-                value={formData.postalCode}
-                onChange={handleChange}
-                className="input input-bordered w-full"
-                placeholder="Postal Code"
+            {/* Location Section */}
+            <div className="mb-4">
+              <LocationInput
+                formData={{
+                  postalCode: formData.postalCode,
+                  city: formData.city,
+                  country: formData.country,
+                }}
+                onChange={handleLocationChange}
+                errors={{
+                  postal_code: formErrors.postalCode,
+                  city: formErrors.city,
+                  country: formErrors.country,
+                }}
+                disabled={loading}
+                showRemoteToggle={false}
+                showDivider={true}
+                dividerText="Location"
               />
             </div>
-
-            <div className="form-control w-full mb-4">
-              <label className="label">
-                <span className="label-text">City / Town</span>
-              </label>
-              <input
-                type="text"
-                name="city"
-                value={formData.city}
-                onChange={handleChange}
-                className="input input-bordered w-full"
-                placeholder="e.g. Berlin, London, New York"
-              />
-            </div>
-
-            <div className="form-control w-full mb-4">
-              <label className="label">
-                <span className="label-text">Country</span>
-              </label>
-              <CountrySelect
-                value={formData.country}
-                onChange={handleChange}
-                name="country"
-                placeholder="Select your country"
-              />
-            </div>
-
-            {/* Location fine print */}
-            <p className="text-xs text-base-content/50 -mt-2 mb-4 px-1">
-              Location info is optional but helps you find and connect with
-              people nearby.
-            </p>
 
             {/* Profile visibility toggle */}
             <div className="form-control w-full mb-6">
