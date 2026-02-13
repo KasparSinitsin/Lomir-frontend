@@ -2,14 +2,15 @@ import React, { useState, useEffect } from "react";
 import { Tag } from "lucide-react";
 import Button from "../common/Button";
 import TagInputV2 from "./TagInputV2";
+import { UI_TEXT } from "../../constants/uiText";
 
 /**
  * Unified TagsDisplaySection Component
  *
- * Used for displaying tags/skills in both User and Team modals
+ * Used for displaying focus areas (tags) in both User and Team modals
  * Ensures consistent styling across the application
  *
- * @param {string} title - Section title (e.g., "Skills & Interests", "Team Focus Areas")
+ * @param {string} title - Section title (e.g., "Focus Areas")
  * @param {string|Array} tags - Tags data: comma-separated string, array of objects, or array of IDs
  * @param {Array} allTags - Optional: structured tags for ID lookup (required if tags are IDs)
  * @param {boolean} canEdit - Whether to show edit button
@@ -19,13 +20,13 @@ import TagInputV2 from "./TagInputV2";
  * @param {string} className - Additional CSS classes
  */
 const TagsDisplaySection = ({
-  title = "Tags",
+  title = UI_TEXT.focusAreas.title,
   tags = [],
   allTags = [],
   canEdit = false,
   onSave,
-  emptyMessage = "No tags yet",
-  placeholder = "Add tags...",
+  emptyMessage = UI_TEXT.focusAreas.empty,
+  placeholder = UI_TEXT.focusAreas.placeholder,
   className = "",
 }) => {
   const [isEditing, setIsEditing] = useState(false);
@@ -93,7 +94,7 @@ const TagsDisplaySection = ({
         .map((tagId) => {
           const id =
             typeof tagId === "object"
-              ? tagId.id ?? tagId.tag_id ?? tagId.tagId
+              ? (tagId.id ?? tagId.tag_id ?? tagId.tagId)
               : tagId;
           const name = getTagNameById(id);
           return name ? { key: id, name } : null;

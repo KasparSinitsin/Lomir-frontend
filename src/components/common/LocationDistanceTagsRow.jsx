@@ -4,7 +4,7 @@ import LocationSection from "./LocationSection";
 
 /**
  * LocationDistanceTagsRow
- * Reusable block for cards: Location + Distance (wraps) and Tags (skills/interests)
+ * Reusable block for cards: Location + Distance (wraps) and Focus Areas (tags)
  *
  * Props:
  * - entity: user or team object (passed into LocationSection)
@@ -75,7 +75,7 @@ const LocationDistanceTagsRow = ({
 
   const hasTags = tagList.length > 0;
 
-  // If there is no location AND no tags, render nothing (keeps cards clean)
+  // If there is no location AND no focus areas, render nothing (keeps cards clean)
   // (LocationSection returns null automatically when no location)
   if (!hasTags && !entity) return null;
 

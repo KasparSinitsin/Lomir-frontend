@@ -165,7 +165,7 @@ return (
     <div className="flex justify-between items-center mb-4">
       <input
         type="text"
-        placeholder="Search tags..."
+        placeholder="Search focus areas..."
         value={searchQuery}
         onChange={handleSearchChange}
         className="input input-bordered w-full mr-2"

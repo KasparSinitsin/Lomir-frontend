@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { FiCheck } from "react-icons/fi";
 import axios from "axios";
 import TagInputV2 from "../tags/TagInputV2";
+import { UI_TEXT } from "../../constants/uiText";
 import Alert from "../common/Alert";
 import { teamService } from "../../services/teamService";
 import TeamDetailsModal from "./TeamDetailsModal";
@@ -525,12 +526,12 @@ const TeamCreationForm = () => {
 
         <div className="mb-4">
           <label className="block text-gray-700 text-sm font-bold mb-2">
-            Team Focus Areas (Optional)
+            Focus Areas (Optional)
           </label>
           <TagInputV2
             selectedTags={formData.selectedTags}
             onTagsChange={handleTagSelection}
-            placeholder="Type to search tags..."
+            placeholder={UI_TEXT.focusAreas.searchPlaceholder}
             showPopularTags={true}
             maxSuggestions={8}
           />

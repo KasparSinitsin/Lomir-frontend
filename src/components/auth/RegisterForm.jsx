@@ -2,6 +2,7 @@ import axios from "axios";
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
+import { UI_TEXT } from "../../constants/uiText";
 import TagInputV2 from "../tags/TagInputV2";
 import Card from "../common/Card";
 import Button from "../common/Button";
@@ -497,19 +498,23 @@ const RegisterForm = () => {
               />
             </div>
 
-            {/* Interests Section */}
+            {/* Focus Areas Section */}
             <div className="divider text-sm text-base-content/60">
               <Tag size={14} className="mr-1" />
-              Interests
+              {UI_TEXT.focusAreas.registerTitle}
             </div>
 
             <div className="form-control w-full">
               <label className="label">
-                <span className="label-text">Select your interests</span>
+                <span className="label-text">
+                  {UI_TEXT.focusAreas.registerDescription}
+                </span>
               </label>
+
               <TagInputV2
                 selectedTags={formData.selectedTags}
-                onChange={handleTagsChange}
+                onTagsChange={handleTagsChange}
+                placeholder={UI_TEXT.focusAreas.searchPlaceholder}
               />
             </div>
 
