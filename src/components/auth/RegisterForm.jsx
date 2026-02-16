@@ -213,7 +213,7 @@ const RegisterForm = () => {
 
   if (registrationSuccess) {
     return (
-      <div className="max-w-md mx-auto">
+      <div className="w-full px-4 sm:px-0">
         <Card className="w-full">
           <div className="card-body items-center text-center">
             <MailCheck className="w-16 h-16 text-success mb-4" />
@@ -269,7 +269,7 @@ const RegisterForm = () => {
   }
 
   return (
-    <div className="max-w-md mx-auto">
+    <div className="w-full">
       <Card className="w-full">
         <div className="card-body">
           <h2 className="card-title text-2xl font-bold text-center justify-center mb-2">
@@ -291,104 +291,104 @@ const RegisterForm = () => {
             <section className="space-y-4">
               <FormSectionDivider text="Account Information" icon={KeyRound} />
 
-              <div className="form-control w-full">
-                <label className="label">
-                  <span className="label-text">
-                    Username <span className="text-error">*</span>
-                  </span>
-                </label>
-                <input
-                  type="text"
-                  placeholder="Choose a username"
-                  className={`input input-bordered w-full ${
-                    errors.username ? "input-error" : ""
-                  }`}
-                  value={formData.username}
-                  onChange={handleChange}
-                  name="username"
-                />
-                {errors.username && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Username */}
+                <div className="form-control w-full">
                   <label className="label">
-                    <span className="label-text-alt text-error">
-                      {errors.username}
+                    <span className="label-text">
+                      Username <span className="text-error">*</span>
                     </span>
                   </label>
-                )}
+                  <input
+                    type="text"
+                    placeholder="Choose a username"
+                    className={`input input-bordered w-full ${errors.username ? "input-error" : ""}`}
+                    value={formData.username}
+                    onChange={handleChange}
+                    name="username"
+                  />
+                  {errors.username && (
+                    <label className="label">
+                      <span className="label-text-alt text-error">
+                        {errors.username}
+                      </span>
+                    </label>
+                  )}
+                </div>
+
+                {/* Email */}
+                <div className="form-control w-full">
+                  <label className="label">
+                    <span className="label-text">
+                      Email <span className="text-error">*</span>
+                    </span>
+                  </label>
+                  <input
+                    type="email"
+                    placeholder="your@email.com"
+                    className={`input input-bordered w-full ${errors.email ? "input-error" : ""}`}
+                    value={formData.email}
+                    onChange={handleChange}
+                    name="email"
+                  />
+                  {errors.email && (
+                    <label className="label">
+                      <span className="label-text-alt text-error">
+                        {errors.email}
+                      </span>
+                    </label>
+                  )}
+                </div>
               </div>
 
-              <div className="form-control w-full">
-                <label className="label">
-                  <span className="label-text">
-                    Email <span className="text-error">*</span>
-                  </span>
-                </label>
-                <input
-                  type="email"
-                  placeholder="your@email.com"
-                  className={`input input-bordered w-full ${
-                    errors.email ? "input-error" : ""
-                  }`}
-                  value={formData.email}
-                  onChange={handleChange}
-                  name="email"
-                />
-                {errors.email && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Password */}
+                <div className="form-control w-full">
                   <label className="label">
-                    <span className="label-text-alt text-error">
-                      {errors.email}
+                    <span className="label-text">
+                      Password <span className="text-error">*</span>
                     </span>
                   </label>
-                )}
-              </div>
+                  <input
+                    type="password"
+                    placeholder="Min. 6 characters"
+                    className={`input input-bordered w-full ${errors.password ? "input-error" : ""}`}
+                    value={formData.password}
+                    onChange={handleChange}
+                    name="password"
+                  />
+                  {errors.password && (
+                    <label className="label">
+                      <span className="label-text-alt text-error">
+                        {errors.password}
+                      </span>
+                    </label>
+                  )}
+                </div>
 
-              <div className="form-control w-full">
-                <label className="label">
-                  <span className="label-text">
-                    Password <span className="text-error">*</span>
-                  </span>
-                </label>
-                <input
-                  type="password"
-                  placeholder="Min. 6 characters"
-                  className={`input input-bordered w-full ${
-                    errors.password ? "input-error" : ""
-                  }`}
-                  value={formData.password}
-                  onChange={handleChange}
-                  name="password"
-                />
-                {errors.password && (
+                {/* Confirm Password */}
+                <div className="form-control w-full">
                   <label className="label">
-                    <span className="label-text-alt text-error">
-                      {errors.password}
+                    <span className="label-text">
+                      Confirm Password <span className="text-error">*</span>
                     </span>
                   </label>
-                )}
-              </div>
-
-              <div className="form-control w-full">
-                <label className="label">
-                  <span className="label-text">
-                    Confirm Password <span className="text-error">*</span>
-                  </span>
-                </label>
-                <input
-                  type="password"
-                  placeholder="Confirm your password"
-                  className={`input input-bordered w-full ${
-                    errors.confirmPassword ? "input-error" : ""
-                  }`}
-                  value={formData.confirmPassword}
-                  onChange={handleChange}
-                  name="confirmPassword"
-                />
-                {errors.confirmPassword && (
-                  <label className="label">
-                    <span className="label-text-alt text-error">
-                      {errors.confirmPassword}
-                    </span>
-                  </label>
-                )}
+                  <input
+                    type="password"
+                    placeholder="Confirm your password"
+                    className={`input input-bordered w-full ${errors.confirmPassword ? "input-error" : ""}`}
+                    value={formData.confirmPassword}
+                    onChange={handleChange}
+                    name="confirmPassword"
+                  />
+                  {errors.confirmPassword && (
+                    <label className="label">
+                      <span className="label-text-alt text-error">
+                        {errors.confirmPassword}
+                      </span>
+                    </label>
+                  )}
+                </div>
               </div>
             </section>
 
@@ -396,7 +396,7 @@ const RegisterForm = () => {
             <section className="space-y-4">
               <FormSectionDivider text="Profile Details" icon={User} />
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="form-control w-full">
                   <label className="label">
                     <span className="label-text">First Name</span>
@@ -508,7 +508,6 @@ const RegisterForm = () => {
 
             {/* Divider before submit button */}
             <div className="divider mt-12 mb-0"></div>
-
 
             {/* Actions */}
             <section className="space-y-4 !mt-4">

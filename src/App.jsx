@@ -1,6 +1,11 @@
 import React from "react";
 import Chat from "./pages/Chat";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  useLocation,
+} from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 import { UserModalProvider } from "./contexts/UserModalContext";
 import Navbar from "./components/layout/Navbar";
@@ -22,70 +27,87 @@ import backgroundImage from "./assets/images/Gradient-peach-yellow-violet-invert
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 
+function AppLayout() {
+  const location = useLocation();
+
+  const isAuthPage = [
+    "/login",
+    "/register",
+    "/forgot-password",
+    "/reset-password",
+    "/verify-email",
+  ].includes(location.pathname);
+
+  return (
+    <UserModalProvider>
+      <div
+        data-theme="lomirlite"
+        style={{
+          backgroundImage: `url(${backgroundImage})`,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundAttachment: "fixed",
+          backgroundRepeat: "no-repeat",
+        }}
+        className="min-h-screen flex flex-col"
+      >
+        <Navbar />
+        <main className="flex-grow py-6">
+          <div
+            className={
+              isAuthPage ? "w-full bg-transparent" : "content-container"
+            }
+          >
+            <Routes>
+              {/* Public routes */}
+              <Route path="/" element={<Home />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+              <Route path="/verify-email" element={<VerifyEmail />} />
+              <Route path="/badges" element={<BadgeOverview />} />
+              <Route
+                path="/garden"
+                element={<Placeholder pageName="Project Garden" />}
+              />
+              <Route path="/teams" element={<Placeholder pageName="Teams" />} />
+              <Route path="/search" element={<SearchPage />} />
+              <Route path="/design-system" element={<DesignSystem />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
+
+              {/* Protected routes */}
+              <Route element={<ProtectedRoute />}>
+                <Route path="/profile" element={<Profile />} />
+                <Route
+                  path="/profile/edit"
+                  element={<Placeholder pageName="Edit Profile" />}
+                />
+                <Route path="/teams/my-teams" element={<MyTeams />} />
+                <Route path="/chat" element={<Chat />} />
+                <Route path="/chat/:conversationId" element={<Chat />} />
+              </Route>
+
+              {/* Catch-all route */}
+              <Route
+                path="*"
+                element={<Placeholder pageName="Page Not Found" />}
+              />
+            </Routes>
+
+            <MessageNotifications />
+          </div>
+        </main>
+        <Footer />
+      </div>
+    </UserModalProvider>
+  );
+}
+
 function App() {
   return (
     <AuthProvider>
       <Router>
-        <UserModalProvider>
-          <div
-            data-theme="lomirlite"
-            style={{
-              backgroundImage: `url(${backgroundImage})`,
-              backgroundSize: "cover",
-              backgroundPosition: "center",
-              backgroundAttachment: "fixed",
-              backgroundRepeat: "no-repeat",
-            }}
-            className="min-h-screen flex flex-col"
-          >
-            <Navbar />
-            <main className="flex-grow py-6">
-              <div className="content-container">
-                <Routes>
-                  {/* Public routes */}
-                  <Route path="/" element={<Home />} />
-                  <Route path="/login" element={<Login />} />
-                  <Route path="/register" element={<Register />} />
-                  <Route path="/verify-email" element={<VerifyEmail />} />
-                  <Route path="/badges" element={<BadgeOverview />} />
-                  <Route
-                    path="/garden"
-                    element={<Placeholder pageName="Project Garden" />}
-                  />
-                  <Route
-                    path="/teams"
-                    element={<Placeholder pageName="Teams" />}
-                  />
-                  <Route path="/search" element={<SearchPage />} />
-                  <Route path="/design-system" element={<DesignSystem />} />
-                  <Route path="/forgot-password" element={<ForgotPassword />} />
-                  <Route path="/reset-password" element={<ResetPassword />} />
-
-                  {/* Protected routes */}
-                  <Route element={<ProtectedRoute />}>
-                    <Route path="/profile" element={<Profile />} />
-                    <Route
-                      path="/profile/edit"
-                      element={<Placeholder pageName="Edit Profile" />}
-                    />
-                    <Route path="/teams/my-teams" element={<MyTeams />} />
-                    <Route path="/chat" element={<Chat />} />
-                    <Route path="/chat/:conversationId" element={<Chat />} />
-                  </Route>
-
-                  {/* Catch-all route */}
-                  <Route
-                    path="*"
-                    element={<Placeholder pageName="Page Not Found" />}
-                  />
-                </Routes>
-
-                <MessageNotifications />
-              </div>
-            </main>
-            <Footer />
-          </div>
-        </UserModalProvider>
+        <AppLayout />
       </Router>
     </AuthProvider>
   );

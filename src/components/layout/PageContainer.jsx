@@ -9,36 +9,38 @@ const PageContainer = ({
   fullWidth = false,
   titleAlignment = "left",
   variant = "solid", // "solid" | "muted" | "transparent"
+  frame = true, // ✅ ADD: when false, removes bg/padding/shadow wrapper
 }) => {
+  const baseClasses = frame ? "rounded-xl shadow-soft p-4 sm:p-6" : "";
+  const variantClasses = {
+    solid: "bg-base-100",
+    muted: "bg-[color:var(--color-background-muted)] backdrop-blur-sm",
+    transparent: "bg-transparent",
+  };
 
-const baseClasses = "rounded-xl shadow-soft p-4 sm:p-6";
+  const outerClasses = frame ? `${variantClasses[variant]} ${baseClasses}` : "bg-transparent";
+  const innerWidthClasses = !fullWidth ? "max-w-5xl" : "";
 
-const variantClasses = {
-  solid: "bg-base-100",
-  muted: "bg-[color:var(--color-background-muted)] backdrop-blur-sm",
-  transparent: "bg-transparent",
-};
-
-return (
-  <div className={`${variantClasses[variant]} ${baseClasses}`}>
-    <div className={`mx-auto ${!fullWidth ? "max-w-5xl" : ""} ${className}`}>
-      {(title || action || subtitle) && (
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6">
-          <div className={titleAlignment === "center" ? "w-full text-center" : ""}>
-            {title && (
-              <h1 className="text-2xl sm:text-3xl font-medium text-primary mb-1">
-                {title}
-              </h1>
-            )}
-            {subtitle && <p className="text-base-content/70">{subtitle}</p>}
+  return (
+    <div className={outerClasses}>
+      <div className={`mx-auto ${innerWidthClasses} ${className}`}>
+        {(title || action || subtitle) && (
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6">
+            <div className={titleAlignment === "center" ? "w-full text-center" : ""}>
+              {title && (
+                <h1 className="text-2xl sm:text-3xl font-medium text-primary mb-1">
+                  {title}
+                </h1>
+              )}
+              {subtitle && <p className="text-base-content/70">{subtitle}</p>}
+            </div>
+            {action && <div className="mt-4 sm:mt-0">{action}</div>}
           </div>
-          {action && <div className="mt-4 sm:mt-0">{action}</div>}
-        </div>
-      )}
-      {children}
+        )}
+        {children}
+      </div>
     </div>
-  </div>
-);
+  );
 };
 
 export default PageContainer;

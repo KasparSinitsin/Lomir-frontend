@@ -665,3 +665,11 @@ body {
 .tooltip.tooltip-lomir:focus-within > .tooltip-content {
   opacity: 1 !important;
 }
+
+/* Lomir: make daisyUI form controls fill their container */
+.input,
+.select,
+.textarea {
+  width: 100% !important;
+}
+
