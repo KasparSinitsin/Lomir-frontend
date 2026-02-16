@@ -480,21 +480,23 @@ const RegisterForm = () => {
             <section className="space-y-4">
               <FormSectionDivider text="Profile Picture" icon={Camera} />
 
-              <div className="form-control w-full">
-                <ImageUploader
-                  currentImage={imagePreview}
-                  onImageSelect={(file, previewUrl) => {
-                    setFormData((prev) => ({ ...prev, profile_image: file }));
-                    setImagePreview(previewUrl);
-                  }}
-                  onImageRemove={() => {
-                    setFormData((prev) => ({ ...prev, profile_image: null }));
-                    setImagePreview(null);
-                  }}
-                  previewSize="md"
-                  previewShape="circle"
-                  fallbackInitials={getUserInitialsFromForm()}
-                />
+              <div className="flex justify-center">
+                <div className="w-full max-w-md">
+                  <ImageUploader
+                    currentImage={imagePreview}
+                    onImageSelect={(file, previewUrl) => {
+                      setFormData((prev) => ({ ...prev, profile_image: file }));
+                      setImagePreview(previewUrl);
+                    }}
+                    onImageRemove={() => {
+                      setFormData((prev) => ({ ...prev, profile_image: null }));
+                      setImagePreview(null);
+                    }}
+                    size="mdPlus"
+                    shape="circle"
+                    fallbackInitials={getUserInitialsFromForm()}
+                  />
+                </div>
               </div>
             </section>
 
