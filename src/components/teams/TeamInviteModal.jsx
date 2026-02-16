@@ -605,7 +605,7 @@ const TeamInviteModal = ({
                 <p className="text-sm text-base-content/70">
                   You don't have any teams where you can invite members.
                 </p>
-                <p className="text-xs text-base-content/50 mt-1">
+                <p className="form-helper-text">
                   Create a team or become an admin to send invitations.
                 </p>
               </div>

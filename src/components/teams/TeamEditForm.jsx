@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect } from "react";
 import Button from "../common/Button";
-import IconToggle from "../common/IconToggle";
+import VisibilityToggle from "../common/VisibilityToggle";
 import FormSectionDivider from "../common/FormSectionDivider";
 import { getTeamInitials } from "../../utils/userHelpers";
 import { teamService } from "../../services/teamService";
@@ -280,7 +280,7 @@ const TeamEditForm = ({
 
       {/* Team Visibility Toggle */}
       <div className="form-control">
-        <IconToggle
+        <VisibilityToggle
           name="isPublic"
           checked={formData.isPublic}
           onChange={handleChange}

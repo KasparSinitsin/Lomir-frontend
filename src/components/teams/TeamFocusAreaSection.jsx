@@ -68,7 +68,7 @@ const TeamFocusAreaSection = ({
             No focus areas specified yet
           </p>
           {isOwner && !isEditing && (
-            <p className="text-xs text-base-content/50 mt-1">
+            <p className="form-helper-text">
               Add focus areas to help others find your team
             </p>
           )}

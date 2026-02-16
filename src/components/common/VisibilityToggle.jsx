@@ -1,7 +1,7 @@
 import React from "react";
 import { Eye, EyeClosed } from "lucide-react";
 
-const IconToggle = ({
+const VisibilityToggle = ({
   name,
   checked,
   onChange,
@@ -48,8 +48,9 @@ const IconToggle = ({
     return hiddenDescription;
   };
 
-  const description =
-    isChecked ? getVisibleDescription() : getHiddenDescription();
+  const description = isChecked
+    ? getVisibleDescription()
+    : getHiddenDescription();
 
   return (
     <div className={`form-control w-full ${className}`}>
@@ -67,62 +68,58 @@ const IconToggle = ({
         </label>
       )}
 
-      {/* Field body (input-like container) */}
-      <div
-        className={`flex items-center justify-between rounded-xl border p-4 ${
-          error ? "border-error" : "border-base-300"
-        } bg-base-100/60`}
-      >
-        <div className="flex items-center">
-          {isChecked ? (
-            <Eye size={24} className="text-primary mr-3 flex-shrink-0" />
-          ) : (
-            <EyeClosed
-              size={24}
-              className="text-base-content/70 mr-3 flex-shrink-0"
-            />
-          )}
-
-          <span className="font-medium">
-            {isChecked ? visibleLabel : hiddenLabel}
-          </span>
-        </div>
-
-        <label
-          htmlFor={inputId}
-          className={`relative inline-flex items-center ${
-            disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer"
-          }`}
-        >
-          <input
-            id={inputId}
-            type="checkbox"
-            name={name}
-            checked={isChecked}
-            onChange={onChange}
-            disabled={disabled}
-            className="toggle toggle-primary"
-          />
-          <span className="sr-only">Toggle visibility</span>
-        </label>
-      </div>
-
-      {/* Helper / error row (matches other inputs) */}
-      {error ? (
-        <label className="label">
-          <span className="label-text-alt text-error">{error}</span>
-        </label>
+{/* Field body (input-like container) */}
+<div
+  className={`input input-bordered w-full h-auto px-4 py-3 ${
+  error ? "input-error" : ""
+} flex flex-col items-start gap-0`}
+>
+  {/* Row 1: icon + state text + toggle */}
+  <div className="flex items-center justify-between w-full">
+    <div className="flex items-center">
+      {isChecked ? (
+        <Eye size={24} className="text-primary mr-3 flex-shrink-0" />
       ) : (
-        showDescription && (
-          <label className="label">
-            <span className="label-text-alt text-base-content/60">
-              {description}
-            </span>
-          </label>
-        )
+        <EyeClosed
+          size={24}
+          className="text-base-content opacity-60 mr-3 flex-shrink-0"
+        />
       )}
+
+      <span className="text-base-content font-normal">
+        {isChecked ? visibleLabel : hiddenLabel}
+      </span>
+    </div>
+
+    <label
+      htmlFor={inputId}
+      className={`relative inline-flex items-center ${
+        disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer"
+      }`}
+    >
+      <input
+        id={inputId}
+        type="checkbox"
+        name={name}
+        checked={isChecked}
+        onChange={onChange}
+        disabled={disabled}
+        className="toggle toggle-primary"
+      />
+      <span className="sr-only">Toggle visibility</span>
+    </label>
+  </div>
+
+  {/* Row 2: helper/error */}
+  {error ? (
+    <p className="form-helper-text text-error">{error}</p>
+  ) : (
+    showDescription && <p className="form-helper-text">{description}</p>
+  )}
+</div>
+
     </div>
   );
 };
 
-export default IconToggle;
+export default VisibilityToggle;
