@@ -7,6 +7,11 @@ import FormSectionDivider from "./FormSectionDivider";
  * LocationInput Component
  * Unified location input fields for both user and team forms
  *
+ * Responsive layout:
+ * - Mobile: All fields stacked vertically (1 column)
+ * - Tablet (sm-lg): Country full width, Postal Code + City side by side (2 columns)
+ * - Desktop (lg+): All three fields in one row (3 columns)
+ *
  * @param {Object} props
  * @param {Object} props.formData - Form data object containing location fields
  * @param {Function} props.onChange - Change handler for form fields
@@ -89,7 +94,7 @@ const LocationInput = ({
               <span className="label-text">This is a remote team</span>
             </div>
           </label>
-          <p className="text-xs text-base-content/50 ml-10">
+          <p className="form-helper-text ml-10">
             Remote teams don't have a physical meeting location
           </p>
         </div>
@@ -98,32 +103,14 @@ const LocationInput = ({
       {/* Location Fields - hidden if remote */}
       {(!showRemoteToggle || !isRemote) && (
         <div className="space-y-4 animate-fadeIn">
-          {/* Country Select */}
-          <div className="form-control w-full">
-            <label className="label">
-              <span className="label-text">
-                Country
-                {required && <span className="text-error ml-1">*</span>}
-              </span>
-            </label>
-            <CountrySelect
-              value={country}
-              onChange={handleCountryChange}
-              name="country"
-              placeholder="Select country"
-              disabled={disabled}
-            />
-            {errors.country && (
-              <label className="label">
-                <span className="label-text-alt text-error">
-                  {errors.country}
-                </span>
-              </label>
-            )}
-          </div>
-
-          {/* Postal Code and City in a grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* 
+            Responsive grid layout:
+            - Mobile (default): 1 column - all fields stacked
+            - Tablet (sm to lg): 2 columns - Country spans both, Postal + City side by side
+            - Desktop (lg+): 3 columns - all fields in one row
+          */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {/* Postal Code */}
             <div className="form-control w-full">
               <label className="label">
                 <span className="label-text">Postal Code</span>
@@ -148,6 +135,7 @@ const LocationInput = ({
               )}
             </div>
 
+            {/* City / Town */}
             <div className="form-control w-full">
               <label className="label">
                 <span className="label-text">City / Town</span>
@@ -171,10 +159,34 @@ const LocationInput = ({
                 </label>
               )}
             </div>
+
+            {/* Country Select - full width on tablet, 1/3 on desktop */}
+            <div className="form-control w-full sm:col-span-2 lg:col-span-1">
+              <label className="label">
+                <span className="label-text">
+                  Country
+                  {required && <span className="text-error ml-1">*</span>}
+                </span>
+              </label>
+              <CountrySelect
+                value={country}
+                onChange={handleCountryChange}
+                name="country"
+                placeholder="Select country"
+                disabled={disabled}
+              />
+              {errors.country && (
+                <label className="label">
+                  <span className="label-text-alt text-error">
+                    {errors.country}
+                  </span>
+                </label>
+              )}
+            </div>
           </div>
 
           {/* Helper text */}
-          <p className="text-xs text-base-content/50 -mt-2 px-1">
+          <p className="form-helper-text -mt-2 px-1">
             Location helps others find you nearby. This information is optional.
           </p>
         </div>
