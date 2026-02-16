@@ -12,7 +12,7 @@ import { uploadToCloudinary } from "../../config/cloudinary";
 import api from "../../services/api";
 import LocationInput from "../common/LocationInput";
 import { useLocationAutoFill } from "../../hooks/useLocationAutoFill";
-import IconToggle from "../common/IconToggle";
+import VisibilityToggle from "../common/VisibilityToggle";
 
 const RegisterForm = () => {
   const navigate = useNavigate();
@@ -445,7 +445,7 @@ const RegisterForm = () => {
 
               {/* Profile Visibility */}
               <div className="form-control w-full">
-                <IconToggle
+                <VisibilityToggle
                   name="isPublic"
                   checked={formData.isPublic}
                   onChange={handleChange}

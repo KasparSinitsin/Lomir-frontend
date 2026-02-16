@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import Modal from "../common/Modal";
 import Button from "../common/Button";
 import Alert from "../common/Alert";
-import IconToggle from "../common/IconToggle";
+import VisibilityToggle from "../common/VisibilityToggle";
 import ImageUploader from "../common/ImageUploader";
 import TagInput from "../tags/TagInput";
 import LocationInput from "../common/LocationInput";
@@ -485,7 +485,7 @@ const CreateTeamModal = ({ isOpen, onClose, onTeamCreated }) => {
 
             {/* Team Visibility Toggle */}
             <div className="form-control">
-              <IconToggle
+              <VisibilityToggle
                 name="isPublic"
                 checked={formData.isPublic}
                 onChange={handleChange}

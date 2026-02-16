@@ -23,7 +23,7 @@ import {
   SendHorizontal,
   Archive,
 } from "lucide-react";
-import IconToggle from "../common/IconToggle";
+import VisibilityToggle from "../common/VisibilityToggle";
 import UserDetailsModal from "../users/UserDetailsModal";
 import TagsDisplaySection from "../tags/TagsDisplaySection";
 import { UI_TEXT } from "../../constants/uiText";

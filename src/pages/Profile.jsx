@@ -30,7 +30,7 @@ import TagInput from "../components/tags/TagInput";
 import BadgeCategoryCard from "../components/badges/BadgeCategoryCard";
 import BadgeCategoryModal from "../components/badges/BadgeCategoryModal";
 import TagsDisplaySection from "../components/tags/TagsDisplaySection";
-import IconToggle from "../components/common/IconToggle";
+import VisibilityToggle from "../components/common/VisibilityToggle";
 import LocationDisplay from "../components/common/LocationDisplay";
 import { geocodingService } from "../services/geocodingService";
 import { useLocationAutoFill } from "../hooks/useLocationAutoFill";
@@ -802,7 +802,7 @@ const Profile = () => {
                       </span>
                     </label>
                   )}
-                  <p className="text-xs text-base-content/50 mt-1">
+                  <p className="form-helper-text">
                     3–20 characters, letters/numbers/underscore. Must be unique.
                   </p>
                 </div>
@@ -892,7 +892,7 @@ const Profile = () => {
 
               {/* Profile visibility toggle (moved up into Profile Details) */}
               <div className="form-control w-full">
-                <IconToggle
+                <VisibilityToggle
                   name="isPublic"
                   checked={formData.isPublic}
                   onChange={handleChange}
