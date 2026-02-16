@@ -54,12 +54,12 @@ const ImageUploader = ({
 
   // ============ Size & Shape Classes ============
   const sizeClasses = {
-  sm: "w-16 h-16",
-  md: "w-20 h-20",
-  mdPlus: "w-32 h-32", 
-  lg: "w-24 h-24",
-  xl: "w-48 h-48",
-};
+    sm: "w-16 h-16",
+    md: "w-20 h-20",
+    mdPlus: "w-32 h-32",
+    lg: "w-24 h-24",
+    xl: "w-48 h-48",
+  };
 
   const shapeClasses = {
     circle: "rounded-full",
@@ -290,9 +290,14 @@ const ImageUploader = ({
                     className="opacity-80"
                   />
                 ) : fallbackText ? (
-                  <span className={textSizeClasses[finalSize]}>{fallbackText}</span>
+                  <span className={textSizeClasses[finalSize]}>
+                    {fallbackText}
+                  </span>
                 ) : (
-                  <Upload size={iconSizeClasses[finalSize]} className="opacity-60" />
+                  <Upload
+                    size={iconSizeClasses[finalSize]}
+                    className="opacity-60"
+                  />
                 )}
               </div>
             )}
@@ -323,7 +328,10 @@ const ImageUploader = ({
                 ${shapeClasses[finalShape]}
               `}
             >
-              <Upload size={iconSizeClasses[finalSize]} className="text-white" />
+              <Upload
+                size={iconSizeClasses[finalSize]}
+                className="text-white"
+              />
             </div>
           )}
         </div>
@@ -350,13 +358,11 @@ const ImageUploader = ({
           </div>
 
           {/* Help Text */}
-          {helpText && !error && (
-            <p className="text-xs text-base-content/60">{helpText}</p>
-          )}
+          {helpText && !error && <p className="form-helper-text">{helpText}</p>}
 
           {/* Auto-generated Help Text */}
           {!helpText && !error && (
-            <p className="text-xs text-base-content/60">
+            <p className="form-helper-text">
               {hasNewImage
                 ? "New image selected. Save to upload."
                 : `Max ${maxSizeMB}MB. Square images recommended.`}
