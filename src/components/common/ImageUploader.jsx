@@ -39,6 +39,8 @@ const ImageUploader = ({
   className = "",
   showRemoveButton = true,
   removeButtonText = "Remove",
+  previewShape,
+  previewSize,
 }) => {
   // ============ State ============
   const [isDragging, setIsDragging] = useState(false);
@@ -47,14 +49,17 @@ const ImageUploader = ({
   const [imageError, setImageError] = useState(false);
   const fileInputRef = useRef(null);
   const dragCounter = useRef(0);
+  const finalShape = previewShape ?? shape;
+  const finalSize = previewSize ?? size;
 
   // ============ Size & Shape Classes ============
   const sizeClasses = {
-    sm: "w-16 h-16",
-    md: "w-20 h-20",
-    lg: "w-24 h-24",
-    xl: "w-48 h-48",
-  };
+  sm: "w-16 h-16",
+  md: "w-20 h-20",
+  mdPlus: "w-32 h-32", 
+  lg: "w-24 h-24",
+  xl: "w-48 h-48",
+};
 
   const shapeClasses = {
     circle: "rounded-full",
@@ -65,6 +70,7 @@ const ImageUploader = ({
   const textSizeClasses = {
     sm: "text-lg",
     md: "text-xl",
+    mdPlus: "text-3xl",
     lg: "text-2xl",
     xl: "text-3xl",
   };
@@ -72,6 +78,7 @@ const ImageUploader = ({
   const iconSizeClasses = {
     sm: 16,
     md: 20,
+    mdPlus: 28,
     lg: 24,
     xl: 32,
   };
@@ -246,8 +253,8 @@ const ImageUploader = ({
           onDrop={handleDrop}
           className={`
             relative cursor-pointer transition-all duration-200
-            ${sizeClasses[size]}
-            ${shapeClasses[shape]}
+            ${sizeClasses[finalSize]}
+            ${shapeClasses[finalShape]}
             ${disabled ? "opacity-50 cursor-not-allowed" : ""}
             ${
               isDragging
@@ -262,7 +269,7 @@ const ImageUploader = ({
           <div
             className={`
               w-full h-full flex items-center justify-center overflow-hidden
-              ${shapeClasses[shape]}
+              ${shapeClasses[finalShape]}
               ${hasImage ? "" : "bg-primary text-primary-content"}
             `}
           >
@@ -272,20 +279,20 @@ const ImageUploader = ({
               <img
                 src={displayImage}
                 alt="Preview"
-                className={`w-full h-full object-cover ${shapeClasses[shape]}`}
+                className={`w-full h-full object-cover ${shapeClasses[finalShape]}`}
                 onError={() => setImageError(true)}
               />
             ) : (
               <div className="flex flex-col items-center justify-center">
                 {isDragging ? (
                   <ImagePlus
-                    size={iconSizeClasses[size]}
+                    size={iconSizeClasses[finalSize]}
                     className="opacity-80"
                   />
                 ) : fallbackText ? (
-                  <span className={textSizeClasses[size]}>{fallbackText}</span>
+                  <span className={textSizeClasses[finalSize]}>{fallbackText}</span>
                 ) : (
-                  <Upload size={iconSizeClasses[size]} className="opacity-60" />
+                  <Upload size={iconSizeClasses[finalSize]} className="opacity-60" />
                 )}
               </div>
             )}
@@ -297,11 +304,11 @@ const ImageUploader = ({
               className={`
                 absolute inset-0 flex items-center justify-center
                 bg-primary/20 backdrop-blur-sm
-                ${shapeClasses[shape]}
+                ${shapeClasses[finalShape]}
               `}
             >
               <ImagePlus
-                size={iconSizeClasses[size]}
+                size={iconSizeClasses[finalSize]}
                 className="text-primary"
               />
             </div>
@@ -313,10 +320,10 @@ const ImageUploader = ({
               className={`
                 absolute inset-0 flex items-center justify-center
                 bg-black/40 opacity-0 hover:opacity-100 transition-opacity
-                ${shapeClasses[shape]}
+                ${shapeClasses[finalShape]}
               `}
             >
-              <Upload size={iconSizeClasses[size]} className="text-white" />
+              <Upload size={iconSizeClasses[finalSize]} className="text-white" />
             </div>
           )}
         </div>
