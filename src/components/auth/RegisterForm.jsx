@@ -1,4 +1,3 @@
-import axios from "axios";
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
@@ -6,8 +5,8 @@ import { UI_TEXT } from "../../constants/uiText";
 import TagInput from "../tags/TagInput";
 import Card from "../common/Card";
 import Button from "../common/Button";
-import FormGroup from "../common/FormGroup";
-import { Tag, MailCheck } from "lucide-react";
+import FormSectionDivider from "../common/FormSectionDivider";
+import { Tag, MailCheck, KeyRound, User, Camera } from "lucide-react";
 import ImageUploader from "../common/ImageUploader";
 import { uploadToCloudinary } from "../../config/cloudinary";
 import api from "../../services/api";
@@ -17,6 +16,7 @@ import { useLocationAutoFill } from "../../hooks/useLocationAutoFill";
 const RegisterForm = () => {
   const navigate = useNavigate();
   const { register } = useAuth();
+
   const [formData, setFormData] = useState({
     username: "",
     email: "",
@@ -31,10 +31,12 @@ const RegisterForm = () => {
     profile_image: null,
     selectedTags: [],
   });
+
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [imagePreview, setImagePreview] = useState(null);
   const [registrationSuccess, setRegistrationSuccess] = useState(false);
+
   const [resendStatus, setResendStatus] = useState("idle"); // 'idle' | 'sending' | 'sent' | 'error'
   const [resendMessage, setResendMessage] = useState("");
   const [resendCooldown, setResendCooldown] = useState(0);
@@ -52,7 +54,6 @@ const RegisterForm = () => {
   useEffect(() => {
     const updates = getSuggestedUpdates();
     if (Object.keys(updates).length > 0) {
-      // Map camelCase updates to snake_case for this form
       const mappedUpdates = {};
       if (updates.city) mappedUpdates.city = updates.city;
       if (updates.country) mappedUpdates.country = updates.country;
@@ -65,22 +66,22 @@ const RegisterForm = () => {
 
   const validateForm = () => {
     const newErrors = {};
-    if (!formData.username) {
-      newErrors.username = "Username is required";
-    }
+
+    if (!formData.username) newErrors.username = "Username is required";
+
     if (!formData.email) {
       newErrors.email = "Email is required";
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
       newErrors.email = "Email is invalid";
     }
+
     if (!formData.password) {
       newErrors.password = "Password is required";
     } else if (formData.password.length < 6) {
       newErrors.password = "Password must be at least 6 characters";
     }
-    if (!formData.confirmPassword) {
-      newErrors.confirmPassword = "Confirm Password is required";
-    } else if (formData.password !== formData.confirmPassword) {
+
+    if (formData.password !== formData.confirmPassword) {
       newErrors.confirmPassword = "Passwords do not match";
     }
 
@@ -89,43 +90,31 @@ const RegisterForm = () => {
   };
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData({
-      ...formData,
-      [name]: value,
-    });
+    const { name, value, type, checked } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: type === "checkbox" ? checked : value,
+    }));
+  };
 
-    // Clear error for this field when user starts typing
-    if (errors[name]) {
-      setErrors((prev) => {
-        const newErrors = { ...prev };
-        delete newErrors[name];
-        return newErrors;
-      });
-    }
+  const handleTagsChange = (tags) => {
+    setFormData((prev) => ({
+      ...prev,
+      selectedTags: tags,
+    }));
   };
 
   const getUserInitialsFromForm = () => {
     const first = formData.first_name?.charAt(0) || "";
     const last = formData.last_name?.charAt(0) || "";
-    if (first || last) {
-      return (first + last).toUpperCase();
-    }
+    if (first || last) return (first + last).toUpperCase();
     return formData.username?.charAt(0)?.toUpperCase() || "?";
-  };
-
-  const handleTagsChange = (newTags) => {
-    setFormData({
-      ...formData,
-      selectedTags: newTags,
-    });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!validateForm()) {
-      return;
-    }
+
+    if (!validateForm()) return;
 
     setIsSubmitting(true);
 
@@ -134,13 +123,12 @@ const RegisterForm = () => {
         username: formData.username,
         email: formData.email,
         password: formData.password,
-        first_name: formData.first_name || "",
-        last_name: formData.last_name || "",
-        bio: formData.bio || "",
-        postal_code: formData.postal_code || "",
-        city: formData.city || "",
-        country: formData.country || "",
-        // Backend only expects tag_id (experience_level and interest_level are commented out in schema)
+        first_name: formData.first_name,
+        last_name: formData.last_name,
+        bio: formData.bio,
+        postal_code: formData.postal_code,
+        city: formData.city,
+        country: formData.country,
         tags:
           formData.selectedTags.length > 0
             ? formData.selectedTags.map((tagId) => ({
@@ -159,7 +147,6 @@ const RegisterForm = () => {
           userData.avatar_url = uploadResult.url;
         } else {
           console.error("Avatar upload failed:", uploadResult.error);
-          // Continue with registration without avatar
         }
       }
 
@@ -167,10 +154,8 @@ const RegisterForm = () => {
 
       if (result.success) {
         if (result.requiresVerification) {
-          // Show verification message instead of redirecting
           setRegistrationSuccess(true);
         } else {
-          // Fallback for if verification is not required
           localStorage.setItem(
             "registrationMessage",
             "Profile created successfully!",
@@ -199,14 +184,13 @@ const RegisterForm = () => {
     setResendMessage("");
 
     try {
-      const response = await api.post("/api/auth/resend-verification", {
+      await api.post("/api/auth/resend-verification", {
         email: formData.email,
       });
 
       setResendStatus("sent");
       setResendMessage("Verification email sent! Please check your inbox.");
 
-      // Start 30 second cooldown
       setResendCooldown(30);
       const timer = setInterval(() => {
         setResendCooldown((prev) => {
@@ -227,7 +211,6 @@ const RegisterForm = () => {
     }
   };
 
-  // Show success message after registration
   if (registrationSuccess) {
     return (
       <div className="max-w-md mx-auto">
@@ -248,7 +231,9 @@ const RegisterForm = () => {
 
             {resendMessage && (
               <div
-                className={`alert ${resendStatus === "sent" ? "alert-success" : "alert-error"} mb-4`}
+                className={`alert ${
+                  resendStatus === "sent" ? "alert-success" : "alert-error"
+                } mb-4`}
               >
                 <span>{resendMessage}</span>
               </div>
@@ -258,6 +243,7 @@ const RegisterForm = () => {
               <Link to="/login" className="btn btn-primary w-full">
                 Go to Login
               </Link>
+
               <button
                 type="button"
                 className="btn btn-ghost btn-sm"
@@ -289,7 +275,7 @@ const RegisterForm = () => {
           <h2 className="card-title text-2xl font-bold text-center justify-center mb-2">
             Create Account
           </h2>
-          <p className="text-center text-base-content/70 mb-4">
+          <p className="text-center text-base-content/70 mb-6">
             Join Lomir and start building teams
           </p>
 
@@ -299,247 +285,256 @@ const RegisterForm = () => {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Account Information Section */}
-            <div className="divider text-sm text-base-content/60">
-              Account Information
-            </div>
+          {/* Key change: sections + consistent vertical rhythm */}
+          <form onSubmit={handleSubmit} className="space-y-12">
+            {/* Account Information */}
+            <section className="space-y-4">
+              <FormSectionDivider text="Account Information" icon={KeyRound} />
 
-            <div className="form-control w-full">
-              <label className="label">
-                <span className="label-text">
-                  Username <span className="text-error">*</span>
-                </span>
-              </label>
-              <input
-                type="text"
-                placeholder="Choose a username"
-                className={`input input-bordered w-full ${
-                  errors.username ? "input-error" : ""
-                }`}
-                value={formData.username}
-                onChange={handleChange}
-                name="username"
-              />
-              {errors.username && (
-                <label className="label">
-                  <span className="label-text-alt text-error">
-                    {errors.username}
-                  </span>
-                </label>
-              )}
-            </div>
-
-            <div className="form-control w-full">
-              <label className="label">
-                <span className="label-text">
-                  Email <span className="text-error">*</span>
-                </span>
-              </label>
-              <input
-                type="email"
-                placeholder="your@email.com"
-                className={`input input-bordered w-full ${
-                  errors.email ? "input-error" : ""
-                }`}
-                value={formData.email}
-                onChange={handleChange}
-                name="email"
-              />
-              {errors.email && (
-                <label className="label">
-                  <span className="label-text-alt text-error">
-                    {errors.email}
-                  </span>
-                </label>
-              )}
-            </div>
-
-            <div className="form-control w-full">
-              <label className="label">
-                <span className="label-text">
-                  Password <span className="text-error">*</span>
-                </span>
-              </label>
-              <input
-                type="password"
-                placeholder="••••••••"
-                className={`input input-bordered w-full ${
-                  errors.password ? "input-error" : ""
-                }`}
-                value={formData.password}
-                onChange={handleChange}
-                name="password"
-              />
-              {errors.password && (
-                <label className="label">
-                  <span className="label-text-alt text-error">
-                    {errors.password}
-                  </span>
-                </label>
-              )}
-            </div>
-
-            <div className="form-control w-full">
-              <label className="label">
-                <span className="label-text">
-                  Confirm Password <span className="text-error">*</span>
-                </span>
-              </label>
-              <input
-                type="password"
-                placeholder="••••••••"
-                className={`input input-bordered w-full ${
-                  errors.confirmPassword ? "input-error" : ""
-                }`}
-                value={formData.confirmPassword}
-                onChange={handleChange}
-                name="confirmPassword"
-              />
-              {errors.confirmPassword && (
-                <label className="label">
-                  <span className="label-text-alt text-error">
-                    {errors.confirmPassword}
-                  </span>
-                </label>
-              )}
-            </div>
-
-            {/* Profile Details Section */}
-            <div className="divider text-sm text-base-content/60">
-              Profile Details
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
               <div className="form-control w-full">
                 <label className="label">
-                  <span className="label-text">First Name</span>
+                  <span className="label-text">
+                    Username <span className="text-error">*</span>
+                  </span>
                 </label>
                 <input
                   type="text"
-                  placeholder="First Name"
-                  className="input input-bordered w-full"
-                  value={formData.first_name}
+                  placeholder="Choose a username"
+                  className={`input input-bordered w-full ${
+                    errors.username ? "input-error" : ""
+                  }`}
+                  value={formData.username}
                   onChange={handleChange}
-                  name="first_name"
+                  name="username"
                 />
+                {errors.username && (
+                  <label className="label">
+                    <span className="label-text-alt text-error">
+                      {errors.username}
+                    </span>
+                  </label>
+                )}
               </div>
 
               <div className="form-control w-full">
                 <label className="label">
-                  <span className="label-text">Last Name</span>
+                  <span className="label-text">
+                    Email <span className="text-error">*</span>
+                  </span>
                 </label>
                 <input
-                  type="text"
-                  placeholder="Last Name"
-                  className="input input-bordered w-full"
-                  value={formData.last_name}
+                  type="email"
+                  placeholder="your@email.com"
+                  className={`input input-bordered w-full ${
+                    errors.email ? "input-error" : ""
+                  }`}
+                  value={formData.email}
                   onChange={handleChange}
-                  name="last_name"
+                  name="email"
+                />
+                {errors.email && (
+                  <label className="label">
+                    <span className="label-text-alt text-error">
+                      {errors.email}
+                    </span>
+                  </label>
+                )}
+              </div>
+
+              <div className="form-control w-full">
+                <label className="label">
+                  <span className="label-text">
+                    Password <span className="text-error">*</span>
+                  </span>
+                </label>
+                <input
+                  type="password"
+                  placeholder="Min. 6 characters"
+                  className={`input input-bordered w-full ${
+                    errors.password ? "input-error" : ""
+                  }`}
+                  value={formData.password}
+                  onChange={handleChange}
+                  name="password"
+                />
+                {errors.password && (
+                  <label className="label">
+                    <span className="label-text-alt text-error">
+                      {errors.password}
+                    </span>
+                  </label>
+                )}
+              </div>
+
+              <div className="form-control w-full">
+                <label className="label">
+                  <span className="label-text">
+                    Confirm Password <span className="text-error">*</span>
+                  </span>
+                </label>
+                <input
+                  type="password"
+                  placeholder="Confirm your password"
+                  className={`input input-bordered w-full ${
+                    errors.confirmPassword ? "input-error" : ""
+                  }`}
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  name="confirmPassword"
+                />
+                {errors.confirmPassword && (
+                  <label className="label">
+                    <span className="label-text-alt text-error">
+                      {errors.confirmPassword}
+                    </span>
+                  </label>
+                )}
+              </div>
+            </section>
+
+            {/* Profile Details */}
+            <section className="space-y-4">
+              <FormSectionDivider text="Profile Details" icon={User} />
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="form-control w-full">
+                  <label className="label">
+                    <span className="label-text">First Name</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="First Name"
+                    className="input input-bordered w-full"
+                    value={formData.first_name}
+                    onChange={handleChange}
+                    name="first_name"
+                  />
+                </div>
+
+                <div className="form-control w-full">
+                  <label className="label">
+                    <span className="label-text">Last Name</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Last Name"
+                    className="input input-bordered w-full"
+                    value={formData.last_name}
+                    onChange={handleChange}
+                    name="last_name"
+                  />
+                </div>
+              </div>
+
+              <div className="form-control w-full">
+                <label className="label">
+                  <span className="label-text">Bio</span>
+                </label>
+                <textarea
+                  className="textarea textarea-bordered w-full"
+                  placeholder="Tell us a bit about yourself..."
+                  value={formData.bio}
+                  onChange={handleChange}
+                  name="bio"
+                  rows="3"
                 />
               </div>
-            </div>
+            </section>
 
-            <div className="form-control w-full">
-              <label className="label">
-                <span className="label-text">Bio</span>
-              </label>
-              <textarea
-                className="textarea textarea-bordered w-full"
-                placeholder="Tell us a bit about yourself..."
-                value={formData.bio}
+            {/* Location (already has internal spacing) */}
+            <section>
+              <LocationInput
+                formData={{
+                  postal_code: formData.postal_code,
+                  city: formData.city,
+                  country: formData.country,
+                }}
                 onChange={handleChange}
-                name="bio"
-                rows="3"
-              />
-            </div>
-
-            {/* Location Section */}
-            <LocationInput
-              formData={{
-                postal_code: formData.postal_code,
-                city: formData.city,
-                country: formData.country,
-              }}
-              onChange={handleChange}
-              errors={{
-                postal_code: errors.postal_code,
-                city: errors.city,
-                country: errors.country,
-              }}
-              disabled={isSubmitting}
-              showRemoteToggle={false}
-              showDivider={true}
-              dividerText="Location"
-            />
-
-            {/* Profile Image Upload */}
-            <div className="form-control w-full">
-              <ImageUploader
-                currentImage={imagePreview}
-                onImageSelect={(file, previewUrl) => {
-                  setFormData({
-                    ...formData,
-                    profile_image: file,
-                  });
-                  setImagePreview(previewUrl);
+                errors={{
+                  postal_code: errors.postal_code,
+                  city: errors.city,
+                  country: errors.country,
                 }}
-                onImageRemove={() => {
-                  setFormData({
-                    ...formData,
-                    profile_image: null,
-                  });
-                  setImagePreview(null);
-                }}
-                previewSize="md"
-                previewShape="circle"
-                fallbackInitials={getUserInitialsFromForm()}
-                label="Profile Picture"
+                disabled={isSubmitting}
+                showRemoteToggle={false}
+                showDivider={true}
+                dividerText="Location"
               />
-            </div>
+            </section>
 
-            {/* Focus Areas Section */}
-            <div className="divider text-sm text-base-content/60">
-              <Tag size={14} className="mr-1" />
-              {UI_TEXT.focusAreas.registerTitle}
-            </div>
+            {/* Profile Picture */}
+            <section className="space-y-4">
+              <FormSectionDivider text="Profile Picture" icon={Camera} />
 
-            <div className="form-control w-full">
-              <label className="label">
-                <span className="label-text">
-                  {UI_TEXT.focusAreas.registerDescription}
-                </span>
-              </label>
+              <div className="form-control w-full">
+                <ImageUploader
+                  currentImage={imagePreview}
+                  onImageSelect={(file, previewUrl) => {
+                    setFormData((prev) => ({ ...prev, profile_image: file }));
+                    setImagePreview(previewUrl);
+                  }}
+                  onImageRemove={() => {
+                    setFormData((prev) => ({ ...prev, profile_image: null }));
+                    setImagePreview(null);
+                  }}
+                  previewSize="md"
+                  previewShape="circle"
+                  fallbackInitials={getUserInitialsFromForm()}
+                />
+              </div>
+            </section>
 
-              <TagInput
-                selectedTags={formData.selectedTags}
-                onTagsChange={handleTagsChange}
-                placeholder={UI_TEXT.focusAreas.searchPlaceholder}
+            {/* Focus Areas */}
+            <section className="space-y-4">
+              <FormSectionDivider
+                text={UI_TEXT.focusAreas.registerTitle}
+                icon={Tag}
               />
-            </div>
 
-            <Button
-              type="submit"
-              variant="primary"
-              className="w-full mt-6"
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? (
-                <>
-                  <span className="loading loading-spinner loading-sm"></span>
-                  Creating Account...
-                </>
-              ) : (
-                "Create Account"
-              )}
-            </Button>
+              <div className="form-control w-full">
+                <label className="label">
+                  <span className="label-text">
+                    {UI_TEXT.focusAreas.registerDescription}
+                  </span>
+                </label>
 
-            <p className="text-center text-sm mt-4">
-              Already have an account?{" "}
-              <Link to="/login" className="link link-primary">
-                Login
-              </Link>
-            </p>
+                <TagInput
+                  selectedTags={formData.selectedTags}
+                  onTagsChange={handleTagsChange}
+                  placeholder={UI_TEXT.focusAreas.searchPlaceholder}
+                />
+              </div>
+            </section>
+
+            {/* Divider before submit button */}
+            <div className="divider mt-12 mb-0"></div>
+
+
+            {/* Actions */}
+            <section className="space-y-4 !mt-4">
+              <Button
+                type="submit"
+                variant="primary"
+                className="w-full"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? (
+                  <>
+                    <span className="loading loading-spinner loading-sm"></span>
+                    Creating Account...
+                  </>
+                ) : (
+                  "Create Account"
+                )}
+              </Button>
+
+              <p className="text-center text-sm">
+                Already have an account?{" "}
+                <Link to="/login" className="link link-primary">
+                  Login
+                </Link>
+              </p>
+            </section>
           </form>
         </div>
       </Card>

@@ -1,11 +1,12 @@
 import React from "react";
 import { MapPin, Globe } from "lucide-react";
 import CountrySelect from "./CountrySelect";
+import FormSectionDivider from "./FormSectionDivider";
 
 /**
  * LocationInput Component
  * Unified location input fields for both user and team forms
- * 
+ *
  * @param {Object} props
  * @param {Object} props.formData - Form data object containing location fields
  * @param {Function} props.onChange - Change handler for form fields
@@ -69,12 +70,7 @@ const LocationInput = ({
   return (
     <div className={`space-y-4 ${className}`}>
       {/* Section Divider */}
-      {showDivider && (
-        <div className="divider text-sm text-base-content/60">
-          <MapPin size={14} className="mr-1" />
-          {dividerText}
-        </div>
-      )}
+      {showDivider && <FormSectionDivider text={dividerText} icon={MapPin} />}
 
       {/* Remote Toggle - only for teams */}
       {showRemoteToggle && (
