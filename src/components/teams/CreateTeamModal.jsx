@@ -7,11 +7,13 @@ import IconToggle from "../common/IconToggle";
 import ImageUploader from "../common/ImageUploader";
 import TagInput from "../tags/TagInput";
 import LocationInput from "../common/LocationInput";
+import FormSectionDivider from "../common/FormSectionDivider";
 import { UI_TEXT } from "../../constants/uiText";
 import { teamService } from "../../services/teamService";
 import { uploadToCloudinary } from "../../config/cloudinary";
 import { useLocationAutoFill } from "../../hooks/useLocationAutoFill";
 import TeamDetailsModal from "./TeamDetailsModal";
+import { Users, Camera, Tag, Settings } from "lucide-react";
 
 /**
  * CreateTeamModal Component
@@ -397,7 +399,9 @@ const CreateTeamModal = ({ isOpen, onClose, onTeamCreated }) => {
         ) : (
           // Form
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Team Avatar */}
+            {/* Team Avatar Section */}
+            <FormSectionDivider text="Team Avatar" icon={Camera} />
+
             <div className="form-control">
               <ImageUploader
                 currentImage={formData.teamImagePreview}
@@ -418,10 +422,12 @@ const CreateTeamModal = ({ isOpen, onClose, onTeamCreated }) => {
                 fallbackText={getTeamInitials()}
                 shape="circle"
                 size="md"
-                label="Team Avatar"
                 disabled={loading}
               />
             </div>
+
+            {/* Team Details Section */}
+            <FormSectionDivider text="Team Details" icon={Users} />
 
             {/* Team Name */}
             <div className="form-control">
@@ -473,6 +479,9 @@ const CreateTeamModal = ({ isOpen, onClose, onTeamCreated }) => {
                 </label>
               )}
             </div>
+
+            {/* Team Settings Section */}
+            <FormSectionDivider text="Team Settings" icon={Settings} />
 
             {/* Team Visibility Toggle */}
             <div className="form-control">
@@ -631,29 +640,33 @@ const CreateTeamModal = ({ isOpen, onClose, onTeamCreated }) => {
             </div>
 
             {/* Team Location */}
-            <div className="form-control">
-              <LocationInput
-                formData={{
-                  is_remote: !!formData.isRemote,
-                  postal_code: formData.postalCode ?? "",
-                  city: formData.city ?? "",
-                  country: formData.country ?? "",
-                }}
-                onChange={handleLocationChange}
-                errors={{
-                  postal_code: formErrors.postalCode || formErrors.postal_code,
-                  city: formErrors.city,
-                  country: formErrors.country,
-                }}
-                disabled={loading}
-                showRemoteToggle={true}
-              />
-            </div>
+            <LocationInput
+              formData={{
+                is_remote: !!formData.isRemote,
+                postal_code: formData.postalCode ?? "",
+                city: formData.city ?? "",
+                country: formData.country ?? "",
+              }}
+              onChange={handleLocationChange}
+              errors={{
+                postal_code: formErrors.postalCode || formErrors.postal_code,
+                city: formErrors.city,
+                country: formErrors.country,
+              }}
+              disabled={loading}
+              showRemoteToggle={true}
+              showDivider={true}
+              dividerText="Location"
+            />
 
             {/* Focus Areas (Tags) */}
+            <FormSectionDivider text="Focus Areas" icon={Tag} />
+
             <div className="form-control">
               <label className="label">
-                <span className="label-text">Focus Areas (Optional)</span>
+                <span className="label-text">
+                  What will this team focus on? (Optional)
+                </span>
               </label>
               <TagInput
                 selectedTags={formData.selectedTags}
@@ -664,8 +677,11 @@ const CreateTeamModal = ({ isOpen, onClose, onTeamCreated }) => {
               />
             </div>
 
+            {/* Divider before form actions */}
+            <div className="divider my-6"></div>
+
             {/* Form Actions */}
-            <div className="flex justify-end space-x-2 mt-6 pt-4 border-t border-base-200">
+            <div className="flex justify-end space-x-2">
               <Button
                 type="button"
                 variant="ghost"

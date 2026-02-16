@@ -1,11 +1,15 @@
 import React, { useState, useCallback, useEffect } from "react";
 import Button from "../common/Button";
 import IconToggle from "../common/IconToggle";
+import FormSectionDivider from "../common/FormSectionDivider";
 import { getTeamInitials } from "../../utils/userHelpers";
 import { teamService } from "../../services/teamService";
 import ImageUploader from "../common/ImageUploader";
 import LocationInput from "../common/LocationInput";
+import TagInput from "../tags/TagInput";
+import { UI_TEXT } from "../../constants/uiText";
 import { useLocationAutoFill } from "../../hooks/useLocationAutoFill";
+import { Camera, Users, Settings, Tag } from "lucide-react";
 
 /**
  * TeamEditForm Component
@@ -126,7 +130,7 @@ const TeamEditForm = ({
     const ids = (selected ?? [])
       .map((t) => (typeof t === "object" ? (t.id ?? t.value ?? t) : t))
       .map((x) =>
-        x === "" || x === null || x === undefined ? null : Number(x),
+        x === "" || x === null || x === undefined ? null : Number(x)
       )
       .filter((x) => Number.isFinite(x)); // <- NaN, null etc. raus
 
@@ -176,7 +180,7 @@ const TeamEditForm = ({
       alert(
         error.response?.data?.message ||
           error.message ||
-          "Failed to remove team picture. Please try again.",
+          "Failed to remove team picture. Please try again."
       );
     } finally {
       setAvatarDeleteLoading(false);
@@ -185,7 +189,9 @@ const TeamEditForm = ({
 
   return (
     <form onSubmit={handleFormSubmit} className="space-y-4">
-      {/* Team Avatar */}
+      {/* Team Avatar Section */}
+      <FormSectionDivider text="Team Avatar" icon={Camera} />
+      
       <div className="form-control">
         <ImageUploader
           currentImage={
@@ -204,7 +210,6 @@ const TeamEditForm = ({
           fallbackText={getTeamInitials(team)}
           shape="circle"
           size="md"
-          label="Team Avatar"
           disabled={loading || uploadingImage}
           loading={avatarDeleteLoading}
           showRemoveButton={
@@ -217,6 +222,9 @@ const TeamEditForm = ({
           removeButtonText="Remove Team Picture"
         />
       </div>
+
+      {/* Team Details Section */}
+      <FormSectionDivider text="Team Details" icon={Users} />
 
       {/* Team Name */}
       <div className="form-control">
@@ -266,6 +274,9 @@ const TeamEditForm = ({
           </label>
         )}
       </div>
+
+      {/* Team Settings Section */}
+      <FormSectionDivider text="Team Settings" icon={Settings} />
 
       {/* Team Visibility Toggle */}
       <div className="form-control">
@@ -424,27 +435,46 @@ const TeamEditForm = ({
       </div>
 
       {/* Team Location */}
+      <LocationInput
+        formData={{
+          is_remote: !!formData.isRemote,
+          postal_code: formData.postalCode ?? "",
+          city: formData.city ?? "",
+          country: formData.country ?? "",
+        }}
+        onChange={handleLocationChange}
+        errors={{
+          postal_code: formErrors.postalCode || formErrors.postal_code,
+          city: formErrors.city,
+          country: formErrors.country,
+        }}
+        disabled={loading}
+        showRemoteToggle={true}
+        showDivider={true}
+        dividerText="Location"
+      />
+
+      {/* Focus Areas Section */}
+      <FormSectionDivider text="Focus Areas" icon={Tag} />
+
       <div className="form-control">
-        <LocationInput
-          formData={{
-            is_remote: !!formData.isRemote,
-            postal_code: formData.postalCode ?? "",
-            city: formData.city ?? "",
-            country: formData.country ?? "",
-          }}
-          onChange={handleLocationChange}
-          errors={{
-            postal_code: formErrors.postalCode || formErrors.postal_code,
-            city: formErrors.city,
-            country: formErrors.country,
-          }}
-          disabled={loading}
-          showRemoteToggle={true}
+        <label className="label">
+          <span className="label-text">What does this team focus on? (Optional)</span>
+        </label>
+        <TagInput
+          selectedTags={formData.selectedTags}
+          onTagsChange={handleTagSelection}
+          placeholder={UI_TEXT.focusAreas.searchPlaceholder}
+          showPopularTags={true}
+          maxSuggestions={8}
         />
       </div>
 
+      {/* Divider before form actions */}
+      <div className="divider my-6"></div>
+
       {/* Form Actions */}
-      <div className="flex justify-end space-x-2 mt-6">
+      <div className="flex justify-end space-x-2">
         <Button
           type="button"
           variant="ghost"
