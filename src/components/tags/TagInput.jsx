@@ -1,4 +1,11 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useLayoutEffect,
+  useRef,
+} from "react";
+import { createPortal } from "react-dom";
 import { useCombobox } from "downshift";
 import { X, Tag as TagIcon, TrendingUp, Sparkles } from "lucide-react";
 import { tagService } from "../../services/tagService";
@@ -18,6 +25,7 @@ const TagInput = ({
   if (!handleChange) {
     console.warn("TagInput requires onTagsChange (or legacy onChange).");
   }
+
   const [inputValue, setInputValue] = useState("");
   const [suggestions, setSuggestions] = useState([]);
   const [popularTags, setPopularTags] = useState([]);
@@ -38,17 +46,14 @@ const TagInput = ({
 
   useEffect(() => {
     const fetchInitialData = async () => {
-      // Fetch popular tags
       if (showPopularTags) {
         const tags = await tagService.getPopularTags(5);
         setPopularTags(tags);
         updateTagMap(tags);
       }
 
-      // Fetch all structured tags to populate tagMap
       try {
         const allTags = await tagService.getStructuredTags();
-        // Flatten the structure to get all tags
         const flatTags = allTags.flatMap((category) => [
           category,
           ...(category.children || []),
@@ -62,7 +67,6 @@ const TagInput = ({
     fetchInitialData();
   }, [showPopularTags, updateTagMap]);
 
-  // Debounced search function
   const debouncedSearch = useCallback(
     debounce(async (query) => {
       if (query.length < 2) {
@@ -73,7 +77,6 @@ const TagInput = ({
       setLoading(true);
       try {
         const results = await tagService.searchTags(query);
-        // Filter out already selected tags
         const filteredResults = results.filter(
           (tag) => !selectedTags.includes(tag.id),
         );
@@ -95,11 +98,9 @@ const TagInput = ({
     };
   }, [debouncedSearch]);
 
-  // Fetch related tags based on selected tags
   const fetchRelatedTags = useCallback(
     async (tagId) => {
       try {
-        // getRelatedTags returns { tags: [], context: {} }
         const { tags } = await tagService.getRelatedTags(
           tagId,
           5,
@@ -117,12 +118,12 @@ const TagInput = ({
   const handleInputChange = (value) => {
     const next = value ?? "";
     setInputValue(next);
+
     if (next.length >= 2) {
       setShowSuggestions(true);
       debouncedSearch(next);
     } else {
       setSuggestions([]);
-      // Show popular/related when input is cleared
       if (next.length === 0) {
         setShowSuggestions(true);
       }
@@ -165,11 +166,9 @@ const TagInput = ({
     return { type: "none", tags: [], icon: TagIcon };
   };
 
-  // Get current suggestions to pass to Downshift
   const currentSuggestionsForCombobox = getCurrentSuggestions();
 
   const {
-    isOpen,
     getMenuProps,
     getInputProps,
     highlightedIndex,
@@ -182,16 +181,11 @@ const TagInput = ({
       handleInputChange(inputValue ?? "");
     },
     onSelectedItemChange: ({ selectedItem }) => {
-      if (selectedItem) {
-        handleSelectTag(selectedItem);
-      }
+      if (selectedItem) handleSelectTag(selectedItem);
     },
     itemToString: (item) => (item ? item.name : ""),
     onIsOpenChange: ({ isOpen }) => {
-      // Sync Downshift's isOpen with showSuggestions state
-      if (!isOpen) {
-        setShowSuggestions(false);
-      }
+      if (!isOpen) setShowSuggestions(false);
     },
   });
 
@@ -212,10 +206,75 @@ const TagInput = ({
     }
   };
 
+  // --- Portal positioning (Option B) ---
+  const inputRef = useRef(null);
+  const [menuStyle, setMenuStyle] = useState(null);
+
+  const updateMenuPosition = useCallback(() => {
+    const el = inputRef.current;
+    if (!el) return;
+
+    const r = el.getBoundingClientRect();
+    setMenuStyle({
+      position: "fixed",
+      top: r.bottom + 8,
+      left: r.left,
+      width: r.width,
+      zIndex: 3000,
+    });
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!shouldShowDropdown) return;
+    updateMenuPosition();
+  }, [shouldShowDropdown, updateMenuPosition]);
+
+  useEffect(() => {
+    if (!shouldShowDropdown) {
+      setMenuStyle(null);
+      return;
+    }
+
+    const handle = () => updateMenuPosition();
+    window.addEventListener("resize", handle);
+    window.addEventListener("scroll", handle, true);
+
+    return () => {
+      window.removeEventListener("resize", handle);
+      window.removeEventListener("scroll", handle, true);
+    };
+  }, [shouldShowDropdown, updateMenuPosition]);
+
+  const inputProps = getInputProps({
+    onKeyDown: (event) => {
+      if (event.key === "Enter" && highlightedIndex === -1) {
+        event.preventDefault();
+        setShowSuggestions(false);
+        closeMenu();
+      }
+      if (event.key === "Escape") {
+        setShowSuggestions(false);
+        closeMenu();
+      }
+    },
+    onFocus: () => {
+      if (
+        inputValue.length >= 2 ||
+        popularTags.length > 0 ||
+        relatedTags.length > 0
+      ) {
+        setShowSuggestions(true);
+      }
+    },
+    onBlur: () => {
+      setTimeout(() => setShowSuggestions(false), 200);
+    },
+  });
+
   return (
     <div className={`relative ${className}`}>
       {selectedTags.length > 0 && (
-        <div className="flex flex-wrap gap-2 mb-3 p-3 bg-base-200 rounded-lg">
+        <div className="flex flex-wrap gap-2 mb-3 p-3 bg-base-100 rounded-lg">
           {selectedTags.map((tagId) => {
             const tag = tagMap.get(tagId);
             return (
@@ -237,119 +296,85 @@ const TagInput = ({
       )}
 
       <div className="relative">
-        <div className="relative">
-          <input
-            {...getInputProps({
-              onKeyDown: (event) => {
-                // Close dropdown on Enter when nothing is highlighted
-                if (event.key === "Enter" && highlightedIndex === -1) {
-                  event.preventDefault();
-                  setShowSuggestions(false);
-                  closeMenu();
-                }
-                // Close dropdown on Escape
-                if (event.key === "Escape") {
-                  setShowSuggestions(false);
-                  closeMenu();
-                }
-              },
-              onFocus: () => {
-                // Only show suggestions if there's something to show
-                if (
-                  inputValue.length >= 2 ||
-                  popularTags.length > 0 ||
-                  relatedTags.length > 0
-                ) {
-                  setShowSuggestions(true);
-                }
-              },
-              onBlur: () => {
-                // Close dropdown when clicking outside
-                setTimeout(() => {
-                  setShowSuggestions(false);
-                }, 200); // Small delay to allow click events to register
-              },
-            })}
-            type="text"
-            placeholder={placeholder}
-            className="input input-bordered w-full pr-10 focus:input-primary"
-          />
-          {loading && (
-            <div className="absolute right-3 top-1/2 -translate-y-1/2">
-              <span className="loading loading-spinner loading-sm text-primary"></span>
-            </div>
-          )}
-        </div>
+        <input
+          {...inputProps}
+          ref={(node) => {
+            inputRef.current = node;
+
+            // keep Downshift’s internal ref working
+            const dsRef = inputProps.ref;
+            if (typeof dsRef === "function") dsRef(node);
+            else if (dsRef && typeof dsRef === "object") dsRef.current = node;
+          }}
+          type="text"
+          placeholder={placeholder}
+          className="input input-bordered w-full pr-10 focus:input-primary"
+        />
       </div>
 
-      {/* 
-        IMPORTANT: Always render the menu element to satisfy downshift's getMenuProps requirement.
-        Use CSS to hide it when not needed instead of conditional rendering.
-        This fixes the warning: "You forgot to call the getMenuProps getter function"
-      */}
-      <ul
-        {...getMenuProps()}
-        className={`menu bg-base-100 border border-base-300 rounded-box mt-2 p-2 shadow-xl max-h-64 overflow-y-auto absolute z-50 w-full ${
-          shouldShowDropdown ? "" : "hidden"
-        }`}
-      >
-        {shouldShowDropdown && (
-          <>
-            <li className="menu-title flex items-center gap-2 px-3 py-2">
-              {React.createElement(currentSuggestions.icon, {
-                size: 16,
-                className:
-                  currentSuggestions.type === "popular"
-                    ? "text-warning"
-                    : currentSuggestions.type === "related"
-                      ? "text-secondary"
-                      : "text-primary",
-              })}
-              <span className="font-semibold">{getSuggestionTitle()}</span>
-            </li>
+      {typeof document !== "undefined" &&
+        createPortal(
+          <ul
+            {...getMenuProps()}
+            style={
+              menuStyle ?? {
+                position: "fixed",
+                top: 0,
+                left: 0,
+                width: 0,
+                zIndex: 3000,
+              }
+            }
+            className={`menu bg-base-100 border border-base-300 rounded-box p-2 shadow-xl max-h-64 overflow-y-auto ${
+              shouldShowDropdown ? "" : "hidden"
+            }`}
+          >
+            {shouldShowDropdown && (
+              <>
+                <li className="menu-title flex items-center gap-2 px-3 py-2">
+                  {React.createElement(currentSuggestions.icon, {
+                    size: 16,
+                    className:
+                      currentSuggestions.type === "popular"
+                        ? "text-warning"
+                        : currentSuggestions.type === "related"
+                          ? "text-secondary"
+                          : "text-primary",
+                  })}
+                  <span className="font-semibold">{getSuggestionTitle()}</span>
+                </li>
 
-            {currentSuggestions.tags.map((tag, index) => (
-              <li key={tag.id} {...getItemProps({ item: tag, index })}>
-                <button
-                  type="button"
-                  className={`flex items-center justify-between w-full ${
-                    highlightedIndex === index ? "active" : ""
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <TagIcon size={14} />
-                    <span className="font-medium">{tag.name}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-xs">
-                    <span className="badge badge-sm badge-ghost">
-                      {tag.category}
-                    </span>
-                    {tag.usage_count !== undefined && tag.usage_count > 0 && (
-                      <span className="badge badge-sm badge-primary">
-                        {tag.usage_count}
-                      </span>
-                    )}
-                  </div>
-                </button>
-              </li>
-            ))}
-          </>
+                {currentSuggestions.tags.map((tag, index) => (
+                  <li key={tag.id} {...getItemProps({ item: tag, index })}>
+                    <button
+                      type="button"
+                      className={`flex items-center justify-between w-full ${
+                        highlightedIndex === index ? "active" : ""
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <TagIcon size={14} />
+                        <span className="font-medium">{tag.name}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs">
+                        <span className="badge badge-sm badge-ghost">
+                          {tag.category}
+                        </span>
+                        {tag.usage_count !== undefined &&
+                          tag.usage_count > 0 && (
+                            <span className="badge badge-sm badge-primary">
+                              {tag.usage_count}
+                            </span>
+                          )}
+                      </div>
+                    </button>
+                  </li>
+                ))}
+              </>
+            )}
+          </ul>,
+          document.body,
         )}
-      </ul>
-
-      <div className="label">
-        <span className="label-text-alt text-base-content/60">
-          {inputValue.length < 2 && currentSuggestions.type === "none"
-            ? UI_TEXT.focusAreas.helperType2Chars
-            : inputValue.length >= 2 && suggestions.length === 0 && !loading
-              ? UI_TEXT.focusAreas.helperNoneFound
-              : currentSuggestions.type === "popular"
-                ? UI_TEXT.focusAreas.helperPopular
-                : currentSuggestions.type === "related"
-                  ? UI_TEXT.focusAreas.helperRelated
-                  : "Press Enter or click to select"}
-        </span>
-      </div>
     </div>
   );
 };

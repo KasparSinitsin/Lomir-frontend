@@ -43,7 +43,6 @@ const RegisterForm = () => {
   const [resendMessage, setResendMessage] = useState("");
   const [resendCooldown, setResendCooldown] = useState(0);
 
-  // Location auto-fill hook
   const { getSuggestedUpdates } = useLocationAutoFill({
     postalCode: formData.postal_code || "",
     city: formData.city || "",
@@ -52,7 +51,6 @@ const RegisterForm = () => {
     isRemote: false,
   });
 
-  // Auto-fill city and country from postal code lookup
   useEffect(() => {
     const updates = getSuggestedUpdates();
     if (Object.keys(updates).length > 0) {
@@ -100,9 +98,14 @@ const RegisterForm = () => {
   };
 
   const handleTagsChange = (tags) => {
+    const normalized = (tags || [])
+      .map((t) => (typeof t === "object" ? t.id : t))
+      .map((id) => Number(id))
+      .filter((n) => Number.isFinite(n));
+
     setFormData((prev) => ({
       ...prev,
-      selectedTags: tags,
+      selectedTags: normalized,
     }));
   };
 
@@ -115,7 +118,6 @@ const RegisterForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     if (!validateForm()) return;
 
     setIsSubmitting(true);
@@ -128,15 +130,15 @@ const RegisterForm = () => {
         first_name: formData.first_name,
         last_name: formData.last_name,
         bio: formData.bio,
-        is_public: formData.isPublic,
         postal_code: formData.postal_code,
         city: formData.city,
         country: formData.country,
         tags:
           formData.selectedTags.length > 0
-            ? formData.selectedTags.map((tagId) => ({
-                tag_id: Number(tagId),
-              }))
+            ? formData.selectedTags
+                .map((id) => Number(id))
+                .filter((n) => Number.isFinite(n))
+                .map((id) => ({ tag_id: id }))
             : [],
       };
 
@@ -152,6 +154,8 @@ const RegisterForm = () => {
           console.error("Avatar upload failed:", uploadResult.error);
         }
       }
+
+      console.log("Register payload tags:", userData.tags);
 
       const result = await register(userData);
 
@@ -288,14 +292,12 @@ const RegisterForm = () => {
             </div>
           )}
 
-          {/* Key change: sections + consistent vertical rhythm */}
           <form onSubmit={handleSubmit} className="space-y-12">
             {/* Account Information */}
             <section className="space-y-4">
               <FormSectionDivider text="Account Information" icon={KeyRound} />
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Username */}
                 <div className="form-control w-full">
                   <label className="label">
                     <span className="label-text">
@@ -305,7 +307,9 @@ const RegisterForm = () => {
                   <input
                     type="text"
                     placeholder="Choose a username"
-                    className={`input input-bordered w-full ${errors.username ? "input-error" : ""}`}
+                    className={`input input-bordered w-full ${
+                      errors.username ? "input-error" : ""
+                    }`}
                     value={formData.username}
                     onChange={handleChange}
                     name="username"
@@ -319,7 +323,6 @@ const RegisterForm = () => {
                   )}
                 </div>
 
-                {/* Email */}
                 <div className="form-control w-full">
                   <label className="label">
                     <span className="label-text">
@@ -329,7 +332,9 @@ const RegisterForm = () => {
                   <input
                     type="email"
                     placeholder="your@email.com"
-                    className={`input input-bordered w-full ${errors.email ? "input-error" : ""}`}
+                    className={`input input-bordered w-full ${
+                      errors.email ? "input-error" : ""
+                    }`}
                     value={formData.email}
                     onChange={handleChange}
                     name="email"
@@ -345,7 +350,6 @@ const RegisterForm = () => {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Password */}
                 <div className="form-control w-full">
                   <label className="label">
                     <span className="label-text">
@@ -355,7 +359,9 @@ const RegisterForm = () => {
                   <input
                     type="password"
                     placeholder="Min. 6 characters"
-                    className={`input input-bordered w-full ${errors.password ? "input-error" : ""}`}
+                    className={`input input-bordered w-full ${
+                      errors.password ? "input-error" : ""
+                    }`}
                     value={formData.password}
                     onChange={handleChange}
                     name="password"
@@ -369,7 +375,6 @@ const RegisterForm = () => {
                   )}
                 </div>
 
-                {/* Confirm Password */}
                 <div className="form-control w-full">
                   <label className="label">
                     <span className="label-text">
@@ -379,7 +384,9 @@ const RegisterForm = () => {
                   <input
                     type="password"
                     placeholder="Confirm your password"
-                    className={`input input-bordered w-full ${errors.confirmPassword ? "input-error" : ""}`}
+                    className={`input input-bordered w-full ${
+                      errors.confirmPassword ? "input-error" : ""
+                    }`}
                     value={formData.confirmPassword}
                     onChange={handleChange}
                     name="confirmPassword"
@@ -443,7 +450,6 @@ const RegisterForm = () => {
                 />
               </div>
 
-              {/* Profile Visibility */}
               <div className="form-control w-full">
                 <VisibilityToggle
                   name="isPublic"
@@ -455,7 +461,7 @@ const RegisterForm = () => {
               </div>
             </section>
 
-            {/* Location (already has internal spacing) */}
+            {/* Location */}
             <section>
               <LocationInput
                 formData={{
@@ -494,7 +500,7 @@ const RegisterForm = () => {
                     }}
                     size="mdPlus"
                     shape="circle"
-                    fallbackInitials={getUserInitialsFromForm()}
+                    fallbackText={getUserInitialsFromForm()}
                   />
                 </div>
               </div>
@@ -510,22 +516,20 @@ const RegisterForm = () => {
               <div className="form-control w-full">
                 <label className="label">
                   <span className="label-text">
-                    {UI_TEXT.focusAreas.registerDescription}
+                    Select focus areas matching your interests and skills
                   </span>
                 </label>
 
                 <TagInput
                   selectedTags={formData.selectedTags}
                   onTagsChange={handleTagsChange}
-                  placeholder={UI_TEXT.focusAreas.searchPlaceholder}
+                  placeholder="Click a popular focus area or start typing to search"
                 />
               </div>
             </section>
 
-            {/* Divider before submit button */}
             <div className="divider mt-12 mb-0"></div>
 
-            {/* Actions */}
             <section className="space-y-4 !mt-4">
               <Button
                 type="submit"
