@@ -489,10 +489,10 @@ const CreateTeamModal = ({ isOpen, onClose, onTeamCreated }) => {
                 name="isPublic"
                 checked={formData.isPublic}
                 onChange={handleChange}
-                title="Team Visibility"
+                label="Team Visibility"
                 entityType="team"
-                className="toggle-visibility"
-                disabled={loading}
+                visibleLabel="Public Team"
+                hiddenLabel="Private Team"
               />
             </div>
 

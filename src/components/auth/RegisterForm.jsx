@@ -12,6 +12,7 @@ import { uploadToCloudinary } from "../../config/cloudinary";
 import api from "../../services/api";
 import LocationInput from "../common/LocationInput";
 import { useLocationAutoFill } from "../../hooks/useLocationAutoFill";
+import IconToggle from "../common/IconToggle";
 
 const RegisterForm = () => {
   const navigate = useNavigate();
@@ -28,6 +29,7 @@ const RegisterForm = () => {
     postal_code: "",
     city: "",
     country: "",
+    isPublic: true,
     profile_image: null,
     selectedTags: [],
   });
@@ -126,6 +128,7 @@ const RegisterForm = () => {
         first_name: formData.first_name,
         last_name: formData.last_name,
         bio: formData.bio,
+        is_public: formData.isPublic,
         postal_code: formData.postal_code,
         city: formData.city,
         country: formData.country,
@@ -437,6 +440,17 @@ const RegisterForm = () => {
                   onChange={handleChange}
                   name="bio"
                   rows="3"
+                />
+              </div>
+
+              {/* Profile Visibility */}
+              <div className="form-control w-full">
+                <IconToggle
+                  name="isPublic"
+                  checked={formData.isPublic}
+                  onChange={handleChange}
+                  label="Profile Visibility"
+                  entityType="profile"
                 />
               </div>
             </section>

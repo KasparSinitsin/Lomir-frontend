@@ -130,7 +130,7 @@ const TeamEditForm = ({
     const ids = (selected ?? [])
       .map((t) => (typeof t === "object" ? (t.id ?? t.value ?? t) : t))
       .map((x) =>
-        x === "" || x === null || x === undefined ? null : Number(x)
+        x === "" || x === null || x === undefined ? null : Number(x),
       )
       .filter((x) => Number.isFinite(x)); // <- NaN, null etc. raus
 
@@ -180,7 +180,7 @@ const TeamEditForm = ({
       alert(
         error.response?.data?.message ||
           error.message ||
-          "Failed to remove team picture. Please try again."
+          "Failed to remove team picture. Please try again.",
       );
     } finally {
       setAvatarDeleteLoading(false);
@@ -191,7 +191,7 @@ const TeamEditForm = ({
     <form onSubmit={handleFormSubmit} className="space-y-4">
       {/* Team Avatar Section */}
       <FormSectionDivider text="Team Avatar" icon={Camera} />
-      
+
       <div className="form-control">
         <ImageUploader
           currentImage={
@@ -284,10 +284,13 @@ const TeamEditForm = ({
           name="isPublic"
           checked={formData.isPublic}
           onChange={handleChange}
-          title="Team Visibility"
+          label="Team Visibility"
           entityType="team"
-          className="toggle-visibility"
-          disabled={loading}
+          visibleLabel="Public Team"
+          hiddenLabel="Private Team"
+          // optional: keep these only if you want custom copy
+          // visibleDescription="Anyone can find and view your team"
+          // hiddenDescription="Only members can see this team"
         />
       </div>
 
@@ -459,7 +462,9 @@ const TeamEditForm = ({
 
       <div className="form-control">
         <label className="label">
-          <span className="label-text">What does this team focus on? (Optional)</span>
+          <span className="label-text">
+            What does this team focus on? (Optional)
+          </span>
         </label>
         <TagInput
           selectedTags={formData.selectedTags}

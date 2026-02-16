@@ -53,7 +53,7 @@ const ImageUploader = ({
     sm: "w-16 h-16",
     md: "w-20 h-20",
     lg: "w-24 h-24",
-    xl: "w-32 h-32",
+    xl: "w-48 h-48",
   };
 
   const shapeClasses = {
@@ -226,7 +226,7 @@ const ImageUploader = ({
         </label>
       )}
 
-      <div className="flex items-start gap-4">
+      <div className="flex items-center gap-6">
         {/* Drop Zone / Preview */}
         <div
           role="button"
