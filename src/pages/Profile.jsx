@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
+import FormSectionDivider from "../components/common/FormSectionDivider";
 import { useAuth } from "../contexts/AuthContext";
 import PageContainer from "../components/layout/PageContainer";
 import Section from "../components/layout/Section";
@@ -19,9 +20,13 @@ import {
   EyeClosed,
   Award,
   Trash2,
+  Camera,
+  KeyRound,
+  Tag,
 } from "lucide-react";
 import { tagService } from "../services/tagService";
 import { userService } from "../services/userService";
+import TagInput from "../components/tags/TagInput";
 import BadgeCategoryCard from "../components/badges/BadgeCategoryCard";
 import BadgeCategoryModal from "../components/badges/BadgeCategoryModal";
 import TagsDisplaySection from "../components/tags/TagsDisplaySection";
@@ -153,6 +158,7 @@ const Profile = () => {
           email: apiUserData.email || apiUserData.email || "",
           bio: apiUserData.bio || "",
           postalCode: apiUserData.postalCode || apiUserData.postal_code || "",
+          city: apiUserData.city || "",
           country: apiUserData.country || "",
           isPublic:
             apiUserData.isPublic !== undefined
@@ -272,6 +278,10 @@ const Profile = () => {
       }
     }
   }, [getSuggestedUpdates, isEditing]);
+
+  const handleSelectedTagsChange = (newTags) => {
+    setSelectedTags(newTags);
+  };
 
   const handleBadgeCategoryClick = async (
     category,
@@ -722,143 +732,184 @@ const Profile = () => {
 
       <Card className="overflow-visible">
         {isEditing ? (
-          <div className="p-6">
-            <h2 className="text-2xl font-bold mb-6">Edit Profile</h2>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleProfileUpdate();
+            }}
+            className="p-6 space-y-12"
+          >
+            <h2 className="text-2xl font-bold">Edit Profile</h2>
 
-            {/* Profile Image Upload */}
-            <div className="form-control w-full mb-6">
-              <ImageUploader
-                currentImage={
-                  imagePreview || user?.avatar_url || user?.avatarUrl
-                }
-                onImageSelect={(file, previewUrl) => {
-                  setFormData((prev) => ({
-                    ...prev,
-                    profileImage: file,
-                  }));
-                  setImagePreview(previewUrl);
-                }}
-                onImageRemove={handleAvatarDelete}
-                fallbackText={getUserInitials(user)}
-                shape="circle"
-                size="lg"
-                label="Profile Image"
-                disabled={loading}
-                loading={avatarDeleteLoading}
-                showRemoveButton={
-                  !!(imagePreview || user?.avatar_url || user?.avatarUrl) &&
-                  !formData.profileImage
-                }
-                removeButtonText="Remove Current Picture"
-              />
-            </div>
+            {/* Profile Picture */}
+            <section className="space-y-4">
+              <FormSectionDivider text="Profile Picture" icon={Camera} />
 
-            <div className="form-control w-full mb-4">
-              <label className="label">
-                <span className="label-text">First Name</span>
-              </label>
-              <input
-                type="text"
-                name="firstName"
-                value={formData.firstName}
-                onChange={handleChange}
-                className={`input input-bordered w-full ${
-                  formErrors.firstName ? "input-error" : ""
-                }`}
-                placeholder="First Name"
-              />
-              {formErrors.firstName && (
+              <div className="w-full flex justify-center">
+                <div className="w-full max-w-md mt-5">
+                  <ImageUploader
+                    currentImage={
+                      imagePreview || user?.avatar_url || user?.avatarUrl
+                    }
+                    onImageSelect={(file, previewUrl) => {
+                      setFormData((prev) => ({
+                        ...prev,
+                        profileImage: file,
+                      }));
+                      setImagePreview(previewUrl);
+                    }}
+                    onImageRemove={handleAvatarDelete}
+                    fallbackText={getUserInitials(user)}
+                    shape="circle"
+                    size="xl"
+                    disabled={loading}
+                    loading={avatarDeleteLoading}
+                    showRemoveButton={
+                      !!(imagePreview || user?.avatar_url || user?.avatarUrl) &&
+                      !formData.profileImage
+                    }
+                    removeButtonText="Remove Current Picture"
+                  />
+                </div>
+              </div>
+            </section>
+
+            {/* Account Information */}
+            <section className="space-y-4">
+              <FormSectionDivider text="Account Information" icon={KeyRound} />
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Username */}
+                <div className="form-control w-full">
+                  <label className="label">
+                    <span className="label-text">Username</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="username"
+                    value={formData.username}
+                    onChange={handleChange}
+                    className={`input input-bordered w-full ${
+                      formErrors.username ? "input-error" : ""
+                    }`}
+                    placeholder="Username"
+                    autoComplete="off"
+                  />
+                  {formErrors.username && (
+                    <label className="label">
+                      <span className="label-text-alt text-error">
+                        {formErrors.username}
+                      </span>
+                    </label>
+                  )}
+                  <p className="text-xs text-base-content/50 mt-1">
+                    3–20 characters, letters/numbers/underscore. Must be unique.
+                  </p>
+                </div>
+
+                {/* Email */}
+                <div className="form-control w-full">
+                  <label className="label">
+                    <span className="label-text">Email Address</span>
+                  </label>
+                  <input
+                    type="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleChange}
+                    className={`input input-bordered w-full ${
+                      formErrors.email ? "input-error" : ""
+                    }`}
+                    placeholder="Email Address"
+                  />
+                  {formErrors.email && (
+                    <label className="label">
+                      <span className="label-text-alt text-error">
+                        {formErrors.email}
+                      </span>
+                    </label>
+                  )}
+                </div>
+              </div>
+            </section>
+
+            {/* Profile Details */}
+            <section className="space-y-4">
+              <FormSectionDivider text="Profile Details" icon={User} />
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="form-control w-full">
+                  <label className="label">
+                    <span className="label-text">First Name</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="firstName"
+                    value={formData.firstName}
+                    onChange={handleChange}
+                    className={`input input-bordered w-full ${
+                      formErrors.firstName ? "input-error" : ""
+                    }`}
+                    placeholder="First Name"
+                  />
+                  {formErrors.firstName && (
+                    <label className="label">
+                      <span className="label-text-alt text-error">
+                        {formErrors.firstName}
+                      </span>
+                    </label>
+                  )}
+                </div>
+
+                <div className="form-control w-full">
+                  <label className="label">
+                    <span className="label-text">Last Name</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="lastName"
+                    value={formData.lastName}
+                    onChange={handleChange}
+                    className="input input-bordered w-full"
+                    placeholder="Last Name"
+                  />
+                </div>
+              </div>
+
+              <div className="form-control w-full">
                 <label className="label">
-                  <span className="label-text-alt text-error">
-                    {formErrors.firstName}
-                  </span>
+                  <span className="label-text">About Me</span>
                 </label>
-              )}
-            </div>
+                <textarea
+                  name="bio"
+                  value={formData.bio}
+                  onChange={handleChange}
+                  className="textarea textarea-bordered w-full"
+                  placeholder="Tell us about yourself"
+                  rows="4"
+                />
+              </div>
 
-            <div className="form-control w-full mb-4">
-              <label className="label">
-                <span className="label-text">Last Name</span>
-              </label>
-              <input
-                type="text"
-                name="lastName"
-                value={formData.lastName}
-                onChange={handleChange}
-                className="input input-bordered w-full"
-                placeholder="Last Name"
-              />
-            </div>
-
-            <div className="form-control w-full mb-4">
-              <label className="label">
-                <span className="label-text">Username</span>
-              </label>
-              <input
-                type="text"
-                name="username"
-                value={formData.username}
-                onChange={handleChange}
-                className={`input input-bordered w-full ${
-                  formErrors.username ? "input-error" : ""
-                }`}
-                placeholder="Username"
-                autoComplete="off"
-              />
-              {formErrors.username && (
-                <label className="label">
-                  <span className="label-text-alt text-error">
-                    {formErrors.username}
-                  </span>
-                </label>
-              )}
-              <p className="text-xs text-base-content/50 mt-1">
-                3–20 characters, letters/numbers/underscore. Must be unique.
-              </p>
-            </div>
-
-            <div className="form-control w-full mb-4">
-              <label className="label">
-                <span className="label-text">Email Address</span>
-              </label>
-              <input
-                type="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                className={`input input-bordered w-full ${
-                  formErrors.email ? "input-error" : ""
-                }`}
-                placeholder="Email Address"
-              />
-              {formErrors.email && (
-                <label className="label">
-                  <span className="label-text-alt text-error">
-                    {formErrors.email}
-                  </span>
-                </label>
-              )}
-            </div>
-
-            <div className="form-control w-full mb-4">
-              <label className="label">
-                <span className="label-text">About Me</span>
-              </label>
-              <textarea
-                name="bio"
-                value={formData.bio}
-                onChange={handleChange}
-                className="textarea textarea-bordered w-full"
-                placeholder="Tell us about yourself"
-                rows="4"
-              />
-            </div>
+              {/* Profile visibility toggle (moved up into Profile Details) */}
+              <div className="form-control w-full">
+                <IconToggle
+                  name="isPublic"
+                  checked={formData.isPublic}
+                  onChange={handleChange}
+                  label="Profile Visibility"
+                  entityType="profile"
+                  visibleLabel="Visible to Everyone"
+                  hiddenLabel="Private Profile"
+                  showDescription={true}
+                />
+              </div>
+            </section>
 
             {/* Location Section */}
-            <div className="mb-4">
+            <section>
               <LocationInput
                 formData={{
-                  postalCode: formData.postalCode,
+                  postal_code: formData.postalCode,
                   city: formData.city,
                   country: formData.country,
                 }}
@@ -873,42 +924,56 @@ const Profile = () => {
                 showDivider={true}
                 dividerText="Location"
               />
+            </section>
+
+            {/* Focus Areas */}
+            <div className="mb-6">
+              <FormSectionDivider text="Focus Areas" icon={Tag} />
+
+              <div className="form-control w-full">
+                <label className="label">
+                  <span className="label-text">
+                    Select focus areas matching your interests and skills
+                  </span>
+                </label>
+
+                <TagInput
+                  selectedTags={selectedTags}
+                  onTagsChange={handleSelectedTagsChange}
+                  placeholder="Type to search focus areas..."
+                />
+
+                <div className="mt-3 flex justify-end">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => handleTagsUpdate(selectedTags)}
+                    disabled={loading}
+                  >
+                    {loading ? "Saving..." : "Save Focus Areas"}
+                  </Button>
+                </div>
+              </div>
             </div>
 
-            {/* Profile visibility toggle */}
-            <div className="form-control w-full mb-6">
-              <IconToggle
-                name="isPublic"
-                checked={formData.isPublic}
-                onChange={handleChange}
-                title="Profile Visibility"
-                entityType="profile"
-                visibleLabel="Visible to Everyone"
-                hiddenLabel="Private Profile"
-                visibleDescription="Your profile will be discoverable by other users"
-                hiddenDescription="Your profile will be hidden from search results"
-                className="toggle-visibility"
-              />
-            </div>
+            <div className="divider mt-12 mb-0"></div>
 
-            <div className="flex justify-end space-x-2">
+            {/* Actions */}
+            <section className="flex justify-end space-x-2 !mt-4">
               <Button
                 variant="ghost"
+                type="button"
                 onClick={() => setIsEditing(false)}
                 disabled={loading}
               >
                 Cancel
               </Button>
-              <Button
-                type="button"
-                variant="primary"
-                onClick={handleProfileUpdate}
-                disabled={loading}
-              >
+
+              <Button type="submit" variant="primary" disabled={loading}>
                 {loading ? "Saving..." : "Save Changes"}
               </Button>
-            </div>
-          </div>
+            </section>
+          </form>
         ) : (
           <div>
             {/* Temporary debug - remove after testing */}
