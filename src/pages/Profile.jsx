@@ -1121,8 +1121,6 @@ const Profile = () => {
                 title="Focus Areas"
                 tags={selectedTags}
                 allTags={tags}
-                onSave={handleTagsUpdate}
-                canEdit={true}
                 emptyMessage="No focus areas added yet."
               />
             </div>
