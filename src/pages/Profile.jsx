@@ -604,6 +604,14 @@ const Profile = () => {
           "Failed to update profile: " + (response?.message || "Unknown error"),
         );
       } else {
+        // Update tags along with profile
+        try {
+          await userService.updateUserTags(user.id, selectedTags);
+        } catch (tagError) {
+          console.error("Error updating tags:", tagError);
+          // Don't fail the whole operation if tags fail
+        }
+
         setIsEditing(false);
         setSuccess("Profile updated successfully");
 
@@ -927,7 +935,7 @@ const Profile = () => {
             </section>
 
             {/* Focus Areas */}
-            <div className="mb-6">
+            <section className="space-y-4">
               <FormSectionDivider text="Focus Areas" icon={Tag} />
 
               <div className="form-control w-full">
@@ -942,19 +950,8 @@ const Profile = () => {
                   onTagsChange={handleSelectedTagsChange}
                   placeholder="Type to search focus areas..."
                 />
-
-                <div className="mt-3 flex justify-end">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => handleTagsUpdate(selectedTags)}
-                    disabled={loading}
-                  >
-                    {loading ? "Saving..." : "Save Focus Areas"}
-                  </Button>
-                </div>
               </div>
-            </div>
+            </section>
 
             <div className="divider mt-12 mb-0"></div>
 
