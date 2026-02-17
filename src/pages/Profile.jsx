@@ -23,6 +23,7 @@ import {
   Camera,
   KeyRound,
   Tag,
+  Calendar,
 } from "lucide-react";
 import { tagService } from "../services/tagService";
 import { userService } from "../services/userService";
@@ -973,14 +974,46 @@ const Profile = () => {
           </form>
         ) : (
           <div>
+            {/* Page Header with Title and Actions */}
+            <div className="flex items-center justify-between p-6 pb-4">
+              <h1 className="text-2xl sm:text-3xl font-medium text-primary">
+                Your Profile
+              </h1>
+              <div className="flex gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsEditing(true)}
+                  className="hover:bg-[#7ace82] hover:text-[#036b0c]"
+                  icon={<Edit size={16} />}
+                >
+                  Edit
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsDeleteModalOpen(true)}
+                  className="hover:bg-red-100 hover:text-red-700"
+                  icon={<Trash2 size={16} />}
+                >
+                  Delete
+                </Button>
+              </div>
+            </div>
+
+            {/* Divider */}
+            <div className="border-b border-base-300 -mx-4 sm:-mx-7"></div>
+
             {/* Temporary debug - remove after testing */}
             {console.log("User data in view mode:", user)}
             {console.log("City value:", user?.city)}
             {console.log("Postal code:", user?.postal_code || user?.postalCode)}
-            <div className="flex flex-col md:flex-row md:items-top p-6">
-              <div className="mb-6 md:mb-0 md:mr-8">
+
+            <div className="flex flex-col md:flex-row md:items-start p-6">
+              {/* Avatar */}
+              <div className="mb-4 md:mb-0 md:mr-8 flex-shrink-0">
                 <div className="avatar placeholder">
-                  <div className="bg-primary text-primary-content rounded-full w-24 h-24">
+                  <div className="bg-primary text-primary-content rounded-full w-32 h-32">
                     {(user.avatarUrl || user.avatar_url) && !imageError ? (
                       <img
                         src={user.avatarUrl || user.avatar_url}
@@ -989,70 +1022,53 @@ const Profile = () => {
                         onError={() => setImageError(true)}
                       />
                     ) : (
-                      <span className="text-3xl">{getUserInitials(user)}</span>
+                      <span className="text-4xl">{getUserInitials(user)}</span>
                     )}
                   </div>
                 </div>
               </div>
 
-              <div className="flex-grow">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4">
-                  <div>
-                    <h2 className="text-2xl font-bold leading-[120%] mb-[0.2em]">
-                      {user.firstName || user.first_name || ""}{" "}
-                      {user.lastName || user.last_name || ""}
-                    </h2>
+              {/* User Info */}
+              <div className="flex-grow min-w-0">
+                {/* Name */}
+                <h2 className="text-3xl font-bold leading-[120%] mb-[0.2em]">
+                  {user.firstName || user.first_name || ""}{" "}
+                  {user.lastName || user.last_name || ""}
+                </h2>
 
-                    {/* Username and visibility status inline - matching UserDetailsModal layout */}
-                    <div className="flex items-center space-x-4 text-sm">
-                      <span className="text-base-content/70">
-                        @{user.username}
-                      </span>
-                      <div
-                        className="flex items-center text-base-content/70 tooltip tooltip-bottom tooltip-lomir cursor-help"
-                        data-tip={
-                          isProfilePublic()
-                            ? "Public Profile - visible for everyone"
-                            : "Private Profile - only visible for you"
-                        }
-                      >
-                        {isProfilePublic() ? (
-                          <>
-                            <Eye size={16} className="mr-1 text-green-600" />
-                            <span>Public</span>
-                          </>
-                        ) : (
-                          <>
-                            <EyeClosed
-                              size={16}
-                              className="mr-1 text-gray-500"
-                            />
-                            <span>Private</span>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="mt-4 sm:mt-0 flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setIsEditing(true)}
-                      icon={<Edit size={16} />}
-                    >
-                      Edit Profile
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setIsDeleteModalOpen(true)}
-                      icon={<Trash2 size={16} />}
-                      className="text-error hover:bg-error/10"
-                    >
-                      Delete Profile
-                    </Button>
+                {/* Username, visibility, and date in one row */}
+                <div className="flex items-center text-base flex-wrap gap-x-4 gap-y-1">
+                  <span className="text-base-content/70">@{user.username}</span>
+                  <div
+                    className="flex items-center text-base-content/70 tooltip tooltip-bottom tooltip-lomir cursor-help"
+                    data-tip={
+                      isProfilePublic()
+                        ? "Public Profile - visible for everyone"
+                        : "Private Profile - only visible for you"
+                    }
+                  >
+                    {isProfilePublic() ? (
+                      <>
+                        <Eye size={20} className="mr-1 text-green-600" />
+                        <span>Public</span>
+                      </>
+                    ) : (
+                      <>
+                        <EyeClosed size={20} className="mr-1 text-gray-500" />
+                        <span>Private</span>
+                      </>
+                    )}
                   </div>
                 </div>
+              </div>
+
+              {/* Member Since - DESKTOP ONLY, far right */}
+              <div
+                className="hidden md:flex items-center text-base text-base-content/60 tooltip tooltip-bottom tooltip-lomir cursor-help flex-shrink-0"
+                data-tip={`Joined Lomir in ${getMemberSinceDate()}`}
+              >
+                <Calendar size={16} className="mr-1" />
+                <span>{getMemberSinceDate()}</span>
               </div>
             </div>
 
@@ -1065,7 +1081,7 @@ const Profile = () => {
 
             {/* Contact & Info Section */}
             <div className="px-6 mt-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Email */}
                 <div>
                   <div className="flex items-center mb-2">
@@ -1100,18 +1116,6 @@ const Profile = () => {
                     />
                   </div>
                 )}
-
-                {/* Member Since */}
-                <div>
-                  <div className="flex items-center mb-2">
-                    <User
-                      size={18}
-                      className="mr-2 text-primary flex-shrink-0"
-                    />
-                    <h3 className="font-medium">Member Since</h3>
-                  </div>
-                  <p className="text-base-content/80">{getMemberSinceDate()}</p>
-                </div>
               </div>
             </div>
 
