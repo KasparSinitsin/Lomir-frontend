@@ -7,13 +7,21 @@ import VisibilityToggle from "../common/VisibilityToggle";
 import ImageUploader from "../common/ImageUploader";
 import TagInput from "../tags/TagInput";
 import LocationInput from "../common/LocationInput";
+import LocationModeToggle from "../common/LocationModeToggle";
 import FormSectionDivider from "../common/FormSectionDivider";
 import { UI_TEXT } from "../../constants/uiText";
 import { teamService } from "../../services/teamService";
 import { uploadToCloudinary } from "../../config/cloudinary";
 import { useLocationAutoFill } from "../../hooks/useLocationAutoFill";
 import TeamDetailsModal from "./TeamDetailsModal";
-import { Users, Camera, Tag, Settings } from "lucide-react";
+import {
+  Users,
+  Camera,
+  Tag,
+  Settings,
+  MapPin,
+  Infinity as InfinityIcon,
+} from "lucide-react";
 
 /**
  * CreateTeamModal Component
@@ -27,13 +35,16 @@ import { Users, Camera, Tag, Settings } from "lucide-react";
 const CreateTeamModal = ({ isOpen, onClose, onTeamCreated }) => {
   const navigate = useNavigate();
 
+  const UNLIMITED_VALUE = null; // submit null when unlimited
+  const PRESET_OPTIONS = [2, 3, 4, 5, 6, 8, 10, 12, 15, 20];
+
   // Form state
   const [formData, setFormData] = useState({
     name: "",
     description: "",
     isPublic: false,
     maxMembers: 5,
-    maxMembersMode: "preset",
+    maxMembersMode: "preset", // "preset" | "custom" | "unlimited"
     selectedTags: [],
     teamImage: null,
     teamImagePreview: null,
@@ -90,6 +101,7 @@ const CreateTeamModal = ({ isOpen, onClose, onTeamCreated }) => {
       setSubmitError(null);
       setSubmitSuccess(false);
       setNewTeamId(null);
+      setIsTeamDetailsOpen(false);
     }
   }, [isOpen]);
 
@@ -134,7 +146,6 @@ const CreateTeamModal = ({ isOpen, onClose, onTeamCreated }) => {
     (e) => {
       const { name, value, type, checked } = e.target;
 
-      // Special handling for isPublic
       if (name === "isPublic") {
         setFormData((prev) => ({
           ...prev,
@@ -166,7 +177,7 @@ const CreateTeamModal = ({ isOpen, onClose, onTeamCreated }) => {
   // Handle location changes
   const handleLocationChange = useCallback(
     (e) => {
-      const { name, value, type, checked } = e.target;
+      const { name, value, checked } = e.target;
 
       const map = {
         is_remote: "isRemote",
@@ -223,9 +234,7 @@ const CreateTeamModal = ({ isOpen, onClose, onTeamCreated }) => {
 
     const words = name.trim().split(/\s+/);
 
-    if (words.length === 1) {
-      return name.slice(0, 2).toUpperCase();
-    }
+    if (words.length === 1) return name.slice(0, 2).toUpperCase();
 
     return words
       .slice(0, 3)
@@ -298,7 +307,6 @@ const CreateTeamModal = ({ isOpen, onClose, onTeamCreated }) => {
       setNewTeamId(response.data.id);
       setSubmitSuccess(true);
 
-      // Notify parent
       if (onTeamCreated) {
         onTeamCreated(response.data);
       }
@@ -317,25 +325,21 @@ const CreateTeamModal = ({ isOpen, onClose, onTeamCreated }) => {
   // Handle close
   const handleClose = () => {
     if (submitSuccess) {
-      // Navigate to my-teams with the new team highlighted
       navigate(`/teams/my-teams?highlight=${newTeamId}`);
     }
     onClose();
   };
 
-  // Handle "View Team Details" click
   const handleViewTeamDetails = () => {
     setIsTeamDetailsOpen(true);
   };
 
-  // Handle TeamDetailsModal close
   const handleTeamDetailsClose = () => {
     setIsTeamDetailsOpen(false);
     navigate("/teams/my-teams");
     onClose();
   };
 
-  // Modal title
   const modalTitle = (
     <h2 className="text-xl font-medium text-primary">Create New Team</h2>
   );
@@ -364,7 +368,6 @@ const CreateTeamModal = ({ isOpen, onClose, onTeamCreated }) => {
         )}
 
         {submitSuccess ? (
-          // Success state
           <div className="text-center py-8">
             <div className="mx-auto mb-4 w-16 h-16 bg-success/20 rounded-full flex items-center justify-center">
               <svg
@@ -397,34 +400,36 @@ const CreateTeamModal = ({ isOpen, onClose, onTeamCreated }) => {
             </div>
           </div>
         ) : (
-          // Form
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Team Avatar Section */}
-            <FormSectionDivider text="Team Avatar" icon={Camera} />
-
-            <div className="form-control">
-              <ImageUploader
-                currentImage={formData.teamImagePreview}
-                onImageSelect={(file, previewUrl) => {
-                  setFormData((prev) => ({
-                    ...prev,
-                    teamImage: file,
-                    teamImagePreview: previewUrl,
-                  }));
-                }}
-                onImageRemove={() => {
-                  setFormData((prev) => ({
-                    ...prev,
-                    teamImage: null,
-                    teamImagePreview: null,
-                  }));
-                }}
-                fallbackText={getTeamInitials()}
-                shape="circle"
-                size="md"
-                disabled={loading}
-              />
-            </div>
+            <section className="space-y-4">
+              <FormSectionDivider text="Team Avatar" icon={Camera} />
+              <div className="flex justify-center">
+                <div className="w-full max-w-md">
+                  <ImageUploader
+                    currentImage={formData.teamImagePreview}
+                    onImageSelect={(file, previewUrl) => {
+                      setFormData((prev) => ({
+                        ...prev,
+                        teamImage: file,
+                        teamImagePreview: previewUrl,
+                      }));
+                    }}
+                    onImageRemove={() => {
+                      setFormData((prev) => ({
+                        ...prev,
+                        teamImage: null,
+                        teamImagePreview: null,
+                      }));
+                    }}
+                    size="mdPlus"
+                    shape="circle"
+                    fallbackText={getTeamInitials()}
+                    disabled={loading}
+                  />
+                </div>
+              </div>
+            </section>
 
             {/* Team Details Section */}
             <FormSectionDivider text="Team Details" icon={Users} />
@@ -481,204 +486,221 @@ const CreateTeamModal = ({ isOpen, onClose, onTeamCreated }) => {
             </div>
 
             {/* Team Settings Section */}
-            <FormSectionDivider text="Team Settings" icon={Settings} />
+            <section className="space-y-4 mt-12">
+              <FormSectionDivider text="Team Settings" icon={Settings} />
 
-            {/* Team Visibility Toggle */}
-            <div className="form-control">
-              <VisibilityToggle
-                name="isPublic"
-                checked={formData.isPublic}
-                onChange={handleChange}
-                label="Team Visibility"
-                entityType="team"
-                visibleLabel="Public Team"
-                hiddenLabel="Private Team"
-              />
-            </div>
-
-            {/* Max Members */}
-            <div className="form-control">
-              <label className="label">
-                <span className="label-text">Maximum Members *</span>
-              </label>
-
-              {/* Selection Mode Tabs */}
-              <div className="flex gap-2 mb-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setFormData((prev) => ({
-                      ...prev,
-                      maxMembersMode: "preset",
-                      maxMembers: 5,
-                    }));
-                  }}
-                  className={`btn btn-sm ${
-                    formData.maxMembersMode !== "custom" &&
-                    formData.maxMembersMode !== "unlimited" &&
-                    formData.maxMembers !== null
-                      ? "btn-primary"
-                      : "btn-outline"
-                  }`}
-                  disabled={loading}
-                >
-                  Preset
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setFormData((prev) => ({
-                      ...prev,
-                      maxMembersMode: "custom",
-                      maxMembers: prev.maxMembers || 25,
-                    }));
-                  }}
-                  className={`btn btn-sm ${
-                    formData.maxMembersMode === "custom"
-                      ? "btn-primary"
-                      : "btn-outline"
-                  }`}
-                  disabled={loading}
-                >
-                  Custom
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setFormData((prev) => ({
-                      ...prev,
-                      maxMembersMode: "unlimited",
-                      maxMembers: null,
-                    }));
-                  }}
-                  className={`btn btn-sm ${
-                    formData.maxMembers === null ||
-                    formData.maxMembersMode === "unlimited"
-                      ? "btn-primary"
-                      : "btn-outline"
-                  }`}
-                  disabled={loading}
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-4 w-4 mr-1"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                  >
-                    <path d="M18.178 8c5.096 0 5.096 8 0 8-5.095 0-7.133-8-12.739-8-4.585 0-4.585 8 0 8 5.606 0 7.644-8 12.739-8z" />
-                  </svg>
-                  Unlimited
-                </button>
+              {/* Team Visibility Toggle */}
+              <div className="form-control">
+                <VisibilityToggle
+                  name="isPublic"
+                  checked={formData.isPublic}
+                  onChange={handleChange}
+                  label="Team Visibility"
+                  entityType="team"
+                  visibleLabel="Public Team"
+                  hiddenLabel="Private Team"
+                />
               </div>
 
-              {/* Preset Dropdown */}
-              {formData.maxMembersMode !== "custom" &&
-                formData.maxMembersMode !== "unlimited" &&
-                formData.maxMembers !== null && (
-                  <select
-                    name="maxMembers"
-                    value={formData.maxMembers}
-                    onChange={handleChange}
-                    className={`select select-bordered w-full ${
-                      formErrors.maxMembers ? "select-error" : ""
-                    }`}
-                    disabled={loading}
-                  >
-                    {[2, 3, 4, 5, 6, 8, 10, 12, 15, 20].map((size) => (
-                      <option key={size} value={size}>
-                        {size} members
-                      </option>
-                    ))}
-                  </select>
-                )}
-
-              {/* Custom Number Input */}
-              {formData.maxMembersMode === "custom" && (
-                <input
-                  type="number"
-                  name="maxMembers"
-                  value={formData.maxMembers || ""}
-                  onChange={handleChange}
-                  min="2"
-                  placeholder="Enter custom number (min. 2)"
-                  className={`input input-bordered w-full ${
-                    formErrors.maxMembers ? "input-error" : ""
-                  }`}
-                  disabled={loading}
-                />
-              )}
-
-              {/* Unlimited Display */}
-              {(formData.maxMembers === null ||
-                formData.maxMembersMode === "unlimited") &&
-                formData.maxMembersMode !== "custom" &&
-                formData.maxMembersMode !== "preset" && (
-                  <div className="flex items-center gap-2 p-3 bg-base-200 rounded-lg">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-5 w-5 text-primary"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                    >
-                      <path d="M18.178 8c5.096 0 5.096 8 0 8-5.095 0-7.133-8-12.739-8-4.585 0-4.585 8 0 8 5.606 0 7.644-8 12.739-8z" />
-                    </svg>
-                    <span className="text-base-content">No member limit</span>
-                  </div>
-                )}
-
-              {formErrors.maxMembers && (
+              {/* Maximum Members */}
+              <div className="form-control">
                 <label className="label">
-                  <span className="label-text-alt text-error">
-                    {formErrors.maxMembers}
-                  </span>
+                  <span className="label-text">Maximum Members *</span>
                 </label>
-              )}
-            </div>
+
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-3">
+                  {/* Buttons */}
+                  <div className="flex gap-2 flex-wrap">
+                    <button
+                      type="button"
+                      className={`btn btn-sm ${formData.maxMembersMode === "preset" ? "btn-primary" : "btn-outline"}`}
+                      onClick={() => {
+                        setFormData((prev) => {
+                          const current = Number(prev.maxMembers);
+                          const nextMax = PRESET_OPTIONS.includes(current)
+                            ? current
+                            : PRESET_OPTIONS[0];
+                          return {
+                            ...prev,
+                            maxMembersMode: "preset",
+                            maxMembers: nextMax,
+                          };
+                        });
+                      }}
+                    >
+                      Preset
+                    </button>
+
+                    <button
+                      type="button"
+                      className={`btn btn-sm ${formData.maxMembersMode === "custom" ? "btn-primary" : "btn-outline"}`}
+                      onClick={() => {
+                        setFormData((prev) => {
+                          const current = Number(prev.maxMembers);
+                          const nextMax =
+                            !Number.isNaN(current) && current >= 2
+                              ? current
+                              : 25;
+                          return {
+                            ...prev,
+                            maxMembersMode: "custom",
+                            maxMembers: nextMax,
+                          };
+                        });
+                      }}
+                    >
+                      Custom
+                    </button>
+
+                    <button
+                      type="button"
+                      className={`btn btn-sm flex items-center gap-1 ${
+                        formData.maxMembersMode === "unlimited"
+                          ? "btn-primary"
+                          : "btn-outline"
+                      }`}
+                      onClick={() => {
+                        setFormData((prev) => ({
+                          ...prev,
+                          maxMembersMode: "unlimited",
+                          maxMembers: UNLIMITED_VALUE,
+                        }));
+                      }}
+                    >
+                      <InfinityIcon size={14} />
+                      Unlimited
+                    </button>
+                  </div>
+
+                  {/* Value selector: responsive */}
+                  <div className="w-full sm:flex-1 sm:min-w-[180px] sm:ml-auto">
+                    {formData.maxMembersMode === "preset" && (
+                      <select
+                        name="maxMembers"
+                        className="select select-bordered w-full"
+                        value={
+                          PRESET_OPTIONS.includes(Number(formData.maxMembers))
+                            ? Number(formData.maxMembers)
+                            : PRESET_OPTIONS[0]
+                        }
+                        onChange={handleChange}
+                        disabled={loading}
+                      >
+                        {PRESET_OPTIONS.map((n) => (
+                          <option key={n} value={n}>
+                            {n} members
+                          </option>
+                        ))}
+                      </select>
+                    )}
+
+                    {formData.maxMembersMode === "custom" && (
+                      <input
+                        name="maxMembers"
+                        type="number"
+                        min={2}
+                        className="input input-bordered w-full"
+                        value={formData.maxMembers ?? ""}
+                        onChange={handleChange}
+                        placeholder="min. 2"
+                        disabled={loading}
+                      />
+                    )}
+
+                    {formData.maxMembersMode === "unlimited" && (
+                      <div className="input input-bordered w-full flex items-center gap-2 opacity-70">
+                        <InfinityIcon size={16} />
+                        No member limit
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {formErrors.maxMembers && (
+                  <label className="label">
+                    <span className="label-text-alt text-error">
+                      {formErrors.maxMembers}
+                    </span>
+                  </label>
+                )}
+              </div>
+            </section>
 
             {/* Team Location */}
-            <LocationInput
-              formData={{
-                is_remote: !!formData.isRemote,
-                postal_code: formData.postalCode ?? "",
-                city: formData.city ?? "",
-                country: formData.country ?? "",
-              }}
-              onChange={handleLocationChange}
-              errors={{
-                postal_code: formErrors.postalCode || formErrors.postal_code,
-                city: formErrors.city,
-                country: formErrors.country,
-              }}
-              disabled={loading}
-              showRemoteToggle={true}
-              showDivider={true}
-              dividerText="Location"
-            />
+            <section className="space-y-4 mt-12">
+              <FormSectionDivider text="Location" icon={MapPin} />
+
+              <LocationModeToggle
+                name="hasLocation"
+                checked={!formData.isRemote} // ✅ checked means "team with location"
+                disabled={loading}
+                label="Location Mode"
+                locationLabel="This is a team with a location"
+                remoteLabel="This is a remote team"
+                locationHelper="Provide location information for your team. This information is optional."
+                remoteHelper="Remote teams don't have a physical meeting location."
+                onChange={(e) => {
+                  const hasLocation = e.target.checked;
+                  // checked=true => has location => isRemote=false
+                  setFormData((prev) => {
+                    const next = { ...prev, isRemote: !hasLocation };
+                    if (!hasLocation) {
+                      // switched to remote => clear physical fields
+                      next.postalCode = "";
+                      next.city = "";
+                      next.country = "";
+                    }
+                    return next;
+                  });
+                }}
+              />
+
+              {/* Only show fields when NOT remote */}
+              {!formData.isRemote && (
+                <LocationInput
+                  formData={{
+                    is_remote: false,
+                    postal_code: formData.postalCode ?? "",
+                    city: formData.city ?? "",
+                    country: formData.country ?? "",
+                  }}
+                  onChange={handleLocationChange}
+                  errors={{
+                    postal_code:
+                      formErrors.postalCode || formErrors.postal_code,
+                    city: formErrors.city,
+                    country: formErrors.country,
+                  }}
+                  disabled={loading}
+                  showRemoteToggle={false}
+                  showDivider={false}
+                />
+              )}
+            </section>
 
             {/* Focus Areas (Tags) */}
-            <FormSectionDivider text="Focus Areas" icon={Tag} />
+            <section className="mt-12 space-y-4">
+              <FormSectionDivider text="Focus Areas" icon={Tag} />
 
-            <div className="form-control">
-              <label className="label">
-                <span className="label-text">
-                  What will this team focus on? (Optional)
-                </span>
-              </label>
-              <TagInput
-                selectedTags={formData.selectedTags}
-                onTagsChange={handleTagSelection}
-                placeholder={UI_TEXT.focusAreas.searchPlaceholder}
-                showPopularTags={true}
-                maxSuggestions={8}
-              />
+              <div className="form-control">
+                <label className="label">
+                  <span className="label-text">
+                    What will this team focus on? (Optional)
+                  </span>
+                </label>
+                <TagInput
+                  selectedTags={formData.selectedTags}
+                  onTagsChange={handleTagSelection}
+                  placeholder={UI_TEXT.focusAreas.searchPlaceholder}
+                  showPopularTags={true}
+                  maxSuggestions={8}
+                />
+              </div>
+            </section>
+
+            <div className="pt-5">
+              <div className="divider mb-6"></div>
             </div>
-
-            {/* Divider before form actions */}
-            <div className="divider my-6"></div>
 
             {/* Form Actions */}
             <div className="flex justify-end space-x-2">
@@ -705,7 +727,7 @@ const CreateTeamModal = ({ isOpen, onClose, onTeamCreated }) => {
         )}
       </Modal>
 
-      {/* Team Details Modal (opened after successful creation) */}
+      {/* Team Details Modal */}
       {isTeamDetailsOpen && newTeamId && (
         <TeamDetailsModal
           isOpen={isTeamDetailsOpen}
