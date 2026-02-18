@@ -31,8 +31,6 @@ const TagInput = ({
 }) => {
   const handleTags = onTagsChange ?? onChange;
 
-  
-
   const [inputValue, setInputValue] = useState("");
   const [suggestions, setSuggestions] = useState([]);
   const [popularTags, setPopularTags] = useState([]);
@@ -116,10 +114,9 @@ const TagInput = ({
         const allTags = await tagService.getStructuredTags();
         if (!alive) return;
 
-        const flat = (allTags || []).flatMap((category) => [
-          category,
-          ...(category?.children || []),
-        ]);
+        const flat = (allTags || [])
+          .flatMap((supercat) => supercat.categories || [])
+          .flatMap((cat) => cat.tags || []);
         updateTagMap(flat);
       } catch (err) {
         console.error("Error fetching tags:", err);
