@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  useRef,
+} from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import TeamRoleManager from "./TeamRoleManager";
 import TeamEditForm from "./TeamEditForm";
@@ -116,6 +122,7 @@ const TeamDetailsModal = ({
   const [selectedUserId, setSelectedUserId] = useState(null);
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [allTags, setAllTags] = useState([]);
+  const userHasEditedTagsRef = useRef(false);
   const [isLeaveDialogOpen, setIsLeaveDialogOpen] = useState(false);
   const [leaveLoading, setLeaveLoading] = useState(false);
   const [isInvitationModalOpen, setIsInvitationModalOpen] = useState(false);
@@ -595,6 +602,7 @@ const TeamDetailsModal = ({
   };
 
   const handleTagSelection = useCallback((selected) => {
+    userHasEditedTagsRef.current = true; // mark as intentional user edit
     const ids = (selected ?? [])
       .map((t) => (typeof t === "object" ? (t.id ?? t.value ?? t) : t))
       .map((x) => Number(x))
@@ -610,11 +618,14 @@ const TeamDetailsModal = ({
     if (!isEditing) return;
     const ids = normalizeTeamTagIds(team);
 
-    // Only backfill if form is empty (don’t overwrite user edits)
-    if ((formData.selectedTags?.length ?? 0) === 0 && ids.length > 0) {
-      setFormData((prev) => ({ ...prev, selectedTags: ids }));
-    }
-  }, [isEditing, team, formData.selectedTags, setFormData]);
+    // Seed tags only once when editing starts (when selectedTags is still empty).
+    // Using the functional updater means we don't need formData.selectedTags
+    // as a dependency, so removing the last tag won't re-trigger this effect.
+    setFormData((prev) => {
+      if ((prev.selectedTags?.length ?? 0) > 0) return prev;
+      return { ...prev, selectedTags: ids };
+    });
+  }, [isEditing, team]); // formData.selectedTags intentionally excluded
 
   // Fetch structured tags when modal opens (needed for display AND edit mode)
   useEffect(() => {
@@ -1186,6 +1197,7 @@ const TeamDetailsModal = ({
                 variant="ghost"
                 size="sm"
                 onClick={() => {
+                  userHasEditedTagsRef.current = false; // fresh edit session
                   setFormData((prev) => ({
                     ...prev,
                     selectedTags:
@@ -1344,46 +1356,44 @@ const TeamDetailsModal = ({
                 </div>
 
                 <div className="space-y-6">
+                  {/* Team description */}
+                  {team?.description && (
+                    <div>
+                      <p className="text-base-content/90 my-6">
+                        {team.description}
+                      </p>
+                    </div>
+                  )}
 
-                {/* Team description */}
-                {team?.description && (
-                  <div>
-                    <p className="text-base-content/90 my-6">
-                      {team.description}
-                    </p>
-                  </div>
-                )}
+                  {/* Team Location */}
+                  <LocationSection entity={team} entityType="team" />
 
-                {/* Team Location */}
-                <LocationSection entity={team} entityType="team" />
+                  {/* Team Focus Areas */}
+                  {console.log("Team tags for FocusAreasSection:", team?.tags)}
+                  {!isEditing && (
+                    <TagsDisplaySection
+                      title={UI_TEXT.focusAreas.title}
+                      tags={team?.tags || []}
+                      allTags={allTags}
+                      canEdit={false}
+                      onSave={undefined}
+                      emptyMessage={UI_TEXT.focusAreas.emptyTeam}
+                      placeholder={UI_TEXT.focusAreas.placeholderTeam}
+                    />
+                  )}
 
-                {/* Team Focus Areas */}
-                {console.log("Team tags for FocusAreasSection:", team?.tags)}
-                {!isEditing && (
-                  <TagsDisplaySection
-                    title={UI_TEXT.focusAreas.title}
-                    tags={team?.tags || []}
-                    allTags={allTags}
-                    canEdit={false}
-                    onSave={undefined}
-                    emptyMessage={UI_TEXT.focusAreas.emptyTeam}
-                    placeholder={UI_TEXT.focusAreas.placeholderTeam}
+                  {/* Team Members */}
+                  <TeamMembersSection
+                    team={team}
+                    isEditing={isEditing}
+                    isAuthenticated={isAuthenticated}
+                    user={user}
+                    onMemberClick={handleMemberClick}
+                    shouldAnonymizeMember={shouldAnonymizeMember}
+                    isOwner={isOwner}
+                    onRoleChange={fetchTeamDetails}
+                    onMemberRemoved={fetchTeamDetails}
                   />
-                )}
-
-                {/* Team Members */}
-                <TeamMembersSection
-                  team={team}
-                  isEditing={isEditing}
-                  isAuthenticated={isAuthenticated}
-                  user={user}
-                  onMemberClick={handleMemberClick}
-                  shouldAnonymizeMember={shouldAnonymizeMember}
-                  isOwner={isOwner}
-                  onRoleChange={fetchTeamDetails}
-                  onMemberRemoved={fetchTeamDetails}
-                />
-
                 </div>
 
                 {/* Join / Leave / Message Buttons */}
