@@ -55,11 +55,45 @@ const TagInput = ({
   });
   const [menuPlacement, setMenuPlacement] = useState("bottom"); // "top" | "bottom"
 
+  const getTagId = (t) => {
+    if (t == null) return null;
+    if (typeof t === "number") return Number.isFinite(t) ? t : null;
+    if (typeof t === "string") {
+      const n = Number(t);
+      return Number.isFinite(n) ? n : null;
+    }
+    if (typeof t === "object") {
+      const n = Number(t.id ?? t.tag_id ?? t.tagId ?? t.value);
+      return Number.isFinite(n) ? n : null;
+    }
+    return null;
+  };
+
+  const selectedTagIds = React.useMemo(() => {
+    const ids = (selectedTags ?? [])
+      .map(getTagId)
+      .filter((x) => Number.isFinite(x));
+    return Array.from(new Set(ids));
+  }, [selectedTags]);
+
+  const selectedTagIdSet = React.useMemo(
+    () => new Set(selectedTagIds),
+    [selectedTagIds],
+  );
+
   const updateTagMap = useCallback((tags) => {
     setTagMap((prev) => {
       const next = new Map(prev);
       (tags || []).forEach((t) => {
-        if (t?.id != null) next.set(t.id, t);
+        const id = getTagId(t);
+        if (id != null) {
+          // store with normalized id, but keep original object + ensure `name` exists
+          next.set(id, {
+            ...t,
+            id,
+            name: t?.name ?? t?.label ?? t?.value ?? `Focus Area ${id}`,
+          });
+        }
       });
       return next;
     });
@@ -80,10 +114,9 @@ const TagInput = ({
         const allTags = await tagService.getStructuredTags();
         if (!alive) return;
 
-        const flat = (allTags || []).flatMap((category) => [
-          category,
-          ...(category?.children || []),
-        ]);
+        const flat = (allTags || [])
+          .flatMap((supercat) => supercat.categories || [])
+          .flatMap((cat) => cat.tags || []);
         updateTagMap(flat);
       } catch (err) {
         console.error("Error fetching tags:", err);
@@ -107,9 +140,11 @@ const TagInput = ({
       setLoading(true);
       try {
         const results = await tagService.searchTags(q);
-        const filtered = (results || []).filter(
-          (t) => t?.id != null && !selectedTags.includes(t.id),
-        );
+        const filtered = (results || []).filter((t) => {
+          const id = getTagId(t);
+          return id != null && !selectedTagIdSet.has(id);
+        });
+
         setSuggestions(filtered.slice(0, maxSuggestions));
         updateTagMap(filtered);
       } catch (err) {
@@ -119,7 +154,7 @@ const TagInput = ({
         setLoading(false);
       }
     }, 250),
-    [selectedTags, maxSuggestions, updateTagMap],
+    [selectedTagIdSet, maxSuggestions, updateTagMap],
   );
 
   useEffect(() => () => debouncedSearch.cancel?.(), [debouncedSearch]);
@@ -187,26 +222,36 @@ const TagInput = ({
 
   const handleSelectTag = useCallback(
     (tag) => {
-      if (tag?.id != null && !selectedTags.includes(tag.id)) {
-        const next = [...selectedTags, tag.id];
+      const id = getTagId(tag);
+      if (id != null && !selectedTagIdSet.has(id)) {
+        const next = [...selectedTagIds, id];
         handleTags?.(next);
         updateTagMap([tag]);
-        fetchRelatedTags(tag.id);
+        fetchRelatedTags(id);
       }
       setInputValue("");
       setSuggestions([]);
       setShowSuggestions(false);
     },
-    [selectedTags, handleTags, updateTagMap, fetchRelatedTags],
+    [
+      selectedTagIds,
+      selectedTagIdSet,
+      handleTags,
+      updateTagMap,
+      fetchRelatedTags,
+    ],
   );
 
   const handleRemoveTag = useCallback(
     (tagId) => {
-      const next = selectedTags.filter((id) => id !== tagId);
+      const id = getTagId(tagId);
+      if (id == null) return;
+
+      const next = selectedTagIds.filter((x) => x !== id);
       handleTags?.(next);
       if (next.length === 0) setRelatedTags([]);
     },
-    [selectedTags, handleTags],
+    [selectedTagIds, handleTags],
   );
 
   // 1) initial positioning decision (top/bottom + maxHeight)
@@ -416,7 +461,7 @@ const TagInput = ({
       {selectedTags.length > 0 && (
         <div ref={selectedTagsRef} className="mt-2 p-3 bg-base-100 rounded-lg">
           <div className="flex flex-wrap gap-2">
-            {selectedTags.map((tagId) => {
+            {selectedTagIds.map((tagId) => {
               const tag = tagMap.get(tagId);
               return (
                 <span
@@ -424,12 +469,12 @@ const TagInput = ({
                   className="badge badge-primary badge-lg gap-2"
                 >
                   <TagIcon size={14} />
-                  {tag ? tag.name : `Focus Area ${tagId}`}
+                  {tag?.name ?? `Focus Area ${tagId}`}
                   <button
                     type="button"
                     onClick={() => handleRemoveTag(tagId)}
                     className="hover:text-error transition-colors"
-                    aria-label={`Remove ${tag ? tag.name : "focus area"}`}
+                    aria-label={`Remove ${tag?.name ?? "focus area"}`}
                     disabled={disabled}
                   >
                     <X size={14} />

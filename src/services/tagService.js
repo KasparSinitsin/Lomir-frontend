@@ -1,32 +1,38 @@
-// src/services/tagService.js
-
-import api from './api';  
+import api from "./api";
 
 export const tagService = {
   // Fetch structured tags
   getStructuredTags: async () => {
     try {
-      const response = await api.get('/api/tags/structured');
+      const response = await api.get("/api/tags/structured");
       console.log("Raw tag structure from API:", response.data);
-      
-      // Process data to ensure all IDs are numeric
-      const processedData = response.data.map(supercat => ({
+
+      const processedData = (response.data || []).map((supercat) => ({
         ...supercat,
-        id: parseInt(supercat.id, 10),
-        categories: supercat.categories.map(cat => ({
+
+        // IMPORTANT: supercat.id is a STRING (e.g. "Business & Entrepreneurship") — keep it
+        id: supercat?.id,
+        name: supercat?.name,
+
+        categories: (supercat?.categories || []).map((cat) => ({
           ...cat,
-          id: parseInt(cat.id, 10),
-          tags: cat.tags.map(tag => ({
+
+          // IMPORTANT: cat.id may also be a STRING — keep it
+          id: cat?.id,
+          name: cat?.name,
+
+          // Leaf tags are the selectable focus areas → ensure tag.id is numeric
+          tags: (cat?.tags || []).map((tag) => ({
             ...tag,
-            id: parseInt(tag.id, 10)
-          }))
-        }))
+            id: Number(tag?.id),
+          })),
+        })),
       }));
-      
+
       console.log("Processed tag structure:", processedData);
       return processedData;
     } catch (error) {
-      console.error('Error fetching structured tags:', error);
+      console.error("Error fetching structured tags:", error);
       throw error;
     }
   },
@@ -34,10 +40,10 @@ export const tagService = {
   // Create a new tag
   createTag: async (tagData) => {
     try {
-      const response = await api.post('/api/tags/create', tagData);
+      const response = await api.post("/api/tags/create", tagData);
       return response.data;
     } catch (error) {
-      console.error('Error creating tag:', error);
+      console.error("Error creating tag:", error);
       throw error;
     }
   },
@@ -45,18 +51,16 @@ export const tagService = {
   // Search tags
   searchTags: async (query) => {
     try {
-      const response = await api.get('/api/tags/search', { 
-        params: { query } 
+      const response = await api.get("/api/tags/search", {
+        params: { query },
       });
       return response.data;
     } catch (error) {
-      console.error('Error searching tags:', error);
+      console.error("Error searching tags:", error);
       throw error;
     }
-  }
-,
-
- // NEW METHODS FOR AUTOCOMPLETE
+  },
+  // NEW METHODS FOR AUTOCOMPLETE
 
   /**
    * Get popular tags with usage counts
@@ -67,10 +71,10 @@ export const tagService = {
       if (supercategory) {
         params.supercategory = supercategory;
       }
-      const response = await api.get('/api/tags/popular', { params });
+      const response = await api.get("/api/tags/popular", { params });
       return response.data.data || [];
     } catch (error) {
-      console.error('Error fetching popular tags:', error);
+      console.error("Error fetching popular tags:", error);
       return [];
     }
   },
@@ -83,17 +87,17 @@ export const tagService = {
       if (!query || query.trim().length === 0) {
         return [];
       }
-      const params = { 
-        query: query.trim(), 
-        limit 
+      const params = {
+        query: query.trim(),
+        limit,
       };
       if (excludeIds.length > 0) {
-        params.exclude = excludeIds.join(',');
+        params.exclude = excludeIds.join(",");
       }
-      const response = await api.get('/api/tags/suggestions', { params });
+      const response = await api.get("/api/tags/suggestions", { params });
       return response.data.data || [];
     } catch (error) {
-      console.error('Error fetching tag suggestions:', error);
+      console.error("Error fetching tag suggestions:", error);
       return [];
     }
   },
@@ -105,19 +109,18 @@ export const tagService = {
     try {
       const params = { limit };
       if (excludeIds.length > 0) {
-        params.exclude = excludeIds.join(',');
+        params.exclude = excludeIds.join(",");
       }
       const response = await api.get(`/api/tags/related/${tagId}`, { params });
       return {
         tags: response.data.data || [],
-        context: response.data.context || {}
+        context: response.data.context || {},
       };
     } catch (error) {
-      console.error('Error fetching related tags:', error);
+      console.error("Error fetching related tags:", error);
       return { tags: [], context: {} };
     }
-  }
-
+  },
 };
 
 export default tagService;
