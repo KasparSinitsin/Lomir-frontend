@@ -412,7 +412,7 @@ const TagInput = ({
     onSelectedItemChange: ({ selectedItem }) => {
       if (selectedItem) handleSelectTag(selectedItem);
     },
-    itemToString: (item) => (item ? item.name : ""),
+    itemToString: () => "",
     onIsOpenChange: ({ isOpen }) => {
       if (!isOpen) setShowSuggestions(false);
     },
@@ -516,32 +516,52 @@ const TagInput = ({
               )}
             </li>
 
-            {currentSuggestions.tags.map((tag, index) => (
-              <li key={tag.id} {...getItemProps({ item: tag, index })}>
-                <button
-                  type="button"
-                  onMouseDown={(e) => e.preventDefault()} // prevent blur race
-                  className={`flex items-center justify-between w-full ${
-                    highlightedIndex === index ? "active" : ""
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <TagIcon size={14} />
-                    <span className="font-medium">{tag.name}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-xs">
-                    <span className="badge badge-sm badge-ghost">
-                      {tag.category}
-                    </span>
-                    {tag.usage_count !== undefined && tag.usage_count > 0 && (
-                      <span className="badge badge-sm badge-primary">
-                        {tag.usage_count}
-                      </span>
-                    )}
-                  </div>
-                </button>
-              </li>
-            ))}
+            {currentSuggestions.tags.map((tag, index) => {
+              const alreadyAdded = selectedTagIdSet.has(getTagId(tag));
+              return (
+                <li key={tag.id} {...getItemProps({ item: tag, index })}>
+                  <button
+                    type="button"
+                    onMouseDown={(e) => e.preventDefault()}
+                    disabled={alreadyAdded}
+                    title={
+                      alreadyAdded ? UI_TEXT.focusAreas.alreadyAdded : undefined
+                    }
+                    className={`flex items-center justify-between w-full ${
+                      alreadyAdded
+                        ? "opacity-40 cursor-not-allowed"
+                        : highlightedIndex === index
+                          ? "active"
+                          : ""
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <TagIcon size={14} />
+                      <span className="font-medium">{tag.name}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs">
+                      {alreadyAdded ? (
+                        <span className="badge badge-sm badge-ghost opacity-60">
+                          added
+                        </span>
+                      ) : (
+                        <>
+                          <span className="badge badge-sm badge-ghost">
+                            {tag.category}
+                          </span>
+                          {tag.usage_count !== undefined &&
+                            tag.usage_count > 0 && (
+                              <span className="badge badge-sm badge-primary">
+                                {tag.usage_count}
+                              </span>
+                            )}
+                        </>
+                      )}
+                    </div>
+                  </button>
+                </li>
+              );
+            })}
           </ul>,
           document.body,
         )}

@@ -16,5 +16,6 @@ export const UI_TEXT = {
     registerTitle: "Focus Areas",
     registerDescription:
       "Select focus areas matching your interests and skills",
+    alreadyAdded: "Focus area already added",
   },
 };
