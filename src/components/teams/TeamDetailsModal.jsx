@@ -37,6 +37,25 @@ import axios from "axios";
 import Modal from "../common/Modal";
 import LocationSection from "../common/LocationSection";
 
+const normalizeTeamTagIds = (team) => {
+  const raw = team?.tags ?? team?.tags_json ?? team?.selectedTags ?? [];
+
+  const ids = (raw ?? [])
+    .map((t) => {
+      if (t == null) return null;
+
+      if (typeof t === "object") {
+        return t.id ?? t.tag_id ?? t.tagId ?? t.value ?? null;
+      }
+
+      return t;
+    })
+    .map((x) => Number(x))
+    .filter((x) => Number.isFinite(x));
+
+  return Array.from(new Set(ids));
+};
+
 const TeamDetailsModal = ({
   isOpen = true,
   teamId: propTeamId,
@@ -304,9 +323,7 @@ const TeamDetailsModal = ({
           maxMembersMode: maxMembersMode, // 'unlimited' when null
           teamavatarUrl:
             teamData.teamavatar_url || teamData.teamavatarUrl || "",
-          selectedTags: (teamData.tags || [])
-            .map((tag) => parseInt(tag.id || tag.tag_id, 10))
-            .filter((id) => !isNaN(id)),
+          selectedTags: normalizeTeamTagIds(enhancedTeamData).map(String),
 
           // location fields
           isRemote: isRemoteVal === true,
@@ -577,18 +594,27 @@ const TeamDetailsModal = ({
     }));
   };
 
-  const handleTagSelection = useCallback((selectedTags) => {
-    console.log("Tags selected (raw):", selectedTags);
-
-    // Convert tag IDs to numbers
-    const numericTags = selectedTags.map((tag) => Number(tag));
-    console.log("Tags converted to numbers:", numericTags);
+  const handleTagSelection = useCallback((selected) => {
+    const ids = (selected ?? [])
+      .map((t) => (typeof t === "object" ? (t.id ?? t.value ?? t) : t))
+      .map((x) => Number(x))
+      .filter((x) => Number.isFinite(x));
 
     setFormData((prev) => ({
       ...prev,
-      selectedTags: numericTags,
+      selectedTags: Array.from(new Set(ids)),
     }));
   }, []);
+
+  useEffect(() => {
+    if (!isEditing) return;
+    const ids = normalizeTeamTagIds(team);
+
+    // Only backfill if form is empty (don’t overwrite user edits)
+    if ((formData.selectedTags?.length ?? 0) === 0 && ids.length > 0) {
+      setFormData((prev) => ({ ...prev, selectedTags: ids }));
+    }
+  }, [isEditing, team, formData.selectedTags, setFormData]);
 
   // Fetch structured tags when modal opens (needed for display AND edit mode)
   useEffect(() => {
@@ -864,21 +890,16 @@ const TeamDetailsModal = ({
 
       console.log("Final submission data:", submissionData);
 
-      // Only add tags if there are any selected
-      if (formData.selectedTags && formData.selectedTags.length > 0) {
-        const processedTags = formData.selectedTags
-          .filter((tagId) => tagId)
-          .map((tagId) => {
-            const numericId = Number(tagId);
-            return {
-              tag_id: numericId,
-            };
-          });
-
-        if (processedTags.length > 0) {
-          submissionData.tags = processedTags;
-        }
-      }
+      // Always send tags
+      submissionData.tags = (formData.selectedTags ?? [])
+        .map((t) =>
+          typeof t === "object"
+            ? (t.id ?? t.tag_id ?? t.tagId ?? t.tagID ?? t.value)
+            : t,
+        )
+        .map((x) => Number(x))
+        .filter((id) => Number.isFinite(id) && id > 0)
+        .map((tag_id) => ({ tag_id }));
 
       console.log("Final submission data with tags:", submissionData);
 
@@ -886,6 +907,7 @@ const TeamDetailsModal = ({
         effectiveTeamId,
         submissionData,
       );
+
       console.log("Update response:", response);
 
       // Update our local state with the new visibility value
@@ -1163,7 +1185,16 @@ const TeamDetailsModal = ({
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setIsEditing(true)}
+                onClick={() => {
+                  setFormData((prev) => ({
+                    ...prev,
+                    selectedTags:
+                      (prev.selectedTags?.length ?? 0) > 0
+                        ? prev.selectedTags
+                        : normalizeTeamTagIds(team),
+                  }));
+                  setIsEditing(true);
+                }}
                 className="hover:bg-[#7ace82] hover:text-[#036b0c]"
                 icon={<Edit size={16} />}
               >
@@ -1335,8 +1366,8 @@ const TeamDetailsModal = ({
                     title={UI_TEXT.focusAreas.title}
                     tags={team?.tags || []}
                     allTags={allTags}
-                    canEdit={canEditTeam}
-                    onSave={handleTeamTagsUpdate}
+                    canEdit={false}
+                    onSave={undefined}
                     emptyMessage={UI_TEXT.focusAreas.emptyTeam}
                     placeholder={UI_TEXT.focusAreas.placeholderTeam}
                   />
