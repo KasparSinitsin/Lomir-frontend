@@ -412,7 +412,7 @@ const TagInput = ({
     onSelectedItemChange: ({ selectedItem }) => {
       if (selectedItem) handleSelectTag(selectedItem);
     },
-    itemToString: (item) => (item ? item.name : ""),
+    itemToString: () => "",
     onIsOpenChange: ({ isOpen }) => {
       if (!isOpen) setShowSuggestions(false);
     },
