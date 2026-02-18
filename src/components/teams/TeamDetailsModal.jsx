@@ -1343,6 +1343,8 @@ const TeamDetailsModal = ({
                   </div>
                 </div>
 
+                <div className="space-y-6">
+
                 {/* Team description */}
                 {team?.description && (
                   <div>
@@ -1353,11 +1355,7 @@ const TeamDetailsModal = ({
                 )}
 
                 {/* Team Location */}
-                <LocationSection
-                  entity={team}
-                  entityType="team"
-                  className="my-6"
-                />
+                <LocationSection entity={team} entityType="team" />
 
                 {/* Team Focus Areas */}
                 {console.log("Team tags for FocusAreasSection:", team?.tags)}
@@ -1385,6 +1383,8 @@ const TeamDetailsModal = ({
                   onRoleChange={fetchTeamDetails}
                   onMemberRemoved={fetchTeamDetails}
                 />
+
+                </div>
 
                 {/* Join / Leave / Message Buttons */}
                 {renderJoinButton()}
