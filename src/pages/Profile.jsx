@@ -1074,123 +1074,191 @@ const Profile = () => {
 
             {/* Bio Section */}
             {user.bio && (
-              <div className="px-6">
+              <div className="px-6 mb-12">
                 <p className="text-base-content/90">{user.bio}</p>
               </div>
             )}
 
-            {/* Contact & Info Section */}
-            <div className="px-6 mt-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Email */}
-                <div>
-                  <div className="flex items-center mb-2">
-                    <Mail
-                      size={18}
-                      className="mr-2 text-primary flex-shrink-0"
-                    />
-                    <h3 className="font-medium">Email</h3>
-                  </div>
-                  <p className="text-base-content/80">{user.email}</p>
-                </div>
+            {/* Contact & Focus Areas — fixed 4-col grid at xl */}
+            {/* Contact, Focus Areas & Badges */}
+            {(() => {
+              const badgesByCategory = Array.isArray(displayUser?.badges)
+                ? displayUser.badges.reduce((acc, badge) => {
+                    const category = badge.category || "Other";
+                    if (!acc[category]) {
+                      acc[category] = {
+                        badges: [],
+                        color: badge.color,
+                        totalCredits: 0,
+                      };
+                    }
+                    acc[category].badges.push(badge);
+                    acc[category].totalCredits +=
+                      badge.total_credits ?? badge.totalCredits ?? 0;
+                    return acc;
+                  }, {})
+                : {};
 
-                {/* Location */}
-                {(user.postalCode || user.postal_code || user.city) && (
-                  <div>
-                    <div className="flex items-center mb-2">
-                      <MapPin
-                        size={18}
-                        className="mr-2 text-primary flex-shrink-0"
-                      />
-                      <h3 className="font-medium">Location</h3>
-                    </div>
-                    <LocationDisplay
-                      postalCode={user.postal_code || user.postalCode}
-                      city={user.city}
-                      state={user.state}
-                      country={user.country}
-                      className="bg-base-200/50 py-1"
-                      showIcon={false}
-                      showPostalCode={true}
-                      displayType="full"
-                    />
-                  </div>
-                )}
-              </div>
-            </div>
+              const sortedCategories = Object.entries(badgesByCategory).sort(
+                ([, a], [, b]) => b.totalCredits - a.totalCredits,
+              );
 
-            {/* Focus Areas - already using consistent TagsDisplaySection */}
-            <div className="px-6 mt-6">
-              <TagsDisplaySection
-                title="Focus Areas"
-                tags={selectedTags}
-                allTags={tags}
-                emptyMessage="No focus areas added yet."
-              />
-            </div>
+              const bothEmpty =
+                (!selectedTags || selectedTags.length === 0) &&
+                sortedCategories.length === 0;
 
-            {/* Badges Section - Grouped by Category */}
-            <div className="px-6 mt-6 pb-6">
-              <div className="flex items-center mb-4">
-                <Award size={18} className="mr-2 text-primary flex-shrink-0" />
-                <h3 className="font-medium">My Badges</h3>
-              </div>
-
-              {Array.isArray(displayUser?.badges) &&
-              displayUser.badges.length > 0 ? (
-                (() => {
-                  // Group badges by category
-                  const badgesByCategory = displayUser.badges.reduce(
-                    (acc, badge) => {
-                      const category = badge.category || "Other";
-                      if (!acc[category]) {
-                        acc[category] = {
-                          badges: [],
-                          color: badge.color,
-                          totalCredits: 0,
-                        };
-                      }
-                      acc[category].badges.push(badge);
-                      acc[category].totalCredits +=
-                        badge.total_credits ?? badge.totalCredits ?? 0;
-                      return acc;
-                    },
-                    {},
-                  );
-
-                  // Sort categories by total credits (descending)
-                  const sortedCategories = Object.entries(
-                    badgesByCategory,
-                  ).sort(([, a], [, b]) => b.totalCredits - a.totalCredits);
-
-                  return (
-                    <Grid cols={1} md={2} gap={4}>
-                      {sortedCategories.map(([category, data]) => (
-                        <BadgeCategoryCard
-                          key={category}
-                          category={category}
-                          color={data.color}
-                          badges={data.badges}
-                          totalCredits={data.totalCredits}
-                          onClick={() =>
-                            handleBadgeCategoryClick(
-                              category,
-                              data.color,
-                              data.badges,
-                              data.totalCredits,
-                            )
-                          }
+              return (
+                <div className="px-6 mt-6 pb-6">
+                  {bothEmpty ? (
+                    // All 4 items in one grid for perfect column alignment
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-[0rem] gap-y-6">
+                      <div>
+                        <div className="flex items-center mb-2">
+                          <Mail
+                            size={18}
+                            className="mr-2 text-primary flex-shrink-0"
+                          />
+                          <h3 className="font-medium">Email</h3>
+                        </div>
+                        <p className="text-sm text-base-content/60">
+                          {user.email}
+                        </p>
+                      </div>
+                      <div>
+                        <div className="flex items-center mb-2">
+                          <MapPin
+                            size={18}
+                            className="mr-2 text-primary flex-shrink-0"
+                          />
+                          <h3 className="font-medium">Location</h3>
+                        </div>
+                        {user.postalCode || user.postal_code || user.city ? (
+                          <LocationDisplay
+                            postalCode={user.postal_code || user.postalCode}
+                            city={user.city}
+                            state={user.state}
+                            country={user.country}
+                            className="text-sm text-base-content/60"
+                            showIcon={false}
+                            showPostalCode={true}
+                            displayType="full"
+                          />
+                        ) : (
+                          <p className="text-sm text-base-content/60">
+                            No location added yet.
+                          </p>
+                        )}
+                      </div>
+                      <div>
+                        <TagsDisplaySection
+                          title="Focus Areas"
+                          tags={selectedTags}
+                          allTags={tags}
+                          emptyMessage="No focus areas added yet."
                         />
-                      ))}
-                    </Grid>
-                  );
-                })()
-              ) : (
-                <span className="badge badge-warning">
-                  No badges earned yet.
-                </span>
-              )}
-            </div>
+                      </div>
+                      <div>
+                        <div className="flex items-center mb-2">
+                          <Award
+                            size={18}
+                            className="mr-2 text-primary flex-shrink-0"
+                          />
+                          <h3 className="font-medium">My Badges</h3>
+                        </div>
+                        <p className="text-sm text-base-content/60">
+                          No badges earned yet.
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    // Has content: Email/Location flex row + stacked Focus Areas + Badges
+                    <div className="space-y-6">
+                      <div className="flex flex-wrap gap-x-[10rem] gap-y-6">
+                        <div>
+                          <div className="flex items-center mb-2">
+                            <Mail
+                              size={18}
+                              className="mr-2 text-primary flex-shrink-0"
+                            />
+                            <h3 className="font-medium">Email</h3>
+                          </div>
+                          <p className="text-sm text-base-content/60">
+                            {user.email}
+                          </p>
+                        </div>
+                        <div>
+                          <div className="flex items-center mb-2">
+                            <MapPin
+                              size={18}
+                              className="mr-2 text-primary flex-shrink-0"
+                            />
+                            <h3 className="font-medium">Location</h3>
+                          </div>
+                          {user.postalCode || user.postal_code || user.city ? (
+                            <LocationDisplay
+                              postalCode={user.postal_code || user.postalCode}
+                              city={user.city}
+                              state={user.state}
+                              country={user.country}
+                              className="text-sm text-base-content/60"
+                              showIcon={false}
+                              showPostalCode={true}
+                              displayType="full"
+                            />
+                          ) : (
+                            <p className="text-sm text-base-content/60">
+                              No location added yet.
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <div>
+                        <TagsDisplaySection
+                          title="Focus Areas"
+                          tags={selectedTags}
+                          allTags={tags}
+                          emptyMessage="No focus areas added yet."
+                        />
+                      </div>
+                      <div>
+                        <div className="flex items-center mb-2">
+                          <Award
+                            size={18}
+                            className="mr-2 text-primary flex-shrink-0"
+                          />
+                          <h3 className="font-medium">My Badges</h3>
+                        </div>
+                        {sortedCategories.length > 0 ? (
+                          <div className="flex flex-wrap gap-4">
+                            {sortedCategories.map(([category, data]) => (
+                              <BadgeCategoryCard
+                                key={category}
+                                category={category}
+                                color={data.color}
+                                badges={data.badges}
+                                totalCredits={data.totalCredits}
+                                onClick={() =>
+                                  handleBadgeCategoryClick(
+                                    category,
+                                    data.color,
+                                    data.badges,
+                                    data.totalCredits,
+                                  )
+                                }
+                              />
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-base-content/60">
+                            No badges earned yet.
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </div>
         )}
       </Card>

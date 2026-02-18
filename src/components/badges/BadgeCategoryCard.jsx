@@ -76,7 +76,7 @@ const BadgeCategoryCard = ({
 
   return (
     <div
-      className={`card shadow-soft hover:shadow-md transition-shadow duration-300 overflow-hidden ${onClick ? "cursor-pointer" : ""}`}
+      className={`card shadow-soft hover:shadow-md transition-shadow duration-300 overflow-hidden w-fit ${onClick ? "cursor-pointer" : ""}`}
       style={{ backgroundColor: getPastelBackground() }}
       onClick={onClick}
     >
@@ -84,13 +84,13 @@ const BadgeCategoryCard = ({
         {/* Header: Category name + icon + total credits */}
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            {getCategoryIcon()}
-            <h3 className="font-medium text-base" style={{ color }}>
+            <span className="flex-shrink-0">{getCategoryIcon()}</span>
+            <h3 className="font-medium text-sm leading-snug" style={{ color }}>
               {category}
             </h3>
           </div>
           <span
-            className="text-sm font-medium px-2 py-0.5 rounded-full bg-white/50"
+            className="text-sm font-medium px-2 py-0.5 rounded-full bg-white/50 flex-shrink-0 ml-2"
             style={{ color }}
           >
             {totalCredits} ct.
