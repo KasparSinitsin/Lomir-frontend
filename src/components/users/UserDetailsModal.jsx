@@ -365,13 +365,7 @@ const UserDetailsModal = ({
             <UserBioSection bio={user?.bio || user?.biography} />
 
             {/* Location */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <LocationSection
-                entity={user}
-                entityType="user"
-                className="mb-6"
-              />
-            </div>
+            <LocationSection entity={user} entityType="user" className="mb-6" />
 
             {/* Focus Areas */}
             <TagsDisplaySection

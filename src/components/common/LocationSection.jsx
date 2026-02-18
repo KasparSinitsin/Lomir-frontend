@@ -51,7 +51,6 @@ const LocationSection = ({
     return (
       <div
         className={`flex flex-wrap items-start gap-x-3 gap-y-2 text-sm text-base-content/70 ${className}`}
-
       >
         {/* Location info */}
         <div className="flex items-start">
@@ -101,14 +100,14 @@ const LocationSection = ({
       {/* Content */}
       <div>
         {isRemote ? (
-          <div className="flex items-center bg-base-200/50 rounded-lg py-2 px-3">
-            <span className="text-base-content">Remote Team</span>
+          <div className="flex items-center text-sm text-base-content/70">
+            <span>Remote Team</span>
             <span className="text-xs text-base-content/50 ml-2">
               (No physical location)
             </span>
           </div>
         ) : location.city || location.postalCode ? (
-          <div className="flex items-start text-sm text-base-content/70 bg-base-200/50 rounded-lg py-2 px-3">
+          <div className="flex items-start text-sm text-base-content/70">
             {!shouldShowTitle && (
               <MapPin size={16} className="mr-2 flex-shrink-0 mt-0.5" />
             )}

@@ -238,7 +238,7 @@ const TagsDisplaySection = ({
             </span>
           ))
         ) : (
-          <span className="badge badge-warning">{emptyMessage}</span>
+          <p className="text-sm text-base-content/60">{emptyMessage}</p>
         )}
       </div>
     </div>
