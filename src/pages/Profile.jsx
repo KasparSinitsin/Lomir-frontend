@@ -19,9 +19,7 @@ import {
   Eye,
   EyeClosed,
   Award,
-  Trash2,
   Camera,
-  KeyRound,
   Tag,
   Calendar,
 } from "lucide-react";
@@ -31,7 +29,6 @@ import TagInput from "../components/tags/TagInput";
 import BadgeCategoryCard from "../components/badges/BadgeCategoryCard";
 import BadgeCategoryModal from "../components/badges/BadgeCategoryModal";
 import TagsDisplaySection from "../components/tags/TagsDisplaySection";
-import VisibilityToggle from "../components/common/VisibilityToggle";
 import LocationDisplay from "../components/common/LocationDisplay";
 import { geocodingService } from "../services/geocodingService";
 import { useLocationAutoFill } from "../hooks/useLocationAutoFill";
@@ -40,7 +37,6 @@ import { getUserInitials } from "../utils/userHelpers";
 import Modal from "../components/common/Modal";
 import LocationInput from "../components/common/LocationInput";
 import { format } from "date-fns";
-import UserDetailsModal from "../components/users/UserDetailsModal";
 
 const Profile = () => {
   const { user, updateUser, logout } = useAuth();
@@ -56,8 +52,6 @@ const Profile = () => {
   const [imagePreview, setImagePreview] = useState(null);
   const [imageError, setImageError] = useState(false);
   const navigate = useNavigate();
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [deleteLoading, setDeleteLoading] = useState(false);
   const [avatarDeleteLoading, setAvatarDeleteLoading] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState(null);
   const [badgeCategoryModal, setBadgeCategoryModal] = useState({
@@ -462,33 +456,6 @@ const Profile = () => {
     }
   };
 
-  const handleDeleteProfile = async () => {
-    if (!user) return;
-
-    try {
-      setDeleteLoading(true);
-      setError(null);
-
-      const result = await userService.deleteUser(user.id);
-
-      if (result.success) {
-        // Close modal and logout
-        setIsDeleteModalOpen(false);
-        logout();
-        navigate("/", { replace: true });
-      }
-    } catch (err) {
-      console.error("Error deleting profile:", err);
-      const errorMessage =
-        err.response?.data?.message ||
-        "Failed to delete profile. Please try again.";
-      setError(errorMessage);
-      setIsDeleteModalOpen(false);
-    } finally {
-      setDeleteLoading(false);
-    }
-  };
-
   // Add form validation function
   const validateForm = () => {
     const errors = {};
@@ -783,11 +750,11 @@ const Profile = () => {
               </div>
             </section>
 
-            {/* Account Information */}
+            {/* Profile Details */}
             <section className="space-y-4">
-              <FormSectionDivider text="Account Information" icon={KeyRound} />
+              <FormSectionDivider text="Profile Details" icon={User} />
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {/* Username */}
                 <div className="form-control w-full">
                   <label className="label">
@@ -812,41 +779,11 @@ const Profile = () => {
                     </label>
                   )}
                   <p className="form-helper-text">
-                    3–20 characters, letters/numbers/underscore. Must be unique.
+                    3–20 characters, letters/numbers/underscore.
                   </p>
                 </div>
 
-                {/* Email */}
-                <div className="form-control w-full">
-                  <label className="label">
-                    <span className="label-text">Email Address</span>
-                  </label>
-                  <input
-                    type="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleChange}
-                    className={`input input-bordered w-full ${
-                      formErrors.email ? "input-error" : ""
-                    }`}
-                    placeholder="Email Address"
-                  />
-                  {formErrors.email && (
-                    <label className="label">
-                      <span className="label-text-alt text-error">
-                        {formErrors.email}
-                      </span>
-                    </label>
-                  )}
-                </div>
-              </div>
-            </section>
-
-            {/* Profile Details */}
-            <section className="space-y-4">
-              <FormSectionDivider text="Profile Details" icon={User} />
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* First Name */}
                 <div className="form-control w-full">
                   <label className="label">
                     <span className="label-text">First Name</span>
@@ -870,6 +807,7 @@ const Profile = () => {
                   )}
                 </div>
 
+                {/* Last Name */}
                 <div className="form-control w-full">
                   <label className="label">
                     <span className="label-text">Last Name</span>
@@ -896,20 +834,6 @@ const Profile = () => {
                   className="textarea textarea-bordered w-full"
                   placeholder="Tell us about yourself"
                   rows="4"
-                />
-              </div>
-
-              {/* Profile visibility toggle (moved up into Profile Details) */}
-              <div className="form-control w-full">
-                <VisibilityToggle
-                  name="isPublic"
-                  checked={formData.isPublic}
-                  onChange={handleChange}
-                  label="Profile Visibility"
-                  entityType="profile"
-                  visibleLabel="Visible to Everyone"
-                  hiddenLabel="Private Profile"
-                  showDescription={true}
                 />
               </div>
             </section>
@@ -988,15 +912,6 @@ const Profile = () => {
                   icon={<Edit size={16} />}
                 >
                   Edit
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setIsDeleteModalOpen(true)}
-                  className="hover:bg-red-100 hover:text-red-700"
-                  icon={<Trash2 size={16} />}
-                >
-                  Delete
                 </Button>
               </div>
             </div>
@@ -1274,52 +1189,6 @@ const Profile = () => {
         totalCredits={badgeCategoryModal.totalCredits}
         loading={badgeModalLoading}
       />
-
-      {/* Delete Profile Confirmation Modal */}
-      {isDeleteModalOpen && (
-        <Modal
-          isOpen={isDeleteModalOpen}
-          onClose={() => !deleteLoading && setIsDeleteModalOpen(false)}
-          title="Delete Profile"
-          position="center"
-          size="small"
-          closeOnBackdrop={!deleteLoading}
-          closeOnEscape={!deleteLoading}
-          showCloseButton={!deleteLoading}
-        >
-          <div className="py-4">
-            <p className="text-base-content">
-              You are about to delete your profile. This action cannot be
-              reversed and all data in your profile will be deleted from our
-              database.
-            </p>
-            <p className="text-warning text-sm mt-2">
-              This includes your messages, team memberships, badges, and all
-              other associated data.
-            </p>
-          </div>
-          <div className="flex justify-end gap-3 mt-4">
-            <Button
-              variant="ghost"
-              onClick={() => setIsDeleteModalOpen(false)}
-              disabled={deleteLoading}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="errorOutline"
-              onClick={handleDeleteProfile}
-              disabled={deleteLoading}
-            >
-              {deleteLoading ? (
-                <span className="loading loading-spinner loading-sm"></span>
-              ) : (
-                "Confirm"
-              )}
-            </Button>
-          </div>
-        </Modal>
-      )}
     </div>
   );
 };

@@ -26,6 +26,7 @@ import "./index.css";
 import backgroundImage from "./assets/images/Gradient-peach-yellow-violet-inverted-light.svg";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
+import Settings from "./pages/Settings";
 
 function AppLayout() {
   const location = useLocation();
@@ -85,6 +86,7 @@ function AppLayout() {
                 <Route path="/teams/my-teams" element={<MyTeams />} />
                 <Route path="/chat" element={<Chat />} />
                 <Route path="/chat/:conversationId" element={<Chat />} />
+                <Route path="/settings" element={<Settings />} />
               </Route>
 
               {/* Catch-all route */}
