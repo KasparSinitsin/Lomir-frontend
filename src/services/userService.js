@@ -143,6 +143,32 @@ export const userService = {
       throw error;
     }
   },
+
+  changePassword: async (currentPassword, newPassword) => {
+    try {
+      const response = await api.put("/api/auth/change-password", {
+        currentPassword,
+        newPassword,
+      });
+      return response.data;
+    } catch (error) {
+      console.error("Error changing password:", error);
+      throw error;
+    }
+  },
+
+  changeEmail: async (newEmail, currentPassword) => {
+    try {
+      const response = await api.put("/api/auth/change-email", {
+        newEmail,
+        currentPassword,
+      });
+      return response.data;
+    } catch (error) {
+      console.error("Error changing email:", error);
+      throw error;
+    }
+  },
 };
 
 // Export the service object as the default export
