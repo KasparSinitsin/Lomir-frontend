@@ -39,6 +39,7 @@ const BadgeCategoryCard = ({
   totalCredits = 0,
   onClick,
   onBadgeClick,
+  highlightBadgeName,
 }) => {
   // Get category icon based on category name
   const getCategoryIcon = () => {
@@ -101,6 +102,9 @@ const BadgeCategoryCard = ({
         <div className="flex flex-wrap gap-2">
           {sortedBadges.map((badge) => {
             const credits = getCredits(badge);
+            const isHighlighted =
+              highlightBadgeName &&
+              badge.name?.toLowerCase() === highlightBadgeName.toLowerCase();
             return (
               <span
                 key={badge.id ?? badge.badge_id ?? badge.name}
@@ -108,8 +112,18 @@ const BadgeCategoryCard = ({
                   onBadgeClick
                     ? "cursor-pointer hover:opacity-90 transition-opacity"
                     : ""
-                }`}
-                style={{ borderColor: color, color }}
+                } ${isHighlighted ? "animate-badge-highlight" : ""}`}
+                style={{
+                  borderColor: color,
+                  color,
+                  ...(isHighlighted
+                    ? {
+                        borderWidth: "2px",
+                        boxShadow: `0 0 12px ${color}66`,
+                        backgroundColor: `${color}20`,
+                      }
+                    : {}),
+                }}
                 title={badge.description || badge.name}
                 onClick={(e) => {
                   if (!onBadgeClick) return;
