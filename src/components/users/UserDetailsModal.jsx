@@ -13,8 +13,9 @@ import Button from "../common/Button";
 import Alert from "../common/Alert";
 import { useAuth } from "../../contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
-import { Edit, MessageCircle, UserPlus } from "lucide-react";
+import { Edit, MessageCircle, UserPlus, Award } from "lucide-react";
 import TeamInviteModal from "../teams/TeamInviteModal";
+import BadgeAwardModal from "../badges/BadgeAwardModal";
 
 const UserDetailsModal = ({
   isOpen,
@@ -59,6 +60,9 @@ const UserDetailsModal = ({
   });
   const [detailedBadgeAwards, setDetailedBadgeAwards] = useState([]);
   const [badgeModalLoading, setBadgeModalLoading] = useState(false);
+  // ========= Badge Award Modal state =========
+  const [isBadgeAwardModalOpen, setIsBadgeAwardModalOpen] = useState(false);
+  // ============================================
   // ==============================================
 
   // Determine if this modal is showing the current user (more reliable than comparing fetched user)
@@ -310,6 +314,16 @@ const UserDetailsModal = ({
                   <UserPlus size={16} />
                   <span className="hidden sm:inline">Invite</span>
                 </Button>
+
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsBadgeAwardModalOpen(true)}
+                  className="flex items-center gap-1"
+                >
+                  <Award size={16} />
+                  <span className="hidden sm:inline">Award</span>
+                </Button>
               </>
             )}
           </>
@@ -436,6 +450,23 @@ const UserDetailsModal = ({
         focusedBadgeName={badgeCategoryModal.focusedBadgeName}
         onOpenUser={onOpenUser}
       />
+
+      {/* Badge Award Modal */}
+      {isBadgeAwardModalOpen && user && (
+        <BadgeAwardModal
+          isOpen={isBadgeAwardModalOpen}
+          onClose={() => setIsBadgeAwardModalOpen(false)}
+          awardeeId={user.id}
+          awardeeFirstName={user.first_name || user.firstName}
+          awardeeLastName={user.last_name || user.lastName}
+          awardeeUsername={user.username}
+          awardeeAvatar={user.avatar_url || user.avatarUrl}
+          onAwardComplete={() => {
+            // Refresh user details to show updated badges
+            fetchUserDetails();
+          }}
+        />
+      )}
     </>
   );
 };

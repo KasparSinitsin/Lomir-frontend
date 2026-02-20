@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import axios from "axios";
 import FormSectionDivider from "../components/common/FormSectionDivider";
 import { useAuth } from "../contexts/AuthContext";
@@ -80,6 +80,12 @@ const Profile = () => {
   });
   // Add a flag to track if initial data load has happened
   const [initialDataLoaded, setInitialDataLoaded] = useState(false);
+
+  // Badge highlight from notification click-through
+  const [searchParams, setSearchParams] = useSearchParams();
+  const scrollToBadges = searchParams.get("scrollTo") === "badges";
+  const highlightBadgeName = searchParams.get("highlightBadge");
+  const badgesSectionRef = useRef(null);
 
   // Prefer freshest API user (includes badges totals). Fall back to auth context.
   const displayUser = localUser || user;
@@ -273,6 +279,29 @@ const Profile = () => {
       }
     }
   }, [getSuggestedUpdates, isEditing]);
+
+  // Scroll to badges section when navigated from a badge notification
+  useEffect(() => {
+    if (scrollToBadges && badgesSectionRef.current && !isEditing) {
+      // Wait for data to load, then scroll
+      const timer = setTimeout(() => {
+        badgesSectionRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+      }, 500);
+
+      // Clear URL params after 4 seconds so refresh doesn't keep highlighting
+      const clearTimer = setTimeout(() => {
+        setSearchParams({}, { replace: true });
+      }, 4000);
+
+      return () => {
+        clearTimeout(timer);
+        clearTimeout(clearTimer);
+      };
+    }
+  }, [scrollToBadges, isEditing, setSearchParams]);
 
   const handleSelectedTagsChange = (newTags) => {
     setSelectedTags(newTags);
@@ -1072,7 +1101,7 @@ const Profile = () => {
                           emptyMessage="No focus areas added yet."
                         />
                       </div>
-                      <div>
+                      <div ref={badgesSectionRef}>
                         <div className="flex items-center mb-2">
                           <Award
                             size={18}
@@ -1152,6 +1181,7 @@ const Profile = () => {
                                 color={data.color}
                                 badges={data.badges}
                                 totalCredits={data.totalCredits}
+                                highlightBadgeName={highlightBadgeName}
                                 onClick={() =>
                                   handleBadgeCategoryClick(
                                     category,

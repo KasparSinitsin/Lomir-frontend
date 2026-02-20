@@ -11,13 +11,13 @@
 
   /* --- Lomir: form section dividers (used for section headers) --- */
   .lomir-form-divider {
-    margin-top: 3rem;   /* = mt-12 */
-    margin-bottom: 0;   /* keep tight to content below */
+    margin-top: 3rem; /* = mt-12 */
+    margin-bottom: 0; /* keep tight to content below */
   }
 
   /* --- Lomir: divider before action buttons --- */
   .lomir-form-actions-divider {
-    margin-top: 4rem;   /* generous separation from fields */
+    margin-top: 4rem; /* generous separation from fields */
     margin-bottom: 1.5rem;
   }
 }
@@ -33,8 +33,6 @@
     opacity: 1;
   }
 }
-
-
 
 :root {
   /* Primary Brand Colors */
@@ -676,12 +674,33 @@ body {
 
 @layer components {
   .form-helper-text {
-    font-size: 0.75rem;      /* text-xs */
+    font-size: 0.75rem; /* text-xs */
     line-height: 1rem;
-    color: hsl(var(--bc));   /* base-content */
-    opacity: 0.6;            /* same muted tone */
-    margin-top: 0.2rem;     
+    color: hsl(var(--bc)); /* base-content */
+    opacity: 0.6; /* same muted tone */
+    margin-top: 0.2rem;
     display: block;
   }
 }
 
+/* Badge highlight animation for notification click-through */
+@keyframes badge-highlight {
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 currentColor;
+  }
+  25% {
+    transform: scale(1.08);
+  }
+  50% {
+    transform: scale(1);
+  }
+  75% {
+    transform: scale(1.05);
+  }
+}
+
+.animate-badge-highlight {
+  animation: badge-highlight 0.8s ease-in-out 2;
+}
