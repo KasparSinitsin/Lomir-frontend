@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Award,
   Send,
@@ -37,7 +37,6 @@ import {
   MessageSquare,
   Zap,
   Mountain,
-  Search,
   Shuffle,
   Share2,
 } from "lucide-react";
@@ -45,6 +44,8 @@ import Modal from "../common/Modal";
 import Button from "../common/Button";
 import Alert from "../common/Alert";
 import { badgeService } from "../../services/badgeService";
+import { userService } from "../../services/userService";
+import { tagService } from "../../services/tagService";
 import { getUserInitials } from "../../utils/userHelpers";
 
 /**
@@ -170,7 +171,6 @@ const BadgeAwardModal = ({
     const iconProps = { size, className: "flex-shrink-0" };
 
     switch (badgeName) {
-      // Collaboration Skills
       case "Team Player":
         return <Users {...iconProps} />;
       case "Mediator":
@@ -183,7 +183,6 @@ const BadgeAwardModal = ({
         return <ClipboardList {...iconProps} />;
       case "Reliable":
         return <Anchor {...iconProps} />;
-      // Technical Expertise
       case "Coder":
         return <Code {...iconProps} />;
       case "Designer":
@@ -196,7 +195,6 @@ const BadgeAwardModal = ({
         return <Network {...iconProps} />;
       case "Documentation Master":
         return <FileText {...iconProps} />;
-      // Creative Thinking
       case "Innovator":
         return <Lightbulb {...iconProps} />;
       case "Problem Solver":
@@ -209,7 +207,6 @@ const BadgeAwardModal = ({
         return <Paintbrush {...iconProps} />;
       case "Outside-the-Box":
         return <PackageOpen {...iconProps} />;
-      // Leadership Qualities
       case "Decision Maker":
         return <Compass {...iconProps} />;
       case "Mentor":
@@ -222,7 +219,6 @@ const BadgeAwardModal = ({
         return <Map {...iconProps} />;
       case "Feedback Provider":
         return <MessageSquare {...iconProps} />;
-      // Personal Attributes
       case "Quick Learner":
         return <Zap {...iconProps} />;
       case "Empathetic":
@@ -230,7 +226,7 @@ const BadgeAwardModal = ({
       case "Persistent":
         return <Mountain {...iconProps} />;
       case "Detail-Oriented":
-        return <Search {...iconProps} />;
+        return <SearchIcon {...iconProps} />;
       case "Adaptable":
         return <Shuffle {...iconProps} />;
       case "Knowledge Sharer":
@@ -294,6 +290,9 @@ const BadgeAwardModal = ({
       setReason("");
       setError(null);
       setSuccess(null);
+      setTagSearchQuery("");
+      setTagSearchResults([]);
+      setShowTagSearch(false);
     }
   }, [isOpen]);
 
@@ -326,7 +325,7 @@ const BadgeAwardModal = ({
   // Handle badge selection
   const handleBadgeSelect = (badge) => {
     if (selectedBadge?.id === badge.id) {
-      setSelectedBadge(null); // Deselect
+      setSelectedBadge(null);
     } else {
       setSelectedBadge(badge);
     }
@@ -339,6 +338,18 @@ const BadgeAwardModal = ({
     } else {
       setExpandedCategory(category);
     }
+  };
+
+  // Handle tag selection from awardee's tags or search
+  const handleTagSelect = (tag) => {
+    if (selectedTag?.id === tag.id) {
+      setSelectedTag(null); // Deselect
+    } else {
+      setSelectedTag(tag);
+    }
+    setShowTagSearch(false);
+    setTagSearchQuery("");
+    setTagSearchResults([]);
   };
 
   // Handle submit
