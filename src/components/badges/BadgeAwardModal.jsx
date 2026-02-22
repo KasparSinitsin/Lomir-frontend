@@ -13,9 +13,6 @@ import {
   Briefcase,
   FolderOpen,
   User,
-  Tag,
-  Search as SearchIcon,
-  X,
   // Badge icons
   Scale,
   MessageCircle,
@@ -56,8 +53,10 @@ import { getUserInitials } from "../../utils/userHelpers";
  *
  * Modal for awarding a badge to a user. Allows selecting a category,
  * then a badge within that category, choosing credit points (1-3),
- * selecting the award context (personal/team/project), optionally
- * linking to a focus area/tag, and adding an optional comment.
+ * selecting the award context (personal/team/project), and adding
+ * an optional comment.
+ *
+ * Visually consistent with TeamInviteModal and BadgeCategoryModal.
  *
  * @param {boolean} isOpen - Whether the modal is open
  * @param {Function} onClose - Callback to close the modal
@@ -130,25 +129,14 @@ const BadgeAwardModal = ({
   // Form state
   const [expandedCategory, setExpandedCategory] = useState(null);
   const [selectedBadge, setSelectedBadge] = useState(null);
-  const [credits, setCredits] = useState(2);
+  const [credits, setCredits] = useState(2); // Default to 2
   const [contextType, setContextType] = useState("personal");
   const [selectedTeamId, setSelectedTeamId] = useState(null);
-  const [selectedTag, setSelectedTag] = useState(null);
   const [reason, setReason] = useState("");
 
   // Shared teams state
   const [sharedTeams, setSharedTeams] = useState([]);
   const [teamsLoading, setTeamsLoading] = useState(false);
-
-  // Tag picker state
-  const [awardeeTags, setAwardeeTags] = useState([]);
-  const [tagsLoading, setTagsLoading] = useState(false);
-  const [tagSearchQuery, setTagSearchQuery] = useState("");
-  const [tagSearchResults, setTagSearchResults] = useState([]);
-  const [tagSearching, setTagSearching] = useState(false);
-  const [showTagSearch, setShowTagSearch] = useState(false);
-  const tagSearchRef = useRef(null);
-  const tagSearchTimerRef = useRef(null);
 
   // Get display name
   const getDisplayName = () => {
@@ -291,27 +279,6 @@ const BadgeAwardModal = ({
     fetchSharedTeams();
   }, [isOpen, awardeeId]);
 
-  // Fetch awardee's tags when modal opens
-  useEffect(() => {
-    const fetchAwardeeTags = async () => {
-      if (!isOpen || !awardeeId) return;
-
-      try {
-        setTagsLoading(true);
-        const response = await userService.getUserTags(awardeeId);
-        const tags = response?.data || [];
-        setAwardeeTags(tags);
-      } catch (err) {
-        console.error("Error fetching awardee tags:", err);
-        setAwardeeTags([]);
-      } finally {
-        setTagsLoading(false);
-      }
-    };
-
-    fetchAwardeeTags();
-  }, [isOpen, awardeeId]);
-
   // Reset form on close
   useEffect(() => {
     if (!isOpen) {
@@ -320,7 +287,6 @@ const BadgeAwardModal = ({
       setCredits(2);
       setContextType("personal");
       setSelectedTeamId(null);
-      setSelectedTag(null);
       setReason("");
       setError(null);
       setSuccess(null);
@@ -336,59 +302,6 @@ const BadgeAwardModal = ({
       setSelectedTeamId(null);
     }
   }, [contextType]);
-
-  // Debounced tag search
-  useEffect(() => {
-    if (tagSearchTimerRef.current) {
-      clearTimeout(tagSearchTimerRef.current);
-    }
-
-    if (!tagSearchQuery.trim() || tagSearchQuery.trim().length < 2) {
-      setTagSearchResults([]);
-      setTagSearching(false);
-      return;
-    }
-
-    setTagSearching(true);
-    tagSearchTimerRef.current = setTimeout(async () => {
-      try {
-        // Exclude already-selected tag and awardee's existing tag IDs from results
-        const excludeIds = awardeeTags.map((t) => t.id);
-        if (selectedTag) excludeIds.push(selectedTag.id);
-
-        const results = await tagService.getSuggestions(
-          tagSearchQuery.trim(),
-          10,
-          excludeIds,
-        );
-        setTagSearchResults(results || []);
-      } catch (err) {
-        console.error("Tag search error:", err);
-        setTagSearchResults([]);
-      } finally {
-        setTagSearching(false);
-      }
-    }, 300);
-
-    return () => {
-      if (tagSearchTimerRef.current) {
-        clearTimeout(tagSearchTimerRef.current);
-      }
-    };
-  }, [tagSearchQuery, awardeeTags, selectedTag]);
-
-  // Close tag search dropdown on outside click
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (tagSearchRef.current && !tagSearchRef.current.contains(e.target)) {
-        setShowTagSearch(false);
-        setTagSearchQuery("");
-        setTagSearchResults([]);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
 
   // Group badges by category
   const badgesByCategory = badges.reduce((acc, badge) => {
@@ -462,7 +375,6 @@ const BadgeAwardModal = ({
         reason: reason.trim() || null,
         contextType: contextType,
         teamId: contextType === "team" ? selectedTeamId : null,
-        tagId: selectedTag?.id || null,
       });
 
       setSuccess(
@@ -606,7 +518,7 @@ const BadgeAwardModal = ({
                           : {}
                       }
                     >
-                      {/* Category header */}
+                      {/* Category header - clickable to expand */}
                       <button
                         onClick={() => handleCategoryToggle(category)}
                         className="w-full flex items-center justify-between p-3 hover:bg-base-200/30 transition-colors"
@@ -642,7 +554,7 @@ const BadgeAwardModal = ({
                         )}
                       </button>
 
-                      {/* Badge list */}
+                      {/* Badge list within category */}
                       {isExpanded && (
                         <div
                           className="px-3 pb-3 grid grid-cols-1 sm:grid-cols-2 gap-2"
@@ -793,7 +705,7 @@ const BadgeAwardModal = ({
               })}
             </div>
 
-            {/* Team dropdown */}
+            {/* Team dropdown - shown when context is "team" */}
             {contextType === "team" && (
               <div className="mt-2">
                 {teamsLoading ? (
@@ -825,126 +737,6 @@ const BadgeAwardModal = ({
                     ))}
                   </select>
                 )}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Focus area / tag selector */}
-        {selectedBadge && !success && (
-          <div>
-            <p className="text-xs text-base-content/60 mb-2 flex items-center">
-              <Tag size={12} className="text-primary mr-1" />
-              Focus area (optional):
-            </p>
-
-            {/* Selected tag display */}
-            {selectedTag && (
-              <div className="flex items-center gap-2 mb-2">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-sm font-medium border border-primary/20">
-                  <Tag size={12} />
-                  {selectedTag.name}
-                  {selectedTag.category && (
-                    <span className="text-xs text-primary/60">
-                      · {selectedTag.category}
-                    </span>
-                  )}
-                  <button
-                    onClick={() => setSelectedTag(null)}
-                    className="ml-1 hover:text-primary/80 transition-colors"
-                  >
-                    <X size={14} />
-                  </button>
-                </span>
-              </div>
-            )}
-
-            {/* Tag pills - awardee's tags */}
-            {!selectedTag && (
-              <div>
-                {tagsLoading ? (
-                  <div className="flex items-center gap-2 text-sm text-base-content/50 py-1">
-                    <div className="loading loading-spinner loading-xs"></div>
-                    Loading tags...
-                  </div>
-                ) : awardeeTags.length > 0 ? (
-                  <div className="flex flex-wrap gap-1.5 mb-2">
-                    {awardeeTags.map((tag) => (
-                      <button
-                        key={tag.id}
-                        onClick={() => handleTagSelect(tag)}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-base-200 hover:bg-base-300 text-base-content/70 hover:text-base-content transition-colors"
-                      >
-                        {tag.name}
-                      </button>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-xs text-base-content/40 mb-2">
-                    {getFirstName()} hasn't added focus areas yet.
-                  </p>
-                )}
-
-                {/* Search for any tag */}
-                <div className="relative" ref={tagSearchRef}>
-                  <button
-                    onClick={() => setShowTagSearch(!showTagSearch)}
-                    className="text-xs text-primary/70 hover:text-primary transition-colors flex items-center gap-1"
-                  >
-                    <SearchIcon size={12} />
-                    {awardeeTags.length > 0
-                      ? "Search for a different tag..."
-                      : "Search for a tag..."}
-                  </button>
-
-                  {showTagSearch && (
-                    <div className="mt-1.5">
-                      <input
-                        type="text"
-                        value={tagSearchQuery}
-                        onChange={(e) => setTagSearchQuery(e.target.value)}
-                        placeholder="Type to search tags..."
-                        className="input input-bordered input-sm w-full text-sm"
-                        autoFocus
-                      />
-
-                      {/* Search results dropdown */}
-                      {(tagSearchResults.length > 0 || tagSearching) && (
-                        <div className="mt-1 bg-base-100 border border-base-300 rounded-lg shadow-lg max-h-40 overflow-y-auto z-10">
-                          {tagSearching ? (
-                            <div className="flex items-center gap-2 text-sm text-base-content/50 p-3">
-                              <div className="loading loading-spinner loading-xs"></div>
-                              Searching...
-                            </div>
-                          ) : (
-                            tagSearchResults.map((tag) => (
-                              <button
-                                key={tag.id}
-                                onClick={() => handleTagSelect(tag)}
-                                className="w-full text-left px-3 py-2 text-sm hover:bg-base-200 transition-colors flex items-center justify-between"
-                              >
-                                <span className="font-medium">{tag.name}</span>
-                                {tag.category && (
-                                  <span className="text-xs text-base-content/40">
-                                    {tag.category}
-                                  </span>
-                                )}
-                              </button>
-                            ))
-                          )}
-                        </div>
-                      )}
-
-                      {tagSearchQuery.trim().length >= 2 &&
-                        !tagSearching &&
-                        tagSearchResults.length === 0 && (
-                          <p className="text-xs text-base-content/40 mt-1 px-1">
-                            No tags found for "{tagSearchQuery}"
-                          </p>
-                        )}
-                    </div>
-                  )}
-                </div>
               </div>
             )}
           </div>
