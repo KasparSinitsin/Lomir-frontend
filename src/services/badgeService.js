@@ -27,9 +27,10 @@ export const badgeService = {
    * @param {number} awardData.badgeId - The badge to award
    * @param {number} awardData.credits - Credit points (1, 2, or 3)
    * @param {string} [awardData.reason] - Optional reason/comment
-   * @param {string} [awardData.contextType] - Optional context type (team, project, profile)
+   * @param {string} [awardData.contextType] - Context type ("personal" | "team" | "project")
    * @param {number} [awardData.contextId] - Optional context ID
-   * @param {number} [awardData.teamId] - Optional team ID
+   * @param {number} [awardData.teamId] - Optional team ID (required when contextType is "team")
+   * @param {number} [awardData.tagId] - Optional tag ID (links award to a focus area)
    * @returns {Promise<object>} { success: true, data: {...award} }
    */
   awardBadge: async (awardData) => {
@@ -38,6 +39,22 @@ export const badgeService = {
       return response.data;
     } catch (error) {
       console.error("Error awarding badge:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get teams shared between the authenticated user and a target user.
+   * Used to populate the team dropdown in the award modal.
+   * @param {number} userId - Target user ID
+   * @returns {Promise<object>} { success: true, data: [...teams] }
+   */
+  getSharedTeams: async (userId) => {
+    try {
+      const response = await api.get(`/api/badges/shared-teams/${userId}`);
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching shared teams:", error);
       throw error;
     }
   },

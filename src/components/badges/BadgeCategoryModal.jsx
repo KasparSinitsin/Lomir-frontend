@@ -35,6 +35,7 @@ import {
   Shuffle,
   Share2,
   Calendar,
+  Tag,
 } from "lucide-react";
 import Modal from "../common/Modal";
 import InlineUserLink from "../users/InlineUserLink";
@@ -384,9 +385,8 @@ const BadgeCategoryModal = ({
                         </p>
                       )}
 
-                      {/* Bottom row: Awarded by (left) + Team name (right) */}
-                      <div className="flex items-center justify-between mt-2">
-                        {/* Awarded by */}
+                      {/* Bottom row: Awarded by + Tag + Team */}
+                      <div className="flex items-center justify-between mt-2 gap-2">
                         <InlineUserLink
                           label="Awarded by"
                           user={{
@@ -399,13 +399,21 @@ const BadgeCategoryModal = ({
                           onOpenUser={onOpenUser}
                         />
 
-                        {/* Team name if present */}
-                        {award.teamName && (
-                          <div className="flex items-center gap-1 text-xs text-base-content/50">
-                            <Users size={12} />
-                            {award.teamName}
-                          </div>
-                        )}
+                        <div className="flex items-center gap-2">
+                          {award.tagName && (
+                            <span className="inline-flex items-center gap-1 text-xs text-base-content/50 bg-base-200/50 px-1.5 py-0.5 rounded-full">
+                              <Tag size={10} />
+                              {award.tagName}
+                            </span>
+                          )}
+
+                          {award.teamName && (
+                            <div className="flex items-center gap-1 text-xs text-base-content/50">
+                              <Users size={12} />
+                              {award.teamName}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   ))}
