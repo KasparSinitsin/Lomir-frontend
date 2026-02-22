@@ -10,6 +10,9 @@ import {
   Heart,
   ChevronDown,
   ChevronUp,
+  Briefcase,
+  FolderOpen,
+  User,
   // Badge icons
   Scale,
   MessageCircle,
@@ -49,7 +52,8 @@ import { getUserInitials } from "../../utils/userHelpers";
  *
  * Modal for awarding a badge to a user. Allows selecting a category,
  * then a badge within that category, choosing credit points (1-3),
- * and adding an optional comment.
+ * selecting the award context (personal/team/project), and adding
+ * an optional comment.
  *
  * Visually consistent with TeamInviteModal and BadgeCategoryModal.
  *
@@ -83,6 +87,28 @@ const CATEGORY_PASTELS = {
 
 const DEFAULT_COLOR = "#6B7280";
 
+// Context type options
+const CONTEXT_OPTIONS = [
+  {
+    value: "personal",
+    label: "Personal",
+    icon: User,
+    description: "Personal contribution",
+  },
+  {
+    value: "team",
+    label: "Teamwork",
+    icon: Users,
+    description: "Team contribution",
+  },
+  {
+    value: "project",
+    label: "Project",
+    icon: FolderOpen,
+    description: "Project contribution",
+  },
+];
+
 const BadgeAwardModal = ({
   isOpen,
   onClose,
@@ -103,7 +129,13 @@ const BadgeAwardModal = ({
   const [expandedCategory, setExpandedCategory] = useState(null);
   const [selectedBadge, setSelectedBadge] = useState(null);
   const [credits, setCredits] = useState(2); // Default to 2
+  const [contextType, setContextType] = useState("personal");
+  const [selectedTeamId, setSelectedTeamId] = useState(null);
   const [reason, setReason] = useState("");
+
+  // Shared teams state
+  const [sharedTeams, setSharedTeams] = useState([]);
+  const [teamsLoading, setTeamsLoading] = useState(false);
 
   // Get display name
   const getDisplayName = () => {
@@ -231,17 +263,46 @@ const BadgeAwardModal = ({
     fetchBadges();
   }, [isOpen]);
 
+  // Fetch shared teams when modal opens
+  useEffect(() => {
+    const fetchSharedTeams = async () => {
+      if (!isOpen || !awardeeId) return;
+
+      try {
+        setTeamsLoading(true);
+        const response = await badgeService.getSharedTeams(awardeeId);
+        setSharedTeams(response?.data || []);
+      } catch (err) {
+        console.error("Error fetching shared teams:", err);
+        setSharedTeams([]);
+      } finally {
+        setTeamsLoading(false);
+      }
+    };
+
+    fetchSharedTeams();
+  }, [isOpen, awardeeId]);
+
   // Reset form on close
   useEffect(() => {
     if (!isOpen) {
       setExpandedCategory(null);
       setSelectedBadge(null);
       setCredits(2);
+      setContextType("personal");
+      setSelectedTeamId(null);
       setReason("");
       setError(null);
       setSuccess(null);
     }
   }, [isOpen]);
+
+  // Reset team selection when switching away from "team" context
+  useEffect(() => {
+    if (contextType !== "team") {
+      setSelectedTeamId(null);
+    }
+  }, [contextType]);
 
   // Group badges by category
   const badgesByCategory = badges.reduce((acc, badge) => {
@@ -287,6 +348,11 @@ const BadgeAwardModal = ({
       return;
     }
 
+    if (contextType === "team" && !selectedTeamId) {
+      setError("Please select a team for the teamwork context");
+      return;
+    }
+
     try {
       setSending(true);
       setError(null);
@@ -296,7 +362,8 @@ const BadgeAwardModal = ({
         badgeId: selectedBadge.id,
         credits: credits,
         reason: reason.trim() || null,
-        contextType: "profile",
+        contextType: contextType,
+        teamId: contextType === "team" ? selectedTeamId : null,
       });
 
       setSuccess(
@@ -356,198 +423,198 @@ const BadgeAwardModal = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={customHeader}
-      footer={footer}
-      position="center"
-      size="default"
-      maxHeight="max-h-[90vh]"
-      closeOnBackdrop={!sending}
-      closeOnEscape={!sending}
+      customHeader={customHeader}
+      footer={!success ? footer : undefined}
+      size="md"
     >
       <div className="space-y-4">
-        {/* Alerts */}
-        {error && (
-          <Alert type="error" message={error} onClose={() => setError(null)} />
+        {/* Success message */}
+        {success && (
+          <Alert type="success" className="text-center">
+            {success}
+          </Alert>
         )}
-        {success && <Alert type="success" message={success} />}
+
+        {/* Error message */}
+        {error && <Alert type="error">{error}</Alert>}
 
         {/* Awardee info */}
-        <div className="flex items-center gap-3 mb-1">
-          {/* Avatar */}
-          <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0">
-            <div
-              className="w-full h-full rounded-full bg-primary/10 items-center justify-center"
-              style={{
-                backgroundImage: awardeeAvatar
-                  ? `url(${awardeeAvatar})`
-                  : "none",
-                backgroundSize: "cover",
-                backgroundPosition: "center",
-                display: awardeeAvatar ? "block" : "flex",
-              }}
-            >
-              {!awardeeAvatar && (
-                <span className="text-sm font-medium flex items-center justify-center w-full h-full">
-                  {getUserInitials({
-                    first_name: awardeeFirstName,
-                    last_name: awardeeLastName,
-                    username: awardeeUsername,
-                  })}
-                </span>
+        {!success && (
+          <div className="flex items-center gap-3 px-3 py-2 bg-base-200/50 rounded-lg">
+            {awardeeAvatar ? (
+              <img
+                src={awardeeAvatar}
+                alt={getDisplayName()}
+                className="w-10 h-10 rounded-full object-cover"
+              />
+            ) : (
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-medium text-sm">
+                {getUserInitials({
+                  first_name: awardeeFirstName,
+                  last_name: awardeeLastName,
+                  username: awardeeUsername,
+                })}
+              </div>
+            )}
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium truncate">{getDisplayName()}</p>
+              {awardeeUsername && (
+                <p className="text-xs text-base-content/60">
+                  @{awardeeUsername}
+                </p>
               )}
             </div>
           </div>
-
-          <div className="flex-1 min-w-0">
-            <h4 className="font-medium text-base-content leading-[120%] mb-[0.2em]">
-              {getDisplayName()}
-            </h4>
-            {awardeeUsername && (
-              <p className="text-sm text-base-content/70">@{awardeeUsername}</p>
-            )}
-          </div>
-        </div>
+        )}
 
         {/* Badge selection */}
-        <div>
-          <p className="text-xs text-base-content/60 mb-2 flex items-center">
-            <Award size={12} className="text-primary mr-1" />
-            Select a badge to award:
-          </p>
+        {!success && (
+          <div>
+            <p className="text-xs text-base-content/60 mb-2 flex items-center">
+              <Award size={12} className="text-primary mr-1" />
+              Select a badge:
+            </p>
 
-          {loading ? (
-            <div className="flex justify-center py-6">
-              <div className="loading loading-spinner loading-md text-primary"></div>
-            </div>
-          ) : sortedCategories.length === 0 ? (
-            <div className="text-center py-6 bg-base-200/30 rounded-lg border border-base-300">
-              <Award className="mx-auto mb-2 text-warning" size={28} />
-              <p className="text-sm text-base-content/70">
-                No badges available.
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-2 max-h-64 overflow-y-auto">
-              {sortedCategories.map((category) => {
-                const color = CATEGORY_COLORS[category] || DEFAULT_COLOR;
-                const pastel = CATEGORY_PASTELS[category] || "#F3F4F6";
-                const isExpanded = expandedCategory === category;
-                const categoryBadges = badgesByCategory[category] || [];
-                const hasSelectedBadge = categoryBadges.some(
-                  (b) => b.id === selectedBadge?.id,
-                );
+            {loading ? (
+              <div className="flex justify-center py-6">
+                <div className="loading loading-spinner loading-md text-primary"></div>
+              </div>
+            ) : sortedCategories.length === 0 ? (
+              <div className="text-center py-6 bg-base-200/30 rounded-lg border border-base-300">
+                <Award className="mx-auto mb-2 text-warning" size={28} />
+                <p className="text-sm text-base-content/70">
+                  No badges available.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {sortedCategories.map((category) => {
+                  const color = CATEGORY_COLORS[category] || DEFAULT_COLOR;
+                  const pastel = CATEGORY_PASTELS[category] || "#F3F4F6";
+                  const isExpanded = expandedCategory === category;
+                  const categoryBadges = badgesByCategory[category] || [];
+                  const hasSelectedBadge = categoryBadges.some(
+                    (b) => b.id === selectedBadge?.id,
+                  );
 
-                return (
-                  <div
-                    key={category}
-                    className="rounded-xl overflow-hidden border border-base-200"
-                    style={
-                      hasSelectedBadge
-                        ? { borderColor: color, borderWidth: 2 }
-                        : {}
-                    }
-                  >
-                    {/* Category header - clickable to expand */}
-                    <button
-                      onClick={() => handleCategoryToggle(category)}
-                      className="w-full flex items-center justify-between p-3 hover:bg-base-200/30 transition-colors"
-                      style={isExpanded ? { backgroundColor: pastel } : {}}
+                  return (
+                    <div
+                      key={category}
+                      className="rounded-xl overflow-hidden border border-base-200"
+                      style={
+                        hasSelectedBadge
+                          ? { borderColor: color, borderWidth: 2 }
+                          : {}
+                      }
                     >
-                      <div className="flex items-center gap-2">
-                        {getCategoryIcon(category)}
-                        <span className="font-medium text-sm" style={{ color }}>
-                          {category}
-                        </span>
-                        {hasSelectedBadge && !isExpanded && (
-                          <span
-                            className="text-xs px-2 py-0.5 rounded-full text-white"
-                            style={{ backgroundColor: color }}
-                          >
-                            {selectedBadge.name}
-                          </span>
-                        )}
-                      </div>
-                      {isExpanded ? (
-                        <ChevronUp size={16} className="text-base-content/50" />
-                      ) : (
-                        <ChevronDown
-                          size={16}
-                          className="text-base-content/50"
-                        />
-                      )}
-                    </button>
-
-                    {/* Badge list within category */}
-                    {isExpanded && (
-                      <div
-                        className="px-3 pb-3 grid grid-cols-1 sm:grid-cols-2 gap-2"
-                        style={{ backgroundColor: pastel }}
+                      {/* Category header - clickable to expand */}
+                      <button
+                        onClick={() => handleCategoryToggle(category)}
+                        className="w-full flex items-center justify-between p-3 hover:bg-base-200/30 transition-colors"
+                        style={isExpanded ? { backgroundColor: pastel } : {}}
                       >
-                        {categoryBadges.map((badge) => {
-                          const isSelected = selectedBadge?.id === badge.id;
-
-                          return (
-                            <button
-                              key={badge.id}
-                              onClick={() => handleBadgeSelect(badge)}
-                              className={`flex items-center gap-2 p-2.5 rounded-lg text-left transition-all duration-200 ${
-                                isSelected
-                                  ? "bg-white shadow-md ring-2"
-                                  : "bg-white/60 hover:bg-white/80"
-                              }`}
-                              style={
-                                isSelected ? { ringColor: color } : undefined
-                              }
+                        <div className="flex items-center gap-2">
+                          {getCategoryIcon(category)}
+                          <span
+                            className="font-medium text-sm"
+                            style={{ color }}
+                          >
+                            {category}
+                          </span>
+                          {hasSelectedBadge && !isExpanded && (
+                            <span
+                              className="text-xs px-2 py-0.5 rounded-full text-white"
+                              style={{ backgroundColor: color }}
                             >
-                              <span style={{ color }}>
-                                {getBadgeIcon(badge.name)}
-                              </span>
-                              <div className="min-w-0 flex-1">
-                                <p
-                                  className="text-sm font-medium truncate"
-                                  style={isSelected ? { color } : {}}
-                                >
-                                  {badge.name}
-                                </p>
-                                <p className="text-xs text-base-content/60 line-clamp-1">
-                                  {badge.description}
-                                </p>
-                              </div>
-                              {isSelected && (
-                                <span
-                                  className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0"
-                                  style={{ backgroundColor: color }}
-                                >
-                                  <svg
-                                    width="12"
-                                    height="12"
-                                    viewBox="0 0 12 12"
-                                    fill="none"
-                                  >
-                                    <path
-                                      d="M2 6L5 9L10 3"
-                                      stroke="white"
-                                      strokeWidth="2"
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                    />
-                                  </svg>
+                              {selectedBadge.name}
+                            </span>
+                          )}
+                        </div>
+                        {isExpanded ? (
+                          <ChevronUp
+                            size={16}
+                            className="text-base-content/50"
+                          />
+                        ) : (
+                          <ChevronDown
+                            size={16}
+                            className="text-base-content/50"
+                          />
+                        )}
+                      </button>
+
+                      {/* Badge list within category */}
+                      {isExpanded && (
+                        <div
+                          className="px-3 pb-3 grid grid-cols-1 sm:grid-cols-2 gap-2"
+                          style={{ backgroundColor: pastel }}
+                        >
+                          {categoryBadges.map((badge) => {
+                            const isSelected = selectedBadge?.id === badge.id;
+
+                            return (
+                              <button
+                                key={badge.id}
+                                onClick={() => handleBadgeSelect(badge)}
+                                className={`flex items-center gap-2 p-2.5 rounded-lg text-left transition-all duration-200 ${
+                                  isSelected
+                                    ? "bg-white shadow-md ring-2"
+                                    : "bg-white/60 hover:bg-white/80"
+                                }`}
+                                style={
+                                  isSelected ? { ringColor: color } : undefined
+                                }
+                              >
+                                <span style={{ color }}>
+                                  {getBadgeIcon(badge.name)}
                                 </span>
-                              )}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
+                                <div className="min-w-0 flex-1">
+                                  <p
+                                    className="text-sm font-medium truncate"
+                                    style={isSelected ? { color } : {}}
+                                  >
+                                    {badge.name}
+                                  </p>
+                                  <p className="text-xs text-base-content/60 line-clamp-1">
+                                    {badge.description}
+                                  </p>
+                                </div>
+                                {isSelected && (
+                                  <span
+                                    className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0"
+                                    style={{ backgroundColor: color }}
+                                  >
+                                    <svg
+                                      width="12"
+                                      height="12"
+                                      viewBox="0 0 12 12"
+                                      fill="none"
+                                    >
+                                      <path
+                                        d="M2 6L5 9L10 3"
+                                        stroke="white"
+                                        strokeWidth="2"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                      />
+                                    </svg>
+                                  </span>
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Credit points selection */}
-        {selectedBadge && (
+        {selectedBadge && !success && (
           <div>
             <p className="text-xs text-base-content/60 mb-2 flex items-center">
               <Star size={12} className="text-primary mr-1" />
@@ -579,11 +646,7 @@ const BadgeAwardModal = ({
                   >
                     <span className="text-lg">{value}</span>
                     <span className="text-xs block mt-0.5">
-                      {value === 1
-                        ? "credit"
-                        : value === 2
-                          ? "credits"
-                          : "credits"}
+                      {value === 1 ? "credit" : "credits"}
                     </span>
                   </button>
                 );
@@ -592,8 +655,84 @@ const BadgeAwardModal = ({
           </div>
         )}
 
+        {/* Context type selection */}
+        {selectedBadge && !success && (
+          <div>
+            <p className="text-xs text-base-content/60 mb-2 flex items-center">
+              <Briefcase size={12} className="text-primary mr-1" />
+              What is this for?
+            </p>
+            <div className="flex gap-2">
+              {CONTEXT_OPTIONS.map((option) => {
+                const isSelected = contextType === option.value;
+                const IconComponent = option.icon;
+                const isDisabled =
+                  option.value === "team" && sharedTeams.length === 0;
+
+                return (
+                  <button
+                    key={option.value}
+                    onClick={() => !isDisabled && setContextType(option.value)}
+                    disabled={isDisabled}
+                    className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 px-2 rounded-xl text-sm font-medium transition-all duration-200 border-2 ${
+                      isSelected
+                        ? "bg-primary/10 border-primary text-primary"
+                        : isDisabled
+                          ? "bg-base-100 text-base-content/30 border-base-200 cursor-not-allowed"
+                          : "bg-base-100 text-base-content/70 border-base-200 hover:border-base-300"
+                    }`}
+                    title={
+                      isDisabled
+                        ? "No shared teams with this user"
+                        : option.description
+                    }
+                  >
+                    <IconComponent size={14} />
+                    <span>{option.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Team dropdown - shown when context is "team" */}
+            {contextType === "team" && (
+              <div className="mt-2">
+                {teamsLoading ? (
+                  <div className="flex items-center gap-2 text-sm text-base-content/50 py-2">
+                    <div className="loading loading-spinner loading-xs"></div>
+                    Loading teams...
+                  </div>
+                ) : sharedTeams.length === 0 ? (
+                  <p className="text-xs text-base-content/50 py-1">
+                    No shared teams found.
+                  </p>
+                ) : (
+                  <select
+                    value={selectedTeamId || ""}
+                    onChange={(e) =>
+                      setSelectedTeamId(
+                        e.target.value ? parseInt(e.target.value) : null,
+                      )
+                    }
+                    className="select select-bordered select-sm w-full text-sm"
+                  >
+                    <option value="">Select a team...</option>
+                    {sharedTeams.map((team) => (
+                      <option key={team.id} value={team.id}>
+                        {team.name}
+                        {team.city ? ` (${team.city})` : ""}
+                        {team.is_remote ? " (Remote)" : ""}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Reason / comment */}
-        {selectedBadge && (
+        {selectedBadge && !success && (
           <div>
             <p className="text-xs text-base-content/60 mb-1 flex items-center">
               <MessageCircle size={12} className="text-info mr-1" />

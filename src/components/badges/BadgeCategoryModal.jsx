@@ -161,9 +161,11 @@ const BadgeCategoryModal = ({
 
   // Human-readable labels for award contexts
   const CONTEXT_LABELS = {
-    profile: "Personal contribution",
+    personal: "Personal contribution",
     team: "Team contribution",
     project: "Project contribution",
+    // Legacy values (for any old data)
+    profile: "Personal contribution",
     chat: "Conversation contribution",
   };
 
