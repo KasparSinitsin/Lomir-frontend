@@ -29,6 +29,7 @@ import TagInput from "../components/tags/TagInput";
 import BadgeCategoryCard from "../components/badges/BadgeCategoryCard";
 import BadgeCategoryModal from "../components/badges/BadgeCategoryModal";
 import TagsDisplaySection from "../components/tags/TagsDisplaySection";
+import TagAwardsModal from "../components/badges/TagAwardsModal";
 import LocationDisplay from "../components/common/LocationDisplay";
 import { geocodingService } from "../services/geocodingService";
 import { useLocationAutoFill } from "../hooks/useLocationAutoFill";
@@ -64,6 +65,15 @@ const Profile = () => {
   });
   const [detailedBadgeAwards, setDetailedBadgeAwards] = useState([]);
   const [badgeModalLoading, setBadgeModalLoading] = useState(false);
+
+  const [tagAwardsModal, setTagAwardsModal] = useState({
+    isOpen: false,
+    tagName: null,
+    dominantBadgeCategory: null,
+    totalCredits: 0,
+  });
+  const [tagAwards, setTagAwards] = useState([]);
+  const [tagAwardsLoading, setTagAwardsLoading] = useState(false);
 
   // Add form errors state
   const [formErrors, setFormErrors] = useState({});
@@ -308,6 +318,47 @@ const Profile = () => {
 
   const handleSelectedTagsChange = (newTags) => {
     setSelectedTags(newTags);
+  };
+
+  const handleTagClick = async (tag) => {
+    const profileUserId = localUser?.id ?? user?.id;
+    if (!profileUserId) return;
+
+    setTagAwardsModal({
+      isOpen: true,
+      tagName: tag.name,
+      dominantBadgeCategory: tag.dominantBadgeCategory,
+      totalCredits: tag.badgeCredits,
+    });
+    setTagAwardsLoading(true);
+
+    try {
+      const response = await userService.getUserBadges(profileUserId);
+      const payload = response?.data || response;
+      const rows = Array.isArray(payload) ? payload : payload?.data || [];
+
+      const filtered = rows.filter((award) => {
+        const awardTagName = award.tagName ?? award.tag_name;
+        return awardTagName === tag.name;
+      });
+
+      setTagAwards(filtered);
+    } catch (error) {
+      console.error("Error fetching tag awards:", error);
+      setTagAwards([]);
+    } finally {
+      setTagAwardsLoading(false);
+    }
+  };
+
+  const closeTagAwardsModal = () => {
+    setTagAwardsModal({
+      isOpen: false,
+      tagName: null,
+      dominantBadgeCategory: null,
+      totalCredits: 0,
+    });
+    setTagAwards([]);
   };
 
   const handleBadgeCategoryClick = async (
@@ -1106,6 +1157,7 @@ const Profile = () => {
                           }
                           allTags={tags}
                           emptyMessage="No focus areas added yet."
+                          onTagClick={handleTagClick}
                         />
                       </div>
                       <div ref={badgesSectionRef}>
@@ -1173,6 +1225,7 @@ const Profile = () => {
                           }
                           allTags={tags}
                           emptyMessage="No focus areas added yet."
+                          onTagClick={handleTagClick}
                         />
                       </div>
                       <div>
@@ -1229,6 +1282,16 @@ const Profile = () => {
         detailedAwards={detailedBadgeAwards}
         totalCredits={badgeCategoryModal.totalCredits}
         loading={badgeModalLoading}
+      />
+
+      <TagAwardsModal
+        isOpen={tagAwardsModal.isOpen}
+        onClose={closeTagAwardsModal}
+        tagName={tagAwardsModal.tagName}
+        dominantBadgeCategory={tagAwardsModal.dominantBadgeCategory}
+        totalCredits={tagAwardsModal.totalCredits}
+        awards={tagAwards}
+        loading={tagAwardsLoading}
       />
     </div>
   );
