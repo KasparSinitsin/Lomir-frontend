@@ -39,6 +39,8 @@ const UserDetailsModal = ({
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(mode === "edit");
 
+  const [userTags, setUserTags] = useState([]);
+
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -87,6 +89,15 @@ const UserDetailsModal = ({
           : (payload?.data?.data ?? payload?.data ?? payload);
 
       setUser(userData);
+
+      // Fetch full tag objects (with badge_credits)
+      try {
+        const tagsResponse = await userService.getUserTags(userId);
+        setUserTags(tagsResponse?.data || []);
+      } catch (tagErr) {
+        console.error("Error fetching user tags:", tagErr);
+        setUserTags([]);
+      }
 
       setFormData({
         firstName: userData?.first_name || userData?.firstName || "",
@@ -384,7 +395,7 @@ const UserDetailsModal = ({
             {/* Focus Areas */}
             <TagsDisplaySection
               title={UI_TEXT.focusAreas.title}
-              tags={user?.tags}
+              tags={userTags.length > 0 ? userTags : user?.tags}
               emptyMessage={UI_TEXT.focusAreas.empty}
             />
 

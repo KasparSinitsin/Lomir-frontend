@@ -4,6 +4,15 @@ import Button from "../common/Button";
 import TagInput from "./TagInput";
 import { UI_TEXT } from "../../constants/uiText";
 
+// Badge category colors (matching BadgeCategoryCard)
+const CATEGORY_COLORS = {
+  "Collaboration Skills": "#3B82F6",
+  "Technical Expertise": "#10B981",
+  "Creative Thinking": "#8B5CF6",
+  "Leadership Qualities": "#EF4444",
+  "Personal Attributes": "#F59E0B",
+};
+
 /**
  * Unified TagsDisplaySection Component
  *
@@ -86,6 +95,9 @@ const TagsDisplaySection = ({
         return tags.map((tag) => ({
           key: tag.id || tag.tag_id || tag.tagId,
           name: tag.name,
+          badgeCredits: tag.badge_credits || tag.badgeCredits || 0,
+          dominantBadgeCategory:
+            tag.dominant_badge_category || tag.dominantBadgeCategory || null,
         }));
       }
 
@@ -229,14 +241,35 @@ const TagsDisplaySection = ({
       {/* Tags display */}
       <div className="flex flex-wrap gap-2">
         {displayTags.length > 0 ? (
-          displayTags.map((tag) => (
-            <span
-              key={tag.key}
-              className="badge badge-primary badge-outline p-3"
-            >
-              {tag.name}
-            </span>
-          ))
+          displayTags.map((tag) => {
+            const categoryColor = tag.dominantBadgeCategory
+              ? CATEGORY_COLORS[tag.dominantBadgeCategory] || null
+              : null;
+
+            return (
+              <span
+                key={tag.key}
+                className={`badge badge-outline p-3 ${!categoryColor ? "badge-primary" : ""}`}
+                style={
+                  categoryColor
+                    ? { borderColor: categoryColor, color: categoryColor }
+                    : {}
+                }
+                title={
+                  tag.dominantBadgeCategory
+                    ? `${tag.dominantBadgeCategory} · ${tag.badgeCredits} credits`
+                    : tag.name
+                }
+              >
+                {tag.name}
+                {tag.badgeCredits > 0 && (
+                  <span className="ml-1 opacity-70">
+                    | {tag.badgeCredits}ct.
+                  </span>
+                )}
+              </span>
+            );
+          })
         ) : (
           <p className="text-sm text-base-content/60">{emptyMessage}</p>
         )}
