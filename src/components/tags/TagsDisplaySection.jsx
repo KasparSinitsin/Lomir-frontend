@@ -34,6 +34,7 @@ const TagsDisplaySection = ({
   allTags = [],
   canEdit = false,
   onSave,
+  onTagClick,
   emptyMessage = UI_TEXT.focusAreas.empty,
   placeholder = UI_TEXT.focusAreas.placeholder,
   className = "",
@@ -249,7 +250,7 @@ const TagsDisplaySection = ({
             return (
               <span
                 key={tag.key}
-                className={`badge badge-outline p-3 ${!categoryColor ? "badge-primary" : ""}`}
+                className={`badge badge-outline p-3 ${!categoryColor ? "badge-primary" : ""} ${tag.badgeCredits > 0 && onTagClick ? "cursor-pointer hover:shadow-md transition-shadow" : ""}`}
                 style={
                   categoryColor
                     ? { borderColor: categoryColor, color: categoryColor }
@@ -257,9 +258,14 @@ const TagsDisplaySection = ({
                 }
                 title={
                   tag.dominantBadgeCategory
-                    ? `${tag.dominantBadgeCategory} · ${tag.badgeCredits} credits`
+                    ? `${tag.dominantBadgeCategory} · ${tag.badgeCredits} credits · Click to view awards`
                     : tag.name
                 }
+                onClick={() => {
+                  if (tag.badgeCredits > 0 && onTagClick) {
+                    onTagClick(tag);
+                  }
+                }}
               >
                 {tag.name}
                 {tag.badgeCredits > 0 && (

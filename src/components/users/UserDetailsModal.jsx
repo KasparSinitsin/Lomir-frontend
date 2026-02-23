@@ -6,6 +6,7 @@ import LocationSection from "../common/LocationSection";
 import TagsDisplaySection from "../tags/TagsDisplaySection";
 import BadgesDisplaySection from "../badges/BadgesDisplaySection";
 import BadgeCategoryModal from "../badges/BadgeCategoryModal";
+import TagAwardsModal from "../badges/TagAwardsModal";
 import UserProfileHeaderSection from "./UserProfileHeaderSection";
 import { messageService } from "../../services/messageService";
 import { userService } from "../../services/userService";
@@ -64,6 +65,16 @@ const UserDetailsModal = ({
   const [badgeModalLoading, setBadgeModalLoading] = useState(false);
   // ========= Badge Award Modal state =========
   const [isBadgeAwardModalOpen, setIsBadgeAwardModalOpen] = useState(false);
+
+  // ========= Tag Awards Modal state =========
+  const [tagAwardsModal, setTagAwardsModal] = useState({
+    isOpen: false,
+    tagName: null,
+    dominantBadgeCategory: null,
+    totalCredits: 0,
+  });
+  const [tagAwards, setTagAwards] = useState([]);
+  const [tagAwardsLoading, setTagAwardsLoading] = useState(false);
   // ============================================
   // ==============================================
 
@@ -216,6 +227,57 @@ const UserDetailsModal = ({
     } finally {
       setBadgeModalLoading(false);
     }
+  };
+
+  // Handler for clicking a credited tag
+  const handleTagClick = async (tag) => {
+    setTagAwardsModal({
+      isOpen: true,
+      tagName: tag.name,
+      dominantBadgeCategory: tag.dominantBadgeCategory,
+      totalCredits: tag.badgeCredits,
+    });
+    setTagAwardsLoading(true);
+
+    try {
+      const response = await userService.getUserBadges(userId);
+      const payload =
+        response?.success !== undefined
+          ? response
+          : response?.data?.success !== undefined
+            ? response.data
+            : (response?.data ?? response);
+
+      const rows = Array.isArray(payload)
+        ? payload
+        : Array.isArray(payload?.data)
+          ? payload.data
+          : [];
+
+      // Filter awards linked to this tag
+      const tagId = tag.key; // tag.key is the tag ID from getDisplayTags
+      const filtered = rows.filter((award) => {
+        const awardTagName = award.tagName ?? award.tag_name;
+        return awardTagName === tag.name;
+      });
+
+      setTagAwards(filtered);
+    } catch (error) {
+      console.error("Error fetching tag awards:", error);
+      setTagAwards([]);
+    } finally {
+      setTagAwardsLoading(false);
+    }
+  };
+
+  const closeTagAwardsModal = () => {
+    setTagAwardsModal({
+      isOpen: false,
+      tagName: null,
+      dominantBadgeCategory: null,
+      totalCredits: 0,
+    });
+    setTagAwards([]);
   };
 
   // Handler for clicking on individual badge pills
@@ -397,6 +459,7 @@ const UserDetailsModal = ({
               title={UI_TEXT.focusAreas.title}
               tags={userTags.length > 0 ? userTags : user?.tags}
               emptyMessage={UI_TEXT.focusAreas.empty}
+              onTagClick={handleTagClick}
             />
 
             {/* Badges */}
@@ -459,6 +522,18 @@ const UserDetailsModal = ({
         totalCredits={badgeCategoryModal.totalCredits}
         loading={badgeModalLoading}
         focusedBadgeName={badgeCategoryModal.focusedBadgeName}
+        onOpenUser={onOpenUser}
+      />
+
+      {/* Tag Awards Modal */}
+      <TagAwardsModal
+        isOpen={tagAwardsModal.isOpen}
+        onClose={closeTagAwardsModal}
+        tagName={tagAwardsModal.tagName}
+        dominantBadgeCategory={tagAwardsModal.dominantBadgeCategory}
+        totalCredits={tagAwardsModal.totalCredits}
+        awards={tagAwards}
+        loading={tagAwardsLoading}
         onOpenUser={onOpenUser}
       />
 
