@@ -46,6 +46,7 @@ const Profile = () => {
   // badges come from GET /api/users/:id as totals in user.badges
   const [isEditing, setIsEditing] = useState(false);
   const [selectedTags, setSelectedTags] = useState([]);
+  const [userTagObjects, setUserTagObjects] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
@@ -242,7 +243,9 @@ const Profile = () => {
       if (user) {
         try {
           const userTagsResponse = await userService.getUserTags(user.id);
-          setSelectedTags(userTagsResponse.data.map((tag) => tag.id));
+          const tagData = userTagsResponse.data || [];
+          setSelectedTags(tagData.map((tag) => tag.id));
+          setUserTagObjects(tagData);
         } catch (error) {
           console.error("Error fetching user tags:", error);
         }
@@ -1096,7 +1099,11 @@ const Profile = () => {
                       <div>
                         <TagsDisplaySection
                           title="Focus Areas"
-                          tags={selectedTags}
+                          tags={
+                            userTagObjects.length > 0
+                              ? userTagObjects
+                              : selectedTags
+                          }
                           allTags={tags}
                           emptyMessage="No focus areas added yet."
                         />
@@ -1159,7 +1166,11 @@ const Profile = () => {
                       <div>
                         <TagsDisplaySection
                           title="Focus Areas"
-                          tags={selectedTags}
+                          tags={
+                            userTagObjects.length > 0
+                              ? userTagObjects
+                              : selectedTags
+                          }
                           allTags={tags}
                           emptyMessage="No focus areas added yet."
                         />
