@@ -7,6 +7,7 @@ import {
   Compass,
   Heart,
 } from "lucide-react";
+import Tooltip from "../common/Tooltip";
 
 /**
  * BadgesDisplaySection Component
@@ -226,21 +227,38 @@ const BadgesDisplaySection = ({
           const categoryColor = getCategoryColor(category);
 
           return (
-            <div
-              key={category}
-              className="flex items-center gap-1.5"
-              title={category}
-            >
+            <div key={category} className="flex items-center gap-1.5">
               {/* Category Icon - clickable if onCategoryClick provided */}
-              <span
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleCategoryClick(category, categoryBadges);
-                }}
-                className={onCategoryClick ? "cursor-pointer" : ""}
-              >
-                {getCategoryIcon(category, 14)}
-              </span>
+              {(() => {
+                const catTotalCredits = getCategoryTotalCredits(categoryBadges);
+                const catAwardCount = categoryBadges.reduce(
+                  (sum, b) => sum + Number(b.award_count ?? b.awardCount ?? 0),
+                  0,
+                );
+                const catAwarderCount = Number(
+                  categoryBadges[0]?.category_awarder_count ??
+                    categoryBadges[0]?.categoryAwarderCount ??
+                    0,
+                );
+                const catTooltip =
+                  catAwardCount > 0
+                    ? `${category}: ${catTotalCredits}ct. awarded with ${catAwardCount} badge${catAwardCount === 1 ? "" : "s"} by ${catAwarderCount} ${catAwarderCount === 1 ? "person" : "people"}`
+                    : category;
+
+                return (
+                  <Tooltip content={catTooltip}>
+                    <span
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleCategoryClick(category, categoryBadges);
+                      }}
+                      className={onCategoryClick ? "cursor-pointer" : ""}
+                    >
+                      {getCategoryIcon(category, 14)}
+                    </span>
+                  </Tooltip>
+                );
+              })()}
 
               {/* Badge pills for this category */}
               <div className="flex flex-wrap gap-1.5">
@@ -248,26 +266,40 @@ const BadgesDisplaySection = ({
                 {categoryBadges.map((badge) => {
                   const credits = getCredits(badge);
                   const isClickable = !!onBadgeClick;
+                  const awardCount = Number(
+                    badge.award_count ?? badge.awardCount ?? 0,
+                  );
+                  const awarderCount = Number(
+                    badge.awarder_count ?? badge.awarderCount ?? 0,
+                  );
+                  const badgeTooltip =
+                    awardCount > 0
+                      ? `${badge.name}: ${credits || 0}ct. awarded ${awardCount} time${awardCount === 1 ? "" : "s"} by ${awarderCount} ${awarderCount === 1 ? "person" : "people"}`
+                      : badge.description || category;
+
                   return (
-                    <span
+                    <Tooltip
                       key={badge.id ?? badge.badge_id ?? badge.name}
-                      className={`badge badge-outline p-3 ${isClickable ? "cursor-pointer hover:opacity-80 transition-opacity" : ""}`}
-                      style={{
-                        borderColor: categoryColor,
-                        color: categoryColor,
-                      }}
-                      title={badge.description || category}
-                      onClick={
-                        isClickable
-                          ? (e) => {
-                              e.stopPropagation();
-                              onBadgeClick(badge, category, categoryColor);
-                            }
-                          : undefined
-                      }
+                      content={badgeTooltip}
                     >
-                      {badge.name}
-                    </span>
+                      <span
+                        className={`badge badge-outline p-3 ${isClickable ? "cursor-pointer hover:shadow-md transition-shadow" : ""}`}
+                        style={{
+                          borderColor: categoryColor,
+                          color: categoryColor,
+                        }}
+                        onClick={
+                          isClickable
+                            ? (e) => {
+                                e.stopPropagation();
+                                onBadgeClick(badge, category, categoryColor);
+                              }
+                            : undefined
+                        }
+                      >
+                        {badge.name}
+                      </span>
+                    </Tooltip>
                   );
                 })}
               </div>
