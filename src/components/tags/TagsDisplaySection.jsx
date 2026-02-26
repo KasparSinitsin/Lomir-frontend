@@ -16,6 +16,7 @@ import {
   Plane,
   Layers,
 } from "lucide-react";
+import Tooltip from "../common/Tooltip";
 import Button from "../common/Button";
 import TagInput from "./TagInput";
 import { UI_TEXT } from "../../constants/uiText";
@@ -162,6 +163,8 @@ const TagsDisplaySection = ({
             tag.dominant_badge_category || tag.dominantBadgeCategory || null,
           supercategory: tag.supercategory || null,
           category: tag.category || null,
+          linkedBadgeCount: tag.linked_badge_count || tag.linkedBadgeCount || 0,
+          awarderCount: tag.awarder_count || tag.awarderCount || 0,
         }));
       }
 
@@ -280,44 +283,61 @@ const TagsDisplaySection = ({
     // Uncredited: base-content (dark green, matches section headers like "Location", "Badges")
     // Credited: primary (light green, matches "User Details" title)
 
+    const tooltipText =
+      tag.badgeCredits > 0
+        ? `${tag.name}: ${tag.badgeCredits}ct. awarded with ${Number(tag.linkedBadgeCount)} badge${Number(tag.linkedBadgeCount) === 1 ? "" : "s"} by ${Number(tag.awarderCount)} ${Number(tag.awarderCount) === 1 ? "person" : "people"}`
+        : tag.name;
+
     return (
-      <span
-        key={tag.key}
-        className={`badge badge-outline p-3 ${isClickable ? "cursor-pointer hover:shadow-md transition-shadow" : ""}`}
-        style={
-          hasBadgeCredits
-            ? { borderColor: "#009213", color: "#009213" }
-            : { borderColor: "#036b0c", color: "#036b0c" }
-        }
-        title={
-          tag.dominantBadgeCategory
-            ? `${tag.dominantBadgeCategory} · ${tag.badgeCredits} credits · Click to view awards`
-            : tag.name
-        }
-        onClick={() => {
-          if (isClickable) onTagClick(tag);
-        }}
-      >
-        {tag.name}
-        {hasBadgeCredits && (
-          <span className="ml-1 opacity-70">| {tag.badgeCredits}ct.</span>
-        )}
-      </span>
+      <Tooltip key={tag.key} content={tooltipText}>
+        <span
+          className={`badge badge-outline p-3 bg-white/60 ${isClickable ? "cursor-pointer hover:shadow-md transition-shadow" : ""}`}
+          style={
+            hasBadgeCredits
+              ? { borderColor: "#009213", color: "#009213" }
+              : { borderColor: "#036b0c", color: "#036b0c" }
+          }
+          onClick={() => {
+            if (isClickable) onTagClick(tag);
+          }}
+        >
+          {tag.name}
+          {hasBadgeCredits && (
+            <span className="ml-1 opacity-70">| {tag.badgeCredits}ct.</span>
+          )}
+        </span>
+      </Tooltip>
     );
   };
 
   /** Render supercategory icons */
-  const renderSupercategoryIcon = (supercategory) => {
+  const renderSupercategoryIcon = (supercategory, groupTags = []) => {
     const IconComponent = SUPERCATEGORY_ICONS[supercategory] || Layers;
 
+    const totalCredits = groupTags.reduce((sum, t) => sum + t.badgeCredits, 0);
+    const totalBadges = groupTags.reduce(
+      (sum, t) => sum + Number(t.linkedBadgeCount || 0),
+      0,
+    );
+    const totalAwarders = groupTags.reduce(
+      (sum, t) => sum + Number(t.awarderCount || 0),
+      0,
+    );
+
+    const tooltip =
+      totalCredits > 0
+        ? `${supercategory}: ${totalCredits}ct. awarded with ${totalBadges} badge${totalBadges === 1 ? "" : "s"} by ${totalAwarders} ${totalAwarders === 1 ? "person" : "people"}`
+        : supercategory;
+
     return (
-      <span
-        className="flex-shrink-0 cursor-default transition-colors"
-        style={{ color: "#036b0c" }}
-        title={supercategory}
-      >
-        <IconComponent size={14} />
-      </span>
+      <Tooltip content={tooltip}>
+        <span
+          className="flex-shrink-0 cursor-default transition-colors"
+          style={{ color: "#036b0c" }}
+        >
+          <IconComponent size={14} />
+        </span>
+      </Tooltip>
     );
   };
 
@@ -415,7 +435,7 @@ const TagsDisplaySection = ({
                 title={supercategory}
               >
                 {/* Supercategory initials avatar */}
-                {renderSupercategoryIcon(supercategory)}
+                {renderSupercategoryIcon(supercategory, groupTags)}
 
                 {/* Tag pills for this supercategory */}
                 <div className="flex flex-wrap gap-1.5">
