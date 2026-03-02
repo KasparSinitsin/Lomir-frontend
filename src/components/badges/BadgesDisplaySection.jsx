@@ -9,6 +9,8 @@ import {
 } from "lucide-react";
 import Tooltip from "../common/Tooltip";
 
+const PILL_ROW_HEIGHT = 26;
+
 /**
  * BadgesDisplaySection Component
  *
@@ -74,13 +76,14 @@ const BadgesDisplaySection = ({
   };
 
   // Get category icon based on category name
-  const getCategoryIcon = (category, size = 14) => {
-    const color = CATEGORY_COLORS[category] || DEFAULT_COLOR;
+  const getCategoryIcon = (category, color, size = 14) => {
     const isClickable = !!onCategoryClick;
     const iconProps = {
       size,
       style: { color },
-      className: `flex-shrink-0 ${isClickable ? "cursor-pointer hover:opacity-70 transition-opacity" : ""}`,
+      className: `flex-shrink-0 ${
+        isClickable ? "cursor-pointer hover:opacity-70 transition-opacity" : ""
+      }`,
     };
     const categoryLower = category?.toLowerCase() || "";
 
@@ -129,7 +132,7 @@ const BadgesDisplaySection = ({
   // Group badges by category
   const normalizeCategory = (c) => (c ? String(c).trim() : "Other");
 
-  const badgesByCategory = visibleBadges.reduce((acc, badge) => {
+  const badgesByCategory = badges.reduce((acc, badge) => {
     const category = normalizeCategory(badge.category);
     if (!acc[category]) {
       acc[category] = [];
@@ -148,15 +151,6 @@ const BadgesDisplaySection = ({
     "Other",
   ];
 
-  // Sort categories by predefined order
-  const sortedCategories = Object.keys(badgesByCategory).sort((a, b) => {
-    const indexA = categoryOrder.indexOf(a);
-    const indexB = categoryOrder.indexOf(b);
-    const posA = indexA === -1 ? 999 : indexA;
-    const posB = indexB === -1 ? 999 : indexB;
-    return posA - posB;
-  });
-
   // Calculate total credits for a category
   const getCategoryTotalCredits = (categoryBadges) => {
     return categoryBadges.reduce((sum, badge) => {
@@ -164,6 +158,20 @@ const BadgesDisplaySection = ({
       return sum + credits;
     }, 0);
   };
+
+  // Credits DESC, predefined order as tiebreaker (matching TagsDisplaySection):
+  const sortedCategories = Object.keys(badgesByCategory).sort((a, b) => {
+    const creditsA = getCategoryTotalCredits(badgesByCategory[a]);
+    const creditsB = getCategoryTotalCredits(badgesByCategory[b]);
+    if (creditsB !== creditsA) return creditsB - creditsA;
+
+    // Tiebreaker: predefined order
+    const indexA = categoryOrder.indexOf(a);
+    const indexB = categoryOrder.indexOf(b);
+    const posA = indexA === -1 ? 999 : indexA;
+    const posB = indexB === -1 ? 999 : indexB;
+    return posA - posB;
+  });
 
   // Handle category icon click
   const handleCategoryClick = (category, categoryBadges) => {
@@ -201,12 +209,6 @@ const BadgesDisplaySection = ({
               </span>
             );
           })}
-
-          {remainingCount > 0 && (
-            <span className="badge badge-ghost badge-sm text-xs">
-              +{remainingCount} more
-            </span>
-          )}
         </div>
       </div>
     );
@@ -227,7 +229,7 @@ const BadgesDisplaySection = ({
           const categoryColor = getCategoryColor(category);
 
           return (
-            <div key={category} className="flex items-center gap-1.5">
+            <div key={category} className="flex items-start">
               {/* Category Icon - clickable if onCategoryClick provided */}
               {(() => {
                 const catTotalCredits = getCategoryTotalCredits(categoryBadges);
@@ -252,9 +254,17 @@ const BadgesDisplaySection = ({
                         e.stopPropagation();
                         handleCategoryClick(category, categoryBadges);
                       }}
-                      className={onCategoryClick ? "cursor-pointer" : ""}
+                      className={`inline-flex items-center justify-center pr-[6px] ${
+                        onCategoryClick
+                          ? "cursor-pointer hover:opacity-70 transition-opacity"
+                          : ""
+                      }`}
+                      style={{
+                        height: PILL_ROW_HEIGHT,
+                        color: categoryColor,
+                      }}
                     >
-                      {getCategoryIcon(category, 14)}
+                      {getCategoryIcon(category, categoryColor, 14)}
                     </span>
                   </Tooltip>
                 );
@@ -298,6 +308,11 @@ const BadgesDisplaySection = ({
                         }
                       >
                         {badge.name}
+                        {credits && showCredits && (
+                          <span className="ml-1 opacity-70">
+                            | {credits}ct.
+                          </span>
+                        )}
                       </span>
                     </Tooltip>
                   );
@@ -306,12 +321,6 @@ const BadgesDisplaySection = ({
             </div>
           );
         })}
-
-        {remainingCount > 0 && (
-          <span className="badge badge-ghost badge-sm text-xs">
-            +{remainingCount} more
-          </span>
-        )}
       </div>
     </div>
   );
