@@ -211,10 +211,48 @@ const BadgeCategoryModal = ({
   // Unique badges in this category
   const badgeCount = Object.keys(awardsByBadge).length;
 
-  // Unique awarding users in this category
-  const awardingUserCount = new Set(
-    detailedAwards.map((award) => award.awardedByUserId).filter(Boolean),
+  // Total awards in this category
+  const totalAwards = detailedAwards.length;
+
+  // Unique awarding users (people)
+  const peopleCount = new Set(
+    detailedAwards.map((a) => a.awardedByUserId).filter(Boolean),
   ).size;
+
+  // Focus areas in this category = distinct tagName that received awards
+  const creditedFocusAreaCount = new Set(
+    detailedAwards.map((a) => a.tagName).filter(Boolean),
+  ).size;
+
+  // Unique teams with awards in this category
+  const teamCount = new Set(
+    detailedAwards.map((a) => a.teamName).filter(Boolean),
+  ).size;
+
+  // Unique projects with awards in this category
+  // If you have a proper project field later (projectId/projectName), swap to that.
+  const projectCount = new Set(
+    detailedAwards
+      .filter((a) => a.contextType === "project")
+      .map(
+        (a) =>
+          a.projectName ||
+          a.projectId ||
+          a.projectTitle ||
+          a.awardId ||
+          a.awardedAt,
+      )
+      .filter(Boolean),
+  ).size;
+
+  // Unique personal contributions in this category
+  const personalCount = detailedAwards.filter(
+    (a) => a.contextType === "personal",
+  ).length;
+
+  // --- If you have a full list of focus areas for the user/category, plug it in here later ---
+  // For now (with only award data), we can display "X focus areas with awards"
+  // (analogous to SupercategoryAwardsModal’s “creditedTagCount of totalTagCount”)
 
   const titleNode = (
     <div className="min-w-0">
@@ -262,6 +300,73 @@ const BadgeCategoryModal = ({
         className={`space-y-4 max-h-[60vh] overflow-y-auto ${focusedBadgeName ? "-mx-6 -mb-6 -mt-6 px-6 pb-6 pt-4" : ""}`}
         style={focusedBadgeName ? { backgroundColor: pastelBg } : {}}
       >
+        {!loading && !focusedBadgeName && totalAwards > 0 && (
+          <div className="flex items-start justify-between px-1 gap-3">
+            {/* left side: responsive stat items */}
+            <div className="flex items-center flex-wrap gap-x-4 gap-y-2 text-sm text-base-content/60 min-w-0">
+              {/* Awards */}
+              <span className="inline-flex items-center gap-1 whitespace-nowrap">
+                <Award size={14} />
+                <span className="font-medium">{totalAwards}</span>
+                <span className="hidden sm:inline">awards</span>
+              </span>
+
+              {/* People */}
+              <span className="inline-flex items-center gap-1 whitespace-nowrap">
+                <Users size={14} />
+                <span className="font-medium">{peopleCount}</span>
+                <span className="hidden sm:inline">
+                  {peopleCount === 1 ? "person" : "people"}
+                </span>
+              </span>
+
+              {/* Focus areas */}
+              <span className="inline-flex items-center gap-1 whitespace-nowrap min-w-0">
+                <Tag size={14} />
+                <span className="font-medium">{creditedFocusAreaCount}</span>
+                <span className="hidden sm:inline">focus areas</span>
+              </span>
+
+              {/* Personal contributions (optional) */}
+              {personalCount > 0 && (
+                <span className="inline-flex items-center gap-1 whitespace-nowrap">
+                  <Heart size={14} />
+                  <span className="font-medium">{personalCount}</span>
+                  <span className="hidden sm:inline">personal</span>
+                </span>
+              )}
+
+              {/* Teams (optional) */}
+              {teamCount > 0 && (
+                <span className="inline-flex items-center gap-1 whitespace-nowrap">
+                  <Users size={14} />
+                  <span className="font-medium">{teamCount}</span>
+                  <span className="hidden sm:inline">teams</span>
+                </span>
+              )}
+
+              {/* Projects (optional) */}
+              {projectCount > 0 && (
+                <span className="inline-flex items-center gap-1 whitespace-nowrap">
+                  <ClipboardList size={14} />
+                  <span className="font-medium">{projectCount}</span>
+                  <span className="hidden sm:inline">projects</span>
+                </span>
+              )}
+            </div>
+
+            {/* right side: credits pill aligned to top of first line */}
+            {Number(totalCredits ?? 0) > 0 && (
+              <span
+                className="px-3 py-1 rounded-full text-sm font-semibold whitespace-nowrap text-white flex-shrink-0 self-start"
+                style={{ backgroundColor: color || "#3B82F6" }}
+              >
+                {Number(totalCredits ?? 0)} ct.
+              </span>
+            )}
+          </div>
+        )}
+
         {loading ? (
           <div className="flex justify-center items-center py-12">
             <div className="loading loading-spinner loading-lg text-primary"></div>
