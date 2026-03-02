@@ -17,6 +17,7 @@ import { useNavigate } from "react-router-dom";
 import { Edit, MessageCircle, UserPlus, Award } from "lucide-react";
 import TeamInviteModal from "../teams/TeamInviteModal";
 import BadgeAwardModal from "../badges/BadgeAwardModal";
+import SupercategoryAwardsModal from "../badges/SupercategoryAwardsModal";
 
 const UserDetailsModal = ({
   isOpen,
@@ -76,7 +77,17 @@ const UserDetailsModal = ({
   const [tagAwards, setTagAwards] = useState([]);
   const [tagAwardsLoading, setTagAwardsLoading] = useState(false);
   // ============================================
-  // ==============================================
+
+  // ========= Supercategory Awards Modal state =========
+  const [supercategoryModal, setSupercategoryModal] = useState({
+    isOpen: false,
+    supercategory: null,
+    tags: [],
+    totalCredits: 0,
+  });
+  const [supercategoryAwards, setSupercategoryAwards] = useState([]);
+  const [supercategoryLoading, setSupercategoryLoading] = useState(false);
+  // =====================================================
 
   // Determine if this modal is showing the current user (more reliable than comparing fetched user)
   const ownProfile =
@@ -280,6 +291,64 @@ const UserDetailsModal = ({
     setTagAwards([]);
   };
 
+  // Handler for clicking a supercategory icon in focus areas
+  const handleSupercategoryClick = async (supercategory, groupTags) => {
+    const totalCredits = groupTags.reduce(
+      (sum, t) => sum + (t.badgeCredits || 0),
+      0,
+    );
+
+    setSupercategoryModal({
+      isOpen: true,
+      supercategory,
+      tags: groupTags,
+      totalCredits,
+    });
+    setSupercategoryLoading(true);
+
+    try {
+      const response = await userService.getUserBadges(userId);
+      const payload =
+        response?.success !== undefined
+          ? response
+          : response?.data?.success !== undefined
+            ? response.data
+            : (response?.data ?? response);
+
+      const rows = Array.isArray(payload)
+        ? payload
+        : Array.isArray(payload?.data)
+          ? payload.data
+          : [];
+
+      // Collect all tag names in this supercategory
+      const tagNames = new Set(groupTags.map((t) => t.name));
+
+      // Filter awards linked to any tag in this supercategory
+      const filtered = rows.filter((award) => {
+        const awardTagName = award.tagName ?? award.tag_name;
+        return awardTagName && tagNames.has(awardTagName);
+      });
+
+      setSupercategoryAwards(filtered);
+    } catch (error) {
+      console.error("Error fetching supercategory awards:", error);
+      setSupercategoryAwards([]);
+    } finally {
+      setSupercategoryLoading(false);
+    }
+  };
+
+  const closeSupercategoryModal = () => {
+    setSupercategoryModal({
+      isOpen: false,
+      supercategory: null,
+      tags: [],
+      totalCredits: 0,
+    });
+    setSupercategoryAwards([]);
+  };
+
   // Handler for clicking on individual badge pills
   const handleBadgeClick = async (badge, category, color) => {
     // Calculate total credits for just this badge
@@ -460,6 +529,7 @@ const UserDetailsModal = ({
               tags={userTags.length > 0 ? userTags : user?.tags}
               emptyMessage={UI_TEXT.focusAreas.empty}
               onTagClick={handleTagClick}
+              onSupercategoryClick={handleSupercategoryClick}
             />
 
             {/* Badges */}
@@ -473,7 +543,7 @@ const UserDetailsModal = ({
               emptyMessage="No badges earned yet"
               maxVisible={8}
               groupByCategory={true}
-              showCredits={false}
+              showCredits={true}
               onCategoryClick={handleBadgeCategoryClick}
               onBadgeClick={handleBadgeClick}
               onOpenUser={onOpenUser}
@@ -534,6 +604,18 @@ const UserDetailsModal = ({
         totalCredits={tagAwardsModal.totalCredits}
         awards={tagAwards}
         loading={tagAwardsLoading}
+        onOpenUser={onOpenUser}
+      />
+
+      {/* Supercategory Awards Modal */}
+      <SupercategoryAwardsModal
+        isOpen={supercategoryModal.isOpen}
+        onClose={closeSupercategoryModal}
+        supercategory={supercategoryModal.supercategory}
+        tags={supercategoryModal.tags}
+        totalCredits={supercategoryModal.totalCredits}
+        awards={supercategoryAwards}
+        loading={supercategoryLoading}
         onOpenUser={onOpenUser}
       />
 

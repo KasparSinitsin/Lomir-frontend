@@ -21,6 +21,8 @@ import Button from "../common/Button";
 import TagInput from "./TagInput";
 import { UI_TEXT } from "../../constants/uiText";
 
+const PILL_ROW_HEIGHT = 26;
+
 // Badge category colors (matching BadgeCategoryCard)
 const CATEGORY_COLORS = {
   "Collaboration Skills": "#3B82F6",
@@ -94,6 +96,7 @@ const TagsDisplaySection = ({
   canEdit = false,
   onSave,
   onTagClick,
+  onSupercategoryClick,
   emptyMessage = UI_TEXT.focusAreas.empty,
   placeholder = UI_TEXT.focusAreas.placeholder,
   className = "",
@@ -329,11 +332,26 @@ const TagsDisplaySection = ({
         ? `${supercategory}: ${totalCredits}ct. awarded with ${totalBadges} badge${totalBadges === 1 ? "" : "s"} by ${totalAwarders} ${totalAwarders === 1 ? "person" : "people"}`
         : supercategory;
 
+    const isClickable = !!onSupercategoryClick;
+
     return (
       <Tooltip content={tooltip}>
         <span
-          className="flex-shrink-0 cursor-default transition-colors"
-          style={{ color: "#036b0c" }}
+          onClick={
+            isClickable
+              ? (e) => {
+                  e.stopPropagation();
+                  onSupercategoryClick(supercategory, groupTags);
+                }
+              : undefined
+          }
+          className={`inline-flex items-center justify-center pr-[6px] flex-shrink-0 transition-opacity ${
+            isClickable ? "cursor-pointer hover:opacity-70" : "cursor-default"
+          }`}
+          style={{
+            height: PILL_ROW_HEIGHT,
+            color: "#036b0c",
+          }}
         >
           <IconComponent size={14} />
         </span>
@@ -348,7 +366,7 @@ const TagsDisplaySection = ({
         {/* Title row with Cancel/Save buttons */}
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center">
-            <Tag size={18} className="mr-2 text-primary flex-shrink-0" />
+            <Tag size={18} />
             <h3 className="font-medium">{title}</h3>
           </div>
           <div className="flex space-x-2">
@@ -431,7 +449,7 @@ const TagsDisplaySection = ({
             {groupedTags.map(([supercategory, groupTags]) => (
               <div
                 key={supercategory}
-                className="flex items-center gap-1.5"
+                className="flex items-start gap-0"
                 title={supercategory}
               >
                 {/* Supercategory initials avatar */}
