@@ -1,23 +1,18 @@
-import React from 'react';
-import ReactDOM from 'react-dom/client';
-import App from './App.jsx';
-import './index.css';
-import { AuthProvider } from './contexts/AuthContext.jsx';
+import React from "react";
+import ReactDOM from "react-dom/client";
+import App from "./App.jsx";
+import "./index.css";
 
 function RootWrapper() {
   React.useEffect(() => {
-    document.documentElement.setAttribute('data-theme', 'lomirlite');
+    document.documentElement.setAttribute("data-theme", "lomirlite");
   }, []);
 
-  return (
-    <AuthProvider>
-      <App />
-    </AuthProvider>
-  );
+  return <App />;
 }
 
-ReactDOM.createRoot(document.getElementById('root')).render(
+ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <RootWrapper />
-  </React.StrictMode>
+  </React.StrictMode>,
 );

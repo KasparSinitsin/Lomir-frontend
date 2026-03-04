@@ -54,6 +54,7 @@ import {
 import Modal from "../common/Modal";
 import InlineUserLink from "../users/InlineUserLink";
 import TeamDetailsModal from "../teams/TeamDetailsModal";
+import AwardCard from "./AwardCard";
 
 // Badge category colors
 const CATEGORY_COLORS = {
@@ -71,6 +72,27 @@ const CATEGORY_PASTELS = {
   "Leadership Qualities": "#FEF2F2", // red-50
   "Personal Attributes": "#FFFBEB", // amber-50
 };
+
+// Slightly stronger pastels for section containers (100 shades)
+const CATEGORY_SECTION_PASTELS = {
+  "Collaboration Skills": "#DBEAFE", // blue-100
+  "Technical Expertise": "#D1FAE5",  // green-100
+  "Creative Thinking": "#EDE9FE",    // violet-100
+  "Leadership Qualities": "#FEE2E2", // red-100
+  "Personal Attributes": "#FEF3C7",  // amber-100
+};
+
+// Lighter pastels for AwardCards (50 shades)
+const CATEGORY_CARD_PASTELS = {
+  "Collaboration Skills": "#EFF6FF", // blue-50
+  "Technical Expertise": "#ECFDF5",  // green-50
+  "Creative Thinking": "#F5F3FF",    // violet-50
+  "Leadership Qualities": "#FEF2F2", // red-50
+  "Personal Attributes": "#FFFBEB",  // amber-50
+};
+
+const DEFAULT_SECTION_PASTEL = "#F3F4F6"; // gray-100
+const DEFAULT_CARD_PASTEL = "#F9FAFB";    // gray-50
 
 const DEFAULT_PASTEL = "#F9FAFB";
 const DEFAULT_COLOR = "#6B7280";
@@ -412,127 +434,24 @@ const SupercategoryAwardsModal = ({
                           const category = award._category || "Other";
                           const catColor =
                             CATEGORY_COLORS[category] || DEFAULT_COLOR;
-
-                          const badgeName =
-                            award.badgeName || award.badge_name || "Badge";
-                          const awardedAt = award.awardedAt || award.awarded_at;
-
-                          const awardedByUserId =
-                            award.awardedByUserId || award.awarded_by_user_id;
-                          const awardedByFirstName =
-                            award.awardedByFirstName ||
-                            award.awarded_by_first_name;
-                          const awardedByLastName =
-                            award.awardedByLastName ||
-                            award.awarded_by_last_name;
-                          const awardedByUsername =
-                            award.awardedByUsername ||
-                            award.awarded_by_username;
-                          const awardedByAvatarUrl =
-                            award.awardedByAvatarUrl ||
-                            award.awarded_by_avatar_url;
-
-                          const teamName = award.teamName || award.team_name;
-                          const teamId = award.teamId || award.team_id;
-
-                          const contextType =
-                            award.contextType || award.context_type;
-                          const { label: contextLabel, Icon: ContextIcon } =
-                            getContextMeta(contextType);
+                          const sectionPastel = CATEGORY_SECTION_PASTELS[category] || DEFAULT_SECTION_PASTEL;
+const cardPastel = CATEGORY_CARD_PASTELS[category] || DEFAULT_CARD_PASTEL;
 
                           return (
-                            <div
-                              key={award.id || `${awardedAt}-${idx}`}
-                              className="rounded-lg p-3 flex flex-col border"
-                              style={{
-                                backgroundColor:
-                                  CATEGORY_PASTELS[category] || DEFAULT_PASTEL,
-                                borderColor: `${catColor}33`,
-                              }}
-                              title={category}
-                            >
-                              {/* Top row */}
-                              <div className="flex items-start justify-between gap-2">
-                                <div className="min-w-0">
-                                  <div className="flex items-center gap-2 min-w-0">
-                                    {getBadgeIcon(badgeName, catColor, 16)}
-                                    <span
-                                      className="font-medium leading-tight truncate"
-                                      style={{ color: catColor }}
-                                    >
-                                      {badgeName}
-                                    </span>
-                                  </div>
-
-                                  {/* Context line — match “Awarded by” sizing/weight (NOT bold) */}
-                                  <div className="flex items-center gap-1 text-xs text-base-content/60 mt-1 min-w-0 leading-tight">
-                                    {contextType === "team" && teamName ? (
-                                      <InlineTeamLink
-                                        teamId={teamId}
-                                        teamName={teamName}
-                                        contextLabel={contextLabel}
-                                        onOpenTeam={(id) =>
-                                          handleOpenTeam(id, teamName)
-                                        }
-                                      />
-                                    ) : (
-                                      <>
-                                        <ContextIcon
-                                          size={12}
-                                          className="flex-shrink-0"
-                                        />
-                                        <span className="truncate">
-                                          {contextLabel}
-                                        </span>
-                                      </>
-                                    )}
-                                  </div>
-                                </div>
-
-                                <span
-                                  className="px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap text-white"
-                                  style={{ backgroundColor: catColor }}
-                                >
-                                  +{award.credits} ct.
-                                </span>
-                              </div>
-
-                              {award.reason && (
-                                <p className="mt-2 text-sm text-base-content/80 italic">
-                                  &ldquo;{award.reason}&rdquo;
-                                </p>
-                              )}
-
-                              {/* Bottom row pinned to bottom */}
-                              <div className="flex items-end justify-between mt-auto pt-3 gap-2">
-                                <InlineUserLink
-                                  label="Awarded by"
-                                  user={{
-                                    id: awardedByUserId,
-                                    first_name: awardedByFirstName,
-                                    last_name: awardedByLastName,
-                                    username: awardedByUsername,
-                                    avatar_url: awardedByAvatarUrl,
-                                  }}
-                                  onOpenUser={onOpenUser}
-                                />
-
-                                <div className="flex items-center gap-1 text-xs text-base-content/60 leading-tight">
-                                  <Calendar
-                                    size={12}
-                                    className="flex-shrink-0"
-                                  />
-                                  <span>
-                                    {awardedAt
-                                      ? format(
-                                          new Date(awardedAt),
-                                          "MMM d, yyyy",
-                                        )
-                                      : "Unknown date"}
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
+                            <AwardCard
+                              key={
+                                award.id ||
+                                `${award.awardedAt || award.awarded_at}-${idx}`
+                              }
+                              award={award}
+                              category={category}
+                              categoryColor={catColor}
+                              categoryPastel={cardPastel}
+                              onOpenUser={onOpenUser}
+                              onOpenTeam={(teamId, teamName) =>
+                                handleOpenTeam(teamId, teamName)
+                              }
+                            />
                           );
                         })}
                       </div>
