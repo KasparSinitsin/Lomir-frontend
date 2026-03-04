@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { format } from "date-fns";
 import {
   Tag,
@@ -39,6 +39,8 @@ import {
 } from "lucide-react";
 import Modal from "../common/Modal";
 import InlineUserLink from "../users/InlineUserLink";
+import AwardCard from "./AwardCard";
+import TeamDetailsModal from "../teams/TeamDetailsModal";
 
 /**
  * TagAwardsModal Component
@@ -65,13 +67,29 @@ const CATEGORY_COLORS = {
   "Personal Attributes": "#F59E0B",
 };
 
-const CATEGORY_PASTELS = {
-  "Collaboration Skills": "#DBEAFE",
-  "Technical Expertise": "#D1FAE5",
-  "Creative Thinking": "#EDE9FE",
-  "Leadership Qualities": "#FEE2E2",
-  "Personal Attributes": "#FEF3C7",
+// Lighter pastels for AwardCards (50 shades)
+const CATEGORY_CARD_PASTELS = {
+  "Collaboration Skills": "#EFF6FF", // blue-50
+  "Technical Expertise": "#ECFDF5", // green-50
+  "Creative Thinking": "#F5F3FF", // violet-50
+  "Leadership Qualities": "#FEF2F2", // red-50
+  "Personal Attributes": "#FFFBEB", // amber-50
 };
+
+// Slightly stronger pastels for the category section background (100 shades)
+const CATEGORY_SECTION_PASTELS = {
+  "Collaboration Skills": "#DBEAFE", // blue-100
+  "Technical Expertise": "#D1FAE5", // green-100
+  "Creative Thinking": "#EDE9FE", // violet-100
+  "Leadership Qualities": "#FEE2E2", // red-100
+  "Personal Attributes": "#FEF3C7", // amber-100
+};
+
+const DEFAULT_CARD_PASTEL = "#F9FAFB"; // gray-50
+const DEFAULT_SECTION_PASTEL = "#F3F4F6"; // gray-100
+
+// Focus area green colors (matching TagsDisplaySection / SupercategoryAwardsModal)
+const FOCUS_GREEN = "#009213";
 
 const DEFAULT_COLOR = "#6B7280";
 const DEFAULT_PASTEL = "#F3F4F6";
@@ -183,7 +201,22 @@ const TagAwardsModal = ({
   loading = false,
   onOpenUser,
 }) => {
-  const dominantColor = CATEGORY_COLORS[dominantBadgeCategory] || DEFAULT_COLOR;
+  // Internal TeamDetailsModal state (mirrors SupercategoryAwardsModal)
+  const [selectedTeamForDetails, setSelectedTeamForDetails] = useState(null);
+  const [isTeamDetailsOpen, setIsTeamDetailsOpen] = useState(false);
+
+  const handleOpenTeam = (teamId, teamName) => {
+    if (!teamId) return;
+    setSelectedTeamForDetails({ id: teamId, name: teamName });
+    setIsTeamDetailsOpen(true);
+  };
+
+  const handleTeamDetailsClose = () => {
+    setIsTeamDetailsOpen(false);
+    setSelectedTeamForDetails(null);
+  };
+
+  // const dominantColor = CATEGORY_COLORS[dominantBadgeCategory] || DEFAULT_COLOR;
 
   // Group awards by badge category
   const awardsByCategory = awards.reduce((acc, award) => {
@@ -206,210 +239,193 @@ const TagAwardsModal = ({
 
   // Unique awarding users
   const awardingUserCount = new Set(
-    awards.map((a) => a.awardedByUserId).filter(Boolean),
+    awards
+      .map((a) => a.awardedByUserId || a.awarded_by_user_id)
+      .filter(Boolean),
   ).size;
+
+  const creditedCategoryCount = sortedCategories.length;
 
   const titleNode = (
     <div className="min-w-0">
       <div className="flex items-center gap-2 min-w-0">
         <Tag
           size={20}
-          style={{ color: dominantColor }}
+          style={{ color: FOCUS_GREEN }}
           className="flex-shrink-0"
         />
         <span
           className="text-xl font-medium truncate"
-          style={{ color: dominantColor }}
+          style={{ color: FOCUS_GREEN }}
         >
           {tagName}
-        </span>
-        <span
-          className="px-2 py-0.5 rounded-full text-xs font-medium text-white whitespace-nowrap flex-shrink-0"
-          style={{ backgroundColor: dominantColor }}
-        >
-          {totalCredits} ct.
         </span>
       </div>
     </div>
   );
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title={titleNode}
-      size="large"
-      position="center"
-    >
-      <div className="space-y-4 max-h-[60vh] overflow-y-auto">
-        {loading ? (
-          <div className="flex justify-center items-center py-12">
-            <div className="loading loading-spinner loading-lg text-primary"></div>
-          </div>
-        ) : sortedCategories.length === 0 ? (
-          <p className="text-base-content/60 text-center py-8">
-            No badge awards linked to this focus area yet.
-          </p>
-        ) : (
-          /* Summary bar */
-          <>
-            <div className="flex items-center gap-3 text-sm text-base-content/60 px-1">
-              <span className="flex items-center gap-1">
-                <Award size={14} />
-                {awards.length} award{awards.length !== 1 ? "s" : ""}
-              </span>
-              <span>·</span>
-              <span className="flex items-center gap-1">
-                <Users size={14} />
-                {awardingUserCount}{" "}
-                {awardingUserCount === 1 ? "person" : "people"}
-              </span>
-              <span>·</span>
-              <span>
-                {sortedCategories.length} categor
-                {sortedCategories.length !== 1 ? "ies" : "y"}
-              </span>
+    <>
+      <Modal
+        isOpen={isOpen}
+        onClose={onClose}
+        title={titleNode}
+        size="large"
+        position="center"
+      >
+        <div className="space-y-4 max-h-[60vh] overflow-y-auto">
+          {loading ? (
+            <div className="flex justify-center items-center py-12">
+              <div className="loading loading-spinner loading-lg text-primary"></div>
             </div>
+          ) : sortedCategories.length === 0 ? (
+            <p className="text-base-content/60 text-center py-8">
+              No badge awards linked to this focus area yet.
+            </p>
+          ) : (
+            /* Summary bar */
+            <>
+              {/* Summary bar (match SupercategoryAwardsModal) */}
+              <div className="flex items-start justify-between px-1 gap-3">
+                <div className="flex items-center flex-wrap gap-x-4 gap-y-2 text-sm text-base-content/60 min-w-0">
+                  <span className="inline-flex items-center gap-1 whitespace-nowrap">
+                    <Award size={14} />
+                    <span className="font-medium">{awards.length}</span>
+                    <span className="hidden sm:inline">
+                      award{awards.length !== 1 ? "s" : ""}
+                    </span>
+                  </span>
 
-            {/* Awards grouped by category */}
-            {sortedCategories.map(([category, data]) => {
-              const catColor = CATEGORY_COLORS[category] || DEFAULT_COLOR;
-              const catPastel = CATEGORY_PASTELS[category] || DEFAULT_PASTEL;
+                  <span className="inline-flex items-center gap-1 whitespace-nowrap">
+                    <Users size={14} />
+                    <span className="font-medium">{awardingUserCount}</span>
+                    <span className="hidden sm:inline">
+                      {awardingUserCount === 1 ? "person" : "people"}
+                    </span>
+                  </span>
 
-              return (
-                <div
-                  key={category}
-                  className="rounded-xl overflow-hidden border border-base-200"
-                >
-                  {/* Category header */}
-                  <div
-                    className="flex items-center justify-between p-3"
-                    style={{ backgroundColor: catPastel }}
+                  <span className="inline-flex items-center gap-1 whitespace-nowrap">
+                    <Tag size={14} />
+                    <span className="font-medium">{creditedCategoryCount}</span>
+                    <span className="hidden sm:inline">
+                      categor{creditedCategoryCount !== 1 ? "ies" : "y"}
+                    </span>
+                  </span>
+                </div>
+
+                {Number(totalCredits ?? 0) > 0 && (
+                  <span
+                    className="px-3 py-1 rounded-full text-sm font-semibold whitespace-nowrap text-white flex-shrink-0 self-start"
+                    style={{ backgroundColor: FOCUS_GREEN }}
                   >
-                    <div className="flex items-center gap-2">
-                      {getCategoryIcon(category, catColor)}
+                    {Number(totalCredits ?? 0)} ct.
+                  </span>
+                )}
+              </div>
+
+              {/* Awards grouped by category */}
+              {sortedCategories.map(([category, data]) => {
+                const catColor = CATEGORY_COLORS[category] || DEFAULT_COLOR;
+                const sectionPastel =
+                  CATEGORY_SECTION_PASTELS[category] || DEFAULT_SECTION_PASTEL;
+                const cardPastel =
+                  CATEGORY_CARD_PASTELS[category] || DEFAULT_CARD_PASTEL;
+
+                return (
+                  <div
+                    key={category}
+                    className="rounded-xl overflow-hidden border border-base-200"
+                  >
+                    {/* Category header */}
+                    <div
+                      className="flex items-center justify-between p-3"
+                      style={{ backgroundColor: sectionPastel }}
+                    >
+                      <div className="flex items-center gap-2">
+                        {getCategoryIcon(category, catColor)}
+                        <span
+                          className="font-medium text-sm"
+                          style={{ color: catColor }}
+                        >
+                          {category}
+                        </span>
+                      </div>
+
                       <span
-                        className="font-medium text-sm"
-                        style={{ color: catColor }}
+                        className="px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap"
+                        style={{
+                          backgroundColor: "rgba(255,255,255,0.75)",
+                          color: catColor,
+                          border: `1px solid ${catColor}33`,
+                        }}
                       >
-                        {category}
+                        {data.totalCredits} ct.
                       </span>
                     </div>
-                    <span
-                      className="px-2 py-0.5 rounded-full text-xs font-medium text-white"
-                      style={{ backgroundColor: catColor }}
+
+                    {/* Award cards (use shared AwardCard + Supercategory grid) */}
+                    <div
+                      className="p-3"
+                      style={{ backgroundColor: sectionPastel }}
                     >
-                      {data.totalCredits} ct.
-                    </span>
-                  </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        {data.awards.map((award, idx) => {
+                          const normalizedAward = {
+                            ...award,
 
-                  {/* Award cards */}
-                  <div
-                    className="p-3 space-y-3"
-                    style={{ backgroundColor: `${catPastel}40` }}
-                  >
-                    {data.awards.map((award) => {
-                      const badgeName =
-                        award.badgeName || award.badge_name || "Badge";
-                      const badgeDesc =
-                        award.badgeDescription || award.badge_description || "";
+                            // make sure AwardCard can find these (covers more possible API shapes)
+                            teamId:
+                              award.teamId ??
+                              award.team_id ??
+                              award.contextTeamId ??
+                              award.context_team_id ??
+                              award.team?.id ??
+                              null,
 
-                      return (
-                        <div
-                          key={award.awardId || award.award_id || award.id}
-                          className="bg-white/80 rounded-lg p-3 border border-base-200/50"
-                        >
-                          {/* Top row: badge + date + credits */}
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <span className="flex-shrink-0">
-                                {getBadgeIcon(badgeName, catColor)}
-                              </span>
-                              <div className="min-w-0">
-                                <p
-                                  className="text-sm font-medium"
-                                  style={{ color: catColor }}
-                                >
-                                  {badgeName}
-                                </p>
-                                <div className="flex items-center gap-1.5 text-xs text-base-content/50">
-                                  <Calendar size={10} />
-                                  <span>
-                                    {award.awardedAt || award.awarded_at
-                                      ? format(
-                                          new Date(
-                                            award.awardedAt || award.awarded_at,
-                                          ),
-                                          "MMM d, yyyy",
-                                        )
-                                      : "Unknown date"}
-                                  </span>
-                                  <span className="px-1.5 py-0.5 rounded bg-base-200/50 text-base-content/50">
-                                    {getContextLabel(
-                                      award.contextType || award.context_type,
-                                    )}
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
+                            teamName:
+                              award.teamName ??
+                              award.team_name ??
+                              award.team?.name ??
+                              null,
 
-                            <span
-                              className="px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap text-white"
-                              style={{ backgroundColor: catColor }}
-                            >
-                              +{award.credits} ct.
-                            </span>
-                          </div>
+                            contextType:
+                              award.contextType ?? award.context_type,
+                          };
 
-                          {/* Reason */}
-                          {award.reason && (
-                            <p className="mt-2 text-sm text-base-content/80 italic">
-                              "{award.reason}"
-                            </p>
-                          )}
-
-                          {/* Bottom row: Awarded by + Team */}
-                          <div className="flex items-center justify-between mt-2 gap-2">
-                            <InlineUserLink
-                              label="Awarded by"
-                              user={{
-                                id:
-                                  award.awardedByUserId ||
-                                  award.awarded_by_user_id,
-                                first_name:
-                                  award.awardedByFirstName ||
-                                  award.awarded_by_first_name,
-                                last_name:
-                                  award.awardedByLastName ||
-                                  award.awarded_by_last_name,
-                                username:
-                                  award.awardedByUsername ||
-                                  award.awarded_by_username,
-                                avatar_url:
-                                  award.awardedByAvatarUrl ||
-                                  award.awarded_by_avatar_url,
-                              }}
+                          return (
+                            <AwardCard
+                              key={
+                                (award.awardId || award.award_id || award.id) ??
+                                `${category}-${idx}`
+                              }
+                              award={award}
+                              category={category}
+                              categoryColor={catColor}
+                              categoryPastel={cardPastel}
                               onOpenUser={onOpenUser}
+                              onOpenTeam={(teamId, teamName) =>
+                                handleOpenTeam(teamId, teamName)
+                              }
                             />
-
-                            {(award.teamName || award.team_name) && (
-                              <div className="flex items-center gap-1 text-xs text-base-content/50">
-                                <Users size={12} />
-                                {award.teamName || award.team_name}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
+                          );
+                        })}
+                      </div>
+                    </div>
                   </div>
-                </div>
-              );
-            })}
-          </>
-        )}
-      </div>
-    </Modal>
+                );
+              })}
+            </>
+          )}
+        </div>
+      </Modal>
+      <TeamDetailsModal
+        key={selectedTeamForDetails?.id ?? "none"}
+        isOpen={isTeamDetailsOpen}
+        teamId={selectedTeamForDetails?.id}
+        initialTeamData={selectedTeamForDetails}
+        onClose={handleTeamDetailsClose}
+      />
+    </>
   );
 };
 
