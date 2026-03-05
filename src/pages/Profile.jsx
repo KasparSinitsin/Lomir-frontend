@@ -26,7 +26,9 @@ import {
 import { tagService } from "../services/tagService";
 import { userService } from "../services/userService";
 import TagInput from "../components/tags/TagInput";
-import BadgeCategoryCard from "../components/badges/BadgeCategoryCard";
+import BadgesDisplaySection from "../components/badges/BadgesDisplaySection";
+import SupercategoryAwardsModal from "../components/badges/SupercategoryAwardsModal";
+import { useUserModal } from "../contexts/UserModalContext";
 import BadgeCategoryModal from "../components/badges/BadgeCategoryModal";
 import TagsDisplaySection from "../components/tags/TagsDisplaySection";
 import TagAwardsModal from "../components/badges/TagAwardsModal";
@@ -54,6 +56,7 @@ const Profile = () => {
   const [imagePreview, setImagePreview] = useState(null);
   const [imageError, setImageError] = useState(false);
   const navigate = useNavigate();
+  const { openUserModal } = useUserModal();
   const [avatarDeleteLoading, setAvatarDeleteLoading] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState(null);
   const [badgeCategoryModal, setBadgeCategoryModal] = useState({
@@ -62,6 +65,7 @@ const Profile = () => {
     color: null,
     badges: [],
     totalCredits: 0,
+    focusedBadgeName: null,
   });
   const [detailedBadgeAwards, setDetailedBadgeAwards] = useState([]);
   const [badgeModalLoading, setBadgeModalLoading] = useState(false);
@@ -74,6 +78,17 @@ const Profile = () => {
   });
   const [tagAwards, setTagAwards] = useState([]);
   const [tagAwardsLoading, setTagAwardsLoading] = useState(false);
+
+  // ========= Supercategory Awards Modal state =========
+  const [supercategoryModal, setSupercategoryModal] = useState({
+    isOpen: false,
+    supercategory: null,
+    tags: [],
+    totalCredits: 0,
+  });
+  const [supercategoryAwards, setSupercategoryAwards] = useState([]);
+  const [supercategoryLoading, setSupercategoryLoading] = useState(false);
+  // =====================================================
 
   // Add form errors state
   const [formErrors, setFormErrors] = useState({});
@@ -96,7 +111,10 @@ const Profile = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const scrollToBadges = searchParams.get("scrollTo") === "badges";
   const highlightBadgeName = searchParams.get("highlightBadge");
+  const [highlightTagName, setHighlightTagName] = useState(null);
+  const [highlightTagColor, setHighlightTagColor] = useState(null);
   const badgesSectionRef = useRef(null);
+  const focusAreasSectionRef = useRef(null);
 
   // Prefer freshest API user (includes badges totals). Fall back to auth context.
   const displayUser = localUser || user;
@@ -304,9 +322,11 @@ const Profile = () => {
         });
       }, 500);
 
-      // Clear URL params after 4 seconds so refresh doesn't keep highlighting
+      // Clear URL params and highlight state after 4 seconds
       const clearTimer = setTimeout(() => {
         setSearchParams({}, { replace: true });
+        setHighlightTagName(null);
+        setHighlightTagColor(null);
       }, 4000);
 
       return () => {
@@ -315,6 +335,58 @@ const Profile = () => {
       };
     }
   }, [scrollToBadges, isEditing, setSearchParams]);
+
+  // Derive the associated tag name when a badge is highlighted from notification
+  useEffect(() => {
+    if (!highlightBadgeName || !user?.id) return;
+
+    const deriveHighlightTag = async () => {
+      try {
+        const profileUserId = localUser?.id ?? user?.id;
+        const response = await userService.getUserBadges(profileUserId);
+        const payload = response?.data || response;
+        const rows = Array.isArray(payload) ? payload : payload?.data || [];
+
+        // Find the most recent award matching this badge name that has a tag
+        const matchingAward = rows
+          .filter((award) => {
+            const awardBadgeName =
+              award.badgeName ?? award.badge_name ?? award.name;
+            return (
+              String(awardBadgeName ?? "")
+                .trim()
+                .toLowerCase() ===
+              String(highlightBadgeName).trim().toLowerCase()
+            );
+          })
+          .sort((a, b) => {
+            const dateA = new Date(a.awardedAt ?? a.awarded_at ?? 0);
+            const dateB = new Date(b.awardedAt ?? b.awarded_at ?? 0);
+            return dateB - dateA; // most recent first
+          })
+          .find((award) => award.tagName ?? award.tag_name);
+
+        if (matchingAward) {
+          setHighlightTagName(matchingAward.tagName ?? matchingAward.tag_name);
+          // Pass the badge's category color so the tag pill highlights in the right color
+          const badgeCategory =
+            matchingAward.badgeCategory ?? matchingAward.badge_category;
+          const categoryColors = {
+            "Collaboration Skills": "#3B82F6",
+            "Technical Expertise": "#10B981",
+            "Creative Thinking": "#8B5CF6",
+            "Leadership Qualities": "#EF4444",
+            "Personal Attributes": "#F59E0B",
+          };
+          setHighlightTagColor(categoryColors[badgeCategory] || null);
+        }
+      } catch (error) {
+        console.error("Error deriving highlight tag:", error);
+      }
+    };
+
+    deriveHighlightTag();
+  }, [highlightBadgeName, user?.id, localUser?.id]);
 
   const handleSelectedTagsChange = (newTags) => {
     setSelectedTags(newTags);
@@ -361,6 +433,66 @@ const Profile = () => {
     setTagAwards([]);
   };
 
+  // Handler for clicking a supercategory icon in focus areas
+  const handleSupercategoryClick = async (supercategory, groupTags) => {
+    const totalCredits = groupTags.reduce(
+      (sum, t) => sum + (t.badgeCredits || 0),
+      0,
+    );
+
+    setSupercategoryModal({
+      isOpen: true,
+      supercategory,
+      tags: groupTags,
+      totalCredits,
+    });
+    setSupercategoryLoading(true);
+
+    try {
+      const profileUserId = localUser?.id ?? user?.id;
+      const response = await userService.getUserBadges(profileUserId);
+
+      const payload =
+        response?.success !== undefined
+          ? response
+          : response?.data?.success !== undefined
+            ? response.data
+            : (response?.data ?? response);
+
+      const rows = Array.isArray(payload)
+        ? payload
+        : Array.isArray(payload?.data)
+          ? payload.data
+          : [];
+
+      // Collect all tag names in this supercategory
+      const tagNames = new Set(groupTags.map((t) => t.name));
+
+      // Filter awards linked to any tag in this supercategory
+      const filtered = rows.filter((award) => {
+        const awardTagName = award.tagName ?? award.tag_name;
+        return awardTagName && tagNames.has(awardTagName);
+      });
+
+      setSupercategoryAwards(filtered);
+    } catch (error) {
+      console.error("Error fetching supercategory awards:", error);
+      setSupercategoryAwards([]);
+    } finally {
+      setSupercategoryLoading(false);
+    }
+  };
+
+  const closeSupercategoryModal = () => {
+    setSupercategoryModal({
+      isOpen: false,
+      supercategory: null,
+      tags: [],
+      totalCredits: 0,
+    });
+    setSupercategoryAwards([]);
+  };
+
   const handleBadgeCategoryClick = async (
     category,
     color,
@@ -373,6 +505,7 @@ const Profile = () => {
       color,
       badges,
       totalCredits,
+      focusedBadgeName: null,
     });
     setBadgeModalLoading(true);
 
@@ -412,8 +545,59 @@ const Profile = () => {
       color: null,
       badges: [],
       totalCredits: 0,
+      focusedBadgeName: null,
     });
     setDetailedBadgeAwards([]);
+  };
+
+  // Handler for clicking an individual badge pill
+  const handleBadgeClick = async (badge, category, color) => {
+    const badgeCredits = badge.total_credits ?? badge.totalCredits ?? 0;
+
+    setBadgeCategoryModal({
+      isOpen: true,
+      category,
+      color,
+      badges: [badge],
+      totalCredits: badgeCredits,
+      focusedBadgeName: badge.name,
+    });
+    setBadgeModalLoading(true);
+
+    try {
+      const profileUserId = localUser?.id ?? user?.id;
+      const response = await userService.getUserBadges(profileUserId);
+
+      const payload =
+        response?.success !== undefined
+          ? response
+          : response?.data?.success !== undefined
+            ? response.data
+            : (response?.data ?? response);
+
+      const rows = Array.isArray(payload)
+        ? payload
+        : Array.isArray(payload?.data)
+          ? payload.data
+          : [];
+
+      // Filter to only this badge's awards
+      const badgeAwards = rows.filter((award) => {
+        const awardBadgeName =
+          award.badgeName ?? award.badge_name ?? award.name;
+        return (
+          String(awardBadgeName ?? "").trim() ===
+          String(badge.name ?? "").trim()
+        );
+      });
+
+      setDetailedBadgeAwards(badgeAwards);
+    } catch (error) {
+      console.error("Error fetching badge awards:", error);
+      setDetailedBadgeAwards([]);
+    } finally {
+      setBadgeModalLoading(false);
+    }
   };
 
   const handleChange = (e) => {
@@ -1077,33 +1261,15 @@ const Profile = () => {
               </div>
             )}
 
-            {/* Contact & Focus Areas — fixed 4-col grid at xl */}
             {/* Contact, Focus Areas & Badges */}
             {(() => {
-              const badgesByCategory = Array.isArray(displayUser?.badges)
-                ? displayUser.badges.reduce((acc, badge) => {
-                    const category = badge.category || "Other";
-                    if (!acc[category]) {
-                      acc[category] = {
-                        badges: [],
-                        color: badge.color,
-                        totalCredits: 0,
-                      };
-                    }
-                    acc[category].badges.push(badge);
-                    acc[category].totalCredits +=
-                      badge.total_credits ?? badge.totalCredits ?? 0;
-                    return acc;
-                  }, {})
-                : {};
-
-              const sortedCategories = Object.entries(badgesByCategory).sort(
-                ([, a], [, b]) => b.totalCredits - a.totalCredits,
-              );
-
-              const bothEmpty =
-                (!selectedTags || selectedTags.length === 0) &&
-                sortedCategories.length === 0;
+              const hasTags =
+                userTagObjects.length > 0 ||
+                (selectedTags && selectedTags.length > 0);
+              const hasBadges =
+                Array.isArray(displayUser?.badges) &&
+                displayUser.badges.length > 0;
+              const bothEmpty = !hasTags && !hasBadges;
 
               return (
                 <div className="px-6 mt-6 pb-6">
@@ -1147,7 +1313,7 @@ const Profile = () => {
                           </p>
                         )}
                       </div>
-                      <div>
+                      <div ref={focusAreasSectionRef}>
                         <TagsDisplaySection
                           title="Focus Areas"
                           tags={
@@ -1158,6 +1324,9 @@ const Profile = () => {
                           allTags={tags}
                           emptyMessage="No focus areas added yet."
                           onTagClick={handleTagClick}
+                          onSupercategoryClick={handleSupercategoryClick}
+                          highlightTagName={highlightTagName}
+                          highlightTagColor={highlightTagColor}
                         />
                       </div>
                       <div ref={badgesSectionRef}>
@@ -1215,7 +1384,7 @@ const Profile = () => {
                           )}
                         </div>
                       </div>
-                      <div>
+                      <div ref={focusAreasSectionRef}>
                         <TagsDisplaySection
                           title="Focus Areas"
                           tags={
@@ -1226,42 +1395,28 @@ const Profile = () => {
                           allTags={tags}
                           emptyMessage="No focus areas added yet."
                           onTagClick={handleTagClick}
+                          onSupercategoryClick={handleSupercategoryClick}
+                          highlightTagName={highlightTagName}
+                          highlightTagColor={highlightTagColor}
                         />
                       </div>
-                      <div>
-                        <div className="flex items-center mb-2">
-                          <Award
-                            size={18}
-                            className="mr-2 text-primary flex-shrink-0"
-                          />
-                          <h3 className="font-medium">My Badges</h3>
-                        </div>
-                        {sortedCategories.length > 0 ? (
-                          <div className="flex flex-wrap gap-4">
-                            {sortedCategories.map(([category, data]) => (
-                              <BadgeCategoryCard
-                                key={category}
-                                category={category}
-                                color={data.color}
-                                badges={data.badges}
-                                totalCredits={data.totalCredits}
-                                highlightBadgeName={highlightBadgeName}
-                                onClick={() =>
-                                  handleBadgeCategoryClick(
-                                    category,
-                                    data.color,
-                                    data.badges,
-                                    data.totalCredits,
-                                  )
-                                }
-                              />
-                            ))}
-                          </div>
-                        ) : (
-                          <p className="text-sm text-base-content/60">
-                            No badges earned yet.
-                          </p>
-                        )}
+                      <div ref={badgesSectionRef}>
+                        <BadgesDisplaySection
+                          title={`My Badges${
+                            Number.isFinite(displayUser?.total_badge_credits)
+                              ? ` · ${displayUser.total_badge_credits} ct.`
+                              : ""
+                          }`}
+                          badges={displayUser?.badges}
+                          emptyMessage="No badges earned yet."
+                          maxVisible={8}
+                          groupByCategory={true}
+                          showCredits={true}
+                          onCategoryClick={handleBadgeCategoryClick}
+                          onBadgeClick={handleBadgeClick}
+                          onOpenUser={openUserModal}
+                          highlightBadgeName={highlightBadgeName}
+                        />
                       </div>
                     </div>
                   )}
@@ -1282,6 +1437,9 @@ const Profile = () => {
         detailedAwards={detailedBadgeAwards}
         totalCredits={badgeCategoryModal.totalCredits}
         loading={badgeModalLoading}
+        focusedBadgeName={badgeCategoryModal.focusedBadgeName}
+        onOpenUser={openUserModal}
+        highlightBadgeName={highlightBadgeName}
       />
 
       <TagAwardsModal
@@ -1292,6 +1450,21 @@ const Profile = () => {
         totalCredits={tagAwardsModal.totalCredits}
         awards={tagAwards}
         loading={tagAwardsLoading}
+        onOpenUser={openUserModal}
+        highlightBadgeName={highlightBadgeName}
+      />
+
+      {/* Supercategory Awards Modal */}
+      <SupercategoryAwardsModal
+        isOpen={supercategoryModal.isOpen}
+        onClose={closeSupercategoryModal}
+        supercategory={supercategoryModal.supercategory}
+        tags={supercategoryModal.tags}
+        totalCredits={supercategoryModal.totalCredits}
+        awards={supercategoryAwards}
+        loading={supercategoryLoading}
+        onOpenUser={openUserModal}
+        highlightBadgeName={highlightBadgeName}
       />
     </div>
   );

@@ -65,6 +65,7 @@ const AwardCard = ({
   onOpenUser,
   onOpenTeam,
   hideTag = false,
+  highlighted = false,
 }) => {
   const catColor = categoryColor;
 
@@ -150,10 +151,18 @@ const AwardCard = ({
 
   return (
     <div
-      className="rounded-lg p-3 flex flex-col border"
+      className={`rounded-lg p-3 flex flex-col border ${highlighted ? "animate-badge-highlight" : ""}`}
       style={{
-        backgroundColor: categoryPastel || "#F9FAFB",
-        borderColor: `${catColor}33`,
+        backgroundColor: highlighted
+          ? `${catColor}20`
+          : categoryPastel || "#F9FAFB",
+        borderColor: highlighted ? catColor : `${catColor}33`,
+        ...(highlighted
+          ? {
+              borderWidth: "2px",
+              boxShadow: `0 0 12px ${catColor}66`,
+            }
+          : {}),
       }}
       title={category}
     >

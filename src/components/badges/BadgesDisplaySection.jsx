@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useRef, useEffect } from "react";
 import {
   Award,
   Users,
@@ -52,7 +52,23 @@ const BadgesDisplaySection = ({
   onCategoryClick = null,
   onBadgeClick = null,
   onOpenUser = null,
+  highlightBadgeName = null,
 }) => {
+  // Hooks must be called before any early returns (Rules of Hooks)
+  const highlightRef = useRef(null);
+
+  useEffect(() => {
+    if (highlightBadgeName && highlightRef.current) {
+      const timer = setTimeout(() => {
+        highlightRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "nearest",
+        });
+      }, 600);
+      return () => clearTimeout(timer);
+    }
+  }, [highlightBadgeName]);
+
   if (!badges || badges.length === 0) {
     if (compact) return null;
     return (
@@ -293,10 +309,32 @@ const BadgesDisplaySection = ({
                       content={badgeTooltip}
                     >
                       <span
-                        className={`badge badge-outline p-3 ${isClickable ? "cursor-pointer hover:shadow-md transition-shadow" : ""}`}
+                        ref={
+                          highlightBadgeName &&
+                          badge.name?.toLowerCase() ===
+                            highlightBadgeName.toLowerCase()
+                            ? highlightRef
+                            : undefined
+                        }
+                        className={`badge badge-outline p-3 bg-white/60 ${isClickable ? "cursor-pointer hover:shadow-md transition-shadow" : ""} ${
+                          highlightBadgeName &&
+                          badge.name?.toLowerCase() ===
+                            highlightBadgeName.toLowerCase()
+                            ? "animate-badge-highlight"
+                            : ""
+                        }`}
                         style={{
                           borderColor: categoryColor,
                           color: categoryColor,
+                          ...(highlightBadgeName &&
+                          badge.name?.toLowerCase() ===
+                            highlightBadgeName.toLowerCase()
+                            ? {
+                                borderWidth: "2px",
+                                boxShadow: `0 0 12px ${categoryColor}66`,
+                                backgroundColor: `${categoryColor}20`,
+                              }
+                            : {}),
                         }}
                         onClick={
                           isClickable
