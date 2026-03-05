@@ -78,6 +78,7 @@ const BadgeCategoryModal = ({
   loading = false,
   onOpenUser,
   focusedBadgeName = null,
+  highlightBadgeName = null,
 }) => {
   // Team details modal state (for AwardCard team clicks)
   const [selectedTeamForDetails, setSelectedTeamForDetails] = useState(null);
@@ -444,6 +445,14 @@ const BadgeCategoryModal = ({
                         categoryPastel={cardPastel}
                         onOpenUser={onOpenUser}
                         onOpenTeam={handleOpenTeam}
+                        highlighted={
+                          !!highlightBadgeName &&
+                          (
+                            award.badgeName ??
+                            award.badge_name ??
+                            ""
+                          ).toLowerCase() === highlightBadgeName.toLowerCase()
+                        }
                       />
                     ))}
                   </div>

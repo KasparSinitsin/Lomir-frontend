@@ -254,6 +254,7 @@ const SupercategoryAwardsModal = ({
   awards = [],
   loading = false,
   onOpenUser,
+  highlightBadgeName = null,
 }) => {
   // Internal TeamDetailsModal state (so the team click works even if parent doesn’t manage it)
   const [selectedTeamForDetails, setSelectedTeamForDetails] = useState(null);
@@ -456,6 +457,15 @@ const SupercategoryAwardsModal = ({
                                 handleOpenTeam(teamId, teamName)
                               }
                               hideTag
+                              highlighted={
+                                !!highlightBadgeName &&
+                                (
+                                  award.badgeName ??
+                                  award.badge_name ??
+                                  ""
+                                ).toLowerCase() ===
+                                  highlightBadgeName.toLowerCase()
+                              }
                             />
                           );
                         })}

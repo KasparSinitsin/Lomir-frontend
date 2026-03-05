@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Tag,
   Monitor,
@@ -97,6 +97,8 @@ const TagsDisplaySection = ({
   onSave,
   onTagClick,
   onSupercategoryClick,
+  highlightTagName = null,
+  highlightTagColor = null,
   emptyMessage = UI_TEXT.focusAreas.empty,
   placeholder = UI_TEXT.focusAreas.placeholder,
   className = "",
@@ -106,6 +108,21 @@ const TagsDisplaySection = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
+
+  // Ref for auto-scrolling to highlighted tag
+  const highlightTagRef = useRef(null);
+
+  useEffect(() => {
+    if (highlightTagName && highlightTagRef.current) {
+      const timer = setTimeout(() => {
+        highlightTagRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "nearest",
+        });
+      }, 600);
+      return () => clearTimeout(timer);
+    }
+  }, [highlightTagName]);
 
   // Normalize tags to a consistent format for editing (array of IDs)
   useEffect(() => {
@@ -291,15 +308,36 @@ const TagsDisplaySection = ({
         ? `${tag.name}: ${tag.badgeCredits}ct. awarded with ${Number(tag.linkedBadgeCount)} badge${Number(tag.linkedBadgeCount) === 1 ? "" : "s"} by ${Number(tag.awarderCount)} ${Number(tag.awarderCount) === 1 ? "person" : "people"}`
         : tag.name;
 
+  const isHighlighted =
+      highlightTagName &&
+      tag.name?.toLowerCase() === highlightTagName.toLowerCase();
+
+    // Use the dominant badge category color for the highlight glow,
+    // fall back to the focus-area green
+    const highlightColor = isHighlighted
+      ? highlightTagColor || (tag.dominantBadgeCategory && CATEGORY_COLORS[tag.dominantBadgeCategory]) || "#009213"
+      : null;
+
     return (
       <Tooltip key={tag.key} content={tooltipText}>
         <span
-          className={`badge badge-outline p-3 bg-white/60 ${isClickable ? "cursor-pointer hover:shadow-md transition-shadow" : ""}`}
-          style={
-            hasBadgeCredits
+          ref={isHighlighted ? highlightTagRef : undefined}
+          className={`badge badge-outline p-3 bg-white/60 ${isClickable ? "cursor-pointer hover:shadow-md transition-shadow" : ""} ${
+            isHighlighted ? "animate-badge-highlight" : ""
+          }`}
+          style={{
+            ...(hasBadgeCredits
               ? { borderColor: "#009213", color: "#009213" }
-              : { borderColor: "#036b0c", color: "#036b0c" }
-          }
+              : { borderColor: "#036b0c", color: "#036b0c" }),
+            ...(isHighlighted
+              ? {
+                  borderWidth: "2px",
+                  borderColor: highlightColor,
+                  boxShadow: `0 0 12px ${highlightColor}66`,
+                  backgroundColor: `${highlightColor}20`,
+                }
+              : {}),
+          }}
           onClick={() => {
             if (isClickable) onTagClick(tag);
           }}

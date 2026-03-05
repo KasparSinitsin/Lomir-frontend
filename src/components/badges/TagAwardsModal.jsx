@@ -200,6 +200,7 @@ const TagAwardsModal = ({
   awards = [],
   loading = false,
   onOpenUser,
+  highlightBadgeName = null,
 }) => {
   // Internal TeamDetailsModal state (mirrors SupercategoryAwardsModal)
   const [selectedTeamForDetails, setSelectedTeamForDetails] = useState(null);
@@ -407,6 +408,15 @@ const TagAwardsModal = ({
                                 handleOpenTeam(teamId, teamName)
                               }
                               hideTag
+                              highlighted={
+                                !!highlightBadgeName &&
+                                (
+                                  award.badgeName ??
+                                  award.badge_name ??
+                                  ""
+                                ).toLowerCase() ===
+                                  highlightBadgeName.toLowerCase()
+                              }
                             />
                           );
                         })}
