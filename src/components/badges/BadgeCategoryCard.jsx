@@ -1,12 +1,10 @@
 import React from "react";
+import { Award } from "lucide-react";
 import {
-  Users,
-  Settings,
-  Lightbulb,
-  Compass,
-  Heart,
-  Award,
-} from "lucide-react";
+  CATEGORY_SECTION_PASTELS,
+  DEFAULT_SECTION_PASTEL,
+} from "../../constants/badgeConstants";
+import { getCategoryIcon } from "../../utils/badgeIconUtils";
 
 /**
  * BadgeCategoryCard Component
@@ -20,18 +18,6 @@ import {
  * @param {number} totalCredits - Total credits earned in this category
  */
 
-// Pastel background colors for each category (solid, no transparency)
-const CATEGORY_PASTELS = {
-  "Collaboration Skills": "#DBEAFE", // Light blue
-  "Technical Expertise": "#D1FAE5", // Light green
-  "Creative Thinking": "#EDE9FE", // Light purple
-  "Leadership Qualities": "#FEE2E2", // Light red/pink
-  "Personal Attributes": "#FEF3C7", // Light yellow
-};
-
-// Default pastel for unknown categories
-const DEFAULT_PASTEL = "#F3F4F6"; // Light gray
-
 const BadgeCategoryCard = ({
   category,
   color,
@@ -41,25 +27,9 @@ const BadgeCategoryCard = ({
   onBadgeClick,
   highlightBadgeName,
 }) => {
-  // Get category icon based on category name
-  const getCategoryIcon = () => {
-    const iconProps = { size: 20, style: { color } };
-
-    const categoryLower = category?.toLowerCase() || "";
-
-    if (categoryLower.includes("collaboration"))
-      return <Users {...iconProps} />;
-    if (categoryLower.includes("technical")) return <Settings {...iconProps} />;
-    if (categoryLower.includes("creative")) return <Lightbulb {...iconProps} />;
-    if (categoryLower.includes("leadership")) return <Compass {...iconProps} />;
-    if (categoryLower.includes("personal")) return <Heart {...iconProps} />;
-
-    return <Award {...iconProps} />;
-  };
-
   // Get solid pastel background color for category
   const getPastelBackground = () => {
-    return CATEGORY_PASTELS[category] || DEFAULT_PASTEL;
+    return CATEGORY_SECTION_PASTELS[category] || DEFAULT_SECTION_PASTEL;
   };
 
   // Sort badges by total_credits descending
@@ -85,7 +55,9 @@ const BadgeCategoryCard = ({
         {/* Header: Category name + icon + total credits */}
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <span className="flex-shrink-0">{getCategoryIcon()}</span>
+            <span className="flex-shrink-0">
+              {getCategoryIcon(category, color, 20)}
+            </span>
             <h3 className="font-medium text-sm leading-snug" style={{ color }}>
               {category}
             </h3>

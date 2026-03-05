@@ -4,10 +4,6 @@ import {
   Send,
   Star,
   Users,
-  Settings,
-  Lightbulb,
-  Compass,
-  Heart,
   ChevronDown,
   ChevronUp,
   Briefcase,
@@ -16,33 +12,16 @@ import {
   Tag,
   Search as SearchIcon,
   X,
+  Heart,
   // Badge icons
-  Scale,
   MessageCircle,
-  Flame,
-  ClipboardList,
-  Anchor,
-  Code,
-  Palette,
-  BarChart2,
-  Wrench,
-  Network,
-  FileText,
-  Key,
-  Telescope,
-  BookOpen,
-  Paintbrush,
-  PackageOpen,
-  GraduationCap,
-  Flag,
-  UserPlus,
-  Map,
-  MessageSquare,
-  Zap,
-  Mountain,
-  Shuffle,
-  Share2,
 } from "lucide-react";
+import {
+  CATEGORY_COLORS,
+  CATEGORY_SECTION_PASTELS,
+  DEFAULT_COLOR,
+} from "../../constants/badgeConstants";
+import { getCategoryIcon, getBadgeIcon } from "../../utils/badgeIconUtils";
 import Modal from "../common/Modal";
 import Button from "../common/Button";
 import Alert from "../common/Alert";
@@ -68,26 +47,6 @@ import { getUserInitials } from "../../utils/userHelpers";
  * @param {string} awardeeAvatar - Avatar URL of the awardee
  * @param {Function} onAwardComplete - Callback after successful award (to refresh badges)
  */
-
-// Category colors (matching BadgeCategoryCard/BadgeCategoryModal)
-const CATEGORY_COLORS = {
-  "Collaboration Skills": "#3B82F6",
-  "Technical Expertise": "#10B981",
-  "Creative Thinking": "#8B5CF6",
-  "Leadership Qualities": "#EF4444",
-  "Personal Attributes": "#F59E0B",
-};
-
-// Pastel background colors for each category
-const CATEGORY_PASTELS = {
-  "Collaboration Skills": "#DBEAFE",
-  "Technical Expertise": "#D1FAE5",
-  "Creative Thinking": "#EDE9FE",
-  "Leadership Qualities": "#FEE2E2",
-  "Personal Attributes": "#FEF3C7",
-};
-
-const DEFAULT_COLOR = "#6B7280";
 
 // Context type options
 const CONTEXT_OPTIONS = [
@@ -161,91 +120,6 @@ const BadgeAwardModal = ({
   // Get first name for placeholders
   const getFirstName = () => {
     return awardeeFirstName || awardeeUsername || "this user";
-  };
-
-  // Get category icon
-  const getCategoryIcon = (category, size = 18) => {
-    const color = CATEGORY_COLORS[category] || DEFAULT_COLOR;
-    const iconProps = { size, style: { color } };
-
-    const categoryLower = category?.toLowerCase() || "";
-    if (categoryLower.includes("collaboration"))
-      return <Users {...iconProps} />;
-    if (categoryLower.includes("technical")) return <Settings {...iconProps} />;
-    if (categoryLower.includes("creative")) return <Lightbulb {...iconProps} />;
-    if (categoryLower.includes("leadership")) return <Compass {...iconProps} />;
-    if (categoryLower.includes("personal")) return <Heart {...iconProps} />;
-    return <Award {...iconProps} />;
-  };
-
-  // Get badge icon based on name
-  const getBadgeIcon = (badgeName, size = 16) => {
-    const iconProps = { size, className: "flex-shrink-0" };
-
-    switch (badgeName) {
-      case "Team Player":
-        return <Users {...iconProps} />;
-      case "Mediator":
-        return <Scale {...iconProps} />;
-      case "Communicator":
-        return <MessageCircle {...iconProps} />;
-      case "Motivator":
-        return <Flame {...iconProps} />;
-      case "Organizer":
-        return <ClipboardList {...iconProps} />;
-      case "Reliable":
-        return <Anchor {...iconProps} />;
-      case "Coder":
-        return <Code {...iconProps} />;
-      case "Designer":
-        return <Palette {...iconProps} />;
-      case "Data Whiz":
-        return <BarChart2 {...iconProps} />;
-      case "Tech Support":
-        return <Wrench {...iconProps} />;
-      case "Systems Thinker":
-        return <Network {...iconProps} />;
-      case "Documentation Master":
-        return <FileText {...iconProps} />;
-      case "Innovator":
-        return <Lightbulb {...iconProps} />;
-      case "Problem Solver":
-        return <Key {...iconProps} />;
-      case "Visionary":
-        return <Telescope {...iconProps} />;
-      case "Storyteller":
-        return <BookOpen {...iconProps} />;
-      case "Artisan":
-        return <Paintbrush {...iconProps} />;
-      case "Outside-the-Box":
-        return <PackageOpen {...iconProps} />;
-      case "Decision Maker":
-        return <Compass {...iconProps} />;
-      case "Mentor":
-        return <GraduationCap {...iconProps} />;
-      case "Initiative Taker":
-        return <Flag {...iconProps} />;
-      case "Delegator":
-        return <UserPlus {...iconProps} />;
-      case "Strategic Planner":
-        return <Map {...iconProps} />;
-      case "Feedback Provider":
-        return <MessageSquare {...iconProps} />;
-      case "Quick Learner":
-        return <Zap {...iconProps} />;
-      case "Empathetic":
-        return <Heart {...iconProps} />;
-      case "Persistent":
-        return <Mountain {...iconProps} />;
-      case "Detail-Oriented":
-        return <SearchIcon {...iconProps} />;
-      case "Adaptable":
-        return <Shuffle {...iconProps} />;
-      case "Knowledge Sharer":
-        return <Share2 {...iconProps} />;
-      default:
-        return <Award {...iconProps} />;
-    }
   };
 
   // Fetch all badges on open
@@ -594,7 +468,7 @@ const BadgeAwardModal = ({
               <div className="space-y-2 max-h-64 overflow-y-auto">
                 {sortedCategories.map((category) => {
                   const color = CATEGORY_COLORS[category] || DEFAULT_COLOR;
-                  const pastel = CATEGORY_PASTELS[category] || "#F3F4F6";
+                  const pastel = CATEGORY_SECTION_PASTELS[category] || "#F3F4F6";
                   const isExpanded = expandedCategory === category;
                   const categoryBadges = badgesByCategory[category] || [];
                   const hasSelectedBadge = categoryBadges.some(
@@ -618,7 +492,7 @@ const BadgeAwardModal = ({
                         style={isExpanded ? { backgroundColor: pastel } : {}}
                       >
                         <div className="flex items-center gap-2">
-                          {getCategoryIcon(category)}
+                          {getCategoryIcon(category, color)}
                           <span
                             className="font-medium text-sm"
                             style={{ color }}
@@ -670,7 +544,7 @@ const BadgeAwardModal = ({
                                 }
                               >
                                 <span style={{ color }}>
-                                  {getBadgeIcon(badge.name)}
+                                  {getBadgeIcon(badge.name, color)}
                                 </span>
                                 <div className="min-w-0 flex-1">
                                   <p

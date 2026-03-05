@@ -1,74 +1,20 @@
 import React, { useState, useEffect, useRef } from "react";
 import {
   Tag,
-  Monitor,
-  Briefcase,
-  Palette,
-  GraduationCap,
-  HeartHandshake,
-  Dumbbell,
-  Mountain,
-  Leaf,
-  Globe,
-  Scissors,
-  Gamepad2,
-  PawPrint,
-  Plane,
   Layers,
 } from "lucide-react";
+import {
+  CATEGORY_COLORS,
+  SUPERCATEGORY_ORDER,
+  PILL_ROW_HEIGHT,
+  FOCUS_GREEN,
+  FOCUS_GREEN_DARK,
+} from "../../constants/badgeConstants";
+import { SUPERCATEGORY_ICONS } from "../../utils/badgeIconUtils";
 import Tooltip from "../common/Tooltip";
 import Button from "../common/Button";
 import TagInput from "./TagInput";
 import { UI_TEXT } from "../../constants/uiText";
-
-const PILL_ROW_HEIGHT = 26;
-
-// Badge category colors (matching BadgeCategoryCard)
-const CATEGORY_COLORS = {
-  "Collaboration Skills": "#3B82F6",
-  "Technical Expertise": "#10B981",
-  "Creative Thinking": "#8B5CF6",
-  "Leadership Qualities": "#EF4444",
-  "Personal Attributes": "#F59E0B",
-};
-
-// Supercategory display order
-const SUPERCATEGORY_ORDER = [
-  "Technology & Development",
-  "Business & Entrepreneurship",
-  "Creative Arts & Design",
-  "Learning, Knowledge & Personal Growth",
-  "Social, Community & Volunteering",
-  "Sports & Fitness",
-  "Outdoor & Adventure",
-  "Wellness & Lifestyle",
-  "Languages",
-  "Hobbies & Crafts",
-  "Leisure",
-  "Pets",
-  "Travels",
-];
-
-/**
- * Supercategory icon map.
- * Each supercategory gets a lucide-react icon for visual grouping,
- * similar to how BadgesDisplaySection uses category icons.
- */
-const SUPERCATEGORY_ICONS = {
-  "Technology & Development": Monitor,
-  "Business & Entrepreneurship": Briefcase,
-  "Creative Arts & Design": Palette,
-  "Learning, Knowledge & Personal Growth": GraduationCap,
-  "Social, Community & Volunteering": HeartHandshake,
-  "Sports & Fitness": Dumbbell,
-  "Outdoor & Adventure": Mountain,
-  "Wellness & Lifestyle": Leaf,
-  Languages: Globe,
-  "Hobbies & Crafts": Scissors,
-  Leisure: Gamepad2,
-  Pets: PawPrint,
-  Travels: Plane,
-};
 
 /**
  * Unified TagsDisplaySection Component
@@ -308,14 +254,17 @@ const TagsDisplaySection = ({
         ? `${tag.name}: ${tag.badgeCredits}ct. awarded with ${Number(tag.linkedBadgeCount)} badge${Number(tag.linkedBadgeCount) === 1 ? "" : "s"} by ${Number(tag.awarderCount)} ${Number(tag.awarderCount) === 1 ? "person" : "people"}`
         : tag.name;
 
-  const isHighlighted =
+    const isHighlighted =
       highlightTagName &&
       tag.name?.toLowerCase() === highlightTagName.toLowerCase();
 
     // Use the dominant badge category color for the highlight glow,
     // fall back to the focus-area green
     const highlightColor = isHighlighted
-      ? highlightTagColor || (tag.dominantBadgeCategory && CATEGORY_COLORS[tag.dominantBadgeCategory]) || "#009213"
+      ? highlightTagColor ||
+        (tag.dominantBadgeCategory &&
+          CATEGORY_COLORS[tag.dominantBadgeCategory]) ||
+        FOCUS_GREEN
       : null;
 
     return (
@@ -327,8 +276,8 @@ const TagsDisplaySection = ({
           }`}
           style={{
             ...(hasBadgeCredits
-              ? { borderColor: "#009213", color: "#009213" }
-              : { borderColor: "#036b0c", color: "#036b0c" }),
+              ? { borderColor: FOCUS_GREEN, color: FOCUS_GREEN }
+              : { borderColor: FOCUS_GREEN_DARK, color: FOCUS_GREEN_DARK }),
             ...(isHighlighted
               ? {
                   borderWidth: "2px",
@@ -388,7 +337,7 @@ const TagsDisplaySection = ({
           }`}
           style={{
             height: PILL_ROW_HEIGHT,
-            color: "#036b0c",
+            color: FOCUS_GREEN_DARK,
           }}
         >
           <IconComponent size={14} />

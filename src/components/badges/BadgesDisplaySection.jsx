@@ -1,15 +1,12 @@
 import React, { useRef, useEffect } from "react";
-import {
-  Award,
-  Users,
-  Settings,
-  Lightbulb,
-  Compass,
-  Heart,
-} from "lucide-react";
+import { Award } from "lucide-react";
+import { getCategoryIcon } from "../../utils/badgeIconUtils";
 import Tooltip from "../common/Tooltip";
-
-const PILL_ROW_HEIGHT = 26;
+import {
+  CATEGORY_COLORS,
+  DEFAULT_COLOR,
+  PILL_ROW_HEIGHT,
+} from "../../constants/badgeConstants";
 
 /**
  * BadgesDisplaySection Component
@@ -28,17 +25,6 @@ const PILL_ROW_HEIGHT = 26;
  * @param {Function} onCategoryClick - Callback when category icon is clicked (category, color, badges, totalCredits)
  * @param {Function} onBadgeClick - Callback when individual badge pill is clicked (badge, category, color)
  */
-
-// Category colors (matching BadgeCategoryCard/BadgeCategoryModal)
-const CATEGORY_COLORS = {
-  "Collaboration Skills": "#3B82F6",
-  "Technical Expertise": "#10B981",
-  "Creative Thinking": "#8B5CF6",
-  "Leadership Qualities": "#EF4444",
-  "Personal Attributes": "#F59E0B",
-};
-
-const DEFAULT_COLOR = "#6B7280";
 
 const BadgesDisplaySection = ({
   title = "Badges",
@@ -89,28 +75,6 @@ const BadgesDisplaySection = ({
   const getCredits = (badge) => {
     const credits = badge.total_credits ?? badge.totalCredits;
     return Number.isFinite(credits) && credits > 0 ? credits : null;
-  };
-
-  // Get category icon based on category name
-  const getCategoryIcon = (category, color, size = 14) => {
-    const isClickable = !!onCategoryClick;
-    const iconProps = {
-      size,
-      style: { color },
-      className: `flex-shrink-0 ${
-        isClickable ? "cursor-pointer hover:opacity-70 transition-opacity" : ""
-      }`,
-    };
-    const categoryLower = category?.toLowerCase() || "";
-
-    if (categoryLower.includes("collaboration"))
-      return <Users {...iconProps} />;
-    if (categoryLower.includes("technical")) return <Settings {...iconProps} />;
-    if (categoryLower.includes("creative")) return <Lightbulb {...iconProps} />;
-    if (categoryLower.includes("leadership")) return <Compass {...iconProps} />;
-    if (categoryLower.includes("personal")) return <Heart {...iconProps} />;
-
-    return <Award {...iconProps} />;
   };
 
   // Get color for a category

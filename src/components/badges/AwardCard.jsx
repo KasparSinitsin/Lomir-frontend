@@ -1,45 +1,6 @@
 import React from "react";
 import { format } from "date-fns";
-import {
-  Award,
-  Users,
-  Calendar,
-  Info,
-  Briefcase,
-  User,
-  Tag,
-  // Badge icons
-  Scale,
-  MessageCircle,
-  Flame,
-  ClipboardList,
-  Anchor,
-  Code,
-  Palette,
-  BarChart2,
-  Wrench,
-  Network,
-  FileText,
-  Key,
-  Telescope,
-  BookOpen,
-  Paintbrush,
-  PackageOpen,
-  GraduationCap,
-  Flag,
-  UserPlus,
-  Map,
-  MessageSquare,
-  Zap,
-  Heart,
-  Mountain,
-  Search,
-  Shuffle,
-  Share2,
-  Settings,
-  Lightbulb,
-  Compass,
-} from "lucide-react";
+import { Users, Calendar, Info, Briefcase, User, Tag } from "lucide-react";
 import InlineUserLink from "../users/InlineUserLink";
 import { useTeamModal } from "../../contexts/TeamModalContext";
 
