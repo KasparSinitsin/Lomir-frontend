@@ -406,6 +406,7 @@ const TagAwardsModal = ({
                               onOpenTeam={(teamId, teamName) =>
                                 handleOpenTeam(teamId, teamName)
                               }
+                              hideTag
                             />
                           );
                         })}

@@ -455,6 +455,7 @@ const SupercategoryAwardsModal = ({
                               onOpenTeam={(teamId, teamName) =>
                                 handleOpenTeam(teamId, teamName)
                               }
+                              hideTag
                             />
                           );
                         })}
