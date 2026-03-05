@@ -1,12 +1,6 @@
 import React, { useRef, useEffect } from "react";
-import {
-  Award,
-  Users,
-  Settings,
-  Lightbulb,
-  Compass,
-  Heart,
-} from "lucide-react";
+import { Award } from "lucide-react";
+import { getCategoryIcon } from "../../utils/badgeIconUtils";
 import Tooltip from "../common/Tooltip";
 import {
   CATEGORY_COLORS,
@@ -81,28 +75,6 @@ const BadgesDisplaySection = ({
   const getCredits = (badge) => {
     const credits = badge.total_credits ?? badge.totalCredits;
     return Number.isFinite(credits) && credits > 0 ? credits : null;
-  };
-
-  // Get category icon based on category name
-  const getCategoryIcon = (category, color, size = 14) => {
-    const isClickable = !!onCategoryClick;
-    const iconProps = {
-      size,
-      style: { color },
-      className: `flex-shrink-0 ${
-        isClickable ? "cursor-pointer hover:opacity-70 transition-opacity" : ""
-      }`,
-    };
-    const categoryLower = category?.toLowerCase() || "";
-
-    if (categoryLower.includes("collaboration"))
-      return <Users {...iconProps} />;
-    if (categoryLower.includes("technical")) return <Settings {...iconProps} />;
-    if (categoryLower.includes("creative")) return <Lightbulb {...iconProps} />;
-    if (categoryLower.includes("leadership")) return <Compass {...iconProps} />;
-    if (categoryLower.includes("personal")) return <Heart {...iconProps} />;
-
-    return <Award {...iconProps} />;
   };
 
   // Get color for a category

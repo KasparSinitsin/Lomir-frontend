@@ -4,51 +4,8 @@ import {
   Tag,
   Award,
   Users,
-  Calendar,
   Info,
-  // Supercategory icons
-  Monitor,
   Briefcase,
-  Palette,
-  GraduationCap,
-  HeartHandshake,
-  Dumbbell,
-  Mountain,
-  Leaf,
-  Globe,
-  Scissors,
-  Gamepad2,
-  PawPrint,
-  Plane,
-  Layers,
-  // Badge icons
-  MessageCircle,
-  Flame,
-  ClipboardList,
-  Anchor,
-  Code,
-  BarChart2,
-  Wrench,
-  Network,
-  FileText,
-  Key,
-  Telescope,
-  BookOpen,
-  Paintbrush,
-  PackageOpen,
-  Flag,
-  UserPlus,
-  Map,
-  MessageSquare,
-  Zap,
-  Heart,
-  Search,
-  Shuffle,
-  Share2,
-  Settings,
-  Lightbulb,
-  Compass,
-  Scale,
   User,
 } from "lucide-react";
 import {
@@ -63,106 +20,16 @@ import {
   TAG_SECTION_BG,
   SUPERCATEGORY_ORDER,
 } from "../../constants/badgeConstants";
+import {
+  getCategoryIcon,
+  getBadgeIcon,
+  getSupercategoryIcon,
+  SUPERCATEGORY_ICONS,
+} from "../../utils/badgeIconUtils";
 import Modal from "../common/Modal";
 import InlineUserLink from "../users/InlineUserLink";
 import TeamDetailsModal from "../teams/TeamDetailsModal";
 import AwardCard from "./AwardCard";
-
-// Supercategory icon map (matching TagsDisplaySection)
-const SUPERCATEGORY_ICONS = {
-  "Technology & Development": Monitor,
-  "Business & Entrepreneurship": Briefcase,
-  "Creative Arts & Design": Palette,
-  "Learning, Knowledge & Personal Growth": GraduationCap,
-  "Social, Community & Volunteering": HeartHandshake,
-  "Sports & Fitness": Dumbbell,
-  "Outdoor & Adventure": Mountain,
-  "Wellness & Lifestyle": Leaf,
-  Languages: Globe,
-  "Hobbies & Crafts": Scissors,
-  Leisure: Gamepad2,
-  Pets: PawPrint,
-  Travels: Plane,
-};
-
-const getSupercategoryIcon = (supercategory, size = 20) => {
-  const IconComponent = SUPERCATEGORY_ICONS[supercategory] || Layers;
-  return (
-    <IconComponent
-      size={size}
-      style={{ color: FOCUS_GREEN }}
-      className="flex-shrink-0"
-    />
-  );
-};
-
-const getBadgeIcon = (badgeName, color, size = 16) => {
-  const iconProps = { size, style: { color } };
-
-  switch (badgeName) {
-    case "Team Player":
-      return <Users {...iconProps} />;
-    case "Mediator":
-      return <Scale {...iconProps} />;
-    case "Communicator":
-      return <MessageCircle {...iconProps} />;
-    case "Motivator":
-      return <Flame {...iconProps} />;
-    case "Organizer":
-      return <ClipboardList {...iconProps} />;
-    case "Reliable":
-      return <Anchor {...iconProps} />;
-    case "Coder":
-      return <Code {...iconProps} />;
-    case "Designer":
-      return <Palette {...iconProps} />;
-    case "Data Whiz":
-      return <BarChart2 {...iconProps} />;
-    case "Tech Support":
-      return <Wrench {...iconProps} />;
-    case "Systems Thinker":
-      return <Network {...iconProps} />;
-    case "Documentation Master":
-      return <FileText {...iconProps} />;
-    case "Innovator":
-      return <Lightbulb {...iconProps} />;
-    case "Problem Solver":
-      return <Key {...iconProps} />;
-    case "Visionary":
-      return <Telescope {...iconProps} />;
-    case "Storyteller":
-      return <BookOpen {...iconProps} />;
-    case "Artisan":
-      return <Paintbrush {...iconProps} />;
-    case "Outside-the-Box":
-      return <PackageOpen {...iconProps} />;
-    case "Decision Maker":
-    case "Mentor":
-      return <GraduationCap {...iconProps} />;
-    case "Initiative Taker":
-      return <Flag {...iconProps} />;
-    case "Delegator":
-      return <UserPlus {...iconProps} />;
-    case "Strategic Planner":
-      return <Map {...iconProps} />;
-    case "Feedback Provider":
-      return <MessageSquare {...iconProps} />;
-    case "Quick Learner":
-      return <Zap {...iconProps} />;
-    case "Empathetic":
-      return <Heart {...iconProps} />;
-    case "Persistent":
-      return <Mountain {...iconProps} />;
-    case "Detail-Oriented":
-      return <Search {...iconProps} />;
-    case "Adaptable":
-      return <Shuffle {...iconProps} />;
-    case "Knowledge Sharer":
-      return <Share2 {...iconProps} />;
-    default:
-      return <Award {...iconProps} />;
-  }
-};
 
 const getContextMeta = (contextType) => {
   switch (contextType) {

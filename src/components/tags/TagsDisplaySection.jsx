@@ -1,19 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import {
   Tag,
-  Monitor,
-  Briefcase,
-  Palette,
-  GraduationCap,
-  HeartHandshake,
-  Dumbbell,
-  Mountain,
-  Leaf,
-  Globe,
-  Scissors,
-  Gamepad2,
-  PawPrint,
-  Plane,
   Layers,
 } from "lucide-react";
 import {
@@ -23,31 +10,11 @@ import {
   FOCUS_GREEN,
   FOCUS_GREEN_DARK,
 } from "../../constants/badgeConstants";
+import { SUPERCATEGORY_ICONS } from "../../utils/badgeIconUtils";
 import Tooltip from "../common/Tooltip";
 import Button from "../common/Button";
 import TagInput from "./TagInput";
 import { UI_TEXT } from "../../constants/uiText";
-
-/**
- * Supercategory icon map.
- * Each supercategory gets a lucide-react icon for visual grouping,
- * similar to how BadgesDisplaySection uses category icons.
- */
-const SUPERCATEGORY_ICONS = {
-  "Technology & Development": Monitor,
-  "Business & Entrepreneurship": Briefcase,
-  "Creative Arts & Design": Palette,
-  "Learning, Knowledge & Personal Growth": GraduationCap,
-  "Social, Community & Volunteering": HeartHandshake,
-  "Sports & Fitness": Dumbbell,
-  "Outdoor & Adventure": Mountain,
-  "Wellness & Lifestyle": Leaf,
-  Languages: Globe,
-  "Hobbies & Crafts": Scissors,
-  Leisure: Gamepad2,
-  Pets: PawPrint,
-  Travels: Plane,
-};
 
 /**
  * Unified TagsDisplaySection Component
