@@ -18,6 +18,7 @@ import { Edit, MessageCircle, UserPlus, Award } from "lucide-react";
 import TeamInviteModal from "../teams/TeamInviteModal";
 import BadgeAwardModal from "../badges/BadgeAwardModal";
 import SupercategoryAwardsModal from "../badges/SupercategoryAwardsModal";
+import useAwardModals from "../../hooks/useAwardModals";
 
 const UserDetailsModal = ({
   isOpen,
@@ -53,41 +54,20 @@ const UserDetailsModal = ({
     tagInterestLevels: {},
   });
 
-  // ========= Badge Category Modal state =========
-  const [badgeCategoryModal, setBadgeCategoryModal] = useState({
-    isOpen: false,
-    category: null,
-    color: null,
-    badges: [],
-    totalCredits: 0,
-    focusedBadgeName: null,
-  });
-  const [detailedBadgeAwards, setDetailedBadgeAwards] = useState([]);
-  const [badgeModalLoading, setBadgeModalLoading] = useState(false);
   // ========= Badge Award Modal state =========
   const [isBadgeAwardModalOpen, setIsBadgeAwardModalOpen] = useState(false);
 
-  // ========= Tag Awards Modal state =========
-  const [tagAwardsModal, setTagAwardsModal] = useState({
-    isOpen: false,
-    tagName: null,
-    dominantBadgeCategory: null,
-    totalCredits: 0,
-  });
-  const [tagAwards, setTagAwards] = useState([]);
-  const [tagAwardsLoading, setTagAwardsLoading] = useState(false);
-  // ============================================
-
-  // ========= Supercategory Awards Modal state =========
-  const [supercategoryModal, setSupercategoryModal] = useState({
-    isOpen: false,
-    supercategory: null,
-    tags: [],
-    totalCredits: 0,
-  });
-  const [supercategoryAwards, setSupercategoryAwards] = useState([]);
-  const [supercategoryLoading, setSupercategoryLoading] = useState(false);
   // =====================================================
+
+  const {
+    handleBadgeCategoryClick,
+    handleBadgeClick,
+    handleTagClick,
+    handleSupercategoryClick,
+    badgeCategoryModalProps,
+    tagAwardsModalProps,
+    supercategoryModalProps,
+  } = useAwardModals(userId);
 
   // Determine if this modal is showing the current user (more reliable than comparing fetched user)
   const ownProfile =
@@ -187,228 +167,6 @@ const UserDetailsModal = ({
       return `${user.first_name} ${user.last_name}`;
     }
     return user?.username || "User";
-  };
-
-  // ========= Badge Category Modal handlers =========
-  const handleBadgeCategoryClick = async (
-    category,
-    color,
-    badges,
-    totalCredits,
-  ) => {
-    setBadgeCategoryModal({
-      isOpen: true,
-      category,
-      color,
-      badges,
-      totalCredits,
-      focusedBadgeName: null, // Show all badges in category
-    });
-    setBadgeModalLoading(true);
-
-    try {
-      const response = await userService.getUserBadges(userId);
-
-      const payload =
-        response?.success !== undefined
-          ? response
-          : response?.data?.success !== undefined
-            ? response.data
-            : (response?.data ?? response);
-
-      const rows = Array.isArray(payload)
-        ? payload
-        : Array.isArray(payload?.data)
-          ? payload.data
-          : [];
-
-      const categoryAwards = rows.filter((award) => {
-        const c =
-          award.badgeCategory ??
-          award.badge_category ??
-          award.category ??
-          award.badge_category_name;
-        return String(c ?? "").trim() === String(category ?? "").trim();
-      });
-
-      setDetailedBadgeAwards(categoryAwards);
-    } catch (error) {
-      console.error("Error fetching detailed badge awards:", error);
-      setDetailedBadgeAwards([]);
-    } finally {
-      setBadgeModalLoading(false);
-    }
-  };
-
-  // Handler for clicking a credited tag
-  const handleTagClick = async (tag) => {
-    setTagAwardsModal({
-      isOpen: true,
-      tagName: tag.name,
-      dominantBadgeCategory: tag.dominantBadgeCategory,
-      totalCredits: tag.badgeCredits,
-    });
-    setTagAwardsLoading(true);
-
-    try {
-      const response = await userService.getUserBadges(userId);
-      const payload =
-        response?.success !== undefined
-          ? response
-          : response?.data?.success !== undefined
-            ? response.data
-            : (response?.data ?? response);
-
-      const rows = Array.isArray(payload)
-        ? payload
-        : Array.isArray(payload?.data)
-          ? payload.data
-          : [];
-
-      // Filter awards linked to this tag
-      const tagId = tag.key; // tag.key is the tag ID from getDisplayTags
-      const filtered = rows.filter((award) => {
-        const awardTagName = award.tagName ?? award.tag_name;
-        return awardTagName === tag.name;
-      });
-
-      setTagAwards(filtered);
-    } catch (error) {
-      console.error("Error fetching tag awards:", error);
-      setTagAwards([]);
-    } finally {
-      setTagAwardsLoading(false);
-    }
-  };
-
-  const closeTagAwardsModal = () => {
-    setTagAwardsModal({
-      isOpen: false,
-      tagName: null,
-      dominantBadgeCategory: null,
-      totalCredits: 0,
-    });
-    setTagAwards([]);
-  };
-
-  // Handler for clicking a supercategory icon in focus areas
-  const handleSupercategoryClick = async (supercategory, groupTags) => {
-    const totalCredits = groupTags.reduce(
-      (sum, t) => sum + (t.badgeCredits || 0),
-      0,
-    );
-
-    setSupercategoryModal({
-      isOpen: true,
-      supercategory,
-      tags: groupTags,
-      totalCredits,
-    });
-    setSupercategoryLoading(true);
-
-    try {
-      const response = await userService.getUserBadges(userId);
-      const payload =
-        response?.success !== undefined
-          ? response
-          : response?.data?.success !== undefined
-            ? response.data
-            : (response?.data ?? response);
-
-      const rows = Array.isArray(payload)
-        ? payload
-        : Array.isArray(payload?.data)
-          ? payload.data
-          : [];
-
-      // Collect all tag names in this supercategory
-      const tagNames = new Set(groupTags.map((t) => t.name));
-
-      // Filter awards linked to any tag in this supercategory
-      const filtered = rows.filter((award) => {
-        const awardTagName = award.tagName ?? award.tag_name;
-        return awardTagName && tagNames.has(awardTagName);
-      });
-
-      setSupercategoryAwards(filtered);
-    } catch (error) {
-      console.error("Error fetching supercategory awards:", error);
-      setSupercategoryAwards([]);
-    } finally {
-      setSupercategoryLoading(false);
-    }
-  };
-
-  const closeSupercategoryModal = () => {
-    setSupercategoryModal({
-      isOpen: false,
-      supercategory: null,
-      tags: [],
-      totalCredits: 0,
-    });
-    setSupercategoryAwards([]);
-  };
-
-  // Handler for clicking on individual badge pills
-  const handleBadgeClick = async (badge, category, color) => {
-    // Calculate total credits for just this badge
-    const badgeCredits = badge.total_credits ?? badge.totalCredits ?? 0;
-
-    setBadgeCategoryModal({
-      isOpen: true,
-      category,
-      color,
-      badges: [badge],
-      totalCredits: badgeCredits,
-      focusedBadgeName: badge.name, // Track which badge to focus on
-    });
-    setBadgeModalLoading(true);
-
-    try {
-      const response = await userService.getUserBadges(userId);
-
-      const payload =
-        response?.success !== undefined
-          ? response
-          : response?.data?.success !== undefined
-            ? response.data
-            : (response?.data ?? response);
-
-      const rows = Array.isArray(payload)
-        ? payload
-        : Array.isArray(payload?.data)
-          ? payload.data
-          : [];
-
-      // Filter to only this badge's awards
-      const badgeAwards = rows.filter((award) => {
-        const awardBadgeName =
-          award.badgeName ?? award.badge_name ?? award.name;
-        return (
-          String(awardBadgeName ?? "").trim() ===
-          String(badge.name ?? "").trim()
-        );
-      });
-
-      setDetailedBadgeAwards(badgeAwards);
-    } catch (error) {
-      console.error("Error fetching badge awards:", error);
-      setDetailedBadgeAwards([]);
-    } finally {
-      setBadgeModalLoading(false);
-    }
-  };
-
-  const closeBadgeCategoryModal = () => {
-    setBadgeCategoryModal({
-      isOpen: false,
-      category: null,
-      color: null,
-      badges: [],
-      totalCredits: 0,
-      focusedBadgeName: null,
-    });
-    setDetailedBadgeAwards([]);
   };
 
   // =================================================
@@ -583,39 +341,19 @@ const UserDetailsModal = ({
 
       {/* Badge Category Modal */}
       <BadgeCategoryModal
-        isOpen={badgeCategoryModal.isOpen}
-        onClose={closeBadgeCategoryModal}
-        category={badgeCategoryModal.category}
-        color={badgeCategoryModal.color}
-        badges={badgeCategoryModal.badges}
-        detailedAwards={detailedBadgeAwards}
-        totalCredits={badgeCategoryModal.totalCredits}
-        loading={badgeModalLoading}
-        focusedBadgeName={badgeCategoryModal.focusedBadgeName}
+        {...badgeCategoryModalProps}
         onOpenUser={onOpenUser}
       />
 
       {/* Tag Awards Modal */}
       <TagAwardsModal
-        isOpen={tagAwardsModal.isOpen}
-        onClose={closeTagAwardsModal}
-        tagName={tagAwardsModal.tagName}
-        dominantBadgeCategory={tagAwardsModal.dominantBadgeCategory}
-        totalCredits={tagAwardsModal.totalCredits}
-        awards={tagAwards}
-        loading={tagAwardsLoading}
+        {...tagAwardsModalProps}
         onOpenUser={onOpenUser}
       />
 
       {/* Supercategory Awards Modal */}
       <SupercategoryAwardsModal
-        isOpen={supercategoryModal.isOpen}
-        onClose={closeSupercategoryModal}
-        supercategory={supercategoryModal.supercategory}
-        tags={supercategoryModal.tags}
-        totalCredits={supercategoryModal.totalCredits}
-        awards={supercategoryAwards}
-        loading={supercategoryLoading}
+        {...supercategoryModalProps}
         onOpenUser={onOpenUser}
       />
 
