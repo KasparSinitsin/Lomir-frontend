@@ -35,6 +35,12 @@ import {
   Shuffle,
   Share2,
 } from "lucide-react";
+import {
+  CATEGORY_SECTION_PASTELS,
+  CATEGORY_CARD_PASTELS,
+  DEFAULT_SECTION_PASTEL,
+  DEFAULT_CARD_PASTEL,
+} from "../../constants/badgeConstants";
 import Modal from "../common/Modal";
 import AwardCard from "./AwardCard";
 import TeamDetailsModal from "../teams/TeamDetailsModal";
@@ -45,27 +51,6 @@ import TeamDetailsModal from "../teams/TeamDetailsModal";
  * Shows detailed information about badges in a category including
  * individual awards, who gave them, when, and why.
  */
-
-// Section background pastels for each category (100 shades)
-const CATEGORY_PASTELS = {
-  "Collaboration Skills": "#DBEAFE",
-  "Technical Expertise": "#D1FAE5",
-  "Creative Thinking": "#EDE9FE",
-  "Leadership Qualities": "#FEE2E2",
-  "Personal Attributes": "#FEF3C7",
-};
-
-// Lighter pastels for AwardCards (50 shades)
-const CATEGORY_CARD_PASTELS = {
-  "Collaboration Skills": "#EFF6FF", // blue-50
-  "Technical Expertise": "#ECFDF5", // green-50
-  "Creative Thinking": "#F5F3FF", // violet-50
-  "Leadership Qualities": "#FEF2F2", // red-50
-  "Personal Attributes": "#FFFBEB", // amber-50
-};
-
-const DEFAULT_PASTEL = "#F3F4F6"; // gray-100
-const DEFAULT_CARD_PASTEL = "#F9FAFB"; // gray-50
 
 const BadgeCategoryModal = ({
   isOpen,
@@ -221,7 +206,7 @@ const BadgeCategoryModal = ({
     ? allSortedBadges.filter(([badgeName]) => badgeName === focusedBadgeName)
     : allSortedBadges;
 
-  const pastelBg = CATEGORY_PASTELS[category] || DEFAULT_PASTEL;
+  const pastelBg = CATEGORY_SECTION_PASTELS[category] || DEFAULT_SECTION_PASTEL;
   const cardPastel = CATEGORY_CARD_PASTELS[category] || DEFAULT_CARD_PASTEL;
 
   // Unique badges in this category

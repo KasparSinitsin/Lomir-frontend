@@ -43,6 +43,11 @@ import {
   Shuffle,
   Share2,
 } from "lucide-react";
+import {
+  CATEGORY_COLORS,
+  CATEGORY_SECTION_PASTELS,
+  DEFAULT_COLOR,
+} from "../../constants/badgeConstants";
 import Modal from "../common/Modal";
 import Button from "../common/Button";
 import Alert from "../common/Alert";
@@ -68,26 +73,6 @@ import { getUserInitials } from "../../utils/userHelpers";
  * @param {string} awardeeAvatar - Avatar URL of the awardee
  * @param {Function} onAwardComplete - Callback after successful award (to refresh badges)
  */
-
-// Category colors (matching BadgeCategoryCard/BadgeCategoryModal)
-const CATEGORY_COLORS = {
-  "Collaboration Skills": "#3B82F6",
-  "Technical Expertise": "#10B981",
-  "Creative Thinking": "#8B5CF6",
-  "Leadership Qualities": "#EF4444",
-  "Personal Attributes": "#F59E0B",
-};
-
-// Pastel background colors for each category
-const CATEGORY_PASTELS = {
-  "Collaboration Skills": "#DBEAFE",
-  "Technical Expertise": "#D1FAE5",
-  "Creative Thinking": "#EDE9FE",
-  "Leadership Qualities": "#FEE2E2",
-  "Personal Attributes": "#FEF3C7",
-};
-
-const DEFAULT_COLOR = "#6B7280";
 
 // Context type options
 const CONTEXT_OPTIONS = [
@@ -594,7 +579,7 @@ const BadgeAwardModal = ({
               <div className="space-y-2 max-h-64 overflow-y-auto">
                 {sortedCategories.map((category) => {
                   const color = CATEGORY_COLORS[category] || DEFAULT_COLOR;
-                  const pastel = CATEGORY_PASTELS[category] || "#F3F4F6";
+                  const pastel = CATEGORY_SECTION_PASTELS[category] || "#F3F4F6";
                   const isExpanded = expandedCategory === category;
                   const categoryBadges = badgesByCategory[category] || [];
                   const hasSelectedBadge = categoryBadges.some(

@@ -8,8 +8,11 @@ import {
   Heart,
 } from "lucide-react";
 import Tooltip from "../common/Tooltip";
-
-const PILL_ROW_HEIGHT = 26;
+import {
+  CATEGORY_COLORS,
+  DEFAULT_COLOR,
+  PILL_ROW_HEIGHT,
+} from "../../constants/badgeConstants";
 
 /**
  * BadgesDisplaySection Component
@@ -28,17 +31,6 @@ const PILL_ROW_HEIGHT = 26;
  * @param {Function} onCategoryClick - Callback when category icon is clicked (category, color, badges, totalCredits)
  * @param {Function} onBadgeClick - Callback when individual badge pill is clicked (badge, category, color)
  */
-
-// Category colors (matching BadgeCategoryCard/BadgeCategoryModal)
-const CATEGORY_COLORS = {
-  "Collaboration Skills": "#3B82F6",
-  "Technical Expertise": "#10B981",
-  "Creative Thinking": "#8B5CF6",
-  "Leadership Qualities": "#EF4444",
-  "Personal Attributes": "#F59E0B",
-};
-
-const DEFAULT_COLOR = "#6B7280";
 
 const BadgesDisplaySection = ({
   title = "Badges",

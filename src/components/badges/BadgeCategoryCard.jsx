@@ -7,6 +7,10 @@ import {
   Heart,
   Award,
 } from "lucide-react";
+import {
+  CATEGORY_SECTION_PASTELS,
+  DEFAULT_SECTION_PASTEL,
+} from "../../constants/badgeConstants";
 
 /**
  * BadgeCategoryCard Component
@@ -19,18 +23,6 @@ import {
  * @param {Array} badges - Array of badges in this category
  * @param {number} totalCredits - Total credits earned in this category
  */
-
-// Pastel background colors for each category (solid, no transparency)
-const CATEGORY_PASTELS = {
-  "Collaboration Skills": "#DBEAFE", // Light blue
-  "Technical Expertise": "#D1FAE5", // Light green
-  "Creative Thinking": "#EDE9FE", // Light purple
-  "Leadership Qualities": "#FEE2E2", // Light red/pink
-  "Personal Attributes": "#FEF3C7", // Light yellow
-};
-
-// Default pastel for unknown categories
-const DEFAULT_PASTEL = "#F3F4F6"; // Light gray
 
 const BadgeCategoryCard = ({
   category,
@@ -59,7 +51,7 @@ const BadgeCategoryCard = ({
 
   // Get solid pastel background color for category
   const getPastelBackground = () => {
-    return CATEGORY_PASTELS[category] || DEFAULT_PASTEL;
+    return CATEGORY_SECTION_PASTELS[category] || DEFAULT_SECTION_PASTEL;
   };
 
   // Sort badges by total_credits descending

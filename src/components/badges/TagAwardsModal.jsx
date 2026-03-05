@@ -37,6 +37,15 @@ import {
   Lightbulb,
   Compass,
 } from "lucide-react";
+import {
+  CATEGORY_COLORS,
+  CATEGORY_SECTION_PASTELS,
+  CATEGORY_CARD_PASTELS,
+  DEFAULT_COLOR,
+  DEFAULT_SECTION_PASTEL,
+  DEFAULT_CARD_PASTEL,
+  FOCUS_GREEN,
+} from "../../constants/badgeConstants";
 import Modal from "../common/Modal";
 import InlineUserLink from "../users/InlineUserLink";
 import AwardCard from "./AwardCard";
@@ -57,42 +66,6 @@ import TeamDetailsModal from "../teams/TeamDetailsModal";
  * @param {boolean} loading - Whether awards are still loading
  * @param {Function} onOpenUser - Callback to open a user's profile
  */
-
-// Category colors
-const CATEGORY_COLORS = {
-  "Collaboration Skills": "#3B82F6",
-  "Technical Expertise": "#10B981",
-  "Creative Thinking": "#8B5CF6",
-  "Leadership Qualities": "#EF4444",
-  "Personal Attributes": "#F59E0B",
-};
-
-// Lighter pastels for AwardCards (50 shades)
-const CATEGORY_CARD_PASTELS = {
-  "Collaboration Skills": "#EFF6FF", // blue-50
-  "Technical Expertise": "#ECFDF5", // green-50
-  "Creative Thinking": "#F5F3FF", // violet-50
-  "Leadership Qualities": "#FEF2F2", // red-50
-  "Personal Attributes": "#FFFBEB", // amber-50
-};
-
-// Slightly stronger pastels for the category section background (100 shades)
-const CATEGORY_SECTION_PASTELS = {
-  "Collaboration Skills": "#DBEAFE", // blue-100
-  "Technical Expertise": "#D1FAE5", // green-100
-  "Creative Thinking": "#EDE9FE", // violet-100
-  "Leadership Qualities": "#FEE2E2", // red-100
-  "Personal Attributes": "#FEF3C7", // amber-100
-};
-
-const DEFAULT_CARD_PASTEL = "#F9FAFB"; // gray-50
-const DEFAULT_SECTION_PASTEL = "#F3F4F6"; // gray-100
-
-// Focus area green colors (matching TagsDisplaySection / SupercategoryAwardsModal)
-const FOCUS_GREEN = "#009213";
-
-const DEFAULT_COLOR = "#6B7280";
-const DEFAULT_PASTEL = "#F3F4F6";
 
 // Get category icon
 const getCategoryIcon = (category, color, size = 16) => {

@@ -23,6 +23,7 @@ import {
   Tag,
   Calendar,
 } from "lucide-react";
+import { CATEGORY_COLORS } from "../constants/badgeConstants";
 import { tagService } from "../services/tagService";
 import { userService } from "../services/userService";
 import TagInput from "../components/tags/TagInput";
@@ -371,14 +372,7 @@ const Profile = () => {
           // Pass the badge's category color so the tag pill highlights in the right color
           const badgeCategory =
             matchingAward.badgeCategory ?? matchingAward.badge_category;
-          const categoryColors = {
-            "Collaboration Skills": "#3B82F6",
-            "Technical Expertise": "#10B981",
-            "Creative Thinking": "#8B5CF6",
-            "Leadership Qualities": "#EF4444",
-            "Personal Attributes": "#F59E0B",
-          };
-          setHighlightTagColor(categoryColors[badgeCategory] || null);
+          setHighlightTagColor(CATEGORY_COLORS[badgeCategory] || null);
         }
       } catch (error) {
         console.error("Error deriving highlight tag:", error);
