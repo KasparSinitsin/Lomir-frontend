@@ -7,6 +7,7 @@ import {
   Info,
   Briefcase,
   User,
+  Tag,
   // Badge icons
   Scale,
   MessageCircle,
@@ -63,6 +64,7 @@ const AwardCard = ({
   categoryPastel,
   onOpenUser,
   onOpenTeam,
+  hideTag = false,
 }) => {
   const catColor = categoryColor;
 
@@ -93,15 +95,7 @@ const AwardCard = ({
     (contextType === "team" ? (award?.contextId ?? award?.context_id) : null) ??
     null;
 
-  const handleOpenTeam = () => {
-    if (!isTeamClickable) return;
-    // support handlers that accept (id) or (id, name)
-    try {
-      openTeam(teamId, teamName);
-    } catch (e) {
-      openTeam(teamId);
-    }
-  };
+  const tagName = award?.tagName ?? award?.tag_name ?? null;
 
   const awardedByUserId = award?.awardedByUserId || award?.awarded_by_user_id;
   const awardedByFirstName =
@@ -126,75 +120,16 @@ const AwardCard = ({
 
   const isTeamClickable = Boolean(contextType === "team" && teamId && openTeam);
 
-  // --- Helpers (from SupercategoryAwardsModal) ---
-  const getBadgeIcon = (name, color, size = 16) => {
-    const iconProps = { size, style: { color } };
-
-    switch (name) {
-      case "Team Player":
-        return <Users {...iconProps} />;
-      case "Mediator":
-        return <Scale {...iconProps} />;
-      case "Communicator":
-        return <MessageCircle {...iconProps} />;
-      case "Motivator":
-        return <Flame {...iconProps} />;
-      case "Organizer":
-        return <ClipboardList {...iconProps} />;
-      case "Reliable":
-        return <Anchor {...iconProps} />;
-      case "Coder":
-        return <Code {...iconProps} />;
-      case "Designer":
-        return <Palette {...iconProps} />;
-      case "Data Whiz":
-        return <BarChart2 {...iconProps} />;
-      case "Tech Support":
-        return <Wrench {...iconProps} />;
-      case "Systems Thinker":
-        return <Network {...iconProps} />;
-      case "Documentation Master":
-        return <FileText {...iconProps} />;
-      case "Innovator":
-        return <Lightbulb {...iconProps} />;
-      case "Problem Solver":
-        return <Key {...iconProps} />;
-      case "Visionary":
-        return <Telescope {...iconProps} />;
-      case "Storyteller":
-        return <BookOpen {...iconProps} />;
-      case "Artisan":
-        return <Paintbrush {...iconProps} />;
-      case "Outside-the-Box":
-        return <PackageOpen {...iconProps} />;
-      case "Decision Maker":
-      case "Mentor":
-        return <GraduationCap {...iconProps} />;
-      case "Initiative Taker":
-        return <Flag {...iconProps} />;
-      case "Delegator":
-        return <UserPlus {...iconProps} />;
-      case "Strategic Planner":
-        return <Map {...iconProps} />;
-      case "Feedback Provider":
-        return <MessageSquare {...iconProps} />;
-      case "Quick Learner":
-        return <Zap {...iconProps} />;
-      case "Empathetic":
-        return <Heart {...iconProps} />;
-      case "Persistent":
-        return <Mountain {...iconProps} />;
-      case "Detail-Oriented":
-        return <Search {...iconProps} />;
-      case "Adaptable":
-        return <Shuffle {...iconProps} />;
-      case "Knowledge Sharer":
-        return <Share2 {...iconProps} />;
-      default:
-        return <Award {...iconProps} />;
+  const handleOpenTeam = () => {
+    if (!isTeamClickable) return;
+    try {
+      openTeam(teamId, teamName);
+    } catch (e) {
+      openTeam(teamId);
     }
   };
 
+  // --- Context meta ---
   const getContextMeta = (type) => {
     switch (type) {
       case "team":
@@ -222,46 +157,52 @@ const AwardCard = ({
       }}
       title={category}
     >
-      {/* Top row */}
+      {/* Top row: context type (title) + credits pill */}
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
+          {/* Title: context icon + context label — same typography as badge name was */}
           <div className="flex items-center gap-2 min-w-0">
-            {getBadgeIcon(badgeName, catColor, 16)}
+            <ContextIcon
+              size={16}
+              className="flex-shrink-0"
+              style={{ color: catColor }}
+            />
             <span
               className="font-medium leading-tight truncate"
               style={{ color: catColor }}
             >
-              {badgeName}
+              {contextLabel}
             </span>
           </div>
 
-          {/* Context line — NOT bold */}
-          <div className="flex items-center gap-1 text-xs text-base-content/60 mt-1 min-w-0 leading-tight">
-            {contextType === "team" && teamName ? (
-              <span className="inline-flex items-center gap-1 min-w-0">
-                <Users size={12} className="flex-shrink-0" />
-                <span className="truncate">{contextLabel}:</span>
-
-                <span
-                  className={[
-                    "min-w-0 truncate font-medium text-base-content/80",
-                    isTeamClickable
-                      ? "cursor-pointer hover:text-primary transition-colors"
-                      : "cursor-default",
-                  ].join(" ")}
-                  title={isTeamClickable ? "View team" : teamName}
-                  onClick={handleOpenTeam}
-                >
-                  {teamName}
+          {/* Sub-row: team name + linked tag — single line */}
+          {(contextType === "team" && teamName) || (tagName && !hideTag) ? (
+            <div className="flex items-center gap-2 text-xs text-base-content/60 mt-1 min-w-0 leading-tight">
+              {contextType === "team" && teamName && (
+                <span className="flex items-center gap-1 min-w-0 flex-shrink-0">
+                  <span>Team:</span>
+                  <span
+                    className={[
+                      "truncate font-medium text-base-content/70",
+                      isTeamClickable
+                        ? "cursor-pointer hover:text-primary transition-colors"
+                        : "cursor-default",
+                    ].join(" ")}
+                    title={isTeamClickable ? "View team" : teamName}
+                    onClick={handleOpenTeam}
+                  >
+                    {teamName}
+                  </span>
                 </span>
-              </span>
-            ) : (
-              <>
-                <ContextIcon size={12} className="flex-shrink-0" />
-                <span className="truncate">{contextLabel}</span>
-              </>
-            )}
-          </div>
+              )}
+              {tagName && !hideTag && (
+                <span className="flex items-center gap-1 min-w-0">
+                  <Tag size={11} className="flex-shrink-0" />
+                  <span className="truncate">{tagName}</span>
+                </span>
+              )}
+            </div>
+          ) : null}
         </div>
 
         <span
