@@ -304,6 +304,7 @@ const BadgeCategoryModal = ({
                         categoryPastel={cardPastel}
                         onOpenUser={onOpenUser}
                         onOpenTeam={handleOpenTeam}
+                        showBadgeTitle={false}
                         highlighted={
                           !!highlightBadgeName &&
                           (

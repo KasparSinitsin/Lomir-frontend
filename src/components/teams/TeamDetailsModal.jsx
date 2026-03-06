@@ -1391,7 +1391,7 @@ const TeamDetailsModal = ({
                       onSave={undefined}
                       onTagClick={handleTagClick}
                       onSupercategoryClick={handleSupercategoryClick}
-                      entityType="team"  
+                      entityType="team"
                       emptyMessage={UI_TEXT.focusAreas.emptyTeam}
                       placeholder={UI_TEXT.focusAreas.placeholderTeam}
                     />

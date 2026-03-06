@@ -208,7 +208,7 @@ export const teamService = {
     }
   },
 
- // **
+  // **
   //  * Fetches all badge awards for team members linked to team focus areas.
   //  * Returns rows in the same shape as user badge awards, with extra
   //  * awarded_to_* fields for the recipient.
@@ -224,7 +224,6 @@ export const teamService = {
       throw error;
     }
   },
-
 
   // Update team details
   updateTeam: async (teamId, teamData) => {
@@ -462,25 +461,25 @@ export const teamService = {
   },
 
   getUserReceivedInvitations: async () => {
-  try {
-    const response = await api.get("/api/teams/invitations/received");
-    return response.data;
-  } catch (error) {
-    console.error("Error fetching received invitations:", error);
-    throw error;
-  }
-},
+    try {
+      const response = await api.get("/api/teams/invitations/received");
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching received invitations:", error);
+      throw error;
+    }
+  },
 
-// LIAS to match the naming pattern used in MyTeams.jsx:
-getUserPendingInvitations: async () => {
-  try {
-    const response = await api.get("/api/teams/invitations/received");
-    return response.data;
-  } catch (error) {
-    console.error("Error fetching user pending invitations:", error);
-    throw error;
-  }
-},
+  // LIAS to match the naming pattern used in MyTeams.jsx:
+  getUserPendingInvitations: async () => {
+    try {
+      const response = await api.get("/api/teams/invitations/received");
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching user pending invitations:", error);
+      throw error;
+    }
+  },
 
   respondToInvitation: async (invitationId, action, responseMessage = "") => {
     try {
