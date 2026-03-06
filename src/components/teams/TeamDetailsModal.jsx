@@ -42,6 +42,9 @@ import TeamFocusAreaSection from "./TeamFocusAreaSection";
 import axios from "axios";
 import Modal from "../common/Modal";
 import LocationSection from "../common/LocationSection";
+import TagAwardsModal from "../badges/TagAwardsModal";
+import SupercategoryAwardsModal from "../badges/SupercategoryAwardsModal";
+import useTeamAwardModals from "../../hooks/useTeamAwardModals";
 
 const normalizeTeamTagIds = (team) => {
   const raw = team?.tags ?? team?.tags_json ?? team?.selectedTags ?? [];
@@ -122,6 +125,15 @@ const TeamDetailsModal = ({
   const [selectedUserId, setSelectedUserId] = useState(null);
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [allTags, setAllTags] = useState([]);
+
+  // Team focus-area award modals (parallel to useAwardModals for users)
+  const {
+    handleTagClick,
+    handleSupercategoryClick,
+    tagAwardsModalProps,
+    supercategoryModalProps,
+  } = useTeamAwardModals(effectiveTeamId);
+
   const userHasEditedTagsRef = useRef(false);
   const [isLeaveDialogOpen, setIsLeaveDialogOpen] = useState(false);
   const [leaveLoading, setLeaveLoading] = useState(false);
@@ -1377,6 +1389,9 @@ const TeamDetailsModal = ({
                       allTags={allTags}
                       canEdit={false}
                       onSave={undefined}
+                      onTagClick={handleTagClick}
+                      onSupercategoryClick={handleSupercategoryClick}
+                      entityType="team"  
                       emptyMessage={UI_TEXT.focusAreas.emptyTeam}
                       placeholder={UI_TEXT.focusAreas.placeholderTeam}
                     />
@@ -1467,6 +1482,8 @@ const TeamDetailsModal = ({
           </div>
         </Modal>
       )}
+      <TagAwardsModal {...tagAwardsModalProps} />
+      <SupercategoryAwardsModal {...supercategoryModalProps} />
 
       {/* Invitation Details Modal */}
       {pendingInvitation && (

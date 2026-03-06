@@ -1,14 +1,23 @@
 import React from "react";
 import { format } from "date-fns";
-import { Users, Calendar, Info, Briefcase, User, Tag } from "lucide-react";
+import { Users, Calendar, Info, Briefcase, User, Tag, Award } from "lucide-react";
 import InlineUserLink from "../users/InlineUserLink";
 import { useTeamModal } from "../../contexts/TeamModalContext";
+import { useUserModalSafe } from "../../contexts/UserModalContext";
+import { getBadgeIcon } from "../../utils/badgeIconUtils";
 
 /**
  * AwardCard
  *
  * Canonical badge-award card UI (used across badge-related modals).
- * Matches the layout/design used in SupercategoryAwardsModal.
+ *
+ * When awardee info is available (team context), the card shows:
+ *   Title row:  [Awardee Avatar] Awardee Name (category color)  ... [+N ct.]
+ *   Subline:    (icon) Context label  ·  (icon) Team: Name  ·  (icon) Tag
+ *
+ * When no awardee info (user context), falls back to:
+ *   Title row:  (icon) Context label  ... [+N ct.]
+ *   Subline:    Team: Name  ·  Tag
  *
  * Props:
  * - award: award object (supports camelCase + snake_case)
@@ -17,6 +26,8 @@ import { useTeamModal } from "../../contexts/TeamModalContext";
  * - categoryPastel: string (optional; used as card background if provided)
  * - onOpenUser: function(userId)
  * - onOpenTeam: optional function(teamId, teamName)
+ * - hideTag: boolean
+ * - highlighted: boolean
  */
 const AwardCard = ({
   award,
@@ -53,12 +64,12 @@ const AwardCard = ({
     award?.team?.id ??
     award?.contextTeamId ??
     award?.context_team_id ??
-    // sometimes generic context_id is used for team awards
     (contextType === "team" ? (award?.contextId ?? award?.context_id) : null) ??
     null;
 
   const tagName = award?.tagName ?? award?.tag_name ?? null;
 
+  // --- Awarded BY (bottom row) ---
   const awardedByUserId = award?.awardedByUserId || award?.awarded_by_user_id;
   const awardedByFirstName =
     award?.awardedByFirstName || award?.awarded_by_first_name;
@@ -69,6 +80,28 @@ const AwardCard = ({
   const awardedByAvatarUrl =
     award?.awardedByAvatarUrl || award?.awarded_by_avatar_url;
 
+  // --- Awarded TO / Awardee (title row — team context) ---
+  const awardedToUserId =
+    award?.awardedToUserId || award?.awarded_to_user_id || null;
+  const awardedToFirstName =
+    award?.awardedToFirstName || award?.awarded_to_first_name || null;
+  const awardedToLastName =
+    award?.awardedToLastName || award?.awarded_to_last_name || null;
+  const awardedToUsername =
+    award?.awardedToUsername || award?.awarded_to_username || null;
+  const awardedToAvatarUrl =
+    award?.awardedToAvatarUrl || award?.awarded_to_avatar_url || null;
+
+  const hasAwardeeInfo = Boolean(awardedToUserId);
+
+  const awardeeName = awardedToFirstName
+    ? `${awardedToFirstName}${awardedToLastName ? ` ${awardedToLastName}` : ""}`
+    : awardedToUsername || null;
+
+  const awarderName = awardedByFirstName
+    ? `${awardedByFirstName}${awardedByLastName ? ` ${awardedByLastName}` : ""}`
+    : awardedByUsername || "Someone";
+
   // --- Team modal integration (global fallback) ---
   let teamModal = null;
   try {
@@ -77,9 +110,7 @@ const AwardCard = ({
     teamModal = null;
   }
 
-  // Prefer explicit prop, otherwise fall back to global TeamModalContext
   const openTeam = onOpenTeam || teamModal?.openTeamModal;
-
   const isTeamClickable = Boolean(contextType === "team" && teamId && openTeam);
 
   const handleOpenTeam = () => {
@@ -90,6 +121,20 @@ const AwardCard = ({
       openTeam(teamId);
     }
   };
+
+  // --- Unified user-open handler (prop → global context fallback) ---
+  const userModalContext = useUserModalSafe();
+
+  const openUser = (userId) => {
+    if (!userId) return;
+    if (onOpenUser) {
+      onOpenUser(userId);
+    } else if (userModalContext) {
+      userModalContext.openUserModal(userId);
+    }
+  };
+
+  const canOpenUser = Boolean(onOpenUser || userModalContext);
 
   // --- Context meta ---
   const getContextMeta = (type) => {
@@ -110,6 +155,10 @@ const AwardCard = ({
   const { label: contextLabel, Icon: ContextIcon } =
     getContextMeta(contextType);
 
+  // ============================================================
+  // Render
+  // ============================================================
+
   return (
     <div
       className={`rounded-lg p-3 flex flex-col border ${highlighted ? "animate-badge-highlight" : ""}`}
@@ -127,54 +176,151 @@ const AwardCard = ({
       }}
       title={category}
     >
-      {/* Top row: context type (title) + credits pill */}
+      {/* ── Title row + credits pill ── */}
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          {/* Title: context icon + context label — same typography as badge name was */}
-          <div className="flex items-center gap-2 min-w-0">
-            <ContextIcon
-              size={16}
-              className="flex-shrink-0"
-              style={{ color: catColor }}
-            />
-            <span
-              className="font-medium leading-tight truncate"
-              style={{ color: catColor }}
-            >
-              {contextLabel}
-            </span>
-          </div>
+          {hasAwardeeInfo ? (
+            /* ── TEAM CONTEXT: Badge icon + badge name as title ── */
+            <div className="flex items-center gap-2 min-w-0">
+              {getBadgeIcon(badgeName, catColor, 16)}
+              <span
+                className="font-medium leading-tight truncate"
+                style={{ color: catColor }}
+              >
+                {badgeName}
+              </span>
+            </div>
+          ) : (
+            /* ── USER CONTEXT: Context icon + label as title (unchanged) ── */
+            <div className="flex items-center gap-2 min-w-0">
+              <ContextIcon
+                size={16}
+                className="flex-shrink-0"
+                style={{ color: catColor }}
+              />
+              <span
+                className="font-medium leading-tight truncate"
+                style={{ color: catColor }}
+              >
+                {contextLabel}
+              </span>
+            </div>
+          )}
 
-          {/* Sub-row: team name + linked tag — single line */}
-          {(contextType === "team" && teamName) || (tagName && !hideTag) ? (
-            <div className="flex items-center gap-2 text-xs text-base-content/60 mt-1 min-w-0 leading-tight">
-              {contextType === "team" && teamName && (
-                <span className="flex items-center gap-1 min-w-0 flex-shrink-0">
-                  <span>Team:</span>
-                  <span
-                    className={[
-                      "truncate font-medium text-base-content/70",
-                      isTeamClickable
-                        ? "cursor-pointer hover:text-primary transition-colors"
-                        : "cursor-default",
-                    ].join(" ")}
-                    title={isTeamClickable ? "View team" : teamName}
-                    onClick={handleOpenTeam}
-                  >
-                    {teamName}
+          {/* ── Subline ── */}
+          {hasAwardeeInfo ? (
+            /* TEAM CONTEXT subline: awarded by + context (+ team) + tag */
+            <div className="flex items-center flex-wrap gap-x-3 gap-y-0.5 text-xs text-base-content/60 mt-1 min-w-0 leading-tight">
+              {/* Awarded by (awarder name, clickable) */}
+              <span className="flex items-center gap-1 min-w-0">
+                <Award
+                  size={11}
+                  className="flex-shrink-0 text-base-content/70"
+                />
+                <span className="flex-shrink-0">awarded by</span>
+                <span
+                  className={[
+                    "truncate font-medium text-base-content/70",
+                    awardedByUserId && canOpenUser
+                      ? "cursor-pointer hover:text-primary transition-colors"
+                      : "",
+                  ].join(" ")}
+                  title={
+                    awardedByUserId && canOpenUser
+                      ? "View profile"
+                      : awarderName
+                  }
+                  onClick={
+                    awardedByUserId && canOpenUser
+                      ? () => openUser(awardedByUserId)
+                      : undefined
+                  }
+                >
+                  {awarderName}
+                </span>
+              </span>
+
+              {/* Context type — short labels: "Team: Name", "Personal", "Project" */}
+              <span className="flex items-center gap-1 min-w-0">
+                <ContextIcon
+                  size={11}
+                  className="flex-shrink-0 text-base-content/70"
+                />
+                {contextType === "team" ? (
+                  teamName ? (
+                    <>
+                      <span className="flex-shrink-0">Team:</span>
+                      <span
+                        className={[
+                          "truncate font-medium text-base-content/70",
+                          isTeamClickable
+                            ? "cursor-pointer hover:text-primary transition-colors"
+                            : "cursor-default",
+                        ].join(" ")}
+                        title={isTeamClickable ? "View team" : teamName}
+                        onClick={handleOpenTeam}
+                      >
+                        {teamName}
+                      </span>
+                    </>
+                  ) : (
+                    <span className="truncate">Team</span>
+                  )
+                ) : (
+                  <span className="truncate">
+                    {contextType === "project" ? "Project" : "Personal"}
                   </span>
-                </span>
-              )}
+                )}
+              </span>
+
+              {/* Tag */}
               {tagName && !hideTag && (
-                <span className="flex items-center gap-1 min-w-0">
-                  <Tag size={11} className="flex-shrink-0" />
-                  <span className="truncate">{tagName}</span>
-                </span>
+                <>
+                  <span className="text-base-content/30">·</span>
+                  <span className="flex items-center gap-1 min-w-0">
+                    <Tag size={11} className="flex-shrink-0" />
+                    <span className="truncate">{tagName}</span>
+                  </span>
+                </>
               )}
             </div>
-          ) : null}
+          ) : (
+            /* USER CONTEXT subline: team + tag only (original layout) */
+            (contextType === "team" && teamName) || (tagName && !hideTag) ? (
+              <div className="flex items-center gap-2 text-xs text-base-content/60 mt-1 min-w-0 leading-tight">
+                {contextType === "team" && teamName && (
+                  <span className="flex items-center gap-1 min-w-0 flex-shrink-0">
+                    <Users
+                      size={11}
+                      className="flex-shrink-0 text-base-content/70"
+                    />
+                    <span>Team:</span>
+                    <span
+                      className={[
+                        "truncate font-medium text-base-content/70",
+                        isTeamClickable
+                          ? "cursor-pointer hover:text-primary transition-colors"
+                          : "cursor-default",
+                      ].join(" ")}
+                      title={isTeamClickable ? "View team" : teamName}
+                      onClick={handleOpenTeam}
+                    >
+                      {teamName}
+                    </span>
+                  </span>
+                )}
+                {tagName && !hideTag && (
+                  <span className="flex items-center gap-1 min-w-0">
+                    <Tag size={11} className="flex-shrink-0" />
+                    <span className="truncate">{tagName}</span>
+                  </span>
+                )}
+              </div>
+            ) : null
+          )}
         </div>
 
+        {/* Credits pill */}
         <span
           className="px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap text-white"
           style={{ backgroundColor: catColor }}
@@ -192,17 +338,31 @@ const AwardCard = ({
 
       {/* Bottom row pinned to bottom */}
       <div className="flex items-end justify-between mt-auto pt-3 gap-2">
-        <InlineUserLink
-          label="Awarded by"
-          user={{
-            id: awardedByUserId,
-            first_name: awardedByFirstName,
-            last_name: awardedByLastName,
-            username: awardedByUsername,
-            avatar_url: awardedByAvatarUrl,
-          }}
-          onOpenUser={onOpenUser}
-        />
+        {hasAwardeeInfo ? (
+          <InlineUserLink
+            label="Awarded to"
+            user={{
+              id: awardedToUserId,
+              first_name: awardedToFirstName,
+              last_name: awardedToLastName,
+              username: awardedToUsername,
+              avatar_url: awardedToAvatarUrl,
+            }}
+            onOpenUser={openUser}
+          />
+        ) : (
+          <InlineUserLink
+            label="Awarded by"
+            user={{
+              id: awardedByUserId,
+              first_name: awardedByFirstName,
+              last_name: awardedByLastName,
+              username: awardedByUsername,
+              avatar_url: awardedByAvatarUrl,
+            }}
+            onOpenUser={openUser}
+          />
+        )}
 
         <div className="flex items-center gap-1 text-xs text-base-content/60 leading-tight">
           <Calendar size={12} className="flex-shrink-0" />

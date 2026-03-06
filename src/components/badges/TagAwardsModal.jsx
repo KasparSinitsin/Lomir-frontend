@@ -1,11 +1,6 @@
 import React, { useState } from "react";
 import { format } from "date-fns";
-import {
-  Tag,
-  Award,
-  Users,
-  Calendar,
-} from "lucide-react";
+import { Tag, Award, Users, Calendar } from "lucide-react";
 import {
   CATEGORY_COLORS,
   CATEGORY_SECTION_PASTELS,
@@ -60,6 +55,7 @@ const TagAwardsModal = ({
   awards = [],
   loading = false,
   onOpenUser,
+  entityType,
   highlightBadgeName = null,
 }) => {
   // Internal TeamDetailsModal state (mirrors SupercategoryAwardsModal)
@@ -99,11 +95,20 @@ const TagAwardsModal = ({
   );
 
   // Unique awarding users
-  const awardingUserCount = new Set(
-    awards
-      .map((a) => a.awardedByUserId || a.awarded_by_user_id)
-      .filter(Boolean),
-  ).size;
+  // For team context: count unique awardees (members who received badges)
+  // For user context: count unique awarders (people who gave badges)
+  const personCount =
+    entityType === "team"
+      ? new Set(
+          awards
+            .map((a) => a.awardedToUserId || a.awarded_to_user_id)
+            .filter(Boolean),
+        ).size
+      : new Set(
+          awards
+            .map((a) => a.awardedByUserId || a.awarded_by_user_id)
+            .filter(Boolean),
+        ).size;
 
   const creditedCategoryCount = sortedCategories.length;
 
@@ -159,9 +164,13 @@ const TagAwardsModal = ({
 
                   <span className="inline-flex items-center gap-1 whitespace-nowrap">
                     <Users size={14} />
-                    <span className="font-medium">{awardingUserCount}</span>
+                    <span className="font-medium">{personCount}</span>
                     <span className="hidden sm:inline">
-                      {awardingUserCount === 1 ? "person" : "people"}
+                      {entityType === "team"
+                        ? `team member${personCount !== 1 ? "s" : ""} with badges`
+                        : personCount === 1
+                          ? "person"
+                          : "people"}
                     </span>
                   </span>
 
