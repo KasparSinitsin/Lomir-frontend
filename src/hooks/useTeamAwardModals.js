@@ -76,7 +76,8 @@ const useTeamAwardModals = (teamId) => {
       setTagAwardsModal({
         isOpen: true,
         tagName: tag.name,
-        dominantBadgeCategory: tag.dominantBadgeCategory || tag.dominant_badge_category,
+        dominantBadgeCategory:
+          tag.dominantBadgeCategory || tag.dominant_badge_category,
         totalCredits: tag.badgeCredits || tag.badge_credits || 0,
       });
       setTagAwardsLoading(true);

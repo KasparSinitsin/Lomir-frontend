@@ -185,7 +185,9 @@ const SupercategoryAwardsModal = ({
                     <span className="hidden sm:inline">
                       {entityType === "team"
                         ? `team member${personCount !== 1 ? "s" : ""} with badges`
-                        : personCount === 1 ? "person" : "people"}
+                        : personCount === 1
+                          ? "person"
+                          : "people"}
                     </span>
                   </span>
 

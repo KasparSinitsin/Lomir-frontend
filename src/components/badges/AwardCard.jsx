@@ -1,6 +1,14 @@
 import React from "react";
 import { format } from "date-fns";
-import { Users, Calendar, Info, Briefcase, User, Tag, Award } from "lucide-react";
+import {
+  Users,
+  Calendar,
+  Info,
+  Briefcase,
+  User,
+  Tag,
+  Award,
+} from "lucide-react";
 import InlineUserLink from "../users/InlineUserLink";
 import { useTeamModal } from "../../contexts/TeamModalContext";
 import { useUserModalSafe } from "../../contexts/UserModalContext";
@@ -38,6 +46,7 @@ const AwardCard = ({
   onOpenTeam,
   hideTag = false,
   highlighted = false,
+  showBadgeTitle = true,
 }) => {
   const catColor = categoryColor;
 
@@ -179,39 +188,39 @@ const AwardCard = ({
       {/* ── Title row + credits pill ── */}
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          {hasAwardeeInfo ? (
-            /* ── TEAM CONTEXT: Badge icon + badge name as title ── */
-            <div className="flex items-center gap-2 min-w-0">
-              {getBadgeIcon(badgeName, catColor, 16)}
-              <span
-                className="font-medium leading-tight truncate"
-                style={{ color: catColor }}
-              >
-                {badgeName}
-              </span>
-            </div>
-          ) : (
-            /* ── USER CONTEXT: Context icon + label as title (unchanged) ── */
-            <div className="flex items-center gap-2 min-w-0">
-              <ContextIcon
-                size={16}
-                className="flex-shrink-0"
-                style={{ color: catColor }}
-              />
-              <span
-                className="font-medium leading-tight truncate"
-                style={{ color: catColor }}
-              >
-                {contextLabel}
-              </span>
-            </div>
-          )}
+          {/* Badge icon + badge name as title, or context icon + label */}
+          <div className="flex items-center gap-2 min-w-0">
+            {showBadgeTitle ? (
+              <>
+                {getBadgeIcon(badgeName, catColor, 16)}
+                <span
+                  className="font-medium leading-tight truncate"
+                  style={{ color: catColor }}
+                >
+                  {badgeName}
+                </span>
+              </>
+            ) : (
+              <>
+                <ContextIcon
+                  size={16}
+                  className="flex-shrink-0"
+                  style={{ color: catColor }}
+                />
+                <span
+                  className="font-medium leading-tight truncate"
+                  style={{ color: catColor }}
+                >
+                  {contextLabel}
+                </span>
+              </>
+            )}
+          </div>
 
           {/* ── Subline ── */}
-          {hasAwardeeInfo ? (
-            /* TEAM CONTEXT subline: awarded by + context (+ team) + tag */
-            <div className="flex items-center flex-wrap gap-x-3 gap-y-0.5 text-xs text-base-content/60 mt-1 min-w-0 leading-tight">
-              {/* Awarded by (awarder name, clickable) */}
+          <div className="flex items-center flex-wrap gap-x-3 gap-y-0.5 text-xs text-base-content/60 mt-1 min-w-0 leading-tight">
+            {/* Awarded by (team context only — awarder name, clickable) */}
+            {hasAwardeeInfo && (
               <span className="flex items-center gap-1 min-w-0">
                 <Award
                   size={11}
@@ -239,8 +248,10 @@ const AwardCard = ({
                   {awarderName}
                 </span>
               </span>
+            )}
 
-              {/* Context type — short labels: "Team: Name", "Personal", "Project" */}
+            {/* Context type — shown when badge title is displayed (context not in title) */}
+            {showBadgeTitle && (
               <span className="flex items-center gap-1 min-w-0">
                 <ContextIcon
                   size={11}
@@ -272,52 +283,39 @@ const AwardCard = ({
                   </span>
                 )}
               </span>
+            )}
 
-              {/* Tag */}
-              {tagName && !hideTag && (
-                <>
-                  <span className="text-base-content/30">·</span>
-                  <span className="flex items-center gap-1 min-w-0">
-                    <Tag size={11} className="flex-shrink-0" />
-                    <span className="truncate">{tagName}</span>
-                  </span>
-                </>
-              )}
-            </div>
-          ) : (
-            /* USER CONTEXT subline: team + tag only (original layout) */
-            (contextType === "team" && teamName) || (tagName && !hideTag) ? (
-              <div className="flex items-center gap-2 text-xs text-base-content/60 mt-1 min-w-0 leading-tight">
-                {contextType === "team" && teamName && (
-                  <span className="flex items-center gap-1 min-w-0 flex-shrink-0">
-                    <Users
-                      size={11}
-                      className="flex-shrink-0 text-base-content/70"
-                    />
-                    <span>Team:</span>
-                    <span
-                      className={[
-                        "truncate font-medium text-base-content/70",
-                        isTeamClickable
-                          ? "cursor-pointer hover:text-primary transition-colors"
-                          : "cursor-default",
-                      ].join(" ")}
-                      title={isTeamClickable ? "View team" : teamName}
-                      onClick={handleOpenTeam}
-                    >
-                      {teamName}
-                    </span>
-                  </span>
-                )}
-                {tagName && !hideTag && (
-                  <span className="flex items-center gap-1 min-w-0">
-                    <Tag size={11} className="flex-shrink-0" />
-                    <span className="truncate">{tagName}</span>
-                  </span>
-                )}
-              </div>
-            ) : null
-          )}
+            {/* Team name only — when context is already the title */}
+            {!showBadgeTitle && contextType === "team" && teamName && (
+              <span className="flex items-center gap-1 min-w-0">
+                <Users
+                  size={11}
+                  className="flex-shrink-0 text-base-content/70"
+                />
+                <span className="flex-shrink-0">Team:</span>
+                <span
+                  className={[
+                    "truncate font-medium text-base-content/70",
+                    isTeamClickable
+                      ? "cursor-pointer hover:text-primary transition-colors"
+                      : "cursor-default",
+                  ].join(" ")}
+                  title={isTeamClickable ? "View team" : teamName}
+                  onClick={handleOpenTeam}
+                >
+                  {teamName}
+                </span>
+              </span>
+            )}
+
+            {/* Tag */}
+            {tagName && !hideTag && (
+              <span className="flex items-center gap-1 min-w-0">
+                <Tag size={11} className="flex-shrink-0" />
+                <span className="truncate">{tagName}</span>
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Credits pill */}
