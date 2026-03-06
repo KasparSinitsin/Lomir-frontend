@@ -1,13 +1,6 @@
 import React, { useState } from "react";
 import { format } from "date-fns";
-import {
-  Tag,
-  Award,
-  Users,
-  Info,
-  Briefcase,
-  User,
-} from "lucide-react";
+import { Tag, Award, Users, Info, Briefcase, User } from "lucide-react";
 import {
   CATEGORY_COLORS,
   CATEGORY_SECTION_PASTELS,
@@ -85,6 +78,7 @@ const SupercategoryAwardsModal = ({
   awards = [],
   loading = false,
   onOpenUser,
+  entityType,
   highlightBadgeName = null,
 }) => {
   // Internal TeamDetailsModal state (so the team click works even if parent doesn’t manage it)
@@ -119,11 +113,20 @@ const SupercategoryAwardsModal = ({
   );
 
   // Count unique awarding users across all tags
-  const awardingUserCount = new Set(
-    awards
-      .map((a) => a.awardedByUserId || a.awarded_by_user_id)
-      .filter(Boolean),
-  ).size;
+  // For team context: count unique awardees (members who received badges)
+  // For user context: count unique awarders (people who gave badges)
+  const personCount =
+    entityType === "team"
+      ? new Set(
+          awards
+            .map((a) => a.awardedToUserId || a.awarded_to_user_id)
+            .filter(Boolean),
+        ).size
+      : new Set(
+          awards
+            .map((a) => a.awardedByUserId || a.awarded_by_user_id)
+            .filter(Boolean),
+        ).size;
 
   const creditedTagCount = sortedTags.length;
   const totalTagCount = tags.length;
@@ -178,9 +181,11 @@ const SupercategoryAwardsModal = ({
 
                   <span className="inline-flex items-center gap-1 whitespace-nowrap">
                     <Users size={14} />
-                    <span className="font-medium">{awardingUserCount}</span>
+                    <span className="font-medium">{personCount}</span>
                     <span className="hidden sm:inline">
-                      {awardingUserCount === 1 ? "person" : "people"}
+                      {entityType === "team"
+                        ? `team member${personCount !== 1 ? "s" : ""} with badges`
+                        : personCount === 1 ? "person" : "people"}
                     </span>
                   </span>
 

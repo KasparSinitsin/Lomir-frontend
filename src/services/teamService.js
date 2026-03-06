@@ -208,6 +208,24 @@ export const teamService = {
     }
   },
 
+ // **
+  //  * Fetches all badge awards for team members linked to team focus areas.
+  //  * Returns rows in the same shape as user badge awards, with extra
+  //  * awarded_to_* fields for the recipient.
+  //  * @param {string|number} teamId - The team ID
+  //  * @returns {Promise<object>} { success: true, data: [...awards] }
+  //  */
+  getTeamBadgeAwards: async (teamId) => {
+    try {
+      const response = await api.get(`/api/teams/${teamId}/badge-awards`);
+      return response.data;
+    } catch (error) {
+      console.error(`Error fetching badge awards for team ${teamId}:`, error);
+      throw error;
+    }
+  },
+
+
   // Update team details
   updateTeam: async (teamId, teamData) => {
     try {

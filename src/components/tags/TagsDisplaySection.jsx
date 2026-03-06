@@ -1,8 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import {
-  Tag,
-  Layers,
-} from "lucide-react";
+import { Tag, Layers } from "lucide-react";
 import {
   CATEGORY_COLORS,
   SUPERCATEGORY_ORDER,
@@ -47,6 +44,7 @@ const TagsDisplaySection = ({
   highlightTagColor = null,
   emptyMessage = UI_TEXT.focusAreas.empty,
   placeholder = UI_TEXT.focusAreas.placeholder,
+  entityType,
   className = "",
 }) => {
   const [isEditing, setIsEditing] = useState(false);
@@ -131,6 +129,7 @@ const TagsDisplaySection = ({
           category: tag.category || null,
           linkedBadgeCount: tag.linked_badge_count || tag.linkedBadgeCount || 0,
           awarderCount: tag.awarder_count || tag.awarderCount || 0,
+          awardeeCount: tag.awardee_count || tag.awardeeCount || 0,
         }));
       }
 
@@ -249,9 +248,22 @@ const TagsDisplaySection = ({
     // Uncredited: base-content (dark green, matches section headers like "Location", "Badges")
     // Credited: primary (light green, matches "User Details" title)
 
+    const personCount =
+      entityType === "team"
+        ? Number(tag.awardeeCount || 0)
+        : Number(tag.awarderCount || 0);
+    const personLabel =
+      entityType === "team"
+        ? personCount === 1
+          ? "member"
+          : "members"
+        : personCount === 1
+          ? "person"
+          : "people";
+
     const tooltipText =
       tag.badgeCredits > 0
-        ? `${tag.name}: ${tag.badgeCredits}ct. awarded with ${Number(tag.linkedBadgeCount)} badge${Number(tag.linkedBadgeCount) === 1 ? "" : "s"} by ${Number(tag.awarderCount)} ${Number(tag.awarderCount) === 1 ? "person" : "people"}`
+        ? `${tag.name}: ${tag.badgeCredits}ct. awarded with ${Number(tag.linkedBadgeCount)} badge${Number(tag.linkedBadgeCount) === 1 ? "" : "s"} by ${personCount} ${personLabel}`
         : tag.name;
 
     const isHighlighted =
@@ -309,14 +321,22 @@ const TagsDisplaySection = ({
       (sum, t) => sum + Number(t.linkedBadgeCount || 0),
       0,
     );
-    const totalAwarders = groupTags.reduce(
-      (sum, t) => sum + Number(t.awarderCount || 0),
-      0,
-    );
+    const totalPersons =
+      entityType === "team"
+        ? groupTags.reduce((sum, t) => sum + Number(t.awardeeCount || 0), 0)
+        : groupTags.reduce((sum, t) => sum + Number(t.awarderCount || 0), 0);
+    const personsLabel =
+      entityType === "team"
+        ? totalPersons === 1
+          ? "member"
+          : "members"
+        : totalPersons === 1
+          ? "person"
+          : "people";
 
     const tooltip =
       totalCredits > 0
-        ? `${supercategory}: ${totalCredits}ct. awarded with ${totalBadges} badge${totalBadges === 1 ? "" : "s"} by ${totalAwarders} ${totalAwarders === 1 ? "person" : "people"}`
+        ? `${supercategory}: ${totalCredits}ct. awarded with ${totalBadges} badge${totalBadges === 1 ? "" : "s"} by ${totalPersons} ${personsLabel}`
         : supercategory;
 
     const isClickable = !!onSupercategoryClick;
