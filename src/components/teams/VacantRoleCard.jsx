@@ -47,19 +47,18 @@ const VacantRoleCard = ({
 
   if (!role) return null;
 
-  const {
-    role_name,
-    bio,
-    city,
-    country,
-    state,
-    postal_code,
-    max_distance_km,
-    is_remote,
-    status,
-    tags = [],
-    badges = [],
-  } = role;
+  // Handle both camelCase (from API response interceptor) and snake_case
+  const role_name = role.roleName ?? role.role_name;
+  const bio = role.bio;
+  const city = role.city;
+  const country = role.country;
+  const state = role.state;
+  const postal_code = role.postalCode ?? role.postal_code;
+  const max_distance_km = role.maxDistanceKm ?? role.max_distance_km;
+  const is_remote = role.isRemote ?? role.is_remote;
+  const status = role.status;
+  const tags = role.tags || [];
+  const badges = role.badges || [];
 
   // Build location string
   const getLocationText = () => {
@@ -120,7 +119,7 @@ const VacantRoleCard = ({
               }`}
             >
               <UserSearch size={12} />
-              {role_name || "Vacant Role"}
+              Vacant
             </span>
 
             {/* Dropdown menu (for owners/admins) */}
@@ -221,7 +220,7 @@ const VacantRoleCard = ({
         <div className="flex flex-wrap gap-1 mt-2">
           {tags.map((tag) => (
             <span
-              key={tag.tag_id}
+              key={tag.tagId ?? tag.tag_id}
               className="badge badge-outline badge-sm p-2"
               style={{ borderColor: FOCUS_GREEN_DARK, color: FOCUS_GREEN_DARK }}
             >
@@ -248,7 +247,7 @@ const VacantRoleCard = ({
                 {/* Badge pills */}
                 {catBadges.map((badge) => (
                   <Tooltip
-                    key={badge.badge_id}
+                    key={badge.badgeId ?? badge.badge_id}
                     content={`Desired: ${badge.name}`}
                   >
                     <span

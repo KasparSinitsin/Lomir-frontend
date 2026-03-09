@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { UserSearch, Plus, AlertCircle } from "lucide-react";
 import VacantRoleCard from "./VacantRoleCard";
+import CreateVacantRoleModal from "./CreateVacantRoleModal";
 import Button from "../common/Button";
 import Alert from "../common/Alert";
 import { vacantRoleService } from "../../services/vacantRoleService";
@@ -18,14 +19,12 @@ import { vacantRoleService } from "../../services/vacantRoleService";
  * @param {boolean} canManage - Whether the current user is owner/admin
  * @param {boolean} isEditing - Whether the team is in edit mode (hide section)
  * @param {string} className - Additional CSS classes
- * @param {Function} onCreateRole - Callback to open create role modal (Phase C)
  */
 const VacantRolesSection = ({
   teamId,
   canManage = false,
   isEditing = false,
   className = "",
-  onCreateRole,
 }) => {
   const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -34,6 +33,10 @@ const VacantRolesSection = ({
     type: null,
     message: null,
   });
+
+  // Modal state
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingRole, setEditingRole] = useState(null);
 
   // Fetch vacant roles
   const fetchRoles = useCallback(async () => {
@@ -46,7 +49,7 @@ const VacantRolesSection = ({
       const statusFilter = canManage ? "all" : "open";
       const response = await vacantRoleService.getVacantRoles(
         teamId,
-        statusFilter
+        statusFilter,
       );
       setRoles(response.data || []);
     } catch (err) {
@@ -102,13 +105,27 @@ const VacantRolesSection = ({
     }
   };
 
-  // Handle edit (placeholder until Phase C)
+  // Handle edit — open modal in edit mode
   const handleEdit = (role) => {
-    if (onCreateRole) {
-      onCreateRole(role); // pass role for edit mode
-    } else {
-      console.log("Edit role - Phase C:", role);
-    }
+    setEditingRole(role);
+    setIsModalOpen(true);
+  };
+
+  // Handle create — open modal in create mode
+  const handleCreate = () => {
+    setEditingRole(null);
+    setIsModalOpen(true);
+  };
+
+  // Handle modal close
+  const handleModalClose = () => {
+    setIsModalOpen(false);
+    setEditingRole(null);
+  };
+
+  // Handle modal success — refresh roles list
+  const handleModalSuccess = () => {
+    fetchRoles();
   };
 
   // Don't render in edit mode
@@ -156,7 +173,7 @@ const VacantRolesSection = ({
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => (onCreateRole ? onCreateRole() : null)}
+            onClick={handleCreate}
             className="gap-1"
           >
             <Plus size={16} />
@@ -214,6 +231,15 @@ const VacantRolesSection = ({
           </div>
         )
       )}
+
+      {/* Create / Edit Modal */}
+      <CreateVacantRoleModal
+        isOpen={isModalOpen}
+        onClose={handleModalClose}
+        teamId={teamId}
+        existingRole={editingRole}
+        onSuccess={handleModalSuccess}
+      />
     </div>
   );
 };
