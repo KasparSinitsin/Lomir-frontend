@@ -65,7 +65,11 @@ const AwardCard = ({
     award?.team?.name ??
     award?.contextTeamName ??
     award?.context_team_name ??
+    award?.customTeamName ??
+    award?.custom_team_name ??
     null;
+
+  const projectName = award?.projectName ?? award?.project_name ?? null;
 
   const teamId =
     award?.teamId ??

@@ -13,6 +13,7 @@ import {
   Search as SearchIcon,
   X,
   Heart,
+  Layers,
   // Badge icons
   MessageCircle,
 } from "lucide-react";
@@ -21,7 +22,11 @@ import {
   CATEGORY_SECTION_PASTELS,
   DEFAULT_COLOR,
 } from "../../constants/badgeConstants";
-import { getCategoryIcon, getBadgeIcon } from "../../utils/badgeIconUtils";
+import {
+  getCategoryIcon,
+  getBadgeIcon,
+  SUPERCATEGORY_ICONS,
+} from "../../utils/badgeIconUtils";
 import Modal from "../common/Modal";
 import Button from "../common/Button";
 import Alert from "../common/Alert";
@@ -89,9 +94,11 @@ const BadgeAwardModal = ({
   // Form state
   const [expandedCategory, setExpandedCategory] = useState(null);
   const [selectedBadge, setSelectedBadge] = useState(null);
-  const [credits, setCredits] = useState(2);
-  const [contextType, setContextType] = useState("personal");
+  const [credits, setCredits] = useState(null);
+  const [contextType, setContextType] = useState(null);
   const [selectedTeamId, setSelectedTeamId] = useState(null);
+  const [customTeamName, setCustomTeamName] = useState("");
+  const [projectName, setProjectName] = useState("");
   const [selectedTag, setSelectedTag] = useState(null);
   const [reason, setReason] = useState("");
 
@@ -191,8 +198,8 @@ const BadgeAwardModal = ({
     if (!isOpen) {
       setExpandedCategory(null);
       setSelectedBadge(null);
-      setCredits(2);
-      setContextType("personal");
+      setCredits(null);
+      setContextType(null);
       setSelectedTeamId(null);
       setSelectedTag(null);
       setReason("");
@@ -201,13 +208,20 @@ const BadgeAwardModal = ({
       setTagSearchQuery("");
       setTagSearchResults([]);
       setShowTagSearch(false);
+      setCustomTeamName("");
+      setProjectName("");
     }
   }, [isOpen]);
 
   // Reset team selection when switching away from "team" context
+
   useEffect(() => {
     if (contextType !== "team") {
       setSelectedTeamId(null);
+      setCustomTeamName("");
+    }
+    if (contextType !== "project") {
+      setProjectName("");
     }
   }, [contextType]);
 
@@ -320,8 +334,18 @@ const BadgeAwardModal = ({
       return;
     }
 
-    if (contextType === "team" && !selectedTeamId) {
-      setError("Please select a team for the teamwork context");
+    if (!credits) {
+      setError("Please select credit points");
+      return;
+    }
+
+    if (!contextType) {
+      setError("Please select a context");
+      return;
+    }
+
+    if (contextType === "team" && !selectedTeamId && !customTeamName.trim()) {
+      setError("Please select a Lomir team or enter a team name");
       return;
     }
 
@@ -337,6 +361,12 @@ const BadgeAwardModal = ({
         contextType: contextType,
         teamId: contextType === "team" ? selectedTeamId : null,
         tagId: selectedTag?.id || null,
+        customTeamName:
+          contextType === "team" && !selectedTeamId
+            ? customTeamName.trim()
+            : null,
+        project_name:
+          contextType === "project" ? projectName.trim() || null : null,
       });
 
       setSuccess(
@@ -368,9 +398,33 @@ const BadgeAwardModal = ({
   const customHeader = (
     <div className="flex items-center gap-3">
       <Award className="text-primary" size={24} />
-      <div>
+      <div className="flex items-center gap-2">
+        <h2 className="text-xl font-medium text-primary">Award a Badge to</h2>
+        {awardeeAvatar ? (
+          <img
+            src={awardeeAvatar}
+            alt={getDisplayName()}
+            className="w-7 h-7 rounded-full object-cover inline-block"
+            onError={(e) => {
+              e.target.style.display = "none";
+              const fallback = e.target.nextElementSibling;
+              if (fallback) fallback.style.display = "flex";
+            }}
+          />
+        ) : null}
+        <div
+          className="w-7 h-7 rounded-full bg-primary text-primary-content flex items-center justify-center font-medium text-xs"
+          style={{ display: awardeeAvatar ? "none" : "flex" }}
+        >
+          {getUserInitials({
+            first_name: awardeeFirstName,
+            last_name: awardeeLastName,
+            username: awardeeUsername,
+          })}
+        </div>
+
         <h2 className="text-xl font-medium text-primary">
-          Award Badge to {getDisplayName()}
+          {awardeeFirstName} {awardeeLastName}
         </h2>
       </div>
     </div>
@@ -386,9 +440,11 @@ const BadgeAwardModal = ({
         onClick={handleSubmit}
         disabled={
           !selectedBadge ||
+          !credits ||
+          !contextType ||
           sending ||
           !!success ||
-          (contextType === "team" && !selectedTeamId)
+          (contextType === "team" && !selectedTeamId && !customTeamName.trim())
         }
         icon={<Send size={16} />}
       >
@@ -401,7 +457,7 @@ const BadgeAwardModal = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      customHeader={customHeader}
+      title={customHeader}
       footer={!success ? footer : undefined}
       size="md"
     >
@@ -416,38 +472,9 @@ const BadgeAwardModal = ({
         {/* Error message */}
         {error && <Alert type="error">{error}</Alert>}
 
-        {/* Awardee info */}
-        {!success && (
-          <div className="flex items-center gap-3 px-3 py-2 bg-base-200/50 rounded-lg">
-            {awardeeAvatar ? (
-              <img
-                src={awardeeAvatar}
-                alt={getDisplayName()}
-                className="w-10 h-10 rounded-full object-cover"
-              />
-            ) : (
-              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-medium text-sm">
-                {getUserInitials({
-                  first_name: awardeeFirstName,
-                  last_name: awardeeLastName,
-                  username: awardeeUsername,
-                })}
-              </div>
-            )}
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium truncate">{getDisplayName()}</p>
-              {awardeeUsername && (
-                <p className="text-xs text-base-content/60">
-                  @{awardeeUsername}
-                </p>
-              )}
-            </div>
-          </div>
-        )}
-
         {/* Badge selection */}
         {!success && (
-          <div>
+          <div className="bg-base-200/30 rounded-lg border border-base-300 p-4">
             <p className="text-xs text-base-content/60 mb-2 flex items-center">
               <Award size={12} className="text-primary mr-1" />
               Select a badge:
@@ -468,7 +495,8 @@ const BadgeAwardModal = ({
               <div className="space-y-2 max-h-64 overflow-y-auto">
                 {sortedCategories.map((category) => {
                   const color = CATEGORY_COLORS[category] || DEFAULT_COLOR;
-                  const pastel = CATEGORY_SECTION_PASTELS[category] || "#F3F4F6";
+                  const pastel =
+                    CATEGORY_SECTION_PASTELS[category] || "#F3F4F6";
                   const isExpanded = expandedCategory === category;
                   const categoryBadges = badgesByCategory[category] || [];
                   const hasSelectedBadge = categoryBadges.some(
@@ -489,7 +517,7 @@ const BadgeAwardModal = ({
                       <button
                         onClick={() => handleCategoryToggle(category)}
                         className="w-full flex items-center justify-between p-3 hover:bg-base-200/30 transition-colors"
-                        style={isExpanded ? { backgroundColor: pastel } : {}}
+                        style={{ backgroundColor: pastel }}
                       >
                         <div className="flex items-center gap-2">
                           {getCategoryIcon(category, color)}
@@ -540,7 +568,9 @@ const BadgeAwardModal = ({
                                     : "bg-white/60 hover:bg-white/80"
                                 }`}
                                 style={
-                                  isSelected ? { ringColor: color } : undefined
+                                  isSelected
+                                    ? { "--tw-ring-color": color }
+                                    : undefined
                                 }
                               >
                                 <span style={{ color }}>
@@ -593,7 +623,7 @@ const BadgeAwardModal = ({
 
         {/* Credit points selection */}
         {selectedBadge && !success && (
-          <div>
+          <div className="bg-base-200/30 rounded-lg border border-base-300 p-4">
             <p className="text-xs text-base-content/60 mb-2 flex items-center">
               <Star size={12} className="text-primary mr-1" />
               Credit points for this award:
@@ -608,23 +638,26 @@ const BadgeAwardModal = ({
                   <button
                     key={value}
                     onClick={() => setCredits(value)}
-                    className={`flex-1 py-3 rounded-xl text-center font-medium transition-all duration-200 border-2 ${
+                    className={`flex-1 py-2.5 rounded-xl text-center font-medium transition-all duration-200 border-2 ${
                       isSelected
-                        ? "text-white shadow-md"
+                        ? "shadow-sm"
                         : "bg-base-100 text-base-content/70 border-base-200 hover:border-base-300"
                     }`}
                     style={
                       isSelected
                         ? {
-                            backgroundColor: badgeColor,
+                            backgroundColor:
+                              CATEGORY_SECTION_PASTELS[
+                                selectedBadge.category
+                              ] || "#F3F4F6",
                             borderColor: badgeColor,
+                            color: badgeColor,
                           }
                         : {}
                     }
                   >
-                    <span className="text-lg">{value}</span>
-                    <span className="text-xs block mt-0.5">
-                      {value === 1 ? "credit" : "credits"}
+                    <span className="text-sm font-medium">
+                      {value} {value === 1 ? "credit" : "credits"}
                     </span>
                   </button>
                 );
@@ -635,78 +668,143 @@ const BadgeAwardModal = ({
 
         {/* Context type selection */}
         {selectedBadge && !success && (
-          <div>
+          <div className="bg-base-200/30 rounded-lg border border-base-300 p-4">
             <p className="text-xs text-base-content/60 mb-2 flex items-center">
               <Briefcase size={12} className="text-primary mr-1" />
               What is this for?
             </p>
-            <div className="flex gap-2">
-              {CONTEXT_OPTIONS.map((option) => {
-                const isSelected = contextType === option.value;
-                const IconComponent = option.icon;
-                const isDisabled =
-                  option.value === "team" && sharedTeams.length === 0;
+            {(() => {
+              const badgeColor =
+                CATEGORY_COLORS[selectedBadge?.category] || DEFAULT_COLOR;
+              const badgePastel =
+                CATEGORY_SECTION_PASTELS[selectedBadge?.category] || "#F3F4F6";
+              return (
+                <div className="flex gap-2">
+                  {CONTEXT_OPTIONS.map((option) => {
+                    const isSelected = contextType === option.value;
+                    const IconComponent = option.icon;
+                    const isDisabled = false;
 
-                return (
-                  <button
-                    key={option.value}
-                    onClick={() => !isDisabled && setContextType(option.value)}
-                    disabled={isDisabled}
-                    className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 px-2 rounded-xl text-sm font-medium transition-all duration-200 border-2 ${
-                      isSelected
-                        ? "bg-primary/10 border-primary text-primary"
-                        : isDisabled
-                          ? "bg-base-100 text-base-content/30 border-base-200 cursor-not-allowed"
-                          : "bg-base-100 text-base-content/70 border-base-200 hover:border-base-300"
-                    }`}
-                    title={
-                      isDisabled
-                        ? "No shared teams with this user"
-                        : option.description
-                    }
-                  >
-                    <IconComponent size={14} />
-                    <span>{option.label}</span>
-                  </button>
-                );
-              })}
-            </div>
+                    return (
+                      <button
+                        key={option.value}
+                        onClick={() =>
+                          !isDisabled && setContextType(option.value)
+                        }
+                        disabled={isDisabled}
+                        className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 px-2 rounded-xl text-sm font-medium transition-all duration-200 border-2 ${
+                          isSelected
+                            ? "shadow-sm"
+                            : isDisabled
+                              ? "bg-base-100 text-base-content/30 border-base-200 cursor-not-allowed"
+                              : "bg-base-100 text-base-content/70 border-base-200 hover:border-base-300"
+                        }`}
+                        style={
+                          isSelected
+                            ? {
+                                backgroundColor: badgePastel,
+                                borderColor: badgeColor,
+                                color: badgeColor,
+                              }
+                            : {}
+                        }
+                        title={
+                          isDisabled
+                            ? "No shared teams with this user"
+                            : option.description
+                        }
+                      >
+                        <IconComponent size={14} />
+                        <span>{option.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              );
+            })()}
 
-            {/* Team dropdown */}
+            {/* Team selection */}
             {contextType === "team" && (
-              <div className="mt-2">
+              <div className="mt-4">
                 {teamsLoading ? (
                   <div className="flex items-center gap-2 text-sm text-base-content/50 py-2">
                     <div className="loading loading-spinner loading-xs"></div>
                     Loading teams...
                   </div>
-                ) : sharedTeams.length === 0 ? (
-                  <p className="text-xs text-base-content/50 py-1">
-                    No shared teams found.
-                  </p>
                 ) : (
-                  <label className="text-xs text-base-content/60 mb-1 block">
-                    Select a team <span className="text-error">*</span>
-                    <select
-                      value={selectedTeamId || ""}
-                      onChange={(e) =>
-                        setSelectedTeamId(
-                          e.target.value ? parseInt(e.target.value) : null,
-                        )
-                      }
-                      className="select select-bordered select-sm w-full text-sm"
-                    >
-                      <option value="">Select a team...</option>
-                      {sharedTeams.map((team) => (
-                        <option key={team.id} value={team.id}>
-                          {team.name}
-                          {team.city ? ` (${team.city})` : ""}
-                          {team.is_remote ? " (Remote)" : ""}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+                  <div className="flex flex-col sm:flex-row gap-2 items-stretch">
+                    {/* Lomir team dropdown */}
+                    {sharedTeams.length > 0 && (
+                      <div className="flex-1">
+                        <label className="text-xs text-base-content/60 mb-1 block">
+                          Lomir team
+                        </label>
+                        <select
+                          value={selectedTeamId || ""}
+                          onChange={(e) => {
+                            const val = e.target.value
+                              ? parseInt(e.target.value)
+                              : null;
+                            setSelectedTeamId(val);
+                            if (val) setCustomTeamName("");
+                          }}
+                          className="select select-bordered select-sm w-full text-sm"
+                          disabled={!!customTeamName.trim()}
+                        >
+                          <option value="">Select a Lomir team...</option>
+                          {sharedTeams.map((team) => (
+                            <option key={team.id} value={team.id}>
+                              {team.name}
+                              {team.city ? ` (${team.city})` : ""}
+                              {team.is_remote ? " (Remote)" : ""}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+
+                    {/* "or" divider */}
+                    {sharedTeams.length > 0 && (
+                      <div className="flex sm:flex-col items-center justify-center px-1 sm:pt-5">
+                        <span className="text-xs text-base-content/40">or</span>
+                      </div>
+                    )}
+
+                    {/* Custom team name input */}
+                    <div className="flex-1">
+                      <label className="text-xs text-base-content/60 mb-1 block">
+                        Other team name
+                      </label>
+                      <input
+                        type="text"
+                        value={customTeamName}
+                        onChange={(e) => {
+                          setCustomTeamName(e.target.value);
+                          if (e.target.value.trim()) setSelectedTeamId(null);
+                        }}
+                        placeholder="Enter team name..."
+                        className="input input-bordered input-sm w-full text-sm"
+                        disabled={!!selectedTeamId}
+                      />
+                    </div>
+                  </div>
                 )}
+              </div>
+            )}
+
+            {/* Project name input */}
+            {contextType === "project" && (
+              <div className="mt-4">
+                <label className="text-xs text-base-content/60 mb-1 block">
+                  Project name (optional)
+                </label>
+                <input
+                  type="text"
+                  value={projectName}
+                  onChange={(e) => setProjectName(e.target.value)}
+                  placeholder="Enter project name..."
+                  className="input input-bordered input-sm w-full text-sm"
+                />
               </div>
             )}
           </div>
@@ -714,30 +812,44 @@ const BadgeAwardModal = ({
 
         {/* Focus area / tag selector */}
         {selectedBadge && !success && (
-          <div>
+          <div className="bg-base-200/30 rounded-lg border border-base-300 p-4">
             <p className="text-xs text-base-content/60 mb-2 flex items-center">
               <Tag size={12} className="text-primary mr-1" />
-              Focus area (optional):
+              Link your award to one of {getFirstName()}'s Focus Areas
+              (optional):
             </p>
 
             {/* Selected tag display */}
             {selectedTag && (
               <div className="flex items-center gap-2 mb-2">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-sm font-medium border border-primary/20">
-                  <Tag size={12} />
-                  {selectedTag.name}
-                  {selectedTag.category && (
-                    <span className="text-xs text-primary/60">
-                      · {selectedTag.category}
-                    </span>
-                  )}
-                  <button
-                    onClick={() => setSelectedTag(null)}
-                    className="ml-1 hover:text-primary/80 transition-colors"
-                  >
-                    <X size={14} />
-                  </button>
-                </span>
+                {(() => {
+                  const badgeColor =
+                    CATEGORY_COLORS[selectedBadge?.category] || DEFAULT_COLOR;
+                  const SupercatIcon =
+                    SUPERCATEGORY_ICONS[selectedTag.supercategory] || Layers;
+                  return (
+                    <>
+                      <SupercatIcon
+                        size={14}
+                        style={{ color: badgeColor }}
+                        className="flex-shrink-0"
+                      />
+                      <span
+                        className="badge badge-outline p-3 bg-white/60 inline-flex items-center gap-1.5 text-sm font-medium"
+                        style={{ borderColor: badgeColor, color: badgeColor }}
+                      >
+                        {selectedTag.name}
+                        <span className="opacity-70">| +{credits}ct.</span>
+                        <button
+                          onClick={() => setSelectedTag(null)}
+                          className="ml-1 hover:opacity-60 transition-opacity"
+                        >
+                          <X size={14} />
+                        </button>
+                      </span>
+                    </>
+                  );
+                })()}
               </div>
             )}
 
@@ -755,7 +867,7 @@ const BadgeAwardModal = ({
                       <button
                         key={tag.id}
                         onClick={() => handleTagSelect(tag)}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-base-200 hover:bg-base-300 text-base-content/70 hover:text-base-content transition-colors"
+                        className="badge badge-success text-white gap-1 cursor-pointer hover:opacity-80 transition-opacity"
                       >
                         {tag.name}
                       </button>
@@ -768,15 +880,15 @@ const BadgeAwardModal = ({
                 )}
 
                 {/* Search for any tag */}
-                <div className="relative" ref={tagSearchRef}>
+                <div className="relative mt-3" ref={tagSearchRef}>
                   <button
                     onClick={() => setShowTagSearch(!showTagSearch)}
                     className="text-xs text-primary/70 hover:text-primary transition-colors flex items-center gap-1"
                   >
                     <SearchIcon size={12} />
                     {awardeeTags.length > 0
-                      ? "Search for a different tag..."
-                      : "Search for a tag..."}
+                      ? "Search for a different Focus Area..."
+                      : "Search for a Focus Area..."}
                   </button>
 
                   {showTagSearch && (
