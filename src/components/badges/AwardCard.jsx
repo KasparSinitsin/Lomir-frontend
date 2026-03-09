@@ -267,9 +267,9 @@ const AwardCard = ({
                       <span className="flex-shrink-0">Team:</span>
                       <span
                         className={[
-                          "truncate font-medium text-base-content/70",
+                          "truncate text-base-content/70",
                           isTeamClickable
-                            ? "cursor-pointer hover:text-primary transition-colors"
+                            ? "font-medium cursor-pointer hover:text-primary transition-colors"
                             : "cursor-default",
                         ].join(" ")}
                         title={isTeamClickable ? "View team" : teamName}
@@ -281,6 +281,13 @@ const AwardCard = ({
                   ) : (
                     <span className="truncate">Team</span>
                   )
+                ) : contextType === "project" && projectName ? (
+                  <>
+                    <span className="flex-shrink-0">Project:</span>
+                    <span className="truncate text-base-content/70">
+                      {projectName}
+                    </span>
+                  </>
                 ) : (
                   <span className="truncate">
                     {contextType === "project" ? "Project" : "Personal"}
@@ -299,15 +306,29 @@ const AwardCard = ({
                 <span className="flex-shrink-0">Team:</span>
                 <span
                   className={[
-                    "truncate font-medium text-base-content/70",
+                    "truncate text-base-content/70",
                     isTeamClickable
-                      ? "cursor-pointer hover:text-primary transition-colors"
+                      ? "font-medium cursor-pointer hover:text-primary transition-colors"
                       : "cursor-default",
                   ].join(" ")}
                   title={isTeamClickable ? "View team" : teamName}
                   onClick={handleOpenTeam}
                 >
                   {teamName}
+                </span>
+              </span>
+            )}
+
+            {/* Project name — when context is already the title */}
+            {!showBadgeTitle && contextType === "project" && projectName && (
+              <span className="flex items-center gap-1 min-w-0">
+                <Briefcase
+                  size={11}
+                  className="flex-shrink-0 text-base-content/70"
+                />
+                <span className="flex-shrink-0">Project:</span>
+                <span className="truncate text-base-content/70">
+                  {projectName}
                 </span>
               </span>
             )}
