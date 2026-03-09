@@ -39,6 +39,7 @@ import TeamApplicationModal from "./TeamApplicationModal";
 import TeamInvitationDetailsModal from "./TeamInvitationDetailsModal";
 import TeamMembersSection from "./TeamMembersSection";
 import TeamFocusAreaSection from "./TeamFocusAreaSection";
+import VacantRolesSection from "./VacantRolesSection";
 import axios from "axios";
 import Modal from "../common/Modal";
 import LocationSection from "../common/LocationSection";
@@ -1409,6 +1410,14 @@ const TeamDetailsModal = ({
                     onRoleChange={fetchTeamDetails}
                     onMemberRemoved={fetchTeamDetails}
                   />
+
+{/* Vacant Team Roles */}
+                  <VacantRolesSection
+                    teamId={effectiveTeamId}
+                    canManage={isOwner || internalUserRole === "admin"}
+                    isEditing={isEditing}
+                  />
+
                 </div>
 
                 {/* Join / Leave / Message Buttons */}
