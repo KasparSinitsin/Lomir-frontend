@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Crown, Shield, User, UserX } from "lucide-react";
 import Dropdown, { DropdownItem } from "../common/Dropdown";
+import RoleBadgePill from "../common/RoleBadgePill";
 
 const RoleBadgeDropdown = ({
   member,
@@ -8,7 +9,7 @@ const RoleBadgeDropdown = ({
   onRoleChange,
   onRemoveMember,
   isOwner = false,
-  isTeamArchived = false, // NEW PROP
+  isTeamArchived = false,
 }) => {
   const [isLoading, setIsLoading] = useState(false);
 
@@ -75,7 +76,7 @@ const RoleBadgeDropdown = ({
 
     if (
       window.confirm(
-        `Are you sure you want to remove ${memberName} from the team? This action cannot be undone.`
+        `Are you sure you want to remove ${memberName} from the team? This action cannot be undone.`,
       )
     ) {
       setIsLoading(true);
@@ -91,17 +92,13 @@ const RoleBadgeDropdown = ({
 
   // Create the trigger badge
   const triggerBadge = (
-    <span
-      className={`badge ${roleInfo.badgeColor} badge-sm gap-1 ${
-        canManage
-          ? "hover:shadow-md transition-all duration-200 cursor-pointer"
-          : ""
-      }`}
-    >
-      <RoleIcon className="w-3 h-3" />
-      {roleInfo.label}
-      {isLoading && <span className="loading loading-spinner loading-xs" />}
-    </span>
+    <RoleBadgePill
+      icon={RoleIcon}
+      label={roleInfo.label}
+      badgeColorClass={roleInfo.badgeColor}
+      interactive={canManage}
+      loading={isLoading}
+    />
   );
 
   // If user can't manage this member, show static badge

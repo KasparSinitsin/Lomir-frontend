@@ -347,6 +347,11 @@ body {
   border: none;
 }
 
+.badge-role-vacant {
+  background-color: #f59e0b;
+  color: white;
+}
+
 /* Neon Effect */
 .neon {
   color: var(--color-primary);

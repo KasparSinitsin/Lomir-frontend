@@ -10,7 +10,10 @@ import {
   Users,
 } from "lucide-react";
 import Modal from "../common/Modal";
-import { getCategoryIcon, getSupercategoryIcon } from "../../utils/badgeIconUtils";
+import {
+  getCategoryIcon,
+  getSupercategoryIcon,
+} from "../../utils/badgeIconUtils";
 import {
   CATEGORY_COLORS,
   DEFAULT_COLOR,
@@ -57,12 +60,9 @@ const VacantRoleDetailsModal = ({ isOpen, onClose, role }) => {
   const teamMaxMembers = role.teamMaxMembers ?? role.team_max_members;
 
   // Creator info
-  const creatorFirstName =
-    role.creatorFirstName ?? role.creator_first_name;
-  const creatorLastName =
-    role.creatorLastName ?? role.creator_last_name;
-  const creatorUsername =
-    role.creatorUsername ?? role.creator_username;
+  const creatorFirstName = role.creatorFirstName ?? role.creator_first_name;
+  const creatorLastName = role.creatorLastName ?? role.creator_last_name;
+  const creatorUsername = role.creatorUsername ?? role.creator_username;
   const creatorName =
     creatorFirstName && creatorLastName
       ? `${creatorFirstName} ${creatorLastName}`
@@ -140,9 +140,7 @@ const VacantRoleDetailsModal = ({ isOpen, onClose, role }) => {
           </div>
 
           <div className="flex-1 min-w-0">
-            <h1 className="text-2xl font-bold leading-tight">
-              {roleName}
-            </h1>
+            <h1 className="text-2xl font-bold leading-tight">{roleName}</h1>
 
             {/* Team info line */}
             {teamName && (
@@ -162,9 +160,7 @@ const VacantRoleDetailsModal = ({ isOpen, onClose, role }) => {
               <div className="flex items-center gap-1 mt-1 text-xs text-base-content/50">
                 <Calendar size={12} />
                 <span>Posted {formatDate(createdAt)}</span>
-                {creatorName && (
-                  <span> by {creatorName}</span>
-                )}
+                {creatorName && <span> by {creatorName}</span>}
               </div>
             )}
           </div>
@@ -219,15 +215,13 @@ const VacantRoleDetailsModal = ({ isOpen, onClose, role }) => {
               }
 
               // Sort groups by SUPERCATEGORY_ORDER
-              const sortedGroups = Object.entries(groups).sort(
-                ([a], [b]) => {
-                  const idxA = SUPERCATEGORY_ORDER.indexOf(a);
-                  const idxB = SUPERCATEGORY_ORDER.indexOf(b);
-                  const posA = idxA === -1 ? 999 : idxA;
-                  const posB = idxB === -1 ? 999 : idxB;
-                  return posA - posB;
-                }
-              );
+              const sortedGroups = Object.entries(groups).sort(([a], [b]) => {
+                const idxA = SUPERCATEGORY_ORDER.indexOf(a);
+                const idxB = SUPERCATEGORY_ORDER.indexOf(b);
+                const posA = idxA === -1 ? 999 : idxA;
+                const posB = idxB === -1 ? 999 : idxB;
+                return posA - posB;
+              });
 
               // Sort tags within each group alphabetically
               for (const [, groupTags] of sortedGroups) {
@@ -251,7 +245,11 @@ const VacantRoleDetailsModal = ({ isOpen, onClose, role }) => {
                             color: FOCUS_GREEN_DARK,
                           }}
                         >
-                          {getSupercategoryIcon(supercategory, 14, FOCUS_GREEN_DARK)}
+                          {getSupercategoryIcon(
+                            supercategory,
+                            14,
+                            FOCUS_GREEN_DARK,
+                          )}
                         </span>
                       </Tooltip>
 
@@ -291,49 +289,47 @@ const VacantRoleDetailsModal = ({ isOpen, onClose, role }) => {
 
           {badges.length > 0 ? (
             <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-              {Object.entries(badgesByCategory).map(
-                ([category, catBadges]) => {
-                  const categoryColor =
-                    CATEGORY_COLORS[category] || DEFAULT_COLOR;
+              {Object.entries(badgesByCategory).map(([category, catBadges]) => {
+                const categoryColor =
+                  CATEGORY_COLORS[category] || DEFAULT_COLOR;
 
-                  return (
-                    <div key={category} className="flex items-start">
-                      {/* Category icon */}
-                      <span
-                        className="inline-flex items-center justify-center pr-[6px]"
-                        style={{
-                          height: PILL_ROW_HEIGHT,
-                          color: categoryColor,
-                        }}
-                      >
-                        {getCategoryIcon(category, categoryColor, 14)}
-                      </span>
+                return (
+                  <div key={category} className="flex items-start">
+                    {/* Category icon */}
+                    <span
+                      className="inline-flex items-center justify-center pr-[6px]"
+                      style={{
+                        height: PILL_ROW_HEIGHT,
+                        color: categoryColor,
+                      }}
+                    >
+                      {getCategoryIcon(category, categoryColor, 14)}
+                    </span>
 
-                      {/* Badge pills */}
-                      <div className="flex flex-wrap gap-1.5">
-                        {catBadges.map((badge) => (
-                          <Tooltip
-                            key={badge.badgeId ?? badge.badge_id ?? badge.id}
-                            content={
-                              badge.description || `${badge.name} — ${category}`
-                            }
+                    {/* Badge pills */}
+                    <div className="flex flex-wrap gap-1.5">
+                      {catBadges.map((badge) => (
+                        <Tooltip
+                          key={badge.badgeId ?? badge.badge_id ?? badge.id}
+                          content={
+                            badge.description || `${badge.name} — ${category}`
+                          }
+                        >
+                          <span
+                            className="badge badge-outline p-3"
+                            style={{
+                              borderColor: badge.color || categoryColor,
+                              color: badge.color || categoryColor,
+                            }}
                           >
-                            <span
-                              className="badge badge-outline p-3"
-                              style={{
-                                borderColor: badge.color || categoryColor,
-                                color: badge.color || categoryColor,
-                              }}
-                            >
-                              {badge.name}
-                            </span>
-                          </Tooltip>
-                        ))}
-                      </div>
+                            {badge.name}
+                          </span>
+                        </Tooltip>
+                      ))}
                     </div>
-                  );
-                }
-              )}
+                  </div>
+                );
+              })}
             </div>
           ) : (
             <p className="text-sm text-base-content/50">
