@@ -1,5 +1,5 @@
 import React from "react";
-import { Users } from "lucide-react";
+import { Users, MapPin, Ruler } from "lucide-react";
 import RoleBadgeDropdown from "./RoleBadgeDropdown";
 import LocationDisplay from "../common/LocationDisplay";
 import Alert from "../common/Alert";
@@ -217,25 +217,29 @@ const TeamMembersSection = ({
 
                   {!anonymize && (
                     <>
-                      {/* Username - now shown as subtitle */}
-                      {member.username && (
-                        <p className="text-sm text-base-content/30 truncate mb-1.5">
-                          @{member.username}
-                        </p>
-                      )}
+                      {/* Location + distance row */}
+                      {(member.city || member.country) && (
+                        <div className="flex items-center gap-3 text-xs text-base-content/60 mt-1">
+                          {/* Location */}
+                          <div className="flex items-center gap-1">
+                            <MapPin size={12} />
+                            <span>
+                              {[member.city, member.country]
+                                .filter(Boolean)
+                                .join(", ")}
+                            </span>
+                          </div>
 
-                      {(member.postal_code ||
-                        member.postalCode ||
-                        member.city) && (
-                        <LocationDisplay
-                          postalCode={member.postal_code || member.postalCode}
-                          city={member.city}
-                          country={member.country}
-                          showIcon={false}
-                          showPostalCode={false}
-                          displayType="short"
-                          className="text-xs text-base-content/50"
-                        />
+                          {/* Distance */}
+                          {member.distance_km != null && (
+                            <div className="flex items-center gap-1 text-base-content/50">
+                              <Ruler size={12} />
+                              <span>
+                                {Math.round(member.distance_km)} km away
+                              </span>
+                            </div>
+                          )}
+                        </div>
                       )}
                     </>
                   )}

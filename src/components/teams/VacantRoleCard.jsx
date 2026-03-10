@@ -10,6 +10,7 @@ import {
   XCircle,
 } from "lucide-react";
 import VacantRoleDetailsModal from "./VacantRoleDetailsModal";
+import RoleBadgePill from "../common/RoleBadgePill";
 
 /**
  * VacantRoleCard Component
@@ -86,29 +87,29 @@ const VacantRoleCard = ({
         </div>
 
         {/* Content */}
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 leading-tight">
           {/* Row 1: role name + badge */}
           <div className="flex items-start justify-between gap-2">
-            <div className="font-medium text-base-content hover:text-primary transition-colors">
+            <div className="font-medium text-base-content hover:text-primary transition-colors leading-tight">
               {role_name || "Vacant Role"}
             </div>
 
             {/* Vacant badge with admin dropdown */}
             <div className="relative flex-shrink-0" data-dropdown-menu>
-              <span
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (canManage) setShowMenu(!showMenu);
-                }}
-                className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-amber-500 text-white ${
+              <RoleBadgePill
+                icon={UserSearch}
+                label="Vacant"
+                badgeColorClass="badge-role-vacant"
+                interactive={canManage}
+                onClick={
                   canManage
-                    ? "cursor-pointer hover:shadow-md transition-all duration-200"
-                    : ""
-                }`}
-              >
-                <UserSearch size={12} />
-                Vacant
-              </span>
+                    ? (e) => {
+                        e.stopPropagation();
+                        setShowMenu(!showMenu);
+                      }
+                    : undefined
+                }
+              />
 
               {canManage && showMenu && (
                 <>
@@ -191,14 +192,23 @@ const VacantRoleCard = ({
             </div>
           </div>
 
-          {/* Row 2: location (text-xs text-base-content/50, matching member cards) */}
+          {/* Row 2: location + distance */}
           {locationText && (
-            <p className="text-xs text-base-content/50 mt-1 truncate">
-              {locationText}
+            <div className="flex items-center gap-3 text-xs text-base-content/60 mt-[2px]">
+              {/* Location */}
+              <div className="flex items-center gap-1">
+                <MapPin size={12} />
+                <span>{locationText}</span>
+              </div>
+
+              {/* Distance */}
               {!is_remote && max_distance_km && (
-                <span> · {max_distance_km} km radius</span>
+                <div className="flex items-center gap-1 text-base-content/50">
+                  <Ruler size={12} />
+                  <span>{max_distance_km} km away</span>
+                </div>
               )}
-            </p>
+            </div>
           )}
         </div>
       </div>
