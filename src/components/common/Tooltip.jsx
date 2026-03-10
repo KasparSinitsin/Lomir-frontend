@@ -3,21 +3,22 @@ import { createPortal } from "react-dom";
 
 /**
  * Portal-based Tooltip Component
- * 
+ *
  * Renders tooltips via React portal to escape overflow:hidden containers.
  * Supports multi-line content and automatic edge detection.
  * Includes arrow/tail matching the tooltip-lomir style.
- * 
+ *
  * @param {React.ReactNode} children - The trigger element
  * @param {string|React.ReactNode} content - Tooltip content (supports \n for line breaks)
  * @param {string} position - Preferred position: "top" | "bottom" | "left" | "right"
  * @param {string} className - Additional classes for the trigger wrapper
  */
-const Tooltip = ({ 
-  children, 
-  content, 
+const Tooltip = ({
+  children,
+  content,
   position = "bottom",
-  className = "" 
+  className = "",
+  wrapperClassName = "inline-flex items-center",
 }) => {
   const [isVisible, setIsVisible] = useState(false);
   const [coords, setCoords] = useState({ top: 0, left: 0 });
@@ -65,13 +66,19 @@ const Tooltip = ({
     left = positions[position].left;
 
     // Check if tooltip would go off-screen and flip if needed
-    if (position === "bottom" && top + tooltipRect.height > viewportHeight - padding) {
+    if (
+      position === "bottom" &&
+      top + tooltipRect.height > viewportHeight - padding
+    ) {
       finalPosition = "top";
       top = positions.top.top;
     } else if (position === "top" && top < padding) {
       finalPosition = "bottom";
       top = positions.bottom.top;
-    } else if (position === "right" && left + tooltipRect.width > viewportWidth - padding) {
+    } else if (
+      position === "right" &&
+      left + tooltipRect.width > viewportWidth - padding
+    ) {
       finalPosition = "left";
       left = positions.left.left;
     } else if (position === "left" && left < padding) {
@@ -81,19 +88,26 @@ const Tooltip = ({
 
     // Clamp horizontal position to stay within viewport
     if (finalPosition === "top" || finalPosition === "bottom") {
-      left = Math.max(padding, Math.min(left, viewportWidth - tooltipRect.width - padding));
+      left = Math.max(
+        padding,
+        Math.min(left, viewportWidth - tooltipRect.width - padding),
+      );
     }
 
     // Clamp vertical position to stay within viewport
     if (finalPosition === "left" || finalPosition === "right") {
-      top = Math.max(padding, Math.min(top, viewportHeight - tooltipRect.height - padding));
+      top = Math.max(
+        padding,
+        Math.min(top, viewportHeight - tooltipRect.height - padding),
+      );
     }
 
     // Calculate arrow position (centered on trigger element)
     const arrowLeft = triggerRect.left + triggerRect.width / 2;
-    const arrowTop = finalPosition === "bottom" 
-      ? triggerRect.bottom + (gap - arrowSize) / 2
-      : triggerRect.top - (gap + arrowSize) / 2;
+    const arrowTop =
+      finalPosition === "bottom"
+        ? triggerRect.bottom + (gap - arrowSize) / 2
+        : triggerRect.top - (gap + arrowSize) / 2;
 
     setCoords({ top, left });
     setArrowCoords({ top: arrowTop, left: arrowLeft });
@@ -109,7 +123,9 @@ const Tooltip = ({
 
   // Don't render tooltip if no content
   if (!content) {
-    return <span className={`inline-flex items-center ${className}`}>{children}</span>;
+    return (
+      <span className={`${wrapperClassName} ${className}`}>{children}</span>
+    );
   }
 
   // Arrow styles based on position
@@ -146,7 +162,7 @@ const Tooltip = ({
         transform: "translateX(-50%)",
       };
     }
-    
+
     // For left/right positions, hide arrow (or implement horizontal arrows if needed)
     return { ...baseStyle, display: "none" };
   };
@@ -155,7 +171,7 @@ const Tooltip = ({
     <>
       <span
         ref={triggerRef}
-        className={`inline-flex items-center ${className}`}
+        className={`${wrapperClassName} ${className}`}
         onMouseEnter={() => setIsVisible(true)}
         onMouseLeave={() => setIsVisible(false)}
         onFocus={() => setIsVisible(true)}
@@ -192,11 +208,11 @@ const Tooltip = ({
             >
               {content}
             </div>
-            
+
             {/* Arrow/tail */}
             <div style={getArrowStyle()} />
           </>,
-          document.body
+          document.body,
         )}
     </>
   );

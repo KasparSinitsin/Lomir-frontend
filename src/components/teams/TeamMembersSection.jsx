@@ -1,9 +1,12 @@
 import React from "react";
 import { Users, MapPin, Ruler } from "lucide-react";
 import RoleBadgeDropdown from "./RoleBadgeDropdown";
-import LocationDisplay from "../common/LocationDisplay";
 import Alert from "../common/Alert";
 import { teamService } from "../../services/teamService";
+import { formatDisplayName } from "../../utils/nameFormatters";
+import CardMetaItem from "../common/CardMetaItem";
+import CardMetaRow from "../common/CardMetaRow";
+import Tooltip from "../common/Tooltip";
 
 /**
  * TeamMembersSection Component
@@ -133,15 +136,12 @@ const TeamMembersSection = ({
                 )}
               </div>
 
-              <div className="flex-1 min-w-0">
+              <div className="flex-1 min-w-0 pt-[1px]">
                 <div className="flex flex-col">
                   <div className="flex items-center justify-between">
-                    <div
-                      className={`${!anonymize ? "cursor-pointer" : ""}`}
-                      onClick={() => !anonymize && onMemberClick(memberId)}
-                    >
-                      <h3 className="font-medium text-base truncate leading-[120%]">
-                        {anonymize
+                    <Tooltip
+                      content={
+                        anonymize
                           ? "Private Profile"
                           : (() => {
                               const firstName =
@@ -151,9 +151,20 @@ const TeamMembersSection = ({
                               const fullName =
                                 `${firstName} ${lastName}`.trim();
                               return fullName || member.username || "Unknown";
-                            })()}
-                      </h3>
-                    </div>
+                            })()
+                      }
+                    >
+                      <div
+                        className={`min-w-0 ${!anonymize ? "cursor-pointer" : ""}`}
+                        onClick={() => !anonymize && onMemberClick(memberId)}
+                      >
+                        <h3 className="font-medium text-base truncate leading-[120%]">
+                          {anonymize
+                            ? "Private Profile"
+                            : formatDisplayName(member)}
+                        </h3>
+                      </div>
+                    </Tooltip>
 
                     {/* Role Badge with Dropdown */}
                     <RoleBadgeDropdown
@@ -215,34 +226,26 @@ const TeamMembersSection = ({
                     />
                   </div>
 
-                  {!anonymize && (
-                    <>
-                      {/* Location + distance row */}
-                      {(member.city || member.country) && (
-                        <div className="flex items-center gap-3 text-xs text-base-content/60 mt-1">
-                          {/* Location */}
-                          <div className="flex items-center gap-1">
-                            <MapPin size={12} />
-                            <span>
-                              {[member.city, member.country]
-                                .filter(Boolean)
-                                .join(", ")}
-                            </span>
-                          </div>
+                  {!anonymize &&
+                    (member.city ||
+                      member.country ||
+                      member.distance_km != null) && (
+                      <CardMetaRow>
+                        {(member.city || member.country) && (
+                          <CardMetaItem icon={MapPin}>
+                            {[member.city, member.country]
+                              .filter(Boolean)
+                              .join(", ")}
+                          </CardMetaItem>
+                        )}
 
-                          {/* Distance */}
-                          {member.distance_km != null && (
-                            <div className="flex items-center gap-1 text-base-content/50">
-                              <Ruler size={12} />
-                              <span>
-                                {Math.round(member.distance_km)} km away
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </>
-                  )}
+                        {member.distance_km != null && (
+                          <CardMetaItem icon={Ruler} tone="muted" nowrap>
+                            {Math.round(member.distance_km)} km away
+                          </CardMetaItem>
+                        )}
+                      </CardMetaRow>
+                    )}
 
                   {!anonymize && member.tags?.length > 0 && (
                     <div className="flex flex-wrap gap-1 mt-1">
