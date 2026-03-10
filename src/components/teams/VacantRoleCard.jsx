@@ -93,16 +93,16 @@ const VacantRoleCard = ({
         <div className="flex-1 min-w-0 pt-[1px] leading-tight">
           {/* Row 1: role name + badge */}
           <div className="flex items-start justify-between gap-2 min-w-0">
-  <div className="flex-1 min-w-0 overflow-hidden">
-    <Tooltip
-      content={role_name || "Vacant Role"}
-      wrapperClassName="block w-full min-w-0 overflow-hidden"
-    >
-      <div className="block w-full min-w-0 truncate font-medium text-base-content hover:text-primary transition-colors leading-[120%]">
-        {role_name || "Vacant Role"}
-      </div>
-    </Tooltip>
-  </div>
+            <div className="flex-1 min-w-0 overflow-hidden">
+              <Tooltip
+                content={role_name || "Vacant Role"}
+                wrapperClassName="block w-full min-w-0 overflow-hidden"
+              >
+                <div className="block w-full min-w-0 truncate font-medium text-base-content hover:text-primary transition-colors leading-[120%]">
+                  {role_name || "Vacant Role"}
+                </div>
+              </Tooltip>
+            </div>
 
             <div className="relative flex-shrink-0" data-dropdown-menu>
               <RoleBadgePill

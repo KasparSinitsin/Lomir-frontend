@@ -29,15 +29,15 @@ const RoleBadgePill = ({
 
       {/* Expanding label */}
       <span
-  className={`text-xs font-medium leading-none
+        className={`text-xs font-medium leading-none
     max-w-0 overflow-hidden whitespace-nowrap opacity-0
     transition-all duration-200 ease-out
     group-hover:max-w-[80px] group-hover:opacity-100
     group-focus-visible:max-w-[80px] group-focus-visible:opacity-100
     pr-0 group-hover:pr-2 group-focus-visible:pr-2`}
->
-  {label}
-</span>
+      >
+        {label}
+      </span>
 
       {/* Optional loading spinner */}
       {loading && (
