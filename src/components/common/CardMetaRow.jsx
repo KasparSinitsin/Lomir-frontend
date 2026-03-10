@@ -2,7 +2,7 @@ import React from "react";
 
 const CardMetaRow = ({ children, className = "" }) => {
   return (
-    <div className={`flex flex-wrap gap-x-3 text-xs mt-[1px] ${className}`}>
+    <div className={`flex flex-wrap gap-x-1.5 text-xs ${className}`}>
       {children}
     </div>
   );
