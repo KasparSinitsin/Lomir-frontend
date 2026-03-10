@@ -2,64 +2,51 @@ import { io } from "socket.io-client";
 
 let socket = null;
 
-// Remove /api from the URL for socket connection
-const getSocketURL = () => {
-  const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5001/api";
-  // Remove /api suffix if it exists
-  return apiUrl.replace(/\/api$/, "");
-};
-
-const SOCKET_URL = getSocketURL();
-
-export const socketService = {
-  // Initialize socket connection
+const socketService = {
+  // Connect to the socket server
   connect: (token) => {
-    if (socket) {
-      socket.disconnect();
+    if (socket && socket.connected) {
+      console.log("Socket already connected");
+      return socket;
     }
 
-    console.log("Attempting to connect to socket at:", SOCKET_URL);
+    // Disconnect existing socket if any
+    if (socket) {
+      socket.disconnect();
+      socket = null;
+    }
 
-    // Create new socket connection with auth token
-    socket = io(SOCKET_URL, {
+    const SOCKET_URL =
+      import.meta.env.VITE_SOCKET_URL || "http://localhost:5001";
+
+    const newSocket = io(SOCKET_URL, {
       auth: { token },
-      withCredentials: true,
       transports: ["websocket", "polling"],
-      forceNew: true, // Force a new connection
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
     });
 
-    // Set up basic event handlers
-    socket.on("connect", () => {
-      console.log("Socket connected successfully", socket.id);
+    // Assign to global variable
+    socket = newSocket;
+
+    // Use newSocket in callbacks to avoid race conditions
+    newSocket.on("connect", () => {
+      console.log("Socket connected:", newSocket.id);
     });
 
-    socket.on("connect_error", (error) => {
-      console.error("Socket connection error:", error);
-      console.error("Error details:", {
-        message: error.message,
-        description: error.description,
-        context: error.context,
-        type: error.type,
-      });
+    newSocket.on("connect_error", (error) => {
+      console.error("Socket connection error:", error.message);
     });
 
-    socket.on("error", (error) => {
-      console.error("Socket error:", error);
-    });
-
-    socket.on("disconnect", (reason) => {
+    newSocket.on("disconnect", (reason) => {
       console.log("Socket disconnected:", reason);
     });
 
-    return socket;
+    return newSocket;
   },
 
-  // Get the socket instance
-  getSocket: () => {
-    return socket;
-  },
-
-  // Disconnect socket
+  // Disconnect from the socket server
   disconnect: () => {
     if (socket) {
       socket.disconnect();
@@ -68,13 +55,14 @@ export const socketService = {
     }
   },
 
+  // Get the socket instance
+  getSocket: () => socket,
+
   // Join a conversation room
   joinConversation: (conversationId, type = "direct") => {
     if (socket && socket.connected) {
       socket.emit("conversation:join", { conversationId, type });
       console.log(`Joined ${type} conversation:`, conversationId);
-    } else {
-      console.warn("Cannot join conversation - socket not connected");
     }
   },
 
@@ -87,10 +75,31 @@ export const socketService = {
   },
 
   // Send a new message
-  sendMessage: (conversationId, content, type = "direct") => {
+  sendMessage: (
+    conversationId,
+    content,
+    type = "direct",
+    imageUrl = null,
+    fileUrl = null,
+    fileName = null,
+  ) => {
     if (socket && socket.connected) {
-      socket.emit("message:new", { conversationId, content, type });
-      console.log("Sending message:", { conversationId, content, type });
+      socket.emit("message:new", {
+        conversationId,
+        content,
+        type,
+        imageUrl,
+        fileUrl,
+        fileName,
+      });
+      console.log("Sending message:", {
+        conversationId,
+        content,
+        type,
+        imageUrl,
+        fileUrl,
+        fileName,
+      });
     } else {
       console.error("Cannot send message - socket not connected");
     }
@@ -111,9 +120,10 @@ export const socketService = {
   },
 
   // Mark messages as read
-  markMessagesAsRead: (conversationId) => {
+  markMessagesAsRead: (conversationId, type = "direct") => {
     if (socket && socket.connected) {
-      socket.emit("message:read", { conversationId });
+      socket.emit("message:read", { conversationId, type });
+      console.log(`Marking ${type} messages as read for:`, conversationId);
     }
   },
 };

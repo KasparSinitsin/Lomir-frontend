@@ -1,10 +1,9 @@
-import React, { useState, useEffect } from "react";
-import { X, User, MapPin, Calendar, SendHorizontal } from "lucide-react";
-import Modal from "../common/Modal";
+import React, { useState, useEffect, useRef } from "react";
+import { User, MapPin, Calendar, SendHorizontal } from "lucide-react";
+import RequestListModal from "../common/RequestListModal";
 import Button from "../common/Button";
-import Alert from "../common/Alert";
-import LocationDisplay from "../common/LocationDisplay";
-import UserDetailsModal from "../users/UserDetailsModal";
+import InlineUserLink, { InvitedByLink } from "../users/InlineUserLink";
+import { useUserModal } from "../../contexts/UserModalContext";
 import { getUserInitials, getDisplayName } from "../../utils/userHelpers";
 import { format } from "date-fns";
 
@@ -19,6 +18,8 @@ import { format } from "date-fns";
  * @param {Function} onClose - Callback to close the modal
  * @param {Array} invitations - Array of pending invitation objects
  * @param {Function} onCancelInvitation - Callback to cancel an invitation
+ * @param {string} teamName - Name of the team (for display)
+ * @param {string|number|null} highlightUserId - User ID to scroll to + highlight (optional)
  */
 const TeamInvitesModal = ({
   isOpen,
@@ -26,25 +27,21 @@ const TeamInvitesModal = ({
   invitations = [],
   onCancelInvitation,
   teamName,
+  highlightUserId = null,
 }) => {
+  // ============ State ============
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
-  const [selectedUserId, setSelectedUserId] = useState(null);
 
-  // Handler to open user profile modal
-  const handleUserClick = (userId) => {
-    if (userId) {
-      setSelectedUserId(userId);
-    }
-  };
+  // ============ Refs ============
+  const highlightedRef = useRef(null);
 
-  // Handler to close user profile modal
-  const handleUserModalClose = () => {
-    setSelectedUserId(null);
-  };
+  // ============ Context ============
+  // Get global user modal opener (for clicking on invitee avatar/name)
+  const { openUserModal } = useUserModal();
 
-  // Debug: Log invitation data to check structure
+  // ============ Debug Logging ============
   useEffect(() => {
     if (invitations && invitations.length > 0) {
       console.log("TeamInvitesModal - Invitations data:", invitations);
@@ -67,6 +64,23 @@ const TeamInvitesModal = ({
     }
   }, [invitations]);
 
+  // ============ Scroll to highlighted invitation ============
+  useEffect(() => {
+    if (isOpen && highlightUserId && highlightedRef.current) {
+      // Small delay to ensure modal is rendered
+      const t = setTimeout(() => {
+        highlightedRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+      }, 100);
+
+      return () => clearTimeout(t);
+    }
+  }, [isOpen, highlightUserId]);
+
+  // ============ Handlers ============
+
   const handleCancelInvitation = async (invitationId) => {
     if (!window.confirm("Are you sure you want to cancel this invitation?")) {
       return;
@@ -79,6 +93,9 @@ const TeamInvitesModal = ({
       await onCancelInvitation(invitationId);
 
       setSuccess("Invitation canceled successfully!");
+
+      // Clear success after 3 seconds
+      setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
       setError(err.message || "Failed to cancel invitation");
     } finally {
@@ -86,303 +103,204 @@ const TeamInvitesModal = ({
     }
   };
 
-  // Format date helper - handles multiple possible property names
+  // Handler for clicking on invitee avatar/name
+  const handleInviteeClick = (userId) => {
+    if (userId) {
+      openUserModal(userId);
+    }
+  };
+
+  // ============ Helpers ============
+
+  // Helper to get avatar URL
+  const getAvatarUrl = (user) => {
+    return user?.avatar_url || user?.avatarUrl || null;
+  };
+
+  // Format invitation date
   const getInvitationDate = (invitation) => {
-    // Check multiple possible date field names
-    const dateValue =
+    const date =
       invitation?.created_at ||
       invitation?.createdAt ||
       invitation?.date ||
-      invitation?.sent_at ||
-      invitation?.sentAt;
+      invitation?.sent_at;
 
-    if (!dateValue) {
-      console.log("No date found for invitation:", invitation);
-      return "Unknown date";
-    }
+    if (!date) return "Unknown date";
 
     try {
-      return format(new Date(dateValue), "MMM d, yyyy");
+      return format(new Date(date), "MMM d, yyyy");
     } catch (error) {
-      console.error("Error formatting date:", error, "Date value:", dateValue);
+      console.error("Error formatting date:", error);
       return "Unknown date";
     }
   };
 
-  // Helper to get avatar URL - handles both snake_case and camelCase
-  const getAvatarUrl = (user) => {
-    if (!user) return null;
-    return user.avatar_url || user.avatarUrl || null;
-  };
-
-  // Custom header with invitation count
-  const customHeader = (
-    <div>
-      <h2 className="text-xl font-medium text-primary leading-[120%] mb-[0.2em]">
-        {teamName ? `Invitations sent to ${teamName}` : "Sent Invitations"}
-      </h2>
-      <p className="text-sm text-base-content/70 mt-1">
-        {invitations.length} pending invitation
-        {invitations.length !== 1 ? "s" : ""}
-      </p>
-    </div>
-  );
-
-  // Optional footer with summary
-  const footer =
-    invitations.length > 0 ? (
-      <div className="flex justify-between items-center text-sm text-base-content/70">
-        <span>Users will be notified when they receive an invitation.</span>
-        <span>
-          Total: {invitations.length} invitation
-          {invitations.length !== 1 ? "s" : ""}
-        </span>
-      </div>
-    ) : null;
-
+  // ============ Render ============
   return (
-    <>
-      <Modal
-        isOpen={isOpen}
-        onClose={onClose}
-        title={customHeader}
-        footer={footer}
-        position="center"
-        size="lg"
-        maxHeight="max-h-[90vh]"
-        minHeight="min-h-[300px]"
-        closeOnBackdrop={true}
-        closeOnEscape={true}
-        showCloseButton={true}
-      >
-        {/* Alerts */}
-        {error && (
-          <Alert
-            type="error"
-            message={error}
-            onClose={() => setError(null)}
-            className="mb-4"
-          />
-        )}
-        {success && (
-          <Alert
-            type="success"
-            message={success}
-            onClose={() => setSuccess(null)}
-            className="mb-4"
-          />
-        )}
+    <RequestListModal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Invitations sent out to"
+      subtitle={teamName}
+      itemCount={invitations.length}
+      itemName="invitation"
+      footerText="You can cancel invitations that haven't been responded to."
+      error={error}
+      onErrorClose={() => setError(null)}
+      success={success}
+      onSuccessClose={() => setSuccess(null)}
+      emptyIcon={User}
+      emptyTitle="No pending invitations"
+      emptyMessage="Invitations you send to users will appear here."
+      // No extraModals needed - UserModalContext handles it globally
+    >
+      {invitations.map((invitation) => {
+        // Get invitee ID for highlighting comparison
+        const inviteeId =
+          invitation?.invitee?.id ?? invitation?.invitee_id ?? null;
 
-        {/* Empty State */}
-        {invitations.length === 0 ? (
-          <div className="text-center py-8 text-base-content/70">
-            <User size={48} className="mx-auto mb-4 opacity-50" />
-            <p className="text-lg font-medium">No pending invitations</p>
-            <p className="text-sm mt-2">
-              Invitations you send to users will appear here.
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {invitations.map((invitation) => (
+        // Normalize types to avoid "1" vs 1 mismatches
+        const isHighlighted =
+          highlightUserId != null &&
+          inviteeId != null &&
+          String(inviteeId) === String(highlightUserId);
+
+        return (
+          <div
+            key={invitation.id}
+            ref={isHighlighted ? highlightedRef : null}
+            className={`bg-base-200/30 rounded-lg border border-base-300 p-4 transition-all duration-300 ${
+              isHighlighted
+                ? "ring-2 ring-primary ring-offset-2 bg-primary/5"
+                : ""
+            }`}
+          >
+            {/* Top row: Avatar + Name/Username + Date */}
+            <div className="flex items-start gap-3 mb-3">
+              {/* Invitee Avatar - Clickable */}
               <div
-                key={invitation.id}
-                className="bg-base-200/30 rounded-lg border border-base-300 p-4"
+                className="avatar cursor-pointer hover:opacity-80 transition-opacity flex-shrink-0"
+                onClick={() => handleInviteeClick(invitation.invitee?.id)}
+                title="View profile"
               >
-                {/* Invitee Info Header */}
-                <div className="flex items-start space-x-3 mb-3">
-                  {/* Avatar - Clickable */}
+                <div className="w-10 h-10 rounded-full relative">
+                  {getAvatarUrl(invitation.invitee) ? (
+                    <img
+                      src={getAvatarUrl(invitation.invitee)}
+                      alt={getDisplayName(invitation.invitee)}
+                      className="object-cover w-full h-full rounded-full"
+                      onError={(e) => {
+                        e.target.style.display = "none";
+                        const fallback =
+                          e.target.parentElement.querySelector(
+                            ".avatar-fallback"
+                          );
+                        if (fallback) fallback.style.display = "flex";
+                      }}
+                    />
+                  ) : null}
+                  {/* Fallback initials */}
                   <div
-                    className="avatar cursor-pointer hover:opacity-80 transition-opacity"
-                    onClick={() => handleUserClick(invitation.invitee?.id)}
-                    title="View profile"
+                    className="avatar-fallback bg-primary text-primary-content flex items-center justify-center w-full h-full rounded-full absolute inset-0"
+                    style={{
+                      display: getAvatarUrl(invitation.invitee)
+                        ? "none"
+                        : "flex",
+                    }}
                   >
-                    <div className="w-12 h-12 rounded-full relative">
-                      {getAvatarUrl(invitation.invitee) ? (
-                        <img
-                          src={getAvatarUrl(invitation.invitee)}
-                          alt={invitation.invitee?.username || "User"}
-                          className="object-cover w-full h-full rounded-full"
-                          onError={(e) => {
-                            // If image fails to load, hide it and show fallback
-                            e.target.style.display = "none";
-                            const fallback =
-                              e.target.parentElement.querySelector(
-                                ".avatar-fallback"
-                              );
-                            if (fallback) fallback.style.display = "flex";
-                          }}
-                        />
-                      ) : null}
-                      {/* Fallback initials */}
-                      <div
-                        className="avatar-fallback bg-primary text-primary-content flex items-center justify-center w-full h-full rounded-full absolute inset-0"
-                        style={{
-                          display: getAvatarUrl(invitation.invitee)
-                            ? "none"
-                            : "flex",
-                        }}
-                      >
-                        <span className="text-lg font-medium">
-                          {getUserInitials(invitation.invitee)}
-                        </span>
-                      </div>
-                    </div>
+                    <span className="text-sm font-medium">
+                      {getUserInitials(invitation.invitee)}
+                    </span>
                   </div>
-
-                  {/* Name and Details */}
-                  <div className="flex-1 min-w-0">
-                    <h4
-                      className="font-medium text-base-content cursor-pointer hover:text-primary transition-colors leading-[120%] mb-[0.2em]"
-                      onClick={() => handleUserClick(invitation.invitee?.id)}
-                      title="View profile"
-                    >
-                      {(() => {
-                        const user = invitation.invitee || {};
-                        const first = user.first_name || user.firstName || "";
-                        const last = user.last_name || user.lastName || "";
-
-                        // If we have at least one of first/last name, show that
-                        const fullName = `${first} ${last}`.trim();
-                        if (fullName.length > 0) {
-                          return fullName;
-                        }
-
-                        // Fallback: username, then "Unknown User"
-                        return user.username || "Unknown User";
-                      })()}
-                    </h4>
-
-                    <p
-                      className="text-sm text-base-content/70 cursor-pointer hover:text-primary transition-colors"
-                      onClick={() => handleUserClick(invitation.invitee?.id)}
-                      title="View profile"
-                    >
-                      @{invitation.invitee?.username || "unknown"}
-                    </p>
-
-                    {/* Location if available */}
-                    {invitation.invitee?.postal_code && (
-                      <div className="flex items-center text-sm text-base-content/60 mt-1">
-                        <MapPin size={14} className="mr-1" />
-                        <LocationDisplay
-                          postalCode={invitation.invitee.postal_code}
-                        />
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Invite Date - top right */}
-                  <div className="flex items-center text-xs text-base-content/60">
-                    <Calendar size={12} className="mr-1" />
-                    <span>{getInvitationDate(invitation)}</span>
-                  </div>
-                </div>
-
-                {/* Bio if available */}
-                {invitation.invitee?.bio && (
-                  <div className="mb-5 text-sm text-base-content/80">
-                    <p className="line-clamp-2">{invitation.invitee.bio}</p>
-                  </div>
-                )}
-
-                {/* Invitation Message if present */}
-                {invitation.message && (
-                  <div className="mb-5">
-                    <p className="text-xs text-base-content/60 mb-1 flex items-center">
-                      <SendHorizontal size={12} className="text-info mr-1" />
-                      Invitation message:
-                    </p>
-                    <p className="text-sm text-base-content/90">
-                      {invitation.message}
-                    </p>
-                  </div>
-                )}
-
-                {/* Bottom row: Inviter info (left) + Cancel button (right) */}
-                <div className="flex items-center justify-between">
-                  {/* Inviter info - left side */}
-                  {invitation.inviter || invitation.inviter_username ? (
-                    <div className="flex items-center text-xs text-base-content/60">
-                      <span className="mr-1">Sent by</span>
-                      {/* Inviter Avatar */}
-                      <div
-                        className="avatar cursor-pointer hover:opacity-80 transition-opacity mr-1"
-                        onClick={() => handleUserClick(invitation.inviter?.id)}
-                        title="View profile"
-                      >
-                        <div className="w-4 h-4 rounded-full relative">
-                          {getAvatarUrl(invitation.inviter) ? (
-                            <img
-                              src={getAvatarUrl(invitation.inviter)}
-                              alt={invitation.inviter?.username || "Inviter"}
-                              className="object-cover w-full h-full rounded-full"
-                              onError={(e) => {
-                                e.target.style.display = "none";
-                                const fallback =
-                                  e.target.parentElement.querySelector(
-                                    ".avatar-fallback"
-                                  );
-                                if (fallback) fallback.style.display = "flex";
-                              }}
-                            />
-                          ) : null}
-                          <div
-                            className="avatar-fallback bg-primary text-primary-content flex items-center justify-center w-full h-full rounded-full absolute inset-0"
-                            style={{
-                              display: getAvatarUrl(invitation.inviter)
-                                ? "none"
-                                : "flex",
-                              fontSize: "8px",
-                            }}
-                          >
-                            <span className="font-medium">
-                              {getUserInitials(invitation.inviter) ||
-                                invitation.inviter_username
-                                  ?.charAt(0)
-                                  ?.toUpperCase() ||
-                                "?"}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                      {/* Inviter Name */}
-                      <span
-                        className="font-medium text-base-content/80 cursor-pointer hover:text-primary transition-colors"
-                        onClick={() => handleUserClick(invitation.inviter?.id)}
-                        title="View profile"
-                      >
-                        {getDisplayName(invitation.inviter)}
-                      </span>
-                    </div>
-                  ) : (
-                    <div /> /* Empty div to maintain flex spacing */
-                  )}
-
-                  {/* Action Button - right side */}
-                  <Button
-                    variant="errorOutline"
-                    size="sm"
-                    onClick={() => handleCancelInvitation(invitation.id)}
-                    disabled={loading}
-                    icon={<X size={16} />}
-                  >
-                    {loading ? "Canceling..." : "Cancel Invitation"}
-                  </Button>
                 </div>
               </div>
-            ))}
-          </div>
-        )}
-      </Modal>
 
-      {/* User Details Modal */}
-      <UserDetailsModal
-        isOpen={!!selectedUserId}
-        userId={selectedUserId}
-        onClose={handleUserModalClose}
-      />
-    </>
+              {/* User Info */}
+              <div className="flex-1 min-w-0">
+                {/* Name - Clickable */}
+                <h4
+                  className="font-medium text-base-content cursor-pointer hover:text-primary transition-colors leading-[120%] mb-[0.2em]"
+                  onClick={() => handleInviteeClick(invitation.invitee?.id)}
+                  title="View profile"
+                >
+                  {getDisplayName(invitation.invitee)}
+                </h4>
+                {/* Username */}
+                {invitation.invitee?.username && (
+                  <p className="text-sm text-base-content/70">
+                    @{invitation.invitee.username}
+                  </p>
+                )}
+              </div>
+
+              {/* Date - top right */}
+              <div className="flex items-center text-xs text-base-content/60 whitespace-nowrap">
+                <Calendar size={12} className="mr-1" />
+                <span>{getInvitationDate(invitation)}</span>
+              </div>
+            </div>
+
+            {/* Invitee Bio (if available) */}
+            {invitation.invitee?.bio && (
+              <div className="mb-3 text-sm text-base-content/80">
+                <p className="line-clamp-2">{invitation.invitee.bio}</p>
+              </div>
+            )}
+
+            {/* Invitation Message (if any) */}
+            {invitation.message && (
+              <div className="mb-3">
+                <p className="text-xs text-base-content/60 mb-0.5 flex items-center">
+                  <SendHorizontal size={12} className="text-info mr-1" />
+                  Invitation message:
+                </p>
+                <p className="text-sm text-base-content/90 leading-relaxed">
+                  {invitation.message}
+                </p>
+              </div>
+            )}
+
+            {/* Location (if available) */}
+            {(invitation.invitee?.location ||
+              invitation.invitee?.postal_code) && (
+              <div className="flex items-center text-xs text-base-content/60 mb-3">
+                <MapPin size={12} className="mr-1" />
+                <span>
+                  {invitation.invitee?.location ||
+                    invitation.invitee?.postal_code}
+                </span>
+              </div>
+            )}
+
+            {/* Bottom row: Inviter info (left) + Action Button (right) */}
+            <div className="flex items-center justify-between gap-3">
+              {/* Inviter info (left) - Using InlineUserLink */}
+              {invitation.inviter ? (
+                <InvitedByLink user={invitation.inviter} />
+              ) : invitation.inviter_username ? (
+                <span className="text-xs text-base-content/50">
+                  Invited by {invitation.inviter_username}
+                </span>
+              ) : (
+                <div />
+              )}
+
+              {/* Action Button (right) */}
+              <div className="flex justify-end">
+                <Button
+                  variant="errorOutline"
+                  size="sm"
+                  onClick={() => handleCancelInvitation(invitation.id)}
+                  disabled={loading}
+                >
+                  {loading ? "Canceling..." : "Cancel Invitation"}
+                </Button>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </RequestListModal>
   );
 };
 

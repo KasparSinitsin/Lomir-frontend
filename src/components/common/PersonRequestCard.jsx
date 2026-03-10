@@ -2,7 +2,7 @@ import React from "react";
 import { Calendar, MapPin } from "lucide-react";
 import { format } from "date-fns";
 import LocationDisplay from "./LocationDisplay";
-import { getUserInitials } from '../../utils/userHelpers';
+import { getUserInitials } from "../../utils/userHelpers";
 
 /**
  * PersonRequestCard Component
@@ -45,8 +45,6 @@ const PersonRequestCard = ({
     if (!user) return null;
     return user.avatar_url || user.avatarUrl || null;
   };
-
-
 
   // Get display name
   const getDisplayName = () => {
@@ -126,7 +124,9 @@ const PersonRequestCard = ({
                 display: getAvatarUrl() ? "none" : "flex",
               }}
             >
-              <span className="text-lg font-medium">{getUserInitials(user)}</span>
+              <span className="text-lg font-medium">
+                {getUserInitials(user)}
+              </span>
             </div>
           </div>
         </div>
@@ -156,7 +156,14 @@ const PersonRequestCard = ({
           {showLocation && getPostalCode() && (
             <div className="flex items-center text-sm text-base-content/60 mt-1">
               <MapPin size={14} className="mr-1" />
-              <LocationDisplay postalCode={getPostalCode()} />
+              <LocationDisplay
+                postalCode={getPostalCode()}
+                city={user?.city}
+                state={user?.state}
+                country={user?.country}
+                showIcon={false}
+                displayType="short"
+              />
             </div>
           )}
         </div>

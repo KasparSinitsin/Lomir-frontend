@@ -1,64 +1,124 @@
-import axios from 'axios';
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
-import TagSelector from '../tags/TagSelector';
-import api from '../../services/api';
+import React, { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../../contexts/AuthContext";
+import { UI_TEXT } from "../../constants/uiText";
+import TagInput from "../tags/TagInput";
+import Card from "../common/Card";
+import Button from "../common/Button";
+import FormSectionDivider from "../common/FormSectionDivider";
+import { Tag, MailCheck, KeyRound, User, Camera } from "lucide-react";
+import ImageUploader from "../common/ImageUploader";
+import { uploadToCloudinary } from "../../config/cloudinary";
+import api from "../../services/api";
+import LocationInput from "../common/LocationInput";
+import { useLocationAutoFill } from "../../hooks/useLocationAutoFill";
+import VisibilityToggle from "../common/VisibilityToggle";
 
 const RegisterForm = () => {
   const navigate = useNavigate();
   const { register } = useAuth();
+
   const [formData, setFormData] = useState({
-    username: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
-    first_name: '',
-    last_name: '',
-    bio: '',
-    postal_code: '',
+    username: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+    first_name: "",
+    last_name: "",
+    bio: "",
+    postal_code: "",
+    city: "",
+    country: "",
+    isPublic: true,
     profile_image: null,
     selectedTags: [],
-    tagExperienceLevels: {},
-    tagInterestLevels: {}
   });
+
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [imagePreview, setImagePreview] = useState(null);
+  const [registrationSuccess, setRegistrationSuccess] = useState(false);
+
+  const [resendStatus, setResendStatus] = useState("idle"); // 'idle' | 'sending' | 'sent' | 'error'
+  const [resendMessage, setResendMessage] = useState("");
+  const [resendCooldown, setResendCooldown] = useState(0);
+
+  const { getSuggestedUpdates } = useLocationAutoFill({
+    postalCode: formData.postal_code || "",
+    city: formData.city || "",
+    country: formData.country || "",
+    isEditing: true,
+    isRemote: false,
+  });
+
+  useEffect(() => {
+    const updates = getSuggestedUpdates();
+    if (Object.keys(updates).length > 0) {
+      const mappedUpdates = {};
+      if (updates.city) mappedUpdates.city = updates.city;
+      if (updates.country) mappedUpdates.country = updates.country;
+
+      if (Object.keys(mappedUpdates).length > 0) {
+        setFormData((prev) => ({ ...prev, ...mappedUpdates }));
+      }
+    }
+  }, [getSuggestedUpdates]);
 
   const validateForm = () => {
     const newErrors = {};
-    if (!formData.username) {
-      newErrors.username = 'Username is required';
-    }
+
+    if (!formData.username) newErrors.username = "Username is required";
+
     if (!formData.email) {
-      newErrors.email = 'Email is required';
+      newErrors.email = "Email is required";
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Email is invalid';
+      newErrors.email = "Email is invalid";
     }
+
     if (!formData.password) {
-      newErrors.password = 'Password is required';
+      newErrors.password = "Password is required";
+    } else if (formData.password.length < 6) {
+      newErrors.password = "Password must be at least 6 characters";
     }
-    if (!formData.confirmPassword) {
-      newErrors.confirmPassword = 'Confirm Password is required';
-    } else if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = 'Passwords do not match';
+
+    if (formData.password !== formData.confirmPassword) {
+      newErrors.confirmPassword = "Passwords do not match";
     }
+
+    setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData({
-      ...formData,
-      [name]: value
-    });
+    const { name, value, type, checked } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: type === "checkbox" ? checked : value,
+    }));
+  };
+
+  const handleTagsChange = (tags) => {
+    const normalized = (tags || [])
+      .map((t) => (typeof t === "object" ? t.id : t))
+      .map((id) => Number(id))
+      .filter((n) => Number.isFinite(n));
+
+    setFormData((prev) => ({
+      ...prev,
+      selectedTags: normalized,
+    }));
+  };
+
+  const getUserInitialsFromForm = () => {
+    const first = formData.first_name?.charAt(0) || "";
+    const last = formData.last_name?.charAt(0) || "";
+    if (first || last) return (first + last).toUpperCase();
+    return formData.username?.charAt(0)?.toUpperCase() || "?";
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!validateForm()) {
-      return;
-    }
+    if (!validateForm()) return;
 
     setIsSubmitting(true);
 
@@ -67,136 +127,436 @@ const RegisterForm = () => {
         username: formData.username,
         email: formData.email,
         password: formData.password,
-        first_name: formData.first_name || '',
-        last_name: formData.last_name || '',
-        bio: formData.bio || '',
-        postal_code: formData.postal_code || '',
-        tags: formData.selectedTags.length > 0
-          ? formData.selectedTags.map(tagId => ({
-              tag_id: tagId,
-              experience_level: formData.tagExperienceLevels[tagId] || 'beginner',
-              interest_level: formData.tagInterestLevels[tagId] || 'medium'
-            }))
-          : []
+        first_name: formData.first_name,
+        last_name: formData.last_name,
+        bio: formData.bio,
+        postal_code: formData.postal_code,
+        city: formData.city,
+        country: formData.country,
+        tags:
+          formData.selectedTags.length > 0
+            ? formData.selectedTags
+                .map((id) => Number(id))
+                .filter((n) => Number.isFinite(n))
+                .map((id) => ({ tag_id: id }))
+            : [],
       };
 
       if (formData.profile_image) {
-        const cloudinaryFormData = new FormData();
-        cloudinaryFormData.append('file', formData.profile_image);
-        cloudinaryFormData.append('upload_preset', import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET);
-
-        const cloudinaryResponse = await axios.post(
-          `https://api.cloudinary.com/v1_1/${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME}/image/upload`,
-          cloudinaryFormData,
-          {
-            headers: {
-              'Content-Type': 'multipart/form-data'
-            }
-          }
+        const uploadResult = await uploadToCloudinary(
+          formData.profile_image,
+          "avatars",
         );
 
-        userData.avatar_url = cloudinaryResponse.data.secure_url;
+        if (uploadResult.success) {
+          userData.avatar_url = uploadResult.url;
+        } else {
+          console.error("Avatar upload failed:", uploadResult.error);
+        }
       }
+
+      console.log("Register payload tags:", userData.tags);
 
       const result = await register(userData);
 
       if (result.success) {
-        localStorage.setItem('registrationMessage', 'Profile created successfully!');
-        navigate('/profile');
+        if (result.requiresVerification) {
+          setRegistrationSuccess(true);
+        } else {
+          localStorage.setItem(
+            "registrationMessage",
+            "Profile created successfully!",
+          );
+          navigate("/profile");
+        }
       } else {
-        setErrors(prev => ({
+        setErrors((prev) => ({
           ...prev,
-          form: result.message
+          form: result.message,
         }));
       }
     } catch (error) {
-      console.error('Full Registration error:', error);
-      setErrors(prev => ({
+      console.error("Full Registration error:", error);
+      setErrors((prev) => ({
         ...prev,
-        form: error.response?.data?.message || 'Registration failed.'
+        form: error.response?.data?.message || "Registration failed.",
       }));
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  return (
-    <div className="card bg-base-100 shadow-xl mx-auto max-w-md w-full">
-      <div className="card-body">
-        <h2 className="card-title text-2xl font-bold text-center">Create Account</h2>
+  const handleResendVerification = async () => {
+    setResendStatus("sending");
+    setResendMessage("");
 
-        {errors.form && (
-          <div className="alert alert-error mt-4">
-            <span>{errors.form}</span>
-          </div>
-        )}
+    try {
+      await api.post("/api/auth/resend-verification", {
+        email: formData.email,
+      });
 
-        <form className="mt-4" onSubmit={handleSubmit}>
-          {/* Basic Info */}
-          <div className="form-control w-full">
-            <label className="label"><span className="label-text">Username</span></label>
-            <input type="text" placeholder="Username" className={`input input-bordered w-full ${errors.username ? 'input-error' : ''}`} value={formData.username} onChange={handleChange} name="username" />
-            {errors.username && <label className="label"><span className="label-text-alt text-red-500">{errors.username}</span></label>}
-          </div>
-          <div className="form-control w-full">
-            <label className="label"><span className="label-text">Email</span></label>
-            <input type="email" placeholder="Email" className={`input input-bordered w-full ${errors.email ? 'input-error' : ''}`} value={formData.email} onChange={handleChange} name="email" />
-            {errors.email && <label className="label"><span className="label-text-alt text-red-500">{errors.email}</span></label>}
-          </div>
-          <div className="form-control w-full">
-            <label className="label"><span className="label-text">Password</span></label>
-            <input type="password" placeholder="Password" className={`input input-bordered w-full ${errors.password ? 'input-error' : ''}`} value={formData.password} onChange={handleChange} name="password" />
-            {errors.password && <label className="label"><span className="label-text-alt text-red-500">{errors.password}</span></label>}
-          </div>
-          <div className="form-control w-full">
-            <label className="label"><span className="label-text">Confirm Password</span></label>
-            <input type="password" placeholder="Confirm Password" className={`input input-bordered w-full ${errors.confirmPassword ? 'input-error' : ''}`} value={formData.confirmPassword} onChange={handleChange} name="confirmPassword" />
-            {errors.confirmPassword && <label className="label"><span className="label-text-alt text-red-500">{errors.confirmPassword}</span></label>}
-          </div>
+      setResendStatus("sent");
+      setResendMessage("Verification email sent! Please check your inbox.");
 
-          {/* Profile Details */}
-          <div className="form-control w-full">
-            <label className="label"><span className="label-text">First Name</span></label>
-            <input type="text" placeholder="First Name" className="input input-bordered w-full" value={formData.first_name} onChange={handleChange} name="first_name" />
-          </div>
-          <div className="form-control w-full">
-            <label className="label"><span className="label-text">Last Name</span></label>
-            <input type="text" placeholder="Last Name" className="input input-bordered w-full" value={formData.last_name} onChange={handleChange} name="last_name" />
-          </div>
-          <div className="form-control w-full">
-            <label className="label"><span className="label-text">Bio</span></label>
-            <textarea className="textarea textarea-bordered w-full" placeholder="Bio" value={formData.bio} onChange={handleChange} name="bio" />
-          </div>
-          <div className="form-control w-full">
-            <label className="label"><span className="label-text">Postal Code</span></label>
-            <input type="text" placeholder="Postal Code" className="input input-bordered w-full" value={formData.postal_code} onChange={handleChange} name="postal_code" />
-          </div>
-          <div className="form-control w-full">
-            <label className="label"><span className="label-text">Profile Image</span></label>
-            <input type="file" className="file-input file-input-bordered w-full" onChange={(e) => setFormData({ ...formData, profile_image: e.target.files[0] })} name="profile_image" />
-          </div>
+      setResendCooldown(30);
+      const timer = setInterval(() => {
+        setResendCooldown((prev) => {
+          if (prev <= 1) {
+            clearInterval(timer);
+            setResendStatus("idle");
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    } catch (error) {
+      setResendStatus("error");
+      setResendMessage(
+        error.response?.data?.message ||
+          "Failed to resend email. Please try again.",
+      );
+    }
+  };
 
-          {/* Tags */}
-          <TagSelector
-            selectedTags={formData.selectedTags}
-            onTagChange={(tags) => setFormData({ ...formData, selectedTags: tags })}
-            tagExperienceLevels={formData.tagExperienceLevels}
-            onExperienceLevelChange={(tagId, level) => setFormData({ ...formData, tagExperienceLevels: { ...formData.tagExperienceLevels, [tagId]: level } })}
-            tagInterestLevels={formData.tagInterestLevels}
-            onInterestLevelChange={(tagId, level) => setFormData({ ...formData, tagInterestLevels: { ...formData.tagInterestLevels, [tagId]: level } })}
-          />
-          <p className="text-sm mt-2">You can add skills and interests tags later.</p>
+  if (registrationSuccess) {
+    return (
+      <div className="w-full px-4 sm:px-0">
+        <Card className="w-full">
+          <div className="card-body items-center text-center">
+            <MailCheck className="w-16 h-16 text-success mb-4" />
+            <h2 className="card-title text-2xl font-bold mb-2">
+              Check your email
+            </h2>
+            <p className="text-base-content/70 mb-4">
+              We've sent a verification link to{" "}
+              <span className="font-medium">{formData.email}</span>
+            </p>
+            <p className="text-sm text-base-content/60 mb-6">
+              Please click the link in the email to verify your account. The
+              link will expire in 24 hours.
+            </p>
 
-          <button type="submit" className="btn btn-primary mt-8">
-            {isSubmitting ? 'Signing Up...' : 'Sign Up'}
-          </button>
-        </form>
+            {resendMessage && (
+              <div
+                className={`alert ${
+                  resendStatus === "sent" ? "alert-success" : "alert-error"
+                } mb-4`}
+              >
+                <span>{resendMessage}</span>
+              </div>
+            )}
 
-        <div className="text-center">
-          <p>Already have an account?</p>
-          <Link to="/login" className="link link-primary">Login</Link>
-        </div>
+            <div className="flex flex-col gap-2 w-full">
+              <Link to="/login" className="btn btn-primary w-full">
+                Go to Login
+              </Link>
+
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                onClick={handleResendVerification}
+                disabled={resendStatus === "sending" || resendCooldown > 0}
+              >
+                {resendStatus === "sending" ? (
+                  <>
+                    <span className="loading loading-spinner loading-sm"></span>
+                    Sending...
+                  </>
+                ) : resendCooldown > 0 ? (
+                  `Resend available in ${resendCooldown}s`
+                ) : (
+                  "Resend verification email"
+                )}
+              </button>
+            </div>
+          </div>
+        </Card>
       </div>
+    );
+  }
+
+  return (
+    <div className="w-full">
+      <Card className="w-full">
+        <div className="card-body">
+          <h2 className="card-title text-2xl font-bold text-center justify-center mb-2">
+            Create Account
+          </h2>
+          <p className="text-center text-base-content/70 mb-6">
+            Join Lomir and start building teams
+          </p>
+
+          {errors.form && (
+            <div className="alert alert-error mb-4">
+              <span>{errors.form}</span>
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-12">
+            {/* Account Information */}
+            <section className="space-y-4">
+              <FormSectionDivider text="Account Information" icon={KeyRound} />
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="form-control w-full">
+                  <label className="label">
+                    <span className="label-text">
+                      Username <span className="text-error">*</span>
+                    </span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Choose a username"
+                    className={`input input-bordered w-full ${
+                      errors.username ? "input-error" : ""
+                    }`}
+                    value={formData.username}
+                    onChange={handleChange}
+                    name="username"
+                  />
+                  {errors.username && (
+                    <label className="label">
+                      <span className="label-text-alt text-error">
+                        {errors.username}
+                      </span>
+                    </label>
+                  )}
+                </div>
+
+                <div className="form-control w-full">
+                  <label className="label">
+                    <span className="label-text">
+                      Email <span className="text-error">*</span>
+                    </span>
+                  </label>
+                  <input
+                    type="email"
+                    placeholder="your@email.com"
+                    className={`input input-bordered w-full ${
+                      errors.email ? "input-error" : ""
+                    }`}
+                    value={formData.email}
+                    onChange={handleChange}
+                    name="email"
+                  />
+                  {errors.email && (
+                    <label className="label">
+                      <span className="label-text-alt text-error">
+                        {errors.email}
+                      </span>
+                    </label>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="form-control w-full">
+                  <label className="label">
+                    <span className="label-text">
+                      Password <span className="text-error">*</span>
+                    </span>
+                  </label>
+                  <input
+                    type="password"
+                    placeholder="Min. 6 characters"
+                    className={`input input-bordered w-full ${
+                      errors.password ? "input-error" : ""
+                    }`}
+                    value={formData.password}
+                    onChange={handleChange}
+                    name="password"
+                  />
+                  {errors.password && (
+                    <label className="label">
+                      <span className="label-text-alt text-error">
+                        {errors.password}
+                      </span>
+                    </label>
+                  )}
+                </div>
+
+                <div className="form-control w-full">
+                  <label className="label">
+                    <span className="label-text">
+                      Confirm Password <span className="text-error">*</span>
+                    </span>
+                  </label>
+                  <input
+                    type="password"
+                    placeholder="Confirm your password"
+                    className={`input input-bordered w-full ${
+                      errors.confirmPassword ? "input-error" : ""
+                    }`}
+                    value={formData.confirmPassword}
+                    onChange={handleChange}
+                    name="confirmPassword"
+                  />
+                  {errors.confirmPassword && (
+                    <label className="label">
+                      <span className="label-text-alt text-error">
+                        {errors.confirmPassword}
+                      </span>
+                    </label>
+                  )}
+                </div>
+              </div>
+            </section>
+
+            {/* Profile Details */}
+            <section className="space-y-4">
+              <FormSectionDivider text="Profile Details" icon={User} />
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="form-control w-full">
+                  <label className="label">
+                    <span className="label-text">First Name</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="First Name"
+                    className="input input-bordered w-full"
+                    value={formData.first_name}
+                    onChange={handleChange}
+                    name="first_name"
+                  />
+                </div>
+
+                <div className="form-control w-full">
+                  <label className="label">
+                    <span className="label-text">Last Name</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Last Name"
+                    className="input input-bordered w-full"
+                    value={formData.last_name}
+                    onChange={handleChange}
+                    name="last_name"
+                  />
+                </div>
+              </div>
+
+              <div className="form-control w-full">
+                <label className="label">
+                  <span className="label-text">Bio</span>
+                </label>
+                <textarea
+                  className="textarea textarea-bordered w-full"
+                  placeholder="Tell us a bit about yourself..."
+                  value={formData.bio}
+                  onChange={handleChange}
+                  name="bio"
+                  rows="3"
+                />
+              </div>
+
+              <div className="form-control w-full">
+                <VisibilityToggle
+                  name="isPublic"
+                  checked={formData.isPublic}
+                  onChange={handleChange}
+                  label="Profile Visibility"
+                  entityType="profile"
+                />
+              </div>
+            </section>
+
+            {/* Location */}
+            <section>
+              <LocationInput
+                formData={{
+                  postal_code: formData.postal_code,
+                  city: formData.city,
+                  country: formData.country,
+                }}
+                onChange={handleChange}
+                errors={{
+                  postal_code: errors.postal_code,
+                  city: errors.city,
+                  country: errors.country,
+                }}
+                disabled={isSubmitting}
+                showRemoteToggle={false}
+                showDivider={true}
+                dividerText="Location"
+              />
+            </section>
+
+            {/* Profile Picture */}
+            <section className="space-y-4">
+              <FormSectionDivider text="Profile Picture" icon={Camera} />
+
+              <div className="flex justify-center">
+                <div className="w-full max-w-md">
+                  <ImageUploader
+                    currentImage={imagePreview}
+                    onImageSelect={(file, previewUrl) => {
+                      setFormData((prev) => ({ ...prev, profile_image: file }));
+                      setImagePreview(previewUrl);
+                    }}
+                    onImageRemove={() => {
+                      setFormData((prev) => ({ ...prev, profile_image: null }));
+                      setImagePreview(null);
+                    }}
+                    size="mdPlus"
+                    shape="circle"
+                    fallbackText={getUserInitialsFromForm()}
+                  />
+                </div>
+              </div>
+            </section>
+
+            {/* Focus Areas */}
+            <section className="space-y-4">
+              <FormSectionDivider
+                text={UI_TEXT.focusAreas.registerTitle}
+                icon={Tag}
+              />
+
+              <div className="form-control w-full">
+                <label className="label">
+                  <span className="label-text">
+                    Select focus areas matching your interests and skills
+                  </span>
+                </label>
+
+                <TagInput
+                  selectedTags={formData.selectedTags}
+                  onTagsChange={handleTagsChange}
+                  placeholder="Click a popular focus area or start typing to search"
+                />
+              </div>
+            </section>
+
+            <div className="divider mt-12 mb-0"></div>
+
+            <section className="space-y-4 !mt-4">
+              <Button
+                type="submit"
+                variant="primary"
+                className="w-full"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? (
+                  <>
+                    <span className="loading loading-spinner loading-sm"></span>
+                    Creating Account...
+                  </>
+                ) : (
+                  "Create Account"
+                )}
+              </Button>
+
+              <p className="text-center text-sm">
+                Already have an account?{" "}
+                <Link to="/login" className="link link-primary">
+                  Login
+                </Link>
+              </p>
+            </section>
+          </form>
+        </div>
+      </Card>
     </div>
   );
 };

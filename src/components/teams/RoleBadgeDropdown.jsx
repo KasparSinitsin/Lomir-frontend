@@ -1,13 +1,15 @@
 import React, { useState } from "react";
 import { Crown, Shield, User, UserX } from "lucide-react";
 import Dropdown, { DropdownItem } from "../common/Dropdown";
+import RoleBadgePill from "../common/RoleBadgePill";
 
-const RoleBadgeDropdown = ({ 
-  member, 
-  canManage, 
-  onRoleChange, 
-  onRemoveMember,  // Callback for removing member
-  isOwner = false,           
+const RoleBadgeDropdown = ({
+  member,
+  canManage,
+  onRoleChange,
+  onRemoveMember,
+  isOwner = false,
+  isTeamArchived = false, 
 }) => {
   const [isLoading, setIsLoading] = useState(false);
 
@@ -46,7 +48,7 @@ const RoleBadgeDropdown = ({
 
   const handleRoleChange = async (newRole) => {
     const memberName = member.username || member.first_name || "this member";
-    
+
     let confirmMessage;
     if (newRole === "owner") {
       confirmMessage = `Are you sure you want to transfer ownership to ${memberName}? You will become an Admin.`;
@@ -71,8 +73,12 @@ const RoleBadgeDropdown = ({
   // Handle member removal
   const handleRemoveMember = async () => {
     const memberName = member.username || member.first_name || "this member";
-    
-    if (window.confirm(`Are you sure you want to remove ${memberName} from the team? This action cannot be undone.`)) {
+
+    if (
+      window.confirm(
+        `Are you sure you want to remove ${memberName} from the team? This action cannot be undone.`
+      )
+    ) {
       setIsLoading(true);
       try {
         await onRemoveMember(member.user_id || member.userId);
@@ -85,20 +91,29 @@ const RoleBadgeDropdown = ({
   };
 
   // Create the trigger badge
-  const triggerBadge = (
-    <span
-      className={`badge ${roleInfo.badgeColor} badge-sm gap-1 ${
-        canManage ? "hover:shadow-md transition-all duration-200 cursor-pointer" : ""
-      }`}
-    >
-      <RoleIcon className="w-3 h-3" />
-      {roleInfo.label}
-      {isLoading && <span className="loading loading-spinner loading-xs" />}
-    </span>
-  );
+const triggerBadge = (
+  <RoleBadgePill
+    icon={RoleIcon}
+    label={roleInfo.label}
+    badgeColorClass={roleInfo.badgeColor}
+    interactive={canManage}
+    loading={isLoading}
+  />
+);
 
   // If user can't manage this member, show static badge
   if (!canManage || isLoading) {
+    return triggerBadge;
+  }
+
+  // For archived teams, check if there are any available actions
+  // (only "Remove from Team" is allowed for archived teams)
+  const hasAvailableActions = isTeamArchived
+    ? member.role !== "owner" && onRemoveMember // Only remove option for archived
+    : true; // All options for active teams
+
+  // If no actions available, show static badge
+  if (!hasAvailableActions) {
     return triggerBadge;
   }
 
@@ -110,8 +125,8 @@ const RoleBadgeDropdown = ({
       hoverDelay={150}
       dropdownClassName="min-w-48"
     >
-      {/* Promote to Admin - shown for members */}
-      {member.role === "member" && (
+      {/* Promote to Admin - shown for members (NOT for archived teams) */}
+      {member.role === "member" && !isTeamArchived && (
         <DropdownItem
           icon={<Shield className="w-4 h-4" />}
           onClick={() => handleRoleChange("admin")}
@@ -121,8 +136,8 @@ const RoleBadgeDropdown = ({
         </DropdownItem>
       )}
 
-      {/* Demote to Member - shown for admins */}
-      {member.role === "admin" && (
+      {/* Demote to Member - shown for admins (NOT for archived teams) */}
+      {member.role === "admin" && !isTeamArchived && (
         <DropdownItem
           icon={<User className="w-4 h-4" />}
           onClick={() => handleRoleChange("member")}
@@ -132,8 +147,8 @@ const RoleBadgeDropdown = ({
         </DropdownItem>
       )}
 
-      {/* Transfer Ownership - only shown to current owner */}
-      {isOwner && member.role !== "owner" && (
+      {/* Transfer Ownership - only shown to current owner (NOT for archived teams) */}
+      {isOwner && member.role !== "owner" && !isTeamArchived && (
         <>
           <div className="border-t border-base-300 my-1" />
           <DropdownItem
@@ -146,10 +161,11 @@ const RoleBadgeDropdown = ({
         </>
       )}
 
-      {/* Remove from Team - shown for non-owners */}
+      {/* Remove from Team - shown for non-owners (KEEP for archived teams) */}
       {member.role !== "owner" && onRemoveMember && (
         <>
-          <div className="border-t border-base-300 my-1" />
+          {/* Only show divider if there were items above */}
+          {!isTeamArchived && <div className="border-t border-base-300 my-1" />}
           <DropdownItem
             icon={<UserX className="w-4 h-4 text-error" />}
             onClick={handleRemoveMember}

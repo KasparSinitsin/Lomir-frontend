@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { LogOut } from "lucide-react";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import PageContainer from "../components/layout/PageContainer";
 import ConversationList from "../components/chat/ConversationList";
 import MessageDisplay from "../components/chat/MessageDisplay";
@@ -10,10 +11,13 @@ import socketService from "../services/socketService";
 import { userService } from "../services/userService";
 import { teamService } from "../services/teamService";
 import Alert from "../components/common/Alert";
+import axios from "axios";
+import { uploadToCloudinary } from "../config/cloudinary";
 
 const Chat = () => {
   const { conversationId } = useParams();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user, isAuthenticated } = useAuth();
   const [conversations, setConversations] = useState([]);
   const [activeConversation, setActiveConversation] = useState(null);
@@ -22,8 +26,84 @@ const Chat = () => {
   const [error, setError] = useState(null);
   const [onlineUsers, setOnlineUsers] = useState([]);
   const [typingUsers, setTypingUsers] = useState({});
+  const [highlightMessageIds, setHighlightMessageIds] = useState([]);
+  const [isTeamArchived, setIsTeamArchived] = useState(false);
 
   const typingTimeoutRef = useRef(null);
+  const [loadingMessages, setLoadingMessages] = useState(false);
+
+  // ---- Message de-duplication (focus: ownership/system duplicates) ----
+  const toMinuteBucket = (isoOrDate) => {
+    try {
+      const d = isoOrDate ? new Date(isoOrDate) : null;
+      if (!d || Number.isNaN(d.getTime())) return "";
+      return d.toISOString().slice(0, 16); // YYYY-MM-DDTHH:MM
+    } catch {
+      return "";
+    }
+  };
+
+  const buildMessageDedupeKey = (msg) => {
+    const content = (msg?.content || "").trim();
+    const minute = toMinuteBucket(msg?.createdAt);
+    const senderId = msg?.senderId ?? "";
+
+    // OWNERSHIP_TEAM (legacy emoji optional)
+    let m = content.match(/^(?:👑\s*)?OWNERSHIP_TEAM:\s*(.+?)\s*\|\s*(.+)\s*$/);
+    if (m) return `ownership_team|${m[1].trim()}|${m[2].trim()}|${minute}`;
+
+    // OWNERSHIP_TRANSFERRED (legacy emoji optional)
+    m = content.match(
+      /^(?:👑\s*)?OWNERSHIP_TRANSFERRED:\s*(.+?)\s*\|\s*(.+?)\s*\|\s*(.+)\s*$/,
+    );
+    if (m)
+      return `ownership_transferred|${m[1].trim()}|${m[2].trim()}|${m[3].trim()}|${minute}`;
+
+    // Plain team chat sentence variant
+    m = content.match(
+      /^(.+?)\s+transferred\s+(?:team\s+)?ownership\s+to\s+(.+?)\.?$/i,
+    );
+    if (m)
+      return `ownership_team_plain|${m[1].trim()}|${m[2].trim()}|${minute}`;
+
+    // Plain DM sentence variant
+    m = content.match(
+      /^(.+?)\s+transferred\s+ownership\s+of\s+"(.+?)"\s+to\s+you\.\s*Congratulations!?\.?$/i,
+    );
+    if (m) return `ownership_dm_plain|${m[1].trim()}|${m[2].trim()}|${minute}`;
+
+    // Fallback: exact duplicates per minute
+    return `generic|${senderId}|${content}|${minute}`;
+  };
+
+  const dedupeMessages = (list) => {
+    const seen = new Set();
+    const out = [];
+    for (const msg of list || []) {
+      const key = buildMessageDedupeKey(msg);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(msg);
+    }
+    return out;
+  };
+
+  // Conversation type (used for read-only rendering)
+  const conversationType =
+    activeConversation?.type ||
+    new URLSearchParams(window.location.search).get("type") ||
+    "direct";
+
+  const conversationPartner =
+    conversationType === "direct"
+      ? activeConversation?.partner || activeConversation?.partnerUser || null
+      : null;
+
+  const teamData =
+    conversationType === "team" ? activeConversation?.team || null : null;
+
+  const teamMembers =
+    conversationType === "team" ? activeConversation?.team?.members || [] : [];
 
   // Fetch conversations
   useEffect(() => {
@@ -37,7 +117,7 @@ const Chat = () => {
         // create a virtual conversation entry
         if (conversationId && conversationsList.length >= 0) {
           const conversationExists = conversationsList.some(
-            (conv) => String(conv.id) === String(conversationId)
+            (conv) => String(conv.id) === String(conversationId),
           );
 
           if (!conversationExists) {
@@ -48,9 +128,8 @@ const Chat = () => {
               console.log("Creating virtual conversation for new contact...");
               try {
                 // Get the user details for the virtual conversation
-                const userResponse = await userService.getUserById(
-                  conversationId
-                );
+                const userResponse =
+                  await userService.getUserById(conversationId);
                 console.log("User details fetched:", userResponse.data);
 
                 const userData = userResponse.data;
@@ -66,32 +145,47 @@ const Chat = () => {
                     lastName: userData.lastName || userData.last_name,
                     avatarUrl: userData.avatarUrl || userData.avatar_url,
                   },
-                  lastMessage: "Start your conversation...", // Placeholder text
+                  lastMessage: "Start your conversation...",
                   updatedAt: new Date().toISOString(),
-                  isVirtual: true, // Flag to identify virtual conversations
+                  isVirtual: true,
+                  unreadCount: 0,
                 };
 
                 // Add to the beginning of the conversations list
                 conversationsList = [virtualConversation, ...conversationsList];
                 console.log(
                   "Virtual conversation created:",
-                  virtualConversation
+                  virtualConversation,
                 );
               } catch (error) {
                 console.error("Error creating virtual conversation:", error);
-                // Continue without the virtual conversation if user fetch fails
               }
             }
           }
         }
 
-        setConversations(conversationsList);
+        // Deduplicate conversations by partner id (for direct) or id (for team)
+        const deduplicatedList = conversationsList.filter(
+          (conv, index, self) => {
+            if (conv.type === "direct") {
+              return (
+                index ===
+                self.findIndex(
+                  (c) =>
+                    c.type === "direct" && c.partner?.id === conv.partner?.id,
+                )
+              );
+            }
+            return index === self.findIndex((c) => c.id === conv.id);
+          },
+        );
+        setConversations(deduplicatedList);
 
         // If there are conversations but none is selected, select the first one
         if (conversationsList.length > 0 && !conversationId) {
           const firstConversationType = conversationsList[0].type || "direct";
           navigate(
-            `/chat/${conversationsList[0].id}?type=${firstConversationType}`
+            `/chat/${conversationsList[0].id}?type=${firstConversationType}`,
           );
         }
 
@@ -114,7 +208,10 @@ const Chat = () => {
       if (!conversationId) return;
 
       try {
-        setLoading(true);
+        setLoadingMessages(true);
+
+        // ✅ Reset archived state when switching conversations
+        setIsTeamArchived(false);
 
         const urlParams = new URLSearchParams(window.location.search);
         const type = urlParams.get("type") || "direct";
@@ -127,7 +224,7 @@ const Chat = () => {
         try {
           conversationDetails = await messageService.getConversationById(
             conversationId,
-            type
+            type,
           );
 
           console.log("Initial conversation details:", conversationDetails);
@@ -137,7 +234,24 @@ const Chat = () => {
             try {
               console.log("Fetching team details for team ID:", conversationId);
               const teamDetails = await teamService.getTeamById(conversationId);
+              console.log("=== ARCHIVED TEAM DEBUG ===");
+              console.log("teamDetails.data:", teamDetails.data);
+              console.log("archived_at:", teamDetails.data?.archived_at);
+              console.log(
+                "isTeamArchived will be:",
+                !!teamDetails.data?.archived_at,
+              );
               console.log("Team details fetched:", teamDetails);
+
+              // ✅ Check if team is archived
+              if (
+                teamDetails.data?.archived_at ||
+                teamDetails.data?.status === "inactive"
+              ) {
+                setIsTeamArchived(true);
+              } else {
+                setIsTeamArchived(false);
+              }
 
               if (teamDetails?.data?.members) {
                 console.log("Team members found:", teamDetails.data.members);
@@ -147,7 +261,7 @@ const Chat = () => {
                 };
                 console.log(
                   "Updated conversation with team members:",
-                  conversationDetails.data
+                  conversationDetails.data,
                 );
               } else {
                 console.log("No team members in team details response");
@@ -163,15 +277,13 @@ const Chat = () => {
           // Ensure team conversation appears in conversation list
           if (type === "team" && conversationDetails.data) {
             setConversations((prev) => {
-              // Check if this team conversation already exists in the list
               const existingConversation = prev.find(
                 (conv) =>
                   String(conv.id) === String(conversationId) &&
-                  conv.type === "team"
+                  conv.type === "team",
               );
 
               if (!existingConversation) {
-                // Create a new team conversation entry
                 const newTeamConversation = {
                   id: parseInt(conversationId),
                   type: "team",
@@ -182,10 +294,10 @@ const Chat = () => {
                   },
                   lastMessage: "Start your team conversation...",
                   updatedAt: new Date().toISOString(),
-                  isVirtual: true, // Flag to identify virtual conversations
+                  isVirtual: true,
+                  unreadCount: 0,
                 };
 
-                // Add to the beginning of the conversations list
                 return [newTeamConversation, ...prev];
               }
 
@@ -193,12 +305,41 @@ const Chat = () => {
             });
           }
         } catch (error) {
+          // Check if it's an access denied error (user was removed from team)
+          if (error.response?.status === 403) {
+            console.log(
+              "Access denied to this conversation - user may have been removed",
+            );
+            setError("You no longer have access to this conversation.");
+            setLoadingMessages(false);
+            // Navigate back to chat list or my teams
+            navigate("/chat");
+            return;
+          }
+
           console.log("Conversation doesn't exist yet, creating it...");
 
           if (type === "team" && conversationDetails?.data) {
-            // Fetch team members if it's a team conversation
             try {
               const teamDetails = await teamService.getTeamById(conversationId);
+              console.log("=== ARCHIVED TEAM DEBUG ===");
+              console.log("teamDetails.data:", teamDetails.data);
+              console.log("archived_at:", teamDetails.data?.archived_at);
+              console.log(
+                "isTeamArchived will be:",
+                !!teamDetails.data?.archived_at,
+              );
+
+              // ✅ Check if team is archived (also in fallback path)
+              if (
+                teamDetails.data?.archived_at ||
+                teamDetails.data?.status === "inactive"
+              ) {
+                setIsTeamArchived(true);
+              } else {
+                setIsTeamArchived(false);
+              }
+
               if (teamDetails?.data?.members) {
                 conversationDetails.data.team = {
                   ...conversationDetails.data.team,
@@ -210,22 +351,19 @@ const Chat = () => {
             }
           }
 
-          // If conversation doesn't exist and it's a direct message, create it
           if (type === "direct") {
             try {
               await messageService.startConversation(
                 parseInt(conversationId),
-                ""
+                "",
               );
 
-              // Now try to get the conversation details again
               conversationDetails = await messageService.getConversationById(
                 conversationId,
-                type
+                type,
               );
               setActiveConversation(conversationDetails.data);
 
-              // Also refresh the conversations list to show the new conversation
               const conversationsResponse =
                 await messageService.getConversations();
               setConversations(conversationsResponse.data || []);
@@ -239,16 +377,55 @@ const Chat = () => {
         try {
           const messagesResponse = await messageService.getMessages(
             conversationId,
-            type
+            type,
           );
-          setMessages(messagesResponse.data || []);
-          console.log("Messages fetched:", messagesResponse.data);
+          const fetchedMessages = messagesResponse.data || [];
+          setMessages(dedupeMessages(fetchedMessages));
+
+          console.log("Messages fetched:", fetchedMessages);
+
+          // Check if we need to highlight messages from a specific user (from notification)
+          const highlightUser = searchParams.get("highlightUser");
+
+          if (highlightUser) {
+            // Highlight the most recent messages from this user (join message + response)
+            const userMessages = fetchedMessages
+              .filter((msg) => String(msg.senderId) === String(highlightUser))
+              .slice(-3) // Get last 3 messages from this user
+              .map((msg) => msg.id);
+
+            if (userMessages.length > 0) {
+              setHighlightMessageIds(userMessages);
+              // Clear highlights after 4 seconds
+              setTimeout(() => {
+                setHighlightMessageIds([]);
+                // Clear the URL parameter
+                setSearchParams((prev) => {
+                  prev.delete("highlightUser");
+                  return prev;
+                });
+              }, 4000);
+            }
+          } else {
+            // Default behavior: highlight unread messages
+            const unreadIds = fetchedMessages
+              .filter((msg) => msg.senderId !== user?.id && !msg.readAt)
+              .map((msg) => msg.id);
+
+            if (unreadIds.length > 0) {
+              setHighlightMessageIds(unreadIds);
+              // Clear highlights after 3 seconds
+              setTimeout(() => {
+                setHighlightMessageIds([]);
+              }, 3000);
+            }
+          }
         } catch (messagesError) {
           console.log("No messages yet, starting with empty conversation");
           setMessages([]);
         }
 
-        setLoading(false);
+        setLoadingMessages(false);
 
         // Wait for socket to be connected before joining
         const socket = socketService.getSocket();
@@ -256,7 +433,6 @@ const Chat = () => {
           socketService.joinConversation(conversationId, type);
           socketService.markMessagesAsRead(conversationId, type);
         } else {
-          // Wait for socket connection and then join
           console.log("Socket not connected, waiting for connection...");
           const checkConnection = setInterval(() => {
             const socket = socketService.getSocket();
@@ -269,20 +445,18 @@ const Chat = () => {
             }
           }, 100);
 
-          // Clear interval after 5 seconds to prevent infinite checking
           setTimeout(() => clearInterval(checkConnection), 5000);
         }
       } catch (err) {
         console.error("Error fetching messages:", err);
         setError("Failed to load messages. Please try again.");
-        setLoading(false);
+        setLoadingMessages(false);
       }
     };
 
     if (isAuthenticated && conversationId) {
       fetchMessages();
 
-      // When leaving, leave the conversation room
       return () => {
         if (conversationId) {
           const urlParams = new URLSearchParams(window.location.search);
@@ -291,7 +465,14 @@ const Chat = () => {
         }
       };
     }
-  }, [isAuthenticated, conversationId]);
+  }, [
+    isAuthenticated,
+    conversationId,
+    searchParams,
+    setSearchParams,
+    navigate,
+    user?.id,
+  ]);
 
   // Set up WebSocket event listeners
   useEffect(() => {
@@ -304,12 +485,13 @@ const Chat = () => {
 
     console.log(
       "Setting up socket listeners for conversationId:",
-      conversationId
+      conversationId,
     );
 
     // Remove any existing listeners first to prevent duplicates
     socket.off("users:online");
     socket.off("message:received");
+    socket.off("message:deleted");
     socket.off("typing:update");
     socket.off("message:status");
     socket.off("conversation:updated");
@@ -322,23 +504,43 @@ const Chat = () => {
     // Handle new messages
     const handleNewMessage = (message) => {
       console.log("=== NEW MESSAGE RECEIVED ===");
-      console.log("Message:", message);
+      console.log("Full message object:", message);
+      console.log("Has fileUrl:", !!message.fileUrl);
+      console.log("Has fileName:", !!message.fileName);
 
       const messageConvId = String(message.conversationId);
       const currentConvId = String(conversationId);
 
-      if (messageConvId === currentConvId) {
+      // Get current conversation type from URL
+      const urlParams = new URLSearchParams(window.location.search);
+      const currentType = urlParams.get("type") || "direct";
+
+      // Check if message belongs to current conversation
+      let isForCurrentConversation = false;
+
+      if (message.type === currentType) {
+        if (currentType === "team") {
+          // For team chats: conversationId must match
+          isForCurrentConversation = messageConvId === currentConvId;
+        } else {
+          // For DMs: either I sent it to this person, or this person sent it to me
+          const isSentByMe =
+            message.senderId === user?.id && messageConvId === currentConvId;
+          const isReceivedFromThem = String(message.senderId) === currentConvId;
+          isForCurrentConversation = isSentByMe || isReceivedFromThem;
+        }
+      }
+
+      if (isForCurrentConversation) {
         setMessages((prev) => {
           // If this is our own message, replace the optimistic version
           if (message.senderId === user.id) {
-            // Remove optimistic message and add real one
             const withoutOptimistic = prev.filter(
-              (msg) => !msg.isOptimistic || msg.senderId !== user.id
+              (msg) => !msg.isOptimistic || msg.senderId !== user.id,
             );
 
-            // Check if real message already exists
             const messageExists = withoutOptimistic.some(
-              (msg) => msg.id === message.id
+              (msg) => msg.id === message.id,
             );
             if (messageExists) {
               return prev;
@@ -348,14 +550,19 @@ const Chat = () => {
               id: message.id,
               senderId: message.senderId,
               content: message.content,
+              imageUrl: message.imageUrl,
+              fileUrl: message.fileUrl,
+              fileName: message.fileName,
               createdAt: message.createdAt,
               senderUsername: message.senderUsername,
               type: message.type,
+              fileSize: message.fileSize,
+              fileExpiresAt: message.fileExpiresAt,
+              fileDeletedAt: message.fileDeletedAt,
             };
 
-            return [...withoutOptimistic, newMessage];
+            return dedupeMessages([...withoutOptimistic, newMessage]);
           } else {
-            // For other users' messages, just add normally
             const messageExists = prev.some((msg) => msg.id === message.id);
             if (messageExists) {
               return prev;
@@ -365,12 +572,18 @@ const Chat = () => {
               id: message.id,
               senderId: message.senderId,
               content: message.content,
+              imageUrl: message.imageUrl,
+              fileUrl: message.fileUrl,
+              fileName: message.fileName,
               createdAt: message.createdAt,
               senderUsername: message.senderUsername,
               type: message.type,
+              fileSize: message.fileSize,
+              fileExpiresAt: message.fileExpiresAt,
+              fileDeletedAt: message.fileDeletedAt,
             };
 
-            return [...prev, newMessage];
+            return dedupeMessages([...prev, newMessage]);
           }
         });
 
@@ -391,13 +604,32 @@ const Chat = () => {
               lastMessage: message.content,
               updatedAt: message.createdAt,
               isVirtual: false,
+              // Increment unread count if not current conversation
+              unreadCount:
+                messageConvId !== currentConvId && message.senderId !== user.id
+                  ? (conv.unreadCount || 0) + 1
+                  : conv.unreadCount,
             };
           }
           return conv;
         });
 
-        return updatedList.sort(
-          (a, b) => new Date(b.updatedAt) - new Date(a.updatedAt)
+        // Deduplicate by partner id (for direct) or conversation id (for team)
+        const deduplicatedList = updatedList.filter((conv, index, self) => {
+          if (conv.type === "direct") {
+            return (
+              index ===
+              self.findIndex(
+                (c) =>
+                  c.type === "direct" && c.partner?.id === conv.partner?.id,
+              )
+            );
+          }
+          return index === self.findIndex((c) => c.id === conv.id);
+        });
+
+        return deduplicatedList.sort(
+          (a, b) => new Date(b.updatedAt) - new Date(a.updatedAt),
         );
       });
     };
@@ -418,7 +650,6 @@ const Chat = () => {
             ...prev,
             [data.userId]: data.isTyping ? data.username : null,
           };
-          // Clean up null values
           Object.keys(updated).forEach((key) => {
             if (updated[key] === null) {
               delete updated[key];
@@ -434,15 +665,13 @@ const Chat = () => {
 
     // Handle message status updates
     const handleMessageStatus = (data) => {
-      const currentType =
-        new URLSearchParams(window.location.search).get("type") || "direct";
       if (String(data.conversationId) === String(conversationId)) {
         setMessages((prev) =>
           prev.map((msg) => ({
             ...msg,
             readAt:
               msg.readAt || (msg.senderId !== user.id ? data.readAt : null),
-          }))
+          })),
         );
       }
     };
@@ -452,16 +681,32 @@ const Chat = () => {
       console.log("Conversation update:", data);
       setConversations((prev) => {
         const conversationIndex = prev.findIndex(
-          (c) => String(c.id) === String(data.id)
+          (c) => String(c.id) === String(data.id),
         );
 
         if (conversationIndex === -1) {
           console.log("Conversation not found, refreshing all conversations");
           messageService
             .getConversations()
-            .then((response) => setConversations(response.data || []))
+            .then((response) => {
+              const list = response.data || [];
+              const deduplicatedList = list.filter((conv, index, self) => {
+                if (conv.type === "direct") {
+                  return (
+                    index ===
+                    self.findIndex(
+                      (c) =>
+                        c.type === "direct" &&
+                        c.partner?.id === conv.partner?.id,
+                    )
+                  );
+                }
+                return index === self.findIndex((c) => c.id === conv.id);
+              });
+              setConversations(deduplicatedList);
+            })
             .catch((err) =>
-              console.error("Error refreshing conversations:", err)
+              console.error("Error refreshing conversations:", err),
             );
           return prev;
         }
@@ -473,10 +718,45 @@ const Chat = () => {
           updatedAt: data.updatedAt,
         };
 
-        return updatedList.sort(
-          (a, b) => new Date(b.updatedAt) - new Date(a.updatedAt)
+        // Deduplicate by partner id (for direct) or conversation id (for team)
+        const deduplicatedList = updatedList.filter((conv, index, self) => {
+          if (conv.type === "direct") {
+            return (
+              index ===
+              self.findIndex(
+                (c) =>
+                  c.type === "direct" && c.partner?.id === conv.partner?.id,
+              )
+            );
+          }
+          return index === self.findIndex((c) => c.id === conv.id);
+        });
+
+        return deduplicatedList.sort(
+          (a, b) => new Date(b.updatedAt) - new Date(a.updatedAt),
         );
       });
+    };
+
+    // Handle message deleted (soft delete broadcast)
+    const handleMessageDeleted = (payload) => {
+      // payload: { messageId, deletedAt, deletedBy, type, teamId, senderId, receiverId }
+      setMessages((prev) =>
+        prev.map((m) =>
+          String(m.id) === String(payload.messageId)
+            ? {
+                ...m,
+                deletedAt: payload.deletedAt || new Date().toISOString(),
+                deletedBy: payload.deletedBy,
+                content: null,
+                imageUrl: null,
+                fileUrl: null,
+                fileName: null,
+                fileSize: null,
+              }
+            : m,
+        ),
+      );
     };
 
     // Subscribe to events
@@ -485,6 +765,8 @@ const Chat = () => {
     socket.on("typing:update", handleTypingUpdate);
     socket.on("message:status", handleMessageStatus);
     socket.on("conversation:updated", handleConversationUpdate);
+    socket.on("team:member_kicked", handleKickedFromTeam);
+    socket.on("message:deleted", handleMessageDeleted);
 
     // Cleanup function to remove listeners
     return () => {
@@ -493,8 +775,213 @@ const Chat = () => {
       socket.off("typing:update", handleTypingUpdate);
       socket.off("message:status", handleMessageStatus);
       socket.off("conversation:updated", handleConversationUpdate);
+      socket.off("team:member_kicked", handleKickedFromTeam);
+      socket.off("message:deleted", handleMessageDeleted);
     };
-  }, [isAuthenticated, conversationId, user]);
+  }, [isAuthenticated, conversationId, user?.id, user?.username, searchParams]);
+
+  // Handle leaving a deleted team (removes from conversation list)
+  const handleLeaveTeam = async () => {
+    if (!activeConversation?.team?.id) {
+      console.log("No team ID found");
+      return;
+    }
+
+    const teamId = activeConversation.team.id;
+    const teamName = activeConversation.team.name || "this team";
+
+    const confirmLeave = window.confirm(
+      `Are you sure you want to leave "${teamName}"? This will remove the chat from your conversation list.`,
+    );
+
+    if (!confirmLeave) return;
+
+    try {
+      // Call the existing leave team API
+      await teamService.removeTeamMember(teamId, user.id);
+
+      // Remove from local conversation list
+      setConversations((prev) => prev.filter((c) => c.id !== teamId));
+
+      // Navigate away
+      navigate("/chat");
+
+      setActiveConversation(null);
+      setMessages([]);
+    } catch (error) {
+      console.error("Error leaving team:", error);
+      setError("Failed to leave team. Please try again.");
+    }
+  };
+
+  // Handle being kicked from a team
+  const handleKickedFromTeam = (data) => {
+    console.log("Kicked from team:", data);
+
+    // If currently viewing this team's chat, navigate away
+    if (
+      conversationType === "team" &&
+      parseInt(conversationId) === data.teamId
+    ) {
+      setError("You have been removed from this team.");
+
+      // Remove from conversation list
+      setConversations((prev) =>
+        prev.filter((c) => !(c.type === "team" && c.id === data.teamId)),
+      );
+
+      // Navigate away
+      navigate("/chat");
+      setActiveConversation(null);
+      setMessages([]);
+    } else {
+      // Just remove from conversation list if not currently viewing
+      setConversations((prev) =>
+        prev.filter((c) => !(c.type === "team" && c.id === data.teamId)),
+      );
+    }
+  };
+
+  // Handle deleting a conversation from the list
+  const handleDeleteConversation = async () => {
+    console.log("=== handleDeleteConversation CALLED ===");
+    console.log("activeConversation:", activeConversation);
+
+    if (!activeConversation) {
+      console.log("❌ No active conversation - returning early");
+      return;
+    }
+
+    const confirmDelete = window.confirm(
+      "Are you sure you want to remove this chat from your conversation list?",
+    );
+
+    if (!confirmDelete) return;
+
+    try {
+      const convId = activeConversation.id;
+      const type = activeConversation.type || conversationType;
+
+      // Remove from local state
+      setConversations((prev) => prev.filter((c) => c.id !== convId));
+
+      // Navigate away
+      navigate("/chat");
+
+      setActiveConversation(null);
+      setMessages([]);
+    } catch (error) {
+      console.error("Error deleting conversation:", error);
+      setError("Failed to delete conversation. Please try again.");
+    }
+  };
+
+  const handleSendFile = async (file) => {
+    if (!activeConversation || !file) return;
+
+    try {
+      // Upload to Cloudinary using chat-files preset
+      const uploadResult = await uploadToCloudinary(file, "chatFiles");
+
+      if (!uploadResult.success) {
+        setError(uploadResult.error || "Failed to upload file");
+        return;
+      }
+
+      // Get conversation type and target ID
+      const type = searchParams.get("type") || "direct";
+      const targetId =
+        type === "team"
+          ? activeConversation.team?.id
+          : activeConversation.partner?.id;
+
+      // Send message with file via socket
+      socketService.sendMessage(
+        targetId,
+        null,
+        type,
+        null,
+        uploadResult.url,
+        file.name,
+      );
+    } catch (error) {
+      console.error("Error uploading file:", error);
+      setError("Failed to upload file. Please try again.");
+    }
+  };
+
+  const handleSendImage = async (file, previewUrl) => {
+    if (!activeConversation || !file) return;
+
+    try {
+      // Upload to Cloudinary using chat-images preset
+      const uploadResult = await uploadToCloudinary(file, "chatImages");
+
+      if (!uploadResult.success) {
+        setError(uploadResult.error || "Failed to upload image");
+        return;
+      }
+
+      // Get conversation type and target ID
+      const type = searchParams.get("type") || "direct";
+      const targetId =
+        type === "team"
+          ? activeConversation.team?.id
+          : activeConversation.partner?.id;
+
+      // Send message with image via socket
+      socketService.sendMessage(targetId, null, type, uploadResult.url);
+    } catch (error) {
+      console.error("Error uploading image:", error);
+      setError("Failed to upload image. Please try again.");
+    }
+  };
+
+  // Delete message (soft delete)
+  const handleDeleteMessage = async (messageId) => {
+    if (!messageId) return;
+
+    const ok = window.confirm("Delete this message?");
+    if (!ok) return;
+
+    try {
+      // Optimistic UI update
+      setMessages((prev) =>
+        prev.map((m) =>
+          String(m.id) === String(messageId)
+            ? {
+                ...m,
+                deletedAt: new Date().toISOString(),
+                deletedBy: user?.id,
+                content: null,
+                imageUrl: null,
+                fileUrl: null,
+                fileName: null,
+                fileSize: null,
+              }
+            : m,
+        ),
+      );
+
+      // Use your service if you have it
+      // await messageService.deleteMessage(messageId);
+
+      // Or your fetch (as you wrote)
+      await fetch(`${import.meta.env.VITE_API_URL}/messages/${messageId}`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+    } catch (err) {
+      console.error("Failed to delete message:", err);
+      setError("Failed to delete message. Please try again.");
+
+      // Optional: re-fetch messages for correctness after failure
+      // (you can leave this out if you don’t want)
+    }
+  };
 
   const handleSendMessage = (content) => {
     if (!content.trim() || !conversationId) return;
@@ -505,13 +992,13 @@ const Chat = () => {
 
     // Create optimistic message (show immediately)
     const optimisticMessage = {
-      id: `temp-${Date.now()}`, // Temporary ID
+      id: `temp-${Date.now()}`,
       senderId: user.id,
       content: content,
       createdAt: new Date().toISOString(),
       senderUsername: user.username,
       type: type,
-      isOptimistic: true, // Flag to identify optimistic messages
+      isOptimistic: true,
     };
 
     // Add optimistic message to UI immediately
@@ -548,6 +1035,11 @@ const Chat = () => {
     const conversation = conversations.find((c) => c.id === id);
     const type = conversation?.type || "direct";
 
+    // Reset unread count for selected conversation
+    setConversations((prev) =>
+      prev.map((conv) => (conv.id === id ? { ...conv, unreadCount: 0 } : conv)),
+    );
+
     // Navigate with type parameter
     navigate(`/chat/${id}?type=${type}`);
   };
@@ -583,19 +1075,74 @@ const Chat = () => {
                 <MessageDisplay
                   messages={messages}
                   currentUserId={user?.id}
-                  conversationPartner={activeConversation?.partner}
-                  teamData={activeConversation?.team}
-                  loading={loading}
+                  conversationPartner={conversationPartner}
+                  teamData={teamData}
+                  loading={loadingMessages}
                   typingUsers={activeTypingUsers}
-                  conversationType={activeConversation?.type || "direct"}
-                  teamMembers={activeConversation?.team?.members || []}
+                  conversationType={conversationType}
+                  teamMembers={teamMembers}
+                  highlightMessageIds={highlightMessageIds}
+                  onDeleteConversation={handleDeleteConversation}
+                  onDeleteMessage={handleDeleteMessage}
+                  onLeaveTeam={handleLeaveTeam}
                 />
               </div>
-              <div className="p-4 border-t border-base-200">
-                <MessageInput
-                  onSendMessage={handleSendMessage}
-                  onTyping={handleTyping}
-                />
+
+              {/* Deleted team banner + message input */}
+              <div className="border-t border-base-200">
+                {/* DEBUG - remove after testing */}
+                {console.log("DEBUG team deletion banner:", {
+                  teamOwnerId: activeConversation?.team?.ownerId,
+                  teamOwner_id: activeConversation?.team?.owner_id,
+                  userId: user?.id,
+                  fullTeamObject: activeConversation?.team,
+                })}
+                {/* Show banner for archived teams */}
+                {isTeamArchived && conversationType === "team" && (
+                  <div
+                    className="flex flex-col items-center gap-3 px-5 py-4 mx-4 mt-4 rounded-2xl text-center"
+                    style={{
+                      backgroundColor: "rgba(239, 68, 68, 0.1)",
+                      color: "#dc2626",
+                    }}
+                  >
+                    <span className="text-sm font-medium">
+                      {activeConversation?.team?.members?.some(
+                        (m) => m.userId === user?.id && m.role === "owner",
+                      )
+                        ? `You initiated the deletion of this team. The team is archived and inactive now. Remaining members are able to text in this chat until the last member leaves.`
+                        : `${(() => {
+                            const owner =
+                              activeConversation?.team?.members?.find(
+                                (m) => m.role === "owner",
+                              );
+                            return owner
+                              ? `${owner.firstName} ${owner.lastName}`
+                              : "The owner";
+                          })()} has initiated the deletion of this team. The team is archived and inactive now. Remaining members are able to text in this chat until the last member leaves.`}
+                    </span>
+
+                    {/* Leave Team Button */}
+                    <button
+                      onClick={() => handleLeaveTeam()}
+                      className="flex items-center gap-1 text-xs underline hover:no-underline opacity-80 hover:opacity-100 transition-opacity cursor-pointer"
+                    >
+                      <LogOut size={14} />
+                      Leave team and remove from chat list
+                    </button>
+                  </div>
+                )}
+
+                {/* Always show message input */}
+                <div className="p-4">
+                  <MessageInput
+                    onSendMessage={handleSendMessage}
+                    onSendImage={handleSendImage}
+                    onSendFile={handleSendFile}
+                    onTyping={handleTyping}
+                    disabled={!activeConversation}
+                  />
+                </div>
               </div>
             </>
           ) : (

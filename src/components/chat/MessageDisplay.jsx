@@ -1,6 +1,376 @@
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useEffect, useState } from "react";
 import { format, isToday, isYesterday } from "date-fns";
-import { getUserInitials } from '../../utils/userHelpers';
+import { getUserInitials, getTeamInitials } from "../../utils/userHelpers";
+import {
+  UserPlus,
+  UserMinus,
+  LogOut,
+  PartyPopper,
+  Crown,
+  Shield,
+  User,
+  FileText,
+  File,
+  FileSpreadsheet,
+  Download,
+  AlertTriangle,
+  Clock,
+  Trash2,
+} from "lucide-react";
+import TeamDetailsModal from "../teams/TeamDetailsModal";
+import UserDetailsModal from "../users/UserDetailsModal";
+import { userService } from "../../services/userService";
+import {
+  getFileExpirationStatus,
+  formatFileSize,
+} from "../../utils/fileExpiration";
+import MessageText from "./MessageText";
+
+const parseIdNameToken = (token) => {
+  const t = (token || "").trim();
+  const m = t.match(/^(\d+)\s*:(.+)$/);
+  if (!m) return { id: null, name: t };
+  return { id: Number(m[1]), name: m[2].trim() };
+};
+
+/**
+ * Parse system messages (join notifications, invitation responses)
+ * Returns structured data if it's a system message, null otherwise
+ */
+const parseSystemMessage = (content) => {
+  if (!content) return null;
+
+  // Pattern 1: Team join message
+  // Format: 👋 Name joined the team!\n\n"personal message"
+  const joinMatch = content.match(
+    /^👋\s+(.+?)\s+joined the team!\s*\n\n"(.+)"$/s,
+  );
+  if (joinMatch) {
+    return {
+      type: "team_join",
+      userName: joinMatch[1].trim(),
+      personalMessage: joinMatch[2].trim(),
+    };
+  }
+
+  // Pattern 2: Invitation decline response (direct message to inviter)
+  // Format: 📋 Response to your invitation for "Team Name":\n\n"personal message"
+  const declineMatch = content.match(
+    /^📋\s+Response to your invitation for "(.+?)":\s*\n\n"(.+)"$/s,
+  );
+  if (declineMatch) {
+    return {
+      type: "invitation_response",
+      teamName: declineMatch[1].trim(),
+      personalMessage: declineMatch[2].trim(),
+    };
+  }
+
+  // Pattern 3: Application approved message
+  // Supports legacy messages with or without 🎉
+  const applicationApprovedMatch = content.match(
+    /^(?:🎉\s*)?(.+?)\s+has applied successfully to your team and has been added as a team member by (.+?)\.\s*Say hello to them!$/,
+  );
+
+  if (applicationApprovedMatch) {
+    return {
+      type: "application_approved",
+      applicantName: applicationApprovedMatch[1].trim(),
+      approverName: applicationApprovedMatch[2].trim(),
+    };
+  }
+
+  // Pattern 4: Application decline response (direct message to applicant)
+  // Format: 📋 Application declined: [Applicant] for "[Team]":\n\n"personal message"
+  const applicationDeclineMatch = content.match(
+    /^📋\s+Application declined:\s+(.+?)\s+for\s+"(.+?)":\s*\n\n"(.+)"$/s,
+  );
+  if (applicationDeclineMatch) {
+    return {
+      type: "application_response",
+      applicantName: applicationDeclineMatch[1].trim(),
+      teamName: applicationDeclineMatch[2].trim(),
+      personalMessage: applicationDeclineMatch[3].trim(),
+    };
+  }
+
+  // Pattern 5A (NEW): Team leave message with userId
+  // Format: 🚪 MEMBER_LEFT:<userId>:<displayName>
+  const leaveIdMatch = content.match(/^🚪\s*MEMBER_LEFT:(\d+):(.+)$/);
+  if (leaveIdMatch) {
+    return {
+      type: "team_leave",
+      userId: Number(leaveIdMatch[1]),
+      userName: leaveIdMatch[2].trim(),
+    };
+  }
+
+  // Pattern 5B (LEGACY): Team leave message
+  // Format: 🚪 Name has left the team.
+  const leaveMatch = content.match(/^🚪\s+(.+?)\s+has left the team\.$/);
+  if (leaveMatch) {
+    return {
+      type: "team_leave",
+      userId: null,
+      userName: leaveMatch[1].trim(),
+    };
+  }
+
+  // Pattern 5C (NEW): Member removed public message (team chat)
+  // Format: 🚫 MEMBER_REMOVED_PUBLIC: <teamId>:<teamName> | <memberId>:<memberName>
+  const removedPublicMatch = content.match(
+    /^🚫\s*MEMBER_REMOVED_PUBLIC:\s*(\d+):(.+?)\s*\|\s*(\d+):(.+)$/,
+  );
+
+  if (removedPublicMatch) {
+    return {
+      type: "member_removed_public",
+      teamId: Number(removedPublicMatch[1]),
+      teamName: removedPublicMatch[2].trim(),
+      userId: Number(removedPublicMatch[3]),
+      userName: removedPublicMatch[4].trim(),
+    };
+  }
+
+  // Pattern 6: Application declined message
+  // Format: 🚫 APPLICATION_DECLINED: teamId:teamName | approverId:approverName | applicantId:applicantName | hasPersonalMessage
+  const applicationDeclinedMatch = content.match(
+    /^🚫\s+APPLICATION_DECLINED:\s+(.+?)\s+\|\s+(.+?)\s+\|\s+(.+?)\s+\|\s+(true|false)$/,
+  );
+
+  if (applicationDeclinedMatch) {
+    const teamToken = applicationDeclinedMatch[1].trim(); // "id:name" OR legacy "name"
+    const approverToken = applicationDeclinedMatch[2].trim();
+    const applicantToken = applicationDeclinedMatch[3].trim();
+
+    const team = parseIdNameToken(teamToken);
+    const approver = parseIdNameToken(approverToken);
+    const applicant = parseIdNameToken(applicantToken);
+
+    return {
+      type: "application_declined",
+      teamId: team.id,
+      teamName: team.name,
+      approverId: approver.id,
+      approverName: approver.name,
+      applicantId: applicant.id,
+      applicantName: applicant.name,
+      hasPersonalMessage: applicationDeclinedMatch[4] === "true",
+    };
+  }
+
+  // Pattern 7: Application approved DM message
+  // Format: ✅ APPLICATION_APPROVED: teamId:teamName | approverId:approverName | applicantId:applicantName | hasPersonalMessage
+  const applicationApprovedDmMatch = content.match(
+    /^✅\s+APPLICATION_APPROVED:\s+(.+?)\s+\|\s+(.+?)\s+\|\s+(.+?)\s+\|\s+(true|false)$/,
+  );
+  if (applicationApprovedDmMatch) {
+    const teamToken = applicationApprovedDmMatch[1].trim(); // "id:name" OR legacy "name"
+    const approverToken = applicationApprovedDmMatch[2].trim();
+    const applicantToken = applicationApprovedDmMatch[3].trim();
+
+    const team = parseIdNameToken(teamToken);
+    const approver = parseIdNameToken(approverToken);
+    const applicant = parseIdNameToken(applicantToken);
+
+    return {
+      type: "application_approved_dm",
+      teamId: team.id, // ✅ new
+      teamName: team.name, // ✅ now without "124:"
+      approverId: approver.id,
+      approverName: approver.name,
+      applicantId: applicant.id,
+      applicantName: applicant.name,
+      hasPersonalMessage: applicationApprovedDmMatch[4] === "true",
+    };
+  }
+
+  // Pattern 8: Invitation declined message
+  // Format: 🚫 INVITATION_DECLINED: Team Name | Inviter Name | Invitee Name | hasPersonalMessage
+  const invitationDeclinedMatch = content.match(
+    /^🚫\s+INVITATION_DECLINED:\s+(.+?)\s+\|\s+(.+?)\s+\|\s+(.+?)\s+\|\s+(true|false)$/,
+  );
+  if (invitationDeclinedMatch) {
+    const teamToken = invitationDeclinedMatch[1].trim(); // "id:name" or legacy "name"
+    const inviterToken = invitationDeclinedMatch[2].trim(); // "id:name" or legacy "name"
+    const inviteeToken = invitationDeclinedMatch[3].trim(); // "id:name" or legacy "name"
+
+    const team = parseIdNameToken(teamToken);
+    const inviter = parseIdNameToken(inviterToken);
+    const invitee = parseIdNameToken(inviteeToken);
+
+    return {
+      type: "invitation_declined",
+      teamId: team.id,
+      teamName: team.name,
+      inviterId: inviter.id,
+      inviterName: inviter.name,
+      inviteeId: invitee.id,
+      inviteeName: invitee.name,
+      hasPersonalMessage: invitationDeclinedMatch[4] === "true",
+    };
+  }
+
+  // Pattern 9: Invitation cancelled message
+  // Format: 🚫 INVITATION_CANCELLED: teamId:teamName | cancellerId:cancellerName | inviteeId:inviteeName
+  // (Legacy tolerated: names without ids)
+  const invitationCancelledMatch = content.match(
+    /^🚫\s+INVITATION_CANCELLED:\s+(.+?)\s+\|\s+(.+?)\s+\|\s+(.+)$/,
+  );
+
+  if (invitationCancelledMatch) {
+    const teamToken = invitationCancelledMatch[1].trim();
+    const cancellerToken = invitationCancelledMatch[2].trim();
+    const inviteeToken = invitationCancelledMatch[3].trim();
+
+    const team = parseIdNameToken(teamToken);
+    const canceller = parseIdNameToken(cancellerToken);
+    const invitee = parseIdNameToken(inviteeToken);
+
+    return {
+      type: "invitation_cancelled",
+      teamId: team.id,
+      teamName: team.name,
+      cancellerId: canceller.id,
+      cancellerName: canceller.name,
+      inviteeId: invitee.id,
+      inviteeName: invitee.name,
+    };
+  }
+
+  // Pattern 10: Application cancelled message
+  // Format: 🚫 APPLICATION_CANCELLED: teamId:teamName | applicantId:applicantName | adminId:adminName
+  // (Legacy tolerated: teamName | applicantName | adminName)
+  const applicationCancelledMatch = content.match(
+    /^🚫\s+APPLICATION_CANCELLED:\s+(.+?)\s+\|\s+(.+?)\s+\|\s+(.+)$/,
+  );
+
+  if (applicationCancelledMatch) {
+    const teamToken = applicationCancelledMatch[1].trim();
+    const applicantToken = applicationCancelledMatch[2].trim();
+    const adminToken = applicationCancelledMatch[3].trim();
+
+    const team = parseIdNameToken(teamToken);
+    const applicant = parseIdNameToken(applicantToken);
+    const admin = parseIdNameToken(adminToken);
+
+    return {
+      type: "application_cancelled",
+      teamId: team.id,
+      teamName: team.name,
+      applicantId: applicant.id,
+      applicantName: applicant.name,
+      adminId: admin.id,
+      adminName: admin.name,
+    };
+  }
+
+  // Pattern 11: Member removed message
+  // Format: 🚫 MEMBER_REMOVED: teamId:teamName | removerId:removerName | memberId:memberName
+  // (Legacy tolerated: "teamName" without id)
+  const memberRemovedMatch = content.match(
+    /^🚫\s+MEMBER_REMOVED:\s+(.+?)\s+\|\s+(.+?)\s+\|\s+(.+)$/,
+  );
+
+  if (memberRemovedMatch) {
+    const teamToken = memberRemovedMatch[1].trim(); // "id:name" OR "name"
+    const removerToken = memberRemovedMatch[2].trim(); // "id:name" OR "name"
+    const memberToken = memberRemovedMatch[3].trim(); // "id:name" OR "name"
+
+    const team = parseIdNameToken(teamToken);
+    const remover = parseIdNameToken(removerToken);
+    const member = parseIdNameToken(memberToken);
+
+    return {
+      type: "member_removed",
+      teamId: team.id,
+      teamName: team.name,
+      removerId: remover.id,
+      removerName: remover.name,
+      memberId: member.id,
+      memberName: member.name,
+    };
+  }
+
+  // Pattern 12: Role changed message
+  // Format: 🔄 ROLE_CHANGED: Team Name | Changer Name | Member Name | Old Role | New Role
+  const roleChangedMatch = content.match(
+    /^🔄\s+ROLE_CHANGED:\s+(.+?)\s+\|\s+(.+?)\s+\|\s+(.+?)\s+\|\s+(.+?)\s+\|\s+(.+)$/,
+  );
+  if (roleChangedMatch) {
+    const teamToken = roleChangedMatch[1].trim(); // "teamId:teamName" OR just "teamName" (legacy)
+    const changerToken = roleChangedMatch[2].trim(); // "id:name" or "name"
+    const memberToken = roleChangedMatch[3].trim(); // "id:name" or "name"
+
+    const team = parseIdNameToken(teamToken);
+    const changer = parseIdNameToken(changerToken);
+    const member = parseIdNameToken(memberToken);
+
+    return {
+      type: "role_changed",
+      teamId: team.id,
+      teamName: team.name,
+      changerId: changer.id,
+      changerName: changer.name,
+      memberId: member.id,
+      memberName: member.name,
+      oldRole: roleChangedMatch[4].trim(),
+      newRole: roleChangedMatch[5].trim(),
+    };
+  }
+  // Pattern 13: Ownership transferred message (DM)
+  // Format (new): 👑 OWNERSHIP_TRANSFERRED: teamId:teamName | prevOwnerId:prevOwnerName | newOwnerId:newOwnerName
+  // Format (legacy): 👑 OWNERSHIP_TRANSFERRED: teamName | prevOwnerName | newOwnerName
+  const ownershipTransferredMatch = content.match(
+    /^(?:👑\s*)?OWNERSHIP_TRANSFERRED:\s+(.+?)\s+\|\s+(.+?)\s+\|\s+(.+)$/,
+  );
+
+  if (ownershipTransferredMatch) {
+    const teamToken = ownershipTransferredMatch[1].trim(); // "id:name" or "name"
+    const prevToken = ownershipTransferredMatch[2].trim(); // "id:name" or "name"
+    const newToken = ownershipTransferredMatch[3].trim(); // "id:name" or "name"
+
+    const team = parseIdNameToken(teamToken);
+    const prev = parseIdNameToken(prevToken);
+    const next = parseIdNameToken(newToken);
+
+    return {
+      type: "ownership_transferred",
+      teamId: team.id,
+      teamName: team.name,
+      prevOwnerId: prev.id,
+      prevOwnerName: prev.name,
+      newOwnerId: next.id,
+      newOwnerName: next.name,
+    };
+  }
+
+  // Pattern 14: Ownership transferred team chat message
+  const ownershipTeamMatch = content.match(
+    /^(?:👑\s*)?OWNERSHIP_TEAM:\s+(.+?)\s+\|\s+(.+)$/,
+  );
+  if (ownershipTeamMatch) {
+    return {
+      type: "ownership_team",
+      prevOwnerName: ownershipTeamMatch[1].trim(),
+      newOwnerName: ownershipTeamMatch[2].trim(),
+    };
+  }
+
+  // Pattern 15: Team deleted message
+  const teamDeletedMatch = content.match(
+    /^🗑️\s+TEAM_DELETED:\s+(.+?)\s+\|\s+(.+)$/,
+  );
+  if (teamDeletedMatch) {
+    return {
+      type: "team_deleted",
+      teamName: teamDeletedMatch[1].trim(),
+      ownerName: teamDeletedMatch[2].trim(),
+    };
+  }
+
+  return null;
+};
 
 const MessageDisplay = ({
   messages,
@@ -11,14 +381,52 @@ const MessageDisplay = ({
   typingUsers = [],
   conversationType = "direct",
   teamMembers = [],
+  highlightMessageIds = [],
+  onDeleteConversation,
+  onDeleteMessage,
+  onLeaveTeam,
 }) => {
   const messagesEndRef = useRef(null);
+  const highlightedMessageRef = useRef(null);
+
+  // State for team details modal
+  const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
+
+  const [selectedTeamId, setSelectedTeamId] = useState(null);
+
+  // State for user details modal
+  const [isUserModalOpen, setIsUserModalOpen] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState(null);
+
+  // Mention lookup (frontend-only)
+  const [resolvingName, setResolvingName] = useState(false);
+  const [nameResolveError, setNameResolveError] = useState(null);
+
+  const [nameToIdCache, setNameToIdCache] = useState({});
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, typingUsers]);
 
+  // Scroll to first highlighted (unread) message
+  useEffect(() => {
+    if (highlightMessageIds.length > 0 && highlightedMessageRef.current) {
+      const timer = setTimeout(() => {
+        highlightedMessageRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+      }, 150);
+      return () => clearTimeout(timer);
+    }
+  }, [highlightMessageIds]);
+
   // Add debugging
+
+  useEffect(() => {
+    console.log("onDeleteMessage prop:", onDeleteMessage);
+  }, [onDeleteMessage]);
+
   useEffect(() => {
     if (conversationType === "team") {
       console.log("=== TEAM CHAT DEBUG ===");
@@ -27,17 +435,166 @@ const MessageDisplay = ({
       console.log(
         "Sample message senderId:",
         messages[0]?.senderId,
-        typeof messages[0]?.senderId
+        typeof messages[0]?.senderId,
       );
       if (teamMembers.length > 0) {
         console.log(
           "Sample team member user_id:",
           teamMembers[0]?.user_id,
-          typeof teamMembers[0]?.user_id
+          typeof teamMembers[0]?.user_id,
         );
       }
     }
   }, [teamMembers, messages, conversationType]);
+
+  // Handle team avatar/name click
+  const handleTeamClick = () => {
+    if (conversationType !== "team") return;
+    if (!teamData?.id) return;
+    setIsTeamModalOpen(true);
+  };
+
+  // Handle closing the team details modal
+  const handleTeamModalClose = () => {
+    setIsTeamModalOpen(false);
+    setSelectedTeamId(null);
+  };
+
+  // -----------------------
+  // Mention lookup helpers
+  // -----------------------
+  const normalizeName = (s = "") =>
+    s
+      .trim()
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "") // remove accents
+      .replace(/\s+/g, " ");
+
+  // Handle user avatar/name click
+  const handleUserClick = (userId, knownName = null) => {
+    if (!userId) return;
+
+    // Cache if we know a display name
+    if (knownName) {
+      setNameToIdCache((prev) => ({
+        ...prev,
+        [normalizeName(knownName)]: userId,
+      }));
+    }
+
+    setSelectedUserId(userId);
+    setIsUserModalOpen(true);
+  };
+
+  // Handle closing the user details modal
+  const handleUserModalClose = () => {
+    setIsUserModalOpen(false);
+    setSelectedUserId(null);
+  };
+
+  const getTeamMemberFullName = (m) => {
+    const first = m.first_name ?? m.firstName;
+    const last = m.last_name ?? m.lastName;
+    if (first && last) return `${first} ${last}`;
+    if (first) return first;
+    return m.username ?? "";
+  };
+
+  const resolveUserIdFromTeamMembers = (name) => {
+    const target = normalizeName(name);
+    if (!target) return null;
+
+    const match = (teamMembers || []).find((m) => {
+      const full = getTeamMemberFullName(m);
+      return normalizeName(full) === target;
+    });
+
+    return match?.user_id ?? match?.userId ?? null;
+  };
+
+  const resolveUserIdByName = async (name) => {
+    // 1) best: teamMembers (team chat)
+    const cached = nameToIdCache[normalizeName(name)];
+    if (cached) return cached;
+
+    const fromTeam = resolveUserIdFromTeamMembers(name);
+    if (fromTeam) return fromTeam;
+
+    // 2) fallback: backend search (your endpoint currently returns placeholder [])
+    const res = await userService.searchUsers(name);
+    const users = res?.data?.data || [];
+
+    if (users.length === 1) return users[0].id;
+
+    // try exact match when multiple results
+    const target = normalizeName(name);
+    const exact = users.find((u) => {
+      const full =
+        u.firstName && u.lastName ? `${u.firstName} ${u.lastName}` : u.username;
+      return normalizeName(full) === target;
+    });
+
+    return exact?.id ?? null;
+  };
+
+  const handleMentionClick = async (name) => {
+    const safe = (name || "").trim().replace(/\s+/g, " ");
+
+    if (!safe) return;
+
+    try {
+      setNameResolveError(null);
+      setResolvingName(true);
+
+      const userId = await resolveUserIdByName(safe);
+
+      if (!userId) {
+        setNameResolveError(`Could not open "${safe}" (user not found).`);
+        return;
+      }
+
+      handleUserClick(userId, safe);
+    } catch (err) {
+      console.error("Error resolving user by name:", err);
+      setNameResolveError(`Could not look up "${safe}".`);
+    } finally {
+      setResolvingName(false);
+    }
+  };
+
+  const Mention = ({ name }) => {
+    const safe = (name || "").trim();
+    if (!safe) return null;
+
+    return (
+      <button
+        type="button"
+        className="font-medium underline underline-offset-2 hover:no-underline hover:text-primary transition-colors"
+        onClick={() => handleMentionClick(safe)}
+        disabled={resolvingName}
+        title={`Open ${safe}`}
+      >
+        {safe}
+      </button>
+    );
+  };
+
+  const MentionById = ({ userId, name }) => {
+    const safeName = (name || "").trim() || "User";
+    if (!userId) return <Mention name={safeName} />;
+
+    return (
+      <button
+        type="button"
+        className="font-medium underline underline-offset-2 hover:no-underline hover:text-primary transition-colors"
+        onClick={() => handleUserClick(userId, safeName)}
+        title={`Open ${safeName}`}
+      >
+        {safeName}
+      </button>
+    );
+  };
 
   if (loading) {
     return (
@@ -47,94 +604,1465 @@ const MessageDisplay = ({
     );
   }
 
-  if (messages.length === 0 && typingUsers.length === 0) {
+  const openTeamModal = (teamId) => {
+    if (!teamId) return;
+    setSelectedTeamId(teamId);
+    setIsTeamModalOpen(true);
+  };
+
+  const TeamMentionById = ({ teamId, name }) => {
+    const safeName = (name || "").trim() || "Team";
+
+    // legacy / missing id => non-clickable fallback
+    if (!teamId) return <span className="font-medium">"{safeName}"</span>;
+
     return (
-      <div className="space-y-6">
-        {/* Show conversation partner header for direct messages */}
-        {conversationPartner && conversationType === "direct" && (
-          <div className="text-center pb-4 mb-4 border-b border-base-200">
-            <div className="avatar mb-2">
-              <div className="w-16 h-16 rounded-full mx-auto">
-                {conversationPartner.avatarUrl ? (
-                  <img
-                    src={conversationPartner.avatarUrl}
-                    alt={conversationPartner.username}
-                    className="object-cover"
-                  />
-                ) : (
-                  <div className="bg-primary text-primary-content flex items-center justify-center">
-                    <span className="text-xl">
-                      {conversationPartner.firstName?.charAt(0) ||
-                        conversationPartner.username?.charAt(0) ||
-                        "?"}
-                    </span>
-                  </div>
-                )}
-              </div>
-            </div>
-            <h3 className="font-medium leading-[120%] mb-[0.2em]">
-              {conversationPartner.firstName && conversationPartner.lastName
-                ? `${conversationPartner.firstName} ${conversationPartner.lastName}`
-                : conversationPartner.username}
-            </h3>
-          </div>
-        )}
+      <button
+        type="button"
+        className="font-medium underline underline-offset-2 hover:no-underline hover:text-primary transition-colors"
+        onClick={() => openTeamModal(teamId)}
+        title={`Open ${safeName}`}
+      >
+        "{safeName}"
+      </button>
+    );
+  };
 
-        {/* Show team header for team conversations */}
-        {teamData && conversationType === "team" && (
-          <div className="text-center pb-4 mb-4 border-b border-base-200">
-            <div className="avatar mb-2">
-              <div className="w-16 h-16 rounded-full mx-auto">
-                {teamData.avatarUrl ? (
-                  <img
-                    src={teamData.avatarUrl}
-                    alt={teamData.name}
-                    className="object-cover"
-                  />
-                ) : (
-                  <div className="bg-primary text-primary-content flex items-center justify-center">
-                    <span className="text-xl">
-                      {teamData.name?.charAt(0) || "T"}
-                    </span>
-                  </div>
-                )}
-              </div>
-            </div>
-            <h3 className="font-medium leading-[120%] mb-[0.2em]">
-              {teamData.name}
-            </h3>
-            <p className="text-sm text-base-content/70">Team Chat</p>
-          </div>
-        )}
+  // Group messages by date
+  const messagesByDate = messages.reduce((groups, message) => {
+    const date = format(new Date(message.createdAt), "yyyy-MM-dd");
+    if (!groups[date]) {
+      groups[date] = [];
+    }
+    groups[date].push(message);
+    return groups;
+  }, {});
 
-        {/* No messages message */}
-        <div className="flex flex-col items-center justify-center h-full">
-          <p className="text-base-content/70">No messages yet</p>
-          <p className="text-sm text-base-content/50 mt-2">
-            Send a message to start the conversation
-          </p>
+  // Format date heading
+  const formatDateHeading = (dateString) => {
+    const date = new Date(dateString);
+    if (isToday(date)) return "Today";
+    if (isYesterday(date)) return "Yesterday";
+    return format(date, "MMMM d, yyyy");
+  };
+
+  // Get sender info from team members or message data
+  const getSenderInfo = (senderId, message = null) => {
+    if (conversationType === "team" && teamMembers.length > 0) {
+      const member = teamMembers.find(
+        (m) =>
+          m.user_id === senderId ||
+          m.userId === senderId ||
+          String(m.user_id) === String(senderId) ||
+          String(m.userId) === String(senderId),
+      );
+
+      if (member) {
+        return {
+          username: member.username,
+          firstName: member.first_name || member.firstName,
+          lastName: member.last_name || member.lastName,
+          avatarUrl: member.avatar_url || member.avatarUrl,
+          isCurrentMember: true,
+        };
+      }
+    }
+
+    if (conversationPartner && senderId === conversationPartner.id) {
+      return { ...conversationPartner, isCurrentMember: true };
+    }
+
+    // Fallback: Use sender info embedded in the message (for former team members)
+    if (message && conversationType === "team") {
+      const hasMessageSenderInfo =
+        message.senderUsername || message.senderFirstName;
+      if (hasMessageSenderInfo) {
+        return {
+          username: message.senderUsername,
+          firstName: message.senderFirstName,
+          lastName: message.senderLastName,
+          avatarUrl: message.senderAvatarUrl,
+          isCurrentMember: message.isCurrentMember === true,
+        };
+      }
+    }
+
+    return null;
+  };
+
+  // Get display name with former member indicator
+  const getDisplayName = (senderInfo, includeFormerLabel = true) => {
+    if (!senderInfo) return "Unknown";
+
+    let name;
+    if (senderInfo.firstName && senderInfo.lastName) {
+      name = `${senderInfo.firstName} ${senderInfo.lastName}`;
+    } else if (senderInfo.firstName) {
+      name = senderInfo.firstName;
+    } else {
+      name = senderInfo.username || "Unknown";
+    }
+
+    // Add "(former team member)" suffix if they're no longer a member
+    if (includeFormerLabel && senderInfo.isCurrentMember === false) {
+      name += " (former team member)";
+    }
+    return name;
+  };
+
+  // Render avatar (optionally clickable) - with former member handling
+  const renderAvatar = (senderInfo, clickable = false, userId = null) => {
+    if (!senderInfo) return null;
+
+    const isFormerMember = senderInfo.isCurrentMember === false;
+    const handleClick =
+      clickable && userId ? () => handleUserClick(userId) : undefined;
+
+    // Former members: lighter colors and "FM" initials
+    const avatarBgClass = isFormerMember ? "bg-base-300" : "bg-primary";
+    const avatarTextClass = isFormerMember
+      ? "text-base-content/60"
+      : "text-primary-content";
+
+    return (
+      <div
+        className={`avatar mr-2 flex-shrink-0 ${
+          clickable ? "cursor-pointer hover:opacity-80 transition-opacity" : ""
+        } ${isFormerMember ? "opacity-70" : ""}`}
+        onClick={handleClick}
+        title={
+          clickable
+            ? `View ${getDisplayName(senderInfo, false)} details`
+            : isFormerMember
+              ? "Former team member"
+              : undefined
+        }
+      >
+        <div className="w-8 h-8 rounded-full relative">
+          {/* For former members, always show "FM" - don't use their avatar */}
+          {!isFormerMember && senderInfo.avatarUrl ? (
+            <img
+              src={senderInfo.avatarUrl}
+              alt={senderInfo.username || "User"}
+              className="object-cover w-full h-full rounded-full"
+              onError={(e) => {
+                e.target.style.display = "none";
+                const fallback =
+                  e.target.parentElement.querySelector(".avatar-fallback");
+                if (fallback) fallback.style.display = "flex";
+              }}
+            />
+          ) : null}
+          {/* Fallback: "FM" for former members, initials for current members */}
+          <div
+            className={`avatar-fallback ${avatarBgClass} ${avatarTextClass} flex items-center justify-center w-full h-full rounded-full absolute inset-0`}
+            style={{
+              display:
+                isFormerMember || !senderInfo.avatarUrl ? "flex" : "none",
+            }}
+          >
+            <span className="text-sm font-medium event-message-text">
+              {isFormerMember ? "FM" : getUserInitials(senderInfo)}
+            </span>
+          </div>
         </div>
       </div>
+    );
+  };
+
+  const getFileIcon = (fileName) => {
+    if (!fileName) return File;
+    const ext = fileName.split(".").pop().toLowerCase();
+
+    if (["pdf", "doc", "docx", "txt"].includes(ext)) return FileText;
+    if (["xls", "xlsx", "csv"].includes(ext)) return FileSpreadsheet;
+    return File;
+  };
+
+  const renderFileAttachment = (message) => {
+    const fileUrl = message?.fileUrl || message?.file_url;
+    const fileName = message?.fileName || message?.file_name;
+    const fileSize = message?.fileSize || message?.file_size;
+    const fileDeletedAt = message?.fileDeletedAt || message?.file_deleted_at;
+    const imageUrl = message?.imageUrl || message?.image_url;
+
+    const expirationStatus = getFileExpirationStatus(message);
+
+    // If file was deleted/expired, show placeholder
+    // But only if there's no imageUrl (to avoid duplicate with image placeholder)
+    // OR if there was specifically a file (fileName exists)
+    if ((expirationStatus.status === "expired" || fileDeletedAt) && !imageUrl) {
+      return (
+        <div className={message.content ? "mb-2" : ""}>
+          <div className="flex items-center gap-3 p-3 bg-base-200/50 rounded-lg border border-base-300">
+            <AlertTriangle size={24} className="text-warning flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-base-content/60">
+                Image or file no longer available
+              </p>
+              <p className="text-xs text-base-content/40">
+                This data has expired.
+              </p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    if (!fileUrl) return null;
+
+    const FileIcon = getFileIcon(fileName);
+    const fileSizeDisplay = formatFileSize(fileSize);
+
+    return (
+      <div className={message.content ? "mb-2" : ""}>
+        {/* Warning banner for files expiring soon (≤7 days) */}
+        {expirationStatus.status === "expiring-soon" && (
+          <div className="flex items-center gap-2 p-2 mb-2 bg-warning/10 border border-warning/30 rounded-lg">
+            <Clock size={16} className="text-warning flex-shrink-0" />
+            <p className="text-xs text-warning">{expirationStatus.message}</p>
+          </div>
+        )}
+
+        <a
+          href={fileUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-3 p-3 bg-base-100/50 rounded-lg hover:bg-base-100 transition-colors group"
+          download={fileName || undefined}
+        >
+          {React.createElement(FileIcon, {
+            size: 24,
+            className: "text-primary flex-shrink-0",
+          })}
+
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium truncate">
+              {fileName || "Download file"}
+            </p>
+            <p className="text-xs text-base-content/60">
+              {fileSizeDisplay || "Click to download"}
+            </p>
+          </div>
+
+          <Download
+            size={18}
+            className="text-base-content/40 group-hover:text-primary transition-colors flex-shrink-0"
+          />
+        </a>
+
+        {/* Grey expiration info for files NOT expiring soon (>7 days) */}
+        {expirationStatus.status === "active" &&
+          expirationStatus.daysLeft !== null && (
+            <div className="flex items-center gap-2 mt-1 ml-1">
+              <Clock size={12} className="text-base-content/40 flex-shrink-0" />
+              <p className="text-xs text-base-content/40">
+                {expirationStatus.message}
+              </p>
+            </div>
+          )}
+      </div>
+    );
+  };
+
+  /**
+   * Render an application approved DM message with special formatting (green theme)
+   * Shows different text based on whether viewer is the approver or the applicant
+   */
+  const renderApplicationApprovedDmMessage = (
+    message,
+    parsedMessage,
+    isCurrentUser,
+  ) => {
+    const approver = parsedMessage.approverName;
+    const applicant = parsedMessage.applicantName;
+    const teamName = parsedMessage.teamName;
+
+    const messageText = isCurrentUser ? (
+      parsedMessage.hasPersonalMessage ? (
+        <>
+          You approved{" "}
+          <MentionById
+            userId={parsedMessage.applicantId}
+            name={parsedMessage.applicantName}
+          />
+          {"'s"} application for{" "}
+          <TeamMentionById
+            teamId={parsedMessage.teamId}
+            name={parsedMessage.teamName}
+          />{" "}
+          and added this message:
+        </>
+      ) : (
+        <>
+          You approved{" "}
+          <MentionById
+            userId={parsedMessage.applicantId}
+            name={parsedMessage.applicantName}
+          />
+          {"'s"} application for{" "}
+          <TeamMentionById
+            teamId={parsedMessage.teamId}
+            name={parsedMessage.teamName}
+          />
+        </>
+      )
+    ) : parsedMessage.hasPersonalMessage ? (
+      <>
+        Your application to{" "}
+        <TeamMentionById
+          teamId={parsedMessage.teamId}
+          name={parsedMessage.teamName}
+        />{" "}
+        was approved by{" "}
+        <MentionById
+          userId={parsedMessage.approverId}
+          name={parsedMessage.approverName}
+        />
+        , who added this message:
+      </>
+    ) : (
+      <>
+        Your application to{" "}
+        <TeamMentionById
+          teamId={parsedMessage.teamId}
+          name={parsedMessage.teamName}
+        />{" "}
+        was approved by{" "}
+        <MentionById
+          userId={parsedMessage.approverId}
+          name={parsedMessage.approverName}
+        />
+        . Welcome to the team!
+      </>
+    );
+
+    return (
+      <div className="flex flex-col items-center w-full my-4">
+        <div
+          className="flex items-center justify-center gap-2 px-4 py-3 rounded-2xl mb-3 max-w-md text-center"
+          style={{
+            backgroundColor: "rgba(34, 197, 94, 0.1)",
+            color: "#16a34a",
+          }}
+        >
+          <span className="text-sm font-medium event-message-text">
+            <PartyPopper size={16} className="event-inline-icon ml-1" />{" "}
+            {messageText}.
+          </span>
+        </div>
+
+        <div className="text-xs text-base-content/50">
+          {format(new Date(message.createdAt), "p")}
+        </div>
+      </div>
+    );
+  };
+
+  // =============================================================================
+  // renderApplicationApprovedMessage - Green success theme
+  // =============================================================================
+  const renderApplicationApprovedMessage = (
+    message,
+    parsedMessage,
+    senderInfo,
+    isCurrentUser,
+    senderId,
+  ) => {
+    const applicant = parsedMessage.applicantName;
+    const approver = parsedMessage.approverName;
+
+    const welcomeText = isCurrentUser ? (
+      <>
+        Your application was approved by <Mention name={approver} />. Welcome to
+        the team!
+      </>
+    ) : (
+      <>
+        <Mention name={applicant} /> has applied successfully and was added by{" "}
+        <Mention name={approver} />. Say hello to them!
+      </>
+    );
+
+    return (
+      <div className="flex flex-col items-center w-full my-4">
+        <div className="event-banner event-banner--success mb-3">
+          <span className="text-sm font-medium event-message-text">
+            <UserPlus size={16} className="event-inline-icon mr-1" />
+            {welcomeText}
+            <PartyPopper size={16} className="event-inline-icon ml-1" />
+          </span>
+        </div>
+
+        <div className="text-xs text-base-content/50">
+          {format(new Date(message.createdAt), "p")}
+        </div>
+      </div>
+    );
+  };
+
+  // =============================================================================
+  // renderLeaveMessage - Neutral grey theme (pill shape)
+  // =============================================================================
+  const renderLeaveMessage = (message, parsedMessage, isCurrentUser) => {
+    const leaveText = isCurrentUser ? (
+      "You have left the team."
+    ) : (
+      <>
+        <MentionById
+          userId={parsedMessage.userId}
+          name={parsedMessage.userName}
+        />{" "}
+        has left the team.
+      </>
+    );
+
+    return (
+      <div className="flex flex-col items-center w-full my-4">
+        <div className="event-banner event-banner--neutral mb-3">
+          <span className="text-sm font-medium event-message-text">
+            <UserMinus size={16} className="event-inline-icon mr-1" />
+            {leaveText}
+          </span>
+        </div>
+
+        <div className="text-xs text-base-content/50">
+          {format(new Date(message.createdAt), "p")}
+        </div>
+      </div>
+    );
+  };
+
+  const renderMemberRemovedPublicMessage = (
+    message,
+    parsedMessage,
+    isCurrentUser,
+  ) => {
+    // If the remover is the sender of the system message (likely), they are "current user" here.
+    const text = isCurrentUser ? (
+      <>
+        You removed{" "}
+        <MentionById
+          userId={parsedMessage.userId}
+          name={parsedMessage.userName}
+        />{" "}
+        from the team.
+      </>
+    ) : (
+      <>
+        <MentionById
+          userId={parsedMessage.userId}
+          name={parsedMessage.userName}
+        />{" "}
+        has been removed from the team.
+      </>
+    );
+
+    return (
+      <div className="flex flex-col items-center w-full my-4">
+        <div className="event-banner event-banner--neutral mb-3">
+          <span className="text-sm font-medium event-message-text">
+            <UserMinus size={16} className="event-inline-icon mr-1" />
+            {text}
+          </span>
+        </div>
+
+        <div className="text-xs text-base-content/50">
+          {format(new Date(message.createdAt), "p")}
+        </div>
+      </div>
+    );
+  };
+
+  // =============================================================================
+  // renderInvitationAcceptedMessage - Green success theme
+  // =============================================================================
+  const renderInvitationAcceptedMessage = (
+    message,
+    parsedMessage,
+    isCurrentUser,
+  ) => {
+    const messageText = isCurrentUser ? (
+      <>
+        You accepted <Mention name={parsedMessage.inviterName} />
+        {"'s"} invitation for{" "}
+        <TeamMentionById
+          teamId={parsedMessage.teamId}
+          name={parsedMessage.teamName}
+        />
+        . Welcome to the team!
+      </>
+    ) : (
+      <>
+        <Mention name={parsedMessage.inviteeName} /> accepted your invitation
+        for{" "}
+        <TeamMentionById
+          teamId={parsedMessage.teamId}
+          name={parsedMessage.teamName}
+        />
+        . Welcome to the team!
+      </>
+    );
+
+    return (
+      <div className="flex flex-col items-center w-full my-4">
+        <div className="event-banner event-banner--success mb-3">
+          <span className="text-sm font-medium event-message-text">
+            {messageText}
+            <PartyPopper size={16} className="event-inline-icon ml-1" />
+          </span>
+        </div>
+
+        <div className="text-xs text-base-content/50">
+          {format(new Date(message.createdAt), "p")}
+        </div>
+      </div>
+    );
+  };
+
+  /**
+   * Render a team join message with special formatting
+   * Shows announcement banner + personal message in bubble
+   */
+  const renderJoinMessage = (
+    message,
+    parsedMessage,
+    senderInfo,
+    isCurrentUser,
+    senderId,
+  ) => {
+    const displayName = getDisplayName(senderInfo);
+
+    const pronoun = isCurrentUser ? "you" : "them";
+    const welcomeText = isCurrentUser ? (
+      <>You joined the team. Welcome aboard!</>
+    ) : (
+      <>
+        <Mention name={parsedMessage.userName} /> has followed your invite and
+        joined your team. Say hello to {pronoun}!
+      </>
+    );
+
+    return (
+      <div className="flex flex-col items-center w-full my-4">
+        <div className="event-banner event-banner--success mb-3">
+          <span className="text-sm font-medium event-message-text">
+            <UserPlus size={16} className="event-inline-icon mr-1" />
+            {welcomeText}
+            <PartyPopper size={16} className="event-inline-icon ml-1" />
+          </span>
+        </div>
+
+        {parsedMessage.personalMessage && (
+          <div
+            className={`flex ${
+              isCurrentUser ? "justify-end" : "justify-start"
+            } w-full`}
+          >
+            {!isCurrentUser && renderAvatar(senderInfo, true, senderId)}
+
+            <div className="flex flex-col max-w-[70%]">
+              {!isCurrentUser && (
+                <div
+                  className="text-xs font-medium mb-1 ml-3 cursor-pointer hover:text-primary transition-colors"
+                  style={{ color: "#036b0c" }}
+                  onClick={() => handleUserClick(senderId, displayName)}
+                  title={`View ${displayName} details`}
+                >
+                  {displayName}
+                </div>
+              )}
+
+              <div
+                className={`
+                  rounded-lg p-3 
+                  ${
+                    isCurrentUser
+                      ? "bg-green-100 text-base-content rounded-br-none ml-auto"
+                      : "bg-base-200 rounded-bl-none"
+                  }
+                `}
+              >
+                <p>{parsedMessage.personalMessage}</p>
+                <div
+                  className={`
+                    flex justify-end items-center text-xs mt-1 
+                    ${
+                      isCurrentUser
+                        ? "text-base-content/60"
+                        : "text-base-content/50"
+                    }
+                  `}
+                >
+                  <span>{format(new Date(message.createdAt), "p")}</span>
+                  {isCurrentUser && message.readAt && (
+                    <span className="ml-2">✓</span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {!parsedMessage.personalMessage && (
+          <div className="text-xs text-base-content/50">
+            {format(new Date(message.createdAt), "p")}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // =============================================================================
+  // renderInvitationCancelledMessage - Neutral grey theme
+  // =============================================================================
+  const renderInvitationCancelledMessage = (
+    message,
+    parsedMessage,
+    isCurrentUser,
+  ) => {
+    const messageText = isCurrentUser ? (
+      <>
+        You cancelled your invitation for{" "}
+        {parsedMessage.inviteeId ? (
+          <MentionById
+            userId={parsedMessage.inviteeId}
+            name={parsedMessage.inviteeName}
+          />
+        ) : (
+          <Mention name={parsedMessage.inviteeName} />
+        )}{" "}
+        to join{" "}
+        <TeamMentionById
+          teamId={parsedMessage.teamId}
+          name={parsedMessage.teamName}
+        />
+        . Want to tell them why in this chat?
+      </>
+    ) : (
+      <>
+        {parsedMessage.cancellerId ? (
+          <MentionById
+            userId={parsedMessage.cancellerId}
+            name={parsedMessage.cancellerName}
+          />
+        ) : (
+          <Mention name={parsedMessage.cancellerName} />
+        )}{" "}
+        cancelled your invitation to join{" "}
+        <TeamMentionById
+          teamId={parsedMessage.teamId}
+          name={parsedMessage.teamName}
+        />
+        {". "}Want to reach out to them in this chat?
+      </>
+    );
+
+    return (
+      <div className="flex flex-col items-center w-full my-4">
+        <div className="event-banner event-banner--neutral mb-3">
+          <span className="text-sm font-medium event-message-text">
+            {messageText}
+          </span>
+        </div>
+
+        <div className="text-xs text-base-content/50">
+          {format(new Date(message.createdAt), "p")}
+        </div>
+      </div>
+    );
+  };
+
+  // =============================================================================
+  // renderInvitationDeclinedMessage - Neutral grey theme
+  // =============================================================================
+  const renderInvitationDeclinedMessage = (
+    message,
+    parsedMessage,
+    isCurrentUser,
+  ) => {
+    const team = parsedMessage.teamName;
+
+    const messageText = isCurrentUser ? (
+      parsedMessage.hasPersonalMessage ? (
+        <>
+          You declined{" "}
+          <MentionById
+            userId={parsedMessage.inviterId}
+            name={parsedMessage.inviterName}
+          />
+          {"'s"} invitation for{" "}
+          <TeamMentionById
+            teamId={parsedMessage.teamId}
+            name={parsedMessage.teamName}
+          />{" "}
+          and added this message:
+        </>
+      ) : (
+        <>
+          You declined{" "}
+          <MentionById
+            userId={parsedMessage.inviterId}
+            name={parsedMessage.inviterName}
+          />
+          {"'s"} invitation for{" "}
+          <TeamMentionById
+            teamId={parsedMessage.teamId}
+            name={parsedMessage.teamName}
+          />
+          . Consider adding a personal message to explain your decision.
+        </>
+      )
+    ) : parsedMessage.hasPersonalMessage ? (
+      <>
+        Your invitation for{" "}
+        <TeamMentionById
+          teamId={parsedMessage.teamId}
+          name={parsedMessage.teamName}
+        />{" "}
+        was declined by{" "}
+        <MentionById
+          userId={parsedMessage.inviteeId}
+          name={parsedMessage.inviteeName}
+        />
+        , who added this message:
+      </>
+    ) : (
+      <>
+        Your invitation for{" "}
+        <TeamMentionById
+          teamId={parsedMessage.teamId}
+          name={parsedMessage.teamName}
+        />{" "}
+        was declined by{" "}
+        <MentionById
+          userId={parsedMessage.inviteeId}
+          name={parsedMessage.inviteeName}
+        />
+        . Want to reach out to them in this chat?
+      </>
+    );
+
+    return (
+      <div className="flex flex-col items-center w-full my-4">
+        <div className="event-banner event-banner--neutral mb-3">
+          <span className="text-sm font-medium event-message-text">
+            {messageText}
+          </span>
+        </div>
+
+        <div className="text-xs text-base-content/50">
+          {format(new Date(message.createdAt), "p")}
+        </div>
+      </div>
+    );
+  };
+
+  // =============================================================================
+  // renderApplicationResponseMessage - Neutral grey theme
+  // =============================================================================
+  const renderApplicationResponseMessage = (
+    message,
+    parsedMessage,
+    senderInfo,
+    isCurrentUser,
+    senderId,
+  ) => {
+    const bannerContent = isCurrentUser ? (
+      <>
+        Your decline response to <Mention name={parsedMessage.applicantName} />
+        {"'s"} application for{" "}
+        <span className="font-medium">{parsedMessage.teamName}</span>
+      </>
+    ) : (
+      <>
+        Response to your application for{" "}
+        <span className="font-medium">{parsedMessage.teamName}</span>
+      </>
+    );
+
+    return (
+      <div className="flex flex-col w-full my-4">
+        <div className="event-banner event-banner--neutral mb-3 mx-auto">
+          <span className="text-sm event-message-text">{bannerContent}</span>
+        </div>
+
+        {parsedMessage.personalMessage && (
+          <div
+            className={`flex ${
+              isCurrentUser ? "justify-end" : "justify-start"
+            } w-full`}
+          >
+            {!isCurrentUser && renderAvatar(senderInfo, true, senderId)}
+
+            <div className="flex flex-col max-w-[70%]">
+              <div
+                className={`
+                  rounded-lg p-3 
+                  ${
+                    isCurrentUser
+                      ? "bg-green-100 text-base-content rounded-br-none ml-auto"
+                      : "bg-base-200 rounded-bl-none"
+                  }
+                `}
+              >
+                <p>{parsedMessage.personalMessage}</p>
+                <div
+                  className={`
+                    flex justify-end items-center text-xs mt-1 
+                    ${
+                      isCurrentUser
+                        ? "text-base-content/60"
+                        : "text-base-content/50"
+                    }
+                  `}
+                >
+                  <span>{format(new Date(message.createdAt), "p")}</span>
+                  {isCurrentUser && message.readAt && (
+                    <span className="ml-2">✓</span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // =============================================================================
+  // renderApplicationDeclinedMessage - Neutral grey theme
+  // =============================================================================
+  const renderApplicationDeclinedMessage = (
+    message,
+    parsedMessage,
+    isCurrentUser,
+  ) => {
+    const team = parsedMessage.teamName;
+
+    const messageText = isCurrentUser ? (
+      parsedMessage.hasPersonalMessage ? (
+        <>
+          You declined{" "}
+          <MentionById
+            userId={parsedMessage.applicantId}
+            name={parsedMessage.applicantName}
+          />
+          {"'s"} application for{" "}
+          <TeamMentionById
+            teamId={parsedMessage.teamId}
+            name={parsedMessage.teamName}
+          />{" "}
+          and added this message:
+        </>
+      ) : (
+        <>
+          You declined{" "}
+          <MentionById
+            userId={parsedMessage.applicantId}
+            name={parsedMessage.applicantName}
+          />
+          {"'s"} application for{" "}
+          <TeamMentionById
+            teamId={parsedMessage.teamId}
+            name={parsedMessage.teamName}
+          />
+          . Consider adding a personal message to explain your decision.
+        </>
+      )
+    ) : parsedMessage.hasPersonalMessage ? (
+      <>
+        Your application to{" "}
+        <TeamMentionById
+          teamId={parsedMessage.teamId}
+          name={parsedMessage.teamName}
+        />{" "}
+        was declined by{" "}
+        <MentionById
+          userId={parsedMessage.approverId}
+          name={parsedMessage.approverName}
+        />
+        {", "}who added this message:
+      </>
+    ) : (
+      <>
+        Your application to{" "}
+        <TeamMentionById
+          teamId={parsedMessage.teamId}
+          name={parsedMessage.teamName}
+        />{" "}
+        was declined by{" "}
+        <MentionById
+          userId={parsedMessage.approverId}
+          name={parsedMessage.approverName}
+        />
+        {". "}Want to reach out to them in this chat?
+      </>
+    );
+
+    return (
+      <div className="flex flex-col items-center w-full my-4">
+        <div className="event-banner event-banner--neutral mb-3">
+          <span className="text-sm font-medium event-message-text">
+            {messageText}
+          </span>
+        </div>
+
+        <div className="text-xs text-base-content/50">
+          {format(new Date(message.createdAt), "p")}
+        </div>
+      </div>
+    );
+  };
+
+  // =============================================================================
+  // renderInvitationResponseMessage - Info blue theme
+  // =============================================================================
+  const renderInvitationResponseMessage = (
+    message,
+    parsedMessage,
+    senderInfo,
+    isCurrentUser,
+    senderId,
+  ) => {
+    return (
+      <div className="flex flex-col w-full my-4">
+        <div className="event-banner event-banner--info mb-3 mx-auto">
+          <span className="text-sm event-message-text">
+            Response to invitation for{" "}
+            <span className="font-medium">{parsedMessage.teamName}</span>
+          </span>
+        </div>
+
+        {parsedMessage.personalMessage && (
+          <div
+            className={`flex ${
+              isCurrentUser ? "justify-end" : "justify-start"
+            } w-full`}
+          >
+            {!isCurrentUser &&
+              conversationType === "direct" &&
+              renderAvatar(senderInfo, true, senderId)}
+
+            <div className="flex flex-col max-w-[70%]">
+              <div
+                className={`
+                  rounded-lg p-3 
+                  ${
+                    isCurrentUser
+                      ? "bg-green-100 text-base-content rounded-br-none ml-auto"
+                      : "bg-base-200 rounded-bl-none"
+                  }
+                `}
+              >
+                <p>{parsedMessage.personalMessage}</p>
+                <div
+                  className={`
+                    flex justify-end items-center text-xs mt-1 
+                    ${
+                      isCurrentUser
+                        ? "text-base-content/60"
+                        : "text-base-content/50"
+                    }
+                  `}
+                >
+                  <span>{format(new Date(message.createdAt), "p")}</span>
+                  {isCurrentUser && message.readAt && (
+                    <span className="ml-2">✓</span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // =============================================================================
+  // renderApplicationCancelledMessage - Neutral grey theme
+  // =============================================================================
+  const renderApplicationCancelledMessage = (
+    message,
+    parsedMessage,
+    isCurrentUser,
+  ) => {
+    const messageText = isCurrentUser ? (
+      <>
+        You cancelled your application for{" "}
+        <TeamMentionById
+          teamId={parsedMessage.teamId}
+          name={parsedMessage.teamName}
+        />
+        . Want to tell them why in this chat?
+      </>
+    ) : (
+      <>
+        <MentionById
+          userId={parsedMessage.applicantId}
+          name={parsedMessage.applicantName}
+        />{" "}
+        cancelled their application for{" "}
+        <TeamMentionById
+          teamId={parsedMessage.teamId}
+          name={parsedMessage.teamName}
+        />
+        . Want to reach out to them in this chat?
+      </>
+    );
+
+    return (
+      <div className="flex flex-col items-center w-full my-4">
+        <div className="event-banner event-banner--neutral mb-3">
+          <span className="text-sm font-medium event-message-text">
+            {messageText}
+          </span>
+        </div>
+
+        <div className="text-xs text-base-content/50">
+          {format(new Date(message.createdAt), "p")}
+        </div>
+      </div>
+    );
+  };
+
+  // =============================================================================
+  // renderRoleChangedMessage - Dynamic theme based on new role
+  // =============================================================================
+  const renderRoleChangedMessage = (message, parsedMessage, isCurrentUser) => {
+    const isPromotion = parsedMessage.newRole === "admin";
+    const newRole = parsedMessage.newRole;
+
+    const getRoleBannerClass = (role) => {
+      switch (role) {
+        case "owner":
+          return "event-banner--owner";
+        case "admin":
+          return "event-banner--admin";
+        case "member":
+        default:
+          return "event-banner--member";
+      }
+    };
+
+    const getRoleIcon = (role) => {
+      switch (role) {
+        case "owner":
+          return Crown;
+        case "admin":
+          return Shield;
+        case "member":
+        default:
+          return User;
+      }
+    };
+
+    const bannerClass = getRoleBannerClass(newRole);
+    const RoleIcon = getRoleIcon(newRole);
+
+    const messageText = isCurrentUser ? (
+      isPromotion ? (
+        <>
+          You promoted{" "}
+          <MentionById
+            userId={parsedMessage.memberId}
+            name={parsedMessage.memberName}
+          />{" "}
+          to Admin in{" "}
+          <TeamMentionById
+            teamId={parsedMessage.teamId}
+            name={parsedMessage.teamName}
+          />
+          .
+        </>
+      ) : (
+        <>
+          You changed{" "}
+          <MentionById
+            userId={parsedMessage.memberId}
+            name={parsedMessage.memberName}
+          />
+          {"'s"} role to Member in{" "}
+          <TeamMentionById
+            teamId={parsedMessage.teamId}
+            name={parsedMessage.teamName}
+          />
+          .
+        </>
+      )
+    ) : isPromotion ? (
+      <>
+        You were promoted to Admin in{" "}
+        <TeamMentionById
+          teamId={parsedMessage.teamId}
+          name={parsedMessage.teamName}
+        />{" "}
+        by{" "}
+        <MentionById
+          userId={parsedMessage.changerId}
+          name={parsedMessage.changerName}
+        />
+        .
+      </>
+    ) : (
+      <>
+        Your role in{" "}
+        <TeamMentionById
+          teamId={parsedMessage.teamId}
+          name={parsedMessage.teamName}
+        />{" "}
+        was changed to Member by{" "}
+        <MentionById
+          userId={parsedMessage.changerId}
+          name={parsedMessage.changerName}
+        />
+        .
+      </>
+    );
+
+    return (
+      <div className="flex flex-col items-center w-full my-4">
+        <div className={`event-banner ${bannerClass} mb-3`}>
+          <span className="text-sm font-medium event-message-text">
+            <RoleIcon size={16} className="event-inline-icon mr-1" />
+            {messageText}
+            {isPromotion && !isCurrentUser && (
+              <PartyPopper size={16} className="event-inline-icon ml-1" />
+            )}
+          </span>
+        </div>
+
+        <div className="text-xs text-base-content/50">
+          {format(new Date(message.createdAt), "p")}
+        </div>
+      </div>
+    );
+  };
+
+  // =============================================================================
+  // renderOwnershipTeamMessage - Pink owner theme (team chat)
+  // =============================================================================
+  const renderOwnershipTeamMessage = (message, parsedMessage) => {
+    return (
+      <div className="flex flex-col items-center w-full my-4">
+        <div className="event-banner event-banner--owner mb-3">
+          <span className="text-sm font-medium event-message-text">
+            <Crown size={16} className="event-inline-icon mr-1" />
+            <Mention name={parsedMessage.prevOwnerName} /> transferred ownership
+            to{" "}
+            <MentionById
+              userId={parsedMessage.newOwnerId}
+              name={parsedMessage.newOwnerName}
+            />
+          </span>
+        </div>
+
+        <div className="text-xs text-base-content/50">
+          {format(new Date(message.createdAt), "p")}
+        </div>
+      </div>
+    );
+  };
+
+  // =============================================================================
+  // renderOwnershipTransferredMessage - Pink owner theme (DM)
+  // =============================================================================
+  const renderOwnershipTransferredMessage = (
+    message,
+    parsedMessage,
+    isCurrentUser,
+  ) => {
+    const messageText = isCurrentUser ? (
+      <>
+        You transferred team ownership of{" "}
+        <TeamMentionById
+          teamId={parsedMessage.teamId}
+          name={parsedMessage.teamName}
+        />{" "}
+        to <Mention name={parsedMessage.newOwnerName} />.
+      </>
+    ) : (
+      <>
+        <MentionById
+          userId={parsedMessage.prevOwnerId}
+          name={parsedMessage.prevOwnerName}
+        />{" "}
+        transferred ownership of{" "}
+        <TeamMentionById
+          teamId={parsedMessage.teamId}
+          name={parsedMessage.teamName}
+        />{" "}
+        to you. Congratulations!
+      </>
+    );
+
+    return (
+      <div className="flex flex-col items-center w-full my-4">
+        <div className="event-banner event-banner--owner mb-3">
+          <span className="text-sm font-medium event-message-text">
+            <Crown size={16} className="event-inline-icon mr-1" />
+            {messageText}
+            <PartyPopper size={16} className="event-inline-icon ml-1" />
+          </span>
+        </div>
+
+        <div className="text-xs text-base-content/50">
+          {format(new Date(message.createdAt), "p")}
+        </div>
+      </div>
+    );
+  };
+
+  /**
+   * Render a member removed message with special formatting
+   */
+  const renderMemberRemovedMessage = (
+    message,
+    parsedMessage,
+    isCurrentUser,
+  ) => {
+    const messageText = isCurrentUser ? (
+      <>
+        You removed{" "}
+        <MentionById
+          userId={parsedMessage.memberId}
+          name={parsedMessage.memberName}
+        />{" "}
+        from{" "}
+        <TeamMentionById
+          teamId={parsedMessage.teamId}
+          name={parsedMessage.teamName}
+        />
+        .
+      </>
+    ) : (
+      <>
+        You were removed from{" "}
+        <TeamMentionById
+          teamId={parsedMessage.teamId}
+          name={parsedMessage.teamName}
+        />{" "}
+        by{" "}
+        <MentionById
+          userId={parsedMessage.removerId}
+          name={parsedMessage.removerName}
+        />
+        . Want to reach out to them in this chat?
+      </>
+    );
+
+    return (
+      <div className="flex flex-col items-center w-full my-4">
+        <div className="event-banner event-banner--neutral mb-3">
+          <span className="text-sm font-medium event-message-text">
+            {messageText}
+          </span>
+        </div>
+
+        <div className="text-xs text-base-content/50">
+          {format(new Date(message.createdAt), "p")}
+        </div>
+      </div>
+    );
+  };
+
+  /**
+   * Render a team deleted message with special formatting (red/error theme)
+   * Shows in team chat with option to leave team
+   */
+  const renderTeamDeletedMessage = (message, parsedMessage, isCurrentUser) => {
+    let messageText;
+
+    if (isCurrentUser) {
+      messageText = `You initiated the deletion of the team "${parsedMessage.teamName}". The team is archived and inactive now. Remaining members are able to text in this chat until the last member leaves.`;
+    } else {
+      messageText = `${parsedMessage.ownerName} has initiated the deletion of the team "${parsedMessage.teamName}". The team is archived and inactive now. Remaining members are able to text in this chat until the last member leaves.`;
+    }
+
+    return (
+      <div className="flex flex-col items-center w-full my-4">
+        <div
+          className="flex flex-col items-center gap-3 px-5 py-4 rounded-2xl mb-3 max-w-md text-center"
+          style={{
+            backgroundColor: "rgba(239, 68, 68, 0.1)",
+            color: "#dc2626",
+          }}
+        >
+          <span className="text-sm font-medium event-message-text">
+            {messageText}
+          </span>
+
+          {onLeaveTeam && (
+            <button
+              onClick={() => onLeaveTeam()}
+              className="flex items-center gap-1 text-xs underline hover:no-underline opacity-80 hover:opacity-100 transition-opacity cursor-pointer"
+            >
+              <LogOut size={14} />
+              Leave team and remove from chat list
+            </button>
+          )}
+        </div>
+
+        <div className="text-xs text-base-content/50">
+          {format(new Date(message.createdAt), "p")}
+        </div>
+      </div>
+    );
+  };
+
+  // --------------------------------------------
+  // NO MESSAGES STATE
+  // --------------------------------------------
+  if (messages.length === 0 && typingUsers.length === 0) {
+    return (
+      <>
+        <div className="space-y-6">
+          {nameResolveError && (
+            <div className="mb-2 text-sm text-warning">{nameResolveError}</div>
+          )}
+
+          {conversationPartner && conversationType === "direct" && (
+            <div className="text-center pb-4 mb-4 border-b border-base-200">
+              <div
+                className="avatar mb-2 cursor-pointer hover:opacity-80 transition-opacity"
+                onClick={() => handleUserClick(conversationPartner.id)}
+                title={`View ${
+                  conversationPartner.firstName || conversationPartner.username
+                } details`}
+              >
+                <div className="w-16 h-16 rounded-full mx-auto relative">
+                  {conversationPartner.avatarUrl ? (
+                    <img
+                      src={conversationPartner.avatarUrl}
+                      alt={conversationPartner.username}
+                      className="object-cover w-full h-full rounded-full"
+                      onError={(e) => {
+                        e.target.style.display = "none";
+                        const fallback =
+                          e.target.parentElement.querySelector(
+                            ".avatar-fallback",
+                          );
+                        if (fallback) fallback.style.display = "flex";
+                      }}
+                    />
+                  ) : null}
+                  <div
+                    className="avatar-fallback bg-primary text-primary-content flex items-center justify-center w-full h-full rounded-full absolute inset-0"
+                    style={{
+                      display: conversationPartner.avatarUrl ? "none" : "flex",
+                    }}
+                  >
+                    <span className="text-xl font-medium">
+                      {getUserInitials(conversationPartner)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <h3
+                className="text-lg font-medium leading-[120%] mb-[0.2em] cursor-pointer hover:text-primary transition-colors"
+                onClick={() => handleUserClick(conversationPartner.id)}
+                title={`View ${
+                  conversationPartner.firstName || conversationPartner.username
+                } details`}
+              >
+                {conversationPartner.firstName && conversationPartner.lastName
+                  ? `${conversationPartner.firstName} ${conversationPartner.lastName}`
+                  : conversationPartner.username}
+              </h3>
+            </div>
+          )}
+
+          {teamData && conversationType === "team" && (
+            <div className="text-center pb-4 mb-4 border-b border-base-200">
+              <div
+                className="avatar mb-2 cursor-pointer hover:opacity-80 transition-opacity"
+                onClick={handleTeamClick}
+                title={`View ${teamData.name} details`}
+              >
+                <div className="w-16 h-16 rounded-full mx-auto relative">
+                  {teamData.avatarUrl ? (
+                    <img
+                      src={teamData.avatarUrl}
+                      alt={teamData.name}
+                      className="object-cover w-full h-full rounded-full"
+                      onError={(e) => {
+                        e.target.style.display = "none";
+                        const fallback =
+                          e.target.parentElement.querySelector(
+                            ".avatar-fallback",
+                          );
+                        if (fallback) fallback.style.display = "flex";
+                      }}
+                    />
+                  ) : null}
+                  <div
+                    className="avatar-fallback bg-primary text-primary-content flex items-center justify-center w-full h-full rounded-full absolute inset-0"
+                    style={{ display: teamData.avatarUrl ? "none" : "flex" }}
+                  >
+                    <span className="text-xl font-medium">
+                      {getTeamInitials(teamData)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <h3
+                className="text-lg font-medium leading-[120%] mb-[0.2em] cursor-pointer hover:text-primary transition-colors"
+                onClick={handleTeamClick}
+                title={`View ${teamData.name} details`}
+              >
+                {teamData.name}
+              </h3>
+            </div>
+          )}
+
+          <div className="flex flex-col items-center justify-center h-full">
+            <p className="text-base-content/70">No messages yet</p>
+            <p className="text-sm text-base-content/50 mt-2">
+              Send a message to start the conversation
+            </p>
+          </div>
+        </div>
+
+        <TeamDetailsModal
+          isOpen={isTeamModalOpen}
+          teamId={conversationType === "team" ? teamData?.id : selectedTeamId}
+          initialTeamData={conversationType === "team" ? teamData : null}
+          onClose={handleTeamModalClose}
+        />
+
+        <UserDetailsModal
+          isOpen={isUserModalOpen}
+          userId={selectedUserId}
+          onClose={handleUserModalClose}
+        />
+      </>
     );
   }
 
   // Helper function to group consecutive messages by sender (max 3 per group)
-  const groupMessages = (messages) => {
-    if (!messages.length) return [];
+  const groupMessages = (messagesForDate) => {
+    if (!messagesForDate.length) return [];
 
     const groups = [];
     let currentGroup = {
-      senderId: messages[0].senderId,
-      messages: [messages[0]],
+      senderId: messagesForDate[0].senderId,
+      messages: [messagesForDate[0]],
       showSenderInfo: true,
     };
 
-    for (let i = 1; i < messages.length; i++) {
-      const message = messages[i];
+    for (let i = 1; i < messagesForDate.length; i++) {
+      const message = messagesForDate[i];
+
+      const parsedMessage = parseSystemMessage(message.content);
+      const prevParsedMessage = parseSystemMessage(
+        messagesForDate[i - 1].content,
+      );
 
       const shouldStartNewGroup =
         message.senderId !== currentGroup.senderId ||
-        currentGroup.messages.length >= 3;
+        currentGroup.messages.length >= 3 ||
+        parsedMessage !== null ||
+        prevParsedMessage !== null;
 
       if (shouldStartNewGroup) {
         groups.push(currentGroup);
@@ -152,326 +2080,636 @@ const MessageDisplay = ({
     return groups;
   };
 
-  // Group messages by date
-  const messagesByDate = messages.reduce((groups, message) => {
-    const date = new Date(message.createdAt);
-    const dateString = format(date, "yyyy-MM-dd");
-
-    if (!groups[dateString]) {
-      groups[dateString] = [];
-    }
-
-    groups[dateString].push(message);
-    return groups;
-  }, {});
-
-  const formatDateHeading = (dateString) => {
-    const date = new Date(dateString);
-
-    if (isToday(date)) {
-      return "Today";
-    }
-
-    if (isYesterday(date)) {
-      return "Yesterday";
-    }
-
-    return format(date, "EEEE, MMMM d, yyyy");
-  };
-
-  // Helper function to get sender information
-  const getSenderInfo = (senderId) => {
-    if (conversationType === "direct") {
-      return conversationPartner;
-    }
-
-    // For team chats, find the sender in team members
-    console.log(
-      `Looking for sender ID: ${senderId} (type: ${typeof senderId})`
-    );
-    console.log(
-      "Available team members:",
-      teamMembers.map((m) => ({
-        user_id: m.user_id || m.userId, // Handle both property names
-        type: typeof (m.user_id || m.userId),
-        username: m.username,
-        first_name: m.first_name || m.firstName,
-        avatar_url: m.avatar_url || m.avatarUrl,
-      }))
-    );
-
-    // Convert senderId to number if it's a string
-    const senderIdNum = parseInt(senderId, 10);
-
-    const member = teamMembers.find((m) => {
-      // Handle both userId and user_id property names
-      const memberId = parseInt(m.user_id || m.userId || m.id, 10);
-      return memberId === senderIdNum;
-    });
-
-    console.log(`Found member for sender ${senderId}:`, member);
-
-    if (member) {
-      const senderInfo = {
-        id: member.user_id || member.userId || member.id,
-        username: member.username,
-        firstName: member.first_name || member.firstName,
-        lastName: member.last_name || member.lastName,
-        avatarUrl: member.avatar_url || member.avatarUrl,
-      };
-      console.log("Returning sender info:", senderInfo);
-      return senderInfo;
-    }
-
-    // Fallback
-    console.log(`No member found for sender ${senderId}, using fallback`);
-    return {
-      id: senderId,
-      username: `User ${senderId}`,
-      firstName: null,
-      lastName: null,
-      avatarUrl: null,
-    };
-  };
-
-  // Helper function to get display name
-  const getDisplayName = (senderInfo) => {
-    if (senderInfo.firstName && senderInfo.lastName) {
-      return `${senderInfo.firstName} ${senderInfo.lastName}`;
-    }
-    if (senderInfo.firstName) {
-      return senderInfo.firstName;
-    }
-    return senderInfo.username || `User ${senderInfo.id}`;
-  };
-
-  // Helper function to render avatar
-  const renderAvatar = (senderInfo) => {
-    console.log("Rendering avatar for:", senderInfo);
-
-    return (
-      <div className="avatar mr-3 self-end">
-        <div className="w-8 h-8 rounded-full">
-          {senderInfo.avatarUrl ? (
-            <img
-              src={senderInfo.avatarUrl}
-              alt={senderInfo.username || "User"}
-              className="object-cover w-full h-full rounded-full"
-              onError={(e) => {
-                console.log(
-                  "Avatar image failed to load:",
-                  senderInfo.avatarUrl
-                );
-                e.target.style.display = "none";
-              }}
-            />
-          ) : (
-            <div className="bg-primary text-primary-content flex items-center justify-center w-full h-full rounded-full">
-              <span className="text-sm font-medium">
-                {getUserInitials(senderInfo)}
-              </span>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  };
-
   return (
-    <div className="space-y-6">
-      {/* Debug information
-      {conversationType === "team" && import.meta.env.DEV && (
-        <div className="bg-yellow-100 p-2 rounded text-xs">
-          <strong>Debug Info:</strong>
-          <br />
-          Team Members Count: {teamMembers.length}
-          <br />
-          Messages Count: {messages.length}
-          <br />
-          {teamMembers.length > 0 && (
-            <>
-              Sample Member: {teamMembers[0]?.username} (ID:{" "}
-              {teamMembers[0]?.user_id})
-              <br />
-            </>
-          )}
-          {messages.length > 0 && (
-            <>Sample Message Sender: {messages[0]?.senderId}</>
-          )}
-        </div>
-      )} */}
+    <>
+      <div className="space-y-6">
+        {nameResolveError && (
+          <div className="mb-2 text-sm text-warning">{nameResolveError}</div>
+        )}
 
-      {conversationPartner && conversationType === "direct" && (
-        <div className="text-center pb-4 mb-4 border-b border-base-200">
-          <div className="avatar mb-2">
-            <div className="w-16 h-16 rounded-full mx-auto">
-              {conversationPartner.avatarUrl ? (
-                <img
-                  src={conversationPartner.avatarUrl}
-                  alt={conversationPartner.username}
-                  className="object-cover"
-                />
-              ) : (
-                <div className="bg-primary text-primary-content flex items-center justify-center">
-                  <span className="text-xl">
-                    {conversationPartner.firstName?.charAt(0) ||
-                      conversationPartner.username?.charAt(0) ||
-                      "?"}
+        {/* Show conversation partner header for direct messages - CLICKABLE */}
+        {conversationPartner && conversationType === "direct" && (
+          <div className="text-center pb-4 mb-4 border-b border-base-200">
+            <div
+              className="avatar mb-2 cursor-pointer hover:opacity-80 transition-opacity"
+              onClick={() => handleUserClick(conversationPartner.id)}
+              title={`View ${
+                conversationPartner.firstName || conversationPartner.username
+              } details`}
+            >
+              <div className="w-16 h-16 rounded-full mx-auto relative">
+                {conversationPartner.avatarUrl ? (
+                  <img
+                    src={conversationPartner.avatarUrl}
+                    alt={conversationPartner.username}
+                    className="object-cover w-full h-full rounded-full"
+                    onError={(e) => {
+                      e.target.style.display = "none";
+                      const fallback =
+                        e.target.parentElement.querySelector(
+                          ".avatar-fallback",
+                        );
+                      if (fallback) fallback.style.display = "flex";
+                    }}
+                  />
+                ) : null}
+                <div
+                  className="avatar-fallback bg-primary text-primary-content flex items-center justify-center w-full h-full rounded-full absolute inset-0"
+                  style={{
+                    display: conversationPartner.avatarUrl ? "none" : "flex",
+                  }}
+                >
+                  <span className="text-xl font-medium">
+                    {getUserInitials(conversationPartner)}
                   </span>
                 </div>
-              )}
+              </div>
             </div>
+            <h3
+              className="text-lg font-medium leading-[120%] mb-[0.2em] cursor-pointer hover:text-primary transition-colors"
+              onClick={() => handleUserClick(conversationPartner.id)}
+              title={`View ${
+                conversationPartner.firstName || conversationPartner.username
+              } details`}
+            >
+              {conversationPartner.firstName && conversationPartner.lastName
+                ? `${conversationPartner.firstName} ${conversationPartner.lastName}`
+                : conversationPartner.username}
+            </h3>
           </div>
-          <h3 className="font-medium">
-            {conversationPartner.firstName && conversationPartner.lastName
-              ? `${conversationPartner.firstName} ${conversationPartner.lastName}`
-              : conversationPartner.username}
-          </h3>
-        </div>
-      )}
+        )}
 
-      {teamData && conversationType === "team" && (
-        <div className="text-center pb-4 mb-4 border-b border-base-200">
-          <div className="avatar mb-2">
-            <div className="w-16 h-16 rounded-full mx-auto">
-              {teamData.avatarUrl ? (
-                <img
-                  src={teamData.avatarUrl}
-                  alt={teamData.name}
-                  className="object-cover"
-                />
-              ) : (
-                <div className="bg-primary text-primary-content flex items-center justify-center">
-                  <span className="text-xl">
-                    {teamData.name?.charAt(0) || "T"}
+        {/* Show team header for team conversations - CLICKABLE */}
+        {teamData && conversationType === "team" && (
+          <div className="text-center pb-4 mb-4 border-b border-base-200">
+            <div
+              className="avatar mb-2 cursor-pointer hover:opacity-80 transition-opacity"
+              onClick={handleTeamClick}
+              title={`View ${teamData.name} details`}
+            >
+              <div className="w-16 h-16 rounded-full mx-auto relative">
+                {teamData.avatarUrl ? (
+                  <img
+                    src={teamData.avatarUrl}
+                    alt={teamData.name}
+                    className="object-cover w-full h-full rounded-full"
+                    onError={(e) => {
+                      e.target.style.display = "none";
+                      const fallback =
+                        e.target.parentElement.querySelector(
+                          ".avatar-fallback",
+                        );
+                      if (fallback) fallback.style.display = "flex";
+                    }}
+                  />
+                ) : null}
+                <div
+                  className="avatar-fallback bg-primary text-primary-content flex items-center justify-center w-full h-full rounded-full absolute inset-0"
+                  style={{ display: teamData.avatarUrl ? "none" : "flex" }}
+                >
+                  <span className="text-xl font-medium">
+                    {getTeamInitials(teamData)}
                   </span>
                 </div>
-              )}
+              </div>
             </div>
+            <h3
+              className="text-lg font-medium leading-[120%] mb-[0.2em] cursor-pointer hover:text-primary transition-colors"
+              onClick={handleTeamClick}
+              title={`View ${teamData.name} details`}
+            >
+              {teamData.name}
+            </h3>
           </div>
-          <h3 className="font-medium leading-[120%] mb-[0.2em]">
-            {teamData.name}
-          </h3>
-          <p className="text-sm text-base-content/70">Team Chat</p>
-        </div>
-      )}
+        )}
 
-      {/* Group messages by date */}
-      {Object.entries(messagesByDate).map(([dateString, messagesForDate]) => (
-        <div key={dateString} className="space-y-4">
-          <div className="text-center">
-            <div className="badge badge-neutral badge-sm">
-              {formatDateHeading(dateString)}
+        {/* Group messages by date */}
+        {Object.entries(messagesByDate).map(([dateString, messagesForDate]) => (
+          <div key={dateString} className="space-y-4">
+            <div className="text-center">
+              <div className="badge badge-sm bg-base-300 text-base-content border-none">
+                {formatDateHeading(dateString)}
+              </div>
             </div>
-          </div>
 
-          {/* Group consecutive messages by sender */}
-          {groupMessages(messagesForDate).map((messageGroup, groupIndex) => {
-            const isCurrentUser = messageGroup.senderId === currentUserId;
-            const senderInfo = getSenderInfo(messageGroup.senderId);
-            const displayName = getDisplayName(senderInfo);
+            {/* Group consecutive messages by sender */}
+            {groupMessages(messagesForDate).map((messageGroup, groupIndex) => {
+              const isCurrentUser = messageGroup.senderId === currentUserId;
+              const senderInfo = getSenderInfo(
+                messageGroup.senderId,
+                messageGroup.messages[0],
+              );
+              const displayName = getDisplayName(senderInfo);
 
-            return (
-              <div
-                key={`${dateString}-group-${groupIndex}`}
-                className={`flex ${
-                  isCurrentUser ? "justify-end" : "justify-start"
-                }`}
-              >
-                {/* Avatar for team chats (left side for others) */}
-                {conversationType === "team" &&
-                  !isCurrentUser &&
-                  messageGroup.showSenderInfo &&
-                  renderAvatar(senderInfo)}
+              // System message rendering
+              if (messageGroup.messages.length === 1) {
+                const message = messageGroup.messages[0];
+                const parsedMessage = parseSystemMessage(message.content);
 
-                <div className="flex flex-col max-w-[70%]">
-                  {/* Show sender name for team chats and non-current users */}
-                  {conversationType === "team" &&
-                    !isCurrentUser &&
-                    messageGroup.showSenderInfo && (
+                if (parsedMessage) {
+                  const isHighlighted = highlightMessageIds.includes(
+                    message.id,
+                  );
+                  const isFirstHighlighted =
+                    isHighlighted && message.id === highlightMessageIds[0];
+
+                  const wrapperClass = isHighlighted
+                    ? "message-highlight rounded-xl p-2"
+                    : "";
+
+                  if (parsedMessage.type === "team_join") {
+                    return (
                       <div
-                        className="text-xs font-medium mb-1 ml-3"
-                        style={{ color: "#036b0c" }}
+                        key={`${dateString}-group-${groupIndex}`}
+                        ref={isFirstHighlighted ? highlightedMessageRef : null}
+                        className={wrapperClass}
                       >
-                        {displayName}
-                      </div>
-                    )}
-
-                  {/* Messages in this group */}
-                  <div className="space-y-1">
-                    {messageGroup.messages.map((message, messageIndex) => (
-                      <div
-                        key={`${message.id}-${dateString}-${groupIndex}-${messageIndex}`}
-                        className={`
-                          rounded-lg p-3 
-                          ${
-                            isCurrentUser
-                              ? "bg-primary text-primary-content rounded-br-none ml-auto"
-                              : "bg-base-200 rounded-bl-none"
-                          }
-                          ${
-                            messageIndex === 0
-                              ? ""
-                              : isCurrentUser
-                              ? "rounded-tr-lg"
-                              : "rounded-tl-lg"
-                          }
-                        `}
-                      >
-                        <p>{message.content}</p>
-                        {/* Only show timestamp on the last message of the group */}
-                        {messageIndex === messageGroup.messages.length - 1 && (
-                          <div
-                            className={`
-                              flex justify-between items-center text-xs mt-1 
-                              ${
-                                isCurrentUser
-                                  ? "text-primary-content/80"
-                                  : "text-base-content/50"
-                              }
-                            `}
-                          >
-                            <span>
-                              {format(new Date(message.createdAt), "p")}
-                            </span>
-                            {isCurrentUser && message.readAt && (
-                              <span className="ml-2">✓</span>
-                            )}
-                          </div>
+                        {renderJoinMessage(
+                          message,
+                          parsedMessage,
+                          senderInfo,
+                          isCurrentUser,
+                          messageGroup.senderId,
                         )}
                       </div>
-                    ))}
+                    );
+                  } else if (parsedMessage.type === "invitation_response") {
+                    return (
+                      <div
+                        key={`${dateString}-group-${groupIndex}`}
+                        ref={isFirstHighlighted ? highlightedMessageRef : null}
+                        className={wrapperClass}
+                      >
+                        {renderInvitationResponseMessage(
+                          message,
+                          parsedMessage,
+                          senderInfo,
+                          isCurrentUser,
+                          messageGroup.senderId,
+                        )}
+                      </div>
+                    );
+                  } else if (parsedMessage.type === "application_approved") {
+                    return (
+                      <div
+                        key={`${dateString}-group-${groupIndex}`}
+                        ref={isFirstHighlighted ? highlightedMessageRef : null}
+                        className={wrapperClass}
+                      >
+                        {renderApplicationApprovedMessage(
+                          message,
+                          parsedMessage,
+                          senderInfo,
+                          isCurrentUser,
+                          messageGroup.senderId,
+                        )}
+                      </div>
+                    );
+                  } else if (parsedMessage.type === "application_response") {
+                    return (
+                      <div
+                        key={`${dateString}-group-${groupIndex}`}
+                        ref={isFirstHighlighted ? highlightedMessageRef : null}
+                        className={wrapperClass}
+                      >
+                        {renderApplicationResponseMessage(
+                          message,
+                          parsedMessage,
+                          senderInfo,
+                          isCurrentUser,
+                          messageGroup.senderId,
+                        )}
+                      </div>
+                    );
+                  } else if (parsedMessage.type === "team_leave") {
+                    return (
+                      <div
+                        key={`${dateString}-group-${groupIndex}`}
+                        ref={isFirstHighlighted ? highlightedMessageRef : null}
+                        className={wrapperClass}
+                      >
+                        {renderLeaveMessage(
+                          message,
+                          parsedMessage,
+                          isCurrentUser,
+                        )}
+                      </div>
+                    );
+                  } else if (parsedMessage.type === "member_removed_public") {
+                    return (
+                      <div
+                        key={`${dateString}-group-${groupIndex}`}
+                        ref={isFirstHighlighted ? highlightedMessageRef : null}
+                        className={wrapperClass}
+                      >
+                        {renderMemberRemovedPublicMessage(
+                          message,
+                          parsedMessage,
+                          isCurrentUser,
+                        )}
+                      </div>
+                    );
+                  } else if (parsedMessage.type === "application_declined") {
+                    return (
+                      <div
+                        key={`${dateString}-group-${groupIndex}`}
+                        ref={isFirstHighlighted ? highlightedMessageRef : null}
+                        className={wrapperClass}
+                      >
+                        {renderApplicationDeclinedMessage(
+                          message,
+                          parsedMessage,
+                          isCurrentUser,
+                        )}
+                      </div>
+                    );
+                  } else if (parsedMessage.type === "application_approved_dm") {
+                    return (
+                      <div
+                        key={`${dateString}-group-${groupIndex}`}
+                        ref={isFirstHighlighted ? highlightedMessageRef : null}
+                        className={wrapperClass}
+                      >
+                        {renderApplicationApprovedDmMessage(
+                          message,
+                          parsedMessage,
+                          isCurrentUser,
+                        )}
+                      </div>
+                    );
+                  } else if (parsedMessage.type === "invitation_declined") {
+                    return (
+                      <div
+                        key={`${dateString}-group-${groupIndex}`}
+                        ref={isFirstHighlighted ? highlightedMessageRef : null}
+                        className={wrapperClass}
+                      >
+                        {renderInvitationDeclinedMessage(
+                          message,
+                          parsedMessage,
+                          isCurrentUser,
+                        )}
+                      </div>
+                    );
+                  } else if (parsedMessage.type === "invitation_cancelled") {
+                    return (
+                      <div
+                        key={`${dateString}-group-${groupIndex}`}
+                        ref={isFirstHighlighted ? highlightedMessageRef : null}
+                        className={wrapperClass}
+                      >
+                        {renderInvitationCancelledMessage(
+                          message,
+                          parsedMessage,
+                          isCurrentUser,
+                        )}
+                      </div>
+                    );
+                  } else if (parsedMessage.type === "application_cancelled") {
+                    return (
+                      <div
+                        key={`${dateString}-group-${groupIndex}`}
+                        ref={isFirstHighlighted ? highlightedMessageRef : null}
+                        className={wrapperClass}
+                      >
+                        {renderApplicationCancelledMessage(
+                          message,
+                          parsedMessage,
+                          isCurrentUser,
+                        )}
+                      </div>
+                    );
+                  } else if (parsedMessage.type === "member_removed") {
+                    return (
+                      <div
+                        key={`${dateString}-group-${groupIndex}`}
+                        ref={isFirstHighlighted ? highlightedMessageRef : null}
+                        className={wrapperClass}
+                      >
+                        {renderMemberRemovedMessage(
+                          message,
+                          parsedMessage,
+                          isCurrentUser,
+                        )}
+                      </div>
+                    );
+                  } else if (parsedMessage.type === "role_changed") {
+                    return (
+                      <div
+                        key={`${dateString}-group-${groupIndex}`}
+                        ref={isFirstHighlighted ? highlightedMessageRef : null}
+                        className={wrapperClass}
+                      >
+                        {renderRoleChangedMessage(
+                          message,
+                          parsedMessage,
+                          isCurrentUser,
+                        )}
+                      </div>
+                    );
+                  } else if (parsedMessage.type === "ownership_transferred") {
+                    return (
+                      <div
+                        key={`${dateString}-group-${groupIndex}`}
+                        ref={isFirstHighlighted ? highlightedMessageRef : null}
+                        className={wrapperClass}
+                      >
+                        {renderOwnershipTransferredMessage(
+                          message,
+                          parsedMessage,
+                          isCurrentUser,
+                        )}
+                      </div>
+                    );
+                  } else if (parsedMessage.type === "ownership_team") {
+                    return (
+                      <div
+                        key={`${dateString}-group-${groupIndex}`}
+                        ref={isFirstHighlighted ? highlightedMessageRef : null}
+                        className={wrapperClass}
+                      >
+                        {renderOwnershipTeamMessage(message, parsedMessage)}
+                      </div>
+                    );
+                  } else if (parsedMessage.type === "team_deleted") {
+                    // not rendered here (fixed banner elsewhere)
+                    return null;
+                  }
+                }
+              }
+
+              // Regular messages
+              return (
+                <div
+                  key={`${dateString}-group-${groupIndex}`}
+                  className={`flex ${isCurrentUser ? "justify-end" : "justify-start"}`}
+                >
+                  {conversationType === "team" &&
+                    !isCurrentUser &&
+                    messageGroup.showSenderInfo &&
+                    renderAvatar(senderInfo, true, messageGroup.senderId)}
+
+                  <div className="flex flex-col max-w-[70%]">
+                    {conversationType === "team" &&
+                      !isCurrentUser &&
+                      messageGroup.showSenderInfo && (
+                        <div
+                          className={`text-xs font-medium mb-1 ml-3 cursor-pointer hover:text-primary transition-colors ${
+                            senderInfo?.isCurrentMember === false
+                              ? "opacity-70"
+                              : ""
+                          }`}
+                          style={{
+                            color:
+                              senderInfo?.isCurrentMember === false
+                                ? "#6b7280"
+                                : "#036b0c",
+                          }}
+                          onClick={() =>
+                            handleUserClick(messageGroup.senderId, displayName)
+                          }
+                          title={`View ${getDisplayName(senderInfo, false)} details`}
+                        >
+                          {displayName}
+                        </div>
+                      )}
+
+                    <div className="space-y-1">
+                      {messageGroup.messages.map((message, messageIndex) => {
+                        const isHighlighted = highlightMessageIds.includes(
+                          message.id,
+                        );
+                        const isFirstHighlighted =
+                          isHighlighted &&
+                          message.id === highlightMessageIds[0];
+
+                        const isDeleted = !!(
+                          message.deletedAt || message.deleted_at
+                        );
+
+                        return (
+                          <div
+                            key={`${message.id}-${dateString}-${groupIndex}-${messageIndex}`}
+                            ref={
+                              isFirstHighlighted ? highlightedMessageRef : null
+                            }
+                            className={`
+                      relative group rounded-lg p-3
+                      ${
+                        isCurrentUser
+                          ? "bg-green-100 text-base-content rounded-br-none ml-auto"
+                          : "bg-base-200 rounded-bl-none"
+                      }
+                      ${
+                        messageIndex === 0
+                          ? ""
+                          : isCurrentUser
+                            ? "rounded-tr-lg"
+                            : "rounded-tl-lg"
+                      }
+                      ${isHighlighted ? "message-highlight" : ""}
+                    `}
+                          >
+                            {/* DELETE BUTTON for messages */}
+                            {isCurrentUser &&
+                              !isDeleted &&
+                              !String(message.id).startsWith("temp-") &&
+                              typeof onDeleteMessage === "function" && (
+                                <button
+                                  type="button"
+                                  onClick={() => onDeleteMessage(message.id)}
+                                  className="
+          absolute -top-2 -right-2
+          opacity-0 group-hover:opacity-100 transition-opacity
+          bg-base-100 border border-base-300 rounded-full p-1 shadow-sm
+          hover:shadow
+        "
+                                  title="Delete message"
+                                >
+                                  <Trash2
+                                    size={14}
+                                    className="text-base-content/50 hover:text-error"
+                                  />
+                                </button>
+                              )}
+
+                            {/* Only render media/text when NOT deleted */}
+                            {!isDeleted && (
+                              <>
+                                {/* Image if present - handle both camelCase and snake_case */}
+                                {(() => {
+                                  const imageUrl =
+                                    message.imageUrl || message.image_url;
+                                  const imageDeletedAt =
+                                    message.fileDeletedAt ||
+                                    message.file_deleted_at;
+                                  const imageExpirationStatus =
+                                    getFileExpirationStatus(message);
+
+                                  // If image was deleted/expired, show placeholder
+                                  if (
+                                    imageUrl &&
+                                    (imageExpirationStatus.status ===
+                                      "expired" ||
+                                      imageDeletedAt)
+                                  ) {
+                                    return (
+                                      <div
+                                        className={
+                                          message.content ? "mb-2" : ""
+                                        }
+                                      >
+                                        <div className="flex items-center gap-3 p-3 bg-base-200/50 rounded-lg border border-base-300 max-w-xs">
+                                          <AlertTriangle
+                                            size={24}
+                                            className="text-warning flex-shrink-0"
+                                          />
+                                          <div className="flex-1 min-w-0">
+                                            <p className="text-sm font-medium text-base-content/60">
+                                              Image or file no longer available
+                                            </p>
+                                            <p className="text-xs text-base-content/40">
+                                              This data has expired.
+                                            </p>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    );
+                                  }
+
+                                  // Show image with expiration warning if expiring soon
+                                  if (imageUrl) {
+                                    return (
+                                      <div
+                                        className={
+                                          message.content ? "mb-2" : ""
+                                        }
+                                      >
+                                        {imageExpirationStatus.status ===
+                                          "expiring-soon" && (
+                                          <div className="flex items-center gap-2 p-2 mb-2 bg-warning/10 border border-warning/30 rounded-lg max-w-xs">
+                                            <Clock
+                                              size={16}
+                                              className="text-warning flex-shrink-0"
+                                            />
+                                            <p className="text-xs text-warning">
+                                              {imageExpirationStatus.message}
+                                            </p>
+                                          </div>
+                                        )}
+                                        <img
+                                          src={imageUrl}
+                                          alt="Shared image"
+                                          className="rounded-lg max-w-full max-h-64 object-contain cursor-pointer hover:opacity-90 transition-opacity"
+                                          onClick={() =>
+                                            window.open(imageUrl, "_blank")
+                                          }
+                                          loading="lazy"
+                                        />
+                                        {/* Grey expiration info for images NOT expiring soon (>7 days) */}
+                                        {imageExpirationStatus.status ===
+                                          "active" &&
+                                          imageExpirationStatus.daysLeft !==
+                                            null && (
+                                            <div className="flex items-center gap-2 mt-1 ml-1">
+                                              <Clock
+                                                size={12}
+                                                className="text-base-content/40 flex-shrink-0"
+                                              />
+                                              <p className="text-xs text-base-content/40">
+                                                {imageExpirationStatus.message}
+                                              </p>
+                                            </div>
+                                          )}
+                                      </div>
+                                    );
+                                  }
+
+                                  return null;
+                                })()}
+
+                                {/* File attachment if present */}
+                                {renderFileAttachment(message)}
+
+                                {/* Text content */}
+                                {message.content && (
+                                  <p>
+                                    <MessageText content={message.content} />
+                                  </p>
+                                )}
+                              </>
+                            )}
+
+                            {/* Deleted placeholder (ONLY when deleted) */}
+                            {isDeleted && (
+                              <p className="text-sm text-base-content/50 italic">
+                                This message was deleted.
+                              </p>
+                            )}
+
+                            {messageIndex ===
+                              messageGroup.messages.length - 1 && (
+                              <div
+                                className={`
+                          flex justify-between items-center text-xs mt-1
+                          ${isCurrentUser ? "text-base-content/60" : "text-base-content/50"}
+                        `}
+                              >
+                                <span>
+                                  {format(new Date(message.createdAt), "p")}
+                                </span>
+                                {isCurrentUser && message.readAt && (
+                                  <span className="ml-2">✓</span>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
-      ))}
+              );
+            })}
+          </div>
+        ))}
 
-      {/* Typing animation */}
-      {typingUsers.length > 0 && (
-        <div className="flex justify-start">
-          <div className="bg-base-200 rounded-lg p-3 rounded-bl-none">
-            <div className="flex items-center">
-              <div className="typing-indicator">
-                <span></span>
-                <span></span>
-                <span></span>
+        {/* Typing animation */}
+        {typingUsers.length > 0 && (
+          <div className="flex justify-start">
+            <div className="bg-base-200 rounded-lg p-3 rounded-bl-none">
+              <div className="flex items-center">
+                <div className="typing-indicator">
+                  <span></span>
+                  <span></span>
+                  <span></span>
+                </div>
+                <span className="text-sm ml-2">
+                  {typingUsers.length === 1
+                    ? `${typingUsers[0]} is typing...`
+                    : `${typingUsers.length} people are typing...`}
+                </span>
               </div>
-              <span className="text-sm ml-2">
-                {typingUsers.length === 1
-                  ? `${typingUsers[0]} is typing...`
-                  : `${typingUsers.length} people are typing...`}
-              </span>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Scroll anchor */}
-      <div ref={messagesEndRef} />
-    </div>
+        <div ref={messagesEndRef} />
+      </div>
+
+      <TeamDetailsModal
+        isOpen={isTeamModalOpen}
+        teamId={conversationType === "team" ? teamData?.id : selectedTeamId}
+        initialTeamData={conversationType === "team" ? teamData : null}
+        onClose={handleTeamModalClose}
+      />
+
+      <UserDetailsModal
+        isOpen={isUserModalOpen}
+        userId={selectedUserId}
+        onClose={handleUserModalClose}
+      />
+    </>
   );
 };
 

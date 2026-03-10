@@ -2,6 +2,38 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer components {
+  /* --- Lomir: normalize DaisyUI divider margins --- */
+  .divider {
+    margin-top: 0;
+    margin-bottom: 0;
+  }
+
+  /* --- Lomir: form section dividers (used for section headers) --- */
+  .lomir-form-divider {
+    margin-top: 3rem; /* = mt-12 */
+    margin-bottom: 0; /* keep tight to content below */
+  }
+
+  /* --- Lomir: divider before action buttons --- */
+  .lomir-form-actions-divider {
+    margin-top: 4rem; /* generous separation from fields */
+    margin-bottom: 1.5rem;
+  }
+}
+
+@layer components {
+  .lomir-section-divider::before,
+  .lomir-section-divider::after {
+    /* Use subtle green instead of full solid */
+    background-color: rgba(3, 107, 12, 0.25) !important;
+    border-color: rgba(3, 107, 12, 0.25) !important;
+
+    /* Remove forced opacity */
+    opacity: 1;
+  }
+}
+
 :root {
   /* Primary Brand Colors */
   --color-primary: #009213;
@@ -44,8 +76,8 @@
 
   /* UI Element Specific */
   --shadow-soft: 0 2px 15px rgba(0, 0, 0, 0.04);
-  --shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
-    0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-card:
+    0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
   --blur-amount: 8px;
 
   /* Animation Speeds */
@@ -75,7 +107,6 @@ body,
 }
 
 /* Custom layout styles */
-
 .card-title-centered > div > div > h3 {
   text-align: center;
 }
@@ -233,7 +264,6 @@ body {
 }
 
 /* Switches and Toggles */
-
 .checkbox {
   --chkbg: var(--color-primary);
   --chkfg: var(--color-primary-content);
@@ -317,6 +347,11 @@ body {
   border: none;
 }
 
+.badge-role-vacant {
+  background-color: #f59e0b;
+  color: white;
+}
+
 /* Neon Effect */
 .neon {
   color: var(--color-primary);
@@ -331,7 +366,9 @@ body {
   background-color: transparent;
   color: var(--color-primary-focus);
   font-weight: 600;
-  box-shadow: 0 0 1px var(--color-primary), 0 0 2px var(--color-primary-focus),
+  box-shadow:
+    0 0 1px var(--color-primary),
+    0 0 2px var(--color-primary-focus),
     0 0 1px var(--color-primary-focus);
 }
 
@@ -409,28 +446,67 @@ body {
   animation: slide-in 0.3s ease-out forwards;
 }
 
-/* Custom Tooltip Styles - Lomir themed */
-.tooltip.tooltip-lomir::before {
-  background-color: white !important;
-  color: var(--color-primary-focus) !important;
-  font-weight: 450 !important;
-  border-radius: 0.5rem !important;
-  padding: 0.5rem 0.75rem !important;
-  font-size: 0.775rem !important;
-  box-shadow: 0 2px 8px rgba(4, 80, 20, 0.15) !important;
+/* Highlight animation for unread messages - fading green outline */
+@keyframes messageHighlightFade {
+  0% {
+    box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.6);
+    background-color: rgba(34, 197, 94, 0.15);
+  }
+  50% {
+    box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.4);
+    background-color: rgba(34, 197, 94, 0.08);
+  }
+  100% {
+    box-shadow: none;
+    background-color: transparent;
+  }
 }
 
-/* Arrow styling - override all border colors explicitly */
-.tooltip.tooltip-lomir::after {
-  background-color: white !important;
-  border-top-color: transparent !important;
-  border-right-color: transparent !important;
-  border-bottom-color: var(--color-role-member-text) !important;
-  border-left-color: transparent !important;
+.message-highlight {
+  animation: messageHighlightFade 3s ease-out forwards;
+  position: relative;
+}
+
+/* Ensure the highlight doesn't affect the original background color */
+.message-highlight.bg-green-100 {
+  animation: messageHighlightFadeSent 3s ease-out forwards;
+}
+
+@keyframes messageHighlightFadeSent {
+  0% {
+    box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.6);
+  }
+  50% {
+    box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.3);
+  }
+  100% {
+    box-shadow: none;
+  }
+}
+
+/* For received messages (bg-base-200) */
+.message-highlight.bg-base-200 {
+  animation: messageHighlightFadeReceived 3s ease-out forwards;
+}
+
+@keyframes messageHighlightFadeReceived {
+  0% {
+    box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.6);
+    background-color: rgba(34, 197, 94, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.3);
+    background-color: rgba(34, 197, 94, 0.1);
+  }
+  100% {
+    box-shadow: none;
+    background-color: rgb(
+      var(--b2, 229 231 235) / 1
+    ); /* Returns to bg-base-200 */
+  }
 }
 
 /* Button Success Outline Style */
-
 .btn.btn-success-outline.btn-outline {
   background-color: #f0fdf4 !important; /* green-50 */
   color: var(--color-primary) !important;
@@ -461,6 +537,175 @@ body {
   color: var(--color-error) !important; /* same darker red/pink #df385b */
   border-color: var(--color-error) !important;
   background-image: none !important;
-  box-shadow: 0 0.5px 0 0.5px oklch(100% 0 0 / calc(var(--depth) * 6%)) inset,
+  box-shadow:
+    0 0.5px 0 0.5px oklch(100% 0 0 / calc(var(--depth) * 6%)) inset,
     0 1px 2px 0 rgba(223, 56, 91, 0.4) !important; /* #df385b with opacity */
+}
+
+/* ===== Chat Event Banners (centralized styling) ===== */
+.event-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  padding: 0.75rem 1rem;
+  border-radius: 1rem;
+  max-width: 28rem;
+  text-align: center;
+}
+
+/* Inline icons inside event messages (baseline aligned, fixed sizing) */
+.event-inline-icon {
+  display: inline-block;
+  vertical-align: -0.15em;
+  flex-shrink: 0;
+}
+
+/* Event message typography */
+.event-message-text {
+  line-height: 1.5;
+  display: inline;
+}
+
+/* Event Banner Color Variants */
+.event-banner--neutral {
+  background-color: rgba(107, 114, 128, 0.1);
+  color: #6b7280;
+}
+
+.event-banner--success {
+  background-color: rgba(34, 197, 94, 0.1);
+  color: #16a34a;
+}
+
+.event-banner--owner {
+  background-color: rgba(232, 106, 134, 0.15);
+  color: #e86a86;
+}
+
+.event-banner--admin {
+  background-color: rgba(154, 142, 240, 0.15);
+  color: #9a8ef0;
+}
+
+.event-banner--member {
+  background-color: rgba(51, 167, 66, 0.15);
+  color: #33a742;
+}
+
+.event-banner--info {
+  background-color: rgba(59, 130, 246, 0.1);
+  color: #2563eb;
+}
+
+/* ===== Lomir Tooltip (DaisyUI v5): bubble + tail ===== */
+
+.tooltip.tooltip-lomir {
+  --tt-bg: #ffffff;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  isolation: isolate; /* makes z-index predictable */
+  overflow: visible !important; /* don't clip the tail */
+}
+
+/* Bubble (data-tip / ::before) */
+.tooltip.tooltip-lomir[data-tip]::before {
+  background-color: var(--tt-bg) !important;
+  color: var(--color-primary-focus) !important;
+  font-weight: 450 !important;
+  border-radius: 0.5rem !important;
+  padding: 0.5rem 0.75rem !important;
+  font-size: 0.775rem !important;
+  box-shadow: 0 2px 8px rgba(4, 80, 20, 0.15) !important;
+  pointer-events: none;
+
+  /* stacking */
+  z-index: 40 !important;
+}
+
+/* Tail (::after) — force a WHITE mask so it can't "black-out" */
+.tooltip.tooltip-lomir::after {
+  background-color: var(--tt-bg) !important;
+
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg width='10' height='4' viewBox='0 0 8 4' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0.500009 1C3.5 1 3.00001 4 5.00001 4C7 4 6.5 1 9.5 1C10 1 10 0.499897 10 0H0C-1.99338e-08 0.5 0 1 0.500009 1Z' fill='white'/%3E%3C/svg%3E") !important;
+  mask-image: url("data:image/svg+xml,%3Csvg width='10' height='4' viewBox='0 0 8 4' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0.500009 1C3.5 1 3.00001 4 5.00001 4C7 4 6.5 1 9.5 1C10 1 10 0.499897 10 0H0C-1.99338e-08 0.5 0 1 0.500009 1Z' fill='white'/%3E%3C/svg%3E") !important;
+
+  -webkit-mask-repeat: no-repeat !important;
+  mask-repeat: no-repeat !important;
+
+  filter: drop-shadow(0 2px 6px rgba(4, 80, 20, 0.12)) !important;
+  pointer-events: none;
+
+  /* stacking: tail above bubble so bubble shadow never covers it */
+  z-index: 41 !important;
+}
+
+/* Ensure bubble + tail show when tooltip is shown (hover/focus) */
+.tooltip.tooltip-lomir:hover[data-tip]::before,
+.tooltip.tooltip-lomir:focus[data-tip]::before,
+.tooltip.tooltip-lomir:focus-within[data-tip]::before,
+.tooltip.tooltip-lomir:hover::after,
+.tooltip.tooltip-lomir:focus::after,
+.tooltip.tooltip-lomir:focus-within::after {
+  opacity: 1 !important;
+}
+
+/* Optional: if using <span class="tooltip"><span class="tooltip-content">...</span></span> */
+.tooltip.tooltip-lomir > .tooltip-content {
+  background-color: var(--tt-bg) !important;
+  color: var(--color-primary-focus) !important;
+  font-weight: 450 !important;
+  border-radius: 0.5rem !important;
+  padding: 0.5rem 0.75rem !important;
+  font-size: 0.775rem !important;
+  box-shadow: 0 2px 8px rgba(4, 80, 20, 0.15) !important;
+  pointer-events: none;
+  z-index: 40 !important;
+}
+
+.tooltip.tooltip-lomir:hover > .tooltip-content,
+.tooltip.tooltip-lomir:focus-within > .tooltip-content {
+  opacity: 1 !important;
+}
+
+/* Lomir: make daisyUI form controls fill their container */
+.input,
+.select,
+.textarea {
+  width: 100% !important;
+}
+
+@layer components {
+  .form-helper-text {
+    font-size: 0.75rem; /* text-xs */
+    line-height: 1rem;
+    color: hsl(var(--bc)); /* base-content */
+    opacity: 0.6; /* same muted tone */
+    margin-top: 0.2rem;
+    display: block;
+  }
+}
+
+/* Badge highlight animation for notification click-through */
+@keyframes badge-highlight {
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 currentColor;
+  }
+  25% {
+    transform: scale(1.08);
+  }
+  50% {
+    transform: scale(1);
+  }
+  75% {
+    transform: scale(1.05);
+  }
+}
+
+.animate-badge-highlight {
+  animation: badge-highlight 0.8s ease-in-out 2;
 }

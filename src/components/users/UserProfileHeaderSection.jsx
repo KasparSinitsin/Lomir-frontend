@@ -1,6 +1,7 @@
 import React, { useState } from "react";
-import { Eye, EyeClosed } from "lucide-react";
-import { getUserInitials } from '../../utils/userHelpers';
+import { Eye, EyeClosed, Calendar } from "lucide-react";
+import { getUserInitials } from "../../utils/userHelpers";
+import { format } from "date-fns";
 
 /**
  * UserProfileHeaderSection Component
@@ -12,6 +13,7 @@ const UserProfileHeaderSection = ({
   user,
   currentUser = null,
   isAuthenticated = false,
+  memberSince = null,
   className = "",
 }) => {
   const [imageError, setImageError] = useState(false);
@@ -51,7 +53,19 @@ const UserProfileHeaderSection = ({
     return false;
   };
 
-
+  // Format member since date
+  const getMemberSinceDate = () => {
+    if (!memberSince) return null;
+    try {
+      return {
+        short: format(new Date(memberSince), "MMM yyyy"),
+        full: format(new Date(memberSince), "MMMM yyyy"),
+      };
+    } catch (error) {
+      console.error("Error formatting member since date:", error);
+      return null;
+    }
+  };
 
   // Get full display name
   const getDisplayName = () => {
@@ -109,6 +123,17 @@ const UserProfileHeaderSection = ({
           )}
         </div>
       </div>
+
+      {/* Member Since - top right */}
+      {getMemberSinceDate() && (
+        <div
+          className="flex items-center text-xs text-base-content/60 flex-shrink-0 tooltip tooltip-bottom tooltip-lomir cursor-help"
+          data-tip={`Joined Lomir in ${getMemberSinceDate().full}`}
+        >
+          <Calendar size={12} className="mr-1" />
+          <span>{getMemberSinceDate().short}</span>
+        </div>
+      )}
     </div>
   );
 };

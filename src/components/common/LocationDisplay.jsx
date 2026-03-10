@@ -1,77 +1,69 @@
 import React from "react";
 import { MapPin } from "lucide-react";
-import { useLocation } from "../../hooks/useLocation";
+import { normalizeLocationData, formatLocation } from "../../utils/locationUtils";
 
+/**
+ * LocationDisplay Component
+ * Simplified inline location display without geocoding
+ * 
+ * Since we now store city in the database, we don't need to geocode on the frontend.
+ * This component just formats and displays the location data passed to it.
+ * 
+ * @param {Object} props
+ * @param {string} props.postalCode - Postal/ZIP code
+ * @param {string} props.city - City name
+ * @param {string} props.state - State/region
+ * @param {string} props.country - Country code or name
+ * @param {boolean} props.showIcon - Show map pin icon (default: true)
+ * @param {string} props.className - Additional CSS classes
+ * @param {number} props.iconSize - Icon size in pixels (default: 16)
+ * @param {string} props.displayType - "short" | "full" | "city-only" (default: "short")
+ * @param {boolean} props.showPostalCode - Include postal code (default: false)
+ * @param {boolean} props.showState - Include state/region (default: false for short, true for full)
+ * @param {boolean} props.showCountry - Include country (default: true)
+ */
 const LocationDisplay = ({
   postalCode,
-  city = null, // Manually entered city - takes priority over geocoding
-  countryCode = "DE",
+  city = null,
+  state = null,
+  country = null,
   showIcon = true,
   className = "",
   iconSize = 16,
-  showLoadingSpinner = true,
-  displayType = "detailed", // "detailed", "short", "city-only"
-  showPostalCode = false, // New prop to show/hide postal code
+  displayType = "short",
+  showPostalCode = false,
+  showState,
+  showCountry = true,
 }) => {
-  // Only use geocoding if no city is manually provided AND postalCode exists
-  const shouldGeocode = !city && postalCode;
-  const { location, loading, error } = useLocation(
-    shouldGeocode ? postalCode : null,
-    countryCode
-  );
+  // Create a location object and normalize it
+  const locationData = normalizeLocationData({
+    postal_code: postalCode,
+    city,
+    state,
+    country,
+  });
 
-  // Return null only if we have neither city nor postal code
-  if (!postalCode && !city) {
+  // Return null if no location data
+  if (!locationData.city && !locationData.postalCode) {
     return null;
   }
 
-  // Choose display format based on displayType prop
-  const getDisplayText = () => {
-    // If city is manually provided, use it directly
-    if (city) {
-      if (showPostalCode && postalCode) {
-        return `${postalCode} ${city}`;
-      }
-      return city;
-    }
+  // Determine showState default based on displayType
+  const shouldShowState = showState !== undefined 
+    ? showState 
+    : (displayType === "full");
 
-    // Fall back to geocoded location
-    if (!location) {
-      // Still loading or no result - show postal code as fallback
-      return postalCode || "";
-    }
+  // Format the location string
+  const displayText = formatLocation(locationData, {
+    displayType,
+    showPostalCode,
+    showState: shouldShowState,
+    showCountry,
+  });
 
-    let displayText;
-    switch (displayType) {
-      case "detailed":
-        displayText =
-          location.detailedDisplayName || location.displayName || postalCode;
-        break;
-      case "short":
-        displayText =
-          location.shortDisplayName || location.displayName || postalCode;
-        break;
-      case "city-only":
-        displayText = location.city || postalCode;
-        break;
-      default:
-        displayText =
-          location.detailedDisplayName || location.displayName || postalCode;
-    }
-
-    // Add postal code to the display text if requested
-    if (showPostalCode && postalCode) {
-      return `${postalCode} ${displayText}`;
-    }
-
-    return displayText;
-  };
-
-  const displayText = getDisplayText();
-
-  // Determine if we should show loading state
-  // Only show loading when we're actually geocoding (no city provided, has postal code)
-  const showLoading = loading && showLoadingSpinner && shouldGeocode;
+  if (!displayText) {
+    return null;
+  }
 
   return (
     <div
@@ -80,25 +72,7 @@ const LocationDisplay = ({
       {showIcon && (
         <MapPin size={iconSize} className="mr-1 flex-shrink-0 mt-0.5" />
       )}
-      <span
-        title={
-          location?.rawAddress
-            ? JSON.stringify(location.rawAddress, null, 2)
-            : undefined
-        }
-      >
-        {showLoading ? (
-          <span className="flex items-center">
-            <span className="loading loading-spinner loading-xs mr-1"></span>
-            {postalCode}
-          </span>
-        ) : (
-          displayText
-        )}
-      </span>
-      {import.meta.env.DEV && error && (
-        <span className="text-xs text-error ml-1">(Geocoding failed)</span>
-      )}
+      <span>{displayText}</span>
     </div>
   );
 };

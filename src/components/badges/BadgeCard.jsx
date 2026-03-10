@@ -1,88 +1,56 @@
-import React from 'react';
-import {
-  // Collaboration Skills
-  Users, Scale, MessageCircle, Flame, ClipboardList, Anchor,
-  // Technical Expertise
-  Code, Palette, BarChart2, Wrench, Network, FileText,
-  // Creative Thinking
-  Lightbulb, Key, Telescope, BookOpen, Paintbrush, PackageOpen,
-  // Leadership Qualities
-  Compass, GraduationCap, Flag, UserPlus, Map, MessageSquare,
-  // Personal Attributes
-  Zap, Heart, Mountain, Search, Shuffle, Share2,
-  // Default
-  Award
-} from 'lucide-react';
-import Colors from '../../utils/Colors';
+import React from "react";
+import { getBadgeIcon } from "../../utils/badgeIconUtils";
+import Colors from "../../utils/Colors";
 
 const BadgeCard = ({ badge }) => {
-  const { name, description, category, color } = badge;
-  
+  const {
+    name,
+    description,
+    category,
+    color,
+    // aggregated payload (from /api/users/:id)
+    total_credits,
+    totalCredits,
+    // event payload (from /api/users/:id/badges)
+    credits,
+  } = badge;
+
+  // Prefer computed totals when available, otherwise fall back to single-event credits
+  const creditValue = total_credits ?? totalCredits ?? credits ?? null;
+
+  const creditLabel =
+    creditValue !== null && creditValue !== undefined
+      ? `${creditValue} ${Number(creditValue) === 1 ? "credit" : "credits"}`
+      : null;
+
   // Get color from our centralized color system or use provided color as fallback
   const badgeColor = color || Colors.getBadgeColor(category);
-  
-  // Get the icon based on badge name
-  const renderIcon = () => {
-    const iconProps = { size: 24, color: badgeColor };
-    
-    switch (name) {
-      // Collaboration Skills
-      case 'Team Player': return <Users {...iconProps} />;
-      case 'Mediator': return <Scale {...iconProps} />;
-      case 'Communicator': return <MessageCircle {...iconProps} />;
-      case 'Motivator': return <Flame {...iconProps} />;
-      case 'Organizer': return <ClipboardList {...iconProps} />;
-      case 'Reliable': return <Anchor {...iconProps} />;
-      
-      // Technical Expertise
-      case 'Coder': return <Code {...iconProps} />;
-      case 'Designer': return <Palette {...iconProps} />;
-      case 'Data Whiz': return <BarChart2 {...iconProps} />;
-      case 'Tech Support': return <Wrench {...iconProps} />;
-      case 'Systems Thinker': return <Network {...iconProps} />;
-      case 'Documentation Master': return <FileText {...iconProps} />;
-      
-      // Creative Thinking
-      case 'Innovator': return <Lightbulb {...iconProps} />;
-      case 'Problem Solver': return <Key {...iconProps} />;
-      case 'Visionary': return <Telescope {...iconProps} />;
-      case 'Storyteller': return <BookOpen {...iconProps} />;
-      case 'Artisan': return <Paintbrush {...iconProps} />;
-      case 'Outside-the-Box': return <PackageOpen {...iconProps} />;
-      
-      // Leadership Qualities
-      case 'Decision Maker': return <Compass {...iconProps} />;
-      case 'Mentor': return <GraduationCap {...iconProps} />;
-      case 'Initiative Taker': return <Flag {...iconProps} />;
-      case 'Delegator': return <UserPlus {...iconProps} />;
-      case 'Strategic Planner': return <Map {...iconProps} />;
-      case 'Feedback Provider': return <MessageSquare {...iconProps} />;
-      
-      // Personal Attributes
-      case 'Quick Learner': return <Zap {...iconProps} />;
-      case 'Empathetic': return <Heart {...iconProps} />;
-      case 'Persistent': return <Mountain {...iconProps} />;
-      case 'Detail-Oriented': return <Search {...iconProps} />;
-      case 'Adaptable': return <Shuffle {...iconProps} />;
-      case 'Knowledge Sharer': return <Share2 {...iconProps} />;
-      
-      default: return <Award {...iconProps} />; // Default badge icon
-    }
-  };
-  
+
   return (
-    <div 
+    <div
       className="card bg-base-100 shadow-soft hover:shadow-md transition-shadow duration-300"
       style={{ borderLeft: `4px solid ${badgeColor}` }}
     >
       <div className="card-body p-4">
         <div className="flex items-center mb-2">
-          <div className="mr-3">
-            {renderIcon()}
+          <div className="mr-3">{getBadgeIcon(name, badgeColor, 24)}</div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <h3 className="card-title text-lg" style={{ color: badgeColor }}>
+              {name}
+            </h3>
+
+            {creditLabel && (
+              <span className="badge badge-ghost badge-sm text-xs">
+                {creditLabel}
+              </span>
+            )}
           </div>
-          <h3 className="card-title text-lg" style={{ color: badgeColor }}>{name}</h3>
         </div>
-        <p className="text-sm text-base-content/80">{description}</p>
+        {description ? (
+          <p className="text-sm text-base-content/80">{description}</p>
+        ) : (
+          <p className="text-sm text-base-content/60 italic">No description</p>
+        )}
       </div>
     </div>
   );

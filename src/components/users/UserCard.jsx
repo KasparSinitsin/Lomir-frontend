@@ -1,18 +1,23 @@
 import React, { useState } from "react";
 import Card from "../common/Card";
 import Button from "../common/Button";
-import { Tag, MessageCircle, Eye, EyeClosed } from "lucide-react";
-import UserDetailsModal from "./UserDetailsModal";
+import Tooltip from "../common/Tooltip";
+import { Eye, EyeClosed } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
-import LocationDisplay from "../common/LocationDisplay";
+import { useUserModal } from "../../contexts/UserModalContext";
 import { getUserInitials } from "../../utils/userHelpers";
+import LocationDistanceTagsRow from "../common/LocationDistanceTagsRow";
 
+/**
+ * UserCard Component
+ *
+ * Displays a user card in search results.
+ * Uses UserModalContext for opening user details modals, ensuring proper
+ * z-index stacking with other modals throughout the app.
+ */
 const UserCard = ({ user, onUpdate }) => {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const { user: currentUser, isAuthenticated } = useAuth(); // Add this line
-
-  // For debugging
-  console.log("User data in UserCard:", user);
+  const { user: currentUser, isAuthenticated } = useAuth();
+  const { openUserModal } = useUserModal();
 
   // Create a display name with fallbacks
   const displayName = () => {
@@ -36,13 +41,11 @@ const UserCard = ({ user, onUpdate }) => {
   const getProfileImage = () => {
     // Explicitly look for avatar_url in snake_case format from API
     if (user.avatar_url) {
-      console.log("Found avatar_url:", user.avatar_url);
       return user.avatar_url;
     }
 
     // Try camelCase format (from frontend state)
     if (user.avatarUrl) {
-      console.log("Found avatarUrl:", user.avatarUrl);
       return user.avatarUrl;
     }
 
@@ -77,130 +80,68 @@ const UserCard = ({ user, onUpdate }) => {
     return false;
   };
 
+  // Open user details via global context
   const openUserDetails = () => {
-    setIsModalOpen(true);
-  };
-
-  const closeUserDetails = () => {
-    setIsModalOpen(false);
-  };
-
-  const handleUserUpdate = (updatedUser) => {
-    if (onUpdate) {
-      onUpdate(updatedUser);
-    }
+    openUserModal(user.id);
   };
 
   return (
-    <>
-      <Card
-        title={displayName()}
-        subtitle={
-          <span className="flex items-center text-base-content/70 text-sm gap-1.5">
-            {user.username && <span>@{user.username}</span>}
-
-            {shouldShowVisibilityIcon() && (
-              <span
-                className="tooltip tooltip-bottom tooltip-lomir"
-                data-tip={
-                  isUserProfilePublic()
-                    ? "Public Profile - visible for everyone"
-                    : "Private Profile - only visible for you"
-                }
-              >
-                {isUserProfilePublic() ? (
-                  <Eye size={14} className="text-green-600" />
-                ) : (
-                  <EyeClosed size={14} className="text-gray-500" />
-                )}
-              </span>
-            )}
-          </span>
-        }
-        hoverable
-        image={getProfileImage()}
-        imageFallback={getUserInitials(user)}
-        imageAlt={`${user.username || "User"}'s profile`}
-        imageSize="medium"
-        imageShape="circle"
-        onClick={openUserDetails}
-        truncateContent={true}
-      >
-        {(user.bio || user.biography) && (
-          <p className="text-base-content/80 mb-4">
-            {user.bio || user.biography}
-          </p>
-        )}
-
-        <div className="flex flex-wrap items-center gap-2 mb-4">
-          {/* Location display with geocoding */}
-          {(user.postal_code || user.postalCode || user.city) && (
-            <LocationDisplay
-              postalCode={user.postal_code || user.postalCode}
-              city={user.city}
-              className="bg-base-200/50 py-1"
-              iconSize={16}
-              showPostalCode={true}
-              displayType="detailed"
-            />
+    <Card
+      title={displayName()}
+      subtitle={
+        <span className="flex items-center text-base-content/70 text-sm gap-1.5">
+          {user.username && <span>@{user.username}</span>}
+          {shouldShowVisibilityIcon() && (
+            <Tooltip
+              content={
+                isUserProfilePublic()
+                  ? "Public Profile - visible for everyone"
+                  : "Private Profile - only visible for you"
+              }
+            >
+              {isUserProfilePublic() ? (
+                <Eye size={14} className="text-green-600" />
+              ) : (
+                <EyeClosed size={14} className="text-gray-500" />
+              )}
+            </Tooltip>
           )}
+        </span>
+      }
+      hoverable
+      image={getProfileImage()}
+      imageFallback={getUserInitials(user)}
+      imageAlt={`${user.username || "User"}'s profile`}
+      imageSize="medium"
+      imageShape="circle"
+      onClick={openUserDetails}
+      truncateContent={true}
+    >
+      {(user.bio || user.biography) && (
+        <p className="text-base-content/80 mb-4">
+          {user.bio || user.biography}
+        </p>
+      )}
 
-          {/* Tags */}
-          {user.tags && (
-            <div className="flex items-start text-sm text-base-content/70">
-              <Tag size={16} className="mr-1 flex-shrink-0 mt-0.5" />
-              <span>
-                {(() => {
-                  // Parse tags - handle both string and array formats
-                  const tagsArray = Array.isArray(user.tags)
-                    ? user.tags.map((tag) =>
-                        typeof tag === "string"
-                          ? tag
-                          : tag.name || tag.tag || ""
-                      )
-                    : typeof user.tags === "string"
-                    ? user.tags
-                        .split(",")
-                        .map((t) => t.trim())
-                        .filter(Boolean)
-                    : [];
-
-                  const maxVisible = 5; // Number of tags to show before truncating
-                  const visibleTags = tagsArray.slice(0, maxVisible);
-                  const remainingCount = tagsArray.length - maxVisible;
-
-                  return (
-                    <>
-                      {visibleTags.join(", ")}
-                      {remainingCount > 0 && ` +${remainingCount}`}
-                    </>
-                  );
-                })()}
-              </span>
-            </div>
-          )}
-        </div>
-
-        <div className="mt-auto">
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={openUserDetails}
-            className="w-full"
-          >
-            View Details
-          </Button>
-        </div>
-      </Card>
-
-      <UserDetailsModal
-        isOpen={isModalOpen}
-        userId={user.id}
-        onClose={closeUserDetails}
-        onUpdate={handleUserUpdate}
-        mode="profile"
+      <LocationDistanceTagsRow
+        entity={user}
+        entityType="user"
+        distance={user.distance_km ?? user.distanceKm}
+        tags={user.tags}
+        badges={user.badges}
       />
-    </>
+
+      <div className="mt-auto">
+        <Button
+          variant="primary"
+          size="sm"
+          onClick={openUserDetails}
+          className="w-full"
+        >
+          View Details
+        </Button>
+      </div>
+    </Card>
   );
 };
 

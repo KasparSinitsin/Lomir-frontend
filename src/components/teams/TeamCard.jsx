@@ -1,19 +1,12 @@
 import React, { useState, useEffect, useCallback } from "react";
 import Card from "../common/Card";
 import Button from "../common/Button";
+import Tooltip from "../common/Tooltip";
 import {
   Users,
-  MapPin,
-  Trash2,
   EyeClosed,
   EyeIcon,
   Tag,
-  Calendar,
-  AlertCircle,
-  Check,
-  X,
-  Send,
-  MessageSquare,
   User,
   Crown,
   ShieldCheck,
@@ -23,16 +16,17 @@ import {
 import TeamDetailsModal from "./TeamDetailsModal";
 import UserDetailsModal from "../users/UserDetailsModal";
 import TeamApplicationDetailsModal from "./TeamApplicationDetailsModal";
-import InvitationNotificationBadge from "./InvitationNotificationBadge";
 import TeamInvitesModal from "./TeamInvitesModal";
 import TeamInvitationDetailsModal from "./TeamInvitationDetailsModal";
+import { SentByLink } from "../users/InlineUserLink";
 import { teamService } from "../../services/teamService";
 import { useAuth } from "../../contexts/AuthContext";
 import Alert from "../common/Alert";
-import ApplicationNotificationBadge from "./ApplicationNotificationBadge";
+import NotificationBadge from "../common/NotificationBadge";
 import TeamApplicationsModal from "./TeamApplicationsModal";
-import { getUserInitials, getDisplayName } from "../../utils/userHelpers";
+// import { getUserInitials, getDisplayName } from "../../utils/userHelpers";
 import { format } from "date-fns";
+import LocationDistanceTagsRow from "../common/LocationDistanceTagsRow";
 
 /**
  * Unified TeamCard Component
@@ -85,6 +79,10 @@ const TeamCard = ({
 
   // Loading state
   loading = false,
+
+  autoOpenApplications = false,
+  highlightApplicantId = null,
+  onApplicationsModalClosed,
 }) => {
   // Determine effective variant (support legacy isPendingApplication prop)
   const effectiveVariant = isPendingApplication ? "application" : variant;
@@ -220,7 +218,7 @@ const TeamCard = ({
       try {
         const response = await teamService.getUserRoleInTeam(
           teamData.id,
-          user.id
+          user.id,
         );
 
         const payload = response?.data;
@@ -305,17 +303,27 @@ const TeamCard = ({
           const response = await teamService.getTeamById(teamData.id);
           const fullTeam = response?.data?.data ?? response?.data;
 
+          console.log("DEBUG is_public:", {
+            teamId: fullTeam?.id,
+            teamName: fullTeam?.name,
+            is_public_raw: fullTeam?.is_public,
+            is_public_type: typeof fullTeam?.is_public,
+            is_public_normalized: fullTeam?.is_public === true,
+          });
+
           if (fullTeam) {
             setTeamData((prev) => ({
               ...prev,
               ...fullTeam,
+              is_public:
+                fullTeam.is_public === true || fullTeam.is_public === "true",
               tags: Array.isArray(fullTeam.tags) ? fullTeam.tags : prev.tags,
             }));
 
             // Compute role from members list
             if (user?.id && Array.isArray(fullTeam.members)) {
               const me = fullTeam.members.find(
-                (m) => (m.user_id ?? m.userId) === user.id
+                (m) => (m.user_id ?? m.userId) === user.id,
               );
               setUserRole(me?.role ?? null);
             }
@@ -342,7 +350,7 @@ const TeamCard = ({
 
         // Find the application for this team (if any)
         const foundApplication = pendingApplications.find(
-          (app) => app.team?.id === teamData.id || app.team_id === teamData.id
+          (app) => app.team?.id === teamData.id || app.team_id === teamData.id,
         );
 
         setPendingApplicationForTeam(foundApplication || null);
@@ -366,7 +374,7 @@ const TeamCard = ({
         const pendingInvitations = response.data || [];
 
         const foundInvitation = pendingInvitations.find(
-          (inv) => inv.team?.id === teamData.id || inv.team_id === teamData.id
+          (inv) => inv.team?.id === teamData.id || inv.team_id === teamData.id,
         );
 
         setPendingInvitationForTeam(foundInvitation || null);
@@ -399,6 +407,13 @@ const TeamCard = ({
 
   //   setUserRole(me?.role ?? null);
   // }, [effectiveVariant, user?.id, teamData?.owner_id, teamData?.ownerId, teamData?.members]);
+
+  // Auto-open applications modal if triggered from URL params
+  useEffect(() => {
+    if (autoOpenApplications && effectiveVariant === "member") {
+      setIsApplicationsModalOpen(true);
+    }
+  }, [autoOpenApplications, effectiveVariant]);
 
   // ================= GUARD CLAUSE – AFTER ALL HOOKS =================
 
@@ -464,7 +479,7 @@ const TeamCard = ({
     const date = normalizedData.date;
     if (!date) return null;
     try {
-      return format(new Date(date), "MMM d, yyyy");
+      return format(new Date(date), "MM/dd/yy");
     } catch (e) {
       return null;
     }
@@ -512,7 +527,7 @@ const TeamCard = ({
       displayTags = [];
     }
     return displayTags.filter(
-      (tag) => tag && (tag.name || typeof tag === "string")
+      (tag) => tag && (tag.name || typeof tag === "string"),
     );
   };
 
@@ -524,7 +539,7 @@ const TeamCard = ({
       return true;
     if (teamData.members && Array.isArray(teamData.members)) {
       const foundInMembers = teamData.members.some(
-        (member) => member.user_id === user.id || member.userId === user.id
+        (member) => member.user_id === user.id || member.userId === user.id,
       );
       if (foundInMembers) return true;
     }
@@ -557,8 +572,14 @@ const TeamCard = ({
         const response = await teamService.getTeamById(teamData.id);
         if (response && response.data) {
           const fullTeam = response?.data?.data ?? response?.data;
-          setTeamData(fullTeam);
-          if (onUpdate) onUpdate(fullTeam);
+          // Normalize is_public to ensure it's a boolean
+          const normalizedTeam = {
+            ...fullTeam,
+            is_public:
+              fullTeam.is_public === true || fullTeam.is_public === "true",
+          };
+          setTeamData(normalizedTeam);
+          if (onUpdate) onUpdate(normalizedTeam);
         }
       } catch (error) {
         console.error("Error refreshing team data:", error);
@@ -603,7 +624,7 @@ const TeamCard = ({
     e.stopPropagation();
     if (
       !window.confirm(
-        "Are you sure you want to delete this team? This action cannot be undone."
+        "Are you sure you want to delete this team? This action cannot be undone.",
       )
     ) {
       return;
@@ -631,7 +652,7 @@ const TeamCard = ({
     e.stopPropagation();
     if (
       !window.confirm(
-        "Are you sure you want to cancel your application to this team?"
+        "Are you sure you want to cancel your application to this team?",
       )
     ) {
       return;
@@ -751,25 +772,6 @@ const TeamCard = ({
               </span>
             </div>
           )}
-
-        {/* Date badge - application variant only */}
-        {formattedDate && effectiveVariant === "application" && (
-          <div className="flex items-center text-sm text-base-content/70">
-            <Calendar size={14} className="mr-1" />
-            <span>Applied {formattedDate}</span>
-          </div>
-        )}
-
-        {/* Date badge with inviter - invitation variant */}
-        {formattedDate && effectiveVariant === "invitation" && (
-          <div className="flex items-center text-sm text-base-content/70">
-            <Calendar size={14} className="mr-1" />
-            <span>
-              Invited {formattedDate}
-              {normalizedData.inviter && <></>}
-            </span>
-          </div>
-        )}
       </div>
     );
   };
@@ -778,34 +780,9 @@ const TeamCard = ({
     if (effectiveVariant !== "invitation" || !normalizedData.inviter)
       return null;
 
-    const inviter = normalizedData.inviter;
-    const avatarUrl = inviter.avatar_url || inviter.avatarUrl;
-    const firstName = inviter.first_name || inviter.firstName;
-    const lastName = inviter.last_name || inviter.lastName;
-    const displayName = getDisplayName(inviter);
-
     return (
-      <div className="flex items-center text-xs text-base-content/60 mb-4">
-        <span className="mr-1">Sent by</span>
-        <div className="avatar mr-1">
-          <div className="w-4 h-4 rounded-full relative">
-            {avatarUrl ? (
-              <img
-                src={avatarUrl}
-                alt={inviter.username || "Inviter"}
-                className="object-cover w-full h-full rounded-full"
-              />
-            ) : (
-              <div
-                className="bg-primary text-primary-content flex items-center justify-center w-full h-full rounded-full"
-                style={{ fontSize: "8px" }}
-              >
-                <span className="font-medium">{getUserInitials(inviter)}</span>
-              </div>
-            )}
-          </div>
-        </div>
-        <span className="font-medium text-base-content/80">{displayName}</span>
+      <div className="mb-4">
+        <SentByLink user={normalizedData.inviter} />
       </div>
     );
   };
@@ -896,7 +873,8 @@ const TeamCard = ({
           <div className="flex items-center space-x-2 ml-2">
             {/* Application badge - owners and admins */}
             {canManageInvitations && (
-              <ApplicationNotificationBadge
+              <NotificationBadge
+                variant="application"
                 count={pendingApplications.length}
                 onClick={(e) => {
                   e.stopPropagation();
@@ -907,7 +885,8 @@ const TeamCard = ({
 
             {/* Sent invitations badge - owners and admins */}
             {canManageInvitations && (
-              <InvitationNotificationBadge
+              <NotificationBadge
+                variant="invitation"
                 count={pendingSentInvitations.length}
                 onClick={(e) => {
                   e.stopPropagation();
@@ -920,6 +899,8 @@ const TeamCard = ({
       </div>
     );
   };
+
+  console.log("TeamCard data:", teamData, "distance_km:", teamData.distance_km);
 
   // ============ Main Render ============
 
@@ -939,79 +920,91 @@ const TeamCard = ({
 
             {/* Privacy status */}
             {shouldShowVisibilityIcon() && (
-              <span
-                className="tooltip tooltip-bottom tooltip-lomir"
-                data-tip={
-                  teamData.is_public ?? teamData.isPublic
+              <Tooltip
+                content={
+                  teamData.is_public === true || teamData.isPublic === true
                     ? "Public Team - visible for everyone"
                     : "Private Team - only visible for Members"
                 }
               >
-                {teamData.is_public ?? teamData.isPublic ? (
+                {teamData.is_public === true || teamData.isPublic === true ? (
                   <EyeIcon size={14} className="text-green-600" />
                 ) : (
                   <EyeClosed size={14} className="text-gray-500" />
                 )}
-              </span>
+              </Tooltip>
             )}
 
-            {/* Pending invitation indicator */}
+            {/* Pending invitation indicator with date */}
             {(effectiveVariant === "invitation" ||
               pendingInvitationForTeam) && (
-              <span
-                className="tooltip tooltip-bottom tooltip-lomir"
-                data-tip="You are invited to this team"
+              <Tooltip
+                content={`You were invited to this team${
+                  getFormattedDate()
+                    ? `\non ${format(
+                        new Date(normalizedData.date),
+                        "MMM d, yyyy",
+                      )}`
+                    : ""
+                }`}
               >
-                <Mail size={14} className="text-pink-500" />
-              </span>
+                <span className="flex items-center">
+                  <Mail size={14} className="text-pink-500" />
+                  {getFormattedDate() && (
+                    <span className="ml-0.5">{getFormattedDate()}</span>
+                  )}
+                </span>
+              </Tooltip>
             )}
 
-            {/* Pending application indicator */}
+            {/* Pending application indicator with date */}
             {(effectiveVariant === "application" ||
               pendingApplicationForTeam) && (
-              <span
-                className="tooltip tooltip-bottom tooltip-lomir"
-                data-tip="You applied to join this team"
+              <Tooltip
+                content={`You applied to join this team${
+                  getFormattedDate()
+                    ? `\non ${format(
+                        new Date(normalizedData.date),
+                        "MMM d, yyyy",
+                      )}`
+                    : ""
+                }`}
               >
-                <SendHorizontal size={14} className="text-info" />
-              </span>
+                <span className="flex items-center">
+                  <SendHorizontal size={14} className="text-info" />
+                  {getFormattedDate() && (
+                    <span className="ml-0.5">{getFormattedDate()}</span>
+                  )}
+                </span>
+              </Tooltip>
             )}
 
             {/* User role - show for member variant when user has a role */}
             {userRole && effectiveVariant === "member" && (
               <span className="flex items-center text-base-content/70">
                 {userRole === "owner" && (
-                  <span
-                    className="tooltip tooltip-bottom tooltip-lomir"
-                    data-tip="You are the owner of this team"
-                  >
+                  <Tooltip content="You are the owner of this team">
                     <Crown
                       size={14}
                       className="text-[var(--color-role-owner-bg)]"
                     />
-                  </span>
+                  </Tooltip>
                 )}
                 {userRole === "admin" && (
-                  <span
-                    className="tooltip tooltip-bottom tooltip-lomir"
-                    data-tip="You are an admin of this team"
-                  >
+                  <Tooltip content="You are an admin of this team">
                     <ShieldCheck
                       size={14}
                       className="text-[var(--color-role-admin-bg)]"
                     />
-                  </span>
+                  </Tooltip>
                 )}
                 {userRole === "member" && (
-                  <span
-                    className="tooltip tooltip-bottom tooltip-lomir"
-                    data-tip="You are a member of this team"
-                  >
+                  <Tooltip content="You are a member of this team">
                     <User
                       size={14}
                       className="text-[var(--color-role-member-bg)]"
                     />
-                  </span>
+                  </Tooltip>
                 )}
               </span>
             )}
@@ -1039,8 +1032,12 @@ const TeamCard = ({
           {teamData.description || "No description"}
         </p>
 
-        {/* Badges (status, date, tags, etc.) */}
-        {renderBadges()}
+        <LocationDistanceTagsRow
+          entity={teamData}
+          entityType="team"
+          distance={teamData.distance_km ?? teamData.distanceKm}
+          getDisplayTags={getDisplayTags}
+        />
 
         {/* Message preview (invitation/application variants) */}
         {renderMessage()}
@@ -1082,11 +1079,17 @@ const TeamCard = ({
       {effectiveVariant === "member" && (
         <TeamApplicationsModal
           isOpen={isApplicationsModalOpen}
-          onClose={() => setIsApplicationsModalOpen(false)}
+          onClose={() => {
+            setIsApplicationsModalOpen(false);
+            if (onApplicationsModalClosed) {
+              onApplicationsModalClosed();
+            }
+          }}
           teamId={teamData.id}
           applications={pendingApplications}
           onApplicationAction={handleApplicationAction}
           teamName={teamData.name}
+          highlightUserId={highlightApplicantId}
         />
       )}
 

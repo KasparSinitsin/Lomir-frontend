@@ -1,139 +1,125 @@
 import api from "./api";
 
 /**
- * Normalizes team data to ensure consistent tag structure
- * @param {Object} team - Team object from API
- * @returns {Object} Normalized team object
+ * Extract a human-friendly message from Axios/backend errors.
+ * Backend shape you showed:
+ * { success:false, message:"Error performing search", error:"userParamIdx is not defined" }
+ */
+export const getApiErrorMessage = (error) => {
+  const data = error?.response?.data;
+
+  // Backend-provided details
+  if (data?.error && data?.message) {
+    // Return the specific error (more useful), optionally keep the generic message
+    // Example: "userParamIdx is not defined"
+    return data.error;
+    // If you prefer: return `${data.message}: ${data.error}`;
+  }
+
+  if (data?.error) return String(data.error);
+  if (data?.message) return String(data.message);
+
+  // Axios fallback
+  if (error?.message) return String(error.message);
+
+  return "Something went wrong";
+};
+
+/**
+ * Normalize team data to ensure consistent property names
  */
 const normalizeTeamData = (team) => {
   if (!team) return team;
 
-  // Create a copy to avoid mutating the original
   const normalizedTeam = { ...team };
 
-  // Handle missing tags
-  if (!normalizedTeam.tags) {
-    normalizedTeam.tags = [];
+  if (team.teamavatar_url && !team.teamavatarUrl) {
+    normalizedTeam.teamavatarUrl = team.teamavatar_url;
   }
-  // Handle tags that might be a string (JSON or comma-separated)
-  else if (typeof normalizedTeam.tags === "string") {
-    try {
-      // Try to parse as JSON
-      normalizedTeam.tags = JSON.parse(normalizedTeam.tags);
-    } catch (e) {
-      // If not valid JSON, treat as comma-separated list
-      normalizedTeam.tags = normalizedTeam.tags.split(",").map((tag) => ({
-        id: Math.random().toString(36).substr(2, 9), // Temporary ID if none exists
-        name: tag.trim(),
-      }));
-    }
-  }
-  // Ensure tags is always an array
-  else if (!Array.isArray(normalizedTeam.tags)) {
-    normalizedTeam.tags = [];
+  if (team.teamavatarUrl && !team.teamavatar_url) {
+    normalizedTeam.teamavatar_url = team.teamavatarUrl;
   }
 
-  // Ensure each tag has at least a name property
-  normalizedTeam.tags = normalizedTeam.tags
-    .map((tag) => {
-      if (typeof tag === "string") {
-        return { id: Math.random().toString(36).substr(2, 9), name: tag };
-      }
-      return tag;
-    })
-    .filter((tag) => tag && (tag.name || tag.id)); // Filter out any invalid tags
-
-  // Ensure is_public is a proper boolean
-  if (normalizedTeam.is_public !== undefined) {
-    normalizedTeam.is_public = normalizedTeam.is_public === true;
-  }
+  normalizedTeam.is_public = team.is_public === true;
 
   return normalizedTeam;
 };
 
 export const searchService = {
-  /**
-   * Perform a global search across teams and users
-   * @param {string} query - Search query
-   * @param {boolean} isAuthenticated - Whether user is authenticated
-   * @returns {Promise<Object>} Search results
-   */
-  async globalSearch(query, isAuthenticated = false) {
-    try {
-      console.log(
-        `Performing global search: "${query}", authenticated: ${isAuthenticated}`
-      );
-      const response = await api.get("/api/search/global", {
-        params: {
-          query,
-          authenticated: isAuthenticated,
-        },
-      });
+  async globalSearch(
+    query,
+    isAuthenticated = false,
+    page = 1,
+    limit = 20,
+    sortBy = "name",
+    sortDir = "asc",
+    maxDistance = null, // ← ADD
+  ) {
+    const params = {
+      query,
+      authenticated: isAuthenticated,
+      page,
+      limit,
+      sortBy,
+      sortDir,
+    };
 
-      // Normalize all teams in the response
-      if (response.data?.data?.teams) {
-        response.data.data.teams =
-          response.data.data.teams.map(normalizeTeamData);
-        console.log("Normalized team data:", response.data.data.teams);
-      }
+    // Only include when set (matches your colleague's direction)
+    if (maxDistance) params.maxDistance = maxDistance;
 
-      return response.data;
-    } catch (error) {
-      console.error("Search error:", error);
-      throw error;
+    const response = await api.get("/api/search/global", { params });
+
+    if (response.data?.data?.teams) {
+      response.data.data.teams =
+        response.data.data.teams.map(normalizeTeamData);
     }
+
+    return response.data;
   },
 
-  /**
-   * Fetch recommended results based on user profile
-   * @param {string|number} userId - User ID
-   * @param {boolean} isAuthenticated - Whether user is authenticated
-   * @returns {Promise<Object>} Recommended results
-   */
   async getRecommended(userId, isAuthenticated = false) {
-    try {
-      const response = await api.get("/api/search/recommended", {
-        params: {
-          userId: userId,
-          authenticated: isAuthenticated,
-        },
-      });
+    const response = await api.get("/api/search/recommended", {
+      params: {
+        userId,
+        authenticated: isAuthenticated,
+      },
+    });
 
-      // Normalize teams in the response
-      if (response.data?.data?.teams) {
-        response.data.data.teams =
-          response.data.data.teams.map(normalizeTeamData);
-      }
-
-      return response.data;
-    } catch (error) {
-      console.error("Error fetching recommended data:", error);
-      throw error;
+    if (response.data?.data?.teams) {
+      response.data.data.teams =
+        response.data.data.teams.map(normalizeTeamData);
     }
+
+    return response.data;
   },
 
-  /**
-   * Fetch all users and teams
-   * @param {boolean} isAuthenticated - Whether user is authenticated
-   * @returns {Promise<Object>} All users and teams
-   */
-  async getAllUsersAndTeams(isAuthenticated = false) {
-    try {
-      const response = await api.get("/api/search/all", {
-        params: { authenticated: isAuthenticated },
-      });
+  async getAllUsersAndTeams(
+    isAuthenticated = false,
+    page = 1,
+    limit = 20,
+    sortBy = "name",
+    sortDir = "asc",
+    maxDistance = null,
+  ) {
+    const params = {
+      authenticated: isAuthenticated,
+      page,
+      limit,
+      sortBy,
+      sortDir,
+    };
 
-      // Normalize all teams in the response
-      if (response.data?.data?.teams) {
-        response.data.data.teams =
-          response.data.data.teams.map(normalizeTeamData);
-      }
+    // Only include when set
+    if (maxDistance) params.maxDistance = maxDistance;
 
-      return response.data;
-    } catch (error) {
-      console.error("Error fetching all users and teams:", error);
-      throw error;
+    const response = await api.get("/api/search/all", { params });
+
+    if (response.data?.data?.teams) {
+      response.data.data.teams =
+        response.data.data.teams.map(normalizeTeamData);
     }
+
+    return response.data;
   },
 };
 

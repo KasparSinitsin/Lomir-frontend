@@ -1,15 +1,21 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  useRef,
+} from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import TeamRoleManager from "./TeamRoleManager";
 import TeamEditForm from "./TeamEditForm";
 import { useAuth } from "../../contexts/AuthContext";
 import { teamService } from "../../services/teamService";
-import TagSelector from "../tags/TagSelector";
 import Button from "../common/Button";
 import SendMessageButton from "../common/SendMessageButton";
 import Alert from "../common/Alert";
 import TagDisplay from "../common/TagDisplay";
 import LocationDisplay from "../common/LocationDisplay";
+import { uploadToCloudinary } from "../../config/cloudinary";
 import {
   X,
   Edit,
@@ -21,18 +27,44 @@ import {
   LogOut,
   Mail,
   SendHorizontal,
+  Archive,
 } from "lucide-react";
-import IconToggle from "../common/IconToggle";
+import VisibilityToggle from "../common/VisibilityToggle";
 import UserDetailsModal from "../users/UserDetailsModal";
 import TagsDisplaySection from "../tags/TagsDisplaySection";
+import { UI_TEXT } from "../../constants/uiText";
 import { tagService } from "../../services/tagService";
 import RoleBadgeDropdown from "./RoleBadgeDropdown";
 import TeamApplicationModal from "./TeamApplicationModal";
 import TeamInvitationDetailsModal from "./TeamInvitationDetailsModal";
 import TeamMembersSection from "./TeamMembersSection";
 import TeamFocusAreaSection from "./TeamFocusAreaSection";
+import VacantRolesSection from "./VacantRolesSection";
 import axios from "axios";
 import Modal from "../common/Modal";
+import LocationSection from "../common/LocationSection";
+import TagAwardsModal from "../badges/TagAwardsModal";
+import SupercategoryAwardsModal from "../badges/SupercategoryAwardsModal";
+import useTeamAwardModals from "../../hooks/useTeamAwardModals";
+
+const normalizeTeamTagIds = (team) => {
+  const raw = team?.tags ?? team?.tags_json ?? team?.selectedTags ?? [];
+
+  const ids = (raw ?? [])
+    .map((t) => {
+      if (t == null) return null;
+
+      if (typeof t === "object") {
+        return t.id ?? t.tag_id ?? t.tagId ?? t.value ?? null;
+      }
+
+      return t;
+    })
+    .map((x) => Number(x))
+    .filter((x) => Number.isFinite(x));
+
+  return Array.from(new Set(ids));
+};
 
 const TeamDetailsModal = ({
   isOpen = true,
@@ -56,7 +88,7 @@ const TeamDetailsModal = ({
 
   const effectiveTeamId = useMemo(
     () => propTeamId || urlTeamId,
-    [propTeamId, urlTeamId]
+    [propTeamId, urlTeamId],
   );
 
   const [isModalVisible, setIsModalVisible] = useState(isOpen);
@@ -77,7 +109,13 @@ const TeamDetailsModal = ({
     maxMembers: 5,
     maxMembersMode: "preset",
     selectedTags: [],
+    isRemote: false,
+    postalCode: "",
+    city: "",
+    state: "",
+    country: "",
   });
+
   const [formErrors, setFormErrors] = useState({});
   const [isOwner, setIsOwner] = useState(false);
   const [internalUserRole, setInternalUserRole] = useState(null);
@@ -88,6 +126,16 @@ const TeamDetailsModal = ({
   const [selectedUserId, setSelectedUserId] = useState(null);
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [allTags, setAllTags] = useState([]);
+
+  // Team focus-area award modals (parallel to useAwardModals for users)
+  const {
+    handleTagClick,
+    handleSupercategoryClick,
+    tagAwardsModalProps,
+    supercategoryModalProps,
+  } = useTeamAwardModals(effectiveTeamId);
+
+  const userHasEditedTagsRef = useRef(false);
   const [isLeaveDialogOpen, setIsLeaveDialogOpen] = useState(false);
   const [leaveLoading, setLeaveLoading] = useState(false);
   const [isInvitationModalOpen, setIsInvitationModalOpen] = useState(false);
@@ -116,11 +164,13 @@ const TeamDetailsModal = ({
         console.log("Raw API response:", response);
 
         // Get team data from response
+        // response is already the JSON payload (not axios response)
         let teamData;
-        if (response.data && typeof response.data === "object") {
-          teamData = response.data;
-        } else if (response.data && response.data.data) {
-          teamData = response.data.data;
+        if (response && typeof response === "object") {
+          teamData =
+            response.data && typeof response.data === "object"
+              ? response.data
+              : response;
         } else {
           teamData = {};
         }
@@ -147,11 +197,11 @@ const TeamDetailsModal = ({
         ) {
           console.log(
             "Searching for owner in members array:",
-            teamData.members
+            teamData.members,
           );
 
           const ownerMember = teamData.members.find(
-            (m) => m.role === "owner" || m.role === "Owner"
+            (m) => m.role === "owner" || m.role === "Owner",
           );
 
           if (ownerMember) {
@@ -165,7 +215,7 @@ const TeamDetailsModal = ({
           const isCurrentUserOwner = teamData.members.some(
             (member) =>
               (member.user_id === user.id || member.userId === user.id) &&
-              (member.role === "owner" || member.role === "Owner")
+              (member.role === "owner" || member.role === "Owner"),
           );
 
           if (isCurrentUserOwner) {
@@ -176,23 +226,31 @@ const TeamDetailsModal = ({
 
         console.log("Final owner ID determination:", ownerId);
 
-        // Process visibility
-        let isPublicValue = false;
-        const isPublicRaw = teamData.is_public || teamData.isPublic;
-
-        if (
-          isPublicRaw === true ||
-          isPublicRaw === "true" ||
-          isPublicRaw === 1
-        ) {
-          isPublicValue = true;
-        }
+        // Process visibility - check both property names with OR logic
+        const isPublicValue =
+          teamData.is_public === true ||
+          teamData.isPublic === true ||
+          teamData.is_public === "true" ||
+          teamData.isPublic === "true";
 
         // Enhance team data with normalized values
         const enhancedTeamData = {
           ...teamData,
           owner_id: ownerId,
           is_public: isPublicValue,
+
+          // normalize for consistent UI usage
+          is_remote: teamData.is_remote ?? teamData.isRemote ?? false,
+          postal_code: teamData.postal_code ?? teamData.postalCode ?? null,
+          city: teamData.city ?? null,
+          state: teamData.state ?? null,
+          country: teamData.country ?? null,
+          max_members:
+            teamData.max_members !== undefined
+              ? teamData.max_members
+              : teamData.maxMembers !== undefined
+                ? teamData.maxMembers
+                : undefined,
         };
 
         console.log("Enhanced team data:", enhancedTeamData);
@@ -214,7 +272,7 @@ const TeamDetailsModal = ({
             teamData.members?.some(
               (member) =>
                 (member.user_id === user.id || member.userId === user.id) &&
-                (member.role === "owner" || member.role === "Owner")
+                (member.role === "owner" || member.role === "Owner"),
             )) ||
           false;
 
@@ -235,7 +293,7 @@ const TeamDetailsModal = ({
         // Determine user's role from members list
         if (isUserAuthenticated && teamData.members) {
           const currentUserMember = teamData.members.find(
-            (member) => member.user_id === user.id || member.userId === user.id
+            (member) => member.user_id === user.id || member.userId === user.id,
           );
           if (currentUserMember) {
             setInternalUserRole(currentUserMember.role);
@@ -273,6 +331,10 @@ const TeamDetailsModal = ({
         }
 
         // Set form data with the normalized values from team data
+        // Location (support snake_case + camelCase)
+        const isRemoteVal = enhancedTeamData.is_remote === true;
+
+        // Set form data with the normalized values from team data
         setFormData({
           name: teamData.name || "",
           description: teamData.description || "",
@@ -281,9 +343,14 @@ const TeamDetailsModal = ({
           maxMembersMode: maxMembersMode, // 'unlimited' when null
           teamavatarUrl:
             teamData.teamavatar_url || teamData.teamavatarUrl || "",
-          selectedTags: (teamData.tags || [])
-            .map((tag) => parseInt(tag.id || tag.tag_id, 10))
-            .filter((id) => !isNaN(id)),
+          selectedTags: normalizeTeamTagIds(enhancedTeamData).map(String),
+
+          // location fields
+          isRemote: isRemoteVal === true,
+          postalCode: (teamData.postal_code ?? teamData.postalCode ?? "") || "",
+          city: (teamData.city ?? "") || "",
+          state: (teamData.state ?? "") || "",
+          country: (teamData.country ?? "") || "",
         });
 
         // Mark that we now have the full data
@@ -307,7 +374,7 @@ const TeamDetailsModal = ({
         setLoading(false);
       }
     },
-    [effectiveTeamId, user, isAuthenticated, team]
+    [effectiveTeamId, user, isAuthenticated, team],
   );
 
   // Add effect to check team data after it's set
@@ -375,11 +442,16 @@ const TeamDetailsModal = ({
 
   const isTeamAdmin = useMemo(
     () => effectiveUserRole === "admin",
-    [effectiveUserRole]
+    [effectiveUserRole],
   );
 
   const canEditTeam = useMemo(() => {
     if (!isAuthenticated || !user || !team) {
+      return false;
+    }
+
+    // Can't edit archived/deleted teams
+    if (team?.archived_at || team?.status === "inactive") {
       return false;
     }
 
@@ -397,7 +469,11 @@ const TeamDetailsModal = ({
   }, [isAuthenticated, user, team, isOwner, effectiveUserRole]);
 
   const canDeleteTeam = useMemo(() => {
-    return isAuthenticated && user && team && isOwner; // Only owners can delete
+    // Can't delete already archived/deleted teams
+    if (team?.archived_at || team?.status === "inactive") {
+      return false;
+    }
+    return isAuthenticated && user && team && isOwner;
   }, [isAuthenticated, user, team, isOwner]);
 
   // Get team initials from name (e.g., "Urban Gardeners Berlin" → "UGB")
@@ -433,7 +509,7 @@ const TeamDetailsModal = ({
     // Show for team members
     if (team && team.members && Array.isArray(team.members)) {
       return team.members.some(
-        (member) => member.user_id === user.id || member.userId === user.id
+        (member) => member.user_id === user.id || member.userId === user.id,
       );
     }
 
@@ -446,34 +522,45 @@ const TeamDetailsModal = ({
   };
 
   const shouldAnonymizeMember = (member) => {
-    // Don't anonymize the current user's own profile
-    if (user && (member.user_id === user.id || member.userId === user.id)) {
+    const viewerId = user?.id;
+    const memberId = member?.user_id ?? member?.userId;
+
+    // Never anonymize your own entry
+    if (
+      viewerId != null &&
+      memberId != null &&
+      String(memberId) === String(viewerId)
+    ) {
       return false;
     }
 
-    // Check if the member has a private profile
-    const isPrivateProfile =
-      member.is_public === false || member.isPublic === false;
+    // Determine profile visibility flags (support snake_case + camelCase)
+    const memberIsPublic =
+      member?.is_public === true || member?.isPublic === true;
+    const memberIsPrivate =
+      member?.is_public === false || member?.isPublic === false;
 
-    // If profile is public, never anonymize
-    if (!isPrivateProfile) {
-      return false;
+    // Public profile: always show full info
+    if (memberIsPublic) return false;
+
+    // Are we authenticated AND a member of this team?
+    const viewerIsTeamMember =
+      Boolean(isAuthenticated && viewerId != null) &&
+      Array.isArray(team?.members) &&
+      team.members.some((m) => {
+        const id = m?.user_id ?? m?.userId;
+        return id != null && String(id) === String(viewerId);
+      });
+
+    // Private (or unknown): show full info only to fellow team members
+    // - logged out => anonymize
+    // - logged in but not on this team => anonymize
+    // - logged in and on this team => DO NOT anonymize
+    if (memberIsPrivate || (!memberIsPublic && !memberIsPrivate)) {
+      return !viewerIsTeamMember;
     }
 
-    // Profile is private from here on...
-
-    // If not logged in, always anonymize private profiles
-    if (!isAuthenticated || !user) {
-      return true;
-    }
-
-    // If logged in, check if current user is a team member
-    const isCurrentUserTeamMember = team?.members?.some(
-      (m) => m.user_id === user.id || m.userId === user.id
-    );
-
-    // Anonymize if viewer is NOT a team member
-    return !isCurrentUserTeamMember;
+    return false;
   };
 
   const handleClose = useCallback(() => {
@@ -527,18 +614,31 @@ const TeamDetailsModal = ({
     }));
   };
 
-  const handleTagSelection = useCallback((selectedTags) => {
-    console.log("Tags selected (raw):", selectedTags);
-
-    // Convert tag IDs to numbers
-    const numericTags = selectedTags.map((tag) => Number(tag));
-    console.log("Tags converted to numbers:", numericTags);
+  const handleTagSelection = useCallback((selected) => {
+    userHasEditedTagsRef.current = true; // mark as intentional user edit
+    const ids = (selected ?? [])
+      .map((t) => (typeof t === "object" ? (t.id ?? t.value ?? t) : t))
+      .map((x) => Number(x))
+      .filter((x) => Number.isFinite(x));
 
     setFormData((prev) => ({
       ...prev,
-      selectedTags: numericTags,
+      selectedTags: Array.from(new Set(ids)),
     }));
   }, []);
+
+  useEffect(() => {
+    if (!isEditing) return;
+    const ids = normalizeTeamTagIds(team);
+
+    // Seed tags only once when editing starts (when selectedTags is still empty).
+    // Using the functional updater means we don't need formData.selectedTags
+    // as a dependency, so removing the last tag won't re-trigger this effect.
+    setFormData((prev) => {
+      if ((prev.selectedTags?.length ?? 0) > 0) return prev;
+      return { ...prev, selectedTags: ids };
+    });
+  }, [isEditing, team]); // formData.selectedTags intentionally excluded
 
   // Fetch structured tags when modal opens (needed for display AND edit mode)
   useEffect(() => {
@@ -576,7 +676,7 @@ const TeamDetailsModal = ({
 
       setNotification({
         type: "success",
-        message: "Team focus areas updated successfully!",
+        message: "Focus areas updated successfully!",
       });
     } catch (error) {
       console.error("Error updating team tags:", error);
@@ -600,7 +700,7 @@ const TeamDetailsModal = ({
       setTimeout(() => {
         console.log(
           "TeamDetailsModal: about to call onLeave with team.id:",
-          team.id
+          team.id,
         );
         console.log("TeamDetailsModal: onLeave is:", onLeave);
         if (onLeave) onLeave(team.id);
@@ -626,7 +726,7 @@ const TeamDetailsModal = ({
       await teamService.respondToInvitation(
         invitationId,
         "accept",
-        responseMessage
+        responseMessage,
       );
       setNotification({
         type: "success",
@@ -650,13 +750,13 @@ const TeamDetailsModal = ({
 
   const handleInvitationDecline = async (
     invitationId,
-    responseMessage = ""
+    responseMessage = "",
   ) => {
     try {
       await teamService.respondToInvitation(
         invitationId,
         "decline",
-        responseMessage
+        responseMessage,
       );
       setNotification({
         type: "success",
@@ -681,7 +781,7 @@ const TeamDetailsModal = ({
     if (!user?.id || !team?.members) return false;
 
     const currentMember = team.members.find(
-      (m) => m.user_id === user.id || m.userId === user.id
+      (m) => m.user_id === user.id || m.userId === user.id,
     );
 
     if (!currentMember) return false;
@@ -745,7 +845,7 @@ const TeamDetailsModal = ({
       console.log(
         "Visibility value computed:",
         isPublicBoolean,
-        typeof isPublicBoolean
+        typeof isPublicBoolean,
       );
 
       // Decide what to send for max_members based on the mode
@@ -766,6 +866,8 @@ const TeamDetailsModal = ({
       console.log("Edit Team - maxMembersForSubmit:", maxMembersForSubmit);
 
       // Prepare the submission data - PRESERVE EXISTING IMAGE URL
+      const isRemoteBoolean = formData.isRemote === true;
+
       const submissionData = {
         name: formData.name.trim(),
         description: formData.description.trim(),
@@ -776,37 +878,27 @@ const TeamDetailsModal = ({
           team?.teamavatar_url ||
           team?.teamavatarUrl ||
           null,
+        is_remote: isRemoteBoolean,
+        postal_code: isRemoteBoolean
+          ? null
+          : formData.postalCode?.trim() || null,
+        city: isRemoteBoolean ? null : formData.city?.trim() || null,
+        state: isRemoteBoolean ? null : formData.state?.trim() || null,
+        country: isRemoteBoolean ? null : formData.country?.trim() || null,
       };
 
       // Handle avatar file upload if a new file was selected
       if (formData.teamavatarFile) {
-        // Create FormData for file upload
-        const avatarFormData = new FormData();
-        avatarFormData.append("file", formData.teamavatarFile);
-        avatarFormData.append(
-          "upload_preset",
-          import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET
+        const uploadResult = await uploadToCloudinary(
+          formData.teamavatarFile,
+          "teamAvatars",
         );
 
-        try {
-          // Upload to Cloudinary
-          const cloudinaryResponse = await axios.post(
-            `https://api.cloudinary.com/v1_1/${
-              import.meta.env.VITE_CLOUDINARY_CLOUD_NAME
-            }/image/upload`,
-            avatarFormData,
-            {
-              headers: {
-                "Content-Type": "multipart/form-data",
-              },
-            }
-          );
-
-          // Only override the avatar URL if upload was successful
-          submissionData.teamavatar_url = cloudinaryResponse.data.secure_url;
+        if (uploadResult.success) {
+          submissionData.teamavatar_url = uploadResult.url;
           console.log("New avatar uploaded:", submissionData.teamavatar_url);
-        } catch (uploadError) {
-          console.error("Error uploading team avatar:", uploadError);
+        } else {
+          console.error("Error uploading team avatar:", uploadResult.error);
           // Continue with the update even if image upload fails
           setNotification({
             type: "warning",
@@ -816,34 +908,30 @@ const TeamDetailsModal = ({
       } else {
         console.log(
           "No new image selected, preserving existing avatar URL:",
-          submissionData.teamavatar_url
+          submissionData.teamavatar_url,
         );
       }
 
       console.log("Final submission data:", submissionData);
 
-      // Only add tags if there are any selected
-      if (formData.selectedTags && formData.selectedTags.length > 0) {
-        const processedTags = formData.selectedTags
-          .filter((tagId) => tagId)
-          .map((tagId) => {
-            const numericId = Number(tagId);
-            return {
-              tag_id: numericId,
-            };
-          });
-
-        if (processedTags.length > 0) {
-          submissionData.tags = processedTags;
-        }
-      }
+      // Always send tags
+      submissionData.tags = (formData.selectedTags ?? [])
+        .map((t) =>
+          typeof t === "object"
+            ? (t.id ?? t.tag_id ?? t.tagId ?? t.tagID ?? t.value)
+            : t,
+        )
+        .map((x) => Number(x))
+        .filter((id) => Number.isFinite(id) && id > 0)
+        .map((tag_id) => ({ tag_id }));
 
       console.log("Final submission data with tags:", submissionData);
 
       const response = await teamService.updateTeam(
         effectiveTeamId,
-        submissionData
+        submissionData,
       );
+
       console.log("Update response:", response);
 
       // Update our local state with the new visibility value
@@ -894,7 +982,7 @@ const TeamDetailsModal = ({
   const handleDeleteTeam = async () => {
     if (
       window.confirm(
-        "Are you sure you want to delete this team? This action cannot be undone."
+        "Are you sure you want to delete this team? This action cannot be undone.",
       )
     ) {
       try {
@@ -953,7 +1041,7 @@ const TeamDetailsModal = ({
     } catch (error) {
       console.error("Error submitting application:", error);
       throw new Error(
-        error.response?.data?.message || "Failed to submit application"
+        error.response?.data?.message || "Failed to submit application",
       );
     } finally {
       setApplicationLoading(false);
@@ -973,8 +1061,14 @@ const TeamDetailsModal = ({
     if (!isAuthenticated) return null;
 
     const isMember = team?.members?.some(
-      (m) => m.user_id === user?.id || m.userId === user?.id
+      (m) => m.user_id === user?.id || m.userId === user?.id,
     );
+
+    const isTeamArchived = team?.archived_at || team?.status === "inactive";
+
+    if (isTeamArchived && !isMember) {
+      return null;
+    }
 
     if (hasPendingInvitation && pendingInvitation) {
       return (
@@ -1115,7 +1209,17 @@ const TeamDetailsModal = ({
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setIsEditing(true)}
+                onClick={() => {
+                  userHasEditedTagsRef.current = false; // fresh edit session
+                  setFormData((prev) => ({
+                    ...prev,
+                    selectedTags:
+                      (prev.selectedTags?.length ?? 0) > 0
+                        ? prev.selectedTags
+                        : normalizeTeamTagIds(team),
+                  }));
+                  setIsEditing(true);
+                }}
                 className="hover:bg-[#7ace82] hover:text-[#036b0c]"
                 icon={<Edit size={16} />}
               >
@@ -1176,6 +1280,14 @@ const TeamDetailsModal = ({
                 onCancel={() => setIsEditing(false)}
                 loading={loading}
                 isOwner={isOwner}
+                onAvatarDeleted={() => {
+                  // Refresh team details after avatar deletion
+                  fetchTeamDetails();
+                  setNotification({
+                    type: "success",
+                    message: "Team picture removed successfully!",
+                  });
+                }}
               />
             ) : (
               <div className="space-y-6">
@@ -1217,66 +1329,96 @@ const TeamDetailsModal = ({
                           {""}/
                           {team.max_members === null
                             ? "∞"
-                            : team.max_members ?? team.maxMembers ?? "∞"}
+                            : (team.max_members ?? team.maxMembers ?? "∞")}
                         </span>
                       </div>
-                      {shouldShowVisibilityStatus() && (
+
+                      {/* Archived status - ALWAYS show for archived teams */}
+                      {(team?.archived_at || team?.status === "inactive") && (
                         <div className="flex items-center text-base-content/70">
-                          {isPublic ? (
-                            <>
-                              <Eye size={16} className="mr-1 text-green-600" />
-                              <span>Public</span>
-                            </>
-                          ) : (
-                            <>
-                              <EyeClosed
-                                size={16}
-                                className="mr-1 text-gray-500"
-                              />
-                              <span>Private</span>
-                            </>
-                          )}
+                          <Archive size={16} className="mr-1" />
+                          <span>Archived</span>
                         </div>
                       )}
+
+                      {/* Public/Private status - only for members of NON-archived teams */}
+                      {shouldShowVisibilityStatus() &&
+                        !(team?.archived_at || team?.status === "inactive") && (
+                          <div className="flex items-center text-base-content/70">
+                            {isPublic ? (
+                              <>
+                                <Eye
+                                  size={16}
+                                  className="mr-1 text-green-600"
+                                />
+                                <span>Public</span>
+                              </>
+                            ) : (
+                              <>
+                                <EyeClosed
+                                  size={16}
+                                  className="mr-1 text-gray-500"
+                                />
+                                <span>Private</span>
+                              </>
+                            )}
+                          </div>
+                        )}
                     </div>
                   </div>
                 </div>
 
-                {/* Team description */}
-                {team?.description && (
-                  <div>
-                    <p className="text-base-content/90 my-6">
-                      {team.description}
-                    </p>
-                  </div>
-                )}
+                <div className="space-y-6">
+                  {/* Team description */}
+                  {team?.description && (
+                    <div>
+                      <p className="text-base-content/90 my-6">
+                        {team.description}
+                      </p>
+                    </div>
+                  )}
 
-                {/* Team Focus Areas */}
-                {console.log("Team tags for FocusAreasSection:", team?.tags)}
-                {!isEditing && (
-                  <TagsDisplaySection
-                    title="Team Focus Areas"
-                    tags={team?.tags || []}
-                    allTags={allTags}
-                    canEdit={canEditTeam}
-                    onSave={handleTeamTagsUpdate}
-                    emptyMessage="No focus areas added yet."
-                    placeholder="Add team focus areas..."
+                  {/* Team Location */}
+                  <LocationSection entity={team} entityType="team" />
+
+                  {/* Team Focus Areas */}
+                  {console.log("Team tags for FocusAreasSection:", team?.tags)}
+                  {!isEditing && (
+                    <TagsDisplaySection
+                      title={UI_TEXT.focusAreas.title}
+                      tags={team?.tags || []}
+                      allTags={allTags}
+                      canEdit={false}
+                      onSave={undefined}
+                      onTagClick={handleTagClick}
+                      onSupercategoryClick={handleSupercategoryClick}
+                      entityType="team"
+                      emptyMessage={UI_TEXT.focusAreas.emptyTeam}
+                      placeholder={UI_TEXT.focusAreas.placeholderTeam}
+                    />
+                  )}
+
+                  {/* Team Members */}
+                  <TeamMembersSection
+                    team={team}
+                    isEditing={isEditing}
+                    isAuthenticated={isAuthenticated}
+                    user={user}
+                    onMemberClick={handleMemberClick}
+                    shouldAnonymizeMember={shouldAnonymizeMember}
+                    isOwner={isOwner}
+                    onRoleChange={fetchTeamDetails}
+                    onMemberRemoved={fetchTeamDetails}
                   />
-                )}
 
-                {/* Team Members */}
-                <TeamMembersSection
-                  team={team}
-                  isEditing={isEditing}
-                  isAuthenticated={isAuthenticated}
-                  user={user}
-                  onMemberClick={handleMemberClick}
-                  shouldAnonymizeMember={shouldAnonymizeMember}
-                  isOwner={isOwner}
-                  onRoleChange={fetchTeamDetails}
-                  onMemberRemoved={fetchTeamDetails}
-                />
+{/* Vacant Team Roles */}
+                  <VacantRolesSection
+                    teamId={effectiveTeamId}
+                    canManage={isOwner || internalUserRole === "admin"}
+                    isEditing={isEditing}
+                  />
+
+                </div>
 
                 {/* Join / Leave / Message Buttons */}
                 {renderJoinButton()}
@@ -1322,7 +1464,7 @@ const TeamDetailsModal = ({
             {isOwner && (
               <p className="text-warning text-sm mt-2">
                 Note: As an owner, you can only leave if there's another owner
-                to manage the team.
+                to manage the team. Pass ownership before leaving.
               </p>
             )}
           </div>
@@ -1349,6 +1491,8 @@ const TeamDetailsModal = ({
           </div>
         </Modal>
       )}
+      <TagAwardsModal {...tagAwardsModalProps} />
+      <SupercategoryAwardsModal {...supercategoryModalProps} />
 
       {/* Invitation Details Modal */}
       {pendingInvitation && (

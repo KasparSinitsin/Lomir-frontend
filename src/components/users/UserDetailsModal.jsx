@@ -1,33 +1,49 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { UI_TEXT } from "../../constants/uiText";
 import Modal from "../common/Modal";
 import UserBioSection from "./UserBioSection";
-import UserLocationSection from "./UserLocationSection";
+import LocationSection from "../common/LocationSection";
 import TagsDisplaySection from "../tags/TagsDisplaySection";
+import BadgesDisplaySection from "../badges/BadgesDisplaySection";
+import BadgeCategoryModal from "../badges/BadgeCategoryModal";
+import TagAwardsModal from "../badges/TagAwardsModal";
 import UserProfileHeaderSection from "./UserProfileHeaderSection";
 import { messageService } from "../../services/messageService";
 import { userService } from "../../services/userService";
 import Button from "../common/Button";
-import TagSelector from "../tags/TagSelector";
 import Alert from "../common/Alert";
 import { useAuth } from "../../contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
-import { Edit, MessageCircle, UserPlus } from "lucide-react";
+import { Edit, MessageCircle, UserPlus, Award } from "lucide-react";
 import TeamInviteModal from "../teams/TeamInviteModal";
+import BadgeAwardModal from "../badges/BadgeAwardModal";
+import SupercategoryAwardsModal from "../badges/SupercategoryAwardsModal";
+import useAwardModals from "../../hooks/useAwardModals";
 
 const UserDetailsModal = ({
   isOpen,
   userId,
   onClose,
   onUpdate,
-  mode = "view",
+  mode,
+  onOpenUser,
+  zIndexClass,
+  boxZIndexClass,
+  zIndexStyle,
+  boxZIndexStyle,
 }) => {
-  const { user: currentUser, isAuthenticated, updateUser } = useAuth();
+  const { user: currentUser, isAuthenticated } = useAuth();
   const navigate = useNavigate();
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [user, setUser] = useState(null);
+
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(mode === "edit");
+
+  const [userTags, setUserTags] = useState([]);
+
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -38,9 +54,27 @@ const UserDetailsModal = ({
     tagInterestLevels: {},
   });
 
-  const isOwnProfile = () => {
-    return currentUser && user && currentUser.id === user.id;
-  };
+  // ========= Badge Award Modal state =========
+  const [isBadgeAwardModalOpen, setIsBadgeAwardModalOpen] = useState(false);
+
+  // =====================================================
+
+  const {
+    handleBadgeCategoryClick,
+    handleBadgeClick,
+    handleTagClick,
+    handleSupercategoryClick,
+    badgeCategoryModalProps,
+    tagAwardsModalProps,
+    supercategoryModalProps,
+  } = useAwardModals(userId);
+
+  // Determine if this modal is showing the current user (more reliable than comparing fetched user)
+  const ownProfile =
+    !!currentUser?.id && !!userId && Number(currentUser.id) === Number(userId);
+
+  const showEdit = !isEditing && isAuthenticated && ownProfile;
+  const showChatInvite = !isEditing && isAuthenticated && !ownProfile;
 
   const fetchUserDetails = useCallback(async () => {
     try {
@@ -48,17 +82,30 @@ const UserDetailsModal = ({
       setError(null);
 
       const response = await userService.getUserById(userId);
-      const userData = response.data;
 
-      console.log("Full user details from API:", userData);
+      // Robust unwrap: axios response + API wrapper { success, data }
+      const payload = response?.data ?? response;
+      const userData =
+        payload?.success !== undefined
+          ? payload?.data
+          : (payload?.data?.data ?? payload?.data ?? payload);
 
       setUser(userData);
 
+      // Fetch full tag objects (with badge_credits)
+      try {
+        const tagsResponse = await userService.getUserTags(userId);
+        setUserTags(tagsResponse?.data || []);
+      } catch (tagErr) {
+        console.error("Error fetching user tags:", tagErr);
+        setUserTags([]);
+      }
+
       setFormData({
-        firstName: userData.first_name || userData.firstName || "",
-        lastName: userData.last_name || userData.lastName || "",
-        bio: userData.bio || "",
-        postalCode: userData.postal_code || userData.postalCode || "",
+        firstName: userData?.first_name || userData?.firstName || "",
+        lastName: userData?.last_name || userData?.lastName || "",
+        bio: userData?.bio || "",
+        postalCode: userData?.postal_code || userData?.postalCode || "",
         selectedTags: [],
         tagExperienceLevels: {},
         tagInterestLevels: {},
@@ -77,99 +124,32 @@ const UserDetailsModal = ({
     }
   }, [isOpen, userId, fetchUserDetails]);
 
-  // eslint-disable-next-line no-unused-vars
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
-
-  // eslint-disable-next-line no-unused-vars
-  const handleTagSelection = (
-    selectedTags,
-    experienceLevels,
-    interestLevels
-  ) => {
-    setFormData((prev) => ({
-      ...prev,
-      selectedTags,
-      tagExperienceLevels: experienceLevels,
-      tagInterestLevels: interestLevels,
-    }));
-  };
-
-  // eslint-disable-next-line no-unused-vars
-  const handleSubmit = async (e) => {
-    if (e) e.preventDefault(); // Prevent form submission
-
-    try {
-      setLoading(true);
-      setError(null);
-
-      const submissionData = {
-        first_name: formData.firstName,
-        last_name: formData.lastName,
-        bio: formData.bio,
-        postal_code: formData.postalCode,
-        tags: formData.selectedTags.map((tagId) => ({
-          tag_id: tagId,
-          experience_level: formData.tagExperienceLevels[tagId] || "beginner",
-          interest_level: formData.tagInterestLevels[tagId] || "medium",
-        })),
-      };
-
-      const response = await userService.updateUser(userId, submissionData);
-
-      setUser(response.data);
-      setIsEditing(false);
-
-      // If this is the current user's own profile, update the global context
-      if (isOwnProfile() && currentUser) {
-        updateUser(response.data);
-      }
-
-      if (onUpdate) {
-        onUpdate(response.data);
-      }
-    } catch (err) {
-      console.error("Error updating user:", err);
-      setError("Failed to update user. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
+  useEffect(() => {
+    setIsEditing(mode === "edit");
+  }, [mode]);
 
   const handleStartChat = async () => {
-    if (!user?.id) {
-      console.error("User ID is required to start chat");
+    if (!isAuthenticated) {
+      console.warn("Attempted to start chat while not authenticated");
       return;
     }
+    if (!userId) return;
 
     try {
-      console.log("Starting chat with user:", user.id);
-
       // Create conversation with the user and send an empty message to ensure it appears
-      const conversationResponse = await messageService.startConversation(
-        user.id,
-        ""
-      );
-      console.log("Conversation created:", conversationResponse);
+      await messageService.startConversation(userId, "");
 
       // Give a bit more time for the conversation to be created
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 600));
 
       // Open chat in new tab with direct message type
-      const chatUrl = `${window.location.origin}/chat/${user.id}?type=direct`;
-      console.log("Opening chat URL:", chatUrl);
-
+      const chatUrl = `${window.location.origin}/chat/${userId}?type=direct`;
       window.open(chatUrl, "_blank", "noopener,noreferrer");
     } catch (error) {
       console.error("Error starting conversation:", error);
 
       // Fallback: still open chat page even if API call fails
-      const chatUrl = `${window.location.origin}/chat/${user.id}?type=direct`;
+      const chatUrl = `${window.location.origin}/chat/${userId}?type=direct`;
       window.open(chatUrl, "_blank", "noopener,noreferrer");
     }
   };
@@ -189,47 +169,61 @@ const UserDetailsModal = ({
     return user?.username || "User";
   };
 
-  // CUSTOM HEADER with dynamic title and action buttons
-  const customHeader = (
+  // =================================================
+
+  // Title node (TeamDetailsModal style)
+  const modalTitle = (
     <div className="flex justify-between items-center w-full">
       <h2 className="text-xl font-medium text-primary">
         {isEditing ? "Edit Profile" : "User Details"}
       </h2>
+
       <div className="flex items-center space-x-2">
         {!isEditing && (
           <>
-            {isOwnProfile() ? (
-              // Navigate to profile page for comprehensive editing
+            {showEdit && (
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => {
-                  onClose(); // Close the modal first
-                  navigate("/profile"); // Then navigate to profile page
-                }}
+                onClick={() => navigate("/profile")}
+                className="hover:bg-[#7ace82] hover:text-[#036b0c]"
                 icon={<Edit size={16} />}
               >
-                Edit Profile
+                Edit
               </Button>
-            ) : (
-              // Show invite and chat buttons for other users' profiles
+            )}
+
+            {showChatInvite && (
               <>
-                {isAuthenticated && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleInviteToTeam}
-                    icon={<UserPlus size={16} />}
-                    title="Invite to team"
-                  />
-                )}
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={handleStartChat}
-                  icon={<MessageCircle size={16} />}
-                  title="Send message"
-                />
+                  className="flex items-center gap-1"
+                >
+                  <MessageCircle size={16} />
+                  <span className="hidden sm:inline">Chat</span>
+                </Button>
+
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleInviteToTeam}
+                  className="flex items-center gap-1"
+                >
+                  <UserPlus size={16} />
+                  <span className="hidden sm:inline">Invite</span>
+                </Button>
+
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsBadgeAwardModalOpen(true)}
+                  className="flex items-center gap-1"
+                >
+                  <Award size={16} />
+                  <span className="hidden sm:inline">Award</span>
+                </Button>
               </>
             )}
           </>
@@ -238,37 +232,24 @@ const UserDetailsModal = ({
     </div>
   );
 
-  // FOOTER for Send Message button (only for other users)
-  const footer =
-    !isOwnProfile() && !loading && user ? (
-      <div className="flex justify-end">
-        <Button
-          variant="primary"
-          onClick={handleStartChat}
-          className="w-full"
-          icon={<MessageCircle size={16} />}
-        >
-          Send Message
-        </Button>
-      </div>
-    ) : null;
-
   return (
     <>
       <Modal
         isOpen={isOpen}
         onClose={onClose}
-        title={customHeader}
-        footer={footer}
-        // PRESERVE ORIGINAL STYLING
+        title={modalTitle}
         position="center"
-        size="default" // max-w-2xl
-        // Standard modal settings
+        size="default"
+        maxHeight="max-h-[90vh]"
+        minHeight="min-h-[300px]"
         closeOnBackdrop={true}
         closeOnEscape={true}
         showCloseButton={true}
+        zIndexClass={zIndexClass}
+        boxZIndexClass={boxZIndexClass}
+        zIndexStyle={zIndexStyle}
+        boxZIndexStyle={boxZIndexStyle}
       >
-        {/* CONTENT - All business logic preserved */}
         {loading ? (
           <div className="flex justify-center items-center py-12">
             <div className="loading loading-spinner loading-lg text-primary"></div>
@@ -276,14 +257,12 @@ const UserDetailsModal = ({
         ) : error ? (
           <Alert type="error" message={error} />
         ) : isEditing ? (
-          // EDIT MODE - Future implementation could use TagSelector here
+          // EDIT MODE - Future implementation could use TagInput here (canonical focus area selector)
           <div className="space-y-6">
             <p className="text-base-content/70">
               For comprehensive profile editing, you'll be redirected to the
               full profile page.
             </p>
-            {/* Future: Add TagSelector and form fields here */}
-            {/* <TagSelector onSelectionChange={handleTagSelection} /> */}
           </div>
         ) : (
           // VIEW MODE - User profile information
@@ -293,21 +272,54 @@ const UserDetailsModal = ({
               user={user}
               currentUser={currentUser}
               isAuthenticated={isAuthenticated}
+              memberSince={user?.created_at || user?.createdAt}
             />
 
             {/* Bio */}
             <UserBioSection bio={user?.bio || user?.biography} />
 
-            {/* Location and Skills */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <UserLocationSection user={user} />
-            </div>
+            {/* Location */}
+            <LocationSection entity={user} entityType="user" className="mb-6" />
 
+            {/* Focus Areas */}
             <TagsDisplaySection
-              title="Skills & Interests"
-              tags={user?.tags}
-              emptyMessage="No tags yet"
+              title={UI_TEXT.focusAreas.title}
+              tags={userTags.length > 0 ? userTags : user?.tags}
+              emptyMessage={UI_TEXT.focusAreas.empty}
+              onTagClick={handleTagClick}
+              onSupercategoryClick={handleSupercategoryClick}
             />
+
+            {/* Badges */}
+            <BadgesDisplaySection
+              title={`Badges${
+                Number.isFinite(user?.total_badge_credits)
+                  ? ` · ${user.total_badge_credits} ct.`
+                  : ""
+              }`}
+              badges={user?.badges}
+              emptyMessage="No badges earned yet"
+              maxVisible={8}
+              groupByCategory={true}
+              showCredits={true}
+              onCategoryClick={handleBadgeCategoryClick}
+              onBadgeClick={handleBadgeClick}
+              onOpenUser={onOpenUser}
+            />
+
+            {/* Bottom CTA (TeamDetailsModal style) */}
+            {showChatInvite && (
+              <div className="mt-6 border-t border-base-200 pt-4">
+                <Button
+                  variant="primary"
+                  onClick={handleStartChat}
+                  className="w-full flex items-center justify-center gap-2"
+                >
+                  <MessageCircle size={18} />
+                  Send Chat Message
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </Modal>
@@ -324,6 +336,41 @@ const UserDetailsModal = ({
           inviteeUsername={user.username}
           inviteeAvatar={user.avatar_url || user.avatarUrl}
           inviteeBio={user.bio}
+        />
+      )}
+
+      {/* Badge Category Modal */}
+      <BadgeCategoryModal
+        {...badgeCategoryModalProps}
+        onOpenUser={onOpenUser}
+      />
+
+      {/* Tag Awards Modal */}
+      <TagAwardsModal
+        {...tagAwardsModalProps}
+        onOpenUser={onOpenUser}
+      />
+
+      {/* Supercategory Awards Modal */}
+      <SupercategoryAwardsModal
+        {...supercategoryModalProps}
+        onOpenUser={onOpenUser}
+      />
+
+      {/* Badge Award Modal */}
+      {isBadgeAwardModalOpen && user && (
+        <BadgeAwardModal
+          isOpen={isBadgeAwardModalOpen}
+          onClose={() => setIsBadgeAwardModalOpen(false)}
+          awardeeId={user.id}
+          awardeeFirstName={user.first_name || user.firstName}
+          awardeeLastName={user.last_name || user.lastName}
+          awardeeUsername={user.username}
+          awardeeAvatar={user.avatar_url || user.avatarUrl}
+          onAwardComplete={() => {
+            // Refresh user details to show updated badges
+            fetchUserDetails();
+          }}
         />
       )}
     </>

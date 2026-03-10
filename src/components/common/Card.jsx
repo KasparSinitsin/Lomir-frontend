@@ -16,6 +16,7 @@ const Card = ({
   imageShape = "circle",
   onClick = null,
   truncateContent = 3,
+  transparent = false,
 }) => {
   const [imageError, setImageError] = useState(false);
 
@@ -108,7 +109,7 @@ const Card = ({
   return (
     <div
       className={`
-      background-opacity
+      ${transparent ? "bg-transparent" : "background-opacity"}
       ${bordered ? "border border-base-200" : ""}
       ${hoverable ? "hover:shadow-md transition-shadow duration-300" : ""}
       shadow-soft
@@ -119,7 +120,6 @@ const Card = ({
       ${className}
       bg-opacity-70
       mb-6
-      mr-4
     `}
       onClick={onClick}
       role={onClick ? "button" : undefined}

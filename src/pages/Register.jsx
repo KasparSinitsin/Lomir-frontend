@@ -1,12 +1,9 @@
-import RegisterForm from '../components/auth/RegisterForm';
-import PageContainer from '../components/layout/PageContainer';
+import RegisterForm from "../components/auth/RegisterForm";
 
-const Register = () => {
-  return (
-    <PageContainer>
-      <RegisterForm />
-    </PageContainer>
-  );
-};
+const Register = () => (
+  <div className="content-container">
+    <RegisterForm />
+  </div>
+);
 
 export default Register;

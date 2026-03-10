@@ -1,14 +1,16 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { Link } from "react-router-dom";
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import PageContainer from "../components/layout/PageContainer";
 import Grid from "../components/layout/Grid";
 import Button from "../components/common/Button";
 import TeamCard from "../components/teams/TeamCard";
 import Section from "../components/layout/Section";
+import Pagination from "../components/common/Pagination";
 import { teamService } from "../services/teamService";
 import { useAuth } from "../contexts/AuthContext";
 import { Plus, Search as SearchIcon } from "lucide-react";
 import Alert from "../components/common/Alert";
+import CreateTeamModal from "../components/teams/CreateTeamModal";
 
 const MyTeams = () => {
   const [teams, setTeams] = useState([]);
@@ -20,64 +22,166 @@ const MyTeams = () => {
   const [error, setError] = useState(null);
   const { user } = useAuth();
 
-  const fetchUserTeams = useCallback(async () => {
-    try {
-      setLoading(true);
-      if (user && user.id) {
-        const response = await teamService.getUserTeams(user.id);
-        setTeams(response.data);
-      }
-    } catch (err) {
-      console.error("Failed to fetch teams:", err);
-      setError("Could not load teams");
-    } finally {
-      setLoading(false);
-    }
-  }, [user]);
+  // ===== CREATE TEAM MODAL STATE =====
+  const [isCreateTeamModalOpen, setIsCreateTeamModalOpen] = useState(false);
 
+  // ===== PAGINATION STATE =====
+  const [currentPage, setCurrentPage] = useState(1);
+  const [resultsPerPage, setResultsPerPage] = useState(10);
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 10,
+    totalTeams: 0,
+    totalPages: 1,
+    hasNextPage: false,
+    hasPrevPage: false,
+  });
+
+  // URL params for highlighting
+  const [searchParams, setSearchParams] = useSearchParams();
+  const highlightId = searchParams.get("highlight");
+  const openTeamId = searchParams.get("team");
+  const shouldOpenApplications =
+    searchParams.get("openApplications") === "true";
+
+  // Ref for scrolling to highlighted invitation
+  const highlightedInvitationRef = useRef(null);
+
+  // State to track which team should auto-open its applications modal
+  const [autoOpenApplicationsTeamId, setAutoOpenApplicationsTeamId] =
+    useState(null);
+
+  // Fetch user's teams with pagination
+  const fetchUserTeams = useCallback(
+    async (page = 1, limit = 10) => {
+      if (!user?.id) return;
+
+      try {
+        setLoading(true);
+        const response = await teamService.getUserTeams(user.id, {
+          page,
+          limit,
+        });
+
+        if (response.success) {
+          setTeams(response.data || []);
+          setPagination(
+            response.pagination || {
+              page: 1,
+              limit: 10,
+              totalTeams: response.data?.length || 0,
+              totalPages: 1,
+              hasNextPage: false,
+              hasPrevPage: false,
+            }
+          );
+        }
+      } catch (err) {
+        console.error("Error fetching teams:", err);
+        setError("Failed to load teams. Please try again.");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [user?.id]
+  );
+
+  // Fetch pending applications
   const fetchPendingApplications = useCallback(async () => {
+    if (!user?.id) return;
+
     try {
       setLoadingApplications(true);
-      if (user && user.id) {
-        const response = await teamService.getUserPendingApplications();
+      const response = await teamService.getUserPendingApplications();
+
+      if (response.success) {
         setPendingApplications(response.data || []);
       }
     } catch (err) {
-      console.error("Failed to fetch pending applications:", err);
+      console.error("Error fetching pending applications:", err);
     } finally {
       setLoadingApplications(false);
     }
-  }, [user]);
+  }, [user?.id]);
 
+  // Fetch pending invitations
   const fetchPendingInvitations = useCallback(async () => {
+    if (!user?.id) return;
+
     try {
       setLoadingInvitations(true);
-      const response = await teamService.getUserReceivedInvitations();
-      setPendingInvitations(response.data || []);
+      const response = await teamService.getUserPendingInvitations();
+
+      if (response.success) {
+        setPendingInvitations(response.data || []);
+      }
     } catch (err) {
       console.error("Error fetching pending invitations:", err);
     } finally {
       setLoadingInvitations(false);
     }
-  }, []);
+  }, [user?.id]);
 
+  // Initial data fetch
+  useEffect(() => {
+    fetchPendingApplications();
+    fetchPendingInvitations();
+  }, [fetchPendingApplications, fetchPendingInvitations]);
+
+  // Fetch teams when page or limit changes
   useEffect(() => {
     if (user?.id) {
-      fetchUserTeams();
-      fetchPendingApplications();
-      fetchPendingInvitations();
+      fetchUserTeams(currentPage, resultsPerPage);
     }
-  }, [
-    user?.id,
-    fetchUserTeams,
-    fetchPendingApplications,
-    fetchPendingInvitations,
-  ]);
+  }, [currentPage, resultsPerPage, user?.id]);
+
+  // Handle URL params for highlighting and auto-opening modals
+  useEffect(() => {
+    // If we need to open applications modal for a specific team
+    if (openTeamId && shouldOpenApplications) {
+      setAutoOpenApplicationsTeamId(parseInt(openTeamId));
+    }
+
+    // Scroll to highlighted invitation after a short delay
+    if (highlightId && highlightedInvitationRef.current) {
+      setTimeout(() => {
+        highlightedInvitationRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+      }, 300);
+    }
+
+    // Clear URL params after 5 seconds (so refresh doesn't keep highlighting)
+    if (highlightId || openTeamId) {
+      const timer = setTimeout(() => {
+        setSearchParams({});
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [highlightId, openTeamId, shouldOpenApplications, setSearchParams]);
+
+  // Handler for page changes
+  const handlePageChange = (newPage) => {
+    setCurrentPage(newPage);
+
+    // Scroll to the My Teams section when page changes
+    const teamsSection = document.getElementById("my-teams-section");
+    if (teamsSection) {
+      teamsSection.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
+
+  // Handler for changing results per page
+  const handleResultsPerPageChange = (newLimit) => {
+    setResultsPerPage(newLimit);
+    setCurrentPage(1); // Reset to page 1 when changing limit
+  };
 
   const handleTeamUpdate = (updatedTeam) => {
     if (!updatedTeam) {
       console.warn("Received undefined team data in handleTeamUpdate");
-      fetchUserTeams();
+      fetchUserTeams(currentPage, resultsPerPage);
       return;
     }
 
@@ -89,7 +193,8 @@ const MyTeams = () => {
   const handleTeamDelete = async (teamId) => {
     try {
       await teamService.deleteTeam(teamId);
-      setTeams((prevTeams) => prevTeams.filter((team) => team.id !== teamId));
+      // Refetch to update pagination correctly
+      fetchUserTeams(currentPage, resultsPerPage);
       return true;
     } catch (error) {
       console.error("Error deleting team:", error);
@@ -99,9 +204,9 @@ const MyTeams = () => {
 
   // Handler for when user LEAVES a team (not deletes it)
   const handleTeamLeave = (teamId) => {
-    // Server-side removal already happened in TeamDetailsModal
     console.log("handleTeamLeave called with teamId:", teamId);
-    setTeams((prevTeams) => prevTeams.filter((team) => team.id !== teamId));
+    // Refetch to update pagination correctly
+    fetchUserTeams(currentPage, resultsPerPage);
   };
 
   // Application handlers
@@ -129,15 +234,13 @@ const MyTeams = () => {
         responseMessage
       );
 
-      // Show success message (if you have a toast/alert system)
       console.log("Invitation accepted successfully");
 
       // Refresh the data
       fetchPendingInvitations();
-      fetchUserTeams();
+      fetchUserTeams(currentPage, resultsPerPage);
     } catch (error) {
       console.error("Error accepting invitation:", error);
-      // Handle error (show alert, etc.)
     }
   };
 
@@ -152,18 +255,24 @@ const MyTeams = () => {
         responseMessage
       );
 
-      // Show success message
       console.log("Invitation declined");
 
       // Refresh the data
       fetchPendingInvitations();
     } catch (error) {
       console.error("Error declining invitation:", error);
-      // Handle error
     }
   };
 
-  if (loading && loadingApplications) {
+  // Handler for when a new team is created
+  const handleTeamCreated = (newTeam) => {
+    console.log("New team created:", newTeam);
+    // Refresh the teams list
+    fetchUserTeams(1, resultsPerPage);
+    setCurrentPage(1);
+  };
+
+  if (loading && loadingApplications && loadingInvitations) {
     return (
       <PageContainer variant="muted">
         <div className="flex justify-center items-center h-64">
@@ -185,12 +294,14 @@ const MyTeams = () => {
 
   const CreateTeamAction = (
     <div className="flex flex-col gap-2 mt-8">
-      <Link to="/teams/create">
-        <Button variant="primary" icon={<Plus size={16} />}>
-          Create New Team
-        </Button>
-      </Link>
-      <Link to="/search">
+      <Button 
+        variant="primary" 
+        icon={<Plus size={16} />}
+        onClick={() => setIsCreateTeamModalOpen(true)}
+      >
+        Create New Team
+      </Button>
+      <Link to="/search?type=teams">
         <Button variant="primary" icon={<SearchIcon size={16} />}>
           Search for Teams
         </Button>
@@ -214,13 +325,26 @@ const MyTeams = () => {
           ) : (
             <Grid cols={1} md={2} lg={3} gap={6}>
               {pendingInvitations.filter(Boolean).map((invitation) => (
-                <TeamCard
+                <div
                   key={`invitation-${invitation.id}`}
-                  variant="invitation"
-                  invitation={invitation}
-                  onAccept={handleInvitationAccept}
-                  onDecline={handleInvitationDecline}
-                />
+                  ref={
+                    String(invitation.id) === highlightId
+                      ? highlightedInvitationRef
+                      : null
+                  }
+                  className={
+                    String(invitation.id) === highlightId
+                      ? "message-highlight rounded-xl"
+                      : ""
+                  }
+                >
+                  <TeamCard
+                    variant="invitation"
+                    invitation={invitation}
+                    onAccept={handleInvitationAccept}
+                    onDecline={handleInvitationDecline}
+                  />
+                </div>
               ))}
             </Grid>
           )}
@@ -256,37 +380,73 @@ const MyTeams = () => {
 
       {/* My Teams Section */}
       <Section
+        id="my-teams-section"
         title="Teams You're A Part Of"
         subtitle="Teams you've created or joined as a member"
       >
-        {teams.length === 0 ? (
+        {loading ? (
+          <div className="flex justify-center py-8">
+            <div className="loading loading-spinner loading-md"></div>
+          </div>
+        ) : teams.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-base-content/70 mb-4">
               You haven't joined any teams yet.
             </p>
-            <Link to="/teams/create" className="btn btn-primary">
+            <Button 
+              variant="primary"
+              onClick={() => setIsCreateTeamModalOpen(true)}
+            >
               Create Your First Team
-            </Link>
+            </Button>
           </div>
         ) : (
-          <Grid cols={1} md={2} lg={3} gap={6}>
-            {teams.filter(Boolean).map((team) => (
-              <TeamCard
-                key={team.id}
-                variant="member"
-                team={{
-                  ...team,
-                  // Check both snake_case and camelCase versions
-                  is_public: team.is_public === true || team.isPublic === true,
-                }}
-                onUpdate={handleTeamUpdate}
-                onDelete={handleTeamDelete}
-                onLeave={handleTeamLeave}
+          <>
+            <Grid cols={1} md={2} lg={3} gap={6}>
+              {teams.filter(Boolean).map((team) => (
+                <TeamCard
+                  key={team.id}
+                  variant="member"
+                  team={{
+                    ...team,
+                    is_public: team.is_public === true || team.isPublic === true,
+                  }}
+                  onUpdate={handleTeamUpdate}
+                  onDelete={handleTeamDelete}
+                  onLeave={handleTeamLeave}
+                  autoOpenApplications={team.id === autoOpenApplicationsTeamId}
+                  highlightApplicantId={
+                    team.id === autoOpenApplicationsTeamId ? highlightId : null
+                  }
+                  onApplicationsModalClosed={() =>
+                    setAutoOpenApplicationsTeamId(null)
+                  }
+                />
+              ))}
+            </Grid>
+
+            {/* Pagination for My Teams */}
+            {pagination.totalPages > 1 && (
+              <Pagination
+                currentPage={currentPage}
+                totalPages={pagination.totalPages}
+                totalItems={pagination.totalTeams}
+                onPageChange={handlePageChange}
+                resultsPerPage={resultsPerPage}
+                onResultsPerPageChange={handleResultsPerPageChange}
+                resultsPerPageOptions={[10, 20, 30, 40]}
               />
-            ))}
-          </Grid>
+            )}
+          </>
         )}
       </Section>
+
+      {/* Create Team Modal */}
+      <CreateTeamModal
+        isOpen={isCreateTeamModalOpen}
+        onClose={() => setIsCreateTeamModalOpen(false)}
+        onTeamCreated={handleTeamCreated}
+      />
     </PageContainer>
   );
 };
