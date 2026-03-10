@@ -8,6 +8,8 @@ import {
   Award,
   Calendar,
   Users,
+  Sparkles,
+  CircleDot,
 } from "lucide-react";
 import Modal from "../common/Modal";
 import {
@@ -39,7 +41,13 @@ import Tooltip from "../common/Tooltip";
  * @param {Function} onClose
  * @param {Object} role - Full role data object
  */
-const VacantRoleDetailsModal = ({ isOpen, onClose, role }) => {
+const VacantRoleDetailsModal = ({
+  isOpen,
+  onClose,
+  role,
+  matchScore = null,
+  matchDetails = null,
+}) => {
   if (!role) return null;
 
   // Normalize camelCase/snake_case
@@ -173,6 +181,88 @@ const VacantRoleDetailsModal = ({ isOpen, onClose, role }) => {
           </div>
         )}
 
+        {/* Match Score Banner — shown when the user has a score for this role */}
+        {matchScore !== null &&
+          matchScore !== undefined &&
+          (() => {
+            const pct = Math.round(matchScore * 100);
+            const tagPct = Math.round(
+              (matchDetails?.tagScore ?? matchDetails?.tag_score ?? 0) * 100,
+            );
+            const badgePct = Math.round(
+              (matchDetails?.badgeScore ?? matchDetails?.badge_score ?? 0) *
+                100,
+            );
+            const distPct = Math.round(
+              (matchDetails?.distanceScore ??
+                matchDetails?.distance_score ??
+                0) * 100,
+            );
+
+            // Color tiers
+            const tierColor =
+              pct >= 70
+                ? {
+                    bg: "bg-emerald-50",
+                    border: "border-emerald-200",
+                    text: "text-emerald-700",
+                    bar: "bg-emerald-500",
+                  }
+                : pct >= 40
+                  ? {
+                      bg: "bg-amber-50",
+                      border: "border-amber-200",
+                      text: "text-amber-700",
+                      bar: "bg-amber-500",
+                    }
+                  : {
+                      bg: "bg-base-200/50",
+                      border: "border-base-300",
+                      text: "text-base-content/70",
+                      bar: "bg-base-content/40",
+                    };
+
+            return (
+              <div
+                className={`rounded-xl p-4 ${tierColor.bg} border ${tierColor.border}`}
+              >
+                <div className="flex items-center gap-2 mb-3">
+                  <Sparkles size={16} className={tierColor.text} />
+                  <span className={`text-sm font-semibold ${tierColor.text}`}>
+                    {pct}% Match
+                  </span>
+                </div>
+
+                {/* Score breakdown bars */}
+                <div className="space-y-2">
+                  {[
+                    { label: "Focus Areas", value: tagPct, weight: "40%" },
+                    { label: "Badges", value: badgePct, weight: "30%" },
+                    { label: "Location", value: distPct, weight: "30%" },
+                  ].map(({ label, value, weight }) => (
+                    <div key={label} className="flex items-center gap-2">
+                      <span className="text-xs text-base-content/60 w-24 flex-shrink-0">
+                        {label}
+                        <span className="text-base-content/40 ml-1">
+                          ({weight})
+                        </span>
+                      </span>
+                      <div className="flex-1 h-1.5 bg-base-200 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full ${tierColor.bar} transition-all duration-500`}
+                          style={{ width: `${value}%` }}
+                        />
+                      </div>
+                      <span className="text-xs font-medium text-base-content/60 w-8 text-right">
+                        {value}%
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
+
         {/* Location */}
         {locationText && (
           <div>
@@ -189,8 +279,8 @@ const VacantRoleDetailsModal = ({ isOpen, onClose, role }) => {
               <span>{locationText}</span>
               {!isRemote && maxDistanceKm && (
                 <span className="flex items-center gap-1 text-base-content/50">
-                  <Ruler size={14} />
-                  within {maxDistanceKm} km
+                  <CircleDot size={14} />
+                  within {maxDistanceKm} km from 
                 </span>
               )}
             </div>

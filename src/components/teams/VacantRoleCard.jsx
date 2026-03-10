@@ -2,12 +2,13 @@ import React, { useState } from "react";
 import {
   MapPin,
   Globe,
-  Ruler,
+  CircleDot,
   UserSearch,
   Edit,
   Trash2,
   CheckCircle,
   XCircle,
+  Sparkles,
 } from "lucide-react";
 import VacantRoleDetailsModal from "./VacantRoleDetailsModal";
 import RoleBadgePill from "../common/RoleBadgePill";
@@ -19,7 +20,8 @@ import Tooltip from "../common/Tooltip";
  * VacantRoleCard Component
  *
  * Compact card matching TeamMembersSection member cards.
- * Shows: avatar initials, role name, location, and "Vacant" badge.
+ * Shows: avatar initials, role name, location, "Vacant" badge,
+ * and optionally the authenticated user's match score.
  * Clicking opens VacantRoleDetailsModal with full details.
  *
  * @param {Object} role - Vacant role data from API
@@ -27,6 +29,8 @@ import Tooltip from "../common/Tooltip";
  * @param {Function} onEdit - Callback to open edit modal
  * @param {Function} onDelete - Callback to delete this role
  * @param {Function} onStatusChange - Callback to change role status
+ * @param {number|null} matchScore - 0–1 match score (null = not available)
+ * @param {Object|null} matchDetails - Breakdown: tagScore, badgeScore, distanceScore
  */
 const VacantRoleCard = ({
   role,
@@ -34,6 +38,8 @@ const VacantRoleCard = ({
   onEdit,
   onDelete,
   onStatusChange,
+  matchScore = null,
+  matchDetails = null,
 }) => {
   const [showMenu, setShowMenu] = useState(false);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
@@ -74,6 +80,53 @@ const VacantRoleCard = ({
     setIsDetailsOpen(true);
   };
 
+  // ── Match score helpers ──────────────────────────────────
+  const hasMatchScore = matchScore !== null && matchScore !== undefined;
+  const pct = hasMatchScore ? Math.round(matchScore * 100) : 0;
+
+  /**
+   * Color tiers for match score (solid fills for the avatar circle):
+   *   >= 70%  → emerald  (great match)
+   *   >= 40%  → amber    (partial match)
+   *   <  40%  → slate    (low match)
+   */
+  const getMatchColor = () => {
+    if (pct >= 70)
+      return {
+        avatarBg: "bg-emerald-500",
+        avatarText: "text-white",
+        sparkle: "text-emerald-300/40",
+      };
+    if (pct >= 40)
+      return {
+        avatarBg: "bg-amber-500",
+        avatarText: "text-white",
+        sparkle: "text-amber-300/40",
+      };
+    return {
+      avatarBg: "bg-slate-400",
+      avatarText: "text-white",
+      sparkle: "text-slate-300/40",
+    };
+  };
+
+  const matchColor = hasMatchScore ? getMatchColor() : null;
+
+  // Build tooltip text for match breakdown
+  const getMatchTooltip = () => {
+    if (!matchDetails) return `${pct}% match`;
+    const tagPct = Math.round(
+      (matchDetails.tagScore ?? matchDetails.tag_score ?? 0) * 100,
+    );
+    const badgePct = Math.round(
+      (matchDetails.badgeScore ?? matchDetails.badge_score ?? 0) * 100,
+    );
+    const distPct = Math.round(
+      (matchDetails.distanceScore ?? matchDetails.distance_score ?? 0) * 100,
+    );
+    return `${pct}% match — Tags ${tagPct}% · Badges ${badgePct}% · Location ${distPct}%`;
+  };
+
   return (
     <>
       <div
@@ -82,11 +135,34 @@ const VacantRoleCard = ({
           status !== "open" ? "opacity-70" : ""
         }`}
       >
-        {/* Avatar with initials (w-12 h-12, matching TeamMembersSection) */}
-        <div className="avatar placeholder">
-          <div className="bg-amber-500 text-white rounded-full w-12 h-12 flex items-center justify-center">
-            <span className="text-lg">{getRoleInitials()}</span>
-          </div>
+        {/* Avatar — shows match score when available, initials otherwise */}
+        <div className="flex-shrink-0">
+          {hasMatchScore ? (
+            <Tooltip content={getMatchTooltip()}>
+              <div className="avatar placeholder">
+                <div
+                  className={`${matchColor.avatarBg} ${matchColor.avatarText} rounded-full w-12 h-12 relative flex items-center justify-center overflow-hidden`}
+                >
+                  {/* Sparkle icon in background */}
+                  <Sparkles
+                    size={40}
+                    className={`absolute ${matchColor.sparkle}`}
+                    strokeWidth={1.5}
+                  />
+                  {/* Score text on top */}
+                  <span className="relative text-lg font-bold leading-none">
+                    {pct}%
+                  </span>
+                </div>
+              </div>
+            </Tooltip>
+          ) : (
+            <div className="avatar placeholder">
+              <div className="bg-amber-500 text-white rounded-full w-12 h-12 flex items-center justify-center">
+                <span className="text-lg">{getRoleInitials()}</span>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Content */}
@@ -209,8 +285,8 @@ const VacantRoleCard = ({
               </CardMetaItem>
 
               {!is_remote && max_distance_km && (
-                <CardMetaItem icon={Ruler} tone="muted" nowrap>
-                  within {max_distance_km} km
+                <CardMetaItem icon={CircleDot} tone="muted" nowrap>
+                  {max_distance_km} km
                 </CardMetaItem>
               )}
             </CardMetaRow>
@@ -223,6 +299,8 @@ const VacantRoleCard = ({
         isOpen={isDetailsOpen}
         onClose={() => setIsDetailsOpen(false)}
         role={role}
+        matchScore={matchScore}
+        matchDetails={matchDetails}
       />
     </>
   );

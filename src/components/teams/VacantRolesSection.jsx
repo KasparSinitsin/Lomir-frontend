@@ -5,6 +5,8 @@ import CreateVacantRoleModal from "./CreateVacantRoleModal";
 import Button from "../common/Button";
 import Alert from "../common/Alert";
 import { vacantRoleService } from "../../services/vacantRoleService";
+import { matchingService } from "../../services/matchingService";
+import { useAuth } from "../../contexts/AuthContext";
 
 /**
  * VacantRolesSection Component
@@ -14,6 +16,9 @@ import { vacantRoleService } from "../../services/vacantRoleService";
  * - Icon + title header
  * - List of cards
  * - Action button for owners/admins
+ *
+ * When an authenticated user views roles they don't manage, matching
+ * scores are fetched and displayed on each VacantRoleCard.
  *
  * @param {number} teamId - The team ID to fetch roles for
  * @param {boolean} canManage - Whether the current user is owner/admin
@@ -26,6 +31,8 @@ const VacantRolesSection = ({
   isEditing = false,
   className = "",
 }) => {
+  const { isAuthenticated } = useAuth();
+
   const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -33,6 +40,9 @@ const VacantRolesSection = ({
     type: null,
     message: null,
   });
+
+  // Matching scores: { [roleId]: { matchScore, matchDetails } }
+  const [matchScores, setMatchScores] = useState({});
 
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -63,6 +73,36 @@ const VacantRolesSection = ({
   useEffect(() => {
     fetchRoles();
   }, [fetchRoles]);
+
+  // Fetch matching scores for authenticated users
+  // Runs after roles are loaded, only for non-managers (non-managers are the
+  // users who'd want to know "how well do I match this role?")
+  useEffect(() => {
+    const fetchMatchScores = async () => {
+      if (!isAuthenticated || !teamId || roles.length === 0) {
+        setMatchScores({});
+        return;
+      }
+
+      try {
+        const response = await matchingService.getMatchingRolesForTeam(teamId);
+        const scoreMap = {};
+        (response.data || []).forEach((scored) => {
+          scoreMap[scored.id] = {
+            matchScore: scored.matchScore ?? scored.match_score,
+            matchDetails: scored.matchDetails ?? scored.match_details,
+          };
+        });
+        setMatchScores(scoreMap);
+      } catch (err) {
+        // Matching scores are supplementary — don't block the UI
+        console.warn("Could not fetch matching scores:", err);
+        setMatchScores({});
+      }
+    };
+
+    fetchMatchScores();
+  }, [isAuthenticated, teamId, roles]);
 
   // Handle status change
   const handleStatusChange = async (roleId, newStatus) => {
@@ -200,10 +240,16 @@ const VacantRolesSection = ({
         </div>
       )}
 
-      {/* Roles list */}
+      {/* Roles list — sorted by match score (highest first) when available */}
       {roles.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {roles.map((role) => (
+          {[...roles]
+            .sort((a, b) => {
+              const scoreA = matchScores[a.id]?.matchScore ?? -1;
+              const scoreB = matchScores[b.id]?.matchScore ?? -1;
+              return scoreB - scoreA;
+            })
+            .map((role) => (
             <VacantRoleCard
               key={role.id}
               role={role}
@@ -211,6 +257,8 @@ const VacantRolesSection = ({
               onEdit={handleEdit}
               onDelete={handleDelete}
               onStatusChange={handleStatusChange}
+              matchScore={matchScores[role.id]?.matchScore ?? null}
+              matchDetails={matchScores[role.id]?.matchDetails ?? null}
             />
           ))}
         </div>
