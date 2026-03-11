@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import {
   MapPin,
   Globe,
-  Ruler,
   UserSearch,
   Tag,
   Award,
@@ -31,21 +30,16 @@ import {
 import Tooltip from "../common/Tooltip";
 import { useAuth } from "../../contexts/AuthContext";
 import { userService } from "../../services/userService";
+import { vacantRoleService } from "../../services/vacantRoleService";
 
 /**
  * VacantRoleDetailsModal Component
  *
  * Read-only modal showing full details of a vacant team role.
- * Follows the same visual structure as UserDetailsModal:
- * - Header with avatar + name
- * - Bio section
- * - Location section
- * - Focus areas (tags)
- * - Desired badges
  *
  * @param {boolean} isOpen
  * @param {Function} onClose
- * @param {Object} role - Full role data object
+ * @param {Object} role - Full or partial role data object
  */
 const VacantRoleDetailsModal = ({
   isOpen,
@@ -60,6 +54,73 @@ const VacantRoleDetailsModal = ({
   const [userTagMap, setUserTagMap] = useState(new Map()); // tagId → { badgeCredits }
   const [userBadgeMap, setUserBadgeMap] = useState(new Map()); // lowercase name → { totalCredits }
 
+  const [hydratedRole, setHydratedRole] = useState(null);
+  const [loadingRoleDetails, setLoadingRoleDetails] = useState(false);
+
+  const roleId = role?.id;
+  const teamId = role?.teamId ?? role?.team_id;
+
+useEffect(() => {
+  const fetchFullRole = async () => {
+    if (!isOpen || !roleId || !teamId) return;
+
+    try {
+      setLoadingRoleDetails(true);
+
+      console.log("Fetching full vacant role details for:", { teamId, roleId });
+
+      const response = await vacantRoleService.getVacantRoleById(teamId, roleId);
+
+      console.log("getVacantRoleById raw response:", response);
+      console.log("getVacantRoleById response.data:", response?.data);
+      console.log("getVacantRoleById response.data?.tags:", response?.data?.tags);
+      console.log("getVacantRoleById response.data?.badges:", response?.data?.badges);
+      console.log(
+        "getVacantRoleById response.data?.desiredTags:",
+        response?.data?.desiredTags,
+      );
+      console.log(
+        "getVacantRoleById response.data?.desiredBadges:",
+        response?.data?.desiredBadges,
+      );
+
+      if (response?.success && response?.data) {
+        setHydratedRole(response.data);
+      } else if (response?.data) {
+        setHydratedRole(response.data);
+      } else {
+        setHydratedRole(null);
+      }
+    } catch (error) {
+      console.error("Error fetching full vacant role details:", error);
+      setHydratedRole(null);
+    } finally {
+      setLoadingRoleDetails(false);
+    }
+  };
+
+  fetchFullRole();
+}, [isOpen, roleId, teamId]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setHydratedRole(null);
+      setLoadingRoleDetails(false);
+    }
+  }, [isOpen]);
+
+  const displayRole = hydratedRole || role;
+
+  console.log("VacantRoleDetailsModal incoming role:", role);
+  console.log("VacantRoleDetailsModal hydratedRole:", hydratedRole);
+  console.log("VacantRoleDetailsModal displayRole:", displayRole);
+  console.log("displayRole.tags:", displayRole?.tags);
+  console.log("displayRole.badges:", displayRole?.badges);
+  console.log("displayRole.desiredTags:", displayRole?.desiredTags);
+  console.log("displayRole.desiredBadges:", displayRole?.desiredBadges);
+  console.log("displayRole.matchScore:", displayRole?.matchScore);
+  console.log("displayRole.scoreBreakdown:", displayRole?.scoreBreakdown);
+
   useEffect(() => {
     if (!isOpen || !isAuthenticated || !currentUser?.id) {
       setUserTagMap(new Map());
@@ -69,7 +130,6 @@ const VacantRoleDetailsModal = ({
 
     const fetchUserData = async () => {
       try {
-        // Fetch user's tags (includes badge_credits)
         const tagsRes = await userService.getUserTags(currentUser.id);
         const tagData = tagsRes?.data || [];
         const tMap = new Map();
@@ -80,7 +140,6 @@ const VacantRoleDetailsModal = ({
         }
         setUserTagMap(tMap);
 
-        // Fetch user's badges (includes credits per badge)
         const badgesRes = await userService.getUserBadges(currentUser.id);
         const badgeData = Array.isArray(badgesRes?.data)
           ? badgesRes.data
@@ -93,7 +152,6 @@ const VacantRoleDetailsModal = ({
           const credits = Number(
             b.totalCredits ?? b.total_credits ?? b.credits ?? 0,
           );
-          // Accumulate if same badge name appears multiple times
           const existing = bMap.get(name);
           bMap.set(name, {
             totalCredits: (existing?.totalCredits || 0) + credits,
@@ -108,40 +166,52 @@ const VacantRoleDetailsModal = ({
     fetchUserData();
   }, [isOpen, isAuthenticated, currentUser?.id]);
 
-  if (!role) return null;
+  if (!displayRole) return null;
 
   // Normalize camelCase/snake_case
-  const roleName = role.roleName ?? role.role_name ?? "Vacant Role";
-  const bio = role.bio ?? "";
-  const city = role.city;
-  const country = role.country;
-  const state = role.state;
-  const postalCode = role.postalCode ?? role.postal_code;
-  const maxDistanceKm = role.maxDistanceKm ?? role.max_distance_km;
-  const isRemote = role.isRemote ?? role.is_remote;
-  const status = role.status;
-  const createdAt = role.createdAt ?? role.created_at;
-  const tags = role.tags || [];
-  const badges = role.badges || [];
-  // Match score as percentage (available throughout the component)
+  const roleName =
+    displayRole.roleName ?? displayRole.role_name ?? "Vacant Role";
+  const bio = displayRole.bio ?? "";
+  const city = displayRole.city;
+  const country = displayRole.country;
+  const state = displayRole.state;
+  const postalCode = displayRole.postalCode ?? displayRole.postal_code;
+  const maxDistanceKm =
+    displayRole.maxDistanceKm ?? displayRole.max_distance_km;
+  const isRemote = displayRole.isRemote ?? displayRole.is_remote;
+  const status = displayRole.status;
+  const createdAt = displayRole.createdAt ?? displayRole.created_at;
+  const tags =
+    displayRole.tags?.length > 0
+      ? displayRole.tags
+      : displayRole.desiredTags || [];
+  const badges =
+    displayRole.badges?.length > 0
+      ? displayRole.badges
+      : displayRole.desiredBadges || [];
+
   const pct =
     matchScore !== null && matchScore !== undefined
       ? Math.round(matchScore * 100)
       : null;
-  const teamName = role.teamName ?? role.team_name;
-  const teamMemberCount = role.teamMemberCount ?? role.team_member_count;
-  const teamMaxMembers = role.teamMaxMembers ?? role.team_max_members;
 
-  // Creator info
-  const creatorFirstName = role.creatorFirstName ?? role.creator_first_name;
-  const creatorLastName = role.creatorLastName ?? role.creator_last_name;
-  const creatorUsername = role.creatorUsername ?? role.creator_username;
+  const teamName = displayRole.teamName ?? displayRole.team_name;
+  const teamMemberCount =
+    displayRole.teamMemberCount ?? displayRole.team_member_count;
+  const teamMaxMembers =
+    displayRole.teamMaxMembers ?? displayRole.team_max_members;
+
+  const creatorFirstName =
+    displayRole.creatorFirstName ?? displayRole.creator_first_name;
+  const creatorLastName =
+    displayRole.creatorLastName ?? displayRole.creator_last_name;
+  const creatorUsername =
+    displayRole.creatorUsername ?? displayRole.creator_username;
   const creatorName =
     creatorFirstName && creatorLastName
       ? `${creatorFirstName} ${creatorLastName}`
       : creatorUsername || null;
 
-  // Initials for avatar
   const getRoleInitials = () => {
     const name = roleName || "Vacant Role";
     const words = name.trim().split(/\s+/);
@@ -151,7 +221,6 @@ const VacantRoleDetailsModal = ({
     return name.substring(0, 2).toUpperCase();
   };
 
-  // Location text
   const getLocationText = () => {
     if (isRemote) return "Remote — no geographic preference";
     const parts = [city, state, country].filter(Boolean);
@@ -160,7 +229,6 @@ const VacantRoleDetailsModal = ({
 
   const locationText = getLocationText();
 
-  // Group badges by category
   const badgesByCategory = badges.reduce((acc, badge) => {
     const cat = badge.category || "Other";
     if (!acc[cat]) acc[cat] = [];
@@ -168,7 +236,6 @@ const VacantRoleDetailsModal = ({
     return acc;
   }, {});
 
-  // Format date
   const formatDate = (dateStr) => {
     if (!dateStr) return null;
     try {
@@ -182,7 +249,6 @@ const VacantRoleDetailsModal = ({
     }
   };
 
-  // Modal title
   const modalTitle = (
     <div className="flex items-center gap-2">
       <UserSearch className="text-amber-500" size={20} />
@@ -203,9 +269,14 @@ const VacantRoleDetailsModal = ({
       showCloseButton={true}
     >
       <div className="space-y-6">
+        {loadingRoleDetails && !hydratedRole && (
+          <div className="text-sm text-base-content/50">
+            Loading full role details...
+          </div>
+        )}
+
         {/* Header — avatar + role name + status */}
         <div className="flex items-start space-x-4">
-          {/* Avatar */}
           <div className="avatar placeholder">
             {pct !== null ? (
               <div
@@ -238,7 +309,6 @@ const VacantRoleDetailsModal = ({
           <div className="flex-1 min-w-0">
             <h1 className="text-2xl font-bold leading-tight">{roleName}</h1>
 
-            {/* Team info line */}
             {teamName && (
               <div className="flex items-center gap-1 mt-1 text-sm text-base-content/70">
                 <Users size={14} className="text-primary flex-shrink-0" />
@@ -251,7 +321,6 @@ const VacantRoleDetailsModal = ({
               </div>
             )}
 
-            {/* Created date */}
             {createdAt && (
               <div className="flex items-center gap-1 mt-1 text-xs text-base-content/50">
                 <Calendar size={12} />
@@ -262,14 +331,12 @@ const VacantRoleDetailsModal = ({
           </div>
         </div>
 
-        {/* Bio / Description */}
         {bio && (
           <div>
             <p className="text-base-content/90 leading-relaxed">{bio}</p>
           </div>
         )}
 
-        {/* Match Score Banner — shown when the user has a score for this role */}
         {matchScore !== null &&
           matchScore !== undefined &&
           (() => {
@@ -287,7 +354,6 @@ const VacantRoleDetailsModal = ({
                 0) * 100,
             );
 
-            // Color tiers — box is always neutral, text + bars follow cutoffs
             const tierColor = {
               bg: "bg-base-200/50",
               border: "border-base-300",
@@ -309,7 +375,6 @@ const VacantRoleDetailsModal = ({
                   </span>
                 </div>
 
-                {/* Score breakdown bars */}
                 <div className="space-y-2">
                   {[
                     {
@@ -389,7 +454,6 @@ const VacantRoleDetailsModal = ({
             );
           })()}
 
-        {/* Location */}
         {locationText && (
           <div>
             <div className="flex items-center mb-2">
@@ -413,7 +477,7 @@ const VacantRoleDetailsModal = ({
           </div>
         )}
 
-        {/* Desired Focus Areas — grouped by supercategory */}
+        {/* Desired Focus Areas */}
         <div>
           <div className="flex items-center mb-2">
             <Tag size={18} className="mr-2 text-primary flex-shrink-0" />
@@ -422,7 +486,6 @@ const VacantRoleDetailsModal = ({
 
           {tags.length > 0 ? (
             (() => {
-              // Group tags by supercategory
               const groups = {};
               for (const tag of tags) {
                 const supercat = tag.supercategory || "Other";
@@ -430,7 +493,6 @@ const VacantRoleDetailsModal = ({
                 groups[supercat].push(tag);
               }
 
-              // Sort groups by SUPERCATEGORY_ORDER
               const sortedGroups = Object.entries(groups).sort(([a], [b]) => {
                 const idxA = SUPERCATEGORY_ORDER.indexOf(a);
                 const idxB = SUPERCATEGORY_ORDER.indexOf(b);
@@ -439,7 +501,6 @@ const VacantRoleDetailsModal = ({
                 return posA - posB;
               });
 
-              // Sort tags within each group alphabetically
               for (const [, groupTags] of sortedGroups) {
                 groupTags.sort((a, b) => a.name.localeCompare(b.name));
               }
@@ -452,7 +513,6 @@ const VacantRoleDetailsModal = ({
                       className="flex items-start gap-0"
                       title={supercategory}
                     >
-                      {/* Supercategory icon */}
                       <Tooltip content={supercategory}>
                         <span
                           className="inline-flex items-center justify-center pr-[6px] flex-shrink-0"
@@ -469,7 +529,6 @@ const VacantRoleDetailsModal = ({
                         </span>
                       </Tooltip>
 
-                      {/* Tag pills */}
                       <div className="flex flex-wrap gap-1.5">
                         {groupTags.map((tag) => {
                           const tagId = Number(
@@ -539,7 +598,6 @@ const VacantRoleDetailsModal = ({
 
                 return (
                   <div key={category} className="flex items-start">
-                    {/* Category icon */}
                     <Tooltip content={category}>
                       <span
                         className="inline-flex items-center justify-center pr-[6px]"
@@ -552,7 +610,6 @@ const VacantRoleDetailsModal = ({
                       </span>
                     </Tooltip>
 
-                    {/* Badge pills */}
                     <div className="flex flex-wrap gap-1.5">
                       {catBadges.map((badge) => {
                         const badgeColor = badge.color || categoryColor;
