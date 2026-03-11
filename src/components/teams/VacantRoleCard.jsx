@@ -9,6 +9,7 @@ import {
   CheckCircle,
   XCircle,
   Sparkles,
+  TrendingUp,
 } from "lucide-react";
 import VacantRoleDetailsModal from "./VacantRoleDetailsModal";
 import RoleBadgePill from "../common/RoleBadgePill";
@@ -86,18 +87,9 @@ const VacantRoleCard = ({
 
   /**
    * Color tiers for match score (solid fills for the avatar circle):
-   *   >= 70%  → emerald  (great match)
-   *   >= 40%  → amber    (partial match)
-   *   <  40%  → slate    (low match)
    */
   const getMatchColor = () => {
-    if (pct >= 70)
-      return {
-        avatarBg: "bg-emerald-500",
-        avatarText: "text-white",
-        sparkle: "text-emerald-300/40",
-      };
-    if (pct >= 40)
+    if (pct >= 80)
       return {
         avatarBg: "bg-amber-500",
         avatarText: "text-white",
@@ -143,12 +135,20 @@ const VacantRoleCard = ({
                 <div
                   className={`${matchColor.avatarBg} ${matchColor.avatarText} rounded-full w-12 h-12 relative flex items-center justify-center overflow-hidden`}
                 >
-                  {/* Sparkle icon in background */}
-                  <Sparkles
-                    size={40}
-                    className={`absolute ${matchColor.sparkle}`}
-                    strokeWidth={1.5}
-                  />
+                  {/* Icon in background */}
+                  {pct >= 80 ? (
+                    <Sparkles
+                      size={40}
+                      className={`absolute ${matchColor.sparkle}`}
+                      strokeWidth={1.5}
+                    />
+                  ) : (
+                    <TrendingUp
+                      size={40}
+                      className={`absolute ${matchColor.sparkle}`}
+                      strokeWidth={1.5}
+                    />
+                  )}
                   {/* Score text on top */}
                   <span className="relative text-lg font-bold leading-none">
                     {pct}%
