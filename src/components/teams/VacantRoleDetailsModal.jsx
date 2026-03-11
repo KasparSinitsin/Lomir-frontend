@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   MapPin,
   Globe,
@@ -10,6 +10,8 @@ import {
   Users,
   Sparkles,
   CircleDot,
+  Check,
+  TrendingUp,
 } from "lucide-react";
 import Modal from "../common/Modal";
 import {
@@ -18,13 +20,17 @@ import {
 } from "../../utils/badgeIconUtils";
 import {
   CATEGORY_COLORS,
+  CATEGORY_CARD_PASTELS,
   DEFAULT_COLOR,
   PILL_ROW_HEIGHT,
   FOCUS_GREEN,
   FOCUS_GREEN_DARK,
   SUPERCATEGORY_ORDER,
+  TAG_SECTION_BG,
 } from "../../constants/badgeConstants";
 import Tooltip from "../common/Tooltip";
+import { useAuth } from "../../contexts/AuthContext";
+import { userService } from "../../services/userService";
 
 /**
  * VacantRoleDetailsModal Component
@@ -48,6 +54,60 @@ const VacantRoleDetailsModal = ({
   matchScore = null,
   matchDetails = null,
 }) => {
+  const { user: currentUser, isAuthenticated } = useAuth();
+
+  // Current user's tags and badges for matching highlights
+  const [userTagMap, setUserTagMap] = useState(new Map()); // tagId → { badgeCredits }
+  const [userBadgeMap, setUserBadgeMap] = useState(new Map()); // lowercase name → { totalCredits }
+
+  useEffect(() => {
+    if (!isOpen || !isAuthenticated || !currentUser?.id) {
+      setUserTagMap(new Map());
+      setUserBadgeMap(new Map());
+      return;
+    }
+
+    const fetchUserData = async () => {
+      try {
+        // Fetch user's tags (includes badge_credits)
+        const tagsRes = await userService.getUserTags(currentUser.id);
+        const tagData = tagsRes?.data || [];
+        const tMap = new Map();
+        for (const t of tagData) {
+          tMap.set(Number(t.id), {
+            badgeCredits: Number(t.badge_credits ?? t.badgeCredits ?? 0),
+          });
+        }
+        setUserTagMap(tMap);
+
+        // Fetch user's badges (includes credits per badge)
+        const badgesRes = await userService.getUserBadges(currentUser.id);
+        const badgeData = Array.isArray(badgesRes?.data)
+          ? badgesRes.data
+          : badgesRes?.data?.data || [];
+        const bMap = new Map();
+        for (const b of badgeData) {
+          const name = (b.badgeName ?? b.badge_name ?? b.name ?? "")
+            .trim()
+            .toLowerCase();
+          const credits = Number(
+            b.totalCredits ?? b.total_credits ?? b.credits ?? 0,
+          );
+          // Accumulate if same badge name appears multiple times
+          const existing = bMap.get(name);
+          bMap.set(name, {
+            totalCredits: (existing?.totalCredits || 0) + credits,
+          });
+        }
+        setUserBadgeMap(bMap);
+      } catch (err) {
+        console.warn("Could not fetch user data for matching highlights:", err);
+      }
+    };
+
+    fetchUserData();
+  }, [isOpen, isAuthenticated, currentUser?.id]);
+
   if (!role) return null;
 
   // Normalize camelCase/snake_case
@@ -63,6 +123,11 @@ const VacantRoleDetailsModal = ({
   const createdAt = role.createdAt ?? role.created_at;
   const tags = role.tags || [];
   const badges = role.badges || [];
+  // Match score as percentage (available throughout the component)
+  const pct =
+    matchScore !== null && matchScore !== undefined
+      ? Math.round(matchScore * 100)
+      : null;
   const teamName = role.teamName ?? role.team_name;
   const teamMemberCount = role.teamMemberCount ?? role.team_member_count;
   const teamMaxMembers = role.teamMaxMembers ?? role.team_max_members;
@@ -142,9 +207,32 @@ const VacantRoleDetailsModal = ({
         <div className="flex items-start space-x-4">
           {/* Avatar */}
           <div className="avatar placeholder">
-            <div className="bg-amber-500 text-white rounded-full w-20 h-20 flex items-center justify-center">
-              <span className="text-2xl">{getRoleInitials()}</span>
-            </div>
+            {pct !== null ? (
+              <div
+                className={`${
+                  pct >= 80 ? "bg-amber-500" : "bg-slate-400"
+                } text-white rounded-full w-20 h-20 relative flex items-center justify-center overflow-hidden`}
+              >
+                {pct >= 80 ? (
+                  <Sparkles
+                    size={56}
+                    className="absolute text-amber-300/40"
+                    strokeWidth={1.5}
+                  />
+                ) : (
+                  <TrendingUp
+                    size={56}
+                    className="absolute text-slate-300/40"
+                    strokeWidth={1.5}
+                  />
+                )}
+                <span className="relative text-2xl font-bold">{pct}%</span>
+              </div>
+            ) : (
+              <div className="bg-amber-500 text-white rounded-full w-20 h-20 flex items-center justify-center">
+                <span className="text-2xl">{getRoleInitials()}</span>
+              </div>
+            )}
           </div>
 
           <div className="flex-1 min-w-0">
@@ -199,35 +287,23 @@ const VacantRoleDetailsModal = ({
                 0) * 100,
             );
 
-            // Color tiers
-            const tierColor =
-              pct >= 70
-                ? {
-                    bg: "bg-emerald-50",
-                    border: "border-emerald-200",
-                    text: "text-emerald-700",
-                    bar: "bg-emerald-500",
-                  }
-                : pct >= 40
-                  ? {
-                      bg: "bg-amber-50",
-                      border: "border-amber-200",
-                      text: "text-amber-700",
-                      bar: "bg-amber-500",
-                    }
-                  : {
-                      bg: "bg-base-200/50",
-                      border: "border-base-300",
-                      text: "text-base-content/70",
-                      bar: "bg-base-content/40",
-                    };
+            // Color tiers — box is always neutral, text + bars follow cutoffs
+            const tierColor = {
+              bg: "bg-base-200/50",
+              border: "border-base-300",
+              text: pct >= 80 ? "text-amber-700" : "text-base-content/70",
+            };
 
             return (
               <div
                 className={`rounded-xl p-4 ${tierColor.bg} border ${tierColor.border}`}
               >
                 <div className="flex items-center gap-2 mb-3">
-                  <Sparkles size={16} className={tierColor.text} />
+                  {pct >= 80 ? (
+                    <Sparkles size={16} className={tierColor.text} />
+                  ) : (
+                    <TrendingUp size={16} className={tierColor.text} />
+                  )}
                   <span className={`text-sm font-semibold ${tierColor.text}`}>
                     {pct}% Match
                   </span>
@@ -236,20 +312,70 @@ const VacantRoleDetailsModal = ({
                 {/* Score breakdown bars */}
                 <div className="space-y-2">
                   {[
-                    { label: "Focus Areas", value: tagPct, weight: "40%" },
-                    { label: "Badges", value: badgePct, weight: "30%" },
-                    { label: "Location", value: distPct, weight: "30%" },
-                  ].map(({ label, value, weight }) => (
+                    {
+                      label: "Location",
+                      value: distPct,
+                      icon: MapPin,
+                      tooltip: (
+                        <>
+                          Location factors into the score with 30%.
+                          <br />
+                          Within the role's radius = 100%. Up to 20 km beyond =
+                          25%. Farther = 0%.
+                        </>
+                      ),
+                    },
+                    {
+                      label: "Focus Areas",
+                      value: tagPct,
+                      icon: Tag,
+                      tooltip: (
+                        <>
+                          Focus Areas factor into the score with 40%.
+                          <br />
+                          {matchDetails?.matchingTags ??
+                            matchDetails?.matching_tags ??
+                            0}{" "}
+                          out of{" "}
+                          {matchDetails?.totalRequiredTags ??
+                            matchDetails?.total_required_tags ??
+                            0}{" "}
+                          required focus areas met.
+                        </>
+                      ),
+                    },
+                    {
+                      label: "Badges",
+                      value: badgePct,
+                      icon: Award,
+                      tooltip: (
+                        <>
+                          Badges factor into the score with 30%.
+                          <br />
+                          {matchDetails?.matchingBadges ??
+                            matchDetails?.matching_badges ??
+                            0}{" "}
+                          out of{" "}
+                          {matchDetails?.totalRequiredBadges ??
+                            matchDetails?.total_required_badges ??
+                            0}{" "}
+                          required badges met.
+                        </>
+                      ),
+                    },
+                  ].map(({ label, value, icon: Icon, tooltip }) => (
                     <div key={label} className="flex items-center gap-2">
-                      <span className="text-xs text-base-content/60 w-24 flex-shrink-0">
-                        {label}
-                        <span className="text-base-content/40 ml-1">
-                          ({weight})
+                      <Tooltip content={tooltip}>
+                        <span className="text-xs text-base-content/60 w-24 flex-shrink-0 flex items-center gap-1 cursor-help">
+                          <Icon size={12} className="flex-shrink-0" />
+                          {label}
                         </span>
-                      </span>
+                      </Tooltip>
                       <div className="flex-1 h-1.5 bg-base-200 rounded-full overflow-hidden">
                         <div
-                          className={`h-full rounded-full ${tierColor.bar} transition-all duration-500`}
+                          className={`h-full rounded-full transition-all duration-500 ${
+                            pct >= 80 ? "bg-amber-500" : "bg-slate-400"
+                          }`}
                           style={{ width: `${value}%` }}
                         />
                       </div>
@@ -280,7 +406,7 @@ const VacantRoleDetailsModal = ({
               {!isRemote && maxDistanceKm && (
                 <span className="flex items-center gap-1 text-base-content/50">
                   <CircleDot size={14} />
-                  within {maxDistanceKm} km from 
+                  within {maxDistanceKm} km from Role Location
                 </span>
               )}
             </div>
@@ -345,18 +471,46 @@ const VacantRoleDetailsModal = ({
 
                       {/* Tag pills */}
                       <div className="flex flex-wrap gap-1.5">
-                        {groupTags.map((tag) => (
-                          <span
-                            key={tag.tagId ?? tag.tag_id ?? tag.id}
-                            className="badge badge-outline p-3"
-                            style={{
-                              borderColor: FOCUS_GREEN_DARK,
-                              color: FOCUS_GREEN_DARK,
-                            }}
-                          >
-                            {tag.name}
-                          </span>
-                        ))}
+                        {groupTags.map((tag) => {
+                          const tagId = Number(
+                            tag.tagId ?? tag.tag_id ?? tag.id,
+                          );
+                          const userTag = userTagMap.get(tagId);
+                          const isMatch = !!userTag;
+                          const credits = userTag?.badgeCredits || 0;
+
+                          return (
+                            <Tooltip
+                              key={tagId}
+                              content={`${tag.name} — ${tag.supercategory || "Other"}`}
+                            >
+                              <span
+                                className="badge badge-outline p-3 inline-flex items-center gap-1"
+                                style={{
+                                  borderColor: FOCUS_GREEN_DARK,
+                                  color: FOCUS_GREEN_DARK,
+                                  ...(isMatch
+                                    ? { backgroundColor: TAG_SECTION_BG }
+                                    : {}),
+                                }}
+                              >
+                                {isMatch && (
+                                  <Check
+                                    size={12}
+                                    className="flex-shrink-0"
+                                    style={{ color: FOCUS_GREEN }}
+                                  />
+                                )}
+                                {tag.name}
+                                {isMatch && credits > 0 && (
+                                  <span className="opacity-70">
+                                    | {credits}ct.
+                                  </span>
+                                )}
+                              </span>
+                            </Tooltip>
+                          );
+                        })}
                       </div>
                     </div>
                   ))}
@@ -386,36 +540,59 @@ const VacantRoleDetailsModal = ({
                 return (
                   <div key={category} className="flex items-start">
                     {/* Category icon */}
-                    <span
-                      className="inline-flex items-center justify-center pr-[6px]"
-                      style={{
-                        height: PILL_ROW_HEIGHT,
-                        color: categoryColor,
-                      }}
-                    >
-                      {getCategoryIcon(category, categoryColor, 14)}
-                    </span>
+                    <Tooltip content={category}>
+                      <span
+                        className="inline-flex items-center justify-center pr-[6px]"
+                        style={{
+                          height: PILL_ROW_HEIGHT,
+                          color: categoryColor,
+                        }}
+                      >
+                        {getCategoryIcon(category, categoryColor, 14)}
+                      </span>
+                    </Tooltip>
 
                     {/* Badge pills */}
                     <div className="flex flex-wrap gap-1.5">
-                      {catBadges.map((badge) => (
-                        <Tooltip
-                          key={badge.badgeId ?? badge.badge_id ?? badge.id}
-                          content={
-                            badge.description || `${badge.name} — ${category}`
-                          }
-                        >
-                          <span
-                            className="badge badge-outline p-3"
-                            style={{
-                              borderColor: badge.color || categoryColor,
-                              color: badge.color || categoryColor,
-                            }}
+                      {catBadges.map((badge) => {
+                        const badgeColor = badge.color || categoryColor;
+                        const badgeKey = (badge.name ?? "")
+                          .trim()
+                          .toLowerCase();
+                        const userBadge = userBadgeMap.get(badgeKey);
+                        const isMatch = !!userBadge;
+                        const credits = userBadge?.totalCredits || 0;
+                        const pastel =
+                          CATEGORY_CARD_PASTELS[category] || `${badgeColor}15`;
+
+                        return (
+                          <Tooltip
+                            key={badge.badgeId ?? badge.badge_id ?? badge.id}
+                            content={
+                              badge.description || `${badge.name} — ${category}`
+                            }
                           >
-                            {badge.name}
-                          </span>
-                        </Tooltip>
-                      ))}
+                            <span
+                              className="badge badge-outline p-3 inline-flex items-center gap-1"
+                              style={{
+                                borderColor: badgeColor,
+                                color: badgeColor,
+                                ...(isMatch ? { backgroundColor: pastel } : {}),
+                              }}
+                            >
+                              {isMatch && (
+                                <Check size={12} className="flex-shrink-0" />
+                              )}
+                              {badge.name}
+                              {isMatch && credits > 0 && (
+                                <span className="opacity-70">
+                                  | {credits}ct.
+                                </span>
+                              )}
+                            </span>
+                          </Tooltip>
+                        );
+                      })}
                     </div>
                   </div>
                 );

@@ -12,14 +12,12 @@ const CardMetaItem = ({
 
   return (
     <div className={`flex items-start gap-0.5 min-w-0 ${className}`}>
-      {Icon && (
-        <Icon size={10} className={`${toneClass} shrink-0 mt-[3px]`} />
-      )}
+      {Icon && <Icon size={10} className={`${toneClass} shrink-0 mt-[3px]`} />}
       <span
-  className={`${toneClass} leading-tight ${
-    nowrap ? "whitespace-nowrap" : "break-words"
-  }`}
->
+        className={`${toneClass} leading-tight ${
+          nowrap ? "whitespace-nowrap" : "break-words"
+        }`}
+      >
         {children}
       </span>
     </div>

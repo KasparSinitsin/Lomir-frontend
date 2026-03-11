@@ -52,10 +52,9 @@ export const matchingService = {
    * @returns {Promise<Object>} { success, data: [...users with match_score], meta }
    */
   async getMatchingCandidates(roleId, { limit = 20 } = {}) {
-    const response = await api.get(
-      `/api/matching/role/${roleId}/candidates`,
-      { params: { limit } },
-    );
+    const response = await api.get(`/api/matching/role/${roleId}/candidates`, {
+      params: { limit },
+    });
     return response.data;
   },
 };

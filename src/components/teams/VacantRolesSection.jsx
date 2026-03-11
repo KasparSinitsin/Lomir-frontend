@@ -250,17 +250,17 @@ const VacantRolesSection = ({
               return scoreB - scoreA;
             })
             .map((role) => (
-            <VacantRoleCard
-              key={role.id}
-              role={role}
-              canManage={canManage}
-              onEdit={handleEdit}
-              onDelete={handleDelete}
-              onStatusChange={handleStatusChange}
-              matchScore={matchScores[role.id]?.matchScore ?? null}
-              matchDetails={matchScores[role.id]?.matchDetails ?? null}
-            />
-          ))}
+              <VacantRoleCard
+                key={role.id}
+                role={role}
+                canManage={canManage}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+                onStatusChange={handleStatusChange}
+                matchScore={matchScores[role.id]?.matchScore ?? null}
+                matchDetails={matchScores[role.id]?.matchDetails ?? null}
+              />
+            ))}
         </div>
       ) : (
         canManage && (
