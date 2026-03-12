@@ -53,7 +53,8 @@ export const searchService = {
     limit = 20,
     sortBy = "name",
     sortDir = "asc",
-    maxDistance = null, // ← ADD
+    maxDistance = null,
+    openRolesOnly = false,
   ) {
     const params = {
       query,
@@ -66,6 +67,7 @@ export const searchService = {
 
     // Only include when set (matches your colleague's direction)
     if (maxDistance) params.maxDistance = maxDistance;
+    if (openRolesOnly) params.openRolesOnly = "true";
 
     const response = await api.get("/api/search/global", { params });
 
@@ -100,6 +102,7 @@ export const searchService = {
     sortBy = "name",
     sortDir = "asc",
     maxDistance = null,
+    openRolesOnly = false,
   ) {
     const params = {
       authenticated: isAuthenticated,
@@ -111,6 +114,7 @@ export const searchService = {
 
     // Only include when set
     if (maxDistance) params.maxDistance = maxDistance;
+    if (openRolesOnly) params.openRolesOnly = "true";
 
     const response = await api.get("/api/search/all", { params });
 

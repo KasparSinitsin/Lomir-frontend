@@ -19,7 +19,7 @@ import {
   UserMinus,
   MapPin,
   Globe,
-  UserSearch,
+  Target,
 } from "lucide-react";
 import Alert from "../components/common/Alert";
 
@@ -57,6 +57,9 @@ const SearchPage = () => {
   const [maxDistance, setMaxDistance] = useState(null);
   const [customDistanceInput, setCustomDistanceInput] = useState("");
   const [userHasCoordinates, setUserHasCoordinates] = useState(false);
+
+  // ===== OPEN ROLES FILTER STATE (for match sort) =====
+  const [openRolesOnly, setOpenRolesOnly] = useState(false);
 
   // ===== PAGINATION STATE =====
   const [currentPage, setCurrentPage] = useState(1);
@@ -108,17 +111,22 @@ const SearchPage = () => {
     },
     {
       value: "capacity",
-      defaultDir: "spots",
-      labelSpots: "Most Spots",
-      labelRoles: "Open Roles",
-      labelMatch: "Best Match",
-      shortLabelSpots: "Spots",
-      shortLabelRoles: "Roles",
-      shortLabelMatch: "Match",
-      iconSpots: UserPlus,
-      iconRoles: UserSearch,
-      iconMatch: Sparkles,
+      defaultDir: "desc",
+      labelAsc: "Almost Full",
+      labelDesc: "Most Spots",
+      shortLabelAsc: "Full",
+      shortLabelDesc: "Spots",
+      iconAsc: UserMinus,
+      iconDesc: UserPlus,
       teamsOnly: true,
+    },
+    {
+      value: "match",
+      defaultDir: "asc",
+      labelAsc: "Best Match",
+      shortLabelAsc: "Match",
+      iconAsc: Target,
+      authOnly: true,
     },
     {
       value: "proximity",
@@ -145,13 +153,25 @@ const SearchPage = () => {
         if (!userHasLocation) return false;
       }
 
+      if (option.value === "match") {
+        if (!isAuthenticated) return false;
+      }
+
       return true;
     });
   };
 
-  // Centralized fetch to avoid duplicated logic
   const fetchData = useCallback(
-    async ({ mode, queryString, page, limit, sBy, sDir, maxDist }) => {
+    async ({
+      mode,
+      queryString,
+      page,
+      limit,
+      sBy,
+      sDir,
+      maxDist,
+      rolesOnly,
+    }) => {
       if (mode === "search") {
         return await searchService.globalSearch(
           queryString,
@@ -161,6 +181,7 @@ const SearchPage = () => {
           sBy,
           sDir,
           maxDist,
+          rolesOnly,
         );
       }
       return await searchService.getAllUsersAndTeams(
@@ -170,12 +191,12 @@ const SearchPage = () => {
         sBy,
         sDir,
         maxDist,
+        rolesOnly,
       );
     },
     [isAuthenticated],
   );
 
-  // Effect: load data when auth/pagination/sort/search changes
   useEffect(() => {
     const run = async () => {
       try {
@@ -192,6 +213,7 @@ const SearchPage = () => {
           sBy: sortBy,
           sDir: sortDir,
           maxDist: maxDistance,
+          rolesOnly: openRolesOnly,
         });
 
         setSearchResults(results.data);
@@ -209,7 +231,7 @@ const SearchPage = () => {
           totalPages: 1,
           hasNextPage: false,
           hasPrevPage: false,
-        })); // optional but nice
+        }));
         setError(getApiErrorMessage(err));
       } finally {
         setLoading(false);
@@ -224,6 +246,7 @@ const SearchPage = () => {
     sortBy,
     sortDir,
     maxDistance,
+    openRolesOnly,
     hasSearched,
     searchQuery,
   ]);
@@ -265,12 +288,11 @@ const SearchPage = () => {
     if (!trimmed) {
       setHasSearched(false);
       setError(null);
-      return; // effect will load "all"
+      return;
     }
 
     setHasSearched(true);
     setError(null);
-    // effect will load "search"
   };
 
   const handlePageChange = (newPage) => {
@@ -294,15 +316,7 @@ const SearchPage = () => {
         else if (sortDir === "desc") newSortDir = "remote";
         else newSortDir = "asc";
       } else if (newSortBy === "capacity") {
-        // Three-state cycle: spots → roles → match → spots
-        // (skip "match" if not authenticated)
-        if (sortDir === "spots") {
-          newSortDir = "roles";
-        } else if (sortDir === "roles") {
-          newSortDir = isAuthenticated ? "match" : "spots";
-        } else {
-          newSortDir = "spots";
-        }
+        newSortDir = sortDir === "desc" ? "asc" : "desc";
       } else {
         newSortDir = sortDir === "asc" ? "desc" : "asc";
       }
@@ -316,7 +330,10 @@ const SearchPage = () => {
           newSortDir = "asc";
           break;
         case "capacity":
-          newSortDir = "spots";
+          newSortDir = "desc";
+          break;
+        case "match":
+          newSortDir = "asc";
           break;
         default:
           newSortDir = "desc";
@@ -335,6 +352,11 @@ const SearchPage = () => {
     // Capacity sort applies to teams only
     if (newSortBy === "capacity") {
       setSearchType("teams");
+    }
+
+    // Reset openRolesOnly when leaving match sort
+    if (newSortBy !== "match") {
+      setOpenRolesOnly(false);
     }
 
     // Reset distance filter when leaving proximity sort
@@ -359,7 +381,6 @@ const SearchPage = () => {
 
   const handleDistancePreset = (km) => {
     if (maxDistance === km) {
-      // Toggle off
       setMaxDistance(null);
       setCustomDistanceInput("");
     } else {
@@ -396,7 +417,6 @@ const SearchPage = () => {
       setSortBy("name");
       setSortDir("asc");
     }
-    // Reset remote sort when switching away from teams-only view
     if (type !== "teams" && sortBy === "proximity" && sortDir === "remote") {
       setSortDir("asc");
       setMaxDistance(null);
@@ -449,17 +469,19 @@ const SearchPage = () => {
   const showDistanceRow =
     sortBy === "proximity" && sortDir !== "remote" && userHasCoordinates;
 
+  const showMatchRow = sortBy === "match";
+
   // ===== SORT ICON COLOR STATE =====
-  // "Modified" means the user changed any default sort or distance filter
   const isSortModified =
     sortBy !== "name" ||
     sortDir !== "asc" ||
     maxDistance !== null ||
+    openRolesOnly ||
     (customDistanceInput && customDistanceInput.trim() !== "");
 
   const sortIconColor = isSortModified
-    ? "var(--color-primary)" // light green (active / modified)
-    : "var(--color-primary-focus)"; // dark green (default)
+    ? "var(--color-primary)"
+    : "var(--color-primary-focus)";
 
   return (
     <PageContainer
@@ -468,7 +490,6 @@ const SearchPage = () => {
       variant="muted"
     >
       <div className="max-w-xl mx-auto mb-8">
-        {/* Toggle for All/Teams/Users */}
         <div className="flex justify-center space-x-2 pt-2 mb-2">
           <div className="btn-group">
             <button
@@ -511,7 +532,6 @@ const SearchPage = () => {
           </div>
         </div>
 
-        {/* Search + Sort */}
         <div ref={sortFilterRef}>
           <div className="flex gap-2 items-start">
             <button
@@ -528,8 +548,10 @@ const SearchPage = () => {
                 initialQuery={searchQuery}
                 onSearch={handleBooleanSearch}
                 placeholder={
-                  sortBy === "capacity" && sortDir === "match"
-                    ? "Teams with roles matching your profile — type to narrow results"
+                  sortBy === "match"
+                    ? openRolesOnly
+                      ? "Matching teams with open roles to your profile — type to narrow"
+                      : "Matching results to your profile — type to narrow"
                     : "Try: hiking AND photography, or hiking NOT photography"
                 }
                 className="w-full"
@@ -542,7 +564,6 @@ const SearchPage = () => {
               <div className="mt-2 py-1 ml-10">
                 <div className="flex">
                   <div className="flex flex-col items-end">
-                    {/* Sort buttons row — SAME CONTENT as before */}
                     <div className="flex items-center gap-1 overflow-x-auto no-scrollbar">
                       {getVisibleSortOptions().map((option) => {
                         const isActive = sortBy === option.value;
@@ -564,22 +585,6 @@ const SearchPage = () => {
                           IconComponent = option.iconRemote;
                           label = option.labelRemote;
                           shortLabel = option.shortLabelRemote;
-                        } else if (option.value === "capacity") {
-                          // Capacity has 3 custom states
-                          if (currentDir === "roles") {
-                            IconComponent = option.iconRoles;
-                            label = option.labelRoles;
-                            shortLabel = option.shortLabelRoles;
-                          } else if (currentDir === "match") {
-                            IconComponent = option.iconMatch;
-                            label = option.labelMatch;
-                            shortLabel = option.shortLabelMatch;
-                          } else {
-                            // "spots" or default
-                            IconComponent = option.iconSpots;
-                            label = option.labelSpots;
-                            shortLabel = option.shortLabelSpots;
-                          }
                         } else if (currentDir === "asc") {
                           IconComponent = option.iconAsc;
                           label = option.labelAsc;
@@ -604,7 +609,6 @@ const SearchPage = () => {
                             title={option.teamsOnly ? "Teams only" : ""}
                           >
                             <IconComponent className="w-3.5 h-3.5 shrink-0" />
-
                             <span className="hidden sm:inline">{label}</span>
                             <span className="sm:hidden">{shortLabel}</span>
                           </button>
@@ -612,7 +616,6 @@ const SearchPage = () => {
                       })}
                     </div>
 
-                    {/* Distance row wrapped in showDistanceRow */}
                     {showDistanceRow && (
                       <div className="flex items-center gap-px mt-1 flex-wrap justify-end self-stretch overflow-x-auto no-scrollbar">
                         {distancePresets.map((km) => (
@@ -622,11 +625,11 @@ const SearchPage = () => {
                             onClick={() => handleDistancePreset(km)}
                             disabled={loading}
                             className={`px-1 py-0.5 text-xs rounded transition-colors transition-font-weight
-      ${
-        maxDistance === km
-          ? "text-[var(--color-primary)] font-bold"
-          : "text-[var(--color-primary-focus)] hover:text-[var(--color-primary-focus)] hover:font-medium"
-      }`}
+                              ${
+                                maxDistance === km
+                                  ? "text-[var(--color-primary)] font-bold"
+                                  : "text-[var(--color-primary-focus)] hover:text-[var(--color-primary-focus)] hover:font-medium"
+                              }`}
                           >
                             {km}km
                           </button>
@@ -648,13 +651,13 @@ const SearchPage = () => {
                               )}ch`,
                             }}
                             className={`px-1 py-0.5 text-xs rounded border transition-colors
-                [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none
-                ${
-                  maxDistance && !distancePresets.includes(maxDistance)
-                    ? "border-[var(--color-success)] text-[var(--color-success)] font-medium"
-                    : "border-[var(--color-text)]/20 text-[var(--color-text)]/60"
-                }
-                bg-transparent focus:outline-none focus:border-[var(--color-success)]`}
+                              [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none
+                              ${
+                                maxDistance && !distancePresets.includes(maxDistance)
+                                  ? "border-[var(--color-success)] text-[var(--color-success)] font-medium"
+                                  : "border-[var(--color-text)]/20 text-[var(--color-text)]/60"
+                              }
+                              bg-transparent focus:outline-none focus:border-[var(--color-success)]`}
                             disabled={loading}
                           />
                           <span className="text-xs text-[var(--color-primary-focus)]">
@@ -663,9 +666,28 @@ const SearchPage = () => {
                         </div>
                       </div>
                     )}
+
+                    {showMatchRow && (
+                      <div className="flex items-center gap-2 mt-1 flex-wrap justify-end self-stretch">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setOpenRolesOnly(!openRolesOnly);
+                            setCurrentPage(1);
+                          }}
+                          disabled={loading}
+                          className={`px-2 py-0.5 text-xs rounded transition-colors ${
+                            openRolesOnly
+                              ? "text-[var(--color-primary)] font-bold"
+                              : "text-[var(--color-primary-focus)]/70 hover:text-[var(--color-primary-focus)] hover:font-medium"
+                          }`}
+                        >
+                          Open Roles Only
+                        </button>
+                      </div>
+                    )}
                   </div>
 
-                  {/* The bracket */}
                   {showDistanceRow && (
                     <div
                       className={`border-t border-r border-b rounded-r-sm w-1.5 my-0.5 ml-1.5 transition-colors ${
@@ -682,7 +704,6 @@ const SearchPage = () => {
         </div>
       </div>
 
-      {/* Error */}
       {error && (
         <Alert
           type="error"
@@ -692,7 +713,6 @@ const SearchPage = () => {
         />
       )}
 
-      {/* No results */}
       {noResultsFound && (
         <Alert
           type="info"
@@ -709,7 +729,6 @@ const SearchPage = () => {
         </div>
       ) : (
         <div>
-          {/* Teams */}
           {filteredResults.teams.length > 0 && (
             <section className="mb-8">
               <h2 className="text-xl font-semibold mb-4">
@@ -734,7 +753,6 @@ const SearchPage = () => {
             </section>
           )}
 
-          {/* Users */}
           {filteredResults.users.length > 0 && (
             <section>
               <h2 className="text-xl font-semibold mb-4">
@@ -758,7 +776,6 @@ const SearchPage = () => {
             </section>
           )}
 
-          {/* Pagination */}
           {(filteredResults.teams.length > 0 ||
             filteredResults.users.length > 0) && (
             <Pagination
