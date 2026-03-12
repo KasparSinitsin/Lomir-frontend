@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Tag, Layers } from "lucide-react";
+import { Tag, Layers, Check } from "lucide-react";
 import {
   CATEGORY_COLORS,
   SUPERCATEGORY_ORDER,
   PILL_ROW_HEIGHT,
   FOCUS_GREEN,
   FOCUS_GREEN_DARK,
+  TAG_SECTION_BG,
 } from "../../constants/badgeConstants";
 import { SUPERCATEGORY_ICONS } from "../../utils/badgeIconUtils";
 import Tooltip from "../common/Tooltip";
@@ -42,6 +43,7 @@ const TagsDisplaySection = ({
   onSupercategoryClick,
   highlightTagName = null,
   highlightTagColor = null,
+  matchingTagIds = null,
   emptyMessage = UI_TEXT.focusAreas.empty,
   placeholder = UI_TEXT.focusAreas.placeholder,
   entityType,
@@ -270,6 +272,9 @@ const TagsDisplaySection = ({
       highlightTagName &&
       tag.name?.toLowerCase() === highlightTagName.toLowerCase();
 
+    const tagId = Number(tag.tagId ?? tag.tag_id ?? tag.id ?? tag.key);
+    const isUserMatch = matchingTagIds && matchingTagIds.has(tagId);
+
     // Use the dominant badge category color for the highlight glow,
     // fall back to the focus-area green
     const highlightColor = isHighlighted
@@ -283,7 +288,7 @@ const TagsDisplaySection = ({
       <Tooltip key={tag.key} content={tooltipText}>
         <span
           ref={isHighlighted ? highlightTagRef : undefined}
-          className={`badge badge-outline p-3 bg-white/60 ${isClickable ? "cursor-pointer hover:shadow-md transition-shadow" : ""} ${
+          className={`badge badge-outline p-3 bg-white/60 inline-flex items-center gap-1 ${isClickable ? "cursor-pointer hover:shadow-md transition-shadow" : ""} ${
             isHighlighted ? "animate-badge-highlight" : ""
           }`}
           style={{
@@ -297,12 +302,21 @@ const TagsDisplaySection = ({
                   boxShadow: `0 0 12px ${highlightColor}66`,
                   backgroundColor: `${highlightColor}20`,
                 }
-              : {}),
+              : isUserMatch
+                ? { backgroundColor: TAG_SECTION_BG }
+                : {}),
           }}
           onClick={() => {
             if (isClickable) onTagClick(tag);
           }}
         >
+          {isUserMatch && (
+            <Check
+              size={12}
+              className="flex-shrink-0"
+              style={{ color: FOCUS_GREEN }}
+            />
+          )}
           {tag.name}
           {hasBadgeCredits && (
             <span className="ml-1 opacity-70">| {tag.badgeCredits}ct.</span>

@@ -1,9 +1,10 @@
 import React, { useRef, useEffect } from "react";
-import { Award } from "lucide-react";
+import { Award, Check } from "lucide-react";
 import { getCategoryIcon } from "../../utils/badgeIconUtils";
 import Tooltip from "../common/Tooltip";
 import {
   CATEGORY_COLORS,
+  CATEGORY_CARD_PASTELS,
   DEFAULT_COLOR,
   PILL_ROW_HEIGHT,
 } from "../../constants/badgeConstants";
@@ -39,6 +40,7 @@ const BadgesDisplaySection = ({
   onBadgeClick = null,
   onOpenUser = null,
   highlightBadgeName = null,
+  matchingBadgeNames = null,
 }) => {
   // Hooks must be called before any early returns (Rules of Hooks)
   const highlightRef = useRef(null);
@@ -256,6 +258,11 @@ const BadgesDisplaySection = ({
                 {categoryBadges.map((badge) => {
                   const credits = getCredits(badge);
                   const isClickable = !!onBadgeClick;
+                  const badgeKey = (badge.name ?? "").trim().toLowerCase();
+                  const isBadgeMatch =
+                    matchingBadgeNames && matchingBadgeNames.has(badgeKey);
+                  const matchPastel =
+                    CATEGORY_CARD_PASTELS[category] || `${categoryColor}15`;
                   const awardCount = Number(
                     badge.award_count ?? badge.awardCount ?? 0,
                   );
@@ -298,7 +305,9 @@ const BadgesDisplaySection = ({
                                 boxShadow: `0 0 12px ${categoryColor}66`,
                                 backgroundColor: `${categoryColor}20`,
                               }
-                            : {}),
+                            : isBadgeMatch
+                              ? { backgroundColor: matchPastel }
+                              : {}),
                         }}
                         onClick={
                           isClickable
@@ -309,6 +318,13 @@ const BadgesDisplaySection = ({
                             : undefined
                         }
                       >
+                        {isBadgeMatch && (
+                          <Check
+                            size={12}
+                            className="flex-shrink-0"
+                            style={{ color: categoryColor }}
+                          />
+                        )}
                         {badge.name}
                         {credits && showCredits && (
                           <span className="ml-1 opacity-70">

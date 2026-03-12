@@ -10,6 +10,7 @@ import TeamRoleManager from "./TeamRoleManager";
 import TeamEditForm from "./TeamEditForm";
 import { useAuth } from "../../contexts/AuthContext";
 import { teamService } from "../../services/teamService";
+import { userService } from "../../services/userService";
 import Button from "../common/Button";
 import SendMessageButton from "../common/SendMessageButton";
 import Alert from "../common/Alert";
@@ -126,6 +127,9 @@ const TeamDetailsModal = ({
   const [selectedUserId, setSelectedUserId] = useState(null);
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [allTags, setAllTags] = useState([]);
+  const [currentUserTagIds, setCurrentUserTagIds] = useState(null); // Set<number>
+
+  const [userTagIds, setUserTagIds] = useState(null); // Set<number>
 
   // Team focus-area award modals (parallel to useAwardModals for users)
   const {
@@ -427,6 +431,29 @@ const TeamDetailsModal = ({
   ]);
 
   useEffect(() => {
+    if (!isModalVisible || !isAuthenticated || !user?.id) return;
+
+    const fetchUserTags = async () => {
+      try {
+        const tagsRes = await userService.getUserTags(user.id);
+        const tagData = Array.isArray(tagsRes?.data)
+          ? tagsRes.data
+          : tagsRes?.data?.data || [];
+        const ids = new Set(
+          tagData
+            .map((t) => Number(t.tagId ?? t.tag_id ?? t.id))
+            .filter(Number.isFinite),
+        );
+        setUserTagIds(ids);
+      } catch (err) {
+        console.warn("Could not fetch user tags for matching highlights:", err);
+      }
+    };
+
+    fetchUserTags();
+  }, [isModalVisible, isAuthenticated, user?.id]);
+
+  useEffect(() => {
     // Reset state when modal closes
     if (!isModalVisible) {
       setNotification({ type: null, message: null });
@@ -639,6 +666,30 @@ const TeamDetailsModal = ({
       return { ...prev, selectedTags: ids };
     });
   }, [isEditing, team]); // formData.selectedTags intentionally excluded
+
+  // Fetch current user's tag IDs for overlap highlighting on team focus areas
+  useEffect(() => {
+    if (!isModalVisible || !isAuthenticated || !user?.id) return;
+
+    const fetchCurrentUserTags = async () => {
+      try {
+        const tagsRes = await userService.getUserTags(user.id);
+        const tagData = Array.isArray(tagsRes?.data)
+          ? tagsRes.data
+          : tagsRes?.data?.data || [];
+        const ids = new Set(
+          tagData
+            .map((t) => Number(t.tagId ?? t.tag_id ?? t.id))
+            .filter(Number.isFinite),
+        );
+        setCurrentUserTagIds(ids);
+      } catch (err) {
+        console.warn("Could not fetch user tags for matching highlights:", err);
+      }
+    };
+
+    fetchCurrentUserTags();
+  }, [isModalVisible, isAuthenticated, user?.id]);
 
   // Fetch structured tags when modal opens (needed for display AND edit mode)
   useEffect(() => {
@@ -1387,6 +1438,7 @@ const TeamDetailsModal = ({
                     <TagsDisplaySection
                       title={UI_TEXT.focusAreas.title}
                       tags={team?.tags || []}
+                      matchingTagIds={userTagIds}
                       allTags={allTags}
                       canEdit={false}
                       onSave={undefined}
@@ -1395,6 +1447,7 @@ const TeamDetailsModal = ({
                       entityType="team"
                       emptyMessage={UI_TEXT.focusAreas.emptyTeam}
                       placeholder={UI_TEXT.focusAreas.placeholderTeam}
+                      matchingTagIds={currentUserTagIds}
                     />
                   )}
 
@@ -1411,13 +1464,12 @@ const TeamDetailsModal = ({
                     onMemberRemoved={fetchTeamDetails}
                   />
 
-{/* Vacant Team Roles */}
+                  {/* Vacant Team Roles */}
                   <VacantRolesSection
                     teamId={effectiveTeamId}
                     canManage={isOwner || internalUserRole === "admin"}
                     isEditing={isEditing}
                   />
-
                 </div>
 
                 {/* Join / Leave / Message Buttons */}
