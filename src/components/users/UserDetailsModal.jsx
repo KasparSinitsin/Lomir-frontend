@@ -43,6 +43,8 @@ const UserDetailsModal = ({
   const [isEditing, setIsEditing] = useState(mode === "edit");
 
   const [userTags, setUserTags] = useState([]);
+  const [currentUserTagIds, setCurrentUserTagIds] = useState(null); // Set<number>
+  const [currentUserBadgeNames, setCurrentUserBadgeNames] = useState(null); // Set<string>
 
   const [formData, setFormData] = useState({
     firstName: "",
@@ -123,6 +125,50 @@ const UserDetailsModal = ({
       fetchUserDetails();
     }
   }, [isOpen, userId, fetchUserDetails]);
+
+  // Fetch CURRENT user's tags/badges for overlap highlighting (not the viewed user's)
+  useEffect(() => {
+    if (!isOpen || !isAuthenticated || !currentUser?.id) return;
+    // Don't highlight own profile
+    if (Number(currentUser.id) === Number(userId)) return;
+
+    const fetchCurrentUserData = async () => {
+      try {
+        const tagsRes = await userService.getUserTags(currentUser.id);
+        const tagData = Array.isArray(tagsRes?.data)
+          ? tagsRes.data
+          : tagsRes?.data?.data || [];
+        const tagIds = new Set(
+          tagData
+            .map((t) => Number(t.tagId ?? t.tag_id ?? t.id))
+            .filter(Number.isFinite),
+        );
+        setCurrentUserTagIds(tagIds);
+
+        const badgesRes = await userService.getUserBadges(currentUser.id);
+        const badgeData = Array.isArray(badgesRes?.data)
+          ? badgesRes.data
+          : badgesRes?.data?.data || [];
+        const badgeNames = new Set(
+          badgeData
+            .map((b) =>
+              (b.badgeName ?? b.badge_name ?? b.name ?? "")
+                .trim()
+                .toLowerCase(),
+            )
+            .filter(Boolean),
+        );
+        setCurrentUserBadgeNames(badgeNames);
+      } catch (err) {
+        console.warn(
+          "Could not fetch current user data for matching highlights:",
+          err,
+        );
+      }
+    };
+
+    fetchCurrentUserData();
+  }, [isOpen, isAuthenticated, currentUser?.id, userId]);
 
   useEffect(() => {
     setIsEditing(mode === "edit");
@@ -288,6 +334,7 @@ const UserDetailsModal = ({
               emptyMessage={UI_TEXT.focusAreas.empty}
               onTagClick={handleTagClick}
               onSupercategoryClick={handleSupercategoryClick}
+              matchingTagIds={currentUserTagIds}
             />
 
             {/* Badges */}
@@ -305,6 +352,7 @@ const UserDetailsModal = ({
               onCategoryClick={handleBadgeCategoryClick}
               onBadgeClick={handleBadgeClick}
               onOpenUser={onOpenUser}
+              matchingBadgeNames={currentUserBadgeNames}
             />
 
             {/* Bottom CTA (TeamDetailsModal style) */}
@@ -346,10 +394,7 @@ const UserDetailsModal = ({
       />
 
       {/* Tag Awards Modal */}
-      <TagAwardsModal
-        {...tagAwardsModalProps}
-        onOpenUser={onOpenUser}
-      />
+      <TagAwardsModal {...tagAwardsModalProps} onOpenUser={onOpenUser} />
 
       {/* Supercategory Awards Modal */}
       <SupercategoryAwardsModal

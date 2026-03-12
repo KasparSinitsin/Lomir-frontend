@@ -19,6 +19,7 @@ import {
   UserMinus,
   MapPin,
   Globe,
+  UserSearch,
 } from "lucide-react";
 import Alert from "../components/common/Alert";
 
@@ -107,13 +108,16 @@ const SearchPage = () => {
     },
     {
       value: "capacity",
-      defaultDir: "desc",
-      labelAsc: "Almost Full",
-      labelDesc: "Most Capacity",
-      shortLabelAsc: "Full",
-      shortLabelDesc: "Capacity",
-      iconAsc: UserMinus,
-      iconDesc: UserPlus,
+      defaultDir: "spots",
+      labelSpots: "Most Spots",
+      labelRoles: "Open Roles",
+      labelMatch: "Best Match",
+      shortLabelSpots: "Spots",
+      shortLabelRoles: "Roles",
+      shortLabelMatch: "Match",
+      iconSpots: UserPlus,
+      iconRoles: UserSearch,
+      iconMatch: Sparkles,
       teamsOnly: true,
     },
     {
@@ -233,14 +237,8 @@ const SearchPage = () => {
       setSearchType("teams");
     } else if (typeParam === "users") {
       setSearchType("users");
-      if (sortBy === "capacity") {
-        setSortBy("name");
-        setSortDir("asc");
-      }
-    } else {
-      setSearchType("all");
     }
-  }, [location.search, sortBy]);
+  }, [location.search]);
 
   // Close sort dropdown on outside click
   useEffect(() => {
@@ -292,12 +290,18 @@ const SearchPage = () => {
       // Cycling within the same sort option
       if (newSortBy === "proximity") {
         // Three-state cycle: asc → desc → remote → asc
-        if (sortDir === "asc") {
-          newSortDir = "desc";
-        } else if (sortDir === "desc") {
-          newSortDir = "remote";
+        if (sortDir === "asc") newSortDir = "desc";
+        else if (sortDir === "desc") newSortDir = "remote";
+        else newSortDir = "asc";
+      } else if (newSortBy === "capacity") {
+        // Three-state cycle: spots → roles → match → spots
+        // (skip "match" if not authenticated)
+        if (sortDir === "spots") {
+          newSortDir = "roles";
+        } else if (sortDir === "roles") {
+          newSortDir = isAuthenticated ? "match" : "spots";
         } else {
-          newSortDir = "asc";
+          newSortDir = "spots";
         }
       } else {
         newSortDir = sortDir === "asc" ? "desc" : "asc";
@@ -306,8 +310,13 @@ const SearchPage = () => {
       // Switching to a different sort option
       switch (newSortBy) {
         case "name":
+          newSortDir = "asc";
+          break;
         case "proximity":
           newSortDir = "asc";
+          break;
+        case "capacity":
+          newSortDir = "spots";
           break;
         default:
           newSortDir = "desc";
@@ -317,10 +326,15 @@ const SearchPage = () => {
     // Handle searchType switching for proximity
     if (newSortBy === "proximity") {
       if (newSortDir === "remote") {
-        setSearchType("teams"); // Remote only applies to teams
+        setSearchType("teams");
       } else if (searchType === "all") {
-        setSearchType("users"); // Original behavior for Near/Far
+        setSearchType("users");
       }
+    }
+
+    // Capacity sort applies to teams only
+    if (newSortBy === "capacity") {
+      setSearchType("teams");
     }
 
     // Reset distance filter when leaving proximity sort
@@ -513,7 +527,11 @@ const SearchPage = () => {
               <BooleanSearchInput
                 initialQuery={searchQuery}
                 onSearch={handleBooleanSearch}
-                placeholder="Try: hiking AND photography, or hiking NOT photography"
+                placeholder={
+                  sortBy === "capacity" && sortDir === "match"
+                    ? "Teams with roles matching your profile — type to narrow results"
+                    : "Try: hiking AND photography, or hiking NOT photography"
+                }
                 className="w-full"
               />
             </div>
@@ -546,6 +564,22 @@ const SearchPage = () => {
                           IconComponent = option.iconRemote;
                           label = option.labelRemote;
                           shortLabel = option.shortLabelRemote;
+                        } else if (option.value === "capacity") {
+                          // Capacity has 3 custom states
+                          if (currentDir === "roles") {
+                            IconComponent = option.iconRoles;
+                            label = option.labelRoles;
+                            shortLabel = option.shortLabelRoles;
+                          } else if (currentDir === "match") {
+                            IconComponent = option.iconMatch;
+                            label = option.labelMatch;
+                            shortLabel = option.shortLabelMatch;
+                          } else {
+                            // "spots" or default
+                            IconComponent = option.iconSpots;
+                            label = option.labelSpots;
+                            shortLabel = option.shortLabelSpots;
+                          }
                         } else if (currentDir === "asc") {
                           IconComponent = option.iconAsc;
                           label = option.labelAsc;
