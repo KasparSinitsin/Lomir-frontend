@@ -2,24 +2,16 @@ import api from "./api";
 
 /**
  * Extract a human-friendly message from Axios/backend errors.
- * Backend shape you showed:
- * { success:false, message:"Error performing search", error:"userParamIdx is not defined" }
  */
 export const getApiErrorMessage = (error) => {
   const data = error?.response?.data;
 
-  // Backend-provided details
   if (data?.error && data?.message) {
-    // Return the specific error (more useful), optionally keep the generic message
-    // Example: "userParamIdx is not defined"
     return data.error;
-    // If you prefer: return `${data.message}: ${data.error}`;
   }
 
   if (data?.error) return String(data.error);
   if (data?.message) return String(data.message);
-
-  // Axios fallback
   if (error?.message) return String(error.message);
 
   return "Something went wrong";
@@ -54,7 +46,7 @@ export const searchService = {
     sortBy = "name",
     sortDir = "asc",
     maxDistance = null,
-    openRolesOnly = false,
+    capacityMode = "spots",
   ) {
     const params = {
       query,
@@ -65,9 +57,11 @@ export const searchService = {
       sortDir,
     };
 
-    // Only include when set (matches your colleague's direction)
     if (maxDistance) params.maxDistance = maxDistance;
-    if (openRolesOnly) params.openRolesOnly = "true";
+
+    if (sortBy === "capacity") {
+      params.capacityMode = capacityMode;
+    }
 
     const response = await api.get("/api/search/global", { params });
 
@@ -102,7 +96,7 @@ export const searchService = {
     sortBy = "name",
     sortDir = "asc",
     maxDistance = null,
-    openRolesOnly = false,
+    capacityMode = "spots",
   ) {
     const params = {
       authenticated: isAuthenticated,
@@ -112,9 +106,11 @@ export const searchService = {
       sortDir,
     };
 
-    // Only include when set
     if (maxDistance) params.maxDistance = maxDistance;
-    if (openRolesOnly) params.openRolesOnly = "true";
+
+    if (sortBy === "capacity") {
+      params.capacityMode = capacityMode;
+    }
 
     const response = await api.get("/api/search/all", { params });
 
