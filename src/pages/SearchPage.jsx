@@ -31,6 +31,9 @@ import {
 import Alert from "../components/common/Alert";
 import { searchService, getApiErrorMessage } from "../services/searchService";
 
+const SEARCH_RESULTS_PER_PAGE_OPTIONS = [15, 30, 50, 75, 100];
+const DEFAULT_RESULTS_PER_PAGE = SEARCH_RESULTS_PER_PAGE_OPTIONS[0];
+
 const SearchPage = () => {
   const location = useLocation();
   const { isAuthenticated } = useAuth();
@@ -77,10 +80,12 @@ const SearchPage = () => {
 
   // ===== PAGINATION STATE =====
   const [currentPage, setCurrentPage] = useState(1);
-  const [resultsPerPage, setResultsPerPage] = useState(10);
+  const [resultsPerPage, setResultsPerPage] = useState(
+    DEFAULT_RESULTS_PER_PAGE,
+  );
   const [pagination, setPagination] = useState({
     page: 1,
-    limit: 10,
+    limit: DEFAULT_RESULTS_PER_PAGE,
     totalTeams: 0,
     totalUsers: 0,
     totalItems: 0,
@@ -938,7 +943,7 @@ const SearchPage = () => {
               onPageChange={handlePageChange}
               resultsPerPage={resultsPerPage}
               onResultsPerPageChange={handleResultsPerPageChange}
-              resultsPerPageOptions={[10, 20, 30, 40]}
+              resultsPerPageOptions={SEARCH_RESULTS_PER_PAGE_OPTIONS}
             />
           )}
         </div>
