@@ -54,12 +54,12 @@ const SearchPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [hasSearched, setHasSearched] = useState(false);
-  const [userHasLocation, setUserHasLocation] = useState(false);
 
   // ===== SORTING STATE =====
   const [sortBy, setSortBy] = useState("name");
   const [sortDir, setSortDir] = useState("asc");
   const [showSortDropdown, setShowSortDropdown] = useState(false);
+  const [openSubmenuType, setOpenSubmenuType] = useState(null);
   const sortFilterRef = useRef(null);
   const portalContainerRef = useRef(null);
 
@@ -74,6 +74,7 @@ const SearchPage = () => {
   const [maxDistance, setMaxDistance] = useState(null);
   const [customDistanceInput, setCustomDistanceInput] = useState("");
   const [userHasCoordinates, setUserHasCoordinates] = useState(false);
+  const [openRolesOnly, setOpenRolesOnly] = useState(false);
 
   // ===== CAPACITY FILTER STATE =====
   const [capacityMode, setCapacityMode] = useState("spots");
@@ -129,17 +130,6 @@ const SearchPage = () => {
       teamsOnly: false,
     },
     {
-      value: "capacity",
-      defaultDir: "desc",
-      labelAsc: "Capacity",
-      labelDesc: "Capacity",
-      shortLabelAsc: "Cap",
-      shortLabelDesc: "Cap",
-      iconAsc: UserMinus,
-      iconDesc: UserPlus,
-      teamsOnly: true,
-    },
-    {
       value: "match",
       defaultDir: "asc",
       labelAsc: "Best Match",
@@ -160,6 +150,17 @@ const SearchPage = () => {
       iconDesc: MapPin,
       iconRemote: Globe,
     },
+    {
+      value: "capacity",
+      defaultDir: "desc",
+      labelAsc: "Almost Full",
+      labelDesc: "Most Spots",
+      shortLabelAsc: "Full",
+      shortLabelDesc: "Spots",
+      iconAsc: UserMinus,
+      iconDesc: UserPlus,
+      teamsOnly: true,
+    },
   ];
 
   const filteredResults = {
@@ -175,28 +176,28 @@ const SearchPage = () => {
     filteredResults.users.length === 0 &&
     !loading;
 
-  const showDistanceRow =
-    sortBy === "proximity" && sortDir !== "remote" && userHasCoordinates;
+  const effectiveOpenRolesOnly =
+    searchType === "users" ? false : openRolesOnly;
+  const isCapacitySpotsSort =
+    searchType === "teams" && sortBy === "capacity" && capacityMode === "spots";
+  const isCapacityRolesSort =
+    searchType === "teams" && sortBy === "capacity" && capacityMode === "roles";
 
-  const showCapacityRow = sortBy === "capacity" && searchType === "teams";
+  const activeSubmenuType = showSortDropdown ? openSubmenuType : null;
 
-  const activeSubmenuType = showSortDropdown
-    ? showCapacityRow
+  const submenuAnchorKey =
+    activeSubmenuType === "capacity"
       ? "capacity"
-      : showDistanceRow
+      : activeSubmenuType === "proximity"
         ? "proximity"
-        : null
-    : null;
+        : sortBy;
 
   const getVisibleSortOptions = () => {
     return sortOptions.filter((option) => {
       if (option.teamsOnly && searchType !== "teams") return false;
       if (option.usersOnly && searchType === "teams") return false;
 
-      if (option.value === "proximity") {
-        if (!isAuthenticated) return false;
-        if (!userHasLocation) return false;
-      }
+      if (option.value === "proximity" && !userHasCoordinates) return false;
 
       if (option.value === "match") {
         if (!isAuthenticated) return false;
@@ -207,32 +208,72 @@ const SearchPage = () => {
   };
 
   const fetchData = useCallback(
-    async ({ mode, queryString, page, limit, sBy, sDir, maxDist, capMode }) => {
-      if (mode === "search") {
-        return await searchService.globalSearch(
-          queryString,
+    async (criteria) => {
+      if (criteria.mode === "search") {
+        return await searchService.globalSearch({
+          ...criteria,
           isAuthenticated,
-          page,
-          limit,
-          sBy,
-          sDir,
-          maxDist,
-          capMode,
-        );
+        });
       }
 
-      return await searchService.getAllUsersAndTeams(
+      return await searchService.getAllUsersAndTeams({
+        ...criteria,
         isAuthenticated,
-        page,
-        limit,
-        sBy,
-        sDir,
-        maxDist,
-        capMode,
-      );
+      });
     },
     [isAuthenticated],
   );
+
+  const activeCriteriaPills = [];
+
+  if (sortBy === "match") {
+    activeCriteriaPills.push({ key: "sort", label: "Best Match" });
+  } else if (sortBy === "name" && sortDir === "desc") {
+    activeCriteriaPills.push({ key: "sort", label: "Name Z-A" });
+  } else if (sortBy === "recent") {
+    activeCriteriaPills.push({
+      key: "sort",
+      label: sortDir === "desc" ? "Active" : "Inactive",
+    });
+  } else if (sortBy === "newest") {
+    activeCriteriaPills.push({
+      key: "sort",
+      label: sortDir === "desc" ? "Newest" : "Oldest",
+    });
+  } else if (sortBy === "capacity") {
+    if (capacityMode === "spots") {
+      activeCriteriaPills.push({
+        key: "sort",
+        label: sortDir === "desc" ? "Most Spots" : "Almost Full",
+      });
+    } else {
+      activeCriteriaPills.push({
+        key: "sort",
+        label: sortDir === "desc" ? "Most Open Roles" : "Least Open Roles",
+      });
+    }
+  } else if (sortBy === "proximity") {
+    activeCriteriaPills.push({
+      key: "sort",
+      label:
+        sortDir === "remote"
+          ? "Remote"
+          : sortDir === "desc"
+            ? "Farthest"
+            : "Nearest",
+    });
+  }
+
+  if (maxDistance !== null) {
+    activeCriteriaPills.push({
+      key: "maxDistance",
+      label: `Within ${maxDistance} km`,
+    });
+  }
+
+  if (effectiveOpenRolesOnly) {
+    activeCriteriaPills.push({ key: "openRolesOnly", label: "Open Roles Only" });
+  }
 
   useEffect(() => {
     const run = async () => {
@@ -240,21 +281,22 @@ const SearchPage = () => {
         setLoading(true);
         setError(null);
 
-        const mode = hasSearched && searchQuery.trim() ? "search" : "all";
-
-        const results = await fetchData({
-          mode,
-          queryString: searchQuery.trim(),
+        const requestCriteria = {
+          mode: hasSearched && searchQuery.trim() ? "search" : "all",
+          query: searchQuery.trim(),
+          searchType,
           page: currentPage,
           limit: resultsPerPage,
-          sBy: sortBy,
-          sDir: sortDir,
-          maxDist: maxDistance,
-          capMode: capacityMode,
-        });
+          sortBy,
+          sortDir,
+          maxDistance,
+          openRolesOnly: effectiveOpenRolesOnly,
+          capacityMode,
+        };
+
+        const results = await fetchData(requestCriteria);
 
         setSearchResults(results.data);
-        setUserHasLocation(!!results.userLocation?.hasLocation);
         setUserHasCoordinates(!!results.userLocation?.hasCoordinates);
 
         if (results.pagination) {
@@ -283,9 +325,12 @@ const SearchPage = () => {
     fetchData,
     currentPage,
     resultsPerPage,
+    searchType,
     sortBy,
     sortDir,
     maxDistance,
+    openRolesOnly,
+    effectiveOpenRolesOnly,
     capacityMode,
     hasSearched,
     searchQuery,
@@ -302,6 +347,21 @@ const SearchPage = () => {
     }
   }, [location.search]);
 
+  useEffect(() => {
+    if (!showSortDropdown) {
+      setOpenSubmenuType(null);
+      return;
+    }
+
+    if (openSubmenuType === "capacity" && searchType !== "teams") {
+      setOpenSubmenuType(null);
+    }
+
+    if (openSubmenuType === "proximity" && !userHasCoordinates) {
+      setOpenSubmenuType(null);
+    }
+  }, [showSortDropdown, openSubmenuType, searchType, userHasCoordinates]);
+
   useLayoutEffect(() => {
     if (!activeSubmenuType || !showSortDropdown) {
       setSubmenuPosition(null);
@@ -309,22 +369,49 @@ const SearchPage = () => {
     }
 
     const updatePosition = () => {
-      const anchorEl = sortButtonRefs.current[sortBy];
+      const anchorEl = sortButtonRefs.current[submenuAnchorKey];
       const submenuEl = submenuRef.current;
 
       if (!anchorEl) return;
 
       const anchorRect = anchorEl.getBoundingClientRect();
+      const visibleButtonTops = Object.values(sortButtonRefs.current)
+        .filter(Boolean)
+        .map((button) => button.getBoundingClientRect().top);
       const submenuHeight = submenuEl?.offsetHeight || 30;
+      const submenuWidth = submenuEl?.offsetWidth || 0;
 
       const submenuTop = anchorRect.bottom + 6;
-      const submenuRight = window.innerWidth - anchorRect.right;
       const anchorMidY = anchorRect.top + anchorRect.height / 2;
       const submenuMidY = submenuTop + submenuHeight / 2;
+      const firstRowTop =
+        visibleButtonTops.length > 0 ? Math.min(...visibleButtonTops) : anchorRect.top;
+      const shouldAlignLeft = anchorRect.top > firstRowTop + 4;
+
+      if (shouldAlignLeft) {
+        const submenuLeft = Math.min(
+          Math.max(8, anchorRect.left),
+          Math.max(8, window.innerWidth - submenuWidth - 8),
+        );
+
+        setSubmenuPosition({
+          submenuTop,
+          submenuLeft,
+          align: "left",
+          bracketLeft: Math.max(2, anchorRect.left - 6),
+          bracketTop: anchorMidY,
+          bracketHeight: Math.max(16, submenuMidY - anchorMidY),
+          bracketOffsetTop: anchorMidY - submenuTop,
+        });
+        return;
+      }
+
+      const submenuRight = window.innerWidth - anchorRect.right;
 
       setSubmenuPosition({
         submenuTop,
         submenuRight,
+        align: "right",
         bracketLeft: anchorRect.right,
         bracketTop: anchorMidY,
         bracketHeight: Math.max(16, submenuMidY - anchorMidY),
@@ -344,6 +431,7 @@ const SearchPage = () => {
     };
   }, [
     activeSubmenuType,
+    submenuAnchorKey,
     showSortDropdown,
     sortBy,
     sortDir,
@@ -398,14 +486,29 @@ const SearchPage = () => {
     setCurrentPage(1);
   };
 
+  const handleSortDropdownToggle = () => {
+    setShowSortDropdown((prev) => !prev);
+  };
+
+  const resetSortToDefault = () => {
+    setSortBy("name");
+    setSortDir("asc");
+    setCurrentPage(1);
+    setOpenSubmenuType(null);
+  };
+
   const handleSortChange = (newSortBy) => {
     let newSortDir = sortDir;
 
     if (newSortBy === sortBy) {
       if (newSortBy === "proximity") {
-        if (sortDir === "asc") newSortDir = "desc";
-        else if (sortDir === "desc") newSortDir = "remote";
-        else newSortDir = "asc";
+        if (sortDir === "asc") {
+          newSortDir = "desc";
+        } else if (sortDir === "desc") {
+          newSortDir = "remote";
+        } else {
+          newSortDir = "asc";
+        }
       } else if (newSortBy === "capacity") {
         newSortDir = sortDir === "desc" ? "asc" : "desc";
       } else if (newSortBy === "match") {
@@ -418,12 +521,11 @@ const SearchPage = () => {
         case "name":
           newSortDir = "asc";
           break;
-        case "proximity":
-          newSortDir = "asc";
-          break;
         case "capacity":
           newSortDir = "desc";
-          setCapacityMode("spots");
+          break;
+        case "proximity":
+          newSortDir = "asc";
           break;
         case "match":
           newSortDir = "asc";
@@ -433,30 +535,10 @@ const SearchPage = () => {
       }
     }
 
-    if (newSortBy === "proximity") {
-      if (newSortDir === "remote") {
-        setSearchType("teams");
-      } else if (searchType === "all") {
-        setSearchType("users");
-      }
-    }
-
-    if (newSortBy === "capacity") {
-      setSearchType("teams");
-    }
-
-    if (newSortBy !== "proximity") {
-      setMaxDistance(null);
-      setCustomDistanceInput("");
-    }
-
     if (newSortBy === "proximity" && newSortDir === "remote") {
+      setSearchType("teams");
       setMaxDistance(null);
       setCustomDistanceInput("");
-    }
-
-    if (newSortBy !== "capacity") {
-      setCapacityMode("spots");
     }
 
     setSortBy(newSortBy);
@@ -464,12 +546,28 @@ const SearchPage = () => {
     setCurrentPage(1);
   };
 
+  const handleTopLevelSortOptionClick = (optionValue) => {
+    if (optionValue === "capacity") {
+      handleCapacityModeChange("spots");
+      setOpenSubmenuType("capacity");
+      return;
+    }
+
+    if (optionValue === "proximity") {
+      handleSortChange("proximity");
+      setOpenSubmenuType("proximity");
+      return;
+    }
+
+    handleSortChange(optionValue);
+    setOpenSubmenuType(null);
+  };
+
   const handleCapacityModeChange = (mode) => {
     if (sortBy !== "capacity") {
       setSortBy("capacity");
       setSortDir("desc");
       setCapacityMode(mode);
-      setSearchType("teams");
       setCurrentPage(1);
       return;
     }
@@ -520,17 +618,45 @@ const SearchPage = () => {
 
   const handleToggleChange = (type) => {
     setSearchType(type);
+    setCurrentPage(1);
+    setOpenSubmenuType((prev) =>
+      prev === "capacity" && type !== "teams" ? null : prev,
+    );
 
     if (type !== "teams" && sortBy === "capacity") {
       setSortBy("name");
       setSortDir("asc");
-      setCapacityMode("spots");
     }
 
     if (type !== "teams" && sortBy === "proximity" && sortDir === "remote") {
       setSortDir("asc");
-      setMaxDistance(null);
-      setCustomDistanceInput("");
+    }
+  };
+
+  const handleOpenRolesOnlyToggle = () => {
+    setOpenRolesOnly((prev) => !prev);
+    setCurrentPage(1);
+  };
+
+  const handleActivePillRemove = (pillKey) => {
+    switch (pillKey) {
+      case "searchType":
+        handleToggleChange("all");
+        break;
+      case "sort":
+        resetSortToDefault();
+        break;
+      case "maxDistance":
+        setMaxDistance(null);
+        setCustomDistanceInput("");
+        setCurrentPage(1);
+        break;
+      case "openRolesOnly":
+        setOpenRolesOnly(false);
+        setCurrentPage(1);
+        break;
+      default:
+        break;
     }
   };
 
@@ -567,7 +693,8 @@ const SearchPage = () => {
     sortBy !== "name" ||
     sortDir !== "asc" ||
     maxDistance !== null ||
-    capacityMode !== "spots" ||
+    effectiveOpenRolesOnly ||
+    (sortBy === "capacity" && capacityMode !== "spots") ||
     (customDistanceInput && customDistanceInput.trim() !== "");
 
   const sortIconColor = isSortModified
@@ -576,94 +703,91 @@ const SearchPage = () => {
 
   const renderSortSubmenuPortal = () => {
     if (!activeSubmenuType || !submenuPosition) return null;
+    if (activeSubmenuType === "proximity" && sortDir === "remote") return null;
 
     const submenuContent = (
       <div ref={submenuRef}>
-        {sortBy === "capacity" && (
-          <div className="flex items-center justify-end gap-2">
-            <button
-              type="button"
-              onClick={() => handleCapacityModeChange("spots")}
-              disabled={loading}
-              className={`text-xs rounded transition-colors ${
-                capacityMode === "spots"
-                  ? "text-[var(--color-primary)] font-bold"
-                  : "text-[var(--color-primary-focus)] hover:text-[var(--color-primary-focus)] hover:font-medium"
-              }`}
-            >
-              {capacityMode === "spots" && sortDir === "asc"
-                ? "Least Spots"
-                : "Free Spots"}
-            </button>
+        {activeSubmenuType === "capacity" && (
+          <div className="flex items-center justify-end gap-3 pr-1">
+              <button
+                type="button"
+                onClick={() => handleCapacityModeChange("roles")}
+                disabled={loading}
+                className={`text-xs rounded transition-colors ${
+                  isCapacityRolesSort
+                    ? "text-[var(--color-primary)] font-bold"
+                    : "text-[var(--color-primary-focus)] hover:text-[var(--color-primary-focus)] hover:font-medium"
+                }`}
+              >
+                {isCapacityRolesSort && sortDir === "asc"
+                  ? "Least Open Roles"
+                  : "Most Open Roles"}
+              </button>
 
-            <button
-              type="button"
-              onClick={() => handleCapacityModeChange("roles")}
-              disabled={loading}
-              className={`py-0.5 text-xs rounded transition-colors ${
-                capacityMode === "roles"
-                  ? "text-[var(--color-primary)] font-bold"
-                  : "text-[var(--color-primary-focus)] hover:text-[var(--color-primary-focus)] hover:font-medium"
-              }`}
-            >
-              {capacityMode === "roles" && sortDir === "asc"
-                ? "Least Open Roles"
-                : "Open Roles"}
-            </button>
+              <button
+                type="button"
+                onClick={handleOpenRolesOnlyToggle}
+                disabled={loading}
+                className={`text-xs rounded transition-colors ${
+                  effectiveOpenRolesOnly
+                    ? "text-[var(--color-primary)] font-bold"
+                    : "text-[var(--color-primary-focus)] hover:text-[var(--color-primary-focus)] hover:font-medium"
+                }`}
+              >
+                Open Roles Only
+              </button>
           </div>
         )}
 
-        {sortBy === "proximity" &&
-          sortDir !== "remote" &&
-          userHasCoordinates && (
-            <div className="flex items-center justify-end flex-wrap gap-1">
-              {distancePresets.map((km) => (
-                <button
-                  key={km}
-                  type="button"
-                  onClick={() => handleDistancePreset(km)}
-                  disabled={loading}
-                  className={`px-1 py-0.5 text-xs rounded transition-colors ${
-                    maxDistance === km
-                      ? "text-[var(--color-primary)] font-bold"
-                      : "text-[var(--color-primary-focus)] hover:text-[var(--color-primary-focus)] hover:font-medium"
-                  }`}
-                >
-                  {km}km
-                </button>
-              ))}
+        {activeSubmenuType === "proximity" && (
+          <div className="flex items-center justify-end flex-wrap gap-1 pr-1">
+            {distancePresets.map((km) => (
+              <button
+                key={km}
+                type="button"
+                onClick={() => handleDistancePreset(km)}
+                disabled={loading}
+                className={`px-1 py-0.5 text-xs rounded transition-colors ${
+                  maxDistance === km
+                    ? "text-[var(--color-primary)] font-bold"
+                    : "text-[var(--color-primary-focus)] hover:text-[var(--color-primary-focus)] hover:font-medium"
+                }`}
+              >
+                {km}km
+              </button>
+            ))}
 
-              <div className="flex items-center gap-0.5">
-                <input
-                  type="number"
-                  min="1"
-                  placeholder="..."
-                  value={customDistanceInput}
-                  onChange={handleCustomDistanceChange}
-                  onBlur={handleCustomDistanceSubmit}
-                  onKeyDown={handleCustomDistanceKeyDown}
-                  style={{
-                    width: `${Math.max(
-                      4.5,
-                      (customDistanceInput?.length || 0) + 2,
-                    )}ch`,
-                  }}
-                  className={`px-1 py-0.5 text-xs rounded border transition-colors
-                  [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none
-                  ${
-                    maxDistance && !distancePresets.includes(maxDistance)
-                      ? "border-[var(--color-success)] text-[var(--color-success)] font-medium"
-                      : "border-[var(--color-text)]/20 text-[var(--color-text)]/60"
-                  }
-                  bg-transparent focus:outline-none focus:border-[var(--color-success)]`}
-                  disabled={loading}
-                />
-                <span className="text-xs text-[var(--color-primary-focus)]">
-                  km
-                </span>
-              </div>
+            <div className="flex items-center gap-0.5">
+              <input
+                type="number"
+                min="1"
+                placeholder="..."
+                value={customDistanceInput}
+                onChange={handleCustomDistanceChange}
+                onBlur={handleCustomDistanceSubmit}
+                onKeyDown={handleCustomDistanceKeyDown}
+                style={{
+                  width: `${Math.max(
+                    4.5,
+                    (customDistanceInput?.length || 0) + 2,
+                  )}ch`,
+                }}
+                className={`px-1 py-0.5 text-xs rounded border transition-colors
+                [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none
+                ${
+                  maxDistance && !distancePresets.includes(maxDistance)
+                    ? "border-[var(--color-success)] text-[var(--color-success)] font-medium"
+                    : "border-[var(--color-text)]/20 text-[var(--color-text)]/60"
+                }
+                bg-transparent focus:outline-none focus:border-[var(--color-success)]`}
+                disabled={loading}
+              />
+              <span className="text-xs text-[var(--color-primary-focus)]">
+                km
+              </span>
             </div>
-          )}
+          </div>
+        )}
       </div>
     );
 
@@ -674,10 +798,13 @@ const SearchPage = () => {
           style={{
             position: "fixed",
             top: submenuPosition.submenuTop,
-            right: submenuPosition.submenuRight - 15,
+            ...(submenuPosition.align === "left"
+              ? { left: submenuPosition.submenuLeft + 15 }
+              : { right: submenuPosition.submenuRight - 15 }),
             zIndex: 1100,
             display: "flex",
-            justifyContent: "flex-end",
+            justifyContent:
+              submenuPosition.align === "left" ? "flex-start" : "flex-end",
             pointerEvents: "auto",
           }}
         >
@@ -701,31 +828,43 @@ const SearchPage = () => {
             style={{
               position: "absolute",
               top: 0,
-              right: 0,
+              ...(submenuPosition.align === "left" ? { left: 0 } : { right: 0 }),
               width: 4,
               borderTop: "1.5px solid var(--color-primary)",
-              borderTopRightRadius: "3px",
+              ...(submenuPosition.align === "left"
+                ? { borderTopLeftRadius: "3px" }
+                : { borderTopRightRadius: "3px" }),
             }}
           />
           <div
             style={{
               position: "absolute",
               top: 0,
-              right: 0,
+              ...(submenuPosition.align === "left" ? { left: 0 } : { right: 0 }),
               height: "100%",
-              borderRight: "1.5px solid var(--color-primary)",
-              borderTopRightRadius: "3px",
-              borderBottomRightRadius: "3px",
+              ...(submenuPosition.align === "left"
+                ? {
+                    borderLeft: "1.5px solid var(--color-primary)",
+                    borderTopLeftRadius: "3px",
+                    borderBottomLeftRadius: "3px",
+                  }
+                : {
+                    borderRight: "1.5px solid var(--color-primary)",
+                    borderTopRightRadius: "3px",
+                    borderBottomRightRadius: "3px",
+                  }),
             }}
           />
           <div
             style={{
               position: "absolute",
               bottom: 0,
-              right: 0,
+              ...(submenuPosition.align === "left" ? { left: 0 } : { right: 0 }),
               width: 4,
               borderBottom: "1.5px solid var(--color-primary)",
-              borderBottomRightRadius: "3px",
+              ...(submenuPosition.align === "left"
+                ? { borderBottomLeftRadius: "3px" }
+                : { borderBottomRightRadius: "3px" }),
             }}
           />
         </div>
@@ -739,7 +878,7 @@ const SearchPage = () => {
       titleAlignment="center"
       variant="muted"
     >
-      <div className="max-w-xl mx-auto mb-8">
+      <div className="w-full max-w-4xl mx-auto mb-8">
         <div className="flex justify-center space-x-2 pt-2 mb-2">
           <div className="btn-group">
             <button
@@ -782,81 +921,94 @@ const SearchPage = () => {
           </div>
         </div>
 
-        <div ref={sortFilterRef}>
-          <div className="flex gap-2 items-start">
-            <button
-              type="button"
-              onClick={() => setShowSortDropdown(!showSortDropdown)}
-              className="p-2 rounded-lg transition-colors"
-              title="Sort options"
-            >
-              <SlidersHorizontal className="w-5 h-5" color={sortIconColor} />
-            </button>
+        <div ref={sortFilterRef} className="mx-auto w-full max-w-full px-2 sm:px-0">
+          <div className="mx-auto w-full max-w-full sm:w-fit">
+            <div className="flex w-full max-w-full items-center gap-2">
+              <button
+                type="button"
+                onClick={handleSortDropdownToggle}
+                className="shrink-0 rounded-lg p-2 transition-colors"
+                title="Sort options"
+              >
+                <SlidersHorizontal className="w-5 h-5" color={sortIconColor} />
+              </button>
 
-            <div className="flex-1">
-              <BooleanSearchInput
-                initialQuery={searchQuery}
-                onSearch={handleBooleanSearch}
-                placeholder={
-                  sortBy === "match"
-                    ? "Matching results to your profile — type to narrow"
-                    : "Try: hiking AND photography, or hiking NOT photography"
-                }
-                className="w-full"
-              />
+              <div className="min-w-0 flex-1 sm:w-auto sm:flex-none sm:max-w-full">
+                <BooleanSearchInput
+                  initialQuery={searchQuery}
+                  onSearch={handleBooleanSearch}
+                  placeholder={
+                    sortBy === "match"
+                      ? "Matching results to your profile — type to narrow"
+                      : "Try: hiking AND photography, or hiking NOT photography"
+                  }
+                  activePills={activeCriteriaPills}
+                  onRemoveActivePill={handleActivePillRemove}
+                  className="min-w-0 w-full sm:w-auto sm:max-w-full"
+                />
+              </div>
             </div>
-          </div>
 
-          {showSortDropdown && (
-            <div className="mt-2 py-1 ml-10">
-              <div className="flex items-center gap-3 flex-wrap">
-                {getVisibleSortOptions().map((option) => {
-                  const isActive = sortBy === option.value;
-                  const currentDir = isActive
-                    ? sortDir
-                    : option.defaultDir || "desc";
+            {showSortDropdown && (
+              <div className="mt-2 py-1 pl-11">
+                <div className="flex items-center gap-3 flex-wrap">
+                  {getVisibleSortOptions().map((option) => {
+                    const isActive =
+                      option.value === "capacity"
+                        ? isCapacitySpotsSort
+                        : option.value === "proximity"
+                          ? sortBy === option.value || maxDistance !== null
+                          : sortBy === option.value;
+                    const currentDir = isActive
+                      ? option.value === "capacity"
+                        ? sortDir
+                        : sortBy === option.value
+                          ? sortDir
+                          : option.defaultDir || "desc"
+                      : option.defaultDir || "desc";
 
-                  let IconComponent, label, shortLabel;
+                    let IconComponent, label, shortLabel;
 
-                  if (currentDir === "remote" && option.iconRemote) {
-                    IconComponent = option.iconRemote;
-                    label = option.labelRemote;
-                    shortLabel = option.shortLabelRemote;
-                  } else if (currentDir === "asc") {
+                  if (currentDir === "asc") {
                     IconComponent = option.iconAsc;
                     label = option.labelAsc;
                     shortLabel = option.shortLabelAsc;
+                  } else if (currentDir === "remote") {
+                    IconComponent = option.iconRemote;
+                    label = option.labelRemote;
+                    shortLabel = option.shortLabelRemote;
                   } else {
                     IconComponent = option.iconDesc;
                     label = option.labelDesc;
-                    shortLabel = option.shortLabelDesc;
-                  }
+                      shortLabel = option.shortLabelDesc;
+                    }
 
-                  return (
-                    <button
-                      key={option.value}
-                      ref={(node) => {
-                        sortButtonRefs.current[option.value] = node;
-                      }}
-                      type="button"
-                      onClick={() => handleSortChange(option.value)}
-                      className={`flex items-center gap-1 px-1 text-xs rounded transition-colors shrink-0 ${
-                        isActive
-                          ? "text-[var(--color-primary)] font-bold"
-                          : "text-[var(--color-primary-focus)]/70 hover:text-[var(--color-primary-focus)] hover:font-medium"
-                      }`}
-                      disabled={loading}
-                      title={option.teamsOnly ? "Teams only" : ""}
-                    >
-                      <IconComponent className="w-3.5 h-3.5 shrink-0" />
-                      <span className="hidden sm:inline">{label}</span>
-                      <span className="sm:hidden">{shortLabel}</span>
-                    </button>
-                  );
-                })}
+                    return (
+                      <button
+                        key={option.value}
+                        ref={(node) => {
+                          sortButtonRefs.current[option.value] = node;
+                        }}
+                        type="button"
+                        onClick={() => handleTopLevelSortOptionClick(option.value)}
+                        className={`flex items-center gap-1 px-1 text-xs rounded transition-colors shrink-0 ${
+                          isActive
+                            ? "text-[var(--color-primary)] font-bold"
+                            : "text-[var(--color-primary-focus)]/70 hover:text-[var(--color-primary-focus)] hover:font-medium"
+                        }`}
+                        disabled={loading}
+                        title={option.teamsOnly ? "Teams only" : ""}
+                      >
+                        <IconComponent className="w-3.5 h-3.5 shrink-0" />
+                        <span className="hidden sm:inline">{label}</span>
+                        <span className="sm:hidden">{shortLabel}</span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
 

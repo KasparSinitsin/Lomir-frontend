@@ -37,32 +37,41 @@ const normalizeTeamData = (team) => {
   return normalizedTeam;
 };
 
+const buildSearchParams = ({
+  query,
+  isAuthenticated = false,
+  page = 1,
+  limit = 20,
+  searchType = "all",
+  sortBy = "name",
+  sortDir = "asc",
+  maxDistance = null,
+  openRolesOnly = false,
+  capacityMode = "spots",
+} = {}) => {
+  const params = {
+    authenticated: isAuthenticated,
+    page,
+    limit,
+    searchType,
+    sortBy,
+    sortDir,
+    openRolesOnly,
+  };
+
+  if (query) params.query = query;
+  if (maxDistance) params.maxDistance = maxDistance;
+
+  if (sortBy === "capacity") {
+    params.capacityMode = capacityMode;
+  }
+
+  return params;
+};
+
 export const searchService = {
-  async globalSearch(
-    query,
-    isAuthenticated = false,
-    page = 1,
-    limit = 20,
-    sortBy = "name",
-    sortDir = "asc",
-    maxDistance = null,
-    capacityMode = "spots",
-  ) {
-    const params = {
-      query,
-      authenticated: isAuthenticated,
-      page,
-      limit,
-      sortBy,
-      sortDir,
-    };
-
-    if (maxDistance) params.maxDistance = maxDistance;
-
-    if (sortBy === "capacity") {
-      params.capacityMode = capacityMode;
-    }
-
+  async globalSearch(criteria = {}) {
+    const params = buildSearchParams(criteria);
     const response = await api.get("/api/search/global", { params });
 
     if (response.data?.data?.teams) {
@@ -89,29 +98,8 @@ export const searchService = {
     return response.data;
   },
 
-  async getAllUsersAndTeams(
-    isAuthenticated = false,
-    page = 1,
-    limit = 20,
-    sortBy = "name",
-    sortDir = "asc",
-    maxDistance = null,
-    capacityMode = "spots",
-  ) {
-    const params = {
-      authenticated: isAuthenticated,
-      page,
-      limit,
-      sortBy,
-      sortDir,
-    };
-
-    if (maxDistance) params.maxDistance = maxDistance;
-
-    if (sortBy === "capacity") {
-      params.capacityMode = capacityMode;
-    }
-
+  async getAllUsersAndTeams(criteria = {}) {
+    const params = buildSearchParams(criteria);
     const response = await api.get("/api/search/all", { params });
 
     if (response.data?.data?.teams) {
