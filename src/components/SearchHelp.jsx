@@ -45,13 +45,10 @@ const SearchHelp = ({ className = "", anchorRef }) => {
 
               setIsOpen(true);
             }}
-            className="btn btn-ghost btn-sm p-1 min-h-0 h-auto"
+            className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-transparent p-0 text-[var(--color-primary-focus)] transition-colors hover:text-[var(--color-primary)] focus:outline-none"
             aria-label="Search tips"
           >
-            <Info
-              className="h-4 w-4"
-              style={{ color: "var(--color-primary-focus)" }}
-            />
+            <Info className="h-4 w-4" />
           </button>
         </div>
       </div>
