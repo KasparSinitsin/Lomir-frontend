@@ -97,6 +97,7 @@ const Profile = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const scrollToBadges = searchParams.get("scrollTo") === "badges";
   const highlightBadgeName = searchParams.get("highlightBadge");
+  const editModeFromUrl = searchParams.get("mode") === "edit";
   const [highlightTagName, setHighlightTagName] = useState(null);
   const [highlightTagColor, setHighlightTagColor] = useState(null);
   const badgesSectionRef = useRef(null);
@@ -321,6 +322,20 @@ const Profile = () => {
       };
     }
   }, [scrollToBadges, isEditing, setSearchParams]);
+
+  useEffect(() => {
+    if (editModeFromUrl && !isEditing) {
+      setIsEditing(true);
+    }
+  }, [editModeFromUrl, isEditing]);
+
+  const clearEditModeParam = useCallback(() => {
+    if (!editModeFromUrl) return;
+
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete("mode");
+    setSearchParams(nextParams, { replace: true });
+  }, [editModeFromUrl, searchParams, setSearchParams]);
 
   // Derive the associated tag name when a badge is highlighted from notification
   useEffect(() => {
@@ -619,6 +634,7 @@ const Profile = () => {
         }
 
         setIsEditing(false);
+        clearEditModeParam();
         setSuccess("Profile updated successfully");
 
         // Create updated user object with correct avatar URL
@@ -920,12 +936,15 @@ const Profile = () => {
 
             {/* Actions */}
             <section className="flex justify-end space-x-2 !mt-4">
-              <Button
-                variant="ghost"
-                type="button"
-                onClick={() => setIsEditing(false)}
-                disabled={loading}
-              >
+                <Button
+                  variant="ghost"
+                  type="button"
+                  onClick={() => {
+                    setIsEditing(false);
+                    clearEditModeParam();
+                  }}
+                  disabled={loading}
+                >
                 Cancel
               </Button>
 
