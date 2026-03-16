@@ -30,6 +30,8 @@ import {
 } from "lucide-react";
 import Alert from "../components/common/Alert";
 import { searchService, getApiErrorMessage } from "../services/searchService";
+import { tagService } from "../services/tagService";
+import { badgeService } from "../services/badgeService";
 
 import { RESULTS_PER_PAGE_OPTIONS, DEFAULT_RESULTS_PER_PAGE } from "../constants/pagination";
 
@@ -78,6 +80,13 @@ const SearchPage = () => {
 
   // ===== CAPACITY FILTER STATE =====
   const [capacityMode, setCapacityMode] = useState("spots");
+
+  // ===== TAG & BADGE FILTER STATE =====
+  const [filterTagIds, setFilterTagIds] = useState([]);
+  const [filterTagMap, setFilterTagMap] = useState({});
+  const [filterBadgeIds, setFilterBadgeIds] = useState([]);
+  const [filterBadgeMap, setFilterBadgeMap] = useState({});
+  const [allBadges, setAllBadges] = useState([]);
 
   // ===== PAGINATION STATE =====
   const [currentPage, setCurrentPage] = useState(1);
@@ -226,6 +235,43 @@ const SearchPage = () => {
     [isAuthenticated],
   );
 
+  // Fetch all badges once on mount for client-side suggestion filtering
+  useEffect(() => {
+    badgeService
+      .getAllBadges()
+      .then((res) => setAllBadges(res.data || []))
+      .catch(() => {});
+  }, []);
+
+  // Resolve badge names from URL params once allBadges has loaded
+  useEffect(() => {
+    if (allBadges.length === 0) return;
+    const unresolved = filterBadgeIds.filter((id) => !filterBadgeMap[id]);
+    if (unresolved.length === 0) return;
+    const additions = {};
+    unresolved.forEach((id) => {
+      const badge = allBadges.find((b) => Number(b.id) === id);
+      if (badge) additions[id] = badge;
+    });
+    if (Object.keys(additions).length > 0) {
+      setFilterBadgeMap((prev) => ({ ...prev, ...additions }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allBadges]);
+
+  const focusAreaPills = filterTagIds.map((id) => ({
+    key: `tag-${id}`,
+    id,
+    label: filterTagMap[id]?.name || `Tag ${id}`,
+  }));
+
+  const badgePills = filterBadgeIds.map((id) => ({
+    key: `badge-${id}`,
+    id,
+    label: filterBadgeMap[id]?.name || `Badge ${id}`,
+    category: filterBadgeMap[id]?.category || "",
+  }));
+
   const activeCriteriaPills = [];
 
   if (sortBy === "match") {
@@ -302,6 +348,8 @@ const SearchPage = () => {
           openRolesOnly: effectiveOpenRolesOnly,
           excludeOwnTeams: !effectiveIncludeOwnTeams,
           capacityMode,
+          tagIds: filterTagIds,
+          badgeIds: filterBadgeIds,
         };
 
         const results = await fetchData(requestCriteria);
@@ -345,6 +393,8 @@ const SearchPage = () => {
     capacityMode,
     hasSearched,
     searchQuery,
+    filterTagIds,
+    filterBadgeIds,
   ]);
 
   useEffect(() => {
@@ -356,7 +406,44 @@ const SearchPage = () => {
     } else if (typeParam === "users") {
       setSearchType("users");
     }
-  }, [location.search]);
+
+    const tagsParam = urlParams.get("tags");
+    if (tagsParam) {
+      const ids = tagsParam.split(",").map(Number).filter(Boolean);
+      if (ids.length > 0) {
+        setFilterTagIds(ids);
+        // Resolve tag names from structured tag tree
+        tagService
+          .getStructuredTags()
+          .then((structure) => {
+            const lookup = {};
+            structure.forEach((supercat) => {
+              supercat.categories?.forEach((cat) => {
+                cat.tags?.forEach((tag) => {
+                  lookup[Number(tag.id)] = { ...tag, supercategory: supercat.name };
+                });
+              });
+            });
+            const map = {};
+            ids.forEach((id) => {
+              if (lookup[id]) map[id] = lookup[id];
+            });
+            setFilterTagMap(map);
+          })
+          .catch(() => {});
+      }
+    }
+
+    const badgesParam = urlParams.get("badges");
+    if (badgesParam) {
+      const ids = badgesParam.split(",").map(Number).filter(Boolean);
+      if (ids.length > 0) {
+        setFilterBadgeIds(ids);
+        // Names resolved later by the allBadges effect
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (!showSortDropdown) {
@@ -653,6 +740,71 @@ const SearchPage = () => {
     setIncludeOwnTeams((prev) => !prev);
     setCurrentPage(1);
   };
+
+  const handleAddTagFilter = (tag) => {
+    const id = Number(tag.id);
+    if (filterTagIds.includes(id)) return;
+    setFilterTagIds((prev) => [...prev, id]);
+    setFilterTagMap((prev) => ({ ...prev, [id]: tag }));
+    setCurrentPage(1);
+  };
+
+  const handleRemoveTagFilter = (tagId) => {
+    const id = Number(tagId);
+    setFilterTagIds((prev) => prev.filter((x) => x !== id));
+    setFilterTagMap((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+    setCurrentPage(1);
+  };
+
+  const handleAddBadgeFilter = (badge) => {
+    const id = Number(badge.id);
+    if (filterBadgeIds.includes(id)) return;
+    setFilterBadgeIds((prev) => [...prev, id]);
+    setFilterBadgeMap((prev) => ({ ...prev, [id]: badge }));
+    setCurrentPage(1);
+  };
+
+  const handleRemoveBadgeFilter = (badgeId) => {
+    const id = Number(badgeId);
+    setFilterBadgeIds((prev) => prev.filter((x) => x !== id));
+    setFilterBadgeMap((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+    setCurrentPage(1);
+  };
+
+  const handleSearchSuggestions = useCallback(
+    async (query) => {
+      if (!query || query.trim().length < 2) return { tags: [], badges: [] };
+      const trimmed = query.trim();
+
+      const [rawTags] = await Promise.all([
+        tagService.searchTags(trimmed).catch(() => []),
+      ]);
+
+      const tags = (Array.isArray(rawTags) ? rawTags : rawTags?.data || [])
+        .filter((t) => !filterTagIds.includes(Number(t.id)))
+        .slice(0, 8);
+
+      const q = trimmed.toLowerCase();
+      const badges = allBadges
+        .filter(
+          (b) =>
+            b.name.toLowerCase().includes(q) &&
+            !filterBadgeIds.includes(Number(b.id)),
+        )
+        .slice(0, 5);
+
+      return { tags, badges };
+    },
+    [allBadges, filterTagIds, filterBadgeIds],
+  );
 
   const handleActivePillRemove = (pillKey) => {
     switch (pillKey) {
@@ -966,6 +1118,13 @@ const SearchPage = () => {
                   }
                   activePills={activeCriteriaPills}
                   onRemoveActivePill={handleActivePillRemove}
+                  focusAreaPills={focusAreaPills}
+                  badgePills={badgePills}
+                  onRemoveFocusAreaPill={handleRemoveTagFilter}
+                  onRemoveBadgePill={handleRemoveBadgeFilter}
+                  onSelectTagSuggestion={handleAddTagFilter}
+                  onSelectBadgeSuggestion={handleAddBadgeFilter}
+                  onSearchSuggestions={handleSearchSuggestions}
                   className="min-w-0 w-full sm:w-auto sm:max-w-full"
                 />
               </div>
