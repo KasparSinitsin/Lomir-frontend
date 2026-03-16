@@ -75,6 +75,7 @@ const SearchPage = () => {
   const [customDistanceInput, setCustomDistanceInput] = useState("");
   const [userHasCoordinates, setUserHasCoordinates] = useState(false);
   const [openRolesOnly, setOpenRolesOnly] = useState(false);
+  const [includeOwnTeams, setIncludeOwnTeams] = useState(true);
 
   // ===== CAPACITY FILTER STATE =====
   const [capacityMode, setCapacityMode] = useState("spots");
@@ -178,6 +179,8 @@ const SearchPage = () => {
 
   const effectiveOpenRolesOnly =
     searchType === "users" ? false : openRolesOnly;
+  const effectiveIncludeOwnTeams =
+    !isAuthenticated || searchType === "users" ? true : includeOwnTeams;
   const isCapacitySpotsSort =
     searchType === "teams" && sortBy === "capacity" && capacityMode === "spots";
   const isCapacityRolesSort =
@@ -275,6 +278,13 @@ const SearchPage = () => {
     activeCriteriaPills.push({ key: "openRolesOnly", label: "Open Roles Only" });
   }
 
+  if (!effectiveIncludeOwnTeams) {
+    activeCriteriaPills.push({
+      key: "includeOwnTeams",
+      label: "Exclude My Teams",
+    });
+  }
+
   useEffect(() => {
     const run = async () => {
       try {
@@ -291,6 +301,7 @@ const SearchPage = () => {
           sortDir,
           maxDistance,
           openRolesOnly: effectiveOpenRolesOnly,
+          excludeOwnTeams: !effectiveIncludeOwnTeams,
           capacityMode,
         };
 
@@ -331,6 +342,7 @@ const SearchPage = () => {
     maxDistance,
     openRolesOnly,
     effectiveOpenRolesOnly,
+    effectiveIncludeOwnTeams,
     capacityMode,
     hasSearched,
     searchQuery,
@@ -638,6 +650,11 @@ const SearchPage = () => {
     setCurrentPage(1);
   };
 
+  const handleIncludeOwnTeamsToggle = () => {
+    setIncludeOwnTeams((prev) => !prev);
+    setCurrentPage(1);
+  };
+
   const handleActivePillRemove = (pillKey) => {
     switch (pillKey) {
       case "searchType":
@@ -653,6 +670,10 @@ const SearchPage = () => {
         break;
       case "openRolesOnly":
         setOpenRolesOnly(false);
+        setCurrentPage(1);
+        break;
+      case "includeOwnTeams":
+        setIncludeOwnTeams(true);
         setCurrentPage(1);
         break;
       default:
@@ -694,12 +715,14 @@ const SearchPage = () => {
     sortDir !== "asc" ||
     maxDistance !== null ||
     effectiveOpenRolesOnly ||
+    !effectiveIncludeOwnTeams ||
     (sortBy === "capacity" && capacityMode !== "spots") ||
     (customDistanceInput && customDistanceInput.trim() !== "");
 
   const sortIconColor = isSortModified
     ? "var(--color-primary)"
     : "var(--color-primary-focus)";
+  const IncludeOwnTeamsIcon = Users2;
 
   const renderSortSubmenuPortal = () => {
     if (!activeSubmenuType || !submenuPosition) return null;
@@ -1005,6 +1028,39 @@ const SearchPage = () => {
                       </button>
                     );
                   })}
+
+                  {isAuthenticated && searchType !== "users" && (
+                    <button
+                      type="button"
+                      onClick={handleIncludeOwnTeamsToggle}
+                      className={`flex items-center gap-1 px-1 text-xs rounded transition-colors shrink-0 ${
+                        !effectiveIncludeOwnTeams
+                          ? "text-[var(--color-primary)] font-bold"
+                          : "text-[var(--color-primary-focus)]/70 hover:text-[var(--color-primary-focus)] hover:font-medium"
+                      }`}
+                      disabled={loading}
+                      title={
+                        effectiveIncludeOwnTeams
+                          ? "Include My Teams"
+                          : "Exclude My Teams"
+                      }
+                      aria-label={
+                        effectiveIncludeOwnTeams
+                          ? "Include My Teams"
+                          : "Exclude My Teams"
+                      }
+                    >
+                      <IncludeOwnTeamsIcon className="w-3.5 h-3.5 shrink-0" />
+                      <span className="hidden sm:inline">
+                        {effectiveIncludeOwnTeams
+                          ? "Include My Teams"
+                          : "Exclude My Teams"}
+                      </span>
+                      <span className="sm:hidden" aria-hidden="true">
+                        {effectiveIncludeOwnTeams ? "+" : "-"}
+                      </span>
+                    </button>
+                  )}
                 </div>
               </div>
             )}
