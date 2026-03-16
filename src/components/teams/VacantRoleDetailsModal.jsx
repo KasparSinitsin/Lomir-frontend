@@ -11,6 +11,7 @@ import {
   CircleDot,
   Check,
   TrendingUp,
+  ExternalLink,
 } from "lucide-react";
 import Modal from "../common/Modal";
 import {
@@ -47,6 +48,7 @@ const VacantRoleDetailsModal = ({
   role,
   matchScore = null,
   matchDetails = null,
+  canManage = false,
 }) => {
   const { user: currentUser, isAuthenticated } = useAuth();
 
@@ -229,6 +231,26 @@ useEffect(() => {
 
   const locationText = getLocationText();
 
+  const buildSearchUrl = () => {
+    const params = new URLSearchParams();
+    params.set("type", "users");
+    params.set("sort", "match");
+
+    const tagIds = tags
+      .map((t) => Number(t.tagId ?? t.tag_id ?? t.id))
+      .filter(Boolean);
+    if (tagIds.length > 0) params.set("tags", tagIds.join(","));
+
+    const badgeIds = badges
+      .map((b) => Number(b.badgeId ?? b.badge_id ?? b.id))
+      .filter(Boolean);
+    if (badgeIds.length > 0) params.set("badges", badgeIds.join(","));
+
+    if (isRemote) params.set("proximity", "remote");
+
+    return `/search?${params.toString()}`;
+  };
+
   const badgesByCategory = badges.reduce((acc, badge) => {
     const cat = badge.category || "Other";
     if (!acc[cat]) acc[cat] = [];
@@ -330,6 +352,20 @@ useEffect(() => {
             )}
           </div>
         </div>
+
+        {isAuthenticated && (tags.length > 0 || badges.length > 0) && (
+          <div>
+            <a
+              href={buildSearchUrl()}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn btn-sm btn-outline btn-primary w-full sm:w-auto inline-flex items-center gap-2"
+            >
+              Search for matching people
+              <ExternalLink size={14} />
+            </a>
+          </div>
+        )}
 
         {bio && (
           <div>

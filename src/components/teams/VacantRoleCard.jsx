@@ -301,6 +301,7 @@ const VacantRoleCard = ({
         role={role}
         matchScore={matchScore}
         matchDetails={matchDetails}
+        canManage={canManage}
       />
     </>
   );

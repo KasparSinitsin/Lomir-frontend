@@ -57,8 +57,20 @@ const SearchPage = () => {
   const [hasSearched, setHasSearched] = useState(false);
 
   // ===== SORTING STATE =====
-  const [sortBy, setSortBy] = useState("name");
-  const [sortDir, setSortDir] = useState("asc");
+  const [sortBy, setSortBy] = useState(() => {
+    const p = new URLSearchParams(location.search);
+    if (p.get("proximity") === "remote") return "proximity";
+    const sort = p.get("sort");
+    if (["match", "name", "recent", "newest", "capacity", "proximity"].includes(sort))
+      return sort;
+    return "name";
+  });
+  const [sortDir, setSortDir] = useState(() => {
+    const p = new URLSearchParams(location.search);
+    if (p.get("proximity") === "remote") return "remote";
+    if (p.get("sort") === "match") return "asc";
+    return "asc";
+  });
   const [showSortDropdown, setShowSortDropdown] = useState(false);
   const [openSubmenuType, setOpenSubmenuType] = useState(null);
   const sortFilterRef = useRef(null);
