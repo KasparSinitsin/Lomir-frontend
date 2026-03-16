@@ -47,6 +47,7 @@ const buildSearchParams = ({
   sortDir = "asc",
   maxDistance = null,
   openRolesOnly = false,
+  excludeOwnTeams = false,
   capacityMode = "spots",
 } = {}) => {
   const params = {
@@ -61,6 +62,7 @@ const buildSearchParams = ({
 
   if (query) params.query = query;
   if (maxDistance) params.maxDistance = maxDistance;
+  if (excludeOwnTeams) params.excludeOwnTeams = true;
 
   if (sortBy === "capacity") {
     params.capacityMode = capacityMode;
