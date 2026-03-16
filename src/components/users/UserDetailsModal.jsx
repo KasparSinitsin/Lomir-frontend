@@ -13,7 +13,6 @@ import { userService } from "../../services/userService";
 import Button from "../common/Button";
 import Alert from "../common/Alert";
 import { useAuth } from "../../contexts/AuthContext";
-import { useNavigate } from "react-router-dom";
 import { Edit, MessageCircle, UserPlus, Award } from "lucide-react";
 import TeamInviteModal from "../teams/TeamInviteModal";
 import BadgeAwardModal from "../badges/BadgeAwardModal";
@@ -33,7 +32,6 @@ const UserDetailsModal = ({
   boxZIndexStyle,
 }) => {
   const { user: currentUser, isAuthenticated } = useAuth();
-  const navigate = useNavigate();
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -231,7 +229,10 @@ const UserDetailsModal = ({
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => navigate("/profile")}
+                onClick={() => {
+                  window.open("/profile?mode=edit", "_blank", "noopener,noreferrer");
+                  onClose?.();
+                }}
                 className="hover:bg-[#7ace82] hover:text-[#036b0c]"
                 icon={<Edit size={16} />}
               >
