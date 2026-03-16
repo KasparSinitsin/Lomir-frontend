@@ -12,6 +12,8 @@ import { Plus, Search as SearchIcon } from "lucide-react";
 import Alert from "../components/common/Alert";
 import CreateTeamModal from "../components/teams/CreateTeamModal";
 
+import { RESULTS_PER_PAGE_OPTIONS, DEFAULT_RESULTS_PER_PAGE } from "../constants/pagination";
+
 const MyTeams = () => {
   const [teams, setTeams] = useState([]);
   const [pendingApplications, setPendingApplications] = useState([]);
@@ -27,7 +29,7 @@ const MyTeams = () => {
 
   // ===== PAGINATION STATE =====
   const [currentPage, setCurrentPage] = useState(1);
-  const [resultsPerPage, setResultsPerPage] = useState(10);
+  const [resultsPerPage, setResultsPerPage] = useState(DEFAULT_RESULTS_PER_PAGE);
   const [pagination, setPagination] = useState({
     page: 1,
     limit: 10,
@@ -426,17 +428,15 @@ const MyTeams = () => {
             </Grid>
 
             {/* Pagination for My Teams */}
-            {pagination.totalPages > 1 && (
-              <Pagination
-                currentPage={currentPage}
-                totalPages={pagination.totalPages}
-                totalItems={pagination.totalTeams}
-                onPageChange={handlePageChange}
-                resultsPerPage={resultsPerPage}
-                onResultsPerPageChange={handleResultsPerPageChange}
-                resultsPerPageOptions={[10, 20, 30, 40]}
-              />
-            )}
+            <Pagination
+              currentPage={currentPage}
+              totalPages={pagination.totalPages}
+              totalItems={pagination.totalTeams}
+              onPageChange={handlePageChange}
+              resultsPerPage={resultsPerPage}
+              onResultsPerPageChange={handleResultsPerPageChange}
+              resultsPerPageOptions={RESULTS_PER_PAGE_OPTIONS}
+            />
           </>
         )}
       </Section>
