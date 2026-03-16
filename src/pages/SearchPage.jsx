@@ -31,8 +31,7 @@ import {
 import Alert from "../components/common/Alert";
 import { searchService, getApiErrorMessage } from "../services/searchService";
 
-const SEARCH_RESULTS_PER_PAGE_OPTIONS = [15, 30, 50, 75, 100];
-const DEFAULT_RESULTS_PER_PAGE = SEARCH_RESULTS_PER_PAGE_OPTIONS[0];
+import { RESULTS_PER_PAGE_OPTIONS, DEFAULT_RESULTS_PER_PAGE } from "../constants/pagination";
 
 const SearchPage = () => {
   const location = useLocation();
@@ -1151,7 +1150,7 @@ const SearchPage = () => {
               onPageChange={handlePageChange}
               resultsPerPage={resultsPerPage}
               onResultsPerPageChange={handleResultsPerPageChange}
-              resultsPerPageOptions={SEARCH_RESULTS_PER_PAGE_OPTIONS}
+              resultsPerPageOptions={RESULTS_PER_PAGE_OPTIONS}
             />
           )}
         </div>
