@@ -5,7 +5,7 @@ import {
   useEffect,
   useLayoutEffect,
 } from "react";
-import { Tag, Award } from "lucide-react";
+import { Tag, Award, UserSearch } from "lucide-react";
 import SearchHelp from "./SearchHelp";
 import {
   CATEGORY_COLORS,
@@ -331,18 +331,35 @@ const BooleanSearchInput = ({
     </button>
   );
 
-  const renderCriteriaPill = (pill) => (
-    <button
-      key={pill.key}
-      type="button"
-      onClick={() => onRemoveActivePill?.(pill.key)}
-      className="inline-flex items-center gap-1 rounded-full border border-[var(--color-primary)] bg-[#f0fdf4] px-2 py-0.5 text-xs font-bold text-[var(--color-primary)] transition-colors hover:border-[var(--color-primary-focus)] hover:bg-[#dcfce7] hover:text-[var(--color-primary-focus)]"
-      title={`Remove ${pill.label}`}
-    >
-      <span>{pill.label}</span>
-      <span aria-hidden="true">x</span>
-    </button>
-  );
+  const renderCriteriaPill = (pill) => {
+    if (pill.type === "role") {
+      return (
+        <button
+          key={pill.key}
+          type="button"
+          onClick={() => onRemoveActivePill?.(pill.key)}
+          className="inline-flex items-center gap-1 rounded-full border border-amber-400 bg-amber-50 px-2 py-0.5 text-xs font-bold text-amber-700 transition-colors hover:border-amber-500 hover:bg-amber-100"
+          title={`Remove ${pill.label}`}
+        >
+          <UserSearch size={12} className="flex-shrink-0" />
+          <span>{pill.label}</span>
+          <span aria-hidden="true">×</span>
+        </button>
+      );
+    }
+    return (
+      <button
+        key={pill.key}
+        type="button"
+        onClick={() => onRemoveActivePill?.(pill.key)}
+        className="inline-flex items-center gap-1 rounded-full border border-[var(--color-primary)] bg-[#f0fdf4] px-2 py-0.5 text-xs font-bold text-[var(--color-primary)] transition-colors hover:border-[var(--color-primary-focus)] hover:bg-[#dcfce7] hover:text-[var(--color-primary-focus)]"
+        title={`Remove ${pill.label}`}
+      >
+        <span>{pill.label}</span>
+        <span aria-hidden="true">x</span>
+      </button>
+    );
+  };
 
   const hasSuggestions =
     (suggestions.tags?.length || 0) + (suggestions.badges?.length || 0) > 0;

@@ -93,6 +93,17 @@ const SearchPage = () => {
   // ===== CAPACITY FILTER STATE =====
   const [capacityMode, setCapacityMode] = useState("spots");
 
+  // ===== ROLE MATCH CONTEXT STATE =====
+  const [matchRoleId, setMatchRoleId] = useState(() => {
+    const p = new URLSearchParams(location.search);
+    const id = p.get("roleId");
+    return id ? Number(id) : null;
+  });
+  const [matchRoleName, setMatchRoleName] = useState(() => {
+    const p = new URLSearchParams(location.search);
+    return p.get("roleName") || null;
+  });
+
   // ===== TAG & BADGE FILTER STATE =====
   const [filterTagIds, setFilterTagIds] = useState([]);
   const [filterTagMap, setFilterTagMap] = useState({});
@@ -342,6 +353,14 @@ const SearchPage = () => {
     });
   }
 
+  if (matchRoleId && matchRoleName) {
+    activeCriteriaPills.unshift({
+      key: "matchRole",
+      label: matchRoleName,
+      type: "role",
+    });
+  }
+
   useEffect(() => {
     const run = async () => {
       try {
@@ -368,6 +387,10 @@ const SearchPage = () => {
 
         setSearchResults(results.data);
         setUserHasCoordinates(!!results.userLocation?.hasCoordinates);
+
+        if (results.matchRole?.roleName) {
+          setMatchRoleName(results.matchRole.roleName);
+        }
 
         if (results.pagination) {
           setPagination(results.pagination);
@@ -417,6 +440,13 @@ const SearchPage = () => {
       setSearchType("teams");
     } else if (typeParam === "users") {
       setSearchType("users");
+    }
+
+    const roleIdParam = urlParams.get("roleId");
+    const sortParam = urlParams.get("sort");
+    if (roleIdParam && sortParam === "match") {
+      setSortBy("match");
+      setSortDir("asc");
     }
 
     const tagsParam = urlParams.get("tags");
@@ -839,6 +869,17 @@ const SearchPage = () => {
         setIncludeOwnTeams(true);
         setCurrentPage(1);
         break;
+      case "matchRole":
+        setMatchRoleId(null);
+        setMatchRoleName(null);
+        setCurrentPage(1);
+        {
+          const newParams = new URLSearchParams(window.location.search);
+          newParams.delete("roleId");
+          newParams.delete("roleName");
+          window.history.replaceState({}, "", `${window.location.pathname}?${newParams.toString()}`);
+        }
+        break;
       default:
         break;
     }
@@ -1124,9 +1165,11 @@ const SearchPage = () => {
                   initialQuery={searchQuery}
                   onSearch={handleBooleanSearch}
                   placeholder={
-                    sortBy === "match"
-                      ? "Matching results to your profile — type to narrow"
-                      : "Try: hiking AND photography, or hiking NOT photography"
+                    matchRoleId
+                      ? `Finding people matching the "${matchRoleName || "Vacant Role"}" role — type to narrow`
+                      : sortBy === "match"
+                        ? "Matching results to your profile — type to narrow"
+                        : "Try: hiking AND photography, or hiking NOT photography"
                   }
                   activePills={activeCriteriaPills}
                   onRemoveActivePill={handleActivePillRemove}
