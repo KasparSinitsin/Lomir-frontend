@@ -30,6 +30,8 @@ const UserDetailsModal = ({
   boxZIndexClass,
   zIndexStyle,
   boxZIndexStyle,
+  roleMatchTagIds,     // Set<number> | null — role's required tag IDs
+  roleMatchBadgeNames, // Set<string> | null — role's required badge names (lowercase)
 }) => {
   const { user: currentUser, isAuthenticated } = useAuth();
 
@@ -129,6 +131,8 @@ const UserDetailsModal = ({
     if (!isOpen || !isAuthenticated || !currentUser?.id) return;
     // Don't highlight own profile
     if (Number(currentUser.id) === Number(userId)) return;
+    // Skip when role context provides the matching data
+    if (roleMatchTagIds || roleMatchBadgeNames) return;
 
     const fetchCurrentUserData = async () => {
       try {
@@ -166,7 +170,7 @@ const UserDetailsModal = ({
     };
 
     fetchCurrentUserData();
-  }, [isOpen, isAuthenticated, currentUser?.id, userId]);
+  }, [isOpen, isAuthenticated, currentUser?.id, userId, roleMatchTagIds, roleMatchBadgeNames]);
 
   useEffect(() => {
     setIsEditing(mode === "edit");
@@ -335,7 +339,7 @@ const UserDetailsModal = ({
               emptyMessage={UI_TEXT.focusAreas.empty}
               onTagClick={handleTagClick}
               onSupercategoryClick={handleSupercategoryClick}
-              matchingTagIds={currentUserTagIds}
+              matchingTagIds={roleMatchTagIds || currentUserTagIds}
             />
 
             {/* Badges */}
@@ -353,7 +357,7 @@ const UserDetailsModal = ({
               onCategoryClick={handleBadgeCategoryClick}
               onBadgeClick={handleBadgeClick}
               onOpenUser={onOpenUser}
-              matchingBadgeNames={currentUserBadgeNames}
+              matchingBadgeNames={roleMatchBadgeNames || currentUserBadgeNames}
             />
 
             {/* Bottom CTA (TeamDetailsModal style) */}

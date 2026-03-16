@@ -36,21 +36,21 @@ export const UserModalProvider = ({ children }) => {
    * Open a user modal for the given userId.
    * If already in stack, don't add duplicate.
    */
-  const openUserModal = useCallback((userId) => {
+  const openUserModal = useCallback((userId, extraProps = {}) => {
     if (!userId) return;
 
     const normalizedId = String(userId);
 
     setModalStack((prev) => {
       // Prevent duplicate at top of stack
-      if (prev.length > 0 && String(prev[prev.length - 1]) === normalizedId) {
+      if (prev.length > 0 && String(prev[prev.length - 1].userId) === normalizedId) {
         return prev;
       }
       // Prevent duplicate anywhere in stack
-      if (prev.some((id) => String(id) === normalizedId)) {
+      if (prev.some((item) => String(item.userId) === normalizedId)) {
         return prev;
       }
-      return [...prev, normalizedId];
+      return [...prev, { userId: normalizedId, ...extraProps }];
     });
   }, []);
 
@@ -71,7 +71,7 @@ export const UserModalProvider = ({ children }) => {
     const normalizedId = String(userId);
 
     setModalStack((prev) => {
-      const index = prev.findIndex((id) => String(id) === normalizedId);
+      const index = prev.findIndex((item) => String(item.userId) === normalizedId);
       if (index === -1) return prev;
       // Close this modal and all above it
       return prev.slice(0, index);
@@ -124,7 +124,7 @@ export const UserModalProvider = ({ children }) => {
 const UserModalStack = ({ stack, onClose, onOpenUser }) => {
   return (
     <>
-      {stack.map((userId, idx) => {
+      {stack.map(({ userId, roleMatchTagIds, roleMatchBadgeNames }, idx) => {
         const zIndex = BASE_Z_INDEX + idx * MODAL_Z_STEP;
         const isTop = idx === stack.length - 1;
 
@@ -147,6 +147,8 @@ const UserModalStack = ({ stack, onClose, onOpenUser }) => {
               // Pass the z-index for this modal
               zIndexStyle={{ zIndex }}
               boxZIndexStyle={{ zIndex: zIndex + 1 }}
+              roleMatchTagIds={roleMatchTagIds}
+              roleMatchBadgeNames={roleMatchBadgeNames}
             />
           </ModalLayerProvider>
         );

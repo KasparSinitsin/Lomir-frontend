@@ -248,6 +248,10 @@ useEffect(() => {
 
     if (isRemote) params.set("proximity", "remote");
 
+    if (roleId) params.set("roleId", roleId);
+    const searchRoleName = displayRole.roleName ?? displayRole.role_name ?? "Vacant Role";
+    if (searchRoleName) params.set("roleName", searchRoleName);
+
     return `/search?${params.toString()}`;
   };
 

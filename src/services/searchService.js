@@ -51,6 +51,7 @@ const buildSearchParams = ({
   capacityMode = "spots",
   tagIds = [],
   badgeIds = [],
+  roleId = null,
 } = {}) => {
   const params = {
     authenticated: isAuthenticated,
@@ -72,6 +73,7 @@ const buildSearchParams = ({
 
   if (tagIds && tagIds.length > 0) params.tagIds = tagIds.join(",");
   if (badgeIds && badgeIds.length > 0) params.badgeIds = badgeIds.join(",");
+  if (roleId) params.roleId = roleId;
 
   return params;
 };

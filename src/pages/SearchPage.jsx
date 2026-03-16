@@ -93,10 +93,35 @@ const SearchPage = () => {
   // ===== CAPACITY FILTER STATE =====
   const [capacityMode, setCapacityMode] = useState("spots");
 
+  // ===== ROLE MATCH CONTEXT STATE =====
+  const [matchRoleId, setMatchRoleId] = useState(() => {
+    const p = new URLSearchParams(location.search);
+    const id = p.get("roleId");
+    return id ? Number(id) : null;
+  });
+  const [matchRoleName, setMatchRoleName] = useState(() => {
+    const p = new URLSearchParams(location.search);
+    return p.get("roleName") || null;
+  });
+
   // ===== TAG & BADGE FILTER STATE =====
-  const [filterTagIds, setFilterTagIds] = useState([]);
+  const [filterTagIds, setFilterTagIds] = useState(() => {
+    const p = new URLSearchParams(location.search);
+    const tagsParam = p.get("tags");
+    if (tagsParam) {
+      return tagsParam.split(",").map(Number).filter(Boolean);
+    }
+    return [];
+  });
   const [filterTagMap, setFilterTagMap] = useState({});
-  const [filterBadgeIds, setFilterBadgeIds] = useState([]);
+  const [filterBadgeIds, setFilterBadgeIds] = useState(() => {
+    const p = new URLSearchParams(location.search);
+    const badgesParam = p.get("badges");
+    if (badgesParam) {
+      return badgesParam.split(",").map(Number).filter(Boolean);
+    }
+    return [];
+  });
   const [filterBadgeMap, setFilterBadgeMap] = useState({});
   const [allBadges, setAllBadges] = useState([]);
 
@@ -190,6 +215,19 @@ const SearchPage = () => {
     teams:
       searchType === "all" || searchType === "teams" ? searchResults.teams : [],
   };
+
+  const roleMatchTagIds =
+    matchRoleId && filterTagIds.length > 0 ? new Set(filterTagIds) : null;
+
+  const roleMatchBadgeNames =
+    matchRoleId && filterBadgeIds.length > 0
+      ? new Set(
+          filterBadgeIds
+            .map((id) => filterBadgeMap[id]?.name)
+            .filter(Boolean)
+            .map((name) => name.toLowerCase()),
+        )
+      : null;
 
   const noResultsFound =
     hasSearched &&
@@ -342,6 +380,14 @@ const SearchPage = () => {
     });
   }
 
+  if (matchRoleId && matchRoleName) {
+    activeCriteriaPills.unshift({
+      key: "matchRole",
+      label: matchRoleName,
+      type: "role",
+    });
+  }
+
   useEffect(() => {
     const run = async () => {
       try {
@@ -362,12 +408,17 @@ const SearchPage = () => {
           capacityMode,
           tagIds: filterTagIds,
           badgeIds: filterBadgeIds,
+          roleId: matchRoleId,
         };
 
         const results = await fetchData(requestCriteria);
 
         setSearchResults(results.data);
         setUserHasCoordinates(!!results.userLocation?.hasCoordinates);
+
+        if (results.matchRole?.roleName) {
+          setMatchRoleName(results.matchRole.roleName);
+        }
 
         if (results.pagination) {
           setPagination(results.pagination);
@@ -407,6 +458,7 @@ const SearchPage = () => {
     searchQuery,
     filterTagIds,
     filterBadgeIds,
+    matchRoleId,
   ]);
 
   useEffect(() => {
@@ -419,12 +471,18 @@ const SearchPage = () => {
       setSearchType("users");
     }
 
+    const roleIdParam = urlParams.get("roleId");
+    const sortParam = urlParams.get("sort");
+    if (roleIdParam && sortParam === "match") {
+      setSortBy("match");
+      setSortDir("asc");
+    }
+
     const tagsParam = urlParams.get("tags");
     if (tagsParam) {
       const ids = tagsParam.split(",").map(Number).filter(Boolean);
       if (ids.length > 0) {
-        setFilterTagIds(ids);
-        // Resolve tag names from structured tag tree
+        // Resolve tag names from structured tag tree (IDs already set via lazy init)
         tagService
           .getStructuredTags()
           .then((structure) => {
@@ -445,15 +503,7 @@ const SearchPage = () => {
           .catch(() => {});
       }
     }
-
-    const badgesParam = urlParams.get("badges");
-    if (badgesParam) {
-      const ids = badgesParam.split(",").map(Number).filter(Boolean);
-      if (ids.length > 0) {
-        setFilterBadgeIds(ids);
-        // Names resolved later by the allBadges effect
-      }
-    }
+    // Badge IDs already set via lazy init; names resolved by the allBadges effect
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -839,6 +889,17 @@ const SearchPage = () => {
         setIncludeOwnTeams(true);
         setCurrentPage(1);
         break;
+      case "matchRole":
+        setMatchRoleId(null);
+        setMatchRoleName(null);
+        setCurrentPage(1);
+        {
+          const newParams = new URLSearchParams(window.location.search);
+          newParams.delete("roleId");
+          newParams.delete("roleName");
+          window.history.replaceState({}, "", `${window.location.pathname}?${newParams.toString()}`);
+        }
+        break;
       default:
         break;
     }
@@ -1124,9 +1185,11 @@ const SearchPage = () => {
                   initialQuery={searchQuery}
                   onSearch={handleBooleanSearch}
                   placeholder={
-                    sortBy === "match"
-                      ? "Matching results to your profile — type to narrow"
-                      : "Try: hiking AND photography, or hiking NOT photography"
+                    matchRoleId
+                      ? `Finding people matching the "${matchRoleName || "Vacant Role"}" role — type to narrow`
+                      : sortBy === "match"
+                        ? "Matching results to your profile — type to narrow"
+                        : "Try: hiking AND photography, or hiking NOT photography"
                   }
                   activePills={activeCriteriaPills}
                   onRemoveActivePill={handleActivePillRemove}
@@ -1306,6 +1369,8 @@ const SearchPage = () => {
                     key={user.id}
                     user={user}
                     onUpdate={handleUserUpdate}
+                    roleMatchTagIds={roleMatchTagIds}
+                    roleMatchBadgeNames={roleMatchBadgeNames}
                   />
                 ))}
               </Grid>
