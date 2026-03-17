@@ -252,8 +252,11 @@ useEffect(() => {
     if (isRemote) params.set("proximity", "remote");
 
     if (roleId) params.set("roleId", roleId);
+    if (teamId) params.set("excludeTeamId", teamId);
     const searchRoleName = displayRole.roleName ?? displayRole.role_name ?? "Vacant Role";
     if (searchRoleName) params.set("roleName", searchRoleName);
+    const searchTeamName = displayRole.teamName ?? displayRole.team_name ?? "";
+    if (searchTeamName) params.set("excludeTeamName", searchTeamName);
 
     return `/search?${params.toString()}`;
   };
@@ -293,7 +296,7 @@ useEffect(() => {
             className="flex items-center gap-1"
           >
             <UserSearch size={16} />
-            <span className="hidden sm:inline">Find matching people</span>
+            <span className="hidden sm:inline">Find matching people outside this team</span>
           </Button>
         </div>
       )}

@@ -52,6 +52,7 @@ const buildSearchParams = ({
   tagIds = [],
   badgeIds = [],
   roleId = null,
+  excludeTeamId = null,
 } = {}) => {
   const params = {
     authenticated: isAuthenticated,
@@ -74,6 +75,7 @@ const buildSearchParams = ({
   if (tagIds && tagIds.length > 0) params.tagIds = tagIds.join(",");
   if (badgeIds && badgeIds.length > 0) params.badgeIds = badgeIds.join(",");
   if (roleId) params.roleId = roleId;
+  if (excludeTeamId) params.excludeTeamId = excludeTeamId;
 
   return params;
 };
