@@ -59,16 +59,17 @@ const SearchPage = () => {
   // ===== SORTING STATE =====
   const [sortBy, setSortBy] = useState(() => {
     const p = new URLSearchParams(location.search);
-    if (p.get("proximity") === "remote") return "proximity";
     const sort = p.get("sort");
     if (["match", "name", "recent", "newest", "capacity", "proximity"].includes(sort))
       return sort;
+    if (p.get("proximity") === "remote") return "proximity";
     return "name";
   });
   const [sortDir, setSortDir] = useState(() => {
     const p = new URLSearchParams(location.search);
+    const sort = p.get("sort");
+    if (sort === "match") return "asc";
     if (p.get("proximity") === "remote") return "remote";
-    if (p.get("sort") === "match") return "asc";
     return "asc";
   });
   const [showSortDropdown, setShowSortDropdown] = useState(false);
@@ -229,8 +230,10 @@ const SearchPage = () => {
         )
       : null;
 
+  const hasActiveFilters = filterTagIds.length > 0 || filterBadgeIds.length > 0 || !!matchRoleId;
+
   const noResultsFound =
-    hasSearched &&
+    (hasSearched || hasActiveFilters) &&
     filteredResults.teams.length === 0 &&
     filteredResults.users.length === 0 &&
     !loading;
@@ -1315,9 +1318,11 @@ const SearchPage = () => {
       {noResultsFound && (
         <Alert
           type="info"
-          message={`No ${
-            searchType === "all" ? "teams or users" : searchType
-          } found matching "${searchQuery}". Try a different search term.`}
+          message={
+            searchQuery.trim()
+              ? `No ${searchType === "all" ? "teams or users" : searchType} found matching "${searchQuery}". Try a different search term.`
+              : `No matching ${searchType === "all" ? "teams or users" : searchType} found for the current filters. Try adjusting or removing some filters.`
+          }
           className="max-w-xl mx-auto"
         />
       )}
