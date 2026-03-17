@@ -351,7 +351,7 @@ export const teamService = {
    * @param {number} limit - Results per page (default: 10)
    * @returns {Promise<Object>} User teams with pagination metadata
    */
-  getUserTeams: async (userId, page = 1, limit = 10) => {
+  getUserTeams: async (userId, { page = 1, limit = 10 } = {}) => {
     try {
       if (!userId) {
         throw new Error("User ID is required");
