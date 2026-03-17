@@ -262,7 +262,7 @@ const SearchPage = () => {
     activeSubmenuType === "capacity"
       ? "capacity"
       : activeSubmenuType === "proximity"
-        ? sortBy === "match" ? "match" : "proximity"
+        ? "proximity"
         : sortBy;
 
   const getVisibleSortOptions = () => {
@@ -743,11 +743,7 @@ const SearchPage = () => {
 
     if (optionValue === "match") {
       handleSortChange("match");
-      if (userHasCoordinates) {
-        setOpenSubmenuType("proximity");
-      } else {
-        setOpenSubmenuType(null);
-      }
+      setOpenSubmenuType(null);
       return;
     }
 
@@ -1256,7 +1252,7 @@ const SearchPage = () => {
                       option.value === "capacity"
                         ? isCapacitySpotsSort
                         : option.value === "proximity"
-                          ? sortBy === option.value || maxDistance !== null
+                          ? sortBy === option.value
                           : sortBy === option.value;
                     const currentDir = isActive
                       ? option.value === "capacity"
