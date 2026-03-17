@@ -12,6 +12,7 @@ import {
   Check,
   X,
   TrendingUp,
+  TrendingDown,
 } from "lucide-react";
 import Modal from "../common/Modal";
 import {
@@ -324,19 +325,25 @@ useEffect(() => {
             {pct !== null ? (
               <div
                 className={`${
-                  pct >= 80 ? "bg-amber-500" : "bg-slate-400"
+                  pct >= 80 ? "bg-amber-500" : pct >= 50 ? "bg-success" : "bg-slate-400"
                 } text-white rounded-full w-20 h-20 relative flex items-center justify-center overflow-hidden`}
               >
                 {pct >= 80 ? (
                   <Sparkles
                     size={56}
-                    className="absolute text-amber-300/40"
+                    className="absolute text-white/40"
+                    strokeWidth={1.5}
+                  />
+                ) : pct >= 50 ? (
+                  <TrendingUp
+                    size={56}
+                    className="absolute text-white/40"
                     strokeWidth={1.5}
                   />
                 ) : (
-                  <TrendingUp
+                  <TrendingDown
                     size={56}
-                    className="absolute text-slate-300/40"
+                    className="absolute text-white/40"
                     strokeWidth={1.5}
                   />
                 )}
@@ -400,7 +407,7 @@ useEffect(() => {
             const tierColor = {
               bg: "bg-base-200/50",
               border: "border-base-300",
-              text: pct >= 80 ? "text-amber-700" : "text-base-content/70",
+              text: pct >= 80 ? "text-amber-700" : pct >= 50 ? "text-success" : "text-base-content/70",
             };
 
             return (
@@ -410,8 +417,10 @@ useEffect(() => {
                 <div className="flex items-center gap-2 mb-3">
                   {pct >= 80 ? (
                     <Sparkles size={16} className={tierColor.text} />
-                  ) : (
+                  ) : pct >= 50 ? (
                     <TrendingUp size={16} className={tierColor.text} />
+                  ) : (
+                    <TrendingDown size={16} className={tierColor.text} />
                   )}
                   <span className={`text-sm font-semibold ${tierColor.text}`}>
                     {pct}% Match with your profile
@@ -482,7 +491,7 @@ useEffect(() => {
                       <div className="flex-1 h-1.5 bg-base-200 rounded-full overflow-hidden">
                         <div
                           className={`h-full rounded-full transition-all duration-500 ${
-                            pct >= 80 ? "bg-amber-500" : "bg-slate-400"
+                            pct >= 80 ? "bg-amber-500" : pct >= 50 ? "bg-success" : "bg-slate-400"
                           }`}
                           style={{ width: `${value}%` }}
                         />

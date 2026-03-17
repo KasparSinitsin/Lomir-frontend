@@ -10,6 +10,7 @@ import {
   XCircle,
   Sparkles,
   TrendingUp,
+  TrendingDown,
 } from "lucide-react";
 import VacantRoleDetailsModal from "./VacantRoleDetailsModal";
 import RoleBadgePill from "../common/RoleBadgePill";
@@ -94,12 +95,18 @@ const VacantRoleCard = ({
       return {
         avatarBg: "bg-amber-500",
         avatarText: "text-white",
-        sparkle: "text-amber-300/40",
+        sparkle: "text-white/40",
+      };
+    if (pct >= 50)
+      return {
+        avatarBg: "bg-success",
+        avatarText: "text-white",
+        sparkle: "text-white/40",
       };
     return {
       avatarBg: "bg-slate-400",
       avatarText: "text-white",
-      sparkle: "text-slate-300/40",
+      sparkle: "text-white/40",
     };
   };
 
@@ -143,8 +150,14 @@ const VacantRoleCard = ({
                       className={`absolute ${matchColor.sparkle}`}
                       strokeWidth={1.5}
                     />
-                  ) : (
+                  ) : pct >= 50 ? (
                     <TrendingUp
+                      size={40}
+                      className={`absolute ${matchColor.sparkle}`}
+                      strokeWidth={1.5}
+                    />
+                  ) : (
+                    <TrendingDown
                       size={40}
                       className={`absolute ${matchColor.sparkle}`}
                       strokeWidth={1.5}
