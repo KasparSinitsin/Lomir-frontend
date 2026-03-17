@@ -262,7 +262,7 @@ const SearchPage = () => {
     activeSubmenuType === "capacity"
       ? "capacity"
       : activeSubmenuType === "proximity"
-        ? "proximity"
+        ? sortBy === "match" ? "match" : "proximity"
         : sortBy;
 
   const getVisibleSortOptions = () => {
@@ -738,6 +738,16 @@ const SearchPage = () => {
     if (optionValue === "proximity") {
       handleSortChange("proximity");
       setOpenSubmenuType("proximity");
+      return;
+    }
+
+    if (optionValue === "match") {
+      handleSortChange("match");
+      if (userHasCoordinates) {
+        setOpenSubmenuType("proximity");
+      } else {
+        setOpenSubmenuType(null);
+      }
       return;
     }
 
