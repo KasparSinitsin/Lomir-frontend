@@ -10,8 +10,8 @@ import {
   Sparkles,
   CircleDot,
   Check,
+  X,
   TrendingUp,
-  ExternalLink,
 } from "lucide-react";
 import Modal from "../common/Modal";
 import {
@@ -28,6 +28,7 @@ import {
   SUPERCATEGORY_ORDER,
   TAG_SECTION_BG,
 } from "../../constants/badgeConstants";
+import Button from "../common/Button";
 import Tooltip from "../common/Tooltip";
 import { useAuth } from "../../contexts/AuthContext";
 import { userService } from "../../services/userService";
@@ -277,9 +278,24 @@ useEffect(() => {
   };
 
   const modalTitle = (
-    <div className="flex items-center gap-2">
-      <UserSearch className="text-amber-500" size={20} />
-      <h2 className="text-lg font-medium">Vacant Role</h2>
+    <div className="flex items-center justify-between w-full">
+      <div className="flex items-center gap-2">
+        <UserSearch className="text-amber-500" size={20} />
+        <h2 className="text-lg font-medium">Vacant Role</h2>
+      </div>
+      {isTeamMember && (tags.length > 0 || badges.length > 0) && (
+        <div className="flex items-center space-x-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => window.open(buildSearchUrl(), '_blank')}
+            className="flex items-center gap-1"
+          >
+            <UserSearch size={16} />
+            <span className="hidden sm:inline">Find matching people</span>
+          </Button>
+        </div>
+      )}
     </div>
   );
 
@@ -358,20 +374,6 @@ useEffect(() => {
           </div>
         </div>
 
-        {isTeamMember && (tags.length > 0 || badges.length > 0) && (
-          <div>
-            <a
-              href={buildSearchUrl()}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="btn btn-sm btn-outline btn-primary w-full sm:w-auto inline-flex items-center gap-2"
-            >
-              Search for matching people
-              <ExternalLink size={14} />
-            </a>
-          </div>
-        )}
-
         {bio && (
           <div>
             <p className="text-base-content/90 leading-relaxed">{bio}</p>
@@ -412,7 +414,7 @@ useEffect(() => {
                     <TrendingUp size={16} className={tierColor.text} />
                   )}
                   <span className={`text-sm font-semibold ${tierColor.text}`}>
-                    {pct}% Match
+                    {pct}% Match with your profile
                   </span>
                 </div>
 
@@ -497,13 +499,45 @@ useEffect(() => {
 
         {locationText && (
           <div>
-            <div className="flex items-center mb-2">
-              {isRemote ? (
-                <Globe size={18} className="mr-2 text-primary flex-shrink-0" />
-              ) : (
-                <MapPin size={18} className="mr-2 text-primary flex-shrink-0" />
-              )}
-              <h3 className="font-medium">Location Preference</h3>
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center">
+                {isRemote ? (
+                  <Globe size={18} className="mr-2 text-primary flex-shrink-0" />
+                ) : (
+                  <MapPin size={18} className="mr-2 text-primary flex-shrink-0" />
+                )}
+                <h3 className="font-medium">Location Preference</h3>
+              </div>
+              {isAuthenticated && (() => {
+                if (isRemote) {
+                  return (
+                    <span className="flex items-center gap-1.5 text-sm text-success">
+                      <Check size={14} className="flex-shrink-0" />
+                      <span>Matches your location</span>
+                    </span>
+                  );
+                }
+                const distKm = matchDetails?.distanceKm ?? matchDetails?.distance_km ?? null;
+                const withinRange = matchDetails?.isWithinRange ?? matchDetails?.is_within_range ?? null;
+                if (distKm !== null && withinRange !== null) {
+                  if (withinRange) {
+                    return (
+                      <span className="flex items-center gap-1.5 text-sm text-success">
+                        <Check size={14} className="flex-shrink-0" />
+                        <span>{Math.round(distKm)} km away</span>
+                      </span>
+                    );
+                  } else {
+                    return (
+                      <span className="flex items-center gap-1.5 text-sm text-error/70">
+                        <X size={14} className="flex-shrink-0" />
+                        <span>{Math.round(distKm)} km away</span>
+                      </span>
+                    );
+                  }
+                }
+                return null;
+              })()}
             </div>
 
             <div className="flex items-center gap-2 text-sm text-base-content/70">
@@ -520,9 +554,32 @@ useEffect(() => {
 
         {/* Desired Focus Areas */}
         <div>
-          <div className="flex items-center mb-2">
-            <Tag size={18} className="mr-2 text-primary flex-shrink-0" />
-            <h3 className="font-medium">Desired Focus Areas</h3>
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center">
+              <Tag size={18} className="mr-2 text-primary flex-shrink-0" />
+              <h3 className="font-medium">Desired Focus Areas</h3>
+            </div>
+            {isAuthenticated && tags.length > 0 && (() => {
+              const matchCount = tags.filter((t) => {
+                const tagId = Number(t.tagId ?? t.tag_id ?? t.id);
+                return userTagMap.has(tagId);
+              }).length;
+              const total = tags.length;
+              if (matchCount > 0) {
+                return (
+                  <span className="flex items-center gap-1.5 text-sm text-success">
+                    <Check size={14} className="flex-shrink-0" />
+                    <span>{matchCount}/{total} in common</span>
+                  </span>
+                );
+              }
+              return (
+                <span className="flex items-center gap-1.5 text-sm text-error/70">
+                  <X size={14} className="flex-shrink-0" />
+                  <span>None in common</span>
+                </span>
+              );
+            })()}
           </div>
 
           {tags.length > 0 ? (
@@ -626,9 +683,32 @@ useEffect(() => {
 
         {/* Desired Badges */}
         <div>
-          <div className="flex items-center mb-2">
-            <Award size={18} className="mr-2 text-primary flex-shrink-0" />
-            <h3 className="font-medium">Desired Badges</h3>
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center">
+              <Award size={18} className="mr-2 text-primary flex-shrink-0" />
+              <h3 className="font-medium">Desired Badges</h3>
+            </div>
+            {isAuthenticated && badges.length > 0 && (() => {
+              const matchCount = badges.filter((b) => {
+                const badgeKey = (b.name ?? b.badgeName ?? b.badge_name ?? "").trim().toLowerCase();
+                return userBadgeMap.has(badgeKey);
+              }).length;
+              const total = badges.length;
+              if (matchCount > 0) {
+                return (
+                  <span className="flex items-center gap-1.5 text-sm text-success">
+                    <Check size={14} className="flex-shrink-0" />
+                    <span>{matchCount}/{total} in common</span>
+                  </span>
+                );
+              }
+              return (
+                <span className="flex items-center gap-1.5 text-sm text-error/70">
+                  <X size={14} className="flex-shrink-0" />
+                  <span>None in common</span>
+                </span>
+              );
+            })()}
           </div>
 
           {badges.length > 0 ? (
