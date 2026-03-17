@@ -1468,6 +1468,7 @@ const TeamDetailsModal = ({
                   <VacantRolesSection
                     teamId={effectiveTeamId}
                     canManage={isOwner || internalUserRole === "admin"}
+                    isTeamMember={isTeamMember}
                     isEditing={isEditing}
                   />
                 </div>
