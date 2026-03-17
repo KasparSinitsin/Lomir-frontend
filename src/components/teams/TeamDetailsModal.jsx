@@ -37,7 +37,7 @@ import TagsDisplaySection from "../tags/TagsDisplaySection";
 import { UI_TEXT } from "../../constants/uiText";
 import { tagService } from "../../services/tagService";
 import RoleBadgeDropdown from "./RoleBadgeDropdown";
-import TeamApplicationModal from "./TeamApplicationModal";
+import TeamApplicationButton from "./TeamApplicationButton";
 import TeamInvitationDetailsModal from "./TeamInvitationDetailsModal";
 import TeamMembersSection from "./TeamMembersSection";
 import TeamFocusAreaSection from "./TeamFocusAreaSection";
@@ -124,8 +124,6 @@ const TeamDetailsModal = ({
   const [internalUserRole, setInternalUserRole] = useState(null);
   const [isPublic, setIsPublic] = useState(false);
 
-  const [isApplicationModalOpen, setIsApplicationModalOpen] = useState(false);
-  const [applicationLoading, setApplicationLoading] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState(null);
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [allTags, setAllTags] = useState([]);
@@ -1068,40 +1066,6 @@ const TeamDetailsModal = ({
     }
   };
 
-  // Updated handleApplyToJoin function
-  const handleApplyToJoin = () => {
-    setIsApplicationModalOpen(true);
-  };
-
-  // New function to handle application submission
-  const handleApplicationSubmit = async (applicationData) => {
-    try {
-      setApplicationLoading(true);
-      await teamService.applyToJoinTeam(effectiveTeamId, applicationData);
-
-      // Refresh team details to show updated status
-      await fetchTeamDetails();
-
-      setNotification({
-        type: "success",
-        message: applicationData.isDraft
-          ? "Draft saved successfully"
-          : "Application sent successfully!",
-      });
-
-      if (!applicationData.isDraft) {
-        setIsApplicationModalOpen(false);
-      }
-    } catch (error) {
-      console.error("Error submitting application:", error);
-      throw new Error(
-        error.response?.data?.message || "Failed to submit application",
-      );
-    } finally {
-      setApplicationLoading(false);
-    }
-  };
-
   const isTeamMember = useMemo(() => {
     if (!team || !user) return false;
     return (
@@ -1187,14 +1151,21 @@ const TeamDetailsModal = ({
             )}
           </div>
         ) : (
-          <Button
-            variant="primary"
-            onClick={handleApplyToJoin}
+          <TeamApplicationButton
+            team={team}
+            teamId={effectiveTeamId}
             disabled={loading}
             className="w-full"
-          >
-            Apply to Join Team
-          </Button>
+            onAfterSubmit={fetchTeamDetails}
+            onSuccess={(applicationData) => {
+              setNotification({
+                type: "success",
+                message: applicationData.isDraft
+                  ? "Draft saved successfully"
+                  : "Application sent successfully!",
+              });
+            }}
+          />
         )}
       </div>
     );
@@ -1305,7 +1276,7 @@ const TeamDetailsModal = ({
     <>
       {/* Main Modal using Modal.jsx component */}
       <Modal
-        isOpen={isModalVisible && !isApplicationModalOpen}
+        isOpen={isModalVisible}
         onClose={handleClose}
         title={modalTitle}
         position="center"
@@ -1542,6 +1513,7 @@ const TeamDetailsModal = ({
 
                   {/* Vacant Team Roles */}
                   <VacantRolesSection
+                    team={team}
                     teamId={effectiveTeamId}
                     canManage={isOwner || internalUserRole === "admin"}
                     isTeamMember={isTeamMember}
@@ -1566,15 +1538,6 @@ const TeamDetailsModal = ({
           mode="view"
         />
       )}
-
-      {/* Application Modal */}
-      <TeamApplicationModal
-        isOpen={isApplicationModalOpen}
-        onClose={() => setIsApplicationModalOpen(false)}
-        team={team}
-        onSubmit={handleApplicationSubmit}
-        loading={applicationLoading}
-      />
 
       {/* Leave Team Confirmation Dialog */}
       {isLeaveDialogOpen && (

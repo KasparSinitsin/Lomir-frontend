@@ -31,6 +31,7 @@ import {
 } from "../../constants/badgeConstants";
 import Button from "../common/Button";
 import Tooltip from "../common/Tooltip";
+import TeamApplicationButton from "./TeamApplicationButton";
 import { useAuth } from "../../contexts/AuthContext";
 import { userService } from "../../services/userService";
 import { vacantRoleService } from "../../services/vacantRoleService";
@@ -47,6 +48,7 @@ import { vacantRoleService } from "../../services/vacantRoleService";
 const VacantRoleDetailsModal = ({
   isOpen,
   onClose,
+  team = null,
   role,
   matchScore = null,
   matchDetails = null,
@@ -61,7 +63,6 @@ const VacantRoleDetailsModal = ({
 
   const [hydratedRole, setHydratedRole] = useState(null);
   const [loadingRoleDetails, setLoadingRoleDetails] = useState(false);
-
   const roleId = role?.id;
   const teamId = role?.teamId ?? role?.team_id;
 
@@ -205,6 +206,34 @@ useEffect(() => {
     displayRole.teamMemberCount ?? displayRole.team_member_count;
   const teamMaxMembers =
     displayRole.teamMaxMembers ?? displayRole.team_max_members;
+  const teamDescription =
+    displayRole.teamDescription ?? displayRole.team_description ?? "";
+  const teamAvatarUrl =
+    displayRole.teamavatar_url ??
+    displayRole.teamavatarUrl ??
+    displayRole.teamAvatarUrl ??
+    displayRole.team_avatar_url ??
+    null;
+  const isRoleOpen = String(status ?? "").toLowerCase() === "open";
+  const applicationTeam = {
+    ...team,
+    id: team?.id ?? teamId,
+    name: team?.name ?? teamName,
+    description: team?.description ?? teamDescription,
+    current_members_count:
+      team?.current_members_count ??
+      team?.currentMembersCount ??
+      team?.member_count ??
+      team?.memberCount ??
+      teamMemberCount,
+    max_members: team?.max_members ?? team?.maxMembers ?? teamMaxMembers,
+    teamavatar_url:
+      team?.teamavatar_url ??
+      team?.teamavatarUrl ??
+      team?.avatar_url ??
+      team?.avatarUrl ??
+      teamAvatarUrl,
+  };
 
   const creatorFirstName =
     displayRole.creatorFirstName ?? displayRole.creator_first_name;
@@ -794,6 +823,17 @@ useEffect(() => {
             </p>
           )}
         </div>
+
+        {isAuthenticated && !isTeamMember && isRoleOpen && (
+          <div className="mt-6 border-t border-base-200 pt-4">
+            <TeamApplicationButton
+              team={applicationTeam}
+              teamId={teamId}
+              roleId={roleId}
+              className="w-full"
+            />
+          </div>
+        )}
       </div>
     </Modal>
   );

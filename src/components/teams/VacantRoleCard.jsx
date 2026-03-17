@@ -35,6 +35,7 @@ import Tooltip from "../common/Tooltip";
  * @param {Object|null} matchDetails - Breakdown: tagScore, badgeScore, distanceScore
  */
 const VacantRoleCard = ({
+  team = null,
   role,
   canManage = false,
   isTeamMember = false,
@@ -312,6 +313,7 @@ const VacantRoleCard = ({
       <VacantRoleDetailsModal
         isOpen={isDetailsOpen}
         onClose={() => setIsDetailsOpen(false)}
+        team={team}
         role={role}
         matchScore={matchScore}
         matchDetails={matchDetails}
