@@ -36,6 +36,7 @@ import Tooltip from "../common/Tooltip";
 const VacantRoleCard = ({
   role,
   canManage = false,
+  isTeamMember = false,
   onEdit,
   onDelete,
   onStatusChange,
@@ -302,6 +303,7 @@ const VacantRoleCard = ({
         matchScore={matchScore}
         matchDetails={matchDetails}
         canManage={canManage}
+        isTeamMember={isTeamMember}
       />
     </>
   );

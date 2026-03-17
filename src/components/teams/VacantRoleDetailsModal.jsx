@@ -49,6 +49,7 @@ const VacantRoleDetailsModal = ({
   matchScore = null,
   matchDetails = null,
   canManage = false,
+  isTeamMember = false,
 }) => {
   const { user: currentUser, isAuthenticated } = useAuth();
 
@@ -357,7 +358,7 @@ useEffect(() => {
           </div>
         </div>
 
-        {isAuthenticated && (tags.length > 0 || badges.length > 0) && (
+        {isTeamMember && (tags.length > 0 || badges.length > 0) && (
           <div>
             <a
               href={buildSearchUrl()}

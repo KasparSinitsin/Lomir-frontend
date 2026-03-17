@@ -28,6 +28,7 @@ import { useAuth } from "../../contexts/AuthContext";
 const VacantRolesSection = ({
   teamId,
   canManage = false,
+  isTeamMember = false,
   isEditing = false,
   className = "",
 }) => {
@@ -254,6 +255,7 @@ const VacantRolesSection = ({
                 key={role.id}
                 role={role}
                 canManage={canManage}
+                isTeamMember={isTeamMember}
                 onEdit={handleEdit}
                 onDelete={handleDelete}
                 onStatusChange={handleStatusChange}
