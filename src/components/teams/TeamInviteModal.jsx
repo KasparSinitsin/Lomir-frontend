@@ -751,6 +751,7 @@ const TeamInviteModal = ({
       <TeamApplicationsModal
         isOpen={isApplicationsModalOpen}
         onClose={handleApplicationsModalClose}
+        teamId={selectedTeamForModal?.id}
         applications={selectedTeamApplications}
         onApplicationAction={handleApplicationAction}
         teamName={selectedTeamForModal?.name}

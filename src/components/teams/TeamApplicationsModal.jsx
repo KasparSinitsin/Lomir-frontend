@@ -4,6 +4,7 @@ import RequestListModal from "../common/RequestListModal";
 import PersonRequestCard from "../common/PersonRequestCard";
 import Button from "../common/Button";
 import UserDetailsModal from "../users/UserDetailsModal";
+import VacantRoleCard from "./VacantRoleCard";
 
 /**
  * TeamApplicationsModal Component
@@ -21,10 +22,11 @@ import UserDetailsModal from "../users/UserDetailsModal";
 const TeamApplicationsModal = ({
   isOpen,
   onClose,
+  teamId = null,
   applications = [],
   onApplicationAction,
   teamName,
-  highlightUserId = null, 
+  highlightUserId = null,
 }) => {
   // ============ State ============
   const [loading, setLoading] = useState(false);
@@ -160,6 +162,20 @@ const TeamApplicationsModal = ({
               showLocation={false}
               extraContent={
                 <>
+                  {/* Vacant role card — shown when application targets a specific role */}
+                  {application.role && (
+                    <div className="mb-5">
+                      <VacantRoleCard
+                        role={application.role}
+                        team={{ id: teamId, name: teamName }}
+                        matchScore={application.role.match_score ?? null}
+                        matchDetails={application.role.match_details ?? null}
+                        canManage={false}
+                        isTeamMember={true}
+                      />
+                    </div>
+                  )}
+
                   {/* User Tags/Skills if available */}
                   {application.applicant?.tags &&
                     application.applicant.tags.length > 0 && (
