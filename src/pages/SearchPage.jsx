@@ -104,6 +104,15 @@ const SearchPage = () => {
     const p = new URLSearchParams(location.search);
     return p.get("roleName") || null;
   });
+  const [excludeTeamId, setExcludeTeamId] = useState(() => {
+    const p = new URLSearchParams(location.search);
+    const id = p.get("excludeTeamId");
+    return id ? Number(id) : null;
+  });
+  const [excludeTeamName, setExcludeTeamName] = useState(() => {
+    const p = new URLSearchParams(location.search);
+    return p.get("excludeTeamName") || null;
+  });
 
   // ===== TAG & BADGE FILTER STATE =====
   const [filterTagIds, setFilterTagIds] = useState(() => {
@@ -391,6 +400,14 @@ const SearchPage = () => {
     });
   }
 
+  if (excludeTeamId) {
+    activeCriteriaPills.push({
+      key: "excludeTeam",
+      label: `Excl. ${excludeTeamName || "team"} members`,
+      type: "excludeTeam",
+    });
+  }
+
   useEffect(() => {
     const run = async () => {
       try {
@@ -412,6 +429,7 @@ const SearchPage = () => {
           tagIds: filterTagIds,
           badgeIds: filterBadgeIds,
           roleId: matchRoleId,
+          excludeTeamId,
         };
 
         const results = await fetchData(requestCriteria);
@@ -462,6 +480,7 @@ const SearchPage = () => {
     filterTagIds,
     filterBadgeIds,
     matchRoleId,
+    excludeTeamId,
   ]);
 
   useEffect(() => {
@@ -900,6 +919,17 @@ const SearchPage = () => {
           const newParams = new URLSearchParams(window.location.search);
           newParams.delete("roleId");
           newParams.delete("roleName");
+          window.history.replaceState({}, "", `${window.location.pathname}?${newParams.toString()}`);
+        }
+        break;
+      case "excludeTeam":
+        setExcludeTeamId(null);
+        setExcludeTeamName(null);
+        setCurrentPage(1);
+        {
+          const newParams = new URLSearchParams(window.location.search);
+          newParams.delete("excludeTeamId");
+          newParams.delete("excludeTeamName");
           window.history.replaceState({}, "", `${window.location.pathname}?${newParams.toString()}`);
         }
         break;

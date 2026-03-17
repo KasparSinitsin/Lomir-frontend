@@ -5,7 +5,7 @@ import {
   useEffect,
   useLayoutEffect,
 } from "react";
-import { Tag, Award, UserSearch } from "lucide-react";
+import { Tag, Award, UserSearch, Users } from "lucide-react";
 import SearchHelp from "./SearchHelp";
 import {
   CATEGORY_COLORS,
@@ -342,6 +342,21 @@ const BooleanSearchInput = ({
           title={`Remove ${pill.label}`}
         >
           <UserSearch size={12} className="flex-shrink-0" />
+          <span>{pill.label}</span>
+          <span aria-hidden="true">×</span>
+        </button>
+      );
+    }
+    if (pill.type === "excludeTeam") {
+      return (
+        <button
+          key={pill.key}
+          type="button"
+          onClick={() => onRemoveActivePill?.(pill.key)}
+          className="inline-flex items-center gap-1 rounded-full border border-slate-400 bg-slate-50 px-2 py-0.5 text-xs font-bold text-slate-600 transition-colors hover:border-slate-500 hover:bg-slate-100"
+          title={`Remove ${pill.label}`}
+        >
+          <Users size={12} className="flex-shrink-0" />
           <span>{pill.label}</span>
           <span aria-hidden="true">×</span>
         </button>
