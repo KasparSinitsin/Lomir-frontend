@@ -29,6 +29,7 @@ import {
   Mail,
   SendHorizontal,
   Archive,
+  Check,
 } from "lucide-react";
 import VisibilityToggle from "../common/VisibilityToggle";
 import UserDetailsModal from "../users/UserDetailsModal";
@@ -82,6 +83,7 @@ const TeamDetailsModal = ({
   hasPendingApplication = false,
   pendingApplication = null,
   onViewApplicationDetails,
+  showMatchHighlights = false,
 }) => {
   const navigate = useNavigate();
   const { id: urlTeamId } = useParams();
@@ -669,6 +671,7 @@ const TeamDetailsModal = ({
 
   // Fetch current user's tag IDs for overlap highlighting on team focus areas
   useEffect(() => {
+    if (!showMatchHighlights) return;
     if (!isModalVisible || !isAuthenticated || !user?.id) return;
 
     const fetchCurrentUserTags = async () => {
@@ -689,7 +692,7 @@ const TeamDetailsModal = ({
     };
 
     fetchCurrentUserTags();
-  }, [isModalVisible, isAuthenticated, user?.id]);
+  }, [isModalVisible, isAuthenticated, user?.id, showMatchHighlights]);
 
   // Fetch structured tags when modal opens (needed for display AND edit mode)
   useEffect(() => {
@@ -1430,7 +1433,58 @@ const TeamDetailsModal = ({
                   )}
 
                   {/* Team Location */}
-                  <LocationSection entity={team} entityType="team" />
+                  <LocationSection
+                    entity={team}
+                    entityType="team"
+                    headerRight={showMatchHighlights && user && team ? (() => {
+                      const teamCity = (team.city || "").trim().toLowerCase();
+                      const myCity = (user.city || "").trim().toLowerCase();
+                      const teamIsRemote = team.is_remote || team.isRemote;
+                      if (teamIsRemote) {
+                        return (
+                          <span className="flex items-center gap-1.5 text-sm text-success">
+                            <Check size={14} className="flex-shrink-0" />
+                            <span>Remote team</span>
+                          </span>
+                        );
+                      }
+                      const teamCountry = (team.country || "").trim().toLowerCase();
+                      const myCountry = (user.country || "").trim().toLowerCase();
+                      if (teamCountry && myCountry && teamCountry !== myCountry) {
+                        return (
+                          <span className="flex items-center gap-1.5 text-sm text-error/70">
+                            <X size={14} className="flex-shrink-0" />
+                            <span>Different country</span>
+                          </span>
+                        );
+                      }
+                      if (teamCity && myCity) {
+                        if (teamCity === myCity) {
+                          return (
+                            <span className="flex items-center gap-1.5 text-sm text-success">
+                              <Check size={14} className="flex-shrink-0" />
+                              <span>Same city</span>
+                            </span>
+                          );
+                        }
+                        return (
+                          <span className="flex items-center gap-1.5 text-sm text-error/70">
+                            <X size={14} className="flex-shrink-0" />
+                            <span>Different city</span>
+                          </span>
+                        );
+                      }
+                      if (teamCountry && myCountry && teamCountry === myCountry) {
+                        return (
+                          <span className="flex items-center gap-1.5 text-sm text-success">
+                            <Check size={14} className="flex-shrink-0" />
+                            <span>Same country</span>
+                          </span>
+                        );
+                      }
+                      return null;
+                    })() : null}
+                  />
 
                   {/* Team Focus Areas */}
                   {console.log("Team tags for FocusAreasSection:", team?.tags)}
@@ -1438,7 +1492,7 @@ const TeamDetailsModal = ({
                     <TagsDisplaySection
                       title={UI_TEXT.focusAreas.title}
                       tags={team?.tags || []}
-                      matchingTagIds={userTagIds}
+                      matchingTagIds={currentUserTagIds}
                       allTags={allTags}
                       canEdit={false}
                       onSave={undefined}
@@ -1447,7 +1501,29 @@ const TeamDetailsModal = ({
                       entityType="team"
                       emptyMessage={UI_TEXT.focusAreas.emptyTeam}
                       placeholder={UI_TEXT.focusAreas.placeholderTeam}
-                      matchingTagIds={currentUserTagIds}
+                      headerRight={showMatchHighlights && currentUserTagIds && currentUserTagIds.size > 0 ? (() => {
+                        const teamTags = team?.tags || [];
+                        if (!Array.isArray(teamTags) || teamTags.length === 0) return null;
+                        const total = teamTags.length;
+                        const matchCount = teamTags.filter((t) => {
+                          const tagId = Number(t.id ?? t.tag_id ?? t.tagId);
+                          return currentUserTagIds.has(tagId);
+                        }).length;
+                        if (matchCount > 0) {
+                          return (
+                            <span className="flex items-center gap-1.5 text-sm text-success">
+                              <Check size={14} className="flex-shrink-0" />
+                              <span>{matchCount}/{total} in common</span>
+                            </span>
+                          );
+                        }
+                        return (
+                          <span className="flex items-center gap-1.5 text-sm text-error/70">
+                            <X size={14} className="flex-shrink-0" />
+                            <span>None in common</span>
+                          </span>
+                        );
+                      })() : null}
                     />
                   )}
 

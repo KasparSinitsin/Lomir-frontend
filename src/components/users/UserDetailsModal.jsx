@@ -13,7 +13,7 @@ import { userService } from "../../services/userService";
 import Button from "../common/Button";
 import Alert from "../common/Alert";
 import { useAuth } from "../../contexts/AuthContext";
-import { Edit, MessageCircle, UserPlus, Award } from "lucide-react";
+import { Edit, MessageCircle, UserPlus, Award, Check, X } from "lucide-react";
 import TeamInviteModal from "../teams/TeamInviteModal";
 import BadgeAwardModal from "../badges/BadgeAwardModal";
 import SupercategoryAwardsModal from "../badges/SupercategoryAwardsModal";
@@ -32,6 +32,7 @@ const UserDetailsModal = ({
   boxZIndexStyle,
   roleMatchTagIds,     // Set<number> | null — role's required tag IDs
   roleMatchBadgeNames, // Set<string> | null — role's required badge names (lowercase)
+  showMatchHighlights = false,
 }) => {
   const { user: currentUser, isAuthenticated } = useAuth();
 
@@ -128,6 +129,7 @@ const UserDetailsModal = ({
 
   // Fetch CURRENT user's tags/badges for overlap highlighting (not the viewed user's)
   useEffect(() => {
+    if (!showMatchHighlights && !roleMatchTagIds && !roleMatchBadgeNames) return;
     if (!isOpen || !isAuthenticated || !currentUser?.id) return;
     // Don't highlight own profile
     if (Number(currentUser.id) === Number(userId)) return;
@@ -170,7 +172,7 @@ const UserDetailsModal = ({
     };
 
     fetchCurrentUserData();
-  }, [isOpen, isAuthenticated, currentUser?.id, userId, roleMatchTagIds, roleMatchBadgeNames]);
+  }, [isOpen, isAuthenticated, currentUser?.id, userId, roleMatchTagIds, roleMatchBadgeNames, showMatchHighlights]);
 
   useEffect(() => {
     setIsEditing(mode === "edit");
@@ -330,7 +332,50 @@ const UserDetailsModal = ({
             <UserBioSection bio={user?.bio || user?.biography} />
 
             {/* Location */}
-            <LocationSection entity={user} entityType="user" className="mb-6" />
+            <LocationSection
+              entity={user}
+              entityType="user"
+              className="mb-6"
+              headerRight={showMatchHighlights && currentUser && user ? (() => {
+                const viewedCity = (user.city || "").trim().toLowerCase();
+                const myCity = (currentUser.city || "").trim().toLowerCase();
+                const viewedCountry = (user.country || "").trim().toLowerCase();
+                const myCountry = (currentUser.country || "").trim().toLowerCase();
+                if (viewedCountry && myCountry && viewedCountry !== myCountry) {
+                  return (
+                    <span className="flex items-center gap-1.5 text-sm text-error/70">
+                      <X size={14} className="flex-shrink-0" />
+                      <span>Different country</span>
+                    </span>
+                  );
+                }
+                if (viewedCity && myCity) {
+                  if (viewedCity === myCity) {
+                    return (
+                      <span className="flex items-center gap-1.5 text-sm text-success">
+                        <Check size={14} className="flex-shrink-0" />
+                        <span>Same city</span>
+                      </span>
+                    );
+                  }
+                  return (
+                    <span className="flex items-center gap-1.5 text-sm text-error/70">
+                      <X size={14} className="flex-shrink-0" />
+                      <span>Different city</span>
+                    </span>
+                  );
+                }
+                if (viewedCountry && myCountry && viewedCountry === myCountry) {
+                  return (
+                    <span className="flex items-center gap-1.5 text-sm text-success">
+                      <Check size={14} className="flex-shrink-0" />
+                      <span>Same country</span>
+                    </span>
+                  );
+                }
+                return null;
+              })() : null}
+            />
 
             {/* Focus Areas */}
             <TagsDisplaySection
@@ -340,6 +385,31 @@ const UserDetailsModal = ({
               onTagClick={handleTagClick}
               onSupercategoryClick={handleSupercategoryClick}
               matchingTagIds={roleMatchTagIds || currentUserTagIds}
+              headerRight={(() => {
+                const effectiveMatchIds = roleMatchTagIds || currentUserTagIds;
+                if (!effectiveMatchIds || effectiveMatchIds.size === 0) return null;
+                const displayTags = userTags.length > 0 ? userTags : (user?.tags || []);
+                if (!Array.isArray(displayTags) || displayTags.length === 0) return null;
+                const total = displayTags.length;
+                const matchCount = displayTags.filter((t) => {
+                  const tagId = Number(t.tagId ?? t.tag_id ?? t.id);
+                  return effectiveMatchIds.has(tagId);
+                }).length;
+                if (matchCount > 0) {
+                  return (
+                    <span className="flex items-center gap-1.5 text-sm text-success">
+                      <Check size={14} className="flex-shrink-0" />
+                      <span>{matchCount}/{total} in common</span>
+                    </span>
+                  );
+                }
+                return (
+                  <span className="flex items-center gap-1.5 text-sm text-error/70">
+                    <X size={14} className="flex-shrink-0" />
+                    <span>None in common</span>
+                  </span>
+                );
+              })()}
             />
 
             {/* Badges */}
@@ -358,6 +428,31 @@ const UserDetailsModal = ({
               onBadgeClick={handleBadgeClick}
               onOpenUser={onOpenUser}
               matchingBadgeNames={roleMatchBadgeNames || currentUserBadgeNames}
+              headerRight={(() => {
+                const effectiveMatchNames = roleMatchBadgeNames || currentUserBadgeNames;
+                if (!effectiveMatchNames || effectiveMatchNames.size === 0) return null;
+                const badgeList = user?.badges || [];
+                if (!Array.isArray(badgeList) || badgeList.length === 0) return null;
+                const total = badgeList.length;
+                const matchCount = badgeList.filter((b) => {
+                  const name = (b.name ?? b.badgeName ?? b.badge_name ?? "").trim().toLowerCase();
+                  return effectiveMatchNames.has(name);
+                }).length;
+                if (matchCount > 0) {
+                  return (
+                    <span className="flex items-center gap-1.5 text-sm text-success">
+                      <Check size={14} className="flex-shrink-0" />
+                      <span>{matchCount}/{total} in common</span>
+                    </span>
+                  );
+                }
+                return (
+                  <span className="flex items-center gap-1.5 text-sm text-error/70">
+                    <X size={14} className="flex-shrink-0" />
+                    <span>None in common</span>
+                  </span>
+                );
+              })()}
             />
 
             {/* Bottom CTA (TeamDetailsModal style) */}

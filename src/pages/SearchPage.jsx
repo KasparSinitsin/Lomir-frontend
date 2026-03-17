@@ -227,10 +227,10 @@ const SearchPage = () => {
   };
 
   const roleMatchTagIds =
-    matchRoleId && filterTagIds.length > 0 ? new Set(filterTagIds) : null;
+    sortBy === "match" && matchRoleId && filterTagIds.length > 0 ? new Set(filterTagIds) : null;
 
   const roleMatchBadgeNames =
-    matchRoleId && filterBadgeIds.length > 0
+    sortBy === "match" && matchRoleId && filterBadgeIds.length > 0
       ? new Set(
           filterBadgeIds
             .map((id) => filterBadgeMap[id]?.name)
@@ -1381,6 +1381,7 @@ const SearchPage = () => {
                     team={team}
                     onUpdate={handleTeamUpdate}
                     isSearchResult={true}
+                    showMatchHighlights={sortBy === "match"}
                   />
                 ))}
               </Grid>
@@ -1406,6 +1407,7 @@ const SearchPage = () => {
                     onUpdate={handleUserUpdate}
                     roleMatchTagIds={roleMatchTagIds}
                     roleMatchBadgeNames={roleMatchBadgeNames}
+                    showMatchHighlights={sortBy === "match"}
                   />
                 ))}
               </Grid>

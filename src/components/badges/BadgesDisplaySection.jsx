@@ -41,6 +41,7 @@ const BadgesDisplaySection = ({
   onOpenUser = null,
   highlightBadgeName = null,
   matchingBadgeNames = null,
+  headerRight = null,
 }) => {
   // Hooks must be called before any early returns (Rules of Hooks)
   const highlightRef = useRef(null);
@@ -61,9 +62,12 @@ const BadgesDisplaySection = ({
     if (compact) return null;
     return (
       <div className={className}>
-        <div className="flex items-center mb-2">
-          <Award size={18} className="mr-2 text-primary flex-shrink-0" />
-          <h3 className="font-medium">{title}</h3>
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center">
+            <Award size={18} className="mr-2 text-primary flex-shrink-0" />
+            <h3 className="font-medium">{title}</h3>
+          </div>
+          {headerRight}
         </div>
         <p className="text-sm text-base-content/60">{emptyMessage}</p>
       </div>
@@ -169,9 +173,12 @@ const BadgesDisplaySection = ({
   if (!groupByCategory) {
     return (
       <div className={className}>
-        <div className="flex items-center mb-3">
-          <Award size={18} className="mr-2 text-primary flex-shrink-0" />
-          <h3 className="font-medium">{title}</h3>
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center">
+            <Award size={18} className="mr-2 text-primary flex-shrink-0" />
+            <h3 className="font-medium">{title}</h3>
+          </div>
+          {headerRight}
         </div>
 
         <div className="flex flex-wrap gap-2">
@@ -199,9 +206,12 @@ const BadgesDisplaySection = ({
   // Grouped by category with icons
   return (
     <div className={className}>
-      <div className="flex items-center mb-3">
-        <Award size={18} className="mr-2 text-primary flex-shrink-0" />
-        <h3 className="font-medium">{title}</h3>
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center">
+          <Award size={18} className="mr-2 text-primary flex-shrink-0" />
+          <h3 className="font-medium">{title}</h3>
+        </div>
+        {headerRight}
       </div>
 
       {/* Category groups with icons */}

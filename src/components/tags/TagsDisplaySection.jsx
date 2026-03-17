@@ -48,6 +48,7 @@ const TagsDisplaySection = ({
   placeholder = UI_TEXT.focusAreas.placeholder,
   entityType,
   className = "",
+  headerRight = null,
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [localSelectedTags, setLocalSelectedTags] = useState([]);
@@ -443,16 +444,19 @@ const TagsDisplaySection = ({
           <Tag size={18} className="mr-2 text-primary flex-shrink-0" />
           <h3 className="font-medium">{title}</h3>
         </div>
-        {canEdit && onSave && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="hover:bg-violet-200 hover:text-violet-700"
-            onClick={() => setIsEditing(true)}
-          >
-            Edit
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          {headerRight}
+          {canEdit && onSave && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="hover:bg-violet-200 hover:text-violet-700"
+              onClick={() => setIsEditing(true)}
+            >
+              Edit
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Success Message (after save) */}
