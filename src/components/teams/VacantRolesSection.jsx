@@ -26,6 +26,7 @@ import { useAuth } from "../../contexts/AuthContext";
  * @param {string} className - Additional CSS classes
  */
 const VacantRolesSection = ({
+  team = null,
   teamId,
   canManage = false,
   isTeamMember = false,
@@ -253,6 +254,7 @@ const VacantRolesSection = ({
             .map((role) => (
               <VacantRoleCard
                 key={role.id}
+                team={team}
                 role={role}
                 canManage={canManage}
                 isTeamMember={isTeamMember}
