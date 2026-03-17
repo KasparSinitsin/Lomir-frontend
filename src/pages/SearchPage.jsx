@@ -32,6 +32,13 @@ import Alert from "../components/common/Alert";
 import { searchService, getApiErrorMessage } from "../services/searchService";
 import { tagService } from "../services/tagService";
 import { badgeService } from "../services/badgeService";
+import {
+  buildSearchRequestCriteria,
+  DISTANCE_SUBMENU_TYPE,
+  getActiveCriteriaPills,
+  getSortOptionDisplay,
+  getVisibleSortOptions,
+} from "./searchPageHelpers";
 
 import { RESULTS_PER_PAGE_OPTIONS, DEFAULT_RESULTS_PER_PAGE } from "../constants/pagination";
 
@@ -73,7 +80,7 @@ const SearchPage = () => {
     return "asc";
   });
   const [showSortDropdown, setShowSortDropdown] = useState(false);
-  const [openSubmenuType, setOpenSubmenuType] = useState(null);
+  const [openSubmenuKey, setOpenSubmenuKey] = useState(null);
   const sortFilterRef = useRef(null);
   const portalContainerRef = useRef(null);
 
@@ -256,29 +263,20 @@ const SearchPage = () => {
   const isCapacityRolesSort =
     searchType === "teams" && sortBy === "capacity" && capacityMode === "roles";
 
-  const activeSubmenuType = showSortDropdown ? openSubmenuType : null;
+  const activeSubmenuKey = showSortDropdown ? openSubmenuKey : null;
 
-  const submenuAnchorKey =
-    activeSubmenuType === "capacity"
+  const submenuAnchorSortKey =
+    activeSubmenuKey === "capacity"
       ? "capacity"
-      : activeSubmenuType === "proximity"
+      : activeSubmenuKey === DISTANCE_SUBMENU_TYPE
         ? "proximity"
         : sortBy;
-
-  const getVisibleSortOptions = () => {
-    return sortOptions.filter((option) => {
-      if (option.teamsOnly && searchType !== "teams") return false;
-      if (option.usersOnly && searchType === "teams") return false;
-
-      if (option.value === "proximity" && !userHasCoordinates) return false;
-
-      if (option.value === "match") {
-        if (!isAuthenticated) return false;
-      }
-
-      return true;
-    });
-  };
+  const visibleSortOptions = getVisibleSortOptions({
+    sortOptions,
+    searchType,
+    userHasCoordinates,
+    isAuthenticated,
+  });
 
   const fetchData = useCallback(
     async (criteria) => {
@@ -333,80 +331,19 @@ const SearchPage = () => {
     label: filterBadgeMap[id]?.name || `Badge ${id}`,
     category: filterBadgeMap[id]?.category || "",
   }));
-
-  const activeCriteriaPills = [];
-
-  if (sortBy === "match") {
-    activeCriteriaPills.push({ key: "sort", label: "Best Match" });
-  } else if (sortBy === "name" && sortDir === "desc") {
-    activeCriteriaPills.push({ key: "sort", label: "Name Z-A" });
-  } else if (sortBy === "recent") {
-    activeCriteriaPills.push({
-      key: "sort",
-      label: sortDir === "desc" ? "Active" : "Inactive",
-    });
-  } else if (sortBy === "newest") {
-    activeCriteriaPills.push({
-      key: "sort",
-      label: sortDir === "desc" ? "Newest" : "Oldest",
-    });
-  } else if (sortBy === "capacity") {
-    if (capacityMode === "spots") {
-      activeCriteriaPills.push({
-        key: "sort",
-        label: sortDir === "desc" ? "Most Spots" : "Almost Full",
-      });
-    } else {
-      activeCriteriaPills.push({
-        key: "sort",
-        label: sortDir === "desc" ? "Most Open Roles" : "Least Open Roles",
-      });
-    }
-  } else if (sortBy === "proximity") {
-    activeCriteriaPills.push({
-      key: "sort",
-      label:
-        sortDir === "remote"
-          ? "Remote"
-          : sortDir === "desc"
-            ? "Farthest"
-            : "Nearest",
-    });
-  }
-
-  if (maxDistance !== null) {
-    activeCriteriaPills.push({
-      key: "maxDistance",
-      label: `Within ${maxDistance} km`,
-    });
-  }
-
-  if (effectiveOpenRolesOnly) {
-    activeCriteriaPills.push({ key: "openRolesOnly", label: "Open Roles Only" });
-  }
-
-  if (!effectiveIncludeOwnTeams) {
-    activeCriteriaPills.push({
-      key: "includeOwnTeams",
-      label: "Exclude My Teams",
-    });
-  }
-
-  if (matchRoleId && matchRoleName) {
-    activeCriteriaPills.unshift({
-      key: "matchRole",
-      label: matchRoleName,
-      type: "role",
-    });
-  }
-
-  if (excludeTeamId) {
-    activeCriteriaPills.push({
-      key: "excludeTeam",
-      label: `Excl. ${excludeTeamName || "team"} members`,
-      type: "excludeTeam",
-    });
-  }
+  const activeCriteriaPills = getActiveCriteriaPills({
+    sortBy,
+    sortDir,
+    capacityMode,
+    maxDistance,
+    effectiveOpenRolesOnly,
+    effectiveIncludeOwnTeams,
+    matchRoleId,
+    matchRoleName,
+    excludeTeamId,
+    excludeTeamName,
+  });
+  const showIncludeOwnTeamsFilter = isAuthenticated && searchType !== "users";
 
   useEffect(() => {
     const run = async () => {
@@ -414,23 +351,23 @@ const SearchPage = () => {
         setLoading(true);
         setError(null);
 
-        const requestCriteria = {
-          mode: hasSearched && searchQuery.trim() ? "search" : "all",
-          query: searchQuery.trim(),
+        const requestCriteria = buildSearchRequestCriteria({
+          hasSearched,
+          searchQuery,
           searchType,
-          page: currentPage,
-          limit: resultsPerPage,
+          currentPage,
+          resultsPerPage,
           sortBy,
           sortDir,
           maxDistance,
-          openRolesOnly: effectiveOpenRolesOnly,
-          excludeOwnTeams: !effectiveIncludeOwnTeams,
+          effectiveOpenRolesOnly,
+          effectiveIncludeOwnTeams,
           capacityMode,
-          tagIds: filterTagIds,
-          badgeIds: filterBadgeIds,
-          roleId: matchRoleId,
+          filterTagIds,
+          filterBadgeIds,
+          matchRoleId,
           excludeTeamId,
-        };
+        });
 
         const results = await fetchData(requestCriteria);
 
@@ -531,27 +468,27 @@ const SearchPage = () => {
 
   useEffect(() => {
     if (!showSortDropdown) {
-      setOpenSubmenuType(null);
+      setOpenSubmenuKey(null);
       return;
     }
 
-    if (openSubmenuType === "capacity" && searchType !== "teams") {
-      setOpenSubmenuType(null);
+    if (openSubmenuKey === "capacity" && searchType !== "teams") {
+      setOpenSubmenuKey(null);
     }
 
-    if (openSubmenuType === "proximity" && !userHasCoordinates) {
-      setOpenSubmenuType(null);
+    if (openSubmenuKey === DISTANCE_SUBMENU_TYPE && !userHasCoordinates) {
+      setOpenSubmenuKey(null);
     }
-  }, [showSortDropdown, openSubmenuType, searchType, userHasCoordinates]);
+  }, [showSortDropdown, openSubmenuKey, searchType, userHasCoordinates]);
 
   useLayoutEffect(() => {
-    if (!activeSubmenuType || !showSortDropdown) {
+    if (!activeSubmenuKey || !showSortDropdown) {
       setSubmenuPosition(null);
       return;
     }
 
     const updatePosition = () => {
-      const anchorEl = sortButtonRefs.current[submenuAnchorKey];
+      const anchorEl = sortButtonRefs.current[submenuAnchorSortKey];
       const submenuEl = submenuRef.current;
 
       if (!anchorEl) return;
@@ -612,8 +549,8 @@ const SearchPage = () => {
       window.removeEventListener("scroll", updatePosition, true);
     };
   }, [
-    activeSubmenuType,
-    submenuAnchorKey,
+    activeSubmenuKey,
+    submenuAnchorSortKey,
     showSortDropdown,
     sortBy,
     sortDir,
@@ -676,7 +613,7 @@ const SearchPage = () => {
     setSortBy("name");
     setSortDir("asc");
     setCurrentPage(1);
-    setOpenSubmenuType(null);
+    setOpenSubmenuKey(null);
   };
 
   const handleSortChange = (newSortBy) => {
@@ -731,18 +668,24 @@ const SearchPage = () => {
   const handleTopLevelSortOptionClick = (optionValue) => {
     if (optionValue === "capacity") {
       handleCapacityModeChange("spots");
-      setOpenSubmenuType("capacity");
+      setOpenSubmenuKey("capacity");
       return;
     }
 
     if (optionValue === "proximity") {
       handleSortChange("proximity");
-      setOpenSubmenuType("proximity");
+      setOpenSubmenuKey(DISTANCE_SUBMENU_TYPE);
+      return;
+    }
+
+    if (optionValue === "match") {
+      handleSortChange("match");
+      setOpenSubmenuKey(null);
       return;
     }
 
     handleSortChange(optionValue);
-    setOpenSubmenuType(null);
+    setOpenSubmenuKey(null);
   };
 
   const handleCapacityModeChange = (mode) => {
@@ -801,7 +744,7 @@ const SearchPage = () => {
   const handleToggleChange = (type) => {
     setSearchType(type);
     setCurrentPage(1);
-    setOpenSubmenuType((prev) =>
+    setOpenSubmenuKey((prev) =>
       prev === "capacity" && type !== "teams" ? null : prev,
     );
 
@@ -982,12 +925,14 @@ const SearchPage = () => {
   const IncludeOwnTeamsIcon = Users2;
 
   const renderSortSubmenuPortal = () => {
-    if (!activeSubmenuType || !submenuPosition) return null;
-    if (activeSubmenuType === "proximity" && sortDir === "remote") return null;
+    if (!activeSubmenuKey || !submenuPosition) return null;
+    if (activeSubmenuKey === DISTANCE_SUBMENU_TYPE && sortDir === "remote") {
+      return null;
+    }
 
     const submenuContent = (
       <div ref={submenuRef}>
-        {activeSubmenuType === "capacity" && (
+        {activeSubmenuKey === "capacity" && (
           <div className="flex items-center justify-end gap-3 pr-1">
               <button
                 type="button"
@@ -1019,7 +964,7 @@ const SearchPage = () => {
           </div>
         )}
 
-        {activeSubmenuType === "proximity" && (
+        {activeSubmenuKey === DISTANCE_SUBMENU_TYPE && (
           <div className="flex items-center justify-end flex-wrap gap-1 pr-1">
             {distancePresets.map((km) => (
               <button
@@ -1240,92 +1185,77 @@ const SearchPage = () => {
 
             {showSortDropdown && (
               <div className="mt-2 py-1 pl-11">
-                <div className="flex items-center gap-3 flex-wrap">
-                  {getVisibleSortOptions().map((option) => {
-                    const isActive =
-                      option.value === "capacity"
-                        ? isCapacitySpotsSort
-                        : option.value === "proximity"
-                          ? sortBy === option.value || maxDistance !== null
-                          : sortBy === option.value;
-                    const currentDir = isActive
-                      ? option.value === "capacity"
-                        ? sortDir
-                        : sortBy === option.value
-                          ? sortDir
-                          : option.defaultDir || "desc"
-                      : option.defaultDir || "desc";
+                <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-start sm:gap-4">
+                  <div
+                    role="group"
+                    aria-label="Sort options"
+                    className="flex items-center gap-3 flex-wrap"
+                  >
+                    {visibleSortOptions.map((option) => {
+                      const { isActive, IconComponent, label, shortLabel } =
+                        getSortOptionDisplay({
+                          option,
+                          sortBy,
+                          sortDir,
+                          isCapacitySpotsSort,
+                        });
 
-                    let IconComponent, label, shortLabel;
+                      return (
+                        <button
+                          key={option.value}
+                          ref={(node) => {
+                            sortButtonRefs.current[option.value] = node;
+                          }}
+                          type="button"
+                          onClick={() => handleTopLevelSortOptionClick(option.value)}
+                          className={`flex items-center gap-1 px-1 text-xs rounded transition-colors shrink-0 ${
+                            isActive
+                              ? "text-[var(--color-primary)] font-bold"
+                              : "text-[var(--color-primary-focus)]/70 hover:text-[var(--color-primary-focus)] hover:font-medium"
+                          }`}
+                          disabled={loading}
+                          title={option.teamsOnly ? "Teams only" : ""}
+                        >
+                          <IconComponent className="w-3.5 h-3.5 shrink-0" />
+                          <span className="hidden sm:inline">{label}</span>
+                          <span className="sm:hidden">{shortLabel}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
 
-                  if (currentDir === "asc") {
-                    IconComponent = option.iconAsc;
-                    label = option.labelAsc;
-                    shortLabel = option.shortLabelAsc;
-                  } else if (currentDir === "remote") {
-                    IconComponent = option.iconRemote;
-                    label = option.labelRemote;
-                    shortLabel = option.shortLabelRemote;
-                  } else {
-                    IconComponent = option.iconDesc;
-                    label = option.labelDesc;
-                      shortLabel = option.shortLabelDesc;
-                    }
-
-                    return (
+                  {showIncludeOwnTeamsFilter && (
+                    <div
+                      role="group"
+                      aria-label="Search filters"
+                      className="flex items-center gap-3 flex-wrap pt-1 sm:pt-0"
+                    >
                       <button
-                        key={option.value}
-                        ref={(node) => {
-                          sortButtonRefs.current[option.value] = node;
-                        }}
                         type="button"
-                        onClick={() => handleTopLevelSortOptionClick(option.value)}
+                        onClick={handleIncludeOwnTeamsToggle}
                         className={`flex items-center gap-1 px-1 text-xs rounded transition-colors shrink-0 ${
-                          isActive
+                          !effectiveIncludeOwnTeams
                             ? "text-[var(--color-primary)] font-bold"
                             : "text-[var(--color-primary-focus)]/70 hover:text-[var(--color-primary-focus)] hover:font-medium"
                         }`}
                         disabled={loading}
-                        title={option.teamsOnly ? "Teams only" : ""}
+                        title={
+                          effectiveIncludeOwnTeams
+                            ? "Include My Teams"
+                            : "Exclude My Teams"
+                        }
+                        aria-label={
+                          effectiveIncludeOwnTeams
+                            ? "Include My Teams"
+                            : "Exclude My Teams"
+                        }
                       >
-                        <IconComponent className="w-3.5 h-3.5 shrink-0" />
-                        <span className="hidden sm:inline">{label}</span>
-                        <span className="sm:hidden">{shortLabel}</span>
+                        <IncludeOwnTeamsIcon className="w-3.5 h-3.5 shrink-0" />
+                        <span>
+                          {effectiveIncludeOwnTeams ? "+ My Teams" : "- My Teams"}
+                        </span>
                       </button>
-                    );
-                  })}
-
-                  {isAuthenticated && searchType !== "users" && (
-                    <button
-                      type="button"
-                      onClick={handleIncludeOwnTeamsToggle}
-                      className={`flex items-center gap-1 px-1 text-xs rounded transition-colors shrink-0 ${
-                        !effectiveIncludeOwnTeams
-                          ? "text-[var(--color-primary)] font-bold"
-                          : "text-[var(--color-primary-focus)]/70 hover:text-[var(--color-primary-focus)] hover:font-medium"
-                      }`}
-                      disabled={loading}
-                      title={
-                        effectiveIncludeOwnTeams
-                          ? "Include My Teams"
-                          : "Exclude My Teams"
-                      }
-                      aria-label={
-                        effectiveIncludeOwnTeams
-                          ? "Include My Teams"
-                          : "Exclude My Teams"
-                      }
-                    >
-                      <IncludeOwnTeamsIcon className="w-3.5 h-3.5 shrink-0" />
-                      <span className="hidden sm:inline">
-                        {effectiveIncludeOwnTeams
-                          ? "Include My Teams"
-                          : "Exclude My Teams"}
-                      </span>
-                      <span className="sm:hidden" aria-hidden="true">
-                        {effectiveIncludeOwnTeams ? "+" : "-"}
-                      </span>
-                    </button>
+                    </div>
                   )}
                 </div>
               </div>
