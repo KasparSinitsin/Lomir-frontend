@@ -15,7 +15,7 @@ import LocationDistanceTagsRow from "../common/LocationDistanceTagsRow";
  * Uses UserModalContext for opening user details modals, ensuring proper
  * z-index stacking with other modals throughout the app.
  */
-const UserCard = ({ user, onUpdate, roleMatchTagIds, roleMatchBadgeNames }) => {
+const UserCard = ({ user, onUpdate, roleMatchTagIds, roleMatchBadgeNames, showMatchHighlights = false }) => {
   const { user: currentUser, isAuthenticated } = useAuth();
   const { openUserModal } = useUserModal();
 
@@ -82,7 +82,7 @@ const UserCard = ({ user, onUpdate, roleMatchTagIds, roleMatchBadgeNames }) => {
 
   // Open user details via global context
   const openUserDetails = () => {
-    openUserModal(user.id, { roleMatchTagIds, roleMatchBadgeNames });
+    openUserModal(user.id, { roleMatchTagIds, roleMatchBadgeNames, showMatchHighlights });
   };
 
   return (

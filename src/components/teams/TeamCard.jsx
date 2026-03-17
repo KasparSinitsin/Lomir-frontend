@@ -77,6 +77,8 @@ const TeamCard = ({
   onAccept,
   onDecline,
 
+  showMatchHighlights = false,
+
   // Loading state
   loading = false,
 
@@ -1073,6 +1075,7 @@ const TeamCard = ({
             : pendingApplicationForTeam
         }
         onViewApplicationDetails={() => setIsApplicationModalOpen(true)}
+        showMatchHighlights={showMatchHighlights}
       />
 
       {/* Applications Modal (for team owners and admins) */}

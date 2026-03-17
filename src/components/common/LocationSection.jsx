@@ -28,6 +28,7 @@ const LocationSection = ({
   title = "Location",
   showTitle,
   distance = null,
+  headerRight = null,
 }) => {
   // Normalize the location data (handles snake_case/camelCase)
   const location = normalizeLocationData(entity);
@@ -88,12 +89,15 @@ const LocationSection = ({
     <div className={className}>
       {/* Title row - icon and title together */}
       {shouldShowTitle && (
-        <div className="flex items-center mb-2">
-          <IconComponent
-            size={18}
-            className="mr-2 text-primary flex-shrink-0"
-          />
-          <h3 className="font-medium">{title}</h3>
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center">
+            <IconComponent
+              size={18}
+              className="mr-2 text-primary flex-shrink-0"
+            />
+            <h3 className="font-medium">{title}</h3>
+          </div>
+          {headerRight}
         </div>
       )}
 
