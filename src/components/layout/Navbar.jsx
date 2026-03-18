@@ -26,7 +26,7 @@ const Navbar = () => {
 
   // Define Tailwind class strings using CSS variables for consistent colors
   const iconClasses =
-    "text-[var(--color-primary)] hover:text-[var(--color-primary-focus)] hover:drop-shadow-neon transition duration-200";
+    "inline-flex items-center text-[var(--color-primary)] hover:text-[var(--color-primary-focus)] hover:drop-shadow-neon transition duration-200";
   const navLinkClasses =
     "text-[var(--color-primary)] text-center border-2 border-transparent rounded-full px-2 py-1 transition-all duration-300";
 
@@ -217,38 +217,34 @@ const Navbar = () => {
         <div className="flex items-center space-x-3">
           <div className="flex items-center space-x-4">
             {/* Notification Bell */}
-            <nav>
-              {isAuthenticated && (
-                <div
-                  onClick={handleNotificationClick}
-                  className={`${iconClasses} cursor-pointer`}
+            {isAuthenticated && (
+              <div
+                onClick={handleNotificationClick}
+                className={`${iconClasses} cursor-pointer`}
+              >
+                <NotificationBadge
+                  variant="alert"
+                  count={unreadNotificationCount}
                 >
-                  <NotificationBadge
-                    variant="alert"
-                    count={unreadNotificationCount}
-                  >
-                    <Bell size={22} strokeWidth={2.2} />
-                  </NotificationBadge>
-                </div>
-              )}
-            </nav>
+                  <Bell size={22} strokeWidth={2.2} />
+                </NotificationBadge>
+              </div>
+            )}
 
             {/* Message Icon */}
-            <nav>
-              {isAuthenticated && (
-                <div
-                  onClick={handleMessageClick}
-                  className={`${iconClasses} cursor-pointer`}
+            {isAuthenticated && (
+              <div
+                onClick={handleMessageClick}
+                className={`${iconClasses} cursor-pointer`}
+              >
+                <NotificationBadge
+                  variant="message"
+                  count={unreadMessageCount}
                 >
-                  <NotificationBadge
-                    variant="message"
-                    count={unreadMessageCount}
-                  >
-                    <MessageCircle size={22} strokeWidth={2.2} />
-                  </NotificationBadge>
-                </div>
-              )}
-            </nav>
+                  <MessageCircle size={22} strokeWidth={2.2} />
+                </NotificationBadge>
+              </div>
+            )}
 
             <Link to="/search" className={iconClasses}>
               <Search size={22} strokeWidth={2.2} />
