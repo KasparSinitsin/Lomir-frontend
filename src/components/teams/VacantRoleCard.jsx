@@ -44,6 +44,8 @@ const VacantRoleCard = ({
   onStatusChange,
   matchScore = null,
   matchDetails = null,
+  viewAsUserId = null,
+  viewAsUser = null,
 }) => {
   const [showMenu, setShowMenu] = useState(false);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
@@ -319,6 +321,8 @@ const VacantRoleCard = ({
         matchDetails={matchDetails}
         canManage={canManage}
         isTeamMember={isTeamMember}
+        viewAsUserId={viewAsUserId}
+        viewAsUser={viewAsUser}
       />
     </>
   );

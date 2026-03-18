@@ -1,12 +1,14 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Calendar, Users, X, SendHorizontal } from "lucide-react";
 import Modal from "../common/Modal";
 import Button from "../common/Button";
 import TeamDetailsModal from "./TeamDetailsModal";
 import UserDetailsModal from "../users/UserDetailsModal";
+import VacantRoleCard from "./VacantRoleCard";
 import { getUserInitials } from '../../utils/userHelpers';
 import Alert from "../common/Alert";
 import { format } from "date-fns";
+import { vacantRoleService } from "../../services/vacantRoleService";
 
 /**
  * TeamApplicationDetailsModal Component
@@ -27,11 +29,67 @@ const TeamApplicationDetailsModal = ({
   const [error, setError] = useState(null);
   const [isTeamDetailsOpen, setIsTeamDetailsOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState(null);
+  const [hydratedRole, setHydratedRole] = useState(null);
+  const [roleMatchScore, setRoleMatchScore] = useState(null);
+  const [roleMatchDetails, setRoleMatchDetails] = useState(null);
 
   // ============ Helpers ============
 
   // Get team data from application
   const team = application?.team || {};
+
+  // Fetch full role details (name, location, match score) when modal opens
+  useEffect(() => {
+    const roleId = application?.role?.id ?? application?.roleId ?? null;
+    const teamId = team?.id ?? null;
+
+    if (!isOpen || !roleId || !teamId) {
+      setHydratedRole(null);
+      setRoleMatchScore(null);
+      setRoleMatchDetails(null);
+      return;
+    }
+
+    const fetchRole = async () => {
+      try {
+        // Fetch full role details and the scored role list in parallel
+        const [detailsRes, listRes] = await Promise.allSettled([
+          vacantRoleService.getVacantRoleById(teamId, roleId),
+          vacantRoleService.getVacantRoles(teamId, "open"),
+        ]);
+
+        if (detailsRes.status === "fulfilled" && detailsRes.value?.data) {
+          const roleData = detailsRes.value.data;
+          setHydratedRole(roleData);
+          // getVacantRoleById may include match score for the requesting user
+          const detailScore = roleData.matchScore ?? roleData.match_score ?? null;
+          if (detailScore !== null) {
+            setRoleMatchScore(detailScore);
+            setRoleMatchDetails(
+              roleData.matchDetails ?? roleData.match_details ?? roleData.scoreBreakdown ?? null
+            );
+          }
+        }
+
+        // Match score from the list endpoint (computed per current user)
+        if (listRes.status === "fulfilled") {
+          const roles = listRes.value?.data || [];
+          const matched = roles.find((r) => String(r.id) === String(roleId));
+          if (matched) {
+            const listScore = matched.matchScore ?? matched.match_score ?? null;
+            if (listScore !== null) {
+              setRoleMatchScore(listScore);
+              setRoleMatchDetails(matched.matchDetails ?? matched.match_details ?? null);
+            }
+          }
+        }
+      } catch (err) {
+        console.warn("Could not fetch role details:", err);
+      }
+    };
+
+    fetchRole();
+  }, [isOpen, application?.role?.id, application?.roleId, team?.id]);
   const owner = application?.owner || {};
 
   // Format application date
@@ -346,6 +404,20 @@ const TeamApplicationDetailsModal = ({
           <p className="text-sm text-base-content/80 mb-5">
             {team.description}
           </p>
+        )}
+
+        {/* Vacant role card — shown when application targets a specific role */}
+        {(application?.role || application?.roleId) && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
+            <VacantRoleCard
+              role={hydratedRole ?? application?.role ?? { id: application?.roleId }}
+              team={team}
+              matchScore={roleMatchScore}
+              matchDetails={roleMatchDetails}
+              canManage={false}
+              isTeamMember={false}
+            />
+          </div>
         )}
 
         {/* Application Message */}

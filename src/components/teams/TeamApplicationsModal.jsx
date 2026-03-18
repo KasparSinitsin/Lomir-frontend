@@ -164,14 +164,16 @@ const TeamApplicationsModal = ({
                 <>
                   {/* Vacant role card — shown when application targets a specific role */}
                   {application.role && (
-                    <div className="mb-5">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
                       <VacantRoleCard
                         role={application.role}
                         team={{ id: teamId, name: teamName }}
-                        matchScore={application.role.match_score ?? null}
-                        matchDetails={application.role.match_details ?? null}
+                        matchScore={application.role.matchScore ?? application.role.match_score ?? null}
+                        matchDetails={application.role.matchDetails ?? application.role.match_details ?? null}
                         canManage={false}
                         isTeamMember={true}
+                        viewAsUserId={application.applicant?.id}
+                        viewAsUser={application.applicant}
                       />
                     </div>
                   )}
