@@ -54,6 +54,8 @@ const VacantRoleDetailsModal = ({
   matchDetails = null,
   canManage = false,
   isTeamMember = false,
+  viewAsUserId = null,
+  viewAsUser = null,
 }) => {
   const { user: currentUser, isAuthenticated } = useAuth();
 
@@ -64,7 +66,17 @@ const VacantRoleDetailsModal = ({
   const [hydratedRole, setHydratedRole] = useState(null);
   const [loadingRoleDetails, setLoadingRoleDetails] = useState(false);
   const roleId = role?.id;
-  const teamId = role?.teamId ?? role?.team_id;
+  const teamId = role?.teamId ?? role?.team_id ?? team?.id;
+
+  // Derive display name from viewAsUser for name-aware text
+  const viewAsFirstName =
+    viewAsUser?.firstName ?? viewAsUser?.first_name ?? null;
+  const viewAsLastName =
+    viewAsUser?.lastName ?? viewAsUser?.last_name ?? null;
+  const viewAsFullName =
+    viewAsFirstName && viewAsLastName
+      ? `${viewAsFirstName} ${viewAsLastName}`
+      : viewAsFirstName ?? null;
 
 useEffect(() => {
   const fetchFullRole = async () => {
@@ -128,7 +140,8 @@ useEffect(() => {
   console.log("displayRole.scoreBreakdown:", displayRole?.scoreBreakdown);
 
   useEffect(() => {
-    if (!isOpen || !isAuthenticated || !currentUser?.id) {
+    const targetUserId = viewAsUserId || currentUser?.id;
+    if (!isOpen || !isAuthenticated || !targetUserId) {
       setUserTagMap(new Map());
       setUserBadgeMap(new Map());
       return;
@@ -136,7 +149,7 @@ useEffect(() => {
 
     const fetchUserData = async () => {
       try {
-        const tagsRes = await userService.getUserTags(currentUser.id);
+        const tagsRes = await userService.getUserTags(targetUserId);
         const tagData = tagsRes?.data || [];
         const tMap = new Map();
         for (const t of tagData) {
@@ -146,7 +159,7 @@ useEffect(() => {
         }
         setUserTagMap(tMap);
 
-        const badgesRes = await userService.getUserBadges(currentUser.id);
+        const badgesRes = await userService.getUserBadges(targetUserId);
         const badgeData = Array.isArray(badgesRes?.data)
           ? badgesRes.data
           : badgesRes?.data?.data || [];
@@ -170,7 +183,7 @@ useEffect(() => {
     };
 
     fetchUserData();
-  }, [isOpen, isAuthenticated, currentUser?.id]);
+  }, [isOpen, isAuthenticated, currentUser?.id, viewAsUserId]);
 
   if (!displayRole) return null;
 
@@ -455,7 +468,7 @@ useEffect(() => {
                     <TrendingDown size={16} className={tierColor.text} />
                   )}
                   <span className={`text-sm font-semibold ${tierColor.text}`}>
-                    {pct}% Match with your profile
+                    {pct}% Match with {viewAsFullName ? `${viewAsFullName}'s` : "your"} profile
                   </span>
                 </div>
 
@@ -554,7 +567,7 @@ useEffect(() => {
                   return (
                     <span className="flex items-center gap-1.5 text-sm text-success">
                       <Check size={14} className="flex-shrink-0" />
-                      <span>Matches your location</span>
+                      <span>Matches {viewAsFirstName ? `${viewAsFirstName}'s` : "your"} location</span>
                     </span>
                   );
                 }
@@ -610,14 +623,14 @@ useEffect(() => {
                 return (
                   <span className="flex items-center gap-1.5 text-sm text-success">
                     <Check size={14} className="flex-shrink-0" />
-                    <span>{matchCount}/{total} in common</span>
+                    <span>{matchCount}/{total} in common{viewAsFirstName ? ` with ${viewAsFirstName}` : ""}</span>
                   </span>
                 );
               }
               return (
                 <span className="flex items-center gap-1.5 text-sm text-error/70">
                   <X size={14} className="flex-shrink-0" />
-                  <span>None in common</span>
+                  <span>None in common{viewAsFirstName ? ` with ${viewAsFirstName}` : ""}</span>
                 </span>
               );
             })()}
@@ -739,14 +752,14 @@ useEffect(() => {
                 return (
                   <span className="flex items-center gap-1.5 text-sm text-success">
                     <Check size={14} className="flex-shrink-0" />
-                    <span>{matchCount}/{total} in common</span>
+                    <span>{matchCount}/{total} in common{viewAsFirstName ? ` with ${viewAsFirstName}` : ""}</span>
                   </span>
                 );
               }
               return (
                 <span className="flex items-center gap-1.5 text-sm text-error/70">
                   <X size={14} className="flex-shrink-0" />
-                  <span>None in common</span>
+                  <span>None in common{viewAsFirstName ? ` with ${viewAsFirstName}` : ""}</span>
                 </span>
               );
             })()}

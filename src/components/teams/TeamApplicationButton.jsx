@@ -50,11 +50,14 @@ const TeamApplicationButton = ({
       try {
         setApplicationLoading(true);
 
-        if (roleId) {
+        // Use roleId from the modal's selection (user may have changed it)
+        const selectedRoleId = applicationData.roleId ?? roleId;
+
+        if (selectedRoleId) {
           try {
             await teamService.applyToJoinTeam(effectiveTeamId, {
               ...applicationData,
-              roleId,
+              roleId: selectedRoleId,
             });
           } catch (error) {
             if (!isUnsupportedRoleIdError(error)) {
@@ -104,6 +107,8 @@ const TeamApplicationButton = ({
         isOpen={isApplicationModalOpen}
         onClose={closeApplicationModal}
         team={team}
+        teamId={effectiveTeamId}
+        initialRoleId={roleId}
         onSubmit={handleApplicationSubmit}
         loading={applicationLoading}
       />
