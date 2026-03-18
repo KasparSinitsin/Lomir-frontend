@@ -337,7 +337,7 @@ const MyTeams = () => {
                   className={
                     String(invitation.id) === highlightId
                       ? "message-highlight rounded-xl"
-                      : ""
+                      : "contents"
                   }
                 >
                   <TeamCard
