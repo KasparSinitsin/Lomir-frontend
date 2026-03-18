@@ -9,7 +9,7 @@ import {
 /**
  * Maximum visible text rows for both focus areas and badges.
  */
-const MAX_LINES = 3;
+const MAX_LINES = 2;
 
 // ─────────────────────────────────────────────────────────
 // TruncatedList — shared by both tags and badges rows

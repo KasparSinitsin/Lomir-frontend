@@ -94,7 +94,7 @@ const Card = ({
     const lines =
       typeof truncateContent === "number" && truncateContent > 0
         ? truncateContent
-        : 3; // default: 3 lines
+        : 2; // default: 2 lines
 
     if (lines === 1) {
       return "[&>p:first-of-type]:line-clamp-1 [&>p:first-of-type]:-mt-4";
