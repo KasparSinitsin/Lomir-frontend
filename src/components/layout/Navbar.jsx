@@ -232,7 +232,7 @@ const Navbar = () => {
             )}
 
             {/* Message Icon */}
-            {isAuthenticated && (
+            {isAuthenticated && !location.pathname.startsWith("/chat") && (
               <div
                 onClick={handleMessageClick}
                 className={`${iconClasses} cursor-pointer`}
@@ -246,12 +246,14 @@ const Navbar = () => {
               </div>
             )}
 
-            <Link to="/search" className={iconClasses}>
-              <Search size={22} strokeWidth={2.2} />
-            </Link>
+            {!location.pathname.startsWith("/search") && (
+              <Link to="/search" className={iconClasses}>
+                <Search size={22} strokeWidth={2.2} />
+              </Link>
+            )}
           </div>
 
-          {isAuthenticated && (
+          {isAuthenticated && !location.pathname.startsWith("/teams/my-teams") && (
             <nav className="flex space-x-1 text-sm sm:text-base">
               <Link to="/teams/my-teams" className={`${navLinkClasses} neon`}>
                 My Teams
