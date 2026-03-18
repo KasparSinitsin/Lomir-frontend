@@ -670,6 +670,40 @@ body {
   opacity: 1 !important;
 }
 
+/* ===== Profile dropdown menu ===== */
+.profile-dropdown {
+  background-color: #ffffff !important;
+  border-radius: 0.5rem !important;
+  box-shadow: 0 4px 16px rgba(4, 80, 20, 0.15) !important;
+  position: relative;
+  overflow: visible !important;
+}
+
+/* Menu item text and hover */
+.profile-dropdown li > a,
+.profile-dropdown li > button {
+  color: var(--color-primary-focus) !important;
+  justify-content: flex-end !important;
+}
+
+.profile-dropdown li > a:hover,
+.profile-dropdown li > button:hover {
+  background-color: rgba(0, 146, 19, 0.08) !important;
+  color: var(--color-primary-focus) !important;
+}
+
+/* Upward-pointing arrow aligned with the avatar button */
+.profile-dropdown::before {
+  content: '';
+  position: absolute;
+  top: -6px;
+  right: 1rem;
+  border: 6px solid transparent;
+  border-top-width: 0;
+  border-bottom-color: #ffffff;
+  filter: drop-shadow(0 -2px 2px rgba(4, 80, 20, 0.08));
+}
+
 /* Lomir: make daisyUI form controls fill their container */
 .input,
 .select,

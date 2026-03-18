@@ -75,11 +75,12 @@ const NotificationBadge = ({
 
   // Wrapper mode: If children are provided, wrap them with the count badge
   if (children) {
+    const tooltipText = title || (shouldShowBadge ? config?.getTitle(count) : undefined);
     return (
       <div
-        className={`relative inline-flex ${className}`}
+        className={`tooltip tooltip-lomir tooltip-bottom relative inline-flex ${className}`}
         onClick={onClick}
-        title={title || (shouldShowBadge ? config?.getTitle(count) : undefined)}
+        data-tip={tooltipText}
       >
         {children}
         {shouldShowBadge && (

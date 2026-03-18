@@ -2,7 +2,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import React, { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../../contexts/AuthContext";
 import LomirLogo from "../../assets/images/Lomir-logowordmark-color.svg";
-import { Bell, MessageCircle, Search } from "lucide-react";
+import { Bell, MessageCircle, Search, User, Settings, LogOut } from "lucide-react";
 import Colors from "../../utils/Colors";
 import { getUserInitials } from "../../utils/userHelpers";
 import { messageService } from "../../services/messageService";
@@ -288,16 +288,16 @@ const Navbar = () => {
               </label>
               <ul
                 tabIndex={0}
-                className="mt-3 z-[1] p-2 shadow-lg glass-navbar menu menu-sm dropdown-content rounded-box w-30"
+                className="mt-3 z-[1] p-2 menu menu-sm dropdown-content w-auto profile-dropdown"
               >
                 <li>
-                  <Link to="/profile">Profile</Link>
+                  <Link to="/profile">Profile<User size={12} /></Link>
                 </li>
                 <li>
-                  <Link to="/settings">Settings</Link>
+                  <Link to="/settings">Settings<Settings size={12} /></Link>
                 </li>
                 <li>
-                  <button onClick={logout}>Logout</button>
+                  <button onClick={logout}>Logout<LogOut size={12} /></button>
                 </li>
               </ul>
             </div>
