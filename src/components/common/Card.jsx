@@ -137,7 +137,7 @@ const Card = ({
       }
     >
       {title && (
-        <div className="p-6 sm:p-7 border-base-200">
+        <div className="p-6 sm:p-7 pb-0 sm:pb-1 border-base-200">
           <div className="flex gap-3">
             <div>{renderImage()}</div>
 
@@ -152,7 +152,7 @@ const Card = ({
       )}
 
       {/* Only the first direct <p> inside this wrapper will be clamped */}
-      <div className={`p-4 sm:p-7 flex-1 flex flex-col ${getTruncateClasses()}`}>{children}</div>
+      <div className={`p-4 sm:p-7 pt-0.5 sm:pt-1 flex-1 flex flex-col ${getTruncateClasses()}`}>{children}</div>
 
       {footer && (
         <div className="p-6 sm:p-7 bg-base-200/50 border-t border-base-200">
