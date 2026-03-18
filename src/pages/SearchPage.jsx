@@ -15,7 +15,7 @@ import UserCard from "../components/users/UserCard";
 import Pagination from "../components/common/Pagination";
 import BooleanSearchInput from "../components/BooleanSearchInput";
 import {
-  Users,
+  User,
   Users2,
   Clock,
   Sparkles,
@@ -1140,7 +1140,7 @@ const SearchPage = () => {
               }`}
               onClick={() => handleToggleChange("users")}
             >
-              <Users className="w-4 h-4 mr-1" />
+              <User className="w-4 h-4 mr-1" />
               People
             </button>
           </div>
