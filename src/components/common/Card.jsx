@@ -115,6 +115,7 @@ const Card = ({
       shadow-soft
       rounded-xl
       overflow-hidden
+      flex flex-col
       ${compact ? "card-compact" : ""}
       ${onClick ? "cursor-pointer" : ""}
       ${className}
@@ -151,7 +152,7 @@ const Card = ({
       )}
 
       {/* Only the first direct <p> inside this wrapper will be clamped */}
-      <div className={`p-4 sm:p-7 ${getTruncateClasses()}`}>{children}</div>
+      <div className={`p-4 sm:p-7 flex-1 flex flex-col ${getTruncateClasses()}`}>{children}</div>
 
       {footer && (
         <div className="p-6 sm:p-7 bg-base-200/50 border-t border-base-200">
