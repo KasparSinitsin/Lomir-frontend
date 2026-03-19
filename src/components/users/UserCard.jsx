@@ -153,6 +153,7 @@ const UserCard = ({
         onClick={openUserDetails}
         viewMode="list"
         className=""
+        clickTooltip="Click to view User details"
       >
         <div className="w-36 flex-shrink-0 text-xs text-base-content/60 flex items-center gap-1 overflow-hidden">
           {locationText && (
@@ -244,6 +245,7 @@ const UserCard = ({
       imageShape="circle"
       onClick={openUserDetails}
       truncateContent={true}
+      clickTooltip="Click to view User details"
       contentClassName={
         viewMode === "mini"
           ? `!pt-0 !px-4 sm:!px-5 ${activeFilters.showLocation || activeFilters.showTags || activeFilters.showBadges ? "!pb-4 sm:!pb-5" : "!pb-0"}`

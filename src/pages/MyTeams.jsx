@@ -8,11 +8,72 @@ import Section from "../components/layout/Section";
 import Pagination from "../components/common/Pagination";
 import { teamService } from "../services/teamService";
 import { useAuth } from "../contexts/AuthContext";
-import { Plus, Search as SearchIcon } from "lucide-react";
+import {
+  Plus,
+  Search as SearchIcon,
+  ArrowDownAZ,
+  ArrowUpZA,
+  Clock,
+  Sparkles,
+  Inbox,
+} from "lucide-react";
 import Alert from "../components/common/Alert";
 import CreateTeamModal from "../components/teams/CreateTeamModal";
 
 import { RESULTS_PER_PAGE_OPTIONS, DEFAULT_RESULTS_PER_PAGE } from "../constants/pagination";
+
+const parseSortableTimestamp = (value) => {
+  if (!value) return null;
+  const timestamp = new Date(value).getTime();
+  return Number.isNaN(timestamp) ? null : timestamp;
+};
+
+const getFirstValidTimestamp = (sources, keys) => {
+  for (const source of sources) {
+    if (!source) continue;
+    for (const key of keys) {
+      const timestamp = parseSortableTimestamp(source[key]);
+      if (timestamp !== null) return timestamp;
+    }
+  }
+  return 0;
+};
+
+const getComparableName = (item) => {
+  const team = item?.team || item;
+  return (team?.name || "").trim().toLowerCase();
+};
+
+const getActivityTimestamp = (item) => {
+  const team = item?.team || item;
+  return getFirstValidTimestamp(
+    [team, item],
+    [
+      "last_active_at",
+      "lastActiveAt",
+      "last_active",
+      "lastActive",
+      "updated_at",
+      "updatedAt",
+      "created_at",
+      "createdAt",
+    ]
+  );
+};
+
+const getRequestTimestamp = (item) => {
+  return getFirstValidTimestamp([item], [
+    "received_at",
+    "receivedAt",
+    "sent_at",
+    "sentAt",
+    "applied_at",
+    "appliedAt",
+    "created_at",
+    "createdAt",
+    "date",
+  ]);
+};
 
 const MyTeams = () => {
   const [teams, setTeams] = useState([]);
@@ -23,6 +84,14 @@ const MyTeams = () => {
   const [loadingInvitations, setLoadingInvitations] = useState(true);
   const [error, setError] = useState(null);
   const { user } = useAuth();
+
+  // ===== VIEW MODE STATE =====
+  const [resultView, setResultView] = useState("list");
+
+  // ===== SORT STATE =====
+  const [sortBy, setSortBy] = useState("name");
+  const [sortDir, setSortDir] = useState("asc");
+  const [teamNotificationMetrics, setTeamNotificationMetrics] = useState({});
 
   // ===== CREATE TEAM MODAL STATE =====
   const [isCreateTeamModalOpen, setIsCreateTeamModalOpen] = useState(false);
@@ -48,6 +117,7 @@ const MyTeams = () => {
 
   // Ref for scrolling to highlighted invitation
   const highlightedInvitationRef = useRef(null);
+  const highlightedTeamRef = useRef(null);
 
   // State to track which team should auto-open its applications modal
   const [autoOpenApplicationsTeamId, setAutoOpenApplicationsTeamId] =
@@ -135,13 +205,18 @@ const MyTeams = () => {
     if (user?.id) {
       fetchUserTeams(currentPage, resultsPerPage);
     }
-  }, [currentPage, resultsPerPage, user?.id]);
+  }, [currentPage, resultsPerPage, user?.id, fetchUserTeams]);
 
   // Handle URL params for highlighting and auto-opening modals
   useEffect(() => {
+    let openApplicationsTimer;
+
     // If we need to open applications modal for a specific team
     if (openTeamId && shouldOpenApplications) {
-      setAutoOpenApplicationsTeamId(parseInt(openTeamId));
+      setAutoOpenApplicationsTeamId(null);
+      openApplicationsTimer = setTimeout(() => {
+        setAutoOpenApplicationsTeamId(parseInt(openTeamId, 10));
+      }, 900);
     }
 
     // Scroll to highlighted invitation after a short delay
@@ -154,13 +229,34 @@ const MyTeams = () => {
       }, 300);
     }
 
+    // Scroll to highlighted member team after a short delay
+    if (openTeamId && highlightedTeamRef.current) {
+      setTimeout(() => {
+        highlightedTeamRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+      }, 300);
+    }
+
     // Clear URL params after 5 seconds (so refresh doesn't keep highlighting)
     if (highlightId || openTeamId) {
       const timer = setTimeout(() => {
         setSearchParams({});
       }, 5000);
-      return () => clearTimeout(timer);
+      return () => {
+        clearTimeout(timer);
+        if (openApplicationsTimer) {
+          clearTimeout(openApplicationsTimer);
+        }
+      };
     }
+
+    return () => {
+      if (openApplicationsTimer) {
+        clearTimeout(openApplicationsTimer);
+      }
+    };
   }, [highlightId, openTeamId, shouldOpenApplications, setSearchParams]);
 
   // Handler for page changes
@@ -274,6 +370,165 @@ const MyTeams = () => {
     setCurrentPage(1);
   };
 
+  const handleSortChange = (nextSortBy) => {
+    if (nextSortBy === sortBy) {
+      setSortDir((prev) => (prev === "asc" ? "desc" : "asc"));
+      return;
+    }
+
+    setSortBy(nextSortBy);
+
+    switch (nextSortBy) {
+      case "recent":
+      case "newest":
+      case "requests":
+        setSortDir("desc");
+        break;
+      case "name":
+      default:
+        setSortDir("asc");
+        break;
+    }
+  };
+
+  useEffect(() => {
+    if (!["newest", "requests"].includes(sortBy) || teams.length === 0) {
+      return;
+    }
+
+    let isCancelled = false;
+
+    const fetchTeamNotificationTimestamps = async () => {
+      const entries = await Promise.all(
+        teams.filter(Boolean).map(async (team) => {
+          if (!team?.id) return null;
+
+          const [applicationsResponse, invitationsResponse] = await Promise.all([
+            teamService
+              .getTeamApplications(team.id, { skipAuthRedirect: true })
+              .catch(() => ({ data: [] })),
+            teamService
+              .getTeamSentInvitations(team.id, { skipAuthRedirect: true })
+              .catch(() => ({ data: [] })),
+          ]);
+
+          const applications = applicationsResponse?.data || [];
+          const invitations = invitationsResponse?.data || [];
+
+          const latestApplicationTimestamp = applications.reduce(
+            (max, application) => Math.max(max, getRequestTimestamp(application)),
+            0
+          );
+          const latestInvitationTimestamp = invitations.reduce(
+            (max, invitation) => Math.max(max, getRequestTimestamp(invitation)),
+            0
+          );
+          const totalRequestCount = applications.length + invitations.length;
+
+          return [
+            team.id,
+            {
+              latestTimestamp:
+                Math.max(latestApplicationTimestamp, latestInvitationTimestamp) ||
+                null,
+              totalRequestCount,
+            },
+          ];
+        })
+      );
+
+      if (isCancelled) return;
+
+      setTeamNotificationMetrics((prev) => ({
+        ...prev,
+        ...Object.fromEntries(entries.filter(Boolean)),
+      }));
+    };
+
+    fetchTeamNotificationTimestamps();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [sortBy, teams]);
+
+  const sortPendingItems = (items) => {
+    if (sortBy === "requests") {
+      return [...items];
+    }
+
+    return [...items].sort((a, b) => {
+      if (sortBy === "name") {
+        const direction = sortDir === "desc" ? -1 : 1;
+        return (
+          getComparableName(a).localeCompare(getComparableName(b)) * direction
+        );
+      }
+
+      if (sortBy === "recent") {
+        const diff =
+          sortDir === "desc"
+            ? getActivityTimestamp(b) - getActivityTimestamp(a)
+            : getActivityTimestamp(a) - getActivityTimestamp(b);
+        if (diff !== 0) return diff;
+      } else if (sortBy === "newest") {
+        const diff =
+          sortDir === "desc"
+            ? getRequestTimestamp(b) - getRequestTimestamp(a)
+            : getRequestTimestamp(a) - getRequestTimestamp(b);
+        if (diff !== 0) return diff;
+      }
+
+      return getComparableName(a).localeCompare(getComparableName(b));
+    });
+  };
+
+  const sortMemberTeams = (items) => {
+    return [...items].sort((a, b) => {
+      if (sortBy === "name") {
+        const direction = sortDir === "desc" ? -1 : 1;
+        return (
+          getComparableName(a).localeCompare(getComparableName(b)) * direction
+        );
+      }
+
+      if (sortBy === "recent") {
+        const diff =
+          sortDir === "desc"
+            ? getActivityTimestamp(b) - getActivityTimestamp(a)
+            : getActivityTimestamp(a) - getActivityTimestamp(b);
+        if (diff !== 0) return diff;
+      } else if (sortBy === "newest") {
+        const timestampA = teamNotificationMetrics[a.id]?.latestTimestamp ?? null;
+        const timestampB = teamNotificationMetrics[b.id]?.latestTimestamp ?? null;
+
+        if (timestampA !== null || timestampB !== null) {
+          if (timestampA === null) return 1;
+          if (timestampB === null) return -1;
+
+          const diff =
+            sortDir === "desc" ? timestampB - timestampA : timestampA - timestampB;
+          if (diff !== 0) return diff;
+        }
+      } else if (sortBy === "requests") {
+        const countA = teamNotificationMetrics[a.id]?.totalRequestCount ?? 0;
+        const countB = teamNotificationMetrics[b.id]?.totalRequestCount ?? 0;
+        const diff = sortDir === "desc" ? countB - countA : countA - countB;
+        if (diff !== 0) return diff;
+      }
+
+      return getComparableName(a).localeCompare(getComparableName(b));
+    });
+  };
+
+  const sortedPendingInvitations = sortPendingItems(
+    pendingInvitations.filter(Boolean)
+  );
+  const sortedPendingApplications = sortPendingItems(
+    pendingApplications.filter(Boolean)
+  );
+  const sortedTeams = sortMemberTeams(teams.filter(Boolean));
+
   if (loading && loadingApplications && loadingInvitations) {
     return (
       <PageContainer variant="muted">
@@ -313,8 +568,94 @@ const MyTeams = () => {
 
   return (
     <PageContainer title="My Teams" action={CreateTeamAction} variant="muted">
+      <div className="flex flex-col gap-3 mb-6 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-wrap items-center text-sm font-normal text-base-content/60 gap-1">
+          <button
+            type="button"
+            onClick={() => handleSortChange("name")}
+            className={`flex items-center gap-1 px-2 py-1 rounded transition-colors ${
+              sortBy === "name" ? "font-bold text-base-content" : ""
+            }`}
+          >
+            {sortDir === "desc" && sortBy === "name" ? (
+              <ArrowUpZA className="w-3.5 h-3.5 shrink-0" />
+            ) : (
+              <ArrowDownAZ className="w-3.5 h-3.5 shrink-0" />
+            )}
+            {sortBy === "name" && sortDir === "desc" ? "Z-A" : "A-Z"}
+          </button>
+          <span className="text-base-content/30">|</span>
+          <button
+            type="button"
+            onClick={() => handleSortChange("recent")}
+            className={`flex items-center gap-1 px-2 py-1 rounded transition-colors ${
+              sortBy === "recent" ? "font-bold text-base-content" : ""
+            }`}
+          >
+            <Clock className="w-3.5 h-3.5 shrink-0" />
+            {sortBy === "recent" && sortDir === "asc" ? "Inactive" : "Active"}
+          </button>
+          <span className="text-base-content/30">|</span>
+          <button
+            type="button"
+            onClick={() => handleSortChange("newest")}
+            className={`flex items-center gap-1 px-2 py-1 rounded transition-colors ${
+              sortBy === "newest" ? "font-bold text-base-content" : ""
+            }`}
+          >
+            <Sparkles className="w-3.5 h-3.5 shrink-0" />
+            {sortBy === "newest" && sortDir === "asc" ? "Oldest" : "Newest"}
+          </button>
+          <span className="text-base-content/30">|</span>
+          <button
+            type="button"
+            onClick={() => handleSortChange("requests")}
+            className={`flex items-center gap-1 px-2 py-1 rounded transition-colors ${
+              sortBy === "requests" ? "font-bold text-base-content" : ""
+            }`}
+          >
+            <Inbox className="w-3.5 h-3.5 shrink-0" />
+            {sortBy === "requests" && sortDir === "asc"
+              ? "Least Requests"
+              : "Most Requests"}
+          </button>
+        </div>
+
+        <div className="flex items-center text-sm font-normal text-base-content/60 gap-1 sm:justify-end">
+          <button
+            type="button"
+            onClick={() => setResultView("card")}
+            className={`px-2 py-1 rounded hover:text-base-content transition-colors ${
+              resultView === "card" ? "font-bold text-base-content" : ""
+            }`}
+          >
+            Card
+          </button>
+          <span className="text-base-content/30">|</span>
+          <button
+            type="button"
+            onClick={() => setResultView("mini")}
+            className={`px-2 py-1 rounded hover:text-base-content transition-colors ${
+              resultView === "mini" ? "font-bold text-base-content" : ""
+            }`}
+          >
+            Mini Card
+          </button>
+          <span className="text-base-content/30">|</span>
+          <button
+            type="button"
+            onClick={() => setResultView("list")}
+            className={`px-2 py-1 rounded hover:text-base-content transition-colors ${
+              resultView === "list" ? "font-bold text-base-content" : ""
+            }`}
+          >
+            List
+          </button>
+        </div>
+      </div>
+
       {/* Pending Invitations Section */}
-      {pendingInvitations.length > 0 && (
+      {sortedPendingInvitations.length > 0 && (
         <Section
           title="My Pending Membership Invitations"
           subtitle="Teams that have invited you to join"
@@ -324,9 +665,36 @@ const MyTeams = () => {
             <div className="flex justify-center py-8">
               <div className="loading loading-spinner loading-md"></div>
             </div>
+          ) : resultView === "list" ? (
+            <div className="background-opacity bg-opacity-70 shadow-soft rounded-xl divide-y divide-base-200">
+              {sortedPendingInvitations.map((invitation) => (
+                <div
+                  key={`invitation-${invitation.id}`}
+                  ref={
+                    String(invitation.id) === highlightId
+                      ? highlightedInvitationRef
+                      : null
+                  }
+                  className={
+                    String(invitation.id) === highlightId
+                      ? "message-highlight"
+                      : ""
+                  }
+                >
+                  <TeamCard
+                    variant="invitation"
+                    invitation={invitation}
+                    onAccept={handleInvitationAccept}
+                    onDecline={handleInvitationDecline}
+                    viewMode="list"
+                    activeFilters={{}}
+                  />
+                </div>
+              ))}
+            </div>
           ) : (
-            <Grid cols={1} md={2} lg={3} gap={6}>
-              {pendingInvitations.filter(Boolean).map((invitation) => (
+            <Grid cols={1} md={2} lg={3} gap={resultView === "card" ? 6 : 4}>
+              {sortedPendingInvitations.map((invitation) => (
                 <div
                   key={`invitation-${invitation.id}`}
                   ref={
@@ -345,6 +713,8 @@ const MyTeams = () => {
                     invitation={invitation}
                     onAccept={handleInvitationAccept}
                     onDecline={handleInvitationDecline}
+                    viewMode={resultView}
+                    activeFilters={{}}
                   />
                 </div>
               ))}
@@ -354,7 +724,7 @@ const MyTeams = () => {
       )}
 
       {/* Pending Applications Section */}
-      {pendingApplications.length > 0 && (
+      {sortedPendingApplications.length > 0 && (
         <Section
           title="My Pending Membership Applications"
           subtitle="Teams that I would like to join"
@@ -364,15 +734,31 @@ const MyTeams = () => {
             <div className="flex justify-center py-8">
               <div className="loading loading-spinner loading-md"></div>
             </div>
-          ) : (
-            <Grid cols={1} md={2} lg={3} gap={6}>
-              {pendingApplications.filter(Boolean).map((application) => (
+          ) : resultView === "list" ? (
+            <div className="background-opacity bg-opacity-70 shadow-soft rounded-xl divide-y divide-base-200">
+              {sortedPendingApplications.map((application) => (
                 <TeamCard
                   key={`application-${application.id}`}
                   variant="application"
                   application={application}
                   onCancel={handleApplicationCancel}
                   onSendReminder={handleSendReminder}
+                  viewMode="list"
+                  activeFilters={{}}
+                />
+              ))}
+            </div>
+          ) : (
+            <Grid cols={1} md={2} lg={3} gap={resultView === "card" ? 6 : 4}>
+              {sortedPendingApplications.map((application) => (
+                <TeamCard
+                  key={`application-${application.id}`}
+                  variant="application"
+                  application={application}
+                  onCancel={handleApplicationCancel}
+                  onSendReminder={handleSendReminder}
+                  viewMode={resultView}
+                  activeFilters={{}}
                 />
               ))}
             </Grid>
@@ -390,12 +776,12 @@ const MyTeams = () => {
           <div className="flex justify-center py-8">
             <div className="loading loading-spinner loading-md"></div>
           </div>
-        ) : teams.length === 0 ? (
+        ) : sortedTeams.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-base-content/70 mb-4">
               You haven't joined any teams yet.
             </p>
-            <Button 
+            <Button
               variant="primary"
               onClick={() => setIsCreateTeamModalOpen(true)}
             >
@@ -404,28 +790,77 @@ const MyTeams = () => {
           </div>
         ) : (
           <>
-            <Grid cols={1} md={2} lg={3} gap={6}>
-              {teams.filter(Boolean).map((team) => (
-                <TeamCard
-                  key={team.id}
-                  variant="member"
-                  team={{
-                    ...team,
-                    is_public: team.is_public === true || team.isPublic === true,
-                  }}
-                  onUpdate={handleTeamUpdate}
-                  onDelete={handleTeamDelete}
-                  onLeave={handleTeamLeave}
-                  autoOpenApplications={team.id === autoOpenApplicationsTeamId}
-                  highlightApplicantId={
-                    team.id === autoOpenApplicationsTeamId ? highlightId : null
-                  }
-                  onApplicationsModalClosed={() =>
-                    setAutoOpenApplicationsTeamId(null)
-                  }
-                />
-              ))}
-            </Grid>
+            {resultView === "list" ? (
+              <div className="background-opacity bg-opacity-70 shadow-soft rounded-xl divide-y divide-base-200">
+                {sortedTeams.map((team) => (
+                  <div
+                    key={team.id}
+                    ref={
+                      String(team.id) === openTeamId ? highlightedTeamRef : null
+                    }
+                    className={
+                      String(team.id) === openTeamId ? "message-highlight" : ""
+                    }
+                  >
+                    <TeamCard
+                      variant="member"
+                      team={{
+                        ...team,
+                        is_public: team.is_public === true || team.isPublic === true,
+                      }}
+                      onUpdate={handleTeamUpdate}
+                      onDelete={handleTeamDelete}
+                      onLeave={handleTeamLeave}
+                      autoOpenApplications={team.id === autoOpenApplicationsTeamId}
+                      highlightApplicantId={
+                        team.id === autoOpenApplicationsTeamId ? highlightId : null
+                      }
+                      onApplicationsModalClosed={() =>
+                        setAutoOpenApplicationsTeamId(null)
+                      }
+                      viewMode="list"
+                      activeFilters={{}}
+                    />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <Grid cols={1} md={2} lg={3} gap={resultView === "card" ? 6 : 4}>
+                {sortedTeams.map((team) => (
+                  <div
+                    key={team.id}
+                    ref={
+                      String(team.id) === openTeamId ? highlightedTeamRef : null
+                    }
+                    className={
+                      String(team.id) === openTeamId
+                        ? "message-highlight rounded-xl"
+                        : "contents"
+                    }
+                  >
+                    <TeamCard
+                      variant="member"
+                      team={{
+                        ...team,
+                        is_public: team.is_public === true || team.isPublic === true,
+                      }}
+                      onUpdate={handleTeamUpdate}
+                      onDelete={handleTeamDelete}
+                      onLeave={handleTeamLeave}
+                      autoOpenApplications={team.id === autoOpenApplicationsTeamId}
+                      highlightApplicantId={
+                        team.id === autoOpenApplicationsTeamId ? highlightId : null
+                      }
+                      onApplicationsModalClosed={() =>
+                        setAutoOpenApplicationsTeamId(null)
+                      }
+                      viewMode={resultView}
+                      activeFilters={{}}
+                    />
+                  </div>
+                ))}
+              </Grid>
+            )}
 
             {/* Pagination for My Teams */}
             <Pagination

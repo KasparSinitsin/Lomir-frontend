@@ -837,6 +837,7 @@ const TeamCard = ({
             variant="primary"
             className="w-full"
             icon={<Mail size={16} />}
+            suppressCardTooltip={true}
             onClick={(e) => {
               e.stopPropagation();
               setIsInvitationDetailsModalOpen(true);
@@ -858,6 +859,7 @@ const TeamCard = ({
             variant="primary"
             className="w-full"
             icon={<SendHorizontal size={16} />}
+            suppressCardTooltip={true}
             onClick={(e) => {
               e.stopPropagation();
               setIsApplicationModalOpen(true);
@@ -876,6 +878,7 @@ const TeamCard = ({
         {/* pt-4: spacing from tags row — TODO: revert to pt-0 when LocationDistanceTagsRow mb-4 is restored */}
         <Button
           variant="primary"
+          suppressCardTooltip={true}
           onClick={(e) => {
             e.stopPropagation();
             handleCardClick();
@@ -953,11 +956,40 @@ const TeamCard = ({
 
     const memberCount = getMemberCount();
     const maxMembers = getMaxMembers();
+    const shouldReserveMyTeamsActionSlot = !isSearchResult;
 
     const subtitleContent = (
       <span className="flex items-center gap-1 text-base-content/60">
         <Users size={11} />
         <span>{memberCount}/{maxMembers}</span>
+        {(effectiveVariant === "invitation" || pendingInvitationForTeam) && (
+          <Tooltip
+            content={`You were invited to this team${
+              getFormattedDate()
+                ? `\non ${format(new Date(normalizedData.date), "MMM d, yyyy")}`
+                : ""
+            }`}
+          >
+            <span className="flex items-center gap-0.5">
+              <Mail size={11} className="text-pink-500" />
+              {getFormattedDate() && <span>{getFormattedDate()}</span>}
+            </span>
+          </Tooltip>
+        )}
+        {(effectiveVariant === "application" || pendingApplicationForTeam) && (
+          <Tooltip
+            content={`You applied to join this team${
+              getFormattedDate()
+                ? `\non ${format(new Date(normalizedData.date), "MMM d, yyyy")}`
+                : ""
+            }`}
+          >
+            <span className="flex items-center gap-0.5">
+              <SendHorizontal size={11} className="text-info" />
+              {getFormattedDate() && <span>{getFormattedDate()}</span>}
+            </span>
+          </Tooltip>
+        )}
         {userRole && effectiveVariant === "member" && (
           <>
             {userRole === "owner" && (
@@ -1000,6 +1032,7 @@ const TeamCard = ({
           onClick={handleCardClick}
           viewMode="list"
           className=""
+          clickTooltip="Click to view Team details"
         >
           <div className="w-36 flex-shrink-0 text-xs text-base-content/60 flex items-center gap-1 overflow-hidden">
             {locationText && (
@@ -1041,6 +1074,60 @@ const TeamCard = ({
               </Tooltip>
             )}
           </div>
+          {shouldReserveMyTeamsActionSlot && (
+            <div className="w-20 flex-shrink-0 flex items-center justify-end gap-2">
+              {effectiveVariant === "invitation" && (
+                <Tooltip content="Open Invite to Respond">
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    className="flex-shrink-0 !min-h-8 !h-8 !w-8 !min-w-8 !px-0"
+                    icon={<Mail size={16} />}
+                    suppressCardTooltip={true}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsInvitationDetailsModalOpen(true);
+                    }}
+                  />
+                </Tooltip>
+              )}
+              {effectiveVariant === "application" && (
+                <Tooltip content="View Application Details">
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    className="flex-shrink-0 !min-h-8 !h-8 !w-8 !min-w-8 !px-0"
+                    icon={<SendHorizontal size={16} />}
+                    suppressCardTooltip={true}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsApplicationModalOpen(true);
+                    }}
+                  />
+                </Tooltip>
+              )}
+              {effectiveVariant === "member" && canManageInvitations && (
+                <>
+                  <NotificationBadge
+                    variant="application"
+                    count={pendingApplications.length}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsApplicationsModalOpen(true);
+                    }}
+                  />
+                  <NotificationBadge
+                    variant="invitation"
+                    count={pendingSentInvitations.length}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsInvitesModalOpen(true);
+                    }}
+                  />
+                </>
+              )}
+            </div>
+          )}
         </Card>
 
         <TeamDetailsModal
@@ -1072,6 +1159,38 @@ const TeamCard = ({
           onViewApplicationDetails={() => setIsApplicationModalOpen(true)}
           showMatchHighlights={showMatchHighlights}
         />
+
+        {/* Applications Modal (for team owners and admins) */}
+        {effectiveVariant === "member" && (
+          <TeamApplicationsModal
+            isOpen={isApplicationsModalOpen}
+            onClose={() => {
+              setIsApplicationsModalOpen(false);
+              if (onApplicationsModalClosed) {
+                onApplicationsModalClosed();
+              }
+            }}
+            teamId={teamData.id}
+            applications={pendingApplications}
+            onApplicationAction={handleApplicationAction}
+            teamName={teamData.name}
+            highlightUserId={highlightApplicantId}
+          />
+        )}
+
+        {/* Invites Modal (for team owners and admins) */}
+        {effectiveVariant === "member" && (
+          <TeamInvitesModal
+            isOpen={isInvitesModalOpen}
+            onClose={() => {
+              setIsInvitesModalOpen(false);
+              fetchSentInvitations();
+            }}
+            invitations={pendingSentInvitations}
+            onCancelInvitation={handleCancelInvitation}
+            teamName={teamData.name}
+          />
+        )}
 
         {isInvitationDetailsModalOpen &&
           (invitation || pendingInvitationForTeam) && (
@@ -1271,9 +1390,10 @@ const TeamCard = ({
         imageShape="circle"
         onClick={handleCardClick}
         truncateContent={true}
+        clickTooltip="Click to view Team details"
         contentClassName={
           viewMode === "mini"
-            ? `!pt-0 !px-4 sm:!px-5 ${activeFilters.showLocation || activeFilters.showTags || activeFilters.showBadges ? "!pb-4 sm:!pb-5" : "!pb-0"}`
+            ? `!pt-0 !px-4 sm:!px-5 ${activeFilters.showLocation || activeFilters.showTags || activeFilters.showBadges || !isSearchResult ? "!pb-4 sm:!pb-5" : "!pb-0"}`
             : ""
         }
         headerClassName={
