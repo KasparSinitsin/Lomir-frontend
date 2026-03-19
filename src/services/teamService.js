@@ -97,12 +97,17 @@ export const teamService = {
     }
   },
 
-  getTeamApplications: async (teamId) => {
+  getTeamApplications: async (teamId, requestConfig = {}) => {
     try {
-      const response = await api.get(`/api/teams/${teamId}/applications`);
+      const response = await api.get(
+        `/api/teams/${teamId}/applications`,
+        requestConfig,
+      );
       return response.data;
     } catch (error) {
-      console.error(`Error fetching applications for team ${teamId}:`, error);
+      if (!(requestConfig.skipAuthRedirect && error.response?.status === 403)) {
+        console.error(`Error fetching applications for team ${teamId}:`, error);
+      }
       throw error;
     }
   },
@@ -413,15 +418,20 @@ export const teamService = {
   /**
    * Get all pending invitations sent by a specific team
    */
-  getTeamSentInvitations: async (teamId) => {
+  getTeamSentInvitations: async (teamId, requestConfig = {}) => {
     try {
-      const response = await api.get(`/api/teams/${teamId}/invitations`);
+      const response = await api.get(
+        `/api/teams/${teamId}/invitations`,
+        requestConfig,
+      );
       return response.data;
     } catch (error) {
-      console.error(
-        `Error fetching sent invitations for team ${teamId}:`,
-        error,
-      );
+      if (!(requestConfig.skipAuthRedirect && error.response?.status === 403)) {
+        console.error(
+          `Error fetching sent invitations for team ${teamId}:`,
+          error,
+        );
+      }
       throw error;
     }
   },
@@ -446,16 +456,6 @@ export const teamService = {
       return response.data;
     } catch (error) {
       console.error(`Error sending invitation to team ${teamId}:`, error);
-      throw error;
-    }
-  },
-
-  getUserReceivedInvitations: async () => {
-    try {
-      const response = await api.get("/api/teams/invitations/received");
-      return response.data;
-    } catch (error) {
-      console.error("Error fetching received invitations:", error);
       throw error;
     }
   },

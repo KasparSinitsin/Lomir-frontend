@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import Tooltip from "./Tooltip";
 
 const Card = ({
@@ -24,8 +25,13 @@ const Card = ({
   titleClassName = "",
   marginClassName = "",
   viewMode = "card",
+  clickTooltip = null,
 }) => {
   const [imageError, setImageError] = useState(false);
+  const [rowTooltipVisible, setRowTooltipVisible] = useState(false);
+  const [rowTooltipPosition, setRowTooltipPosition] = useState(null);
+  const rowTooltipVisibleRef = useRef(false);
+  const tooltipDimensionsRef = useRef({ width: 280, height: 52 });
 
   // Reset error state when image prop changes
   useEffect(() => {
@@ -115,8 +121,60 @@ const Card = ({
     return "[&>p:first-of-type]:line-clamp-3 [&>p:first-of-type]:-mt-4";
   };
 
+  const handleRowMouseOver = clickTooltip
+    ? (e) => {
+        const shouldShow = !e.target.closest("[data-tooltip-trigger]");
+        if (shouldShow !== rowTooltipVisibleRef.current) {
+          rowTooltipVisibleRef.current = shouldShow;
+          setRowTooltipVisible(shouldShow);
+        }
+      }
+    : undefined;
+
+  const handleRowMouseMove = clickTooltip
+    ? (e) => {
+        const shouldShow = !e.target.closest("[data-tooltip-trigger]");
+        if (!shouldShow) {
+          if (rowTooltipVisibleRef.current) {
+            rowTooltipVisibleRef.current = false;
+            setRowTooltipVisible(false);
+          }
+          return;
+        }
+
+        if (!rowTooltipVisibleRef.current) {
+          rowTooltipVisibleRef.current = true;
+          setRowTooltipVisible(true);
+        }
+
+        const tooltipGap = 14;
+        const viewportPadding = 12;
+        const { width, height } = tooltipDimensionsRef.current;
+
+        const left = Math.min(
+          Math.max(viewportPadding, e.clientX + 10),
+          window.innerWidth - width - viewportPadding,
+        );
+        const top = Math.min(
+          Math.max(viewportPadding, e.clientY + tooltipGap),
+          window.innerHeight - height - viewportPadding,
+        );
+
+        setRowTooltipPosition({ top, left });
+      }
+    : undefined;
+
+  const handleRowMouseLeave = clickTooltip
+    ? () => {
+        rowTooltipVisibleRef.current = false;
+        setRowTooltipVisible(false);
+        setRowTooltipPosition(null);
+      }
+    : undefined;
+
   if (viewMode === "list") {
     return (
+      <>
       <div
         className={`
           flex items-center gap-3 px-4 py-2.5
@@ -128,6 +186,9 @@ const Card = ({
         onClick={onClick}
         role={onClick ? "button" : undefined}
         tabIndex={onClick ? 0 : undefined}
+        onMouseOver={handleRowMouseOver}
+        onMouseMove={handleRowMouseMove}
+        onMouseLeave={handleRowMouseLeave}
         onKeyDown={
           onClick
             ? (e) => {
@@ -176,85 +237,145 @@ const Card = ({
 
         {children}
 
-        <svg
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          className="text-base-content/30 flex-shrink-0"
-        >
-          <path d="M9 18l6-6-6-6" />
-        </svg>
+        <Tooltip content={clickTooltip}>
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            className="text-base-content/30 flex-shrink-0"
+          >
+            <path d="M9 18l6-6-6-6" />
+          </svg>
+        </Tooltip>
       </div>
+
+      {rowTooltipVisible && rowTooltipPosition && clickTooltip && createPortal(
+        <div
+          role="tooltip"
+          className="fixed z-[9999] bg-white text-[var(--color-primary-focus)] rounded-lg whitespace-pre-line text-left max-w-[280px] pointer-events-none"
+          style={{
+            top: `${rowTooltipPosition.top}px`,
+            left: `${rowTooltipPosition.left}px`,
+            padding: "0.5rem 0.75rem",
+            fontSize: "0.775rem",
+            fontWeight: 450,
+            boxShadow: "0 2px 8px rgba(4, 80, 20, 0.15)",
+          }}
+          ref={(node) => {
+            if (!node) return;
+
+            tooltipDimensionsRef.current = {
+              width: node.offsetWidth || tooltipDimensionsRef.current.width,
+              height: node.offsetHeight || tooltipDimensionsRef.current.height,
+            };
+          }}
+        >
+          {clickTooltip}
+        </div>,
+        document.body
+      )}
+      </>
     );
   }
 
   return (
-    <div
-      className={`
-      ${transparent ? "bg-transparent" : "background-opacity"}
-      ${bordered ? "border border-base-200" : ""}
-      ${hoverable ? "hover:shadow-md transition-shadow duration-300" : ""}
-      shadow-soft
-      rounded-xl
-      overflow-hidden
-      flex flex-col
-      ${compact ? "card-compact" : ""}
-      ${onClick ? "cursor-pointer" : ""}
-      ${className}
-      bg-opacity-70
-      ${marginClassName || "mb-6"}
-    `}
-      onClick={onClick}
-      role={onClick ? "button" : undefined}
-      tabIndex={onClick ? 0 : undefined}
-      onKeyDown={
-        onClick
-          ? (e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                onClick(e);
+    <>
+      <div
+        className={`
+        ${transparent ? "bg-transparent" : "background-opacity"}
+        ${bordered ? "border border-base-200" : ""}
+        ${hoverable ? "hover:shadow-md transition-shadow duration-300" : ""}
+        shadow-soft
+        rounded-xl
+        overflow-hidden
+        flex flex-col
+        ${compact ? "card-compact" : ""}
+        ${onClick ? "cursor-pointer" : ""}
+        ${className}
+        bg-opacity-70
+        ${marginClassName || "mb-6"}
+      `}
+        onClick={onClick}
+        role={onClick ? "button" : undefined}
+        tabIndex={onClick ? 0 : undefined}
+        onMouseOver={handleRowMouseOver}
+        onMouseMove={handleRowMouseMove}
+        onMouseLeave={handleRowMouseLeave}
+        onKeyDown={
+          onClick
+            ? (e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  onClick(e);
+                }
               }
-            }
-          : undefined
-      }
-    >
-      {title && (
-        <div
-          className={`p-6 sm:p-7 pb-0 sm:pb-1 border-base-200 ${headerClassName}`}
-        >
-          <div className="flex gap-3">
-            <div>{renderImage()}</div>
+            : undefined
+        }
+      >
+        {title && (
+          <div
+            className={`p-6 sm:p-7 pb-0 sm:pb-1 border-base-200 ${headerClassName}`}
+          >
+            <div className="flex gap-3">
+              <div>{renderImage()}</div>
 
-            <div className="min-w-0 flex-1">
-              <h3
-                className={`font-medium text-primary leading-[120%] mb-1 ${titleClassName || "text-lg"}`}
-              >
-                {title}
-              </h3>
-              {subtitle && (
-                <p className={titleClassName ? "text-xs" : ""}>{subtitle}</p>
-              )}
+              <div className="min-w-0 flex-1">
+                <h3
+                  className={`font-medium text-primary leading-[120%] mb-1 ${titleClassName || "text-lg"}`}
+                >
+                  {title}
+                </h3>
+                {subtitle && (
+                  <p className={titleClassName ? "text-xs" : ""}>{subtitle}</p>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Only the first direct <p> inside this wrapper will be clamped */}
-      <div
-        className={`p-4 sm:p-7 pt-0.5 sm:pt-1 flex-1 flex flex-col ${getTruncateClasses()} ${contentClassName}`}
-      >
-        {children}
+        {/* Only the first direct <p> inside this wrapper will be clamped */}
+        <div
+          className={`p-4 sm:p-7 pt-0.5 sm:pt-1 flex-1 flex flex-col ${getTruncateClasses()} ${contentClassName}`}
+        >
+          {children}
+        </div>
+
+        {footer && (
+          <div className="p-6 sm:p-7 bg-base-200/50 border-t border-base-200">
+            {footer}
+          </div>
+        )}
       </div>
 
-      {footer && (
-        <div className="p-6 sm:p-7 bg-base-200/50 border-t border-base-200">
-          {footer}
-        </div>
+      {rowTooltipVisible && rowTooltipPosition && clickTooltip && createPortal(
+        <div
+          role="tooltip"
+          className="fixed z-[9999] bg-white text-[var(--color-primary-focus)] rounded-lg whitespace-pre-line text-left max-w-[280px] pointer-events-none"
+          style={{
+            top: `${rowTooltipPosition.top}px`,
+            left: `${rowTooltipPosition.left}px`,
+            padding: "0.5rem 0.75rem",
+            fontSize: "0.775rem",
+            fontWeight: 450,
+            boxShadow: "0 2px 8px rgba(4, 80, 20, 0.15)",
+          }}
+          ref={(node) => {
+            if (!node) return;
+
+            tooltipDimensionsRef.current = {
+              width: node.offsetWidth || tooltipDimensionsRef.current.width,
+              height: node.offsetHeight || tooltipDimensionsRef.current.height,
+            };
+          }}
+        >
+          {clickTooltip}
+        </div>,
+        document.body
       )}
-    </div>
+    </>
   );
 };
 

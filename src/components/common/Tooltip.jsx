@@ -171,6 +171,7 @@ const Tooltip = ({
     <>
       <span
         ref={triggerRef}
+        data-tooltip-trigger="true"
         className={`${wrapperClassName} ${className}`}
         onMouseEnter={() => setIsVisible(true)}
         onMouseLeave={() => setIsVisible(false)}
