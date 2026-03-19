@@ -24,7 +24,7 @@ const MAX_LINES = 2;
  * then final state is committed once — no multi-render loop,
  * no CSS ellipsis, no visible flash.
  */
-const TruncatedList = ({ items, icon: Icon }) => {
+const TruncatedList = ({ items, icon: Icon, compact = false }) => {
   const spanRef = useRef(null);
   const [displayText, setDisplayText] = useState(() => items.join(", "));
 
@@ -66,8 +66,10 @@ const TruncatedList = ({ items, icon: Icon }) => {
   if (items.length === 0) return null;
 
   return (
-    <div className="flex items-start text-sm text-base-content/70">
-      <Icon size={16} className="mr-1 flex-shrink-0 mt-0.5" />
+    <div
+      className={`flex items-start text-base-content/70 ${compact ? "text-xs" : "text-sm"}`}
+    >
+      <Icon size={compact ? 12 : 16} className="mr-1 flex-shrink-0 mt-0.5" />
       <span ref={spanRef}>{displayText}</span>
     </div>
   );
@@ -85,6 +87,8 @@ const LocationDistanceTagsRow = ({
   badges = null,
   getDisplayTags = null,
   className = "",
+  hideLocation = false,
+  compact = false,
 }) => {
   // ─── Normalize tags into a sorted array of strings ───
   const normalizeSortedTagStrings = (input) => {
@@ -262,17 +266,28 @@ const LocationDistanceTagsRow = ({
 
   if (!hasTags && !hasBadges && !entity) return null;
 
-  return (
-    <div className={`space-y-2 mb-4 ${className}`}>
-      <LocationSection
-        entity={entity}
-        entityType={entityType}
-        compact={true}
-        distance={distance}
-      />
+  if (hideLocation && !hasTags && !hasBadges) return null;
 
-      {hasTags && <TruncatedList items={tagList} icon={Tag} />}
-      {hasBadges && <TruncatedList items={badgeNames} icon={Award} />}
+  return (
+    <div className={`${compact ? "space-y-1" : "space-y-2"} ${className}`}>
+      {" "}
+      {/* mb-4 removed — TODO: restore when View Details button is re-enabled */}
+      {!hideLocation && (
+        <LocationSection
+          entity={entity}
+          entityType={entityType}
+          compact={true}
+          distance={distance}
+          className={compact ? "text-xs" : ""}
+          iconSize={compact ? 12 : 16}
+        />
+      )}
+      {hasTags && (
+        <TruncatedList items={tagList} icon={Tag} compact={compact} />
+      )}
+      {hasBadges && (
+        <TruncatedList items={badgeNames} icon={Award} compact={compact} />
+      )}
     </div>
   );
 };

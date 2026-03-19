@@ -12,6 +12,8 @@ import {
   ShieldCheck,
   SendHorizontal,
   Mail,
+  Globe,
+  MapPin,
 } from "lucide-react";
 import TeamDetailsModal from "./TeamDetailsModal";
 import UserDetailsModal from "../users/UserDetailsModal";
@@ -78,6 +80,10 @@ const TeamCard = ({
   onDecline,
 
   showMatchHighlights = false,
+
+  // View mode
+  viewMode = "card",
+  activeFilters = {},
 
   // Loading state
   loading = false,
@@ -802,25 +808,29 @@ const TeamCard = ({
 
     // Search page: always show View Details button on the card
     if (isSearchResult) {
-      return (
-        <div className="mt-auto">
-          <Button
-            variant="primary"
-            className="w-full"
-            onClick={(e) => {
-              e.stopPropagation();
-              setIsModalOpen(true);
-            }}
-          >
-            View Details
-          </Button>
-        </div>
-      );
+      return null;
+      // return (
+      //   <div className="mt-auto">
+      //     <Button
+      //       variant="primary"
+      //       size={viewMode === "mini" ? "xs" : "sm"}
+      //       className="w-full"
+      //       onClick={(e) => {
+      //         e.stopPropagation();
+      //         setIsModalOpen(true);
+      //       }}
+      //     >
+      //       View Details
+      //     </Button>
+      //   </div>
+      // );
     }
 
     if (effectiveVariant === "invitation" || pendingInvitationForTeam) {
       return (
-        <div className="mt-auto">
+        <div className="mt-auto pt-4">
+          {" "}
+          {/* pt-4: spacing from tags row — TODO: revert to pt-0 when LocationDistanceTagsRow mb-4 is restored */}
           <Button
             variant="primary"
             className="w-full"
@@ -839,7 +849,9 @@ const TeamCard = ({
     // If user has a pending application (search or application variant)
     if (effectiveVariant === "application" || pendingApplicationForTeam) {
       return (
-        <div className="mt-auto">
+        <div className="mt-auto pt-4">
+          {" "}
+          {/* pt-4: spacing from tags row — TODO: revert to pt-0 when LocationDistanceTagsRow mb-4 is restored */}
           <Button
             variant="primary"
             className="w-full"
@@ -857,10 +869,11 @@ const TeamCard = ({
 
     // Member variant: View Details + management actions
     return (
-      <div className="mt-auto flex justify-between items-center">
+      <div className="mt-auto pt-4 flex justify-between items-center">
+        {" "}
+        {/* pt-4: spacing from tags row — TODO: revert to pt-0 when LocationDistanceTagsRow mb-4 is restored */}
         <Button
           variant="primary"
-          size="sm"
           onClick={(e) => {
             e.stopPropagation();
             handleCardClick();
@@ -869,7 +882,6 @@ const TeamCard = ({
         >
           View Details
         </Button>
-
         {/* Team Management Actions (owner and admin) */}
         {isAuthenticated && !isSearchResult && (
           <div className="flex items-center space-x-2 ml-2">
@@ -911,10 +923,15 @@ const TeamCard = ({
       <Card
         title={teamData.name || "Unknown Team"}
         subtitle={
-          <span className="flex items-center text-base-content/70 text-sm gap-1.5">
+          <span
+            className={`flex items-center flex-wrap text-base-content/70 ${viewMode === "mini" ? "text-xs gap-x-1 gap-y-0.5 w-full" : "text-sm gap-1.5"}`}
+          >
             {/* Members count */}
             <span className="flex items-center">
-              <Users size={14} className="text-primary mr-0.5" />
+              <Users
+                size={viewMode === "mini" ? 12 : 14}
+                className="text-primary mr-0.5"
+              />
               <span>
                 {getMemberCount()}/{getMaxMembers()}
               </span>
@@ -930,9 +947,15 @@ const TeamCard = ({
                 }
               >
                 {teamData.is_public === true || teamData.isPublic === true ? (
-                  <EyeIcon size={14} className="text-green-600" />
+                  <EyeIcon
+                    size={viewMode === "mini" ? 12 : 14}
+                    className="text-green-600"
+                  />
                 ) : (
-                  <EyeClosed size={14} className="text-gray-500" />
+                  <EyeClosed
+                    size={viewMode === "mini" ? 12 : 14}
+                    className="text-gray-500"
+                  />
                 )}
               </Tooltip>
             )}
@@ -951,7 +974,10 @@ const TeamCard = ({
                 }`}
               >
                 <span className="flex items-center">
-                  <Mail size={14} className="text-pink-500" />
+                  <Mail
+                    size={viewMode === "mini" ? 12 : 14}
+                    className="text-pink-500"
+                  />
                   {getFormattedDate() && (
                     <span className="ml-0.5">{getFormattedDate()}</span>
                   )}
@@ -973,7 +999,10 @@ const TeamCard = ({
                 }`}
               >
                 <span className="flex items-center">
-                  <SendHorizontal size={14} className="text-info" />
+                  <SendHorizontal
+                    size={viewMode === "mini" ? 12 : 14}
+                    className="text-info"
+                  />
                   {getFormattedDate() && (
                     <span className="ml-0.5">{getFormattedDate()}</span>
                   )}
@@ -987,7 +1016,7 @@ const TeamCard = ({
                 {userRole === "owner" && (
                   <Tooltip content="You are the owner of this team">
                     <Crown
-                      size={14}
+                      size={viewMode === "mini" ? 12 : 14}
                       className="text-[var(--color-role-owner-bg)]"
                     />
                   </Tooltip>
@@ -995,7 +1024,7 @@ const TeamCard = ({
                 {userRole === "admin" && (
                   <Tooltip content="You are an admin of this team">
                     <ShieldCheck
-                      size={14}
+                      size={viewMode === "mini" ? 12 : 14}
                       className="text-[var(--color-role-admin-bg)]"
                     />
                   </Tooltip>
@@ -1003,13 +1032,39 @@ const TeamCard = ({
                 {userRole === "member" && (
                   <Tooltip content="You are a member of this team">
                     <User
-                      size={14}
+                      size={viewMode === "mini" ? 12 : 14}
                       className="text-[var(--color-role-member-bg)]"
                     />
                   </Tooltip>
                 )}
               </span>
             )}
+
+            {/* Compact location in subtitle for mini cards */}
+            {viewMode === "mini" &&
+              !activeFilters.showLocation &&
+              (teamData.city ||
+                teamData.country ||
+                teamData.is_remote ||
+                teamData.isRemote) && (
+                <span className="flex items-center">
+                  {teamData.is_remote || teamData.isRemote ? (
+                    <>
+                      <Globe size={12} className="mr-0.5 flex-shrink-0" />
+                      <span>Remote</span>
+                    </>
+                  ) : (
+                    <>
+                      <MapPin size={12} className="mr-0.5 flex-shrink-0" />
+                      <span>
+                        {[teamData.city, teamData.country]
+                          .filter(Boolean)
+                          .join(", ")}
+                      </span>
+                    </>
+                  )}
+                </span>
+              )}
           </span>
         }
         hoverable
@@ -1020,6 +1075,21 @@ const TeamCard = ({
         imageShape="circle"
         onClick={handleCardClick}
         truncateContent={true}
+        contentClassName={
+          viewMode === "mini"
+            ? `!pt-0 !px-4 sm:!px-5 ${activeFilters.showLocation || activeFilters.showTags || activeFilters.showBadges ? "!pb-4 sm:!pb-5" : "!pb-0"}`
+            : ""
+        }
+        headerClassName={
+          viewMode === "mini"
+            ? `!p-4 sm:!p-5 ${activeFilters.showLocation || activeFilters.showTags || activeFilters.showBadges ? "!pb-4" : "!pb-0"}`
+            : ""
+        }
+        imageWrapperClassName={viewMode === "mini" ? "mb-0 pb-0" : ""}
+        titleClassName={
+          viewMode === "mini" ? "text-base mb-0.5 leading-[110%]" : ""
+        }
+        marginClassName={viewMode === "mini" ? "mb-2" : ""}
       >
         {error && (
           <Alert
@@ -1030,15 +1100,23 @@ const TeamCard = ({
           />
         )}
         {/* Team description */}
-        <p className="text-base-content/80 mb-4">
-          {teamData.description || "No description"}
-        </p>
+        {viewMode !== "mini" && (
+          <p className="text-base-content/80 mb-4">
+            {teamData.description || "No description"}
+          </p>
+        )}
 
         <LocationDistanceTagsRow
           entity={teamData}
           entityType="team"
           distance={teamData.distance_km ?? teamData.distanceKm}
-          getDisplayTags={getDisplayTags}
+          getDisplayTags={
+            viewMode === "mini" && !activeFilters.showTags
+              ? null
+              : getDisplayTags
+          }
+          hideLocation={viewMode === "mini" && !activeFilters.showLocation}
+          compact={viewMode === "mini"}
         />
 
         {/* Message preview (invitation/application variants) */}

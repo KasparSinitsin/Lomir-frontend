@@ -29,6 +29,7 @@ const LocationSection = ({
   showTitle,
   distance = null,
   headerRight = null,
+  iconSize = 16,
 }) => {
   // Normalize the location data (handles snake_case/camelCase)
   const location = normalizeLocationData(entity);
@@ -51,11 +52,14 @@ const LocationSection = ({
   if (compact) {
     return (
       <div
-        className={`flex flex-wrap items-start gap-x-3 gap-y-2 text-sm text-base-content/70 ${className}`}
+        className={`flex flex-wrap items-start text-sm text-base-content/70 ${className} ${iconSize < 16 ? "gap-x-2 gap-y-1" : "gap-x-3 gap-y-2"}`}
       >
         {/* Location info */}
         <div className="flex items-start">
-          <IconComponent size={16} className="mr-1 flex-shrink-0 mt-0.5" />
+          <IconComponent
+            size={iconSize}
+            className="mr-1 flex-shrink-0 mt-0.5"
+          />
           {isRemote ? (
             <span>Remote</span>
           ) : (
@@ -76,7 +80,7 @@ const LocationSection = ({
           distance !== undefined &&
           distance < 999999 && (
             <div className="flex items-start">
-              <Ruler size={16} className="mr-1 flex-shrink-0 mt-0.5" />
+              <Ruler size={iconSize} className="mr-1 flex-shrink-0 mt-0.5" />
               <span>{Math.round(distance)} km away</span>
             </div>
           )}
