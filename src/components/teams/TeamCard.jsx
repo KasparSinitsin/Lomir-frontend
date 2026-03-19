@@ -7,6 +7,7 @@ import {
   EyeClosed,
   EyeIcon,
   Tag,
+  Award,
   User,
   Crown,
   ShieldCheck,
@@ -14,6 +15,7 @@ import {
   Mail,
   Globe,
   MapPin,
+  Ruler,
 } from "lucide-react";
 import TeamDetailsModal from "./TeamDetailsModal";
 import UserDetailsModal from "../users/UserDetailsModal";
@@ -915,6 +917,200 @@ const TeamCard = ({
   };
 
   console.log("TeamCard data:", teamData, "distance_km:", teamData.distance_km);
+
+  // ============ LIST VIEW ============
+
+  if (viewMode === "list") {
+    const locationText =
+      teamData.is_remote || teamData.isRemote
+        ? "Remote"
+        : [teamData.city, teamData.country].filter(Boolean).join(", ");
+    const distance = teamData.distance_km ?? teamData.distanceKm;
+    const showDistance = distance != null && distance < 999999 && !(teamData.is_remote || teamData.isRemote);
+
+    const tagNames = (teamData.tags || [])
+      .map((t) => (typeof t === "string" ? t : t.name || t.tag || ""))
+      .filter(Boolean);
+    const maxInlineTags = 3;
+    const visibleTags = tagNames.slice(0, maxInlineTags);
+    const remainingTags = tagNames.length - maxInlineTags;
+    const tagsSummary =
+      visibleTags.length > 0
+        ? visibleTags.join(", ") +
+          (remainingTags > 0 ? ` +${remainingTags}` : "")
+        : "";
+
+    const badgeNames = (teamData.badges || [])
+      .map((b) => b.name || "")
+      .filter(Boolean);
+    const maxInlineBadges = 3;
+    const visibleBadges = badgeNames.slice(0, maxInlineBadges);
+    const remainingBadges = badgeNames.length - maxInlineBadges;
+    const badgesSummary =
+      visibleBadges.length > 0
+        ? visibleBadges.join(", ") + (remainingBadges > 0 ? ` +${remainingBadges}` : "")
+        : "";
+
+    const memberCount = getMemberCount();
+    const maxMembers = getMaxMembers();
+
+    const subtitleContent = (
+      <span className="flex items-center gap-1 text-base-content/60">
+        <Users size={11} />
+        <span>{memberCount}/{maxMembers}</span>
+        {userRole && effectiveVariant === "member" && (
+          <>
+            {userRole === "owner" && (
+              <Tooltip content="You are the owner of this team">
+                <Crown size={11} className="text-[var(--color-role-owner-bg)]" />
+              </Tooltip>
+            )}
+            {userRole === "admin" && (
+              <Tooltip content="You are an admin of this team">
+                <ShieldCheck size={11} className="text-[var(--color-role-admin-bg)]" />
+              </Tooltip>
+            )}
+            {userRole === "member" && (
+              <Tooltip content="You are a member of this team">
+                <User size={11} className="text-[var(--color-role-member-bg)]" />
+              </Tooltip>
+            )}
+          </>
+        )}
+        {shouldShowVisibilityIcon() && (
+          <Tooltip content={teamData.is_public === true || teamData.isPublic === true ? "Public Team - visible for everyone" : "Private Team - only visible for Members"}>
+            {teamData.is_public === true || teamData.isPublic === true ? (
+              <EyeIcon size={11} className="text-green-600" />
+            ) : (
+              <EyeClosed size={11} className="text-gray-500" />
+            )}
+          </Tooltip>
+        )}
+      </span>
+    );
+
+    return (
+      <>
+        <Card
+          title={teamData.name || "Unknown Team"}
+          subtitle={subtitleContent}
+          image={getTeamImage()}
+          imageFallback={getTeamInitials()}
+          imageAlt={`${teamData.name} team`}
+          onClick={handleCardClick}
+          viewMode="list"
+          className=""
+        >
+          <div className="w-36 flex-shrink-0 text-xs text-base-content/60 flex items-center gap-1 overflow-hidden">
+            {locationText && (
+              <Tooltip content={locationText}>
+                <div className="flex items-center gap-1 overflow-hidden">
+                  {teamData.is_remote || teamData.isRemote ? (
+                    <Globe size={11} className="flex-shrink-0" />
+                  ) : (
+                    <MapPin size={11} className="flex-shrink-0" />
+                  )}
+                  <span className="truncate">{locationText}</span>
+                </div>
+              </Tooltip>
+            )}
+          </div>
+          {showDistance && (
+            <div className="w-16 flex-shrink-0 text-xs text-base-content/60 flex items-center gap-1 overflow-hidden">
+              <Tooltip content={`${Math.round(distance)} km away from you`}>
+                <div className="flex items-center gap-1">
+                  <Ruler size={11} className="flex-shrink-0" />
+                  <span className="whitespace-nowrap">{Math.round(distance)} km</span>
+                </div>
+              </Tooltip>
+            </div>
+          )}
+          <div className="w-52 flex-shrink-0 text-xs text-base-content/60 hidden sm:flex items-center gap-1 overflow-hidden">
+            {tagsSummary && (
+              <Tooltip content={tagNames.join(", ")} wrapperClassName="flex items-center gap-1 min-w-0 overflow-hidden w-full">
+                <Tag size={11} className="flex-shrink-0" />
+                <span className="truncate">{tagsSummary}</span>
+              </Tooltip>
+            )}
+          </div>
+          <div className="w-48 flex-shrink-0 text-xs text-base-content/60 hidden sm:flex items-center gap-1 overflow-hidden">
+            {badgesSummary && (
+              <Tooltip content={badgeNames.join(", ")} wrapperClassName="flex items-center gap-1 min-w-0 overflow-hidden w-full">
+                <Award size={11} className="flex-shrink-0" />
+                <span className="truncate">{badgesSummary}</span>
+              </Tooltip>
+            )}
+          </div>
+        </Card>
+
+        <TeamDetailsModal
+          isOpen={isModalOpen}
+          teamId={getTeamId()}
+          initialTeamData={teamData}
+          onClose={handleModalClose}
+          onUpdate={handleTeamUpdate}
+          onDelete={onDelete}
+          onLeave={handleLeaveTeam}
+          userRole={userRole}
+          isFromSearch={isSearchResult || effectiveVariant !== "member"}
+          hasPendingInvitation={
+            effectiveVariant === "invitation" || !!pendingInvitationForTeam
+          }
+          pendingInvitation={
+            effectiveVariant === "invitation"
+              ? invitation
+              : pendingInvitationForTeam
+          }
+          hasPendingApplication={
+            effectiveVariant === "application" || !!pendingApplicationForTeam
+          }
+          pendingApplication={
+            effectiveVariant === "application"
+              ? application
+              : pendingApplicationForTeam
+          }
+          onViewApplicationDetails={() => setIsApplicationModalOpen(true)}
+          showMatchHighlights={showMatchHighlights}
+        />
+
+        {isInvitationDetailsModalOpen &&
+          (invitation || pendingInvitationForTeam) && (
+            <TeamInvitationDetailsModal
+              isOpen={isInvitationDetailsModalOpen}
+              invitation={
+                effectiveVariant === "invitation"
+                  ? invitation
+                  : pendingInvitationForTeam
+              }
+              onClose={() => setIsInvitationDetailsModalOpen(false)}
+              onAccept={onAccept}
+              onDecline={onDecline}
+            />
+          )}
+
+        {isApplicationModalOpen &&
+          (application || pendingApplicationForTeam) && (
+            <TeamApplicationDetailsModal
+              isOpen={isApplicationModalOpen}
+              application={
+                effectiveVariant === "application"
+                  ? application
+                  : pendingApplicationForTeam
+              }
+              onClose={() => setIsApplicationModalOpen(false)}
+              onCancel={onCancel || onCancelApplication}
+              onSendReminder={onSendReminder}
+            />
+          )}
+
+        <UserDetailsModal
+          isOpen={!!selectedUserId}
+          userId={selectedUserId}
+          onClose={() => setSelectedUserId(null)}
+        />
+      </>
+    );
+  }
 
   // ============ Main Render ============
 
