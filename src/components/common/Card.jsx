@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import Tooltip from "./Tooltip";
 
 const Card = ({
   title,
@@ -22,6 +23,7 @@ const Card = ({
   imageWrapperClassName = "",
   titleClassName = "",
   marginClassName = "",
+  viewMode = "card",
 }) => {
   const [imageError, setImageError] = useState(false);
 
@@ -112,6 +114,82 @@ const Card = ({
     // fallback + default: 3 lines
     return "[&>p:first-of-type]:line-clamp-3 [&>p:first-of-type]:-mt-4";
   };
+
+  if (viewMode === "list") {
+    return (
+      <div
+        className={`
+          flex items-center gap-3 px-4 py-2.5
+          hover:shadow-md transition-shadow duration-300
+          first:rounded-t-xl last:rounded-b-xl
+          ${onClick ? "cursor-pointer" : ""}
+          ${className}
+        `}
+        onClick={onClick}
+        role={onClick ? "button" : undefined}
+        tabIndex={onClick ? 0 : undefined}
+        onKeyDown={
+          onClick
+            ? (e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  onClick(e);
+                }
+              }
+            : undefined
+        }
+      >
+        {(image || imageFallback) && (
+          <div className="avatar placeholder flex-shrink-0">
+            <div className="bg-primary text-primary-content rounded-full w-9 h-9 flex items-center justify-center">
+              {typeof image === "string" &&
+              (image.startsWith("http") ||
+                image.startsWith("https") ||
+                image.startsWith("data:")) &&
+              !imageError ? (
+                <img
+                  src={image}
+                  alt={imageAlt}
+                  className="rounded-full object-cover w-full h-full"
+                  onError={() => setImageError(true)}
+                />
+              ) : (
+                <span className="text-sm">
+                  {imageFallback ||
+                    (typeof image === "string"
+                      ? generateInitials(image)
+                      : "?")}
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+
+        <div className="min-w-0 flex-1">
+          <Tooltip content={title} wrapperClassName="block min-w-0 overflow-hidden">
+            <div className="font-medium text-sm text-primary truncate">{title}</div>
+          </Tooltip>
+          {subtitle && (
+            <div className="text-xs text-base-content/60 mt-px">{subtitle}</div>
+          )}
+        </div>
+
+        {children}
+
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          className="text-base-content/30 flex-shrink-0"
+        >
+          <path d="M9 18l6-6-6-6" />
+        </svg>
+      </div>
+    );
+  }
 
   return (
     <div

@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import Card from "../common/Card";
 import Button from "../common/Button";
 import Tooltip from "../common/Tooltip";
-import { Eye, EyeClosed, MapPin, Globe } from "lucide-react";
+import { Eye, EyeClosed, MapPin, Globe, Tag, Award, Ruler } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 import { useUserModal } from "../../contexts/UserModalContext";
 import { getUserInitials } from "../../utils/userHelpers";
@@ -97,6 +97,104 @@ const UserCard = ({
     });
   };
 
+  // ============ LIST VIEW ============
+  if (viewMode === "list") {
+    const locationText =
+      user.is_remote || user.isRemote
+        ? "Remote"
+        : [user.city, user.country].filter(Boolean).join(", ");
+    const distance = user.distance_km ?? user.distanceKm;
+    const showDistance = distance != null && distance < 999999 && !(user.is_remote || user.isRemote);
+
+    const tagNames = (user.tags || [])
+      .map((t) => (typeof t === "string" ? t : t.name || t.tag || ""))
+      .filter(Boolean);
+    const maxInlineTags = 3;
+    const visibleTags = tagNames.slice(0, maxInlineTags);
+    const remainingTags = tagNames.length - maxInlineTags;
+    const tagsSummary =
+      visibleTags.length > 0
+        ? visibleTags.join(", ") + (remainingTags > 0 ? ` +${remainingTags}` : "")
+        : "";
+
+    const badgeNames = (user.badges || [])
+      .map((b) => b.name || "")
+      .filter(Boolean);
+    const maxInlineBadges = 3;
+    const visibleBadges = badgeNames.slice(0, maxInlineBadges);
+    const remainingBadges = badgeNames.length - maxInlineBadges;
+    const badgesSummary =
+      visibleBadges.length > 0
+        ? visibleBadges.join(", ") + (remainingBadges > 0 ? ` +${remainingBadges}` : "")
+        : "";
+
+    const listSubtitle = (user.username || shouldShowVisibilityIcon()) ? (
+      <span className="flex items-center gap-1">
+        {user.username && <span>@{user.username}</span>}
+        {shouldShowVisibilityIcon() && (
+          <Tooltip content={isUserProfilePublic() ? "Public Profile - visible for everyone" : "Private Profile - only visible for you"}>
+            {isUserProfilePublic() ? (
+              <Eye size={11} className="text-green-600" />
+            ) : (
+              <EyeClosed size={11} className="text-gray-500" />
+            )}
+          </Tooltip>
+        )}
+      </span>
+    ) : null;
+
+    return (
+      <Card
+        title={displayName()}
+        subtitle={listSubtitle}
+        image={getProfileImage()}
+        imageFallback={getUserInitials(user)}
+        imageAlt={`${user.username || "User"}'s profile`}
+        onClick={openUserDetails}
+        viewMode="list"
+        className=""
+      >
+        <div className="w-36 flex-shrink-0 text-xs text-base-content/60 flex items-center gap-1 overflow-hidden">
+          {locationText && (
+            <Tooltip content={locationText}>
+              <div className="flex items-center gap-1 overflow-hidden">
+                <MapPin size={11} className="flex-shrink-0" />
+                <span className="truncate">{locationText}</span>
+              </div>
+            </Tooltip>
+          )}
+        </div>
+        {showDistance && (
+          <div className="w-16 flex-shrink-0 text-xs text-base-content/60 flex items-center gap-1 overflow-hidden">
+            <Tooltip content={`${Math.round(distance)} km away from you`}>
+              <div className="flex items-center gap-1">
+                <Ruler size={11} className="flex-shrink-0" />
+                <span className="whitespace-nowrap">{Math.round(distance)} km</span>
+              </div>
+            </Tooltip>
+          </div>
+        )}
+        <div className="w-52 flex-shrink-0 text-xs text-base-content/60 hidden sm:flex items-center gap-1 overflow-hidden">
+          {tagsSummary && (
+            <Tooltip content={tagNames.join(", ")} wrapperClassName="flex items-center gap-1 min-w-0 overflow-hidden w-full">
+              <Tag size={11} className="flex-shrink-0" />
+              <span className="truncate">{tagsSummary}</span>
+            </Tooltip>
+          )}
+        </div>
+        <div className="w-48 flex-shrink-0 text-xs text-base-content/60 hidden sm:flex items-center gap-1 overflow-hidden">
+          {badgesSummary && (
+            <Tooltip content={badgeNames.join(", ")} wrapperClassName="flex items-center gap-1 min-w-0 overflow-hidden w-full">
+              <Award size={11} className="flex-shrink-0" />
+              <span className="truncate">{badgesSummary}</span>
+            </Tooltip>
+          )}
+        </div>
+      </Card>
+    );
+  }
+
+  // ============ CARD / MINI CARD VIEW ============
   return (
     <Card
       title={displayName()}

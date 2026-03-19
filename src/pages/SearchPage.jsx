@@ -1383,43 +1383,83 @@ const SearchPage = () => {
                 </div>
               </div>
 
-              <Grid cols={1} md={2} lg={3} gap={resultView === "card" ? 6 : 4}>
-                {filteredResults.teams.map((team) => (
-                  <TeamCard
-                    key={`team-${team.id}`}
-                    team={team}
-                    onUpdate={handleTeamUpdate}
-                    isSearchResult={true}
-                    showMatchHighlights={sortBy === "match"}
-                    viewMode={resultView}
-                    activeFilters={{
-                      showLocation:
-                        (sortBy === "proximity" && sortDir !== "remote") ||
-                        sortBy === "match",
-                      showTags: sortBy === "match",
-                      showBadges: sortBy === "match",
-                    }}
-                  />
-                ))}
-                {filteredResults.users.map((user) => (
-                  <UserCard
-                    key={`user-${user.id}`}
-                    user={user}
-                    onUpdate={handleUserUpdate}
-                    roleMatchTagIds={roleMatchTagIds}
-                    roleMatchBadgeNames={roleMatchBadgeNames}
-                    showMatchHighlights={sortBy === "match"}
-                    viewMode={resultView}
-                    activeFilters={{
-                      showLocation:
-                        (sortBy === "proximity" && sortDir !== "remote") ||
-                        sortBy === "match",
-                      showTags: sortBy === "match",
-                      showBadges: sortBy === "match",
-                    }}
-                  />
-                ))}
-              </Grid>
+              {resultView === "list" ? (
+                <div className="background-opacity bg-opacity-70 shadow-soft rounded-xl divide-y divide-base-200">
+                  {filteredResults.teams.map((team) => (
+                    <TeamCard
+                      key={`team-${team.id}`}
+                      team={team}
+                      onUpdate={handleTeamUpdate}
+                      isSearchResult={true}
+                      showMatchHighlights={sortBy === "match"}
+                      viewMode="list"
+                      activeFilters={{
+                        showLocation:
+                          (sortBy === "proximity" && sortDir !== "remote") ||
+                          sortBy === "match",
+                        showTags: sortBy === "match",
+                        showBadges: sortBy === "match",
+                      }}
+                    />
+                  ))}
+                  {filteredResults.users.map((user) => (
+                    <UserCard
+                      key={`user-${user.id}`}
+                      user={user}
+                      onUpdate={handleUserUpdate}
+                      roleMatchTagIds={roleMatchTagIds}
+                      roleMatchBadgeNames={roleMatchBadgeNames}
+                      showMatchHighlights={sortBy === "match"}
+                      viewMode="list"
+                      activeFilters={{
+                        showLocation:
+                          (sortBy === "proximity" && sortDir !== "remote") ||
+                          sortBy === "match",
+                        showTags: sortBy === "match",
+                        showBadges: sortBy === "match",
+                      }}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <Grid cols={1} md={2} lg={3} gap={resultView === "card" ? 6 : 4}>
+                  {filteredResults.teams.map((team) => (
+                    <TeamCard
+                      key={`team-${team.id}`}
+                      team={team}
+                      onUpdate={handleTeamUpdate}
+                      isSearchResult={true}
+                      showMatchHighlights={sortBy === "match"}
+                      viewMode={resultView}
+                      activeFilters={{
+                        showLocation:
+                          (sortBy === "proximity" && sortDir !== "remote") ||
+                          sortBy === "match",
+                        showTags: sortBy === "match",
+                        showBadges: sortBy === "match",
+                      }}
+                    />
+                  ))}
+                  {filteredResults.users.map((user) => (
+                    <UserCard
+                      key={`user-${user.id}`}
+                      user={user}
+                      onUpdate={handleUserUpdate}
+                      roleMatchTagIds={roleMatchTagIds}
+                      roleMatchBadgeNames={roleMatchBadgeNames}
+                      showMatchHighlights={sortBy === "match"}
+                      viewMode={resultView}
+                      activeFilters={{
+                        showLocation:
+                          (sortBy === "proximity" && sortDir !== "remote") ||
+                          sortBy === "match",
+                        showTags: sortBy === "match",
+                        showBadges: sortBy === "match",
+                      }}
+                    />
+                  ))}
+                </Grid>
+              )}
             </section>
           )}
 
