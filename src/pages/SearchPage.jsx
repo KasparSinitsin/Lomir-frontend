@@ -40,7 +40,10 @@ import {
   getVisibleSortOptions,
 } from "./searchPageHelpers";
 
-import { RESULTS_PER_PAGE_OPTIONS, DEFAULT_RESULTS_PER_PAGE } from "../constants/pagination";
+import {
+  RESULTS_PER_PAGE_OPTIONS,
+  DEFAULT_RESULTS_PER_PAGE,
+} from "../constants/pagination";
 
 const SearchPage = () => {
   const location = useLocation();
@@ -67,7 +70,11 @@ const SearchPage = () => {
   const [sortBy, setSortBy] = useState(() => {
     const p = new URLSearchParams(location.search);
     const sort = p.get("sort");
-    if (["match", "name", "recent", "newest", "capacity", "proximity"].includes(sort))
+    if (
+      ["match", "name", "recent", "newest", "capacity", "proximity"].includes(
+        sort,
+      )
+    )
       return sort;
     if (p.get("proximity") === "remote") return "proximity";
     return "name";
@@ -100,6 +107,9 @@ const SearchPage = () => {
 
   // ===== CAPACITY FILTER STATE =====
   const [capacityMode, setCapacityMode] = useState("spots");
+
+  // ===== RESULT VIEW STATE =====
+  const [resultView, setResultView] = useState("card");
 
   // ===== ROLE MATCH CONTEXT STATE =====
   const [matchRoleId, setMatchRoleId] = useState(() => {
@@ -234,7 +244,9 @@ const SearchPage = () => {
   };
 
   const roleMatchTagIds =
-    sortBy === "match" && matchRoleId && filterTagIds.length > 0 ? new Set(filterTagIds) : null;
+    sortBy === "match" && matchRoleId && filterTagIds.length > 0
+      ? new Set(filterTagIds)
+      : null;
 
   const roleMatchBadgeNames =
     sortBy === "match" && matchRoleId && filterBadgeIds.length > 0
@@ -246,7 +258,8 @@ const SearchPage = () => {
         )
       : null;
 
-  const hasActiveFilters = filterTagIds.length > 0 || filterBadgeIds.length > 0 || !!matchRoleId;
+  const hasActiveFilters =
+    filterTagIds.length > 0 || filterBadgeIds.length > 0 || !!matchRoleId;
 
   const noResultsFound =
     (hasSearched || hasActiveFilters) &&
@@ -254,8 +267,7 @@ const SearchPage = () => {
     filteredResults.users.length === 0 &&
     !loading;
 
-  const effectiveOpenRolesOnly =
-    searchType === "users" ? false : openRolesOnly;
+  const effectiveOpenRolesOnly = searchType === "users" ? false : openRolesOnly;
   const effectiveIncludeOwnTeams =
     !isAuthenticated || searchType === "users" ? true : includeOwnTeams;
   const isCapacitySpotsSort =
@@ -449,7 +461,10 @@ const SearchPage = () => {
             structure.forEach((supercat) => {
               supercat.categories?.forEach((cat) => {
                 cat.tags?.forEach((tag) => {
-                  lookup[Number(tag.id)] = { ...tag, supercategory: supercat.name };
+                  lookup[Number(tag.id)] = {
+                    ...tag,
+                    supercategory: supercat.name,
+                  };
                 });
               });
             });
@@ -504,7 +519,9 @@ const SearchPage = () => {
       const anchorMidY = anchorRect.top + anchorRect.height / 2;
       const submenuMidY = submenuTop + submenuHeight / 2;
       const firstRowTop =
-        visibleButtonTops.length > 0 ? Math.min(...visibleButtonTops) : anchorRect.top;
+        visibleButtonTops.length > 0
+          ? Math.min(...visibleButtonTops)
+          : anchorRect.top;
       const shouldAlignLeft = anchorRect.top > firstRowTop + 4;
 
       if (shouldAlignLeft) {
@@ -862,7 +879,11 @@ const SearchPage = () => {
           const newParams = new URLSearchParams(window.location.search);
           newParams.delete("roleId");
           newParams.delete("roleName");
-          window.history.replaceState({}, "", `${window.location.pathname}?${newParams.toString()}`);
+          window.history.replaceState(
+            {},
+            "",
+            `${window.location.pathname}?${newParams.toString()}`,
+          );
         }
         break;
       case "excludeTeam":
@@ -873,7 +894,11 @@ const SearchPage = () => {
           const newParams = new URLSearchParams(window.location.search);
           newParams.delete("excludeTeamId");
           newParams.delete("excludeTeamName");
-          window.history.replaceState({}, "", `${window.location.pathname}?${newParams.toString()}`);
+          window.history.replaceState(
+            {},
+            "",
+            `${window.location.pathname}?${newParams.toString()}`,
+          );
         }
         break;
       default:
@@ -934,33 +959,33 @@ const SearchPage = () => {
       <div ref={submenuRef}>
         {activeSubmenuKey === "capacity" && (
           <div className="flex items-center justify-end gap-3 pr-1">
-              <button
-                type="button"
-                onClick={() => handleCapacityModeChange("roles")}
-                disabled={loading}
-                className={`text-xs rounded transition-colors ${
-                  isCapacityRolesSort
-                    ? "text-[var(--color-primary)] font-bold"
-                    : "text-[var(--color-primary-focus)] hover:text-[var(--color-primary-focus)] hover:font-medium"
-                }`}
-              >
-                {isCapacityRolesSort && sortDir === "asc"
-                  ? "Least Open Roles"
-                  : "Most Open Roles"}
-              </button>
+            <button
+              type="button"
+              onClick={() => handleCapacityModeChange("roles")}
+              disabled={loading}
+              className={`text-xs rounded transition-colors ${
+                isCapacityRolesSort
+                  ? "text-[var(--color-primary)] font-bold"
+                  : "text-[var(--color-primary-focus)] hover:text-[var(--color-primary-focus)] hover:font-medium"
+              }`}
+            >
+              {isCapacityRolesSort && sortDir === "asc"
+                ? "Least Open Roles"
+                : "Most Open Roles"}
+            </button>
 
-              <button
-                type="button"
-                onClick={handleOpenRolesOnlyToggle}
-                disabled={loading}
-                className={`text-xs rounded transition-colors ${
-                  effectiveOpenRolesOnly
-                    ? "text-[var(--color-primary)] font-bold"
-                    : "text-[var(--color-primary-focus)] hover:text-[var(--color-primary-focus)] hover:font-medium"
-                }`}
-              >
-                Open Roles Only
-              </button>
+            <button
+              type="button"
+              onClick={handleOpenRolesOnlyToggle}
+              disabled={loading}
+              className={`text-xs rounded transition-colors ${
+                effectiveOpenRolesOnly
+                  ? "text-[var(--color-primary)] font-bold"
+                  : "text-[var(--color-primary-focus)] hover:text-[var(--color-primary-focus)] hover:font-medium"
+              }`}
+            >
+              Open Roles Only
+            </button>
           </div>
         )}
 
@@ -1053,7 +1078,9 @@ const SearchPage = () => {
             style={{
               position: "absolute",
               top: 0,
-              ...(submenuPosition.align === "left" ? { left: 0 } : { right: 0 }),
+              ...(submenuPosition.align === "left"
+                ? { left: 0 }
+                : { right: 0 }),
               width: 4,
               borderTop: "1.5px solid var(--color-primary)",
               ...(submenuPosition.align === "left"
@@ -1065,7 +1092,9 @@ const SearchPage = () => {
             style={{
               position: "absolute",
               top: 0,
-              ...(submenuPosition.align === "left" ? { left: 0 } : { right: 0 }),
+              ...(submenuPosition.align === "left"
+                ? { left: 0 }
+                : { right: 0 }),
               height: "100%",
               ...(submenuPosition.align === "left"
                 ? {
@@ -1084,7 +1113,9 @@ const SearchPage = () => {
             style={{
               position: "absolute",
               bottom: 0,
-              ...(submenuPosition.align === "left" ? { left: 0 } : { right: 0 }),
+              ...(submenuPosition.align === "left"
+                ? { left: 0 }
+                : { right: 0 }),
               width: 4,
               borderBottom: "1.5px solid var(--color-primary)",
               ...(submenuPosition.align === "left"
@@ -1146,7 +1177,10 @@ const SearchPage = () => {
           </div>
         </div>
 
-        <div ref={sortFilterRef} className="mx-auto w-full max-w-full px-2 sm:px-0">
+        <div
+          ref={sortFilterRef}
+          className="mx-auto w-full max-w-full px-2 sm:px-0"
+        >
           <div className="mx-auto w-full max-w-full sm:w-fit">
             <div className="flex w-full max-w-full items-center gap-2">
               <button
@@ -1207,7 +1241,9 @@ const SearchPage = () => {
                             sortButtonRefs.current[option.value] = node;
                           }}
                           type="button"
-                          onClick={() => handleTopLevelSortOptionClick(option.value)}
+                          onClick={() =>
+                            handleTopLevelSortOptionClick(option.value)
+                          }
                           className={`flex items-center gap-1 px-1 text-xs rounded transition-colors shrink-0 ${
                             isActive
                               ? "text-[var(--color-primary)] font-bold"
@@ -1252,7 +1288,9 @@ const SearchPage = () => {
                       >
                         <IncludeOwnTeamsIcon className="w-3.5 h-3.5 shrink-0" />
                         <span>
-                          {effectiveIncludeOwnTeams ? "+ My Teams" : "- My Teams"}
+                          {effectiveIncludeOwnTeams
+                            ? "+ My Teams"
+                            : "- My Teams"}
                         </span>
                       </button>
                     </div>
@@ -1293,51 +1331,92 @@ const SearchPage = () => {
         </div>
       ) : (
         <div>
-          {filteredResults.teams.length > 0 && (
+          {(filteredResults.teams.length > 0 ||
+            filteredResults.users.length > 0) && (
             <section className="mb-8">
-              <h2 className="text-xl font-semibold mb-4">
-                Teams
-                {searchType === "teams" && (
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-semibold">
+                  {searchType === "all" && "Teams & People"}
+                  {searchType === "teams" && "Teams"}
+                  {searchType === "users" && "People"}
                   <span className="text-sm font-normal text-base-content/60 ml-2">
-                    ({pagination.totalTeams} total)
+                    (
+                    {searchType === "all"
+                      ? `${filteredResults.teams.length + filteredResults.users.length} results`
+                      : searchType === "teams"
+                        ? `${pagination.totalTeams} results`
+                        : `${pagination.totalUsers} results`}
+                    )
                   </span>
-                )}
-              </h2>
+                </h2>
 
-              <Grid cols={1} md={2} lg={3} gap={6}>
+                <div className="flex items-center text-sm font-normal text-base-content/60 gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setResultView("card")}
+                    className={`px-2 py-1 rounded hover:text-base-content transition-colors ${
+                      resultView === "card" ? "font-bold text-base-content" : ""
+                    }`}
+                  >
+                    Card
+                  </button>
+                  <span className="text-base-content/30">|</span>
+                  <button
+                    type="button"
+                    onClick={() => setResultView("mini")}
+                    className={`px-2 py-1 rounded hover:text-base-content transition-colors ${
+                      resultView === "mini" ? "font-bold text-base-content" : ""
+                    }`}
+                  >
+                    Mini Card
+                  </button>
+                  <span className="text-base-content/30">|</span>
+                  <button
+                    type="button"
+                    onClick={() => setResultView("list")}
+                    className={`px-2 py-1 rounded hover:text-base-content transition-colors ${
+                      resultView === "list" ? "font-bold text-base-content" : ""
+                    }`}
+                  >
+                    List
+                  </button>
+                </div>
+              </div>
+
+              <Grid cols={1} md={2} lg={3} gap={resultView === "card" ? 6 : 4}>
                 {filteredResults.teams.map((team) => (
                   <TeamCard
-                    key={team.id}
+                    key={`team-${team.id}`}
                     team={team}
                     onUpdate={handleTeamUpdate}
                     isSearchResult={true}
                     showMatchHighlights={sortBy === "match"}
+                    viewMode={resultView}
+                    activeFilters={{
+                      showLocation:
+                        (sortBy === "proximity" && sortDir !== "remote") ||
+                        sortBy === "match",
+                      showTags: sortBy === "match",
+                      showBadges: sortBy === "match",
+                    }}
                   />
                 ))}
-              </Grid>
-            </section>
-          )}
-
-          {filteredResults.users.length > 0 && (
-            <section>
-              <h2 className="text-xl font-semibold mb-4">
-                People
-                {searchType === "users" && (
-                  <span className="text-sm font-normal text-base-content/60 ml-2">
-                    ({pagination.totalUsers} total)
-                  </span>
-                )}
-              </h2>
-
-              <Grid cols={1} md={2} lg={3} gap={6}>
                 {filteredResults.users.map((user) => (
                   <UserCard
-                    key={user.id}
+                    key={`user-${user.id}`}
                     user={user}
                     onUpdate={handleUserUpdate}
                     roleMatchTagIds={roleMatchTagIds}
                     roleMatchBadgeNames={roleMatchBadgeNames}
                     showMatchHighlights={sortBy === "match"}
+                    viewMode={resultView}
+                    activeFilters={{
+                      showLocation:
+                        (sortBy === "proximity" && sortDir !== "remote") ||
+                        sortBy === "match",
+                      showTags: sortBy === "match",
+                      showBadges: sortBy === "match",
+                    }}
                   />
                 ))}
               </Grid>

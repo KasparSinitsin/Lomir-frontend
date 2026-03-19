@@ -17,6 +17,11 @@ const Card = ({
   onClick = null,
   truncateContent = 3,
   transparent = false,
+  contentClassName = "",
+  headerClassName = "",
+  imageWrapperClassName = "",
+  titleClassName = "",
+  marginClassName = "",
 }) => {
   const [imageError, setImageError] = useState(false);
 
@@ -62,7 +67,9 @@ const Card = ({
       (typeof image === "string" && !isUrl ? generateInitials(image) : "?");
 
     return (
-      <div className="flex justify-top mb-4 pb-4">
+      <div
+        className={`flex justify-top ${imageWrapperClassName || "mb-4 pb-4"}`}
+      >
         <div className="avatar placeholder">
           <div
             className={`bg-primary text-primary-content ${shapeClass} ${sizeClass} flex items-center justify-center`}
@@ -120,7 +127,7 @@ const Card = ({
       ${onClick ? "cursor-pointer" : ""}
       ${className}
       bg-opacity-70
-      mb-6
+      ${marginClassName || "mb-6"}
     `}
       onClick={onClick}
       role={onClick ? "button" : undefined}
@@ -137,22 +144,32 @@ const Card = ({
       }
     >
       {title && (
-        <div className="p-6 sm:p-7 pb-0 sm:pb-1 border-base-200">
+        <div
+          className={`p-6 sm:p-7 pb-0 sm:pb-1 border-base-200 ${headerClassName}`}
+        >
           <div className="flex gap-3">
             <div>{renderImage()}</div>
 
-            <div>
-              <h3 className="text-lg font-medium text-primary leading-[120%] mb-1">
+            <div className="min-w-0 flex-1">
+              <h3
+                className={`font-medium text-primary leading-[120%] mb-1 ${titleClassName || "text-lg"}`}
+              >
                 {title}
               </h3>
-              {subtitle && <p>{subtitle}</p>}
+              {subtitle && (
+                <p className={titleClassName ? "text-xs" : ""}>{subtitle}</p>
+              )}
             </div>
           </div>
         </div>
       )}
 
       {/* Only the first direct <p> inside this wrapper will be clamped */}
-      <div className={`p-4 sm:p-7 pt-0.5 sm:pt-1 flex-1 flex flex-col ${getTruncateClasses()}`}>{children}</div>
+      <div
+        className={`p-4 sm:p-7 pt-0.5 sm:pt-1 flex-1 flex flex-col ${getTruncateClasses()} ${contentClassName}`}
+      >
+        {children}
+      </div>
 
       {footer && (
         <div className="p-6 sm:p-7 bg-base-200/50 border-t border-base-200">

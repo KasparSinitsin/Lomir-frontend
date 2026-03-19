@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import Card from "../common/Card";
 import Button from "../common/Button";
 import Tooltip from "../common/Tooltip";
-import { Eye, EyeClosed } from "lucide-react";
+import { Eye, EyeClosed, MapPin, Globe } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 import { useUserModal } from "../../contexts/UserModalContext";
 import { getUserInitials } from "../../utils/userHelpers";
@@ -15,7 +15,15 @@ import LocationDistanceTagsRow from "../common/LocationDistanceTagsRow";
  * Uses UserModalContext for opening user details modals, ensuring proper
  * z-index stacking with other modals throughout the app.
  */
-const UserCard = ({ user, onUpdate, roleMatchTagIds, roleMatchBadgeNames, showMatchHighlights = false }) => {
+const UserCard = ({
+  user,
+  onUpdate,
+  roleMatchTagIds,
+  roleMatchBadgeNames,
+  showMatchHighlights = false,
+  viewMode = "card",
+  activeFilters = {},
+}) => {
   const { user: currentUser, isAuthenticated } = useAuth();
   const { openUserModal } = useUserModal();
 
@@ -82,14 +90,20 @@ const UserCard = ({ user, onUpdate, roleMatchTagIds, roleMatchBadgeNames, showMa
 
   // Open user details via global context
   const openUserDetails = () => {
-    openUserModal(user.id, { roleMatchTagIds, roleMatchBadgeNames, showMatchHighlights });
+    openUserModal(user.id, {
+      roleMatchTagIds,
+      roleMatchBadgeNames,
+      showMatchHighlights,
+    });
   };
 
   return (
     <Card
       title={displayName()}
       subtitle={
-        <span className="flex items-center text-base-content/70 text-sm gap-1.5">
+        <span
+          className={`flex items-center flex-wrap text-base-content/70 ${viewMode === "mini" ? "text-xs gap-x-1 gap-y-0.5 w-full" : "text-sm gap-1.5"}`}
+        >
           {user.username && <span>@{user.username}</span>}
           {shouldShowVisibilityIcon() && (
             <Tooltip
@@ -100,12 +114,28 @@ const UserCard = ({ user, onUpdate, roleMatchTagIds, roleMatchBadgeNames, showMa
               }
             >
               {isUserProfilePublic() ? (
-                <Eye size={14} className="text-green-600" />
+                <Eye
+                  size={viewMode === "mini" ? 12 : 14}
+                  className="text-green-600"
+                />
               ) : (
-                <EyeClosed size={14} className="text-gray-500" />
+                <EyeClosed
+                  size={viewMode === "mini" ? 12 : 14}
+                  className="text-gray-500"
+                />
               )}
             </Tooltip>
           )}
+          {viewMode === "mini" &&
+            !activeFilters.showLocation &&
+            (user.city || user.country) && (
+              <span className="flex items-center">
+                <MapPin size={12} className="mr-0.5 flex-shrink-0" />
+                <span>
+                  {[user.city, user.country].filter(Boolean).join(", ")}
+                </span>
+              </span>
+            )}
         </span>
       }
       hoverable
@@ -116,8 +146,23 @@ const UserCard = ({ user, onUpdate, roleMatchTagIds, roleMatchBadgeNames, showMa
       imageShape="circle"
       onClick={openUserDetails}
       truncateContent={true}
+      contentClassName={
+        viewMode === "mini"
+          ? `!pt-0 !px-4 sm:!px-5 ${activeFilters.showLocation || activeFilters.showTags || activeFilters.showBadges ? "!pb-4 sm:!pb-5" : "!pb-0"}`
+          : ""
+      }
+      headerClassName={
+        viewMode === "mini"
+          ? `!p-4 sm:!p-5 ${activeFilters.showLocation || activeFilters.showTags || activeFilters.showBadges ? "!pb-4" : "!pb-0"}`
+          : ""
+      }
+      imageWrapperClassName={viewMode === "mini" ? "mb-0 pb-0" : ""}
+      titleClassName={
+        viewMode === "mini" ? "text-base mb-0.5 leading-[110%]" : ""
+      }
+      marginClassName={viewMode === "mini" ? "mb-2" : ""}
     >
-      {(user.bio || user.biography) && (
+      {viewMode !== "mini" && (user.bio || user.biography) && (
         <p className="text-base-content/80 mb-4">
           {user.bio || user.biography}
         </p>
@@ -127,20 +172,24 @@ const UserCard = ({ user, onUpdate, roleMatchTagIds, roleMatchBadgeNames, showMa
         entity={user}
         entityType="user"
         distance={user.distance_km ?? user.distanceKm}
-        tags={user.tags}
-        badges={user.badges}
+        tags={viewMode === "mini" && !activeFilters.showTags ? null : user.tags}
+        badges={
+          viewMode === "mini" && !activeFilters.showBadges ? null : user.badges
+        }
+        hideLocation={viewMode === "mini" && !activeFilters.showLocation}
+        compact={viewMode === "mini"}
       />
 
-      <div className="mt-auto">
+      {/* <div className="mt-auto">
         <Button
           variant="primary"
-          size="sm"
+          size={viewMode === "mini" ? "xs" : "sm"}
           onClick={openUserDetails}
           className="w-full"
         >
           View Details
         </Button>
-      </div>
+      </div> */}
     </Card>
   );
 };

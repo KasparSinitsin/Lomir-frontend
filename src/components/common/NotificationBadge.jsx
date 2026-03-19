@@ -69,13 +69,15 @@ const NotificationBadge = ({
   className = "",
   title,
   showZero = false,
+  compact = false,
 }) => {
   const config = VARIANTS[variant];
   const shouldShowBadge = count > 0 || showZero;
 
   // Wrapper mode: If children are provided, wrap them with the count badge
   if (children) {
-    const tooltipText = title || (shouldShowBadge ? config?.getTitle(count) : undefined);
+    const tooltipText =
+      title || (shouldShowBadge ? config?.getTitle(count) : undefined);
     return (
       <div
         className={`tooltip tooltip-lomir tooltip-bottom relative inline-flex ${className}`}
@@ -104,7 +106,7 @@ const NotificationBadge = ({
   return (
     <button
       onClick={onClick}
-      className={`group relative inline-flex items-center justify-center w-8 h-8 ${className}`}
+      className={`group relative inline-flex items-center justify-center ${compact ? "w-6 h-6" : "w-8 h-8"} ${className}`}
       title={title || getTitle(count)}
     >
       {/* Background circle with hover effect */}
