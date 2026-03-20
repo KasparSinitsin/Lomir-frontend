@@ -243,6 +243,13 @@ const SearchPage = () => {
       searchType === "all" || searchType === "teams" ? searchResults.teams : [],
   };
 
+  const displayedTeams = searchType === "users"
+    ? []
+    : filteredResults.teams.slice(0, resultsPerPage);
+  const displayedUsers = searchType === "teams"
+    ? []
+    : filteredResults.users.slice(0, Math.max(0, resultsPerPage - displayedTeams.length));
+
   const roleMatchTagIds =
     sortBy === "match" && matchRoleId && filterTagIds.length > 0
       ? new Set(filterTagIds)
@@ -1385,7 +1392,7 @@ const SearchPage = () => {
 
               {resultView === "list" ? (
                 <div className="background-opacity bg-opacity-70 shadow-soft rounded-xl divide-y divide-base-200">
-                  {filteredResults.teams.map((team) => (
+                  {displayedTeams.map((team) => (
                     <TeamCard
                       key={`team-${team.id}`}
                       team={team}
@@ -1402,7 +1409,7 @@ const SearchPage = () => {
                       }}
                     />
                   ))}
-                  {filteredResults.users.map((user) => (
+                  {displayedUsers.map((user) => (
                     <UserCard
                       key={`user-${user.id}`}
                       user={user}
@@ -1423,7 +1430,7 @@ const SearchPage = () => {
                 </div>
               ) : (
                 <Grid cols={1} md={2} lg={3} gap={resultView === "card" ? 6 : 4}>
-                  {filteredResults.teams.map((team) => (
+                  {displayedTeams.map((team) => (
                     <TeamCard
                       key={`team-${team.id}`}
                       team={team}
@@ -1440,7 +1447,7 @@ const SearchPage = () => {
                       }}
                     />
                   ))}
-                  {filteredResults.users.map((user) => (
+                  {displayedUsers.map((user) => (
                     <UserCard
                       key={`user-${user.id}`}
                       user={user}
