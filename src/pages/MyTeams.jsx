@@ -20,7 +20,10 @@ import {
 import Alert from "../components/common/Alert";
 import CreateTeamModal from "../components/teams/CreateTeamModal";
 
-import { RESULTS_PER_PAGE_OPTIONS, DEFAULT_RESULTS_PER_PAGE } from "../constants/pagination";
+import {
+  RESULTS_PER_PAGE_OPTIONS,
+  DEFAULT_RESULTS_PER_PAGE,
+} from "../constants/pagination";
 
 const parseSortableTimestamp = (value) => {
   if (!value) return null;
@@ -57,22 +60,25 @@ const getActivityTimestamp = (item) => {
       "updatedAt",
       "created_at",
       "createdAt",
-    ]
+    ],
   );
 };
 
 const getRequestTimestamp = (item) => {
-  return getFirstValidTimestamp([item], [
-    "received_at",
-    "receivedAt",
-    "sent_at",
-    "sentAt",
-    "applied_at",
-    "appliedAt",
-    "created_at",
-    "createdAt",
-    "date",
-  ]);
+  return getFirstValidTimestamp(
+    [item],
+    [
+      "received_at",
+      "receivedAt",
+      "sent_at",
+      "sentAt",
+      "applied_at",
+      "appliedAt",
+      "created_at",
+      "createdAt",
+      "date",
+    ],
+  );
 };
 
 const MyTeams = () => {
@@ -99,6 +105,10 @@ const MyTeams = () => {
   // ===== PAGINATION STATE =====
   const [currentPage, setCurrentPage] = useState(1);
   const [resultsPerPage, setResultsPerPage] = useState(DEFAULT_RESULTS_PER_PAGE);
+  const [invitationsPage, setInvitationsPage] = useState(1);
+  const [invitationsPerPage, setInvitationsPerPage] = useState(DEFAULT_RESULTS_PER_PAGE);
+  const [applicationsPage, setApplicationsPage] = useState(1);
+  const [applicationsPerPage, setApplicationsPerPage] = useState(DEFAULT_RESULTS_PER_PAGE);
   const [pagination, setPagination] = useState({
     page: 1,
     limit: 10,
@@ -145,7 +155,7 @@ const MyTeams = () => {
               totalPages: 1,
               hasNextPage: false,
               hasPrevPage: false,
-            }
+            },
           );
         }
       } catch (err) {
@@ -155,7 +165,7 @@ const MyTeams = () => {
         setLoading(false);
       }
     },
-    [user?.id]
+    [user?.id],
   );
 
   // Fetch pending applications
@@ -284,7 +294,9 @@ const MyTeams = () => {
     }
 
     setTeams((prevTeams) =>
-      prevTeams.map((team) => (team.id === updatedTeam.id ? updatedTeam : team))
+      prevTeams.map((team) =>
+        team.id === updatedTeam.id ? updatedTeam : team,
+      ),
     );
   };
 
@@ -329,7 +341,7 @@ const MyTeams = () => {
       await teamService.respondToInvitation(
         invitationId,
         "accept",
-        responseMessage
+        responseMessage,
       );
 
       console.log("Invitation accepted successfully");
@@ -344,13 +356,13 @@ const MyTeams = () => {
 
   const handleInvitationDecline = async (
     invitationId,
-    responseMessage = ""
+    responseMessage = "",
   ) => {
     try {
       await teamService.respondToInvitation(
         invitationId,
         "decline",
-        responseMessage
+        responseMessage,
       );
 
       console.log("Invitation declined");
@@ -371,6 +383,9 @@ const MyTeams = () => {
   };
 
   const handleSortChange = (nextSortBy) => {
+    setInvitationsPage(1);
+    setApplicationsPage(1);
+
     if (nextSortBy === sortBy) {
       setSortDir((prev) => (prev === "asc" ? "desc" : "asc"));
       return;
@@ -403,25 +418,28 @@ const MyTeams = () => {
         teams.filter(Boolean).map(async (team) => {
           if (!team?.id) return null;
 
-          const [applicationsResponse, invitationsResponse] = await Promise.all([
-            teamService
-              .getTeamApplications(team.id, { skipAuthRedirect: true })
-              .catch(() => ({ data: [] })),
-            teamService
-              .getTeamSentInvitations(team.id, { skipAuthRedirect: true })
-              .catch(() => ({ data: [] })),
-          ]);
+          const [applicationsResponse, invitationsResponse] = await Promise.all(
+            [
+              teamService
+                .getTeamApplications(team.id, { skipAuthRedirect: true })
+                .catch(() => ({ data: [] })),
+              teamService
+                .getTeamSentInvitations(team.id, { skipAuthRedirect: true })
+                .catch(() => ({ data: [] })),
+            ],
+          );
 
           const applications = applicationsResponse?.data || [];
           const invitations = invitationsResponse?.data || [];
 
           const latestApplicationTimestamp = applications.reduce(
-            (max, application) => Math.max(max, getRequestTimestamp(application)),
-            0
+            (max, application) =>
+              Math.max(max, getRequestTimestamp(application)),
+            0,
           );
           const latestInvitationTimestamp = invitations.reduce(
             (max, invitation) => Math.max(max, getRequestTimestamp(invitation)),
-            0
+            0,
           );
           const totalRequestCount = applications.length + invitations.length;
 
@@ -429,12 +447,14 @@ const MyTeams = () => {
             team.id,
             {
               latestTimestamp:
-                Math.max(latestApplicationTimestamp, latestInvitationTimestamp) ||
-                null,
+                Math.max(
+                  latestApplicationTimestamp,
+                  latestInvitationTimestamp,
+                ) || null,
               totalRequestCount,
             },
           ];
-        })
+        }),
       );
 
       if (isCancelled) return;
@@ -499,15 +519,19 @@ const MyTeams = () => {
             : getActivityTimestamp(a) - getActivityTimestamp(b);
         if (diff !== 0) return diff;
       } else if (sortBy === "newest") {
-        const timestampA = teamNotificationMetrics[a.id]?.latestTimestamp ?? null;
-        const timestampB = teamNotificationMetrics[b.id]?.latestTimestamp ?? null;
+        const timestampA =
+          teamNotificationMetrics[a.id]?.latestTimestamp ?? null;
+        const timestampB =
+          teamNotificationMetrics[b.id]?.latestTimestamp ?? null;
 
         if (timestampA !== null || timestampB !== null) {
           if (timestampA === null) return 1;
           if (timestampB === null) return -1;
 
           const diff =
-            sortDir === "desc" ? timestampB - timestampA : timestampA - timestampB;
+            sortDir === "desc"
+              ? timestampB - timestampA
+              : timestampA - timestampB;
           if (diff !== 0) return diff;
         }
       } else if (sortBy === "requests") {
@@ -522,12 +546,26 @@ const MyTeams = () => {
   };
 
   const sortedPendingInvitations = sortPendingItems(
-    pendingInvitations.filter(Boolean)
+    pendingInvitations.filter(Boolean),
   );
   const sortedPendingApplications = sortPendingItems(
-    pendingApplications.filter(Boolean)
+    pendingApplications.filter(Boolean),
   );
   const sortedTeams = sortMemberTeams(teams.filter(Boolean));
+
+  const invitationsTotalPages = Math.max(1, Math.ceil(sortedPendingInvitations.length / invitationsPerPage));
+  const clampedInvitationsPage = Math.min(invitationsPage, invitationsTotalPages);
+  const paginatedInvitations = sortedPendingInvitations.slice(
+    (clampedInvitationsPage - 1) * invitationsPerPage,
+    clampedInvitationsPage * invitationsPerPage,
+  );
+
+  const applicationsTotalPages = Math.max(1, Math.ceil(sortedPendingApplications.length / applicationsPerPage));
+  const clampedApplicationsPage = Math.min(applicationsPage, applicationsTotalPages);
+  const paginatedApplications = sortedPendingApplications.slice(
+    (clampedApplicationsPage - 1) * applicationsPerPage,
+    clampedApplicationsPage * applicationsPerPage,
+  );
 
   if (loading && loadingApplications && loadingInvitations) {
     return (
@@ -551,13 +589,15 @@ const MyTeams = () => {
 
   const CreateTeamAction = (
     <div className="flex flex-col gap-2 mt-8">
-      <Button 
-        variant="primary" 
-        icon={<Plus size={16} />}
-        onClick={() => setIsCreateTeamModalOpen(true)}
-      >
-        Create New Team
-      </Button>
+      <div>
+        <Button
+          variant="primary"
+          icon={<Plus size={16} />}
+          onClick={() => setIsCreateTeamModalOpen(true)}
+        >
+          Create New Team
+        </Button>
+      </div>
       <Link to="/search?type=teams">
         <Button variant="primary" icon={<SearchIcon size={16} />}>
           Search for Teams
@@ -568,13 +608,15 @@ const MyTeams = () => {
 
   return (
     <PageContainer title="My Teams" action={CreateTeamAction} variant="muted">
-      <div className="flex flex-col gap-3 mb-6 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-wrap items-center text-sm font-normal text-base-content/60 gap-1">
+      <div className="flex flex-wrap items-center justify-between gap-y-2 mb-6">
+        <div className="flex flex-wrap items-center gap-1 -ml-2">
           <button
             type="button"
             onClick={() => handleSortChange("name")}
-            className={`flex items-center gap-1 px-2 py-1 rounded transition-colors ${
-              sortBy === "name" ? "font-bold text-base-content" : ""
+            className={`flex items-center gap-1 px-1 text-xs rounded transition-colors shrink-0 ${
+              sortBy === "name"
+                ? "text-[var(--color-primary)] font-bold"
+                : "text-[var(--color-primary-focus)]/70 hover:text-[var(--color-primary-focus)] hover:font-medium"
             }`}
           >
             {sortDir === "desc" && sortBy === "name" ? (
@@ -584,44 +626,33 @@ const MyTeams = () => {
             )}
             {sortBy === "name" && sortDir === "desc" ? "Z-A" : "A-Z"}
           </button>
-          <span className="text-base-content/30">|</span>
           <button
             type="button"
             onClick={() => handleSortChange("recent")}
-            className={`flex items-center gap-1 px-2 py-1 rounded transition-colors ${
-              sortBy === "recent" ? "font-bold text-base-content" : ""
+            className={`flex items-center gap-1 px-1 text-xs rounded transition-colors shrink-0 ${
+              sortBy === "recent"
+                ? "text-[var(--color-primary)] font-bold"
+                : "text-[var(--color-primary-focus)]/70 hover:text-[var(--color-primary-focus)] hover:font-medium"
             }`}
           >
             <Clock className="w-3.5 h-3.5 shrink-0" />
             {sortBy === "recent" && sortDir === "asc" ? "Inactive" : "Active"}
           </button>
-          <span className="text-base-content/30">|</span>
           <button
             type="button"
             onClick={() => handleSortChange("newest")}
-            className={`flex items-center gap-1 px-2 py-1 rounded transition-colors ${
-              sortBy === "newest" ? "font-bold text-base-content" : ""
+            className={`flex items-center gap-1 px-1 text-xs rounded transition-colors shrink-0 ${
+              sortBy === "newest"
+                ? "text-[var(--color-primary)] font-bold"
+                : "text-[var(--color-primary-focus)]/70 hover:text-[var(--color-primary-focus)] hover:font-medium"
             }`}
           >
             <Sparkles className="w-3.5 h-3.5 shrink-0" />
             {sortBy === "newest" && sortDir === "asc" ? "Oldest" : "Newest"}
           </button>
-          <span className="text-base-content/30">|</span>
-          <button
-            type="button"
-            onClick={() => handleSortChange("requests")}
-            className={`flex items-center gap-1 px-2 py-1 rounded transition-colors ${
-              sortBy === "requests" ? "font-bold text-base-content" : ""
-            }`}
-          >
-            <Inbox className="w-3.5 h-3.5 shrink-0" />
-            {sortBy === "requests" && sortDir === "asc"
-              ? "Least Requests"
-              : "Most Requests"}
-          </button>
         </div>
 
-        <div className="flex items-center text-sm font-normal text-base-content/60 gap-1 sm:justify-end">
+        <div className="flex items-center text-sm font-normal text-base-content/60 gap-1 -ml-2">
           <button
             type="button"
             onClick={() => setResultView("card")}
@@ -658,67 +689,85 @@ const MyTeams = () => {
       {sortedPendingInvitations.length > 0 && (
         <Section
           title="My Pending Membership Invitations"
-          subtitle="Teams that have invited you to join"
+          subtitle={`${sortedPendingInvitations.length} ${sortedPendingInvitations.length === 1 ? 'Team has' : 'Teams have'} invited you to join`}
           className="mb-10"
+          collapsible
         >
           {loadingInvitations ? (
             <div className="flex justify-center py-8">
               <div className="loading loading-spinner loading-md"></div>
             </div>
-          ) : resultView === "list" ? (
-            <div className="background-opacity bg-opacity-70 shadow-soft rounded-xl divide-y divide-base-200">
-              {sortedPendingInvitations.map((invitation) => (
-                <div
-                  key={`invitation-${invitation.id}`}
-                  ref={
-                    String(invitation.id) === highlightId
-                      ? highlightedInvitationRef
-                      : null
-                  }
-                  className={
-                    String(invitation.id) === highlightId
-                      ? "message-highlight"
-                      : ""
-                  }
-                >
-                  <TeamCard
-                    variant="invitation"
-                    invitation={invitation}
-                    onAccept={handleInvitationAccept}
-                    onDecline={handleInvitationDecline}
-                    viewMode="list"
-                    activeFilters={{}}
-                  />
-                </div>
-              ))}
-            </div>
           ) : (
-            <Grid cols={1} md={2} lg={3} gap={resultView === "card" ? 6 : 4}>
-              {sortedPendingInvitations.map((invitation) => (
-                <div
-                  key={`invitation-${invitation.id}`}
-                  ref={
-                    String(invitation.id) === highlightId
-                      ? highlightedInvitationRef
-                      : null
-                  }
-                  className={
-                    String(invitation.id) === highlightId
-                      ? "message-highlight rounded-xl"
-                      : "contents"
-                  }
-                >
-                  <TeamCard
-                    variant="invitation"
-                    invitation={invitation}
-                    onAccept={handleInvitationAccept}
-                    onDecline={handleInvitationDecline}
-                    viewMode={resultView}
-                    activeFilters={{}}
-                  />
+            <>
+              {resultView === "list" ? (
+                <div className="background-opacity bg-opacity-70 shadow-soft rounded-xl divide-y divide-base-200">
+                  {paginatedInvitations.map((invitation) => (
+                    <div
+                      key={`invitation-${invitation.id}`}
+                      ref={
+                        String(invitation.id) === highlightId
+                          ? highlightedInvitationRef
+                          : null
+                      }
+                      className={
+                        String(invitation.id) === highlightId
+                          ? "message-highlight"
+                          : ""
+                      }
+                    >
+                      <TeamCard
+                        variant="invitation"
+                        invitation={invitation}
+                        onAccept={handleInvitationAccept}
+                        onDecline={handleInvitationDecline}
+                        viewMode="list"
+                        activeFilters={{}}
+                      />
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </Grid>
+              ) : (
+                <Grid cols={1} md={2} lg={3} gap={resultView === "card" ? 6 : 4}>
+                  {paginatedInvitations.map((invitation) => (
+                    <div
+                      key={`invitation-${invitation.id}`}
+                      ref={
+                        String(invitation.id) === highlightId
+                          ? highlightedInvitationRef
+                          : null
+                      }
+                      className={
+                        String(invitation.id) === highlightId
+                          ? "message-highlight rounded-xl"
+                          : "contents"
+                      }
+                    >
+                      <TeamCard
+                        variant="invitation"
+                        invitation={invitation}
+                        onAccept={handleInvitationAccept}
+                        onDecline={handleInvitationDecline}
+                        viewMode={resultView}
+                        activeFilters={{}}
+                      />
+                    </div>
+                  ))}
+                </Grid>
+              )}
+              <Pagination
+                currentPage={clampedInvitationsPage}
+                totalPages={invitationsTotalPages}
+                totalItems={sortedPendingInvitations.length}
+                onPageChange={setInvitationsPage}
+                resultsPerPage={invitationsPerPage}
+                onResultsPerPageChange={(newLimit) => {
+                  setInvitationsPerPage(newLimit);
+                  setInvitationsPage(1);
+                }}
+                resultsPerPageOptions={RESULTS_PER_PAGE_OPTIONS}
+                hideOnSinglePage
+              />
+            </>
           )}
         </Section>
       )}
@@ -727,41 +776,59 @@ const MyTeams = () => {
       {sortedPendingApplications.length > 0 && (
         <Section
           title="My Pending Membership Applications"
-          subtitle="Teams that I would like to join"
+          subtitle={`${sortedPendingApplications.length} ${sortedPendingApplications.length === 1 ? 'Team' : 'Teams'} that I would like to join`}
           className="mb-10"
+          collapsible
         >
           {loadingApplications ? (
             <div className="flex justify-center py-8">
               <div className="loading loading-spinner loading-md"></div>
             </div>
-          ) : resultView === "list" ? (
-            <div className="background-opacity bg-opacity-70 shadow-soft rounded-xl divide-y divide-base-200">
-              {sortedPendingApplications.map((application) => (
-                <TeamCard
-                  key={`application-${application.id}`}
-                  variant="application"
-                  application={application}
-                  onCancel={handleApplicationCancel}
-                  onSendReminder={handleSendReminder}
-                  viewMode="list"
-                  activeFilters={{}}
-                />
-              ))}
-            </div>
           ) : (
-            <Grid cols={1} md={2} lg={3} gap={resultView === "card" ? 6 : 4}>
-              {sortedPendingApplications.map((application) => (
-                <TeamCard
-                  key={`application-${application.id}`}
-                  variant="application"
-                  application={application}
-                  onCancel={handleApplicationCancel}
-                  onSendReminder={handleSendReminder}
-                  viewMode={resultView}
-                  activeFilters={{}}
-                />
-              ))}
-            </Grid>
+            <>
+              {resultView === "list" ? (
+                <div className="background-opacity bg-opacity-70 shadow-soft rounded-xl divide-y divide-base-200">
+                  {paginatedApplications.map((application) => (
+                    <TeamCard
+                      key={`application-${application.id}`}
+                      variant="application"
+                      application={application}
+                      onCancel={handleApplicationCancel}
+                      onSendReminder={handleSendReminder}
+                      viewMode="list"
+                      activeFilters={{}}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <Grid cols={1} md={2} lg={3} gap={resultView === "card" ? 6 : 4}>
+                  {paginatedApplications.map((application) => (
+                    <TeamCard
+                      key={`application-${application.id}`}
+                      variant="application"
+                      application={application}
+                      onCancel={handleApplicationCancel}
+                      onSendReminder={handleSendReminder}
+                      viewMode={resultView}
+                      activeFilters={{}}
+                    />
+                  ))}
+                </Grid>
+              )}
+              <Pagination
+                currentPage={clampedApplicationsPage}
+                totalPages={applicationsTotalPages}
+                totalItems={sortedPendingApplications.length}
+                onPageChange={setApplicationsPage}
+                resultsPerPage={applicationsPerPage}
+                onResultsPerPageChange={(newLimit) => {
+                  setApplicationsPerPage(newLimit);
+                  setApplicationsPage(1);
+                }}
+                resultsPerPageOptions={RESULTS_PER_PAGE_OPTIONS}
+                hideOnSinglePage
+              />
+            </>
           )}
         </Section>
       )}
@@ -770,7 +837,24 @@ const MyTeams = () => {
       <Section
         id="my-teams-section"
         title="Teams You're A Part Of"
-        subtitle="Teams you've created or joined as a member"
+        subtitle={`${pagination.totalTeams} ${pagination.totalTeams === 1 ? 'Team' : 'Teams'} you've created or joined as a member`}
+        subtitleAction={
+          <button
+            type="button"
+            onClick={() => handleSortChange("requests")}
+            className={`flex items-center gap-1 px-1 text-xs rounded transition-colors shrink-0 ${
+              sortBy === "requests"
+                ? "text-[var(--color-primary)] font-bold"
+                : "text-[var(--color-primary-focus)]/70 hover:text-[var(--color-primary-focus)] hover:font-medium"
+            }`}
+          >
+            <Inbox className="w-3.5 h-3.5 shrink-0" />
+            {sortBy === "requests" && sortDir === "asc"
+              ? "Least Requests"
+              : "Most Requests"}
+          </button>
+        }
+        collapsible
       >
         {loading ? (
           <div className="flex justify-center py-8">
@@ -806,14 +890,19 @@ const MyTeams = () => {
                       variant="member"
                       team={{
                         ...team,
-                        is_public: team.is_public === true || team.isPublic === true,
+                        is_public:
+                          team.is_public === true || team.isPublic === true,
                       }}
                       onUpdate={handleTeamUpdate}
                       onDelete={handleTeamDelete}
                       onLeave={handleTeamLeave}
-                      autoOpenApplications={team.id === autoOpenApplicationsTeamId}
+                      autoOpenApplications={
+                        team.id === autoOpenApplicationsTeamId
+                      }
                       highlightApplicantId={
-                        team.id === autoOpenApplicationsTeamId ? highlightId : null
+                        team.id === autoOpenApplicationsTeamId
+                          ? highlightId
+                          : null
                       }
                       onApplicationsModalClosed={() =>
                         setAutoOpenApplicationsTeamId(null)
@@ -842,14 +931,19 @@ const MyTeams = () => {
                       variant="member"
                       team={{
                         ...team,
-                        is_public: team.is_public === true || team.isPublic === true,
+                        is_public:
+                          team.is_public === true || team.isPublic === true,
                       }}
                       onUpdate={handleTeamUpdate}
                       onDelete={handleTeamDelete}
                       onLeave={handleTeamLeave}
-                      autoOpenApplications={team.id === autoOpenApplicationsTeamId}
+                      autoOpenApplications={
+                        team.id === autoOpenApplicationsTeamId
+                      }
                       highlightApplicantId={
-                        team.id === autoOpenApplicationsTeamId ? highlightId : null
+                        team.id === autoOpenApplicationsTeamId
+                          ? highlightId
+                          : null
                       }
                       onApplicationsModalClosed={() =>
                         setAutoOpenApplicationsTeamId(null)
