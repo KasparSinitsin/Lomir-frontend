@@ -86,6 +86,7 @@ const TeamDetailsModal = ({
   pendingApplication = null,
   onViewApplicationDetails,
   showMatchHighlights = false,
+  roleMatchBadgeNames = null,
 }) => {
   const navigate = useNavigate();
   const { id: urlTeamId } = useParams();
@@ -1566,7 +1567,28 @@ const TeamDetailsModal = ({
                       showCredits={true}
                       onCategoryClick={handleBadgeCategoryClick}
                       onBadgeClick={handleBadgeClick}
-                      matchingBadgeNames={currentUserBadgeNames}
+                      matchingBadgeNames={roleMatchBadgeNames || currentUserBadgeNames}
+                      headerRight={showMatchHighlights && (roleMatchBadgeNames || currentUserBadgeNames) ? (() => {
+                        const activeMatchNames = roleMatchBadgeNames || currentUserBadgeNames;
+                        const total = teamBadges.length;
+                        const matchCount = teamBadges.filter((b) =>
+                          activeMatchNames.has((b.name ?? "").trim().toLowerCase())
+                        ).length;
+                        if (matchCount > 0) {
+                          return (
+                            <span className="flex items-center gap-1.5 text-sm text-success">
+                              <Check size={14} className="flex-shrink-0" />
+                              <span>{matchCount}/{total} in common</span>
+                            </span>
+                          );
+                        }
+                        return (
+                          <span className="flex items-center gap-1.5 text-sm text-error/70">
+                            <X size={14} className="flex-shrink-0" />
+                            <span>None in common</span>
+                          </span>
+                        );
+                      })() : null}
                     />
                   )}
 

@@ -1463,6 +1463,7 @@ const SearchPage = () => {
                         team={item}
                         onUpdate={handleTeamUpdate}
                         isSearchResult={true}
+                        roleMatchBadgeNames={roleMatchBadgeNames}
                         showMatchHighlights={sortBy === "match"}
                         viewMode="list"
                         activeFilters={{
@@ -1502,6 +1503,7 @@ const SearchPage = () => {
                         team={item}
                         onUpdate={handleTeamUpdate}
                         isSearchResult={true}
+                        roleMatchBadgeNames={roleMatchBadgeNames}
                         showMatchHighlights={sortBy === "match"}
                         viewMode={resultView}
                         activeFilters={{
