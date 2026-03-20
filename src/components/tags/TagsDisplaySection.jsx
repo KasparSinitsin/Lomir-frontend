@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from "react";
-import { Tag, Layers, Check } from "lucide-react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import { Tag, Layers, Check, ChevronRight, ChevronUp } from "lucide-react";
 import {
   CATEGORY_COLORS,
   SUPERCATEGORY_ORDER,
@@ -56,6 +56,12 @@ const TagsDisplaySection = ({
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
 
+  // Collapsible overflow state
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [isOverflowing, setIsOverflowing] = useState(false);
+  const [twoRowHeight, setTwoRowHeight] = useState(72);
+  const pillsRef = useRef(null);
+
   // Ref for auto-scrolling to highlighted tag
   const highlightTagRef = useRef(null);
 
@@ -70,6 +76,30 @@ const TagsDisplaySection = ({
       return () => clearTimeout(timer);
     }
   }, [highlightTagName]);
+
+  // Reset expansion when the tag set changes (e.g. viewing a different user/team)
+  useEffect(() => {
+    setIsExpanded(false);
+  }, [tags]);
+
+  // Measure pills container to detect overflow beyond 2 rows
+  const measureOverflow = useCallback(() => {
+    const el = pillsRef.current;
+    if (!el) return;
+    const firstBadge = el.querySelector(".badge");
+    if (!firstBadge) { setIsOverflowing(false); return; }
+    const rowH = firstBadge.offsetHeight;
+    const twoH = rowH * 2 + 8; // gap-y-2 = 8px between rows
+    setTwoRowHeight(twoH);
+    setIsOverflowing(el.scrollHeight > twoH + 2);
+  }, []);
+
+  useEffect(() => {
+    measureOverflow();
+    const ro = new ResizeObserver(measureOverflow);
+    if (pillsRef.current) ro.observe(pillsRef.current);
+    return () => ro.disconnect();
+  }, [measureOverflow, tags]);
 
   // Normalize tags to a consistent format for editing (array of IDs)
   useEffect(() => {
@@ -238,6 +268,9 @@ const TagsDisplaySection = ({
 
   const displayTags = getDisplayTags();
   const groupedTags = getGroupedTags(displayTags);
+
+  const totalCredits = displayTags.reduce((sum, t) => sum + (t.badgeCredits || 0), 0);
+  const pillCount = displayTags.length;
 
   const renderTagPill = (tag) => {
     // --- Dominant badge category coloring (preserved for future use) ---
@@ -442,7 +475,14 @@ const TagsDisplaySection = ({
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center">
           <Tag size={18} className="mr-2 text-primary flex-shrink-0" />
-          <h3 className="font-medium">{title}</h3>
+          <h3 className="font-medium">
+            {title}
+            {totalCredits > 0 && (
+              <span className="font-normal text-sm text-base-content/60 ml-1">
+                ({totalCredits} ct. across {pillCount} {pillCount === 1 ? 'area' : 'areas'})
+              </span>
+            )}
+          </h3>
         </div>
         <div className="flex items-center gap-2">
           {headerRight}
@@ -468,31 +508,48 @@ const TagsDisplaySection = ({
 
       {/* Tags display */}
       {displayTags.length > 0 ? (
-        groupedTags ? (
-          /* Grouped inline display: avatar + pills side by side (like BadgesDisplaySection) */
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-            {groupedTags.map(([supercategory, groupTags]) => (
-              <div
-                key={supercategory}
-                className="flex items-start gap-0"
-                title={supercategory}
-              >
-                {/* Supercategory initials avatar */}
-                {renderSupercategoryIcon(supercategory, groupTags)}
+        <>
+          <div
+            ref={pillsRef}
+            style={!isExpanded && isOverflowing ? { maxHeight: twoRowHeight, overflow: "hidden" } : {}}
+          >
+            {groupedTags ? (
+              /* Grouped inline display: avatar + pills side by side (like BadgesDisplaySection) */
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                {groupedTags.map(([supercategory, groupTags]) => (
+                  <div
+                    key={supercategory}
+                    className="flex items-start gap-0"
+                    title={supercategory}
+                  >
+                    {/* Supercategory initials avatar */}
+                    {renderSupercategoryIcon(supercategory, groupTags)}
 
-                {/* Tag pills for this supercategory */}
-                <div className="flex flex-wrap gap-1.5">
-                  {groupTags.map((tag) => renderTagPill(tag))}
-                </div>
+                    {/* Tag pills for this supercategory */}
+                    <div className="flex flex-wrap gap-1.5">
+                      {groupTags.map((tag) => renderTagPill(tag))}
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
+            ) : (
+              /* Flat display: fallback for string-based or ID-based tags */
+              <div className="flex flex-wrap gap-2">
+                {displayTags.map((tag) => renderTagPill(tag))}
+              </div>
+            )}
           </div>
-        ) : (
-          /* Flat display: fallback for string-based or ID-based tags */
-          <div className="flex flex-wrap gap-2">
-            {displayTags.map((tag) => renderTagPill(tag))}
-          </div>
-        )
+          {isOverflowing && (
+            <button
+              type="button"
+              className="flex items-center gap-1 mt-3 text-sm text-base-content/50 hover:text-base-content/80 transition-colors"
+              onClick={() => setIsExpanded((v) => !v)}
+            >
+              {isExpanded ? <ChevronUp size={14} /> : <ChevronRight size={14} />}
+              {isExpanded ? "Show less" : "Show all"}
+            </button>
+          )}
+        </>
       ) : (
         <p className="text-sm text-base-content/60">{emptyMessage}</p>
       )}

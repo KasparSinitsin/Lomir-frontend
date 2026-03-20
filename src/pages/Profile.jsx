@@ -1192,11 +1192,7 @@ const Profile = () => {
                       </div>
                       <div ref={badgesSectionRef}>
                         <BadgesDisplaySection
-                          title={`My Badges${
-                            Number.isFinite(displayUser?.total_badge_credits)
-                              ? ` · ${displayUser.total_badge_credits} ct.`
-                              : ""
-                          }`}
+                          title="My Badges"
                           badges={displayUser?.badges}
                           emptyMessage="No badges earned yet."
                           maxVisible={8}
