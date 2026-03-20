@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { UserSearch, Plus, AlertCircle } from "lucide-react";
+import { UserSearch, Plus, AlertCircle, ChevronRight, ChevronUp } from "lucide-react";
 import VacantRoleCard from "./VacantRoleCard";
 import CreateVacantRoleModal from "./CreateVacantRoleModal";
 import Button from "../common/Button";
@@ -45,6 +45,8 @@ const VacantRolesSection = ({
 
   // Matching scores: { [roleId]: { matchScore, matchDetails } }
   const [matchScores, setMatchScores] = useState({});
+  const [isExpanded, setIsExpanded] = useState(false);
+  const COLLAPSED_COUNT = 4;
 
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -195,7 +197,7 @@ const VacantRolesSection = ({
   const openCount = roles.filter((r) => r.status === "open").length;
 
   return (
-    <div className={`mt-6 mb-6 ${className}`}>
+    <div className={className}>
       {/* Section Header — mirrors TeamMembersSection pattern */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center">
@@ -244,28 +246,41 @@ const VacantRolesSection = ({
 
       {/* Roles list — sorted by match score (highest first) when available */}
       {roles.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {[...roles]
-            .sort((a, b) => {
-              const scoreA = matchScores[a.id]?.matchScore ?? -1;
-              const scoreB = matchScores[b.id]?.matchScore ?? -1;
-              return scoreB - scoreA;
-            })
-            .map((role) => (
-              <VacantRoleCard
-                key={role.id}
-                team={team}
-                role={role}
-                canManage={canManage}
-                isTeamMember={isTeamMember}
-                onEdit={handleEdit}
-                onDelete={handleDelete}
-                onStatusChange={handleStatusChange}
-                matchScore={matchScores[role.id]?.matchScore ?? null}
-                matchDetails={matchScores[role.id]?.matchDetails ?? null}
-              />
-            ))}
-        </div>
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {[...roles]
+              .sort((a, b) => {
+                const scoreA = matchScores[a.id]?.matchScore ?? -1;
+                const scoreB = matchScores[b.id]?.matchScore ?? -1;
+                return scoreB - scoreA;
+              })
+              .slice(0, isExpanded ? undefined : COLLAPSED_COUNT)
+              .map((role) => (
+                <VacantRoleCard
+                  key={role.id}
+                  team={team}
+                  role={role}
+                  canManage={canManage}
+                  isTeamMember={isTeamMember}
+                  onEdit={handleEdit}
+                  onDelete={handleDelete}
+                  onStatusChange={handleStatusChange}
+                  matchScore={matchScores[role.id]?.matchScore ?? null}
+                  matchDetails={matchScores[role.id]?.matchDetails ?? null}
+                />
+              ))}
+          </div>
+          {roles.length > COLLAPSED_COUNT && (
+            <button
+              type="button"
+              className="flex items-center gap-1 mt-3 text-sm text-base-content/50 hover:text-base-content/80 transition-colors"
+              onClick={() => setIsExpanded((v) => !v)}
+            >
+              {isExpanded ? <ChevronUp size={14} /> : <ChevronRight size={14} />}
+              {isExpanded ? "Show less" : "Show all"}
+            </button>
+          )}
+        </>
       ) : (
         canManage && (
           <div className="bg-base-200/20 rounded-lg p-4 text-center">
