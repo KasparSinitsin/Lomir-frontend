@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Eye, EyeClosed, Calendar } from "lucide-react";
 import { getUserInitials } from "../../utils/userHelpers";
+import { getMatchTier } from "../../utils/matchScoreUtils";
 import { format } from "date-fns";
 
 /**
@@ -14,9 +15,12 @@ const UserProfileHeaderSection = ({
   currentUser = null,
   isAuthenticated = false,
   memberSince = null,
+  matchScore = null,
   className = "",
 }) => {
   const [imageError, setImageError] = useState(false);
+  const showMatchBadge = matchScore != null;
+  const matchTier = showMatchBadge ? getMatchTier(matchScore) : null;
   // Helper function to get the avatar image URL or return null for fallback
   const getProfileImage = () => {
     // Check snake_case (from API)
@@ -80,7 +84,7 @@ const UserProfileHeaderSection = ({
   return (
     <div className={`flex items-start space-x-4 ${className}`}>
       {/* Avatar */}
-      <div className="avatar">
+      <div className="avatar relative">
         <div className="w-20 h-20 rounded-full">
           {getProfileImage() && !imageError ? (
             <img
@@ -95,6 +99,18 @@ const UserProfileHeaderSection = ({
             </div>
           )}
         </div>
+        {matchTier && (
+          <div
+            className={`absolute -top-1 -left-1 w-6 h-6 rounded-full ring-2 ring-white flex items-center justify-center ${matchTier.bg}`}
+            title={`${matchTier.pct}% ${matchTier.label.toLowerCase()}`}
+          >
+            <matchTier.Icon
+              size={12}
+              className="text-white"
+              strokeWidth={2.5}
+            />
+          </div>
+        )}
       </div>
 
       {/* User Info */}

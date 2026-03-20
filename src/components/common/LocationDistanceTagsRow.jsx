@@ -182,12 +182,37 @@ const LocationDistanceTagsRow = ({
     if (!input || !Array.isArray(input)) return [];
 
     const badgeList = input
-      .filter((b) => b && b.name)
-      .map((b) => ({
-        ...b,
-        id: b.id ?? b.badge_id,
-      }))
-      .filter((b) => b.id);
+      .map((badge) => {
+        if (!badge) return null;
+
+        if (typeof badge === "string") {
+          const name = badge.trim();
+          return name
+            ? {
+                id: `name:${name.toLowerCase()}`,
+                name,
+                category: "Other",
+                total_credits: 0,
+              }
+            : null;
+        }
+
+        const name = (badge.name ?? badge.badgeName ?? badge.badge_name ?? "")
+          .trim();
+
+        if (!name) return null;
+
+        return {
+          ...badge,
+          id:
+            badge.id ??
+            badge.badge_id ??
+            badge.badgeId ??
+            `name:${name.toLowerCase()}`,
+          name,
+        };
+      })
+      .filter(Boolean);
 
     if (badgeList.length === 0) return [];
 

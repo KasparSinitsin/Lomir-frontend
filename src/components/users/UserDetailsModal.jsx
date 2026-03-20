@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { UI_TEXT } from "../../constants/uiText";
 import Modal from "../common/Modal";
 import UserBioSection from "./UserBioSection";
@@ -18,6 +18,12 @@ import TeamInviteModal from "../teams/TeamInviteModal";
 import BadgeAwardModal from "../badges/BadgeAwardModal";
 import SupercategoryAwardsModal from "../badges/SupercategoryAwardsModal";
 import useAwardModals from "../../hooks/useAwardModals";
+import MatchScoreSection from "../common/MatchScoreSection";
+import {
+  buildViewerTeamMatchProfile,
+  enrichUserMatchData,
+} from "../../utils/teamMatchUtils";
+import { calculateDistanceKm } from "../../utils/locationUtils";
 
 const UserDetailsModal = ({
   isOpen,
@@ -33,6 +39,10 @@ const UserDetailsModal = ({
   roleMatchTagIds,     // Set<number> | null — role's required tag IDs
   roleMatchBadgeNames, // Set<string> | null — role's required badge names (lowercase)
   showMatchHighlights = false,
+  matchScore = null,
+  matchType = null,
+  matchDetails = null,
+  distanceKm = null,
 }) => {
   const { user: currentUser, isAuthenticated } = useAuth();
 
@@ -46,6 +56,7 @@ const UserDetailsModal = ({
   const [userTags, setUserTags] = useState([]);
   const [currentUserTagIds, setCurrentUserTagIds] = useState(null); // Set<number>
   const [currentUserBadgeNames, setCurrentUserBadgeNames] = useState(null); // Set<string>
+  const [distanceViewerUser, setDistanceViewerUser] = useState(null);
 
   const [formData, setFormData] = useState({
     firstName: "",
@@ -93,7 +104,19 @@ const UserDetailsModal = ({
           ? payload?.data
           : (payload?.data?.data ?? payload?.data ?? payload);
 
-      setUser(userData);
+      const preservedDistanceKm =
+        distanceKm ??
+        user?.distance_km ??
+        user?.distanceKm ??
+        userData?.distance_km ??
+        userData?.distanceKm ??
+        null;
+
+      setUser({
+        ...userData,
+        distance_km: preservedDistanceKm,
+        distanceKm: preservedDistanceKm,
+      });
 
       // Fetch full tag objects (with badge_credits)
       try {
@@ -119,7 +142,7 @@ const UserDetailsModal = ({
     } finally {
       setLoading(false);
     }
-  }, [userId]);
+  }, [distanceKm, user?.distanceKm, user?.distance_km, userId]);
 
   useEffect(() => {
     if (isOpen && userId) {
@@ -175,6 +198,41 @@ const UserDetailsModal = ({
   }, [isOpen, isAuthenticated, currentUser?.id, userId, roleMatchTagIds, roleMatchBadgeNames, showMatchHighlights]);
 
   useEffect(() => {
+    if (!isOpen || !isAuthenticated || !currentUser?.id || !showMatchHighlights) {
+      setDistanceViewerUser(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    const fetchDistanceViewerUser = async () => {
+      try {
+        const response = await userService.getUserById(currentUser.id);
+        const payload = response?.data ?? response;
+        const viewerData =
+          payload?.success !== undefined
+            ? payload?.data
+            : (payload?.data?.data ?? payload?.data ?? payload);
+
+        if (!cancelled) {
+          setDistanceViewerUser(viewerData ?? currentUser);
+        }
+      } catch (err) {
+        console.warn("Could not fetch current user details for distance fallback:", err);
+        if (!cancelled) {
+          setDistanceViewerUser(currentUser);
+        }
+      }
+    };
+
+    fetchDistanceViewerUser();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentUser, currentUser?.id, isAuthenticated, isOpen, showMatchHighlights]);
+
+  useEffect(() => {
     setIsEditing(mode === "edit");
   }, [mode]);
 
@@ -218,6 +276,79 @@ const UserDetailsModal = ({
     }
     return user?.username || "User";
   };
+
+  const getUserComparisonLabel = () => {
+    if (user?.first_name) return user.first_name;
+    if (user?.firstName) return user.firstName;
+    if (user?.username) return user.username;
+    return "this person";
+  };
+
+  const effectiveUserMatch = useMemo(() => {
+    const shouldResolveMatchData =
+      showMatchHighlights ||
+      matchScore > 0 ||
+      matchType != null ||
+      matchDetails != null;
+
+    if (!shouldResolveMatchData || !user || !currentUser) {
+      return { matchScore, matchType, matchDetails };
+    }
+
+    const viewerProfile = buildViewerTeamMatchProfile({
+      user: currentUser,
+      userTags: Array.from(currentUserTagIds ?? []),
+      userBadges: Array.from(currentUserBadgeNames ?? []),
+    });
+    const enrichedUser = enrichUserMatchData({
+      user: {
+        ...user,
+        bestMatchScore: matchScore,
+        best_match_score: matchScore,
+        matchType,
+        match_type: matchType,
+        matchDetails,
+        match_details: matchDetails,
+        tags: userTags.length > 0 ? userTags : user?.tags,
+      },
+      viewerProfile,
+    });
+
+    return {
+      matchScore: enrichedUser.bestMatchScore ?? matchScore,
+      matchType: enrichedUser.matchType ?? matchType,
+      matchDetails: enrichedUser.matchDetails ?? matchDetails,
+    };
+  }, [
+    currentUser,
+    currentUserBadgeNames,
+    currentUserTagIds,
+    matchDetails,
+    matchScore,
+    matchType,
+    showMatchHighlights,
+    user,
+    userTags,
+  ]);
+
+  const effectiveDistanceKm = useMemo(() => {
+    const rawDistance = distanceKm ?? user?.distance_km ?? user?.distanceKm;
+    const numericDistance = Number(rawDistance);
+    const viewerForDistance = distanceViewerUser ?? currentUser;
+    const computedDistance = viewerForDistance
+      ? calculateDistanceKm(viewerForDistance, user)
+      : null;
+
+    if (computedDistance != null) {
+      return computedDistance;
+    }
+
+    if (Number.isFinite(numericDistance) && numericDistance < 999999) {
+      return numericDistance;
+    }
+
+    return null;
+  }, [currentUser, distanceKm, distanceViewerUser, user]);
 
   // =================================================
 
@@ -326,55 +457,26 @@ const UserDetailsModal = ({
               currentUser={currentUser}
               isAuthenticated={isAuthenticated}
               memberSince={user?.created_at || user?.createdAt}
+              matchScore={effectiveUserMatch.matchScore}
             />
 
             {/* Bio */}
             <UserBioSection bio={user?.bio || user?.biography} />
+
+            {/* Match Score */}
+            <MatchScoreSection
+              matchScore={effectiveUserMatch.matchScore}
+              matchType={effectiveUserMatch.matchType}
+              matchDetails={effectiveUserMatch.matchDetails}
+              comparisonLabel={getUserComparisonLabel()}
+            />
 
             {/* Location */}
             <LocationSection
               entity={user}
               entityType="user"
               className=""
-              headerRight={showMatchHighlights && currentUser && user ? (() => {
-                const viewedCity = (user.city || "").trim().toLowerCase();
-                const myCity = (currentUser.city || "").trim().toLowerCase();
-                const viewedCountry = (user.country || "").trim().toLowerCase();
-                const myCountry = (currentUser.country || "").trim().toLowerCase();
-                if (viewedCountry && myCountry && viewedCountry !== myCountry) {
-                  return (
-                    <span className="flex items-center gap-1.5 text-sm text-error/70">
-                      <X size={14} className="flex-shrink-0" />
-                      <span>Different country</span>
-                    </span>
-                  );
-                }
-                if (viewedCity && myCity) {
-                  if (viewedCity === myCity) {
-                    return (
-                      <span className="flex items-center gap-1.5 text-sm text-success">
-                        <Check size={14} className="flex-shrink-0" />
-                        <span>Same city</span>
-                      </span>
-                    );
-                  }
-                  return (
-                    <span className="flex items-center gap-1.5 text-sm text-error/70">
-                      <X size={14} className="flex-shrink-0" />
-                      <span>Different city</span>
-                    </span>
-                  );
-                }
-                if (viewedCountry && myCountry && viewedCountry === myCountry) {
-                  return (
-                    <span className="flex items-center gap-1.5 text-sm text-success">
-                      <Check size={14} className="flex-shrink-0" />
-                      <span>Same country</span>
-                    </span>
-                  );
-                }
-                return null;
-              })() : null}
+              distance={showMatchHighlights ? effectiveDistanceKm : null}
             />
 
             {/* Focus Areas */}

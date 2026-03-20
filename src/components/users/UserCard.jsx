@@ -8,6 +8,7 @@ import { useUserModal } from "../../contexts/UserModalContext";
 import { getUserInitials } from "../../utils/userHelpers";
 import LocationDistanceTagsRow from "../common/LocationDistanceTagsRow";
 import { getMatchTier } from "../../utils/matchScoreUtils";
+import { getResultMatchScore } from "../../utils/teamMatchUtils";
 
 /**
  * UserCard Component
@@ -92,16 +93,21 @@ const UserCard = ({
 
   // Open user details via global context
   const openUserDetails = () => {
+    const rawScore = showMatchScore ? getResultMatchScore(user) : null;
     openUserModal(user.id, {
       roleMatchTagIds,
       roleMatchBadgeNames,
       showMatchHighlights,
+      matchScore: rawScore,
+      matchType: user.matchType ?? user.match_type ?? null,
+      matchDetails: user.matchDetails ?? user.match_details ?? null,
+      distanceKm: user.distance_km ?? user.distanceKm ?? null,
     });
   };
 
   // ============ MATCH SCORE ============
-  const rawScore = user.bestMatchScore ?? user.best_match_score;
-  const showScore = showMatchScore && rawScore != null && rawScore > 0;
+  const rawScore = showMatchScore ? getResultMatchScore(user) : null;
+  const showScore = showMatchScore && rawScore != null;
 
   let matchTier = null;
   let matchOverlay = null;
@@ -221,26 +227,34 @@ const UserCard = ({
         clickTooltip="Click to view User details"
         imageOverlay={matchOverlay}
       >
-        <div className="w-36 flex-shrink-0 text-xs text-base-content/60 flex items-center gap-1 overflow-hidden">
-          {locationText && (
-            <Tooltip content={locationText}>
-              <div className="flex items-center gap-1 overflow-hidden">
-                <MapPin size={11} className="flex-shrink-0" />
-                <span className="truncate">{locationText}</span>
+        <div className="w-56 flex-shrink-0 flex items-center gap-3 overflow-hidden">
+          <div className="w-16 flex-shrink-0 overflow-hidden">
+            {showDistance && (
+              <div className="text-xs text-base-content flex items-center gap-1 overflow-hidden">
+                <Tooltip content={`${Math.round(distance)} km away from you`}>
+                  <div className="flex items-center gap-1">
+                    <Ruler size={11} className="flex-shrink-0" />
+                    <span className="whitespace-nowrap">{Math.round(distance)} km</span>
+                  </div>
+                </Tooltip>
               </div>
-            </Tooltip>
+            )}
+          </div>
+          {locationText && (
+            <div className="min-w-0 text-xs text-base-content/60 flex items-center gap-1 overflow-hidden">
+              <Tooltip content={locationText}>
+                <div className="flex items-center gap-1 overflow-hidden">
+                  {user.is_remote || user.isRemote ? (
+                    <Globe size={11} className="flex-shrink-0" />
+                  ) : (
+                    <MapPin size={11} className="flex-shrink-0" />
+                  )}
+                  <span className="truncate">{locationText}</span>
+                </div>
+              </Tooltip>
+            </div>
           )}
         </div>
-        {showDistance && (
-          <div className="w-16 flex-shrink-0 text-xs text-base-content/60 flex items-center gap-1 overflow-hidden">
-            <Tooltip content={`${Math.round(distance)} km away from you`}>
-              <div className="flex items-center gap-1">
-                <Ruler size={11} className="flex-shrink-0" />
-                <span className="whitespace-nowrap">{Math.round(distance)} km</span>
-              </div>
-            </Tooltip>
-          </div>
-        )}
         <div className="w-52 flex-shrink-0 text-xs text-base-content/60 hidden sm:flex items-center gap-1 overflow-hidden">
           {tagsSummary && (
             <Tooltip content={tagNames.join(", ")} wrapperClassName="flex items-center gap-1 min-w-0 overflow-hidden w-full">
@@ -294,11 +308,17 @@ const UserCard = ({
           )}
           {viewMode === "mini" &&
             !activeFilters.showLocation &&
-            (user.city || user.country) && (
+            (user.is_remote || user.isRemote || user.city || user.country) && (
               <span className="flex items-center">
-                <MapPin size={12} className="mr-0.5 flex-shrink-0" />
+                {user.is_remote || user.isRemote ? (
+                  <Globe size={12} className="mr-0.5 flex-shrink-0" />
+                ) : (
+                  <MapPin size={12} className="mr-0.5 flex-shrink-0" />
+                )}
                 <span>
-                  {[user.city, user.country].filter(Boolean).join(", ")}
+                  {user.is_remote || user.isRemote
+                    ? "Remote"
+                    : [user.city, user.country].filter(Boolean).join(", ")}
                 </span>
               </span>
             )}
