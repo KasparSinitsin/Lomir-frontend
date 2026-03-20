@@ -1,5 +1,5 @@
 import React from "react";
-import { MapPin, Globe, Ruler } from "lucide-react";
+import { MapPin, Globe, Ruler, Check } from "lucide-react";
 import {
   normalizeLocationData,
   formatLocation,
@@ -44,6 +44,15 @@ const LocationSection = ({
 
   // For teams, check if it's remote
   const isRemote = entityType === "team" && location.isRemote;
+  const hasDistance =
+    !isRemote &&
+    distance !== null &&
+    distance !== undefined &&
+    distance < 999999;
+  const isNearbyDistance = hasDistance && Number(distance) <= 1000;
+  const distanceToneClass = isNearbyDistance
+    ? "text-success"
+    : "text-base-content/70";
 
   // Choose the appropriate icon
   const IconComponent = isRemote ? Globe : MapPin;
@@ -75,18 +84,29 @@ const LocationSection = ({
         </div>
 
         {/* Distance info - only show for non-remote entities with valid distance */}
-        {!isRemote &&
-          distance !== null &&
-          distance !== undefined &&
-          distance < 999999 && (
-            <div className="flex items-start">
-              <Ruler size={iconSize} className="mr-1 flex-shrink-0 mt-0.5" />
-              <span>{Math.round(distance)} km away</span>
-            </div>
-          )}
+        {hasDistance && (
+          <div className="flex items-start text-base-content">
+            <Ruler size={iconSize} className="mr-1 flex-shrink-0 mt-0.5" />
+            <span>{Math.round(distance)} km away</span>
+          </div>
+        )}
       </div>
     );
   }
+
+  const resolvedHeaderRight =
+    headerRight ??
+    (isRemote ? (
+      <span className="flex items-center gap-1.5 text-sm text-success">
+        <Check size={14} className="flex-shrink-0" />
+        <span>No location boundaries</span>
+      </span>
+    ) : hasDistance ? (
+      <span className={`flex items-center gap-1.5 text-sm ${distanceToneClass}`}>
+        <Ruler size={14} className="flex-shrink-0" />
+        <span>{Math.round(distance)} km away</span>
+      </span>
+    ) : null);
 
   // Full version for modals/details view
   return (
@@ -101,7 +121,7 @@ const LocationSection = ({
             />
             <h3 className="font-medium">{title}</h3>
           </div>
-          {headerRight}
+          {resolvedHeaderRight}
         </div>
       )}
 

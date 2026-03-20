@@ -32,6 +32,66 @@ import TeamApplicationsModal from "./TeamApplicationsModal";
 // import { getUserInitials, getDisplayName } from "../../utils/userHelpers";
 import { format } from "date-fns";
 import LocationDistanceTagsRow from "../common/LocationDistanceTagsRow";
+import { getMatchTier } from "../../utils/matchScoreUtils";
+import { getResultMatchScore } from "../../utils/teamMatchUtils";
+import { calculateDistanceKm } from "../../utils/locationUtils";
+
+const teamMemberBadgesCache = new Map();
+
+const extractBadgeRows = (payload) => {
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.data)) return payload.data;
+  if (Array.isArray(payload?.data?.data)) return payload.data.data;
+  return [];
+};
+
+const hasDisplayableBadges = (rawBadges) => {
+  if (typeof rawBadges === "string") {
+    return rawBadges.trim().length > 0;
+  }
+
+  if (!Array.isArray(rawBadges)) return false;
+
+  return rawBadges.some((badge) => {
+    if (typeof badge === "string") {
+      return badge.trim().length > 0;
+    }
+
+    if (badge && typeof badge === "object") {
+      return Boolean(
+        String(badge.name ?? badge.badgeName ?? badge.badge_name ?? "").trim(),
+      );
+    }
+
+    return false;
+  });
+};
+
+const resolveDistanceKm = ({
+  preferredDistance = null,
+  fallbackDistance = null,
+  viewerEntity = null,
+  targetEntity = null,
+} = {}) => {
+  const rawPreferred = Number(preferredDistance);
+  const rawFallback = Number(fallbackDistance);
+  const existingDistance = Number.isFinite(rawPreferred) && rawPreferred < 999999
+    ? rawPreferred
+    : Number.isFinite(rawFallback) && rawFallback < 999999
+      ? rawFallback
+      : null;
+
+  const computedDistance =
+    viewerEntity && targetEntity
+      ? calculateDistanceKm(viewerEntity, targetEntity)
+      : null;
+
+  if (computedDistance != null) {
+    return computedDistance;
+  }
+
+  return existingDistance;
+};
 
 /**
  * Unified TeamCard Component
@@ -83,7 +143,9 @@ const TeamCard = ({
   onDecline,
 
   showMatchHighlights = false,
+  showMatchScore = false,
   roleMatchBadgeNames = null,
+  viewerDistanceSource = null,
 
   // View mode
   viewMode = "card",
@@ -177,11 +239,28 @@ const TeamCard = ({
     setTeamData((prev) => {
       // If we already have the same team loaded, merge so we don't lose `members`, etc.
       if (prev?.id && incoming?.id && prev.id === incoming.id) {
-        return { ...prev, ...incoming };
+        const incomingBadges =
+          hasDisplayableBadges(incoming.badges)
+            ? incoming.badges
+            : prev.badges;
+        const incomingDistance = resolveDistanceKm({
+          preferredDistance: incoming.distance_km ?? incoming.distanceKm,
+          fallbackDistance: prev.distance_km ?? prev.distanceKm,
+          viewerEntity: viewerDistanceSource ?? user,
+          targetEntity: incoming,
+        });
+
+        return {
+          ...prev,
+          ...incoming,
+          badges: incomingBadges,
+          distance_km: incomingDistance,
+          distanceKm: incomingDistance,
+        };
       }
       return incoming;
     });
-  }, [team, application, invitation]);
+  }, [team, application, invitation, viewerDistanceSource, user]);
 
   //   // Fetch user's role in this team (only for member variant)
   //   useEffect(() => {
@@ -303,16 +382,35 @@ const TeamCard = ({
           effectiveVariant === "application")
       ) {
         try {
-          // if (
-          //   teamData.tags &&
-          //   Array.isArray(teamData.tags) &&
-          //   teamData.tags.length > 0 &&
-          //   teamData.tags.every((tag) => tag.name || typeof tag === "string")
-          // ) {
-          //   return;
-          // }
+          const shouldFetchMemberBadges =
+            !hasDisplayableBadges(teamData.badges);
 
-          const response = await teamService.getTeamById(teamData.id);
+          const [response, memberBadges] = await Promise.all([
+            teamService.getTeamById(teamData.id),
+            shouldFetchMemberBadges
+              ? (() => {
+                  const cached = teamMemberBadgesCache.get(teamData.id);
+                  if (cached) return Promise.resolve(cached);
+
+                  return teamService
+                    .getTeamMemberBadges(teamData.id)
+                    .then((badgesResponse) => {
+                      const badges = extractBadgeRows(badgesResponse);
+                      teamMemberBadgesCache.set(teamData.id, badges);
+                      return badges;
+                    })
+                    .catch((badgeError) => {
+                      console.warn(
+                        "Could not fetch team member badges for card display:",
+                        badgeError,
+                      );
+                      return [];
+                    });
+                })()
+              : Promise.resolve(
+                  hasDisplayableBadges(teamData.badges) ? teamData.badges : [],
+                ),
+          ]);
           const fullTeam = response?.data?.data ?? response?.data;
 
           console.log("DEBUG is_public:", {
@@ -324,13 +422,31 @@ const TeamCard = ({
           });
 
           if (fullTeam) {
-            setTeamData((prev) => ({
-              ...prev,
-              ...fullTeam,
-              is_public:
-                fullTeam.is_public === true || fullTeam.is_public === "true",
-              tags: Array.isArray(fullTeam.tags) ? fullTeam.tags : prev.tags,
-            }));
+            setTeamData((prev) => {
+              const preservedDistanceKm = resolveDistanceKm({
+                preferredDistance: prev?.distance_km ?? prev?.distanceKm,
+                fallbackDistance: fullTeam.distance_km ?? fullTeam.distanceKm,
+                viewerEntity: viewerDistanceSource ?? user,
+                targetEntity: fullTeam,
+              });
+              const resolvedBadges =
+                memberBadges.length > 0
+                  ? memberBadges
+                  : hasDisplayableBadges(fullTeam.badges)
+                    ? fullTeam.badges
+                    : prev?.badges;
+
+              return {
+                ...prev,
+                ...fullTeam,
+                is_public:
+                  fullTeam.is_public === true || fullTeam.is_public === "true",
+                tags: Array.isArray(fullTeam.tags) ? fullTeam.tags : prev.tags,
+                badges: resolvedBadges,
+                distance_km: preservedDistanceKm,
+                distanceKm: preservedDistanceKm,
+              };
+            });
 
             // Compute role from members list
             if (user?.id && Array.isArray(fullTeam.members)) {
@@ -347,7 +463,48 @@ const TeamCard = ({
     };
 
     fetchCompleteTeamData();
-  }, [teamData?.id, effectiveVariant, user?.id]);
+  }, [teamData?.id, effectiveVariant, user, viewerDistanceSource]);
+
+  useEffect(() => {
+    if (!teamData?.id) return;
+    if (teamData.is_remote || teamData.isRemote) return;
+
+    setTeamData((prev) => {
+      if (!prev?.id) return prev;
+
+      const resolvedDistance = resolveDistanceKm({
+        preferredDistance: prev.distance_km ?? prev.distanceKm,
+        viewerEntity: viewerDistanceSource ?? user,
+        targetEntity: prev,
+      });
+
+      if (resolvedDistance == null) return prev;
+
+      const currentDistance = Number(prev.distance_km ?? prev.distanceKm);
+      if (
+        Number.isFinite(currentDistance) &&
+        Math.abs(currentDistance - resolvedDistance) < 0.5
+      ) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        distance_km: resolvedDistance,
+        distanceKm: resolvedDistance,
+      };
+    });
+  }, [
+    teamData?.id,
+    teamData?.distance_km,
+    teamData?.distanceKm,
+    teamData?.latitude,
+    teamData?.longitude,
+    teamData?.is_remote,
+    teamData?.isRemote,
+    viewerDistanceSource,
+    user,
+  ]);
 
   // Check if user has a pending application for this team (for search results)
   useEffect(() => {
@@ -545,6 +702,53 @@ const TeamCard = ({
     );
   };
 
+  const getDisplayBadges = () => {
+    let displayBadges = [];
+
+    try {
+      if (Array.isArray(teamData.badges)) {
+        displayBadges = teamData.badges.map((badge) => {
+          if (typeof badge === "string") return { name: badge };
+          if (badge && typeof badge === "object") {
+            return {
+              id: badge.id || badge.badge_id || badge.badgeId,
+              name:
+                badge.name ||
+                badge.badgeName ||
+                (typeof badge.badge_name === "string"
+                  ? badge.badge_name
+                  : ""),
+              category: badge.category || "",
+              total_credits:
+                badge.total_credits ??
+                badge.totalCredits ??
+                badge.credits ??
+                0,
+            };
+          }
+          return badge;
+        });
+      } else if (typeof teamData.badges === "string") {
+        try {
+          const parsedBadges = JSON.parse(teamData.badges);
+          displayBadges = Array.isArray(parsedBadges)
+            ? parsedBadges
+            : [{ name: teamData.badges.trim() }];
+        } catch {
+          displayBadges = teamData.badges
+            .split(",")
+            .map((name) => ({ name: name.trim() }));
+        }
+      }
+    } catch {
+      displayBadges = [];
+    }
+
+    return displayBadges.filter(
+      (badge) => badge && (badge.name || typeof badge === "string"),
+    );
+  };
+
   const shouldShowVisibilityIcon = () => {
     if (!isAuthenticated || !user) return false;
     if (effectiveVariant !== "member") return false;
@@ -592,8 +796,26 @@ const TeamCard = ({
             is_public:
               fullTeam.is_public === true || fullTeam.is_public === "true",
           };
-          setTeamData(normalizedTeam);
-          if (onUpdate) onUpdate(normalizedTeam);
+          const mergedTeam = {
+            ...teamData,
+            ...normalizedTeam,
+            badges: hasDisplayableBadges(normalizedTeam.badges)
+              ? normalizedTeam.badges
+              : teamData.badges,
+          };
+          const refreshedDistance = resolveDistanceKm({
+            preferredDistance:
+              normalizedTeam.distance_km ?? normalizedTeam.distanceKm,
+            fallbackDistance: teamData.distance_km ?? teamData.distanceKm,
+            viewerEntity: viewerDistanceSource ?? user,
+            targetEntity: mergedTeam,
+          });
+
+          mergedTeam.distance_km = refreshedDistance;
+          mergedTeam.distanceKm = refreshedDistance;
+
+          setTeamData(mergedTeam);
+          if (onUpdate) onUpdate(mergedTeam);
         }
       } catch (error) {
         console.error("Error refreshing team data:", error);
@@ -604,8 +826,25 @@ const TeamCard = ({
   };
 
   const handleTeamUpdate = (updatedTeam) => {
-    setTeamData(updatedTeam);
-    if (onUpdate) onUpdate(updatedTeam);
+    const mergedTeam = {
+      ...teamData,
+      ...updatedTeam,
+      badges: hasDisplayableBadges(updatedTeam?.badges)
+        ? updatedTeam.badges
+        : teamData.badges,
+    };
+    const refreshedDistance = resolveDistanceKm({
+      preferredDistance: updatedTeam?.distance_km ?? updatedTeam?.distanceKm,
+      fallbackDistance: teamData.distance_km ?? teamData.distanceKm,
+      viewerEntity: viewerDistanceSource ?? user,
+      targetEntity: mergedTeam,
+    });
+
+    mergedTeam.distance_km = refreshedDistance;
+    mergedTeam.distanceKm = refreshedDistance;
+
+    setTeamData(mergedTeam);
+    if (onUpdate) onUpdate(mergedTeam);
   };
 
   const handleApplicationAction = async (applicationId, action, response) => {
@@ -925,6 +1164,60 @@ const TeamCard = ({
 
   console.log("TeamCard data:", teamData, "distance_km:", teamData.distance_km);
 
+  // ============ MATCH SCORE ============
+  // Read from normalizedData.team (original prop) so API refetches don't overwrite it
+  const rawScore = showMatchScore ? getResultMatchScore(normalizedData.team) : null;
+  const showScore = showMatchScore && rawScore != null;
+
+  let matchTier = null;
+  let matchOverlay = null;
+  let scoreSubtitleItem = null;
+
+  if (showScore) {
+    matchTier = getMatchTier(rawScore);
+
+    const matchDetails =
+      normalizedData.team?.matchDetails ?? normalizedData.team?.match_details;
+    const sharedTagCount =
+      normalizedData.team?.sharedTagCount ??
+      normalizedData.team?.shared_tag_count ??
+      (matchDetails?.sharedTagCount ?? matchDetails?.shared_tag_count ?? 0);
+
+    const tooltipText =
+      sharedTagCount > 0
+        ? `${matchTier.pct}% profile match — ${sharedTagCount} shared focus areas`
+        : `${matchTier.pct}% profile match`;
+
+    const iconSizeSubtitle =
+      viewMode === "list" ? 10 : viewMode === "mini" ? 11 : 12;
+    scoreSubtitleItem = (
+      <Tooltip content={tooltipText}>
+        <span className="flex items-center gap-0.5">
+          <matchTier.Icon size={iconSizeSubtitle} className={matchTier.text} />
+          <span className="text-base-content">{matchTier.pct}%</span>
+        </span>
+      </Tooltip>
+    );
+
+    const badgeSize =
+      viewMode === "list"
+        ? "w-[14px] h-[14px]"
+        : "w-5 h-5";
+    const badgeIconSize =
+      viewMode === "list" ? 7 : 10;
+    matchOverlay = (
+      <div
+        className={`absolute -top-0.5 -left-0.5 rounded-full ring-2 ring-white flex items-center justify-center ${matchTier.bg} ${badgeSize}`}
+      >
+        <matchTier.Icon
+          size={badgeIconSize}
+          className="text-white"
+          strokeWidth={2.5}
+        />
+      </div>
+    );
+  }
+
   // ============ LIST VIEW ============
 
   if (viewMode === "list") {
@@ -947,8 +1240,8 @@ const TeamCard = ({
           (remainingTags > 0 ? ` +${remainingTags}` : "")
         : "";
 
-    const badgeNames = (teamData.badges || [])
-      .map((b) => b.name || "")
+    const badgeNames = getDisplayBadges()
+      .map((badge) => (typeof badge === "string" ? badge : badge.name || ""))
       .filter(Boolean);
     const maxInlineBadges = 3;
     const visibleBadges = badgeNames.slice(0, maxInlineBadges);
@@ -964,6 +1257,7 @@ const TeamCard = ({
 
     const subtitleContent = (
       <span className="flex items-center gap-1 text-base-content/60">
+        {scoreSubtitleItem}
         <Users size={11} />
         <span>{memberCount}/{maxMembers}</span>
         {openRoleCount > 0 && (
@@ -1045,31 +1339,36 @@ const TeamCard = ({
           viewMode="list"
           className=""
           clickTooltip="Click to view Team details"
-        >
-          <div className="w-36 flex-shrink-0 text-xs text-base-content/60 flex items-center gap-1 overflow-hidden">
-            {locationText && (
-              <Tooltip content={locationText}>
-                <div className="flex items-center gap-1 overflow-hidden">
-                  {teamData.is_remote || teamData.isRemote ? (
-                    <Globe size={11} className="flex-shrink-0" />
-                  ) : (
-                    <MapPin size={11} className="flex-shrink-0" />
-                  )}
-                  <span className="truncate">{locationText}</span>
+          imageOverlay={matchOverlay}
+      >
+          <div className="w-56 flex-shrink-0 flex items-center gap-3 overflow-hidden">
+            <div className="w-16 flex-shrink-0 overflow-hidden">
+              {showDistance && (
+                <div className="text-xs text-base-content flex items-center gap-1 overflow-hidden">
+                  <Tooltip content={`${Math.round(distance)} km away from you`}>
+                    <div className="flex items-center gap-1">
+                      <Ruler size={11} className="flex-shrink-0" />
+                      <span className="whitespace-nowrap">{Math.round(distance)} km</span>
+                    </div>
+                  </Tooltip>
                 </div>
-              </Tooltip>
+              )}
+            </div>
+            {locationText && (
+              <div className="min-w-0 text-xs text-base-content/60 flex items-center gap-1 overflow-hidden">
+                <Tooltip content={locationText}>
+                  <div className="flex items-center gap-1 overflow-hidden">
+                    {teamData.is_remote || teamData.isRemote ? (
+                      <Globe size={11} className="flex-shrink-0" />
+                    ) : (
+                      <MapPin size={11} className="flex-shrink-0" />
+                    )}
+                    <span className="truncate">{locationText}</span>
+                  </div>
+                </Tooltip>
+              </div>
             )}
           </div>
-          {showDistance && (
-            <div className="w-16 flex-shrink-0 text-xs text-base-content/60 flex items-center gap-1 overflow-hidden">
-              <Tooltip content={`${Math.round(distance)} km away from you`}>
-                <div className="flex items-center gap-1">
-                  <Ruler size={11} className="flex-shrink-0" />
-                  <span className="whitespace-nowrap">{Math.round(distance)} km</span>
-                </div>
-              </Tooltip>
-            </div>
-          )}
           <div className="w-52 flex-shrink-0 text-xs text-base-content/60 hidden sm:flex items-center gap-1 overflow-hidden">
             {tagsSummary && (
               <Tooltip content={tagNames.join(", ")} wrapperClassName="flex items-center gap-1 min-w-0 overflow-hidden w-full">
@@ -1170,6 +1469,9 @@ const TeamCard = ({
           }
           onViewApplicationDetails={() => setIsApplicationModalOpen(true)}
           showMatchHighlights={showMatchHighlights}
+          matchScore={rawScore ?? null}
+          matchType={normalizedData.team?.matchType ?? normalizedData.team?.match_type ?? null}
+          matchDetails={normalizedData.team?.matchDetails ?? normalizedData.team?.match_details ?? null}
         />
 
         {/* Applications Modal (for team owners and admins) */}
@@ -1253,6 +1555,7 @@ const TeamCard = ({
           <span
             className={`flex items-center flex-wrap text-base-content/70 ${viewMode === "mini" ? "text-xs gap-x-1 gap-y-0.5 w-full" : "text-sm gap-1.5"}`}
           >
+            {scoreSubtitleItem}
             {/* Members count */}
             <span className="flex items-center">
               <Users
@@ -1431,6 +1734,7 @@ const TeamCard = ({
           viewMode === "mini" ? "text-base mb-0.5 leading-[110%]" : ""
         }
         marginClassName={viewMode === "mini" ? "mb-2" : ""}
+        imageOverlay={matchOverlay}
       >
         {error && (
           <Alert
@@ -1455,6 +1759,11 @@ const TeamCard = ({
             viewMode === "mini" && !activeFilters.showTags
               ? null
               : getDisplayTags
+          }
+          badges={
+            viewMode === "mini" && !activeFilters.showBadges
+              ? null
+              : getDisplayBadges()
           }
           hideLocation={viewMode === "mini" && !activeFilters.showLocation}
           compact={viewMode === "mini"}
@@ -1496,6 +1805,9 @@ const TeamCard = ({
         onViewApplicationDetails={() => setIsApplicationModalOpen(true)}
         showMatchHighlights={showMatchHighlights}
         roleMatchBadgeNames={roleMatchBadgeNames}
+        matchScore={rawScore ?? null}
+        matchType={normalizedData.team?.matchType ?? normalizedData.team?.match_type ?? null}
+        matchDetails={normalizedData.team?.matchDetails ?? normalizedData.team?.match_details ?? null}
       />
 
       {/* Applications Modal (for team owners and admins) */}

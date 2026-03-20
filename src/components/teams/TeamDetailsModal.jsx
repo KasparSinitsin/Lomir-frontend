@@ -50,6 +50,13 @@ import SupercategoryAwardsModal from "../badges/SupercategoryAwardsModal";
 import BadgesDisplaySection from "../badges/BadgesDisplaySection";
 import BadgeCategoryModal from "../badges/BadgeCategoryModal";
 import useTeamAwardModals from "../../hooks/useTeamAwardModals";
+import MatchScoreSection from "../common/MatchScoreSection";
+import {
+  buildViewerTeamMatchProfile,
+  enrichTeamMatchData,
+} from "../../utils/teamMatchUtils";
+import { getMatchTier } from "../../utils/matchScoreUtils";
+import { calculateDistanceKm } from "../../utils/locationUtils";
 
 const normalizeTeamTagIds = (team) => {
   const raw = team?.tags ?? team?.tags_json ?? team?.selectedTags ?? [];
@@ -87,6 +94,9 @@ const TeamDetailsModal = ({
   onViewApplicationDetails,
   showMatchHighlights = false,
   roleMatchBadgeNames = null,
+  matchScore = null,
+  matchType = null,
+  matchDetails = null,
 }) => {
   const navigate = useNavigate();
   const { id: urlTeamId } = useParams();
@@ -133,6 +143,7 @@ const TeamDetailsModal = ({
   const [currentUserTagIds, setCurrentUserTagIds] = useState(null); // Set<number>
 
   const [userTagIds, setUserTagIds] = useState(null); // Set<number>
+  const [distanceViewerUser, setDistanceViewerUser] = useState(null);
 
   const [teamBadges, setTeamBadges] = useState(null);
   const [teamBadgesTotalCredits, setTeamBadgesTotalCredits] = useState(0);
@@ -247,6 +258,15 @@ const TeamDetailsModal = ({
           teamData.is_public === "true" ||
           teamData.isPublic === "true";
 
+        const preservedDistanceKm =
+          team?.distance_km ??
+          team?.distanceKm ??
+          initialTeamData?.distance_km ??
+          initialTeamData?.distanceKm ??
+          teamData.distance_km ??
+          teamData.distanceKm ??
+          null;
+
         // Enhance team data with normalized values
         const enhancedTeamData = {
           ...teamData,
@@ -259,6 +279,8 @@ const TeamDetailsModal = ({
           city: teamData.city ?? null,
           state: teamData.state ?? null,
           country: teamData.country ?? null,
+          distance_km: preservedDistanceKm,
+          distanceKm: preservedDistanceKm,
           max_members:
             teamData.max_members !== undefined
               ? teamData.max_members
@@ -388,7 +410,7 @@ const TeamDetailsModal = ({
         setLoading(false);
       }
     },
-    [effectiveTeamId, user, isAuthenticated, team],
+    [effectiveTeamId, initialTeamData, user, isAuthenticated, team],
   );
 
   // Add effect to check team data after it's set
@@ -745,6 +767,41 @@ const TeamDetailsModal = ({
 
     fetchCurrentUserBadges();
   }, [isModalVisible, isAuthenticated, user?.id, showMatchHighlights]);
+
+  useEffect(() => {
+    if (!isModalVisible || !isAuthenticated || !user?.id || !showMatchHighlights) {
+      setDistanceViewerUser(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    const fetchDistanceViewerUser = async () => {
+      try {
+        const response = await userService.getUserById(user.id);
+        const payload = response?.data ?? response;
+        const viewerData =
+          payload?.success !== undefined
+            ? payload?.data
+            : (payload?.data?.data ?? payload?.data ?? payload);
+
+        if (!cancelled) {
+          setDistanceViewerUser(viewerData ?? user);
+        }
+      } catch (err) {
+        console.warn("Could not fetch current user details for distance fallback:", err);
+        if (!cancelled) {
+          setDistanceViewerUser(user);
+        }
+      }
+    };
+
+    fetchDistanceViewerUser();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated, isModalVisible, showMatchHighlights, user]);
 
   // Fetch structured tags when modal opens (needed for display AND edit mode)
   useEffect(() => {
@@ -1276,6 +1333,78 @@ const TeamDetailsModal = ({
   });
 
   // Create custom title with buttons
+  const effectiveTeamMatch = useMemo(() => {
+    const shouldResolveMatchData =
+      showMatchHighlights ||
+      matchScore > 0 ||
+      matchType != null ||
+      matchDetails != null;
+
+    if (!shouldResolveMatchData || !team || !user) {
+      return { matchScore, matchType, matchDetails };
+    }
+
+    const viewerProfile = buildViewerTeamMatchProfile({
+      user,
+      userTags: Array.from(currentUserTagIds ?? userTagIds ?? []),
+      userBadges: Array.from(currentUserBadgeNames ?? []),
+    });
+    const enrichedTeam = enrichTeamMatchData({
+      team: {
+        ...team,
+        bestMatchScore: matchScore,
+        best_match_score: matchScore,
+        matchType,
+        match_type: matchType,
+        matchDetails,
+        match_details: matchDetails,
+      },
+      viewerProfile,
+      teamBadges,
+    });
+
+    return {
+      matchScore: enrichedTeam.bestMatchScore ?? matchScore,
+      matchType: enrichedTeam.matchType ?? matchType,
+      matchDetails: enrichedTeam.matchDetails ?? matchDetails,
+    };
+  }, [
+    currentUserBadgeNames,
+    currentUserTagIds,
+    matchDetails,
+    matchScore,
+    matchType,
+    showMatchHighlights,
+    team,
+    teamBadges,
+    user,
+    userTagIds,
+  ]);
+
+  const effectiveTeamDistanceKm = useMemo(() => {
+    const rawDistance = team?.distance_km ?? team?.distanceKm;
+    const numericDistance = Number(rawDistance);
+    const viewerForDistance = distanceViewerUser ?? user;
+    const computedDistance = viewerForDistance
+      ? calculateDistanceKm(viewerForDistance, team)
+      : null;
+
+    if (computedDistance != null) {
+      return computedDistance;
+    }
+
+    if (Number.isFinite(numericDistance) && numericDistance < 999999) {
+      return numericDistance;
+    }
+
+    return null;
+  }, [distanceViewerUser, team, user]);
+
+  const teamMatchTier =
+    effectiveTeamMatch.matchScore != null
+      ? getMatchTier(effectiveTeamMatch.matchScore)
+      : null;
+
   const modalTitle = (
     <div className="flex justify-between items-center w-full">
       <h2 className="text-xl font-medium text-primary">
@@ -1377,7 +1506,7 @@ const TeamDetailsModal = ({
                   fullTeam: team,
                 })}
                 <div className="flex items-start space-x-4 mb-6">
-                  <div className="avatar placeholder">
+                  <div className="avatar placeholder relative">
                     <div className="bg-primary text-primary-content rounded-full w-16 h-16 flex items-center justify-center">
                       {(team?.teamavatar_url || team?.teamavatarUrl) &&
                       !teamImageError ? (
@@ -1391,6 +1520,18 @@ const TeamDetailsModal = ({
                         <span className="text-xl">{getTeamInitials()}</span>
                       )}
                     </div>
+                    {teamMatchTier && (
+                      <div
+                        className={`absolute -top-1 -left-1 w-6 h-6 rounded-full ring-2 ring-white flex items-center justify-center ${teamMatchTier.bg}`}
+                        title={`${teamMatchTier.pct}% ${teamMatchTier.label.toLowerCase()}`}
+                      >
+                        <teamMatchTier.Icon
+                          size={12}
+                          className="text-white"
+                          strokeWidth={2.5}
+                        />
+                      </div>
+                    )}
                   </div>
                   <div>
                     <h1 className="text-2xl font-bold leading-[120%] mb-[0.2em]">
@@ -1457,58 +1598,19 @@ const TeamDetailsModal = ({
                     </div>
                   )}
 
+                  {/* Match Score */}
+                  <MatchScoreSection
+                    matchScore={effectiveTeamMatch.matchScore}
+                    matchType={effectiveTeamMatch.matchType}
+                    matchDetails={effectiveTeamMatch.matchDetails}
+                    comparisonLabel="this team"
+                  />
+
                   {/* Team Location */}
                   <LocationSection
                     entity={team}
                     entityType="team"
-                    headerRight={showMatchHighlights && user && team ? (() => {
-                      const teamCity = (team.city || "").trim().toLowerCase();
-                      const myCity = (user.city || "").trim().toLowerCase();
-                      const teamIsRemote = team.is_remote || team.isRemote;
-                      if (teamIsRemote) {
-                        return (
-                          <span className="flex items-center gap-1.5 text-sm text-success">
-                            <Check size={14} className="flex-shrink-0" />
-                            <span>Remote team</span>
-                          </span>
-                        );
-                      }
-                      const teamCountry = (team.country || "").trim().toLowerCase();
-                      const myCountry = (user.country || "").trim().toLowerCase();
-                      if (teamCountry && myCountry && teamCountry !== myCountry) {
-                        return (
-                          <span className="flex items-center gap-1.5 text-sm text-error/70">
-                            <X size={14} className="flex-shrink-0" />
-                            <span>Different country</span>
-                          </span>
-                        );
-                      }
-                      if (teamCity && myCity) {
-                        if (teamCity === myCity) {
-                          return (
-                            <span className="flex items-center gap-1.5 text-sm text-success">
-                              <Check size={14} className="flex-shrink-0" />
-                              <span>Same city</span>
-                            </span>
-                          );
-                        }
-                        return (
-                          <span className="flex items-center gap-1.5 text-sm text-error/70">
-                            <X size={14} className="flex-shrink-0" />
-                            <span>Different city</span>
-                          </span>
-                        );
-                      }
-                      if (teamCountry && myCountry && teamCountry === myCountry) {
-                        return (
-                          <span className="flex items-center gap-1.5 text-sm text-success">
-                            <Check size={14} className="flex-shrink-0" />
-                            <span>Same country</span>
-                          </span>
-                        );
-                      }
-                      return null;
-                    })() : null}
+                    distance={showMatchHighlights ? effectiveTeamDistanceKm : null}
                   />
 
                   {/* Team Focus Areas */}

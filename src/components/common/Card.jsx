@@ -26,6 +26,7 @@ const Card = ({
   marginClassName = "",
   viewMode = "card",
   clickTooltip = null,
+  imageOverlay = null,
 }) => {
   const [imageError, setImageError] = useState(false);
   const [rowTooltipVisible, setRowTooltipVisible] = useState(false);
@@ -78,7 +79,7 @@ const Card = ({
       <div
         className={`flex justify-top ${imageWrapperClassName || "mb-4 pb-4"}`}
       >
-        <div className="avatar placeholder">
+        <div className="avatar placeholder relative">
           <div
             className={`bg-primary text-primary-content ${shapeClass} ${sizeClass} flex items-center justify-center`}
           >
@@ -97,6 +98,7 @@ const Card = ({
               </span>
             )}
           </div>
+          {imageOverlay}
         </div>
       </div>
     );
@@ -201,7 +203,7 @@ const Card = ({
         }
       >
         {(image || imageFallback) && (
-          <div className="avatar placeholder flex-shrink-0">
+          <div className="avatar placeholder flex-shrink-0 relative">
             <div className="bg-primary text-primary-content rounded-full w-9 h-9 flex items-center justify-center">
               {typeof image === "string" &&
               (image.startsWith("http") ||
@@ -223,6 +225,7 @@ const Card = ({
                 </span>
               )}
             </div>
+            {imageOverlay}
           </div>
         )}
 

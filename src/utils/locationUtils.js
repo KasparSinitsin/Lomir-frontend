@@ -313,6 +313,46 @@ export const hasLocationChanged = (newData, oldData) => {
   );
 };
 
+const toCoordinate = (value) => {
+  const num = Number(value);
+  return Number.isFinite(num) ? num : null;
+};
+
+/**
+ * Calculate the great-circle distance in kilometers between two entities
+ * with latitude/longitude values.
+ *
+ * @param {Object} source - First entity with latitude/longitude
+ * @param {Object} target - Second entity with latitude/longitude
+ * @returns {number|null} Distance in km or null when coordinates are missing
+ */
+export const calculateDistanceKm = (source, target) => {
+  const from = normalizeLocationData(source);
+  const to = normalizeLocationData(target);
+
+  const lat1 = toCoordinate(from.latitude);
+  const lon1 = toCoordinate(from.longitude);
+  const lat2 = toCoordinate(to.latitude);
+  const lon2 = toCoordinate(to.longitude);
+
+  if ([lat1, lon1, lat2, lon2].some((value) => value === null)) {
+    return null;
+  }
+
+  const toRadians = (degrees) => (degrees * Math.PI) / 180;
+  const earthRadiusKm = 6371;
+  const dLat = toRadians(lat2 - lat1);
+  const dLon = toRadians(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRadians(lat1)) *
+      Math.cos(toRadians(lat2)) *
+      Math.sin(dLon / 2) ** 2;
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  return earthRadiusKm * c;
+};
+
 export default {
   COUNTRY_NAMES,
   COUNTRY_NAME_TO_CODE,
@@ -321,4 +361,5 @@ export default {
   normalizeLocationData,
   formatLocation,
   hasLocationChanged,
+  calculateDistanceKm,
 };
