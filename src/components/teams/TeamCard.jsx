@@ -146,6 +146,11 @@ const TeamCard = ({
   showMatchScore = false,
   roleMatchBadgeNames = null,
   viewerDistanceSource = null,
+  listLocationInsetClassName = "",
+  listLocationWidthClassName = "",
+  listTagsWidthClassName = "",
+  listBadgesWidthClassName = "",
+  hideDistanceInfo = false,
 
   // View mode
   viewMode = "card",
@@ -1226,7 +1231,11 @@ const TeamCard = ({
         ? "Remote"
         : [teamData.city, teamData.country].filter(Boolean).join(", ");
     const distance = teamData.distance_km ?? teamData.distanceKm;
-    const showDistance = distance != null && distance < 999999 && !(teamData.is_remote || teamData.isRemote);
+    const showDistance =
+      !hideDistanceInfo &&
+      distance != null &&
+      distance < 999999 &&
+      !(teamData.is_remote || teamData.isRemote);
 
     const tagNames = (teamData.tags || [])
       .map((t) => (typeof t === "string" ? t : t.name || t.tag || ""))
@@ -1256,7 +1265,7 @@ const TeamCard = ({
     const shouldReserveMyTeamsActionSlot = !isSearchResult;
 
     const subtitleContent = (
-      <span className="flex items-center gap-1 text-base-content/60">
+      <span className="flex min-w-0 flex-nowrap items-center gap-1 overflow-hidden whitespace-nowrap text-base-content/60">
         {scoreSubtitleItem}
         <Users size={11} />
         <span>{memberCount}/{maxMembers}</span>
@@ -1341,9 +1350,11 @@ const TeamCard = ({
           clickTooltip="Click to view Team details"
           imageOverlay={matchOverlay}
       >
-          <div className="w-56 flex-shrink-0 flex items-center gap-3 overflow-hidden">
-            <div className="w-16 flex-shrink-0 overflow-hidden">
-              {showDistance && (
+          <div
+            className={`box-border w-56 flex-shrink-0 flex items-center gap-3 overflow-hidden ${listLocationWidthClassName} ${listLocationInsetClassName}`}
+          >
+            {showDistance && (
+              <div className="w-16 flex-shrink-0 overflow-hidden">
                 <div className="text-xs text-base-content flex items-center gap-1 overflow-hidden">
                   <Tooltip content={`${Math.round(distance)} km away from you`}>
                     <div className="flex items-center gap-1">
@@ -1352,24 +1363,29 @@ const TeamCard = ({
                     </div>
                   </Tooltip>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
             {locationText && (
               <div className="min-w-0 text-xs text-base-content/60 flex items-center gap-1 overflow-hidden">
-                <Tooltip content={locationText}>
-                  <div className="flex items-center gap-1 overflow-hidden">
+                <Tooltip
+                  content={locationText}
+                  wrapperClassName="flex min-w-0 w-full items-center overflow-hidden"
+                >
+                  <div className="flex min-w-0 w-full items-center gap-1 overflow-hidden">
                     {teamData.is_remote || teamData.isRemote ? (
                       <Globe size={11} className="flex-shrink-0" />
                     ) : (
                       <MapPin size={11} className="flex-shrink-0" />
                     )}
-                    <span className="truncate">{locationText}</span>
+                    <span className="min-w-0 flex-1 truncate">{locationText}</span>
                   </div>
                 </Tooltip>
               </div>
             )}
           </div>
-          <div className="w-52 flex-shrink-0 text-xs text-base-content/60 hidden sm:flex items-center gap-1 overflow-hidden">
+          <div
+            className={`w-52 flex-shrink-0 text-xs text-base-content/60 hidden sm:flex items-center gap-1 overflow-hidden ${listTagsWidthClassName}`}
+          >
             {tagsSummary && (
               <Tooltip content={tagNames.join(", ")} wrapperClassName="flex items-center gap-1 min-w-0 overflow-hidden w-full">
                 <Tag size={11} className="flex-shrink-0" />
@@ -1377,7 +1393,9 @@ const TeamCard = ({
               </Tooltip>
             )}
           </div>
-          <div className="w-48 flex-shrink-0 text-xs text-base-content/60 hidden sm:flex items-center gap-1 overflow-hidden">
+          <div
+            className={`w-48 flex-shrink-0 text-xs text-base-content/60 hidden sm:flex items-center gap-1 overflow-hidden ${listBadgesWidthClassName}`}
+          >
             {badgesSummary && (
               <Tooltip content={badgeNames.join(", ")} wrapperClassName="flex items-center gap-1 min-w-0 overflow-hidden w-full">
                 <Award size={11} className="flex-shrink-0" />
@@ -1754,7 +1772,9 @@ const TeamCard = ({
         <LocationDistanceTagsRow
           entity={teamData}
           entityType="team"
-          distance={teamData.distance_km ?? teamData.distanceKm}
+          distance={
+            hideDistanceInfo ? null : (teamData.distance_km ?? teamData.distanceKm)
+          }
           getDisplayTags={
             viewMode === "mini" && !activeFilters.showTags
               ? null

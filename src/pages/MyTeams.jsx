@@ -7,6 +7,7 @@ import TeamCard from "../components/teams/TeamCard";
 import Section from "../components/layout/Section";
 import Pagination from "../components/common/Pagination";
 import { teamService } from "../services/teamService";
+import { userService } from "../services/userService";
 import { useAuth } from "../contexts/AuthContext";
 import {
   Plus,
@@ -90,6 +91,7 @@ const MyTeams = () => {
   const [loadingInvitations, setLoadingInvitations] = useState(true);
   const [error, setError] = useState(null);
   const { user } = useAuth();
+  const [viewerDistanceSource, setViewerDistanceSource] = useState(null);
 
   // ===== VIEW MODE STATE =====
   const [resultView, setResultView] = useState("list");
@@ -209,6 +211,45 @@ const MyTeams = () => {
     fetchPendingApplications();
     fetchPendingInvitations();
   }, [fetchPendingApplications, fetchPendingInvitations]);
+
+  useEffect(() => {
+    if (!user?.id) {
+      setViewerDistanceSource(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    const fetchViewerDistanceSource = async () => {
+      try {
+        const response = await userService.getUserById(user.id);
+        const payload = response?.data ?? response;
+        const viewerUserData =
+          payload?.success !== undefined
+            ? payload?.data
+            : (payload?.data?.data ?? payload?.data ?? payload);
+
+        if (!cancelled) {
+          setViewerDistanceSource(viewerUserData ?? user);
+        }
+      } catch (err) {
+        console.warn(
+          "Could not fetch fresh viewer profile for My Teams distances:",
+          err,
+        );
+
+        if (!cancelled) {
+          setViewerDistanceSource(user);
+        }
+      }
+    };
+
+    fetchViewerDistanceSource();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
 
   // Fetch teams when page or limit changes
   useEffect(() => {
@@ -720,6 +761,12 @@ const MyTeams = () => {
                         invitation={invitation}
                         onAccept={handleInvitationAccept}
                         onDecline={handleInvitationDecline}
+                        viewerDistanceSource={viewerDistanceSource}
+                        hideDistanceInfo={true}
+                        listLocationWidthClassName="sm:w-44"
+                        listLocationInsetClassName="sm:pl-[60px]"
+                        listTagsWidthClassName="sm:w-44"
+                        listBadgesWidthClassName="sm:w-40"
                         viewMode="list"
                         activeFilters={{}}
                       />
@@ -747,6 +794,8 @@ const MyTeams = () => {
                         invitation={invitation}
                         onAccept={handleInvitationAccept}
                         onDecline={handleInvitationDecline}
+                        viewerDistanceSource={viewerDistanceSource}
+                        hideDistanceInfo={true}
                         viewMode={resultView}
                         activeFilters={{}}
                       />
@@ -795,6 +844,12 @@ const MyTeams = () => {
                       application={application}
                       onCancel={handleApplicationCancel}
                       onSendReminder={handleSendReminder}
+                      viewerDistanceSource={viewerDistanceSource}
+                      hideDistanceInfo={true}
+                      listLocationWidthClassName="sm:w-44"
+                      listLocationInsetClassName="sm:pl-[60px]"
+                      listTagsWidthClassName="sm:w-44"
+                      listBadgesWidthClassName="sm:w-40"
                       viewMode="list"
                       activeFilters={{}}
                     />
@@ -809,6 +864,8 @@ const MyTeams = () => {
                       application={application}
                       onCancel={handleApplicationCancel}
                       onSendReminder={handleSendReminder}
+                      viewerDistanceSource={viewerDistanceSource}
+                      hideDistanceInfo={true}
                       viewMode={resultView}
                       activeFilters={{}}
                     />
@@ -896,6 +953,12 @@ const MyTeams = () => {
                       onUpdate={handleTeamUpdate}
                       onDelete={handleTeamDelete}
                       onLeave={handleTeamLeave}
+                      viewerDistanceSource={viewerDistanceSource}
+                      hideDistanceInfo={true}
+                      listLocationWidthClassName="sm:w-44"
+                      listLocationInsetClassName="sm:pl-[60px]"
+                      listTagsWidthClassName="sm:w-44"
+                      listBadgesWidthClassName="sm:w-40"
                       autoOpenApplications={
                         team.id === autoOpenApplicationsTeamId
                       }
@@ -937,6 +1000,8 @@ const MyTeams = () => {
                       onUpdate={handleTeamUpdate}
                       onDelete={handleTeamDelete}
                       onLeave={handleTeamLeave}
+                      viewerDistanceSource={viewerDistanceSource}
+                      hideDistanceInfo={true}
                       autoOpenApplications={
                         team.id === autoOpenApplicationsTeamId
                       }
