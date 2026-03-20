@@ -1701,6 +1701,7 @@ const SearchPage = () => {
                         onUpdate={handleUserUpdate}
                         roleMatchTagIds={roleMatchTagIds}
                         roleMatchBadgeNames={roleMatchBadgeNames}
+                        roleMatchName={matchRoleName}
                         showMatchHighlights={sortBy === "match"}
                         showMatchScore={sortBy === "match"}
                         viewMode="list"
@@ -1744,6 +1745,7 @@ const SearchPage = () => {
                         onUpdate={handleUserUpdate}
                         roleMatchTagIds={roleMatchTagIds}
                         roleMatchBadgeNames={roleMatchBadgeNames}
+                        roleMatchName={matchRoleName}
                         showMatchHighlights={sortBy === "match"}
                         showMatchScore={sortBy === "match"}
                         viewMode={resultView}

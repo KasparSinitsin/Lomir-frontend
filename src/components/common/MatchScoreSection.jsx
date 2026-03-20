@@ -80,6 +80,7 @@ const MatchScoreSection = ({
   matchType,
   matchDetails,
   comparisonLabel = null,
+  roleLabel = null,
 }) => {
   if (matchScore == null) return null;
 
@@ -139,8 +140,20 @@ const MatchScoreSection = ({
   const comparisonSuffix = comparisonLabel
     ? ` of you and ${comparisonLabel}`
     : "";
+  const normalizedRoleLabel = String(roleLabel ?? "").trim();
+  const formattedRoleLabel = normalizedRoleLabel
+    ? normalizedRoleLabel.toLowerCase().startsWith("the ")
+      ? normalizedRoleLabel.toLowerCase().endsWith(" role")
+        ? normalizedRoleLabel
+        : `${normalizedRoleLabel} role`
+      : normalizedRoleLabel.toLowerCase().endsWith(" role")
+        ? `the ${normalizedRoleLabel}`
+        : `the ${normalizedRoleLabel} role`
+    : null;
   let headline;
-  if (normalizedMatchType === "role_match") {
+  if (normalizedMatchType === "role_match" && formattedRoleLabel) {
+    headline = `${tier.pct}% matching score of ${comparisonLabel || "this person"} with ${formattedRoleLabel}`;
+  } else if (normalizedMatchType === "role_match") {
     headline = `${tier.pct}% role match${comparisonSuffix}`;
   } else {
     headline =

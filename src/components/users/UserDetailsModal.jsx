@@ -38,6 +38,7 @@ const UserDetailsModal = ({
   boxZIndexStyle,
   roleMatchTagIds,     // Set<number> | null — role's required tag IDs
   roleMatchBadgeNames, // Set<string> | null — role's required badge names (lowercase)
+  roleMatchName = null,
   showMatchHighlights = false,
   matchScore = null,
   matchType = null,
@@ -469,6 +470,7 @@ const UserDetailsModal = ({
               matchType={effectiveUserMatch.matchType}
               matchDetails={effectiveUserMatch.matchDetails}
               comparisonLabel={getUserComparisonLabel()}
+              roleLabel={roleMatchName}
             />
 
             {/* Location */}

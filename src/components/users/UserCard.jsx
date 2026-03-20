@@ -22,6 +22,7 @@ const UserCard = ({
   onUpdate,
   roleMatchTagIds,
   roleMatchBadgeNames,
+  roleMatchName = null,
   showMatchHighlights = false,
   showMatchScore = false,
   viewMode = "card",
@@ -97,6 +98,7 @@ const UserCard = ({
     openUserModal(user.id, {
       roleMatchTagIds,
       roleMatchBadgeNames,
+      roleMatchName,
       showMatchHighlights,
       matchScore: rawScore,
       matchType: user.matchType ?? user.match_type ?? null,
