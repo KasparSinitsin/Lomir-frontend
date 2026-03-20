@@ -243,12 +243,76 @@ const SearchPage = () => {
       searchType === "all" || searchType === "teams" ? searchResults.teams : [],
   };
 
-  const displayedTeams = searchType === "users"
+  const getUserDisplayName = (u) =>
+    (
+      (u.first_name || u.firstName || "") +
+      " " +
+      (u.last_name || u.lastName || "")
+    ).trim().toLowerCase() || (u.username || "").toLowerCase();
+
+  const mergedDisplayItems = (() => {
+    if (searchType !== "all") return null;
+    const teams = filteredResults.teams.map((t) => ({ ...t, _resultType: "team" }));
+    const users = filteredResults.users.map((u) => ({ ...u, _resultType: "user" }));
+    const combined = [...teams, ...users];
+    combined.sort((a, b) => {
+      const aIsTeam = a._resultType === "team";
+      const bIsTeam = b._resultType === "team";
+      if (sortBy === "name") {
+        const aName = aIsTeam ? (a.name || "").toLowerCase() : getUserDisplayName(a);
+        const bName = bIsTeam ? (b.name || "").toLowerCase() : getUserDisplayName(b);
+        const cmp = aName.localeCompare(bName);
+        return sortDir === "asc" ? cmp : -cmp;
+      }
+      if (sortBy === "newest") {
+        const aDate = new Date(a.created_at || a.createdAt || 0).getTime();
+        const bDate = new Date(b.created_at || b.createdAt || 0).getTime();
+        return sortDir === "asc" ? aDate - bDate : bDate - aDate;
+      }
+      if (sortBy === "recent") {
+        const getDate = (item) => {
+          const val =
+            item.last_active_at ?? item.lastActiveAt ?? item.last_active ??
+            item.lastActive ?? item.updated_at ?? item.updatedAt ??
+            item.created_at ?? item.createdAt;
+          return val ? new Date(val).getTime() : 0;
+        };
+        return sortDir === "asc" ? getDate(a) - getDate(b) : getDate(b) - getDate(a);
+      }
+      if (sortBy === "proximity") {
+        const aDist = a.distance_km ?? a.distanceKm ?? Infinity;
+        const bDist = b.distance_km ?? b.distanceKm ?? Infinity;
+        return sortDir === "asc" ? aDist - bDist : bDist - aDist;
+      }
+      if (sortBy === "match") {
+        const aScore = a.match_score ?? a.matchScore ?? 0;
+        const bScore = b.match_score ?? b.matchScore ?? 0;
+        return bScore - aScore;
+      }
+      return 0;
+    });
+    return combined.slice(0, resultsPerPage);
+  })();
+
+  const sortedUsers = (() => {
+    const users = filteredResults.users;
+    if (sortBy !== "name") return users;
+    return [...users].sort((a, b) => {
+      const cmp = getUserDisplayName(a).localeCompare(getUserDisplayName(b));
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+  })();
+
+  const displayedTeams = mergedDisplayItems
     ? []
-    : filteredResults.teams.slice(0, resultsPerPage);
-  const displayedUsers = searchType === "teams"
+    : searchType === "users"
+      ? []
+      : filteredResults.teams.slice(0, resultsPerPage);
+  const displayedUsers = mergedDisplayItems
     ? []
-    : filteredResults.users.slice(0, Math.max(0, resultsPerPage - displayedTeams.length));
+    : searchType === "teams"
+      ? []
+      : sortedUsers.slice(0, Math.max(0, resultsPerPage - displayedTeams.length));
 
   const roleMatchTagIds =
     sortBy === "match" && matchRoleId && filterTagIds.length > 0
@@ -1392,79 +1456,81 @@ const SearchPage = () => {
 
               {resultView === "list" ? (
                 <div className="background-opacity bg-opacity-70 shadow-soft rounded-xl divide-y divide-base-200">
-                  {displayedTeams.map((team) => (
-                    <TeamCard
-                      key={`team-${team.id}`}
-                      team={team}
-                      onUpdate={handleTeamUpdate}
-                      isSearchResult={true}
-                      showMatchHighlights={sortBy === "match"}
-                      viewMode="list"
-                      activeFilters={{
-                        showLocation:
-                          (sortBy === "proximity" && sortDir !== "remote") ||
-                          sortBy === "match",
-                        showTags: sortBy === "match",
-                        showBadges: sortBy === "match",
-                      }}
-                    />
-                  ))}
-                  {displayedUsers.map((user) => (
-                    <UserCard
-                      key={`user-${user.id}`}
-                      user={user}
-                      onUpdate={handleUserUpdate}
-                      roleMatchTagIds={roleMatchTagIds}
-                      roleMatchBadgeNames={roleMatchBadgeNames}
-                      showMatchHighlights={sortBy === "match"}
-                      viewMode="list"
-                      activeFilters={{
-                        showLocation:
-                          (sortBy === "proximity" && sortDir !== "remote") ||
-                          sortBy === "match",
-                        showTags: sortBy === "match",
-                        showBadges: sortBy === "match",
-                      }}
-                    />
-                  ))}
+                  {(mergedDisplayItems || [...displayedTeams.map((t) => ({ ...t, _resultType: "team" })), ...displayedUsers.map((u) => ({ ...u, _resultType: "user" }))]).map((item) =>
+                    item._resultType === "team" ? (
+                      <TeamCard
+                        key={`team-${item.id}`}
+                        team={item}
+                        onUpdate={handleTeamUpdate}
+                        isSearchResult={true}
+                        showMatchHighlights={sortBy === "match"}
+                        viewMode="list"
+                        activeFilters={{
+                          showLocation:
+                            (sortBy === "proximity" && sortDir !== "remote") ||
+                            sortBy === "match",
+                          showTags: sortBy === "match",
+                          showBadges: sortBy === "match",
+                        }}
+                      />
+                    ) : (
+                      <UserCard
+                        key={`user-${item.id}`}
+                        user={item}
+                        onUpdate={handleUserUpdate}
+                        roleMatchTagIds={roleMatchTagIds}
+                        roleMatchBadgeNames={roleMatchBadgeNames}
+                        showMatchHighlights={sortBy === "match"}
+                        viewMode="list"
+                        activeFilters={{
+                          showLocation:
+                            (sortBy === "proximity" && sortDir !== "remote") ||
+                            sortBy === "match",
+                          showTags: sortBy === "match",
+                          showBadges: sortBy === "match",
+                        }}
+                      />
+                    )
+                  )}
                 </div>
               ) : (
                 <Grid cols={1} md={2} lg={3} gap={resultView === "card" ? 6 : 4}>
-                  {displayedTeams.map((team) => (
-                    <TeamCard
-                      key={`team-${team.id}`}
-                      team={team}
-                      onUpdate={handleTeamUpdate}
-                      isSearchResult={true}
-                      showMatchHighlights={sortBy === "match"}
-                      viewMode={resultView}
-                      activeFilters={{
-                        showLocation:
-                          (sortBy === "proximity" && sortDir !== "remote") ||
-                          sortBy === "match",
-                        showTags: sortBy === "match",
-                        showBadges: sortBy === "match",
-                      }}
-                    />
-                  ))}
-                  {displayedUsers.map((user) => (
-                    <UserCard
-                      key={`user-${user.id}`}
-                      user={user}
-                      onUpdate={handleUserUpdate}
-                      roleMatchTagIds={roleMatchTagIds}
-                      roleMatchBadgeNames={roleMatchBadgeNames}
-                      showMatchHighlights={sortBy === "match"}
-                      viewMode={resultView}
-                      activeFilters={{
-                        showLocation:
-                          (sortBy === "proximity" && sortDir !== "remote") ||
-                          sortBy === "match",
-                        showTags: sortBy === "match",
-                        showBadges: sortBy === "match",
-                      }}
-                    />
-                  ))}
+                  {(mergedDisplayItems || [...displayedTeams.map((t) => ({ ...t, _resultType: "team" })), ...displayedUsers.map((u) => ({ ...u, _resultType: "user" }))]).map((item) =>
+                    item._resultType === "team" ? (
+                      <TeamCard
+                        key={`team-${item.id}`}
+                        team={item}
+                        onUpdate={handleTeamUpdate}
+                        isSearchResult={true}
+                        showMatchHighlights={sortBy === "match"}
+                        viewMode={resultView}
+                        activeFilters={{
+                          showLocation:
+                            (sortBy === "proximity" && sortDir !== "remote") ||
+                            sortBy === "match",
+                          showTags: sortBy === "match",
+                          showBadges: sortBy === "match",
+                        }}
+                      />
+                    ) : (
+                      <UserCard
+                        key={`user-${item.id}`}
+                        user={item}
+                        onUpdate={handleUserUpdate}
+                        roleMatchTagIds={roleMatchTagIds}
+                        roleMatchBadgeNames={roleMatchBadgeNames}
+                        showMatchHighlights={sortBy === "match"}
+                        viewMode={resultView}
+                        activeFilters={{
+                          showLocation:
+                            (sortBy === "proximity" && sortDir !== "remote") ||
+                            sortBy === "match",
+                          showTags: sortBy === "match",
+                          showBadges: sortBy === "match",
+                        }}
+                      />
+                    )
+                  )}
                 </Grid>
               )}
             </section>
