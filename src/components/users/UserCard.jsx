@@ -7,6 +7,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { useUserModal } from "../../contexts/UserModalContext";
 import { getUserInitials } from "../../utils/userHelpers";
 import LocationDistanceTagsRow from "../common/LocationDistanceTagsRow";
+import { getMatchTier } from "../../utils/matchScoreUtils";
 
 /**
  * UserCard Component
@@ -21,6 +22,7 @@ const UserCard = ({
   roleMatchTagIds,
   roleMatchBadgeNames,
   showMatchHighlights = false,
+  showMatchScore = false,
   viewMode = "card",
   activeFilters = {},
 }) => {
@@ -97,6 +99,68 @@ const UserCard = ({
     });
   };
 
+  // ============ MATCH SCORE ============
+  const rawScore = user.bestMatchScore ?? user.best_match_score;
+  const showScore = showMatchScore && rawScore != null && rawScore > 0;
+
+  let matchTier = null;
+  let matchOverlay = null;
+  let scoreSubtitleItem = null;
+
+  if (showScore) {
+    matchTier = getMatchTier(rawScore);
+
+    const matchType = user.matchType ?? user.match_type;
+    const matchDetails = user.matchDetails ?? user.match_details;
+
+    let tooltipText;
+    if (matchType === "role_match" && matchDetails) {
+      const tagPct = Math.round(
+        (matchDetails.tagScore ?? matchDetails.tag_score ?? 0) * 100,
+      );
+      const badgePct = Math.round(
+        (matchDetails.badgeScore ?? matchDetails.badge_score ?? 0) * 100,
+      );
+      const distPct = Math.round(
+        (matchDetails.distanceScore ?? matchDetails.distance_score ?? 0) * 100,
+      );
+      tooltipText = `${matchTier.pct}% role match — Tags ${tagPct}% · Badges ${badgePct}% · Location ${distPct}%`;
+    } else if (matchDetails) {
+      const sharedTags =
+        matchDetails.sharedTagCount ?? matchDetails.shared_tag_count ?? 0;
+      const sharedBadges =
+        matchDetails.sharedBadgeCount ?? matchDetails.shared_badge_count ?? 0;
+      tooltipText = `${matchTier.pct}% profile match — ${sharedTags} shared tags, ${sharedBadges} shared badges`;
+    } else {
+      tooltipText = `${matchTier.pct}% profile match`;
+    }
+
+    const iconSizeSubtitle =
+      viewMode === "list" ? 10 : viewMode === "mini" ? 11 : 12;
+    scoreSubtitleItem = (
+      <Tooltip content={tooltipText}>
+        <span className="flex items-center gap-0.5">
+          <matchTier.Icon size={iconSizeSubtitle} className={matchTier.text} />
+          <span className="text-base-content">{matchTier.pct}%</span>
+        </span>
+      </Tooltip>
+    );
+
+    const badgeSize =
+      viewMode === "list"
+        ? "w-[14px] h-[14px]"
+        : "w-5 h-5";
+    const badgeIconSize =
+      viewMode === "list" ? 7 : 10;
+    matchOverlay = (
+      <div
+        className={`absolute -top-0.5 -left-0.5 rounded-full ring-2 ring-white flex items-center justify-center ${matchTier.bg} ${badgeSize}`}
+      >
+        <matchTier.Icon size={badgeIconSize} className="text-white" strokeWidth={2.5} />
+      </div>
+    );
+  }
+
   // ============ LIST VIEW ============
   if (viewMode === "list") {
     const locationText =
@@ -128,8 +192,9 @@ const UserCard = ({
         ? visibleBadges.join(", ") + (remainingBadges > 0 ? ` +${remainingBadges}` : "")
         : "";
 
-    const listSubtitle = (user.username || shouldShowVisibilityIcon()) ? (
+    const listSubtitle = (scoreSubtitleItem || user.username || shouldShowVisibilityIcon()) ? (
       <span className="flex items-center gap-1">
+        {scoreSubtitleItem}
         {user.username && <span>@{user.username}</span>}
         {shouldShowVisibilityIcon() && (
           <Tooltip content={isUserProfilePublic() ? "Public Profile - visible for everyone" : "Private Profile - only visible for you"}>
@@ -154,6 +219,7 @@ const UserCard = ({
         viewMode="list"
         className=""
         clickTooltip="Click to view User details"
+        imageOverlay={matchOverlay}
       >
         <div className="w-36 flex-shrink-0 text-xs text-base-content/60 flex items-center gap-1 overflow-hidden">
           {locationText && (
@@ -203,6 +269,7 @@ const UserCard = ({
         <span
           className={`flex items-center flex-wrap text-base-content/70 ${viewMode === "mini" ? "text-xs gap-x-1 gap-y-0.5 w-full" : "text-sm gap-1.5"}`}
         >
+          {scoreSubtitleItem}
           {user.username && <span>@{user.username}</span>}
           {shouldShowVisibilityIcon() && (
             <Tooltip
@@ -261,6 +328,7 @@ const UserCard = ({
         viewMode === "mini" ? "text-base mb-0.5 leading-[110%]" : ""
       }
       marginClassName={viewMode === "mini" ? "mb-2" : ""}
+      imageOverlay={matchOverlay}
     >
       {viewMode !== "mini" && (user.bio || user.biography) && (
         <p className="text-base-content/80 mb-4">

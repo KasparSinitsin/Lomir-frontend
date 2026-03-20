@@ -1465,6 +1465,7 @@ const SearchPage = () => {
                         isSearchResult={true}
                         roleMatchBadgeNames={roleMatchBadgeNames}
                         showMatchHighlights={sortBy === "match"}
+                        showMatchScore={sortBy === "match"}
                         viewMode="list"
                         activeFilters={{
                           showLocation:
@@ -1482,6 +1483,7 @@ const SearchPage = () => {
                         roleMatchTagIds={roleMatchTagIds}
                         roleMatchBadgeNames={roleMatchBadgeNames}
                         showMatchHighlights={sortBy === "match"}
+                        showMatchScore={sortBy === "match"}
                         viewMode="list"
                         activeFilters={{
                           showLocation:
@@ -1505,6 +1507,7 @@ const SearchPage = () => {
                         isSearchResult={true}
                         roleMatchBadgeNames={roleMatchBadgeNames}
                         showMatchHighlights={sortBy === "match"}
+                        showMatchScore={sortBy === "match"}
                         viewMode={resultView}
                         activeFilters={{
                           showLocation:
@@ -1522,6 +1525,7 @@ const SearchPage = () => {
                         roleMatchTagIds={roleMatchTagIds}
                         roleMatchBadgeNames={roleMatchBadgeNames}
                         showMatchHighlights={sortBy === "match"}
+                        showMatchScore={sortBy === "match"}
                         viewMode={resultView}
                         activeFilters={{
                           showLocation:

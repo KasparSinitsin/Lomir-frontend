@@ -32,6 +32,7 @@ import TeamApplicationsModal from "./TeamApplicationsModal";
 // import { getUserInitials, getDisplayName } from "../../utils/userHelpers";
 import { format } from "date-fns";
 import LocationDistanceTagsRow from "../common/LocationDistanceTagsRow";
+import { getMatchTier } from "../../utils/matchScoreUtils";
 
 /**
  * Unified TeamCard Component
@@ -83,6 +84,7 @@ const TeamCard = ({
   onDecline,
 
   showMatchHighlights = false,
+  showMatchScore = false,
   roleMatchBadgeNames = null,
 
   // View mode
@@ -925,6 +927,61 @@ const TeamCard = ({
 
   console.log("TeamCard data:", teamData, "distance_km:", teamData.distance_km);
 
+  // ============ MATCH SCORE ============
+  // Read from normalizedData.team (original prop) so API refetches don't overwrite it
+  const rawScore =
+    normalizedData.team?.bestMatchScore ?? normalizedData.team?.best_match_score;
+  const showScore = showMatchScore && rawScore != null && rawScore > 0;
+
+  let matchTier = null;
+  let matchOverlay = null;
+  let scoreSubtitleItem = null;
+
+  if (showScore) {
+    matchTier = getMatchTier(rawScore);
+
+    const matchDetails =
+      normalizedData.team?.matchDetails ?? normalizedData.team?.match_details;
+    const sharedTagCount =
+      normalizedData.team?.sharedTagCount ??
+      normalizedData.team?.shared_tag_count ??
+      (matchDetails?.sharedTagCount ?? matchDetails?.shared_tag_count ?? 0);
+
+    const tooltipText =
+      sharedTagCount > 0
+        ? `${matchTier.pct}% profile match — ${sharedTagCount} shared focus areas`
+        : `${matchTier.pct}% profile match`;
+
+    const iconSizeSubtitle =
+      viewMode === "list" ? 10 : viewMode === "mini" ? 11 : 12;
+    scoreSubtitleItem = (
+      <Tooltip content={tooltipText}>
+        <span className="flex items-center gap-0.5">
+          <matchTier.Icon size={iconSizeSubtitle} className={matchTier.text} />
+          <span className="text-base-content">{matchTier.pct}%</span>
+        </span>
+      </Tooltip>
+    );
+
+    const badgeSize =
+      viewMode === "list"
+        ? "w-[14px] h-[14px]"
+        : "w-5 h-5";
+    const badgeIconSize =
+      viewMode === "list" ? 7 : 10;
+    matchOverlay = (
+      <div
+        className={`absolute -top-0.5 -left-0.5 rounded-full ring-2 ring-white flex items-center justify-center ${matchTier.bg} ${badgeSize}`}
+      >
+        <matchTier.Icon
+          size={badgeIconSize}
+          className="text-white"
+          strokeWidth={2.5}
+        />
+      </div>
+    );
+  }
+
   // ============ LIST VIEW ============
 
   if (viewMode === "list") {
@@ -964,6 +1021,7 @@ const TeamCard = ({
 
     const subtitleContent = (
       <span className="flex items-center gap-1 text-base-content/60">
+        {scoreSubtitleItem}
         <Users size={11} />
         <span>{memberCount}/{maxMembers}</span>
         {openRoleCount > 0 && (
@@ -1045,6 +1103,7 @@ const TeamCard = ({
           viewMode="list"
           className=""
           clickTooltip="Click to view Team details"
+          imageOverlay={matchOverlay}
         >
           <div className="w-36 flex-shrink-0 text-xs text-base-content/60 flex items-center gap-1 overflow-hidden">
             {locationText && (
@@ -1253,6 +1312,7 @@ const TeamCard = ({
           <span
             className={`flex items-center flex-wrap text-base-content/70 ${viewMode === "mini" ? "text-xs gap-x-1 gap-y-0.5 w-full" : "text-sm gap-1.5"}`}
           >
+            {scoreSubtitleItem}
             {/* Members count */}
             <span className="flex items-center">
               <Users
@@ -1431,6 +1491,7 @@ const TeamCard = ({
           viewMode === "mini" ? "text-base mb-0.5 leading-[110%]" : ""
         }
         marginClassName={viewMode === "mini" ? "mb-2" : ""}
+        imageOverlay={matchOverlay}
       >
         {error && (
           <Alert
