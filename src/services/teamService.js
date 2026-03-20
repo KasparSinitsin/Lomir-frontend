@@ -230,6 +230,48 @@ export const teamService = {
     }
   },
 
+  /**
+   * Fetches aggregated badge summary for all members of a team.
+   * Returns one row per badge with total credits, award counts, etc.
+   * Shape is compatible with BadgesDisplaySection.
+   *
+   * @param {string|number} teamId - The team ID
+   * @returns {Promise<object>} { success: true, data: [...badges], meta: { totalCredits } }
+   */
+  getTeamMemberBadges: async (teamId) => {
+    try {
+      const response = await api.get(`/api/teams/${teamId}/member-badges`);
+      return response.data;
+    } catch (error) {
+      console.error(
+        `Error fetching member badges for team ${teamId}:`,
+        error,
+      );
+      throw error;
+    }
+  },
+
+  /**
+   * Fetches ALL badge awards for team members (not filtered by focus areas).
+   * Used by badge category and badge pill drill-down modals.
+   * Same row shape as getTeamBadgeAwards but without focus-area filtering.
+   *
+   * @param {string|number} teamId - The team ID
+   * @returns {Promise<object>} { success: true, data: [...awards] }
+   */
+  getTeamMemberBadgeAwards: async (teamId) => {
+    try {
+      const response = await api.get(`/api/teams/${teamId}/member-badge-awards`);
+      return response.data;
+    } catch (error) {
+      console.error(
+        `Error fetching member badge awards for team ${teamId}:`,
+        error,
+      );
+      throw error;
+    }
+  },
+
   // Update team details
   updateTeam: async (teamId, teamData) => {
     try {

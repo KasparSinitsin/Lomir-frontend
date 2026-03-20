@@ -82,6 +82,7 @@ const TeamCard = ({
   onDecline,
 
   showMatchHighlights = false,
+  roleMatchBadgeNames = null,
 
   // View mode
   viewMode = "card",
@@ -1470,6 +1471,7 @@ const TeamCard = ({
         }
         onViewApplicationDetails={() => setIsApplicationModalOpen(true)}
         showMatchHighlights={showMatchHighlights}
+        roleMatchBadgeNames={roleMatchBadgeNames}
       />
 
       {/* Applications Modal (for team owners and admins) */}

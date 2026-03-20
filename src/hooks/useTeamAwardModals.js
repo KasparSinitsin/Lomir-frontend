@@ -6,9 +6,7 @@ import { teamService } from "../services/teamService";
  *
  * Team-scoped parallel of useAwardModals.
  * Fetches badge awards for ALL team members (restricted to team focus-area tags)
- * and feeds them to TagAwardsModal / SupercategoryAwardsModal.
- *
- * The modals themselves are reused as-is — they only care about the `awards` array shape.
+ * and feeds them to TagAwardsModal / SupercategoryAwardsModal / BadgeCategoryModal.
  *
  * @param {string|number} teamId - The team whose focus-area awards to fetch
  * @returns {Object} Modal state, handlers, closers, and props-spreaders
@@ -55,7 +53,19 @@ const useTeamAwardModals = (teamId) => {
   const [supercategoryAwards, setSupercategoryAwards] = useState([]);
   const [supercategoryLoading, setSupercategoryLoading] = useState(false);
 
-  // ========= Shared fetch helper =========
+  // ========= Badge Category Modal state (NEW) =========
+  const [badgeCategoryModal, setBadgeCategoryModal] = useState({
+    isOpen: false,
+    category: null,
+    color: null,
+    badges: [],
+    totalCredits: 0,
+    focusedBadgeName: null,
+  });
+  const [detailedBadgeAwards, setDetailedBadgeAwards] = useState([]);
+  const [badgeModalLoading, setBadgeModalLoading] = useState(false);
+
+  // ========= Shared fetch helper (focus-area filtered awards) =========
 
   const fetchTeamAwards = useCallback(async () => {
     if (!teamId) return [];
@@ -68,7 +78,20 @@ const useTeamAwardModals = (teamId) => {
     }
   }, [teamId]);
 
-  // ========= Handlers =========
+  /** Fetch ALL badge awards for team members (not filtered by focus areas).
+   *  Used by badge category / badge pill drill-downs. */
+  const fetchAllTeamBadgeAwards = useCallback(async () => {
+    if (!teamId) return [];
+    try {
+      const response = await teamService.getTeamMemberBadgeAwards(teamId);
+      return unwrapRows(response);
+    } catch (error) {
+      console.error("Error fetching all team member badge awards:", error);
+      return [];
+    }
+  }, [teamId]);
+
+  // ========= Tag & Supercategory Handlers (unchanged) =========
 
   /** Click a credited tag pill → open TagAwardsModal */
   const handleTagClick = useCallback(
@@ -138,6 +161,82 @@ const useTeamAwardModals = (teamId) => {
     [fetchTeamAwards],
   );
 
+  // ========= Badge Category & Badge Pill Handlers (NEW) =========
+
+  /** Click a badge category icon → open BadgeCategoryModal for entire category */
+  const handleBadgeCategoryClick = useCallback(
+    async (category, color, badges, totalCredits) => {
+      setBadgeCategoryModal({
+        isOpen: true,
+        category,
+        color,
+        badges,
+        totalCredits,
+        focusedBadgeName: null,
+      });
+      setBadgeModalLoading(true);
+
+      try {
+        const rows = await fetchAllTeamBadgeAwards();
+
+        const categoryAwards = rows.filter((award) => {
+          const c =
+            award.badgeCategory ??
+            award.badge_category ??
+            award.category ??
+            award.badge_category_name;
+          return String(c ?? "").trim() === String(category ?? "").trim();
+        });
+
+        setDetailedBadgeAwards(categoryAwards);
+      } catch (error) {
+        console.error("Error fetching detailed badge awards:", error);
+        setDetailedBadgeAwards([]);
+      } finally {
+        setBadgeModalLoading(false);
+      }
+    },
+    [fetchAllTeamBadgeAwards],
+  );
+
+  /** Click an individual badge pill → open BadgeCategoryModal focused on that badge */
+  const handleBadgeClick = useCallback(
+    async (badge, category, color) => {
+      const badgeCredits = badge.total_credits ?? badge.totalCredits ?? 0;
+
+      setBadgeCategoryModal({
+        isOpen: true,
+        category,
+        color,
+        badges: [badge],
+        totalCredits: badgeCredits,
+        focusedBadgeName: badge.name,
+      });
+      setBadgeModalLoading(true);
+
+      try {
+        const rows = await fetchAllTeamBadgeAwards();
+
+        const badgeAwards = rows.filter((award) => {
+          const awardBadgeName =
+            award.badgeName ?? award.badge_name ?? award.name;
+          return (
+            String(awardBadgeName ?? "").trim() ===
+            String(badge.name ?? "").trim()
+          );
+        });
+
+        setDetailedBadgeAwards(badgeAwards);
+      } catch (error) {
+        console.error("Error fetching badge awards:", error);
+        setDetailedBadgeAwards([]);
+      } finally {
+        setBadgeModalLoading(false);
+      }
+    },
+    [fetchAllTeamBadgeAwards],
+  );
+
   // ========= Closers =========
 
   const closeTagAwardsModal = useCallback(() => {
@@ -158,6 +257,18 @@ const useTeamAwardModals = (teamId) => {
       totalCredits: 0,
     });
     setSupercategoryAwards([]);
+  }, []);
+
+  const closeBadgeCategoryModal = useCallback(() => {
+    setBadgeCategoryModal({
+      isOpen: false,
+      category: null,
+      color: null,
+      badges: [],
+      totalCredits: 0,
+      focusedBadgeName: null,
+    });
+    setDetailedBadgeAwards([]);
   }, []);
 
   // ========= Props-spreader objects (for cleaner JSX) =========
@@ -186,18 +297,35 @@ const useTeamAwardModals = (teamId) => {
     entityType: "team",
   };
 
+  /** Spread onto <BadgeCategoryModal ... /> (NEW) */
+  const badgeCategoryModalProps = {
+    isOpen: badgeCategoryModal.isOpen,
+    onClose: closeBadgeCategoryModal,
+    category: badgeCategoryModal.category,
+    color: badgeCategoryModal.color,
+    badges: badgeCategoryModal.badges,
+    totalCredits: badgeCategoryModal.totalCredits,
+    detailedAwards: detailedBadgeAwards,
+    loading: badgeModalLoading,
+    focusedBadgeName: badgeCategoryModal.focusedBadgeName,
+  };
+
   return {
-    // Handlers (wire to TagsDisplaySection)
+    // Handlers (wire to TagsDisplaySection & BadgesDisplaySection)
     handleTagClick,
     handleSupercategoryClick,
+    handleBadgeCategoryClick,
+    handleBadgeClick,
 
     // Closers (if needed individually)
     closeTagAwardsModal,
     closeSupercategoryModal,
+    closeBadgeCategoryModal,
 
     // Props-spreader objects (for JSX)
     tagAwardsModalProps,
     supercategoryModalProps,
+    badgeCategoryModalProps,
   };
 };
 

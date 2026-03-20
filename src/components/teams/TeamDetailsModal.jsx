@@ -47,6 +47,8 @@ import Modal from "../common/Modal";
 import LocationSection from "../common/LocationSection";
 import TagAwardsModal from "../badges/TagAwardsModal";
 import SupercategoryAwardsModal from "../badges/SupercategoryAwardsModal";
+import BadgesDisplaySection from "../badges/BadgesDisplaySection";
+import BadgeCategoryModal from "../badges/BadgeCategoryModal";
 import useTeamAwardModals from "../../hooks/useTeamAwardModals";
 
 const normalizeTeamTagIds = (team) => {
@@ -84,6 +86,7 @@ const TeamDetailsModal = ({
   pendingApplication = null,
   onViewApplicationDetails,
   showMatchHighlights = false,
+  roleMatchBadgeNames = null,
 }) => {
   const navigate = useNavigate();
   const { id: urlTeamId } = useParams();
@@ -131,12 +134,19 @@ const TeamDetailsModal = ({
 
   const [userTagIds, setUserTagIds] = useState(null); // Set<number>
 
+  const [teamBadges, setTeamBadges] = useState(null);
+  const [teamBadgesTotalCredits, setTeamBadgesTotalCredits] = useState(0);
+  const [currentUserBadgeNames, setCurrentUserBadgeNames] = useState(null); // Set<string>
+
   // Team focus-area award modals (parallel to useAwardModals for users)
   const {
     handleTagClick,
     handleSupercategoryClick,
+    handleBadgeCategoryClick,
+    handleBadgeClick,
     tagAwardsModalProps,
     supercategoryModalProps,
+    badgeCategoryModalProps,
   } = useTeamAwardModals(effectiveTeamId);
 
   const userHasEditedTagsRef = useRef(false);
@@ -690,6 +700,50 @@ const TeamDetailsModal = ({
     };
 
     fetchCurrentUserTags();
+  }, [isModalVisible, isAuthenticated, user?.id, showMatchHighlights]);
+
+  // Fetch aggregated member badges when modal opens
+  useEffect(() => {
+    if (!isModalVisible || !effectiveTeamId) return;
+
+    const fetchTeamBadges = async () => {
+      try {
+        const response = await teamService.getTeamMemberBadges(effectiveTeamId);
+        const badges = response?.data || [];
+        setTeamBadges(badges);
+        setTeamBadgesTotalCredits(response?.meta?.totalCredits || 0);
+      } catch (error) {
+        console.warn("Could not fetch team member badges:", error);
+        setTeamBadges([]);
+      }
+    };
+
+    fetchTeamBadges();
+  }, [isModalVisible, effectiveTeamId]);
+
+  // Fetch current user's badge names for match highlighting
+  useEffect(() => {
+    if (!isModalVisible || !isAuthenticated || !user?.id || !showMatchHighlights) {
+      setCurrentUserBadgeNames(null);
+      return;
+    }
+
+    const fetchCurrentUserBadges = async () => {
+      try {
+        const response = await userService.getUserBadges(user.id);
+        const rows = Array.isArray(response?.data) ? response.data : [];
+        const names = new Set(
+          rows
+            .map((r) => (r.badgeName ?? r.badge_name ?? r.name ?? "").trim().toLowerCase())
+            .filter(Boolean),
+        );
+        setCurrentUserBadgeNames(names);
+      } catch (err) {
+        console.warn("Could not fetch user badges for matching highlights:", err);
+      }
+    };
+
+    fetchCurrentUserBadges();
   }, [isModalVisible, isAuthenticated, user?.id, showMatchHighlights]);
 
   // Fetch structured tags when modal opens (needed for display AND edit mode)
@@ -1498,6 +1552,46 @@ const TeamDetailsModal = ({
                     />
                   )}
 
+                  {/* Team Badges */}
+                  {!isEditing && teamBadges && teamBadges.length > 0 && (
+                    <BadgesDisplaySection
+                      title={`Badges${
+                        teamBadgesTotalCredits > 0
+                          ? ` · ${teamBadgesTotalCredits} ct.`
+                          : ""
+                      }`}
+                      badges={teamBadges}
+                      emptyMessage="No badges earned yet"
+                      maxVisible={10}
+                      groupByCategory={true}
+                      showCredits={true}
+                      onCategoryClick={handleBadgeCategoryClick}
+                      onBadgeClick={handleBadgeClick}
+                      matchingBadgeNames={roleMatchBadgeNames || currentUserBadgeNames}
+                      headerRight={showMatchHighlights && (roleMatchBadgeNames || currentUserBadgeNames) ? (() => {
+                        const activeMatchNames = roleMatchBadgeNames || currentUserBadgeNames;
+                        const total = teamBadges.length;
+                        const matchCount = teamBadges.filter((b) =>
+                          activeMatchNames.has((b.name ?? "").trim().toLowerCase())
+                        ).length;
+                        if (matchCount > 0) {
+                          return (
+                            <span className="flex items-center gap-1.5 text-sm text-success">
+                              <Check size={14} className="flex-shrink-0" />
+                              <span>{matchCount}/{total} in common</span>
+                            </span>
+                          );
+                        }
+                        return (
+                          <span className="flex items-center gap-1.5 text-sm text-error/70">
+                            <X size={14} className="flex-shrink-0" />
+                            <span>None in common</span>
+                          </span>
+                        );
+                      })() : null}
+                    />
+                  )}
+
                   {/* Team Members */}
                   <TeamMembersSection
                     team={team}
@@ -1585,6 +1679,12 @@ const TeamDetailsModal = ({
       )}
       <TagAwardsModal {...tagAwardsModalProps} />
       <SupercategoryAwardsModal {...supercategoryModalProps} />
+
+      {/* Badge Category Modal */}
+      <BadgeCategoryModal
+        {...badgeCategoryModalProps}
+        onOpenUser={handleMemberClick}
+      />
 
       {/* Invitation Details Modal */}
       {pendingInvitation && (
