@@ -4,6 +4,7 @@ import Button from "../common/Button";
 import Tooltip from "../common/Tooltip";
 import {
   Users,
+  UserSearch,
   EyeClosed,
   EyeIcon,
   Tag,
@@ -486,6 +487,8 @@ const TeamCard = ({
     return maxMembers === null || maxMembers === undefined ? "∞" : maxMembers;
   };
 
+  const openRoleCount = teamData.open_role_count ?? teamData.openRoleCount ?? 0;
+
   const getFormattedDate = () => {
     const date = normalizedData.date;
     if (!date) return null;
@@ -963,6 +966,14 @@ const TeamCard = ({
       <span className="flex items-center gap-1 text-base-content/60">
         <Users size={11} />
         <span>{memberCount}/{maxMembers}</span>
+        {openRoleCount > 0 && (
+          <Tooltip content={`${openRoleCount} open ${openRoleCount === 1 ? 'role' : 'roles'} posted in this team`}>
+            <span className="flex items-center">
+              <UserSearch size={12} className="text-amber-500 mr-0.5" />
+              <span>{openRoleCount}</span>
+            </span>
+          </Tooltip>
+        )}
         {(effectiveVariant === "invitation" || pendingInvitationForTeam) && (
           <Tooltip
             content={`You were invited to this team${
@@ -1252,6 +1263,19 @@ const TeamCard = ({
                 {getMemberCount()}/{getMaxMembers()}
               </span>
             </span>
+
+            {/* Open roles count */}
+            {openRoleCount > 0 && (
+              <Tooltip content={`${openRoleCount} open ${openRoleCount === 1 ? 'role' : 'roles'} posted in this team`}>
+                <span className="flex items-center">
+                  <UserSearch
+                    size={viewMode === "mini" ? 12 : 14}
+                    className="text-amber-500 mr-0.5"
+                  />
+                  <span>{openRoleCount}</span>
+                </span>
+              </Tooltip>
+            )}
 
             {/* Privacy status */}
             {shouldShowVisibilityIcon() && (
