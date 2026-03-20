@@ -1611,6 +1611,7 @@ const TeamDetailsModal = ({
                     entity={team}
                     entityType="team"
                     distance={showMatchHighlights ? effectiveTeamDistanceKm : null}
+                    showDefaultHeaderRight={showMatchHighlights}
                   />
 
                   {/* Team Focus Areas */}

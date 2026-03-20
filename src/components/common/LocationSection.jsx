@@ -19,6 +19,7 @@ import {
  * @param {string} props.title - Section title (default: "Location")
  * @param {boolean} props.showTitle - Whether to show section title (default: true for full, false for compact)
  *  * @param {number} props.distance - Distance in km (optional, for search results)
+ * @param {boolean} props.showDefaultHeaderRight - Whether to render the built-in remote/distance header info
  */
 const LocationSection = ({
   entity,
@@ -29,6 +30,7 @@ const LocationSection = ({
   showTitle,
   distance = null,
   headerRight = null,
+  showDefaultHeaderRight = true,
   iconSize = 16,
 }) => {
   // Normalize the location data (handles snake_case/camelCase)
@@ -94,19 +96,23 @@ const LocationSection = ({
     );
   }
 
-  const resolvedHeaderRight =
-    headerRight ??
-    (isRemote ? (
-      <span className="flex items-center gap-1.5 text-sm text-success">
-        <Check size={14} className="flex-shrink-0" />
-        <span>No location boundaries</span>
-      </span>
-    ) : hasDistance ? (
-      <span className={`flex items-center gap-1.5 text-sm ${distanceToneClass}`}>
-        <Ruler size={14} className="flex-shrink-0" />
-        <span>{Math.round(distance)} km away</span>
-      </span>
-    ) : null);
+  const defaultHeaderRight = !showDefaultHeaderRight
+    ? null
+    : isRemote ? (
+        <span className="flex items-center gap-1.5 text-sm text-success">
+          <Check size={14} className="flex-shrink-0" />
+          <span>No location boundaries</span>
+        </span>
+      ) : hasDistance ? (
+          <span
+            className={`flex items-center gap-1.5 text-sm ${distanceToneClass}`}
+          >
+            <Ruler size={14} className="flex-shrink-0" />
+            <span>{Math.round(distance)} km away</span>
+          </span>
+        ) : null;
+
+  const resolvedHeaderRight = headerRight ?? defaultHeaderRight;
 
   // Full version for modals/details view
   return (
