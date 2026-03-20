@@ -13,6 +13,13 @@ const toFiniteNumber = (value) => {
 const getDetailValue = (details, camelKey, snakeKey = camelKey) =>
   details?.[camelKey] ?? details?.[snakeKey];
 
+const toUnitInterval = (value) => {
+  const num = toFiniteNumber(value);
+  if (num === null) return null;
+  if (num > 1) return Math.max(0, Math.min(1, num / 100));
+  return Math.max(0, Math.min(1, num));
+};
+
 const normalizeTagEntries = (items = []) => {
   if (!Array.isArray(items)) return [];
 
@@ -217,6 +224,33 @@ const mergeMatchDetails = (computedMatchDetails, existingMatchDetails) => {
   };
 };
 
+const calculateWeightedOverallScore = ({
+  tagScore = null,
+  badgeScore = null,
+  distanceScore = null,
+} = {}) => {
+  if (tagScore === null && badgeScore === null && distanceScore === null) {
+    return null;
+  }
+
+  return (
+    (tagScore ?? 0) * TAG_WEIGHT +
+    (badgeScore ?? 0) * BADGE_WEIGHT +
+    (distanceScore ?? 0) * LOCATION_WEIGHT
+  );
+};
+
+const getOverallScoreFromMatchDetails = (matchDetails) =>
+  calculateWeightedOverallScore({
+    tagScore: toUnitInterval(getDetailValue(matchDetails, "tagScore", "tag_score")),
+    badgeScore: toUnitInterval(
+      getDetailValue(matchDetails, "badgeScore", "badge_score"),
+    ),
+    distanceScore: toUnitInterval(
+      getDetailValue(matchDetails, "distanceScore", "distance_score"),
+    ),
+  });
+
 export const getResultMatchScore = (item) => {
   const raw =
     item?.bestMatchScore ??
@@ -340,6 +374,84 @@ export const calculateUserMatchData = ({
   };
 };
 
+export const calculateUserRoleMatchData = ({
+  matchedUser,
+  requiredTagIds = null,
+  requiredBadgeNames = null,
+  baseMatchDetails = null,
+} = {}) => {
+  if (!matchedUser) return null;
+
+  const matchedUserTags = normalizeTagEntries(
+    matchedUser.tags ??
+      matchedUser.tagsJson ??
+      matchedUser.tags_json ??
+      matchedUser.selectedTags ??
+      [],
+  );
+  const matchedUserBadges = normalizeBadgeEntries(matchedUser.badges ?? []);
+  const requiredTags = normalizeTagEntries(Array.from(requiredTagIds ?? []));
+  const requiredBadges = normalizeBadgeEntries(
+    Array.from(requiredBadgeNames ?? []),
+  );
+  const { shared: matchingTags, total: totalRequiredTags } = countSharedTags(
+    matchedUserTags,
+    requiredTags,
+  );
+  const { shared: matchingBadges, total: totalRequiredBadges } =
+    countSharedBadges(matchedUserBadges, requiredBadges);
+  const tagScore =
+    totalRequiredTags > 0 ? matchingTags / totalRequiredTags : null;
+  const badgeScore =
+    totalRequiredBadges > 0 ? matchingBadges / totalRequiredBadges : null;
+  const distanceScore = toUnitInterval(
+    getDetailValue(baseMatchDetails, "distanceScore", "distance_score"),
+  );
+  const overallScore = calculateWeightedOverallScore({
+    tagScore,
+    badgeScore,
+    distanceScore,
+  });
+
+  return {
+    bestMatchScore: overallScore,
+    matchType: "role_match",
+    matchDetails: {
+      hasTagBasis: totalRequiredTags > 0,
+      hasBadgeBasis: totalRequiredBadges > 0,
+      hasLocationBasis: distanceScore !== null,
+      tagScore,
+      badgeScore,
+      distanceScore,
+      sharedTagCount: matchingTags,
+      sharedBadgeCount: matchingBadges,
+      matchingTags,
+      matching_tags: matchingTags,
+      matchingBadges,
+      matching_badges: matchingBadges,
+      totalTagCount: totalRequiredTags,
+      totalBadgeCount: totalRequiredBadges,
+      totalRequiredTags,
+      total_required_tags: totalRequiredTags,
+      totalRequiredBadges,
+      total_required_badges: totalRequiredBadges,
+      distanceKm: getDetailValue(baseMatchDetails, "distanceKm", "distance_km"),
+      distance_km: getDetailValue(baseMatchDetails, "distanceKm", "distance_km"),
+      isWithinRange: getDetailValue(
+        baseMatchDetails,
+        "isWithinRange",
+        "is_within_range",
+      ),
+      is_within_range: getDetailValue(
+        baseMatchDetails,
+        "isWithinRange",
+        "is_within_range",
+      ),
+      calculationSource: "client_role_fallback",
+    },
+  };
+};
+
 export const enrichTeamMatchData = ({
   team,
   viewerProfile,
@@ -422,6 +534,65 @@ export const enrichUserMatchData = ({
     match_score: finalScore,
     matchType: finalMatchType,
     match_type: finalMatchType,
+    matchDetails: mergedMatchDetails,
+    match_details: mergedMatchDetails,
+    sharedTagCount: finalSharedTagCount,
+    shared_tag_count: finalSharedTagCount,
+    sharedBadgeCount: finalSharedBadgeCount,
+    shared_badge_count: finalSharedBadgeCount,
+  };
+};
+
+export const enrichUserRoleMatchData = ({
+  user,
+  requiredTagIds = null,
+  requiredBadgeNames = null,
+} = {}) => {
+  if (!user) return user;
+
+  const existingScore = getResultMatchScore(user);
+  const existingMatchDetails = user.matchDetails ?? user.match_details ?? null;
+  const computed = calculateUserRoleMatchData({
+    matchedUser: user,
+    requiredTagIds,
+    requiredBadgeNames,
+    baseMatchDetails: existingMatchDetails,
+  });
+
+  if (!computed) return user;
+
+  const mergedMatchDetails = mergeMatchDetails(
+    computed.matchDetails,
+    existingMatchDetails,
+  );
+  const computedOverallScore = getOverallScoreFromMatchDetails(mergedMatchDetails);
+  const finalScore =
+    existingScore > 0
+      ? existingScore
+      : computedOverallScore ?? computed.bestMatchScore ?? existingScore;
+  const finalSharedTagCount =
+    user.sharedTagCount ??
+    user.shared_tag_count ??
+    mergedMatchDetails.sharedTagCount ??
+    mergedMatchDetails.matchingTags ??
+    mergedMatchDetails.matching_tags ??
+    0;
+  const finalSharedBadgeCount =
+    user.sharedBadgeCount ??
+    user.shared_badge_count ??
+    mergedMatchDetails.sharedBadgeCount ??
+    mergedMatchDetails.matchingBadges ??
+    mergedMatchDetails.matching_badges ??
+    0;
+
+  return {
+    ...user,
+    bestMatchScore: finalScore,
+    best_match_score: finalScore,
+    matchScore: finalScore,
+    match_score: finalScore,
+    matchType: "role_match",
+    match_type: "role_match",
     matchDetails: mergedMatchDetails,
     match_details: mergedMatchDetails,
     sharedTagCount: finalSharedTagCount,

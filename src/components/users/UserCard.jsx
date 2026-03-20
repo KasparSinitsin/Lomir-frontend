@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import Card from "../common/Card";
 import Button from "../common/Button";
 import Tooltip from "../common/Tooltip";
@@ -19,10 +19,10 @@ import { getResultMatchScore } from "../../utils/teamMatchUtils";
  */
 const UserCard = ({
   user,
-  onUpdate,
   roleMatchTagIds,
   roleMatchBadgeNames,
   roleMatchName = null,
+  roleMatchMaxDistanceKm = null,
   showMatchHighlights = false,
   showMatchScore = false,
   viewMode = "card",
@@ -99,6 +99,7 @@ const UserCard = ({
       roleMatchTagIds,
       roleMatchBadgeNames,
       roleMatchName,
+      roleMatchMaxDistanceKm,
       showMatchHighlights,
       matchScore: rawScore,
       matchType: user.matchType ?? user.match_type ?? null,

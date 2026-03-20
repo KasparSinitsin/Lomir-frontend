@@ -38,6 +38,7 @@ import {
   buildViewerTeamMatchProfile,
   enrichTeamMatchData,
   enrichUserMatchData,
+  enrichUserRoleMatchData,
   getResultMatchScore,
 } from "../utils/teamMatchUtils";
 import {
@@ -130,6 +131,11 @@ const SearchPage = () => {
     const p = new URLSearchParams(location.search);
     return p.get("roleName") || null;
   });
+  const [matchRoleMaxDistanceKm, setMatchRoleMaxDistanceKm] = useState(() => {
+    const p = new URLSearchParams(location.search);
+    const value = Number(p.get("roleMaxDistanceKm"));
+    return Number.isFinite(value) && value > 0 ? value : null;
+  });
   const [excludeTeamId, setExcludeTeamId] = useState(() => {
     const p = new URLSearchParams(location.search);
     const id = p.get("excludeTeamId");
@@ -181,6 +187,11 @@ const SearchPage = () => {
   const withResolvedDistance = useCallback((item, viewerEntity) => {
     if (!item) return item;
 
+    const matchType = item.matchType ?? item.match_type ?? null;
+    const matchDetails = item.matchDetails ?? item.match_details ?? null;
+    const roleDistance = Number(
+      matchDetails?.distanceKm ?? matchDetails?.distance_km,
+    );
     const rawDistance = Number(item.distance_km ?? item.distanceKm);
     const computedDistance = viewerEntity
       ? calculateDistanceKm(viewerEntity, item)
@@ -188,7 +199,13 @@ const SearchPage = () => {
 
     let resolvedDistance = null;
 
-    if (computedDistance != null) {
+    if (
+      matchType === "role_match" &&
+      Number.isFinite(roleDistance) &&
+      roleDistance < 999999
+    ) {
+      resolvedDistance = roleDistance;
+    } else if (computedDistance != null) {
       resolvedDistance = computedDistance;
     } else if (Number.isFinite(rawDistance) && rawDistance < 999999) {
       resolvedDistance = rawDistance;
@@ -337,6 +354,27 @@ const SearchPage = () => {
     };
   }, [isAuthenticated, user, sortBy]);
 
+  const roleMatchTagIds = useMemo(
+    () =>
+      sortBy === "match" && matchRoleId && filterTagIds.length > 0
+        ? new Set(filterTagIds)
+        : null,
+    [filterTagIds, matchRoleId, sortBy],
+  );
+
+  const roleMatchBadgeNames = useMemo(
+    () =>
+      sortBy === "match" && matchRoleId && filterBadgeIds.length > 0
+        ? new Set(
+            filterBadgeIds
+              .map((id) => filterBadgeMap[id]?.name)
+              .filter(Boolean)
+              .map((name) => name.toLowerCase()),
+          )
+        : null,
+    [filterBadgeIds, filterBadgeMap, matchRoleId, sortBy],
+  );
+
   const effectiveSearchResults = useMemo(() => {
     if (!viewerTeamMatchProfile?.user) {
       return searchResults;
@@ -348,10 +386,16 @@ const SearchPage = () => {
         ? searchResults.users.map((matchedUser) => {
             const enrichedUser =
               sortBy === "match"
-                ? enrichUserMatchData({
-                    user: matchedUser,
-                    viewerProfile: viewerTeamMatchProfile,
-                  })
+                ? matchRoleId
+                  ? enrichUserRoleMatchData({
+                      user: matchedUser,
+                      requiredTagIds: roleMatchTagIds,
+                      requiredBadgeNames: roleMatchBadgeNames,
+                    })
+                  : enrichUserMatchData({
+                      user: matchedUser,
+                      viewerProfile: viewerTeamMatchProfile,
+                    })
                 : matchedUser;
 
             return withResolvedDistance(
@@ -377,7 +421,15 @@ const SearchPage = () => {
           })
         : searchResults.teams,
     };
-  }, [searchResults, sortBy, viewerTeamMatchProfile, withResolvedDistance]);
+  }, [
+    matchRoleId,
+    roleMatchBadgeNames,
+    roleMatchTagIds,
+    searchResults,
+    sortBy,
+    viewerTeamMatchProfile,
+    withResolvedDistance,
+  ]);
 
   const shouldExcludeCurrentUserFromBestMatch =
     sortBy === "match" && isAuthenticated && !!user?.id;
@@ -532,21 +584,6 @@ const SearchPage = () => {
       ? []
       : sortedUsers.slice(0, Math.max(0, resultsPerPage - displayedTeams.length));
 
-  const roleMatchTagIds =
-    sortBy === "match" && matchRoleId && filterTagIds.length > 0
-      ? new Set(filterTagIds)
-      : null;
-
-  const roleMatchBadgeNames =
-    sortBy === "match" && matchRoleId && filterBadgeIds.length > 0
-      ? new Set(
-          filterBadgeIds
-            .map((id) => filterBadgeMap[id]?.name)
-            .filter(Boolean)
-            .map((name) => name.toLowerCase()),
-        )
-      : null;
-
   const hasActiveFilters =
     filterTagIds.length > 0 || filterBadgeIds.length > 0 || !!matchRoleId;
 
@@ -677,6 +714,15 @@ const SearchPage = () => {
 
         if (results.matchRole?.roleName) {
           setMatchRoleName(results.matchRole.roleName);
+        }
+        const nextRoleMaxDistanceKm = Number(
+          results.matchRole?.maxDistanceKm ??
+            results.matchRole?.max_distance_km ??
+            results.matchRole?.distanceLimitKm ??
+            results.matchRole?.distance_limit_km,
+        );
+        if (Number.isFinite(nextRoleMaxDistanceKm) && nextRoleMaxDistanceKm > 0) {
+          setMatchRoleMaxDistanceKm(nextRoleMaxDistanceKm);
         }
 
         if (results.pagination) {
@@ -1163,11 +1209,13 @@ const SearchPage = () => {
       case "matchRole":
         setMatchRoleId(null);
         setMatchRoleName(null);
+        setMatchRoleMaxDistanceKm(null);
         setCurrentPage(1);
         {
           const newParams = new URLSearchParams(window.location.search);
           newParams.delete("roleId");
           newParams.delete("roleName");
+          newParams.delete("roleMaxDistanceKm");
           window.history.replaceState(
             {},
             "",
@@ -1702,6 +1750,7 @@ const SearchPage = () => {
                         roleMatchTagIds={roleMatchTagIds}
                         roleMatchBadgeNames={roleMatchBadgeNames}
                         roleMatchName={matchRoleName}
+                        roleMatchMaxDistanceKm={matchRoleMaxDistanceKm}
                         showMatchHighlights={sortBy === "match"}
                         showMatchScore={sortBy === "match"}
                         viewMode="list"
@@ -1746,6 +1795,7 @@ const SearchPage = () => {
                         roleMatchTagIds={roleMatchTagIds}
                         roleMatchBadgeNames={roleMatchBadgeNames}
                         roleMatchName={matchRoleName}
+                        roleMatchMaxDistanceKm={matchRoleMaxDistanceKm}
                         showMatchHighlights={sortBy === "match"}
                         showMatchScore={sortBy === "match"}
                         viewMode={resultView}

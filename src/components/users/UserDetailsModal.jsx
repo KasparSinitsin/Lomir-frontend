@@ -13,7 +13,7 @@ import { userService } from "../../services/userService";
 import Button from "../common/Button";
 import Alert from "../common/Alert";
 import { useAuth } from "../../contexts/AuthContext";
-import { Edit, MessageCircle, UserPlus, Award, Check, X } from "lucide-react";
+import { Edit, MessageCircle, UserPlus, Award, Check, X, Ruler } from "lucide-react";
 import TeamInviteModal from "../teams/TeamInviteModal";
 import BadgeAwardModal from "../badges/BadgeAwardModal";
 import SupercategoryAwardsModal from "../badges/SupercategoryAwardsModal";
@@ -22,6 +22,7 @@ import MatchScoreSection from "../common/MatchScoreSection";
 import {
   buildViewerTeamMatchProfile,
   enrichUserMatchData,
+  enrichUserRoleMatchData,
 } from "../../utils/teamMatchUtils";
 import { calculateDistanceKm } from "../../utils/locationUtils";
 
@@ -29,7 +30,6 @@ const UserDetailsModal = ({
   isOpen,
   userId,
   onClose,
-  onUpdate,
   mode,
   onOpenUser,
   zIndexClass,
@@ -39,6 +39,7 @@ const UserDetailsModal = ({
   roleMatchTagIds,     // Set<number> | null — role's required tag IDs
   roleMatchBadgeNames, // Set<string> | null — role's required badge names (lowercase)
   roleMatchName = null,
+  roleMatchMaxDistanceKm = null,
   showMatchHighlights = false,
   matchScore = null,
   matchType = null,
@@ -59,7 +60,7 @@ const UserDetailsModal = ({
   const [currentUserBadgeNames, setCurrentUserBadgeNames] = useState(null); // Set<string>
   const [distanceViewerUser, setDistanceViewerUser] = useState(null);
 
-  const [formData, setFormData] = useState({
+  const [_formData, setFormData] = useState({
     firstName: "",
     lastName: "",
     bio: "",
@@ -296,6 +297,34 @@ const UserDetailsModal = ({
       return { matchScore, matchType, matchDetails };
     }
 
+    const isRoleMatchContext =
+      matchType === "role_match" ||
+      roleMatchTagIds?.size > 0 ||
+      roleMatchBadgeNames?.size > 0;
+
+    if (isRoleMatchContext) {
+      const enrichedUser = enrichUserRoleMatchData({
+        user: {
+          ...user,
+          bestMatchScore: matchScore,
+          best_match_score: matchScore,
+          matchType,
+          match_type: matchType,
+          matchDetails,
+          match_details: matchDetails,
+          tags: userTags.length > 0 ? userTags : user?.tags,
+        },
+        requiredTagIds: roleMatchTagIds,
+        requiredBadgeNames: roleMatchBadgeNames,
+      });
+
+      return {
+        matchScore: enrichedUser.bestMatchScore ?? matchScore,
+        matchType: enrichedUser.matchType ?? matchType,
+        matchDetails: enrichedUser.matchDetails ?? matchDetails,
+      };
+    }
+
     const viewerProfile = buildViewerTeamMatchProfile({
       user: currentUser,
       userTags: Array.from(currentUserTagIds ?? []),
@@ -327,18 +356,32 @@ const UserDetailsModal = ({
     matchDetails,
     matchScore,
     matchType,
+    roleMatchBadgeNames,
+    roleMatchTagIds,
     showMatchHighlights,
     user,
     userTags,
   ]);
 
   const effectiveDistanceKm = useMemo(() => {
+    const roleDistance = Number(
+      effectiveUserMatch.matchType === "role_match"
+        ? effectiveUserMatch.matchDetails?.distanceKm ??
+            effectiveUserMatch.matchDetails?.distance_km ??
+            matchDetails?.distanceKm ??
+            matchDetails?.distance_km
+        : null,
+    );
     const rawDistance = distanceKm ?? user?.distance_km ?? user?.distanceKm;
     const numericDistance = Number(rawDistance);
     const viewerForDistance = distanceViewerUser ?? currentUser;
     const computedDistance = viewerForDistance
       ? calculateDistanceKm(viewerForDistance, user)
       : null;
+
+    if (Number.isFinite(roleDistance) && roleDistance < 999999) {
+      return roleDistance;
+    }
 
     if (computedDistance != null) {
       return computedDistance;
@@ -349,7 +392,68 @@ const UserDetailsModal = ({
     }
 
     return null;
-  }, [currentUser, distanceKm, distanceViewerUser, user]);
+  }, [
+    currentUser,
+    distanceKm,
+    distanceViewerUser,
+    effectiveUserMatch.matchDetails,
+    effectiveUserMatch.matchType,
+    matchDetails,
+    user,
+  ]);
+
+  const roleMatchLocationHeaderRight = useMemo(() => {
+    const isRoleMatchContext = effectiveUserMatch.matchType === "role_match";
+    const configuredLimitKm = Number(
+      roleMatchMaxDistanceKm ??
+        effectiveUserMatch.matchDetails?.maxDistanceKm ??
+        effectiveUserMatch.matchDetails?.max_distance_km ??
+        matchDetails?.maxDistanceKm ??
+        matchDetails?.max_distance_km,
+    );
+    const roundedDistanceKm =
+      effectiveDistanceKm != null ? Math.round(effectiveDistanceKm) : null;
+
+    if (
+      !isRoleMatchContext ||
+      !Number.isFinite(configuredLimitKm) ||
+      configuredLimitKm <= 0 ||
+      roundedDistanceKm == null
+    ) {
+      return null;
+    }
+
+    const withinRangeRaw =
+      effectiveUserMatch.matchDetails?.isWithinRange ??
+      effectiveUserMatch.matchDetails?.is_within_range ??
+      matchDetails?.isWithinRange ??
+      matchDetails?.is_within_range;
+    const isWithinRange =
+      typeof withinRangeRaw === "boolean"
+        ? withinRangeRaw
+        : roundedDistanceKm <= configuredLimitKm;
+
+    return (
+      <span
+        className={`flex items-center gap-1.5 text-sm ${
+          isWithinRange ? "text-success" : "text-error/70"
+        }`}
+      >
+        <Ruler size={14} className="flex-shrink-0" />
+        <span>
+          {roundedDistanceKm} km away ({isWithinRange ? "<" : ">"}
+          {" "}
+          {Math.round(configuredLimitKm)} km)
+        </span>
+      </span>
+    );
+  }, [
+    effectiveDistanceKm,
+    effectiveUserMatch.matchDetails,
+    effectiveUserMatch.matchType,
+    matchDetails,
+    roleMatchMaxDistanceKm,
+  ]);
 
   // =================================================
 
@@ -479,6 +583,7 @@ const UserDetailsModal = ({
               entityType="user"
               className=""
               distance={showMatchHighlights ? effectiveDistanceKm : null}
+              headerRight={roleMatchLocationHeaderRight}
             />
 
             {/* Focus Areas */}
@@ -494,11 +599,23 @@ const UserDetailsModal = ({
                 if (!effectiveMatchIds || effectiveMatchIds.size === 0) return null;
                 const displayTags = userTags.length > 0 ? userTags : (user?.tags || []);
                 if (!Array.isArray(displayTags) || displayTags.length === 0) return null;
-                const total = displayTags.length;
-                const matchCount = displayTags.filter((t) => {
-                  const tagId = Number(t.tagId ?? t.tag_id ?? t.id);
-                  return effectiveMatchIds.has(tagId);
-                }).length;
+                const userTagIds = new Set(
+                  displayTags
+                    .map((t) => Number(t.tagId ?? t.tag_id ?? t.id))
+                    .filter(Number.isFinite),
+                );
+                const isRoleMatchContext = roleMatchTagIds?.size > 0;
+                const total = isRoleMatchContext
+                  ? roleMatchTagIds.size
+                  : displayTags.length;
+                const matchCount = isRoleMatchContext
+                  ? Array.from(roleMatchTagIds).filter((tagId) =>
+                      userTagIds.has(Number(tagId)),
+                    ).length
+                  : displayTags.filter((t) => {
+                      const tagId = Number(t.tagId ?? t.tag_id ?? t.id);
+                      return effectiveMatchIds.has(tagId);
+                    }).length;
                 if (matchCount > 0) {
                   return (
                     <span className="flex items-center gap-1.5 text-sm text-success">
@@ -533,11 +650,29 @@ const UserDetailsModal = ({
                 if (!effectiveMatchNames || effectiveMatchNames.size === 0) return null;
                 const badgeList = user?.badges || [];
                 if (!Array.isArray(badgeList) || badgeList.length === 0) return null;
-                const total = badgeList.length;
-                const matchCount = badgeList.filter((b) => {
-                  const name = (b.name ?? b.badgeName ?? b.badge_name ?? "").trim().toLowerCase();
-                  return effectiveMatchNames.has(name);
-                }).length;
+                const userBadgeNames = new Set(
+                  badgeList
+                    .map((b) =>
+                      (b.name ?? b.badgeName ?? b.badge_name ?? "")
+                        .trim()
+                        .toLowerCase(),
+                    )
+                    .filter(Boolean),
+                );
+                const isRoleMatchContext = roleMatchBadgeNames?.size > 0;
+                const total = isRoleMatchContext
+                  ? roleMatchBadgeNames.size
+                  : badgeList.length;
+                const matchCount = isRoleMatchContext
+                  ? Array.from(roleMatchBadgeNames).filter((name) =>
+                      userBadgeNames.has(name),
+                    ).length
+                  : badgeList.filter((b) => {
+                      const name = (b.name ?? b.badgeName ?? b.badge_name ?? "")
+                        .trim()
+                        .toLowerCase();
+                      return effectiveMatchNames.has(name);
+                    }).length;
                 if (matchCount > 0) {
                   return (
                     <span className="flex items-center gap-1.5 text-sm text-success">

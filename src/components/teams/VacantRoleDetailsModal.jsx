@@ -52,7 +52,6 @@ const VacantRoleDetailsModal = ({
   role,
   matchScore = null,
   matchDetails = null,
-  canManage = false,
   isTeamMember = false,
   viewAsUserId = null,
   viewAsUser = null,
@@ -194,7 +193,7 @@ useEffect(() => {
   const city = displayRole.city;
   const country = displayRole.country;
   const state = displayRole.state;
-  const postalCode = displayRole.postalCode ?? displayRole.postal_code;
+  const _postalCode = displayRole.postalCode ?? displayRole.postal_code;
   const maxDistanceKm =
     displayRole.maxDistanceKm ?? displayRole.max_distance_km;
   const isRemote = displayRole.isRemote ?? displayRole.is_remote;
@@ -292,6 +291,9 @@ useEffect(() => {
     if (badgeIds.length > 0) params.set("badges", badgeIds.join(","));
 
     if (isRemote) params.set("proximity", "remote");
+    if (!isRemote && maxDistanceKm) {
+      params.set("roleMaxDistanceKm", String(maxDistanceKm));
+    }
 
     if (roleId) params.set("roleId", roleId);
     if (teamId) params.set("excludeTeamId", teamId);
@@ -525,27 +527,31 @@ useEffect(() => {
                         </>
                       ),
                     },
-                  ].map(({ label, value, icon: Icon, tooltip }) => (
-                    <div key={label} className="flex items-center gap-2">
-                      <Tooltip content={tooltip}>
-                        <span className="text-xs text-base-content/60 w-24 flex-shrink-0 flex items-center gap-1 cursor-help">
-                          <Icon size={12} className="flex-shrink-0" />
-                          {label}
+                  ].map((row) => {
+                    const IconComponent = row.icon;
+
+                    return (
+                      <div key={row.label} className="flex items-center gap-2">
+                        <Tooltip content={row.tooltip}>
+                          <span className="text-xs text-base-content/60 w-24 flex-shrink-0 flex items-center gap-1 cursor-help">
+                            <IconComponent size={12} className="flex-shrink-0" />
+                            {row.label}
+                          </span>
+                        </Tooltip>
+                        <div className="flex-1 h-1.5 bg-base-200 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-all duration-500 ${
+                              pct >= 80 ? "bg-amber-500" : pct >= 50 ? "bg-success" : "bg-slate-400"
+                            }`}
+                            style={{ width: `${row.value}%` }}
+                          />
+                        </div>
+                        <span className="text-xs font-medium text-base-content/60 w-8 text-right">
+                          {row.value}%
                         </span>
-                      </Tooltip>
-                      <div className="flex-1 h-1.5 bg-base-200 rounded-full overflow-hidden">
-                        <div
-                          className={`h-full rounded-full transition-all duration-500 ${
-                            pct >= 80 ? "bg-amber-500" : pct >= 50 ? "bg-success" : "bg-slate-400"
-                          }`}
-                          style={{ width: `${value}%` }}
-                        />
                       </div>
-                      <span className="text-xs font-medium text-base-content/60 w-8 text-right">
-                        {value}%
-                      </span>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             );
