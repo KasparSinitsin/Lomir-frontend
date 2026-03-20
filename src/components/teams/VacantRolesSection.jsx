@@ -176,7 +176,7 @@ const VacantRolesSection = ({
   // Don't render if loading still in progress
   if (loading) {
     return (
-      <div className={`mt-6 mb-6 ${className}`}>
+      <div className={className}>
         <div className="flex items-center mb-4">
           <UserSearch size={18} className="mr-2 text-primary flex-shrink-0" />
           <h3 className="font-medium">Vacant Roles</h3>

@@ -319,7 +319,7 @@ const UserDetailsModal = ({
           </div>
         ) : (
           // VIEW MODE - User profile information
-          <div className="space-y-6">
+          <div className="space-y-8">
             {/* User Profile Header */}
             <UserProfileHeaderSection
               user={user}
@@ -335,7 +335,7 @@ const UserDetailsModal = ({
             <LocationSection
               entity={user}
               entityType="user"
-              className="mb-6"
+              className=""
               headerRight={showMatchHighlights && currentUser && user ? (() => {
                 const viewedCity = (user.city || "").trim().toLowerCase();
                 const myCity = (currentUser.city || "").trim().toLowerCase();
@@ -414,11 +414,7 @@ const UserDetailsModal = ({
 
             {/* Badges */}
             <BadgesDisplaySection
-              title={`Badges${
-                Number.isFinite(user?.total_badge_credits)
-                  ? ` · ${user.total_badge_credits} ct.`
-                  : ""
-              }`}
+              title="Badges"
               badges={user?.badges}
               emptyMessage="No badges earned yet"
               maxVisible={8}

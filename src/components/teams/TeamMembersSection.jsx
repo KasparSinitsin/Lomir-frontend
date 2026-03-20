@@ -53,11 +53,16 @@ const TeamMembersSection = ({
   }
 
   return (
-    <div className={`mt-6 mb-6 ${className}`}>
+    <div className={className}>
       {/* Section Header */}
       <div className="flex items-center mb-4">
         <Users size={18} className="mr-2 text-primary flex-shrink-0" />
-        <h3 className="font-medium">Team Members</h3>
+        <h3 className="font-medium">
+          Team Members
+          <span className="font-normal text-sm text-base-content/60 ml-1">
+            ({team.members.length} {team.members.length === 1 ? 'member' : 'members'})
+          </span>
+        </h3>
       </div>
 
       {/* Notification Alert */}

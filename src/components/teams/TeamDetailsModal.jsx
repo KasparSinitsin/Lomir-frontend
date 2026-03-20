@@ -1447,7 +1447,7 @@ const TeamDetailsModal = ({
                   </div>
                 </div>
 
-                <div className="space-y-6">
+                <div className="space-y-8">
                   {/* Team description */}
                   {team?.description && (
                     <div>
@@ -1555,11 +1555,7 @@ const TeamDetailsModal = ({
                   {/* Team Badges */}
                   {!isEditing && teamBadges && teamBadges.length > 0 && (
                     <BadgesDisplaySection
-                      title={`Badges${
-                        teamBadgesTotalCredits > 0
-                          ? ` · ${teamBadgesTotalCredits} ct.`
-                          : ""
-                      }`}
+                      title="Badges"
                       badges={teamBadges}
                       emptyMessage="No badges earned yet"
                       maxVisible={10}
