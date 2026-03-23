@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Eye, EyeClosed, Calendar } from "lucide-react";
+import { Eye, EyeClosed, Calendar, UserCheck } from "lucide-react";
 import { getUserInitials } from "../../utils/userHelpers";
 import { getMatchTier } from "../../utils/matchScoreUtils";
 import { format } from "date-fns";
@@ -17,6 +17,8 @@ const UserProfileHeaderSection = ({
   memberSince = null,
   matchScore = null,
   className = "",
+  filledRoleName = null,
+  teamName = null,
 }) => {
   const [imageError, setImageError] = useState(false);
   const showMatchBadge = matchScore != null;
@@ -118,8 +120,18 @@ const UserProfileHeaderSection = ({
         <h1 className="text-2xl font-bold leading-[120%] mb-[0.2em]">
           {getDisplayName()}
         </h1>
-        <div className="flex items-center space-x-4 text-sm">
+        <div className="flex items-center flex-wrap gap-x-3 gap-y-0.5 text-sm">
           <span className="text-base-content/70">@{user?.username}</span>
+
+          {filledRoleName && (
+            <span className="flex items-center gap-1 text-base-content/70">
+              <UserCheck size={12} className="flex-shrink-0" />
+              <span>
+                {filledRoleName}
+                {teamName && <span className="text-base-content/50"> in {teamName}</span>}
+              </span>
+            </span>
+          )}
 
           {/* Visibility Indicator - Only show for own profile */}
           {shouldShowVisibilityIndicator() && (

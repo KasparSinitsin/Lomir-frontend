@@ -114,6 +114,7 @@ const TeamDetailsModal = ({
     message: null,
   });
   const [team, setTeam] = useState(initialTeamData); // Initialize with passed data
+  const [teamRoles, setTeamRoles] = useState([]);
 
   // Track if we've done the full fetch (initial data may be partial)
   const [hasFullData, setHasFullData] = useState(false);
@@ -1702,6 +1703,7 @@ const TeamDetailsModal = ({
                     isOwner={isOwner}
                     onRoleChange={fetchTeamDetails}
                     onMemberRemoved={fetchTeamDetails}
+                    roles={teamRoles}
                   />
 
                   {/* Vacant Team Roles */}
@@ -1711,6 +1713,7 @@ const TeamDetailsModal = ({
                     canManage={isOwner || internalUserRole === "admin"}
                     isTeamMember={isTeamMember}
                     isEditing={isEditing}
+                    onRolesLoaded={setTeamRoles}
                   />
                 </div>
 
@@ -1729,6 +1732,15 @@ const TeamDetailsModal = ({
           userId={selectedUserId}
           onClose={handleUserModalClose}
           mode="view"
+          filledRoleName={(() => {
+            const r = teamRoles.find((r) => {
+              if (String(r.status ?? "").toLowerCase() !== "filled") return false;
+              const fid = r.filledByUserId ?? r.filled_by_user_id ?? r.filledBy ?? r.filled_by ?? null;
+              return fid != null && String(fid) === String(selectedUserId);
+            });
+            return r?.roleName ?? r?.role_name ?? null;
+          })()}
+          teamName={team?.name ?? null}
         />
       )}
 

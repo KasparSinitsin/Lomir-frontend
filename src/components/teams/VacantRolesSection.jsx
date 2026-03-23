@@ -32,6 +32,7 @@ const VacantRolesSection = ({
   isTeamMember = false,
   isEditing = false,
   className = "",
+  onRolesLoaded = null,
 }) => {
   const { isAuthenticated } = useAuth();
 
@@ -77,7 +78,9 @@ const VacantRolesSection = ({
         teamId,
         statusFilter,
       );
-      setRoles(response.data || []);
+      const loaded = response.data || [];
+      setRoles(loaded);
+      onRolesLoaded?.(loaded);
     } catch (err) {
       console.error("Error fetching vacant roles:", err);
       setError("Failed to load vacant roles");

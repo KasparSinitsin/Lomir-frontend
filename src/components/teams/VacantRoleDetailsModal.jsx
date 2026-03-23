@@ -37,6 +37,7 @@ import { getMatchTier } from "../../utils/matchScoreUtils";
 import { getDisplayName, getUserInitials } from "../../utils/userHelpers";
 import { calculateDistanceKm } from "../../utils/locationUtils";
 import { resolveFilledRoleUser } from "../../utils/vacantRoleUtils";
+import { useUserModalSafe } from "../../contexts/UserModalContext";
 
 const MATCH_WEIGHTS = {
   tags: 0.4,
@@ -148,6 +149,7 @@ const VacantRoleDetailsModal = ({
   viewAsUser = null,
 }) => {
   const { user: currentUser, isAuthenticated } = useAuth();
+  const userModal = useUserModalSafe();
 
   const [userTagMap, setUserTagMap] = useState(new Map()); // tagId → { badgeCredits }
   const [userBadgeMap, setUserBadgeMap] = useState(new Map()); // lowercase name → { totalCredits }
@@ -427,6 +429,16 @@ const VacantRoleDetailsModal = ({
       ? getMatchTier(effectiveMatchScore)
       : null;
   const MatchTierIcon = matchTier?.Icon ?? null;
+  const handleFilledUserClick = () => {
+    const filledUserId = filledRoleUser?.id;
+    if (filledUserId && userModal?.openUserModal) {
+      userModal.openUserModal(filledUserId, {
+        filledRoleName: roleName ?? null,
+        teamName: teamName ?? null,
+      });
+    }
+  };
+
   const modalStatusTitle = isFilledRole ? "Filled Role" : "Vacant Role";
   const ModalStatusIcon = isFilledRole ? UserCheck : UserSearch;
   const summarySuffix = comparisonShortName ? ` with ${comparisonShortName}` : "";
@@ -523,7 +535,7 @@ const VacantRoleDetailsModal = ({
         />
         <h2 className="text-lg font-medium">{modalStatusTitle}</h2>
       </div>
-      {isTeamMember && (tags.length > 0 || badges.length > 0) && (
+      {!isFilledRole && isTeamMember && (tags.length > 0 || badges.length > 0) && (
         <div className="flex items-center space-x-2">
           <Button
             variant="ghost"
@@ -562,7 +574,14 @@ const VacantRoleDetailsModal = ({
         <div className="flex items-start space-x-4">
           <div className="avatar relative">
             {isFilledRole ? (
-              <div className="w-20 h-20 rounded-full">
+              <Tooltip content={filledRoleUser?.id ? `Click to view ${filledRoleDisplayName || "this user"}'s profile` : undefined}>
+              <div
+                className={`w-20 h-20 rounded-full ${filledRoleUser?.id ? "cursor-pointer" : ""}`}
+                onClick={filledRoleUser?.id ? handleFilledUserClick : undefined}
+                role={filledRoleUser?.id ? "button" : undefined}
+                tabIndex={filledRoleUser?.id ? 0 : undefined}
+                onKeyDown={filledRoleUser?.id ? (e) => { if (e.key === "Enter" || e.key === " ") handleFilledUserClick(); } : undefined}
+              >
                 {filledRoleAvatarUrl ? (
                   <img
                     src={filledRoleAvatarUrl}
@@ -587,6 +606,7 @@ const VacantRoleDetailsModal = ({
                   </span>
                 </div>
               </div>
+              </Tooltip>
             ) : effectivePct !== null ? (
               <div
                 className={`${matchTier?.bg ?? "bg-slate-400"} text-white rounded-full w-20 h-20 relative flex items-center justify-center overflow-hidden`}
@@ -643,9 +663,22 @@ const VacantRoleDetailsModal = ({
                   {isFilledRole ? "Filled on" : "Posted"}{" "}
                   {formatDate(isFilledRole ? filledAt : createdAt)}
                 </span>
-                {(isFilledRole ? filledRoleDisplayName : creatorName) && (
+                {isFilledRole && filledRoleUser?.id ? (
+                  <span>
+                    {" "}by{" "}
+                    <Tooltip content={`Click to view ${filledRoleDisplayName || "this user"}'s profile`}>
+                      <button
+                        type="button"
+                        className="hover:text-primary transition-colors font-medium"
+                        onClick={handleFilledUserClick}
+                      >
+                        {filledRoleDisplayName}
+                      </button>
+                    </Tooltip>
+                  </span>
+                ) : (isFilledRole ? filledRoleDisplayName : creatorName) ? (
                   <span> by {isFilledRole ? filledRoleDisplayName : creatorName}</span>
-                )}
+                ) : null}
               </div>
             )}
           </div>
@@ -811,7 +844,7 @@ const VacantRoleDetailsModal = ({
                     </span>
                   );
                 }
-                if (distKm !== null && withinRange !== null) {
+                if (distanceKm !== null && withinRange !== null) {
                   if (withinRange) {
                     return (
                       <span className="flex items-center gap-1.5 text-sm text-success">
