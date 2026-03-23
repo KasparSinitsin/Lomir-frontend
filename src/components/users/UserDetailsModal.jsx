@@ -26,6 +26,38 @@ import {
 } from "../../utils/teamMatchUtils";
 import { calculateDistanceKm } from "../../utils/locationUtils";
 
+const normalizeNumericSet = (values) => {
+  if (values == null) return null;
+
+  const items =
+    values instanceof Set
+      ? Array.from(values)
+      : Array.isArray(values)
+        ? values
+        : [values];
+
+  return new Set(items.map((value) => Number(value)).filter(Number.isFinite));
+};
+
+const normalizeStringSet = (values) => {
+  if (values == null) return null;
+
+  const items =
+    values instanceof Set
+      ? Array.from(values)
+      : Array.isArray(values)
+        ? values
+        : [values];
+
+  return new Set(
+    items
+      .map((value) =>
+        typeof value === "string" ? value.trim().toLowerCase() : "",
+      )
+      .filter(Boolean),
+  );
+};
+
 const UserDetailsModal = ({
   isOpen,
   userId,
@@ -49,6 +81,17 @@ const UserDetailsModal = ({
   teamName = null,
 }) => {
   const { user: currentUser, isAuthenticated } = useAuth();
+  const normalizedRoleMatchTagIds = useMemo(
+    () => normalizeNumericSet(roleMatchTagIds),
+    [roleMatchTagIds],
+  );
+  const normalizedRoleMatchBadgeNames = useMemo(
+    () => normalizeStringSet(roleMatchBadgeNames),
+    [roleMatchBadgeNames],
+  );
+  const hasRoleMatchTagIds = (normalizedRoleMatchTagIds?.size ?? 0) > 0;
+  const hasRoleMatchBadgeNames =
+    (normalizedRoleMatchBadgeNames?.size ?? 0) > 0;
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -156,12 +199,18 @@ const UserDetailsModal = ({
 
   // Fetch CURRENT user's tags/badges for overlap highlighting (not the viewed user's)
   useEffect(() => {
-    if (!showMatchHighlights && !roleMatchTagIds && !roleMatchBadgeNames) return;
+    if (
+      !showMatchHighlights &&
+      !hasRoleMatchTagIds &&
+      !hasRoleMatchBadgeNames
+    ) {
+      return;
+    }
     if (!isOpen || !isAuthenticated || !currentUser?.id) return;
     // Don't highlight own profile
     if (Number(currentUser.id) === Number(userId)) return;
     // Skip when role context provides the matching data
-    if (roleMatchTagIds || roleMatchBadgeNames) return;
+    if (hasRoleMatchTagIds || hasRoleMatchBadgeNames) return;
 
     const fetchCurrentUserData = async () => {
       try {
@@ -199,7 +248,15 @@ const UserDetailsModal = ({
     };
 
     fetchCurrentUserData();
-  }, [isOpen, isAuthenticated, currentUser?.id, userId, roleMatchTagIds, roleMatchBadgeNames, showMatchHighlights]);
+  }, [
+    currentUser?.id,
+    hasRoleMatchBadgeNames,
+    hasRoleMatchTagIds,
+    isAuthenticated,
+    isOpen,
+    showMatchHighlights,
+    userId,
+  ]);
 
   useEffect(() => {
     if (!isOpen || !isAuthenticated || !currentUser?.id || !showMatchHighlights) {
@@ -301,8 +358,8 @@ const UserDetailsModal = ({
 
     const isRoleMatchContext =
       matchType === "role_match" ||
-      roleMatchTagIds?.size > 0 ||
-      roleMatchBadgeNames?.size > 0;
+      hasRoleMatchTagIds ||
+      hasRoleMatchBadgeNames;
 
     if (isRoleMatchContext) {
       const enrichedUser = enrichUserRoleMatchData({
@@ -316,8 +373,8 @@ const UserDetailsModal = ({
           match_details: matchDetails,
           tags: userTags.length > 0 ? userTags : user?.tags,
         },
-        requiredTagIds: roleMatchTagIds,
-        requiredBadgeNames: roleMatchBadgeNames,
+        requiredTagIds: normalizedRoleMatchTagIds,
+        requiredBadgeNames: normalizedRoleMatchBadgeNames,
       });
 
       return {
@@ -358,8 +415,10 @@ const UserDetailsModal = ({
     matchDetails,
     matchScore,
     matchType,
-    roleMatchBadgeNames,
-    roleMatchTagIds,
+    hasRoleMatchBadgeNames,
+    hasRoleMatchTagIds,
+    normalizedRoleMatchBadgeNames,
+    normalizedRoleMatchTagIds,
     showMatchHighlights,
     user,
     userTags,
@@ -597,9 +656,15 @@ const UserDetailsModal = ({
               emptyMessage={UI_TEXT.focusAreas.empty}
               onTagClick={handleTagClick}
               onSupercategoryClick={handleSupercategoryClick}
-              matchingTagIds={roleMatchTagIds || currentUserTagIds}
+              matchingTagIds={
+                hasRoleMatchTagIds
+                  ? normalizedRoleMatchTagIds
+                  : currentUserTagIds
+              }
               headerRight={(() => {
-                const effectiveMatchIds = roleMatchTagIds || currentUserTagIds;
+                const effectiveMatchIds = hasRoleMatchTagIds
+                  ? normalizedRoleMatchTagIds
+                  : currentUserTagIds;
                 if (!effectiveMatchIds || effectiveMatchIds.size === 0) return null;
                 const displayTags = userTags.length > 0 ? userTags : (user?.tags || []);
                 if (!Array.isArray(displayTags) || displayTags.length === 0) return null;
@@ -608,12 +673,12 @@ const UserDetailsModal = ({
                     .map((t) => Number(t.tagId ?? t.tag_id ?? t.id))
                     .filter(Number.isFinite),
                 );
-                const isRoleMatchContext = roleMatchTagIds?.size > 0;
+                const isRoleMatchContext = hasRoleMatchTagIds;
                 const total = isRoleMatchContext
-                  ? roleMatchTagIds.size
+                  ? normalizedRoleMatchTagIds.size
                   : displayTags.length;
                 const matchCount = isRoleMatchContext
-                  ? Array.from(roleMatchTagIds).filter((tagId) =>
+                  ? Array.from(normalizedRoleMatchTagIds).filter((tagId) =>
                       userTagIds.has(Number(tagId)),
                     ).length
                   : displayTags.filter((t) => {
@@ -648,9 +713,15 @@ const UserDetailsModal = ({
               onCategoryClick={handleBadgeCategoryClick}
               onBadgeClick={handleBadgeClick}
               onOpenUser={onOpenUser}
-              matchingBadgeNames={roleMatchBadgeNames || currentUserBadgeNames}
+              matchingBadgeNames={
+                hasRoleMatchBadgeNames
+                  ? normalizedRoleMatchBadgeNames
+                  : currentUserBadgeNames
+              }
               headerRight={(() => {
-                const effectiveMatchNames = roleMatchBadgeNames || currentUserBadgeNames;
+                const effectiveMatchNames = hasRoleMatchBadgeNames
+                  ? normalizedRoleMatchBadgeNames
+                  : currentUserBadgeNames;
                 if (!effectiveMatchNames || effectiveMatchNames.size === 0) return null;
                 const badgeList = user?.badges || [];
                 if (!Array.isArray(badgeList) || badgeList.length === 0) return null;
@@ -663,12 +734,12 @@ const UserDetailsModal = ({
                     )
                     .filter(Boolean),
                 );
-                const isRoleMatchContext = roleMatchBadgeNames?.size > 0;
+                const isRoleMatchContext = hasRoleMatchBadgeNames;
                 const total = isRoleMatchContext
-                  ? roleMatchBadgeNames.size
+                  ? normalizedRoleMatchBadgeNames.size
                   : badgeList.length;
                 const matchCount = isRoleMatchContext
-                  ? Array.from(roleMatchBadgeNames).filter((name) =>
+                  ? Array.from(normalizedRoleMatchBadgeNames).filter((name) =>
                       userBadgeNames.has(name),
                     ).length
                   : badgeList.filter((b) => {

@@ -8,9 +8,12 @@ import {
   Award,
   Calendar,
   Users,
+  Mail,
   CircleDot,
   Check,
   X,
+  ChevronRight,
+  ChevronUp,
 } from "lucide-react";
 import Modal from "../common/Modal";
 import {
@@ -29,13 +32,22 @@ import {
 } from "../../constants/badgeConstants";
 import Button from "../common/Button";
 import Tooltip from "../common/Tooltip";
+import CardMetaItem from "../common/CardMetaItem";
+import CardMetaRow from "../common/CardMetaRow";
 import TeamApplicationButton from "./TeamApplicationButton";
+import TeamApplicationsModal from "./TeamApplicationsModal";
 import { useAuth } from "../../contexts/AuthContext";
 import { userService } from "../../services/userService";
+import { matchingService } from "../../services/matchingService";
+import { teamService } from "../../services/teamService";
 import { vacantRoleService } from "../../services/vacantRoleService";
 import { getMatchTier } from "../../utils/matchScoreUtils";
 import { getDisplayName, getUserInitials } from "../../utils/userHelpers";
-import { calculateDistanceKm } from "../../utils/locationUtils";
+import {
+  calculateDistanceKm,
+  normalizeLocationData,
+  formatLocation,
+} from "../../utils/locationUtils";
 import { resolveFilledRoleUser } from "../../utils/vacantRoleUtils";
 import { useUserModalSafe } from "../../contexts/UserModalContext";
 
@@ -47,6 +59,7 @@ const MATCH_WEIGHTS = {
 
 const LOCATION_GRACE_KM = 20;
 const LOCATION_GRACE_SCORE = 0.25;
+const COLLAPSED_COUNT = 4;
 
 const roundMatchValue = (value) => Math.round(value * 100) / 100;
 const toPossessive = (value) =>
@@ -128,6 +141,54 @@ const computeRoleUserMatch = ({
   };
 };
 
+const extractProfilePayload = (response) => {
+  const payload = response?.data ?? response;
+
+  if (!payload) return null;
+  if (payload?.success !== undefined) return payload?.data ?? null;
+
+  return payload?.data?.data ?? payload?.data ?? payload;
+};
+
+const extractListPayload = (response) => {
+  if (Array.isArray(response)) return response;
+  if (Array.isArray(response?.data)) return response.data;
+  if (Array.isArray(response?.data?.data)) return response.data.data;
+  return [];
+};
+
+const buildTagLookup = (tagData) => {
+  const nextMap = new Map();
+
+  for (const tag of tagData) {
+    nextMap.set(Number(tag.id), {
+      badgeCredits: Number(tag.badge_credits ?? tag.badgeCredits ?? 0),
+    });
+  }
+
+  return nextMap;
+};
+
+const buildBadgeLookup = (badgeData) => {
+  const nextMap = new Map();
+
+  for (const badge of badgeData) {
+    const name = (badge.badgeName ?? badge.badge_name ?? badge.name ?? "")
+      .trim()
+      .toLowerCase();
+    const credits = Number(
+      badge.totalCredits ?? badge.total_credits ?? badge.credits ?? 0,
+    );
+    const existing = nextMap.get(name);
+
+    nextMap.set(name, {
+      totalCredits: (existing?.totalCredits || 0) + credits,
+    });
+  }
+
+  return nextMap;
+};
+
 /**
  * VacantRoleDetailsModal Component
  *
@@ -144,6 +205,7 @@ const VacantRoleDetailsModal = ({
   role,
   matchScore = null,
   matchDetails = null,
+  canManage = false,
   isTeamMember = false,
   viewAsUserId = null,
   viewAsUser = null,
@@ -158,8 +220,32 @@ const VacantRoleDetailsModal = ({
   const [comparisonUserProfile, setComparisonUserProfile] = useState(null);
   const [loadingComparisonData, setLoadingComparisonData] = useState(false);
   const [comparisonDataLoaded, setComparisonDataLoaded] = useState(false);
+  // Role applicants
+  const [roleApplications, setRoleApplications] = useState([]);
+  const [allApplications, setAllApplications] = useState([]);
+  const [applicationsLoading, setApplicationsLoading] = useState(false);
+  const [applicationsModalOpen, setApplicationsModalOpen] = useState(false);
+  const [highlightApplicantId, setHighlightApplicantId] = useState(null);
+  const [applicantMatchMap, setApplicantMatchMap] = useState({});
+  const [applicantProfileMap, setApplicantProfileMap] = useState({});
+  const [roleTeamMembers, setRoleTeamMembers] = useState([]);
+  const [teamMembersLoading, setTeamMembersLoading] = useState(false);
+  const [isApplicationsExpanded, setIsApplicationsExpanded] = useState(false);
+  const [isTeamMembersExpanded, setIsTeamMembersExpanded] = useState(false);
   const roleId = role?.id;
   const teamId = role?.teamId ?? role?.team_id ?? team?.id;
+  const teamMembers = Array.isArray(team?.members) ? team.members : [];
+  const canViewTeamMemberMatches = canManage || isTeamMember;
+  const teamMemberIdsKey = JSON.stringify(
+    [
+      ...new Set(
+        teamMembers
+          .map((member) => member?.userId ?? member?.user_id ?? null)
+          .filter((id) => id != null)
+          .map(String),
+      ),
+    ],
+  );
 
   useEffect(() => {
     const fetchFullRole = async () => {
@@ -196,11 +282,28 @@ const VacantRoleDetailsModal = ({
       setComparisonDataLoaded(false);
       setUserTagMap(new Map());
       setUserBadgeMap(new Map());
+      setRoleApplications([]);
+      setAllApplications([]);
+      setApplicationsModalOpen(false);
+      setHighlightApplicantId(null);
+      setApplicantMatchMap({});
+      setApplicantProfileMap({});
+      setRoleTeamMembers([]);
+      setTeamMembersLoading(false);
+      setIsApplicationsExpanded(false);
+      setIsTeamMembersExpanded(false);
     }
   }, [isOpen]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    setIsApplicationsExpanded(false);
+    setIsTeamMembersExpanded(false);
+  }, [isOpen, roleId]);
+
   const displayRole = hydratedRole || role;
   const status = displayRole?.status;
+  const isRoleOpen = String(status ?? "").toLowerCase() === "open";
   const isFilledRole = String(status ?? "").toLowerCase() === "filled";
   const resolvedFilledUser = resolveFilledRoleUser(displayRole, {
     viewAsUserId,
@@ -301,6 +404,324 @@ const VacantRoleDetailsModal = ({
     fetchComparisonData();
   }, [isOpen, isAuthenticated, comparisonUserId, comparisonUserSeedJson]);
 
+  useEffect(() => {
+    if (!isOpen || !canManage || !teamId) {
+      setRoleApplications([]);
+      setAllApplications([]);
+      setApplicationsLoading(false);
+      return;
+    }
+
+    const normalizedStatus = String(status ?? "").toLowerCase();
+    if (normalizedStatus !== "open") {
+      setRoleApplications([]);
+      setAllApplications([]);
+      setApplicationsLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    const fetchApplications = async () => {
+      try {
+        setApplicationsLoading(true);
+        const response = await teamService.getTeamApplications(teamId);
+        if (cancelled) return;
+
+        const apps = response.data || [];
+        setAllApplications(apps);
+
+        const currentRoleId = roleId;
+        const filtered = apps.filter((app) => {
+          const appRoleId = app.role?.id ?? app.roleId ?? app.role_id ?? null;
+          return appRoleId != null && String(appRoleId) === String(currentRoleId);
+        });
+        setRoleApplications(filtered);
+      } catch (err) {
+        console.warn("Could not fetch applications for role:", err);
+        setRoleApplications([]);
+        setAllApplications([]);
+      } finally {
+        if (!cancelled) setApplicationsLoading(false);
+      }
+    };
+
+    fetchApplications();
+    return () => { cancelled = true; };
+  }, [isOpen, canManage, teamId, roleId, status]);
+
+  useEffect(() => {
+    if (!isOpen || !canManage || !roleId || !isRoleOpen || roleApplications.length === 0) {
+      setApplicantMatchMap({});
+      return;
+    }
+
+    let cancelled = false;
+
+    const fetchApplicantMatches = async () => {
+      try {
+        const response = await matchingService.getMatchingCandidates(roleId, {
+          limit: Math.max(roleApplications.length, 20),
+        });
+        if (cancelled) return;
+
+        const candidates = response?.data || [];
+        const nextMatchMap = {};
+
+        candidates.forEach((candidate) => {
+          const candidateId = candidate?.id ?? candidate?.userId ?? candidate?.user_id;
+          if (candidateId == null) return;
+
+          nextMatchMap[String(candidateId)] = {
+            ...candidate,
+            matchScore:
+              candidate?.matchScore ??
+              candidate?.match_score ??
+              candidate?.bestMatchScore ??
+              candidate?.best_match_score ??
+              null,
+            matchDetails:
+              candidate?.matchDetails ??
+              candidate?.match_details ??
+              null,
+          };
+        });
+
+        setApplicantMatchMap(nextMatchMap);
+      } catch (err) {
+        console.warn("Could not fetch applicant match scores for role:", err);
+        if (!cancelled) {
+          setApplicantMatchMap({});
+        }
+      }
+    };
+
+    fetchApplicantMatches();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, canManage, isRoleOpen, roleApplications, roleId]);
+
+  useEffect(() => {
+    if (!isOpen || !canManage || !isRoleOpen || roleApplications.length === 0) {
+      setApplicantProfileMap({});
+      return;
+    }
+
+    let cancelled = false;
+
+    const fetchApplicantProfiles = async () => {
+      const applicantIds = [
+        ...new Set(
+          roleApplications
+            .map((application) => {
+              const applicant = application?.applicant || {};
+              return applicant.id ?? application.applicant_id ?? null;
+            })
+            .filter((id) => id != null),
+        ),
+      ];
+
+      if (applicantIds.length === 0) {
+        setApplicantProfileMap({});
+        return;
+      }
+
+      try {
+        const results = await Promise.allSettled(
+          applicantIds.map((id) => userService.getUserById(id)),
+        );
+
+        if (cancelled) return;
+
+        const nextProfileMap = {};
+
+        results.forEach((result, index) => {
+          if (result.status !== "fulfilled") return;
+
+          const payload = result.value?.data ?? result.value;
+          const profile =
+            payload?.success !== undefined
+              ? payload?.data
+              : (payload?.data?.data ?? payload?.data ?? payload);
+
+          if (!profile) return;
+
+          nextProfileMap[String(applicantIds[index])] = profile;
+        });
+
+        setApplicantProfileMap(nextProfileMap);
+      } catch (err) {
+        console.warn("Could not fetch applicant profile details:", err);
+        if (!cancelled) {
+          setApplicantProfileMap({});
+        }
+      }
+    };
+
+    fetchApplicantProfiles();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, canManage, isRoleOpen, roleApplications]);
+
+  useEffect(() => {
+    if (
+      !isOpen ||
+      !displayRole ||
+      !canViewTeamMemberMatches ||
+      !isRoleOpen ||
+      teamMembers.length === 0
+    ) {
+      setRoleTeamMembers([]);
+      setTeamMembersLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    const fetchTeamMemberMatches = async () => {
+      const roleTags =
+        displayRole?.tags?.length > 0
+          ? displayRole.tags
+          : displayRole?.desiredTags || [];
+      const roleBadges =
+        displayRole?.badges?.length > 0
+          ? displayRole.badges
+          : displayRole?.desiredBadges || [];
+      const uniqueMembers = [
+        ...new Map(
+          teamMembers
+            .map((member) => {
+              const memberId = member?.userId ?? member?.user_id ?? null;
+              return memberId != null ? [String(memberId), member] : null;
+            })
+            .filter(Boolean),
+        ).entries(),
+      ];
+
+      if (uniqueMembers.length === 0) {
+        setRoleTeamMembers([]);
+        setTeamMembersLoading(false);
+        return;
+      }
+
+      try {
+        setTeamMembersLoading(true);
+
+        const results = await Promise.allSettled(
+          uniqueMembers.map(async ([memberKey, member]) => {
+            const memberId = memberKey;
+            const [profileRes, tagsRes, badgesRes] = await Promise.allSettled([
+              userService.getUserById(memberId),
+              userService.getUserTags(memberId),
+              userService.getUserBadges(memberId),
+            ]);
+
+            const profile =
+              profileRes.status === "fulfilled"
+                ? extractProfilePayload(profileRes.value)
+                : null;
+            const memberProfile = {
+              ...(member || {}),
+              ...(profile || {}),
+            };
+            const memberTagMap =
+              tagsRes.status === "fulfilled"
+                ? buildTagLookup(extractListPayload(tagsRes.value))
+                : new Map();
+            const memberBadgeMap =
+              badgesRes.status === "fulfilled"
+                ? buildBadgeLookup(extractListPayload(badgesRes.value))
+                : new Map();
+            const memberMatch = computeRoleUserMatch({
+              role: displayRole,
+              tags: roleTags,
+              badges: roleBadges,
+              user: memberProfile,
+              userTagMap: memberTagMap,
+              userBadgeMap: memberBadgeMap,
+            });
+
+            return {
+              memberId,
+              member: memberProfile,
+              teamRole: member?.role ?? null,
+              matchScore: memberMatch?.matchScore ?? null,
+              matchDetails: memberMatch?.matchDetails ?? null,
+            };
+          }),
+        );
+
+        if (cancelled) return;
+
+        const nextRows = results
+          .filter((result) => result.status === "fulfilled")
+          .map((result) => result.value)
+          .sort((a, b) => {
+            const scoreA = Number(a?.matchScore);
+            const scoreB = Number(b?.matchScore);
+            const hasScoreA = Number.isFinite(scoreA);
+            const hasScoreB = Number.isFinite(scoreB);
+
+            if (hasScoreA && hasScoreB && scoreA !== scoreB) {
+              return scoreB - scoreA;
+            }
+            if (hasScoreA && !hasScoreB) return -1;
+            if (!hasScoreA && hasScoreB) return 1;
+
+            return getDisplayName(a?.member ?? {}).localeCompare(
+              getDisplayName(b?.member ?? {}),
+            );
+          });
+
+        setRoleTeamMembers(nextRows);
+      } catch (error) {
+        console.warn("Could not fetch team member matches for role:", error);
+        if (!cancelled) {
+          setRoleTeamMembers([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setTeamMembersLoading(false);
+        }
+      }
+    };
+
+    fetchTeamMemberMatches();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    isOpen,
+    displayRole,
+    canViewTeamMemberMatches,
+    isRoleOpen,
+    teamMembers,
+    teamMemberIdsKey,
+  ]);
+
+  const handleApplicationAction = async (applicationId, action, response = "") => {
+    await teamService.handleTeamApplication(applicationId, action, response);
+    try {
+      const refreshed = await teamService.getTeamApplications(teamId);
+      const apps = refreshed.data || [];
+      setAllApplications(apps);
+      const currentRoleId = roleId;
+      setRoleApplications(
+        apps.filter((app) => {
+          const appRoleId = app.role?.id ?? app.roleId ?? app.role_id ?? null;
+          return appRoleId != null && String(appRoleId) === String(currentRoleId);
+        })
+      );
+    } catch (e) {
+      console.warn("Could not refresh applications:", e);
+    }
+  };
+
   if (!displayRole) return null;
 
   // Normalize camelCase/snake_case
@@ -338,7 +759,6 @@ const VacantRoleDetailsModal = ({
     displayRole.teamAvatarUrl ??
     displayRole.team_avatar_url ??
     null;
-  const isRoleOpen = String(status ?? "").toLowerCase() === "open";
   const applicationTeam = {
     ...team,
     id: team?.id ?? teamId,
@@ -469,6 +889,14 @@ const VacantRoleDetailsModal = ({
   const locationMismatchText = comparisonShortName
     ? `Outside ${comparisonPossessive} location range`
     : "Outside your location range";
+  const roleMatchTagIds = tags
+    .map((tag) => Number(tag.tagId ?? tag.tag_id ?? tag.id))
+    .filter(Number.isFinite);
+  const roleMatchBadgeNames = new Set(
+    badges
+      .map((badge) => (badge.name ?? badge.badgeName ?? badge.badge_name ?? "").trim().toLowerCase())
+      .filter(Boolean),
+  );
 
   const getRoleInitials = () => {
     const name = roleName || "Vacant Role";
@@ -485,7 +913,49 @@ const VacantRoleDetailsModal = ({
     return parts.length > 0 ? parts.join(", ") : null;
   };
 
+  const getPersonLocationText = (person, fallbackDistanceKm = null) => {
+    if (!person) {
+      return fallbackDistanceKm != null
+        ? `${Math.round(fallbackDistanceKm)} km away`
+        : "Location unavailable";
+    }
+
+    const locationLabel = formatLocation(normalizeLocationData(person), {
+      displayType: "short",
+      showCountry: true,
+    });
+
+    if (locationLabel) return locationLabel;
+
+    return fallbackDistanceKm != null
+      ? `${Math.round(fallbackDistanceKm)} km away`
+      : "Location unavailable";
+  };
+
   const locationText = getLocationText();
+  const handleTeamMemberClick = (memberRow) => {
+    const memberId = memberRow?.memberId ?? memberRow?.member?.id ?? null;
+
+    if (!memberId || !userModal?.openUserModal) return;
+
+    userModal.openUserModal(memberId, {
+      roleMatchTagIds: new Set(roleMatchTagIds),
+      roleMatchBadgeNames: new Set(roleMatchBadgeNames),
+      roleMatchName: roleName,
+      roleMatchMaxDistanceKm: maxDistanceKm ?? null,
+      showMatchHighlights: true,
+      matchScore: memberRow?.matchScore ?? null,
+      matchType: "role_match",
+      matchDetails: memberRow?.matchDetails ?? null,
+      distanceKm:
+        memberRow?.matchDetails?.distanceKm ??
+        memberRow?.matchDetails?.distance_km ??
+        memberRow?.member?.distance_km ??
+        memberRow?.member?.distanceKm ??
+        null,
+      teamName: teamName ?? null,
+    });
+  };
 
   const buildSearchUrl = () => {
     const params = new URLSearchParams();
@@ -537,6 +1007,43 @@ const VacantRoleDetailsModal = ({
     }
   };
 
+  const getApplicationApplicantScore = (application) => {
+    if (!application) return null;
+
+    const applicantId =
+      application?.applicant?.id ??
+      application?.applicant_id ??
+      null;
+    const applicantMatch =
+      applicantId != null ? applicantMatchMap[String(applicantId)] ?? null : null;
+    const rawScore =
+      application?.role?.matchScore ??
+      application?.role?.match_score ??
+      applicantMatch?.matchScore ??
+      applicantMatch?.match_score ??
+      null;
+    const numericScore = Number(rawScore);
+
+    return Number.isFinite(numericScore) ? numericScore : null;
+  };
+
+  const sortedRoleApplications = [...roleApplications].sort((a, b) => {
+    const scoreA = getApplicationApplicantScore(a);
+    const scoreB = getApplicationApplicantScore(b);
+
+    if (scoreA == null && scoreB == null) return 0;
+    if (scoreA == null) return 1;
+    if (scoreB == null) return -1;
+
+    return scoreB - scoreA;
+  });
+  const visibleRoleApplications = isApplicationsExpanded
+    ? sortedRoleApplications
+    : sortedRoleApplications.slice(0, COLLAPSED_COUNT);
+  const visibleRoleTeamMembers = isTeamMembersExpanded
+    ? roleTeamMembers
+    : roleTeamMembers.slice(0, COLLAPSED_COUNT);
+
   const modalTitle = (
     <div className="flex items-center justify-between w-full">
       <div className="flex items-center gap-2">
@@ -563,6 +1070,7 @@ const VacantRoleDetailsModal = ({
   );
 
   return (
+    <>
     <Modal
       isOpen={isOpen}
       onClose={onClose}
@@ -1119,6 +1627,347 @@ const VacantRoleDetailsModal = ({
           )}
         </div>
 
+        {/* Applications for this role — admin/owner only */}
+        {canManage && isRoleOpen && (
+          applicationsLoading ? (
+            <div className="flex justify-center py-3">
+              <span className="loading loading-spinner loading-sm text-primary"></span>
+            </div>
+          ) : roleApplications.length > 0 ? (
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center">
+                  <Mail size={18} className="mr-2 text-primary flex-shrink-0" />
+                  <h3 className="font-medium">Applications for this role</h3>
+                </div>
+                <span className="text-sm text-base-content/50">
+                  ({roleApplications.length})
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {visibleRoleApplications.map((application) => {
+                  const applicant = application.applicant || {};
+                  const applicantId =
+                    applicant.id ??
+                    application.applicant_id ??
+                    null;
+                  const applicantMatch =
+                    applicantId != null
+                      ? applicantMatchMap[String(applicantId)] ?? null
+                      : null;
+                  const applicantProfileDetails =
+                    applicantId != null
+                      ? applicantProfileMap[String(applicantId)] ?? null
+                      : null;
+                  const applicantProfile = {
+                    ...(applicant || {}),
+                    ...(applicantMatch || {}),
+                    ...(applicantProfileDetails || {}),
+                  };
+                  const firstName =
+                    applicantProfile.firstName ??
+                    applicantProfile.first_name ??
+                    "";
+                  const lastName =
+                    applicantProfile.lastName ??
+                    applicantProfile.last_name ??
+                    "";
+                  const username = applicantProfile.username ?? "";
+                  const avatarUrl =
+                    applicantProfile.avatarUrl ??
+                    applicantProfile.avatar_url ??
+                    null;
+                  const displayName = firstName && lastName
+                    ? `${firstName} ${lastName}`
+                    : firstName || lastName || username || "Unknown";
+                  const initials = firstName && lastName
+                    ? `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase()
+                    : (firstName || lastName || username || "?")
+                        .charAt(0)
+                        .toUpperCase();
+                  const applicationRoleMatch = application.role || {};
+                  const applicantScore =
+                    applicationRoleMatch.matchScore ??
+                    applicationRoleMatch.match_score ??
+                    applicantMatch?.matchScore ??
+                    applicantMatch?.match_score ??
+                    null;
+                  const applicantDistanceKm =
+                    applicationRoleMatch.matchDetails?.distanceKm ??
+                    applicationRoleMatch.matchDetails?.distance_km ??
+                    applicationRoleMatch.match_details?.distanceKm ??
+                    applicationRoleMatch.match_details?.distance_km ??
+                    applicantMatch?.matchDetails?.distanceKm ??
+                    applicantMatch?.matchDetails?.distance_km ??
+                    applicantMatch?.match_details?.distanceKm ??
+                    applicantMatch?.match_details?.distance_km ??
+                    null;
+                  const applicantMatchTier =
+                    applicantScore != null ? getMatchTier(applicantScore) : null;
+                  const ApplicantMatchIcon = applicantMatchTier?.Icon ?? null;
+                  const locationLabel = getPersonLocationText(
+                    applicantProfile,
+                    applicantDistanceKm,
+                  );
+                  const applicantTooltipName = firstName || displayName || "this applicant";
+                  const applicantTooltip = `Click to view ${toPossessive(applicantTooltipName)} full application for the team`;
+
+                  return (
+                    <Tooltip
+                      key={application.id}
+                      content={applicantTooltip}
+                      wrapperClassName="block w-full"
+                    >
+                      <button
+                        type="button"
+                        className="flex items-start bg-green-50 rounded-xl shadow p-4 gap-4 transition-all duration-200 hover:bg-green-100 hover:shadow-md cursor-pointer text-left w-full"
+                        onClick={() => {
+                          setHighlightApplicantId(applicantId);
+                          setApplicationsModalOpen(true);
+                        }}
+                      >
+                        <div className="avatar relative flex-shrink-0">
+                          <div className="w-12 h-12 rounded-full">
+                            {avatarUrl ? (
+                              <img
+                                src={avatarUrl}
+                                alt={displayName}
+                                className="object-cover w-full h-full rounded-full"
+                                onError={(e) => {
+                                  e.target.style.display = "none";
+                                  const fallback =
+                                    e.target.parentElement.querySelector(".avatar-fallback");
+                                  if (fallback) fallback.style.display = "flex";
+                                }}
+                              />
+                            ) : null}
+                            <div
+                              className="avatar-fallback bg-primary text-primary-content rounded-full w-full h-full flex items-center justify-center absolute inset-0"
+                              style={{ display: avatarUrl ? "none" : "flex" }}
+                            >
+                              <span className="text-lg">{initials}</span>
+                            </div>
+                          </div>
+                          {ApplicantMatchIcon && (
+                            <div
+                              className={`absolute -top-0.5 -left-0.5 w-[14px] h-[14px] rounded-full ring-2 ring-white flex items-center justify-center ${applicantMatchTier.bg}`}
+                              title={`${applicantMatchTier.pct}% ${applicantMatchTier.label.toLowerCase()}`}
+                            >
+                              <ApplicantMatchIcon
+                                size={7}
+                                className="text-white"
+                                strokeWidth={2.5}
+                              />
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="flex-1 min-w-0 pt-[1px]">
+                          <div className="flex flex-col">
+                            <div className="flex items-center justify-between gap-2 min-w-0">
+                              <div className="flex-1 min-w-0 overflow-hidden">
+                                <p className="block w-full min-w-0 truncate font-medium text-base leading-[120%] text-base-content">
+                                  {displayName}
+                                </p>
+                              </div>
+                            </div>
+
+                            <CardMetaRow>
+                              {applicantMatchTier && (
+                                <div className="flex items-start gap-0.5 min-w-0">
+                                  <ApplicantMatchIcon
+                                    size={10}
+                                    className={`${applicantMatchTier.text} shrink-0 mt-[3px]`}
+                                  />
+                                  <span className="text-base-content/60 leading-tight whitespace-nowrap">
+                                    {applicantMatchTier.pct}%
+                                  </span>
+                                </div>
+                              )}
+                              <CardMetaItem icon={MapPin}>
+                                {locationLabel}
+                              </CardMetaItem>
+                            </CardMetaRow>
+                          </div>
+                        </div>
+                      </button>
+                    </Tooltip>
+                  );
+                })}
+              </div>
+
+              {sortedRoleApplications.length > COLLAPSED_COUNT && (
+                <button
+                  type="button"
+                  className="flex items-center gap-1 mt-3 text-sm text-base-content/50 hover:text-base-content/80 transition-colors"
+                  onClick={() =>
+                    setIsApplicationsExpanded((value) => !value)
+                  }
+                >
+                  {isApplicationsExpanded ? (
+                    <ChevronUp size={14} />
+                  ) : (
+                    <ChevronRight size={14} />
+                  )}
+                  {isApplicationsExpanded ? "Show less" : "Show all"}
+                </button>
+              )}
+            </div>
+          ) : null
+        )}
+
+        {canViewTeamMemberMatches && isRoleOpen && (
+          teamMembersLoading ? (
+            <div className="flex justify-center py-3">
+              <span className="loading loading-spinner loading-sm text-primary"></span>
+            </div>
+          ) : roleTeamMembers.length > 0 ? (
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center">
+                  <Users size={18} className="mr-2 text-primary flex-shrink-0" />
+                  <h3 className="font-medium">Existing team members</h3>
+                </div>
+                <span className="text-sm text-base-content/50">
+                  ({roleTeamMembers.length})
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {visibleRoleTeamMembers.map((memberRow) => {
+                  const member = memberRow.member || {};
+                  const memberId =
+                    memberRow.memberId ??
+                    member.id ??
+                    member.userId ??
+                    member.user_id ??
+                    null;
+                  const avatarUrl =
+                    member.avatarUrl ?? member.avatar_url ?? null;
+                  const displayName = getDisplayName(member);
+                  const initials = getUserInitials(member);
+                  const memberScore =
+                    memberRow.matchScore != null
+                      ? Number(memberRow.matchScore)
+                      : null;
+                  const memberMatchTier =
+                    memberScore != null ? getMatchTier(memberScore) : null;
+                  const MemberMatchIcon = memberMatchTier?.Icon ?? null;
+                  const memberDistanceKm =
+                    memberRow.matchDetails?.distanceKm ??
+                    memberRow.matchDetails?.distance_km ??
+                    null;
+                  const locationLabel = getPersonLocationText(
+                    member,
+                    memberDistanceKm,
+                  );
+                  const memberTooltipName =
+                    member.firstName ??
+                    member.first_name ??
+                    displayName ??
+                    "this member";
+                  const memberTooltip = `Click to view ${toPossessive(memberTooltipName)} profile matching score for this role`;
+
+                  return (
+                    <Tooltip
+                      key={memberId ?? displayName}
+                      content={memberTooltip}
+                      wrapperClassName="block w-full"
+                    >
+                      <button
+                        type="button"
+                        className="flex items-start bg-green-50 rounded-xl shadow p-4 gap-4 transition-all duration-200 hover:bg-green-100 hover:shadow-md cursor-pointer text-left w-full"
+                        onClick={() => handleTeamMemberClick(memberRow)}
+                      >
+                        <div className="avatar relative flex-shrink-0">
+                          <div className="w-12 h-12 rounded-full">
+                            {avatarUrl ? (
+                              <img
+                                src={avatarUrl}
+                                alt={displayName}
+                                className="object-cover w-full h-full rounded-full"
+                                onError={(e) => {
+                                  e.target.style.display = "none";
+                                  const fallback =
+                                    e.target.parentElement.querySelector(".avatar-fallback");
+                                  if (fallback) fallback.style.display = "flex";
+                                }}
+                              />
+                            ) : null}
+                            <div
+                              className="avatar-fallback bg-primary text-primary-content rounded-full w-full h-full flex items-center justify-center absolute inset-0"
+                              style={{ display: avatarUrl ? "none" : "flex" }}
+                            >
+                              <span className="text-lg">{initials}</span>
+                            </div>
+                          </div>
+                          {MemberMatchIcon && (
+                            <div
+                              className={`absolute -top-0.5 -left-0.5 w-[14px] h-[14px] rounded-full ring-2 ring-white flex items-center justify-center ${memberMatchTier.bg}`}
+                              title={`${memberMatchTier.pct}% ${memberMatchTier.label.toLowerCase()}`}
+                            >
+                              <MemberMatchIcon
+                                size={7}
+                                className="text-white"
+                                strokeWidth={2.5}
+                              />
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="flex-1 min-w-0 pt-[1px]">
+                          <div className="flex flex-col">
+                            <div className="flex items-center justify-between gap-2 min-w-0">
+                              <div className="flex-1 min-w-0 overflow-hidden">
+                                <p className="block w-full min-w-0 truncate font-medium text-base leading-[120%] text-base-content">
+                                  {displayName}
+                                </p>
+                              </div>
+                            </div>
+
+                            <CardMetaRow>
+                              {memberMatchTier && (
+                                <div className="flex items-start gap-0.5 min-w-0">
+                                  <MemberMatchIcon
+                                    size={10}
+                                    className={`${memberMatchTier.text} shrink-0 mt-[3px]`}
+                                  />
+                                  <span className="text-base-content/60 leading-tight whitespace-nowrap">
+                                    {memberMatchTier.pct}%
+                                  </span>
+                                </div>
+                              )}
+                              <CardMetaItem icon={MapPin}>
+                                {locationLabel}
+                              </CardMetaItem>
+                            </CardMetaRow>
+                          </div>
+                        </div>
+                      </button>
+                    </Tooltip>
+                  );
+                })}
+              </div>
+
+              {roleTeamMembers.length > COLLAPSED_COUNT && (
+                <button
+                  type="button"
+                  className="flex items-center gap-1 mt-3 text-sm text-base-content/50 hover:text-base-content/80 transition-colors"
+                  onClick={() => setIsTeamMembersExpanded((value) => !value)}
+                >
+                  {isTeamMembersExpanded ? (
+                    <ChevronUp size={14} />
+                  ) : (
+                    <ChevronRight size={14} />
+                  )}
+                  {isTeamMembersExpanded ? "Show less" : "Show all"}
+                </button>
+              )}
+            </div>
+          ) : null
+        )}
+
         {isAuthenticated && !isTeamMember && isRoleOpen && (
           <div className="mt-6 border-t border-base-200 pt-4">
             <TeamApplicationButton
@@ -1131,6 +1980,22 @@ const VacantRoleDetailsModal = ({
         )}
       </div>
     </Modal>
+
+    {applicationsModalOpen && (
+      <TeamApplicationsModal
+        isOpen={applicationsModalOpen}
+        onClose={() => {
+          setApplicationsModalOpen(false);
+          setHighlightApplicantId(null);
+        }}
+        teamId={teamId}
+        applications={allApplications}
+        onApplicationAction={handleApplicationAction}
+        teamName={teamName}
+        highlightUserId={highlightApplicantId}
+      />
+    )}
+    </>
   );
 };
 
