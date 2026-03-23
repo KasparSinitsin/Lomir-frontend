@@ -853,15 +853,50 @@ const TeamCard = ({
   };
 
   const handleApplicationAction = async (applicationId, action, response) => {
+    await teamService.handleTeamApplication(applicationId, action, response);
+    await fetchPendingApplications();
+    if (onUpdate) {
+      const updatedTeam = await teamService.getTeamById(teamData.id);
+      onUpdate(updatedTeam.data);
+    }
+  };
+
+  const handleVacantRoleStatusChange = async () => {
+    await fetchPendingApplications();
+
     try {
-      await teamService.handleTeamApplication(applicationId, action, response);
-      await fetchPendingApplications();
-      if (onUpdate) {
-        const updatedTeam = await teamService.getTeamById(teamData.id);
-        onUpdate(updatedTeam.data);
-      }
+      const response = await teamService.getTeamById(teamData.id);
+      const fullTeam = response?.data?.data ?? response?.data;
+
+      if (!fullTeam) return;
+
+      const normalizedTeam = {
+        ...fullTeam,
+        is_public:
+          fullTeam.is_public === true || fullTeam.is_public === "true",
+      };
+      const mergedTeam = {
+        ...teamData,
+        ...normalizedTeam,
+        badges: hasDisplayableBadges(normalizedTeam.badges)
+          ? normalizedTeam.badges
+          : teamData.badges,
+      };
+      const refreshedDistance = resolveDistanceKm({
+        preferredDistance:
+          normalizedTeam.distance_km ?? normalizedTeam.distanceKm,
+        fallbackDistance: teamData.distance_km ?? teamData.distanceKm,
+        viewerEntity: viewerDistanceSource ?? user,
+        targetEntity: mergedTeam,
+      });
+
+      mergedTeam.distance_km = refreshedDistance;
+      mergedTeam.distanceKm = refreshedDistance;
+
+      setTeamData(mergedTeam);
+      if (onUpdate) onUpdate(mergedTeam);
     } catch (error) {
-      throw error;
+      console.error("Error refreshing team data after role status change:", error);
     }
   };
 
@@ -1505,6 +1540,7 @@ const TeamCard = ({
             teamId={teamData.id}
             applications={pendingApplications}
             onApplicationAction={handleApplicationAction}
+            onRoleStatusChanged={handleVacantRoleStatusChange}
             teamName={teamData.name}
             highlightUserId={highlightApplicantId}
           />
@@ -1843,6 +1879,7 @@ const TeamCard = ({
           teamId={teamData.id}
           applications={pendingApplications}
           onApplicationAction={handleApplicationAction}
+          onRoleStatusChanged={handleVacantRoleStatusChange}
           teamName={teamData.name}
           highlightUserId={highlightApplicantId}
         />

@@ -4,6 +4,7 @@ import {
   Globe,
   CircleDot,
   UserSearch,
+  UserCheck,
   Edit,
   Trash2,
   CheckCircle,
@@ -17,12 +18,14 @@ import RoleBadgePill from "../common/RoleBadgePill";
 import CardMetaItem from "../common/CardMetaItem";
 import CardMetaRow from "../common/CardMetaRow";
 import Tooltip from "../common/Tooltip";
+import { getDisplayName, getUserInitials } from "../../utils/userHelpers";
+import { resolveFilledRoleUser } from "../../utils/vacantRoleUtils";
 
 /**
  * VacantRoleCard Component
  *
  * Compact card matching TeamMembersSection member cards.
- * Shows: avatar initials, role name, location, "Vacant" badge,
+ * Shows: avatar initials, role name, location, status badge,
  * and optionally the authenticated user's match score.
  * Clicking opens VacantRoleDetailsModal with full details.
  *
@@ -38,10 +41,13 @@ const VacantRoleCard = ({
   team = null,
   role,
   canManage = false,
+  canManageStatus = false,
   isTeamMember = false,
   onEdit,
   onDelete,
   onStatusChange,
+  allowedStatusActions = ["filled", "closed", "open"],
+  statusActionLoading = false,
   matchScore = null,
   matchDetails = null,
   viewAsUserId = null,
@@ -56,10 +62,12 @@ const VacantRoleCard = ({
   const role_name = role.roleName ?? role.role_name;
   const city = role.city;
   const country = role.country;
-  const state = role.state;
   const max_distance_km = role.maxDistanceKm ?? role.max_distance_km;
   const is_remote = role.isRemote ?? role.is_remote;
   const status = role.status;
+  const statusActions = Array.isArray(allowedStatusActions)
+    ? allowedStatusActions
+    : [];
 
   // Build location string (short, matching member card style)
   const getLocationText = () => {
@@ -130,17 +138,98 @@ const VacantRoleCard = ({
     return `${pct}% match — Tags ${tagPct}% · Badges ${badgePct}% · Location ${distPct}%`;
   };
 
+  const canUpdateStatus =
+    (canManage || canManageStatus) && typeof onStatusChange === "function";
+  const canEditRole = canManage && typeof onEdit === "function";
+  const canDeleteRole = canManage && typeof onDelete === "function";
+  const canMarkFilled =
+    canUpdateStatus &&
+    status === "open" &&
+    statusActions.includes("filled");
+  const canCloseRole =
+    canUpdateStatus &&
+    status === "open" &&
+    statusActions.includes("closed");
+  const canReopenRole =
+    canUpdateStatus &&
+    status !== "open" &&
+    statusActions.includes("open");
+  const hasBadgeActions =
+    canEditRole ||
+    canDeleteRole ||
+    canMarkFilled ||
+    canCloseRole ||
+    canReopenRole;
+  const canOpenBadgeMenu = hasBadgeActions && !statusActionLoading;
+  const isFilled = status === "filled";
+  const filledUser = isFilled
+    ? resolveFilledRoleUser(role, { viewAsUserId, viewAsUser })
+    : null;
+  const filledUserAvatarUrl =
+    filledUser?.avatar_url ?? filledUser?.avatarUrl ?? null;
+  const filledUserDisplayName =
+    filledUser && getDisplayName(filledUser) !== "Unknown"
+      ? getDisplayName(filledUser)
+      : null;
+  const filledByText = filledUserDisplayName
+    ? `Filled by ${filledUserDisplayName}`
+    : "Filled";
+  const badgeConfig =
+    isFilled
+      ? {
+          icon: UserCheck,
+          label: "Filled",
+          badgeColorClass: "badge-role-filled",
+        }
+      : {
+          icon: UserSearch,
+          label: "Vacant",
+          badgeColorClass: "badge-role-vacant",
+        };
+  const cardColorClass = isFilled
+    ? "bg-green-50 hover:bg-green-100"
+    : "bg-amber-50 hover:bg-amber-100/70";
+  const initialsAvatarClass = isFilled
+    ? "bg-success text-white"
+    : "bg-amber-500 text-white";
+
   return (
     <>
       <div
         onClick={handleCardClick}
-        className={`flex items-start bg-amber-50 rounded-xl shadow p-4 gap-4 transition-all duration-200 hover:bg-amber-100/70 hover:shadow-md cursor-pointer ${
+        className={`flex items-start rounded-xl shadow p-4 gap-4 transition-all duration-200 hover:shadow-md cursor-pointer ${cardColorClass} ${
           status !== "open" ? "opacity-70" : ""
         }`}
       >
         {/* Avatar — shows match score when available, initials otherwise */}
         <div className="flex-shrink-0">
-          {hasMatchScore ? (
+          {isFilled && filledUser ? (
+            <div className="avatar">
+              <div className="w-12 h-12 rounded-full relative">
+                {filledUserAvatarUrl ? (
+                  <img
+                    src={filledUserAvatarUrl}
+                    alt={filledUserDisplayName || "Filled role"}
+                    className="object-cover w-full h-full rounded-full"
+                    onError={(e) => {
+                      e.target.style.display = "none";
+                      const fallback =
+                        e.target.parentElement.querySelector(".avatar-fallback");
+                      if (fallback) fallback.style.display = "flex";
+                    }}
+                  />
+                ) : null}
+                <div
+                  className="avatar-fallback bg-success text-white flex items-center justify-center w-full h-full rounded-full absolute inset-0"
+                  style={{ display: filledUserAvatarUrl ? "none" : "flex" }}
+                >
+                  <span className="text-lg font-medium">
+                    {getUserInitials(filledUser)}
+                  </span>
+                </div>
+              </div>
+            </div>
+          ) : hasMatchScore ? (
             <Tooltip content={getMatchTooltip()}>
               <div className="avatar placeholder">
                 <div
@@ -175,7 +264,9 @@ const VacantRoleCard = ({
             </Tooltip>
           ) : (
             <div className="avatar placeholder">
-              <div className="bg-amber-500 text-white rounded-full w-12 h-12 flex items-center justify-center">
+              <div
+                className={`${initialsAvatarClass} rounded-full w-12 h-12 flex items-center justify-center`}
+              >
                 <span className="text-lg">{getRoleInitials()}</span>
               </div>
             </div>
@@ -199,12 +290,13 @@ const VacantRoleCard = ({
 
             <div className="relative flex-shrink-0" data-dropdown-menu>
               <RoleBadgePill
-                icon={UserSearch}
-                label="Vacant"
-                badgeColorClass="badge-role-vacant"
-                interactive={canManage}
+                icon={badgeConfig.icon}
+                label={badgeConfig.label}
+                badgeColorClass={badgeConfig.badgeColorClass}
+                interactive={canOpenBadgeMenu}
+                loading={statusActionLoading}
                 onClick={
-                  canManage
+                  canOpenBadgeMenu
                     ? (e) => {
                         e.stopPropagation();
                         setShowMenu(!showMenu);
@@ -213,7 +305,7 @@ const VacantRoleCard = ({
                 }
               />
 
-              {canManage && showMenu && (
+              {canOpenBadgeMenu && showMenu && (
                 <>
                   <div
                     className="fixed inset-0 z-10"
@@ -223,7 +315,7 @@ const VacantRoleCard = ({
                     }}
                   />
                   <div className="absolute right-0 top-8 z-20 bg-base-100 border border-base-300 rounded-lg shadow-lg py-1 min-w-[140px]">
-                    {onEdit && (
+                    {canEditRole && (
                       <button
                         className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-base-200 text-left"
                         onClick={(e) => {
@@ -236,7 +328,7 @@ const VacantRoleCard = ({
                         Edit Role
                       </button>
                     )}
-                    {status === "open" && onStatusChange && (
+                    {canMarkFilled && (
                       <button
                         className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-base-200 text-left"
                         onClick={(e) => {
@@ -249,7 +341,7 @@ const VacantRoleCard = ({
                         Mark Filled
                       </button>
                     )}
-                    {status === "open" && onStatusChange && (
+                    {canCloseRole && (
                       <button
                         className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-base-200 text-left"
                         onClick={(e) => {
@@ -262,7 +354,7 @@ const VacantRoleCard = ({
                         Close Role
                       </button>
                     )}
-                    {status !== "open" && onStatusChange && (
+                    {canReopenRole && (
                       <button
                         className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-base-200 text-left"
                         onClick={(e) => {
@@ -275,7 +367,7 @@ const VacantRoleCard = ({
                         Reopen Role
                       </button>
                     )}
-                    {onDelete && (
+                    {canDeleteRole && (
                       <button
                         className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-base-200 text-left text-error"
                         onClick={(e) => {
@@ -295,7 +387,11 @@ const VacantRoleCard = ({
           </div>
 
           {/* Row 2: location + distance */}
-          {locationText && (
+          {isFilled ? (
+            <CardMetaRow>
+              <CardMetaItem icon={UserCheck}>{filledByText}</CardMetaItem>
+            </CardMetaRow>
+          ) : locationText && (
             <CardMetaRow>
               <CardMetaItem icon={is_remote ? Globe : MapPin}>
                 {locationText}

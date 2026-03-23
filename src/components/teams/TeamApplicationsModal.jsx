@@ -5,6 +5,7 @@ import PersonRequestCard from "../common/PersonRequestCard";
 import Button from "../common/Button";
 import UserDetailsModal from "../users/UserDetailsModal";
 import VacantRoleCard from "./VacantRoleCard";
+import { vacantRoleService } from "../../services/vacantRoleService";
 
 /**
  * TeamApplicationsModal Component
@@ -25,6 +26,7 @@ const TeamApplicationsModal = ({
   teamId = null,
   applications = [],
   onApplicationAction,
+  onRoleStatusChanged,
   teamName,
   highlightUserId = null,
 }) => {
@@ -34,6 +36,8 @@ const TeamApplicationsModal = ({
   const [success, setSuccess] = useState(null);
   const [responses, setResponses] = useState({});
   const [selectedUserId, setSelectedUserId] = useState(null);
+  const [statusUpdatingRoleId, setStatusUpdatingRoleId] = useState(null);
+  const [roleStatusOverrides, setRoleStatusOverrides] = useState({});
 
   // ============ Refs ============
   const highlightedRef = useRef(null);
@@ -76,6 +80,53 @@ const TeamApplicationsModal = ({
     }
   };
 
+  const handleRoleStatusChange = async (roleId, newStatus, filledUser = null) => {
+    if (!teamId || !roleId) return;
+
+    const actionLabel =
+      newStatus === "filled"
+        ? "marked as filled"
+        : newStatus === "closed"
+          ? "closed"
+          : "reopened";
+
+    try {
+      setStatusUpdatingRoleId(roleId);
+      setError(null);
+
+      const response = await vacantRoleService.updateVacantRoleStatus(
+        teamId,
+        roleId,
+        newStatus,
+        filledUser?.id ?? null,
+      );
+      const updatedRole = response?.data || null;
+
+      setRoleStatusOverrides((prev) => ({
+        ...prev,
+        [roleId]: {
+          status: newStatus,
+          filledBy: updatedRole?.filledBy ?? filledUser?.id ?? null,
+          filledByUser: updatedRole?.filledByUser ?? filledUser ?? null,
+        },
+      }));
+      setSuccess(`Role ${actionLabel} successfully!`);
+
+      try {
+        await onRoleStatusChanged?.(roleId, newStatus);
+      } catch (refreshError) {
+        console.warn(
+          "Role status updated, but the applications list could not be refreshed:",
+          refreshError,
+        );
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || "Failed to update role status");
+    } finally {
+      setStatusUpdatingRoleId(null);
+    }
+  };
+
   const handleUserClick = (userId) => {
     if (userId) {
       setSelectedUserId(userId);
@@ -107,6 +158,13 @@ const TeamApplicationsModal = ({
     }
   }, [isOpen, highlightUserId]);
 
+  useEffect(() => {
+    if (!isOpen) {
+      setStatusUpdatingRoleId(null);
+      setRoleStatusOverrides({});
+    }
+  }, [isOpen]);
+
   // ============ Render ============
   return (
     <RequestListModal
@@ -135,6 +193,28 @@ const TeamApplicationsModal = ({
       {applications.map((application) => {
         const applicantId =
           application?.applicant?.id ?? application?.applicant_id ?? null;
+        const roleId = application?.role?.id ?? null;
+        const roleOverride = roleId ? roleStatusOverrides[roleId] : null;
+        const role =
+          application?.role && roleId
+            ? {
+                ...application.role,
+                status:
+                  roleOverride?.status ??
+                  application.role.status ??
+                  "open",
+                filledBy:
+                  roleOverride?.filledBy ??
+                  application.role.filledBy ??
+                  application.role.filled_by ??
+                  null,
+                filledByUser:
+                  roleOverride?.filledByUser ??
+                  application.role.filledByUser ??
+                  application.role.filled_by_user ??
+                  null,
+              }
+            : application?.role ?? null;
 
         // Normalize types to avoid "1" vs 1 mismatches
         const isHighlighted =
@@ -163,15 +243,25 @@ const TeamApplicationsModal = ({
               extraContent={
                 <>
                   {/* Vacant role card — shown when application targets a specific role */}
-                  {application.role && (
+                  {role && (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
                       <VacantRoleCard
-                        role={application.role}
+                        role={role}
                         team={{ id: teamId, name: teamName }}
-                        matchScore={application.role.matchScore ?? application.role.match_score ?? null}
-                        matchDetails={application.role.matchDetails ?? application.role.match_details ?? null}
+                        matchScore={role.matchScore ?? role.match_score ?? null}
+                        matchDetails={role.matchDetails ?? role.match_details ?? null}
                         canManage={false}
+                        canManageStatus={true}
                         isTeamMember={true}
+                        onStatusChange={(currentRoleId, newStatus) =>
+                          handleRoleStatusChange(
+                            currentRoleId,
+                            newStatus,
+                            application.applicant ?? null,
+                          )
+                        }
+                        allowedStatusActions={["filled"]}
+                        statusActionLoading={statusUpdatingRoleId === roleId}
                         viewAsUserId={application.applicant?.id}
                         viewAsUser={application.applicant}
                       />
@@ -216,7 +306,7 @@ const TeamApplicationsModal = ({
                       }
                       className="textarea textarea-bordered textarea-sm w-full h-20 resize-none text-sm"
                       placeholder="Add a personal message to your decision..."
-                      disabled={loading}
+                      disabled={loading || statusUpdatingRoleId !== null}
                     />
                   </div>
                 </>
@@ -233,7 +323,7 @@ const TeamApplicationsModal = ({
                         responses[application.id] || ""
                       )
                     }
-                    disabled={loading}
+                    disabled={loading || statusUpdatingRoleId !== null}
                     icon={<Decline size={16} />}
                   >
                     Decline
@@ -248,7 +338,7 @@ const TeamApplicationsModal = ({
                         responses[application.id] || ""
                       )
                     }
-                    disabled={loading}
+                    disabled={loading || statusUpdatingRoleId !== null}
                     icon={<Check size={16} />}
                   >
                     Accept & Add to Team

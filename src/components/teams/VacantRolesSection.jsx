@@ -47,6 +47,17 @@ const VacantRolesSection = ({
   const [matchScores, setMatchScores] = useState({});
   const [isExpanded, setIsExpanded] = useState(false);
   const COLLAPSED_COUNT = 4;
+  const shouldShowFilledRoles = canManage || isTeamMember;
+  const visibleRoles = roles.filter((role) => {
+    if (canManage) return true;
+
+    const normalizedStatus = String(role?.status ?? "").toLowerCase();
+    if (isTeamMember) {
+      return normalizedStatus === "open" || normalizedStatus === "filled";
+    }
+
+    return normalizedStatus === "open";
+  });
 
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -59,8 +70,9 @@ const VacantRolesSection = ({
     try {
       setLoading(true);
       setError(null);
-      // Admins/owners see all statuses; others see only open
-      const statusFilter = canManage ? "all" : "open";
+      // Managers see all statuses, team members see open + filled,
+      // and outsiders still see only open roles.
+      const statusFilter = shouldShowFilledRoles ? "all" : "open";
       const response = await vacantRoleService.getVacantRoles(
         teamId,
         statusFilter,
@@ -72,7 +84,7 @@ const VacantRolesSection = ({
     } finally {
       setLoading(false);
     }
-  }, [teamId, canManage]);
+  }, [teamId, shouldShowFilledRoles]);
 
   useEffect(() => {
     fetchRoles();
@@ -191,7 +203,7 @@ const VacantRolesSection = ({
   }
 
   // Don't render the section at all if there are no roles and user can't manage
-  if (roles.length === 0 && !canManage) return null;
+  if (visibleRoles.length === 0 && !canManage) return null;
 
   // Count open roles for the title
   const openCount = roles.filter((r) => r.status === "open").length;
@@ -245,10 +257,10 @@ const VacantRolesSection = ({
       )}
 
       {/* Roles list — sorted by match score (highest first) when available */}
-      {roles.length > 0 ? (
+      {visibleRoles.length > 0 ? (
         <>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {[...roles]
+            {[...visibleRoles]
               .sort((a, b) => {
                 const scoreA = matchScores[a.id]?.matchScore ?? -1;
                 const scoreB = matchScores[b.id]?.matchScore ?? -1;
@@ -270,7 +282,7 @@ const VacantRolesSection = ({
                 />
               ))}
           </div>
-          {roles.length > COLLAPSED_COUNT && (
+          {visibleRoles.length > COLLAPSED_COUNT && (
             <button
               type="button"
               className="flex items-center gap-1 mt-3 text-sm text-base-content/50 hover:text-base-content/80 transition-colors"
