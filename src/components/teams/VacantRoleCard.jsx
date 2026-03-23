@@ -314,7 +314,7 @@ const VacantRoleCard = ({
                       setShowMenu(false);
                     }}
                   />
-                  <div className="absolute right-0 top-8 z-20 bg-base-100 border border-base-300 rounded-lg shadow-lg py-1 min-w-[140px]">
+                  <div className="absolute right-0 top-8 z-20 bg-base-100 border border-base-300 rounded-lg shadow-lg py-1 min-w-[200px]">
                     {canEditRole && (
                       <button
                         className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-base-200 text-left"
@@ -330,15 +330,22 @@ const VacantRoleCard = ({
                     )}
                     {canMarkFilled && (
                       <button
-                        className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-base-200 text-left"
+                        className="flex items-start gap-2 w-full px-3 py-2 text-sm hover:bg-base-200 text-left"
                         onClick={(e) => {
                           e.stopPropagation();
                           setShowMenu(false);
                           onStatusChange(role.id, "filled");
                         }}
                       >
-                        <CheckCircle size={14} className="text-success" />
-                        Mark Filled
+                        <CheckCircle size={14} className="text-success flex-shrink-0 mt-[2px]" />
+                        {viewAsUser
+                          ? `Mark role as filled with ${
+                              viewAsUser.firstName ??
+                              viewAsUser.first_name ??
+                              viewAsUser.username ??
+                              "this applicant"
+                            }`
+                          : "Mark Filled"}
                       </button>
                     )}
                     {canCloseRole && (

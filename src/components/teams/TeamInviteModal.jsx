@@ -416,14 +416,11 @@ const TeamInviteModal = ({
   const handleApplicationAction = async (
     applicationId,
     action,
-    response = ""
+    response = "",
+    fillRole = false
   ) => {
     try {
-      if (action === "approve") {
-        await teamService.acceptApplication(applicationId, response);
-      } else {
-        await teamService.declineApplication(applicationId, response);
-      }
+      await teamService.handleTeamApplication(applicationId, action, response, fillRole);
 
       // Update local state - remove the processed application
       if (selectedTeamForModal) {

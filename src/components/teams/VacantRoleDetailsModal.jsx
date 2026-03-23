@@ -704,8 +704,8 @@ const VacantRoleDetailsModal = ({
     teamMemberIdsKey,
   ]);
 
-  const handleApplicationAction = async (applicationId, action, response = "") => {
-    await teamService.handleTeamApplication(applicationId, action, response);
+  const handleApplicationAction = async (applicationId, action, response = "", fillRole = false) => {
+    await teamService.handleTeamApplication(applicationId, action, response, fillRole);
     try {
       const refreshed = await teamService.getTeamApplications(teamId);
       const apps = refreshed.data || [];

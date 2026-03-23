@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Check, X as Decline, User, Mail, MessageSquare } from "lucide-react";
+import { Check, X as Decline, User, Mail, MessageSquare, AlertTriangle } from "lucide-react";
 import RequestListModal from "../common/RequestListModal";
 import PersonRequestCard from "../common/PersonRequestCard";
 import Button from "../common/Button";
+import Modal from "../common/Modal";
 import UserDetailsModal from "../users/UserDetailsModal";
 import VacantRoleCard from "./VacantRoleCard";
 import { vacantRoleService } from "../../services/vacantRoleService";
@@ -36,8 +37,9 @@ const TeamApplicationsModal = ({
   const [success, setSuccess] = useState(null);
   const [responses, setResponses] = useState({});
   const [selectedUserId, setSelectedUserId] = useState(null);
-  const [statusUpdatingRoleId, setStatusUpdatingRoleId] = useState(null);
   const [roleStatusOverrides, setRoleStatusOverrides] = useState({});
+  const [statusUpdatingRoleId, setStatusUpdatingRoleId] = useState(null);
+  const [showCloseGuard, setShowCloseGuard] = useState(false);
 
   // ============ Refs ============
   const highlightedRef = useRef(null);
@@ -59,13 +61,41 @@ const TeamApplicationsModal = ({
       setLoading(true);
       setError(null);
 
-      await onApplicationAction(applicationId, action, response);
+      // Determine if the admin toggled "Mark role as filled" for this application's role
+      let fillRole = false;
+      const application = applications.find((app) => app.id === applicationId);
+      if (action === "approve") {
+        const appRoleId = application?.role?.id ?? null;
+        if (appRoleId && roleStatusOverrides[appRoleId]?.status === "filled") {
+          fillRole = true;
+        }
+      }
 
-      setSuccess(
-        `Application ${
-          action === "approve" ? "approved" : "declined"
-        } successfully!`
-      );
+      await onApplicationAction(applicationId, action, response, fillRole);
+
+      // If approved, clear the role status override for this application's role
+      if (action === "approve") {
+        const appRoleId = application?.role?.id ?? null;
+        if (appRoleId && roleStatusOverrides[appRoleId]) {
+          setRoleStatusOverrides((prev) => {
+            const next = { ...prev };
+            delete next[appRoleId];
+            return next;
+          });
+        }
+      }
+
+      if (action === "approve" && fillRole) {
+        const roleName =
+          application?.role?.roleName ??
+          application?.role?.role_name ??
+          "the role";
+        setSuccess(`Application approved! ${roleName} has been marked as filled.`);
+      } else {
+        setSuccess(
+          `Application ${action === "approve" ? "approved" : "declined"} successfully!`
+        );
+      }
 
       // Clear the response for this application
       setResponses((prev) => {
@@ -81,50 +111,88 @@ const TeamApplicationsModal = ({
   };
 
   const handleRoleStatusChange = async (roleId, newStatus, filledUser = null) => {
-    if (!teamId || !roleId) return;
+    if (!roleId) return;
 
-    const actionLabel =
-      newStatus === "filled"
-        ? "marked as filled"
-        : newStatus === "closed"
-          ? "closed"
-          : "reopened";
-
-    try {
-      setStatusUpdatingRoleId(roleId);
-      setError(null);
-
-      const response = await vacantRoleService.updateVacantRoleStatus(
-        teamId,
-        roleId,
-        newStatus,
-        filledUser?.id ?? null,
-      );
-      const updatedRole = response?.data || null;
-
+    // ── "Mark role as filled" → always local-only toggle ──
+    if (newStatus === "filled") {
       setRoleStatusOverrides((prev) => ({
         ...prev,
         [roleId]: {
-          status: newStatus,
-          filledBy: updatedRole?.filledBy ?? filledUser?.id ?? null,
-          filledByUser: updatedRole?.filledByUser ?? filledUser ?? null,
+          status: "filled",
+          filledBy: filledUser?.id ?? null,
+          filledByUser: filledUser ?? null,
         },
       }));
-      setSuccess(`Role ${actionLabel} successfully!`);
+      return;
+    }
+
+    // ── "Reopen Role" → check if it's a local toggle or a server-persisted fill ──
+    if (newStatus === "open") {
+      const hasLocalOverride = !!roleStatusOverrides[roleId];
+
+      // Find the original server status from the application data
+      const originalRole = applications.find((app) => {
+        const appRoleId = app?.role?.id ?? null;
+        return appRoleId != null && String(appRoleId) === String(roleId);
+      })?.role;
+      const serverStatus = originalRole?.status ?? originalRole?.originalStatus ?? "open";
+
+      if (hasLocalOverride && serverStatus !== "filled") {
+        // Case 1: The fill was local-only → just clear the override
+        setRoleStatusOverrides((prev) => {
+          const next = { ...prev };
+          delete next[roleId];
+          return next;
+        });
+        return;
+      }
+
+      // Case 2: The role is genuinely filled on the server → API call needed
+      if (!teamId) return;
 
       try {
-        await onRoleStatusChanged?.(roleId, newStatus);
-      } catch (refreshError) {
-        console.warn(
-          "Role status updated, but the applications list could not be refreshed:",
-          refreshError,
-        );
+        setStatusUpdatingRoleId(roleId);
+        setError(null);
+
+        await vacantRoleService.updateVacantRoleStatus(teamId, roleId, "open", null);
+
+        // Clear any local override to reflect the server state
+        setRoleStatusOverrides((prev) => {
+          const next = { ...prev };
+          delete next[roleId];
+          return next;
+        });
+
+        setSuccess("Role reopened successfully!");
+
+        try {
+          await onRoleStatusChanged?.(roleId, "open");
+        } catch (refreshError) {
+          console.warn(
+            "Role reopened, but the applications list could not be refreshed:",
+            refreshError,
+          );
+        }
+      } catch (err) {
+        setError(err.response?.data?.message || "Failed to reopen role");
+      } finally {
+        setStatusUpdatingRoleId(null);
       }
-    } catch (err) {
-      setError(err.response?.data?.message || "Failed to update role status");
-    } finally {
-      setStatusUpdatingRoleId(null);
     }
+  };
+
+  const handleClose = () => {
+    if (Object.keys(roleStatusOverrides).length > 0) {
+      setShowCloseGuard(true);
+      return;
+    }
+    onClose();
+  };
+
+  const handleCloseGuardConfirm = () => {
+    setShowCloseGuard(false);
+    setRoleStatusOverrides({});
+    onClose();
   };
 
   const handleUserClick = (userId) => {
@@ -169,7 +237,7 @@ const TeamApplicationsModal = ({
   return (
     <RequestListModal
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={handleClose}
       title="Applications received for"
       subtitle={teamName}
       itemCount={applications.length}
@@ -183,11 +251,41 @@ const TeamApplicationsModal = ({
       emptyTitle="No pending applications"
       emptyMessage="When users apply to join your team, they'll appear here."
       extraModals={
-        <UserDetailsModal
-          isOpen={!!selectedUserId}
-          userId={selectedUserId}
-          onClose={() => setSelectedUserId(null)}
-        />
+        <>
+          <UserDetailsModal
+            isOpen={!!selectedUserId}
+            userId={selectedUserId}
+            onClose={() => setSelectedUserId(null)}
+          />
+          <Modal
+            isOpen={showCloseGuard}
+            onClose={() => setShowCloseGuard(false)}
+            size="small"
+            showCloseButton={false}
+            closeOnBackdrop={false}
+            title={
+              <div className="flex items-center gap-3">
+                <AlertTriangle className="w-5 h-5 text-warning flex-shrink-0" />
+                <span>Discard unsaved changes?</span>
+              </div>
+            }
+            footer={
+              <div className="flex justify-end gap-3">
+                <Button variant="ghost" onClick={() => setShowCloseGuard(false)}>
+                  Go back
+                </Button>
+                <Button variant="warning" onClick={handleCloseGuardConfirm}>
+                  Discard & close
+                </Button>
+              </div>
+            }
+          >
+            <p className="text-base-content/80">
+              You've marked a role as filled but haven't accepted the applicant yet.
+              If you close now, this change will be discarded.
+            </p>
+          </Modal>
+        </>
       }
     >
       {applications.map((application) => {
@@ -260,7 +358,7 @@ const TeamApplicationsModal = ({
                             application.applicant ?? null,
                           )
                         }
-                        allowedStatusActions={["filled"]}
+                        allowedStatusActions={["filled", "open"]}
                         statusActionLoading={statusUpdatingRoleId === roleId}
                         viewAsUserId={application.applicant?.id}
                         viewAsUser={application.applicant}
@@ -306,7 +404,7 @@ const TeamApplicationsModal = ({
                       }
                       className="textarea textarea-bordered textarea-sm w-full h-20 resize-none text-sm"
                       placeholder="Add a personal message to your decision..."
-                      disabled={loading || statusUpdatingRoleId !== null}
+                      disabled={loading}
                     />
                   </div>
                 </>
@@ -323,7 +421,7 @@ const TeamApplicationsModal = ({
                         responses[application.id] || ""
                       )
                     }
-                    disabled={loading || statusUpdatingRoleId !== null}
+                    disabled={loading}
                     icon={<Decline size={16} />}
                   >
                     Decline
@@ -338,7 +436,7 @@ const TeamApplicationsModal = ({
                         responses[application.id] || ""
                       )
                     }
-                    disabled={loading || statusUpdatingRoleId !== null}
+                    disabled={loading}
                     icon={<Check size={16} />}
                   >
                     Accept & Add to Team

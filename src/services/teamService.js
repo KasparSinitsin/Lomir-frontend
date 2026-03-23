@@ -112,13 +112,14 @@ export const teamService = {
     }
   },
 
-  handleTeamApplication: async (applicationId, action, response = "") => {
+  handleTeamApplication: async (applicationId, action, response = "", fillRole = false) => {
     try {
       const apiResponse = await api.put(
         `/api/teams/applications/${applicationId}`,
         {
           action,
           response,
+          fillRole,
         },
       );
       return apiResponse.data;
