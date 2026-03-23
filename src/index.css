@@ -352,6 +352,12 @@ body {
   color: white;
 }
 
+.badge-role-filled {
+  background-color: var(--color-success) !important;
+  color: white;
+  border: none;
+}
+
 /* Neon Effect */
 .neon {
   color: var(--color-primary);

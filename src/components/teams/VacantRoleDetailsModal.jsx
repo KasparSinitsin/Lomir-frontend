@@ -3,16 +3,14 @@ import {
   MapPin,
   Globe,
   UserSearch,
+  UserCheck,
   Tag,
   Award,
   Calendar,
   Users,
-  Sparkles,
   CircleDot,
   Check,
   X,
-  TrendingUp,
-  TrendingDown,
 } from "lucide-react";
 import Modal from "../common/Modal";
 import {
@@ -35,6 +33,99 @@ import TeamApplicationButton from "./TeamApplicationButton";
 import { useAuth } from "../../contexts/AuthContext";
 import { userService } from "../../services/userService";
 import { vacantRoleService } from "../../services/vacantRoleService";
+import { getMatchTier } from "../../utils/matchScoreUtils";
+import { getDisplayName, getUserInitials } from "../../utils/userHelpers";
+import { calculateDistanceKm } from "../../utils/locationUtils";
+import { resolveFilledRoleUser } from "../../utils/vacantRoleUtils";
+
+const MATCH_WEIGHTS = {
+  tags: 0.4,
+  badges: 0.3,
+  distance: 0.3,
+};
+
+const LOCATION_GRACE_KM = 20;
+const LOCATION_GRACE_SCORE = 0.25;
+
+const roundMatchValue = (value) => Math.round(value * 100) / 100;
+const toPossessive = (value) =>
+  !value ? "your" : value.endsWith("s") ? `${value}'` : `${value}'s`;
+
+const computeRoleUserMatch = ({
+  role,
+  tags,
+  badges,
+  user,
+  userTagMap,
+  userBadgeMap,
+}) => {
+  if (!role || !user) return null;
+
+  const requiredTagIds = tags
+    .map((tag) => Number(tag.tagId ?? tag.tag_id ?? tag.id))
+    .filter(Number.isFinite);
+  const requiredBadgeKeys = badges
+    .map((badge) => (badge.name ?? badge.badgeName ?? badge.badge_name ?? "").trim().toLowerCase())
+    .filter(Boolean);
+
+  const matchingTags = requiredTagIds.filter((id) => userTagMap.has(id)).length;
+  const matchingBadges = requiredBadgeKeys.filter((key) => userBadgeMap.has(key)).length;
+
+  const tagScore =
+    requiredTagIds.length > 0 ? matchingTags / requiredTagIds.length : 0.5;
+  const badgeScore =
+    requiredBadgeKeys.length > 0
+      ? matchingBadges / requiredBadgeKeys.length
+      : 0.5;
+
+  const isRemote = role.isRemote ?? role.is_remote;
+  const maxDistanceKm = Number(role.maxDistanceKm ?? role.max_distance_km) || 50;
+
+  let distanceScore = 0.5;
+  let distanceKm = null;
+  let isWithinRange = null;
+
+  if (isRemote) {
+    distanceScore = 1;
+    isWithinRange = true;
+  } else {
+    distanceKm = calculateDistanceKm(user, role);
+
+    if (distanceKm !== null) {
+      if (distanceKm <= maxDistanceKm) {
+        distanceScore = 1;
+        isWithinRange = true;
+      } else if (distanceKm <= maxDistanceKm + LOCATION_GRACE_KM) {
+        distanceScore = LOCATION_GRACE_SCORE;
+        isWithinRange = false;
+      } else {
+        distanceScore = 0;
+        isWithinRange = false;
+      }
+    }
+  }
+
+  const matchScore =
+    MATCH_WEIGHTS.tags * tagScore +
+    MATCH_WEIGHTS.badges * badgeScore +
+    MATCH_WEIGHTS.distance * distanceScore;
+
+  return {
+    matchScore: roundMatchValue(matchScore),
+    matchDetails: {
+      tagScore: roundMatchValue(tagScore),
+      badgeScore: roundMatchValue(badgeScore),
+      distanceScore: roundMatchValue(distanceScore),
+      matchingTags,
+      totalRequiredTags: requiredTagIds.length,
+      matchingBadges,
+      totalRequiredBadges: requiredBadgeKeys.length,
+      distanceKm: distanceKm !== null ? Math.round(distanceKm) : null,
+      maxDistanceKm,
+      isWithinRange,
+    },
+  };
+};
 
 /**
  * VacantRoleDetailsModal Component
@@ -58,117 +149,135 @@ const VacantRoleDetailsModal = ({
 }) => {
   const { user: currentUser, isAuthenticated } = useAuth();
 
-  // Current user's tags and badges for matching highlights
   const [userTagMap, setUserTagMap] = useState(new Map()); // tagId → { badgeCredits }
   const [userBadgeMap, setUserBadgeMap] = useState(new Map()); // lowercase name → { totalCredits }
-
   const [hydratedRole, setHydratedRole] = useState(null);
   const [loadingRoleDetails, setLoadingRoleDetails] = useState(false);
+  const [comparisonUserProfile, setComparisonUserProfile] = useState(null);
+  const [loadingComparisonData, setLoadingComparisonData] = useState(false);
+  const [comparisonDataLoaded, setComparisonDataLoaded] = useState(false);
   const roleId = role?.id;
   const teamId = role?.teamId ?? role?.team_id ?? team?.id;
 
-  // Derive display name from viewAsUser for name-aware text
-  const viewAsFirstName =
-    viewAsUser?.firstName ?? viewAsUser?.first_name ?? null;
-  const viewAsLastName =
-    viewAsUser?.lastName ?? viewAsUser?.last_name ?? null;
-  const viewAsFullName =
-    viewAsFirstName && viewAsLastName
-      ? `${viewAsFirstName} ${viewAsLastName}`
-      : viewAsFirstName ?? null;
+  useEffect(() => {
+    const fetchFullRole = async () => {
+      if (!isOpen || !roleId || !teamId) return;
 
-useEffect(() => {
-  const fetchFullRole = async () => {
-    if (!isOpen || !roleId || !teamId) return;
+      try {
+        setLoadingRoleDetails(true);
+        const response = await vacantRoleService.getVacantRoleById(teamId, roleId);
 
-    try {
-      setLoadingRoleDetails(true);
-
-      console.log("Fetching full vacant role details for:", { teamId, roleId });
-
-      const response = await vacantRoleService.getVacantRoleById(teamId, roleId);
-
-      console.log("getVacantRoleById raw response:", response);
-      console.log("getVacantRoleById response.data:", response?.data);
-      console.log("getVacantRoleById response.data?.tags:", response?.data?.tags);
-      console.log("getVacantRoleById response.data?.badges:", response?.data?.badges);
-      console.log(
-        "getVacantRoleById response.data?.desiredTags:",
-        response?.data?.desiredTags,
-      );
-      console.log(
-        "getVacantRoleById response.data?.desiredBadges:",
-        response?.data?.desiredBadges,
-      );
-
-      if (response?.success && response?.data) {
-        setHydratedRole(response.data);
-      } else if (response?.data) {
-        setHydratedRole(response.data);
-      } else {
+        if (response?.success && response?.data) {
+          setHydratedRole(response.data);
+        } else if (response?.data) {
+          setHydratedRole(response.data);
+        } else {
+          setHydratedRole(null);
+        }
+      } catch (error) {
+        console.error("Error fetching full vacant role details:", error);
         setHydratedRole(null);
+      } finally {
+        setLoadingRoleDetails(false);
       }
-    } catch (error) {
-      console.error("Error fetching full vacant role details:", error);
-      setHydratedRole(null);
-    } finally {
-      setLoadingRoleDetails(false);
-    }
-  };
+    };
 
-  fetchFullRole();
-}, [isOpen, roleId, teamId]);
+    fetchFullRole();
+  }, [isOpen, roleId, teamId]);
 
   useEffect(() => {
     if (!isOpen) {
       setHydratedRole(null);
       setLoadingRoleDetails(false);
+      setComparisonUserProfile(null);
+      setLoadingComparisonData(false);
+      setComparisonDataLoaded(false);
+      setUserTagMap(new Map());
+      setUserBadgeMap(new Map());
     }
   }, [isOpen]);
 
   const displayRole = hydratedRole || role;
-
-  console.log("VacantRoleDetailsModal incoming role:", role);
-  console.log("VacantRoleDetailsModal hydratedRole:", hydratedRole);
-  console.log("VacantRoleDetailsModal displayRole:", displayRole);
-  console.log("displayRole.tags:", displayRole?.tags);
-  console.log("displayRole.badges:", displayRole?.badges);
-  console.log("displayRole.desiredTags:", displayRole?.desiredTags);
-  console.log("displayRole.desiredBadges:", displayRole?.desiredBadges);
-  console.log("displayRole.matchScore:", displayRole?.matchScore);
-  console.log("displayRole.scoreBreakdown:", displayRole?.scoreBreakdown);
+  const status = displayRole?.status;
+  const isFilledRole = String(status ?? "").toLowerCase() === "filled";
+  const resolvedFilledUser = resolveFilledRoleUser(displayRole, {
+    viewAsUserId,
+    viewAsUser,
+  });
+  const comparisonUserId = isFilledRole
+    ? resolvedFilledUser?.id ?? viewAsUserId ?? null
+    : viewAsUserId || currentUser?.id || null;
+  const comparisonUserSeed = isFilledRole
+    ? resolvedFilledUser ?? viewAsUser ?? null
+    : viewAsUser ?? currentUser ?? null;
+  const comparisonUserSeedJson = JSON.stringify(comparisonUserSeed ?? null);
 
   useEffect(() => {
-    const targetUserId = viewAsUserId || currentUser?.id;
-    if (!isOpen || !isAuthenticated || !targetUserId) {
+    if (!isOpen || !isAuthenticated || !comparisonUserId) {
+      setComparisonUserProfile(null);
+      setComparisonDataLoaded(false);
       setUserTagMap(new Map());
       setUserBadgeMap(new Map());
       return;
     }
 
-    const fetchUserData = async () => {
+    const fetchComparisonData = async () => {
+      const fallbackComparisonUser = comparisonUserSeedJson
+        ? JSON.parse(comparisonUserSeedJson)
+        : null;
+
       try {
-        const tagsRes = await userService.getUserTags(targetUserId);
-        const tagData = tagsRes?.data || [];
+        setLoadingComparisonData(true);
+        setComparisonDataLoaded(false);
+
+        const [profileRes, tagsRes, badgesRes] = await Promise.allSettled([
+          userService.getUserById(comparisonUserId),
+          userService.getUserTags(comparisonUserId),
+          userService.getUserBadges(comparisonUserId),
+        ]);
+
+        if (profileRes.status === "fulfilled") {
+          const profileData =
+            profileRes.value?.data?.data ?? profileRes.value?.data ?? null;
+          setComparisonUserProfile({
+            ...(fallbackComparisonUser || {}),
+            ...(profileData || {}),
+          });
+        } else {
+          setComparisonUserProfile(fallbackComparisonUser);
+        }
+
+        const tagData =
+          tagsRes.status === "fulfilled"
+            ? Array.isArray(tagsRes.value)
+              ? tagsRes.value
+              : Array.isArray(tagsRes.value?.data)
+                ? tagsRes.value.data
+                : tagsRes.value?.data?.data || []
+            : [];
         const tMap = new Map();
-        for (const t of tagData) {
-          tMap.set(Number(t.id), {
-            badgeCredits: Number(t.badge_credits ?? t.badgeCredits ?? 0),
+        for (const tag of tagData) {
+          tMap.set(Number(tag.id), {
+            badgeCredits: Number(tag.badge_credits ?? tag.badgeCredits ?? 0),
           });
         }
         setUserTagMap(tMap);
 
-        const badgesRes = await userService.getUserBadges(targetUserId);
-        const badgeData = Array.isArray(badgesRes?.data)
-          ? badgesRes.data
-          : badgesRes?.data?.data || [];
+        const badgeData =
+          badgesRes.status === "fulfilled"
+            ? Array.isArray(badgesRes.value)
+              ? badgesRes.value
+              : Array.isArray(badgesRes.value?.data)
+                ? badgesRes.value.data
+                : badgesRes.value?.data?.data || []
+            : [];
         const bMap = new Map();
-        for (const b of badgeData) {
-          const name = (b.badgeName ?? b.badge_name ?? b.name ?? "")
+        for (const badge of badgeData) {
+          const name = (badge.badgeName ?? badge.badge_name ?? badge.name ?? "")
             .trim()
             .toLowerCase();
           const credits = Number(
-            b.totalCredits ?? b.total_credits ?? b.credits ?? 0,
+            badge.totalCredits ?? badge.total_credits ?? badge.credits ?? 0,
           );
           const existing = bMap.get(name);
           bMap.set(name, {
@@ -178,11 +287,17 @@ useEffect(() => {
         setUserBadgeMap(bMap);
       } catch (err) {
         console.warn("Could not fetch user data for matching highlights:", err);
+        setComparisonUserProfile(fallbackComparisonUser);
+        setUserTagMap(new Map());
+        setUserBadgeMap(new Map());
+      } finally {
+        setLoadingComparisonData(false);
+        setComparisonDataLoaded(true);
       }
     };
 
-    fetchUserData();
-  }, [isOpen, isAuthenticated, currentUser?.id, viewAsUserId]);
+    fetchComparisonData();
+  }, [isOpen, isAuthenticated, comparisonUserId, comparisonUserSeedJson]);
 
   if (!displayRole) return null;
 
@@ -197,8 +312,8 @@ useEffect(() => {
   const maxDistanceKm =
     displayRole.maxDistanceKm ?? displayRole.max_distance_km;
   const isRemote = displayRole.isRemote ?? displayRole.is_remote;
-  const status = displayRole.status;
   const createdAt = displayRole.createdAt ?? displayRole.created_at;
+  const updatedAt = displayRole.updatedAt ?? displayRole.updated_at;
   const tags =
     displayRole.tags?.length > 0
       ? displayRole.tags
@@ -207,11 +322,6 @@ useEffect(() => {
     displayRole.badges?.length > 0
       ? displayRole.badges
       : displayRole.desiredBadges || [];
-
-  const pct =
-    matchScore !== null && matchScore !== undefined
-      ? Math.round(matchScore * 100)
-      : null;
 
   const teamName = displayRole.teamName ?? displayRole.team_name;
   const teamMemberCount =
@@ -257,6 +367,85 @@ useEffect(() => {
     creatorFirstName && creatorLastName
       ? `${creatorFirstName} ${creatorLastName}`
       : creatorUsername || null;
+  const comparisonUser = comparisonUserProfile || comparisonUserSeed || null;
+  const comparisonFirstName =
+    comparisonUser?.firstName ?? comparisonUser?.first_name ?? null;
+  const comparisonDisplayName =
+    comparisonUser && getDisplayName(comparisonUser) !== "Unknown"
+      ? getDisplayName(comparisonUser)
+      : null;
+  const comparisonShortName = comparisonFirstName || comparisonDisplayName;
+  const comparisonPossessive = toPossessive(comparisonShortName);
+  const filledRoleUser = isFilledRole
+    ? comparisonUser || resolvedFilledUser
+    : null;
+  const filledRoleDisplayName =
+    filledRoleUser && getDisplayName(filledRoleUser) !== "Unknown"
+      ? getDisplayName(filledRoleUser)
+      : null;
+  const filledRoleAvatarUrl =
+    filledRoleUser?.avatarUrl ?? filledRoleUser?.avatar_url ?? null;
+  const filledAt =
+    displayRole.filledAt ??
+    displayRole.filled_at ??
+    updatedAt ??
+    createdAt;
+  const serverRoleMatchScore =
+    matchScore ??
+    displayRole.matchScore ??
+    displayRole.match_score ??
+    null;
+  const serverRoleMatchDetails =
+    matchDetails ??
+    displayRole.matchDetails ??
+    displayRole.match_details ??
+    displayRole.scoreBreakdown ??
+    null;
+  const computedRoleMatch =
+    comparisonDataLoaded && comparisonUserId && comparisonUser
+      ? computeRoleUserMatch({
+          role: displayRole,
+          tags,
+          badges,
+          user: comparisonUser,
+          userTagMap,
+          userBadgeMap,
+        })
+      : null;
+  const effectiveMatchScore = isFilledRole
+    ? computedRoleMatch?.matchScore ?? null
+    : serverRoleMatchScore;
+  const effectiveMatchDetails = isFilledRole
+    ? computedRoleMatch?.matchDetails ?? null
+    : serverRoleMatchDetails;
+  const effectivePct =
+    effectiveMatchScore !== null && effectiveMatchScore !== undefined
+      ? Math.round(effectiveMatchScore * 100)
+      : null;
+  const matchTier =
+    effectiveMatchScore !== null && effectiveMatchScore !== undefined
+      ? getMatchTier(effectiveMatchScore)
+      : null;
+  const MatchTierIcon = matchTier?.Icon ?? null;
+  const modalStatusTitle = isFilledRole ? "Filled Role" : "Vacant Role";
+  const ModalStatusIcon = isFilledRole ? UserCheck : UserSearch;
+  const summarySuffix = comparisonShortName ? ` with ${comparisonShortName}` : "";
+  const distanceKm =
+    effectiveMatchDetails?.distanceKm ??
+    effectiveMatchDetails?.distance_km ??
+    null;
+  const withinRange =
+    effectiveMatchDetails?.isWithinRange ??
+    effectiveMatchDetails?.is_within_range ??
+    null;
+  const shouldShowComparisonSummary =
+    isAuthenticated && comparisonUserId && comparisonDataLoaded;
+  const locationMatchText = comparisonShortName
+    ? `Matches ${comparisonPossessive} location`
+    : "Matches your location";
+  const locationMismatchText = comparisonShortName
+    ? `Outside ${comparisonPossessive} location range`
+    : "Outside your location range";
 
   const getRoleInitials = () => {
     const name = roleName || "Vacant Role";
@@ -328,8 +517,11 @@ useEffect(() => {
   const modalTitle = (
     <div className="flex items-center justify-between w-full">
       <div className="flex items-center gap-2">
-        <UserSearch className="text-amber-500" size={20} />
-        <h2 className="text-lg font-medium">Vacant Role</h2>
+        <ModalStatusIcon
+          className={isFilledRole ? "text-success" : "text-amber-500"}
+          size={20}
+        />
+        <h2 className="text-lg font-medium">{modalStatusTitle}</h2>
       </div>
       {isTeamMember && (tags.length > 0 || badges.length > 0) && (
         <div className="flex items-center space-x-2">
@@ -368,37 +560,63 @@ useEffect(() => {
 
         {/* Header — avatar + role name + status */}
         <div className="flex items-start space-x-4">
-          <div className="avatar placeholder">
-            {pct !== null ? (
+          <div className="avatar relative">
+            {isFilledRole ? (
+              <div className="w-20 h-20 rounded-full">
+                {filledRoleAvatarUrl ? (
+                  <img
+                    src={filledRoleAvatarUrl}
+                    alt={filledRoleDisplayName || roleName}
+                    className="object-cover w-full h-full rounded-full"
+                    onError={(e) => {
+                      e.target.style.display = "none";
+                      const fallback =
+                        e.target.parentElement.querySelector(".avatar-fallback");
+                      if (fallback) fallback.style.display = "flex";
+                    }}
+                  />
+                ) : null}
+                <div
+                  className="avatar-fallback bg-success text-white rounded-full w-full h-full flex items-center justify-center absolute inset-0"
+                  style={{ display: filledRoleAvatarUrl ? "none" : "flex" }}
+                >
+                  <span className="text-2xl font-semibold">
+                    {filledRoleUser
+                      ? getUserInitials(filledRoleUser)
+                      : getRoleInitials()}
+                  </span>
+                </div>
+              </div>
+            ) : effectivePct !== null ? (
               <div
-                className={`${
-                  pct >= 80 ? "bg-amber-500" : pct >= 50 ? "bg-success" : "bg-slate-400"
-                } text-white rounded-full w-20 h-20 relative flex items-center justify-center overflow-hidden`}
+                className={`${matchTier?.bg ?? "bg-slate-400"} text-white rounded-full w-20 h-20 relative flex items-center justify-center overflow-hidden`}
               >
-                {pct >= 80 ? (
-                  <Sparkles
+                {MatchTierIcon ? (
+                  <MatchTierIcon
                     size={56}
                     className="absolute text-white/40"
                     strokeWidth={1.5}
                   />
-                ) : pct >= 50 ? (
-                  <TrendingUp
-                    size={56}
-                    className="absolute text-white/40"
-                    strokeWidth={1.5}
-                  />
-                ) : (
-                  <TrendingDown
-                    size={56}
-                    className="absolute text-white/40"
-                    strokeWidth={1.5}
-                  />
-                )}
-                <span className="relative text-2xl font-bold">{pct}%</span>
+                ) : null}
+                <span className="relative text-2xl font-bold">
+                  {effectivePct}%
+                </span>
               </div>
             ) : (
               <div className="bg-amber-500 text-white rounded-full w-20 h-20 flex items-center justify-center">
                 <span className="text-2xl">{getRoleInitials()}</span>
+              </div>
+            )}
+            {isFilledRole && MatchTierIcon && (
+              <div
+                className={`absolute -top-1 -left-1 w-6 h-6 rounded-full ring-2 ring-white flex items-center justify-center ${matchTier.bg}`}
+                title={`${matchTier.pct}% ${matchTier.label.toLowerCase()}`}
+              >
+                <MatchTierIcon
+                  size={12}
+                  className="text-white"
+                  strokeWidth={2.5}
+                />
               </div>
             )}
           </div>
@@ -418,11 +636,16 @@ useEffect(() => {
               </div>
             )}
 
-            {createdAt && (
+            {(isFilledRole ? filledAt : createdAt) && (
               <div className="flex items-center gap-1 mt-1 text-xs text-base-content/50">
                 <Calendar size={12} />
-                <span>Posted {formatDate(createdAt)}</span>
-                {creatorName && <span> by {creatorName}</span>}
+                <span>
+                  {isFilledRole ? "Filled on" : "Posted"}{" "}
+                  {formatDate(isFilledRole ? filledAt : createdAt)}
+                </span>
+                {(isFilledRole ? filledRoleDisplayName : creatorName) && (
+                  <span> by {isFilledRole ? filledRoleDisplayName : creatorName}</span>
+                )}
               </div>
             )}
           </div>
@@ -434,27 +657,40 @@ useEffect(() => {
           </div>
         )}
 
-        {matchScore !== null &&
-          matchScore !== undefined &&
+        {loadingComparisonData &&
+          isFilledRole &&
+          comparisonUserId &&
+          effectiveMatchScore === null && (
+            <div className="rounded-xl border border-base-300 bg-base-100/60 p-4 text-sm text-base-content/60">
+              Calculating match details for{" "}
+              {filledRoleDisplayName || "the filled member"}...
+            </div>
+          )}
+
+        {effectiveMatchScore !== null &&
+          effectiveMatchScore !== undefined &&
           (() => {
-            const pct = Math.round(matchScore * 100);
+            const pct = Math.round(effectiveMatchScore * 100);
             const tagPct = Math.round(
-              (matchDetails?.tagScore ?? matchDetails?.tag_score ?? 0) * 100,
+              (effectiveMatchDetails?.tagScore ??
+                effectiveMatchDetails?.tag_score ??
+                0) * 100,
             );
             const badgePct = Math.round(
-              (matchDetails?.badgeScore ?? matchDetails?.badge_score ?? 0) *
-                100,
+              (effectiveMatchDetails?.badgeScore ??
+                effectiveMatchDetails?.badge_score ??
+                0) * 100,
             );
             const distPct = Math.round(
-              (matchDetails?.distanceScore ??
-                matchDetails?.distance_score ??
+              (effectiveMatchDetails?.distanceScore ??
+                effectiveMatchDetails?.distance_score ??
                 0) * 100,
             );
 
             const tierColor = {
               bg: "bg-base-200/50",
               border: "border-base-300",
-              text: pct >= 80 ? "text-amber-700" : pct >= 50 ? "text-success" : "text-base-content/70",
+              text: matchTier?.text ?? "text-base-content/70",
             };
 
             return (
@@ -462,15 +698,13 @@ useEffect(() => {
                 className={`rounded-xl p-4 ${tierColor.bg} border ${tierColor.border}`}
               >
                 <div className="flex items-center gap-2 mb-3">
-                  {pct >= 80 ? (
-                    <Sparkles size={16} className={tierColor.text} />
-                  ) : pct >= 50 ? (
-                    <TrendingUp size={16} className={tierColor.text} />
-                  ) : (
-                    <TrendingDown size={16} className={tierColor.text} />
-                  )}
+                  {MatchTierIcon ? (
+                    <MatchTierIcon size={16} className={tierColor.text} />
+                  ) : null}
                   <span className={`text-sm font-semibold ${tierColor.text}`}>
-                    {pct}% Match with {viewAsFullName ? `${viewAsFullName}'s` : "your"} profile
+                    {isFilledRole
+                      ? `${pct}% matching score for ${filledRoleDisplayName || "this member"} with this role`
+                      : `${pct}% match with ${comparisonPossessive} profile`}
                   </span>
                 </div>
 
@@ -497,12 +731,12 @@ useEffect(() => {
                         <>
                           Focus Areas factor into the score with 40%.
                           <br />
-                          {matchDetails?.matchingTags ??
-                            matchDetails?.matching_tags ??
+                          {effectiveMatchDetails?.matchingTags ??
+                            effectiveMatchDetails?.matching_tags ??
                             0}{" "}
                           out of{" "}
-                          {matchDetails?.totalRequiredTags ??
-                            matchDetails?.total_required_tags ??
+                          {effectiveMatchDetails?.totalRequiredTags ??
+                            effectiveMatchDetails?.total_required_tags ??
                             0}{" "}
                           required focus areas met.
                         </>
@@ -516,12 +750,12 @@ useEffect(() => {
                         <>
                           Badges factor into the score with 30%.
                           <br />
-                          {matchDetails?.matchingBadges ??
-                            matchDetails?.matching_badges ??
+                          {effectiveMatchDetails?.matchingBadges ??
+                            effectiveMatchDetails?.matching_badges ??
                             0}{" "}
                           out of{" "}
-                          {matchDetails?.totalRequiredBadges ??
-                            matchDetails?.total_required_badges ??
+                          {effectiveMatchDetails?.totalRequiredBadges ??
+                            effectiveMatchDetails?.total_required_badges ??
                             0}{" "}
                           required badges met.
                         </>
@@ -541,9 +775,9 @@ useEffect(() => {
                         <div className="flex-1 h-1.5 bg-base-200 rounded-full overflow-hidden">
                           <div
                             className={`h-full rounded-full transition-all duration-500 ${
-                              pct >= 80 ? "bg-amber-500" : pct >= 50 ? "bg-success" : "bg-slate-400"
+                              matchTier?.bg ?? "bg-slate-400"
                             }`}
-                            style={{ width: `${row.value}%` }}
+                            style={{ width: `${Math.max(0, row.value)}%` }}
                           />
                         </div>
                         <span className="text-xs font-medium text-base-content/60 w-8 text-right">
@@ -573,25 +807,23 @@ useEffect(() => {
                   return (
                     <span className="flex items-center gap-1.5 text-sm text-success">
                       <Check size={14} className="flex-shrink-0" />
-                      <span>Matches {viewAsFirstName ? `${viewAsFirstName}'s` : "your"} location</span>
+                      <span>{locationMatchText}</span>
                     </span>
                   );
                 }
-                const distKm = matchDetails?.distanceKm ?? matchDetails?.distance_km ?? null;
-                const withinRange = matchDetails?.isWithinRange ?? matchDetails?.is_within_range ?? null;
                 if (distKm !== null && withinRange !== null) {
                   if (withinRange) {
                     return (
                       <span className="flex items-center gap-1.5 text-sm text-success">
                         <Check size={14} className="flex-shrink-0" />
-                        <span>{Math.round(distKm)} km away</span>
+                        <span>{locationMatchText}</span>
                       </span>
                     );
                   } else {
                     return (
                       <span className="flex items-center gap-1.5 text-sm text-error/70">
                         <X size={14} className="flex-shrink-0" />
-                        <span>{Math.round(distKm)} km away</span>
+                        <span>{locationMismatchText}</span>
                       </span>
                     );
                   }
@@ -619,7 +851,7 @@ useEffect(() => {
               <Tag size={18} className="mr-2 text-primary flex-shrink-0" />
               <h3 className="font-medium">Desired Focus Areas</h3>
             </div>
-            {isAuthenticated && tags.length > 0 && (() => {
+            {shouldShowComparisonSummary && tags.length > 0 && (() => {
               const matchCount = tags.filter((t) => {
                 const tagId = Number(t.tagId ?? t.tag_id ?? t.id);
                 return userTagMap.has(tagId);
@@ -629,14 +861,14 @@ useEffect(() => {
                 return (
                   <span className="flex items-center gap-1.5 text-sm text-success">
                     <Check size={14} className="flex-shrink-0" />
-                    <span>{matchCount}/{total} in common{viewAsFirstName ? ` with ${viewAsFirstName}` : ""}</span>
+                    <span>{matchCount}/{total} in common{summarySuffix}</span>
                   </span>
                 );
               }
               return (
                 <span className="flex items-center gap-1.5 text-sm text-error/70">
                   <X size={14} className="flex-shrink-0" />
-                  <span>None in common{viewAsFirstName ? ` with ${viewAsFirstName}` : ""}</span>
+                  <span>None in common{summarySuffix}</span>
                 </span>
               );
             })()}
@@ -748,7 +980,7 @@ useEffect(() => {
               <Award size={18} className="mr-2 text-primary flex-shrink-0" />
               <h3 className="font-medium">Desired Badges</h3>
             </div>
-            {isAuthenticated && badges.length > 0 && (() => {
+            {shouldShowComparisonSummary && badges.length > 0 && (() => {
               const matchCount = badges.filter((b) => {
                 const badgeKey = (b.name ?? b.badgeName ?? b.badge_name ?? "").trim().toLowerCase();
                 return userBadgeMap.has(badgeKey);
@@ -758,14 +990,14 @@ useEffect(() => {
                 return (
                   <span className="flex items-center gap-1.5 text-sm text-success">
                     <Check size={14} className="flex-shrink-0" />
-                    <span>{matchCount}/{total} in common{viewAsFirstName ? ` with ${viewAsFirstName}` : ""}</span>
+                    <span>{matchCount}/{total} in common{summarySuffix}</span>
                   </span>
                 );
               }
               return (
                 <span className="flex items-center gap-1.5 text-sm text-error/70">
                   <X size={14} className="flex-shrink-0" />
-                  <span>None in common{viewAsFirstName ? ` with ${viewAsFirstName}` : ""}</span>
+                  <span>None in common{summarySuffix}</span>
                 </span>
               );
             })()}
