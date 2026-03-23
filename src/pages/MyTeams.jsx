@@ -607,6 +607,12 @@ const MyTeams = () => {
     (clampedApplicationsPage - 1) * applicationsPerPage,
     clampedApplicationsPage * applicationsPerPage,
   );
+  const shouldShowInvitationsPagination =
+    sortedPendingInvitations.length > DEFAULT_RESULTS_PER_PAGE;
+  const shouldShowApplicationsPagination =
+    sortedPendingApplications.length > DEFAULT_RESULTS_PER_PAGE;
+  const shouldShowTeamsPagination =
+    pagination.totalTeams > DEFAULT_RESULTS_PER_PAGE;
 
   if (loading && loadingApplications && loadingInvitations) {
     return (
@@ -803,19 +809,20 @@ const MyTeams = () => {
                   ))}
                 </Grid>
               )}
-              <Pagination
-                currentPage={clampedInvitationsPage}
-                totalPages={invitationsTotalPages}
-                totalItems={sortedPendingInvitations.length}
-                onPageChange={setInvitationsPage}
-                resultsPerPage={invitationsPerPage}
-                onResultsPerPageChange={(newLimit) => {
-                  setInvitationsPerPage(newLimit);
-                  setInvitationsPage(1);
-                }}
-                resultsPerPageOptions={RESULTS_PER_PAGE_OPTIONS}
-                hideOnSinglePage
-              />
+              {shouldShowInvitationsPagination && (
+                <Pagination
+                  currentPage={clampedInvitationsPage}
+                  totalPages={invitationsTotalPages}
+                  totalItems={sortedPendingInvitations.length}
+                  onPageChange={setInvitationsPage}
+                  resultsPerPage={invitationsPerPage}
+                  onResultsPerPageChange={(newLimit) => {
+                    setInvitationsPerPage(newLimit);
+                    setInvitationsPage(1);
+                  }}
+                  resultsPerPageOptions={RESULTS_PER_PAGE_OPTIONS}
+                />
+              )}
             </>
           )}
         </Section>
@@ -872,19 +879,20 @@ const MyTeams = () => {
                   ))}
                 </Grid>
               )}
-              <Pagination
-                currentPage={clampedApplicationsPage}
-                totalPages={applicationsTotalPages}
-                totalItems={sortedPendingApplications.length}
-                onPageChange={setApplicationsPage}
-                resultsPerPage={applicationsPerPage}
-                onResultsPerPageChange={(newLimit) => {
-                  setApplicationsPerPage(newLimit);
-                  setApplicationsPage(1);
-                }}
-                resultsPerPageOptions={RESULTS_PER_PAGE_OPTIONS}
-                hideOnSinglePage
-              />
+              {shouldShowApplicationsPagination && (
+                <Pagination
+                  currentPage={clampedApplicationsPage}
+                  totalPages={applicationsTotalPages}
+                  totalItems={sortedPendingApplications.length}
+                  onPageChange={setApplicationsPage}
+                  resultsPerPage={applicationsPerPage}
+                  onResultsPerPageChange={(newLimit) => {
+                    setApplicationsPerPage(newLimit);
+                    setApplicationsPage(1);
+                  }}
+                  resultsPerPageOptions={RESULTS_PER_PAGE_OPTIONS}
+                />
+              )}
             </>
           )}
         </Section>
@@ -1022,15 +1030,17 @@ const MyTeams = () => {
             )}
 
             {/* Pagination for My Teams */}
-            <Pagination
-              currentPage={currentPage}
-              totalPages={pagination.totalPages}
-              totalItems={pagination.totalTeams}
-              onPageChange={handlePageChange}
-              resultsPerPage={resultsPerPage}
-              onResultsPerPageChange={handleResultsPerPageChange}
-              resultsPerPageOptions={RESULTS_PER_PAGE_OPTIONS}
-            />
+            {shouldShowTeamsPagination && (
+              <Pagination
+                currentPage={currentPage}
+                totalPages={pagination.totalPages}
+                totalItems={pagination.totalTeams}
+                onPageChange={handlePageChange}
+                resultsPerPage={resultsPerPage}
+                onResultsPerPageChange={handleResultsPerPageChange}
+                resultsPerPageOptions={RESULTS_PER_PAGE_OPTIONS}
+              />
+            )}
           </>
         )}
       </Section>
