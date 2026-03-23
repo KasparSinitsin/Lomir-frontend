@@ -376,7 +376,14 @@ const VacantRoleDetailsModal = ({
     comparisonUser && getDisplayName(comparisonUser) !== "Unknown"
       ? getDisplayName(comparisonUser)
       : null;
-  const comparisonShortName = comparisonFirstName || comparisonDisplayName;
+  const isComparisonSelf =
+    !isFilledRole &&
+    comparisonUserId != null &&
+    currentUser?.id != null &&
+    String(comparisonUserId) === String(currentUser.id);
+  const comparisonShortName = isComparisonSelf
+    ? null
+    : comparisonFirstName || comparisonDisplayName;
   const comparisonPossessive = toPossessive(comparisonShortName);
   const filledRoleUser = isFilledRole
     ? comparisonUser || resolvedFilledUser
@@ -441,7 +448,11 @@ const VacantRoleDetailsModal = ({
 
   const modalStatusTitle = isFilledRole ? "Filled Role" : "Vacant Role";
   const ModalStatusIcon = isFilledRole ? UserCheck : UserSearch;
-  const summarySuffix = comparisonShortName ? ` with ${comparisonShortName}` : "";
+  const summarySuffix = isComparisonSelf
+    ? " with you"
+    : comparisonShortName
+      ? ` with ${comparisonShortName}`
+      : "";
   const distanceKm =
     effectiveMatchDetails?.distanceKm ??
     effectiveMatchDetails?.distance_km ??
