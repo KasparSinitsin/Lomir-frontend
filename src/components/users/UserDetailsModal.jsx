@@ -45,6 +45,8 @@ const UserDetailsModal = ({
   matchType = null,
   matchDetails = null,
   distanceKm = null,
+  filledRoleName = null,
+  teamName = null,
 }) => {
   const { user: currentUser, isAuthenticated } = useAuth();
 
@@ -563,6 +565,8 @@ const UserDetailsModal = ({
               isAuthenticated={isAuthenticated}
               memberSince={user?.created_at || user?.createdAt}
               matchScore={effectiveUserMatch.matchScore}
+              filledRoleName={filledRoleName}
+              teamName={teamName}
             />
 
             {/* Bio */}

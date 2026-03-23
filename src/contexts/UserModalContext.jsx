@@ -124,7 +124,7 @@ export const UserModalProvider = ({ children }) => {
 const UserModalStack = ({ stack, onClose, onOpenUser }) => {
   return (
     <>
-      {stack.map(({ userId, roleMatchTagIds, roleMatchBadgeNames, roleMatchName, roleMatchMaxDistanceKm, showMatchHighlights, matchScore, matchType, matchDetails, distanceKm }, idx) => {
+      {stack.map(({ userId, roleMatchTagIds, roleMatchBadgeNames, roleMatchName, roleMatchMaxDistanceKm, showMatchHighlights, matchScore, matchType, matchDetails, distanceKm, filledRoleName, teamName }, idx) => {
         const zIndex = BASE_Z_INDEX + idx * MODAL_Z_STEP;
         const isTop = idx === stack.length - 1;
 
@@ -156,6 +156,8 @@ const UserModalStack = ({ stack, onClose, onOpenUser }) => {
               matchType={matchType}
               matchDetails={matchDetails}
               distanceKm={distanceKm}
+              filledRoleName={filledRoleName}
+              teamName={teamName}
             />
           </ModalLayerProvider>
         );

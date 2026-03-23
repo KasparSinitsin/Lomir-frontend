@@ -274,9 +274,9 @@ const VacantRoleCard = ({
         </div>
 
         {/* Content */}
-        <div className="flex-1 min-w-0 pt-[1px] leading-tight">
+        <div className="flex-1 min-w-0 pt-[1px]">
           {/* Row 1: role name + badge */}
-          <div className="flex items-start justify-between gap-2 min-w-0">
+          <div className="flex items-center justify-between gap-2 min-w-0">
             <div className="flex-1 min-w-0 overflow-hidden">
               <Tooltip
                 content={role_name || "Vacant Role"}

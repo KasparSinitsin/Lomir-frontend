@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Users, MapPin, Ruler, ChevronRight, ChevronUp } from "lucide-react";
+import { Users, MapPin, Ruler, ChevronRight, ChevronUp, UserCheck } from "lucide-react";
 import RoleBadgeDropdown from "./RoleBadgeDropdown";
 import Alert from "../common/Alert";
 import { teamService } from "../../services/teamService";
@@ -24,6 +24,7 @@ const TeamMembersSection = ({
   onRoleChange = null,
   onMemberRemoved = null,
   className = "",
+  roles = [],
 }) => {
   const [notification, setNotification] = React.useState({
     type: null,
@@ -93,6 +94,15 @@ const TeamMembersSection = ({
 
           // Determine if this member should be anonymized
           const anonymize = shouldAnonymizeMember(member);
+
+          // Find the filled role this member is filling (if any)
+          const filledRole = roles.find((r) => {
+            if (String(r.status ?? "").toLowerCase() !== "filled") return false;
+            const filledById =
+              r.filledByUserId ?? r.filled_by_user_id ?? r.filledBy ?? r.filled_by ?? null;
+            return filledById != null && String(filledById) === String(memberId);
+          });
+          const filledRoleName = filledRole?.roleName ?? filledRole?.role_name ?? null;
 
           // Role management logic - Owners and admins can manage roles
           const currentUserMember = team.members?.find(
@@ -236,7 +246,8 @@ const TeamMembersSection = ({
                   {!anonymize &&
                     (member.city ||
                       member.country ||
-                      member.distance_km != null) && (
+                      member.distance_km != null ||
+                      filledRoleName) && (
                       <CardMetaRow>
                         {(member.city || member.country) && (
                           <CardMetaItem icon={MapPin}>
@@ -249,6 +260,12 @@ const TeamMembersSection = ({
                         {member.distance_km != null && (
                           <CardMetaItem icon={Ruler} tone="muted" nowrap>
                             {Math.round(member.distance_km)} km away
+                          </CardMetaItem>
+                        )}
+
+                        {filledRoleName && (
+                          <CardMetaItem icon={UserCheck} nowrap>
+                            {filledRoleName}
                           </CardMetaItem>
                         )}
                       </CardMetaRow>
