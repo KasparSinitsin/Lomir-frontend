@@ -309,7 +309,7 @@ const VacantRoleCard = ({
               {canOpenBadgeMenu && showMenu && (
                 <>
                   <div
-                    className="fixed inset-0 z-10"
+                    className="fixed inset-0 z-[9]"
                     onClick={(e) => {
                       e.stopPropagation();
                       setShowMenu(false);
