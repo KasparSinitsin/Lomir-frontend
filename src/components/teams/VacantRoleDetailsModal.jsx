@@ -577,9 +577,9 @@ const VacantRoleDetailsModal = ({
       !displayRole ||
       !canViewTeamMemberMatches ||
       !isRoleOpen ||
-      teamMembers.length === 0
+      teamMemberIdsKey === "[]"
     ) {
-      setRoleTeamMembers([]);
+      setRoleTeamMembers((prev) => (prev.length === 0 ? prev : []));
       setTeamMembersLoading(false);
       return;
     }
@@ -704,7 +704,6 @@ const VacantRoleDetailsModal = ({
     displayRole,
     canViewTeamMemberMatches,
     isRoleOpen,
-    teamMembers,
     teamMemberIdsKey,
   ]);
 
