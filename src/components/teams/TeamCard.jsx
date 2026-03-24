@@ -1268,11 +1268,15 @@ const TeamCard = ({
   // ============ MATCH SCORE ============
   // Read from normalizedData.team (original prop) so API refetches don't overwrite it
   const rawScore = showMatchScore ? getResultMatchScore(normalizedData.team) : null;
-  const showScore = showMatchScore && rawScore != null && rawScore > 0;
+  const showScore =
+    showMatchScore &&
+    rawScore != null &&
+    (effectiveVariant === "role_application" || rawScore > 0);
 
   let matchTier = null;
   let matchOverlay = null;
   let scoreSubtitleItem = null;
+  let scoreAvatarReplacement = null;
   if (showScore) {
     matchTier = getMatchTier(rawScore);
 
@@ -1316,6 +1320,15 @@ const TeamCard = ({
           : `${matchTier.pct}% profile match`;
     }
 
+    const avatarValue = `${matchTier.pct}%`;
+    const avatarTextClassName =
+      viewMode === "list"
+        ? "text-sm"
+        : "text-xl";
+    const avatarIconSize =
+      viewMode === "list" ? 24 : viewMode === "mini" ? 44 : 52;
+    const shouldUseScoreAvatar = effectiveVariant === "role_application";
+
     const iconSizeSubtitle =
       viewMode === "list" ? 10 : viewMode === "mini" ? 11 : 12;
     scoreSubtitleItem = (
@@ -1333,17 +1346,42 @@ const TeamCard = ({
         : "w-5 h-5";
     const badgeIconSize =
       viewMode === "list" ? 7 : 10;
-    matchOverlay = (
-      <div
-        className={`absolute -top-0.5 -left-0.5 rounded-full ring-2 ring-white flex items-center justify-center ${matchTier.bg} ${badgeSize}`}
-      >
-        <matchTier.Icon
-          size={badgeIconSize}
-          className="text-white"
-          strokeWidth={2.5}
-        />
-      </div>
-    );
+    if (shouldUseScoreAvatar) {
+      scoreAvatarReplacement = (
+        <Tooltip
+          content={tooltipText}
+          wrapperClassName="flex h-full w-full items-center justify-center"
+        >
+          <div
+            aria-label={tooltipText}
+            className={`relative flex h-full w-full items-center justify-center overflow-hidden rounded-full ${matchTier.bg} text-white`}
+          >
+            <matchTier.Icon
+              size={avatarIconSize}
+              className="absolute text-white/40"
+              strokeWidth={1.75}
+            />
+            <span
+              className={`relative font-semibold leading-none tracking-tight ${avatarTextClassName}`}
+            >
+              {avatarValue}
+            </span>
+          </div>
+        </Tooltip>
+      );
+    } else {
+      matchOverlay = (
+        <div
+          className={`absolute -top-0.5 -left-0.5 rounded-full ring-2 ring-white flex items-center justify-center ${matchTier.bg} ${badgeSize}`}
+        >
+          <matchTier.Icon
+            size={badgeIconSize}
+            className="text-white"
+            strokeWidth={2.5}
+          />
+        </div>
+      );
+    }
   }
 
   // ============ LIST VIEW ============
@@ -1494,6 +1532,7 @@ const TeamCard = ({
           subtitle={subtitleContent}
           image={getTeamImage()}
           imageFallback={getTeamInitials()}
+          imageReplacement={scoreAvatarReplacement}
           imageAlt={`${teamData.name} team`}
           onClick={handleCardClick}
           viewMode="list"
@@ -1947,6 +1986,7 @@ const TeamCard = ({
         hoverable
         image={getTeamImage()}
         imageFallback={getTeamInitials()}
+        imageReplacement={scoreAvatarReplacement}
         imageAlt={`${teamData.name} team`}
         imageSize="medium"
         imageShape="circle"
