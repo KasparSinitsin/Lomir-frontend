@@ -52,6 +52,8 @@ import {
 } from "../../utils/locationUtils";
 import { resolveFilledRoleUser } from "../../utils/vacantRoleUtils";
 import { useUserModalSafe } from "../../contexts/UserModalContext";
+import { useTeamModalSafe } from "../../contexts/TeamModalContext";
+import { useChildModalZIndex } from "../../contexts/ModalLayerContext";
 
 const MATCH_WEIGHTS = {
   tags: 0.4,
@@ -215,6 +217,8 @@ const VacantRoleDetailsModal = ({
 }) => {
   const { user: currentUser, isAuthenticated } = useAuth();
   const userModal = useUserModalSafe();
+  const teamModal = useTeamModalSafe();
+  const childTeamModalZIndex = useChildModalZIndex();
 
   const [userTagMap, setUserTagMap] = useState(new Map()); // tagId → { badgeCredits }
   const [userBadgeMap, setUserBadgeMap] = useState(new Map()); // lowercase name → { totalCredits }
@@ -749,7 +753,14 @@ const VacantRoleDetailsModal = ({
       ? displayRole.badges
       : displayRole.desiredBadges || [];
 
-  const teamName = displayRole.teamName ?? displayRole.team_name;
+  const teamName =
+    displayRole.teamName ??
+    displayRole.team_name ??
+    displayRole.team?.name ??
+    displayRole.team?.team_name ??
+    team?.name ??
+    team?.team_name ??
+    null;
   const teamMemberCount =
     displayRole.teamMemberCount ?? displayRole.team_member_count;
   const teamMaxMembers =
@@ -788,10 +799,18 @@ const VacantRoleDetailsModal = ({
     displayRole.creatorLastName ?? displayRole.creator_last_name;
   const creatorUsername =
     displayRole.creatorUsername ?? displayRole.creator_username;
+  const creatorUserId =
+    displayRole.createdBy ??
+    displayRole.created_by ??
+    displayRole.creatorId ??
+    displayRole.creator_id ??
+    displayRole.creator?.id ??
+    null;
   const creatorName =
     creatorFirstName && creatorLastName
       ? `${creatorFirstName} ${creatorLastName}`
       : creatorUsername || null;
+  const canOpenTeamModal = Boolean(teamId && teamModal?.openTeamModal);
   const comparisonUser = comparisonUserProfile || comparisonUserSeed || null;
   const comparisonFirstName =
     comparisonUser?.firstName ?? comparisonUser?.first_name ?? null;
@@ -865,6 +884,20 @@ const VacantRoleDetailsModal = ({
       userModal.openUserModal(filledUserId, {
         filledRoleName: roleName ?? null,
         teamName: teamName ?? null,
+      });
+    }
+  };
+  const handleCreatorUserClick = () => {
+    if (creatorUserId && userModal?.openUserModal) {
+      userModal.openUserModal(creatorUserId, {
+        teamName: teamName ?? null,
+      });
+    }
+  };
+  const handleTeamClick = () => {
+    if (teamId && teamModal?.openTeamModal) {
+      teamModal.openTeamModal(teamId, teamName ?? undefined, {
+        zIndex: childTeamModalZIndex,
       });
     }
   };
@@ -984,7 +1017,7 @@ const VacantRoleDetailsModal = ({
     if (teamId) params.set("excludeTeamId", teamId);
     const searchRoleName = displayRole.roleName ?? displayRole.role_name ?? "Vacant Role";
     if (searchRoleName) params.set("roleName", searchRoleName);
-    const searchTeamName = displayRole.teamName ?? displayRole.team_name ?? "";
+    const searchTeamName = teamName ?? "";
     if (searchTeamName) params.set("excludeTeamName", searchTeamName);
 
     return `/search?${params.toString()}`;
@@ -1058,15 +1091,16 @@ const VacantRoleDetailsModal = ({
   const visibleRoleTeamMembers = isTeamMembersExpanded
     ? roleTeamMembers
     : roleTeamMembers.slice(0, COLLAPSED_COUNT);
-
   const modalTitle = (
-    <div className="flex items-center justify-between w-full">
-      <div className="flex items-center gap-2">
+    <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex min-w-0 items-center gap-2">
         <ModalStatusIcon
           className={isFilledRole ? "text-success" : "text-orange-500"}
           size={20}
         />
-        <h2 className="text-lg font-medium">{modalStatusTitle}</h2>
+        <h2 className="text-base font-medium leading-snug sm:text-lg">
+          {modalStatusTitle}
+        </h2>
       </div>
       {!isFilledRole && isTeamMember && (tags.length > 0 || badges.length > 0) && (
         <div className="flex items-center space-x-2">
@@ -1178,20 +1212,17 @@ const VacantRoleDetailsModal = ({
           <div className="flex-1 min-w-0">
             <h1 className="text-2xl font-bold leading-tight">{roleName}</h1>
 
-            {teamName && (
+            {teamMemberCount != null && (
               <div className="flex items-center gap-1 mt-1 text-sm text-base-content/70">
                 <Users size={14} className="text-primary flex-shrink-0" />
-                <span>{teamName}</span>
-                {teamMemberCount != null && (
-                  <span className="text-base-content/50">
-                    · {teamMemberCount}/{teamMaxMembers ?? "∞"} members
-                  </span>
-                )}
+                <span className="text-base-content/50">
+                  {teamMemberCount}/{teamMaxMembers ?? "∞"} members
+                </span>
               </div>
             )}
 
             {(isFilledRole ? filledAt : createdAt) && (
-              <div className="flex items-center gap-1 mt-1 text-xs text-base-content/50">
+              <div className="mt-1 flex flex-wrap items-center gap-x-1 gap-y-1 text-xs text-base-content/50">
                 <Calendar size={12} />
                 <span>
                   {isFilledRole ? "Filled on" : "Posted"}{" "}
@@ -1210,8 +1241,43 @@ const VacantRoleDetailsModal = ({
                       </button>
                     </Tooltip>
                   </span>
-                ) : (isFilledRole ? filledRoleDisplayName : creatorName) ? (
-                  <span> by {isFilledRole ? filledRoleDisplayName : creatorName}</span>
+                ) : !isFilledRole && creatorName ? (
+                  <span>
+                    {" "}by{" "}
+                    {creatorUserId ? (
+                      <Tooltip content={`Click to view ${creatorName}'s profile`}>
+                        <button
+                          type="button"
+                          className="hover:text-primary transition-colors font-medium"
+                          onClick={handleCreatorUserClick}
+                        >
+                          {creatorName}
+                        </button>
+                      </Tooltip>
+                    ) : (
+                      <span>{creatorName}</span>
+                    )}
+                  </span>
+                ) : null}
+                {!isFilledRole && teamName ? (
+                  <span className="ml-1 inline-flex min-w-0 max-w-full items-center gap-1">
+                    <Users size={12} className="flex-shrink-0" />
+                    {canOpenTeamModal ? (
+                      <Tooltip content={`Click to view ${teamName}`}>
+                        <button
+                          type="button"
+                          className="min-w-0 text-left font-medium whitespace-normal break-words transition-colors hover:text-primary"
+                          onClick={handleTeamClick}
+                        >
+                          {teamName}
+                        </button>
+                      </Tooltip>
+                    ) : (
+                      <span className="min-w-0 whitespace-normal break-words">
+                        {teamName}
+                      </span>
+                    )}
+                  </span>
                 ) : null}
               </div>
             )}
