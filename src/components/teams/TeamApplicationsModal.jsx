@@ -6,7 +6,9 @@ import Button from "../common/Button";
 import Modal from "../common/Modal";
 import UserDetailsModal from "../users/UserDetailsModal";
 import VacantRoleCard from "./VacantRoleCard";
+import TeamApplicationDetailsModal from "./TeamApplicationDetailsModal";
 import { vacantRoleService } from "../../services/vacantRoleService";
+import { useAuth } from "../../contexts/AuthContext";
 
 /**
  * TeamApplicationsModal Component
@@ -31,6 +33,9 @@ const TeamApplicationsModal = ({
   teamName,
   highlightUserId = null,
 }) => {
+  // ============ Auth ============
+  const { user: currentUser } = useAuth();
+
   // ============ State ============
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -40,6 +45,7 @@ const TeamApplicationsModal = ({
   const [roleStatusOverrides, setRoleStatusOverrides] = useState({});
   const [statusUpdatingRoleId, setStatusUpdatingRoleId] = useState(null);
   const [showCloseGuard, setShowCloseGuard] = useState(false);
+  const [applicationDetailsFor, setApplicationDetailsFor] = useState(null);
 
   // ============ Refs ============
   const highlightedRef = useRef(null);
@@ -257,6 +263,11 @@ const TeamApplicationsModal = ({
             userId={selectedUserId}
             onClose={() => setSelectedUserId(null)}
           />
+          <TeamApplicationDetailsModal
+            isOpen={!!applicationDetailsFor}
+            application={applicationDetailsFor}
+            onClose={() => setApplicationDetailsFor(null)}
+          />
           <Modal
             isOpen={showCloseGuard}
             onClose={() => setShowCloseGuard(false)}
@@ -314,6 +325,9 @@ const TeamApplicationsModal = ({
               }
             : application?.role ?? null;
 
+        const isSelfApplication =
+          currentUser?.id === (application.applicant?.id ?? application.applicant_id);
+
         // Normalize types to avoid "1" vs 1 mismatches
         const isHighlighted =
           highlightUserId != null &&
@@ -328,7 +342,7 @@ const TeamApplicationsModal = ({
               isHighlighted
                 ? "ring-2 ring-primary/30 rounded-xl bg-primary/5"
                 : ""
-            }`}
+            } ${isSelfApplication ? "opacity-60" : ""}`}
           >
             <PersonRequestCard
               user={application.applicant}
@@ -349,7 +363,12 @@ const TeamApplicationsModal = ({
                         matchScore={role.matchScore ?? role.match_score ?? null}
                         matchDetails={role.matchDetails ?? role.match_details ?? null}
                         canManage={false}
-                        canManageStatus={true}
+                        canManageStatus={!isSelfApplication}
+                        onViewApplicationDetails={
+                          isSelfApplication
+                            ? () => setApplicationDetailsFor(application)
+                            : null
+                        }
                         isTeamMember={true}
                         onStatusChange={(currentRoleId, newStatus) =>
                           handleRoleStatusChange(
@@ -392,56 +411,65 @@ const TeamApplicationsModal = ({
                     )}
 
                   {/* Response Textarea */}
-                  <div className="mb-5">
-                    <p className="text-xs text-base-content/60 mb-1 flex items-center">
-                      <MessageSquare size={12} className="text-primary mr-1" />
-                      Your response message (optional):
-                    </p>
-                    <textarea
-                      value={responses[application.id] || ""}
-                      onChange={(e) =>
-                        handleResponseChange(application.id, e.target.value)
-                      }
-                      className="textarea textarea-bordered textarea-sm w-full h-20 resize-none text-sm"
-                      placeholder="Add a personal message to your decision..."
-                      disabled={loading}
-                    />
-                  </div>
+                  {!isSelfApplication && (
+                    <div className="mb-5">
+                      <p className="text-xs text-base-content/60 mb-1 flex items-center">
+                        <MessageSquare size={12} className="text-primary mr-1" />
+                        Your response message (optional):
+                      </p>
+                      <textarea
+                        value={responses[application.id] || ""}
+                        onChange={(e) =>
+                          handleResponseChange(application.id, e.target.value)
+                        }
+                        className="textarea textarea-bordered textarea-sm w-full h-20 resize-none text-sm"
+                        placeholder="Add a personal message to your decision..."
+                        disabled={loading}
+                      />
+                    </div>
+                  )}
                 </>
               }
               actions={
-                <div className="flex justify-end space-x-2">
-                  <Button
-                    variant="errorOutline"
-                    size="sm"
-                    onClick={() =>
-                      handleApplicationAction(
-                        application.id,
-                        "decline",
-                        responses[application.id] || ""
-                      )
-                    }
-                    disabled={loading}
-                    icon={<Decline size={16} />}
-                  >
-                    Decline
-                  </Button>
-                  <Button
-                    variant="successOutline"
-                    size="sm"
-                    onClick={() =>
-                      handleApplicationAction(
-                        application.id,
-                        "approve",
-                        responses[application.id] || ""
-                      )
-                    }
-                    disabled={loading}
-                    icon={<Check size={16} />}
-                  >
-                    Accept & Add to Team
-                  </Button>
-                </div>
+                isSelfApplication ? (
+                  <div className="flex items-center gap-2 text-sm text-info bg-info/10 rounded-lg px-3 py-2">
+                    <AlertTriangle size={16} className="flex-shrink-0" />
+                    <span>Another owner or admin must review your application.</span>
+                  </div>
+                ) : (
+                  <div className="flex justify-end space-x-2">
+                    <Button
+                      variant="errorOutline"
+                      size="sm"
+                      onClick={() =>
+                        handleApplicationAction(
+                          application.id,
+                          "decline",
+                          responses[application.id] || ""
+                        )
+                      }
+                      disabled={loading}
+                      icon={<Decline size={16} />}
+                    >
+                      Decline
+                    </Button>
+                    <Button
+                      variant="successOutline"
+                      size="sm"
+                      onClick={() =>
+                        handleApplicationAction(
+                          application.id,
+                          "approve",
+                          responses[application.id] || ""
+                        )
+                      }
+                      disabled={loading}
+                      icon={<Check size={16} />}
+                    >
+                      Accept & Add to Team
+                    </Button>
+                  </div>
+                )
               }
             />
           </div>

@@ -321,7 +321,7 @@ const TeamApplicationModal = ({
           {(loadingRoles || vacantRoles.length > 0) && (
             <div>
               <p className="text-xs text-base-content/60 mb-2 flex items-center">
-                <UserSearch size={12} className="text-amber-500 mr-1" />
+                <UserSearch size={12} className="text-orange-500 mr-1" />
                 Select a role you want to fill in this team:
               </p>
 

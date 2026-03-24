@@ -13,8 +13,8 @@ export function getMatchTier(score) {
     return {
       pct,
       Icon: Sparkles,
-      bg: "bg-amber-500",
-      text: "text-amber-600",
+      bg: "bg-orange-500",
+      text: "text-orange-500",
       label: "Great match",
     };
   if (pct >= 50)

@@ -255,6 +255,11 @@ const TeamCard = ({
     useState(null);
   const [pendingApplicationForTeam, setPendingApplicationForTeam] =
     useState(null);
+  const isPendingRoleApplicationForTeam = !!(
+    pendingApplicationForTeam?.role ||
+    pendingApplicationForTeam?.roleId ||
+    pendingApplicationForTeam?.role_id
+  );
 
   // Check if current user is the owner of the team
   const isOwner =
@@ -1422,7 +1427,7 @@ const TeamCard = ({
         {openRoleCount > 0 && (
           <Tooltip content={`${openRoleCount} open ${openRoleCount === 1 ? 'role' : 'roles'} posted in this team`}>
             <span className="flex items-center">
-              <UserSearch size={12} className="text-amber-500 mr-0.5" />
+              <UserSearch size={12} className="text-orange-500 mr-0.5" />
               <span>{openRoleCount}</span>
             </span>
           </Tooltip>
@@ -1443,11 +1448,15 @@ const TeamCard = ({
         )}
         {(effectiveVariant === "application" || effectiveVariant === "role_application" || pendingApplicationForTeam) && (
           <Tooltip
-            content={`You applied${effectiveVariant === "role_application" ? " for this role" : " to join this team"}${
-              getFormattedDate()
-                ? `\non ${format(new Date(normalizedData.date), "MMM d, yyyy")}`
-                : ""
-            }`}
+            content={
+              isPendingRoleApplicationForTeam
+                ? "You applied for a role within this team"
+                : `You applied${effectiveVariant === "role_application" ? " for this role" : " to join this team"}${
+                    getFormattedDate()
+                      ? `\non ${format(new Date(normalizedData.date), "MMM d, yyyy")}`
+                      : ""
+                  }`
+            }
           >
             <span
               className="flex items-center gap-0.5 cursor-pointer"
@@ -1456,7 +1465,7 @@ const TeamCard = ({
                 setIsApplicationModalOpen(true);
               }}
             >
-              <SendHorizontal size={11} className="text-info" />
+              <SendHorizontal size={11} className={(effectiveVariant === "role_application" || isPendingRoleApplicationForTeam) ? "text-orange-500" : "text-info"} />
               {getFormattedDate() && <span>{getFormattedDate()}</span>}
             </span>
           </Tooltip>
@@ -1769,7 +1778,7 @@ const TeamCard = ({
                     content={`You applied for this role\non ${format(new Date(normalizedData.date), "MMM d, yyyy")}`}
                   >
                     <span className="flex items-center gap-0.5 whitespace-nowrap">
-                      <SendHorizontal size={viewMode === "mini" ? 11 : 12} className="flex-shrink-0 text-info" />
+                      <SendHorizontal size={viewMode === "mini" ? 11 : 12} className="flex-shrink-0 text-orange-500" />
                       <span>{getFormattedDate()}</span>
                     </span>
                   </Tooltip>
@@ -1815,7 +1824,7 @@ const TeamCard = ({
                 <span className="flex items-center">
                   <UserSearch
                     size={viewMode === "mini" ? 12 : 14}
-                    className="text-amber-500 mr-0.5"
+                    className="text-orange-500 mr-0.5"
                   />
                   <span>{openRoleCount}</span>
                 </span>
@@ -1870,9 +1879,9 @@ const TeamCard = ({
               </Tooltip>
             )}
 
-            {/* Pending application indicator with date */}
+            {/* Pending regular team-join application indicator */}
             {(effectiveVariant === "application" ||
-              pendingApplicationForTeam) && (
+              (pendingApplicationForTeam && !isPendingRoleApplicationForTeam)) && (
               <Tooltip
                 content={`You applied to join this team${
                   getFormattedDate()
@@ -1891,6 +1900,18 @@ const TeamCard = ({
                   {getFormattedDate() && (
                     <span className="ml-0.5">{getFormattedDate()}</span>
                   )}
+                </span>
+              </Tooltip>
+            )}
+
+            {/* Pending role application indicator */}
+            {isPendingRoleApplicationForTeam && (
+              <Tooltip content="You applied for a role within this team">
+                <span className="flex items-center">
+                  <SendHorizontal
+                    size={viewMode === "mini" ? 12 : 14}
+                    className="text-orange-500"
+                  />
                 </span>
               </Tooltip>
             )}
