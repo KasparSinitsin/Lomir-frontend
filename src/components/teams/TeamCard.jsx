@@ -1325,8 +1325,6 @@ const TeamCard = ({
       viewMode === "list"
         ? "text-sm"
         : "text-xl";
-    const avatarIconSize =
-      viewMode === "list" ? 24 : viewMode === "mini" ? 44 : 52;
     const shouldUseScoreAvatar = effectiveVariant === "role_application";
 
     const iconSizeSubtitle =
@@ -1357,9 +1355,9 @@ const TeamCard = ({
             className={`relative flex h-full w-full items-center justify-center overflow-hidden rounded-full ${matchTier.bg} text-white`}
           >
             <matchTier.Icon
-              size={avatarIconSize}
               className="absolute text-white/40"
               strokeWidth={1.75}
+              style={{ width: "85%", height: "85%" }}
             />
             <span
               className={`relative font-semibold leading-none tracking-tight ${avatarTextClassName}`}
