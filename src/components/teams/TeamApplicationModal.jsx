@@ -26,6 +26,7 @@ const TeamApplicationModal = ({
   initialRoleId = null,
   onSubmit,
   loading = false,
+  isInternal = false,
 }) => {
   const [message, setMessage] = useState("");
   const [error, setError] = useState(null);
@@ -168,7 +169,11 @@ const TeamApplicationModal = ({
         setSuccess("Draft saved successfully");
         setIsDraft(true);
       } else {
-        setSuccess("Application sent successfully!");
+        setSuccess(
+          isInternal
+            ? "Role application sent to the team owner and admins!"
+            : "Application sent successfully!"
+        );
         setTimeout(() => {
           handleClose();
         }, 1500);
@@ -191,10 +196,14 @@ const TeamApplicationModal = ({
 
   const customHeader = (
     <div className="flex items-center gap-3">
-      <SendHorizontal className="text-primary" size={24} />
+      {isInternal ? (
+        <UserSearch className="text-primary" size={24} />
+      ) : (
+        <SendHorizontal className="text-primary" size={24} />
+      )}
       <div>
         <h2 className="text-xl font-medium text-primary">
-          Apply to join this Team
+          {isInternal ? "Apply to fill a role in your team" : "Apply to join this Team"}
         </h2>
       </div>
     </div>
@@ -218,10 +227,10 @@ const TeamApplicationModal = ({
       <Button
         variant="successOutline"
         onClick={() => handleSubmit(false)}
-        disabled={loading || !message.trim()}
+        disabled={loading || !message.trim() || (isInternal && !selectedRoleId)}
         icon={<Send size={16} />}
       >
-        {loading ? "Sending..." : "Send Application"}
+        {loading ? "Sending..." : isInternal ? "Send Role Application" : "Send Application"}
       </Button>
     </div>
   );
@@ -396,9 +405,14 @@ const TeamApplicationModal = ({
                 </div>
               )}
 
-              {!loadingRoles && selectedRoleId === null && vacantRoles.length > 0 && (
+              {!loadingRoles && selectedRoleId === null && vacantRoles.length > 0 && !isInternal && (
                 <p className="text-xs text-base-content/40 mt-1.5">
                   No role selected — your application will be sent as a general team application.
+                </p>
+              )}
+              {!loadingRoles && selectedRoleId === null && vacantRoles.length > 0 && isInternal && (
+                <p className="text-xs text-warning/70 mt-1.5">
+                  Please select a role to apply for.
                 </p>
               )}
             </div>
@@ -408,14 +422,16 @@ const TeamApplicationModal = ({
           <div>
             <p className="text-xs text-base-content/60 mb-1 flex items-center">
               <Send size={12} className="text-info mr-1" />
-              Your message to the team:
+              {isInternal ? "Your message to the owner and admins:" : "Your message to the team:"}
             </p>
 
             <div className="relative">
               <textarea
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
-                placeholder="Tell the team why you'd like to join, what skills you bring, and what you hope to contribute..."
+                placeholder={isInternal
+                  ? "Tell the owner and admins why you'd like to fill this role and what relevant experience you bring..."
+                  : "Tell the team why you'd like to join, what skills you bring, and what you hope to contribute..."}
                 className="textarea textarea-bordered w-full h-32 resize-none text-sm pb-6"
                 disabled={loading}
                 maxLength={500}

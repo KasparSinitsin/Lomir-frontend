@@ -312,11 +312,11 @@ const UserCard = ({
           {viewMode === "mini" &&
             !activeFilters.showLocation &&
             (user.is_remote || user.isRemote || user.city || user.country) && (
-              <span className="flex items-center">
+              <span className="flex items-start">
                 {user.is_remote || user.isRemote ? (
-                  <Globe size={12} className="mr-0.5 flex-shrink-0" />
+                  <Globe size={12} className="mr-0.5 flex-shrink-0 mt-0.5" />
                 ) : (
-                  <MapPin size={12} className="mr-0.5 flex-shrink-0" />
+                  <MapPin size={12} className="mr-0.5 flex-shrink-0 mt-0.5" />
                 )}
                 <span>
                   {user.is_remote || user.isRemote

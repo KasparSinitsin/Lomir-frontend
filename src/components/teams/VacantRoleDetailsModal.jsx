@@ -14,6 +14,7 @@ import {
   X,
   ChevronRight,
   ChevronUp,
+  SendHorizontal,
 } from "lucide-react";
 import Modal from "../common/Modal";
 import {
@@ -35,6 +36,7 @@ import Tooltip from "../common/Tooltip";
 import CardMetaItem from "../common/CardMetaItem";
 import CardMetaRow from "../common/CardMetaRow";
 import TeamApplicationButton from "./TeamApplicationButton";
+import TeamApplicationModal from "./TeamApplicationModal";
 import TeamApplicationsModal from "./TeamApplicationsModal";
 import { useAuth } from "../../contexts/AuthContext";
 import { userService } from "../../services/userService";
@@ -209,6 +211,7 @@ const VacantRoleDetailsModal = ({
   isTeamMember = false,
   viewAsUserId = null,
   viewAsUser = null,
+  onViewApplicationDetails = null,
 }) => {
   const { user: currentUser, isAuthenticated } = useAuth();
   const userModal = useUserModalSafe();
@@ -232,6 +235,7 @@ const VacantRoleDetailsModal = ({
   const [teamMembersLoading, setTeamMembersLoading] = useState(false);
   const [isApplicationsExpanded, setIsApplicationsExpanded] = useState(false);
   const [isTeamMembersExpanded, setIsTeamMembersExpanded] = useState(false);
+  const [isInternalApplicationOpen, setIsInternalApplicationOpen] = useState(false);
   const roleId = role?.id;
   const teamId = role?.teamId ?? role?.team_id ?? team?.id;
   const teamMembers = Array.isArray(team?.members) ? team.members : [];
@@ -1968,15 +1972,43 @@ const VacantRoleDetailsModal = ({
           ) : null
         )}
 
-        {isAuthenticated && !isTeamMember && isRoleOpen && (
+        {onViewApplicationDetails ? (
           <div className="mt-6 border-t border-base-200 pt-4">
-            <TeamApplicationButton
-              team={applicationTeam}
-              teamId={teamId}
-              roleId={roleId}
+            <Button
+              variant="primary"
               className="w-full"
-            />
+              onClick={onViewApplicationDetails}
+              icon={<SendHorizontal size={16} />}
+            >
+              View Role Application Details
+            </Button>
           </div>
+        ) : (
+          <>
+            {isAuthenticated && !isTeamMember && isRoleOpen && (
+              <div className="mt-6 border-t border-base-200 pt-4">
+                <TeamApplicationButton
+                  team={applicationTeam}
+                  teamId={teamId}
+                  roleId={roleId}
+                  className="w-full"
+                />
+              </div>
+            )}
+
+            {isAuthenticated && isTeamMember && isRoleOpen && (
+              <div className="mt-6 border-t border-base-200 pt-4">
+                <Button
+                  variant="primary"
+                  className="w-full"
+                  onClick={() => setIsInternalApplicationOpen(true)}
+                  icon={<UserSearch size={16} />}
+                >
+                  Apply for this Role
+                </Button>
+              </div>
+            )}
+          </>
         )}
       </div>
     </Modal>
@@ -1995,6 +2027,27 @@ const VacantRoleDetailsModal = ({
         highlightUserId={highlightApplicantId}
       />
     )}
+
+    <TeamApplicationModal
+      isOpen={isInternalApplicationOpen}
+      onClose={() => setIsInternalApplicationOpen(false)}
+      team={team}
+      teamId={teamId}
+      initialRoleId={roleId}
+      isInternal={true}
+      onSubmit={async (applicationData) => {
+        try {
+          await teamService.applyToJoinTeam(teamId, {
+            ...applicationData,
+            roleId: applicationData.roleId ?? roleId,
+          });
+        } catch (error) {
+          throw new Error(
+            error.response?.data?.message || "Failed to submit role application"
+          );
+        }
+      }}
+    />
     </>
   );
 };

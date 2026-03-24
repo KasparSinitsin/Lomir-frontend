@@ -27,6 +27,7 @@ const Card = ({
   viewMode = "card",
   clickTooltip = null,
   imageOverlay = null,
+  imageReplacement = null,
 }) => {
   const [imageError, setImageError] = useState(false);
   const [rowTooltipVisible, setRowTooltipVisible] = useState(false);
@@ -50,7 +51,7 @@ const Card = ({
   // Function to render the image/avatar
   // Function to render the image/avatar
   const renderImage = () => {
-    if (!image && !imageFallback) return null;
+    if (!image && !imageFallback && !imageReplacement) return null;
 
     // Determine image size class
     const sizeClass =
@@ -81,10 +82,11 @@ const Card = ({
       >
         <div className="avatar placeholder relative">
           <div
-            className={`bg-primary text-primary-content ${shapeClass} ${sizeClass} flex items-center justify-center`}
+            className={`${shapeClass} ${sizeClass} flex items-center justify-center overflow-hidden ${imageReplacement ? "" : "bg-primary text-primary-content"}`}
           >
-            {isUrl && !imageError ? (
-              // If image is a URL and hasn't errored, render an img tag
+            {imageReplacement ? (
+              imageReplacement
+            ) : isUrl && !imageError ? (
               <img
                 src={image}
                 alt={imageAlt}
@@ -92,13 +94,12 @@ const Card = ({
                 onError={() => setImageError(true)}
               />
             ) : (
-              // Otherwise render the initials/placeholder
               <span className={imageSize === "large" ? "text-2xl" : "text-xl"}>
                 {fallbackContent}
               </span>
             )}
           </div>
-          {imageOverlay}
+          {!imageReplacement && imageOverlay}
         </div>
       </div>
     );
@@ -202,10 +203,12 @@ const Card = ({
             : undefined
         }
       >
-        {(image || imageFallback) && (
+        {(image || imageFallback || imageReplacement) && (
           <div className="avatar placeholder flex-shrink-0 relative">
-            <div className="bg-primary text-primary-content rounded-full w-9 h-9 flex items-center justify-center">
-              {typeof image === "string" &&
+            <div className={`rounded-full w-9 h-9 flex items-center justify-center overflow-hidden ${imageReplacement ? "" : "bg-primary text-primary-content"}`}>
+              {imageReplacement ? (
+                imageReplacement
+              ) : typeof image === "string" &&
               (image.startsWith("http") ||
                 image.startsWith("https") ||
                 image.startsWith("data:")) &&
@@ -225,7 +228,7 @@ const Card = ({
                 </span>
               )}
             </div>
-            {imageOverlay}
+            {!imageReplacement && imageOverlay}
           </div>
         )}
 
