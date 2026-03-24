@@ -97,6 +97,8 @@ const TeamDetailsModal = ({
   matchScore = null,
   matchType = null,
   matchDetails = null,
+  zIndexStyle = null,
+  boxZIndexStyle = null,
 }) => {
   const navigate = useNavigate();
   const { id: urlTeamId } = useParams();
@@ -1470,6 +1472,8 @@ const TeamDetailsModal = ({
         closeOnBackdrop={true}
         closeOnEscape={true}
         showCloseButton={true}
+        zIndexStyle={zIndexStyle}
+        boxZIndexStyle={boxZIndexStyle}
       >
         {renderNotification()}
         {loading ? (
