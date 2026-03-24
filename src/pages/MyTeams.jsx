@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import PageContainer from "../components/layout/PageContainer";
 import Grid from "../components/layout/Grid";
@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import Alert from "../components/common/Alert";
 import CreateTeamModal from "../components/teams/CreateTeamModal";
+
 
 import {
   RESULTS_PER_PAGE_OPTIONS,
@@ -103,6 +104,7 @@ const MyTeams = () => {
 
   // ===== CREATE TEAM MODAL STATE =====
   const [isCreateTeamModalOpen, setIsCreateTeamModalOpen] = useState(false);
+
 
   // ===== PAGINATION STATE =====
   const [currentPage, setCurrentPage] = useState(1);
@@ -586,11 +588,25 @@ const MyTeams = () => {
     });
   };
 
+  const externalApplications = useMemo(
+    () => pendingApplications.filter(
+      (app) => !(app.isInternalRoleApplication ?? app.is_internal_role_application)
+    ),
+    [pendingApplications]
+  );
+
+  const internalRoleApplications = useMemo(
+    () => pendingApplications.filter(
+      (app) => app.isInternalRoleApplication ?? app.is_internal_role_application
+    ),
+    [pendingApplications]
+  );
+
   const sortedPendingInvitations = sortPendingItems(
     pendingInvitations.filter(Boolean),
   );
   const sortedPendingApplications = sortPendingItems(
-    pendingApplications.filter(Boolean),
+    externalApplications.filter(Boolean),
   );
   const sortedTeams = sortMemberTeams(teams.filter(Boolean));
 
@@ -828,6 +844,64 @@ const MyTeams = () => {
         </Section>
       )}
 
+      {/* Pending Role Applications Section (internal — within own teams) */}
+      {internalRoleApplications.length > 0 && (
+        <Section
+          title="My Pending Role Applications"
+          subtitle={`${internalRoleApplications.length} ${internalRoleApplications.length === 1 ? 'Role' : 'Roles'} that I have applied for within my teams`}
+          className="mb-10"
+          collapsible
+        >
+          {loadingApplications ? (
+            <div className="flex justify-center py-8">
+              <div className="loading loading-spinner loading-md"></div>
+            </div>
+          ) : (
+            <>
+              {resultView === "list" ? (
+                <div className="background-opacity bg-opacity-70 shadow-soft rounded-xl divide-y divide-base-200">
+                  {internalRoleApplications.map((application) => (
+                    <TeamCard
+                      key={`role-app-${application.id}`}
+                      variant="role_application"
+                      application={application}
+                      onCancel={handleApplicationCancel}
+                      onSendReminder={handleSendReminder}
+                      viewerDistanceSource={viewerDistanceSource}
+                      hideDistanceInfo={true}
+                      listLocationWidthClassName="sm:w-44"
+                      listLocationInsetClassName="sm:pl-[60px]"
+                      listTagsWidthClassName="sm:w-44"
+                      listBadgesWidthClassName="sm:w-40"
+                      viewMode="list"
+                      activeFilters={{}}
+                      showMatchScore={true}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <Grid cols={1} md={2} lg={3} gap={resultView === "card" ? 6 : 4}>
+                  {internalRoleApplications.map((application) => (
+                    <TeamCard
+                      key={`role-app-${application.id}`}
+                      variant="role_application"
+                      application={application}
+                      onCancel={handleApplicationCancel}
+                      onSendReminder={handleSendReminder}
+                      viewerDistanceSource={viewerDistanceSource}
+                      hideDistanceInfo={true}
+                      viewMode={resultView}
+                      activeFilters={{}}
+                      showMatchScore={true}
+                    />
+                  ))}
+                </Grid>
+              )}
+            </>
+          )}
+        </Section>
+      )}
+
       {/* Pending Applications Section */}
       {sortedPendingApplications.length > 0 && (
         <Section
@@ -1051,6 +1125,8 @@ const MyTeams = () => {
         onClose={() => setIsCreateTeamModalOpen(false)}
         onTeamCreated={handleTeamCreated}
       />
+
+
     </PageContainer>
   );
 };

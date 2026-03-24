@@ -224,15 +224,24 @@ const TeamApplicationDetailsModal = ({
 
   // ============ Render ============
 
+  const isInternalRoleApplication =
+    application?.isInternalRoleApplication ?? application?.is_internal_role_application ?? false;
+  const roleName =
+    application?.role?.roleName ?? application?.role?.role_name ?? null;
+
   // Custom header
   const customHeader = (
     <div>
       <h2 className="text-xl font-medium text-primary leading-[120%] mb-[0.2em]">
-        {team.name || "Unknown Team"}
+        {isInternalRoleApplication && roleName
+          ? `Role Application: ${roleName}`
+          : team.name || "Unknown Team"}
       </h2>
       <p className="text-sm text-base-content/70 flex items-center">
         <SendHorizontal size={14} className="mr-1.5" />
-        You applied
+        {isInternalRoleApplication
+          ? "Role application within your team"
+          : "You applied"}
       </p>
     </div>
   );
