@@ -1216,7 +1216,7 @@ const TeamDetailsModal = ({
     }
 
     // Pending application CTA
-    const hasApp = Boolean(hasPendingApplication || pendingApplication);
+    const hasApp = Boolean((hasPendingApplication || pendingApplication) && !isMember);
 
     if (hasApp) {
       return (

@@ -312,7 +312,7 @@ const CreateVacantRoleModal = ({
   // Custom header
   const customHeader = (
     <div className="flex items-center gap-2">
-      <UserSearch className="text-amber-500" size={22} />
+      <UserSearch className="text-orange-500" size={22} />
       <h2 className="text-lg font-medium">
         {isEditMode ? "Edit Vacant Role" : "Add Vacant Role"}
       </h2>

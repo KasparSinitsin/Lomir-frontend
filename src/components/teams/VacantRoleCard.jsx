@@ -52,6 +52,7 @@ const VacantRoleCard = ({
   matchDetails = null,
   viewAsUserId = null,
   viewAsUser = null,
+  onViewApplicationDetails = null,
 }) => {
   const [showMenu, setShowMenu] = useState(false);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
@@ -426,6 +427,7 @@ const VacantRoleCard = ({
         isTeamMember={isTeamMember}
         viewAsUserId={viewAsUserId}
         viewAsUser={viewAsUser}
+        onViewApplicationDetails={onViewApplicationDetails}
       />
     </>
   );

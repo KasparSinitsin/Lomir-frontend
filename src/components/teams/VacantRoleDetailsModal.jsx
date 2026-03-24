@@ -1044,6 +1044,18 @@ const VacantRoleDetailsModal = ({
   const visibleRoleApplications = isApplicationsExpanded
     ? sortedRoleApplications
     : sortedRoleApplications.slice(0, COLLAPSED_COUNT);
+
+  // Detect if the current user already has a pending application for this role.
+  // roleApplications is only populated when canManage=true, which covers the
+  // main scenario (owner/admin applying internally). When canManage=false,
+  // this is null and the Apply button shows normally.
+  const currentUserRoleApplication =
+    !applicationsLoading && canManage && currentUser?.id != null
+      ? (roleApplications.find((app) => {
+          const applicantId = app.applicant?.id ?? app.applicant_id;
+          return String(applicantId) === String(currentUser.id);
+        }) ?? null)
+      : null;
   const visibleRoleTeamMembers = isTeamMembersExpanded
     ? roleTeamMembers
     : roleTeamMembers.slice(0, COLLAPSED_COUNT);
@@ -1052,7 +1064,7 @@ const VacantRoleDetailsModal = ({
     <div className="flex items-center justify-between w-full">
       <div className="flex items-center gap-2">
         <ModalStatusIcon
-          className={isFilledRole ? "text-success" : "text-amber-500"}
+          className={isFilledRole ? "text-success" : "text-orange-500"}
           size={20}
         />
         <h2 className="text-lg font-medium">{modalStatusTitle}</h2>
@@ -1996,16 +2008,30 @@ const VacantRoleDetailsModal = ({
               </div>
             )}
 
-            {isAuthenticated && isTeamMember && isRoleOpen && (
+            {isAuthenticated && isTeamMember && isRoleOpen && !applicationsLoading && (
               <div className="mt-6 border-t border-base-200 pt-4">
-                <Button
-                  variant="primary"
-                  className="w-full"
-                  onClick={() => setIsInternalApplicationOpen(true)}
-                  icon={<UserSearch size={16} />}
-                >
-                  Apply for this Role
-                </Button>
+                {currentUserRoleApplication ? (
+                  <Button
+                    variant="primary"
+                    className="w-full"
+                    onClick={() => {
+                      setHighlightApplicantId(currentUser.id);
+                      setApplicationsModalOpen(true);
+                    }}
+                    icon={<SendHorizontal size={16} />}
+                  >
+                    View Role Application Details
+                  </Button>
+                ) : (
+                  <Button
+                    variant="primary"
+                    className="w-full"
+                    onClick={() => setIsInternalApplicationOpen(true)}
+                    icon={<UserSearch size={16} />}
+                  >
+                    Apply for this Role
+                  </Button>
+                )}
               </div>
             )}
           </>
