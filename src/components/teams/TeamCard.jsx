@@ -22,6 +22,7 @@ import {
 import TeamDetailsModal from "./TeamDetailsModal";
 import UserDetailsModal from "../users/UserDetailsModal";
 import TeamApplicationDetailsModal from "./TeamApplicationDetailsModal";
+import VacantRoleDetailsModal from "./VacantRoleDetailsModal";
 import TeamInvitesModal from "./TeamInvitesModal";
 import TeamInvitationDetailsModal from "./TeamInvitationDetailsModal";
 import { SentByLink } from "../users/InlineUserLink";
@@ -234,6 +235,7 @@ const TeamCard = ({
   // State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isApplicationModalOpen, setIsApplicationModalOpen] = useState(false);
+  const [isRoleDetailsModalOpen, setIsRoleDetailsModalOpen] = useState(false);
   const [roleMatchData, setRoleMatchData] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [actionLoading, setActionLoading] = useState(null);
@@ -678,6 +680,9 @@ const TeamCard = ({
   };
 
   const getTeamId = () => {
+    if (effectiveVariant === "role_application") {
+      return application?.team?.id ?? null;
+    }
     return teamData.id || normalizedData.team?.id;
   };
 
@@ -826,7 +831,7 @@ const TeamCard = ({
 
   const handleCardClick = () => {
     if (effectiveVariant === "role_application") {
-      setIsApplicationModalOpen(true);
+      setIsRoleDetailsModalOpen(true);
     } else {
       setIsModalOpen(true);
     }
@@ -1199,7 +1204,7 @@ const TeamCard = ({
               setIsApplicationModalOpen(true);
             }}
           >
-            View Application Details
+            {effectiveVariant === "role_application" ? "View Role Application Details" : "View Application Details"}
           </Button>
         </div>
       );
@@ -1407,9 +1412,13 @@ const TeamCard = ({
 
     const subtitleContent = (
       <span className="flex min-w-0 flex-nowrap items-center gap-1 overflow-hidden whitespace-nowrap text-base-content/60">
-        {scoreSubtitleItem}
-        <Users size={11} />
-        <span>{memberCount}/{maxMembers}</span>
+        {effectiveVariant !== "role_application" && scoreSubtitleItem}
+        {effectiveVariant !== "role_application" && (
+          <>
+            <Users size={11} />
+            <span>{memberCount}/{maxMembers}</span>
+          </>
+        )}
         {openRoleCount > 0 && (
           <Tooltip content={`${openRoleCount} open ${openRoleCount === 1 ? 'role' : 'roles'} posted in this team`}>
             <span className="flex items-center">
@@ -1449,6 +1458,20 @@ const TeamCard = ({
             >
               <SendHorizontal size={11} className="text-info" />
               {getFormattedDate() && <span>{getFormattedDate()}</span>}
+            </span>
+          </Tooltip>
+        )}
+        {effectiveVariant === "role_application" && teamData._teamName && (
+          <Tooltip content="Click to view team details" wrapperClassName="min-w-0 overflow-hidden flex-1">
+            <span
+              className="flex items-center gap-0.5 min-w-0 overflow-hidden cursor-pointer w-full"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsModalOpen(true);
+              }}
+            >
+              <Users size={11} className="flex-shrink-0 text-primary" />
+              <span className="truncate">{teamData._teamName}</span>
             </span>
           </Tooltip>
         )}
@@ -1494,7 +1517,7 @@ const TeamCard = ({
           onClick={handleCardClick}
           viewMode="list"
           className=""
-          clickTooltip="Click to view Team details"
+          clickTooltip={effectiveVariant === "role_application" ? "Click to view role details" : "Click to view Team details"}
           imageOverlay={showScore ? null : matchOverlay}
           imageReplacement={scoreAvatarList}
       >
@@ -1569,7 +1592,7 @@ const TeamCard = ({
                 </Tooltip>
               )}
               {(effectiveVariant === "application" || effectiveVariant === "role_application") && (
-                <Tooltip content="View Application Details">
+                <Tooltip content={effectiveVariant === "role_application" ? "View Role Application Details" : "View Application Details"}>
                   <Button
                     variant="primary"
                     size="sm"
@@ -1610,7 +1633,7 @@ const TeamCard = ({
         <TeamDetailsModal
           isOpen={isModalOpen}
           teamId={getTeamId()}
-          initialTeamData={teamData}
+          initialTeamData={effectiveVariant === "role_application" ? (application?.team ?? teamData) : teamData}
           onClose={handleModalClose}
           onUpdate={handleTeamUpdate}
           onDelete={onDelete}
@@ -1703,6 +1726,21 @@ const TeamCard = ({
             />
           )}
 
+        {effectiveVariant === "role_application" && application?.role && (
+          <VacantRoleDetailsModal
+            isOpen={isRoleDetailsModalOpen}
+            onClose={() => setIsRoleDetailsModalOpen(false)}
+            team={application.team ?? null}
+            role={application.role}
+            matchScore={rawScore ?? null}
+            matchDetails={application?.role?.matchDetails ?? application?.role?.match_details ?? roleMatchData?.matchDetails ?? null}
+            onViewApplicationDetails={() => {
+              setIsRoleDetailsModalOpen(false);
+              setIsApplicationModalOpen(true);
+            }}
+          />
+        )}
+
         <UserDetailsModal
           isOpen={!!selectedUserId}
           userId={selectedUserId}
@@ -1727,10 +1765,14 @@ const TeamCard = ({
               <span className="flex items-center gap-1.5 flex-nowrap">
                 {scoreSubtitleItem}
                 {getFormattedDate() && (
-                  <span className="flex items-center gap-0.5 whitespace-nowrap">
-                    <SendHorizontal size={viewMode === "mini" ? 11 : 12} className="flex-shrink-0 text-info" />
-                    <span>{getFormattedDate()}</span>
-                  </span>
+                  <Tooltip
+                    content={`You applied for this role\non ${format(new Date(normalizedData.date), "MMM d, yyyy")}`}
+                  >
+                    <span className="flex items-center gap-0.5 whitespace-nowrap">
+                      <SendHorizontal size={viewMode === "mini" ? 11 : 12} className="flex-shrink-0 text-info" />
+                      <span>{getFormattedDate()}</span>
+                    </span>
+                  </Tooltip>
                 )}
               </span>
             ) : (
@@ -1739,13 +1781,21 @@ const TeamCard = ({
             {/* Members count — or team name for role_application */}
             {effectiveVariant === "role_application" ? (
               teamData._teamName && (
-                <span className="flex items-start">
-                  <Users
-                    size={viewMode === "mini" ? 12 : 14}
-                    className="text-primary mr-0.5 flex-shrink-0 mt-0.5"
-                  />
-                  <span className="leading-[1.15]">{teamData._teamName}</span>
-                </span>
+                <Tooltip content="Click to view team details">
+                  <span
+                    className="flex items-start cursor-pointer"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsModalOpen(true);
+                    }}
+                  >
+                    <Users
+                      size={viewMode === "mini" ? 12 : 14}
+                      className="text-primary mr-0.5 flex-shrink-0 mt-0.5"
+                    />
+                    <span className="leading-[1.15]">{teamData._teamName}</span>
+                  </span>
+                </Tooltip>
               )
             ) : (
               <span className="flex items-center">
@@ -1910,7 +1960,7 @@ const TeamCard = ({
         imageShape="circle"
         onClick={handleCardClick}
         truncateContent={true}
-        clickTooltip="Click to view Team details"
+        clickTooltip={effectiveVariant === "role_application" ? "Click to view role details" : "Click to view Team details"}
         contentClassName={
           viewMode === "mini"
             ? `!pt-0 !px-4 sm:!px-5 ${activeFilters.showLocation || activeFilters.showTags || activeFilters.showBadges || !isSearchResult ? "!pb-4 sm:!pb-5" : "!pb-0"}`
@@ -2066,6 +2116,22 @@ const TeamCard = ({
           onClose={() => setIsApplicationModalOpen(false)}
           onCancel={onCancel || onCancelApplication}
           onSendReminder={onSendReminder}
+        />
+      )}
+
+      {/* Role Details Modal (for role_application cards) */}
+      {effectiveVariant === "role_application" && application?.role && (
+        <VacantRoleDetailsModal
+          isOpen={isRoleDetailsModalOpen}
+          onClose={() => setIsRoleDetailsModalOpen(false)}
+          team={application.team ?? null}
+          role={application.role}
+          matchScore={rawScore ?? null}
+          matchDetails={application?.role?.matchDetails ?? application?.role?.match_details ?? roleMatchData?.matchDetails ?? null}
+          onViewApplicationDetails={() => {
+            setIsRoleDetailsModalOpen(false);
+            setIsApplicationModalOpen(true);
+          }}
         />
       )}
 

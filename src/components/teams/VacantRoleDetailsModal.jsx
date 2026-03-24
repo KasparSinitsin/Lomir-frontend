@@ -14,6 +14,7 @@ import {
   X,
   ChevronRight,
   ChevronUp,
+  SendHorizontal,
 } from "lucide-react";
 import Modal from "../common/Modal";
 import {
@@ -210,6 +211,7 @@ const VacantRoleDetailsModal = ({
   isTeamMember = false,
   viewAsUserId = null,
   viewAsUser = null,
+  onViewApplicationDetails = null,
 }) => {
   const { user: currentUser, isAuthenticated } = useAuth();
   const userModal = useUserModalSafe();
@@ -1970,28 +1972,43 @@ const VacantRoleDetailsModal = ({
           ) : null
         )}
 
-        {isAuthenticated && !isTeamMember && isRoleOpen && (
-          <div className="mt-6 border-t border-base-200 pt-4">
-            <TeamApplicationButton
-              team={applicationTeam}
-              teamId={teamId}
-              roleId={roleId}
-              className="w-full"
-            />
-          </div>
-        )}
-
-        {isAuthenticated && isTeamMember && isRoleOpen && (
+        {onViewApplicationDetails ? (
           <div className="mt-6 border-t border-base-200 pt-4">
             <Button
               variant="primary"
               className="w-full"
-              onClick={() => setIsInternalApplicationOpen(true)}
-              icon={<UserSearch size={16} />}
+              onClick={onViewApplicationDetails}
+              icon={<SendHorizontal size={16} />}
             >
-              Apply for this Role
+              View Role Application Details
             </Button>
           </div>
+        ) : (
+          <>
+            {isAuthenticated && !isTeamMember && isRoleOpen && (
+              <div className="mt-6 border-t border-base-200 pt-4">
+                <TeamApplicationButton
+                  team={applicationTeam}
+                  teamId={teamId}
+                  roleId={roleId}
+                  className="w-full"
+                />
+              </div>
+            )}
+
+            {isAuthenticated && isTeamMember && isRoleOpen && (
+              <div className="mt-6 border-t border-base-200 pt-4">
+                <Button
+                  variant="primary"
+                  className="w-full"
+                  onClick={() => setIsInternalApplicationOpen(true)}
+                  icon={<UserSearch size={16} />}
+                >
+                  Apply for this Role
+                </Button>
+              </div>
+            )}
+          </>
         )}
       </div>
     </Modal>
