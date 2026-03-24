@@ -1273,19 +1273,13 @@ const TeamCard = ({
   let matchTier = null;
   let matchOverlay = null;
   let scoreSubtitleItem = null;
-  let scoreTooltipText = null;
-
   if (showScore) {
     matchTier = getMatchTier(rawScore);
 
     const matchDetails =
       normalizedData.team?.matchDetails ?? normalizedData.team?.match_details ??
       roleMatchData?.matchDetails ?? null;
-    const matchType =
-      normalizedData.team?.matchType ?? normalizedData.team?.match_type ??
-      roleMatchData?.matchType ?? null;
-
-    let tooltipText; // also assigned to outer scoreTooltipText below
+    let tooltipText;
     const hasScoreBreakdown =
       matchDetails &&
       ((matchDetails.tagScore ?? matchDetails.tag_score) != null ||
@@ -1322,8 +1316,6 @@ const TeamCard = ({
           : `${matchTier.pct}% profile match`;
     }
 
-    scoreTooltipText = tooltipText;
-
     const iconSizeSubtitle =
       viewMode === "list" ? 10 : viewMode === "mini" ? 11 : 12;
     scoreSubtitleItem = (
@@ -1353,26 +1345,6 @@ const TeamCard = ({
       </div>
     );
   }
-
-  // ============ SCORE AVATAR (replaces team avatar when match score is available) ============
-
-  const scoreAvatarCard = showScore ? (
-    <Tooltip content={scoreTooltipText} wrapperClassName="w-full h-full">
-      <div className={`w-full h-full rounded-full relative flex items-center justify-center overflow-hidden ${matchTier.bg}`}>
-        <matchTier.Icon size={54} strokeWidth={1.5} className="absolute text-white/40" />
-        <span className="relative text-xl font-semibold leading-none text-white">{matchTier.pct}%</span>
-      </div>
-    </Tooltip>
-  ) : null;
-
-  const scoreAvatarList = showScore ? (
-    <Tooltip content={scoreTooltipText} wrapperClassName="w-full h-full">
-      <div className={`w-full h-full rounded-full relative flex items-center justify-center overflow-hidden ${matchTier.bg}`}>
-        <matchTier.Icon size={31} strokeWidth={1.5} className="absolute text-white/40" />
-        <span className="relative text-sm font-semibold leading-none text-white">{matchTier.pct}%</span>
-      </div>
-    </Tooltip>
-  ) : null;
 
   // ============ LIST VIEW ============
 
@@ -1520,15 +1492,14 @@ const TeamCard = ({
         <Card
           title={teamData.name || "Unknown Team"}
           subtitle={subtitleContent}
-          image={showScore ? null : getTeamImage()}
-          imageFallback={showScore ? null : getTeamInitials()}
+          image={getTeamImage()}
+          imageFallback={getTeamInitials()}
           imageAlt={`${teamData.name} team`}
           onClick={handleCardClick}
           viewMode="list"
           className=""
           clickTooltip={effectiveVariant === "role_application" ? "Click to view role details" : "Click to view Team details"}
-          imageOverlay={showScore ? null : matchOverlay}
-          imageReplacement={scoreAvatarList}
+          imageOverlay={matchOverlay}
       >
           <div
             className={`box-border w-56 flex-shrink-0 flex items-center gap-3 overflow-hidden ${listLocationWidthClassName} ${listLocationInsetClassName}`}
@@ -1974,8 +1945,8 @@ const TeamCard = ({
           </span>
         }
         hoverable
-        image={showScore ? null : getTeamImage()}
-        imageFallback={showScore ? null : getTeamInitials()}
+        image={getTeamImage()}
+        imageFallback={getTeamInitials()}
         imageAlt={`${teamData.name} team`}
         imageSize="medium"
         imageShape="circle"
@@ -1997,8 +1968,7 @@ const TeamCard = ({
           viewMode === "mini" ? "text-base mb-0.5 leading-[110%]" : ""
         }
         marginClassName={viewMode === "mini" ? "mb-2" : ""}
-        imageOverlay={showScore ? null : matchOverlay}
-        imageReplacement={scoreAvatarCard}
+        imageOverlay={matchOverlay}
       >
         {error && (
           <Alert
