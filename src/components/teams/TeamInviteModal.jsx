@@ -37,6 +37,115 @@ const idsMatch = (left, right) => {
   return normalizedLeft === normalizedRight;
 };
 
+const normalizeBoolean = (value) => {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "number") return value === 1;
+
+  if (typeof value === "string") {
+    const normalizedValue = value.trim().toLowerCase();
+    if (["true", "1", "yes"].includes(normalizedValue)) return true;
+    if (["false", "0", "no"].includes(normalizedValue)) return false;
+  }
+
+  return null;
+};
+
+const isExistingMemberStatus = (value) => {
+  if (typeof value !== "string") return false;
+
+  const normalizedValue = value.trim().toLowerCase();
+  return (
+    normalizedValue === "member" ||
+    normalizedValue === "existing-member" ||
+    normalizedValue === "existing_member"
+  );
+};
+
+const isInviteeExistingTeamMember = (team, inviteeId) => {
+  if (!team || inviteeId === null || inviteeId === undefined) return false;
+
+  const directFlags = [
+    team?.isInviteeMember,
+    team?.is_invitee_member,
+    team?.inviteeIsMember,
+    team?.invitee_is_member,
+    team?.alreadyMember,
+    team?.already_member,
+    team?.isExistingMember,
+    team?.is_existing_member,
+    team?.existingMember,
+    team?.existing_member,
+  ];
+
+  if (directFlags.some((flag) => normalizeBoolean(flag) === true)) {
+    return true;
+  }
+
+  const membershipStatuses = [
+    team?.inviteeMembershipStatus,
+    team?.invitee_membership_status,
+    team?.membershipStatus,
+    team?.membership_status,
+    team?.inviteeStatus,
+    team?.invitee_status,
+  ];
+
+  if (membershipStatuses.some(isExistingMemberStatus)) {
+    return true;
+  }
+
+  if (idsMatch(team?.owner_id ?? team?.ownerId, inviteeId)) {
+    return true;
+  }
+
+  const memberCollections = [
+    team?.members,
+    team?.teamMembers,
+    team?.team_members,
+  ].filter(Array.isArray);
+
+  if (
+    memberCollections.some((members) =>
+      members.some((member) =>
+        idsMatch(
+          member?.userId ??
+            member?.user_id ??
+            member?.memberId ??
+            member?.member_id ??
+            member?.id,
+          inviteeId,
+        ),
+      ),
+    )
+  ) {
+    return true;
+  }
+
+  const memberIdLists = [
+    team?.memberIds,
+    team?.member_ids,
+    team?.memberUserIds,
+    team?.member_user_ids,
+    team?.teamMemberIds,
+    team?.team_member_ids,
+  ].filter(Array.isArray);
+
+  return memberIdLists.some((memberIds) =>
+    memberIds.some((memberId) => idsMatch(memberId, inviteeId)),
+  );
+};
+
+const unwrapTeamPayload = (payload) => {
+  if (!payload || typeof payload !== "object") return null;
+
+  const nestedData = payload.data;
+  if (nestedData && typeof nestedData === "object" && !Array.isArray(nestedData)) {
+    return nestedData;
+  }
+
+  return payload;
+};
+
 /**
  * TeamInviteModal Component
  *
@@ -90,8 +199,8 @@ const TeamInviteModal = ({
   const [selectedTeamForDetails, setSelectedTeamForDetails] = useState(null);
   const [isTeamDetailsOpen, setIsTeamDetailsOpen] = useState(false);
 
-  // Store invitation/application data per team
-  // { teamId: { hasInviteForUser: bool, hasApplicationFromUser: bool, allInvitations: [], allApplications: [] } }
+  // Store invitation/application/member data per team.
+  // { teamId: { hasInviteForUser: bool, hasApplicationFromUser: bool, isExistingMember: bool, allInvitations: [], allApplications: [] } }
   const [teamStatusData, setTeamStatusData] = useState({});
 
   // Invites and Applications modal state
@@ -110,18 +219,66 @@ const TeamInviteModal = ({
         setLoading(true);
         setError(null);
 
-        // Fetch teams where current user can invite (excluding teams where invitee is already a member)
+        // Fetch teams where the current user can invite the selected user.
         const teamsResponse = await teamService.getTeamsWhereUserCanInvite(
           inviteeId
         );
-        const teamsData = teamsResponse.data || [];
-        setTeams(teamsData);
+        const availableTeams = teamsResponse.data || [];
+        const prefilledTeamWasExcluded =
+          normalizedPrefillTeamId != null &&
+          !availableTeams.some((team) => idsMatch(team.id, normalizedPrefillTeamId));
+        let teamsData = availableTeams;
+
+        if (prefilledTeamWasExcluded) {
+          try {
+            const prefilledTeamResponse = await teamService.getTeamById(
+              normalizedPrefillTeamId,
+            );
+            const fetchedPrefilledTeam = unwrapTeamPayload(prefilledTeamResponse);
+
+            if (fetchedPrefilledTeam?.id != null) {
+              teamsData = [fetchedPrefilledTeam, ...availableTeams];
+            } else {
+              teamsData = [
+                {
+                  id: normalizedPrefillTeamId,
+                  name: prefillTeamName || "Prefilled Team",
+                },
+                ...availableTeams,
+              ];
+            }
+          } catch (prefilledTeamError) {
+            console.warn(
+              `Could not fetch prefilled team ${normalizedPrefillTeamId}:`,
+              prefilledTeamError,
+            );
+            teamsData = [
+              {
+                id: normalizedPrefillTeamId,
+                name: prefillTeamName || "Prefilled Team",
+              },
+              ...availableTeams,
+            ];
+          }
+        }
+
+        const uniqueTeams = teamsData.filter((team, index, allTeams) => {
+          const normalizedTeamId = normalizeId(team?.id);
+          if (normalizedTeamId == null) return false;
+
+          return (
+            allTeams.findIndex((candidate) =>
+              idsMatch(candidate?.id, normalizedTeamId),
+            ) === index
+          );
+        });
+        setTeams(uniqueTeams);
 
         // Fetch pending invitations and applications for each team
         const statusData = {};
 
         await Promise.all(
-          teamsData.map(async (team) => {
+          uniqueTeams.map(async (team) => {
             try {
               // Fetch all sent invitations for this team
               const invitationsResponse =
@@ -148,10 +305,15 @@ const TeamInviteModal = ({
                     app.applicant_id === inviteeId) &&
                   app.status === "pending"
               );
+              const isExistingMember =
+                (prefilledTeamWasExcluded &&
+                  idsMatch(team.id, normalizedPrefillTeamId)) ||
+                isInviteeExistingTeamMember(team, inviteeId);
 
               statusData[team.id] = {
                 hasInviteForUser,
                 hasApplicationFromUser,
+                isExistingMember,
                 allInvitations,
                 allApplications,
               };
@@ -160,6 +322,7 @@ const TeamInviteModal = ({
               statusData[team.id] = {
                 hasInviteForUser: false,
                 hasApplicationFromUser: false,
+                isExistingMember: false,
                 allInvitations: [],
                 allApplications: [],
               };
@@ -177,7 +340,7 @@ const TeamInviteModal = ({
     };
 
     fetchTeamsAndStatus();
-  }, [isOpen, inviteeId]);
+  }, [isOpen, inviteeId, normalizedPrefillTeamId, prefillTeamName]);
 
   // Reset state when modal opens
   useEffect(() => {
@@ -209,11 +372,12 @@ const TeamInviteModal = ({
           0;
         const hasOpenSlot =
           max === null || max === undefined ? true : currentMembers < max;
+        const isExistingMember = status.isExistingMember === true;
 
         return (
           !status.hasInviteForUser &&
           !status.hasApplicationFromUser &&
-          hasOpenSlot
+          (hasOpenSlot || isExistingMember)
         );
       };
 
@@ -414,6 +578,7 @@ const TeamInviteModal = ({
     const status = teamStatusData[teamId] || {};
     const hasPendingInvite = status.hasInviteForUser;
     const hasPendingApplication = status.hasApplicationFromUser;
+    const isExistingMember = status.isExistingMember === true;
     const teamHasCapacity = hasCapacity(team);
 
     if (hasPendingInvite) {
@@ -433,6 +598,20 @@ const TeamInviteModal = ({
         icon: Mail,
         badgeClass: "badge-role-owner",
         clickable: true,
+      };
+    }
+
+    if (isExistingMember) {
+      return {
+        type: "existing-member",
+        label: "Member",
+        icon: Users,
+        clickable: true,
+        customStyle: {
+          backgroundColor: "rgba(107, 114, 128, 0.15)",
+          borderColor: "rgba(107, 114, 128, 0.3)",
+          color: "rgba(31, 41, 55, 0.9)",
+        },
       };
     }
 
@@ -468,7 +647,7 @@ const TeamInviteModal = ({
     return (
       !status.hasInviteForUser &&
       !status.hasApplicationFromUser &&
-      hasCapacity(team)
+      (hasCapacity(team) || status.isExistingMember === true)
     );
   };
 
@@ -491,6 +670,9 @@ const TeamInviteModal = ({
       teams.find((team) => idsMatch(team.id, selectedTeamId)) || null,
     [teams, selectedTeamId],
   );
+  const selectedTeamStatus =
+    (selectedTeam && teamStatusData[selectedTeam.id]) || {};
+  const selectedTeamRequiresRole = selectedTeamStatus.isExistingMember === true;
 
   const prefillContextNote = useMemo(() => {
     if (!idsMatch(selectedTeamId, normalizedPrefillTeamId)) return null;
@@ -523,6 +705,13 @@ const TeamInviteModal = ({
   const handleSendInvitation = async () => {
     if (!selectedTeamId) {
       setError("Please select a team");
+      return;
+    }
+
+    if (selectedTeamRequiresRole && !selectedRoleId) {
+      setError(
+        "Select a role to invite this team member for a specific position.",
+      );
       return;
     }
 
@@ -571,7 +760,8 @@ const TeamInviteModal = ({
       setIsApplicationsModalOpen(true);
     } else if (
       statusBadge.type === "available" ||
-      statusBadge.type === "selected"
+      statusBadge.type === "selected" ||
+      statusBadge.type === "existing-member"
     ) {
       if (isTeamSelectable(teamId, team)) {
         const nextTeamId = idsMatch(selectedTeamId, teamId) ? null : teamId;
@@ -716,6 +906,12 @@ const TeamInviteModal = ({
     </div>
   );
 
+  const canSendInvitation =
+    !!selectedTeamId &&
+    !sending &&
+    !success &&
+    (!selectedTeamRequiresRole || selectedRoleId !== null);
+
   const footer = (
     <div className="flex justify-end gap-3">
       <Button variant="errorOutline" onClick={onClose} disabled={sending}>
@@ -724,7 +920,7 @@ const TeamInviteModal = ({
       <Button
         variant="successOutline"
         onClick={handleSendInvitation}
-        disabled={!selectedTeamId || sending || success}
+        disabled={!canSendInvitation}
         icon={<Send size={16} />}
       >
         {sending ? "Sending..." : "Send Invitation"}
@@ -954,11 +1150,13 @@ const TeamInviteModal = ({
                   <p className="text-sm text-base-content/70">
                     This team has no open vacant roles right now.
                   </p>
-                    <p className="form-helper-text">
-                    {idsMatch(selectedTeamId, normalizedPrefillTeamId) &&
-                    prefillRoleName
-                      ? `${prefillRoleName} isn't currently available. You can still send a general team invitation.`
-                      : "You can still send a general team invitation without choosing a role."}
+                  <p className="form-helper-text">
+                    {selectedTeamRequiresRole
+                      ? "This user is already a member of the team, so an open role is required before you can send an invitation."
+                      : idsMatch(selectedTeamId, normalizedPrefillTeamId) &&
+                          prefillRoleName
+                        ? `${prefillRoleName} isn't currently available. You can still send a general team invitation.`
+                        : "You can still send a general team invitation without choosing a role."}
                   </p>
                 </div>
               ) : (
@@ -1036,7 +1234,18 @@ const TeamInviteModal = ({
 
               {!loadingRoles &&
                 vacantRoles.length > 0 &&
-                selectedRoleId === null && (
+                selectedRoleId === null &&
+                selectedTeamRequiresRole && (
+                  <p className="text-xs text-base-content/40 mt-1.5">
+                    Select a role to invite this team member for a specific
+                    position.
+                  </p>
+                )}
+
+              {!loadingRoles &&
+                vacantRoles.length > 0 &&
+                selectedRoleId === null &&
+                !selectedTeamRequiresRole && (
                   <p className="text-xs text-base-content/40 mt-1.5">
                     No role selected. Your invitation will be sent as a general
                     team invitation.
