@@ -869,7 +869,21 @@ const VacantRoleDetailsModal = ({
     : serverRoleMatchScore;
   const effectiveMatchDetails = isFilledRole
     ? computedRoleMatch?.matchDetails ?? null
-    : serverRoleMatchDetails;
+    : serverRoleMatchDetails
+      ? {
+          ...serverRoleMatchDetails,
+          distanceKm:
+            serverRoleMatchDetails.distanceKm ??
+            serverRoleMatchDetails.distance_km ??
+            computedRoleMatch?.matchDetails?.distanceKm ??
+            null,
+          isWithinRange:
+            serverRoleMatchDetails.isWithinRange ??
+            serverRoleMatchDetails.is_within_range ??
+            computedRoleMatch?.matchDetails?.isWithinRange ??
+            null,
+        }
+      : computedRoleMatch?.matchDetails ?? null;
   const effectivePct =
     effectiveMatchScore !== null && effectiveMatchScore !== undefined
       ? Math.round(effectiveMatchScore * 100)
