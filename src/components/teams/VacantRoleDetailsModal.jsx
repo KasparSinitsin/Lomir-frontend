@@ -872,16 +872,12 @@ const VacantRoleDetailsModal = ({
     : serverRoleMatchDetails
       ? {
           ...serverRoleMatchDetails,
-          distanceKm:
-            serverRoleMatchDetails.distanceKm ??
-            serverRoleMatchDetails.distance_km ??
-            computedRoleMatch?.matchDetails?.distanceKm ??
-            null,
-          isWithinRange:
-            serverRoleMatchDetails.isWithinRange ??
-            serverRoleMatchDetails.is_within_range ??
-            computedRoleMatch?.matchDetails?.isWithinRange ??
-            null,
+          // distanceKm and isWithinRange must come from local computation only —
+          // the server value is not reliable (wrong baseline). If local computation
+          // can't determine distance (no coordinates), these stay null and the
+          // location indicator is correctly hidden.
+          distanceKm: computedRoleMatch?.matchDetails?.distanceKm ?? null,
+          isWithinRange: computedRoleMatch?.matchDetails?.isWithinRange ?? null,
         }
       : computedRoleMatch?.matchDetails ?? null;
   const effectivePct =
