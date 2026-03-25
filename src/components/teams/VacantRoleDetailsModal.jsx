@@ -990,6 +990,10 @@ const VacantRoleDetailsModal = ({
         memberRow?.member?.distanceKm ??
         null,
       teamName: teamName ?? null,
+      invitationPrefillTeamId: teamId ?? null,
+      invitationPrefillRoleId: roleId ?? null,
+      invitationPrefillTeamName: teamName ?? null,
+      invitationPrefillRoleName: roleName ?? null,
     });
   };
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   Users,
   Send,
@@ -7,6 +7,9 @@ import {
   SendHorizontal,
   Mail,
   Check,
+  UserSearch,
+  MapPin,
+  Globe,
 } from "lucide-react";
 import Modal from "../common/Modal";
 import Button from "../common/Button";
@@ -17,6 +20,22 @@ import TeamInvitesModal from "../teams/TeamInvitesModal";
 import TeamApplicationsModal from "../teams/TeamApplicationsModal";
 import { getUserInitials } from "../../utils/userHelpers";
 import { teamService } from "../../services/teamService";
+import { vacantRoleService } from "../../services/vacantRoleService";
+
+const normalizeId = (value) => {
+  if (value === null || value === undefined || value === "") return null;
+
+  const numericValue = Number(value);
+  return Number.isFinite(numericValue) ? numericValue : null;
+};
+
+const idsMatch = (left, right) => {
+  const normalizedLeft = normalizeId(left);
+  const normalizedRight = normalizeId(right);
+
+  if (normalizedLeft === null || normalizedRight === null) return false;
+  return normalizedLeft === normalizedRight;
+};
 
 /**
  * TeamInviteModal Component
@@ -33,6 +52,10 @@ import { teamService } from "../../services/teamService";
  * @param {string} inviteeUsername - Username of the invitee
  * @param {string} inviteeAvatar - Avatar URL of the invitee
  * @param {string} inviteeBio - Bio/description of the invitee
+ * @param {string|number|null} prefillTeamId - Team ID to preselect when available
+ * @param {string|number|null} prefillRoleId - Vacant role ID to preselect when available
+ * @param {string|null} prefillTeamName - Team name for prefill context
+ * @param {string|null} prefillRoleName - Role name for prefill context
  */
 const TeamInviteModal = ({
   isOpen,
@@ -44,11 +67,20 @@ const TeamInviteModal = ({
   inviteeUsername,
   inviteeAvatar,
   inviteeBio,
+  prefillTeamId = null,
+  prefillRoleId = null,
+  prefillTeamName = null,
+  prefillRoleName = null,
 }) => {
+  const normalizedPrefillTeamId = normalizeId(prefillTeamId);
+  const normalizedPrefillRoleId = normalizeId(prefillRoleId);
   const [teams, setTeams] = useState([]);
   const [selectedTeamId, setSelectedTeamId] = useState(null);
+  const [vacantRoles, setVacantRoles] = useState([]);
+  const [selectedRoleId, setSelectedRoleId] = useState(null);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
+  const [loadingRoles, setLoadingRoles] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
@@ -150,12 +182,136 @@ const TeamInviteModal = ({
   // Reset state when modal opens
   useEffect(() => {
     if (isOpen) {
-      setSelectedTeamId(null);
+      setSelectedTeamId(normalizedPrefillTeamId);
+      setVacantRoles([]);
+      setSelectedRoleId(normalizedPrefillRoleId);
       setMessage("");
+      setLoadingRoles(false);
       setError(null);
       setSuccess(null);
     }
-  }, [isOpen]);
+  }, [isOpen, normalizedPrefillTeamId, normalizedPrefillRoleId]);
+
+  useEffect(() => {
+    if (!isOpen || loading) return;
+
+    setSelectedTeamId((currentSelectedTeamId) => {
+      const isSelectableTeam = (team) => {
+        if (!team) return false;
+
+        const status = teamStatusData[team.id] || {};
+        const max = team.max_members ?? team.maxMembers;
+        const currentMembers =
+          team.current_members_count ??
+          team.currentMembersCount ??
+          team.member_count ??
+          team.memberCount ??
+          0;
+        const hasOpenSlot =
+          max === null || max === undefined ? true : currentMembers < max;
+
+        return (
+          !status.hasInviteForUser &&
+          !status.hasApplicationFromUser &&
+          hasOpenSlot
+        );
+      };
+
+      const currentlySelectedTeam = teams.find((team) =>
+        idsMatch(team.id, currentSelectedTeamId),
+      );
+      if (currentlySelectedTeam && isSelectableTeam(currentlySelectedTeam)) {
+        return normalizeId(currentlySelectedTeam.id);
+      }
+
+      const prefilledTeam = teams.find((team) =>
+        idsMatch(team.id, normalizedPrefillTeamId),
+      );
+      if (prefilledTeam && isSelectableTeam(prefilledTeam)) {
+        return normalizeId(prefilledTeam.id);
+      }
+
+      return null;
+    });
+  }, [isOpen, loading, teams, teamStatusData, normalizedPrefillTeamId]);
+
+  useEffect(() => {
+    if (!isOpen || !selectedTeamId) {
+      setVacantRoles([]);
+      setSelectedRoleId(null);
+      setLoadingRoles(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    const fetchVacantRoles = async () => {
+      try {
+        setLoadingRoles(true);
+        setVacantRoles([]);
+
+        const response = await vacantRoleService.getVacantRoles(
+          selectedTeamId,
+          "open",
+        );
+
+        if (!cancelled) {
+          setVacantRoles(response.data || []);
+        }
+      } catch (err) {
+        console.warn(
+          `Could not fetch vacant roles for team ${selectedTeamId}:`,
+          err,
+        );
+        if (!cancelled) {
+          setVacantRoles([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingRoles(false);
+        }
+      }
+    };
+
+    fetchVacantRoles();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, selectedTeamId]);
+
+  useEffect(() => {
+    if (!isOpen || !selectedTeamId || loadingRoles) return;
+
+    setSelectedRoleId((currentSelectedRoleId) => {
+      const selectedRoleStillExists = vacantRoles.find((role) =>
+        idsMatch(role.id, currentSelectedRoleId),
+      );
+      if (selectedRoleStillExists) {
+        return normalizeId(selectedRoleStillExists.id);
+      }
+
+      if (
+        !idsMatch(selectedTeamId, normalizedPrefillTeamId) ||
+        normalizedPrefillRoleId == null
+      ) {
+        return null;
+      }
+
+      const prefilledRole = vacantRoles.find((role) =>
+        idsMatch(role.id, normalizedPrefillRoleId),
+      );
+
+      return prefilledRole ? normalizeId(prefilledRole.id) : null;
+    });
+  }, [
+    isOpen,
+    selectedTeamId,
+    vacantRoles,
+    loadingRoles,
+    normalizedPrefillTeamId,
+    normalizedPrefillRoleId,
+  ]);
 
   // ============ Helper Functions ============
 
@@ -233,9 +389,28 @@ const TeamInviteModal = ({
       .toUpperCase();
   };
 
+  const getRoleInitials = (roleName) => {
+    const name = roleName || "Vacant Role";
+    const words = name.trim().split(/\s+/);
+
+    if (words.length >= 2) {
+      return `${words[0].charAt(0)}${words[1].charAt(0)}`.toUpperCase();
+    }
+
+    return name.substring(0, 2).toUpperCase();
+  };
+
+  const getRoleLocation = (role) => {
+    const isRemote = role.isRemote ?? role.is_remote;
+    if (isRemote) return "Remote";
+
+    const parts = [role.city, role.country].filter(Boolean);
+    return parts.length > 0 ? parts.join(", ") : null;
+  };
+
   // Get the status badge for a team
   const getTeamStatusBadge = (teamId, team) => {
-    const isSelected = selectedTeamId === teamId;
+    const isSelected = idsMatch(selectedTeamId, teamId);
     const status = teamStatusData[teamId] || {};
     const hasPendingInvite = status.hasInviteForUser;
     const hasPendingApplication = status.hasApplicationFromUser;
@@ -297,6 +472,52 @@ const TeamInviteModal = ({
     );
   };
 
+  const orderedTeams = useMemo(() => {
+    if (normalizedPrefillTeamId == null) return teams;
+
+    const prefilledTeam = teams.find((team) =>
+      idsMatch(team.id, normalizedPrefillTeamId),
+    );
+    if (!prefilledTeam) return teams;
+
+    return [
+      prefilledTeam,
+      ...teams.filter((team) => !idsMatch(team.id, normalizedPrefillTeamId)),
+    ];
+  }, [teams, normalizedPrefillTeamId]);
+
+  const selectedTeam = useMemo(
+    () =>
+      teams.find((team) => idsMatch(team.id, selectedTeamId)) || null,
+    [teams, selectedTeamId],
+  );
+
+  const prefillContextNote = useMemo(() => {
+    if (!idsMatch(selectedTeamId, normalizedPrefillTeamId)) return null;
+
+    const teamLabel = selectedTeam?.name || prefillTeamName || null;
+
+    if (prefillRoleName && teamLabel) {
+      return `Prefilled from match: ${prefillRoleName} in ${teamLabel}.`;
+    }
+
+    if (prefillRoleName) {
+      return `Prefilled from match: ${prefillRoleName}.`;
+    }
+
+    if (teamLabel) {
+      return `Prefilled team: ${teamLabel}.`;
+    }
+
+    return null;
+  }, [
+    prefillRoleName,
+    prefillTeamName,
+    normalizedPrefillTeamId,
+    selectedTeam,
+    selectedTeamId,
+  ]);
+
   // ============ Handlers ============
 
   const handleSendInvitation = async () => {
@@ -309,7 +530,12 @@ const TeamInviteModal = ({
       setSending(true);
       setError(null);
 
-      await teamService.sendInvitation(selectedTeamId, inviteeId, message);
+      await teamService.sendInvitation(
+        selectedTeamId,
+        inviteeId,
+        message,
+        selectedRoleId,
+      );
 
       setSuccess(`Invitation sent to ${getInviteeDisplayName()}!`);
 
@@ -348,7 +574,10 @@ const TeamInviteModal = ({
       statusBadge.type === "selected"
     ) {
       if (isTeamSelectable(teamId, team)) {
-        setSelectedTeamId(selectedTeamId === teamId ? null : teamId);
+        const nextTeamId = idsMatch(selectedTeamId, teamId) ? null : teamId;
+        setSelectedTeamId(nextTeamId);
+        setSelectedRoleId(null);
+        setVacantRoles([]);
         setError(null);
       }
     }
@@ -376,6 +605,12 @@ const TeamInviteModal = ({
   // Handle user modal close
   const handleUserModalClose = () => {
     setSelectedUserId(null);
+  };
+
+  const handleRoleCardClick = (roleId) => {
+    setSelectedRoleId((currentRoleId) =>
+      idsMatch(currentRoleId, roleId) ? null : roleId,
+    );
   };
 
   // Handle cancel invitation (called from TeamInvitesModal)
@@ -596,7 +831,7 @@ const TeamInviteModal = ({
               <div className="flex justify-center py-6">
                 <div className="loading loading-spinner loading-md text-primary"></div>
               </div>
-            ) : teams.length === 0 ? (
+            ) : orderedTeams.length === 0 ? (
               <div className="text-center py-6 bg-base-200/30 rounded-lg border border-base-300">
                 <AlertCircle className="mx-auto mb-2 text-warning" size={28} />
                 <p className="text-sm text-base-content/70">
@@ -608,7 +843,7 @@ const TeamInviteModal = ({
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-64 overflow-y-auto">
-                {teams.map((team) => {
+                {orderedTeams.map((team) => {
                   const statusBadge = getTeamStatusBadge(team.id, team);
                   const BadgeIcon = statusBadge?.icon;
 
@@ -618,7 +853,7 @@ const TeamInviteModal = ({
                       onClick={() => handleCardClick(team)}
                       className={`relative flex items-center gap-3 p-3 rounded-xl shadow cursor-pointer transition-all duration-200 
                         ${
-                          selectedTeamId === team.id
+                          idsMatch(selectedTeamId, team.id)
                             ? "bg-green-100 ring-2 ring-primary shadow-md"
                             : "bg-green-50 hover:bg-green-100 hover:shadow-md"
                         }`}
@@ -695,8 +930,123 @@ const TeamInviteModal = ({
             )}
           </div>
 
+          {/* Vacant role selection */}
+          {selectedTeamId && (
+            <div>
+              <p className="text-xs text-base-content/60 mb-2 flex items-center">
+                <UserSearch size={12} className="text-orange-500 mr-1" />
+                Select a role you want to fill in this team:
+              </p>
+
+              {prefillContextNote && (
+                <p className="text-xs text-base-content/40 mb-2">
+                  {prefillContextNote}
+                </p>
+              )}
+
+              {loadingRoles ? (
+                <div className="flex justify-center py-6">
+                  <div className="loading loading-spinner loading-md text-primary"></div>
+                </div>
+              ) : vacantRoles.length === 0 ? (
+                <div className="text-center py-5 bg-base-200/30 rounded-lg border border-base-300">
+                  <AlertCircle className="mx-auto mb-2 text-warning" size={24} />
+                  <p className="text-sm text-base-content/70">
+                    This team has no open vacant roles right now.
+                  </p>
+                    <p className="form-helper-text">
+                    {idsMatch(selectedTeamId, normalizedPrefillTeamId) &&
+                    prefillRoleName
+                      ? `${prefillRoleName} isn't currently available. You can still send a general team invitation.`
+                      : "You can still send a general team invitation without choosing a role."}
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-64 overflow-y-auto">
+                  {vacantRoles.map((role) => {
+                    const roleName =
+                      role.roleName ?? role.role_name ?? "Vacant Role";
+                    const isSelected = idsMatch(selectedRoleId, role.id);
+                    const locationText = getRoleLocation(role);
+                    const isRemote = role.isRemote ?? role.is_remote;
+
+                    return (
+                      <div
+                        key={role.id}
+                        onClick={() => handleRoleCardClick(role.id)}
+                        className={`relative flex items-center gap-3 p-3 rounded-xl shadow cursor-pointer transition-all duration-200
+                          ${
+                            isSelected
+                              ? "bg-amber-100 ring-2 ring-amber-400 shadow-md"
+                              : "bg-amber-50 hover:bg-amber-100 hover:shadow-md"
+                          }`}
+                      >
+                        <div className="absolute top-2 right-2">
+                          <span
+                            className={`badge badge-sm gap-1 ${
+                              isSelected ? "" : "badge-role-member"
+                            }`}
+                            style={
+                              isSelected
+                                ? {
+                                    backgroundColor:
+                                      "var(--color-warning, #F59E0B)",
+                                    color: "#ffffff",
+                                  }
+                                : {}
+                            }
+                          >
+                            {isSelected ? (
+                              <Check className="w-3 h-3" />
+                            ) : (
+                              <UserSearch className="w-3 h-3" />
+                            )}
+                            {isSelected ? "Selected" : "Select"}
+                          </span>
+                        </div>
+
+                        <div className="avatar placeholder flex-shrink-0">
+                          <div className="bg-amber-200 text-amber-800 rounded-full w-10 h-10 flex items-center justify-center">
+                            <span className="text-sm font-medium">
+                              {getRoleInitials(roleName)}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="flex-1 min-w-0 pr-16">
+                          <h4 className="font-medium text-sm text-base-content leading-tight truncate">
+                            {roleName}
+                          </h4>
+                          {locationText && (
+                            <p className="text-xs text-base-content/60 flex items-center mt-0.5">
+                              {isRemote ? (
+                                <Globe size={10} className="mr-1 flex-shrink-0" />
+                              ) : (
+                                <MapPin size={10} className="mr-1 flex-shrink-0" />
+                              )}
+                              <span className="truncate">{locationText}</span>
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {!loadingRoles &&
+                vacantRoles.length > 0 &&
+                selectedRoleId === null && (
+                  <p className="text-xs text-base-content/40 mt-1.5">
+                    No role selected. Your invitation will be sent as a general
+                    team invitation.
+                  </p>
+                )}
+            </div>
+          )}
+
           {/* Optional message */}
-          {teams.length > 0 && (
+          {orderedTeams.length > 0 && (
             <div>
               <p className="text-xs text-base-content/60 mb-1 flex items-center">
                 <Send size={12} className="text-info mr-1" />

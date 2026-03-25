@@ -490,12 +490,21 @@ export const teamService = {
     }
   },
 
-  sendInvitation: async (teamId, inviteeId, message = "") => {
+  sendInvitation: async (teamId, inviteeId, message = "", roleId = null) => {
     try {
-      const response = await api.post(`/api/teams/${teamId}/invitations`, {
+      const invitationData = {
         inviteeId,
         message,
-      });
+      };
+
+      if (roleId !== null && roleId !== undefined) {
+        invitationData.roleId = roleId;
+      }
+
+      const response = await api.post(
+        `/api/teams/${teamId}/invitations`,
+        invitationData,
+      );
       return response.data;
     } catch (error) {
       console.error(`Error sending invitation to team ${teamId}:`, error);
