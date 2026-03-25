@@ -864,22 +864,18 @@ const VacantRoleDetailsModal = ({
           userBadgeMap,
         })
       : null;
-  const effectiveMatchScore = isFilledRole
-    ? computedRoleMatch?.matchScore ?? null
-    : serverRoleMatchScore;
-  const effectiveMatchDetails = isFilledRole
-    ? computedRoleMatch?.matchDetails ?? null
-    : serverRoleMatchDetails
-      ? {
-          ...serverRoleMatchDetails,
-          // distanceKm and isWithinRange must come from local computation only —
-          // the server value is not reliable (wrong baseline). If local computation
-          // can't determine distance (no coordinates), these stay null and the
-          // location indicator is correctly hidden.
-          distanceKm: computedRoleMatch?.matchDetails?.distanceKm ?? null,
-          isWithinRange: computedRoleMatch?.matchDetails?.isWithinRange ?? null,
-        }
-      : computedRoleMatch?.matchDetails ?? null;
+  // Prefer locally-computed match when available: it uses the hydrated role
+  // (with lat/lng after geocoding) and the user's actual profile data, so it
+  // gives the real distance score and correct distanceKm / isWithinRange.
+  // Fall back to the server value when local computation hasn't run yet.
+  const effectiveMatchScore =
+    computedRoleMatch?.matchScore != null
+      ? computedRoleMatch.matchScore
+      : isFilledRole ? null : serverRoleMatchScore;
+  const effectiveMatchDetails =
+    computedRoleMatch?.matchDetails != null
+      ? computedRoleMatch.matchDetails
+      : isFilledRole ? null : serverRoleMatchDetails;
   const effectivePct =
     effectiveMatchScore !== null && effectiveMatchScore !== undefined
       ? Math.round(effectiveMatchScore * 100)
