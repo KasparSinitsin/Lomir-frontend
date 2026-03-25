@@ -1088,6 +1088,7 @@ const TeamInviteModal = ({
       <TeamInvitesModal
         isOpen={isInvitesModalOpen}
         onClose={handleInvitesModalClose}
+        teamId={selectedTeamForModal?.id}
         invitations={selectedTeamInvitations}
         onCancelInvitation={handleCancelInvitation}
         teamName={selectedTeamForModal?.name}

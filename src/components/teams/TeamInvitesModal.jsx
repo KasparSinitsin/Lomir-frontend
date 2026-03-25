@@ -3,6 +3,7 @@ import { User, MapPin, Calendar, SendHorizontal } from "lucide-react";
 import RequestListModal from "../common/RequestListModal";
 import Button from "../common/Button";
 import InlineUserLink, { InvitedByLink } from "../users/InlineUserLink";
+import VacantRoleCard from "./VacantRoleCard";
 import { useUserModal } from "../../contexts/UserModalContext";
 import { getUserInitials, getDisplayName } from "../../utils/userHelpers";
 import { format } from "date-fns";
@@ -24,6 +25,7 @@ import { format } from "date-fns";
 const TeamInvitesModal = ({
   isOpen,
   onClose,
+  teamId = null,
   invitations = [],
   onCancelInvitation,
   teamName,
@@ -257,6 +259,23 @@ const TeamInvitesModal = ({
                 <p className="text-sm text-base-content/90 leading-relaxed">
                   {invitation.message}
                 </p>
+              </div>
+            )}
+
+            {/* Vacant role card — shown when invitation targets a specific role */}
+            {(invitation.role || invitation.roleId || invitation.role_id) && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-3">
+                <VacantRoleCard
+                  role={invitation.role || { id: invitation.roleId ?? invitation.role_id, roleName: invitation.roleName ?? invitation.role_name }}
+                  team={{ id: teamId, name: teamName }}
+                  matchScore={invitation.role?.matchScore ?? invitation.role?.match_score ?? null}
+                  matchDetails={invitation.role?.matchDetails ?? invitation.role?.match_details ?? null}
+                  canManage={false}
+                  canManageStatus={false}
+                  isTeamMember={true}
+                  viewAsUserId={invitation.invitee?.id ?? invitation.invitee_id}
+                  viewAsUser={invitation.invitee}
+                />
               </div>
             )}
 
