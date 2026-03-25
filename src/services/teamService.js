@@ -533,11 +533,12 @@ export const teamService = {
     }
   },
 
-  respondToInvitation: async (invitationId, action, responseMessage = "") => {
+  respondToInvitation: async (invitationId, action, responseMessage = "", fillRole = false) => {
     try {
       const response = await api.put(`/api/teams/invitations/${invitationId}`, {
         action,
         response_message: responseMessage,
+        fill_role: fillRole,
       });
       return response.data;
     } catch (error) {
