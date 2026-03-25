@@ -275,6 +275,7 @@ const TeamInvitesModal = ({
                   isTeamMember={true}
                   viewAsUserId={invitation.invitee?.id ?? invitation.invitee_id}
                   viewAsUser={invitation.invitee}
+                  hideActions={true}
                 />
               </div>
             )}

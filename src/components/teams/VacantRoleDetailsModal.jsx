@@ -214,6 +214,7 @@ const VacantRoleDetailsModal = ({
   viewAsUserId = null,
   viewAsUser = null,
   onViewApplicationDetails = null,
+  hideActions = false,
 }) => {
   const { user: currentUser, isAuthenticated } = useAuth();
   const userModal = useUserModalSafe();
@@ -1106,7 +1107,7 @@ const VacantRoleDetailsModal = ({
           {modalStatusTitle}
         </h2>
       </div>
-      {!isFilledRole && isTeamMember && (tags.length > 0 || badges.length > 0) && (
+      {!isFilledRole && isTeamMember && (tags.length > 0 || badges.length > 0) && !hideActions && (
         <div className="flex items-center space-x-2">
           <Button
             variant="ghost"
@@ -2053,55 +2054,59 @@ const VacantRoleDetailsModal = ({
           ) : null
         )}
 
-        {onViewApplicationDetails ? (
-          <div className="mt-6 border-t border-base-200 pt-4">
-            <Button
-              variant="primary"
-              className="w-full"
-              onClick={onViewApplicationDetails}
-              icon={<SendHorizontal size={16} />}
-            >
-              View Role Application Details
-            </Button>
-          </div>
-        ) : (
+        {!hideActions && (
           <>
-            {isAuthenticated && !isTeamMember && isRoleOpen && (
+            {onViewApplicationDetails ? (
               <div className="mt-6 border-t border-base-200 pt-4">
-                <TeamApplicationButton
-                  team={applicationTeam}
-                  teamId={teamId}
-                  roleId={roleId}
+                <Button
+                  variant="primary"
                   className="w-full"
-                />
+                  onClick={onViewApplicationDetails}
+                  icon={<SendHorizontal size={16} />}
+                >
+                  View Role Application Details
+                </Button>
               </div>
-            )}
-
-            {isAuthenticated && isTeamMember && isRoleOpen && !applicationsLoading && (
-              <div className="mt-6 border-t border-base-200 pt-4">
-                {currentUserRoleApplication ? (
-                  <Button
-                    variant="primary"
-                    className="w-full"
-                    onClick={() => {
-                      setHighlightApplicantId(currentUser.id);
-                      setApplicationsModalOpen(true);
-                    }}
-                    icon={<SendHorizontal size={16} />}
-                  >
-                    View Role Application Details
-                  </Button>
-                ) : (
-                  <Button
-                    variant="primary"
-                    className="w-full"
-                    onClick={() => setIsInternalApplicationOpen(true)}
-                    icon={<UserSearch size={16} />}
-                  >
-                    Apply for this Role
-                  </Button>
+            ) : (
+              <>
+                {isAuthenticated && !isTeamMember && isRoleOpen && (
+                  <div className="mt-6 border-t border-base-200 pt-4">
+                    <TeamApplicationButton
+                      team={applicationTeam}
+                      teamId={teamId}
+                      roleId={roleId}
+                      className="w-full"
+                    />
+                  </div>
                 )}
-              </div>
+
+                {isAuthenticated && isTeamMember && isRoleOpen && !applicationsLoading && (
+                  <div className="mt-6 border-t border-base-200 pt-4">
+                    {currentUserRoleApplication ? (
+                      <Button
+                        variant="primary"
+                        className="w-full"
+                        onClick={() => {
+                          setHighlightApplicantId(currentUser.id);
+                          setApplicationsModalOpen(true);
+                        }}
+                        icon={<SendHorizontal size={16} />}
+                      >
+                        View Role Application Details
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="primary"
+                        className="w-full"
+                        onClick={() => setIsInternalApplicationOpen(true)}
+                        icon={<UserSearch size={16} />}
+                      >
+                        Apply for this Role
+                      </Button>
+                    )}
+                  </div>
+                )}
+              </>
             )}
           </>
         )}

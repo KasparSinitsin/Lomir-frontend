@@ -53,6 +53,7 @@ const VacantRoleCard = ({
   viewAsUserId = null,
   viewAsUser = null,
   onViewApplicationDetails = null,
+  hideActions = false,
 }) => {
   const [showMenu, setShowMenu] = useState(false);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
@@ -428,6 +429,7 @@ const VacantRoleCard = ({
         viewAsUserId={viewAsUserId}
         viewAsUser={viewAsUser}
         onViewApplicationDetails={onViewApplicationDetails}
+        hideActions={hideActions}
       />
     </>
   );

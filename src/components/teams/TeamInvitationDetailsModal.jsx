@@ -371,6 +371,7 @@ const TeamInvitationDetailsModal = ({
                 matchDetails={roleMatchDetails}
                 canManage={false}
                 isTeamMember={false}
+                hideActions={true}
               />
             </div>
           </div>
