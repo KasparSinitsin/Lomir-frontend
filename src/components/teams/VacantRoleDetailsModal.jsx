@@ -252,6 +252,12 @@ const VacantRoleDetailsModal = ({
   const roleId = role?.id;
   const teamId = role?.teamId ?? role?.team_id ?? team?.id;
   const teamMembers = Array.isArray(team?.members) ? team.members : EMPTY_TEAM_MEMBERS;
+  const currentTeamMemberIds = new Set(
+    teamMembers
+      .map((member) => member?.userId ?? member?.user_id ?? null)
+      .filter((id) => id != null)
+      .map(String),
+  );
   const canViewTeamMemberMatches = canManage || isTeamMember;
   const teamMemberIdsKey = JSON.stringify(
     [
@@ -1221,6 +1227,8 @@ const VacantRoleDetailsModal = ({
 
   const getRoleCandidateMatch = (userId) =>
     userId != null ? roleCandidateMatchMap[String(userId)] ?? null : null;
+  const isCurrentTeamMember = (userId) =>
+    userId != null && currentTeamMemberIds.has(String(userId));
 
   const getApplicationApplicantScore = (application) => {
     if (!application) return null;
@@ -1994,6 +2002,13 @@ const VacantRoleDetailsModal = ({
                   const applicantMatchTier =
                     applicantScore != null ? getMatchTier(applicantScore) : null;
                   const ApplicantMatchIcon = applicantMatchTier?.Icon ?? null;
+                  const applicantIsTeamMember = isCurrentTeamMember(applicantId);
+                  const applicationDate = formatDate(
+                    application?.created_at ??
+                    application?.createdAt ??
+                    application?.date ??
+                    application?.applied_at,
+                  );
                   const locationLabel = getPersonLocationText(
                     applicantProfile,
                     applicantDistanceKm,
@@ -2009,7 +2024,11 @@ const VacantRoleDetailsModal = ({
                     >
                       <button
                         type="button"
-                        className="flex items-start bg-green-50 rounded-xl shadow p-4 gap-4 transition-all duration-200 hover:bg-green-100 hover:shadow-md cursor-pointer text-left w-full"
+                        className={`flex items-start rounded-xl shadow p-4 gap-4 transition-all duration-200 hover:shadow-md cursor-pointer text-left w-full ${
+                          applicantIsTeamMember
+                            ? "bg-green-50 hover:bg-green-100"
+                            : "bg-white hover:bg-base-100"
+                        }`}
                         onClick={() => {
                           setHighlightApplicantId(applicantId);
                           setApplicationsModalOpen(true);
@@ -2072,6 +2091,22 @@ const VacantRoleDetailsModal = ({
                                     {applicantMatchTier.pct}%
                                   </span>
                                 </div>
+                              )}
+                              {applicationDate && (
+                                <CardMetaItem icon={Mail}>
+                                  {applicationDate}
+                                </CardMetaItem>
+                              )}
+                              {applicantIsTeamMember && (
+                                <Tooltip
+                                  content="Member of this team"
+                                  wrapperClassName="flex items-start gap-0.5 min-w-0"
+                                >
+                                  <Users
+                                    size={10}
+                                    className="text-success shrink-0 mt-[3px]"
+                                  />
+                                </Tooltip>
                               )}
                               <CardMetaItem icon={MapPin}>
                                 {locationLabel}
@@ -2181,6 +2216,7 @@ const VacantRoleDetailsModal = ({
                   const inviteeMatchTier =
                     inviteeScore != null ? getMatchTier(inviteeScore) : null;
                   const InviteeMatchIcon = inviteeMatchTier?.Icon ?? null;
+                  const inviteeIsTeamMember = isCurrentTeamMember(inviteeId);
                   const locationLabel = getPersonLocationText(
                     inviteeProfile,
                     inviteeDistanceKm,
@@ -2202,7 +2238,11 @@ const VacantRoleDetailsModal = ({
                     >
                       <button
                         type="button"
-                        className="flex items-start bg-green-50 rounded-xl shadow p-4 gap-4 transition-all duration-200 hover:bg-green-100 hover:shadow-md cursor-pointer text-left w-full"
+                        className={`flex items-start rounded-xl shadow p-4 gap-4 transition-all duration-200 hover:shadow-md cursor-pointer text-left w-full ${
+                          inviteeIsTeamMember
+                            ? "bg-green-50 hover:bg-green-100"
+                            : "bg-white hover:bg-base-100"
+                        }`}
                         onClick={() => {
                           setHighlightInviteeId(inviteeId);
                           setInvitationsModalOpen(true);
@@ -2266,14 +2306,25 @@ const VacantRoleDetailsModal = ({
                                   </span>
                                 </div>
                               )}
-                              <CardMetaItem icon={MapPin}>
-                                {locationLabel}
-                              </CardMetaItem>
                               {invitationDate && (
-                                <CardMetaItem icon={Calendar}>
+                                <CardMetaItem icon={SendHorizontal}>
                                   {invitationDate}
                                 </CardMetaItem>
                               )}
+                              {inviteeIsTeamMember && (
+                                <Tooltip
+                                  content="Member of this team"
+                                  wrapperClassName="flex items-start gap-0.5 min-w-0"
+                                >
+                                  <Users
+                                    size={10}
+                                    className="text-success shrink-0 mt-[3px]"
+                                  />
+                                </Tooltip>
+                              )}
+                              <CardMetaItem icon={MapPin}>
+                                {locationLabel}
+                              </CardMetaItem>
                             </CardMetaRow>
                           </div>
                         </div>
