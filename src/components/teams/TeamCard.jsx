@@ -1048,7 +1048,7 @@ const TeamCard = ({
       setActionLoading("accept");
       const invitationId = invitation?.id;
       const responseMessage = responses[invitationId] || "";
-      await onAccept(invitationId, responseMessage);
+      await onAccept(invitationId, responseMessage, false);
       // Clear the response after successful action
       setResponses((prev) => {
         const newResponses = { ...prev };

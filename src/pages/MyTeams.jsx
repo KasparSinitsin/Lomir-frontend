@@ -379,12 +379,13 @@ const MyTeams = () => {
   };
 
   // Invitation handlers
-  const handleInvitationAccept = async (invitationId, responseMessage = "") => {
+  const handleInvitationAccept = async (invitationId, responseMessage = "", fillRole = false) => {
     try {
       await teamService.respondToInvitation(
         invitationId,
         "accept",
         responseMessage,
+        fillRole,
       );
 
       console.log("Invitation accepted successfully");

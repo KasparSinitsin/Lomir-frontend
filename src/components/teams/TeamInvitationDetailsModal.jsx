@@ -6,13 +6,13 @@ import {
   Check,
   X,
   MailOpen,
+  UserPlus,
 } from "lucide-react";
 import Modal from "../common/Modal";
 import Button from "../common/Button";
 import UserDetailsModal from "../users/UserDetailsModal";
 import TeamDetailsModal from "./TeamDetailsModal";
 import VacantRoleCard from "./VacantRoleCard";
-import { getUserInitials, getDisplayName } from "../../utils/userHelpers";
 import Alert from "../common/Alert";
 import { format } from "date-fns";
 import InlineUserLink from "../users/InlineUserLink";
@@ -38,8 +38,8 @@ const TeamInvitationDetailsModal = ({
   onDecline,
 }) => {
   // ============ State ============
-  const [loading, setLoading] = useState(false);
-  const [actionLoading, setActionLoading] = useState(null); // "accept" | "decline" | null
+  const [loading] = useState(false);
+  const [actionLoading, setActionLoading] = useState(null); // "acceptRole" | "acceptTeam" | "decline" | null
   const [error, setError] = useState(null);
   const [responseMessage, setResponseMessage] = useState("");
   const [selectedUserId, setSelectedUserId] = useState(null);
@@ -122,16 +122,6 @@ const TeamInvitationDetailsModal = ({
     }
   };
 
-  // Get inviter display name
-  const getInviterName = () => {
-    return getDisplayName(inviter);
-  };
-
-  // Get inviter avatar
-  const getInviterAvatar = () => {
-    return inviter.avatar_url || inviter.avatarUrl || null;
-  };
-
   const getTeamAvatar = () => {
     return (
       team.teamavatar_url ||
@@ -182,11 +172,25 @@ const TeamInvitationDetailsModal = ({
 
   // ============ Handlers ============
 
-  const handleAccept = async () => {
+  const handleAcceptWithRole = async () => {
     try {
-      setActionLoading("accept");
+      setActionLoading("acceptRole");
       setError(null);
-      await onAccept(invitation.id, responseMessage);
+      await onAccept(invitation.id, responseMessage, true);
+      setResponseMessage("");
+      onClose();
+    } catch (err) {
+      setError(err.message || "Failed to accept invitation");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleAcceptTeamOnly = async () => {
+    try {
+      setActionLoading("acceptTeam");
+      setError(null);
+      await onAccept(invitation.id, responseMessage, false);
       setResponseMessage("");
       onClose();
     } catch (err) {
@@ -218,9 +222,15 @@ const TeamInvitationDetailsModal = ({
 
   // ============ Render ============
 
-  // Custom header
   const hasRoleInvitation = !!(invitation?.role_id ?? invitation?.roleId ?? invitation?.role?.id);
+  const isAcceptRoleLoading = actionLoading === "acceptRole";
+  const isAcceptTeamLoading = actionLoading === "acceptTeam";
+  const isDeclineLoading = actionLoading === "decline";
+  const isActionPending =
+    isAcceptRoleLoading || isAcceptTeamLoading || isDeclineLoading;
+  const isControlsDisabled = loading || isActionPending;
 
+  // Custom header
   const customHeader = (
     <div>
       <h2 className="text-xl font-medium text-primary leading-[120%] mb-[0.2em]">
@@ -236,7 +246,7 @@ const TeamInvitationDetailsModal = ({
   // Footer with action buttons + "Sent by" (left)
   const footer = (
     <div className="space-y-3">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         {/* Sent by (left) */}
         <InlineUserLink
           label="Invite sent by"
@@ -245,25 +255,48 @@ const TeamInvitationDetailsModal = ({
         />
 
         {/* Buttons (right) */}
-        <div className="flex justify-end gap-2">
+        <div className="flex flex-wrap justify-end gap-2">
           <Button
             variant="errorOutline"
             size="sm"
             onClick={handleDecline}
-            disabled={loading || actionLoading !== null}
+            disabled={isControlsDisabled}
             icon={<X size={16} />}
           >
-            {actionLoading === "decline" ? "Declining..." : "Decline"}
+            {isDeclineLoading ? "Declining..." : "Decline"}
           </Button>
-          <Button
-            variant="successOutline"
-            size="sm"
-            onClick={handleAccept}
-            disabled={loading || actionLoading !== null}
-            icon={<Check size={16} />}
-          >
-            {actionLoading === "accept" ? "Accepting..." : "Accept & Join Team"}
-          </Button>
+          {hasRoleInvitation ? (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleAcceptTeamOnly}
+                disabled={isControlsDisabled}
+                icon={<UserPlus size={16} />}
+              >
+                {isAcceptTeamLoading ? "Joining..." : "Join Team Only"}
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={handleAcceptWithRole}
+                disabled={isControlsDisabled}
+                icon={<Check size={16} />}
+              >
+                {isAcceptRoleLoading ? "Joining..." : "Accept & Fill Role"}
+              </Button>
+            </>
+          ) : (
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={handleAcceptTeamOnly}
+              disabled={isControlsDisabled}
+              icon={<Check size={16} />}
+            >
+              {isAcceptTeamLoading ? "Joining..." : "Accept"}
+            </Button>
+          )}
         </div>
       </div>
     </div>
@@ -403,7 +436,7 @@ const TeamInvitationDetailsModal = ({
             onChange={(e) => setResponseMessage(e.target.value)}
             className="textarea textarea-bordered textarea-sm w-full h-20 resize-none text-sm"
             placeholder="Add a personal message to your decision. Decline messages will be sent as DM to the inviter only. Acceptance messages will be sent to the team chat."
-            disabled={loading || actionLoading !== null}
+            disabled={isControlsDisabled}
           />
         </div>
       </Modal>

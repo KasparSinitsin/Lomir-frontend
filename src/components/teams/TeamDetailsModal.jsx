@@ -887,12 +887,13 @@ const TeamDetailsModal = ({
   };
 
   // Invitation response handlers
-  const handleInvitationAccept = async (invitationId, responseMessage = "") => {
+  const handleInvitationAccept = async (invitationId, responseMessage = "", fillRole = false) => {
     try {
       await teamService.respondToInvitation(
         invitationId,
         "accept",
         responseMessage,
+        fillRole,
       );
       setNotification({
         type: "success",
