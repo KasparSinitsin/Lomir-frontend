@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Calendar,
   MessageSquare,
@@ -11,10 +11,12 @@ import Modal from "../common/Modal";
 import Button from "../common/Button";
 import UserDetailsModal from "../users/UserDetailsModal";
 import TeamDetailsModal from "./TeamDetailsModal";
+import VacantRoleCard from "./VacantRoleCard";
 import { getUserInitials, getDisplayName } from "../../utils/userHelpers";
 import Alert from "../common/Alert";
 import { format } from "date-fns";
 import InlineUserLink from "../users/InlineUserLink";
+import { vacantRoleService } from "../../services/vacantRoleService";
 
 /**
  * TeamInvitationDetailsModal Component
@@ -42,11 +44,64 @@ const TeamInvitationDetailsModal = ({
   const [responseMessage, setResponseMessage] = useState("");
   const [selectedUserId, setSelectedUserId] = useState(null);
   const [isTeamDetailsOpen, setIsTeamDetailsOpen] = useState(false);
+  const [hydratedRole, setHydratedRole] = useState(null);
+  const [roleMatchScore, setRoleMatchScore] = useState(null);
+  const [roleMatchDetails, setRoleMatchDetails] = useState(null);
 
   // ============ Helpers ============
 
   // Get team data from invitation
   const team = invitation?.team || {};
+
+  // Fetch full role details when modal opens and invitation targets a role
+  useEffect(() => {
+    const roleId = invitation?.role?.id ?? invitation?.roleId ?? invitation?.role_id ?? null;
+    const teamId = team?.id ?? null;
+
+    if (!isOpen || !roleId || !teamId) {
+      setHydratedRole(null);
+      setRoleMatchScore(null);
+      setRoleMatchDetails(null);
+      return;
+    }
+
+    const fetchRole = async () => {
+      try {
+        const [detailsRes, listRes] = await Promise.allSettled([
+          vacantRoleService.getVacantRoleById(teamId, roleId),
+          vacantRoleService.getVacantRoles(teamId, "open"),
+        ]);
+
+        if (detailsRes.status === "fulfilled" && detailsRes.value?.data) {
+          const roleData = detailsRes.value.data;
+          setHydratedRole(roleData);
+          const detailScore = roleData.matchScore ?? roleData.match_score ?? null;
+          if (detailScore !== null) {
+            setRoleMatchScore(detailScore);
+            setRoleMatchDetails(
+              roleData.matchDetails ?? roleData.match_details ?? roleData.scoreBreakdown ?? null
+            );
+          }
+        }
+
+        if (listRes.status === "fulfilled") {
+          const roles = listRes.value?.data || [];
+          const matched = roles.find((r) => String(r.id) === String(roleId));
+          if (matched) {
+            const listScore = matched.matchScore ?? matched.match_score ?? null;
+            if (listScore !== null) {
+              setRoleMatchScore(listScore);
+              setRoleMatchDetails(matched.matchDetails ?? matched.match_details ?? null);
+            }
+          }
+        }
+      } catch (err) {
+        console.warn("Could not fetch role details for invitation:", err);
+      }
+    };
+
+    fetchRole();
+  }, [isOpen, invitation?.role?.id, invitation?.roleId, invitation?.role_id, team?.id]);
   const inviter = invitation?.inviter || {};
 
   // Format invitation date
@@ -164,6 +219,8 @@ const TeamInvitationDetailsModal = ({
   // ============ Render ============
 
   // Custom header
+  const hasRoleInvitation = !!(invitation?.role_id ?? invitation?.roleId ?? invitation?.role?.id);
+
   const customHeader = (
     <div>
       <h2 className="text-xl font-medium text-primary leading-[120%] mb-[0.2em]">
@@ -171,7 +228,7 @@ const TeamInvitationDetailsModal = ({
       </h2>
       <p className="text-sm text-base-content/70 flex items-center">
         <MailOpen size={14} className="mr-1.5" />
-        You are invited!
+        {hasRoleInvitation ? "You are invited for a role!" : "You are invited!"}
       </p>
     </div>
   );
@@ -297,6 +354,27 @@ const TeamInvitationDetailsModal = ({
           <p className="text-sm text-base-content/80 mb-5">
             {team.description}
           </p>
+        )}
+
+        {/* Vacant role card — shown when invitation targets a specific role */}
+        {(hydratedRole || invitation?.role || invitation?.roleId || invitation?.role_id) && (
+          <div className="mb-5">
+            <p className="text-xs text-base-content/60 mb-2 flex items-center">
+              <MailOpen size={12} className="text-info mr-1" />
+              Invited for this role:
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <VacantRoleCard
+                role={hydratedRole ?? invitation?.role ?? { id: invitation?.roleId ?? invitation?.role_id }}
+                team={team}
+                matchScore={roleMatchScore}
+                matchDetails={roleMatchDetails}
+                canManage={false}
+                isTeamMember={false}
+                hideActions={true}
+              />
+            </div>
+          </div>
         )}
 
         {/* Invitation Message */}

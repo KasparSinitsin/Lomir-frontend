@@ -23,6 +23,10 @@ const UserCard = ({
   roleMatchBadgeNames,
   roleMatchName = null,
   roleMatchMaxDistanceKm = null,
+  invitationPrefillTeamId = null,
+  invitationPrefillRoleId = null,
+  invitationPrefillTeamName = null,
+  invitationPrefillRoleName = null,
   showMatchHighlights = false,
   showMatchScore = false,
   viewMode = "card",
@@ -105,6 +109,10 @@ const UserCard = ({
       matchType: user.matchType ?? user.match_type ?? null,
       matchDetails: user.matchDetails ?? user.match_details ?? null,
       distanceKm: user.distance_km ?? user.distanceKm ?? null,
+      invitationPrefillTeamId,
+      invitationPrefillRoleId,
+      invitationPrefillTeamName,
+      invitationPrefillRoleName,
     });
   };
 

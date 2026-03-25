@@ -1707,6 +1707,7 @@ const TeamCard = ({
               setIsInvitesModalOpen(false);
               fetchSentInvitations();
             }}
+            teamId={teamData.id}
             invitations={pendingSentInvitations}
             onCancelInvitation={handleCancelInvitation}
             teamName={teamData.name}
@@ -2112,6 +2113,7 @@ const TeamCard = ({
             // Optionally refresh the list when closing
             fetchSentInvitations();
           }}
+          teamId={teamData.id}
           invitations={pendingSentInvitations}
           onCancelInvitation={handleCancelInvitation}
           teamName={teamData.name}

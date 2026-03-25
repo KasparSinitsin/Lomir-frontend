@@ -124,7 +124,7 @@ export const UserModalProvider = ({ children }) => {
 const UserModalStack = ({ stack, onClose, onOpenUser }) => {
   return (
     <>
-      {stack.map(({ userId, roleMatchTagIds, roleMatchBadgeNames, roleMatchName, roleMatchMaxDistanceKm, showMatchHighlights, matchScore, matchType, matchDetails, distanceKm, filledRoleName, teamName }, idx) => {
+      {stack.map(({ userId, roleMatchTagIds, roleMatchBadgeNames, roleMatchName, roleMatchMaxDistanceKm, showMatchHighlights, matchScore, matchType, matchDetails, distanceKm, filledRoleName, teamName, invitationPrefillTeamId, invitationPrefillRoleId, invitationPrefillTeamName, invitationPrefillRoleName }, idx) => {
         const zIndex = BASE_Z_INDEX + idx * MODAL_Z_STEP;
         const isTop = idx === stack.length - 1;
 
@@ -158,6 +158,10 @@ const UserModalStack = ({ stack, onClose, onOpenUser }) => {
               distanceKm={distanceKm}
               filledRoleName={filledRoleName}
               teamName={teamName}
+              invitationPrefillTeamId={invitationPrefillTeamId}
+              invitationPrefillRoleId={invitationPrefillRoleId}
+              invitationPrefillTeamName={invitationPrefillTeamName}
+              invitationPrefillRoleName={invitationPrefillRoleName}
             />
           </ModalLayerProvider>
         );

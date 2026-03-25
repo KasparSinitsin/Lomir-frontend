@@ -1751,6 +1751,10 @@ const SearchPage = () => {
                         roleMatchBadgeNames={roleMatchBadgeNames}
                         roleMatchName={matchRoleName}
                         roleMatchMaxDistanceKm={matchRoleMaxDistanceKm}
+                        invitationPrefillTeamId={excludeTeamId}
+                        invitationPrefillRoleId={matchRoleId}
+                        invitationPrefillTeamName={excludeTeamName}
+                        invitationPrefillRoleName={matchRoleName}
                         showMatchHighlights={sortBy === "match"}
                         showMatchScore={sortBy === "match"}
                         viewMode="list"
@@ -1796,6 +1800,10 @@ const SearchPage = () => {
                         roleMatchBadgeNames={roleMatchBadgeNames}
                         roleMatchName={matchRoleName}
                         roleMatchMaxDistanceKm={matchRoleMaxDistanceKm}
+                        invitationPrefillTeamId={excludeTeamId}
+                        invitationPrefillRoleId={matchRoleId}
+                        invitationPrefillTeamName={excludeTeamName}
+                        invitationPrefillRoleName={matchRoleName}
                         showMatchHighlights={sortBy === "match"}
                         showMatchScore={sortBy === "match"}
                         viewMode={resultView}

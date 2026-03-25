@@ -79,6 +79,10 @@ const UserDetailsModal = ({
   distanceKm = null,
   filledRoleName = null,
   teamName = null,
+  invitationPrefillTeamId = null,
+  invitationPrefillRoleId = null,
+  invitationPrefillTeamName = null,
+  invitationPrefillRoleName = null,
 }) => {
   const { user: currentUser, isAuthenticated } = useAuth();
   const normalizedRoleMatchTagIds = useMemo(
@@ -794,6 +798,10 @@ const UserDetailsModal = ({
           inviteeUsername={user.username}
           inviteeAvatar={user.avatar_url || user.avatarUrl}
           inviteeBio={user.bio}
+          prefillTeamId={invitationPrefillTeamId}
+          prefillRoleId={invitationPrefillRoleId}
+          prefillTeamName={invitationPrefillTeamName}
+          prefillRoleName={invitationPrefillRoleName}
         />
       )}
 
