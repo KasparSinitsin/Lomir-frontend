@@ -223,12 +223,19 @@ const TeamInvitationDetailsModal = ({
   // ============ Render ============
 
   const hasRoleInvitation = !!(invitation?.role_id ?? invitation?.roleId ?? invitation?.role?.id);
+  const isInternal = invitation?.isInternal ?? invitation?.is_internal ?? false;
   const isAcceptRoleLoading = actionLoading === "acceptRole";
   const isAcceptTeamLoading = actionLoading === "acceptTeam";
   const isDeclineLoading = actionLoading === "decline";
   const isActionPending =
     isAcceptRoleLoading || isAcceptTeamLoading || isDeclineLoading;
   const isControlsDisabled = loading || isActionPending;
+
+  const headerSubtitle = isInternal
+    ? "You've been invited to fill a role!"
+    : hasRoleInvitation
+      ? "You are invited for a role!"
+      : "You are invited!";
 
   // Custom header
   const customHeader = (
@@ -238,7 +245,7 @@ const TeamInvitationDetailsModal = ({
       </h2>
       <p className="text-sm text-base-content/70 flex items-center">
         <MailOpen size={14} className="mr-1.5" />
-        {hasRoleInvitation ? "You are invited for a role!" : "You are invited!"}
+        {headerSubtitle}
       </p>
     </div>
   );
@@ -265,7 +272,19 @@ const TeamInvitationDetailsModal = ({
           >
             {isDeclineLoading ? "Declining..." : "Decline"}
           </Button>
-          {hasRoleInvitation ? (
+          {hasRoleInvitation && isInternal ? (
+            // Internal role invite: user is already a member, just accept/fill the role
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={handleAcceptWithRole}
+              disabled={isControlsDisabled}
+              icon={<Check size={16} />}
+            >
+              {isAcceptRoleLoading ? "Accepting..." : "Accept Role"}
+            </Button>
+          ) : hasRoleInvitation ? (
+            // External invite with a role: offer team-only or fill-role options
             <>
               <Button
                 variant="outline"
@@ -287,6 +306,7 @@ const TeamInvitationDetailsModal = ({
               </Button>
             </>
           ) : (
+            // No role: simple accept
             <Button
               variant="primary"
               size="sm"
