@@ -1239,10 +1239,10 @@ const VacantRoleDetailsModal = ({
       null;
     const applicantMatch = getRoleCandidateMatch(applicantId);
     const rawScore =
-      application?.role?.matchScore ??
-      application?.role?.match_score ??
       applicantMatch?.matchScore ??
       applicantMatch?.match_score ??
+      application?.role?.matchScore ??
+      application?.role?.match_score ??
       null;
     const numericScore = Number(rawScore);
 
@@ -1258,10 +1258,10 @@ const VacantRoleDetailsModal = ({
       null;
     const inviteeMatch = getRoleCandidateMatch(inviteeId);
     const rawScore =
-      invitation?.role?.matchScore ??
-      invitation?.role?.match_score ??
       inviteeMatch?.matchScore ??
       inviteeMatch?.match_score ??
+      invitation?.role?.matchScore ??
+      invitation?.role?.match_score ??
       null;
     const numericScore = Number(rawScore);
 
@@ -1984,10 +1984,10 @@ const VacantRoleDetailsModal = ({
                         .toUpperCase();
                   const applicationRoleMatch = application.role || {};
                   const applicantScore =
-                    applicationRoleMatch.matchScore ??
-                    applicationRoleMatch.match_score ??
                     applicantMatch?.matchScore ??
                     applicantMatch?.match_score ??
+                    applicationRoleMatch.matchScore ??
+                    applicationRoleMatch.match_score ??
                     null;
                   const applicantDistanceKm =
                     applicationRoleMatch.matchDetails?.distanceKm ??
@@ -2198,10 +2198,10 @@ const VacantRoleDetailsModal = ({
                         .toUpperCase();
                   const invitationRoleMatch = invitation.role || {};
                   const inviteeScore =
-                    invitationRoleMatch.matchScore ??
-                    invitationRoleMatch.match_score ??
                     inviteeMatch?.matchScore ??
                     inviteeMatch?.match_score ??
+                    invitationRoleMatch.matchScore ??
+                    invitationRoleMatch.match_score ??
                     null;
                   const inviteeDistanceKm =
                     invitationRoleMatch.matchDetails?.distanceKm ??
