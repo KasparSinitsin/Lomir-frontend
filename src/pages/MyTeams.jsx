@@ -603,8 +603,22 @@ const MyTeams = () => {
     [pendingApplications]
   );
 
+  const externalInvitations = useMemo(
+    () => pendingInvitations.filter(
+      (inv) => !(inv.isInternal ?? inv.is_internal)
+    ),
+    [pendingInvitations]
+  );
+
+  const internalRoleInvitations = useMemo(
+    () => pendingInvitations.filter(
+      (inv) => inv.isInternal ?? inv.is_internal
+    ),
+    [pendingInvitations]
+  );
+
   const sortedPendingInvitations = sortPendingItems(
-    pendingInvitations.filter(Boolean),
+    externalInvitations.filter(Boolean),
   );
   const sortedPendingApplications = sortPendingItems(
     externalApplications.filter(Boolean),
@@ -839,6 +853,90 @@ const MyTeams = () => {
                   }}
                   resultsPerPageOptions={RESULTS_PER_PAGE_OPTIONS}
                 />
+              )}
+            </>
+          )}
+        </Section>
+      )}
+
+      {/* Pending Internal Role Invitations Section */}
+      {internalRoleInvitations.length > 0 && (
+        <Section
+          title="My Pending Internal Role Invitations"
+          subtitle={`${internalRoleInvitations.length} ${internalRoleInvitations.length === 1 ? "Role invitation" : "Role invitations"} from teams you're already in`}
+          className="mb-10"
+          collapsible
+        >
+          {loadingInvitations ? (
+            <div className="flex justify-center py-8">
+              <div className="loading loading-spinner loading-md"></div>
+            </div>
+          ) : (
+            <>
+              {resultView === "list" ? (
+                <div className="background-opacity bg-opacity-70 shadow-soft rounded-xl divide-y divide-base-200">
+                  {internalRoleInvitations.map((invitation) => (
+                    <div
+                      key={`role-inv-${invitation.id}`}
+                      ref={
+                        String(invitation.id) === highlightId
+                          ? highlightedInvitationRef
+                          : null
+                      }
+                      className={
+                        String(invitation.id) === highlightId
+                          ? "message-highlight"
+                          : ""
+                      }
+                    >
+                      <TeamCard
+                        variant="role_invitation"
+                        invitation={invitation}
+                        onAccept={handleInvitationAccept}
+                        onDecline={handleInvitationDecline}
+                        viewerDistanceSource={viewerDistanceSource}
+                        hideDistanceInfo={true}
+                        listLocationWidthClassName="sm:w-44"
+                        listLocationInsetClassName="sm:pl-[60px]"
+                        listTagsWidthClassName="sm:w-44"
+                        listBadgesWidthClassName="sm:w-40"
+                        viewMode="list"
+                        activeFilters={{}}
+                        showMatchScore={true}
+                      />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <Grid cols={1} md={2} lg={3} gap={resultView === "card" ? 6 : 4}>
+                  {internalRoleInvitations.map((invitation) => (
+                    <div
+                      key={`role-inv-${invitation.id}`}
+                      ref={
+                        String(invitation.id) === highlightId
+                          ? highlightedInvitationRef
+                          : null
+                      }
+                      className={
+                        String(invitation.id) === highlightId
+                          ? "message-highlight rounded-xl"
+                          : "contents"
+                      }
+                    >
+                      <TeamCard
+                        variant="role_invitation"
+                        invitation={invitation}
+                        onAccept={handleInvitationAccept}
+                        onDecline={handleInvitationDecline}
+                        viewerDistanceSource={viewerDistanceSource}
+                        hideDistanceInfo={true}
+                        viewMode={resultView}
+                        activeFilters={{}}
+                        showMatchScore={true}
+                      />
+                    </div>
+                  ))}
+                </Grid>
               )}
             </>
           )}

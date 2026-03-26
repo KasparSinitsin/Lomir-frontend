@@ -25,7 +25,6 @@ import TeamApplicationDetailsModal from "./TeamApplicationDetailsModal";
 import VacantRoleDetailsModal from "./VacantRoleDetailsModal";
 import TeamInvitesModal from "./TeamInvitesModal";
 import TeamInvitationDetailsModal from "./TeamInvitationDetailsModal";
-import { SentByLink } from "../users/InlineUserLink";
 import { teamService } from "../../services/teamService";
 import { vacantRoleService } from "../../services/vacantRoleService";
 import { useAuth } from "../../contexts/AuthContext";
@@ -99,16 +98,18 @@ const resolveDistanceKm = ({
 /**
  * Unified TeamCard Component
  *
- * Handles three variants:
+ * Handles multiple variants:
  * - "member" (default): Teams you're part of
  * - "application": Your pending applications to join teams
+ * - "role_application": Your pending applications for internal team roles
  * - "invitation": Invitations you've received from teams
+ * - "role_invitation": Invitations you've received for internal team roles
  *
  * @param {Object} props
  * @param {Object} props.team - Team data (for member variant)
  * @param {Object} props.application - Application data (for application variant)
  * @param {Object} props.invitation - Invitation data (for invitation variant)
- * @param {string} props.variant - "member" | "application" | "invitation"
+ * @param {string} props.variant - "member" | "application" | "role_application" | "invitation" | "role_invitation"
  * @param {Function} props.onUpdate - Callback when team is updated
  * @param {Function} props.onDelete - Callback when team is deleted
  * @param {Function} props.onLeave - Callback when user leaves a team
@@ -125,7 +126,7 @@ const TeamCard = ({
   invitation,
 
   // Variant control
-  variant = "member", // "member" | "application" | "invitation"
+  variant = "member", // "member" | "application" | "role_application" | "invitation" | "role_invitation"
 
   // Legacy prop support (maps to variant="application")
   isPendingApplication = false,
@@ -167,7 +168,15 @@ const TeamCard = ({
   onApplicationsModalClosed,
 }) => {
   // Determine effective variant (support legacy isPendingApplication prop)
-  const effectiveVariant = isPendingApplication ? "application" : variant;
+  let effectiveVariant = isPendingApplication ? "application" : variant;
+  if (effectiveVariant === "application" && application?.role) {
+    effectiveVariant = "role_application";
+  } else if (effectiveVariant === "role_invitation") {
+    effectiveVariant = "role_invitation";
+  }
+  const isRoleApplicationVariant = effectiveVariant === "role_application";
+  const isRoleInvitationVariant = effectiveVariant === "role_invitation";
+  const isRoleVariant = isRoleApplicationVariant || isRoleInvitationVariant;
 
   // Normalize data based on variant
   const getNormalizedData = () => {
@@ -188,7 +197,7 @@ const TeamCard = ({
         date: application.created_at || application.createdAt,
       };
     }
-    if (effectiveVariant === "role_application" && application) {
+    if (isRoleApplicationVariant && application) {
       const role = application.role ?? {};
       const appTeam = application.team ?? {};
       return {
@@ -210,6 +219,29 @@ const TeamCard = ({
         date: application.created_at || application.createdAt,
       };
     }
+    if (isRoleInvitationVariant && invitation) {
+      const role = invitation.role ?? {};
+      const invTeam = invitation.team ?? {};
+      return {
+        team: {
+          name: role.roleName ?? role.role_name ?? "Role Invitation",
+          description: role.bio ?? role.roleBio ?? invTeam.description ?? null,
+          is_remote: role.isRemote ?? role.is_remote,
+          city: role.city,
+          country: role.country,
+          tags: role.tags ?? [],
+          badges: role.badges ?? [],
+          _teamName: invTeam.name ?? null,
+          matchScore: role.matchScore ?? role.match_score ?? null,
+          matchDetails: role.matchDetails ?? role.match_details ?? null,
+          id: undefined,
+        },
+        id: invitation.id,
+        message: invitation.message,
+        date: invitation.created_at || invitation.createdAt,
+        inviter: invitation.inviter,
+      };
+    }
     // For legacy application support via team prop with application data
     if (effectiveVariant === "application" && team) {
       return {
@@ -229,6 +261,26 @@ const TeamCard = ({
   };
 
   const normalizedData = getNormalizedData();
+  const roleData = isRoleApplicationVariant
+    ? application?.role ?? null
+    : isRoleInvitationVariant
+      ? invitation?.role ?? null
+      : null;
+  const roleTeamData = isRoleApplicationVariant
+    ? application?.team ?? null
+    : isRoleInvitationVariant
+      ? invitation?.team ?? null
+      : null;
+  const roleDataId = isRoleApplicationVariant
+    ? application?.role?.id ?? application?.roleId ?? null
+    : isRoleInvitationVariant
+      ? invitation?.role?.id ?? invitation?.roleId ?? null
+      : null;
+  const roleTeamId = isRoleApplicationVariant
+    ? application?.team?.id ?? null
+    : isRoleInvitationVariant
+      ? invitation?.team?.id ?? null
+      : null;
 
   // ========= ALL HOOKS (useState, useAuth, useCallback, useEffect) =========
 
@@ -621,32 +673,154 @@ const TeamCard = ({
     }
   }, [autoOpenApplications, effectiveVariant]);
 
-  // Fetch role match details for role_application cards (breakdown not included in getUserPendingApplications response)
+  // Fetch role match details for role-based cards (breakdown may be omitted from pending-item responses)
   useEffect(() => {
-    if (effectiveVariant !== "role_application" || !showMatchScore) return;
-    const roleId = application?.role?.id ?? application?.roleId;
-    const teamId = application?.team?.id;
-    if (!roleId || !teamId) return;
+    if (!isRoleVariant || !showMatchScore || !roleDataId || !roleTeamId) return;
 
-    vacantRoleService.getVacantRoleById(teamId, roleId)
-      .then((res) => {
-        const role = res?.data;
-        if (role) {
-          setRoleMatchData({
+    const fetchRoleMatchData = async () => {
+      try {
+        const [detailsRes, listRes] = await Promise.allSettled([
+          vacantRoleService.getVacantRoleById(roleTeamId, roleDataId),
+          vacantRoleService.getVacantRoles(roleTeamId, "open"),
+        ]);
+
+        let nextMatchData = null;
+
+        if (detailsRes.status === "fulfilled" && detailsRes.value?.data) {
+          const role = detailsRes.value.data;
+          nextMatchData = {
+            matchScore:
+              role.matchScore ??
+              role.match_score ??
+              role.bestMatchScore ??
+              role.best_match_score ??
+              null,
+            bestMatchScore:
+              role.bestMatchScore ??
+              role.best_match_score ??
+              role.matchScore ??
+              role.match_score ??
+              null,
             matchDetails:
               role.matchDetails ?? role.match_details ?? role.scoreBreakdown ?? null,
             matchType: role.matchType ?? role.match_type ?? null,
-          });
+          };
         }
-      })
-      .catch((err) => console.error("[TeamCard] getVacantRoleById error:", err));
-  }, [effectiveVariant, showMatchScore, application?.role?.id, application?.roleId, application?.team?.id]);
+
+        if (listRes.status === "fulfilled") {
+          const roles = listRes.value?.data || [];
+          const matched = roles.find((role) => String(role.id) === String(roleDataId));
+
+          if (matched) {
+            nextMatchData = {
+              ...(nextMatchData ?? {}),
+              matchScore:
+                matched.matchScore ??
+                matched.match_score ??
+                matched.bestMatchScore ??
+                matched.best_match_score ??
+                nextMatchData?.matchScore ??
+                nextMatchData?.bestMatchScore ??
+                null,
+              bestMatchScore:
+                matched.bestMatchScore ??
+                matched.best_match_score ??
+                matched.matchScore ??
+                matched.match_score ??
+                nextMatchData?.bestMatchScore ??
+                nextMatchData?.matchScore ??
+                null,
+              matchDetails:
+                matched.matchDetails ??
+                matched.match_details ??
+                nextMatchData?.matchDetails ??
+                null,
+              matchType:
+                matched.matchType ??
+                matched.match_type ??
+                nextMatchData?.matchType ??
+                null,
+            };
+          }
+        }
+
+        if (nextMatchData) {
+          setRoleMatchData(nextMatchData);
+        }
+      } catch (err) {
+        console.error("[TeamCard] role match data fetch error:", err);
+      }
+    };
+
+    fetchRoleMatchData();
+  }, [isRoleVariant, showMatchScore, roleDataId, roleTeamId]);
 
   // ================= GUARD CLAUSE – AFTER ALL HOOKS =================
 
   if (!teamData) {
     return null;
   }
+
+  const teamDetailsInitialTeamData = isRoleVariant ? (roleTeamData ?? teamData) : teamData;
+  const roleModalMatchDetails =
+    roleMatchData?.matchDetails ??
+    roleData?.matchDetails ??
+    roleData?.match_details ??
+    null;
+  const matchScoreSource = isRoleVariant
+    ? {
+        matchScore:
+          roleMatchData?.matchScore ??
+          roleMatchData?.match_score ??
+          roleData?.matchScore ??
+          roleData?.match_score ??
+          normalizedData.team?.matchScore ??
+          normalizedData.team?.match_score ??
+          roleMatchData?.bestMatchScore ??
+          roleMatchData?.best_match_score ??
+          roleData?.bestMatchScore ??
+          roleData?.best_match_score ??
+          normalizedData.team?.bestMatchScore ??
+          normalizedData.team?.best_match_score ??
+          null,
+        bestMatchScore:
+          roleMatchData?.matchScore ??
+          roleMatchData?.match_score ??
+          roleData?.matchScore ??
+          roleData?.match_score ??
+          normalizedData.team?.matchScore ??
+          normalizedData.team?.match_score ??
+          roleMatchData?.bestMatchScore ??
+          roleMatchData?.best_match_score ??
+          roleData?.bestMatchScore ??
+          roleData?.best_match_score ??
+          normalizedData.team?.bestMatchScore ??
+          normalizedData.team?.best_match_score ??
+          null,
+      }
+    : normalizedData.team;
+  const roleTitle = teamData.name || "Unknown Team";
+  const cardTitle = isRoleInvitationVariant ? (
+    <button
+      type="button"
+      data-tooltip-trigger="true"
+      className="block max-w-full truncate bg-transparent p-0 text-left text-inherit [font:inherit] hover:underline focus:outline-none"
+      onClick={(event) => {
+        event.stopPropagation();
+        setIsRoleDetailsModalOpen(true);
+      }}
+      title="Click to view role details"
+    >
+      {roleTitle}
+    </button>
+  ) : (
+    roleTitle
+  );
+  const cardClickTooltip = isRoleApplicationVariant
+    ? "Click to view role details"
+    : isRoleInvitationVariant
+      ? "Click to view invitation details"
+      : "Click to view Team details";
 
   // ============ Helper Functions ============
 
@@ -685,8 +859,8 @@ const TeamCard = ({
   };
 
   const getTeamId = () => {
-    if (effectiveVariant === "role_application") {
-      return application?.team?.id ?? null;
+    if (isRoleVariant) {
+      return roleTeamId;
     }
     return teamData.id || normalizedData.team?.id;
   };
@@ -715,6 +889,19 @@ const TeamCard = ({
     } catch (e) {
       return null;
     }
+  };
+
+  const getRoleStatusTooltip = () => {
+    const formattedDate = getFormattedDate();
+    const actionText = isRoleInvitationVariant
+      ? "You were invited for this role"
+      : "You applied for this role";
+
+    if (!formattedDate || !normalizedData.date) {
+      return actionText;
+    }
+
+    return `${actionText}\non ${format(new Date(normalizedData.date), "MMM d, yyyy")}`;
   };
 
   const getDisplayTags = () => {
@@ -834,9 +1021,18 @@ const TeamCard = ({
     }
   };
 
+  const openRoleDetails = (event) => {
+    if (event) {
+      event.stopPropagation();
+    }
+    setIsRoleDetailsModalOpen(true);
+  };
+
   const handleCardClick = () => {
-    if (effectiveVariant === "role_application") {
-      setIsRoleDetailsModalOpen(true);
+    if (isRoleApplicationVariant) {
+      openRoleDetails();
+    } else if (isRoleInvitationVariant) {
+      setIsInvitationDetailsModalOpen(true);
     } else {
       setIsModalOpen(true);
     }
@@ -1092,10 +1288,13 @@ const TeamCard = ({
     return (
       <div className="flex flex-wrap items-center gap-2 mb-4">
         {/* Tags display (member / invitation / application) */}
-        {(effectiveVariant === "member" ||
+        {(
+          effectiveVariant === "member" ||
           effectiveVariant === "invitation" ||
           effectiveVariant === "application" ||
-          effectiveVariant === "role_application") &&
+          effectiveVariant === "role_application" ||
+          effectiveVariant === "role_invitation"
+        ) &&
           displayTags.length > 0 && (
             <div className="flex items-start text-sm text-base-content/70">
               <Tag size={16} className="mr-1 flex-shrink-0 mt-0.5" />
@@ -1130,25 +1329,6 @@ const TeamCard = ({
     );
   };
 
-  const renderInviterInfo = () => {
-    if (effectiveVariant !== "invitation" || !normalizedData.inviter)
-      return null;
-
-    return (
-      <div className="mb-4">
-        <SentByLink user={normalizedData.inviter} />
-      </div>
-    );
-  };
-
-  const renderMessage = () => {
-    if (!normalizedData.message) return null;
-    // Only show message preview for application variant (invitation message is in modal now)
-    if (effectiveVariant !== "application" && effectiveVariant !== "role_application") return null;
-
-    return <div className="mb-4"></div>;
-  };
-
   const renderActionButtons = () => {
     // If user has a pending invitation (search or invitation variant)
 
@@ -1172,7 +1352,11 @@ const TeamCard = ({
       // );
     }
 
-    if (effectiveVariant === "invitation" || pendingInvitationForTeam) {
+    if (
+      effectiveVariant === "invitation" ||
+      isRoleInvitationVariant ||
+      pendingInvitationForTeam
+    ) {
       return (
         <div className="mt-auto pt-4">
           {" "}
@@ -1266,12 +1450,12 @@ const TeamCard = ({
   console.log("TeamCard data:", teamData, "distance_km:", teamData.distance_km);
 
   // ============ MATCH SCORE ============
-  // Read from normalizedData.team (original prop) so API refetches don't overwrite it
-  const rawScore = showMatchScore ? getResultMatchScore(normalizedData.team) : null;
+  // Role-based cards should always prefer the role match over any team-level match.
+  const rawScore = showMatchScore ? getResultMatchScore(matchScoreSource) : null;
   const showScore =
     showMatchScore &&
     rawScore != null &&
-    (effectiveVariant === "role_application" || rawScore > 0);
+    (isRoleVariant || rawScore > 0);
 
   let matchTier = null;
   let matchOverlay = null;
@@ -1280,9 +1464,21 @@ const TeamCard = ({
   if (showScore) {
     matchTier = getMatchTier(rawScore);
 
-    const matchDetails =
-      normalizedData.team?.matchDetails ?? normalizedData.team?.match_details ??
-      roleMatchData?.matchDetails ?? null;
+    const matchDetails = isRoleVariant
+      ? (
+          roleMatchData?.matchDetails ??
+          roleData?.matchDetails ??
+          roleData?.match_details ??
+          normalizedData.team?.matchDetails ??
+          normalizedData.team?.match_details ??
+          null
+        )
+      : (
+          normalizedData.team?.matchDetails ??
+          normalizedData.team?.match_details ??
+          roleMatchData?.matchDetails ??
+          null
+        );
     let tooltipText;
     const hasScoreBreakdown =
       matchDetails &&
@@ -1325,7 +1521,7 @@ const TeamCard = ({
       viewMode === "list"
         ? "text-sm"
         : "text-xl";
-    const shouldUseScoreAvatar = effectiveVariant === "role_application";
+    const shouldUseScoreAvatar = isRoleVariant;
 
     const iconSizeSubtitle =
       viewMode === "list" ? 10 : viewMode === "mini" ? 11 : 12;
@@ -1425,14 +1621,14 @@ const TeamCard = ({
 
     const subtitleContent = (
       <span className="flex min-w-0 flex-nowrap items-center gap-1 overflow-hidden whitespace-nowrap text-base-content/60">
-        {effectiveVariant !== "role_application" && scoreSubtitleItem}
-        {effectiveVariant !== "role_application" && (
+        {!isRoleVariant && scoreSubtitleItem}
+        {!isRoleVariant && (
           <>
             <Users size={11} />
             <span>{memberCount}/{maxMembers}</span>
           </>
         )}
-        {openRoleCount > 0 && (
+        {!isRoleVariant && openRoleCount > 0 && (
           <Tooltip content={`${openRoleCount} open ${openRoleCount === 1 ? 'role' : 'roles'} posted in this team`}>
             <span className="flex items-center">
               <UserSearch size={12} className="text-orange-500 mr-0.5" />
@@ -1440,26 +1636,40 @@ const TeamCard = ({
             </span>
           </Tooltip>
         )}
-        {(effectiveVariant === "invitation" || pendingInvitationForTeam) && (
+        {(effectiveVariant === "invitation" || isRoleInvitationVariant || pendingInvitationForTeam) && (
           <Tooltip
-            content={`You were invited to this team${
-              getFormattedDate()
-                ? `\non ${format(new Date(normalizedData.date), "MMM d, yyyy")}`
-                : ""
-            }`}
+            content={
+              isRoleInvitationVariant
+                ? getRoleStatusTooltip()
+                : `You were invited to this team${
+                    getFormattedDate()
+                      ? `\non ${format(new Date(normalizedData.date), "MMM d, yyyy")}`
+                      : ""
+                  }`
+            }
           >
-            <span className="flex items-center gap-0.5">
+            <span
+              className={`flex items-center gap-0.5 ${isRoleInvitationVariant ? "cursor-pointer" : ""}`}
+              onClick={
+                isRoleInvitationVariant
+                  ? (e) => {
+                      e.stopPropagation();
+                      setIsInvitationDetailsModalOpen(true);
+                    }
+                  : undefined
+              }
+            >
               <Mail size={11} className="text-pink-500" />
               {getFormattedDate() && <span>{getFormattedDate()}</span>}
             </span>
           </Tooltip>
         )}
-        {(effectiveVariant === "application" || effectiveVariant === "role_application" || pendingApplicationForTeam) && (
+        {(effectiveVariant === "application" || isRoleApplicationVariant || pendingApplicationForTeam) && (
           <Tooltip
             content={
               isPendingRoleApplicationForTeam
                 ? "You applied for a role within this team"
-                : `You applied${effectiveVariant === "role_application" ? " for this role" : " to join this team"}${
+                : `You applied${isRoleApplicationVariant ? " for this role" : " to join this team"}${
                     getFormattedDate()
                       ? `\non ${format(new Date(normalizedData.date), "MMM d, yyyy")}`
                       : ""
@@ -1473,12 +1683,12 @@ const TeamCard = ({
                 setIsApplicationModalOpen(true);
               }}
             >
-              <SendHorizontal size={11} className={(effectiveVariant === "role_application" || isPendingRoleApplicationForTeam) ? "text-orange-500" : "text-info"} />
+              <SendHorizontal size={11} className={(isRoleApplicationVariant || isPendingRoleApplicationForTeam) ? "text-orange-500" : "text-info"} />
               {getFormattedDate() && <span>{getFormattedDate()}</span>}
             </span>
           </Tooltip>
         )}
-        {effectiveVariant === "role_application" && teamData._teamName && (
+        {isRoleVariant && teamData._teamName && (
           <Tooltip content="Click to view team details" wrapperClassName="min-w-0 overflow-hidden flex-1">
             <span
               className="flex items-center gap-0.5 min-w-0 overflow-hidden cursor-pointer w-full"
@@ -1526,7 +1736,7 @@ const TeamCard = ({
     return (
       <>
         <Card
-          title={teamData.name || "Unknown Team"}
+          title={cardTitle}
           subtitle={subtitleContent}
           image={getTeamImage()}
           imageFallback={getTeamInitials()}
@@ -1535,7 +1745,7 @@ const TeamCard = ({
           onClick={handleCardClick}
           viewMode="list"
           className=""
-          clickTooltip={effectiveVariant === "role_application" ? "Click to view role details" : "Click to view Team details"}
+          clickTooltip={cardClickTooltip}
           imageOverlay={matchOverlay}
       >
           <div
@@ -1593,7 +1803,7 @@ const TeamCard = ({
           </div>
           {shouldReserveMyTeamsActionSlot && (
             <div className="w-20 flex-shrink-0 flex items-center justify-end gap-2">
-              {effectiveVariant === "invitation" && (
+              {(effectiveVariant === "invitation" || isRoleInvitationVariant) && (
                 <Tooltip content="Open Invite to Respond">
                   <Button
                     variant="primary"
@@ -1608,8 +1818,8 @@ const TeamCard = ({
                   />
                 </Tooltip>
               )}
-              {(effectiveVariant === "application" || effectiveVariant === "role_application") && (
-                <Tooltip content={effectiveVariant === "role_application" ? "View Role Application Details" : "View Application Details"}>
+              {(effectiveVariant === "application" || isRoleApplicationVariant) && (
+                <Tooltip content={isRoleApplicationVariant ? "View Role Application Details" : "View Application Details"}>
                   <Button
                     variant="primary"
                     size="sm"
@@ -1650,7 +1860,7 @@ const TeamCard = ({
         <TeamDetailsModal
           isOpen={isModalOpen}
           teamId={getTeamId()}
-          initialTeamData={effectiveVariant === "role_application" ? (application?.team ?? teamData) : teamData}
+          initialTeamData={teamDetailsInitialTeamData}
           onClose={handleModalClose}
           onUpdate={handleTeamUpdate}
           onDelete={onDelete}
@@ -1666,10 +1876,10 @@ const TeamCard = ({
               : pendingInvitationForTeam
           }
           hasPendingApplication={
-            effectiveVariant === "application" || effectiveVariant === "role_application" || !!pendingApplicationForTeam
+            effectiveVariant === "application" || isRoleApplicationVariant || !!pendingApplicationForTeam
           }
           pendingApplication={
-            effectiveVariant === "application" || effectiveVariant === "role_application"
+            effectiveVariant === "application" || isRoleApplicationVariant
               ? application
               : pendingApplicationForTeam
           }
@@ -1719,7 +1929,7 @@ const TeamCard = ({
             <TeamInvitationDetailsModal
               isOpen={isInvitationDetailsModalOpen}
               invitation={
-                effectiveVariant === "invitation"
+                effectiveVariant === "invitation" || isRoleInvitationVariant
                   ? invitation
                   : pendingInvitationForTeam
               }
@@ -1744,18 +1954,22 @@ const TeamCard = ({
             />
           )}
 
-        {effectiveVariant === "role_application" && application?.role && (
+        {isRoleVariant && roleData && (
           <VacantRoleDetailsModal
             isOpen={isRoleDetailsModalOpen}
             onClose={() => setIsRoleDetailsModalOpen(false)}
-            team={application.team ?? null}
-            role={application.role}
+            team={roleTeamData ?? null}
+            role={roleData}
             matchScore={rawScore ?? null}
-            matchDetails={application?.role?.matchDetails ?? application?.role?.match_details ?? roleMatchData?.matchDetails ?? null}
-            onViewApplicationDetails={() => {
-              setIsRoleDetailsModalOpen(false);
-              setIsApplicationModalOpen(true);
-            }}
+            matchDetails={roleModalMatchDetails}
+            onViewApplicationDetails={
+              isRoleApplicationVariant
+                ? () => {
+                    setIsRoleDetailsModalOpen(false);
+                    setIsApplicationModalOpen(true);
+                  }
+                : null
+            }
           />
         )}
 
@@ -1773,21 +1987,23 @@ const TeamCard = ({
   return (
     <>
       <Card
-        title={teamData.name || "Unknown Team"}
+        title={cardTitle}
         subtitle={
           <span
-            className={`flex text-base-content/70 ${effectiveVariant === "role_application" ? `flex-col leading-snug ${viewMode === "mini" ? "text-xs gap-y-px w-full" : "text-sm gap-y-px"}` : `items-center flex-wrap leading-snug ${viewMode === "mini" ? "text-xs gap-x-1 gap-y-px w-full" : "text-sm gap-x-1.5 gap-y-px"}`}`}
+            className={`flex text-base-content/70 ${isRoleVariant ? `flex-col leading-snug ${viewMode === "mini" ? "text-xs gap-y-px w-full" : "text-sm gap-y-px"}` : `items-center flex-wrap leading-snug ${viewMode === "mini" ? "text-xs gap-x-1 gap-y-px w-full" : "text-sm gap-x-1.5 gap-y-px"}`}`}
           >
-            {/* Score + date on the same row for role_application */}
-            {effectiveVariant === "role_application" ? (
+            {/* Score + date on the same row for role variants */}
+            {isRoleVariant ? (
               <span className="flex items-center gap-1.5 flex-nowrap">
                 {scoreSubtitleItem}
                 {getFormattedDate() && (
-                  <Tooltip
-                    content={`You applied for this role\non ${format(new Date(normalizedData.date), "MMM d, yyyy")}`}
-                  >
+                  <Tooltip content={getRoleStatusTooltip()}>
                     <span className="flex items-center gap-0.5 whitespace-nowrap">
-                      <SendHorizontal size={viewMode === "mini" ? 11 : 12} className="flex-shrink-0 text-orange-500" />
+                      {isRoleInvitationVariant ? (
+                        <Mail size={viewMode === "mini" ? 11 : 12} className="flex-shrink-0 text-pink-500" />
+                      ) : (
+                        <SendHorizontal size={viewMode === "mini" ? 11 : 12} className="flex-shrink-0 text-orange-500" />
+                      )}
                       <span>{getFormattedDate()}</span>
                     </span>
                   </Tooltip>
@@ -1796,8 +2012,8 @@ const TeamCard = ({
             ) : (
               scoreSubtitleItem
             )}
-            {/* Members count — or team name for role_application */}
-            {effectiveVariant === "role_application" ? (
+            {/* Members count — or team name for role variants */}
+            {isRoleVariant ? (
               teamData._teamName && (
                 <Tooltip content="Click to view team details">
                   <span
@@ -1828,7 +2044,7 @@ const TeamCard = ({
             )}
 
             {/* Open roles count */}
-            {effectiveVariant !== "role_application" && openRoleCount > 0 && (
+            {!isRoleVariant && openRoleCount > 0 && (
               <Tooltip content={`${openRoleCount} open ${openRoleCount === 1 ? 'role' : 'roles'} posted in this team`}>
                 <span className="flex items-center">
                   <UserSearch
@@ -1991,7 +2207,7 @@ const TeamCard = ({
         imageShape="circle"
         onClick={handleCardClick}
         truncateContent={true}
-        clickTooltip={effectiveVariant === "role_application" ? "Click to view role details" : "Click to view Team details"}
+        clickTooltip={cardClickTooltip}
         contentClassName={
           viewMode === "mini"
             ? `!pt-0 !px-4 sm:!px-5 ${activeFilters.showLocation || activeFilters.showTags || activeFilters.showBadges || !isSearchResult ? "!pb-4 sm:!pb-5" : "!pb-0"}`
@@ -2044,9 +2260,6 @@ const TeamCard = ({
           compact={viewMode === "mini"}
         />
 
-        {/* Message preview (invitation/application variants) */}
-        {renderMessage()}
-
         {/* Action buttons */}
         {renderActionButtons()}
       </Card>
@@ -2054,7 +2267,7 @@ const TeamCard = ({
       <TeamDetailsModal
         isOpen={isModalOpen}
         teamId={getTeamId()}
-        initialTeamData={teamData}
+        initialTeamData={teamDetailsInitialTeamData}
         onClose={handleModalClose}
         onUpdate={handleTeamUpdate}
         onDelete={onDelete}
@@ -2065,15 +2278,15 @@ const TeamCard = ({
           effectiveVariant === "invitation" || !!pendingInvitationForTeam
         }
         pendingInvitation={
-          effectiveVariant === "invitation"
+          effectiveVariant === "invitation" || isRoleInvitationVariant
             ? invitation
             : pendingInvitationForTeam
         }
         hasPendingApplication={
-          effectiveVariant === "application" || !!pendingApplicationForTeam
+          effectiveVariant === "application" || isRoleApplicationVariant || !!pendingApplicationForTeam
         }
         pendingApplication={
-          effectiveVariant === "application"
+          effectiveVariant === "application" || isRoleApplicationVariant
             ? application
             : pendingApplicationForTeam
         }
@@ -2125,7 +2338,7 @@ const TeamCard = ({
           <TeamInvitationDetailsModal
             isOpen={isInvitationDetailsModalOpen}
             invitation={
-              effectiveVariant === "invitation"
+              effectiveVariant === "invitation" || isRoleInvitationVariant
                 ? invitation
                 : pendingInvitationForTeam
             }
@@ -2140,7 +2353,7 @@ const TeamCard = ({
         <TeamApplicationDetailsModal
           isOpen={isApplicationModalOpen}
           application={
-            effectiveVariant === "application" || effectiveVariant === "role_application"
+            effectiveVariant === "application" || isRoleApplicationVariant
               ? application
               : pendingApplicationForTeam
           }
@@ -2150,19 +2363,23 @@ const TeamCard = ({
         />
       )}
 
-      {/* Role Details Modal (for role_application cards) */}
-      {effectiveVariant === "role_application" && application?.role && (
+      {/* Role Details Modal (for role variants) */}
+      {isRoleVariant && roleData && (
         <VacantRoleDetailsModal
           isOpen={isRoleDetailsModalOpen}
           onClose={() => setIsRoleDetailsModalOpen(false)}
-          team={application.team ?? null}
-          role={application.role}
+          team={roleTeamData ?? null}
+          role={roleData}
           matchScore={rawScore ?? null}
-          matchDetails={application?.role?.matchDetails ?? application?.role?.match_details ?? roleMatchData?.matchDetails ?? null}
-          onViewApplicationDetails={() => {
-            setIsRoleDetailsModalOpen(false);
-            setIsApplicationModalOpen(true);
-          }}
+          matchDetails={roleModalMatchDetails}
+          onViewApplicationDetails={
+            isRoleApplicationVariant
+              ? () => {
+                  setIsRoleDetailsModalOpen(false);
+                  setIsApplicationModalOpen(true);
+                }
+              : null
+          }
         />
       )}
 
