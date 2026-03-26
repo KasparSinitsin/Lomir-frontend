@@ -469,8 +469,12 @@ export const enrichTeamMatchData = ({
     computed.matchDetails,
     existingMatchDetails,
   );
+  const computedOverallScore = getOverallScoreFromMatchDetails(mergedMatchDetails);
 
-  const finalScore = existingScore > 0 ? existingScore : computed.bestMatchScore;
+  const finalScore =
+    computedOverallScore ??
+    computed.bestMatchScore ??
+    (existingScore > 0 ? existingScore : null);
   const finalMatchType = existingMatchType ?? computed.matchType;
   const finalMatchDetails = mergedMatchDetails;
   const finalSharedTagCount =
@@ -513,7 +517,11 @@ export const enrichUserMatchData = ({
     computed.matchDetails,
     existingMatchDetails,
   );
-  const finalScore = existingScore > 0 ? existingScore : computed.bestMatchScore;
+  const computedOverallScore = getOverallScoreFromMatchDetails(mergedMatchDetails);
+  const finalScore =
+    computedOverallScore ??
+    computed.bestMatchScore ??
+    (existingScore > 0 ? existingScore : null);
   const finalMatchType = existingMatchType ?? computed.matchType;
   const finalSharedTagCount =
     user.sharedTagCount ??
