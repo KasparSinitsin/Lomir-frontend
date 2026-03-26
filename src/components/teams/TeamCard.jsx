@@ -505,6 +505,12 @@ const TeamCard = ({
     useState(null);
   const [pendingApplicationForTeam, setPendingApplicationForTeam] =
     useState(null);
+  const hasInternalRoleInvitation =
+    isRoleInvitationVariant ||
+    invitation?.isInternal ||
+    invitation?.is_internal ||
+    pendingInvitationForTeam?.isInternal ||
+    pendingInvitationForTeam?.is_internal;
   const isPendingRoleApplicationForTeam = !!(
     pendingApplicationForTeam?.role ||
     pendingApplicationForTeam?.roleId ||
@@ -1059,11 +1065,28 @@ const TeamCard = ({
     }
   };
 
+  const getInternalRoleInvitationTooltip = () => {
+    if (!normalizedData.date) {
+      return "You are invited to fill a role in this team";
+    }
+
+    try {
+      return `You were invited to fill a role in this team on ${format(
+        new Date(normalizedData.date),
+        "MMM d, yyyy",
+      )}`;
+    } catch (e) {
+      return "You are invited to fill a role in this team";
+    }
+  };
+
   const getRoleStatusTooltip = () => {
+    if (isRoleInvitationVariant) {
+      return getInternalRoleInvitationTooltip();
+    }
+
     const formattedDate = getFormattedDate();
-    const actionText = isRoleInvitationVariant
-      ? "You were invited for this role"
-      : "You applied for this role";
+    const actionText = "You applied for this role";
 
     if (!formattedDate || !normalizedData.date) {
       return actionText;
@@ -1810,8 +1833,8 @@ const TeamCard = ({
         {(effectiveVariant === "invitation" || isRoleInvitationVariant || pendingInvitationForTeam) && (
           <Tooltip
             content={
-              isRoleInvitationVariant
-                ? getRoleStatusTooltip()
+              hasInternalRoleInvitation
+                ? getInternalRoleInvitationTooltip()
                 : `You were invited to this team${
                     getFormattedDate()
                       ? `\non ${format(new Date(normalizedData.date), "MMM d, yyyy")}`
@@ -1830,7 +1853,10 @@ const TeamCard = ({
                   : undefined
               }
             >
-              <Mail size={11} className="text-pink-500" />
+              <Mail
+                size={11}
+                className={hasInternalRoleInvitation ? "text-orange-500" : "text-pink-500"}
+              />
               {getFormattedDate() && <span>{getFormattedDate()}</span>}
             </span>
           </Tooltip>
@@ -2171,7 +2197,10 @@ const TeamCard = ({
                   <Tooltip content={getRoleStatusTooltip()}>
                     <span className="flex items-center gap-0.5 whitespace-nowrap">
                       {isRoleInvitationVariant ? (
-                        <Mail size={viewMode === "mini" ? 11 : 12} className="flex-shrink-0 text-pink-500" />
+                        <Mail
+                          size={viewMode === "mini" ? 11 : 12}
+                          className={`flex-shrink-0 ${hasInternalRoleInvitation ? "text-orange-500" : "text-pink-500"}`}
+                        />
                       ) : (
                         <SendHorizontal size={viewMode === "mini" ? 11 : 12} className="flex-shrink-0 text-orange-500" />
                       )}
@@ -2254,19 +2283,27 @@ const TeamCard = ({
             {(effectiveVariant === "invitation" ||
               pendingInvitationForTeam) && (
               <Tooltip
-                content={`You were invited to this team${
-                  getFormattedDate()
-                    ? `\non ${format(
-                        new Date(normalizedData.date),
-                        "MMM d, yyyy",
-                      )}`
-                    : ""
-                }`}
+                content={
+                  hasInternalRoleInvitation
+                    ? getInternalRoleInvitationTooltip()
+                    : `You were invited to this team${
+                        getFormattedDate()
+                          ? `\non ${format(
+                              new Date(normalizedData.date),
+                              "MMM d, yyyy",
+                            )}`
+                          : ""
+                      }`
+                }
               >
                 <span className="flex items-center">
                   <Mail
                     size={viewMode === "mini" ? 12 : 14}
-                    className="text-pink-500"
+                    className={
+                      hasInternalRoleInvitation
+                        ? "text-orange-500"
+                        : "text-pink-500"
+                    }
                   />
                   {getFormattedDate() && (
                     <span className="ml-0.5">{getFormattedDate()}</span>

@@ -282,7 +282,7 @@ const TeamInvitationDetailsModal = ({
         {team.name || "Unknown Team"}
       </h2>
       <p className="text-sm text-base-content/70 flex items-center">
-        <MailOpen size={14} className="mr-1.5" />
+        <MailOpen size={14} className={`mr-1.5 ${isInternal ? "text-orange-500" : ""}`} />
         {headerSubtitle}
       </p>
     </div>
