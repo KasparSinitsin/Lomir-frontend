@@ -1815,21 +1815,6 @@ const TeamCard = ({
 
     const subtitleContent = (
       <span className="flex min-w-0 flex-nowrap items-center gap-1 overflow-hidden whitespace-nowrap text-base-content/60">
-        {!isRoleVariant && scoreSubtitleItem}
-        {!isRoleVariant && (
-          <>
-            <Users size={11} />
-            <span>{memberCount}/{maxMembers}</span>
-          </>
-        )}
-        {!isRoleVariant && openRoleCount > 0 && (
-          <Tooltip content={`${openRoleCount} open ${openRoleCount === 1 ? 'role' : 'roles'} posted in this team`}>
-            <span className="flex items-center">
-              <UserSearch size={12} className="text-orange-500 mr-0.5" />
-              <span>{openRoleCount}</span>
-            </span>
-          </Tooltip>
-        )}
         {(effectiveVariant === "invitation" || isRoleInvitationVariant || pendingInvitationForTeam) && (
           <Tooltip
             content={
@@ -1882,6 +1867,21 @@ const TeamCard = ({
             >
               <SendHorizontal size={11} className={(isRoleApplicationVariant || isPendingRoleApplicationForTeam) ? "text-orange-500" : "text-info"} />
               {getFormattedDate() && <span>{getFormattedDate()}</span>}
+            </span>
+          </Tooltip>
+        )}
+        {!isRoleVariant && scoreSubtitleItem}
+        {!isRoleVariant && (
+          <>
+            <Users size={11} />
+            <span>{memberCount}/{maxMembers}</span>
+          </>
+        )}
+        {!isRoleVariant && openRoleCount > 0 && (
+          <Tooltip content={`${openRoleCount} open ${openRoleCount === 1 ? 'role' : 'roles'} posted in this team`}>
+            <span className="flex items-center">
+              <UserSearch size={12} className="text-orange-500 mr-0.5" />
+              <span>{openRoleCount}</span>
             </span>
           </Tooltip>
         )}
@@ -2192,7 +2192,6 @@ const TeamCard = ({
             {/* Score + date on the same row for role variants */}
             {isRoleVariant ? (
               <span className="flex items-center gap-1.5 flex-nowrap">
-                {scoreSubtitleItem}
                 {getFormattedDate() && (
                   <Tooltip content={getRoleStatusTooltip()}>
                     <span className="flex items-center gap-0.5 whitespace-nowrap">
@@ -2208,10 +2207,69 @@ const TeamCard = ({
                     </span>
                   </Tooltip>
                 )}
+                {scoreSubtitleItem}
               </span>
             ) : (
               scoreSubtitleItem
             )}
+            {/* Pending invitation indicator with date */}
+            {(effectiveVariant === "invitation" ||
+              pendingInvitationForTeam) && (
+              <Tooltip
+                content={
+                  hasInternalRoleInvitation
+                    ? getInternalRoleInvitationTooltip()
+                    : `You were invited to this team${
+                        getFormattedDate()
+                          ? `\non ${format(
+                              new Date(normalizedData.date),
+                              "MMM d, yyyy",
+                            )}`
+                          : ""
+                      }`
+                }
+              >
+                <span className="flex items-center">
+                  <Mail
+                    size={viewMode === "mini" ? 12 : 14}
+                    className={
+                      hasInternalRoleInvitation
+                        ? "text-orange-500"
+                        : "text-pink-500"
+                    }
+                  />
+                  {getFormattedDate() && (
+                    <span className="ml-0.5">{getFormattedDate()}</span>
+                  )}
+                </span>
+              </Tooltip>
+            )}
+
+            {/* Pending regular team-join application indicator */}
+            {(effectiveVariant === "application" ||
+              (pendingApplicationForTeam && !isPendingRoleApplicationForTeam)) && (
+              <Tooltip
+                content={`You applied to join this team${
+                  getFormattedDate()
+                    ? `\non ${format(
+                        new Date(normalizedData.date),
+                        "MMM d, yyyy",
+                      )}`
+                    : ""
+                }`}
+              >
+                <span className="flex items-center">
+                  <SendHorizontal
+                    size={viewMode === "mini" ? 12 : 14}
+                    className="text-info"
+                  />
+                  {getFormattedDate() && (
+                    <span className="ml-0.5">{getFormattedDate()}</span>
+                  )}
+                </span>
+              </Tooltip>
+            )}
+
             {/* Members count — or team name for role variants */}
             {isRoleVariant ? (
               teamData._teamName && (
@@ -2276,64 +2334,6 @@ const TeamCard = ({
                     className="text-gray-500"
                   />
                 )}
-              </Tooltip>
-            )}
-
-            {/* Pending invitation indicator with date */}
-            {(effectiveVariant === "invitation" ||
-              pendingInvitationForTeam) && (
-              <Tooltip
-                content={
-                  hasInternalRoleInvitation
-                    ? getInternalRoleInvitationTooltip()
-                    : `You were invited to this team${
-                        getFormattedDate()
-                          ? `\non ${format(
-                              new Date(normalizedData.date),
-                              "MMM d, yyyy",
-                            )}`
-                          : ""
-                      }`
-                }
-              >
-                <span className="flex items-center">
-                  <Mail
-                    size={viewMode === "mini" ? 12 : 14}
-                    className={
-                      hasInternalRoleInvitation
-                        ? "text-orange-500"
-                        : "text-pink-500"
-                    }
-                  />
-                  {getFormattedDate() && (
-                    <span className="ml-0.5">{getFormattedDate()}</span>
-                  )}
-                </span>
-              </Tooltip>
-            )}
-
-            {/* Pending regular team-join application indicator */}
-            {(effectiveVariant === "application" ||
-              (pendingApplicationForTeam && !isPendingRoleApplicationForTeam)) && (
-              <Tooltip
-                content={`You applied to join this team${
-                  getFormattedDate()
-                    ? `\non ${format(
-                        new Date(normalizedData.date),
-                        "MMM d, yyyy",
-                      )}`
-                    : ""
-                }`}
-              >
-                <span className="flex items-center">
-                  <SendHorizontal
-                    size={viewMode === "mini" ? 12 : 14}
-                    className="text-info"
-                  />
-                  {getFormattedDate() && (
-                    <span className="ml-0.5">{getFormattedDate()}</span>
-                  )}
-                </span>
               </Tooltip>
             )}
 
