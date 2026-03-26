@@ -20,7 +20,10 @@ import {
 } from "lucide-react";
 import Alert from "../components/common/Alert";
 import CreateTeamModal from "../components/teams/CreateTeamModal";
-
+import {
+  enrichTeamMatchData,
+  buildViewerTeamMatchProfile,
+} from "../utils/teamMatchUtils";
 
 import {
   RESULTS_PER_PAGE_OPTIONS,
@@ -83,6 +86,11 @@ const getRequestTimestamp = (item) => {
   );
 };
 
+const MY_TEAMS_LIST_LOCATION_WIDTH_CLASSNAME = "sm:w-40";
+const MY_TEAMS_LIST_LOCATION_INSET_CLASSNAME = "sm:pl-[24px]";
+const MY_TEAMS_LIST_TAGS_WIDTH_CLASSNAME = "sm:w-36";
+const MY_TEAMS_LIST_BADGES_WIDTH_CLASSNAME = "sm:w-32";
+
 const MyTeams = () => {
   const [teams, setTeams] = useState([]);
   const [pendingApplications, setPendingApplications] = useState([]);
@@ -93,6 +101,24 @@ const MyTeams = () => {
   const [error, setError] = useState(null);
   const { user } = useAuth();
   const [viewerDistanceSource, setViewerDistanceSource] = useState(null);
+  const [viewerMatchProfile, setViewerMatchProfile] = useState(null);
+  const viewerMatchUser = useMemo(() => {
+    const viewerId = viewerDistanceSource?.id ?? user?.id ?? null;
+    if (!viewerId) return null;
+
+    return {
+      id: viewerId,
+      city: viewerDistanceSource?.city ?? user?.city ?? null,
+      country: viewerDistanceSource?.country ?? user?.country ?? null,
+    };
+  }, [
+    user?.id,
+    user?.city,
+    user?.country,
+    viewerDistanceSource?.id,
+    viewerDistanceSource?.city,
+    viewerDistanceSource?.country,
+  ]);
 
   // ===== VIEW MODE STATE =====
   const [resultView, setResultView] = useState("list");
@@ -252,6 +278,49 @@ const MyTeams = () => {
       cancelled = true;
     };
   }, [user]);
+
+  useEffect(() => {
+    if (!user?.id) {
+      setViewerMatchProfile(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    const buildProfile = async () => {
+      try {
+        const [tagsRes, badgesRes] = await Promise.all([
+          userService.getUserTags(user.id),
+          userService.getUserBadges(user.id),
+        ]);
+
+        if (cancelled) return;
+
+        const tags = tagsRes?.data ?? tagsRes ?? [];
+        const badges = badgesRes?.data ?? badgesRes ?? [];
+
+        setViewerMatchProfile(
+          buildViewerTeamMatchProfile({
+            user: viewerMatchUser,
+            userTags: tags,
+            userBadges: badges,
+          }),
+        );
+      } catch (err) {
+        console.error("Error building viewer match profile:", err);
+
+        if (!cancelled) {
+          setViewerMatchProfile(null);
+        }
+      }
+    };
+
+    buildProfile();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id, viewerMatchUser]);
 
   // Fetch teams when page or limit changes
   useEffect(() => {
@@ -617,11 +686,43 @@ const MyTeams = () => {
     [pendingInvitations]
   );
 
+  const enrichedInvitations = useMemo(() => {
+    if (!viewerMatchProfile) return externalInvitations;
+
+    return externalInvitations.map((invitation) => {
+      if (!invitation?.team?.tags?.length) return invitation;
+
+      return {
+        ...invitation,
+        team: enrichTeamMatchData({
+          team: invitation.team,
+          viewerProfile: viewerMatchProfile,
+        }),
+      };
+    });
+  }, [externalInvitations, viewerMatchProfile]);
+
+  const enrichedApplications = useMemo(() => {
+    if (!viewerMatchProfile) return externalApplications;
+
+    return externalApplications.map((application) => {
+      if (!application?.team?.tags?.length) return application;
+
+      return {
+        ...application,
+        team: enrichTeamMatchData({
+          team: application.team,
+          viewerProfile: viewerMatchProfile,
+        }),
+      };
+    });
+  }, [externalApplications, viewerMatchProfile]);
+
   const sortedPendingInvitations = sortPendingItems(
-    externalInvitations.filter(Boolean),
+    enrichedInvitations.filter(Boolean),
   );
   const sortedPendingApplications = sortPendingItems(
-    externalApplications.filter(Boolean),
+    enrichedApplications.filter(Boolean),
   );
   const sortedTeams = sortMemberTeams(teams.filter(Boolean));
 
@@ -835,12 +936,13 @@ const MyTeams = () => {
                             onDecline={handleInvitationDecline}
                             viewerDistanceSource={viewerDistanceSource}
                             hideDistanceInfo={true}
-                            listLocationWidthClassName="sm:w-44"
-                            listLocationInsetClassName="sm:pl-[60px]"
-                            listTagsWidthClassName="sm:w-44"
-                            listBadgesWidthClassName="sm:w-40"
+                            listLocationWidthClassName={MY_TEAMS_LIST_LOCATION_WIDTH_CLASSNAME}
+                            listLocationInsetClassName={MY_TEAMS_LIST_LOCATION_INSET_CLASSNAME}
+                            listTagsWidthClassName={MY_TEAMS_LIST_TAGS_WIDTH_CLASSNAME}
+                            listBadgesWidthClassName={MY_TEAMS_LIST_BADGES_WIDTH_CLASSNAME}
                             viewMode="list"
                             activeFilters={{}}
+                            showMatchScore={true}
                           />
                         </div>
                       ))}
@@ -875,6 +977,7 @@ const MyTeams = () => {
                             hideDistanceInfo={true}
                             viewMode={resultView}
                             activeFilters={{}}
+                            showMatchScore={true}
                           />
                         </div>
                       ))}
@@ -921,10 +1024,10 @@ const MyTeams = () => {
                             onDecline={handleInvitationDecline}
                             viewerDistanceSource={viewerDistanceSource}
                             hideDistanceInfo={true}
-                            listLocationWidthClassName="sm:w-44"
-                            listLocationInsetClassName="sm:pl-[60px]"
-                            listTagsWidthClassName="sm:w-44"
-                            listBadgesWidthClassName="sm:w-40"
+                            listLocationWidthClassName={MY_TEAMS_LIST_LOCATION_WIDTH_CLASSNAME}
+                            listLocationInsetClassName={MY_TEAMS_LIST_LOCATION_INSET_CLASSNAME}
+                            listTagsWidthClassName={MY_TEAMS_LIST_TAGS_WIDTH_CLASSNAME}
+                            listBadgesWidthClassName={MY_TEAMS_LIST_BADGES_WIDTH_CLASSNAME}
                             viewMode="list"
                             activeFilters={{}}
                             showMatchScore={true}
@@ -1002,12 +1105,13 @@ const MyTeams = () => {
                           onSendReminder={handleSendReminder}
                           viewerDistanceSource={viewerDistanceSource}
                           hideDistanceInfo={true}
-                          listLocationWidthClassName="sm:w-44"
-                          listLocationInsetClassName="sm:pl-[60px]"
-                          listTagsWidthClassName="sm:w-44"
-                          listBadgesWidthClassName="sm:w-40"
+                          listLocationWidthClassName={MY_TEAMS_LIST_LOCATION_WIDTH_CLASSNAME}
+                          listLocationInsetClassName={MY_TEAMS_LIST_LOCATION_INSET_CLASSNAME}
+                          listTagsWidthClassName={MY_TEAMS_LIST_TAGS_WIDTH_CLASSNAME}
+                          listBadgesWidthClassName={MY_TEAMS_LIST_BADGES_WIDTH_CLASSNAME}
                           viewMode="list"
                           activeFilters={{}}
+                          showMatchScore={true}
                         />
                       ))}
                     </div>
@@ -1029,6 +1133,7 @@ const MyTeams = () => {
                           hideDistanceInfo={true}
                           viewMode={resultView}
                           activeFilters={{}}
+                          showMatchScore={true}
                         />
                       ))}
                     </Grid>
@@ -1062,10 +1167,10 @@ const MyTeams = () => {
                           onSendReminder={handleSendReminder}
                           viewerDistanceSource={viewerDistanceSource}
                           hideDistanceInfo={true}
-                          listLocationWidthClassName="sm:w-44"
-                          listLocationInsetClassName="sm:pl-[60px]"
-                          listTagsWidthClassName="sm:w-44"
-                          listBadgesWidthClassName="sm:w-40"
+                          listLocationWidthClassName={MY_TEAMS_LIST_LOCATION_WIDTH_CLASSNAME}
+                          listLocationInsetClassName={MY_TEAMS_LIST_LOCATION_INSET_CLASSNAME}
+                          listTagsWidthClassName={MY_TEAMS_LIST_TAGS_WIDTH_CLASSNAME}
+                          listBadgesWidthClassName={MY_TEAMS_LIST_BADGES_WIDTH_CLASSNAME}
                           viewMode="list"
                           activeFilters={{}}
                           showMatchScore={true}
@@ -1167,10 +1272,10 @@ const MyTeams = () => {
                       onLeave={handleTeamLeave}
                       viewerDistanceSource={viewerDistanceSource}
                       hideDistanceInfo={true}
-                      listLocationWidthClassName="sm:w-44"
-                      listLocationInsetClassName="sm:pl-[60px]"
-                      listTagsWidthClassName="sm:w-44"
-                      listBadgesWidthClassName="sm:w-40"
+                      listLocationWidthClassName={MY_TEAMS_LIST_LOCATION_WIDTH_CLASSNAME}
+                      listLocationInsetClassName={MY_TEAMS_LIST_LOCATION_INSET_CLASSNAME}
+                      listTagsWidthClassName={MY_TEAMS_LIST_TAGS_WIDTH_CLASSNAME}
+                      listBadgesWidthClassName={MY_TEAMS_LIST_BADGES_WIDTH_CLASSNAME}
                       autoOpenApplications={
                         team.id === autoOpenApplicationsTeamId
                       }

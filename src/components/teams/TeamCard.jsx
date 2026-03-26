@@ -365,9 +365,14 @@ const TeamCard = ({
   highlightApplicantId = null,
   onApplicationsModalClosed,
 }) => {
+  const isInternalRoleApplication =
+    application?.isInternalRoleApplication ??
+    application?.is_internal_role_application ??
+    false;
+
   // Determine effective variant (support legacy isPendingApplication prop)
   let effectiveVariant = isPendingApplication ? "application" : variant;
-  if (effectiveVariant === "application" && application?.role) {
+  if (effectiveVariant === "application" && isInternalRoleApplication) {
     effectiveVariant = "role_application";
   } else if (effectiveVariant === "role_invitation") {
     effectiveVariant = "role_invitation";
@@ -375,6 +380,10 @@ const TeamCard = ({
   const isRoleApplicationVariant = effectiveVariant === "role_application";
   const isRoleInvitationVariant = effectiveVariant === "role_invitation";
   const isRoleVariant = isRoleApplicationVariant || isRoleInvitationVariant;
+  const isTeamInvitationOrApplicationVariant =
+    effectiveVariant === "invitation" || effectiveVariant === "application";
+  const shouldShowOpenRoleCount =
+    !isRoleVariant && !isTeamInvitationOrApplicationVariant;
 
   // Normalize data based on variant
   const getNormalizedData = () => {
@@ -516,6 +525,11 @@ const TeamCard = ({
     pendingApplicationForTeam?.roleId ||
     pendingApplicationForTeam?.role_id
   );
+  const shouldShowMemberCountInSubtitle = effectiveVariant === "member";
+  const shouldShowMemberCountInList =
+    effectiveVariant === "member" &&
+    !pendingInvitationForTeam &&
+    !pendingApplicationForTeam;
 
   // Check if current user is the owner of the team
   const isOwner =
@@ -1094,6 +1108,38 @@ const TeamCard = ({
 
     return `${actionText}\non ${format(new Date(normalizedData.date), "MMM d, yyyy")}`;
   };
+
+  const getAssociatedRoleName = (item) => {
+    const roleName =
+      item?.role?.roleName ??
+      item?.role?.role_name ??
+      item?.roleName ??
+      item?.role_name ??
+      null;
+
+    if (typeof roleName === "string" && roleName.trim()) {
+      return roleName.trim();
+    }
+
+    const hasRoleReference = !!(
+      item?.role?.id ??
+      item?.roleId ??
+      item?.role_id
+    );
+
+    return hasRoleReference ? "Vacant Role" : null;
+  };
+
+  const teamInvitationRoleName =
+    effectiveVariant === "invitation"
+      ? getAssociatedRoleName(invitation)
+      : null;
+  const teamApplicationRoleName =
+    effectiveVariant === "application"
+      ? getAssociatedRoleName(application)
+      : null;
+  const teamRequestRoleName =
+    teamInvitationRoleName ?? teamApplicationRoleName ?? null;
 
   const getDisplayTags = () => {
     let displayTags = [];
@@ -1710,13 +1756,6 @@ const TeamCard = ({
           : `${matchTier.pct}% profile match`;
     }
 
-    const avatarValue = `${matchTier.pct}%`;
-    const avatarTextClassName =
-      viewMode === "list"
-        ? "text-sm"
-        : "text-xl";
-    const shouldUseScoreAvatar = isRoleVariant;
-
     const iconSizeSubtitle =
       viewMode === "list" ? 10 : viewMode === "mini" ? 11 : 12;
     scoreSubtitleItem = (
@@ -1728,42 +1767,85 @@ const TeamCard = ({
       </Tooltip>
     );
 
-    const badgeSize =
-      viewMode === "list"
-        ? "w-[14px] h-[14px]"
-        : "w-5 h-5";
-    const badgeIconSize =
-      viewMode === "list" ? 7 : 10;
-    if (shouldUseScoreAvatar) {
-      scoreAvatarReplacement = (
-        <Tooltip
-          content={tooltipText}
-          wrapperClassName="flex h-full w-full items-center justify-center"
-        >
+    if (isRoleVariant) {
+      const isListMatchBadge = viewMode === "list";
+      const isCompactMatchBadge =
+        isListMatchBadge || viewMode === "mini";
+      const matchBadgeIconSize = isListMatchBadge
+        ? 7
+        : isCompactMatchBadge
+          ? 11
+          : 13;
+
+      matchOverlay = (
+        <Tooltip content={tooltipText}>
           <div
             aria-label={tooltipText}
-            className={`relative flex h-full w-full items-center justify-center overflow-hidden rounded-full ${matchTier.bg} text-white`}
+            className={`absolute ${isListMatchBadge ? "-top-0.5 -left-0.5" : "-top-1 -left-1"} z-10 rounded-full ring-2 ring-white flex items-center justify-center ${matchTier.bg} text-white`}
+            style={{
+              width: isListMatchBadge
+                ? "14px"
+                : isCompactMatchBadge
+                  ? "22px"
+                  : "26px",
+              height: isListMatchBadge
+                ? "14px"
+                : isCompactMatchBadge
+                  ? "22px"
+                  : "26px",
+            }}
           >
-            <matchTier.Icon
-              className="absolute text-white/40"
-              strokeWidth={1.75}
-              style={{ width: "85%", height: "85%" }}
+            <UserSearch
+              size={matchBadgeIconSize}
+              className="text-white"
+              strokeWidth={2.5}
             />
-            <span
-              className={`relative font-semibold leading-none tracking-tight ${avatarTextClassName}`}
-            >
-              {avatarValue}
-            </span>
+          </div>
+        </Tooltip>
+      );
+    } else if (isTeamInvitationOrApplicationVariant) {
+      const isListMatchBadge = viewMode === "list";
+      const isCompactMatchBadge =
+        isListMatchBadge || viewMode === "mini";
+      const matchBadgeIconSize = isListMatchBadge
+        ? 7
+        : isCompactMatchBadge
+          ? 11
+          : 13;
+
+      matchOverlay = (
+        <Tooltip content={tooltipText}>
+          <div
+            aria-label={tooltipText}
+            className={`absolute ${isListMatchBadge ? "-top-0.5 -left-0.5" : "-top-1 -left-1"} z-10 rounded-full ring-2 ring-white flex items-center justify-center ${matchTier.bg} text-white`}
+            style={{
+              width: isListMatchBadge
+                ? "14px"
+                : isCompactMatchBadge
+                  ? "22px"
+                  : "26px",
+              height: isListMatchBadge
+                ? "14px"
+                : isCompactMatchBadge
+                  ? "22px"
+                  : "26px",
+            }}
+          >
+            <Users
+              size={matchBadgeIconSize}
+              className="text-white"
+              strokeWidth={2.5}
+            />
           </div>
         </Tooltip>
       );
     } else {
       matchOverlay = (
         <div
-          className={`absolute -top-0.5 -left-0.5 rounded-full ring-2 ring-white flex items-center justify-center ${matchTier.bg} ${badgeSize}`}
+          className={`absolute -top-0.5 -left-0.5 rounded-full ring-2 ring-white flex items-center justify-center ${matchTier.bg} ${viewMode === "list" ? "w-[14px] h-[14px]" : "w-5 h-5"}`}
         >
           <matchTier.Icon
-            size={badgeIconSize}
+            size={viewMode === "list" ? 7 : 10}
             className="text-white"
             strokeWidth={2.5}
           />
@@ -1815,6 +1897,7 @@ const TeamCard = ({
 
     const subtitleContent = (
       <span className="flex min-w-0 flex-nowrap items-center gap-1 overflow-hidden whitespace-nowrap text-base-content/60">
+        {scoreSubtitleItem}
         {(effectiveVariant === "invitation" || isRoleInvitationVariant || pendingInvitationForTeam) && (
           <Tooltip
             content={
@@ -1846,6 +1929,17 @@ const TeamCard = ({
             </span>
           </Tooltip>
         )}
+        {teamInvitationRoleName && (
+          <Tooltip
+            content={teamInvitationRoleName}
+            wrapperClassName="min-w-0 max-w-full overflow-hidden"
+          >
+            <span className="flex min-w-0 max-w-full items-center gap-0.5 overflow-hidden">
+              <UserSearch size={12} className="flex-shrink-0 text-orange-500" />
+              <span className="truncate">{teamInvitationRoleName}</span>
+            </span>
+          </Tooltip>
+        )}
         {(effectiveVariant === "application" || isRoleApplicationVariant || pendingApplicationForTeam) && (
           <Tooltip
             content={
@@ -1870,14 +1964,24 @@ const TeamCard = ({
             </span>
           </Tooltip>
         )}
-        {!isRoleVariant && scoreSubtitleItem}
-        {!isRoleVariant && (
+        {teamApplicationRoleName && (
+          <Tooltip
+            content={teamApplicationRoleName}
+            wrapperClassName="min-w-0 max-w-full overflow-hidden"
+          >
+            <span className="flex min-w-0 max-w-full items-center gap-0.5 overflow-hidden">
+              <UserSearch size={12} className="flex-shrink-0 text-orange-500" />
+              <span className="truncate">{teamApplicationRoleName}</span>
+            </span>
+          </Tooltip>
+        )}
+        {shouldShowMemberCountInList && (
           <>
             <Users size={11} />
             <span>{memberCount}/{maxMembers}</span>
           </>
         )}
-        {!isRoleVariant && openRoleCount > 0 && (
+        {shouldShowOpenRoleCount && openRoleCount > 0 && (
           <Tooltip content={`${openRoleCount} open ${openRoleCount === 1 ? 'role' : 'roles'} posted in this team`}>
             <span className="flex items-center">
               <UserSearch size={12} className="text-orange-500 mr-0.5" />
@@ -2192,6 +2296,7 @@ const TeamCard = ({
             {/* Score + date on the same row for role variants */}
             {isRoleVariant ? (
               <span className="flex items-center gap-1.5 flex-nowrap">
+                {scoreSubtitleItem}
                 {getFormattedDate() && (
                   <Tooltip content={getRoleStatusTooltip()}>
                     <span className="flex items-center gap-0.5 whitespace-nowrap">
@@ -2207,7 +2312,6 @@ const TeamCard = ({
                     </span>
                   </Tooltip>
                 )}
-                {scoreSubtitleItem}
               </span>
             ) : (
               scoreSubtitleItem
@@ -2244,6 +2348,26 @@ const TeamCard = ({
                 </span>
               </Tooltip>
             )}
+            {teamInvitationRoleName && (
+              <Tooltip content={teamInvitationRoleName}>
+                {viewMode === "card" ? (
+                  <span className="flex items-center">
+                    <UserSearch
+                      size={14}
+                      className="text-orange-500"
+                    />
+                  </span>
+                ) : (
+                  <span className="flex items-start">
+                    <UserSearch
+                      size={viewMode === "mini" ? 12 : 14}
+                      className="text-orange-500 mr-0.5 flex-shrink-0 mt-0.5"
+                    />
+                    <span className="leading-[1.15]">{teamInvitationRoleName}</span>
+                  </span>
+                )}
+              </Tooltip>
+            )}
 
             {/* Pending regular team-join application indicator */}
             {(effectiveVariant === "application" ||
@@ -2269,40 +2393,77 @@ const TeamCard = ({
                 </span>
               </Tooltip>
             )}
+            {teamApplicationRoleName && (
+              <Tooltip content={teamApplicationRoleName}>
+                {viewMode === "card" ? (
+                  <span className="flex items-center">
+                    <UserSearch
+                      size={14}
+                      className="text-orange-500"
+                    />
+                  </span>
+                ) : (
+                  <span className="flex items-start">
+                    <UserSearch
+                      size={viewMode === "mini" ? 12 : 14}
+                      className="text-orange-500 mr-0.5 flex-shrink-0 mt-0.5"
+                    />
+                    <span className="leading-[1.15]">{teamApplicationRoleName}</span>
+                  </span>
+                )}
+              </Tooltip>
+            )}
 
             {/* Members count — or team name for role variants */}
             {isRoleVariant ? (
               teamData._teamName && (
-                <Tooltip content="Click to view team details">
-                  <span
-                    className="flex items-start cursor-pointer"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setIsModalOpen(true);
-                    }}
-                  >
-                    <Users
-                      size={viewMode === "mini" ? 12 : 14}
-                      className="text-primary mr-0.5 flex-shrink-0 mt-0.5"
-                    />
-                    <span className="leading-[1.15]">{teamData._teamName}</span>
-                  </span>
+                <Tooltip content={teamData._teamName}>
+                  {viewMode === "card" ? (
+                    <span
+                      className="flex items-center cursor-pointer"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsModalOpen(true);
+                      }}
+                    >
+                      <Users
+                        size={14}
+                        className="text-primary"
+                      />
+                    </span>
+                  ) : (
+                    <span
+                      className="flex items-start cursor-pointer"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsModalOpen(true);
+                      }}
+                    >
+                      <Users
+                        size={viewMode === "mini" ? 12 : 14}
+                        className="text-primary mr-0.5 flex-shrink-0 mt-0.5"
+                      />
+                      <span className="leading-[1.15]">{teamData._teamName}</span>
+                    </span>
+                  )}
                 </Tooltip>
               )
             ) : (
-              <span className="flex items-center">
-                <Users
-                  size={viewMode === "mini" ? 12 : 14}
-                  className="text-primary mr-0.5"
-                />
-                <span>
-                  {getMemberCount()}/{getMaxMembers()}
+              shouldShowMemberCountInSubtitle && (
+                <span className="flex items-center">
+                  <Users
+                    size={viewMode === "mini" ? 12 : 14}
+                    className="text-primary mr-0.5"
+                  />
+                  <span>
+                    {getMemberCount()}/{getMaxMembers()}
+                  </span>
                 </span>
-              </span>
+              )
             )}
 
             {/* Open roles count */}
-            {!isRoleVariant && openRoleCount > 0 && (
+            {shouldShowOpenRoleCount && openRoleCount > 0 && (
               <Tooltip content={`${openRoleCount} open ${openRoleCount === 1 ? 'role' : 'roles'} posted in this team`}>
                 <span className="flex items-center">
                   <UserSearch
@@ -2467,6 +2628,32 @@ const TeamCard = ({
           hideLocation={viewMode === "mini" && !activeFilters.showLocation}
           compact={viewMode === "mini"}
         />
+        {viewMode === "card" && teamRequestRoleName && (
+          <div className="mt-2 flex items-start text-sm text-base-content/70">
+            <UserSearch
+              size={16}
+              className="mr-1 flex-shrink-0 mt-0.5 text-base-content"
+            />
+            <span>{teamRequestRoleName}</span>
+          </div>
+        )}
+        {viewMode === "card" && isRoleVariant && teamData._teamName && (
+          <Tooltip content="Click to view team details">
+            <div
+              className="mt-2 flex items-start text-sm text-base-content/70 cursor-pointer"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsModalOpen(true);
+              }}
+            >
+              <Users
+                size={16}
+                className="mr-1 flex-shrink-0 mt-0.5 text-base-content"
+              />
+              <span>{teamData._teamName}</span>
+            </div>
+          </Tooltip>
+        )}
 
         {/* Action buttons */}
         {renderActionButtons()}
