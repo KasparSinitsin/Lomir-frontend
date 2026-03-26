@@ -16,7 +16,24 @@ import VacantRoleCard from "./VacantRoleCard";
 import Alert from "../common/Alert";
 import { format } from "date-fns";
 import InlineUserLink from "../users/InlineUserLink";
+import { matchingService } from "../../services/matchingService";
 import { vacantRoleService } from "../../services/vacantRoleService";
+
+const ROLE_MATCH_FETCH_LIMIT = 1000;
+
+const extractRoleMatchData = (roleLike) => {
+  const rawScore = roleLike?.matchScore ?? roleLike?.match_score ?? null;
+  const numericScore = Number(rawScore);
+
+  return {
+    matchScore: Number.isFinite(numericScore) ? numericScore : null,
+    matchDetails:
+      roleLike?.matchDetails ??
+      roleLike?.match_details ??
+      roleLike?.scoreBreakdown ??
+      null,
+  };
+};
 
 /**
  * TeamInvitationDetailsModal Component
@@ -65,43 +82,64 @@ const TeamInvitationDetailsModal = ({
       return;
     }
 
+    let isCancelled = false;
+
     const fetchRole = async () => {
       try {
-        const [detailsRes, listRes] = await Promise.allSettled([
+        const [detailsRes, matchesRes] = await Promise.allSettled([
           vacantRoleService.getVacantRoleById(teamId, roleId),
-          vacantRoleService.getVacantRoles(teamId, "open"),
+          matchingService.getMatchingRolesForTeam(teamId, {
+            limit: ROLE_MATCH_FETCH_LIMIT,
+          }),
         ]);
+
+        if (isCancelled) return;
+
+        const invitationRoleMatch = extractRoleMatchData(invitation?.role);
+        let detailRoleMatch = { matchScore: null, matchDetails: null };
 
         if (detailsRes.status === "fulfilled" && detailsRes.value?.data) {
           const roleData = detailsRes.value.data;
           setHydratedRole(roleData);
-          const detailScore = roleData.matchScore ?? roleData.match_score ?? null;
-          if (detailScore !== null) {
-            setRoleMatchScore(detailScore);
-            setRoleMatchDetails(
-              roleData.matchDetails ?? roleData.match_details ?? roleData.scoreBreakdown ?? null
-            );
-          }
+          detailRoleMatch = extractRoleMatchData(roleData);
         }
 
-        if (listRes.status === "fulfilled") {
-          const roles = listRes.value?.data || [];
-          const matched = roles.find((r) => String(r.id) === String(roleId));
-          if (matched) {
-            const listScore = matched.matchScore ?? matched.match_score ?? null;
-            if (listScore !== null) {
-              setRoleMatchScore(listScore);
-              setRoleMatchDetails(matched.matchDetails ?? matched.match_details ?? null);
-            }
-          }
-        }
+        const matchedRole =
+          matchesRes.status === "fulfilled"
+            ? (matchesRes.value?.data || []).find(
+                (candidate) => String(candidate?.id) === String(roleId),
+              )
+            : null;
+        const matchedRoleData = extractRoleMatchData(matchedRole);
+        const resolvedRoleMatch =
+          matchedRoleData.matchScore != null
+            ? matchedRoleData
+            : invitationRoleMatch.matchScore != null
+              ? invitationRoleMatch
+              : detailRoleMatch;
+
+        setRoleMatchScore(resolvedRoleMatch.matchScore);
+        setRoleMatchDetails(resolvedRoleMatch.matchDetails);
       } catch (err) {
-        console.warn("Could not fetch role details for invitation:", err);
+        if (!isCancelled) {
+          console.warn("Could not fetch role details for invitation:", err);
+        }
       }
     };
 
     fetchRole();
-  }, [isOpen, invitation?.role?.id, invitation?.roleId, invitation?.role_id, team?.id]);
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [
+    isOpen,
+    invitation?.role,
+    invitation?.role?.id,
+    invitation?.roleId,
+    invitation?.role_id,
+    team?.id,
+  ]);
   const inviter = invitation?.inviter || {};
 
   // Format invitation date

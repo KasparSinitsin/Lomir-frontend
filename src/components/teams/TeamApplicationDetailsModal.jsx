@@ -8,7 +8,24 @@ import VacantRoleCard from "./VacantRoleCard";
 import { getUserInitials } from '../../utils/userHelpers';
 import Alert from "../common/Alert";
 import { format } from "date-fns";
+import { matchingService } from "../../services/matchingService";
 import { vacantRoleService } from "../../services/vacantRoleService";
+
+const ROLE_MATCH_FETCH_LIMIT = 1000;
+
+const extractRoleMatchData = (roleLike) => {
+  const rawScore = roleLike?.matchScore ?? roleLike?.match_score ?? null;
+  const numericScore = Number(rawScore);
+
+  return {
+    matchScore: Number.isFinite(numericScore) ? numericScore : null,
+    matchDetails:
+      roleLike?.matchDetails ??
+      roleLike?.match_details ??
+      roleLike?.scoreBreakdown ??
+      null,
+  };
+};
 
 /**
  * TeamApplicationDetailsModal Component
@@ -24,7 +41,7 @@ const TeamApplicationDetailsModal = ({
   onSendReminder,
 }) => {
   // ============ State ============
-  const [loading, setLoading] = useState(false);
+  const loading = false;
   const [actionLoading, setActionLoading] = useState(null);
   const [error, setError] = useState(null);
   const [isTeamDetailsOpen, setIsTeamDetailsOpen] = useState(false);
@@ -50,46 +67,57 @@ const TeamApplicationDetailsModal = ({
       return;
     }
 
+    let isCancelled = false;
+
     const fetchRole = async () => {
       try {
-        // Fetch full role details and the scored role list in parallel
-        const [detailsRes, listRes] = await Promise.allSettled([
+        const [detailsRes, matchesRes] = await Promise.allSettled([
           vacantRoleService.getVacantRoleById(teamId, roleId),
-          vacantRoleService.getVacantRoles(teamId, "open"),
+          matchingService.getMatchingRolesForTeam(teamId, {
+            limit: ROLE_MATCH_FETCH_LIMIT,
+          }),
         ]);
+
+        if (isCancelled) return;
+
+        const applicationRoleMatch = extractRoleMatchData(application?.role);
+        let detailRoleMatch = { matchScore: null, matchDetails: null };
 
         if (detailsRes.status === "fulfilled" && detailsRes.value?.data) {
           const roleData = detailsRes.value.data;
           setHydratedRole(roleData);
-          // getVacantRoleById may include match score for the requesting user
-          const detailScore = roleData.matchScore ?? roleData.match_score ?? null;
-          if (detailScore !== null) {
-            setRoleMatchScore(detailScore);
-            setRoleMatchDetails(
-              roleData.matchDetails ?? roleData.match_details ?? roleData.scoreBreakdown ?? null
-            );
-          }
+          detailRoleMatch = extractRoleMatchData(roleData);
         }
 
-        // Match score from the list endpoint (computed per current user)
-        if (listRes.status === "fulfilled") {
-          const roles = listRes.value?.data || [];
-          const matched = roles.find((r) => String(r.id) === String(roleId));
-          if (matched) {
-            const listScore = matched.matchScore ?? matched.match_score ?? null;
-            if (listScore !== null) {
-              setRoleMatchScore(listScore);
-              setRoleMatchDetails(matched.matchDetails ?? matched.match_details ?? null);
-            }
-          }
-        }
+        const matchedRole =
+          matchesRes.status === "fulfilled"
+            ? (matchesRes.value?.data || []).find(
+                (candidate) => String(candidate?.id) === String(roleId),
+              )
+            : null;
+        const matchedRoleData = extractRoleMatchData(matchedRole);
+        const resolvedRoleMatch =
+          matchedRoleData.matchScore != null
+            ? matchedRoleData
+            : applicationRoleMatch.matchScore != null
+              ? applicationRoleMatch
+              : detailRoleMatch;
+
+        setRoleMatchScore(resolvedRoleMatch.matchScore);
+        setRoleMatchDetails(resolvedRoleMatch.matchDetails);
       } catch (err) {
-        console.warn("Could not fetch role details:", err);
+        if (!isCancelled) {
+          console.warn("Could not fetch role details:", err);
+        }
       }
     };
 
     fetchRole();
-  }, [isOpen, application?.role?.id, application?.roleId, team?.id]);
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [isOpen, application?.role, application?.role?.id, application?.roleId, team?.id]);
   const owner = application?.owner || {};
 
   // Format application date
@@ -153,19 +181,6 @@ const TeamApplicationDetailsModal = ({
   const getMaxMembers = () => {
     const max = team.max_members ?? team.maxMembers;
     return max === null || max === undefined ? "∞" : max;
-  };
-
-  // Get owner (receiver) initials - consistent with inviter pattern
-  const getOwnerInitials = () => {
-    const firstName = owner.first_name || owner.firstName;
-    const lastName = owner.last_name || owner.lastName;
-
-    if (firstName && lastName) {
-      return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
-    }
-    if (firstName) return firstName.charAt(0).toUpperCase();
-    if (owner.username) return owner.username.charAt(0).toUpperCase();
-    return "?";
   };
 
   const getOwnerAvatar = () => {
