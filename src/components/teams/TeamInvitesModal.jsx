@@ -5,13 +5,25 @@ import Button from "../common/Button";
 import InlineUserLink, { InvitedByLink } from "../users/InlineUserLink";
 import VacantRoleCard from "./VacantRoleCard";
 import { matchingService } from "../../services/matchingService";
+import { userService } from "../../services/userService";
+import { vacantRoleService } from "../../services/vacantRoleService";
 import { useAuth } from "../../contexts/AuthContext";
 import { useUserModal } from "../../contexts/UserModalContext";
 import { getUserInitials, getDisplayName } from "../../utils/userHelpers";
+import { calculateDistanceKm } from "../../utils/locationUtils";
 import { format } from "date-fns";
 
+const MATCH_WEIGHTS = {
+  tags: 0.4,
+  badges: 0.3,
+  distance: 0.3,
+};
 const ROLE_CANDIDATE_FETCH_MIN_LIMIT = 20;
 const SELF_ROLE_MATCH_FETCH_LIMIT = 1000;
+const LOCATION_GRACE_KM = 20;
+const LOCATION_GRACE_SCORE = 0.25;
+
+const roundMatchValue = (value) => Math.round(value * 100) / 100;
 
 const extractCandidateMatchData = (candidateLike) => {
   const rawScore =
@@ -28,6 +40,134 @@ const extractCandidateMatchData = (candidateLike) => {
       candidateLike?.matchDetails ??
       candidateLike?.match_details ??
       null,
+  };
+};
+
+const extractProfilePayload = (response) => {
+  const payload = response?.data ?? response;
+
+  if (!payload) return null;
+  if (payload?.success !== undefined) return payload?.data ?? null;
+
+  return payload?.data?.data ?? payload?.data ?? payload;
+};
+
+const extractListPayload = (response) => {
+  if (Array.isArray(response)) return response;
+  if (Array.isArray(response?.data)) return response.data;
+  if (Array.isArray(response?.data?.data)) return response.data.data;
+  return [];
+};
+
+const buildTagLookup = (tagData) => {
+  const nextMap = new Map();
+
+  for (const tag of tagData) {
+    nextMap.set(Number(tag.id), {
+      badgeCredits: Number(tag.badge_credits ?? tag.badgeCredits ?? 0),
+    });
+  }
+
+  return nextMap;
+};
+
+const buildBadgeLookup = (badgeData) => {
+  const nextMap = new Map();
+
+  for (const badge of badgeData) {
+    const name = (badge.badgeName ?? badge.badge_name ?? badge.name ?? "")
+      .trim()
+      .toLowerCase();
+    const credits = Number(
+      badge.totalCredits ?? badge.total_credits ?? badge.credits ?? 0,
+    );
+    const existing = nextMap.get(name);
+
+    nextMap.set(name, {
+      totalCredits: (existing?.totalCredits || 0) + credits,
+    });
+  }
+
+  return nextMap;
+};
+
+const computeRoleUserMatch = ({
+  role,
+  tags,
+  badges,
+  user,
+  userTagMap,
+  userBadgeMap,
+}) => {
+  if (!role || !user) return null;
+
+  const requiredTagIds = tags
+    .map((tag) => Number(tag.tagId ?? tag.tag_id ?? tag.id))
+    .filter(Number.isFinite);
+  const requiredBadgeKeys = badges
+    .map((badge) =>
+      (badge.name ?? badge.badgeName ?? badge.badge_name ?? "")
+        .trim()
+        .toLowerCase(),
+    )
+    .filter(Boolean);
+
+  const matchingTags = requiredTagIds.filter((id) => userTagMap.has(id)).length;
+  const matchingBadges = requiredBadgeKeys.filter((key) => userBadgeMap.has(key)).length;
+
+  const tagScore =
+    requiredTagIds.length > 0 ? matchingTags / requiredTagIds.length : 0.5;
+  const badgeScore =
+    requiredBadgeKeys.length > 0
+      ? matchingBadges / requiredBadgeKeys.length
+      : 0.5;
+
+  const isRemote = role.isRemote ?? role.is_remote;
+  const maxDistanceKm = Number(role.maxDistanceKm ?? role.max_distance_km) || 50;
+
+  let distanceScore = 0.5;
+  let distanceKm = null;
+  let isWithinRange = null;
+
+  if (isRemote) {
+    distanceScore = 1;
+    isWithinRange = true;
+  } else {
+    distanceKm = calculateDistanceKm(user, role);
+
+    if (distanceKm !== null) {
+      if (distanceKm <= maxDistanceKm) {
+        distanceScore = 1;
+        isWithinRange = true;
+      } else if (distanceKm <= maxDistanceKm + LOCATION_GRACE_KM) {
+        distanceScore = LOCATION_GRACE_SCORE;
+        isWithinRange = false;
+      } else {
+        distanceScore = 0;
+        isWithinRange = false;
+      }
+    }
+  }
+
+  const matchScore =
+    MATCH_WEIGHTS.tags * tagScore +
+    MATCH_WEIGHTS.badges * badgeScore +
+    MATCH_WEIGHTS.distance * distanceScore;
+
+  return {
+    matchScore: roundMatchValue(matchScore),
+    matchDetails: {
+      tagScore: roundMatchValue(tagScore),
+      badgeScore: roundMatchValue(badgeScore),
+      distanceScore: roundMatchValue(distanceScore),
+      matchingTags,
+      totalRequiredTags: requiredTagIds.length,
+      matchingBadges,
+      totalRequiredBadges: requiredBadgeKeys.length,
+      distanceKm: distanceKm !== null ? Math.round(distanceKm) : null,
+      maxDistanceKm,
+      isWithinRange,
+    },
   };
 };
 
@@ -60,6 +200,7 @@ const TeamInvitesModal = ({
   const [success, setSuccess] = useState(null);
   const [roleCandidateMatchMap, setRoleCandidateMatchMap] = useState({});
   const [selfRoleMatchMap, setSelfRoleMatchMap] = useState({});
+  const [localInviteeRoleMatchMap, setLocalInviteeRoleMatchMap] = useState({});
 
   // ============ Refs ============
   const highlightedRef = useRef(null);
@@ -177,6 +318,138 @@ const TeamInvitesModal = ({
       cancelled = true;
     };
   }, [isOpen, teamId, currentUser?.id, invitations]);
+
+  useEffect(() => {
+    const roleInviteePairs = invitations
+      .map((invitation) => ({
+        roleId:
+          invitation?.role?.id ??
+          invitation?.roleId ??
+          invitation?.role_id ??
+          null,
+        inviteeId:
+          invitation?.invitee?.id ??
+          invitation?.invitee_id ??
+          null,
+        fallbackRole: invitation?.role ?? null,
+      }))
+      .filter(
+        (pair) => pair.roleId != null && pair.inviteeId != null,
+      );
+
+    if (!isOpen || !teamId || roleInviteePairs.length === 0) {
+      setLocalInviteeRoleMatchMap({});
+      return;
+    }
+
+    let cancelled = false;
+
+    const fetchLocalInviteeMatches = async () => {
+      const uniqueRoleIds = [...new Set(roleInviteePairs.map((pair) => String(pair.roleId)))];
+      const uniqueInviteeIds = [
+        ...new Set(roleInviteePairs.map((pair) => String(pair.inviteeId))),
+      ];
+      const fallbackRoleMap = roleInviteePairs.reduce((acc, pair) => {
+        if (!acc[pair.roleId] && pair.fallbackRole) {
+          acc[pair.roleId] = pair.fallbackRole;
+        }
+        return acc;
+      }, {});
+
+      try {
+        const [roleResults, inviteeResults] = await Promise.all([
+          Promise.allSettled(
+            uniqueRoleIds.map((roleId) =>
+              vacantRoleService.getVacantRoleById(teamId, roleId),
+            ),
+          ),
+          Promise.allSettled(
+            uniqueInviteeIds.map(async (inviteeId) => {
+              const [profileRes, tagsRes, badgesRes] = await Promise.allSettled([
+                userService.getUserById(inviteeId),
+                userService.getUserTags(inviteeId),
+                userService.getUserBadges(inviteeId),
+              ]);
+
+              return {
+                inviteeId,
+                profile:
+                  profileRes.status === "fulfilled"
+                    ? extractProfilePayload(profileRes.value)
+                    : null,
+                userTagMap:
+                  tagsRes.status === "fulfilled"
+                    ? buildTagLookup(extractListPayload(tagsRes.value))
+                    : new Map(),
+                userBadgeMap:
+                  badgesRes.status === "fulfilled"
+                    ? buildBadgeLookup(extractListPayload(badgesRes.value))
+                    : new Map(),
+              };
+            }),
+          ),
+        ]);
+
+        if (cancelled) return;
+
+        const roleMap = {};
+        uniqueRoleIds.forEach((roleId, index) => {
+          const result = roleResults[index];
+          roleMap[roleId] =
+            result?.status === "fulfilled"
+              ? extractProfilePayload(result.value) ?? fallbackRoleMap[roleId] ?? null
+              : fallbackRoleMap[roleId] ?? null;
+        });
+
+        const inviteeMap = {};
+        uniqueInviteeIds.forEach((inviteeId, index) => {
+          const result = inviteeResults[index];
+          inviteeMap[inviteeId] =
+            result?.status === "fulfilled"
+              ? result.value
+              : null;
+        });
+
+        const nextMatchMap = {};
+
+        roleInviteePairs.forEach(({ roleId, inviteeId }) => {
+          const role = roleMap[String(roleId)];
+          const inviteeData = inviteeMap[String(inviteeId)];
+
+          if (!role || !inviteeData?.profile) return;
+
+          const localMatch = computeRoleUserMatch({
+            role,
+            tags: role.tags ?? role.desiredTags ?? [],
+            badges: role.badges ?? role.desiredBadges ?? [],
+            user: inviteeData.profile,
+            userTagMap: inviteeData.userTagMap,
+            userBadgeMap: inviteeData.userBadgeMap,
+          });
+
+          if (!localMatch) return;
+
+          if (!nextMatchMap[String(roleId)]) {
+            nextMatchMap[String(roleId)] = {};
+          }
+          nextMatchMap[String(roleId)][String(inviteeId)] = localMatch;
+        });
+
+        setLocalInviteeRoleMatchMap(nextMatchMap);
+      } catch (error) {
+        if (!cancelled) {
+          console.warn("Could not compute local invitation role match scores:", error);
+          setLocalInviteeRoleMatchMap({});
+        }
+      }
+    };
+
+    fetchLocalInviteeMatches();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, teamId, invitations]);
 
   useEffect(() => {
     if (!isOpen || invitations.length === 0) {
@@ -360,6 +633,10 @@ const TeamInvitesModal = ({
           roleId != null && isSelfInvitation
             ? selfRoleMatchMap[String(roleId)] ?? null
             : null;
+        const localInviteeRoleMatch =
+          roleId != null && inviteeId != null
+            ? localInviteeRoleMatchMap[String(roleId)]?.[String(inviteeId)] ?? null
+            : null;
 
         // Normalize types to avoid "1" vs 1 mismatches
         const isHighlighted =
@@ -471,6 +748,7 @@ const TeamInvitesModal = ({
                   matchScore={
                     inviteeRoleMatch?.matchScore ??
                     selfRoleMatch?.matchScore ??
+                    localInviteeRoleMatch?.matchScore ??
                     invitation.role?.matchScore ??
                     invitation.role?.match_score ??
                     null
@@ -478,6 +756,7 @@ const TeamInvitesModal = ({
                   matchDetails={
                     inviteeRoleMatch?.matchDetails ??
                     selfRoleMatch?.matchDetails ??
+                    localInviteeRoleMatch?.matchDetails ??
                     invitation.role?.matchDetails ??
                     invitation.role?.match_details ??
                     null
