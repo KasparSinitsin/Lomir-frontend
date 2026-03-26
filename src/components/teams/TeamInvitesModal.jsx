@@ -4,9 +4,32 @@ import RequestListModal from "../common/RequestListModal";
 import Button from "../common/Button";
 import InlineUserLink, { InvitedByLink } from "../users/InlineUserLink";
 import VacantRoleCard from "./VacantRoleCard";
+import { matchingService } from "../../services/matchingService";
+import { useAuth } from "../../contexts/AuthContext";
 import { useUserModal } from "../../contexts/UserModalContext";
 import { getUserInitials, getDisplayName } from "../../utils/userHelpers";
 import { format } from "date-fns";
+
+const ROLE_CANDIDATE_FETCH_MIN_LIMIT = 20;
+const SELF_ROLE_MATCH_FETCH_LIMIT = 1000;
+
+const extractCandidateMatchData = (candidateLike) => {
+  const rawScore =
+    candidateLike?.matchScore ??
+    candidateLike?.match_score ??
+    candidateLike?.bestMatchScore ??
+    candidateLike?.best_match_score ??
+    null;
+  const numericScore = Number(rawScore);
+
+  return {
+    matchScore: Number.isFinite(numericScore) ? numericScore : null,
+    matchDetails:
+      candidateLike?.matchDetails ??
+      candidateLike?.match_details ??
+      null,
+  };
+};
 
 /**
  * TeamInvitesModal Component
@@ -35,11 +58,14 @@ const TeamInvitesModal = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
+  const [roleCandidateMatchMap, setRoleCandidateMatchMap] = useState({});
+  const [selfRoleMatchMap, setSelfRoleMatchMap] = useState({});
 
   // ============ Refs ============
   const highlightedRef = useRef(null);
 
   // ============ Context ============
+  const { user: currentUser } = useAuth();
   // Get global user modal opener (for clicking on invitee avatar/name)
   const { openUserModal } = useUserModal();
 
@@ -80,6 +106,165 @@ const TeamInvitesModal = ({
       return () => clearTimeout(t);
     }
   }, [isOpen, highlightUserId]);
+
+  useEffect(() => {
+    const selfRoleIds = [
+      ...new Set(
+        invitations
+          .filter((invitation) => {
+            const inviteeId =
+              invitation?.invitee?.id ??
+              invitation?.invitee_id ??
+              null;
+            return inviteeId != null && String(inviteeId) === String(currentUser?.id);
+          })
+          .map((invitation) =>
+            invitation?.role?.id ??
+            invitation?.roleId ??
+            invitation?.role_id ??
+            null,
+          )
+          .filter((roleId) => roleId != null)
+          .map(String),
+      ),
+    ];
+
+    if (!isOpen || !teamId || !currentUser?.id || selfRoleIds.length === 0) {
+      setSelfRoleMatchMap({});
+      return;
+    }
+
+    let cancelled = false;
+
+    const fetchSelfRoleMatches = async () => {
+      try {
+        const response = await matchingService.getMatchingRolesForTeam(teamId, {
+          limit: SELF_ROLE_MATCH_FETCH_LIMIT,
+        });
+
+        if (cancelled) return;
+
+        const nextMatchMap = {};
+
+        (response?.data || []).forEach((role) => {
+          const roleId = role?.id;
+          if (roleId == null || !selfRoleIds.includes(String(roleId))) return;
+
+          nextMatchMap[String(roleId)] = {
+            matchScore:
+              role?.matchScore ??
+              role?.match_score ??
+              null,
+            matchDetails:
+              role?.matchDetails ??
+              role?.match_details ??
+              null,
+          };
+        });
+
+        setSelfRoleMatchMap(nextMatchMap);
+      } catch (error) {
+        if (!cancelled) {
+          console.warn("Could not fetch self-invitation role match scores:", error);
+          setSelfRoleMatchMap({});
+        }
+      }
+    };
+
+    fetchSelfRoleMatches();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, teamId, currentUser?.id, invitations]);
+
+  useEffect(() => {
+    if (!isOpen || invitations.length === 0) {
+      setRoleCandidateMatchMap({});
+      return;
+    }
+
+    const inviteesByRole = invitations.reduce((acc, invitation) => {
+      const roleId =
+        invitation?.role?.id ??
+        invitation?.roleId ??
+        invitation?.role_id ??
+        null;
+      const inviteeId =
+        invitation?.invitee?.id ??
+        invitation?.invitee_id ??
+        null;
+
+      if (roleId == null || inviteeId == null) {
+        return acc;
+      }
+
+      const roleKey = String(roleId);
+      if (!acc.has(roleKey)) {
+        acc.set(roleKey, new Set());
+      }
+      acc.get(roleKey).add(String(inviteeId));
+      return acc;
+    }, new Map());
+
+    if (inviteesByRole.size === 0) {
+      setRoleCandidateMatchMap({});
+      return;
+    }
+
+    let cancelled = false;
+
+    const fetchCandidateMatches = async () => {
+      const roleEntries = [...inviteesByRole.entries()];
+
+      try {
+        const results = await Promise.allSettled(
+          roleEntries.map(([roleId, inviteeIds]) =>
+            matchingService.getMatchingCandidates(roleId, {
+              limit: Math.max(inviteeIds.size, ROLE_CANDIDATE_FETCH_MIN_LIMIT),
+            }),
+          ),
+        );
+
+        if (cancelled) return;
+
+        const nextMatchMap = {};
+
+        results.forEach((result, index) => {
+          if (result.status !== "fulfilled") return;
+
+          const [roleId] = roleEntries[index];
+          const roleMatches = {};
+
+          (result.value?.data || []).forEach((candidate) => {
+            const candidateId =
+              candidate?.id ??
+              candidate?.userId ??
+              candidate?.user_id ??
+              null;
+            if (candidateId == null) return;
+
+            roleMatches[String(candidateId)] = extractCandidateMatchData(candidate);
+          });
+
+          nextMatchMap[String(roleId)] = roleMatches;
+        });
+
+        setRoleCandidateMatchMap(nextMatchMap);
+      } catch (error) {
+        if (!cancelled) {
+          console.warn("Could not fetch invitation role match scores:", error);
+          setRoleCandidateMatchMap({});
+        }
+      }
+    };
+
+    fetchCandidateMatches();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, invitations]);
 
   // ============ Handlers ============
 
@@ -160,6 +345,21 @@ const TeamInvitesModal = ({
         // Get invitee ID for highlighting comparison
         const inviteeId =
           invitation?.invitee?.id ?? invitation?.invitee_id ?? null;
+        const roleId =
+          invitation?.role?.id ??
+          invitation?.roleId ??
+          invitation?.role_id ??
+          null;
+        const isSelfInvitation =
+          currentUser?.id === (invitation.invitee?.id ?? invitation.invitee_id);
+        const inviteeRoleMatch =
+          roleId != null && inviteeId != null
+            ? roleCandidateMatchMap[String(roleId)]?.[String(inviteeId)] ?? null
+            : null;
+        const selfRoleMatch =
+          roleId != null && isSelfInvitation
+            ? selfRoleMatchMap[String(roleId)] ?? null
+            : null;
 
         // Normalize types to avoid "1" vs 1 mismatches
         const isHighlighted =
@@ -268,8 +468,20 @@ const TeamInvitesModal = ({
                 <VacantRoleCard
                   role={invitation.role || { id: invitation.roleId ?? invitation.role_id, roleName: invitation.roleName ?? invitation.role_name }}
                   team={{ id: teamId, name: teamName }}
-                  matchScore={invitation.role?.matchScore ?? invitation.role?.match_score ?? null}
-                  matchDetails={invitation.role?.matchDetails ?? invitation.role?.match_details ?? null}
+                  matchScore={
+                    inviteeRoleMatch?.matchScore ??
+                    selfRoleMatch?.matchScore ??
+                    invitation.role?.matchScore ??
+                    invitation.role?.match_score ??
+                    null
+                  }
+                  matchDetails={
+                    inviteeRoleMatch?.matchDetails ??
+                    selfRoleMatch?.matchDetails ??
+                    invitation.role?.matchDetails ??
+                    invitation.role?.match_details ??
+                    null
+                  }
                   canManage={false}
                   canManageStatus={false}
                   isTeamMember={true}
