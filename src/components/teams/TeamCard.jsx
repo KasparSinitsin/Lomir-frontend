@@ -525,6 +525,10 @@ const TeamCard = ({
     pendingApplicationForTeam?.roleId ||
     pendingApplicationForTeam?.role_id
   );
+  const shouldShowMemberCountInList =
+    effectiveVariant === "member" &&
+    !pendingInvitationForTeam &&
+    !pendingApplicationForTeam;
 
   // Check if current user is the owner of the team
   const isOwner =
@@ -1923,8 +1927,11 @@ const TeamCard = ({
           </Tooltip>
         )}
         {teamInvitationRoleName && (
-          <Tooltip content={teamInvitationRoleName}>
-            <span className="flex min-w-0 items-center gap-0.5 overflow-hidden">
+          <Tooltip
+            content={teamInvitationRoleName}
+            wrapperClassName="min-w-0 max-w-full overflow-hidden"
+          >
+            <span className="flex min-w-0 max-w-full items-center gap-0.5 overflow-hidden">
               <UserSearch size={12} className="flex-shrink-0 text-orange-500" />
               <span className="truncate">{teamInvitationRoleName}</span>
             </span>
@@ -1955,14 +1962,17 @@ const TeamCard = ({
           </Tooltip>
         )}
         {teamApplicationRoleName && (
-          <Tooltip content={teamApplicationRoleName}>
-            <span className="flex min-w-0 items-center gap-0.5 overflow-hidden">
+          <Tooltip
+            content={teamApplicationRoleName}
+            wrapperClassName="min-w-0 max-w-full overflow-hidden"
+          >
+            <span className="flex min-w-0 max-w-full items-center gap-0.5 overflow-hidden">
               <UserSearch size={12} className="flex-shrink-0 text-orange-500" />
               <span className="truncate">{teamApplicationRoleName}</span>
             </span>
           </Tooltip>
         )}
-        {!isRoleVariant && (
+        {shouldShowMemberCountInList && (
           <>
             <Users size={11} />
             <span>{memberCount}/{maxMembers}</span>
@@ -2336,13 +2346,16 @@ const TeamCard = ({
               </Tooltip>
             )}
             {teamInvitationRoleName && (
-              <Tooltip content={teamInvitationRoleName}>
-                <span className="flex items-center">
+              <Tooltip
+                content={teamInvitationRoleName}
+                wrapperClassName="min-w-0 max-w-full overflow-hidden"
+              >
+                <span className="flex min-w-0 max-w-full items-center overflow-hidden">
                   <UserSearch
                     size={viewMode === "mini" ? 12 : 14}
-                    className="text-orange-500 mr-0.5"
+                    className="text-orange-500 mr-0.5 flex-shrink-0"
                   />
-                  <span>{teamInvitationRoleName}</span>
+                  <span className="truncate">{teamInvitationRoleName}</span>
                 </span>
               </Tooltip>
             )}
@@ -2372,13 +2385,16 @@ const TeamCard = ({
               </Tooltip>
             )}
             {teamApplicationRoleName && (
-              <Tooltip content={teamApplicationRoleName}>
-                <span className="flex items-center">
+              <Tooltip
+                content={teamApplicationRoleName}
+                wrapperClassName="min-w-0 max-w-full overflow-hidden"
+              >
+                <span className="flex min-w-0 max-w-full items-center overflow-hidden">
                   <UserSearch
                     size={viewMode === "mini" ? 12 : 14}
-                    className="text-orange-500 mr-0.5"
+                    className="text-orange-500 mr-0.5 flex-shrink-0"
                   />
-                  <span>{teamApplicationRoleName}</span>
+                  <span className="truncate">{teamApplicationRoleName}</span>
                 </span>
               </Tooltip>
             )}
