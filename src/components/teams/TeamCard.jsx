@@ -2346,16 +2346,13 @@ const TeamCard = ({
               </Tooltip>
             )}
             {teamInvitationRoleName && (
-              <Tooltip
-                content={teamInvitationRoleName}
-                wrapperClassName="min-w-0 max-w-full overflow-hidden"
-              >
-                <span className="flex min-w-0 max-w-full items-center overflow-hidden">
+              <Tooltip content={teamInvitationRoleName}>
+                <span className="flex items-start">
                   <UserSearch
                     size={viewMode === "mini" ? 12 : 14}
-                    className="text-orange-500 mr-0.5 flex-shrink-0"
+                    className="text-orange-500 mr-0.5 flex-shrink-0 mt-0.5"
                   />
-                  <span className="truncate">{teamInvitationRoleName}</span>
+                  <span className="leading-[1.15]">{teamInvitationRoleName}</span>
                 </span>
               </Tooltip>
             )}
@@ -2385,16 +2382,13 @@ const TeamCard = ({
               </Tooltip>
             )}
             {teamApplicationRoleName && (
-              <Tooltip
-                content={teamApplicationRoleName}
-                wrapperClassName="min-w-0 max-w-full overflow-hidden"
-              >
-                <span className="flex min-w-0 max-w-full items-center overflow-hidden">
+              <Tooltip content={teamApplicationRoleName}>
+                <span className="flex items-start">
                   <UserSearch
                     size={viewMode === "mini" ? 12 : 14}
-                    className="text-orange-500 mr-0.5 flex-shrink-0"
+                    className="text-orange-500 mr-0.5 flex-shrink-0 mt-0.5"
                   />
-                  <span className="truncate">{teamApplicationRoleName}</span>
+                  <span className="leading-[1.15]">{teamApplicationRoleName}</span>
                 </span>
               </Tooltip>
             )}
