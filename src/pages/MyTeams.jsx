@@ -644,6 +644,39 @@ const MyTeams = () => {
     sortedPendingApplications.length > DEFAULT_RESULTS_PER_PAGE;
   const shouldShowTeamsPagination =
     pagination.totalTeams > DEFAULT_RESULTS_PER_PAGE;
+  const formatCountLabel = (
+    count,
+    singularLabel,
+    pluralLabel = `${singularLabel}s`,
+  ) => `${count} ${count === 1 ? singularLabel : pluralLabel}`;
+  const hasTeamInvitations = sortedPendingInvitations.length > 0;
+  const hasRoleInvitations = internalRoleInvitations.length > 0;
+  const hasTeamApplications = sortedPendingApplications.length > 0;
+  const hasRoleApplications = internalRoleApplications.length > 0;
+  const showPendingInvitationsSection =
+    hasTeamInvitations || hasRoleInvitations;
+  const showPendingApplicationsSection =
+    hasTeamApplications || hasRoleApplications;
+  const pendingInvitationsSubtitle = [
+    hasTeamInvitations
+      ? formatCountLabel(sortedPendingInvitations.length, "team invite")
+      : null,
+    hasRoleInvitations
+      ? formatCountLabel(internalRoleInvitations.length, "role invite")
+      : null,
+  ]
+    .filter(Boolean)
+    .join(" and ");
+  const pendingApplicationsSubtitle = [
+    hasTeamApplications
+      ? formatCountLabel(sortedPendingApplications.length, "team application")
+      : null,
+    hasRoleApplications
+      ? formatCountLabel(internalRoleApplications.length, "role application")
+      : null,
+  ]
+    .filter(Boolean)
+    .join(" and ");
 
   if (loading && loadingApplications && loadingInvitations) {
     return (
@@ -764,10 +797,10 @@ const MyTeams = () => {
       </div>
 
       {/* Pending Invitations Section */}
-      {sortedPendingInvitations.length > 0 && (
+      {showPendingInvitationsSection && (
         <Section
-          title="My Pending Membership Invitations"
-          subtitle={`${sortedPendingInvitations.length} ${sortedPendingInvitations.length === 1 ? 'Team has' : 'Teams have'} invited you to join`}
+          title="My Pending Invitations"
+          subtitle={pendingInvitationsSubtitle}
           className="mb-10"
           collapsible
         >
@@ -777,224 +810,165 @@ const MyTeams = () => {
             </div>
           ) : (
             <>
-              {resultView === "list" ? (
-                <div className="background-opacity bg-opacity-70 shadow-soft rounded-xl divide-y divide-base-200">
-                  {paginatedInvitations.map((invitation) => (
-                    <div
-                      key={`invitation-${invitation.id}`}
-                      ref={
-                        String(invitation.id) === highlightId
-                          ? highlightedInvitationRef
-                          : null
-                      }
-                      className={
-                        String(invitation.id) === highlightId
-                          ? "message-highlight"
-                          : ""
-                      }
-                    >
-                      <TeamCard
-                        variant="invitation"
-                        invitation={invitation}
-                        onAccept={handleInvitationAccept}
-                        onDecline={handleInvitationDecline}
-                        viewerDistanceSource={viewerDistanceSource}
-                        hideDistanceInfo={true}
-                        listLocationWidthClassName="sm:w-44"
-                        listLocationInsetClassName="sm:pl-[60px]"
-                        listTagsWidthClassName="sm:w-44"
-                        listBadgesWidthClassName="sm:w-40"
-                        viewMode="list"
-                        activeFilters={{}}
-                      />
+              {hasTeamInvitations && (
+                <>
+                  {resultView === "list" ? (
+                    <div className="background-opacity bg-opacity-70 shadow-soft rounded-xl divide-y divide-base-200">
+                      {paginatedInvitations.map((invitation) => (
+                        <div
+                          key={`invitation-${invitation.id}`}
+                          ref={
+                            String(invitation.id) === highlightId
+                              ? highlightedInvitationRef
+                              : null
+                          }
+                          className={
+                            String(invitation.id) === highlightId
+                              ? "message-highlight"
+                              : ""
+                          }
+                        >
+                          <TeamCard
+                            variant="invitation"
+                            invitation={invitation}
+                            onAccept={handleInvitationAccept}
+                            onDecline={handleInvitationDecline}
+                            viewerDistanceSource={viewerDistanceSource}
+                            hideDistanceInfo={true}
+                            listLocationWidthClassName="sm:w-44"
+                            listLocationInsetClassName="sm:pl-[60px]"
+                            listTagsWidthClassName="sm:w-44"
+                            listBadgesWidthClassName="sm:w-40"
+                            viewMode="list"
+                            activeFilters={{}}
+                          />
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <Grid cols={1} md={2} lg={3} gap={resultView === "card" ? 6 : 4}>
-                  {paginatedInvitations.map((invitation) => (
-                    <div
-                      key={`invitation-${invitation.id}`}
-                      ref={
-                        String(invitation.id) === highlightId
-                          ? highlightedInvitationRef
-                          : null
-                      }
-                      className={
-                        String(invitation.id) === highlightId
-                          ? "message-highlight rounded-xl"
-                          : "contents"
-                      }
+                  ) : (
+                    <Grid
+                      cols={1}
+                      md={2}
+                      lg={3}
+                      gap={resultView === "card" ? 6 : 4}
                     >
-                      <TeamCard
-                        variant="invitation"
-                        invitation={invitation}
-                        onAccept={handleInvitationAccept}
-                        onDecline={handleInvitationDecline}
-                        viewerDistanceSource={viewerDistanceSource}
-                        hideDistanceInfo={true}
-                        viewMode={resultView}
-                        activeFilters={{}}
-                      />
-                    </div>
-                  ))}
-                </Grid>
-              )}
-              {shouldShowInvitationsPagination && (
-                <Pagination
-                  currentPage={clampedInvitationsPage}
-                  totalPages={invitationsTotalPages}
-                  totalItems={sortedPendingInvitations.length}
-                  onPageChange={setInvitationsPage}
-                  resultsPerPage={invitationsPerPage}
-                  onResultsPerPageChange={(newLimit) => {
-                    setInvitationsPerPage(newLimit);
-                    setInvitationsPage(1);
-                  }}
-                  resultsPerPageOptions={RESULTS_PER_PAGE_OPTIONS}
-                />
-              )}
-            </>
-          )}
-        </Section>
-      )}
-
-      {/* Pending Internal Role Invitations Section */}
-      {internalRoleInvitations.length > 0 && (
-        <Section
-          title="My Pending Internal Role Invitations"
-          subtitle={`${internalRoleInvitations.length} ${internalRoleInvitations.length === 1 ? "Role invitation" : "Role invitations"} from teams you're already in`}
-          className="mb-10"
-          collapsible
-        >
-          {loadingInvitations ? (
-            <div className="flex justify-center py-8">
-              <div className="loading loading-spinner loading-md"></div>
-            </div>
-          ) : (
-            <>
-              {resultView === "list" ? (
-                <div className="background-opacity bg-opacity-70 shadow-soft rounded-xl divide-y divide-base-200">
-                  {internalRoleInvitations.map((invitation) => (
-                    <div
-                      key={`role-inv-${invitation.id}`}
-                      ref={
-                        String(invitation.id) === highlightId
-                          ? highlightedInvitationRef
-                          : null
-                      }
-                      className={
-                        String(invitation.id) === highlightId
-                          ? "message-highlight"
-                          : ""
-                      }
-                    >
-                      <TeamCard
-                        variant="role_invitation"
-                        invitation={invitation}
-                        onAccept={handleInvitationAccept}
-                        onDecline={handleInvitationDecline}
-                        viewerDistanceSource={viewerDistanceSource}
-                        hideDistanceInfo={true}
-                        listLocationWidthClassName="sm:w-44"
-                        listLocationInsetClassName="sm:pl-[60px]"
-                        listTagsWidthClassName="sm:w-44"
-                        listBadgesWidthClassName="sm:w-40"
-                        viewMode="list"
-                        activeFilters={{}}
-                        showMatchScore={true}
-                      />
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <Grid cols={1} md={2} lg={3} gap={resultView === "card" ? 6 : 4}>
-                  {internalRoleInvitations.map((invitation) => (
-                    <div
-                      key={`role-inv-${invitation.id}`}
-                      ref={
-                        String(invitation.id) === highlightId
-                          ? highlightedInvitationRef
-                          : null
-                      }
-                      className={
-                        String(invitation.id) === highlightId
-                          ? "message-highlight rounded-xl"
-                          : "contents"
-                      }
-                    >
-                      <TeamCard
-                        variant="role_invitation"
-                        invitation={invitation}
-                        onAccept={handleInvitationAccept}
-                        onDecline={handleInvitationDecline}
-                        viewerDistanceSource={viewerDistanceSource}
-                        hideDistanceInfo={true}
-                        viewMode={resultView}
-                        activeFilters={{}}
-                        showMatchScore={true}
-                      />
-                    </div>
-                  ))}
-                </Grid>
-              )}
-            </>
-          )}
-        </Section>
-      )}
-
-      {/* Pending Role Applications Section (internal — within own teams) */}
-      {internalRoleApplications.length > 0 && (
-        <Section
-          title="My Pending Role Applications"
-          subtitle={`${internalRoleApplications.length} ${internalRoleApplications.length === 1 ? 'Role' : 'Roles'} that I have applied for within my teams`}
-          className="mb-10"
-          collapsible
-        >
-          {loadingApplications ? (
-            <div className="flex justify-center py-8">
-              <div className="loading loading-spinner loading-md"></div>
-            </div>
-          ) : (
-            <>
-              {resultView === "list" ? (
-                <div className="background-opacity bg-opacity-70 shadow-soft rounded-xl divide-y divide-base-200">
-                  {internalRoleApplications.map((application) => (
-                    <TeamCard
-                      key={`role-app-${application.id}`}
-                      variant="role_application"
-                      application={application}
-                      onCancel={handleApplicationCancel}
-                      onSendReminder={handleSendReminder}
-                      viewerDistanceSource={viewerDistanceSource}
-                      hideDistanceInfo={true}
-                      listLocationWidthClassName="sm:w-44"
-                      listLocationInsetClassName="sm:pl-[60px]"
-                      listTagsWidthClassName="sm:w-44"
-                      listBadgesWidthClassName="sm:w-40"
-                      viewMode="list"
-                      activeFilters={{}}
-                      showMatchScore={true}
+                      {paginatedInvitations.map((invitation) => (
+                        <div
+                          key={`invitation-${invitation.id}`}
+                          ref={
+                            String(invitation.id) === highlightId
+                              ? highlightedInvitationRef
+                              : null
+                          }
+                          className={
+                            String(invitation.id) === highlightId
+                              ? "message-highlight rounded-xl"
+                              : "contents"
+                          }
+                        >
+                          <TeamCard
+                            variant="invitation"
+                            invitation={invitation}
+                            onAccept={handleInvitationAccept}
+                            onDecline={handleInvitationDecline}
+                            viewerDistanceSource={viewerDistanceSource}
+                            hideDistanceInfo={true}
+                            viewMode={resultView}
+                            activeFilters={{}}
+                          />
+                        </div>
+                      ))}
+                    </Grid>
+                  )}
+                  {shouldShowInvitationsPagination && (
+                    <Pagination
+                      currentPage={clampedInvitationsPage}
+                      totalPages={invitationsTotalPages}
+                      totalItems={sortedPendingInvitations.length}
+                      onPageChange={setInvitationsPage}
+                      resultsPerPage={invitationsPerPage}
+                      onResultsPerPageChange={(newLimit) => {
+                        setInvitationsPerPage(newLimit);
+                        setInvitationsPage(1);
+                      }}
+                      resultsPerPageOptions={RESULTS_PER_PAGE_OPTIONS}
                     />
-                  ))}
-                </div>
-              ) : (
-                <Grid cols={1} md={2} lg={3} gap={resultView === "card" ? 6 : 4}>
-                  {internalRoleApplications.map((application) => (
-                    <TeamCard
-                      key={`role-app-${application.id}`}
-                      variant="role_application"
-                      application={application}
-                      onCancel={handleApplicationCancel}
-                      onSendReminder={handleSendReminder}
-                      viewerDistanceSource={viewerDistanceSource}
-                      hideDistanceInfo={true}
-                      viewMode={resultView}
-                      activeFilters={{}}
-                      showMatchScore={true}
-                    />
-                  ))}
-                </Grid>
+                  )}
+                </>
+              )}
+              {hasRoleInvitations && (
+                <>
+                  {resultView === "list" ? (
+                    <div className="background-opacity bg-opacity-70 shadow-soft rounded-xl divide-y divide-base-200">
+                      {internalRoleInvitations.map((invitation) => (
+                        <div
+                          key={`role-inv-${invitation.id}`}
+                          ref={
+                            String(invitation.id) === highlightId
+                              ? highlightedInvitationRef
+                              : null
+                          }
+                          className={
+                            String(invitation.id) === highlightId
+                              ? "message-highlight"
+                              : ""
+                          }
+                        >
+                          <TeamCard
+                            variant="role_invitation"
+                            invitation={invitation}
+                            onAccept={handleInvitationAccept}
+                            onDecline={handleInvitationDecline}
+                            viewerDistanceSource={viewerDistanceSource}
+                            hideDistanceInfo={true}
+                            listLocationWidthClassName="sm:w-44"
+                            listLocationInsetClassName="sm:pl-[60px]"
+                            listTagsWidthClassName="sm:w-44"
+                            listBadgesWidthClassName="sm:w-40"
+                            viewMode="list"
+                            activeFilters={{}}
+                            showMatchScore={true}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <Grid
+                      cols={1}
+                      md={2}
+                      lg={3}
+                      gap={resultView === "card" ? 6 : 4}
+                    >
+                      {internalRoleInvitations.map((invitation) => (
+                        <div
+                          key={`role-inv-${invitation.id}`}
+                          ref={
+                            String(invitation.id) === highlightId
+                              ? highlightedInvitationRef
+                              : null
+                          }
+                          className={
+                            String(invitation.id) === highlightId
+                              ? "message-highlight rounded-xl"
+                              : "contents"
+                          }
+                        >
+                          <TeamCard
+                            variant="role_invitation"
+                            invitation={invitation}
+                            onAccept={handleInvitationAccept}
+                            onDecline={handleInvitationDecline}
+                            viewerDistanceSource={viewerDistanceSource}
+                            hideDistanceInfo={true}
+                            viewMode={resultView}
+                            activeFilters={{}}
+                            showMatchScore={true}
+                          />
+                        </div>
+                      ))}
+                    </Grid>
+                  )}
+                </>
               )}
             </>
           )}
@@ -1002,10 +976,10 @@ const MyTeams = () => {
       )}
 
       {/* Pending Applications Section */}
-      {sortedPendingApplications.length > 0 && (
+      {showPendingApplicationsSection && (
         <Section
-          title="My Pending Membership Applications"
-          subtitle={`${sortedPendingApplications.length} ${sortedPendingApplications.length === 1 ? 'Team' : 'Teams'} that I would like to join`}
+          title="My Pending Applications"
+          subtitle={pendingApplicationsSubtitle}
           className="mb-10"
           collapsible
         >
@@ -1015,56 +989,113 @@ const MyTeams = () => {
             </div>
           ) : (
             <>
-              {resultView === "list" ? (
-                <div className="background-opacity bg-opacity-70 shadow-soft rounded-xl divide-y divide-base-200">
-                  {paginatedApplications.map((application) => (
-                    <TeamCard
-                      key={`application-${application.id}`}
-                      variant="application"
-                      application={application}
-                      onCancel={handleApplicationCancel}
-                      onSendReminder={handleSendReminder}
-                      viewerDistanceSource={viewerDistanceSource}
-                      hideDistanceInfo={true}
-                      listLocationWidthClassName="sm:w-44"
-                      listLocationInsetClassName="sm:pl-[60px]"
-                      listTagsWidthClassName="sm:w-44"
-                      listBadgesWidthClassName="sm:w-40"
-                      viewMode="list"
-                      activeFilters={{}}
+              {hasTeamApplications && (
+                <>
+                  {resultView === "list" ? (
+                    <div className="background-opacity bg-opacity-70 shadow-soft rounded-xl divide-y divide-base-200">
+                      {paginatedApplications.map((application) => (
+                        <TeamCard
+                          key={`application-${application.id}`}
+                          variant="application"
+                          application={application}
+                          onCancel={handleApplicationCancel}
+                          onSendReminder={handleSendReminder}
+                          viewerDistanceSource={viewerDistanceSource}
+                          hideDistanceInfo={true}
+                          listLocationWidthClassName="sm:w-44"
+                          listLocationInsetClassName="sm:pl-[60px]"
+                          listTagsWidthClassName="sm:w-44"
+                          listBadgesWidthClassName="sm:w-40"
+                          viewMode="list"
+                          activeFilters={{}}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <Grid
+                      cols={1}
+                      md={2}
+                      lg={3}
+                      gap={resultView === "card" ? 6 : 4}
+                    >
+                      {paginatedApplications.map((application) => (
+                        <TeamCard
+                          key={`application-${application.id}`}
+                          variant="application"
+                          application={application}
+                          onCancel={handleApplicationCancel}
+                          onSendReminder={handleSendReminder}
+                          viewerDistanceSource={viewerDistanceSource}
+                          hideDistanceInfo={true}
+                          viewMode={resultView}
+                          activeFilters={{}}
+                        />
+                      ))}
+                    </Grid>
+                  )}
+                  {shouldShowApplicationsPagination && (
+                    <Pagination
+                      currentPage={clampedApplicationsPage}
+                      totalPages={applicationsTotalPages}
+                      totalItems={sortedPendingApplications.length}
+                      onPageChange={setApplicationsPage}
+                      resultsPerPage={applicationsPerPage}
+                      onResultsPerPageChange={(newLimit) => {
+                        setApplicationsPerPage(newLimit);
+                        setApplicationsPage(1);
+                      }}
+                      resultsPerPageOptions={RESULTS_PER_PAGE_OPTIONS}
                     />
-                  ))}
-                </div>
-              ) : (
-                <Grid cols={1} md={2} lg={3} gap={resultView === "card" ? 6 : 4}>
-                  {paginatedApplications.map((application) => (
-                    <TeamCard
-                      key={`application-${application.id}`}
-                      variant="application"
-                      application={application}
-                      onCancel={handleApplicationCancel}
-                      onSendReminder={handleSendReminder}
-                      viewerDistanceSource={viewerDistanceSource}
-                      hideDistanceInfo={true}
-                      viewMode={resultView}
-                      activeFilters={{}}
-                    />
-                  ))}
-                </Grid>
+                  )}
+                </>
               )}
-              {shouldShowApplicationsPagination && (
-                <Pagination
-                  currentPage={clampedApplicationsPage}
-                  totalPages={applicationsTotalPages}
-                  totalItems={sortedPendingApplications.length}
-                  onPageChange={setApplicationsPage}
-                  resultsPerPage={applicationsPerPage}
-                  onResultsPerPageChange={(newLimit) => {
-                    setApplicationsPerPage(newLimit);
-                    setApplicationsPage(1);
-                  }}
-                  resultsPerPageOptions={RESULTS_PER_PAGE_OPTIONS}
-                />
+              {hasRoleApplications && (
+                <>
+                  {resultView === "list" ? (
+                    <div className="background-opacity bg-opacity-70 shadow-soft rounded-xl divide-y divide-base-200">
+                      {internalRoleApplications.map((application) => (
+                        <TeamCard
+                          key={`role-app-${application.id}`}
+                          variant="role_application"
+                          application={application}
+                          onCancel={handleApplicationCancel}
+                          onSendReminder={handleSendReminder}
+                          viewerDistanceSource={viewerDistanceSource}
+                          hideDistanceInfo={true}
+                          listLocationWidthClassName="sm:w-44"
+                          listLocationInsetClassName="sm:pl-[60px]"
+                          listTagsWidthClassName="sm:w-44"
+                          listBadgesWidthClassName="sm:w-40"
+                          viewMode="list"
+                          activeFilters={{}}
+                          showMatchScore={true}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <Grid
+                      cols={1}
+                      md={2}
+                      lg={3}
+                      gap={resultView === "card" ? 6 : 4}
+                    >
+                      {internalRoleApplications.map((application) => (
+                        <TeamCard
+                          key={`role-app-${application.id}`}
+                          variant="role_application"
+                          application={application}
+                          onCancel={handleApplicationCancel}
+                          onSendReminder={handleSendReminder}
+                          viewerDistanceSource={viewerDistanceSource}
+                          hideDistanceInfo={true}
+                          viewMode={resultView}
+                          activeFilters={{}}
+                          showMatchScore={true}
+                        />
+                      ))}
+                    </Grid>
+                  )}
+                </>
               )}
             </>
           )}
