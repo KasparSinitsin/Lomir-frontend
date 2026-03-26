@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   MapPin,
   Globe,
@@ -258,6 +258,22 @@ const VacantRoleDetailsModal = ({
       .filter((id) => id != null)
       .map(String),
   );
+  const teamMemberScoreMap = useMemo(() => {
+    const map = {};
+
+    for (const row of roleTeamMembers) {
+      const memberId = row.memberId ?? row.member?.id ?? null;
+
+      if (memberId != null && row.matchScore != null) {
+        map[String(memberId)] = {
+          matchScore: row.matchScore,
+          matchDetails: row.matchDetails ?? null,
+        };
+      }
+    }
+
+    return map;
+  }, [roleTeamMembers]);
   const canViewTeamMemberMatches = canManage || isTeamMember;
   const teamMemberIdsKey = JSON.stringify(
     [
@@ -1225,8 +1241,12 @@ const VacantRoleDetailsModal = ({
     }
   };
 
-  const getRoleCandidateMatch = (userId) =>
-    userId != null ? roleCandidateMatchMap[String(userId)] ?? null : null;
+  const getRoleCandidateMatch = (userId) => {
+    if (userId == null) return null;
+
+    const key = String(userId);
+    return teamMemberScoreMap[key] ?? roleCandidateMatchMap[key] ?? null;
+  };
   const isCurrentTeamMember = (userId) =>
     userId != null && currentTeamMemberIds.has(String(userId));
 
