@@ -306,6 +306,8 @@ const TeamInviteModal = ({
                   app.status === "pending"
               );
               const isExistingMember =
+                team.isInviteeMember === true ||
+                team.is_invitee_member === true ||
                 (prefilledTeamWasExcluded &&
                   idsMatch(team.id, normalizedPrefillTeamId)) ||
                 isInviteeExistingTeamMember(team, inviteeId);
