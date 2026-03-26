@@ -525,6 +525,7 @@ const TeamCard = ({
     pendingApplicationForTeam?.roleId ||
     pendingApplicationForTeam?.role_id
   );
+  const shouldShowMemberCountInSubtitle = effectiveVariant === "member";
   const shouldShowMemberCountInList =
     effectiveVariant === "member" &&
     !pendingInvitationForTeam &&
@@ -1137,6 +1138,8 @@ const TeamCard = ({
     effectiveVariant === "application"
       ? getAssociatedRoleName(application)
       : null;
+  const teamRequestRoleName =
+    teamInvitationRoleName ?? teamApplicationRoleName ?? null;
 
   const getDisplayTags = () => {
     let displayTags = [];
@@ -2347,13 +2350,22 @@ const TeamCard = ({
             )}
             {teamInvitationRoleName && (
               <Tooltip content={teamInvitationRoleName}>
-                <span className="flex items-start">
-                  <UserSearch
-                    size={viewMode === "mini" ? 12 : 14}
-                    className="text-orange-500 mr-0.5 flex-shrink-0 mt-0.5"
-                  />
-                  <span className="leading-[1.15]">{teamInvitationRoleName}</span>
-                </span>
+                {viewMode === "card" ? (
+                  <span className="flex items-center">
+                    <UserSearch
+                      size={14}
+                      className="text-orange-500"
+                    />
+                  </span>
+                ) : (
+                  <span className="flex items-start">
+                    <UserSearch
+                      size={viewMode === "mini" ? 12 : 14}
+                      className="text-orange-500 mr-0.5 flex-shrink-0 mt-0.5"
+                    />
+                    <span className="leading-[1.15]">{teamInvitationRoleName}</span>
+                  </span>
+                )}
               </Tooltip>
             )}
 
@@ -2383,45 +2395,71 @@ const TeamCard = ({
             )}
             {teamApplicationRoleName && (
               <Tooltip content={teamApplicationRoleName}>
-                <span className="flex items-start">
-                  <UserSearch
-                    size={viewMode === "mini" ? 12 : 14}
-                    className="text-orange-500 mr-0.5 flex-shrink-0 mt-0.5"
-                  />
-                  <span className="leading-[1.15]">{teamApplicationRoleName}</span>
-                </span>
+                {viewMode === "card" ? (
+                  <span className="flex items-center">
+                    <UserSearch
+                      size={14}
+                      className="text-orange-500"
+                    />
+                  </span>
+                ) : (
+                  <span className="flex items-start">
+                    <UserSearch
+                      size={viewMode === "mini" ? 12 : 14}
+                      className="text-orange-500 mr-0.5 flex-shrink-0 mt-0.5"
+                    />
+                    <span className="leading-[1.15]">{teamApplicationRoleName}</span>
+                  </span>
+                )}
               </Tooltip>
             )}
 
             {/* Members count — or team name for role variants */}
             {isRoleVariant ? (
               teamData._teamName && (
-                <Tooltip content="Click to view team details">
-                  <span
-                    className="flex items-start cursor-pointer"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setIsModalOpen(true);
-                    }}
-                  >
-                    <Users
-                      size={viewMode === "mini" ? 12 : 14}
-                      className="text-primary mr-0.5 flex-shrink-0 mt-0.5"
-                    />
-                    <span className="leading-[1.15]">{teamData._teamName}</span>
-                  </span>
+                <Tooltip content={teamData._teamName}>
+                  {viewMode === "card" ? (
+                    <span
+                      className="flex items-center cursor-pointer"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsModalOpen(true);
+                      }}
+                    >
+                      <Users
+                        size={14}
+                        className="text-primary"
+                      />
+                    </span>
+                  ) : (
+                    <span
+                      className="flex items-start cursor-pointer"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsModalOpen(true);
+                      }}
+                    >
+                      <Users
+                        size={viewMode === "mini" ? 12 : 14}
+                        className="text-primary mr-0.5 flex-shrink-0 mt-0.5"
+                      />
+                      <span className="leading-[1.15]">{teamData._teamName}</span>
+                    </span>
+                  )}
                 </Tooltip>
               )
             ) : (
-              <span className="flex items-center">
-                <Users
-                  size={viewMode === "mini" ? 12 : 14}
-                  className="text-primary mr-0.5"
-                />
-                <span>
-                  {getMemberCount()}/{getMaxMembers()}
+              shouldShowMemberCountInSubtitle && (
+                <span className="flex items-center">
+                  <Users
+                    size={viewMode === "mini" ? 12 : 14}
+                    className="text-primary mr-0.5"
+                  />
+                  <span>
+                    {getMemberCount()}/{getMaxMembers()}
+                  </span>
                 </span>
-              </span>
+              )
             )}
 
             {/* Open roles count */}
@@ -2590,6 +2628,32 @@ const TeamCard = ({
           hideLocation={viewMode === "mini" && !activeFilters.showLocation}
           compact={viewMode === "mini"}
         />
+        {viewMode === "card" && teamRequestRoleName && (
+          <div className="mt-2 flex items-start text-sm text-base-content/70">
+            <UserSearch
+              size={16}
+              className="mr-1 flex-shrink-0 mt-0.5 text-base-content"
+            />
+            <span>{teamRequestRoleName}</span>
+          </div>
+        )}
+        {viewMode === "card" && isRoleVariant && teamData._teamName && (
+          <Tooltip content="Click to view team details">
+            <div
+              className="mt-2 flex items-start text-sm text-base-content/70 cursor-pointer"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsModalOpen(true);
+              }}
+            >
+              <Users
+                size={16}
+                className="mr-1 flex-shrink-0 mt-0.5 text-base-content"
+              />
+              <span>{teamData._teamName}</span>
+            </div>
+          </Tooltip>
+        )}
 
         {/* Action buttons */}
         {renderActionButtons()}
