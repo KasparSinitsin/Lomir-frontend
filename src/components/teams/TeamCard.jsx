@@ -27,6 +27,7 @@ import TeamInvitesModal from "./TeamInvitesModal";
 import TeamInvitationDetailsModal from "./TeamInvitationDetailsModal";
 import { teamService } from "../../services/teamService";
 import { vacantRoleService } from "../../services/vacantRoleService";
+import { userService } from "../../services/userService";
 import { useAuth } from "../../contexts/AuthContext";
 import Alert from "../common/Alert";
 import NotificationBadge from "../common/NotificationBadge";
@@ -39,12 +40,209 @@ import { getResultMatchScore } from "../../utils/teamMatchUtils";
 import { calculateDistanceKm } from "../../utils/locationUtils";
 
 const teamMemberBadgesCache = new Map();
+const viewerRoleProfileCache = new Map();
+const MATCH_WEIGHTS = {
+  tags: 0.4,
+  badges: 0.3,
+  distance: 0.3,
+};
+const LOCATION_GRACE_KM = 20;
+const LOCATION_GRACE_SCORE = 0.25;
 
 const extractBadgeRows = (payload) => {
   if (Array.isArray(payload)) return payload;
   if (Array.isArray(payload?.data)) return payload.data;
   if (Array.isArray(payload?.data?.data)) return payload.data.data;
   return [];
+};
+
+const extractProfilePayload = (response) => {
+  const payload = response?.data ?? response;
+
+  if (!payload) return null;
+  if (payload?.success !== undefined) return payload?.data ?? null;
+
+  return payload?.data?.data ?? payload?.data ?? payload;
+};
+
+const extractListPayload = (response) => {
+  if (Array.isArray(response)) return response;
+  if (Array.isArray(response?.data)) return response.data;
+  if (Array.isArray(response?.data?.data)) return response.data.data;
+  return [];
+};
+
+const buildTagLookup = (tagData) => {
+  const nextMap = new Map();
+
+  for (const tag of tagData) {
+    nextMap.set(Number(tag.id), {
+      badgeCredits: Number(tag.badge_credits ?? tag.badgeCredits ?? 0),
+    });
+  }
+
+  return nextMap;
+};
+
+const buildBadgeLookup = (badgeData) => {
+  const nextMap = new Map();
+
+  for (const badge of badgeData) {
+    const name = (badge.badgeName ?? badge.badge_name ?? badge.name ?? "")
+      .trim()
+      .toLowerCase();
+    const credits = Number(
+      badge.totalCredits ?? badge.total_credits ?? badge.credits ?? 0,
+    );
+    const existing = nextMap.get(name);
+
+    nextMap.set(name, {
+      totalCredits: (existing?.totalCredits || 0) + credits,
+    });
+  }
+
+  return nextMap;
+};
+
+const roundMatchValue = (value) => Math.round(value * 100) / 100;
+
+const computeRoleUserMatch = ({
+  role,
+  tags,
+  badges,
+  user,
+  userTagMap,
+  userBadgeMap,
+}) => {
+  if (!role || !user) return null;
+
+  const requiredTagIds = tags
+    .map((tag) => Number(tag.tagId ?? tag.tag_id ?? tag.id))
+    .filter(Number.isFinite);
+  const requiredBadgeKeys = badges
+    .map((badge) =>
+      (badge.name ?? badge.badgeName ?? badge.badge_name ?? "")
+        .trim()
+        .toLowerCase(),
+    )
+    .filter(Boolean);
+
+  const matchingTags = requiredTagIds.filter((id) => userTagMap.has(id)).length;
+  const matchingBadges = requiredBadgeKeys.filter((key) => userBadgeMap.has(key)).length;
+
+  const tagScore =
+    requiredTagIds.length > 0 ? matchingTags / requiredTagIds.length : 0.5;
+  const badgeScore =
+    requiredBadgeKeys.length > 0
+      ? matchingBadges / requiredBadgeKeys.length
+      : 0.5;
+
+  const isRemote = role.isRemote ?? role.is_remote;
+  const maxDistanceKm = Number(role.maxDistanceKm ?? role.max_distance_km) || 50;
+
+  let distanceScore = 0.5;
+  let distanceKm = null;
+  let isWithinRange = null;
+
+  if (isRemote) {
+    distanceScore = 1;
+    isWithinRange = true;
+  } else {
+    distanceKm = calculateDistanceKm(user, role);
+
+    if (distanceKm !== null) {
+      if (distanceKm <= maxDistanceKm) {
+        distanceScore = 1;
+        isWithinRange = true;
+      } else if (distanceKm <= maxDistanceKm + LOCATION_GRACE_KM) {
+        distanceScore = LOCATION_GRACE_SCORE;
+        isWithinRange = false;
+      } else {
+        distanceScore = 0;
+        isWithinRange = false;
+      }
+    }
+  }
+
+  const matchScore =
+    MATCH_WEIGHTS.tags * tagScore +
+    MATCH_WEIGHTS.badges * badgeScore +
+    MATCH_WEIGHTS.distance * distanceScore;
+
+  return {
+    matchScore: roundMatchValue(matchScore),
+    matchDetails: {
+      tagScore: roundMatchValue(tagScore),
+      badgeScore: roundMatchValue(badgeScore),
+      distanceScore: roundMatchValue(distanceScore),
+      matchingTags,
+      totalRequiredTags: requiredTagIds.length,
+      matchingBadges,
+      totalRequiredBadges: requiredBadgeKeys.length,
+      distanceKm: distanceKm !== null ? Math.round(distanceKm) : null,
+      maxDistanceKm,
+      isWithinRange,
+    },
+  };
+};
+
+const getViewerRoleProfile = async (userId, fallbackUser = null) => {
+  const cacheKey = String(userId);
+  if (viewerRoleProfileCache.has(cacheKey)) {
+    return viewerRoleProfileCache.get(cacheKey);
+  }
+
+  const request = (async () => {
+    const [profileRes, tagsRes, badgesRes] = await Promise.allSettled([
+      userService.getUserById(userId),
+      userService.getUserTags(userId),
+      userService.getUserBadges(userId),
+    ]);
+
+    const profileData =
+      profileRes.status === "fulfilled"
+        ? extractProfilePayload(profileRes.value)
+        : null;
+    const tagData =
+      tagsRes.status === "fulfilled"
+        ? extractListPayload(tagsRes.value)
+        : [];
+    const badgeData =
+      badgesRes.status === "fulfilled"
+        ? extractListPayload(badgesRes.value)
+        : [];
+
+    return {
+      user: {
+        ...(fallbackUser || {}),
+        ...(profileData || {}),
+      },
+      userTagMap: buildTagLookup(tagData),
+      userBadgeMap: buildBadgeLookup(badgeData),
+    };
+  })();
+
+  viewerRoleProfileCache.set(cacheKey, request);
+
+  try {
+    const result = await request;
+    viewerRoleProfileCache.set(cacheKey, Promise.resolve(result));
+    return result;
+  } catch (error) {
+    viewerRoleProfileCache.delete(cacheKey);
+    throw error;
+  }
+};
+
+const getExplicitMatchScore = (item) => {
+  const raw =
+    item?.bestMatchScore ??
+    item?.best_match_score ??
+    item?.matchScore ??
+    item?.match_score;
+  const score = Number(raw);
+
+  return Number.isFinite(score) ? score : null;
 };
 
 const hasDisplayableBadges = (rawBadges) => {
@@ -210,8 +408,8 @@ const TeamCard = ({
           tags: role.tags ?? [],
           badges: role.badges ?? [],
           _teamName: appTeam.name ?? null,
-          matchScore: role.matchScore ?? role.match_score ?? null,
-          matchDetails: role.matchDetails ?? role.match_details ?? null,
+          matchScore: null,
+          matchDetails: null,
           id: undefined,
         },
         id: application.id,
@@ -232,8 +430,8 @@ const TeamCard = ({
           tags: role.tags ?? [],
           badges: role.badges ?? [],
           _teamName: invTeam.name ?? null,
-          matchScore: role.matchScore ?? role.match_score ?? null,
-          matchDetails: role.matchDetails ?? role.match_details ?? null,
+          matchScore: null,
+          matchDetails: null,
           id: undefined,
         },
         id: invitation.id,
@@ -675,76 +873,49 @@ const TeamCard = ({
 
   // Fetch role match details for role-based cards (breakdown may be omitted from pending-item responses)
   useEffect(() => {
-    if (!isRoleVariant || !showMatchScore || !roleDataId || !roleTeamId) return;
+    if (
+      !isRoleVariant ||
+      !showMatchScore ||
+      !roleDataId ||
+      !roleTeamId ||
+      !user?.id
+    ) {
+      setRoleMatchData(null);
+      return;
+    }
+
+    let isCancelled = false;
+    setRoleMatchData(null);
 
     const fetchRoleMatchData = async () => {
       try {
-        const [detailsRes, listRes] = await Promise.allSettled([
+        const [viewerProfileRes, detailsRes] = await Promise.allSettled([
+          getViewerRoleProfile(user.id, user),
           vacantRoleService.getVacantRoleById(roleTeamId, roleDataId),
-          vacantRoleService.getVacantRoles(roleTeamId, "open"),
         ]);
 
-        let nextMatchData = null;
-
-        if (detailsRes.status === "fulfilled" && detailsRes.value?.data) {
-          const role = detailsRes.value.data;
-          nextMatchData = {
-            matchScore:
-              role.matchScore ??
-              role.match_score ??
-              role.bestMatchScore ??
-              role.best_match_score ??
-              null,
-            bestMatchScore:
-              role.bestMatchScore ??
-              role.best_match_score ??
-              role.matchScore ??
-              role.match_score ??
-              null,
-            matchDetails:
-              role.matchDetails ?? role.match_details ?? role.scoreBreakdown ?? null,
-            matchType: role.matchType ?? role.match_type ?? null,
-          };
+        if (viewerProfileRes.status !== "fulfilled") {
+          throw viewerProfileRes.reason;
         }
 
-        if (listRes.status === "fulfilled") {
-          const roles = listRes.value?.data || [];
-          const matched = roles.find((role) => String(role.id) === String(roleDataId));
+        const viewerProfile = viewerProfileRes.value;
+        const hydratedRole =
+          detailsRes.status === "fulfilled"
+            ? extractProfilePayload(detailsRes.value)
+            : null;
+        const effectiveRole = hydratedRole ?? roleData ?? null;
+        const nextMatchData = effectiveRole
+          ? computeRoleUserMatch({
+              role: effectiveRole,
+              tags: effectiveRole.tags ?? [],
+              badges: effectiveRole.badges ?? [],
+              user: viewerProfile.user,
+              userTagMap: viewerProfile.userTagMap,
+              userBadgeMap: viewerProfile.userBadgeMap,
+            })
+          : null;
 
-          if (matched) {
-            nextMatchData = {
-              ...(nextMatchData ?? {}),
-              matchScore:
-                matched.matchScore ??
-                matched.match_score ??
-                matched.bestMatchScore ??
-                matched.best_match_score ??
-                nextMatchData?.matchScore ??
-                nextMatchData?.bestMatchScore ??
-                null,
-              bestMatchScore:
-                matched.bestMatchScore ??
-                matched.best_match_score ??
-                matched.matchScore ??
-                matched.match_score ??
-                nextMatchData?.bestMatchScore ??
-                nextMatchData?.matchScore ??
-                null,
-              matchDetails:
-                matched.matchDetails ??
-                matched.match_details ??
-                nextMatchData?.matchDetails ??
-                null,
-              matchType:
-                matched.matchType ??
-                matched.match_type ??
-                nextMatchData?.matchType ??
-                null,
-            };
-          }
-        }
-
-        if (nextMatchData) {
+        if (!isCancelled) {
           setRoleMatchData(nextMatchData);
         }
       } catch (err) {
@@ -753,7 +924,11 @@ const TeamCard = ({
     };
 
     fetchRoleMatchData();
-  }, [isRoleVariant, showMatchScore, roleDataId, roleTeamId]);
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [isRoleVariant, showMatchScore, roleDataId, roleTeamId, roleData, user]);
 
   // ================= GUARD CLAUSE – AFTER ALL HOOKS =================
 
@@ -764,41 +939,34 @@ const TeamCard = ({
   const teamDetailsInitialTeamData = isRoleVariant ? (roleTeamData ?? teamData) : teamData;
   const roleModalMatchDetails =
     roleMatchData?.matchDetails ??
-    roleData?.matchDetails ??
-    roleData?.match_details ??
+    roleMatchData?.match_details ??
     null;
-  const matchScoreSource = isRoleVariant
-    ? {
-        matchScore:
-          roleMatchData?.matchScore ??
-          roleMatchData?.match_score ??
-          roleData?.matchScore ??
-          roleData?.match_score ??
-          normalizedData.team?.matchScore ??
-          normalizedData.team?.match_score ??
-          roleMatchData?.bestMatchScore ??
-          roleMatchData?.best_match_score ??
-          roleData?.bestMatchScore ??
-          roleData?.best_match_score ??
-          normalizedData.team?.bestMatchScore ??
-          normalizedData.team?.best_match_score ??
-          null,
-        bestMatchScore:
-          roleMatchData?.matchScore ??
-          roleMatchData?.match_score ??
-          roleData?.matchScore ??
-          roleData?.match_score ??
-          normalizedData.team?.matchScore ??
-          normalizedData.team?.match_score ??
-          roleMatchData?.bestMatchScore ??
-          roleMatchData?.best_match_score ??
-          roleData?.bestMatchScore ??
-          roleData?.best_match_score ??
-          normalizedData.team?.bestMatchScore ??
-          normalizedData.team?.best_match_score ??
-          null,
-      }
-    : normalizedData.team;
+  const teamModalMatchSource = isRoleVariant
+    ? (roleTeamData ?? teamDetailsInitialTeamData ?? null)
+    : (normalizedData.team ?? teamData ?? null);
+  const shouldShowTeamModalMatchHighlights = showMatchHighlights || isRoleVariant;
+  const teamModalRawScore = showMatchScore
+    ? getExplicitMatchScore(teamModalMatchSource)
+    : null;
+  const teamModalMatchType =
+    teamModalMatchSource?.matchType ??
+    teamModalMatchSource?.match_type ??
+    null;
+  const teamModalMatchDetails =
+    teamModalMatchSource?.matchDetails ??
+    teamModalMatchSource?.match_details ??
+    null;
+  const roleCardRawScore = (() => {
+    const raw =
+      roleMatchData?.matchScore ??
+      roleMatchData?.match_score ??
+      roleMatchData?.bestMatchScore ??
+      roleMatchData?.best_match_score ??
+      null;
+    const numeric = Number(raw);
+
+    return Number.isFinite(numeric) ? numeric : null;
+  })();
   const roleTitle = teamData.name || "Unknown Team";
   const cardTitle = isRoleInvitationVariant ? (
     <button
@@ -1451,7 +1619,13 @@ const TeamCard = ({
 
   // ============ MATCH SCORE ============
   // Role-based cards should always prefer the role match over any team-level match.
-  const rawScore = showMatchScore ? getResultMatchScore(matchScoreSource) : null;
+  const rawScore = showMatchScore
+    ? (
+        isRoleVariant
+          ? roleCardRawScore
+          : getResultMatchScore(normalizedData.team)
+      )
+    : null;
   const showScore =
     showMatchScore &&
     rawScore != null &&
@@ -1467,10 +1641,7 @@ const TeamCard = ({
     const matchDetails = isRoleVariant
       ? (
           roleMatchData?.matchDetails ??
-          roleData?.matchDetails ??
-          roleData?.match_details ??
-          normalizedData.team?.matchDetails ??
-          normalizedData.team?.match_details ??
+          roleMatchData?.match_details ??
           null
         )
       : (
@@ -1884,10 +2055,10 @@ const TeamCard = ({
               : pendingApplicationForTeam
           }
           onViewApplicationDetails={() => setIsApplicationModalOpen(true)}
-          showMatchHighlights={showMatchHighlights}
-          matchScore={rawScore ?? null}
-          matchType={normalizedData.team?.matchType ?? normalizedData.team?.match_type ?? null}
-          matchDetails={normalizedData.team?.matchDetails ?? normalizedData.team?.match_details ?? null}
+          showMatchHighlights={shouldShowTeamModalMatchHighlights}
+          matchScore={teamModalRawScore ?? null}
+          matchType={teamModalMatchType}
+          matchDetails={teamModalMatchDetails}
         />
 
         {/* Applications Modal (for team owners and admins) */}
@@ -2291,11 +2462,11 @@ const TeamCard = ({
             : pendingApplicationForTeam
         }
         onViewApplicationDetails={() => setIsApplicationModalOpen(true)}
-        showMatchHighlights={showMatchHighlights}
+        showMatchHighlights={shouldShowTeamModalMatchHighlights}
         roleMatchBadgeNames={roleMatchBadgeNames}
-        matchScore={rawScore ?? null}
-        matchType={normalizedData.team?.matchType ?? normalizedData.team?.match_type ?? null}
-        matchDetails={normalizedData.team?.matchDetails ?? normalizedData.team?.match_details ?? null}
+        matchScore={teamModalRawScore ?? null}
+        matchType={teamModalMatchType}
+        matchDetails={teamModalMatchDetails}
       />
 
       {/* Applications Modal (for team owners and admins) */}
