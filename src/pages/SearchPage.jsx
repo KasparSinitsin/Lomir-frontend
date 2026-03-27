@@ -12,11 +12,13 @@ import { useAuth } from "../contexts/AuthContext";
 import PageContainer from "../components/layout/PageContainer";
 import Grid from "../components/layout/Grid";
 import TeamCard from "../components/teams/TeamCard";
+import VacantRoleCard from "../components/teams/VacantRoleCard";
 import UserCard from "../components/users/UserCard";
 import Pagination from "../components/common/Pagination";
 import BooleanSearchInput from "../components/BooleanSearchInput";
 import {
   User,
+  UserSearch,
   Users2,
   Clock,
   Sparkles,
@@ -60,7 +62,11 @@ const SearchPage = () => {
   const { user, isAuthenticated } = useAuth();
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState({ teams: [], users: [] });
+  const [searchResults, setSearchResults] = useState({
+    teams: [],
+    users: [],
+    roles: [],
+  });
 
   const [searchType, setSearchType] = useState(() => {
     const urlParams = new URLSearchParams(location.search);
@@ -69,6 +75,8 @@ const SearchPage = () => {
       ? "teams"
       : typeParam === "users"
         ? "users"
+        : typeParam === "roles"
+          ? "roles"
         : "all";
   });
 
@@ -178,6 +186,7 @@ const SearchPage = () => {
     limit: DEFAULT_RESULTS_PER_PAGE,
     totalTeams: 0,
     totalUsers: 0,
+    totalRoles: 0,
     totalItems: 0,
     totalPages: 1,
     hasNextPage: false,
@@ -420,6 +429,11 @@ const SearchPage = () => {
             );
           })
         : searchResults.teams,
+      roles: Array.isArray(searchResults.roles)
+        ? searchResults.roles.map((role) =>
+            withResolvedDistance(role, viewerTeamMatchProfile.user),
+          )
+        : searchResults.roles,
     };
   }, [
     matchRoleId,
@@ -463,10 +477,15 @@ const SearchPage = () => {
       searchType === "all" || searchType === "teams"
         ? displaySearchResults.teams
         : [],
+    roles: searchType === "roles" ? displaySearchResults.roles : [],
   };
 
   const effectivePagination = useMemo(() => {
-    if (!shouldExcludeCurrentUserFromBestMatch || searchType === "teams") {
+    if (
+      !shouldExcludeCurrentUserFromBestMatch ||
+      searchType === "teams" ||
+      searchType === "roles"
+    ) {
       return pagination;
     }
 
@@ -589,9 +608,16 @@ const SearchPage = () => {
 
   const noResultsFound =
     (hasSearched || hasActiveFilters) &&
-    filteredResults.teams.length === 0 &&
-    filteredResults.users.length === 0 &&
+    (searchType === "roles"
+      ? filteredResults.roles.length === 0
+      : filteredResults.teams.length === 0 &&
+        filteredResults.users.length === 0) &&
     !loading;
+
+  const hasVisibleResults =
+    filteredResults.teams.length > 0 ||
+    filteredResults.users.length > 0 ||
+    filteredResults.roles.length > 0;
 
   const effectiveOpenRolesOnly = searchType === "users" ? false : openRolesOnly;
   const effectiveIncludeOwnTeams =
@@ -709,7 +735,11 @@ const SearchPage = () => {
 
         const results = await fetchData(requestCriteria);
 
-        setSearchResults(results.data);
+        setSearchResults({
+          teams: results.data?.teams ?? [],
+          users: results.data?.users ?? [],
+          roles: results.data?.roles ?? [],
+        });
         setUserHasCoordinates(!!results.userLocation?.hasCoordinates);
 
         if (results.matchRole?.roleName) {
@@ -730,11 +760,12 @@ const SearchPage = () => {
         }
       } catch (err) {
         console.error("Error fetching data:", err);
-        setSearchResults({ teams: [], users: [] });
+        setSearchResults({ teams: [], users: [], roles: [] });
         setPagination((p) => ({
           ...p,
           totalTeams: 0,
           totalUsers: 0,
+          totalRoles: 0,
           totalItems: 0,
           totalPages: 1,
           hasNextPage: false,
@@ -775,6 +806,8 @@ const SearchPage = () => {
       setSearchType("teams");
     } else if (typeParam === "users") {
       setSearchType("users");
+    } else if (typeParam === "roles") {
+      setSearchType("roles");
     }
 
     const roleIdParam = urlParams.get("roleId");
@@ -1267,6 +1300,8 @@ const SearchPage = () => {
         return effectivePagination.totalTeams || 0;
       case "users":
         return effectivePagination.totalUsers || 0;
+      case "roles":
+        return effectivePagination.totalRoles || 0;
       default:
         return effectivePagination.totalItems || 0;
     }
@@ -1511,6 +1546,19 @@ const SearchPage = () => {
               <User className="w-4 h-4 mr-1" />
               People
             </button>
+
+            <button
+              type="button"
+              className={`btn btn-sm ${
+                searchType === "roles"
+                  ? "btn-primary"
+                  : "btn-ghost hover:bg-base-200"
+              }`}
+              onClick={() => handleToggleChange("roles")}
+            >
+              <UserSearch className="w-4 h-4 mr-1" />
+              Open Roles
+            </button>
           </div>
         </div>
 
@@ -1668,21 +1716,23 @@ const SearchPage = () => {
         </div>
       ) : (
         <div>
-          {(filteredResults.teams.length > 0 ||
-            filteredResults.users.length > 0) && (
+          {hasVisibleResults && (
             <section className="mb-8">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-semibold">
                   {searchType === "all" && "Teams & People"}
                   {searchType === "teams" && "Teams"}
                   {searchType === "users" && "People"}
+                  {searchType === "roles" && "Open Roles"}
                   <span className="text-sm font-normal text-base-content/60 ml-2">
                     (
                     {searchType === "all"
                       ? `${filteredResults.teams.length + filteredResults.users.length} results`
                       : searchType === "teams"
                         ? `${effectivePagination.totalTeams} results`
-                        : `${effectivePagination.totalUsers} results`}
+                        : searchType === "users"
+                          ? `${effectivePagination.totalUsers} results`
+                          : `${effectivePagination.totalRoles} results`}
                     )
                   </span>
                 </h2>
@@ -1720,110 +1770,155 @@ const SearchPage = () => {
                 </div>
               </div>
 
-              {resultView === "list" ? (
+              {searchType !== "roles" &&
+                (resultView === "list" ? (
+                  <div className="background-opacity bg-opacity-70 shadow-soft rounded-xl divide-y divide-base-200">
+                    {(mergedDisplayItems || [...displayedTeams.map((t) => ({ ...t, _resultType: "team" })), ...displayedUsers.map((u) => ({ ...u, _resultType: "user" }))]).map((item) =>
+                      item._resultType === "team" ? (
+                        <TeamCard
+                          key={`team-${item.id}`}
+                          team={item}
+                          onUpdate={handleTeamUpdate}
+                          isSearchResult={true}
+                          viewerDistanceSource={viewerTeamMatchProfile?.user}
+                          roleMatchBadgeNames={roleMatchBadgeNames}
+                          showMatchHighlights={sortBy === "match"}
+                          showMatchScore={sortBy === "match"}
+                          viewMode="list"
+                          activeFilters={{
+                            showLocation:
+                              (sortBy === "proximity" && sortDir !== "remote") ||
+                              sortBy === "match",
+                            showTags: sortBy === "match",
+                            showBadges: sortBy === "match",
+                          }}
+                        />
+                      ) : (
+                        <UserCard
+                          key={`user-${item.id}`}
+                          user={item}
+                          onUpdate={handleUserUpdate}
+                          roleMatchTagIds={roleMatchTagIds}
+                          roleMatchBadgeNames={roleMatchBadgeNames}
+                          roleMatchName={matchRoleName}
+                          roleMatchMaxDistanceKm={matchRoleMaxDistanceKm}
+                          invitationPrefillTeamId={excludeTeamId}
+                          invitationPrefillRoleId={matchRoleId}
+                          invitationPrefillTeamName={excludeTeamName}
+                          invitationPrefillRoleName={matchRoleName}
+                          showMatchHighlights={sortBy === "match"}
+                          showMatchScore={sortBy === "match"}
+                          viewMode="list"
+                          activeFilters={{
+                            showLocation:
+                              (sortBy === "proximity" && sortDir !== "remote") ||
+                              sortBy === "match",
+                            showTags: sortBy === "match",
+                            showBadges: sortBy === "match",
+                          }}
+                        />
+                      )
+                    )}
+                  </div>
+                ) : (
+                  <Grid cols={1} md={2} lg={3} gap={resultView === "card" ? 6 : 4}>
+                    {(mergedDisplayItems || [...displayedTeams.map((t) => ({ ...t, _resultType: "team" })), ...displayedUsers.map((u) => ({ ...u, _resultType: "user" }))]).map((item) =>
+                      item._resultType === "team" ? (
+                        <TeamCard
+                          key={`team-${item.id}`}
+                          team={item}
+                          onUpdate={handleTeamUpdate}
+                          isSearchResult={true}
+                          viewerDistanceSource={viewerTeamMatchProfile?.user}
+                          roleMatchBadgeNames={roleMatchBadgeNames}
+                          showMatchHighlights={sortBy === "match"}
+                          showMatchScore={sortBy === "match"}
+                          viewMode={resultView}
+                          activeFilters={{
+                            showLocation:
+                              (sortBy === "proximity" && sortDir !== "remote") ||
+                              sortBy === "match",
+                            showTags: sortBy === "match",
+                            showBadges: sortBy === "match",
+                          }}
+                        />
+                      ) : (
+                        <UserCard
+                          key={`user-${item.id}`}
+                          user={item}
+                          onUpdate={handleUserUpdate}
+                          roleMatchTagIds={roleMatchTagIds}
+                          roleMatchBadgeNames={roleMatchBadgeNames}
+                          roleMatchName={matchRoleName}
+                          roleMatchMaxDistanceKm={matchRoleMaxDistanceKm}
+                          invitationPrefillTeamId={excludeTeamId}
+                          invitationPrefillRoleId={matchRoleId}
+                          invitationPrefillTeamName={excludeTeamName}
+                          invitationPrefillRoleName={matchRoleName}
+                          showMatchHighlights={sortBy === "match"}
+                          showMatchScore={sortBy === "match"}
+                          viewMode={resultView}
+                          activeFilters={{
+                            showLocation:
+                              (sortBy === "proximity" && sortDir !== "remote") ||
+                              sortBy === "match",
+                            showTags: sortBy === "match",
+                            showBadges: sortBy === "match",
+                          }}
+                        />
+                      )
+                    )}
+                  </Grid>
+                ))}
+
+              {searchType === "roles" && resultView === "list" && (
                 <div className="background-opacity bg-opacity-70 shadow-soft rounded-xl divide-y divide-base-200">
-                  {(mergedDisplayItems || [...displayedTeams.map((t) => ({ ...t, _resultType: "team" })), ...displayedUsers.map((u) => ({ ...u, _resultType: "user" }))]).map((item) =>
-                    item._resultType === "team" ? (
-                      <TeamCard
-                        key={`team-${item.id}`}
-                        team={item}
-                        onUpdate={handleTeamUpdate}
-                        isSearchResult={true}
-                        viewerDistanceSource={viewerTeamMatchProfile?.user}
-                        roleMatchBadgeNames={roleMatchBadgeNames}
-                        showMatchHighlights={sortBy === "match"}
-                        showMatchScore={sortBy === "match"}
-                        viewMode="list"
-                        activeFilters={{
-                          showLocation:
-                            (sortBy === "proximity" && sortDir !== "remote") ||
-                            sortBy === "match",
-                          showTags: sortBy === "match",
-                          showBadges: sortBy === "match",
-                        }}
-                      />
-                    ) : (
-                      <UserCard
-                        key={`user-${item.id}`}
-                        user={item}
-                        onUpdate={handleUserUpdate}
-                        roleMatchTagIds={roleMatchTagIds}
-                        roleMatchBadgeNames={roleMatchBadgeNames}
-                        roleMatchName={matchRoleName}
-                        roleMatchMaxDistanceKm={matchRoleMaxDistanceKm}
-                        invitationPrefillTeamId={excludeTeamId}
-                        invitationPrefillRoleId={matchRoleId}
-                        invitationPrefillTeamName={excludeTeamName}
-                        invitationPrefillRoleName={matchRoleName}
-                        showMatchHighlights={sortBy === "match"}
-                        showMatchScore={sortBy === "match"}
-                        viewMode="list"
-                        activeFilters={{
-                          showLocation:
-                            (sortBy === "proximity" && sortDir !== "remote") ||
-                            sortBy === "match",
-                          showTags: sortBy === "match",
-                          showBadges: sortBy === "match",
-                        }}
-                      />
-                    )
-                  )}
+                  {filteredResults.roles.map((role) => (
+                    <VacantRoleCard
+                      key={`role-${role.id}`}
+                      role={role}
+                      matchScore={role.bestMatchScore ?? role.best_match_score ?? null}
+                      matchDetails={role.matchDetails ?? role.match_details ?? null}
+                      hideActions
+                      viewMode="list"
+                      teamContext={{
+                        name: role.teamName ?? role.team_name,
+                        avatarUrl: role.teamAvatarUrl ?? role.team_avatar_url,
+                      }}
+                    />
+                  ))}
                 </div>
-              ) : (
-                <Grid cols={1} md={2} lg={3} gap={resultView === "card" ? 6 : 4}>
-                  {(mergedDisplayItems || [...displayedTeams.map((t) => ({ ...t, _resultType: "team" })), ...displayedUsers.map((u) => ({ ...u, _resultType: "user" }))]).map((item) =>
-                    item._resultType === "team" ? (
-                      <TeamCard
-                        key={`team-${item.id}`}
-                        team={item}
-                        onUpdate={handleTeamUpdate}
-                        isSearchResult={true}
-                        viewerDistanceSource={viewerTeamMatchProfile?.user}
-                        roleMatchBadgeNames={roleMatchBadgeNames}
-                        showMatchHighlights={sortBy === "match"}
-                        showMatchScore={sortBy === "match"}
-                        viewMode={resultView}
-                        activeFilters={{
-                          showLocation:
-                            (sortBy === "proximity" && sortDir !== "remote") ||
-                            sortBy === "match",
-                          showTags: sortBy === "match",
-                          showBadges: sortBy === "match",
-                        }}
-                      />
-                    ) : (
-                      <UserCard
-                        key={`user-${item.id}`}
-                        user={item}
-                        onUpdate={handleUserUpdate}
-                        roleMatchTagIds={roleMatchTagIds}
-                        roleMatchBadgeNames={roleMatchBadgeNames}
-                        roleMatchName={matchRoleName}
-                        roleMatchMaxDistanceKm={matchRoleMaxDistanceKm}
-                        invitationPrefillTeamId={excludeTeamId}
-                        invitationPrefillRoleId={matchRoleId}
-                        invitationPrefillTeamName={excludeTeamName}
-                        invitationPrefillRoleName={matchRoleName}
-                        showMatchHighlights={sortBy === "match"}
-                        showMatchScore={sortBy === "match"}
-                        viewMode={resultView}
-                        activeFilters={{
-                          showLocation:
-                            (sortBy === "proximity" && sortDir !== "remote") ||
-                            sortBy === "match",
-                          showTags: sortBy === "match",
-                          showBadges: sortBy === "match",
-                        }}
-                      />
-                    )
-                  )}
+              )}
+
+              {searchType === "roles" && resultView !== "list" && (
+                <Grid
+                  cols={1}
+                  md={resultView === "mini" ? 3 : 2}
+                  lg={resultView === "mini" ? 4 : 3}
+                  gap={resultView === "mini" ? 2 : 6}
+                >
+                  {filteredResults.roles.map((role) => (
+                    <VacantRoleCard
+                      key={`role-${role.id}`}
+                      role={role}
+                      matchScore={role.bestMatchScore ?? role.best_match_score ?? null}
+                      matchDetails={role.matchDetails ?? role.match_details ?? null}
+                      hideActions
+                      viewMode={resultView}
+                      teamContext={{
+                        name: role.teamName ?? role.team_name,
+                        avatarUrl: role.teamAvatarUrl ?? role.team_avatar_url,
+                      }}
+                    />
+                  ))}
                 </Grid>
               )}
             </section>
           )}
 
           {(filteredResults.teams.length > 0 ||
-            filteredResults.users.length > 0) && (
+            filteredResults.users.length > 0 ||
+            filteredResults.roles.length > 0) && (
             <Pagination
               currentPage={currentPage}
               totalPages={effectivePagination.totalPages}
