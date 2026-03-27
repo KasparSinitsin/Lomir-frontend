@@ -23,6 +23,7 @@ const TeamApplicationButton = ({
   className = "w-full",
   onAfterSubmit,
   onSuccess,
+  buttonLabel = "Apply to Join Team",
   onApplicationModalToggle,
 }) => {
   const [isApplicationModalOpen, setIsApplicationModalOpen] = useState(false);
@@ -100,7 +101,7 @@ const TeamApplicationButton = ({
         disabled={disabled || applicationLoading}
         className={className}
       >
-        Apply to Join Team
+        {buttonLabel}
       </Button>
 
       <TeamApplicationModal

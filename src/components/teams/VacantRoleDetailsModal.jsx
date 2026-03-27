@@ -37,7 +37,9 @@ import CardMetaItem from "../common/CardMetaItem";
 import CardMetaRow from "../common/CardMetaRow";
 import TeamApplicationButton from "./TeamApplicationButton";
 import TeamApplicationModal from "./TeamApplicationModal";
+import TeamApplicationDetailsModal from "./TeamApplicationDetailsModal";
 import TeamApplicationsModal from "./TeamApplicationsModal";
+import TeamInvitationDetailsModal from "./TeamInvitationDetailsModal";
 import TeamInvitesModal from "./TeamInvitesModal";
 import { useAuth } from "../../contexts/AuthContext";
 import { userService } from "../../services/userService";
@@ -195,6 +197,106 @@ const buildBadgeLookup = (badgeData) => {
   return nextMap;
 };
 
+const getRoleRecordId = (record) =>
+  record?.role?.id ?? record?.roleId ?? record?.role_id ?? null;
+
+const getRoleRecordTeamId = (record) =>
+  record?.team?.id ?? record?.teamId ?? record?.team_id ?? null;
+
+const getRoleRecordName = (record) =>
+  record?.role?.roleName ??
+  record?.role?.role_name ??
+  record?.roleName ??
+  record?.role_name ??
+  null;
+
+const matchesRoleRecord = (record, { roleId, teamId, roleName }) => {
+  const recordRoleId = getRoleRecordId(record);
+
+  if (recordRoleId != null && roleId != null) {
+    return String(recordRoleId) === String(roleId);
+  }
+
+  const recordTeamId = getRoleRecordTeamId(record);
+  const recordRoleName = getRoleRecordName(record);
+
+  return (
+    recordTeamId != null &&
+    teamId != null &&
+    String(recordTeamId) === String(teamId) &&
+    typeof recordRoleName === "string" &&
+    typeof roleName === "string" &&
+    recordRoleName.trim().toLowerCase() === roleName.trim().toLowerCase()
+  );
+};
+
+const hasActiveApplicationStatus = (application) => {
+  const status = String(
+    application?.status ??
+      application?.applicationStatus ??
+      application?.application_status ??
+      "",
+  ).toLowerCase();
+
+  return ![
+    "withdrawn",
+    "rejected",
+    "declined",
+    "cancelled",
+    "canceled",
+  ].includes(status);
+};
+
+const hasActiveInvitationStatus = (invitation) => {
+  const status = String(
+    invitation?.status ??
+      invitation?.invitationStatus ??
+      invitation?.invitation_status ??
+      "",
+  ).toLowerCase();
+
+  return ![
+    "withdrawn",
+    "revoked",
+    "declined",
+    "cancelled",
+    "canceled",
+  ].includes(status);
+};
+
+const buildRoleStatusRecord = (
+  record,
+  fallbackTeam,
+  fallbackRole,
+  options = {},
+) => {
+  if (!record) return null;
+
+  const nextRecord = {
+    ...record,
+    team: record.team ?? fallbackTeam,
+    role: record.role ?? fallbackRole,
+  };
+
+  if (
+    options.isInternalRoleApplication !== undefined &&
+    nextRecord.isInternalRoleApplication == null &&
+    nextRecord.is_internal_role_application == null
+  ) {
+    nextRecord.isInternalRoleApplication = options.isInternalRoleApplication;
+  }
+
+  if (
+    options.isInternal !== undefined &&
+    nextRecord.isInternal == null &&
+    nextRecord.is_internal == null
+  ) {
+    nextRecord.isInternal = options.isInternal;
+  }
+
+  return nextRecord;
+};
+
 /**
  * VacantRoleDetailsModal Component
  *
@@ -249,6 +351,16 @@ const VacantRoleDetailsModal = ({
   const [isInvitationsExpanded, setIsInvitationsExpanded] = useState(false);
   const [isTeamMembersExpanded, setIsTeamMembersExpanded] = useState(false);
   const [isInternalApplicationOpen, setIsInternalApplicationOpen] = useState(false);
+  const [viewerRoleApplicationRecord, setViewerRoleApplicationRecord] =
+    useState(null);
+  const [viewerRoleInvitationRecord, setViewerRoleInvitationRecord] =
+    useState(null);
+  const [viewerRoleStatusLoading, setViewerRoleStatusLoading] =
+    useState(false);
+  const [isViewerApplicationDetailsOpen, setIsViewerApplicationDetailsOpen] =
+    useState(false);
+  const [isViewerInvitationDetailsOpen, setIsViewerInvitationDetailsOpen] =
+    useState(false);
   const roleId = role?.id;
   const teamId = role?.teamId ?? role?.team_id ?? team?.id;
   const teamMembers = Array.isArray(team?.members) ? team.members : EMPTY_TEAM_MEMBERS;
@@ -337,6 +449,11 @@ const VacantRoleDetailsModal = ({
       setIsApplicationsExpanded(false);
       setIsInvitationsExpanded(false);
       setIsTeamMembersExpanded(false);
+      setViewerRoleApplicationRecord(null);
+      setViewerRoleInvitationRecord(null);
+      setViewerRoleStatusLoading(false);
+      setIsViewerApplicationDetailsOpen(false);
+      setIsViewerInvitationDetailsOpen(false);
     }
   }, [isOpen]);
 
@@ -362,6 +479,205 @@ const VacantRoleDetailsModal = ({
     ? resolvedFilledUser ?? viewAsUser ?? null
     : viewAsUser ?? currentUser ?? null;
   const comparisonUserSeedJson = JSON.stringify(comparisonUserSeed ?? null);
+  const roleNameForStatusMatch =
+    displayRole?.roleName ??
+    displayRole?.role_name ??
+    role?.roleName ??
+    role?.role_name ??
+    "";
+
+  useEffect(() => {
+    if (!isOpen || !isAuthenticated || (!roleId && !roleNameForStatusMatch)) {
+      setViewerRoleApplicationRecord(null);
+      setViewerRoleInvitationRecord(null);
+      setViewerRoleStatusLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    const fallbackTeam = {
+      ...team,
+      id: team?.id ?? teamId,
+      name:
+        team?.name ??
+        team?.team_name ??
+        displayRole?.teamName ??
+        displayRole?.team_name ??
+        displayRole?.team?.name ??
+        displayRole?.team?.team_name ??
+        null,
+      teamavatar_url:
+        team?.teamavatar_url ??
+        team?.teamavatarUrl ??
+        team?.avatar_url ??
+        team?.avatarUrl ??
+        displayRole?.teamavatar_url ??
+        displayRole?.teamavatarUrl ??
+        displayRole?.teamAvatarUrl ??
+        displayRole?.team_avatar_url ??
+        null,
+    };
+    const fallbackRole = {
+      ...displayRole,
+      id: displayRole?.id ?? roleId,
+      teamId: displayRole?.teamId ?? displayRole?.team_id ?? teamId,
+      team_id: displayRole?.team_id ?? displayRole?.teamId ?? teamId,
+    };
+    const seededApplication = hasActiveApplicationStatus(
+      role?.currentUserRoleApplication ??
+        role?.current_user_role_application ??
+        role?.currentUserApplication ??
+        role?.current_user_application ??
+        role?.pendingRoleApplication ??
+        role?.pending_role_application ??
+        role?.pendingApplication ??
+        role?.pending_application ??
+        role?.roleApplication ??
+        role?.role_application ??
+        role?.application ??
+        null,
+    )
+      ? buildRoleStatusRecord(
+          role?.currentUserRoleApplication ??
+            role?.current_user_role_application ??
+            role?.currentUserApplication ??
+            role?.current_user_application ??
+            role?.pendingRoleApplication ??
+            role?.pending_role_application ??
+            role?.pendingApplication ??
+            role?.pending_application ??
+            role?.roleApplication ??
+            role?.role_application ??
+            role?.application ??
+            null,
+          fallbackTeam,
+          fallbackRole,
+          { isInternalRoleApplication: isTeamMember },
+        )
+      : null;
+    const seededInvitation = hasActiveInvitationStatus(
+      role?.currentUserRoleInvitation ??
+        role?.current_user_role_invitation ??
+        role?.currentUserInvitation ??
+        role?.current_user_invitation ??
+        role?.pendingRoleInvitation ??
+        role?.pending_role_invitation ??
+        role?.pendingInvitation ??
+        role?.pending_invitation ??
+        role?.roleInvitation ??
+        role?.role_invitation ??
+        role?.invitation ??
+        null,
+    )
+      ? buildRoleStatusRecord(
+          role?.currentUserRoleInvitation ??
+            role?.current_user_role_invitation ??
+            role?.currentUserInvitation ??
+            role?.current_user_invitation ??
+            role?.pendingRoleInvitation ??
+            role?.pending_role_invitation ??
+            role?.pendingInvitation ??
+            role?.pending_invitation ??
+            role?.roleInvitation ??
+            role?.role_invitation ??
+            role?.invitation ??
+            null,
+          fallbackTeam,
+          fallbackRole,
+          { isInternal: isTeamMember },
+        )
+      : null;
+
+    setViewerRoleApplicationRecord(seededApplication);
+    setViewerRoleInvitationRecord(seededInvitation);
+    setViewerRoleStatusLoading(true);
+
+    const fetchViewerRoleStatus = async () => {
+      const [applicationsResult, invitationsResult] = await Promise.allSettled([
+        teamService.getUserPendingApplications(),
+        teamService.getUserReceivedInvitations(),
+      ]);
+
+      if (cancelled) return;
+
+      let nextApplication = seededApplication;
+      let nextInvitation = seededInvitation;
+
+      if (applicationsResult.status === "fulfilled") {
+        const pendingApplications = Array.isArray(applicationsResult.value?.data)
+          ? applicationsResult.value.data
+          : [];
+        const foundApplication =
+          pendingApplications.find((application) =>
+            matchesRoleRecord(application, {
+              roleId,
+              teamId,
+              roleName: roleNameForStatusMatch,
+            }),
+          ) ?? null;
+
+        nextApplication = foundApplication
+          ? buildRoleStatusRecord(
+              foundApplication,
+              fallbackTeam,
+              fallbackRole,
+              { isInternalRoleApplication: isTeamMember },
+            )
+          : null;
+      }
+
+      if (invitationsResult.status === "fulfilled") {
+        const receivedInvitations = Array.isArray(invitationsResult.value?.data)
+          ? invitationsResult.value.data
+          : [];
+        const foundInvitation =
+          receivedInvitations.find((invitation) =>
+            matchesRoleRecord(invitation, {
+              roleId,
+              teamId,
+              roleName: roleNameForStatusMatch,
+            }),
+          ) ?? null;
+
+        nextInvitation = foundInvitation
+          ? buildRoleStatusRecord(
+              foundInvitation,
+              fallbackTeam,
+              fallbackRole,
+              { isInternal: isTeamMember },
+            )
+          : null;
+      }
+
+      setViewerRoleApplicationRecord(nextApplication);
+      setViewerRoleInvitationRecord(nextInvitation);
+      setViewerRoleStatusLoading(false);
+    };
+
+    fetchViewerRoleStatus().catch((error) => {
+      console.warn("Could not fetch viewer role status:", error);
+      if (!cancelled) {
+        setViewerRoleApplicationRecord(seededApplication);
+        setViewerRoleInvitationRecord(seededInvitation);
+        setViewerRoleStatusLoading(false);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    displayRole,
+    isAuthenticated,
+    isOpen,
+    isTeamMember,
+    role,
+    roleId,
+    roleNameForStatusMatch,
+    team,
+    teamId,
+  ]);
 
   useEffect(() => {
     if (!isOpen || !isAuthenticated || !comparisonUserId) {
@@ -917,6 +1233,40 @@ const VacantRoleDetailsModal = ({
     }
   };
 
+  const handleViewerApplicationCancel = async (applicationId) => {
+    await teamService.cancelApplication(applicationId);
+    setViewerRoleApplicationRecord(null);
+    setIsViewerApplicationDetailsOpen(false);
+  };
+
+  const handleViewerInvitationAccept = async (
+    invitationId,
+    responseMessage = "",
+    fillRole = false,
+  ) => {
+    await teamService.respondToInvitation(
+      invitationId,
+      "accept",
+      responseMessage,
+      fillRole,
+    );
+    setViewerRoleInvitationRecord(null);
+    setIsViewerInvitationDetailsOpen(false);
+  };
+
+  const handleViewerInvitationDecline = async (
+    invitationId,
+    responseMessage = "",
+  ) => {
+    await teamService.respondToInvitation(
+      invitationId,
+      "decline",
+      responseMessage,
+    );
+    setViewerRoleInvitationRecord(null);
+    setIsViewerInvitationDetailsOpen(false);
+  };
+
   if (!displayRole) return null;
 
   // Normalize camelCase/snake_case
@@ -1326,6 +1676,9 @@ const VacantRoleDetailsModal = ({
           return String(applicantId) === String(currentUser.id);
         }) ?? null)
       : null;
+  const effectiveViewerRoleApplication =
+    viewerRoleApplicationRecord ?? currentUserRoleApplication;
+  const effectiveViewerRoleInvitation = viewerRoleInvitationRecord;
   const visibleRoleTeamMembers = isTeamMembersExpanded
     ? roleTeamMembers
     : roleTeamMembers.slice(0, COLLAPSED_COUNT);
@@ -2527,7 +2880,18 @@ const VacantRoleDetailsModal = ({
 
         {!hideActions && (
           <>
-            {onViewApplicationDetails ? (
+            {effectiveViewerRoleInvitation ? (
+              <div className="mt-6 border-t border-base-200 pt-4">
+                <Button
+                  variant="primary"
+                  className="w-full"
+                  onClick={() => setIsViewerInvitationDetailsOpen(true)}
+                  icon={<Mail size={16} />}
+                >
+                  Click to view Invitation details
+                </Button>
+              </div>
+            ) : onViewApplicationDetails ? (
               <div className="mt-6 border-t border-base-200 pt-4">
                 <Button
                   variant="primary"
@@ -2535,46 +2899,51 @@ const VacantRoleDetailsModal = ({
                   onClick={onViewApplicationDetails}
                   icon={<SendHorizontal size={16} />}
                 >
-                  View Role Application Details
+                  Click to view application details
+                </Button>
+              </div>
+            ) : effectiveViewerRoleApplication ? (
+              <div className="mt-6 border-t border-base-200 pt-4">
+                <Button
+                  variant="primary"
+                  className="w-full"
+                  onClick={() => setIsViewerApplicationDetailsOpen(true)}
+                  icon={<SendHorizontal size={16} />}
+                >
+                  Click to view application details
                 </Button>
               </div>
             ) : (
               <>
-                {isAuthenticated && !isTeamMember && isRoleOpen && (
+                {isAuthenticated &&
+                  !viewerRoleStatusLoading &&
+                  !isTeamMember &&
+                  isRoleOpen && (
                   <div className="mt-6 border-t border-base-200 pt-4">
                     <TeamApplicationButton
                       team={applicationTeam}
                       teamId={teamId}
                       roleId={roleId}
                       className="w-full"
+                      buttonLabel="Apply to join Team and to fill this Role"
                     />
                   </div>
                 )}
 
-                {isAuthenticated && isTeamMember && isRoleOpen && !applicationsLoading && (
+                {isAuthenticated &&
+                  !viewerRoleStatusLoading &&
+                  isTeamMember &&
+                  isRoleOpen &&
+                  !applicationsLoading && (
                   <div className="mt-6 border-t border-base-200 pt-4">
-                    {currentUserRoleApplication ? (
-                      <Button
-                        variant="primary"
-                        className="w-full"
-                        onClick={() => {
-                          setHighlightApplicantId(currentUser.id);
-                          setApplicationsModalOpen(true);
-                        }}
-                        icon={<SendHorizontal size={16} />}
-                      >
-                        View Role Application Details
-                      </Button>
-                    ) : (
-                      <Button
-                        variant="primary"
-                        className="w-full"
-                        onClick={() => setIsInternalApplicationOpen(true)}
-                        icon={<UserSearch size={16} />}
-                      >
-                        Apply for this Role
-                      </Button>
-                    )}
+                    <Button
+                      variant="primary"
+                      className="w-full"
+                      onClick={() => setIsInternalApplicationOpen(true)}
+                      icon={<UserSearch size={16} />}
+                    >
+                      Apply to fill this Role within your Team
+                    </Button>
                   </div>
                 )}
               </>
@@ -2599,6 +2968,15 @@ const VacantRoleDetailsModal = ({
       />
     )}
 
+    {isViewerApplicationDetailsOpen && effectiveViewerRoleApplication && (
+      <TeamApplicationDetailsModal
+        isOpen={isViewerApplicationDetailsOpen}
+        application={effectiveViewerRoleApplication}
+        onClose={() => setIsViewerApplicationDetailsOpen(false)}
+        onCancel={handleViewerApplicationCancel}
+      />
+    )}
+
     {invitationsModalOpen && (
       <TeamInvitesModal
         isOpen={invitationsModalOpen}
@@ -2611,6 +2989,16 @@ const VacantRoleDetailsModal = ({
         onCancelInvitation={handleCancelInvitation}
         teamName={teamName}
         highlightUserId={highlightInviteeId}
+      />
+    )}
+
+    {isViewerInvitationDetailsOpen && effectiveViewerRoleInvitation && (
+      <TeamInvitationDetailsModal
+        isOpen={isViewerInvitationDetailsOpen}
+        invitation={effectiveViewerRoleInvitation}
+        onClose={() => setIsViewerInvitationDetailsOpen(false)}
+        onAccept={handleViewerInvitationAccept}
+        onDecline={handleViewerInvitationDecline}
       />
     )}
 

@@ -876,20 +876,38 @@ const VacantRoleCard = ({
     );
   };
 
+  const resolvedTeam =
+    team ??
+    ((role.teamId ?? role.team_id)
+      ? {
+          id: role.teamId ?? role.team_id,
+          name:
+            role.teamName ??
+            role.team_name ??
+            teamContext?.name ??
+            null,
+          teamavatar_url:
+            role.teamAvatarUrl ??
+            role.team_avatar_url ??
+            teamContext?.avatarUrl ??
+            null,
+        }
+      : null);
+
   const detailsModal = (
     <VacantRoleDetailsModal
       isOpen={isDetailsOpen}
       onClose={() => setIsDetailsOpen(false)}
-      team={team}
+      team={resolvedTeam}
       role={role}
       matchScore={matchScore}
       matchDetails={matchDetails}
       canManage={canManage}
-      isTeamMember={isTeamMember}
+      isTeamMember={viewerIsTeamMember}
       viewAsUserId={viewAsUserId}
       viewAsUser={viewAsUser}
       onViewApplicationDetails={onViewApplicationDetails}
-      hideActions={hideActions}
+      hideActions={hideActions && !usesSharedSearchCard}
     />
   );
 
