@@ -1272,6 +1272,7 @@ const MyTeams = () => {
                       onLeave={handleTeamLeave}
                       viewerDistanceSource={viewerDistanceSource}
                       hideDistanceInfo={true}
+                      hideMemberRoleIcon={true}
                       listLocationWidthClassName={MY_TEAMS_LIST_LOCATION_WIDTH_CLASSNAME}
                       listLocationInsetClassName={MY_TEAMS_LIST_LOCATION_INSET_CLASSNAME}
                       listTagsWidthClassName={MY_TEAMS_LIST_TAGS_WIDTH_CLASSNAME}
@@ -1319,6 +1320,7 @@ const MyTeams = () => {
                       onLeave={handleTeamLeave}
                       viewerDistanceSource={viewerDistanceSource}
                       hideDistanceInfo={true}
+                      hideMemberRoleIcon={true}
                       autoOpenApplications={
                         team.id === autoOpenApplicationsTeamId
                       }

@@ -353,6 +353,7 @@ const TeamCard = ({
   listTagsWidthClassName = "",
   listBadgesWidthClassName = "",
   hideDistanceInfo = false,
+  hideMemberRoleIcon = false,
 
   // View mode
   viewMode = "card",
@@ -2015,7 +2016,7 @@ const TeamCard = ({
                 <ShieldCheck size={11} className="text-[var(--color-role-admin-bg)]" />
               </Tooltip>
             )}
-            {userRole === "member" && (
+            {userRole === "member" && !hideMemberRoleIcon && (
               <Tooltip content="You are a member of this team">
                 <User size={11} className="text-[var(--color-role-member-bg)]" />
               </Tooltip>
@@ -2529,7 +2530,7 @@ const TeamCard = ({
                     />
                   </Tooltip>
                 )}
-                {userRole === "member" && (
+                {userRole === "member" && !hideMemberRoleIcon && (
                   <Tooltip content="You are a member of this team">
                     <User
                       size={viewMode === "mini" ? 12 : 14}
