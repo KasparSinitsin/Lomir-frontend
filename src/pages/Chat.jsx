@@ -28,8 +28,12 @@ const Chat = () => {
   const [typingUsers, setTypingUsers] = useState({});
   const [highlightMessageIds, setHighlightMessageIds] = useState([]);
   const [isTeamArchived, setIsTeamArchived] = useState(false);
+  const [hasMoreMessages, setHasMoreMessages] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   const typingTimeoutRef = useRef(null);
+  const messagesContainerRef = useRef(null);
+  const pendingScrollAdjustmentRef = useRef(null);
   const [loadingMessages, setLoadingMessages] = useState(false);
 
   // ---- Message de-duplication (focus: ownership/system duplicates) ----
@@ -209,6 +213,8 @@ const Chat = () => {
 
       try {
         setLoadingMessages(true);
+        setLoadingMore(false);
+        setHasMoreMessages(false);
 
         // ✅ Reset archived state when switching conversations
         setIsTeamArchived(false);
@@ -380,6 +386,7 @@ const Chat = () => {
             type,
           );
           const fetchedMessages = messagesResponse.data || [];
+          setHasMoreMessages(messagesResponse.hasMore || false);
           setMessages(dedupeMessages(fetchedMessages));
 
           console.log("Messages fetched:", fetchedMessages);
@@ -422,6 +429,7 @@ const Chat = () => {
           }
         } catch (messagesError) {
           console.log("No messages yet, starting with empty conversation");
+          setHasMoreMessages(false);
           setMessages([]);
         }
 
@@ -473,6 +481,24 @@ const Chat = () => {
     navigate,
     user?.id,
   ]);
+
+  useEffect(() => {
+    if (!pendingScrollAdjustmentRef.current) return;
+
+    const container = messagesContainerRef.current;
+
+    if (!container) {
+      pendingScrollAdjustmentRef.current = null;
+      return;
+    }
+
+    const { previousScrollHeight, previousScrollTop } =
+      pendingScrollAdjustmentRef.current;
+
+    container.scrollTop =
+      container.scrollHeight - previousScrollHeight + previousScrollTop;
+    pendingScrollAdjustmentRef.current = null;
+  }, [messages, hasMoreMessages]);
 
   // Set up WebSocket event listeners
   useEffect(() => {
@@ -876,6 +902,44 @@ const Chat = () => {
     }
   };
 
+  const loadEarlierMessages = async () => {
+    if (loadingMore || !hasMoreMessages || messages.length === 0) return;
+
+    const container = messagesContainerRef.current;
+
+    if (container) {
+      pendingScrollAdjustmentRef.current = {
+        previousScrollHeight: container.scrollHeight,
+        previousScrollTop: container.scrollTop,
+      };
+    }
+
+    setLoadingMore(true);
+
+    try {
+      const oldestMessage = messages[0];
+      const type = searchParams.get("type") || "direct";
+      const response = await messageService.getMessages(conversationId, type, {
+        before: oldestMessage.id,
+        limit: 50,
+      });
+      const olderMessages = response.data || [];
+
+      setHasMoreMessages(response.hasMore || false);
+
+      if (olderMessages.length > 0) {
+        setMessages((prev) => dedupeMessages([...olderMessages, ...prev]));
+      } else {
+        pendingScrollAdjustmentRef.current = null;
+      }
+    } catch (err) {
+      pendingScrollAdjustmentRef.current = null;
+      console.error("Error loading earlier messages:", err);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+
   const handleSendFile = async (file) => {
     if (!activeConversation || !file) return;
 
@@ -1071,7 +1135,7 @@ const Chat = () => {
         <div className="w-2/3 flex flex-col">
           {conversationId ? (
             <>
-              <div className="flex-grow overflow-y-auto p-4">
+              <div ref={messagesContainerRef} className="flex-grow overflow-y-auto p-4">
                 <MessageDisplay
                   messages={messages}
                   currentUserId={user?.id}
@@ -1082,6 +1146,9 @@ const Chat = () => {
                   conversationType={conversationType}
                   teamMembers={teamMembers}
                   highlightMessageIds={highlightMessageIds}
+                  hasMoreMessages={hasMoreMessages}
+                  loadingMore={loadingMore}
+                  onLoadEarlierMessages={loadEarlierMessages}
                   onDeleteConversation={handleDeleteConversation}
                   onDeleteMessage={handleDeleteMessage}
                   onLeaveTeam={handleLeaveTeam}
