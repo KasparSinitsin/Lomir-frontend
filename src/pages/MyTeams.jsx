@@ -161,8 +161,8 @@ const MyTeams = () => {
   const [resultView, setResultView] = useState("list");
 
   // ===== SORT STATE =====
-  const [sortBy, setSortBy] = useState("name");
-  const [sortDir, setSortDir] = useState("asc");
+  const [sortBy, setSortBy] = useState("newest");
+  const [sortDir, setSortDir] = useState("desc");
   const [teamNotificationMetrics, setTeamNotificationMetrics] = useState({});
 
   // ===== CREATE TEAM MODAL STATE =====
