@@ -26,6 +26,7 @@ import RoleBadgePill from "../common/RoleBadgePill";
 import CardMetaItem from "../common/CardMetaItem";
 import CardMetaRow from "../common/CardMetaRow";
 import LocationDistanceTagsRow from "../common/LocationDistanceTagsRow";
+import SearchResultTypeOverlay from "../common/SearchResultTypeOverlay";
 import Tooltip from "../common/Tooltip";
 import { getDisplayName, getUserInitials } from "../../utils/userHelpers";
 import { resolveFilledRoleUser } from "../../utils/vacantRoleUtils";
@@ -180,6 +181,8 @@ const VacantRoleCard = ({
   hideActions = false,
   viewMode = "card",
   teamContext = null,
+  activeFilters = { showLocation: true, showTags: true, showBadges: true },
+  showSearchResultTypeOverlay = false,
 }) => {
   const [showMenu, setShowMenu] = useState(false);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
@@ -773,7 +776,7 @@ const VacantRoleCard = ({
     </Tooltip>
   ) : null;
   const miniLocationSubtitleItem =
-    isMiniView && locationText ? (
+    isMiniView && !activeFilters.showLocation && locationText ? (
       <span className="inline-flex min-w-0 items-center gap-0.5 leading-none">
         {is_remote ? (
           <>
@@ -788,6 +791,11 @@ const VacantRoleCard = ({
         )}
       </span>
     ) : null;
+  const miniHasContent =
+    viewMode !== "mini" ||
+    activeFilters.showLocation ||
+    activeFilters.showTags ||
+    activeFilters.showBadges;
   const teamSubtitleItem = resolvedTeamName ? (
     <Tooltip
       content={
@@ -845,6 +853,14 @@ const VacantRoleCard = ({
       </Tooltip>
     );
   };
+  const searchResultTypeOverlay = showSearchResultTypeOverlay ? (
+    <SearchResultTypeOverlay
+      icon={UserSearch}
+      bgClassName={matchTier?.bg ?? "bg-orange-500"}
+      tooltip="Open Role"
+      viewMode={viewMode}
+    />
+  ) : null;
 
   const renderMatchIcon = (size) => {
     if (pct >= 80) {
@@ -947,7 +963,9 @@ const VacantRoleCard = ({
           subtitle={listSubtitle}
           image={null}
           imageFallback={getRoleShortInitials()}
-          imageOverlay={renderMatchOverlay({ size: 14, iconSize: 7 })}
+          imageOverlay={
+            searchResultTypeOverlay ?? renderMatchOverlay({ size: 14, iconSize: 7 })
+          }
           onClick={() => setIsDetailsOpen(true)}
           viewMode="list"
           titleClassName="text-sm font-semibold"
@@ -1064,18 +1082,23 @@ const VacantRoleCard = ({
           }
           contentClassName={
             viewMode === "mini"
-              ? "!pt-0 !px-4 sm:!px-5 !pb-4 sm:!pb-5"
+              ? `!pt-0 !px-4 sm:!px-5 ${miniHasContent ? "!pb-4 sm:!pb-5" : "!pb-0"}`
               : ""
           }
           headerClassName={
-            viewMode === "mini" ? "!p-4 sm:!p-5 !pb-4" : ""
+            viewMode === "mini"
+              ? `!p-4 sm:!p-5 ${miniHasContent ? "!pb-4" : "!pb-0"}`
+              : ""
           }
           imageWrapperClassName={viewMode === "mini" ? "mb-0 pb-0" : ""}
           titleClassName={
             viewMode === "mini" ? "text-base mb-0.5 leading-[110%]" : ""
           }
           marginClassName={viewMode === "mini" ? "mb-2" : ""}
-          imageOverlay={matchTier ? renderMatchOverlay({ size: 20, iconSize: 10 }) : null}
+          imageOverlay={
+            searchResultTypeOverlay ??
+            (matchTier ? renderMatchOverlay({ size: 20, iconSize: 10 }) : null)
+          }
         >
           {viewMode !== "mini" && (
             <p className="text-base-content/80 mb-4">
@@ -1086,13 +1109,23 @@ const VacantRoleCard = ({
           <LocationDistanceTagsRow
             entity={role}
             entityType="team"
-            tags={tagNames}
-            badges={roleBadges}
-            hideLocation={viewMode === "mini"}
+            tags={viewMode === "mini" && !activeFilters.showTags ? null : tagNames}
+            badges={
+              viewMode === "mini" && !activeFilters.showBadges
+                ? null
+                : roleBadges
+            }
+            hideLocation={viewMode === "mini" && !activeFilters.showLocation}
             compact={viewMode === "mini"}
           />
 
-          {resolvedTeamName && (
+          {resolvedTeamName &&
+            !(
+              viewMode === "mini" &&
+              !activeFilters.showLocation &&
+              !activeFilters.showTags &&
+              !activeFilters.showBadges
+            ) && (
             <div
               className={`flex items-start ${
                 viewMode === "mini"

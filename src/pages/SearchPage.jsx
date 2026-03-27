@@ -1756,7 +1756,7 @@ const SearchPage = () => {
             <section className="mb-8">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-semibold">
-                  {searchType === "all" && "Teams & People"}
+                  {searchType === "all" && "Teams, People & Open Roles"}
                   {searchType === "teams" && "Teams"}
                   {searchType === "users" && "People"}
                   {searchType === "roles" && "Open Roles"}
@@ -1820,6 +1820,7 @@ const SearchPage = () => {
                           roleMatchBadgeNames={roleMatchBadgeNames}
                           showMatchHighlights={sortBy === "match"}
                           showMatchScore={sortBy === "match"}
+                          showSearchResultTypeOverlay={searchType === "all"}
                           viewMode="list"
                           activeFilters={{
                             showLocation:
@@ -1840,7 +1841,15 @@ const SearchPage = () => {
                             item.matchDetails ?? item.match_details ?? null
                           }
                           hideActions
+                          showSearchResultTypeOverlay={searchType === "all"}
                           viewMode={resultView === "list" ? "list" : resultView}
+                          activeFilters={{
+                            showLocation:
+                              (sortBy === "proximity" && sortDir !== "remote") ||
+                              sortBy === "match",
+                            showTags: sortBy === "match",
+                            showBadges: sortBy === "match",
+                          }}
                           teamContext={{
                             name: item.teamName ?? item.team_name,
                             avatarUrl: item.teamAvatarUrl ?? item.team_avatar_url,
@@ -1861,6 +1870,7 @@ const SearchPage = () => {
                           invitationPrefillRoleName={matchRoleName}
                           showMatchHighlights={sortBy === "match"}
                           showMatchScore={sortBy === "match"}
+                          showSearchResultTypeOverlay={searchType === "all"}
                           viewMode="list"
                           activeFilters={{
                             showLocation:
@@ -1886,6 +1896,7 @@ const SearchPage = () => {
                           roleMatchBadgeNames={roleMatchBadgeNames}
                           showMatchHighlights={sortBy === "match"}
                           showMatchScore={sortBy === "match"}
+                          showSearchResultTypeOverlay={searchType === "all"}
                           viewMode={resultView}
                           activeFilters={{
                             showLocation:
@@ -1906,7 +1917,15 @@ const SearchPage = () => {
                             item.matchDetails ?? item.match_details ?? null
                           }
                           hideActions
+                          showSearchResultTypeOverlay={searchType === "all"}
                           viewMode={resultView === "list" ? "list" : resultView}
+                          activeFilters={{
+                            showLocation:
+                              (sortBy === "proximity" && sortDir !== "remote") ||
+                              sortBy === "match",
+                            showTags: sortBy === "match",
+                            showBadges: sortBy === "match",
+                          }}
                           teamContext={{
                             name: item.teamName ?? item.team_name,
                             avatarUrl: item.teamAvatarUrl ?? item.team_avatar_url,
@@ -1927,6 +1946,7 @@ const SearchPage = () => {
                           invitationPrefillRoleName={matchRoleName}
                           showMatchHighlights={sortBy === "match"}
                           showMatchScore={sortBy === "match"}
+                          showSearchResultTypeOverlay={searchType === "all"}
                           viewMode={resultView}
                           activeFilters={{
                             showLocation:
@@ -1951,6 +1971,13 @@ const SearchPage = () => {
                       matchDetails={role.matchDetails ?? role.match_details ?? null}
                       hideActions
                       viewMode="list"
+                      activeFilters={{
+                        showLocation:
+                          (sortBy === "proximity" && sortDir !== "remote") ||
+                          sortBy === "match",
+                        showTags: sortBy === "match",
+                        showBadges: sortBy === "match",
+                      }}
                       teamContext={{
                         name: role.teamName ?? role.team_name,
                         avatarUrl: role.teamAvatarUrl ?? role.team_avatar_url,
@@ -1975,6 +2002,13 @@ const SearchPage = () => {
                       matchDetails={role.matchDetails ?? role.match_details ?? null}
                       hideActions
                       viewMode={resultView}
+                      activeFilters={{
+                        showLocation:
+                          (sortBy === "proximity" && sortDir !== "remote") ||
+                          sortBy === "match",
+                        showTags: sortBy === "match",
+                        showBadges: sortBy === "match",
+                      }}
                       teamContext={{
                         name: role.teamName ?? role.team_name,
                         avatarUrl: role.teamAvatarUrl ?? role.team_avatar_url,
