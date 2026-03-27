@@ -354,6 +354,8 @@ const TeamCard = ({
   listBadgesWidthClassName = "",
   hideDistanceInfo = false,
   hideMemberRoleIcon = false,
+  disableListEdgeRounding = false,
+  listClassName = "",
 
   // View mode
   viewMode = "card",
@@ -2046,9 +2048,10 @@ const TeamCard = ({
           imageAlt={`${teamData.name} team`}
           onClick={handleCardClick}
           viewMode="list"
-          className=""
+          className={listClassName}
           clickTooltip={cardClickTooltip}
           imageOverlay={matchOverlay}
+          listEdgeRounding={!disableListEdgeRounding}
       >
           <div
             className={`box-border w-56 flex-shrink-0 flex items-center gap-3 overflow-hidden ${listLocationWidthClassName} ${listLocationInsetClassName}`}
