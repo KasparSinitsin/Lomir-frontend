@@ -429,6 +429,11 @@ const SearchPage = () => {
             );
           })
         : searchResults.teams,
+      roles: Array.isArray(searchResults.roles)
+        ? searchResults.roles.map((role) =>
+            withResolvedDistance(role, viewerTeamMatchProfile.user),
+          )
+        : searchResults.roles,
     };
   }, [
     matchRoleId,
