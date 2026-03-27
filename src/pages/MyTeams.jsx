@@ -17,6 +17,9 @@ import {
   Clock,
   Sparkles,
   Inbox,
+  Mail,
+  SendHorizontal,
+  Users,
 } from "lucide-react";
 import Alert from "../components/common/Alert";
 import CreateTeamModal from "../components/teams/CreateTeamModal";
@@ -903,6 +906,12 @@ const MyTeams = () => {
           title="My Pending Invitations"
           subtitle={pendingInvitationsSubtitle}
           className="mb-10"
+          icon={
+            <Mail
+              className="h-5 w-5 text-[var(--color-primary-focus)]"
+              aria-hidden="true"
+            />
+          }
           collapsible
         >
           {loadingInvitations ? (
@@ -1084,6 +1093,12 @@ const MyTeams = () => {
           title="My Pending Applications"
           subtitle={pendingApplicationsSubtitle}
           className="mb-10"
+          icon={
+            <SendHorizontal
+              className="h-5 w-5 text-[var(--color-primary-focus)]"
+              aria-hidden="true"
+            />
+          }
           collapsible
         >
           {loadingApplications ? (
@@ -1212,6 +1227,12 @@ const MyTeams = () => {
         id="my-teams-section"
         title="Teams You're A Part Of"
         subtitle={`${pagination.totalTeams} ${pagination.totalTeams === 1 ? 'Team' : 'Teams'} you've created or joined as a member`}
+        icon={
+          <Users
+            className="h-5 w-5 text-[var(--color-primary-focus)]"
+            aria-hidden="true"
+          />
+        }
         subtitleAction={
           <button
             type="button"
