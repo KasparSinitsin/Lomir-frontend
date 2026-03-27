@@ -2,11 +2,12 @@ import React from "react";
 import Card from "../common/Card";
 import Button from "../common/Button";
 import Tooltip from "../common/Tooltip";
-import { Eye, EyeClosed, MapPin, Globe, Tag, Award, Ruler } from "lucide-react";
+import { Eye, EyeClosed, MapPin, Globe, Tag, Award, Ruler, User } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 import { useUserModal } from "../../contexts/UserModalContext";
 import { getUserInitials } from "../../utils/userHelpers";
 import LocationDistanceTagsRow from "../common/LocationDistanceTagsRow";
+import SearchResultTypeOverlay from "../common/SearchResultTypeOverlay";
 import { getMatchTier } from "../../utils/matchScoreUtils";
 import { getResultMatchScore } from "../../utils/teamMatchUtils";
 
@@ -31,6 +32,7 @@ const UserCard = ({
   showMatchScore = false,
   viewMode = "card",
   activeFilters = {},
+  showSearchResultTypeOverlay = false,
 }) => {
   const { user: currentUser, isAuthenticated } = useAuth();
   const { openUserModal } = useUserModal();
@@ -123,6 +125,7 @@ const UserCard = ({
   let matchTier = null;
   let matchOverlay = null;
   let scoreSubtitleItem = null;
+  let matchTooltipText = null;
 
   if (showScore) {
     matchTier = getMatchTier(rawScore);
@@ -130,7 +133,6 @@ const UserCard = ({
     const matchType = user.matchType ?? user.match_type;
     const matchDetails = user.matchDetails ?? user.match_details;
 
-    let tooltipText;
     if (matchType === "role_match" && matchDetails) {
       const tagPct = Math.round(
         (matchDetails.tagScore ?? matchDetails.tag_score ?? 0) * 100,
@@ -141,21 +143,21 @@ const UserCard = ({
       const distPct = Math.round(
         (matchDetails.distanceScore ?? matchDetails.distance_score ?? 0) * 100,
       );
-      tooltipText = `${matchTier.pct}% role match — Tags ${tagPct}% · Badges ${badgePct}% · Location ${distPct}%`;
+      matchTooltipText = `${matchTier.pct}% role match — Tags ${tagPct}% · Badges ${badgePct}% · Location ${distPct}%`;
     } else if (matchDetails) {
       const sharedTags =
         matchDetails.sharedTagCount ?? matchDetails.shared_tag_count ?? 0;
       const sharedBadges =
         matchDetails.sharedBadgeCount ?? matchDetails.shared_badge_count ?? 0;
-      tooltipText = `${matchTier.pct}% profile match — ${sharedTags} shared tags, ${sharedBadges} shared badges`;
+      matchTooltipText = `${matchTier.pct}% profile match — ${sharedTags} shared tags, ${sharedBadges} shared badges`;
     } else {
-      tooltipText = `${matchTier.pct}% profile match`;
+      matchTooltipText = `${matchTier.pct}% profile match`;
     }
 
     const iconSizeSubtitle =
       viewMode === "list" ? 10 : viewMode === "mini" ? 11 : 12;
     scoreSubtitleItem = (
-      <Tooltip content={tooltipText}>
+      <Tooltip content={matchTooltipText}>
         <span className="flex items-center gap-0.5">
           <matchTier.Icon size={iconSizeSubtitle} className={matchTier.text} />
           <span className="text-base-content">{matchTier.pct}%</span>
@@ -177,6 +179,17 @@ const UserCard = ({
       </div>
     );
   }
+
+  const avatarOverlay = showSearchResultTypeOverlay ? (
+    <SearchResultTypeOverlay
+      icon={User}
+      bgClassName={matchTier?.bg ?? "bg-success"}
+      tooltip="Person"
+      viewMode={viewMode}
+    />
+  ) : (
+    matchOverlay
+  );
 
   // ============ LIST VIEW ============
   if (viewMode === "list") {
@@ -236,7 +249,7 @@ const UserCard = ({
         viewMode="list"
         className=""
         clickTooltip="Click to view User details"
-        imageOverlay={matchOverlay}
+        imageOverlay={avatarOverlay}
       >
         <div className="w-56 flex-shrink-0 flex items-center gap-3 overflow-hidden">
           <div className="w-16 flex-shrink-0 overflow-hidden">
@@ -359,7 +372,7 @@ const UserCard = ({
         viewMode === "mini" ? "text-base mb-0.5 leading-[110%]" : ""
       }
       marginClassName={viewMode === "mini" ? "mb-2" : ""}
-      imageOverlay={matchOverlay}
+      imageOverlay={avatarOverlay}
     >
       {viewMode !== "mini" && (user.bio || user.biography) && (
         <p className="text-base-content/80 mb-4">

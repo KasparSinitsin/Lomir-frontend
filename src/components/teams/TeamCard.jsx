@@ -31,6 +31,7 @@ import { userService } from "../../services/userService";
 import { useAuth } from "../../contexts/AuthContext";
 import Alert from "../common/Alert";
 import NotificationBadge from "../common/NotificationBadge";
+import SearchResultTypeOverlay from "../common/SearchResultTypeOverlay";
 import TeamApplicationsModal from "./TeamApplicationsModal";
 // import { getUserInitials, getDisplayName } from "../../utils/userHelpers";
 import { format } from "date-fns";
@@ -360,6 +361,7 @@ const TeamCard = ({
   // View mode
   viewMode = "card",
   activeFilters = {},
+  showSearchResultTypeOverlay = false,
 
   // Loading state
   loading = false,
@@ -1706,6 +1708,7 @@ const TeamCard = ({
   let matchOverlay = null;
   let scoreSubtitleItem = null;
   let scoreAvatarReplacement = null;
+  let matchTooltipText = null;
   if (showScore) {
     matchTier = getMatchTier(rawScore);
 
@@ -1721,7 +1724,6 @@ const TeamCard = ({
           roleMatchData?.matchDetails ??
           null
         );
-    let tooltipText;
     const hasScoreBreakdown =
       matchDetails &&
       ((matchDetails.tagScore ?? matchDetails.tag_score) != null ||
@@ -1738,13 +1740,13 @@ const TeamCard = ({
       const distPct = Math.round(
         (matchDetails.distanceScore ?? matchDetails.distance_score ?? 0) * 100,
       );
-      tooltipText = `${matchTier.pct}% match — Tags ${tagPct}% · Badges ${badgePct}% · Location ${distPct}%`;
+      matchTooltipText = `${matchTier.pct}% match — Tags ${tagPct}% · Badges ${badgePct}% · Location ${distPct}%`;
     } else if (matchDetails) {
       const sharedTags =
         matchDetails.sharedTagCount ?? matchDetails.shared_tag_count ?? 0;
       const sharedBadges =
         matchDetails.sharedBadgeCount ?? matchDetails.shared_badge_count ?? 0;
-      tooltipText =
+      matchTooltipText =
         sharedTags > 0 || sharedBadges > 0
           ? `${matchTier.pct}% profile match — ${sharedTags} shared tags, ${sharedBadges} shared badges`
           : `${matchTier.pct}% profile match`;
@@ -1752,7 +1754,7 @@ const TeamCard = ({
       const sharedTagCount =
         normalizedData.team?.sharedTagCount ??
         normalizedData.team?.shared_tag_count ?? 0;
-      tooltipText =
+      matchTooltipText =
         sharedTagCount > 0
           ? `${matchTier.pct}% profile match — ${sharedTagCount} shared focus areas`
           : `${matchTier.pct}% profile match`;
@@ -1761,7 +1763,7 @@ const TeamCard = ({
     const iconSizeSubtitle =
       viewMode === "list" ? 10 : viewMode === "mini" ? 11 : 12;
     scoreSubtitleItem = (
-      <Tooltip content={tooltipText}>
+      <Tooltip content={matchTooltipText}>
         <span className="flex items-center gap-0.5">
           <matchTier.Icon size={iconSizeSubtitle} className={matchTier.text} />
           <span className="text-base-content">{matchTier.pct}%</span>
@@ -1780,9 +1782,9 @@ const TeamCard = ({
           : 13;
 
       matchOverlay = (
-        <Tooltip content={tooltipText}>
+        <Tooltip content={matchTooltipText}>
           <div
-            aria-label={tooltipText}
+            aria-label={matchTooltipText}
             className={`absolute ${isListMatchBadge ? "-top-0.5 -left-0.5" : "-top-1 -left-1"} z-10 rounded-full ring-2 ring-white flex items-center justify-center ${matchTier.bg} text-white`}
             style={{
               width: isListMatchBadge
@@ -1816,9 +1818,9 @@ const TeamCard = ({
           : 13;
 
       matchOverlay = (
-        <Tooltip content={tooltipText}>
+        <Tooltip content={matchTooltipText}>
           <div
-            aria-label={tooltipText}
+            aria-label={matchTooltipText}
             className={`absolute ${isListMatchBadge ? "-top-0.5 -left-0.5" : "-top-1 -left-1"} z-10 rounded-full ring-2 ring-white flex items-center justify-center ${matchTier.bg} text-white`}
             style={{
               width: isListMatchBadge
@@ -1855,6 +1857,17 @@ const TeamCard = ({
       );
     }
   }
+
+  const avatarOverlay = showSearchResultTypeOverlay ? (
+    <SearchResultTypeOverlay
+      icon={Users}
+      bgClassName={matchTier?.bg ?? "bg-[var(--color-role-owner-bg)]"}
+      tooltip="Team"
+      viewMode={viewMode}
+    />
+  ) : (
+    matchOverlay
+  );
 
   // ============ LIST VIEW ============
 
@@ -2050,7 +2063,7 @@ const TeamCard = ({
           viewMode="list"
           className={listClassName}
           clickTooltip={cardClickTooltip}
-          imageOverlay={matchOverlay}
+          imageOverlay={avatarOverlay}
           listEdgeRounding={!disableListEdgeRounding}
       >
           <div
@@ -2609,7 +2622,7 @@ const TeamCard = ({
           viewMode === "mini" ? "text-base mb-0.5 leading-[110%]" : ""
         }
         marginClassName={viewMode === "mini" ? "mb-2" : ""}
-        imageOverlay={matchOverlay}
+        imageOverlay={avatarOverlay}
       >
         {error && (
           <Alert
