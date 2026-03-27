@@ -477,7 +477,10 @@ const SearchPage = () => {
       searchType === "all" || searchType === "teams"
         ? displaySearchResults.teams
         : [],
-    roles: searchType === "roles" ? displaySearchResults.roles : [],
+    roles:
+      searchType === "roles" || searchType === "all"
+        ? displaySearchResults.roles
+        : [],
   };
 
   const effectivePagination = useMemo(() => {
@@ -526,25 +529,57 @@ const SearchPage = () => {
 
   const mergedDisplayItems = (() => {
     if (searchType !== "all") return null;
-    const teams = filteredResults.teams.map((t) => ({ ...t, _resultType: "team" }));
-    const users = filteredResults.users.map((u) => ({ ...u, _resultType: "user" }));
-    const combined = [...teams, ...users];
+    const teams = filteredResults.teams.map((t) => ({
+      ...t,
+      _resultType: "team",
+    }));
+    const users = filteredResults.users.map((u) => ({
+      ...u,
+      _resultType: "user",
+    }));
+    const roles = filteredResults.roles.map((r) => ({
+      ...r,
+      _resultType: "role",
+    }));
+    const combined = [...teams, ...users, ...roles];
     combined.sort((a, b) => {
       const aIsTeam = a._resultType === "team";
       const bIsTeam = b._resultType === "team";
+      const aIsRole = a._resultType === "role";
+      const bIsRole = b._resultType === "role";
       if (sortBy === "name") {
-        const aName = aIsTeam ? (a.name || "").toLowerCase() : getUserDisplayName(a);
-        const bName = bIsTeam ? (b.name || "").toLowerCase() : getUserDisplayName(b);
+        const aName = aIsTeam
+          ? (a.name || "").toLowerCase()
+          : aIsRole
+            ? (a.roleName ?? a.role_name ?? "").toLowerCase()
+            : getUserDisplayName(a);
+        const bName = bIsTeam
+          ? (b.name || "").toLowerCase()
+          : bIsRole
+            ? (b.roleName ?? b.role_name ?? "").toLowerCase()
+            : getUserDisplayName(b);
         const cmp = aName.localeCompare(bName);
         return sortDir === "asc" ? cmp : -cmp;
       }
       if (sortBy === "newest") {
-        const aDate = new Date(a.created_at || a.createdAt || 0).getTime();
-        const bDate = new Date(b.created_at || b.createdAt || 0).getTime();
+        const aDate = new Date(
+          aIsRole
+            ? (a.createdAt ?? a.created_at ?? 0)
+            : (a.created_at ?? a.createdAt ?? 0),
+        ).getTime();
+        const bDate = new Date(
+          bIsRole
+            ? (b.createdAt ?? b.created_at ?? 0)
+            : (b.created_at ?? b.createdAt ?? 0),
+        ).getTime();
         return sortDir === "asc" ? aDate - bDate : bDate - aDate;
       }
       if (sortBy === "recent") {
         const getDate = (item) => {
+          if (item._resultType === "role") {
+            const roleDate = item.createdAt ?? item.created_at ?? 0;
+            return roleDate ? new Date(roleDate).getTime() : 0;
+          }
           const val =
             item.last_active_at ?? item.lastActiveAt ?? item.last_active ??
             item.lastActive ?? item.updated_at ?? item.updatedAt ??
@@ -611,7 +646,8 @@ const SearchPage = () => {
     (searchType === "roles"
       ? filteredResults.roles.length === 0
       : filteredResults.teams.length === 0 &&
-        filteredResults.users.length === 0) &&
+        filteredResults.users.length === 0 &&
+        filteredResults.roles.length === 0) &&
     !loading;
 
   const hasVisibleResults =
@@ -1727,7 +1763,7 @@ const SearchPage = () => {
                   <span className="text-sm font-normal text-base-content/60 ml-2">
                     (
                     {searchType === "all"
-                      ? `${filteredResults.teams.length + filteredResults.users.length} results`
+                      ? `${filteredResults.teams.length + filteredResults.users.length + filteredResults.roles.length} results`
                       : searchType === "teams"
                         ? `${effectivePagination.totalTeams} results`
                         : searchType === "users"
@@ -1793,6 +1829,23 @@ const SearchPage = () => {
                             showBadges: sortBy === "match",
                           }}
                         />
+                      ) : item._resultType === "role" ? (
+                        <VacantRoleCard
+                          key={`role-${item.id}`}
+                          role={item}
+                          matchScore={
+                            item.bestMatchScore ?? item.best_match_score ?? null
+                          }
+                          matchDetails={
+                            item.matchDetails ?? item.match_details ?? null
+                          }
+                          hideActions
+                          viewMode={resultView === "list" ? "list" : resultView}
+                          teamContext={{
+                            name: item.teamName ?? item.team_name,
+                            avatarUrl: item.teamAvatarUrl ?? item.team_avatar_url,
+                          }}
+                        />
                       ) : (
                         <UserCard
                           key={`user-${item.id}`}
@@ -1840,6 +1893,23 @@ const SearchPage = () => {
                               sortBy === "match",
                             showTags: sortBy === "match",
                             showBadges: sortBy === "match",
+                          }}
+                        />
+                      ) : item._resultType === "role" ? (
+                        <VacantRoleCard
+                          key={`role-${item.id}`}
+                          role={item}
+                          matchScore={
+                            item.bestMatchScore ?? item.best_match_score ?? null
+                          }
+                          matchDetails={
+                            item.matchDetails ?? item.match_details ?? null
+                          }
+                          hideActions
+                          viewMode={resultView === "list" ? "list" : resultView}
+                          teamContext={{
+                            name: item.teamName ?? item.team_name,
+                            avatarUrl: item.teamAvatarUrl ?? item.team_avatar_url,
                           }}
                         />
                       ) : (
