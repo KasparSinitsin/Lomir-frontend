@@ -28,6 +28,7 @@ const Card = ({
   clickTooltip = null,
   imageOverlay = null,
   imageReplacement = null,
+  listEdgeRounding = true,
 }) => {
   const [imageError, setImageError] = useState(false);
   const [rowTooltipVisible, setRowTooltipVisible] = useState(false);
@@ -182,7 +183,7 @@ const Card = ({
         className={`
           flex items-center gap-3 px-4 py-2.5
           hover:shadow-md transition-shadow duration-300
-          first:rounded-t-xl last:rounded-b-xl
+          ${listEdgeRounding ? "first:rounded-t-xl last:rounded-b-xl" : ""}
           ${onClick ? "cursor-pointer" : ""}
           ${className}
         `}
