@@ -37,10 +37,13 @@ export const messageService = {
   },
 
   // Get messages for a specific conversation
-  getMessages: async (conversationId, type = "direct") => {
+  getMessages: async (conversationId, type = "direct", { before, limit } = {}) => {
     try {
+      const params = new URLSearchParams({ type });
+      if (before) params.append("before", before);
+      if (limit) params.append("limit", limit);
       const response = await api.get(
-        `/api/messages/conversations/${conversationId}/messages?type=${type}`
+        `/api/messages/conversations/${conversationId}/messages?${params.toString()}`
       );
       return response.data;
     } catch (error) {

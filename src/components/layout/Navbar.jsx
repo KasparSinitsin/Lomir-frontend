@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "../../contexts/AuthContext";
 import LomirLogo from "../../assets/images/Lomir-logowordmark-color.svg";
 import { Bell, MessageCircle, Search, User, Settings, LogOut } from "lucide-react";
@@ -20,9 +20,11 @@ const Navbar = () => {
   // General notification state (invitations, applications, etc.)
   const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
   const [firstUnreadNotification, setFirstUnreadNotification] = useState(null);
-
   const location = useLocation();
   const navigate = useNavigate();
+  const lastMessageFetchRef = useRef(0);
+  const lastNotificationFetchRef = useRef(0);
+  const locationPathRef = useRef(location.pathname);
 
   // Define Tailwind class strings using CSS variables for consistent colors
   const iconClasses =
@@ -56,6 +58,26 @@ const Navbar = () => {
     }
   }, [isAuthenticated]);
 
+  const throttledMessageFetch = useCallback(() => {
+    const now = Date.now();
+    if (now - lastMessageFetchRef.current > 30000) {
+      lastMessageFetchRef.current = now;
+      fetchUnreadMessageCount();
+    }
+  }, [fetchUnreadMessageCount]);
+
+  const throttledNotificationFetch = useCallback(() => {
+    const now = Date.now();
+    if (now - lastNotificationFetchRef.current > 30000) {
+      lastNotificationFetchRef.current = now;
+      fetchUnreadNotificationCount();
+    }
+  }, [fetchUnreadNotificationCount]);
+
+  useEffect(() => {
+    locationPathRef.current = location.pathname;
+  }, [location.pathname]);
+
   // Initial fetch and socket setup for messages
   useEffect(() => {
     if (!isAuthenticated) {
@@ -64,6 +86,7 @@ const Navbar = () => {
       return;
     }
 
+    lastMessageFetchRef.current = Date.now();
     fetchUnreadMessageCount();
 
     // Set up socket listener for new messages
@@ -72,7 +95,7 @@ const Navbar = () => {
     if (socket) {
       const handleNewMessage = (message) => {
         // Only increment if we're not currently in that conversation
-        const currentPath = location.pathname;
+        const currentPath = locationPathRef.current;
         const currentConversationId = currentPath.startsWith("/chat/")
           ? currentPath.split("/chat/")[1]?.split("?")[0]
           : null;
@@ -112,7 +135,7 @@ const Navbar = () => {
         socket.off("messages:read", handleMessagesRead);
       };
     }
-  }, [isAuthenticated, fetchUnreadMessageCount, location.pathname]);
+  }, [isAuthenticated, fetchUnreadMessageCount]);
 
   // Initial fetch and socket setup for notifications
   useEffect(() => {
@@ -122,6 +145,7 @@ const Navbar = () => {
       return;
     }
 
+    lastNotificationFetchRef.current = Date.now();
     fetchUnreadNotificationCount();
 
     // Set up socket listener for new notifications
@@ -151,19 +175,19 @@ const Navbar = () => {
       return () => clearTimeout(timer);
     } else {
       // When not in a specific conversation, refetch immediately
-      fetchUnreadMessageCount();
+      throttledMessageFetch();
     }
-  }, [location.pathname, fetchUnreadMessageCount]);
+  }, [location.pathname, fetchUnreadMessageCount, throttledMessageFetch]);
 
   // Refetch notification count when on my-teams page (after viewing invitations/applications)
   useEffect(() => {
     if (location.pathname.startsWith("/teams/my-teams")) {
       const timer = setTimeout(() => {
-        fetchUnreadNotificationCount();
+        throttledNotificationFetch();
       }, 500);
       return () => clearTimeout(timer);
     }
-  }, [location.pathname, location.search, fetchUnreadNotificationCount]);
+  }, [location.pathname, location.search, throttledNotificationFetch]);
 
   // Handle notification badge click
   const handleNotificationClick = async () => {
