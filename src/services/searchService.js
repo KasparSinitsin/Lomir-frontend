@@ -37,6 +37,34 @@ const normalizeTeamData = (team) => {
   return normalizedTeam;
 };
 
+const VALID_SEARCH_TYPES = new Set(["all", "teams", "users", "roles"]);
+
+const normalizeSearchType = (searchType = "all") =>
+  VALID_SEARCH_TYPES.has(searchType) ? searchType : "all";
+
+const normalizeSearchResponse = (payload = {}) => {
+  const data = payload?.data ?? {};
+  const pagination = payload?.pagination ?? {};
+
+  return {
+    ...payload,
+    data: {
+      ...data,
+      teams: Array.isArray(data.teams)
+        ? data.teams.map(normalizeTeamData)
+        : [],
+      users: data.users ?? [],
+      roles: data.roles ?? [],
+    },
+    pagination: {
+      ...pagination,
+      totalTeams: pagination.totalTeams ?? 0,
+      totalUsers: pagination.totalUsers ?? 0,
+      totalRoles: pagination.totalRoles ?? 0,
+    },
+  };
+};
+
 const buildSearchParams = ({
   query,
   isAuthenticated = false,
@@ -58,7 +86,7 @@ const buildSearchParams = ({
     authenticated: isAuthenticated,
     page,
     limit,
-    searchType,
+    searchType: normalizeSearchType(searchType),
     sortBy,
     sortDir,
     openRolesOnly,
@@ -85,12 +113,7 @@ export const searchService = {
     const params = buildSearchParams(criteria);
     const response = await api.get("/api/search/global", { params });
 
-    if (response.data?.data?.teams) {
-      response.data.data.teams =
-        response.data.data.teams.map(normalizeTeamData);
-    }
-
-    return response.data;
+    return normalizeSearchResponse(response.data);
   },
 
   async getRecommended(userId, isAuthenticated = false) {
@@ -113,12 +136,7 @@ export const searchService = {
     const params = buildSearchParams(criteria);
     const response = await api.get("/api/search/all", { params });
 
-    if (response.data?.data?.teams) {
-      response.data.data.teams =
-        response.data.data.teams.map(normalizeTeamData);
-    }
-
-    return response.data;
+    return normalizeSearchResponse(response.data);
   },
 };
 
