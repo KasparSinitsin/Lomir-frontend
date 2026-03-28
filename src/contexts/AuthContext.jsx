@@ -15,7 +15,6 @@ export const AuthProvider = ({ children }) => {
     const loadUser = async () => {
       if (token) {
         try {
-          console.log("Loading user with token:", token);
           const response = await api.get("/api/auth/me", {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -46,16 +45,13 @@ export const AuthProvider = ({ children }) => {
               userData.is_public !== undefined
                 ? userData.is_public
                 : userData.isPublic !== undefined
-                  ? userData.isPublic
-                  : true,
+                ? userData.isPublic
+                : true,
           };
-
-          console.log("Enhanced user data:", enhancedUserData);
           setUser(enhancedUserData);
           setError(null);
 
           // Connect socket AFTER user is loaded
-          console.log("Connecting socket after user load");
           try {
             socketService.connect(token);
           } catch (socketError) {
@@ -196,7 +192,6 @@ export const AuthProvider = ({ children }) => {
       setError(null);
 
       // Initialize socket connection AFTER user is set
-      console.log("Initializing socket connection after login");
       try {
         socketService.connect(token);
       } catch (socketError) {
@@ -222,8 +217,6 @@ export const AuthProvider = ({ children }) => {
 
   // Update user data
   const updateUser = (userData) => {
-    console.log("Updating user in context with:", userData);
-
     // Create a new object that preserves existing properties and adds new ones
     setUser((prevUser) => {
       if (!prevUser) return userData;
@@ -286,8 +279,6 @@ export const AuthProvider = ({ children }) => {
         newUser.avatarUrl = userData.avatarUrl;
         newUser.avatar_url = userData.avatarUrl;
       }
-
-      console.log("Updated user object:", newUser);
       return newUser;
     });
   };
@@ -299,7 +290,6 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
     setError(null); // Clear error when logging out
     // Disconnect socket
-    console.log("Disconnecting socket on logout");
     socketService.disconnect();
   };
 

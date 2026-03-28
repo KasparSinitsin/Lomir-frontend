@@ -210,29 +210,6 @@ const TeamInvitesModal = ({
   // Get global user modal opener (for clicking on invitee avatar/name)
   const { openUserModal } = useUserModal();
 
-  // ============ Debug Logging ============
-  useEffect(() => {
-    if (invitations && invitations.length > 0) {
-      console.log("TeamInvitesModal - Invitations data:", invitations);
-      console.log("First invitation date fields:", {
-        created_at: invitations[0]?.created_at,
-        createdAt: invitations[0]?.createdAt,
-        date: invitations[0]?.date,
-        sent_at: invitations[0]?.sent_at,
-      });
-      console.log("First invitation invitee avatar fields:", {
-        avatar_url: invitations[0]?.invitee?.avatar_url,
-        avatarUrl: invitations[0]?.invitee?.avatarUrl,
-        first_name: invitations[0]?.invitee?.first_name,
-        last_name: invitations[0]?.invitee?.last_name,
-      });
-      console.log("First invitation inviter fields:", {
-        inviter: invitations[0]?.inviter,
-        inviter_username: invitations[0]?.inviter_username,
-      });
-    }
-  }, [invitations]);
-
   // ============ Scroll to highlighted invitation ============
   useEffect(() => {
     if (isOpen && highlightUserId && highlightedRef.current) {

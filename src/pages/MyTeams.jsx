@@ -463,7 +463,6 @@ const MyTeams = () => {
 
   // Handler for when user LEAVES a team (not deletes it)
   const handleTeamLeave = (teamId) => {
-    console.log("handleTeamLeave called with teamId:", teamId);
     // Refetch to update pagination correctly
     fetchUserTeams(currentPage, resultsPerPage);
   };
@@ -480,7 +479,6 @@ const MyTeams = () => {
 
   const handleSendReminder = async (applicationId) => {
     // TODO: Implement send reminder functionality
-    console.log("Send reminder for application:", applicationId);
     alert("Reminder feature coming soon!");
   };
 
@@ -493,8 +491,6 @@ const MyTeams = () => {
         responseMessage,
         fillRole,
       );
-
-      console.log("Invitation accepted successfully");
 
       // Refresh the data
       fetchPendingInvitations();
@@ -515,8 +511,6 @@ const MyTeams = () => {
         responseMessage,
       );
 
-      console.log("Invitation declined");
-
       // Refresh the data
       fetchPendingInvitations();
     } catch (error) {
@@ -526,7 +520,6 @@ const MyTeams = () => {
 
   // Handler for when a new team is created
   const handleTeamCreated = (newTeam) => {
-    console.log("New team created:", newTeam);
     // Refresh the teams list
     fetchUserTeams(1, resultsPerPage);
     setCurrentPage(1);

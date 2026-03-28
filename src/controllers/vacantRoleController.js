@@ -222,9 +222,6 @@ const createVacantRole = async (req, res) => {
 
     // ── Geocode if not remote and we have enough location data ──
     if (!isRemote && (finalPostalCode || finalCity) && finalCountry) {
-      console.log(
-        `Geocoding vacant role location: "${finalPostalCode || ""} ${finalCity || ""}, ${finalCountry}"`,
-      );
       const coordinates = await geocodeAddress({
         postal_code: finalPostalCode,
         city: finalCity,
@@ -238,14 +235,7 @@ const createVacantRole = async (req, res) => {
         if (!finalState && coordinates.state) {
           finalState = coordinates.state;
         }
-        console.log(
-          `✅ Geocoded vacant role: lat=${finalLatitude}, lng=${finalLongitude}, state=${finalState}`,
-        );
-      } else {
-        console.log("⚠️ Geocoding returned no results for vacant role");
       }
-    } else if (isRemote) {
-      console.log("Skipping geocoding for remote role");
     }
 
     const client = await db.pool.connect();
@@ -365,10 +355,6 @@ const createVacantRole = async (req, res) => {
         badges,
       };
 
-      console.log(
-        `✅ Vacant role "${role_name}" created for team ${teamId} by user ${userId}`,
-      );
-
       res.status(201).json({
         success: true,
         message: "Vacant role created successfully",
@@ -451,9 +437,6 @@ const updateVacantRole = async (req, res) => {
 
     // ── Geocode if not remote and we have enough location data ──
     if (!isRemote && (finalPostalCode || finalCity) && finalCountry) {
-      console.log(
-        `Geocoding vacant role location (update): "${finalPostalCode || ""} ${finalCity || ""}, ${finalCountry}"`,
-      );
       const coordinates = await geocodeAddress({
         postal_code: finalPostalCode,
         city: finalCity,
@@ -466,14 +449,7 @@ const updateVacantRole = async (req, res) => {
         if (!finalState && coordinates.state) {
           finalState = coordinates.state;
         }
-        console.log(
-          `✅ Geocoded vacant role (update): lat=${finalLatitude}, lng=${finalLongitude}, state=${finalState}`,
-        );
-      } else {
-        console.log("⚠️ Geocoding returned no results for vacant role update");
       }
-    } else if (isRemote) {
-      console.log("Skipping geocoding for remote role (update)");
     }
 
     const client = await db.pool.connect();
@@ -606,8 +582,6 @@ const updateVacantRole = async (req, res) => {
         badges: badgesResult.rows,
       };
 
-      console.log(`✅ Vacant role ${roleId} updated for team ${teamId}`);
-
       res.status(200).json({
         success: true,
         message: "Vacant role updated successfully",
@@ -666,10 +640,6 @@ const deleteVacantRole = async (req, res) => {
         message: "Vacant role not found",
       });
     }
-
-    console.log(
-      `🗑️ Vacant role "${result.rows[0].role_name}" (${roleId}) deleted from team ${teamId}`,
-    );
 
     res.status(200).json({
       success: true,
@@ -730,10 +700,6 @@ const updateVacantRoleStatus = async (req, res) => {
         message: "Vacant role not found",
       });
     }
-
-    console.log(
-      `✅ Vacant role ${roleId} status changed to "${status}" in team ${teamId}`,
-    );
 
     res.status(200).json({
       success: true,
