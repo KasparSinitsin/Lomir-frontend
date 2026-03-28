@@ -273,16 +273,6 @@ const Profile = () => {
     fetchUserTags();
   }, [user, initialDataLoaded, fetchUserDetails]); // Add initialDataLoaded and fetchUserDetails to dependencies
 
-  // Log user changes for debugging
-  useEffect(() => {
-    console.log("User data changed:", user);
-    // Check specifically for visibility status
-    console.log("Visibility status:", {
-      is_public: user?.is_public,
-      isPublic: user?.isPublic,
-    });
-  }, [user]);
-
   // Reset image error state when user changes
   useEffect(() => {
     setImageError(false);
@@ -660,8 +650,6 @@ const Profile = () => {
           postalCode: formData.postalCode,
         };
 
-        console.log("Updated user object:", updatedUser);
-
         // Update global context with new user data
         updateUser(updatedUser);
 
@@ -691,12 +679,6 @@ const Profile = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  // Manual refresh for debugging purposes
-  const handleManualRefresh = () => {
-    setInitialDataLoaded(false); // Reset the flag to allow a new fetch
-    fetchUserDetails(); // Manually trigger a refresh
   };
 
   // For debugging purposes

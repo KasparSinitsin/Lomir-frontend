@@ -33,7 +33,6 @@ import Alert from "../common/Alert";
 import NotificationBadge from "../common/NotificationBadge";
 import SearchResultTypeOverlay from "../common/SearchResultTypeOverlay";
 import TeamApplicationsModal from "./TeamApplicationsModal";
-// import { getUserInitials, getDisplayName } from "../../utils/userHelpers";
 import { format } from "date-fns";
 import LocationDistanceTagsRow from "../common/LocationDistanceTagsRow";
 import { getMatchTier } from "../../utils/matchScoreUtils";
