@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   Calendar,
   MessageSquare,
@@ -16,10 +16,7 @@ import VacantRoleCard from "./VacantRoleCard";
 import Alert from "../common/Alert";
 import { format } from "date-fns";
 import InlineUserLink from "../users/InlineUserLink";
-import { matchingService } from "../../services/matchingService";
-import { vacantRoleService } from "../../services/vacantRoleService";
-
-const ROLE_MATCH_FETCH_LIMIT = 1000;
+import { useHydratedRole } from "../../hooks/useHydratedRole";
 
 const extractRoleMatchData = (roleLike) => {
   const rawScore = roleLike?.matchScore ?? roleLike?.match_score ?? null;
@@ -61,85 +58,36 @@ const TeamInvitationDetailsModal = ({
   const [responseMessage, setResponseMessage] = useState("");
   const [selectedUserId, setSelectedUserId] = useState(null);
   const [isTeamDetailsOpen, setIsTeamDetailsOpen] = useState(false);
-  const [hydratedRole, setHydratedRole] = useState(null);
-  const [roleMatchScore, setRoleMatchScore] = useState(null);
-  const [roleMatchDetails, setRoleMatchDetails] = useState(null);
 
   // ============ Helpers ============
 
   // Get team data from invitation
   const team = invitation?.team || {};
-
-  // Fetch full role details when modal opens and invitation targets a role
-  useEffect(() => {
-    const roleId = invitation?.role?.id ?? invitation?.roleId ?? invitation?.role_id ?? null;
-    const teamId = team?.id ?? null;
-
-    if (!isOpen || !roleId || !teamId) {
-      setHydratedRole(null);
-      setRoleMatchScore(null);
-      setRoleMatchDetails(null);
-      return;
-    }
-
-    let isCancelled = false;
-
-    const fetchRole = async () => {
-      try {
-        const [detailsRes, matchesRes] = await Promise.allSettled([
-          vacantRoleService.getVacantRoleById(teamId, roleId),
-          matchingService.getMatchingRolesForTeam(teamId, {
-            limit: ROLE_MATCH_FETCH_LIMIT,
-          }),
-        ]);
-
-        if (isCancelled) return;
-
-        const invitationRoleMatch = extractRoleMatchData(invitation?.role);
-        let detailRoleMatch = { matchScore: null, matchDetails: null };
-
-        if (detailsRes.status === "fulfilled" && detailsRes.value?.data) {
-          const roleData = detailsRes.value.data;
-          setHydratedRole(roleData);
-          detailRoleMatch = extractRoleMatchData(roleData);
-        }
-
-        const matchedRole =
-          matchesRes.status === "fulfilled"
-            ? (matchesRes.value?.data || []).find(
-                (candidate) => String(candidate?.id) === String(roleId),
-              )
-            : null;
-        const matchedRoleData = extractRoleMatchData(matchedRole);
-        const resolvedRoleMatch =
-          matchedRoleData.matchScore != null
-            ? matchedRoleData
-            : invitationRoleMatch.matchScore != null
-              ? invitationRoleMatch
-              : detailRoleMatch;
-
-        setRoleMatchScore(resolvedRoleMatch.matchScore);
-        setRoleMatchDetails(resolvedRoleMatch.matchDetails);
-      } catch (err) {
-        if (!isCancelled) {
-          console.warn("Could not fetch role details for invitation:", err);
-        }
-      }
-    };
-
-    fetchRole();
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [
+  const roleId =
+    invitation?.role?.id ?? invitation?.roleId ?? invitation?.role_id ?? null;
+  const teamId = team?.id ?? null;
+  const {
+    hydratedRole,
+    roleMatchScore: fetchedRoleMatchScore,
+    roleMatchDetails: fetchedRoleMatchDetails,
+  } = useHydratedRole({
     isOpen,
-    invitation?.role,
-    invitation?.role?.id,
-    invitation?.roleId,
-    invitation?.role_id,
-    team?.id,
-  ]);
+    roleId,
+    teamId,
+  });
+  const invitationRoleMatch = extractRoleMatchData(invitation?.role);
+  const hydratedRoleMatch = extractRoleMatchData(hydratedRole);
+  const isUsingHydratedRoleMatch =
+    fetchedRoleMatchScore === hydratedRoleMatch.matchScore &&
+    fetchedRoleMatchDetails === hydratedRoleMatch.matchDetails;
+  const roleMatchScore =
+    invitationRoleMatch.matchScore != null && isUsingHydratedRoleMatch
+      ? invitationRoleMatch.matchScore
+      : fetchedRoleMatchScore ?? invitationRoleMatch.matchScore;
+  const roleMatchDetails =
+    invitationRoleMatch.matchScore != null && isUsingHydratedRoleMatch
+      ? invitationRoleMatch.matchDetails
+      : fetchedRoleMatchDetails ?? invitationRoleMatch.matchDetails;
   const inviter = invitation?.inviter || {};
 
   // Format invitation date

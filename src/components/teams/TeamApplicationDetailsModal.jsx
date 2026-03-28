@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Calendar, Users, X, SendHorizontal } from "lucide-react";
 import Modal from "../common/Modal";
 import Button from "../common/Button";
@@ -8,10 +8,7 @@ import VacantRoleCard from "./VacantRoleCard";
 import { getUserInitials } from '../../utils/userHelpers';
 import Alert from "../common/Alert";
 import { format } from "date-fns";
-import { matchingService } from "../../services/matchingService";
-import { vacantRoleService } from "../../services/vacantRoleService";
-
-const ROLE_MATCH_FETCH_LIMIT = 1000;
+import { useHydratedRole } from "../../hooks/useHydratedRole";
 
 const extractRoleMatchData = (roleLike) => {
   const rawScore = roleLike?.matchScore ?? roleLike?.match_score ?? null;
@@ -46,78 +43,35 @@ const TeamApplicationDetailsModal = ({
   const [error, setError] = useState(null);
   const [isTeamDetailsOpen, setIsTeamDetailsOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState(null);
-  const [hydratedRole, setHydratedRole] = useState(null);
-  const [roleMatchScore, setRoleMatchScore] = useState(null);
-  const [roleMatchDetails, setRoleMatchDetails] = useState(null);
 
   // ============ Helpers ============
 
   // Get team data from application
   const team = application?.team || {};
-
-  // Fetch full role details (name, location, match score) when modal opens
-  useEffect(() => {
-    const roleId = application?.role?.id ?? application?.roleId ?? null;
-    const teamId = team?.id ?? null;
-
-    if (!isOpen || !roleId || !teamId) {
-      setHydratedRole(null);
-      setRoleMatchScore(null);
-      setRoleMatchDetails(null);
-      return;
-    }
-
-    let isCancelled = false;
-
-    const fetchRole = async () => {
-      try {
-        const [detailsRes, matchesRes] = await Promise.allSettled([
-          vacantRoleService.getVacantRoleById(teamId, roleId),
-          matchingService.getMatchingRolesForTeam(teamId, {
-            limit: ROLE_MATCH_FETCH_LIMIT,
-          }),
-        ]);
-
-        if (isCancelled) return;
-
-        const applicationRoleMatch = extractRoleMatchData(application?.role);
-        let detailRoleMatch = { matchScore: null, matchDetails: null };
-
-        if (detailsRes.status === "fulfilled" && detailsRes.value?.data) {
-          const roleData = detailsRes.value.data;
-          setHydratedRole(roleData);
-          detailRoleMatch = extractRoleMatchData(roleData);
-        }
-
-        const matchedRole =
-          matchesRes.status === "fulfilled"
-            ? (matchesRes.value?.data || []).find(
-                (candidate) => String(candidate?.id) === String(roleId),
-              )
-            : null;
-        const matchedRoleData = extractRoleMatchData(matchedRole);
-        const resolvedRoleMatch =
-          matchedRoleData.matchScore != null
-            ? matchedRoleData
-            : applicationRoleMatch.matchScore != null
-              ? applicationRoleMatch
-              : detailRoleMatch;
-
-        setRoleMatchScore(resolvedRoleMatch.matchScore);
-        setRoleMatchDetails(resolvedRoleMatch.matchDetails);
-      } catch (err) {
-        if (!isCancelled) {
-          console.warn("Could not fetch role details:", err);
-        }
-      }
-    };
-
-    fetchRole();
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [isOpen, application?.role, application?.role?.id, application?.roleId, team?.id]);
+  const roleId = application?.role?.id ?? application?.roleId ?? null;
+  const teamId = team?.id ?? null;
+  const {
+    hydratedRole,
+    roleMatchScore: fetchedRoleMatchScore,
+    roleMatchDetails: fetchedRoleMatchDetails,
+  } = useHydratedRole({
+    isOpen,
+    roleId,
+    teamId,
+  });
+  const applicationRoleMatch = extractRoleMatchData(application?.role);
+  const hydratedRoleMatch = extractRoleMatchData(hydratedRole);
+  const isUsingHydratedRoleMatch =
+    fetchedRoleMatchScore === hydratedRoleMatch.matchScore &&
+    fetchedRoleMatchDetails === hydratedRoleMatch.matchDetails;
+  const roleMatchScore =
+    applicationRoleMatch.matchScore != null && isUsingHydratedRoleMatch
+      ? applicationRoleMatch.matchScore
+      : fetchedRoleMatchScore ?? applicationRoleMatch.matchScore;
+  const roleMatchDetails =
+    applicationRoleMatch.matchScore != null && isUsingHydratedRoleMatch
+      ? applicationRoleMatch.matchDetails
+      : fetchedRoleMatchDetails ?? applicationRoleMatch.matchDetails;
   const owner = application?.owner || {};
 
   // Format application date
