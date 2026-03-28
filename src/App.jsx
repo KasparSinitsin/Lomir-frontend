@@ -70,7 +70,9 @@ function AppLayout() {
                 />
                 <Route path="/teams" element={<Placeholder pageName="Teams" />} />
                 <Route path="/search" element={<SearchPage />} />
-                <Route path="/design-system" element={<DesignSystem />} />
+                {import.meta.env.DEV && (
+                  <Route path="/design-system" element={<DesignSystem />} />
+                )}
                 <Route path="/forgot-password" element={<ForgotPassword />} />
                 <Route path="/reset-password" element={<ResetPassword />} />
 
