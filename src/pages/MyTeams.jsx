@@ -7,7 +7,6 @@ import TeamCard from "../components/teams/TeamCard";
 import Section from "../components/layout/Section";
 import Pagination from "../components/common/Pagination";
 import { teamService } from "../services/teamService";
-import { userService } from "../services/userService";
 import { useAuth } from "../contexts/AuthContext";
 import {
   Plus,
@@ -23,10 +22,8 @@ import {
 } from "lucide-react";
 import Alert from "../components/common/Alert";
 import CreateTeamModal from "../components/teams/CreateTeamModal";
-import {
-  enrichTeamMatchData,
-  buildViewerTeamMatchProfile,
-} from "../utils/teamMatchUtils";
+import { enrichTeamMatchData } from "../utils/teamMatchUtils";
+import useViewerMatchProfile from "../hooks/useViewerMatchProfile";
 
 import {
   RESULTS_PER_PAGE_OPTIONS,
@@ -137,25 +134,9 @@ const MyTeams = () => {
   const [loadingInvitations, setLoadingInvitations] = useState(true);
   const [error, setError] = useState(null);
   const { user } = useAuth();
-  const [viewerDistanceSource, setViewerDistanceSource] = useState(null);
-  const [viewerMatchProfile, setViewerMatchProfile] = useState(null);
-  const viewerMatchUser = useMemo(() => {
-    const viewerId = viewerDistanceSource?.id ?? user?.id ?? null;
-    if (!viewerId) return null;
-
-    return {
-      id: viewerId,
-      city: viewerDistanceSource?.city ?? user?.city ?? null,
-      country: viewerDistanceSource?.country ?? user?.country ?? null,
-    };
-  }, [
-    user?.id,
-    user?.city,
-    user?.country,
-    viewerDistanceSource?.id,
-    viewerDistanceSource?.city,
-    viewerDistanceSource?.country,
-  ]);
+  const { viewerMatchProfile, viewerDistanceSource } = useViewerMatchProfile({
+    userId: user?.id,
+  });
 
   // ===== VIEW MODE STATE =====
   const [resultView, setResultView] = useState("list");
@@ -276,88 +257,6 @@ const MyTeams = () => {
     fetchPendingApplications();
     fetchPendingInvitations();
   }, [fetchPendingApplications, fetchPendingInvitations]);
-
-  useEffect(() => {
-    if (!user?.id) {
-      setViewerDistanceSource(null);
-      return;
-    }
-
-    let cancelled = false;
-
-    const fetchViewerDistanceSource = async () => {
-      try {
-        const response = await userService.getUserById(user.id);
-        const payload = response?.data ?? response;
-        const viewerUserData =
-          payload?.success !== undefined
-            ? payload?.data
-            : (payload?.data?.data ?? payload?.data ?? payload);
-
-        if (!cancelled) {
-          setViewerDistanceSource(viewerUserData ?? user);
-        }
-      } catch (err) {
-        console.warn(
-          "Could not fetch fresh viewer profile for My Teams distances:",
-          err,
-        );
-
-        if (!cancelled) {
-          setViewerDistanceSource(user);
-        }
-      }
-    };
-
-    fetchViewerDistanceSource();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [user]);
-
-  useEffect(() => {
-    if (!user?.id) {
-      setViewerMatchProfile(null);
-      return;
-    }
-
-    let cancelled = false;
-
-    const buildProfile = async () => {
-      try {
-        const [tagsRes, badgesRes] = await Promise.all([
-          userService.getUserTags(user.id),
-          userService.getUserBadges(user.id),
-        ]);
-
-        if (cancelled) return;
-
-        const tags = tagsRes?.data ?? tagsRes ?? [];
-        const badges = badgesRes?.data ?? badgesRes ?? [];
-
-        setViewerMatchProfile(
-          buildViewerTeamMatchProfile({
-            user: viewerMatchUser,
-            userTags: tags,
-            userBadges: badges,
-          }),
-        );
-      } catch (err) {
-        console.error("Error building viewer match profile:", err);
-
-        if (!cancelled) {
-          setViewerMatchProfile(null);
-        }
-      }
-    };
-
-    buildProfile();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [user?.id, viewerMatchUser]);
 
   // Fetch teams when page or limit changes
   useEffect(() => {
