@@ -426,23 +426,13 @@ export const calculateUserRoleMatchData = ({
       sharedTagCount: matchingTags,
       sharedBadgeCount: matchingBadges,
       matchingTags,
-      matching_tags: matchingTags,
       matchingBadges,
-      matching_badges: matchingBadges,
       totalTagCount: totalRequiredTags,
       totalBadgeCount: totalRequiredBadges,
       totalRequiredTags,
-      total_required_tags: totalRequiredTags,
       totalRequiredBadges,
-      total_required_badges: totalRequiredBadges,
       distanceKm: getDetailValue(baseMatchDetails, "distanceKm", "distance_km"),
-      distance_km: getDetailValue(baseMatchDetails, "distanceKm", "distance_km"),
       isWithinRange: getDetailValue(
-        baseMatchDetails,
-        "isWithinRange",
-        "is_within_range",
-      ),
-      is_within_range: getDetailValue(
         baseMatchDetails,
         "isWithinRange",
         "is_within_range",
@@ -486,15 +476,10 @@ export const enrichTeamMatchData = ({
   return {
     ...team,
     bestMatchScore: finalScore,
-    best_match_score: finalScore,
     matchScore: finalScore,
-    match_score: finalScore,
     matchType: finalMatchType,
-    match_type: finalMatchType,
     matchDetails: finalMatchDetails,
-    match_details: finalMatchDetails,
     sharedTagCount: finalSharedTagCount,
-    shared_tag_count: finalSharedTagCount,
   };
 };
 
@@ -537,17 +522,11 @@ export const enrichUserMatchData = ({
   return {
     ...user,
     bestMatchScore: finalScore,
-    best_match_score: finalScore,
     matchScore: finalScore,
-    match_score: finalScore,
     matchType: finalMatchType,
-    match_type: finalMatchType,
     matchDetails: mergedMatchDetails,
-    match_details: mergedMatchDetails,
     sharedTagCount: finalSharedTagCount,
-    shared_tag_count: finalSharedTagCount,
     sharedBadgeCount: finalSharedBadgeCount,
-    shared_badge_count: finalSharedBadgeCount,
   };
 };
 
@@ -596,16 +575,10 @@ export const enrichUserRoleMatchData = ({
   return {
     ...user,
     bestMatchScore: finalScore,
-    best_match_score: finalScore,
     matchScore: finalScore,
-    match_score: finalScore,
     matchType: "role_match",
-    match_type: "role_match",
     matchDetails: mergedMatchDetails,
-    match_details: mergedMatchDetails,
     sharedTagCount: finalSharedTagCount,
-    shared_tag_count: finalSharedTagCount,
     sharedBadgeCount: finalSharedBadgeCount,
-    shared_badge_count: finalSharedBadgeCount,
   };
 };

@@ -1,5 +1,8 @@
 import { Sparkles, TrendingUp, TrendingDown } from "lucide-react";
 
+export const MATCH_TIER_GREAT = 80; // percentage threshold for "Great match" (orange)
+export const MATCH_TIER_GOOD = 50; // percentage threshold for "Good match" (green)
+
 /**
  * Returns tier metadata for a match score (0–1 float).
  * Shared between VacantRoleCard, TeamCard, and UserCard.
@@ -9,7 +12,7 @@ import { Sparkles, TrendingUp, TrendingDown } from "lucide-react";
  */
 export function getMatchTier(score) {
   const pct = Math.round((score || 0) * 100);
-  if (pct >= 80)
+  if (pct >= MATCH_TIER_GREAT)
     return {
       pct,
       Icon: Sparkles,
@@ -17,7 +20,7 @@ export function getMatchTier(score) {
       text: "text-orange-500",
       label: "Great match",
     };
-  if (pct >= 50)
+  if (pct >= MATCH_TIER_GOOD)
     return {
       pct,
       Icon: TrendingUp,

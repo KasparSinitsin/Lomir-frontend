@@ -4,14 +4,6 @@ export const teamService = {
   // Create a new team
   createTeam: async (teamData) => {
     try {
-      console.log("createTeam: Received data:", teamData);
-
-      // Debug the teamavatar_url field
-      console.log(
-        "Team avatar URL field:",
-        teamData.teamavatar_url || teamData.teamavatarUrl || "Not provided",
-      );
-
       // Ensure tags are properly formatted
       const formattedTags =
         teamData.tags?.map((tag) => {
@@ -63,8 +55,6 @@ export const teamService = {
         city: teamData.is_remote ? null : teamData.city || null,
         country: teamData.is_remote ? null : teamData.country || null,
       };
-
-      console.log("createTeam: Sending validated data:", validatedTeamData);
 
       const response = await api.post("/api/teams", validatedTeamData);
       return response.data;
@@ -189,7 +179,6 @@ export const teamService = {
     };
 
     try {
-      console.log(`Fetching team details for ID: ${teamId}`);
       const response = await api.get(`/api/teams/${teamId}`);
 
       // Backend returns: { success: true, data: team }
@@ -276,8 +265,6 @@ export const teamService = {
   // Update team details
   updateTeam: async (teamId, teamData) => {
     try {
-      console.log("updateTeam: Updating team with data:", teamData);
-
       // Ensure tags are properly formatted
       const formattedTags =
         teamData.tags?.map((tag) => {
@@ -331,8 +318,6 @@ export const teamService = {
       // Optional: remove camelCase duplicates so you don't send both
       delete dataToSend.isRemote;
       delete dataToSend.postalCode;
-
-      console.log("updateTeam: Sending formatted data:", dataToSend);
 
       const response = await api.put(`/api/teams/${teamId}`, dataToSend);
       return response.data;

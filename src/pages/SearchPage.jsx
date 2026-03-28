@@ -35,14 +35,13 @@ import Alert from "../components/common/Alert";
 import { searchService, getApiErrorMessage } from "../services/searchService";
 import { tagService } from "../services/tagService";
 import { badgeService } from "../services/badgeService";
-import { userService } from "../services/userService";
 import {
-  buildViewerTeamMatchProfile,
   enrichTeamMatchData,
   enrichUserMatchData,
   enrichUserRoleMatchData,
   getResultMatchScore,
 } from "../utils/teamMatchUtils";
+import useViewerMatchProfile from "../hooks/useViewerMatchProfile";
 import {
   buildSearchRequestCriteria,
   DISTANCE_SUBMENU_TYPE,
@@ -174,7 +173,12 @@ const SearchPage = () => {
   });
   const [filterBadgeMap, setFilterBadgeMap] = useState({});
   const [allBadges, setAllBadges] = useState([]);
-  const [viewerTeamMatchProfile, setViewerTeamMatchProfile] = useState(null);
+  const {
+    viewerMatchProfile: viewerTeamMatchProfile,
+    viewerDistanceSource,
+  } = useViewerMatchProfile({
+    userId: user?.id,
+  });
 
   // ===== PAGINATION STATE =====
   const [currentPage, setCurrentPage] = useState(1);
@@ -299,70 +303,6 @@ const SearchPage = () => {
     },
   ];
 
-  useEffect(() => {
-    if (!isAuthenticated || !user?.id) {
-      setViewerTeamMatchProfile(null);
-      return;
-    }
-
-    let cancelled = false;
-
-    const fetchViewerMatchProfile = async () => {
-      try {
-        const [viewerRes, tagsRes, badgesRes] = await Promise.all([
-          userService.getUserById(user.id),
-          sortBy === "match" ? userService.getUserTags(user.id) : null,
-          sortBy === "match" ? userService.getUserBadges(user.id) : null,
-        ]);
-
-        const viewerPayload = viewerRes?.data ?? viewerRes;
-        const viewerUserData =
-          viewerPayload?.success !== undefined
-            ? viewerPayload?.data
-            : (viewerPayload?.data?.data ?? viewerPayload?.data ?? viewerPayload);
-
-        const userTags =
-          sortBy === "match"
-            ? Array.isArray(tagsRes?.data)
-              ? tagsRes.data
-              : tagsRes?.data?.data || []
-            : [];
-        const userBadges =
-          sortBy === "match"
-            ? Array.isArray(badgesRes?.data)
-              ? badgesRes.data
-              : badgesRes?.data?.data || []
-            : [];
-
-        if (!cancelled) {
-          setViewerTeamMatchProfile(
-            buildViewerTeamMatchProfile({
-              user: viewerUserData ?? user,
-              userTags,
-              userBadges,
-            }),
-          );
-        }
-      } catch (err) {
-        console.warn("Could not fetch viewer match profile for team search:", err);
-
-        if (!cancelled) {
-          setViewerTeamMatchProfile(
-            buildViewerTeamMatchProfile({
-              user,
-            }),
-          );
-        }
-      }
-    };
-
-    fetchViewerMatchProfile();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [isAuthenticated, user, sortBy]);
-
   const roleMatchTagIds = useMemo(
     () =>
       sortBy === "match" && matchRoleId && filterTagIds.length > 0
@@ -409,7 +349,7 @@ const SearchPage = () => {
 
             return withResolvedDistance(
               enrichedUser,
-              viewerTeamMatchProfile.user,
+              viewerDistanceSource,
             );
           })
         : searchResults.users,
@@ -425,13 +365,13 @@ const SearchPage = () => {
 
             return withResolvedDistance(
               enrichedTeam,
-              viewerTeamMatchProfile.user,
+              viewerDistanceSource,
             );
           })
         : searchResults.teams,
       roles: Array.isArray(searchResults.roles)
         ? searchResults.roles.map((role) =>
-            withResolvedDistance(role, viewerTeamMatchProfile.user),
+            withResolvedDistance(role, viewerDistanceSource),
           )
         : searchResults.roles,
     };
@@ -441,6 +381,7 @@ const SearchPage = () => {
     roleMatchTagIds,
     searchResults,
     sortBy,
+    viewerDistanceSource,
     viewerTeamMatchProfile,
     withResolvedDistance,
   ]);
@@ -1816,7 +1757,7 @@ const SearchPage = () => {
                           team={item}
                           onUpdate={handleTeamUpdate}
                           isSearchResult={true}
-                          viewerDistanceSource={viewerTeamMatchProfile?.user}
+                          viewerDistanceSource={viewerDistanceSource}
                           roleMatchBadgeNames={roleMatchBadgeNames}
                           showMatchHighlights={sortBy === "match"}
                           showMatchScore={sortBy === "match"}
@@ -1892,7 +1833,7 @@ const SearchPage = () => {
                           team={item}
                           onUpdate={handleTeamUpdate}
                           isSearchResult={true}
-                          viewerDistanceSource={viewerTeamMatchProfile?.user}
+                          viewerDistanceSource={viewerDistanceSource}
                           roleMatchBadgeNames={roleMatchBadgeNames}
                           showMatchHighlights={sortBy === "match"}
                           showMatchScore={sortBy === "match"}

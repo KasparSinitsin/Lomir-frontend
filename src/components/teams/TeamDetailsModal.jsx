@@ -185,11 +185,7 @@ const TeamDetailsModal = ({
         setNotification({ type: null, message: null });
 
         // Get the team details
-        console.log(`Fetching details for team ID: ${effectiveTeamId}`);
         const response = await teamService.getTeamById(effectiveTeamId);
-
-        // Log full response for debugging
-        console.log("Raw API response:", response);
 
         // Get team data from response
         // response is already the JSON payload (not axios response)
@@ -202,8 +198,6 @@ const TeamDetailsModal = ({
         } else {
           teamData = {};
         }
-
-        console.log("Team data extracted:", teamData);
 
         // Look for owner ID in multiple possible locations
         let ownerId = null;
@@ -223,18 +217,12 @@ const TeamDetailsModal = ({
           teamData.members &&
           Array.isArray(teamData.members)
         ) {
-          console.log(
-            "Searching for owner in members array:",
-            teamData.members,
-          );
-
           const ownerMember = teamData.members.find(
             (m) => m.role === "owner" || m.role === "Owner",
           );
 
           if (ownerMember) {
             ownerId = parseInt(ownerMember.user_id || ownerMember.userId, 10);
-            console.log("Found owner ID from members array:", ownerId);
           }
         }
 
@@ -248,11 +236,8 @@ const TeamDetailsModal = ({
 
           if (isCurrentUserOwner) {
             ownerId = parseInt(user.id, 10);
-            console.log("Using current user as owner ID:", ownerId);
           }
         }
-
-        console.log("Final owner ID determination:", ownerId);
 
         // Process visibility - check both property names with OR logic
         const isPublicValue =
@@ -292,8 +277,6 @@ const TeamDetailsModal = ({
                 : undefined,
         };
 
-        console.log("Enhanced team data:", enhancedTeamData);
-
         // Store the enhanced team data
         setTeam(enhancedTeamData);
         setIsPublic(isPublicValue);
@@ -318,15 +301,6 @@ const TeamDetailsModal = ({
         const finalOwnerStatus =
           isUserAuthenticated && (isOwnerById || isOwnerByRole);
 
-        console.log("Owner check:", {
-          isUserAuthenticated,
-          userId: user?.id,
-          ownerId,
-          isOwnerById,
-          isOwnerByRole,
-          finalOwnerStatus,
-        });
-
         setIsOwner(finalOwnerStatus);
 
         // Determine user's role from members list
@@ -336,11 +310,8 @@ const TeamDetailsModal = ({
           );
           if (currentUserMember) {
             setInternalUserRole(currentUserMember.role);
-            console.log("User role set to:", currentUserMember.role);
           }
         }
-
-        console.log("Team tags data:", teamData.tags);
 
         // Determine the maxMembersMode based on current value
         // Determine the maxMembers value from backend data
@@ -415,27 +386,6 @@ const TeamDetailsModal = ({
     },
     [effectiveTeamId, initialTeamData, user, isAuthenticated, team],
   );
-
-  // Add effect to check team data after it's set
-  useEffect(() => {
-    if (team) {
-      console.log("Current team data in state:", team);
-      console.log("Team visibility value:", team.is_public);
-      console.log("Team owner:", team.owner_id, "Current user:", user?.id);
-    }
-  }, [team, user]);
-
-  useEffect(() => {
-    if (team) {
-      console.log("TeamDetailsModal - Team data:", {
-        name: team.name,
-        current_members_count: team.current_members_count,
-        max_members: team.max_members,
-        max_members_type: typeof team.max_members,
-        members_length: team.members?.length,
-      });
-    }
-  }, [team]);
 
   useEffect(() => {
     setIsModalVisible(isOpen);
@@ -647,9 +597,6 @@ const TeamDetailsModal = ({
         ...prev,
         isPublic: checked, // Explicitly use the checked property
       }));
-
-      // Debug logging
-      console.log(`Changed isPublic to: ${checked} (${typeof checked})`);
       return;
     }
 
@@ -864,11 +811,6 @@ const TeamDetailsModal = ({
 
       // Close modal and trigger leave callback after a short delay
       setTimeout(() => {
-        console.log(
-          "TeamDetailsModal: about to call onLeave with team.id:",
-          team.id,
-        );
-        console.log("TeamDetailsModal: onLeave is:", onLeave);
         if (onLeave) onLeave(team.id);
         if (onClose) onClose();
       }, 1500);
@@ -1006,14 +948,7 @@ const TeamDetailsModal = ({
       setLoading(true);
       setNotification({ type: null, message: null });
 
-      console.log("Form data before submission:", formData);
-
       const isPublicBoolean = formData.isPublic === true;
-      console.log(
-        "Visibility value computed:",
-        isPublicBoolean,
-        typeof isPublicBoolean,
-      );
 
       // Decide what to send for max_members based on the mode
       let maxMembersForSubmit = null;
@@ -1028,9 +963,6 @@ const TeamDetailsModal = ({
 
         maxMembersForSubmit = Number.isNaN(parsed) ? null : parsed;
       }
-
-      console.log("Edit Team - mode:", formData.maxMembersMode);
-      console.log("Edit Team - maxMembersForSubmit:", maxMembersForSubmit);
 
       // Prepare the submission data - PRESERVE EXISTING IMAGE URL
       const isRemoteBoolean = formData.isRemote === true;
@@ -1063,7 +995,6 @@ const TeamDetailsModal = ({
 
         if (uploadResult.success) {
           submissionData.teamavatar_url = uploadResult.url;
-          console.log("New avatar uploaded:", submissionData.teamavatar_url);
         } else {
           console.error("Error uploading team avatar:", uploadResult.error);
           // Continue with the update even if image upload fails
@@ -1072,14 +1003,7 @@ const TeamDetailsModal = ({
             message: "Team updated but avatar upload failed.",
           });
         }
-      } else {
-        console.log(
-          "No new image selected, preserving existing avatar URL:",
-          submissionData.teamavatar_url,
-        );
       }
-
-      console.log("Final submission data:", submissionData);
 
       // Always send tags
       submissionData.tags = (formData.selectedTags ?? [])
@@ -1092,14 +1016,10 @@ const TeamDetailsModal = ({
         .filter((id) => Number.isFinite(id) && id > 0)
         .map((tag_id) => ({ tag_id }));
 
-      console.log("Final submission data with tags:", submissionData);
-
       const response = await teamService.updateTeam(
         effectiveTeamId,
         submissionData,
       );
-
-      console.log("Update response:", response);
 
       // Update our local state with the new visibility value
       setIsPublic(isPublicBoolean);
@@ -1309,33 +1229,6 @@ const TeamDetailsModal = ({
     setSelectedUserId(null);
   };
 
-  // Add detailed debugging
-  console.log("Team Details Debug:", {
-    // User information
-    "Current User ID": user?.id,
-    "User Object": user,
-
-    // Team information
-    "Team Owner ID": team?.owner_id,
-    "Team Object": team,
-
-    // Role information
-    "User Role": userRole,
-
-    // Computed values
-    "Is Owner": isOwner,
-    "Is Admin": userRole === "admin",
-    "Can Edit": canEditTeam,
-    "Is Public": isPublic,
-
-    // Modal state
-    "Is Editing": isEditing,
-    "Is Modal Visible": isModalVisible,
-
-    // Form Data
-    "Form Data": formData,
-  });
-
   // Create custom title with buttons
   const effectiveTeamMatch = useMemo(() => {
     const shouldResolveMatchData =
@@ -1506,11 +1399,6 @@ const TeamDetailsModal = ({
             ) : (
               <div className="space-y-6">
                 {/* Team header with avatar */}
-                {console.log("Team avatar debug:", {
-                  teamavatar_url: team?.teamavatar_url,
-                  teamavatarUrl: team?.teamavatarUrl,
-                  fullTeam: team,
-                })}
                 <div className="flex items-start space-x-4 mb-6">
                   <div className="avatar placeholder relative">
                     <div className="bg-primary text-primary-content rounded-full w-16 h-16 flex items-center justify-center">
@@ -1621,7 +1509,6 @@ const TeamDetailsModal = ({
                   />
 
                   {/* Team Focus Areas */}
-                  {console.log("Team tags for FocusAreasSection:", team?.tags)}
                   {!isEditing && (
                     <TagsDisplaySection
                       title={UI_TEXT.focusAreas.title}

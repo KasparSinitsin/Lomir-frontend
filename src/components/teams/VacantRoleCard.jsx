@@ -30,7 +30,11 @@ import SearchResultTypeOverlay from "../common/SearchResultTypeOverlay";
 import Tooltip from "../common/Tooltip";
 import { getDisplayName, getUserInitials } from "../../utils/userHelpers";
 import { resolveFilledRoleUser } from "../../utils/vacantRoleUtils";
-import { getMatchTier } from "../../utils/matchScoreUtils";
+import {
+  getMatchTier,
+  MATCH_TIER_GOOD,
+  MATCH_TIER_GREAT,
+} from "../../utils/matchScoreUtils";
 import { teamService } from "../../services/teamService";
 import { useAuth } from "../../contexts/AuthContext";
 import { format } from "date-fns";
@@ -590,7 +594,7 @@ const VacantRoleCard = ({
   const matchTier = hasMatchScore ? getMatchTier(matchScore) : null;
 
   const getMatchColor = () => {
-    if (pct >= 80) {
+    if (pct >= MATCH_TIER_GREAT) {
       return {
         avatarBg: "bg-amber-500",
         avatarText: "text-white",
@@ -598,7 +602,7 @@ const VacantRoleCard = ({
       };
     }
 
-    if (pct >= 50) {
+    if (pct >= MATCH_TIER_GOOD) {
       return {
         avatarBg: "bg-success",
         avatarText: "text-white",
@@ -863,7 +867,7 @@ const VacantRoleCard = ({
   ) : null;
 
   const renderMatchIcon = (size) => {
-    if (pct >= 80) {
+    if (pct >= MATCH_TIER_GREAT) {
       return (
         <Sparkles
           size={size}
@@ -873,7 +877,7 @@ const VacantRoleCard = ({
       );
     }
 
-    if (pct >= 50) {
+    if (pct >= MATCH_TIER_GOOD) {
       return (
         <TrendingUp
           size={size}

@@ -33,7 +33,6 @@ import Alert from "../common/Alert";
 import NotificationBadge from "../common/NotificationBadge";
 import SearchResultTypeOverlay from "../common/SearchResultTypeOverlay";
 import TeamApplicationsModal from "./TeamApplicationsModal";
-// import { getUserInitials, getDisplayName } from "../../utils/userHelpers";
 import { format } from "date-fns";
 import LocationDistanceTagsRow from "../common/LocationDistanceTagsRow";
 import { getMatchTier } from "../../utils/matchScoreUtils";
@@ -724,14 +723,6 @@ const TeamCard = ({
           ]);
           const fullTeam = response?.data?.data ?? response?.data;
 
-          console.log("DEBUG is_public:", {
-            teamId: fullTeam?.id,
-            teamName: fullTeam?.name,
-            is_public_raw: fullTeam?.is_public,
-            is_public_type: typeof fullTeam?.is_public,
-            is_public_normalized: fullTeam?.is_public === true,
-          });
-
           if (fullTeam) {
             setTeamData((prev) => {
               const preservedDistanceKm = resolveDistanceKm({
@@ -1038,13 +1029,6 @@ const TeamCard = ({
 
   // Get team image URL (return null for fallback)
   const getTeamImage = () => {
-    // Add this debug line
-    console.log("Team avatar debug:", {
-      name: teamData.name,
-      teamavatar_url: teamData.teamavatar_url,
-      teamavatarUrl: teamData.teamavatarUrl,
-    });
-
     if (teamData.teamavatar_url) return teamData.teamavatar_url;
     if (teamData.teamavatarUrl) return teamData.teamavatarUrl;
     return null;
@@ -1433,7 +1417,6 @@ const TeamCard = ({
 
   // Handler for when user leaves a team (called from TeamDetailsModal)
   const handleLeaveTeam = (teamId) => {
-    console.log("TeamCard handleLeaveTeam called with teamId:", teamId);
     if (onLeave) onLeave(teamId);
   };
 
@@ -1687,8 +1670,6 @@ const TeamCard = ({
       </div>
     );
   };
-
-  console.log("TeamCard data:", teamData, "distance_km:", teamData.distance_km);
 
   // ============ MATCH SCORE ============
   // Role-based cards should always prefer the role match over any team-level match.

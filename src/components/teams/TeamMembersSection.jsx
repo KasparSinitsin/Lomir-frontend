@@ -86,8 +86,6 @@ const TeamMembersSection = ({
           .join(",")}
       >
         {(isExpanded ? team.members : team.members.slice(0, COLLAPSED_COUNT)).map((member) => {
-          console.log("Member data:", member); // Debug info
-
           // Check which property is available (userId or user_id)
           const memberId = member.userId || member.user_id;
           const isCurrentUser = memberId === user?.id;

@@ -446,32 +446,6 @@ const MessageDisplay = ({
     }
   }, [highlightMessageIds]);
 
-  // Add debugging
-
-  useEffect(() => {
-    console.log("onDeleteMessage prop:", onDeleteMessage);
-  }, [onDeleteMessage]);
-
-  useEffect(() => {
-    if (conversationType === "team") {
-      console.log("=== TEAM CHAT DEBUG ===");
-      console.log("Team members:", teamMembers);
-      console.log("Messages:", messages);
-      console.log(
-        "Sample message senderId:",
-        messages[0]?.senderId,
-        typeof messages[0]?.senderId,
-      );
-      if (teamMembers.length > 0) {
-        console.log(
-          "Sample team member user_id:",
-          teamMembers[0]?.user_id,
-          typeof teamMembers[0]?.user_id,
-        );
-      }
-    }
-  }, [teamMembers, messages, conversationType]);
-
   // Handle team avatar/name click
   const handleTeamClick = () => {
     if (conversationType !== "team") return;
