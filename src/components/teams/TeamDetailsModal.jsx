@@ -169,6 +169,7 @@ const TeamDetailsModal = ({
   const [isInvitationModalOpen, setIsInvitationModalOpen] = useState(false);
 
   const [teamImageError, setTeamImageError] = useState(false);
+  const showHighlightsForContext = !isFromSearch || showMatchHighlights;
 
   const fetchTeamDetails = useCallback(
     async (forceRefresh = false) => {
@@ -1234,8 +1235,7 @@ const TeamDetailsModal = ({
       matchScore > 0 ||
       matchType != null ||
       matchDetails != null ||
-      teamBadges?.length > 0 ||
-      team?.tags?.length > 0;
+      (!isFromSearch && (teamBadges?.length > 0 || team?.tags?.length > 0));
 
     if (!shouldResolveMatchData || !team || !user) {
       return { matchScore, matchType, matchDetails };
@@ -1268,6 +1268,7 @@ const TeamDetailsModal = ({
   }, [
     currentUserBadgeNames,
     currentUserTagIds,
+    isFromSearch,
     matchDetails,
     matchScore,
     matchType,
@@ -1504,8 +1505,8 @@ const TeamDetailsModal = ({
                   <LocationSection
                     entity={team}
                     entityType="team"
-                    distance={showMatchHighlights ? effectiveTeamDistanceKm : null}
-                    showDefaultHeaderRight={showMatchHighlights}
+                    distance={showHighlightsForContext ? effectiveTeamDistanceKm : null}
+                    showDefaultHeaderRight={showHighlightsForContext}
                   />
 
                   {/* Team Focus Areas */}
@@ -1513,7 +1514,7 @@ const TeamDetailsModal = ({
                     <TagsDisplaySection
                       title={UI_TEXT.focusAreas.title}
                       tags={team?.tags || []}
-                      matchingTagIds={currentUserTagIds}
+                      matchingTagIds={showHighlightsForContext ? currentUserTagIds : null}
                       allTags={allTags}
                       canEdit={false}
                       onSave={undefined}
@@ -1522,7 +1523,7 @@ const TeamDetailsModal = ({
                       entityType="team"
                       emptyMessage={UI_TEXT.focusAreas.emptyTeam}
                       placeholder={UI_TEXT.focusAreas.placeholderTeam}
-                      headerRight={showMatchHighlights && currentUserTagIds && currentUserTagIds.size > 0 ? (() => {
+                      headerRight={showHighlightsForContext && currentUserTagIds && currentUserTagIds.size > 0 ? (() => {
                         const teamTags = team?.tags || [];
                         if (!Array.isArray(teamTags) || teamTags.length === 0) return null;
                         const total = teamTags.length;
@@ -1559,8 +1560,8 @@ const TeamDetailsModal = ({
                       showCredits={true}
                       onCategoryClick={handleBadgeCategoryClick}
                       onBadgeClick={handleBadgeClick}
-                      matchingBadgeNames={roleMatchBadgeNames || currentUserBadgeNames}
-                      headerRight={showMatchHighlights && (roleMatchBadgeNames || currentUserBadgeNames) ? (() => {
+                      matchingBadgeNames={showHighlightsForContext ? (roleMatchBadgeNames || currentUserBadgeNames) : null}
+                      headerRight={showHighlightsForContext && (roleMatchBadgeNames || currentUserBadgeNames) ? (() => {
                         const activeMatchNames = roleMatchBadgeNames || currentUserBadgeNames;
                         const total = teamBadges.length;
                         const matchCount = teamBadges.filter((b) =>
