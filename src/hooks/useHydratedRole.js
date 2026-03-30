@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { matchingService } from "../services/matchingService";
 import { vacantRoleService } from "../services/vacantRoleService";
 
 const extractRolePayload = (response) => {
@@ -48,9 +49,10 @@ export const useHydratedRole = ({ isOpen, roleId, teamId }) => {
 
     const fetchRole = async () => {
       try {
-        const [detailsRes, rolesRes] = await Promise.allSettled([
+        const [detailsRes, rolesRes, matchRes] = await Promise.allSettled([
           vacantRoleService.getVacantRoleById(teamId, roleId),
           vacantRoleService.getVacantRoles(teamId, "all"),
+          matchingService.getMatchingRolesForTeam(teamId),
         ]);
 
         if (isCancelled) return;
@@ -73,10 +75,23 @@ export const useHydratedRole = ({ isOpen, roleId, teamId }) => {
               )
             : null;
         const matchedRoleData = extractRoleMatchData(matchedRole);
+
+        // Matching endpoint provides fresh per-user match scores (most accurate)
+        const matchingRole =
+          matchRes.status === "fulfilled"
+            ? extractRoleList(matchRes.value).find(
+                (candidate) => String(candidate?.id) === String(roleId),
+              )
+            : null;
+        const matchingRoleData = extractRoleMatchData(matchingRole);
+
+        // Priority: matching endpoint > role list > role detail
         const resolvedRoleMatch =
-          matchedRoleData.matchScore != null
-            ? matchedRoleData
-            : detailRoleMatch;
+          matchingRoleData.matchScore != null
+            ? matchingRoleData
+            : matchedRoleData.matchScore != null
+              ? matchedRoleData
+              : detailRoleMatch;
 
         setRoleMatchScore(resolvedRoleMatch.matchScore);
         setRoleMatchDetails(resolvedRoleMatch.matchDetails);
