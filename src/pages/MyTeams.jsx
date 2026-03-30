@@ -20,105 +20,16 @@ import {
   SendHorizontal,
   Users,
 } from "lucide-react";
-import Alert from "../components/common/Alert";
 import CreateTeamModal from "../components/teams/CreateTeamModal";
 import { enrichTeamMatchData } from "../utils/teamMatchUtils";
+import useClientPagination from "../hooks/useClientPagination";
+import useMyTeamsSort from "../hooks/useMyTeamsSort";
 import useViewerMatchProfile from "../hooks/useViewerMatchProfile";
 
 import {
   RESULTS_PER_PAGE_OPTIONS,
   DEFAULT_RESULTS_PER_PAGE,
 } from "../constants/pagination";
-
-const parseSortableTimestamp = (value) => {
-  if (!value) return null;
-  const timestamp = new Date(value).getTime();
-  return Number.isNaN(timestamp) ? null : timestamp;
-};
-
-const getFirstValidTimestamp = (sources, keys) => {
-  for (const source of sources) {
-    if (!source) continue;
-    for (const key of keys) {
-      const timestamp = parseSortableTimestamp(source[key]);
-      if (timestamp !== null) return timestamp;
-    }
-  }
-  return 0;
-};
-
-const getComparableName = (item) => {
-  const isRolePendingItem =
-    item?.role &&
-    (item?.isInternal ??
-      item?.is_internal ??
-      item?.isInternalRoleApplication ??
-      item?.is_internal_role_application);
-  const displayTarget = isRolePendingItem
-    ? {
-        ...item.role,
-        name:
-          item.role?.roleName ??
-          item.role?.role_name ??
-          item.role?.name ??
-          item?.team?.name ??
-          "",
-      }
-    : (item?.team || item);
-
-  return (displayTarget?.name || "").trim().toLowerCase();
-};
-
-const getActivityTimestamp = (item) => {
-  const isRolePendingItem =
-    item?.role &&
-    (item?.isInternal ??
-      item?.is_internal ??
-      item?.isInternalRoleApplication ??
-      item?.is_internal_role_application);
-  const team = isRolePendingItem
-    ? {
-        ...item.role,
-        name:
-          item.role?.roleName ??
-          item.role?.role_name ??
-          item.role?.name ??
-          item?.team?.name ??
-          "",
-      }
-    : (item?.team || item);
-
-  return getFirstValidTimestamp(
-    [team, item?.team, item],
-    [
-      "last_active_at",
-      "lastActiveAt",
-      "last_active",
-      "lastActive",
-      "updated_at",
-      "updatedAt",
-      "created_at",
-      "createdAt",
-    ],
-  );
-};
-
-const getRequestTimestamp = (item) => {
-  return getFirstValidTimestamp(
-    [item],
-    [
-      "received_at",
-      "receivedAt",
-      "sent_at",
-      "sentAt",
-      "applied_at",
-      "appliedAt",
-      "created_at",
-      "createdAt",
-      "date",
-    ],
-  );
-};
 
 const MY_TEAMS_LIST_LOCATION_WIDTH_CLASSNAME = "sm:w-40";
 const MY_TEAMS_LIST_LOCATION_INSET_CLASSNAME = "sm:pl-[24px]";
@@ -141,22 +52,12 @@ const MyTeams = () => {
   // ===== VIEW MODE STATE =====
   const [resultView, setResultView] = useState("list");
 
-  // ===== SORT STATE =====
-  const [sortBy, setSortBy] = useState("newest");
-  const [sortDir, setSortDir] = useState("desc");
-  const [teamNotificationMetrics, setTeamNotificationMetrics] = useState({});
-
   // ===== CREATE TEAM MODAL STATE =====
   const [isCreateTeamModalOpen, setIsCreateTeamModalOpen] = useState(false);
-
 
   // ===== PAGINATION STATE =====
   const [currentPage, setCurrentPage] = useState(1);
   const [resultsPerPage, setResultsPerPage] = useState(DEFAULT_RESULTS_PER_PAGE);
-  const [invitationsPage, setInvitationsPage] = useState(1);
-  const [invitationsPerPage, setInvitationsPerPage] = useState(DEFAULT_RESULTS_PER_PAGE);
-  const [applicationsPage, setApplicationsPage] = useState(1);
-  const [applicationsPerPage, setApplicationsPerPage] = useState(DEFAULT_RESULTS_PER_PAGE);
   const [pagination, setPagination] = useState({
     page: 1,
     limit: 10,
@@ -176,6 +77,10 @@ const MyTeams = () => {
   // Ref for scrolling to highlighted invitation
   const highlightedInvitationRef = useRef(null);
   const highlightedTeamRef = useRef(null);
+  const pendingPaginationResettersRef = useRef({
+    resetInvitations: () => {},
+    resetApplications: () => {},
+  });
 
   // State to track which team should auto-open its applications modal
   const [autoOpenApplicationsTeamId, setAutoOpenApplicationsTeamId] =
@@ -424,168 +329,14 @@ const MyTeams = () => {
     setCurrentPage(1);
   };
 
-  const handleSortChange = (nextSortBy) => {
-    setInvitationsPage(1);
-    setApplicationsPage(1);
-
-    if (nextSortBy === sortBy) {
-      setSortDir((prev) => (prev === "asc" ? "desc" : "asc"));
-      return;
-    }
-
-    setSortBy(nextSortBy);
-
-    switch (nextSortBy) {
-      case "recent":
-      case "newest":
-      case "requests":
-        setSortDir("desc");
-        break;
-      case "name":
-      default:
-        setSortDir("asc");
-        break;
-    }
-  };
-
-  useEffect(() => {
-    if (!["newest", "requests"].includes(sortBy) || teams.length === 0) {
-      return;
-    }
-
-    let isCancelled = false;
-
-    const fetchTeamNotificationTimestamps = async () => {
-      const entries = await Promise.all(
-        teams.filter(Boolean).map(async (team) => {
-          if (!team?.id) return null;
-
-          const [applicationsResponse, invitationsResponse] = await Promise.all(
-            [
-              teamService
-                .getTeamApplications(team.id, { skipAuthRedirect: true })
-                .catch(() => ({ data: [] })),
-              teamService
-                .getTeamSentInvitations(team.id, { skipAuthRedirect: true })
-                .catch(() => ({ data: [] })),
-            ],
-          );
-
-          const applications = applicationsResponse?.data || [];
-          const invitations = invitationsResponse?.data || [];
-
-          const latestApplicationTimestamp = applications.reduce(
-            (max, application) =>
-              Math.max(max, getRequestTimestamp(application)),
-            0,
-          );
-          const latestInvitationTimestamp = invitations.reduce(
-            (max, invitation) => Math.max(max, getRequestTimestamp(invitation)),
-            0,
-          );
-          const totalRequestCount = applications.length + invitations.length;
-
-          return [
-            team.id,
-            {
-              latestTimestamp:
-                Math.max(
-                  latestApplicationTimestamp,
-                  latestInvitationTimestamp,
-                ) || null,
-              totalRequestCount,
-            },
-          ];
-        }),
-      );
-
-      if (isCancelled) return;
-
-      setTeamNotificationMetrics((prev) => ({
-        ...prev,
-        ...Object.fromEntries(entries.filter(Boolean)),
-      }));
-    };
-
-    fetchTeamNotificationTimestamps();
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [sortBy, teams]);
-
-  const sortPendingItems = (items) => {
-    if (sortBy === "requests") {
-      return [...items];
-    }
-
-    return [...items].sort((a, b) => {
-      if (sortBy === "name") {
-        const direction = sortDir === "desc" ? -1 : 1;
-        return (
-          getComparableName(a).localeCompare(getComparableName(b)) * direction
-        );
-      }
-
-      if (sortBy === "recent") {
-        const diff =
-          sortDir === "desc"
-            ? getActivityTimestamp(b) - getActivityTimestamp(a)
-            : getActivityTimestamp(a) - getActivityTimestamp(b);
-        if (diff !== 0) return diff;
-      } else if (sortBy === "newest") {
-        const diff =
-          sortDir === "desc"
-            ? getRequestTimestamp(b) - getRequestTimestamp(a)
-            : getRequestTimestamp(a) - getRequestTimestamp(b);
-        if (diff !== 0) return diff;
-      }
-
-      return getComparableName(a).localeCompare(getComparableName(b));
+  const { sortBy, sortDir, handleSortChange, sortPendingItems, sortMemberTeams } =
+    useMyTeamsSort({
+      teams,
+      onSortChange: () => {
+        pendingPaginationResettersRef.current.resetInvitations();
+        pendingPaginationResettersRef.current.resetApplications();
+      },
     });
-  };
-
-  const sortMemberTeams = (items) => {
-    return [...items].sort((a, b) => {
-      if (sortBy === "name") {
-        const direction = sortDir === "desc" ? -1 : 1;
-        return (
-          getComparableName(a).localeCompare(getComparableName(b)) * direction
-        );
-      }
-
-      if (sortBy === "recent") {
-        const diff =
-          sortDir === "desc"
-            ? getActivityTimestamp(b) - getActivityTimestamp(a)
-            : getActivityTimestamp(a) - getActivityTimestamp(b);
-        if (diff !== 0) return diff;
-      } else if (sortBy === "newest") {
-        const timestampA =
-          teamNotificationMetrics[a.id]?.latestTimestamp ?? null;
-        const timestampB =
-          teamNotificationMetrics[b.id]?.latestTimestamp ?? null;
-
-        if (timestampA !== null || timestampB !== null) {
-          if (timestampA === null) return 1;
-          if (timestampB === null) return -1;
-
-          const diff =
-            sortDir === "desc"
-              ? timestampB - timestampA
-              : timestampA - timestampB;
-          if (diff !== 0) return diff;
-        }
-      } else if (sortBy === "requests") {
-        const countA = teamNotificationMetrics[a.id]?.totalRequestCount ?? 0;
-        const countB = teamNotificationMetrics[b.id]?.totalRequestCount ?? 0;
-        const diff = sortDir === "desc" ? countB - countA : countA - countB;
-        if (diff !== 0) return diff;
-      }
-
-      return getComparableName(a).localeCompare(getComparableName(b));
-    });
-  };
 
   const externalApplications = useMemo(
     () => pendingApplications.filter(
@@ -662,30 +413,20 @@ const MyTeams = () => {
     ...internalRoleApplications.filter(Boolean),
   ]);
   const sortedTeams = sortMemberTeams(teams.filter(Boolean));
+  const invitationsPagination = useClientPagination({
+    items: combinedPendingInvitations,
+  });
+  const applicationsPagination = useClientPagination({
+    items: combinedPendingApplications,
+  });
 
-  const invitationsTotalPages = Math.max(
-    1,
-    Math.ceil(combinedPendingInvitations.length / invitationsPerPage),
-  );
-  const clampedInvitationsPage = Math.min(invitationsPage, invitationsTotalPages);
-  const paginatedInvitations = combinedPendingInvitations.slice(
-    (clampedInvitationsPage - 1) * invitationsPerPage,
-    clampedInvitationsPage * invitationsPerPage,
-  );
+  useEffect(() => {
+    pendingPaginationResettersRef.current = {
+      resetInvitations: () => invitationsPagination.setCurrentPage(1),
+      resetApplications: () => applicationsPagination.setCurrentPage(1),
+    };
+  }, [applicationsPagination.setCurrentPage, invitationsPagination.setCurrentPage]);
 
-  const applicationsTotalPages = Math.max(
-    1,
-    Math.ceil(combinedPendingApplications.length / applicationsPerPage),
-  );
-  const clampedApplicationsPage = Math.min(applicationsPage, applicationsTotalPages);
-  const paginatedApplications = combinedPendingApplications.slice(
-    (clampedApplicationsPage - 1) * applicationsPerPage,
-    clampedApplicationsPage * applicationsPerPage,
-  );
-  const shouldShowInvitationsPagination =
-    combinedPendingInvitations.length > DEFAULT_RESULTS_PER_PAGE;
-  const shouldShowApplicationsPagination =
-    combinedPendingApplications.length > DEFAULT_RESULTS_PER_PAGE;
   const shouldShowTeamsPagination =
     pagination.totalTeams > DEFAULT_RESULTS_PER_PAGE;
   const formatCountLabel = (
@@ -860,11 +601,11 @@ const MyTeams = () => {
             </div>
           ) : (
             <>
-              {paginatedInvitations.length > 0 && (
+              {invitationsPagination.paginatedItems.length > 0 && (
                 <>
                   {resultView === "list" ? (
                     <div className="background-opacity bg-opacity-70 shadow-soft rounded-xl divide-y divide-base-200">
-                      {paginatedInvitations.map((invitation, index) => (
+                      {invitationsPagination.paginatedItems.map((invitation, index) => (
                         <div
                           key={`${
                             invitation.isInternal ?? invitation.is_internal
@@ -895,7 +636,8 @@ const MyTeams = () => {
                             hideDistanceInfo={true}
                             disableListEdgeRounding={true}
                             listClassName={`${index === 0 ? "rounded-t-xl" : ""} ${
-                              index === paginatedInvitations.length - 1
+                              index ===
+                              invitationsPagination.paginatedItems.length - 1
                                 ? "rounded-b-xl"
                                 : ""
                             }`}
@@ -917,7 +659,7 @@ const MyTeams = () => {
                       lg={3}
                       gap={resultView === "card" ? 6 : 4}
                     >
-                      {paginatedInvitations.map((invitation) => (
+                      {invitationsPagination.paginatedItems.map((invitation) => (
                         <div
                           key={`${
                             invitation.isInternal ?? invitation.is_internal
@@ -954,17 +696,14 @@ const MyTeams = () => {
                       ))}
                     </Grid>
                   )}
-                  {shouldShowInvitationsPagination && (
+                  {invitationsPagination.shouldShowPagination && (
                     <Pagination
-                      currentPage={clampedInvitationsPage}
-                      totalPages={invitationsTotalPages}
+                      currentPage={invitationsPagination.clampedPage}
+                      totalPages={invitationsPagination.totalPages}
                       totalItems={combinedPendingInvitations.length}
-                      onPageChange={setInvitationsPage}
-                      resultsPerPage={invitationsPerPage}
-                      onResultsPerPageChange={(newLimit) => {
-                        setInvitationsPerPage(newLimit);
-                        setInvitationsPage(1);
-                      }}
+                      onPageChange={invitationsPagination.handlePageChange}
+                      resultsPerPage={invitationsPagination.perPage}
+                      onResultsPerPageChange={invitationsPagination.handlePerPageChange}
                       resultsPerPageOptions={RESULTS_PER_PAGE_OPTIONS}
                     />
                   )}
@@ -995,11 +734,11 @@ const MyTeams = () => {
             </div>
           ) : (
             <>
-              {paginatedApplications.length > 0 && (
+              {applicationsPagination.paginatedItems.length > 0 && (
                 <>
                   {resultView === "list" ? (
                     <div className="background-opacity bg-opacity-70 shadow-soft rounded-xl divide-y divide-base-200">
-                      {paginatedApplications.map((application) => (
+                      {applicationsPagination.paginatedItems.map((application) => (
                         <TeamCard
                           key={`${
                             application.isInternalRoleApplication ??
@@ -1035,7 +774,7 @@ const MyTeams = () => {
                       lg={3}
                       gap={resultView === "card" ? 6 : 4}
                     >
-                      {paginatedApplications.map((application) => (
+                      {applicationsPagination.paginatedItems.map((application) => (
                         <TeamCard
                           key={`${
                             application.isInternalRoleApplication ??
@@ -1061,17 +800,14 @@ const MyTeams = () => {
                       ))}
                     </Grid>
                   )}
-                  {shouldShowApplicationsPagination && (
+                  {applicationsPagination.shouldShowPagination && (
                     <Pagination
-                      currentPage={clampedApplicationsPage}
-                      totalPages={applicationsTotalPages}
+                      currentPage={applicationsPagination.clampedPage}
+                      totalPages={applicationsPagination.totalPages}
                       totalItems={combinedPendingApplications.length}
-                      onPageChange={setApplicationsPage}
-                      resultsPerPage={applicationsPerPage}
-                      onResultsPerPageChange={(newLimit) => {
-                        setApplicationsPerPage(newLimit);
-                        setApplicationsPage(1);
-                      }}
+                      onPageChange={applicationsPagination.handlePageChange}
+                      resultsPerPage={applicationsPagination.perPage}
+                      onResultsPerPageChange={applicationsPagination.handlePerPageChange}
                       resultsPerPageOptions={RESULTS_PER_PAGE_OPTIONS}
                     />
                   )}
