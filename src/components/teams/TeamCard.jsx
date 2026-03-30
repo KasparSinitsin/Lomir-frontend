@@ -502,6 +502,7 @@ const TeamCard = ({
   const [roleMatchData, setRoleMatchData] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [actionLoading, setActionLoading] = useState(null);
+  const [reminderNotice, setReminderNotice] = useState(null);
   const [error, setError] = useState(null);
   const [userRole, setUserRole] = useState(null);
   const [teamData, setTeamData] = useState(normalizedData.team);
@@ -1447,11 +1448,12 @@ const TeamCard = ({
   const handleSendReminder = async (e) => {
     e.stopPropagation();
     setActionLoading("reminder");
+    setReminderNotice(null);
     try {
       if (onSendReminder) {
         await onSendReminder(normalizedData.id);
       } else {
-        alert("Reminder feature coming soon!");
+        setReminderNotice("Reminder feature coming soon!");
       }
     } catch (err) {
       console.error("Error sending reminder:", err);
@@ -2605,6 +2607,14 @@ const TeamCard = ({
         marginClassName={viewMode === "mini" ? "mb-2" : ""}
         imageOverlay={avatarOverlay}
       >
+        {reminderNotice && (
+          <Alert
+            type="info"
+            message={reminderNotice}
+            onClose={() => setReminderNotice(null)}
+            className="mb-4"
+          />
+        )}
         {error && (
           <Alert
             type="error"
