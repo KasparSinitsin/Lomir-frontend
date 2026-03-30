@@ -651,7 +651,6 @@ const TeamDetailsModal = ({
 
   // Fetch current user's tag IDs for overlap highlighting on team focus areas
   useEffect(() => {
-    if (!showMatchHighlights) return;
     if (!isModalVisible || !isAuthenticated || !user?.id) return;
 
     const fetchCurrentUserTags = async () => {
@@ -672,7 +671,7 @@ const TeamDetailsModal = ({
     };
 
     fetchCurrentUserTags();
-  }, [isModalVisible, isAuthenticated, user?.id, showMatchHighlights]);
+  }, [isModalVisible, isAuthenticated, user?.id]);
 
   // Fetch aggregated member badges when modal opens
   useEffect(() => {
@@ -695,8 +694,7 @@ const TeamDetailsModal = ({
 
   // Fetch current user's badge names for match highlighting
   useEffect(() => {
-    if (!isModalVisible || !isAuthenticated || !user?.id || !showMatchHighlights) {
-      setCurrentUserBadgeNames(null);
+    if (!isModalVisible || !isAuthenticated || !user?.id) {
       return;
     }
 
@@ -716,10 +714,10 @@ const TeamDetailsModal = ({
     };
 
     fetchCurrentUserBadges();
-  }, [isModalVisible, isAuthenticated, user?.id, showMatchHighlights]);
+  }, [isModalVisible, isAuthenticated, user?.id]);
 
   useEffect(() => {
-    if (!isModalVisible || !isAuthenticated || !user?.id || !showMatchHighlights) {
+    if (!isModalVisible || !isAuthenticated || !user?.id) {
       setDistanceViewerUser(null);
       return;
     }
@@ -751,7 +749,7 @@ const TeamDetailsModal = ({
     return () => {
       cancelled = true;
     };
-  }, [isAuthenticated, isModalVisible, showMatchHighlights, user]);
+  }, [isAuthenticated, isModalVisible, user]);
 
   // Fetch structured tags when modal opens (needed for display AND edit mode)
   useEffect(() => {
@@ -1235,7 +1233,9 @@ const TeamDetailsModal = ({
       showMatchHighlights ||
       matchScore > 0 ||
       matchType != null ||
-      matchDetails != null;
+      matchDetails != null ||
+      teamBadges?.length > 0 ||
+      team?.tags?.length > 0;
 
     if (!shouldResolveMatchData || !team || !user) {
       return { matchScore, matchType, matchDetails };
