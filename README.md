@@ -1,7 +1,5 @@
 # Lomir — Frontend
 
-https://lomir-frontend.vercel.app/profile
-
 React single-page application for **Lomir**, a team-matching platform that helps people find collaborators based on shared interests, skills, badges, and location.
 
 Built with React 19, Vite, Tailwind CSS, and DaisyUI.
