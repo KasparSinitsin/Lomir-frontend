@@ -2165,7 +2165,7 @@ const TeamCard = ({
           onDelete={onDelete}
           onLeave={handleLeaveTeam}
           userRole={userRole}
-          isFromSearch={isSearchResult || effectiveVariant !== "member"}
+          isFromSearch={isSearchResult}
           hasPendingInvitation={
             effectiveVariant === "invitation" || !!pendingInvitationForTeam
           }
@@ -2679,7 +2679,7 @@ const TeamCard = ({
         onDelete={onDelete}
         onLeave={handleLeaveTeam}
         userRole={userRole}
-        isFromSearch={isSearchResult || effectiveVariant !== "member"}
+        isFromSearch={isSearchResult}
         hasPendingInvitation={
           effectiveVariant === "invitation" || !!pendingInvitationForTeam
         }

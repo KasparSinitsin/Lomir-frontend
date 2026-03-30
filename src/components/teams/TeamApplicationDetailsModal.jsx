@@ -431,7 +431,6 @@ const TeamApplicationDetailsModal = ({
         teamId={team?.id}
         initialTeamData={team}
         onClose={() => setIsTeamDetailsOpen(false)}
-        isFromSearch={true}
       />
 
       {/* User Details Modal (for viewing owner profile) */}
