@@ -4,9 +4,25 @@ import Modal from "../common/Modal";
 import Button from "../common/Button";
 import TeamDetailsModal from "./TeamDetailsModal";
 import UserDetailsModal from "../users/UserDetailsModal";
+import VacantRoleCard from "./VacantRoleCard";
 import { getUserInitials } from '../../utils/userHelpers';
 import Alert from "../common/Alert";
 import { format } from "date-fns";
+import { useHydratedRole } from "../../hooks/useHydratedRole";
+
+const extractRoleMatchData = (roleLike) => {
+  const rawScore = roleLike?.matchScore ?? roleLike?.match_score ?? null;
+  const numericScore = Number(rawScore);
+
+  return {
+    matchScore: Number.isFinite(numericScore) ? numericScore : null,
+    matchDetails:
+      roleLike?.matchDetails ??
+      roleLike?.match_details ??
+      roleLike?.scoreBreakdown ??
+      null,
+  };
+};
 
 /**
  * TeamApplicationDetailsModal Component
@@ -22,7 +38,7 @@ const TeamApplicationDetailsModal = ({
   onSendReminder,
 }) => {
   // ============ State ============
-  const [loading, setLoading] = useState(false);
+  const loading = false;
   const [actionLoading, setActionLoading] = useState(null);
   const [error, setError] = useState(null);
   const [isTeamDetailsOpen, setIsTeamDetailsOpen] = useState(false);
@@ -32,6 +48,30 @@ const TeamApplicationDetailsModal = ({
 
   // Get team data from application
   const team = application?.team || {};
+  const roleId = application?.role?.id ?? application?.roleId ?? null;
+  const teamId = team?.id ?? null;
+  const {
+    hydratedRole,
+    roleMatchScore: fetchedRoleMatchScore,
+    roleMatchDetails: fetchedRoleMatchDetails,
+  } = useHydratedRole({
+    isOpen,
+    roleId,
+    teamId,
+  });
+  const applicationRoleMatch = extractRoleMatchData(application?.role);
+  const hydratedRoleMatch = extractRoleMatchData(hydratedRole);
+  const isUsingHydratedRoleMatch =
+    fetchedRoleMatchScore === hydratedRoleMatch.matchScore &&
+    fetchedRoleMatchDetails === hydratedRoleMatch.matchDetails;
+  const roleMatchScore =
+    applicationRoleMatch.matchScore != null && isUsingHydratedRoleMatch
+      ? applicationRoleMatch.matchScore
+      : fetchedRoleMatchScore ?? applicationRoleMatch.matchScore;
+  const roleMatchDetails =
+    applicationRoleMatch.matchScore != null && isUsingHydratedRoleMatch
+      ? applicationRoleMatch.matchDetails
+      : fetchedRoleMatchDetails ?? applicationRoleMatch.matchDetails;
   const owner = application?.owner || {};
 
   // Format application date
@@ -97,19 +137,6 @@ const TeamApplicationDetailsModal = ({
     return max === null || max === undefined ? "∞" : max;
   };
 
-  // Get owner (receiver) initials - consistent with inviter pattern
-  const getOwnerInitials = () => {
-    const firstName = owner.first_name || owner.firstName;
-    const lastName = owner.last_name || owner.lastName;
-
-    if (firstName && lastName) {
-      return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
-    }
-    if (firstName) return firstName.charAt(0).toUpperCase();
-    if (owner.username) return owner.username.charAt(0).toUpperCase();
-    return "?";
-  };
-
   const getOwnerAvatar = () => {
     return owner.avatar_url || owner.avatarUrl || null;
   };
@@ -166,15 +193,24 @@ const TeamApplicationDetailsModal = ({
 
   // ============ Render ============
 
+  const isInternalRoleApplication =
+    application?.isInternalRoleApplication ?? application?.is_internal_role_application ?? false;
+  const roleName =
+    application?.role?.roleName ?? application?.role?.role_name ?? null;
+
   // Custom header
   const customHeader = (
     <div>
       <h2 className="text-xl font-medium text-primary leading-[120%] mb-[0.2em]">
-        {team.name || "Unknown Team"}
+        {isInternalRoleApplication && roleName
+          ? `Role Application: ${roleName}`
+          : team.name || "Unknown Team"}
       </h2>
       <p className="text-sm text-base-content/70 flex items-center">
         <SendHorizontal size={14} className="mr-1.5" />
-        You applied
+        {isInternalRoleApplication
+          ? "Role application within your team"
+          : "You applied"}
       </p>
     </div>
   );
@@ -348,6 +384,20 @@ const TeamApplicationDetailsModal = ({
           </p>
         )}
 
+        {/* Vacant role card — shown when application targets a specific role */}
+        {(application?.role || application?.roleId) && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
+            <VacantRoleCard
+              role={hydratedRole ?? application?.role ?? { id: application?.roleId }}
+              team={team}
+              matchScore={roleMatchScore}
+              matchDetails={roleMatchDetails}
+              canManage={false}
+              isTeamMember={false}
+            />
+          </div>
+        )}
+
         {/* Application Message */}
         {application?.message && (
           <div className="mb-4">
@@ -381,7 +431,6 @@ const TeamApplicationDetailsModal = ({
         teamId={team?.id}
         initialTeamData={team}
         onClose={() => setIsTeamDetailsOpen(false)}
-        isFromSearch={true}
       />
 
       {/* User Details Modal (for viewing owner profile) */}

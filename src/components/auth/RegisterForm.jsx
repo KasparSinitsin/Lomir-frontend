@@ -155,8 +155,6 @@ const RegisterForm = () => {
         }
       }
 
-      console.log("Register payload tags:", userData.tags);
-
       const result = await register(userData);
 
       if (result.success) {

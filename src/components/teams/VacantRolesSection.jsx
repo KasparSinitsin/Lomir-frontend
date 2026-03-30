@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { UserSearch, Plus, AlertCircle } from "lucide-react";
+import { UserSearch, Plus, AlertCircle, ChevronRight, ChevronUp } from "lucide-react";
 import VacantRoleCard from "./VacantRoleCard";
 import CreateVacantRoleModal from "./CreateVacantRoleModal";
 import Button from "../common/Button";
 import Alert from "../common/Alert";
 import { vacantRoleService } from "../../services/vacantRoleService";
+import { matchingService } from "../../services/matchingService";
+import { useAuth } from "../../contexts/AuthContext";
 
 /**
  * VacantRolesSection Component
@@ -15,23 +17,47 @@ import { vacantRoleService } from "../../services/vacantRoleService";
  * - List of cards
  * - Action button for owners/admins
  *
+ * When an authenticated user views roles they don't manage, matching
+ * scores are fetched and displayed on each VacantRoleCard.
+ *
  * @param {number} teamId - The team ID to fetch roles for
  * @param {boolean} canManage - Whether the current user is owner/admin
  * @param {boolean} isEditing - Whether the team is in edit mode (hide section)
  * @param {string} className - Additional CSS classes
  */
 const VacantRolesSection = ({
+  team = null,
   teamId,
   canManage = false,
+  isTeamMember = false,
   isEditing = false,
   className = "",
+  onRolesLoaded = null,
 }) => {
+  const { isAuthenticated } = useAuth();
+
   const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [notification, setNotification] = useState({
     type: null,
     message: null,
+  });
+
+  // Matching scores: { [roleId]: { matchScore, matchDetails } }
+  const [matchScores, setMatchScores] = useState({});
+  const [isExpanded, setIsExpanded] = useState(false);
+  const COLLAPSED_COUNT = 4;
+  const shouldShowFilledRoles = canManage || isTeamMember;
+  const visibleRoles = roles.filter((role) => {
+    if (canManage) return true;
+
+    const normalizedStatus = String(role?.status ?? "").toLowerCase();
+    if (isTeamMember) {
+      return normalizedStatus === "open" || normalizedStatus === "filled";
+    }
+
+    return normalizedStatus === "open";
   });
 
   // Modal state
@@ -45,24 +71,57 @@ const VacantRolesSection = ({
     try {
       setLoading(true);
       setError(null);
-      // Admins/owners see all statuses; others see only open
-      const statusFilter = canManage ? "all" : "open";
+      // Managers see all statuses, team members see open + filled,
+      // and outsiders still see only open roles.
+      const statusFilter = shouldShowFilledRoles ? "all" : "open";
       const response = await vacantRoleService.getVacantRoles(
         teamId,
         statusFilter,
       );
-      setRoles(response.data || []);
+      const loaded = response.data || [];
+      setRoles(loaded);
+      onRolesLoaded?.(loaded);
     } catch (err) {
       console.error("Error fetching vacant roles:", err);
       setError("Failed to load vacant roles");
     } finally {
       setLoading(false);
     }
-  }, [teamId, canManage]);
+  }, [teamId, shouldShowFilledRoles]);
 
   useEffect(() => {
     fetchRoles();
   }, [fetchRoles]);
+
+  // Fetch matching scores for authenticated users
+  // Runs after roles are loaded, only for non-managers (non-managers are the
+  // users who'd want to know "how well do I match this role?")
+  useEffect(() => {
+    const fetchMatchScores = async () => {
+      if (!isAuthenticated || !teamId || roles.length === 0) {
+        setMatchScores({});
+        return;
+      }
+
+      try {
+        const response = await matchingService.getMatchingRolesForTeam(teamId);
+        const scoreMap = {};
+        (response.data || []).forEach((scored) => {
+          scoreMap[scored.id] = {
+            matchScore: scored.matchScore ?? scored.match_score,
+            matchDetails: scored.matchDetails ?? scored.match_details,
+          };
+        });
+        setMatchScores(scoreMap);
+      } catch (err) {
+        // Matching scores are supplementary — don't block the UI
+        console.warn("Could not fetch matching scores:", err);
+        setMatchScores({});
+      }
+    };
+
+    fetchMatchScores();
+  }, [isAuthenticated, teamId, roles]);
 
   // Handle status change
   const handleStatusChange = async (roleId, newStatus) => {
@@ -134,7 +193,7 @@ const VacantRolesSection = ({
   // Don't render if loading still in progress
   if (loading) {
     return (
-      <div className={`mt-6 mb-6 ${className}`}>
+      <div className={className}>
         <div className="flex items-center mb-4">
           <UserSearch size={18} className="mr-2 text-primary flex-shrink-0" />
           <h3 className="font-medium">Vacant Roles</h3>
@@ -147,13 +206,13 @@ const VacantRolesSection = ({
   }
 
   // Don't render the section at all if there are no roles and user can't manage
-  if (roles.length === 0 && !canManage) return null;
+  if (visibleRoles.length === 0 && !canManage) return null;
 
   // Count open roles for the title
   const openCount = roles.filter((r) => r.status === "open").length;
 
   return (
-    <div className={`mt-6 mb-6 ${className}`}>
+    <div className={className}>
       {/* Section Header — mirrors TeamMembersSection pattern */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center">
@@ -200,20 +259,43 @@ const VacantRolesSection = ({
         </div>
       )}
 
-      {/* Roles list */}
-      {roles.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {roles.map((role) => (
-            <VacantRoleCard
-              key={role.id}
-              role={role}
-              canManage={canManage}
-              onEdit={handleEdit}
-              onDelete={handleDelete}
-              onStatusChange={handleStatusChange}
-            />
-          ))}
-        </div>
+      {/* Roles list — sorted by match score (highest first) when available */}
+      {visibleRoles.length > 0 ? (
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {[...visibleRoles]
+              .sort((a, b) => {
+                const scoreA = matchScores[a.id]?.matchScore ?? -1;
+                const scoreB = matchScores[b.id]?.matchScore ?? -1;
+                return scoreB - scoreA;
+              })
+              .slice(0, isExpanded ? undefined : COLLAPSED_COUNT)
+              .map((role) => (
+                <VacantRoleCard
+                  key={role.id}
+                  team={team}
+                  role={role}
+                  canManage={canManage}
+                  isTeamMember={isTeamMember}
+                  onEdit={handleEdit}
+                  onDelete={handleDelete}
+                  onStatusChange={handleStatusChange}
+                  matchScore={matchScores[role.id]?.matchScore ?? null}
+                  matchDetails={matchScores[role.id]?.matchDetails ?? null}
+                />
+              ))}
+          </div>
+          {visibleRoles.length > COLLAPSED_COUNT && (
+            <button
+              type="button"
+              className="flex items-center gap-1 mt-3 text-sm text-base-content/50 hover:text-base-content/80 transition-colors"
+              onClick={() => setIsExpanded((v) => !v)}
+            >
+              {isExpanded ? <ChevronUp size={14} /> : <ChevronRight size={14} />}
+              {isExpanded ? "Show less" : "Show all"}
+            </button>
+          )}
+        </>
       ) : (
         canManage && (
           <div className="bg-base-200/20 rounded-lg p-4 text-center">

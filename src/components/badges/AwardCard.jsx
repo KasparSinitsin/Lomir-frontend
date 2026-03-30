@@ -10,9 +10,10 @@ import {
   Award,
 } from "lucide-react";
 import InlineUserLink from "../users/InlineUserLink";
-import { useTeamModal } from "../../contexts/TeamModalContext";
+import { useTeamModalSafe } from "../../contexts/TeamModalContext";
 import { useUserModalSafe } from "../../contexts/UserModalContext";
 import { getBadgeIcon } from "../../utils/badgeIconUtils";
+import { useChildModalZIndex } from "../../contexts/ModalLayerContext";
 
 /**
  * AwardCard
@@ -49,6 +50,7 @@ const AwardCard = ({
   showBadgeTitle = true,
 }) => {
   const catColor = categoryColor;
+  const childTeamModalZIndex = useChildModalZIndex();
 
   // --- Normalize fields (camelCase + snake_case) ---
   const badgeName = award?.badgeName || award?.badge_name || "Badge";
@@ -107,30 +109,20 @@ const AwardCard = ({
 
   const hasAwardeeInfo = Boolean(awardedToUserId);
 
-  const awardeeName = awardedToFirstName
-    ? `${awardedToFirstName}${awardedToLastName ? ` ${awardedToLastName}` : ""}`
-    : awardedToUsername || null;
-
   const awarderName = awardedByFirstName
     ? `${awardedByFirstName}${awardedByLastName ? ` ${awardedByLastName}` : ""}`
     : awardedByUsername || "Someone";
 
   // --- Team modal integration (global fallback) ---
-  let teamModal = null;
-  try {
-    teamModal = useTeamModal();
-  } catch (e) {
-    teamModal = null;
-  }
-
+  const teamModal = useTeamModalSafe();
   const openTeam = onOpenTeam || teamModal?.openTeamModal;
   const isTeamClickable = Boolean(contextType === "team" && teamId && openTeam);
 
   const handleOpenTeam = () => {
     if (!isTeamClickable) return;
     try {
-      openTeam(teamId, teamName);
-    } catch (e) {
+      openTeam(teamId, teamName, { zIndex: childTeamModalZIndex });
+    } catch {
       openTeam(teamId);
     }
   };

@@ -1,5 +1,5 @@
 import React from "react";
-import { MapPin, Globe, Ruler } from "lucide-react";
+import { MapPin, Globe, Ruler, Check } from "lucide-react";
 import {
   normalizeLocationData,
   formatLocation,
@@ -19,6 +19,7 @@ import {
  * @param {string} props.title - Section title (default: "Location")
  * @param {boolean} props.showTitle - Whether to show section title (default: true for full, false for compact)
  *  * @param {number} props.distance - Distance in km (optional, for search results)
+ * @param {boolean} props.showDefaultHeaderRight - Whether to render the built-in remote/distance header info
  */
 const LocationSection = ({
   entity,
@@ -28,6 +29,9 @@ const LocationSection = ({
   title = "Location",
   showTitle,
   distance = null,
+  headerRight = null,
+  showDefaultHeaderRight = true,
+  iconSize = 16,
 }) => {
   // Normalize the location data (handles snake_case/camelCase)
   const location = normalizeLocationData(entity);
@@ -42,6 +46,15 @@ const LocationSection = ({
 
   // For teams, check if it's remote
   const isRemote = entityType === "team" && location.isRemote;
+  const hasDistance =
+    !isRemote &&
+    distance !== null &&
+    distance !== undefined &&
+    distance < 999999;
+  const isNearbyDistance = hasDistance && Number(distance) <= 1000;
+  const distanceToneClass = isNearbyDistance
+    ? "text-success"
+    : "text-base-content/70";
 
   // Choose the appropriate icon
   const IconComponent = isRemote ? Globe : MapPin;
@@ -50,11 +63,14 @@ const LocationSection = ({
   if (compact) {
     return (
       <div
-        className={`flex flex-wrap items-start gap-x-3 gap-y-2 text-sm text-base-content/70 ${className}`}
+        className={`flex flex-wrap items-start text-sm text-base-content/70 ${className} ${iconSize < 16 ? "gap-x-2 gap-y-1" : "gap-x-3 gap-y-2"}`}
       >
         {/* Location info */}
         <div className="flex items-start">
-          <IconComponent size={16} className="mr-1 flex-shrink-0 mt-0.5" />
+          <IconComponent
+            size={iconSize}
+            className="mr-1 flex-shrink-0 mt-0.5"
+          />
           {isRemote ? (
             <span>Remote</span>
           ) : (
@@ -70,30 +86,48 @@ const LocationSection = ({
         </div>
 
         {/* Distance info - only show for non-remote entities with valid distance */}
-        {!isRemote &&
-          distance !== null &&
-          distance !== undefined &&
-          distance < 999999 && (
-            <div className="flex items-start">
-              <Ruler size={16} className="mr-1 flex-shrink-0 mt-0.5" />
-              <span>{Math.round(distance)} km away</span>
-            </div>
-          )}
+        {hasDistance && (
+          <div className="flex items-start text-base-content">
+            <Ruler size={iconSize} className="mr-1 flex-shrink-0 mt-0.5" />
+            <span>{Math.round(distance)} km away</span>
+          </div>
+        )}
       </div>
     );
   }
+
+  const defaultHeaderRight = !showDefaultHeaderRight
+    ? null
+    : isRemote ? (
+        <span className="flex items-center gap-1.5 text-sm text-success">
+          <Check size={14} className="flex-shrink-0" />
+          <span>No location boundaries</span>
+        </span>
+      ) : hasDistance ? (
+          <span
+            className={`flex items-center gap-1.5 text-sm ${distanceToneClass}`}
+          >
+            <Ruler size={14} className="flex-shrink-0" />
+            <span>{Math.round(distance)} km away</span>
+          </span>
+        ) : null;
+
+  const resolvedHeaderRight = headerRight ?? defaultHeaderRight;
 
   // Full version for modals/details view
   return (
     <div className={className}>
       {/* Title row - icon and title together */}
       {shouldShowTitle && (
-        <div className="flex items-center mb-2">
-          <IconComponent
-            size={18}
-            className="mr-2 text-primary flex-shrink-0"
-          />
-          <h3 className="font-medium">{title}</h3>
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center">
+            <IconComponent
+              size={18}
+              className="mr-2 text-primary flex-shrink-0"
+            />
+            <h3 className="font-medium">{title}</h3>
+          </div>
+          {resolvedHeaderRight}
         </div>
       )}
 

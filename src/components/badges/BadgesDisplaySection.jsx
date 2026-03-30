@@ -1,9 +1,10 @@
-import React, { useRef, useEffect } from "react";
-import { Award } from "lucide-react";
+import React, { useRef, useEffect, useState, useCallback } from "react";
+import { Award, Check, ChevronRight, ChevronUp } from "lucide-react";
 import { getCategoryIcon } from "../../utils/badgeIconUtils";
 import Tooltip from "../common/Tooltip";
 import {
   CATEGORY_COLORS,
+  CATEGORY_CARD_PASTELS,
   DEFAULT_COLOR,
   PILL_ROW_HEIGHT,
 } from "../../constants/badgeConstants";
@@ -39,6 +40,8 @@ const BadgesDisplaySection = ({
   onBadgeClick = null,
   onOpenUser = null,
   highlightBadgeName = null,
+  matchingBadgeNames = null,
+  headerRight = null,
 }) => {
   // Hooks must be called before any early returns (Rules of Hooks)
   const highlightRef = useRef(null);
@@ -55,13 +58,54 @@ const BadgesDisplaySection = ({
     }
   }, [highlightBadgeName]);
 
+  // Collapsible overflow state
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [isOverflowing, setIsOverflowing] = useState(false);
+  const [twoRowHeight, setTwoRowHeight] = useState(72);
+  const pillsRef = useRef(null);
+
+  // Reset expansion when the badge set changes
+  useEffect(() => {
+    setIsExpanded(false);
+  }, [badges]);
+
+  const measureOverflow = useCallback(() => {
+    const el = pillsRef.current;
+    if (!el) return;
+    const firstBadge = el.querySelector(".badge");
+    if (!firstBadge) { setIsOverflowing(false); return; }
+    const rowH = firstBadge.offsetHeight;
+    const twoH = rowH * 2 + 8; // gap-y-2 = 8px
+    setTwoRowHeight(twoH);
+    setIsOverflowing(el.scrollHeight > twoH + 2);
+  }, []);
+
+  useEffect(() => {
+    measureOverflow();
+    const ro = new ResizeObserver(measureOverflow);
+    if (pillsRef.current) ro.observe(pillsRef.current);
+    return () => ro.disconnect();
+  }, [measureOverflow, badges]);
+
+  const totalCredits = (badges || []).reduce((sum, b) => sum + (b.total_credits ?? b.totalCredits ?? 0), 0);
+  const pillCount = (badges || []).length;
+
+  const titleSummary = totalCredits > 0 ? (
+    <span className="font-normal text-sm text-base-content/60 ml-1">
+      ({totalCredits} ct. across {pillCount} {pillCount === 1 ? 'area' : 'areas'})
+    </span>
+  ) : null;
+
   if (!badges || badges.length === 0) {
     if (compact) return null;
     return (
       <div className={className}>
-        <div className="flex items-center mb-2">
-          <Award size={18} className="mr-2 text-primary flex-shrink-0" />
-          <h3 className="font-medium">{title}</h3>
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center">
+            <Award size={18} className="mr-2 text-primary flex-shrink-0" />
+            <h3 className="font-medium">{title}{titleSummary}</h3>
+          </div>
+          {headerRight}
         </div>
         <p className="text-sm text-base-content/60">{emptyMessage}</p>
       </div>
@@ -163,33 +207,53 @@ const BadgesDisplaySection = ({
     onCategoryClick(category, color, categoryBadges, totalCredits);
   };
 
+  const toggleButton = isOverflowing ? (
+    <button
+      type="button"
+      className="flex items-center gap-1 mt-3 text-sm text-base-content/50 hover:text-base-content/80 transition-colors"
+      onClick={() => setIsExpanded((v) => !v)}
+    >
+      {isExpanded ? <ChevronUp size={14} /> : <ChevronRight size={14} />}
+      {isExpanded ? "Show less" : "Show all"}
+    </button>
+  ) : null;
+
   // If not grouping by category, render flat list (original behavior)
   if (!groupByCategory) {
     return (
       <div className={className}>
-        <div className="flex items-center mb-3">
-          <Award size={18} className="mr-2 text-primary flex-shrink-0" />
-          <h3 className="font-medium">{title}</h3>
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center">
+            <Award size={18} className="mr-2 text-primary flex-shrink-0" />
+            <h3 className="font-medium">{title}{titleSummary}</h3>
+          </div>
+          {headerRight}
         </div>
 
-        <div className="flex flex-wrap gap-2">
-          {visibleBadges.map((badge) => {
-            const credits = getCredits(badge);
-            return (
-              <span
-                key={badge.id ?? badge.badge_id ?? badge.name}
-                className="badge badge-primary badge-outline p-3"
-                style={{ borderColor: badge.color, color: badge.color }}
-                title={badge.description || badge.category}
-              >
-                {badge.name}
-                {credits && showCredits && (
-                  <span className="ml-1 opacity-80">| {credits}ct.</span>
-                )}
-              </span>
-            );
-          })}
+        <div
+          ref={pillsRef}
+          style={!isExpanded && isOverflowing ? { maxHeight: twoRowHeight, overflow: "hidden" } : {}}
+        >
+          <div className="flex flex-wrap gap-2">
+            {visibleBadges.map((badge) => {
+              const credits = getCredits(badge);
+              return (
+                <span
+                  key={badge.id ?? badge.badge_id ?? badge.name}
+                  className="badge badge-primary badge-outline p-3"
+                  style={{ borderColor: badge.color, color: badge.color }}
+                  title={badge.description || badge.category}
+                >
+                  {badge.name}
+                  {credits && showCredits && (
+                    <span className="ml-1 opacity-80">| {credits}ct.</span>
+                  )}
+                </span>
+              );
+            })}
+          </div>
         </div>
+        {toggleButton}
       </div>
     );
   }
@@ -197,12 +261,19 @@ const BadgesDisplaySection = ({
   // Grouped by category with icons
   return (
     <div className={className}>
-      <div className="flex items-center mb-3">
-        <Award size={18} className="mr-2 text-primary flex-shrink-0" />
-        <h3 className="font-medium">{title}</h3>
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center">
+          <Award size={18} className="mr-2 text-primary flex-shrink-0" />
+          <h3 className="font-medium">{title}{titleSummary}</h3>
+        </div>
+        {headerRight}
       </div>
 
       {/* Category groups with icons */}
+      <div
+        ref={pillsRef}
+        style={!isExpanded && isOverflowing ? { maxHeight: twoRowHeight, overflow: "hidden" } : {}}
+      >
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
         {sortedCategories.map((category) => {
           const categoryBadges = badgesByCategory[category];
@@ -256,6 +327,11 @@ const BadgesDisplaySection = ({
                 {categoryBadges.map((badge) => {
                   const credits = getCredits(badge);
                   const isClickable = !!onBadgeClick;
+                  const badgeKey = (badge.name ?? "").trim().toLowerCase();
+                  const isBadgeMatch =
+                    matchingBadgeNames && matchingBadgeNames.has(badgeKey);
+                  const matchPastel =
+                    CATEGORY_CARD_PASTELS[category] || `${categoryColor}15`;
                   const awardCount = Number(
                     badge.award_count ?? badge.awardCount ?? 0,
                   );
@@ -298,7 +374,9 @@ const BadgesDisplaySection = ({
                                 boxShadow: `0 0 12px ${categoryColor}66`,
                                 backgroundColor: `${categoryColor}20`,
                               }
-                            : {}),
+                            : isBadgeMatch
+                              ? { backgroundColor: matchPastel }
+                              : {}),
                         }}
                         onClick={
                           isClickable
@@ -309,6 +387,13 @@ const BadgesDisplaySection = ({
                             : undefined
                         }
                       >
+                        {isBadgeMatch && (
+                          <Check
+                            size={12}
+                            className="flex-shrink-0"
+                            style={{ color: categoryColor }}
+                          />
+                        )}
                         {badge.name}
                         {credits && showCredits && (
                           <span className="ml-1 opacity-70">
@@ -324,6 +409,8 @@ const BadgesDisplaySection = ({
           );
         })}
       </div>
+      </div>
+      {toggleButton}
     </div>
   );
 };

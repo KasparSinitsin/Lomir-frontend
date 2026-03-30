@@ -1,8 +1,8 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "../../contexts/AuthContext";
 import LomirLogo from "../../assets/images/Lomir-logowordmark-color.svg";
-import { Bell, MessageCircle, Search } from "lucide-react";
+import { Bell, MessageCircle, Search, User, Settings, LogOut } from "lucide-react";
 import Colors from "../../utils/Colors";
 import { getUserInitials } from "../../utils/userHelpers";
 import { messageService } from "../../services/messageService";
@@ -20,13 +20,15 @@ const Navbar = () => {
   // General notification state (invitations, applications, etc.)
   const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
   const [firstUnreadNotification, setFirstUnreadNotification] = useState(null);
-
   const location = useLocation();
   const navigate = useNavigate();
+  const lastMessageFetchRef = useRef(0);
+  const lastNotificationFetchRef = useRef(0);
+  const locationPathRef = useRef(location.pathname);
 
   // Define Tailwind class strings using CSS variables for consistent colors
   const iconClasses =
-    "text-[var(--color-primary)] hover:text-[var(--color-primary-focus)] hover:drop-shadow-neon transition duration-200";
+    "inline-flex items-center text-[var(--color-primary)] hover:text-[var(--color-primary-focus)] hover:drop-shadow-neon transition duration-200";
   const navLinkClasses =
     "text-[var(--color-primary)] text-center border-2 border-transparent rounded-full px-2 py-1 transition-all duration-300";
 
@@ -56,6 +58,26 @@ const Navbar = () => {
     }
   }, [isAuthenticated]);
 
+  const throttledMessageFetch = useCallback(() => {
+    const now = Date.now();
+    if (now - lastMessageFetchRef.current > 30000) {
+      lastMessageFetchRef.current = now;
+      fetchUnreadMessageCount();
+    }
+  }, [fetchUnreadMessageCount]);
+
+  const throttledNotificationFetch = useCallback(() => {
+    const now = Date.now();
+    if (now - lastNotificationFetchRef.current > 30000) {
+      lastNotificationFetchRef.current = now;
+      fetchUnreadNotificationCount();
+    }
+  }, [fetchUnreadNotificationCount]);
+
+  useEffect(() => {
+    locationPathRef.current = location.pathname;
+  }, [location.pathname]);
+
   // Initial fetch and socket setup for messages
   useEffect(() => {
     if (!isAuthenticated) {
@@ -64,6 +86,7 @@ const Navbar = () => {
       return;
     }
 
+    lastMessageFetchRef.current = Date.now();
     fetchUnreadMessageCount();
 
     // Set up socket listener for new messages
@@ -72,7 +95,7 @@ const Navbar = () => {
     if (socket) {
       const handleNewMessage = (message) => {
         // Only increment if we're not currently in that conversation
-        const currentPath = location.pathname;
+        const currentPath = locationPathRef.current;
         const currentConversationId = currentPath.startsWith("/chat/")
           ? currentPath.split("/chat/")[1]?.split("?")[0]
           : null;
@@ -112,7 +135,7 @@ const Navbar = () => {
         socket.off("messages:read", handleMessagesRead);
       };
     }
-  }, [isAuthenticated, fetchUnreadMessageCount, location.pathname]);
+  }, [isAuthenticated, fetchUnreadMessageCount]);
 
   // Initial fetch and socket setup for notifications
   useEffect(() => {
@@ -122,6 +145,7 @@ const Navbar = () => {
       return;
     }
 
+    lastNotificationFetchRef.current = Date.now();
     fetchUnreadNotificationCount();
 
     // Set up socket listener for new notifications
@@ -151,19 +175,19 @@ const Navbar = () => {
       return () => clearTimeout(timer);
     } else {
       // When not in a specific conversation, refetch immediately
-      fetchUnreadMessageCount();
+      throttledMessageFetch();
     }
-  }, [location.pathname, fetchUnreadMessageCount]);
+  }, [location.pathname, fetchUnreadMessageCount, throttledMessageFetch]);
 
   // Refetch notification count when on my-teams page (after viewing invitations/applications)
   useEffect(() => {
     if (location.pathname.startsWith("/teams/my-teams")) {
       const timer = setTimeout(() => {
-        fetchUnreadNotificationCount();
+        throttledNotificationFetch();
       }, 500);
       return () => clearTimeout(timer);
     }
-  }, [location.pathname, location.search, fetchUnreadNotificationCount]);
+  }, [location.pathname, location.search, throttledNotificationFetch]);
 
   // Handle notification badge click
   const handleNotificationClick = async () => {
@@ -217,45 +241,43 @@ const Navbar = () => {
         <div className="flex items-center space-x-3">
           <div className="flex items-center space-x-4">
             {/* Notification Bell */}
-            <nav>
-              {isAuthenticated && (
-                <div
-                  onClick={handleNotificationClick}
-                  className={`${iconClasses} cursor-pointer`}
+            {isAuthenticated && (
+              <div
+                onClick={handleNotificationClick}
+                className={`${iconClasses} cursor-pointer`}
+              >
+                <NotificationBadge
+                  variant="alert"
+                  count={unreadNotificationCount}
                 >
-                  <NotificationBadge
-                    variant="alert"
-                    count={unreadNotificationCount}
-                  >
-                    <Bell size={22} strokeWidth={2.2} />
-                  </NotificationBadge>
-                </div>
-              )}
-            </nav>
+                  <Bell size={22} strokeWidth={2.2} />
+                </NotificationBadge>
+              </div>
+            )}
 
             {/* Message Icon */}
-            <nav>
-              {isAuthenticated && (
-                <div
-                  onClick={handleMessageClick}
-                  className={`${iconClasses} cursor-pointer`}
+            {isAuthenticated && !location.pathname.startsWith("/chat") && (
+              <div
+                onClick={handleMessageClick}
+                className={`${iconClasses} cursor-pointer`}
+              >
+                <NotificationBadge
+                  variant="message"
+                  count={unreadMessageCount}
                 >
-                  <NotificationBadge
-                    variant="message"
-                    count={unreadMessageCount}
-                  >
-                    <MessageCircle size={22} strokeWidth={2.2} />
-                  </NotificationBadge>
-                </div>
-              )}
-            </nav>
+                  <MessageCircle size={22} strokeWidth={2.2} />
+                </NotificationBadge>
+              </div>
+            )}
 
-            <Link to="/search" className={iconClasses}>
-              <Search size={22} strokeWidth={2.2} />
-            </Link>
+            {!location.pathname.startsWith("/search") && (
+              <Link to="/search" className={iconClasses}>
+                <Search size={22} strokeWidth={2.2} />
+              </Link>
+            )}
           </div>
 
-          {isAuthenticated && (
+          {isAuthenticated && !location.pathname.startsWith("/teams/my-teams") && (
             <nav className="flex space-x-1 text-sm sm:text-base">
               <Link to="/teams/my-teams" className={`${navLinkClasses} neon`}>
                 My Teams
@@ -290,16 +312,16 @@ const Navbar = () => {
               </label>
               <ul
                 tabIndex={0}
-                className="mt-3 z-[1] p-2 shadow-lg glass-navbar menu menu-sm dropdown-content rounded-box w-30"
+                className="mt-3 z-[1] p-2 menu menu-sm dropdown-content w-auto profile-dropdown"
               >
                 <li>
-                  <Link to="/profile">Profile</Link>
+                  <Link to="/profile">Profile<User size={12} /></Link>
                 </li>
                 <li>
-                  <Link to="/settings">Settings</Link>
+                  <Link to="/settings">Settings<Settings size={12} /></Link>
                 </li>
                 <li>
-                  <button onClick={logout}>Logout</button>
+                  <button onClick={logout}>Logout<LogOut size={12} /></button>
                 </li>
               </ul>
             </div>

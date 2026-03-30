@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
+import Tooltip from "./Tooltip";
 
 const Card = ({
   title,
@@ -17,8 +19,22 @@ const Card = ({
   onClick = null,
   truncateContent = 3,
   transparent = false,
+  contentClassName = "",
+  headerClassName = "",
+  imageWrapperClassName = "",
+  titleClassName = "",
+  marginClassName = "",
+  viewMode = "card",
+  clickTooltip = null,
+  imageOverlay = null,
+  imageReplacement = null,
+  listEdgeRounding = true,
 }) => {
   const [imageError, setImageError] = useState(false);
+  const [rowTooltipVisible, setRowTooltipVisible] = useState(false);
+  const [rowTooltipPosition, setRowTooltipPosition] = useState(null);
+  const rowTooltipVisibleRef = useRef(false);
+  const tooltipDimensionsRef = useRef({ width: 280, height: 52 });
 
   // Reset error state when image prop changes
   useEffect(() => {
@@ -36,7 +52,7 @@ const Card = ({
   // Function to render the image/avatar
   // Function to render the image/avatar
   const renderImage = () => {
-    if (!image && !imageFallback) return null;
+    if (!image && !imageFallback && !imageReplacement) return null;
 
     // Determine image size class
     const sizeClass =
@@ -62,13 +78,16 @@ const Card = ({
       (typeof image === "string" && !isUrl ? generateInitials(image) : "?");
 
     return (
-      <div className="flex justify-top mb-4 pb-4">
-        <div className="avatar placeholder">
+      <div
+        className={`flex justify-top ${imageWrapperClassName || "mb-4 pb-4"}`}
+      >
+        <div className="avatar placeholder relative">
           <div
-            className={`bg-primary text-primary-content ${shapeClass} ${sizeClass} flex items-center justify-center`}
+            className={`${shapeClass} ${sizeClass} flex items-center justify-center overflow-hidden ${imageReplacement ? "" : "bg-primary text-primary-content"}`}
           >
-            {isUrl && !imageError ? (
-              // If image is a URL and hasn't errored, render an img tag
+            {imageReplacement ? (
+              imageReplacement
+            ) : isUrl && !imageError ? (
               <img
                 src={image}
                 alt={imageAlt}
@@ -76,12 +95,12 @@ const Card = ({
                 onError={() => setImageError(true)}
               />
             ) : (
-              // Otherwise render the initials/placeholder
               <span className={imageSize === "large" ? "text-2xl" : "text-xl"}>
                 {fallbackContent}
               </span>
             )}
           </div>
+          {!imageReplacement && imageOverlay}
         </div>
       </div>
     );
@@ -106,59 +125,264 @@ const Card = ({
     return "[&>p:first-of-type]:line-clamp-3 [&>p:first-of-type]:-mt-4";
   };
 
-  return (
-    <div
-      className={`
-      ${transparent ? "bg-transparent" : "background-opacity"}
-      ${bordered ? "border border-base-200" : ""}
-      ${hoverable ? "hover:shadow-md transition-shadow duration-300" : ""}
-      shadow-soft
-      rounded-xl
-      overflow-hidden
-      ${compact ? "card-compact" : ""}
-      ${onClick ? "cursor-pointer" : ""}
-      ${className}
-      bg-opacity-70
-      mb-6
-    `}
-      onClick={onClick}
-      role={onClick ? "button" : undefined}
-      tabIndex={onClick ? 0 : undefined}
-      onKeyDown={
-        onClick
-          ? (e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                onClick(e);
-              }
-            }
-          : undefined
+  const handleRowMouseOver = clickTooltip
+    ? (e) => {
+        const shouldShow = !e.target.closest("[data-tooltip-trigger]");
+        if (shouldShow !== rowTooltipVisibleRef.current) {
+          rowTooltipVisibleRef.current = shouldShow;
+          setRowTooltipVisible(shouldShow);
+        }
       }
-    >
-      {title && (
-        <div className="p-6 sm:p-7 border-base-200">
-          <div className="flex gap-3">
-            <div>{renderImage()}</div>
+    : undefined;
 
-            <div>
-              <h3 className="text-lg font-medium text-primary leading-[120%] mb-1">
-                {title}
-              </h3>
-              {subtitle && <p>{subtitle}</p>}
+  const handleRowMouseMove = clickTooltip
+    ? (e) => {
+        const shouldShow = !e.target.closest("[data-tooltip-trigger]");
+        if (!shouldShow) {
+          if (rowTooltipVisibleRef.current) {
+            rowTooltipVisibleRef.current = false;
+            setRowTooltipVisible(false);
+          }
+          return;
+        }
+
+        if (!rowTooltipVisibleRef.current) {
+          rowTooltipVisibleRef.current = true;
+          setRowTooltipVisible(true);
+        }
+
+        const tooltipGap = 14;
+        const viewportPadding = 12;
+        const { width, height } = tooltipDimensionsRef.current;
+
+        const left = Math.min(
+          Math.max(viewportPadding, e.clientX + 10),
+          window.innerWidth - width - viewportPadding,
+        );
+        const top = Math.min(
+          Math.max(viewportPadding, e.clientY + tooltipGap),
+          window.innerHeight - height - viewportPadding,
+        );
+
+        setRowTooltipPosition({ top, left });
+      }
+    : undefined;
+
+  const handleRowMouseLeave = clickTooltip
+    ? () => {
+        rowTooltipVisibleRef.current = false;
+        setRowTooltipVisible(false);
+        setRowTooltipPosition(null);
+      }
+    : undefined;
+
+  if (viewMode === "list") {
+    return (
+      <>
+      <div
+        className={`
+          flex items-center gap-3 px-4 py-2.5
+          hover:shadow-md transition-shadow duration-300
+          ${listEdgeRounding ? "first:rounded-t-xl last:rounded-b-xl" : ""}
+          ${onClick ? "cursor-pointer" : ""}
+          ${className}
+        `}
+        onClick={onClick}
+        role={onClick ? "button" : undefined}
+        tabIndex={onClick ? 0 : undefined}
+        onMouseOver={handleRowMouseOver}
+        onMouseMove={handleRowMouseMove}
+        onMouseLeave={handleRowMouseLeave}
+        onKeyDown={
+          onClick
+            ? (e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  onClick(e);
+                }
+              }
+            : undefined
+        }
+      >
+        {(image || imageFallback || imageReplacement) && (
+          <div className="avatar placeholder flex-shrink-0 relative">
+            <div className={`rounded-full w-9 h-9 flex items-center justify-center overflow-hidden ${imageReplacement ? "" : "bg-primary text-primary-content"}`}>
+              {imageReplacement ? (
+                imageReplacement
+              ) : typeof image === "string" &&
+              (image.startsWith("http") ||
+                image.startsWith("https") ||
+                image.startsWith("data:")) &&
+              !imageError ? (
+                <img
+                  src={image}
+                  alt={imageAlt}
+                  className="rounded-full object-cover w-full h-full"
+                  onError={() => setImageError(true)}
+                />
+              ) : (
+                <span className="text-sm">
+                  {imageFallback ||
+                    (typeof image === "string"
+                      ? generateInitials(image)
+                      : "?")}
+                </span>
+              )}
+            </div>
+            {!imageReplacement && imageOverlay}
+          </div>
+        )}
+
+        <div className="min-w-0 flex-1">
+          <Tooltip content={title} wrapperClassName="block min-w-0 overflow-hidden">
+            <div className="font-medium text-sm text-primary truncate">{title}</div>
+          </Tooltip>
+          {subtitle && (
+            <div className="text-xs text-base-content/60 mt-px">{subtitle}</div>
+          )}
+        </div>
+
+        {children}
+
+        <Tooltip content={clickTooltip}>
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            className="text-base-content/30 flex-shrink-0"
+          >
+            <path d="M9 18l6-6-6-6" />
+          </svg>
+        </Tooltip>
+      </div>
+
+      {rowTooltipVisible && rowTooltipPosition && clickTooltip && createPortal(
+        <div
+          role="tooltip"
+          className="fixed z-[9999] bg-white text-[var(--color-primary-focus)] rounded-lg whitespace-pre-line text-left max-w-[280px] pointer-events-none"
+          style={{
+            top: `${rowTooltipPosition.top}px`,
+            left: `${rowTooltipPosition.left}px`,
+            padding: "0.5rem 0.75rem",
+            fontSize: "0.775rem",
+            fontWeight: 450,
+            boxShadow: "0 2px 8px rgba(4, 80, 20, 0.15)",
+          }}
+          ref={(node) => {
+            if (!node) return;
+
+            tooltipDimensionsRef.current = {
+              width: node.offsetWidth || tooltipDimensionsRef.current.width,
+              height: node.offsetHeight || tooltipDimensionsRef.current.height,
+            };
+          }}
+        >
+          {clickTooltip}
+        </div>,
+        document.body
+      )}
+      </>
+    );
+  }
+
+  return (
+    <>
+      <div
+        className={`
+        ${transparent ? "bg-transparent" : "background-opacity"}
+        ${bordered ? "border border-base-200" : ""}
+        ${hoverable ? "hover:shadow-md transition-shadow duration-300" : ""}
+        shadow-soft
+        rounded-xl
+        overflow-hidden
+        flex flex-col
+        ${compact ? "card-compact" : ""}
+        ${onClick ? "cursor-pointer" : ""}
+        ${className}
+        bg-opacity-70
+        ${marginClassName || "mb-6"}
+      `}
+        onClick={onClick}
+        role={onClick ? "button" : undefined}
+        tabIndex={onClick ? 0 : undefined}
+        onMouseOver={handleRowMouseOver}
+        onMouseMove={handleRowMouseMove}
+        onMouseLeave={handleRowMouseLeave}
+        onKeyDown={
+          onClick
+            ? (e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  onClick(e);
+                }
+              }
+            : undefined
+        }
+      >
+        {title && (
+          <div
+            className={`p-6 sm:p-7 pb-0 sm:pb-1 border-base-200 ${headerClassName}`}
+          >
+            <div className="flex gap-3">
+              <div>{renderImage()}</div>
+
+              <div className="min-w-0 flex-1">
+                <h3
+                  className={`font-medium text-primary leading-[120%] mb-1 ${titleClassName || "text-lg"}`}
+                >
+                  {title}
+                </h3>
+                {subtitle && (
+                  <p className={titleClassName ? "text-xs" : ""}>{subtitle}</p>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Only the first direct <p> inside this wrapper will be clamped */}
-      <div className={`p-4 sm:p-7 ${getTruncateClasses()}`}>{children}</div>
-
-      {footer && (
-        <div className="p-6 sm:p-7 bg-base-200/50 border-t border-base-200">
-          {footer}
+        {/* Only the first direct <p> inside this wrapper will be clamped */}
+        <div
+          className={`p-4 sm:p-7 pt-0.5 sm:pt-1 flex-1 flex flex-col ${getTruncateClasses()} ${contentClassName}`}
+        >
+          {children}
         </div>
+
+        {footer && (
+          <div className="p-6 sm:p-7 bg-base-200/50 border-t border-base-200">
+            {footer}
+          </div>
+        )}
+      </div>
+
+      {rowTooltipVisible && rowTooltipPosition && clickTooltip && createPortal(
+        <div
+          role="tooltip"
+          className="fixed z-[9999] bg-white text-[var(--color-primary-focus)] rounded-lg whitespace-pre-line text-left max-w-[280px] pointer-events-none"
+          style={{
+            top: `${rowTooltipPosition.top}px`,
+            left: `${rowTooltipPosition.left}px`,
+            padding: "0.5rem 0.75rem",
+            fontSize: "0.775rem",
+            fontWeight: 450,
+            boxShadow: "0 2px 8px rgba(4, 80, 20, 0.15)",
+          }}
+          ref={(node) => {
+            if (!node) return;
+
+            tooltipDimensionsRef.current = {
+              width: node.offsetWidth || tooltipDimensionsRef.current.width,
+              height: node.offsetHeight || tooltipDimensionsRef.current.height,
+            };
+          }}
+        >
+          {clickTooltip}
+        </div>,
+        document.body
       )}
-    </div>
+    </>
   );
 };
 

@@ -6,7 +6,6 @@ const socketService = {
   // Connect to the socket server
   connect: (token) => {
     if (socket && socket.connected) {
-      console.log("Socket already connected");
       return socket;
     }
 
@@ -32,7 +31,6 @@ const socketService = {
 
     // Use newSocket in callbacks to avoid race conditions
     newSocket.on("connect", () => {
-      console.log("Socket connected:", newSocket.id);
     });
 
     newSocket.on("connect_error", (error) => {
@@ -40,7 +38,9 @@ const socketService = {
     });
 
     newSocket.on("disconnect", (reason) => {
-      console.log("Socket disconnected:", reason);
+      if (import.meta.env.MODE !== "production") {
+        console.log("Socket disconnected:", reason);
+      }
     });
 
     return newSocket;
@@ -51,7 +51,6 @@ const socketService = {
     if (socket) {
       socket.disconnect();
       socket = null;
-      console.log("Socket disconnected manually");
     }
   },
 
@@ -62,7 +61,6 @@ const socketService = {
   joinConversation: (conversationId, type = "direct") => {
     if (socket && socket.connected) {
       socket.emit("conversation:join", { conversationId, type });
-      console.log(`Joined ${type} conversation:`, conversationId);
     }
   },
 
@@ -70,7 +68,6 @@ const socketService = {
   leaveConversation: (conversationId, type = "direct") => {
     if (socket && socket.connected) {
       socket.emit("conversation:leave", { conversationId, type });
-      console.log(`Left ${type} conversation:`, conversationId);
     }
   },
 
@@ -85,14 +82,6 @@ const socketService = {
   ) => {
     if (socket && socket.connected) {
       socket.emit("message:new", {
-        conversationId,
-        content,
-        type,
-        imageUrl,
-        fileUrl,
-        fileName,
-      });
-      console.log("Sending message:", {
         conversationId,
         content,
         type,
@@ -123,7 +112,6 @@ const socketService = {
   markMessagesAsRead: (conversationId, type = "direct") => {
     if (socket && socket.connected) {
       socket.emit("message:read", { conversationId, type });
-      console.log(`Marking ${type} messages as read for:`, conversationId);
     }
   },
 };

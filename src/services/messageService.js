@@ -37,10 +37,13 @@ export const messageService = {
   },
 
   // Get messages for a specific conversation
-  getMessages: async (conversationId, type = "direct") => {
+  getMessages: async (conversationId, type = "direct", { before, limit } = {}) => {
     try {
+      const params = new URLSearchParams({ type });
+      if (before) params.append("before", before);
+      if (limit) params.append("limit", limit);
       const response = await api.get(
-        `/api/messages/conversations/${conversationId}/messages?type=${type}`
+        `/api/messages/conversations/${conversationId}/messages?${params.toString()}`
       );
       return response.data;
     } catch (error) {
@@ -75,14 +78,11 @@ export const messageService = {
   // Start a new conversation with a user
   startConversation: async (recipientId, initialMessage = "") => {
     try {
-      console.log("API call: startConversation with recipientId:", recipientId); // Debug log
-
       const response = await api.post("/api/messages/conversations", {
         recipientId: parseInt(recipientId), // Ensure it's a number
         initialMessage: initialMessage.trim(),
       });
 
-      console.log("startConversation response:", response.data); // Debug log
       return response.data;
     } catch (error) {
       console.error("Error starting conversation:", error);

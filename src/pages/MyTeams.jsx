@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import PageContainer from "../components/layout/PageContainer";
 import Grid from "../components/layout/Grid";
@@ -8,9 +8,33 @@ import Section from "../components/layout/Section";
 import Pagination from "../components/common/Pagination";
 import { teamService } from "../services/teamService";
 import { useAuth } from "../contexts/AuthContext";
-import { Plus, Search as SearchIcon } from "lucide-react";
-import Alert from "../components/common/Alert";
+import {
+  Plus,
+  Search as SearchIcon,
+  ArrowDownAZ,
+  ArrowUpZA,
+  Clock,
+  Sparkles,
+  Inbox,
+  Mail,
+  SendHorizontal,
+  Users,
+} from "lucide-react";
 import CreateTeamModal from "../components/teams/CreateTeamModal";
+import { enrichTeamMatchData } from "../utils/teamMatchUtils";
+import useClientPagination from "../hooks/useClientPagination";
+import useMyTeamsSort from "../hooks/useMyTeamsSort";
+import useViewerMatchProfile from "../hooks/useViewerMatchProfile";
+
+import {
+  RESULTS_PER_PAGE_OPTIONS,
+  DEFAULT_RESULTS_PER_PAGE,
+} from "../constants/pagination";
+
+const MY_TEAMS_LIST_LOCATION_WIDTH_CLASSNAME = "sm:w-40";
+const MY_TEAMS_LIST_LOCATION_INSET_CLASSNAME = "sm:pl-[24px]";
+const MY_TEAMS_LIST_TAGS_WIDTH_CLASSNAME = "sm:w-36";
+const MY_TEAMS_LIST_BADGES_WIDTH_CLASSNAME = "sm:w-32";
 
 const MyTeams = () => {
   const [teams, setTeams] = useState([]);
@@ -21,13 +45,19 @@ const MyTeams = () => {
   const [loadingInvitations, setLoadingInvitations] = useState(true);
   const [error, setError] = useState(null);
   const { user } = useAuth();
+  const { viewerMatchProfile, viewerDistanceSource } = useViewerMatchProfile({
+    userId: user?.id,
+  });
+
+  // ===== VIEW MODE STATE =====
+  const [resultView, setResultView] = useState("list");
 
   // ===== CREATE TEAM MODAL STATE =====
   const [isCreateTeamModalOpen, setIsCreateTeamModalOpen] = useState(false);
 
   // ===== PAGINATION STATE =====
   const [currentPage, setCurrentPage] = useState(1);
-  const [resultsPerPage, setResultsPerPage] = useState(10);
+  const [resultsPerPage, setResultsPerPage] = useState(DEFAULT_RESULTS_PER_PAGE);
   const [pagination, setPagination] = useState({
     page: 1,
     limit: 10,
@@ -46,6 +76,11 @@ const MyTeams = () => {
 
   // Ref for scrolling to highlighted invitation
   const highlightedInvitationRef = useRef(null);
+  const highlightedTeamRef = useRef(null);
+  const pendingPaginationResettersRef = useRef({
+    resetInvitations: () => {},
+    resetApplications: () => {},
+  });
 
   // State to track which team should auto-open its applications modal
   const [autoOpenApplicationsTeamId, setAutoOpenApplicationsTeamId] =
@@ -73,7 +108,7 @@ const MyTeams = () => {
               totalPages: 1,
               hasNextPage: false,
               hasPrevPage: false,
-            }
+            },
           );
         }
       } catch (err) {
@@ -83,7 +118,7 @@ const MyTeams = () => {
         setLoading(false);
       }
     },
-    [user?.id]
+    [user?.id],
   );
 
   // Fetch pending applications
@@ -133,13 +168,18 @@ const MyTeams = () => {
     if (user?.id) {
       fetchUserTeams(currentPage, resultsPerPage);
     }
-  }, [currentPage, resultsPerPage, user?.id]);
+  }, [currentPage, resultsPerPage, user?.id, fetchUserTeams]);
 
   // Handle URL params for highlighting and auto-opening modals
   useEffect(() => {
+    let openApplicationsTimer;
+
     // If we need to open applications modal for a specific team
     if (openTeamId && shouldOpenApplications) {
-      setAutoOpenApplicationsTeamId(parseInt(openTeamId));
+      setAutoOpenApplicationsTeamId(null);
+      openApplicationsTimer = setTimeout(() => {
+        setAutoOpenApplicationsTeamId(parseInt(openTeamId, 10));
+      }, 900);
     }
 
     // Scroll to highlighted invitation after a short delay
@@ -152,13 +192,34 @@ const MyTeams = () => {
       }, 300);
     }
 
+    // Scroll to highlighted member team after a short delay
+    if (openTeamId && highlightedTeamRef.current) {
+      setTimeout(() => {
+        highlightedTeamRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+      }, 300);
+    }
+
     // Clear URL params after 5 seconds (so refresh doesn't keep highlighting)
     if (highlightId || openTeamId) {
       const timer = setTimeout(() => {
         setSearchParams({});
       }, 5000);
-      return () => clearTimeout(timer);
+      return () => {
+        clearTimeout(timer);
+        if (openApplicationsTimer) {
+          clearTimeout(openApplicationsTimer);
+        }
+      };
     }
+
+    return () => {
+      if (openApplicationsTimer) {
+        clearTimeout(openApplicationsTimer);
+      }
+    };
   }, [highlightId, openTeamId, shouldOpenApplications, setSearchParams]);
 
   // Handler for page changes
@@ -186,7 +247,9 @@ const MyTeams = () => {
     }
 
     setTeams((prevTeams) =>
-      prevTeams.map((team) => (team.id === updatedTeam.id ? updatedTeam : team))
+      prevTeams.map((team) =>
+        team.id === updatedTeam.id ? updatedTeam : team,
+      ),
     );
   };
 
@@ -204,7 +267,6 @@ const MyTeams = () => {
 
   // Handler for when user LEAVES a team (not deletes it)
   const handleTeamLeave = (teamId) => {
-    console.log("handleTeamLeave called with teamId:", teamId);
     // Refetch to update pagination correctly
     fetchUserTeams(currentPage, resultsPerPage);
   };
@@ -221,20 +283,18 @@ const MyTeams = () => {
 
   const handleSendReminder = async (applicationId) => {
     // TODO: Implement send reminder functionality
-    console.log("Send reminder for application:", applicationId);
     alert("Reminder feature coming soon!");
   };
 
   // Invitation handlers
-  const handleInvitationAccept = async (invitationId, responseMessage = "") => {
+  const handleInvitationAccept = async (invitationId, responseMessage = "", fillRole = false) => {
     try {
       await teamService.respondToInvitation(
         invitationId,
         "accept",
-        responseMessage
+        responseMessage,
+        fillRole,
       );
-
-      console.log("Invitation accepted successfully");
 
       // Refresh the data
       fetchPendingInvitations();
@@ -246,16 +306,14 @@ const MyTeams = () => {
 
   const handleInvitationDecline = async (
     invitationId,
-    responseMessage = ""
+    responseMessage = "",
   ) => {
     try {
       await teamService.respondToInvitation(
         invitationId,
         "decline",
-        responseMessage
+        responseMessage,
       );
-
-      console.log("Invitation declined");
 
       // Refresh the data
       fetchPendingInvitations();
@@ -266,11 +324,144 @@ const MyTeams = () => {
 
   // Handler for when a new team is created
   const handleTeamCreated = (newTeam) => {
-    console.log("New team created:", newTeam);
     // Refresh the teams list
     fetchUserTeams(1, resultsPerPage);
     setCurrentPage(1);
   };
+
+  const { sortBy, sortDir, handleSortChange, sortPendingItems, sortMemberTeams } =
+    useMyTeamsSort({
+      teams,
+      onSortChange: () => {
+        pendingPaginationResettersRef.current.resetInvitations();
+        pendingPaginationResettersRef.current.resetApplications();
+      },
+    });
+
+  const externalApplications = useMemo(
+    () => pendingApplications.filter(
+      (app) => !(app.isInternalRoleApplication ?? app.is_internal_role_application)
+    ),
+    [pendingApplications]
+  );
+
+  const internalRoleApplications = useMemo(
+    () => pendingApplications.filter(
+      (app) => app.isInternalRoleApplication ?? app.is_internal_role_application
+    ),
+    [pendingApplications]
+  );
+
+  const externalInvitations = useMemo(
+    () => pendingInvitations.filter(
+      (inv) => !(inv.isInternal ?? inv.is_internal)
+    ),
+    [pendingInvitations]
+  );
+
+  const internalRoleInvitations = useMemo(
+    () => pendingInvitations.filter(
+      (inv) => inv.isInternal ?? inv.is_internal
+    ),
+    [pendingInvitations]
+  );
+
+  const enrichedInvitations = useMemo(() => {
+    if (!viewerMatchProfile) return externalInvitations;
+
+    return externalInvitations.map((invitation) => {
+      if (!invitation?.team?.tags?.length) return invitation;
+
+      return {
+        ...invitation,
+        team: enrichTeamMatchData({
+          team: invitation.team,
+          viewerProfile: viewerMatchProfile,
+        }),
+      };
+    });
+  }, [externalInvitations, viewerMatchProfile]);
+
+  const enrichedApplications = useMemo(() => {
+    if (!viewerMatchProfile) return externalApplications;
+
+    return externalApplications.map((application) => {
+      if (!application?.team?.tags?.length) return application;
+
+      return {
+        ...application,
+        team: enrichTeamMatchData({
+          team: application.team,
+          viewerProfile: viewerMatchProfile,
+        }),
+      };
+    });
+  }, [externalApplications, viewerMatchProfile]);
+
+  const sortedPendingInvitations = sortPendingItems(
+    enrichedInvitations.filter(Boolean),
+  );
+  const sortedPendingApplications = sortPendingItems(
+    enrichedApplications.filter(Boolean),
+  );
+  const combinedPendingInvitations = sortPendingItems([
+    ...enrichedInvitations.filter(Boolean),
+    ...internalRoleInvitations.filter(Boolean),
+  ]);
+  const combinedPendingApplications = sortPendingItems([
+    ...enrichedApplications.filter(Boolean),
+    ...internalRoleApplications.filter(Boolean),
+  ]);
+  const sortedTeams = sortMemberTeams(teams.filter(Boolean));
+  const invitationsPagination = useClientPagination({
+    items: combinedPendingInvitations,
+  });
+  const applicationsPagination = useClientPagination({
+    items: combinedPendingApplications,
+  });
+
+  useEffect(() => {
+    pendingPaginationResettersRef.current = {
+      resetInvitations: () => invitationsPagination.setCurrentPage(1),
+      resetApplications: () => applicationsPagination.setCurrentPage(1),
+    };
+  }, [applicationsPagination.setCurrentPage, invitationsPagination.setCurrentPage]);
+
+  const shouldShowTeamsPagination =
+    pagination.totalTeams > DEFAULT_RESULTS_PER_PAGE;
+  const formatCountLabel = (
+    count,
+    singularLabel,
+    pluralLabel = `${singularLabel}s`,
+  ) => `${count} ${count === 1 ? singularLabel : pluralLabel}`;
+  const hasTeamInvitations = sortedPendingInvitations.length > 0;
+  const hasRoleInvitations = internalRoleInvitations.length > 0;
+  const hasTeamApplications = sortedPendingApplications.length > 0;
+  const hasRoleApplications = internalRoleApplications.length > 0;
+  const showPendingInvitationsSection =
+    hasTeamInvitations || hasRoleInvitations;
+  const showPendingApplicationsSection =
+    hasTeamApplications || hasRoleApplications;
+  const pendingInvitationsSubtitle = [
+    hasTeamInvitations
+      ? formatCountLabel(sortedPendingInvitations.length, "team invite")
+      : null,
+    hasRoleInvitations
+      ? formatCountLabel(internalRoleInvitations.length, "role invite")
+      : null,
+  ]
+    .filter(Boolean)
+    .join(" and ");
+  const pendingApplicationsSubtitle = [
+    hasTeamApplications
+      ? formatCountLabel(sortedPendingApplications.length, "team application")
+      : null,
+    hasRoleApplications
+      ? formatCountLabel(internalRoleApplications.length, "role application")
+      : null,
+  ]
+    .filter(Boolean)
+    .join(" and ");
 
   if (loading && loadingApplications && loadingInvitations) {
     return (
@@ -294,13 +485,15 @@ const MyTeams = () => {
 
   const CreateTeamAction = (
     <div className="flex flex-col gap-2 mt-8">
-      <Button 
-        variant="primary" 
-        icon={<Plus size={16} />}
-        onClick={() => setIsCreateTeamModalOpen(true)}
-      >
-        Create New Team
-      </Button>
+      <div>
+        <Button
+          variant="primary"
+          icon={<Plus size={16} />}
+          onClick={() => setIsCreateTeamModalOpen(true)}
+        >
+          Create New Team
+        </Button>
+      </div>
       <Link to="/search?type=teams">
         <Button variant="primary" icon={<SearchIcon size={16} />}>
           Search for Teams
@@ -311,69 +504,316 @@ const MyTeams = () => {
 
   return (
     <PageContainer title="My Teams" action={CreateTeamAction} variant="muted">
+      <div className="flex flex-wrap items-center justify-between gap-y-2 mb-6">
+        <div className="flex flex-wrap items-center gap-1 -ml-2">
+          <button
+            type="button"
+            onClick={() => handleSortChange("name")}
+            className={`flex items-center gap-1 px-1 text-xs rounded transition-colors shrink-0 ${
+              sortBy === "name"
+                ? "text-[var(--color-primary)] font-bold"
+                : "text-[var(--color-primary-focus)]/70 hover:text-[var(--color-primary-focus)] hover:font-medium"
+            }`}
+          >
+            {sortDir === "desc" && sortBy === "name" ? (
+              <ArrowUpZA className="w-3.5 h-3.5 shrink-0" />
+            ) : (
+              <ArrowDownAZ className="w-3.5 h-3.5 shrink-0" />
+            )}
+            {sortBy === "name" && sortDir === "desc" ? "Z-A" : "A-Z"}
+          </button>
+          <button
+            type="button"
+            onClick={() => handleSortChange("recent")}
+            className={`flex items-center gap-1 px-1 text-xs rounded transition-colors shrink-0 ${
+              sortBy === "recent"
+                ? "text-[var(--color-primary)] font-bold"
+                : "text-[var(--color-primary-focus)]/70 hover:text-[var(--color-primary-focus)] hover:font-medium"
+            }`}
+          >
+            <Clock className="w-3.5 h-3.5 shrink-0" />
+            {sortBy === "recent" && sortDir === "asc" ? "Inactive" : "Active"}
+          </button>
+          <button
+            type="button"
+            onClick={() => handleSortChange("newest")}
+            className={`flex items-center gap-1 px-1 text-xs rounded transition-colors shrink-0 ${
+              sortBy === "newest"
+                ? "text-[var(--color-primary)] font-bold"
+                : "text-[var(--color-primary-focus)]/70 hover:text-[var(--color-primary-focus)] hover:font-medium"
+            }`}
+          >
+            <Sparkles className="w-3.5 h-3.5 shrink-0" />
+            {sortBy === "newest" && sortDir === "asc" ? "Oldest" : "Newest"}
+          </button>
+        </div>
+
+        <div className="flex items-center text-sm font-normal text-base-content/60 gap-1 -ml-2">
+          <button
+            type="button"
+            onClick={() => setResultView("card")}
+            className={`px-2 py-1 rounded hover:text-base-content transition-colors ${
+              resultView === "card" ? "font-bold text-base-content" : ""
+            }`}
+          >
+            Card
+          </button>
+          <span className="text-base-content/30">|</span>
+          <button
+            type="button"
+            onClick={() => setResultView("mini")}
+            className={`px-2 py-1 rounded hover:text-base-content transition-colors ${
+              resultView === "mini" ? "font-bold text-base-content" : ""
+            }`}
+          >
+            Mini Card
+          </button>
+          <span className="text-base-content/30">|</span>
+          <button
+            type="button"
+            onClick={() => setResultView("list")}
+            className={`px-2 py-1 rounded hover:text-base-content transition-colors ${
+              resultView === "list" ? "font-bold text-base-content" : ""
+            }`}
+          >
+            List
+          </button>
+        </div>
+      </div>
+
       {/* Pending Invitations Section */}
-      {pendingInvitations.length > 0 && (
+      {showPendingInvitationsSection && (
         <Section
-          title="My Pending Membership Invitations"
-          subtitle="Teams that have invited you to join"
+          title="My Pending Invitations"
+          subtitle={pendingInvitationsSubtitle}
           className="mb-10"
+          icon={
+            <Mail
+              className="h-5 w-5 text-[var(--color-primary-focus)]"
+              aria-hidden="true"
+            />
+          }
+          collapsible
         >
           {loadingInvitations ? (
             <div className="flex justify-center py-8">
               <div className="loading loading-spinner loading-md"></div>
             </div>
           ) : (
-            <Grid cols={1} md={2} lg={3} gap={6}>
-              {pendingInvitations.filter(Boolean).map((invitation) => (
-                <div
-                  key={`invitation-${invitation.id}`}
-                  ref={
-                    String(invitation.id) === highlightId
-                      ? highlightedInvitationRef
-                      : null
-                  }
-                  className={
-                    String(invitation.id) === highlightId
-                      ? "message-highlight rounded-xl"
-                      : ""
-                  }
-                >
-                  <TeamCard
-                    variant="invitation"
-                    invitation={invitation}
-                    onAccept={handleInvitationAccept}
-                    onDecline={handleInvitationDecline}
-                  />
-                </div>
-              ))}
-            </Grid>
+            <>
+              {invitationsPagination.paginatedItems.length > 0 && (
+                <>
+                  {resultView === "list" ? (
+                    <div className="background-opacity bg-opacity-70 shadow-soft rounded-xl divide-y divide-base-200">
+                      {invitationsPagination.paginatedItems.map((invitation, index) => (
+                        <div
+                          key={`${
+                            invitation.isInternal ?? invitation.is_internal
+                              ? "role-invitation"
+                              : "invitation"
+                          }-${invitation.id}`}
+                          ref={
+                            String(invitation.id) === highlightId
+                              ? highlightedInvitationRef
+                              : null
+                          }
+                          className={
+                            String(invitation.id) === highlightId
+                              ? "message-highlight"
+                              : ""
+                          }
+                        >
+                          <TeamCard
+                            variant={
+                              invitation.isInternal ?? invitation.is_internal
+                                ? "role_invitation"
+                                : "invitation"
+                            }
+                            invitation={invitation}
+                            onAccept={handleInvitationAccept}
+                            onDecline={handleInvitationDecline}
+                            viewerDistanceSource={viewerDistanceSource}
+                            hideDistanceInfo={true}
+                            disableListEdgeRounding={true}
+                            listClassName={`${index === 0 ? "rounded-t-xl" : ""} ${
+                              index ===
+                              invitationsPagination.paginatedItems.length - 1
+                                ? "rounded-b-xl"
+                                : ""
+                            }`}
+                            listLocationWidthClassName={MY_TEAMS_LIST_LOCATION_WIDTH_CLASSNAME}
+                            listLocationInsetClassName={MY_TEAMS_LIST_LOCATION_INSET_CLASSNAME}
+                            listTagsWidthClassName={MY_TEAMS_LIST_TAGS_WIDTH_CLASSNAME}
+                            listBadgesWidthClassName={MY_TEAMS_LIST_BADGES_WIDTH_CLASSNAME}
+                            viewMode="list"
+                            activeFilters={{}}
+                            showMatchScore={true}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <Grid
+                      cols={1}
+                      md={2}
+                      lg={3}
+                      gap={resultView === "card" ? 6 : 4}
+                    >
+                      {invitationsPagination.paginatedItems.map((invitation) => (
+                        <div
+                          key={`${
+                            invitation.isInternal ?? invitation.is_internal
+                              ? "role-invitation"
+                              : "invitation"
+                          }-${invitation.id}`}
+                          ref={
+                            String(invitation.id) === highlightId
+                              ? highlightedInvitationRef
+                              : null
+                          }
+                          className={
+                            String(invitation.id) === highlightId
+                              ? "message-highlight rounded-xl"
+                              : "contents"
+                          }
+                        >
+                          <TeamCard
+                            variant={
+                              invitation.isInternal ?? invitation.is_internal
+                                ? "role_invitation"
+                                : "invitation"
+                            }
+                            invitation={invitation}
+                            onAccept={handleInvitationAccept}
+                            onDecline={handleInvitationDecline}
+                            viewerDistanceSource={viewerDistanceSource}
+                            hideDistanceInfo={true}
+                            viewMode={resultView}
+                            activeFilters={{}}
+                            showMatchScore={true}
+                          />
+                        </div>
+                      ))}
+                    </Grid>
+                  )}
+                  {invitationsPagination.shouldShowPagination && (
+                    <Pagination
+                      currentPage={invitationsPagination.clampedPage}
+                      totalPages={invitationsPagination.totalPages}
+                      totalItems={combinedPendingInvitations.length}
+                      onPageChange={invitationsPagination.handlePageChange}
+                      resultsPerPage={invitationsPagination.perPage}
+                      onResultsPerPageChange={invitationsPagination.handlePerPageChange}
+                      resultsPerPageOptions={RESULTS_PER_PAGE_OPTIONS}
+                    />
+                  )}
+                </>
+              )}
+            </>
           )}
         </Section>
       )}
 
       {/* Pending Applications Section */}
-      {pendingApplications.length > 0 && (
+      {showPendingApplicationsSection && (
         <Section
-          title="My Pending Membership Applications"
-          subtitle="Teams that I would like to join"
+          title="My Pending Applications"
+          subtitle={pendingApplicationsSubtitle}
           className="mb-10"
+          icon={
+            <SendHorizontal
+              className="h-5 w-5 text-[var(--color-primary-focus)]"
+              aria-hidden="true"
+            />
+          }
+          collapsible
         >
           {loadingApplications ? (
             <div className="flex justify-center py-8">
               <div className="loading loading-spinner loading-md"></div>
             </div>
           ) : (
-            <Grid cols={1} md={2} lg={3} gap={6}>
-              {pendingApplications.filter(Boolean).map((application) => (
-                <TeamCard
-                  key={`application-${application.id}`}
-                  variant="application"
-                  application={application}
-                  onCancel={handleApplicationCancel}
-                  onSendReminder={handleSendReminder}
-                />
-              ))}
-            </Grid>
+            <>
+              {applicationsPagination.paginatedItems.length > 0 && (
+                <>
+                  {resultView === "list" ? (
+                    <div className="background-opacity bg-opacity-70 shadow-soft rounded-xl divide-y divide-base-200">
+                      {applicationsPagination.paginatedItems.map((application) => (
+                        <TeamCard
+                          key={`${
+                            application.isInternalRoleApplication ??
+                            application.is_internal_role_application
+                              ? "role-application"
+                              : "application"
+                          }-${application.id}`}
+                          variant={
+                            application.isInternalRoleApplication ??
+                            application.is_internal_role_application
+                              ? "role_application"
+                              : "application"
+                          }
+                          application={application}
+                          onCancel={handleApplicationCancel}
+                          onSendReminder={handleSendReminder}
+                          viewerDistanceSource={viewerDistanceSource}
+                          hideDistanceInfo={true}
+                          listLocationWidthClassName={MY_TEAMS_LIST_LOCATION_WIDTH_CLASSNAME}
+                          listLocationInsetClassName={MY_TEAMS_LIST_LOCATION_INSET_CLASSNAME}
+                          listTagsWidthClassName={MY_TEAMS_LIST_TAGS_WIDTH_CLASSNAME}
+                          listBadgesWidthClassName={MY_TEAMS_LIST_BADGES_WIDTH_CLASSNAME}
+                          viewMode="list"
+                          activeFilters={{}}
+                          showMatchScore={true}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <Grid
+                      cols={1}
+                      md={2}
+                      lg={3}
+                      gap={resultView === "card" ? 6 : 4}
+                    >
+                      {applicationsPagination.paginatedItems.map((application) => (
+                        <TeamCard
+                          key={`${
+                            application.isInternalRoleApplication ??
+                            application.is_internal_role_application
+                              ? "role-application"
+                              : "application"
+                          }-${application.id}`}
+                          variant={
+                            application.isInternalRoleApplication ??
+                            application.is_internal_role_application
+                              ? "role_application"
+                              : "application"
+                          }
+                          application={application}
+                          onCancel={handleApplicationCancel}
+                          onSendReminder={handleSendReminder}
+                          viewerDistanceSource={viewerDistanceSource}
+                          hideDistanceInfo={true}
+                          viewMode={resultView}
+                          activeFilters={{}}
+                          showMatchScore={true}
+                        />
+                      ))}
+                    </Grid>
+                  )}
+                  {applicationsPagination.shouldShowPagination && (
+                    <Pagination
+                      currentPage={applicationsPagination.clampedPage}
+                      totalPages={applicationsPagination.totalPages}
+                      totalItems={combinedPendingApplications.length}
+                      onPageChange={applicationsPagination.handlePageChange}
+                      resultsPerPage={applicationsPagination.perPage}
+                      onResultsPerPageChange={applicationsPagination.handlePerPageChange}
+                      resultsPerPageOptions={RESULTS_PER_PAGE_OPTIONS}
+                    />
+                  )}
+                </>
+              )}
+            </>
           )}
         </Section>
       )}
@@ -382,18 +822,41 @@ const MyTeams = () => {
       <Section
         id="my-teams-section"
         title="Teams You're A Part Of"
-        subtitle="Teams you've created or joined as a member"
+        subtitle={`${pagination.totalTeams} ${pagination.totalTeams === 1 ? 'Team' : 'Teams'} you've created or joined as a member`}
+        icon={
+          <Users
+            className="h-5 w-5 text-[var(--color-primary-focus)]"
+            aria-hidden="true"
+          />
+        }
+        subtitleAction={
+          <button
+            type="button"
+            onClick={() => handleSortChange("requests")}
+            className={`flex items-center gap-1 px-1 text-xs rounded transition-colors shrink-0 ${
+              sortBy === "requests"
+                ? "text-[var(--color-primary)] font-bold"
+                : "text-[var(--color-primary-focus)]/70 hover:text-[var(--color-primary-focus)] hover:font-medium"
+            }`}
+          >
+            <Inbox className="w-3.5 h-3.5 shrink-0" />
+            {sortBy === "requests" && sortDir === "asc"
+              ? "Least Requests"
+              : "Most Requests"}
+          </button>
+        }
+        collapsible
       >
         {loading ? (
           <div className="flex justify-center py-8">
             <div className="loading loading-spinner loading-md"></div>
           </div>
-        ) : teams.length === 0 ? (
+        ) : sortedTeams.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-base-content/70 mb-4">
               You haven't joined any teams yet.
             </p>
-            <Button 
+            <Button
               variant="primary"
               onClick={() => setIsCreateTeamModalOpen(true)}
             >
@@ -402,31 +865,104 @@ const MyTeams = () => {
           </div>
         ) : (
           <>
-            <Grid cols={1} md={2} lg={3} gap={6}>
-              {teams.filter(Boolean).map((team) => (
-                <TeamCard
-                  key={team.id}
-                  variant="member"
-                  team={{
-                    ...team,
-                    is_public: team.is_public === true || team.isPublic === true,
-                  }}
-                  onUpdate={handleTeamUpdate}
-                  onDelete={handleTeamDelete}
-                  onLeave={handleTeamLeave}
-                  autoOpenApplications={team.id === autoOpenApplicationsTeamId}
-                  highlightApplicantId={
-                    team.id === autoOpenApplicationsTeamId ? highlightId : null
-                  }
-                  onApplicationsModalClosed={() =>
-                    setAutoOpenApplicationsTeamId(null)
-                  }
-                />
-              ))}
-            </Grid>
+            {resultView === "list" ? (
+              <div className="background-opacity bg-opacity-70 shadow-soft rounded-xl divide-y divide-base-200">
+                {sortedTeams.map((team, index) => (
+                  <div
+                    key={team.id}
+                    ref={
+                      String(team.id) === openTeamId ? highlightedTeamRef : null
+                    }
+                    className={
+                      String(team.id) === openTeamId ? "message-highlight" : ""
+                    }
+                  >
+                    <TeamCard
+                      variant="member"
+                      team={{
+                        ...team,
+                        is_public:
+                          team.is_public === true || team.isPublic === true,
+                      }}
+                      onUpdate={handleTeamUpdate}
+                      onDelete={handleTeamDelete}
+                      onLeave={handleTeamLeave}
+                      viewerDistanceSource={viewerDistanceSource}
+                      hideDistanceInfo={true}
+                      hideMemberRoleIcon={true}
+                      disableListEdgeRounding={true}
+                      listClassName={`${index === 0 ? "rounded-t-xl" : ""} ${
+                        index === sortedTeams.length - 1 ? "rounded-b-xl" : ""
+                      }`}
+                      listLocationWidthClassName={MY_TEAMS_LIST_LOCATION_WIDTH_CLASSNAME}
+                      listLocationInsetClassName={MY_TEAMS_LIST_LOCATION_INSET_CLASSNAME}
+                      listTagsWidthClassName={MY_TEAMS_LIST_TAGS_WIDTH_CLASSNAME}
+                      listBadgesWidthClassName={MY_TEAMS_LIST_BADGES_WIDTH_CLASSNAME}
+                      autoOpenApplications={
+                        team.id === autoOpenApplicationsTeamId
+                      }
+                      highlightApplicantId={
+                        team.id === autoOpenApplicationsTeamId
+                          ? highlightId
+                          : null
+                      }
+                      onApplicationsModalClosed={() =>
+                        setAutoOpenApplicationsTeamId(null)
+                      }
+                      viewMode="list"
+                      activeFilters={{}}
+                    />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <Grid cols={1} md={2} lg={3} gap={resultView === "card" ? 6 : 4}>
+                {sortedTeams.map((team) => (
+                  <div
+                    key={team.id}
+                    ref={
+                      String(team.id) === openTeamId ? highlightedTeamRef : null
+                    }
+                    className={
+                      String(team.id) === openTeamId
+                        ? "message-highlight rounded-xl"
+                        : "contents"
+                    }
+                  >
+                    <TeamCard
+                      variant="member"
+                      team={{
+                        ...team,
+                        is_public:
+                          team.is_public === true || team.isPublic === true,
+                      }}
+                      onUpdate={handleTeamUpdate}
+                      onDelete={handleTeamDelete}
+                      onLeave={handleTeamLeave}
+                      viewerDistanceSource={viewerDistanceSource}
+                      hideDistanceInfo={true}
+                      hideMemberRoleIcon={true}
+                      autoOpenApplications={
+                        team.id === autoOpenApplicationsTeamId
+                      }
+                      highlightApplicantId={
+                        team.id === autoOpenApplicationsTeamId
+                          ? highlightId
+                          : null
+                      }
+                      onApplicationsModalClosed={() =>
+                        setAutoOpenApplicationsTeamId(null)
+                      }
+                      viewMode={resultView}
+                      activeFilters={{}}
+                    />
+                  </div>
+                ))}
+              </Grid>
+            )}
 
             {/* Pagination for My Teams */}
-            {pagination.totalPages > 1 && (
+            {shouldShowTeamsPagination && (
               <Pagination
                 currentPage={currentPage}
                 totalPages={pagination.totalPages}
@@ -434,7 +970,7 @@ const MyTeams = () => {
                 onPageChange={handlePageChange}
                 resultsPerPage={resultsPerPage}
                 onResultsPerPageChange={handleResultsPerPageChange}
-                resultsPerPageOptions={[10, 20, 30, 40]}
+                resultsPerPageOptions={RESULTS_PER_PAGE_OPTIONS}
               />
             )}
           </>
@@ -447,6 +983,8 @@ const MyTeams = () => {
         onClose={() => setIsCreateTeamModalOpen(false)}
         onTeamCreated={handleTeamCreated}
       />
+
+
     </PageContainer>
   );
 };

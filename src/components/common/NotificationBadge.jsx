@@ -1,5 +1,6 @@
 import React from "react";
 import { Mail, SendHorizontal, MessageCircle, Bell } from "lucide-react";
+import Tooltip from "./Tooltip";
 
 /**
  * NotificationBadge Component
@@ -69,23 +70,27 @@ const NotificationBadge = ({
   className = "",
   title,
   showZero = false,
+  compact = false,
 }) => {
   const config = VARIANTS[variant];
   const shouldShowBadge = count > 0 || showZero;
 
   // Wrapper mode: If children are provided, wrap them with the count badge
   if (children) {
+    const tooltipText =
+      title || (shouldShowBadge ? config?.getTitle(count) : undefined);
     return (
-      <div
-        className={`relative inline-flex ${className}`}
-        onClick={onClick}
-        title={title || (shouldShowBadge ? config?.getTitle(count) : undefined)}
-      >
-        {children}
-        {shouldShowBadge && (
-          <CountBadge count={count} className="absolute -top-2 -right-2" />
-        )}
-      </div>
+      <Tooltip content={tooltipText}>
+        <div
+          className={`relative inline-flex ${className}`}
+          onClick={onClick}
+        >
+          {children}
+          {shouldShowBadge && (
+            <CountBadge count={count} className="absolute -top-2.5 -right-2.5" />
+          )}
+        </div>
+      </Tooltip>
     );
   }
 
@@ -101,24 +106,28 @@ const NotificationBadge = ({
   const { backgroundColor, Icon, iconColorClass, getTitle } = config;
 
   return (
-    <button
-      onClick={onClick}
-      className={`group relative inline-flex items-center justify-center w-8 h-8 ${className}`}
-      title={title || getTitle(count)}
-    >
-      {/* Background circle with hover effect */}
-      <span
-        className="absolute inset-0 rounded-full group-hover:opacity-80 transition-opacity"
-        style={{ backgroundColor }}
-      />
-      {/* Icon with hover effect */}
-      <Icon
-        size={16}
-        className={`relative ${iconColorClass} group-hover:opacity-80 transition-opacity`}
-      />
-      {/* Count badge - no hover effect */}
-      <CountBadge count={count} className="absolute -top-1 -right-1" />
-    </button>
+    <Tooltip content={title || getTitle(count)}>
+      <button
+        onClick={onClick}
+        className={`group relative inline-flex items-center justify-center ${compact ? "w-6 h-6" : "w-8 h-8"} ${className}`}
+      >
+        {/* Background circle with hover effect */}
+        <span
+          className="absolute inset-0 rounded-full group-hover:opacity-80 transition-opacity"
+          style={{ backgroundColor }}
+        />
+        {/* Icon with hover effect */}
+        <Icon
+          size={compact ? 14 : 16}
+          className={`relative ${iconColorClass} group-hover:opacity-80 transition-opacity`}
+        />
+        {/* Count badge - no hover effect */}
+        <CountBadge
+          count={count}
+          className={`absolute ${compact ? "-top-1.5 -right-1.5" : "-top-2 -right-2"}`}
+        />
+      </button>
+    </Tooltip>
   );
 };
 

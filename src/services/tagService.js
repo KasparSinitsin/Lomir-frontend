@@ -5,7 +5,6 @@ export const tagService = {
   getStructuredTags: async () => {
     try {
       const response = await api.get("/api/tags/structured");
-      console.log("Raw tag structure from API:", response.data);
 
       const processedData = (response.data || []).map((supercat) => ({
         ...supercat,
@@ -29,7 +28,6 @@ export const tagService = {
         })),
       }));
 
-      console.log("Processed tag structure:", processedData);
       return processedData;
     } catch (error) {
       console.error("Error fetching structured tags:", error);

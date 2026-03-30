@@ -1,5 +1,6 @@
-import React, { useState } from "react";
-import { Send, Save, Users, SendHorizontal } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Send, Save, Users, SendHorizontal, UserSearch, MapPin, Globe, Check, CircleDot } from "lucide-react";
+import { vacantRoleService } from "../../services/vacantRoleService";
 import Modal from "../common/Modal";
 import Button from "../common/Button";
 import Alert from "../common/Alert";
@@ -21,14 +22,63 @@ const TeamApplicationModal = ({
   isOpen,
   onClose,
   team,
+  teamId = null,
+  initialRoleId = null,
   onSubmit,
   loading = false,
+  isInternal = false,
 }) => {
   const [message, setMessage] = useState("");
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [isDraft, setIsDraft] = useState(false);
   const [isTeamDetailsOpen, setIsTeamDetailsOpen] = useState(false);
+
+  // Vacant role selection state
+  const [vacantRoles, setVacantRoles] = useState([]);
+  const [loadingRoles, setLoadingRoles] = useState(false);
+  const [selectedRoleId, setSelectedRoleId] = useState(null);
+
+  // Resolve teamId
+  const effectiveTeamId =
+    teamId ?? team?.id ?? team?.teamId ?? team?.team_id ?? null;
+
+  // Fetch open vacant roles when modal opens
+  useEffect(() => {
+    if (!isOpen || !effectiveTeamId) {
+      setVacantRoles([]);
+      setLoadingRoles(false);
+      return;
+    }
+
+    const fetchRoles = async () => {
+      try {
+        setLoadingRoles(true);
+        const response = await vacantRoleService.getVacantRoles(
+          effectiveTeamId,
+          "open"
+        );
+        setVacantRoles(response.data || []);
+      } catch (err) {
+        console.warn("Could not fetch vacant roles:", err);
+        setVacantRoles([]);
+      } finally {
+        setLoadingRoles(false);
+      }
+    };
+
+    fetchRoles();
+  }, [isOpen, effectiveTeamId]);
+
+  // Pre-select the initial role when roles load
+  useEffect(() => {
+    if (isOpen && initialRoleId && vacantRoles.length > 0) {
+      const exists = vacantRoles.some((r) => r.id === initialRoleId);
+      setSelectedRoleId(exists ? initialRoleId : null);
+    } else if (isOpen && !initialRoleId) {
+      setSelectedRoleId(null);
+    }
+  }, [isOpen, initialRoleId, vacantRoles]);
 
   // ============ Helper Functions ============
 
@@ -73,6 +123,28 @@ const TeamApplicationModal = ({
       .toUpperCase();
   };
 
+  // Get role initials (matching VacantRoleCard pattern)
+  const getRoleInitials = (roleName) => {
+    const name = roleName || "Vacant Role";
+    const words = name.trim().split(/\s+/);
+    if (words.length >= 2) {
+      return `${words[0].charAt(0)}${words[1].charAt(0)}`.toUpperCase();
+    }
+    return name.substring(0, 2).toUpperCase();
+  };
+
+  // Get role location text
+  const getRoleLocation = (role) => {
+    const isRemote = role.isRemote ?? role.is_remote;
+    if (isRemote) return "Remote";
+    const parts = [role.city, role.country].filter(Boolean);
+    return parts.length > 0 ? parts.join(", ") : null;
+  };
+
+  const handleRoleCardClick = (roleId) => {
+    setSelectedRoleId((prev) => (prev === roleId ? null : roleId));
+  };
+
   // ============ Handlers ============
 
   const handleTeamClick = () => {
@@ -90,13 +162,18 @@ const TeamApplicationModal = ({
       await onSubmit({
         message: message.trim(),
         isDraft: saveAsDraft,
+        roleId: selectedRoleId || null,
       });
 
       if (saveAsDraft) {
         setSuccess("Draft saved successfully");
         setIsDraft(true);
       } else {
-        setSuccess("Application sent successfully!");
+        setSuccess(
+          isInternal
+            ? "Role application sent to the team owner and admins!"
+            : "Application sent successfully!"
+        );
         setTimeout(() => {
           handleClose();
         }, 1500);
@@ -111,6 +188,7 @@ const TeamApplicationModal = ({
     setError(null);
     setSuccess(null);
     setIsDraft(false);
+    setSelectedRoleId(null);
     onClose();
   };
 
@@ -118,10 +196,14 @@ const TeamApplicationModal = ({
 
   const customHeader = (
     <div className="flex items-center gap-3">
-      <SendHorizontal className="text-primary" size={24} />
+      {isInternal ? (
+        <UserSearch className="text-primary" size={24} />
+      ) : (
+        <SendHorizontal className="text-primary" size={24} />
+      )}
       <div>
         <h2 className="text-xl font-medium text-primary">
-          Apply to join this Team
+          {isInternal ? "Apply to fill a role in your team" : "Apply to join this Team"}
         </h2>
       </div>
     </div>
@@ -145,10 +227,10 @@ const TeamApplicationModal = ({
       <Button
         variant="successOutline"
         onClick={() => handleSubmit(false)}
-        disabled={loading || !message.trim()}
+        disabled={loading || !message.trim() || (isInternal && !selectedRoleId)}
         icon={<Send size={16} />}
       >
-        {loading ? "Sending..." : "Send Application"}
+        {loading ? "Sending..." : isInternal ? "Send Role Application" : "Send Application"}
       </Button>
     </div>
   );
@@ -235,18 +317,121 @@ const TeamApplicationModal = ({
             <p className="text-sm text-base-content/80">{team.description}</p>
           )}
 
+          {/* Vacant role selection */}
+          {(loadingRoles || vacantRoles.length > 0) && (
+            <div>
+              <p className="text-xs text-base-content/60 mb-2 flex items-center">
+                <UserSearch size={12} className="text-orange-500 mr-1" />
+                Select a role you want to fill in this team:
+              </p>
+
+              {loadingRoles ? (
+                <div className="flex justify-center py-6">
+                  <div className="loading loading-spinner loading-md text-primary"></div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-64 overflow-y-auto">
+                  {vacantRoles.map((role) => {
+                    const roleName = role.roleName ?? role.role_name ?? "Vacant Role";
+                    const isSelected = selectedRoleId === role.id;
+                    const locationText = getRoleLocation(role);
+                    const isRemote = role.isRemote ?? role.is_remote;
+
+                    return (
+                      <div
+                        key={role.id}
+                        onClick={() => handleRoleCardClick(role.id)}
+                        className={`relative flex items-center gap-3 p-3 rounded-xl shadow cursor-pointer transition-all duration-200
+                          ${
+                            isSelected
+                              ? "bg-amber-100 ring-2 ring-amber-400 shadow-md"
+                              : "bg-amber-50 hover:bg-amber-100 hover:shadow-md"
+                          }`}
+                      >
+                        {/* Selection badge */}
+                        <div className="absolute top-2 right-2">
+                          <span
+                            className={`badge badge-sm gap-1 ${
+                              isSelected
+                                ? ""
+                                : "badge-role-member"
+                            }`}
+                            style={
+                              isSelected
+                                ? {
+                                    backgroundColor: "var(--color-warning, #F59E0B)",
+                                    color: "#ffffff",
+                                  }
+                                : {}
+                            }
+                          >
+                            {isSelected ? (
+                              <Check className="w-3 h-3" />
+                            ) : (
+                              <UserSearch className="w-3 h-3" />
+                            )}
+                            {isSelected ? "Selected" : "Select"}
+                          </span>
+                        </div>
+
+                        {/* Role avatar */}
+                        <div className="avatar placeholder flex-shrink-0">
+                          <div className="bg-amber-200 text-amber-800 rounded-full w-10 h-10 flex items-center justify-center">
+                            <span className="text-sm font-medium">
+                              {getRoleInitials(roleName)}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Role info */}
+                        <div className="flex-1 min-w-0 pr-16">
+                          <h4 className="font-medium text-sm text-base-content leading-tight truncate">
+                            {roleName}
+                          </h4>
+                          {locationText && (
+                            <p className="text-xs text-base-content/60 flex items-center mt-0.5">
+                              {isRemote ? (
+                                <Globe size={10} className="mr-1 flex-shrink-0" />
+                              ) : (
+                                <MapPin size={10} className="mr-1 flex-shrink-0" />
+                              )}
+                              <span className="truncate">{locationText}</span>
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {!loadingRoles && selectedRoleId === null && vacantRoles.length > 0 && !isInternal && (
+                <p className="text-xs text-base-content/40 mt-1.5">
+                  No role selected — your application will be sent as a general team application.
+                </p>
+              )}
+              {!loadingRoles && selectedRoleId === null && vacantRoles.length > 0 && isInternal && (
+                <p className="text-xs text-warning/70 mt-1.5">
+                  Please select a role to apply for.
+                </p>
+              )}
+            </div>
+          )}
+
           {/* Application message textarea */}
           <div>
             <p className="text-xs text-base-content/60 mb-1 flex items-center">
               <Send size={12} className="text-info mr-1" />
-              Your message to the team:
+              {isInternal ? "Your message to the owner and admins:" : "Your message to the team:"}
             </p>
 
             <div className="relative">
               <textarea
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
-                placeholder="Tell the team why you'd like to join, what skills you bring, and what you hope to contribute..."
+                placeholder={isInternal
+                  ? "Tell the owner and admins why you'd like to fill this role and what relevant experience you bring..."
+                  : "Tell the team why you'd like to join, what skills you bring, and what you hope to contribute..."}
                 className="textarea textarea-bordered w-full h-32 resize-none text-sm pb-6"
                 disabled={loading}
                 maxLength={500}

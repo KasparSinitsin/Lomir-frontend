@@ -4,14 +4,6 @@ export const teamService = {
   // Create a new team
   createTeam: async (teamData) => {
     try {
-      console.log("createTeam: Received data:", teamData);
-
-      // Debug the teamavatar_url field
-      console.log(
-        "Team avatar URL field:",
-        teamData.teamavatar_url || teamData.teamavatarUrl || "Not provided",
-      );
-
       // Ensure tags are properly formatted
       const formattedTags =
         teamData.tags?.map((tag) => {
@@ -64,8 +56,6 @@ export const teamService = {
         country: teamData.is_remote ? null : teamData.country || null,
       };
 
-      console.log("createTeam: Sending validated data:", validatedTeamData);
-
       const response = await api.post("/api/teams", validatedTeamData);
       return response.data;
     } catch (error) {
@@ -97,23 +87,29 @@ export const teamService = {
     }
   },
 
-  getTeamApplications: async (teamId) => {
+  getTeamApplications: async (teamId, requestConfig = {}) => {
     try {
-      const response = await api.get(`/api/teams/${teamId}/applications`);
+      const response = await api.get(
+        `/api/teams/${teamId}/applications`,
+        requestConfig,
+      );
       return response.data;
     } catch (error) {
-      console.error(`Error fetching applications for team ${teamId}:`, error);
+      if (!(requestConfig.skipAuthRedirect && error.response?.status === 403)) {
+        console.error(`Error fetching applications for team ${teamId}:`, error);
+      }
       throw error;
     }
   },
 
-  handleTeamApplication: async (applicationId, action, response = "") => {
+  handleTeamApplication: async (applicationId, action, response = "", fillRole = false) => {
     try {
       const apiResponse = await api.put(
         `/api/teams/applications/${applicationId}`,
         {
           action,
           response,
+          fillRole,
         },
       );
       return apiResponse.data;
@@ -183,7 +179,6 @@ export const teamService = {
     };
 
     try {
-      console.log(`Fetching team details for ID: ${teamId}`);
       const response = await api.get(`/api/teams/${teamId}`);
 
       // Backend returns: { success: true, data: team }
@@ -225,11 +220,51 @@ export const teamService = {
     }
   },
 
+  /**
+   * Fetches aggregated badge summary for all members of a team.
+   * Returns one row per badge with total credits, award counts, etc.
+   * Shape is compatible with BadgesDisplaySection.
+   *
+   * @param {string|number} teamId - The team ID
+   * @returns {Promise<object>} { success: true, data: [...badges], meta: { totalCredits } }
+   */
+  getTeamMemberBadges: async (teamId) => {
+    try {
+      const response = await api.get(`/api/teams/${teamId}/member-badges`);
+      return response.data;
+    } catch (error) {
+      console.error(
+        `Error fetching member badges for team ${teamId}:`,
+        error,
+      );
+      throw error;
+    }
+  },
+
+  /**
+   * Fetches ALL badge awards for team members (not filtered by focus areas).
+   * Used by badge category and badge pill drill-down modals.
+   * Same row shape as getTeamBadgeAwards but without focus-area filtering.
+   *
+   * @param {string|number} teamId - The team ID
+   * @returns {Promise<object>} { success: true, data: [...awards] }
+   */
+  getTeamMemberBadgeAwards: async (teamId) => {
+    try {
+      const response = await api.get(`/api/teams/${teamId}/member-badge-awards`);
+      return response.data;
+    } catch (error) {
+      console.error(
+        `Error fetching member badge awards for team ${teamId}:`,
+        error,
+      );
+      throw error;
+    }
+  },
+
   // Update team details
   updateTeam: async (teamId, teamData) => {
     try {
-      console.log("updateTeam: Updating team with data:", teamData);
-
       // Ensure tags are properly formatted
       const formattedTags =
         teamData.tags?.map((tag) => {
@@ -283,8 +318,6 @@ export const teamService = {
       // Optional: remove camelCase duplicates so you don't send both
       delete dataToSend.isRemote;
       delete dataToSend.postalCode;
-
-      console.log("updateTeam: Sending formatted data:", dataToSend);
 
       const response = await api.put(`/api/teams/${teamId}`, dataToSend);
       return response.data;
@@ -351,7 +384,7 @@ export const teamService = {
    * @param {number} limit - Results per page (default: 10)
    * @returns {Promise<Object>} User teams with pagination metadata
    */
-  getUserTeams: async (userId, page = 1, limit = 10) => {
+  getUserTeams: async (userId, { page = 1, limit = 10 } = {}) => {
     try {
       if (!userId) {
         throw new Error("User ID is required");
@@ -413,15 +446,20 @@ export const teamService = {
   /**
    * Get all pending invitations sent by a specific team
    */
-  getTeamSentInvitations: async (teamId) => {
+  getTeamSentInvitations: async (teamId, requestConfig = {}) => {
     try {
-      const response = await api.get(`/api/teams/${teamId}/invitations`);
+      const response = await api.get(
+        `/api/teams/${teamId}/invitations`,
+        requestConfig,
+      );
       return response.data;
     } catch (error) {
-      console.error(
-        `Error fetching sent invitations for team ${teamId}:`,
-        error,
-      );
+      if (!(requestConfig.skipAuthRedirect && error.response?.status === 403)) {
+        console.error(
+          `Error fetching sent invitations for team ${teamId}:`,
+          error,
+        );
+      }
       throw error;
     }
   },
@@ -437,25 +475,24 @@ export const teamService = {
     }
   },
 
-  sendInvitation: async (teamId, inviteeId, message = "") => {
+  sendInvitation: async (teamId, inviteeId, message = "", roleId = null) => {
     try {
-      const response = await api.post(`/api/teams/${teamId}/invitations`, {
+      const invitationData = {
         inviteeId,
         message,
-      });
+      };
+
+      if (roleId !== null && roleId !== undefined) {
+        invitationData.roleId = roleId;
+      }
+
+      const response = await api.post(
+        `/api/teams/${teamId}/invitations`,
+        invitationData,
+      );
       return response.data;
     } catch (error) {
       console.error(`Error sending invitation to team ${teamId}:`, error);
-      throw error;
-    }
-  },
-
-  getUserReceivedInvitations: async () => {
-    try {
-      const response = await api.get("/api/teams/invitations/received");
-      return response.data;
-    } catch (error) {
-      console.error("Error fetching received invitations:", error);
       throw error;
     }
   },
@@ -481,11 +518,12 @@ export const teamService = {
     }
   },
 
-  respondToInvitation: async (invitationId, action, responseMessage = "") => {
+  respondToInvitation: async (invitationId, action, responseMessage = "", fillRole = false) => {
     try {
       const response = await api.put(`/api/teams/invitations/${invitationId}`, {
         action,
         response_message: responseMessage,
+        fill_role: fillRole,
       });
       return response.data;
     } catch (error) {

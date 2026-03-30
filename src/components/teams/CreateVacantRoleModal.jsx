@@ -46,6 +46,7 @@ const CreateVacantRoleModal = ({
   existingRole = null,
   onSuccess,
 }) => {
+  const SUCCESS_CLOSE_DELAY_MS = 3000;
   const isEditMode = !!existingRole;
 
   // Form state
@@ -297,7 +298,7 @@ const CreateVacantRoleModal = ({
       setTimeout(() => {
         if (onSuccess) onSuccess();
         onClose();
-      }, 1200);
+      }, SUCCESS_CLOSE_DELAY_MS);
     } catch (err) {
       console.error("Error saving vacant role:", err);
       setSubmitError(
@@ -311,7 +312,7 @@ const CreateVacantRoleModal = ({
   // Custom header
   const customHeader = (
     <div className="flex items-center gap-2">
-      <UserSearch className="text-amber-500" size={22} />
+      <UserSearch className="text-orange-500" size={22} />
       <h2 className="text-lg font-medium">
         {isEditMode ? "Edit Vacant Role" : "Add Vacant Role"}
       </h2>
@@ -348,11 +349,14 @@ const CreateVacantRoleModal = ({
       <div className="space-y-4">
         {/* Success message */}
         {submitSuccess && (
-          <Alert type="success">
-            {isEditMode
-              ? "Vacant role updated successfully!"
-              : "Vacant role created successfully!"}
-          </Alert>
+          <Alert
+            type="success"
+            message={
+              isEditMode
+                ? "Vacant role updated successfully!"
+                : "Vacant role created. Start building your team by looking for a good match now."
+            }
+          />
         )}
 
         {/* Error message */}

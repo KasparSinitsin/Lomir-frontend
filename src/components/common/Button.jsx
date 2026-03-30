@@ -10,7 +10,8 @@ const Button = ({
   onClick,
   disabled = false,
   fullWidth = false,
-  icon = null
+  icon = null,
+  suppressCardTooltip = false,
 }) => {
   const baseClasses = 'btn';
   
@@ -53,6 +54,7 @@ const Button = ({
       className={classes}
       onClick={onClick}
       disabled={disabled}
+      data-tooltip-trigger={suppressCardTooltip ? "true" : undefined}
     >
       {icon && <span className="mr-0">{icon}</span>}
       {children}

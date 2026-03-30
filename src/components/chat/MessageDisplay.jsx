@@ -382,12 +382,20 @@ const MessageDisplay = ({
   conversationType = "direct",
   teamMembers = [],
   highlightMessageIds = [],
+  hasMoreMessages = false,
+  loadingMore = false,
+  onLoadEarlierMessages,
   onDeleteConversation,
   onDeleteMessage,
   onLeaveTeam,
 }) => {
   const messagesEndRef = useRef(null);
   const highlightedMessageRef = useRef(null);
+  const previousMessageSnapshotRef = useRef({
+    firstMessageId: null,
+    lastMessageId: null,
+    length: 0,
+  });
 
   // State for team details modal
   const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
@@ -405,6 +413,23 @@ const MessageDisplay = ({
   const [nameToIdCache, setNameToIdCache] = useState({});
 
   useEffect(() => {
+    const previousSnapshot = previousMessageSnapshotRef.current;
+    const currentSnapshot = {
+      firstMessageId: messages[0]?.id ?? null,
+      lastMessageId: messages[messages.length - 1]?.id ?? null,
+      length: messages.length,
+    };
+
+    const isLoadingEarlierMessages =
+      currentSnapshot.length > previousSnapshot.length &&
+      previousSnapshot.length > 0 &&
+      currentSnapshot.firstMessageId !== previousSnapshot.firstMessageId &&
+      currentSnapshot.lastMessageId === previousSnapshot.lastMessageId;
+
+    previousMessageSnapshotRef.current = currentSnapshot;
+
+    if (isLoadingEarlierMessages) return;
+
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, typingUsers]);
 
@@ -420,32 +445,6 @@ const MessageDisplay = ({
       return () => clearTimeout(timer);
     }
   }, [highlightMessageIds]);
-
-  // Add debugging
-
-  useEffect(() => {
-    console.log("onDeleteMessage prop:", onDeleteMessage);
-  }, [onDeleteMessage]);
-
-  useEffect(() => {
-    if (conversationType === "team") {
-      console.log("=== TEAM CHAT DEBUG ===");
-      console.log("Team members:", teamMembers);
-      console.log("Messages:", messages);
-      console.log(
-        "Sample message senderId:",
-        messages[0]?.senderId,
-        typeof messages[0]?.senderId,
-      );
-      if (teamMembers.length > 0) {
-        console.log(
-          "Sample team member user_id:",
-          teamMembers[0]?.user_id,
-          typeof teamMembers[0]?.user_id,
-        );
-      }
-    }
-  }, [teamMembers, messages, conversationType]);
 
   // Handle team avatar/name click
   const handleTeamClick = () => {
@@ -2180,6 +2179,22 @@ const MessageDisplay = ({
             >
               {teamData.name}
             </h3>
+          </div>
+        )}
+
+        {hasMoreMessages && (
+          <div className="flex justify-center py-2">
+            <button
+              className="btn btn-ghost btn-sm text-base-content/60"
+              onClick={onLoadEarlierMessages}
+              disabled={loadingMore}
+            >
+              {loadingMore ? (
+                <span className="loading loading-spinner loading-xs"></span>
+              ) : (
+                "Load earlier messages"
+              )}
+            </button>
           </div>
         )}
 

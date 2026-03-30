@@ -1,12 +1,19 @@
 import React from "react";
 
-const Alert = ({ type = "info", message, onClose, className = "" }) => {
+const Alert = ({
+  type = "info",
+  message,
+  children,
+  onClose,
+  className = "",
+}) => {
   const alertClasses = {
     info: "alert-info",
     success: "alert-success",
     warning: "alert-warning",
     error: "alert-error",
   };
+  const content = children ?? message;
 
   return (
     <div
@@ -74,7 +81,7 @@ const Alert = ({ type = "info", message, onClose, className = "" }) => {
             />
           </svg>
         )}
-        <span>{message}</span>
+        <span>{content}</span>
       </div>
       {onClose && (
         <button

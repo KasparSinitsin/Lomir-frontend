@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { UI_TEXT } from "../../constants/uiText";
 import Modal from "../common/Modal";
 import UserBioSection from "./UserBioSection";
@@ -13,27 +13,89 @@ import { userService } from "../../services/userService";
 import Button from "../common/Button";
 import Alert from "../common/Alert";
 import { useAuth } from "../../contexts/AuthContext";
-import { useNavigate } from "react-router-dom";
-import { Edit, MessageCircle, UserPlus, Award } from "lucide-react";
+import { Edit, MessageCircle, UserPlus, Award, Check, X, Ruler } from "lucide-react";
 import TeamInviteModal from "../teams/TeamInviteModal";
 import BadgeAwardModal from "../badges/BadgeAwardModal";
 import SupercategoryAwardsModal from "../badges/SupercategoryAwardsModal";
 import useAwardModals from "../../hooks/useAwardModals";
+import MatchScoreSection from "../common/MatchScoreSection";
+import {
+  buildViewerTeamMatchProfile,
+  enrichUserMatchData,
+  enrichUserRoleMatchData,
+} from "../../utils/teamMatchUtils";
+import { calculateDistanceKm } from "../../utils/locationUtils";
+
+const normalizeNumericSet = (values) => {
+  if (values == null) return null;
+
+  const items =
+    values instanceof Set
+      ? Array.from(values)
+      : Array.isArray(values)
+        ? values
+        : [values];
+
+  return new Set(items.map((value) => Number(value)).filter(Number.isFinite));
+};
+
+const normalizeStringSet = (values) => {
+  if (values == null) return null;
+
+  const items =
+    values instanceof Set
+      ? Array.from(values)
+      : Array.isArray(values)
+        ? values
+        : [values];
+
+  return new Set(
+    items
+      .map((value) =>
+        typeof value === "string" ? value.trim().toLowerCase() : "",
+      )
+      .filter(Boolean),
+  );
+};
 
 const UserDetailsModal = ({
   isOpen,
   userId,
   onClose,
-  onUpdate,
   mode,
   onOpenUser,
   zIndexClass,
   boxZIndexClass,
   zIndexStyle,
   boxZIndexStyle,
+  roleMatchTagIds,     // Set<number> | null — role's required tag IDs
+  roleMatchBadgeNames, // Set<string> | null — role's required badge names (lowercase)
+  roleMatchName = null,
+  roleMatchMaxDistanceKm = null,
+  showMatchHighlights = false,
+  matchScore = null,
+  matchType = null,
+  matchDetails = null,
+  distanceKm = null,
+  filledRoleName = null,
+  teamName = null,
+  invitationPrefillTeamId = null,
+  invitationPrefillRoleId = null,
+  invitationPrefillTeamName = null,
+  invitationPrefillRoleName = null,
 }) => {
   const { user: currentUser, isAuthenticated } = useAuth();
-  const navigate = useNavigate();
+  const normalizedRoleMatchTagIds = useMemo(
+    () => normalizeNumericSet(roleMatchTagIds),
+    [roleMatchTagIds],
+  );
+  const normalizedRoleMatchBadgeNames = useMemo(
+    () => normalizeStringSet(roleMatchBadgeNames),
+    [roleMatchBadgeNames],
+  );
+  const hasRoleMatchTagIds = (normalizedRoleMatchTagIds?.size ?? 0) > 0;
+  const hasRoleMatchBadgeNames =
+    (normalizedRoleMatchBadgeNames?.size ?? 0) > 0;
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -43,8 +105,11 @@ const UserDetailsModal = ({
   const [isEditing, setIsEditing] = useState(mode === "edit");
 
   const [userTags, setUserTags] = useState([]);
+  const [currentUserTagIds, setCurrentUserTagIds] = useState(null); // Set<number>
+  const [currentUserBadgeNames, setCurrentUserBadgeNames] = useState(null); // Set<string>
+  const [distanceViewerUser, setDistanceViewerUser] = useState(null);
 
-  const [formData, setFormData] = useState({
+  const [_formData, setFormData] = useState({
     firstName: "",
     lastName: "",
     bio: "",
@@ -90,7 +155,19 @@ const UserDetailsModal = ({
           ? payload?.data
           : (payload?.data?.data ?? payload?.data ?? payload);
 
-      setUser(userData);
+      const preservedDistanceKm =
+        distanceKm ??
+        user?.distance_km ??
+        user?.distanceKm ??
+        userData?.distance_km ??
+        userData?.distanceKm ??
+        null;
+
+      setUser({
+        ...userData,
+        distance_km: preservedDistanceKm,
+        distanceKm: preservedDistanceKm,
+      });
 
       // Fetch full tag objects (with badge_credits)
       try {
@@ -116,13 +193,109 @@ const UserDetailsModal = ({
     } finally {
       setLoading(false);
     }
-  }, [userId]);
+  }, [distanceKm, user?.distanceKm, user?.distance_km, userId]);
 
   useEffect(() => {
     if (isOpen && userId) {
       fetchUserDetails();
     }
   }, [isOpen, userId, fetchUserDetails]);
+
+  // Fetch CURRENT user's tags/badges for overlap highlighting (not the viewed user's)
+  useEffect(() => {
+    if (
+      !showMatchHighlights &&
+      !hasRoleMatchTagIds &&
+      !hasRoleMatchBadgeNames
+    ) {
+      return;
+    }
+    if (!isOpen || !isAuthenticated || !currentUser?.id) return;
+    // Don't highlight own profile
+    if (Number(currentUser.id) === Number(userId)) return;
+    // Skip when role context provides the matching data
+    if (hasRoleMatchTagIds || hasRoleMatchBadgeNames) return;
+
+    const fetchCurrentUserData = async () => {
+      try {
+        const tagsRes = await userService.getUserTags(currentUser.id);
+        const tagData = Array.isArray(tagsRes?.data)
+          ? tagsRes.data
+          : tagsRes?.data?.data || [];
+        const tagIds = new Set(
+          tagData
+            .map((t) => Number(t.tagId ?? t.tag_id ?? t.id))
+            .filter(Number.isFinite),
+        );
+        setCurrentUserTagIds(tagIds);
+
+        const badgesRes = await userService.getUserBadges(currentUser.id);
+        const badgeData = Array.isArray(badgesRes?.data)
+          ? badgesRes.data
+          : badgesRes?.data?.data || [];
+        const badgeNames = new Set(
+          badgeData
+            .map((b) =>
+              (b.badgeName ?? b.badge_name ?? b.name ?? "")
+                .trim()
+                .toLowerCase(),
+            )
+            .filter(Boolean),
+        );
+        setCurrentUserBadgeNames(badgeNames);
+      } catch (err) {
+        console.warn(
+          "Could not fetch current user data for matching highlights:",
+          err,
+        );
+      }
+    };
+
+    fetchCurrentUserData();
+  }, [
+    currentUser?.id,
+    hasRoleMatchBadgeNames,
+    hasRoleMatchTagIds,
+    isAuthenticated,
+    isOpen,
+    showMatchHighlights,
+    userId,
+  ]);
+
+  useEffect(() => {
+    if (!isOpen || !isAuthenticated || !currentUser?.id || !showMatchHighlights) {
+      setDistanceViewerUser(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    const fetchDistanceViewerUser = async () => {
+      try {
+        const response = await userService.getUserById(currentUser.id);
+        const payload = response?.data ?? response;
+        const viewerData =
+          payload?.success !== undefined
+            ? payload?.data
+            : (payload?.data?.data ?? payload?.data ?? payload);
+
+        if (!cancelled) {
+          setDistanceViewerUser(viewerData ?? currentUser);
+        }
+      } catch (err) {
+        console.warn("Could not fetch current user details for distance fallback:", err);
+        if (!cancelled) {
+          setDistanceViewerUser(currentUser);
+        }
+      }
+    };
+
+    fetchDistanceViewerUser();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentUser, currentUser?.id, isAuthenticated, isOpen, showMatchHighlights]);
 
   useEffect(() => {
     setIsEditing(mode === "edit");
@@ -169,6 +342,184 @@ const UserDetailsModal = ({
     return user?.username || "User";
   };
 
+  const getUserComparisonLabel = () => {
+    if (user?.first_name) return user.first_name;
+    if (user?.firstName) return user.firstName;
+    if (user?.username) return user.username;
+    return "this person";
+  };
+
+  const effectiveUserMatch = useMemo(() => {
+    const shouldResolveMatchData =
+      showMatchHighlights ||
+      matchScore > 0 ||
+      matchType != null ||
+      matchDetails != null;
+
+    if (!shouldResolveMatchData || !user || !currentUser) {
+      return { matchScore, matchType, matchDetails };
+    }
+
+    const isRoleMatchContext =
+      matchType === "role_match" ||
+      hasRoleMatchTagIds ||
+      hasRoleMatchBadgeNames;
+
+    if (isRoleMatchContext) {
+      const enrichedUser = enrichUserRoleMatchData({
+        user: {
+          ...user,
+          bestMatchScore: matchScore,
+          best_match_score: matchScore,
+          matchType,
+          match_type: matchType,
+          matchDetails,
+          match_details: matchDetails,
+          tags: userTags.length > 0 ? userTags : user?.tags,
+        },
+        requiredTagIds: normalizedRoleMatchTagIds,
+        requiredBadgeNames: normalizedRoleMatchBadgeNames,
+      });
+
+      return {
+        matchScore: enrichedUser.bestMatchScore ?? matchScore,
+        matchType: enrichedUser.matchType ?? matchType,
+        matchDetails: enrichedUser.matchDetails ?? matchDetails,
+      };
+    }
+
+    const viewerProfile = buildViewerTeamMatchProfile({
+      user: currentUser,
+      userTags: Array.from(currentUserTagIds ?? []),
+      userBadges: Array.from(currentUserBadgeNames ?? []),
+    });
+    const enrichedUser = enrichUserMatchData({
+      user: {
+        ...user,
+        bestMatchScore: matchScore,
+        best_match_score: matchScore,
+        matchType,
+        match_type: matchType,
+        matchDetails,
+        match_details: matchDetails,
+        tags: userTags.length > 0 ? userTags : user?.tags,
+      },
+      viewerProfile,
+    });
+
+    return {
+      matchScore: enrichedUser.bestMatchScore ?? matchScore,
+      matchType: enrichedUser.matchType ?? matchType,
+      matchDetails: enrichedUser.matchDetails ?? matchDetails,
+    };
+  }, [
+    currentUser,
+    currentUserBadgeNames,
+    currentUserTagIds,
+    matchDetails,
+    matchScore,
+    matchType,
+    hasRoleMatchBadgeNames,
+    hasRoleMatchTagIds,
+    normalizedRoleMatchBadgeNames,
+    normalizedRoleMatchTagIds,
+    showMatchHighlights,
+    user,
+    userTags,
+  ]);
+
+  const effectiveDistanceKm = useMemo(() => {
+    const roleDistance = Number(
+      effectiveUserMatch.matchType === "role_match"
+        ? effectiveUserMatch.matchDetails?.distanceKm ??
+            effectiveUserMatch.matchDetails?.distance_km ??
+            matchDetails?.distanceKm ??
+            matchDetails?.distance_km
+        : null,
+    );
+    const rawDistance = distanceKm ?? user?.distance_km ?? user?.distanceKm;
+    const numericDistance = Number(rawDistance);
+    const viewerForDistance = distanceViewerUser ?? currentUser;
+    const computedDistance = viewerForDistance
+      ? calculateDistanceKm(viewerForDistance, user)
+      : null;
+
+    if (Number.isFinite(roleDistance) && roleDistance < 999999) {
+      return roleDistance;
+    }
+
+    if (computedDistance != null) {
+      return computedDistance;
+    }
+
+    if (Number.isFinite(numericDistance) && numericDistance < 999999) {
+      return numericDistance;
+    }
+
+    return null;
+  }, [
+    currentUser,
+    distanceKm,
+    distanceViewerUser,
+    effectiveUserMatch.matchDetails,
+    effectiveUserMatch.matchType,
+    matchDetails,
+    user,
+  ]);
+
+  const roleMatchLocationHeaderRight = useMemo(() => {
+    const isRoleMatchContext = effectiveUserMatch.matchType === "role_match";
+    const configuredLimitKm = Number(
+      roleMatchMaxDistanceKm ??
+        effectiveUserMatch.matchDetails?.maxDistanceKm ??
+        effectiveUserMatch.matchDetails?.max_distance_km ??
+        matchDetails?.maxDistanceKm ??
+        matchDetails?.max_distance_km,
+    );
+    const roundedDistanceKm =
+      effectiveDistanceKm != null ? Math.round(effectiveDistanceKm) : null;
+
+    if (
+      !isRoleMatchContext ||
+      !Number.isFinite(configuredLimitKm) ||
+      configuredLimitKm <= 0 ||
+      roundedDistanceKm == null
+    ) {
+      return null;
+    }
+
+    const withinRangeRaw =
+      effectiveUserMatch.matchDetails?.isWithinRange ??
+      effectiveUserMatch.matchDetails?.is_within_range ??
+      matchDetails?.isWithinRange ??
+      matchDetails?.is_within_range;
+    const isWithinRange =
+      typeof withinRangeRaw === "boolean"
+        ? withinRangeRaw
+        : roundedDistanceKm <= configuredLimitKm;
+
+    return (
+      <span
+        className={`flex items-center gap-1.5 text-sm ${
+          isWithinRange ? "text-success" : "text-error/70"
+        }`}
+      >
+        <Ruler size={14} className="flex-shrink-0" />
+        <span>
+          {roundedDistanceKm} km away ({isWithinRange ? "<" : ">"}
+          {" "}
+          {Math.round(configuredLimitKm)} km)
+        </span>
+      </span>
+    );
+  }, [
+    effectiveDistanceKm,
+    effectiveUserMatch.matchDetails,
+    effectiveUserMatch.matchType,
+    matchDetails,
+    roleMatchMaxDistanceKm,
+  ]);
+
   // =================================================
 
   // Title node (TeamDetailsModal style)
@@ -185,7 +536,10 @@ const UserDetailsModal = ({
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => navigate("/profile")}
+                onClick={() => {
+                  window.open("/profile?mode=edit", "_blank", "noopener,noreferrer");
+                  onClose?.();
+                }}
                 className="hover:bg-[#7ace82] hover:text-[#036b0c]"
                 icon={<Edit size={16} />}
               >
@@ -266,20 +620,38 @@ const UserDetailsModal = ({
           </div>
         ) : (
           // VIEW MODE - User profile information
-          <div className="space-y-6">
+          <div className="space-y-8">
             {/* User Profile Header */}
             <UserProfileHeaderSection
               user={user}
               currentUser={currentUser}
               isAuthenticated={isAuthenticated}
               memberSince={user?.created_at || user?.createdAt}
+              matchScore={effectiveUserMatch.matchScore}
+              filledRoleName={filledRoleName}
+              teamName={teamName}
             />
 
             {/* Bio */}
             <UserBioSection bio={user?.bio || user?.biography} />
 
+            {/* Match Score */}
+            <MatchScoreSection
+              matchScore={effectiveUserMatch.matchScore}
+              matchType={effectiveUserMatch.matchType}
+              matchDetails={effectiveUserMatch.matchDetails}
+              comparisonLabel={getUserComparisonLabel()}
+              roleLabel={roleMatchName}
+            />
+
             {/* Location */}
-            <LocationSection entity={user} entityType="user" className="mb-6" />
+            <LocationSection
+              entity={user}
+              entityType="user"
+              className=""
+              distance={showMatchHighlights ? effectiveDistanceKm : null}
+              headerRight={roleMatchLocationHeaderRight}
+            />
 
             {/* Focus Areas */}
             <TagsDisplaySection
@@ -288,15 +660,55 @@ const UserDetailsModal = ({
               emptyMessage={UI_TEXT.focusAreas.empty}
               onTagClick={handleTagClick}
               onSupercategoryClick={handleSupercategoryClick}
+              matchingTagIds={
+                hasRoleMatchTagIds
+                  ? normalizedRoleMatchTagIds
+                  : currentUserTagIds
+              }
+              headerRight={(() => {
+                const effectiveMatchIds = hasRoleMatchTagIds
+                  ? normalizedRoleMatchTagIds
+                  : currentUserTagIds;
+                if (!effectiveMatchIds || effectiveMatchIds.size === 0) return null;
+                const displayTags = userTags.length > 0 ? userTags : (user?.tags || []);
+                if (!Array.isArray(displayTags) || displayTags.length === 0) return null;
+                const userTagIds = new Set(
+                  displayTags
+                    .map((t) => Number(t.tagId ?? t.tag_id ?? t.id))
+                    .filter(Number.isFinite),
+                );
+                const isRoleMatchContext = hasRoleMatchTagIds;
+                const total = isRoleMatchContext
+                  ? normalizedRoleMatchTagIds.size
+                  : displayTags.length;
+                const matchCount = isRoleMatchContext
+                  ? Array.from(normalizedRoleMatchTagIds).filter((tagId) =>
+                      userTagIds.has(Number(tagId)),
+                    ).length
+                  : displayTags.filter((t) => {
+                      const tagId = Number(t.tagId ?? t.tag_id ?? t.id);
+                      return effectiveMatchIds.has(tagId);
+                    }).length;
+                if (matchCount > 0) {
+                  return (
+                    <span className="flex items-center gap-1.5 text-sm text-success">
+                      <Check size={14} className="flex-shrink-0" />
+                      <span>{matchCount}/{total} in common</span>
+                    </span>
+                  );
+                }
+                return (
+                  <span className="flex items-center gap-1.5 text-sm text-error/70">
+                    <X size={14} className="flex-shrink-0" />
+                    <span>None in common</span>
+                  </span>
+                );
+              })()}
             />
 
             {/* Badges */}
             <BadgesDisplaySection
-              title={`Badges${
-                Number.isFinite(user?.total_badge_credits)
-                  ? ` · ${user.total_badge_credits} ct.`
-                  : ""
-              }`}
+              title="Badges"
               badges={user?.badges}
               emptyMessage="No badges earned yet"
               maxVisible={8}
@@ -305,6 +717,56 @@ const UserDetailsModal = ({
               onCategoryClick={handleBadgeCategoryClick}
               onBadgeClick={handleBadgeClick}
               onOpenUser={onOpenUser}
+              matchingBadgeNames={
+                hasRoleMatchBadgeNames
+                  ? normalizedRoleMatchBadgeNames
+                  : currentUserBadgeNames
+              }
+              headerRight={(() => {
+                const effectiveMatchNames = hasRoleMatchBadgeNames
+                  ? normalizedRoleMatchBadgeNames
+                  : currentUserBadgeNames;
+                if (!effectiveMatchNames || effectiveMatchNames.size === 0) return null;
+                const badgeList = user?.badges || [];
+                if (!Array.isArray(badgeList) || badgeList.length === 0) return null;
+                const userBadgeNames = new Set(
+                  badgeList
+                    .map((b) =>
+                      (b.name ?? b.badgeName ?? b.badge_name ?? "")
+                        .trim()
+                        .toLowerCase(),
+                    )
+                    .filter(Boolean),
+                );
+                const isRoleMatchContext = hasRoleMatchBadgeNames;
+                const total = isRoleMatchContext
+                  ? normalizedRoleMatchBadgeNames.size
+                  : badgeList.length;
+                const matchCount = isRoleMatchContext
+                  ? Array.from(normalizedRoleMatchBadgeNames).filter((name) =>
+                      userBadgeNames.has(name),
+                    ).length
+                  : badgeList.filter((b) => {
+                      const name = (b.name ?? b.badgeName ?? b.badge_name ?? "")
+                        .trim()
+                        .toLowerCase();
+                      return effectiveMatchNames.has(name);
+                    }).length;
+                if (matchCount > 0) {
+                  return (
+                    <span className="flex items-center gap-1.5 text-sm text-success">
+                      <Check size={14} className="flex-shrink-0" />
+                      <span>{matchCount}/{total} in common</span>
+                    </span>
+                  );
+                }
+                return (
+                  <span className="flex items-center gap-1.5 text-sm text-error/70">
+                    <X size={14} className="flex-shrink-0" />
+                    <span>None in common</span>
+                  </span>
+                );
+              })()}
             />
 
             {/* Bottom CTA (TeamDetailsModal style) */}
@@ -336,6 +798,10 @@ const UserDetailsModal = ({
           inviteeUsername={user.username}
           inviteeAvatar={user.avatar_url || user.avatarUrl}
           inviteeBio={user.bio}
+          prefillTeamId={invitationPrefillTeamId}
+          prefillRoleId={invitationPrefillRoleId}
+          prefillTeamName={invitationPrefillTeamName}
+          prefillRoleName={invitationPrefillRoleName}
         />
       )}
 
@@ -346,10 +812,7 @@ const UserDetailsModal = ({
       />
 
       {/* Tag Awards Modal */}
-      <TagAwardsModal
-        {...tagAwardsModalProps}
-        onOpenUser={onOpenUser}
-      />
+      <TagAwardsModal {...tagAwardsModalProps} onOpenUser={onOpenUser} />
 
       {/* Supercategory Awards Modal */}
       <SupercategoryAwardsModal

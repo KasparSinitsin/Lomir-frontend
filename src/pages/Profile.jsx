@@ -97,6 +97,7 @@ const Profile = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const scrollToBadges = searchParams.get("scrollTo") === "badges";
   const highlightBadgeName = searchParams.get("highlightBadge");
+  const editModeFromUrl = searchParams.get("mode") === "edit";
   const [highlightTagName, setHighlightTagName] = useState(null);
   const [highlightTagColor, setHighlightTagColor] = useState(null);
   const badgesSectionRef = useRef(null);
@@ -156,12 +157,10 @@ const Profile = () => {
 
     try {
       setLoading(true);
-      console.log("Fetching user details for ID:", user.id);
       const response = await userService.getUserById(user.id);
 
       if (response && response.data) {
         const apiUserData = response.data;
-        console.log("API returned user data:", apiUserData);
 
         // Avoid updating the user context here - that's causing the loop
         // Instead, just use the API data to update the form
@@ -218,8 +217,6 @@ const Profile = () => {
 
     // Initialize form data from context if available and we haven't loaded from API yet
     if (user && !initialDataLoaded) {
-      console.log("Initializing form with user data from context:", user);
-
       setFormData({
         firstName: user.firstName || user.first_name || "",
         lastName: user.lastName || user.last_name || "",
@@ -272,16 +269,6 @@ const Profile = () => {
     fetchUserTags();
   }, [user, initialDataLoaded, fetchUserDetails]); // Add initialDataLoaded and fetchUserDetails to dependencies
 
-  // Log user changes for debugging
-  useEffect(() => {
-    console.log("User data changed:", user);
-    // Check specifically for visibility status
-    console.log("Visibility status:", {
-      is_public: user?.is_public,
-      isPublic: user?.isPublic,
-    });
-  }, [user]);
-
   // Reset image error state when user changes
   useEffect(() => {
     setImageError(false);
@@ -321,6 +308,20 @@ const Profile = () => {
       };
     }
   }, [scrollToBadges, isEditing, setSearchParams]);
+
+  useEffect(() => {
+    if (editModeFromUrl && !isEditing) {
+      setIsEditing(true);
+    }
+  }, [editModeFromUrl, isEditing]);
+
+  const clearEditModeParam = useCallback(() => {
+    if (!editModeFromUrl) return;
+
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete("mode");
+    setSearchParams(nextParams, { replace: true });
+  }, [editModeFromUrl, searchParams, setSearchParams]);
 
   // Derive the associated tag name when a badge is highlighted from notification
   useEffect(() => {
@@ -374,8 +375,6 @@ const Profile = () => {
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     const newValue = type === "checkbox" ? checked : value;
-
-    console.log(`Field "${name}" changed to:`, newValue);
     setFormData((prevData) => ({
       ...prevData,
       [name]: newValue,
@@ -535,8 +534,6 @@ const Profile = () => {
       setLoading(true);
       setError(null);
 
-      console.log("Starting profile update with form data:", formData);
-
       // Create an object to hold the updated user data
       const userData = {
         first_name: formData.firstName,
@@ -560,8 +557,6 @@ const Profile = () => {
           import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET,
         );
 
-        console.log("Uploading image to Cloudinary");
-
         try {
           const cloudinaryResponse = await axios.post(
             `https://api.cloudinary.com/v1_1/${
@@ -574,8 +569,6 @@ const Profile = () => {
               },
             },
           );
-
-          console.log("Cloudinary response:", cloudinaryResponse.data);
 
           // Get and store the image URL
           if (cloudinaryResponse.data && cloudinaryResponse.data.secure_url) {
@@ -595,11 +588,7 @@ const Profile = () => {
         }
       }
 
-      console.log("Sending API update with data:", userData);
-
       const response = await userService.updateUser(user.id, userData);
-
-      console.log("Update response:", response);
 
       if (!response || response.success === false) {
         console.error(
@@ -619,6 +608,7 @@ const Profile = () => {
         }
 
         setIsEditing(false);
+        clearEditModeParam();
         setSuccess("Profile updated successfully");
 
         // Create updated user object with correct avatar URL
@@ -643,8 +633,6 @@ const Profile = () => {
           userName: formData.username,
           postalCode: formData.postalCode,
         };
-
-        console.log("Updated user object:", updatedUser);
 
         // Update global context with new user data
         updateUser(updatedUser);
@@ -675,12 +663,6 @@ const Profile = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  // Manual refresh for debugging purposes
-  const handleManualRefresh = () => {
-    setInitialDataLoaded(false); // Reset the flag to allow a new fetch
-    fetchUserDetails(); // Manually trigger a refresh
   };
 
   // For debugging purposes
@@ -920,12 +902,15 @@ const Profile = () => {
 
             {/* Actions */}
             <section className="flex justify-end space-x-2 !mt-4">
-              <Button
-                variant="ghost"
-                type="button"
-                onClick={() => setIsEditing(false)}
-                disabled={loading}
-              >
+                <Button
+                  variant="ghost"
+                  type="button"
+                  onClick={() => {
+                    setIsEditing(false);
+                    clearEditModeParam();
+                  }}
+                  disabled={loading}
+                >
                 Cancel
               </Button>
 
@@ -956,11 +941,6 @@ const Profile = () => {
 
             {/* Divider */}
             <div className="border-b border-base-300 -mx-4 sm:-mx-7"></div>
-
-            {/* Temporary debug - remove after testing */}
-            {console.log("User data in view mode:", user)}
-            {console.log("City value:", user?.city)}
-            {console.log("Postal code:", user?.postal_code || user?.postalCode)}
 
             <div className="flex flex-col md:flex-row md:items-start p-6">
               {/* Avatar */}
@@ -1173,11 +1153,7 @@ const Profile = () => {
                       </div>
                       <div ref={badgesSectionRef}>
                         <BadgesDisplaySection
-                          title={`My Badges${
-                            Number.isFinite(displayUser?.total_badge_credits)
-                              ? ` · ${displayUser.total_badge_credits} ct.`
-                              : ""
-                          }`}
+                          title="My Badges"
                           badges={displayUser?.badges}
                           emptyMessage="No badges earned yet."
                           maxVisible={8}

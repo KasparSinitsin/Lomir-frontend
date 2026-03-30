@@ -1,6 +1,7 @@
 import React, { useState } from "react";
-import { Eye, EyeClosed, Calendar } from "lucide-react";
+import { Eye, EyeClosed, Calendar, UserCheck } from "lucide-react";
 import { getUserInitials } from "../../utils/userHelpers";
+import { getMatchTier } from "../../utils/matchScoreUtils";
 import { format } from "date-fns";
 
 /**
@@ -14,9 +15,14 @@ const UserProfileHeaderSection = ({
   currentUser = null,
   isAuthenticated = false,
   memberSince = null,
+  matchScore = null,
   className = "",
+  filledRoleName = null,
+  teamName = null,
 }) => {
   const [imageError, setImageError] = useState(false);
+  const showMatchBadge = matchScore != null;
+  const matchTier = showMatchBadge ? getMatchTier(matchScore) : null;
   // Helper function to get the avatar image URL or return null for fallback
   const getProfileImage = () => {
     // Check snake_case (from API)
@@ -80,7 +86,7 @@ const UserProfileHeaderSection = ({
   return (
     <div className={`flex items-start space-x-4 ${className}`}>
       {/* Avatar */}
-      <div className="avatar">
+      <div className="avatar relative">
         <div className="w-20 h-20 rounded-full">
           {getProfileImage() && !imageError ? (
             <img
@@ -95,6 +101,18 @@ const UserProfileHeaderSection = ({
             </div>
           )}
         </div>
+        {matchTier && (
+          <div
+            className={`absolute -top-1 -left-1 w-6 h-6 rounded-full ring-2 ring-white flex items-center justify-center ${matchTier.bg}`}
+            title={`${matchTier.pct}% ${matchTier.label.toLowerCase()}`}
+          >
+            <matchTier.Icon
+              size={12}
+              className="text-white"
+              strokeWidth={2.5}
+            />
+          </div>
+        )}
       </div>
 
       {/* User Info */}
@@ -102,8 +120,18 @@ const UserProfileHeaderSection = ({
         <h1 className="text-2xl font-bold leading-[120%] mb-[0.2em]">
           {getDisplayName()}
         </h1>
-        <div className="flex items-center space-x-4 text-sm">
+        <div className="flex items-center flex-wrap gap-x-3 gap-y-0.5 text-sm">
           <span className="text-base-content/70">@{user?.username}</span>
+
+          {filledRoleName && (
+            <span className="flex items-center gap-1 text-base-content/70">
+              <UserCheck size={12} className="flex-shrink-0" />
+              <span>
+                {filledRoleName}
+                {teamName && <span className="text-base-content/50"> in {teamName}</span>}
+              </span>
+            </span>
+          )}
 
           {/* Visibility Indicator - Only show for own profile */}
           {shouldShowVisibilityIndicator() && (

@@ -28,8 +28,12 @@ const Chat = () => {
   const [typingUsers, setTypingUsers] = useState({});
   const [highlightMessageIds, setHighlightMessageIds] = useState([]);
   const [isTeamArchived, setIsTeamArchived] = useState(false);
+  const [hasMoreMessages, setHasMoreMessages] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   const typingTimeoutRef = useRef(null);
+  const messagesContainerRef = useRef(null);
+  const pendingScrollAdjustmentRef = useRef(null);
   const [loadingMessages, setLoadingMessages] = useState(false);
 
   // ---- Message de-duplication (focus: ownership/system duplicates) ----
@@ -125,12 +129,10 @@ const Chat = () => {
             const type = urlParams.get("type") || "direct";
 
             if (type === "direct") {
-              console.log("Creating virtual conversation for new contact...");
               try {
                 // Get the user details for the virtual conversation
                 const userResponse =
                   await userService.getUserById(conversationId);
-                console.log("User details fetched:", userResponse.data);
 
                 const userData = userResponse.data;
 
@@ -153,10 +155,6 @@ const Chat = () => {
 
                 // Add to the beginning of the conversations list
                 conversationsList = [virtualConversation, ...conversationsList];
-                console.log(
-                  "Virtual conversation created:",
-                  virtualConversation,
-                );
               } catch (error) {
                 console.error("Error creating virtual conversation:", error);
               }
@@ -209,16 +207,14 @@ const Chat = () => {
 
       try {
         setLoadingMessages(true);
+        setLoadingMore(false);
+        setHasMoreMessages(false);
 
         // ✅ Reset archived state when switching conversations
         setIsTeamArchived(false);
 
         const urlParams = new URLSearchParams(window.location.search);
         const type = urlParams.get("type") || "direct";
-
-        console.log("=== CHAT DEBUG ===");
-        console.log("Conversation ID:", conversationId);
-        console.log("Conversation Type:", type);
 
         let conversationDetails;
         try {
@@ -227,21 +223,10 @@ const Chat = () => {
             type,
           );
 
-          console.log("Initial conversation details:", conversationDetails);
-
           // If it's a team conversation, fetch detailed team member information
           if (type === "team" && conversationDetails?.data) {
             try {
-              console.log("Fetching team details for team ID:", conversationId);
               const teamDetails = await teamService.getTeamById(conversationId);
-              console.log("=== ARCHIVED TEAM DEBUG ===");
-              console.log("teamDetails.data:", teamDetails.data);
-              console.log("archived_at:", teamDetails.data?.archived_at);
-              console.log(
-                "isTeamArchived will be:",
-                !!teamDetails.data?.archived_at,
-              );
-              console.log("Team details fetched:", teamDetails);
 
               // ✅ Check if team is archived
               if (
@@ -254,17 +239,10 @@ const Chat = () => {
               }
 
               if (teamDetails?.data?.members) {
-                console.log("Team members found:", teamDetails.data.members);
                 conversationDetails.data.team = {
                   ...conversationDetails.data.team,
                   members: teamDetails.data.members,
                 };
-                console.log(
-                  "Updated conversation with team members:",
-                  conversationDetails.data,
-                );
-              } else {
-                console.log("No team members in team details response");
               }
             } catch (teamError) {
               console.error("Error fetching team member details:", teamError);
@@ -272,7 +250,6 @@ const Chat = () => {
           }
 
           setActiveConversation(conversationDetails.data);
-          console.log("Set active conversation:", conversationDetails.data);
 
           // Ensure team conversation appears in conversation list
           if (type === "team" && conversationDetails.data) {
@@ -307,9 +284,6 @@ const Chat = () => {
         } catch (error) {
           // Check if it's an access denied error (user was removed from team)
           if (error.response?.status === 403) {
-            console.log(
-              "Access denied to this conversation - user may have been removed",
-            );
             setError("You no longer have access to this conversation.");
             setLoadingMessages(false);
             // Navigate back to chat list or my teams
@@ -317,18 +291,9 @@ const Chat = () => {
             return;
           }
 
-          console.log("Conversation doesn't exist yet, creating it...");
-
           if (type === "team" && conversationDetails?.data) {
             try {
               const teamDetails = await teamService.getTeamById(conversationId);
-              console.log("=== ARCHIVED TEAM DEBUG ===");
-              console.log("teamDetails.data:", teamDetails.data);
-              console.log("archived_at:", teamDetails.data?.archived_at);
-              console.log(
-                "isTeamArchived will be:",
-                !!teamDetails.data?.archived_at,
-              );
 
               // ✅ Check if team is archived (also in fallback path)
               if (
@@ -346,9 +311,7 @@ const Chat = () => {
                   members: teamDetails.data.members,
                 };
               }
-            } catch (error) {
-              console.log("Could not fetch team member details:", error);
-            }
+            } catch (error) {}
           }
 
           if (type === "direct") {
@@ -380,9 +343,8 @@ const Chat = () => {
             type,
           );
           const fetchedMessages = messagesResponse.data || [];
+          setHasMoreMessages(messagesResponse.hasMore || false);
           setMessages(dedupeMessages(fetchedMessages));
-
-          console.log("Messages fetched:", fetchedMessages);
 
           // Check if we need to highlight messages from a specific user (from notification)
           const highlightUser = searchParams.get("highlightUser");
@@ -421,7 +383,7 @@ const Chat = () => {
             }
           }
         } catch (messagesError) {
-          console.log("No messages yet, starting with empty conversation");
+          setHasMoreMessages(false);
           setMessages([]);
         }
 
@@ -433,7 +395,6 @@ const Chat = () => {
           socketService.joinConversation(conversationId, type);
           socketService.markMessagesAsRead(conversationId, type);
         } else {
-          console.log("Socket not connected, waiting for connection...");
           const checkConnection = setInterval(() => {
             const socket = socketService.getSocket();
             if (socket && socket.connected) {
@@ -474,19 +435,31 @@ const Chat = () => {
     user?.id,
   ]);
 
+  useEffect(() => {
+    if (!pendingScrollAdjustmentRef.current) return;
+
+    const container = messagesContainerRef.current;
+
+    if (!container) {
+      pendingScrollAdjustmentRef.current = null;
+      return;
+    }
+
+    const { previousScrollHeight, previousScrollTop } =
+      pendingScrollAdjustmentRef.current;
+
+    container.scrollTop =
+      container.scrollHeight - previousScrollHeight + previousScrollTop;
+    pendingScrollAdjustmentRef.current = null;
+  }, [messages, hasMoreMessages]);
+
   // Set up WebSocket event listeners
   useEffect(() => {
     const socket = socketService.getSocket();
 
     if (!socket || !isAuthenticated) {
-      console.log("No socket or not authenticated");
       return;
     }
-
-    console.log(
-      "Setting up socket listeners for conversationId:",
-      conversationId,
-    );
 
     // Remove any existing listeners first to prevent duplicates
     socket.off("users:online");
@@ -503,11 +476,6 @@ const Chat = () => {
 
     // Handle new messages
     const handleNewMessage = (message) => {
-      console.log("=== NEW MESSAGE RECEIVED ===");
-      console.log("Full message object:", message);
-      console.log("Has fileUrl:", !!message.fileUrl);
-      console.log("Has fileName:", !!message.fileName);
-
       const messageConvId = String(message.conversationId);
       const currentConvId = String(conversationId);
 
@@ -636,15 +604,7 @@ const Chat = () => {
 
     // Handle typing indicators
     const handleTypingUpdate = (data) => {
-      console.log("=== TYPING UPDATE RECEIVED ===");
-      console.log("Typing data:", data);
-      console.log("Current conversationId:", conversationId);
-      console.log("Data conversationId:", data.conversationId);
-      console.log("Current user ID:", user?.id);
-      console.log("Typing user ID:", data.userId);
-
       if (String(data.conversationId) === String(conversationId)) {
-        console.log("✅ Typing update is for current conversation");
         setTypingUsers((prev) => {
           const updated = {
             ...prev,
@@ -655,11 +615,8 @@ const Chat = () => {
               delete updated[key];
             }
           });
-          console.log("Updated typing users:", updated);
           return updated;
         });
-      } else {
-        console.log("❌ Typing update NOT for current conversation");
       }
     };
 
@@ -678,14 +635,12 @@ const Chat = () => {
 
     // Handle conversation updates
     const handleConversationUpdate = (data) => {
-      console.log("Conversation update:", data);
       setConversations((prev) => {
         const conversationIndex = prev.findIndex(
           (c) => String(c.id) === String(data.id),
         );
 
         if (conversationIndex === -1) {
-          console.log("Conversation not found, refreshing all conversations");
           messageService
             .getConversations()
             .then((response) => {
@@ -783,7 +738,6 @@ const Chat = () => {
   // Handle leaving a deleted team (removes from conversation list)
   const handleLeaveTeam = async () => {
     if (!activeConversation?.team?.id) {
-      console.log("No team ID found");
       return;
     }
 
@@ -816,8 +770,6 @@ const Chat = () => {
 
   // Handle being kicked from a team
   const handleKickedFromTeam = (data) => {
-    console.log("Kicked from team:", data);
-
     // If currently viewing this team's chat, navigate away
     if (
       conversationType === "team" &&
@@ -844,11 +796,7 @@ const Chat = () => {
 
   // Handle deleting a conversation from the list
   const handleDeleteConversation = async () => {
-    console.log("=== handleDeleteConversation CALLED ===");
-    console.log("activeConversation:", activeConversation);
-
     if (!activeConversation) {
-      console.log("❌ No active conversation - returning early");
       return;
     }
 
@@ -873,6 +821,44 @@ const Chat = () => {
     } catch (error) {
       console.error("Error deleting conversation:", error);
       setError("Failed to delete conversation. Please try again.");
+    }
+  };
+
+  const loadEarlierMessages = async () => {
+    if (loadingMore || !hasMoreMessages || messages.length === 0) return;
+
+    const container = messagesContainerRef.current;
+
+    if (container) {
+      pendingScrollAdjustmentRef.current = {
+        previousScrollHeight: container.scrollHeight,
+        previousScrollTop: container.scrollTop,
+      };
+    }
+
+    setLoadingMore(true);
+
+    try {
+      const oldestMessage = messages[0];
+      const type = searchParams.get("type") || "direct";
+      const response = await messageService.getMessages(conversationId, type, {
+        before: oldestMessage.id,
+        limit: 50,
+      });
+      const olderMessages = response.data || [];
+
+      setHasMoreMessages(response.hasMore || false);
+
+      if (olderMessages.length > 0) {
+        setMessages((prev) => dedupeMessages([...olderMessages, ...prev]));
+      } else {
+        pendingScrollAdjustmentRef.current = null;
+      }
+    } catch (err) {
+      pendingScrollAdjustmentRef.current = null;
+      console.error("Error loading earlier messages:", err);
+    } finally {
+      setLoadingMore(false);
     }
   };
 
@@ -1071,7 +1057,7 @@ const Chat = () => {
         <div className="w-2/3 flex flex-col">
           {conversationId ? (
             <>
-              <div className="flex-grow overflow-y-auto p-4">
+              <div ref={messagesContainerRef} className="flex-grow overflow-y-auto p-4">
                 <MessageDisplay
                   messages={messages}
                   currentUserId={user?.id}
@@ -1082,6 +1068,9 @@ const Chat = () => {
                   conversationType={conversationType}
                   teamMembers={teamMembers}
                   highlightMessageIds={highlightMessageIds}
+                  hasMoreMessages={hasMoreMessages}
+                  loadingMore={loadingMore}
+                  onLoadEarlierMessages={loadEarlierMessages}
                   onDeleteConversation={handleDeleteConversation}
                   onDeleteMessage={handleDeleteMessage}
                   onLeaveTeam={handleLeaveTeam}
@@ -1090,13 +1079,6 @@ const Chat = () => {
 
               {/* Deleted team banner + message input */}
               <div className="border-t border-base-200">
-                {/* DEBUG - remove after testing */}
-                {console.log("DEBUG team deletion banner:", {
-                  teamOwnerId: activeConversation?.team?.ownerId,
-                  teamOwner_id: activeConversation?.team?.owner_id,
-                  userId: user?.id,
-                  fullTeamObject: activeConversation?.team,
-                })}
                 {/* Show banner for archived teams */}
                 {isTeamArchived && conversationType === "team" && (
                   <div

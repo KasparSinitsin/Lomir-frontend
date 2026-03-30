@@ -26,9 +26,7 @@ api.interceptors.request.use(
       typeof config.data === "object" &&
       !(config.data instanceof FormData)
     ) {
-      console.log("Before conversion:", config.data);
       config.data = camelToSnake(config.data);
-      console.log("After conversion:", config.data);
     }
 
     return config;
@@ -50,8 +48,12 @@ api.interceptors.response.use(
   (error) => {
     if (error.response) {
       console.error("API Error:", error.response.data);
+      const skipAuthRedirect = error.config?.skipAuthRedirect === true;
 
-      if (error.response.status === 401 || error.response.status === 403) {
+      if (
+        !skipAuthRedirect &&
+        (error.response.status === 401 || error.response.status === 403)
+      ) {
         localStorage.removeItem("token");
         window.location.href = "/login";
       }

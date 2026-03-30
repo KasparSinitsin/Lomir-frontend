@@ -10,6 +10,7 @@ import TeamRoleManager from "./TeamRoleManager";
 import TeamEditForm from "./TeamEditForm";
 import { useAuth } from "../../contexts/AuthContext";
 import { teamService } from "../../services/teamService";
+import { userService } from "../../services/userService";
 import Button from "../common/Button";
 import SendMessageButton from "../common/SendMessageButton";
 import Alert from "../common/Alert";
@@ -28,6 +29,7 @@ import {
   Mail,
   SendHorizontal,
   Archive,
+  Check,
 } from "lucide-react";
 import VisibilityToggle from "../common/VisibilityToggle";
 import UserDetailsModal from "../users/UserDetailsModal";
@@ -35,7 +37,7 @@ import TagsDisplaySection from "../tags/TagsDisplaySection";
 import { UI_TEXT } from "../../constants/uiText";
 import { tagService } from "../../services/tagService";
 import RoleBadgeDropdown from "./RoleBadgeDropdown";
-import TeamApplicationModal from "./TeamApplicationModal";
+import TeamApplicationButton from "./TeamApplicationButton";
 import TeamInvitationDetailsModal from "./TeamInvitationDetailsModal";
 import TeamMembersSection from "./TeamMembersSection";
 import TeamFocusAreaSection from "./TeamFocusAreaSection";
@@ -45,7 +47,16 @@ import Modal from "../common/Modal";
 import LocationSection from "../common/LocationSection";
 import TagAwardsModal from "../badges/TagAwardsModal";
 import SupercategoryAwardsModal from "../badges/SupercategoryAwardsModal";
+import BadgesDisplaySection from "../badges/BadgesDisplaySection";
+import BadgeCategoryModal from "../badges/BadgeCategoryModal";
 import useTeamAwardModals from "../../hooks/useTeamAwardModals";
+import MatchScoreSection from "../common/MatchScoreSection";
+import {
+  buildViewerTeamMatchProfile,
+  enrichTeamMatchData,
+} from "../../utils/teamMatchUtils";
+import { getMatchTier } from "../../utils/matchScoreUtils";
+import { calculateDistanceKm } from "../../utils/locationUtils";
 
 const normalizeTeamTagIds = (team) => {
   const raw = team?.tags ?? team?.tags_json ?? team?.selectedTags ?? [];
@@ -81,6 +92,13 @@ const TeamDetailsModal = ({
   hasPendingApplication = false,
   pendingApplication = null,
   onViewApplicationDetails,
+  showMatchHighlights = false,
+  roleMatchBadgeNames = null,
+  matchScore = null,
+  matchType = null,
+  matchDetails = null,
+  zIndexStyle = null,
+  boxZIndexStyle = null,
 }) => {
   const navigate = useNavigate();
   const { id: urlTeamId } = useParams();
@@ -98,6 +116,7 @@ const TeamDetailsModal = ({
     message: null,
   });
   const [team, setTeam] = useState(initialTeamData); // Initialize with passed data
+  const [teamRoles, setTeamRoles] = useState([]);
 
   // Track if we've done the full fetch (initial data may be partial)
   const [hasFullData, setHasFullData] = useState(false);
@@ -121,18 +140,27 @@ const TeamDetailsModal = ({
   const [internalUserRole, setInternalUserRole] = useState(null);
   const [isPublic, setIsPublic] = useState(false);
 
-  const [isApplicationModalOpen, setIsApplicationModalOpen] = useState(false);
-  const [applicationLoading, setApplicationLoading] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState(null);
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [allTags, setAllTags] = useState([]);
+  const [currentUserTagIds, setCurrentUserTagIds] = useState(null); // Set<number>
+
+  const [userTagIds, setUserTagIds] = useState(null); // Set<number>
+  const [distanceViewerUser, setDistanceViewerUser] = useState(null);
+
+  const [teamBadges, setTeamBadges] = useState(null);
+  const [teamBadgesTotalCredits, setTeamBadgesTotalCredits] = useState(0);
+  const [currentUserBadgeNames, setCurrentUserBadgeNames] = useState(null); // Set<string>
 
   // Team focus-area award modals (parallel to useAwardModals for users)
   const {
     handleTagClick,
     handleSupercategoryClick,
+    handleBadgeCategoryClick,
+    handleBadgeClick,
     tagAwardsModalProps,
     supercategoryModalProps,
+    badgeCategoryModalProps,
   } = useTeamAwardModals(effectiveTeamId);
 
   const userHasEditedTagsRef = useRef(false);
@@ -141,6 +169,7 @@ const TeamDetailsModal = ({
   const [isInvitationModalOpen, setIsInvitationModalOpen] = useState(false);
 
   const [teamImageError, setTeamImageError] = useState(false);
+  const showHighlightsForContext = !isFromSearch || showMatchHighlights;
 
   const fetchTeamDetails = useCallback(
     async (forceRefresh = false) => {
@@ -157,11 +186,7 @@ const TeamDetailsModal = ({
         setNotification({ type: null, message: null });
 
         // Get the team details
-        console.log(`Fetching details for team ID: ${effectiveTeamId}`);
         const response = await teamService.getTeamById(effectiveTeamId);
-
-        // Log full response for debugging
-        console.log("Raw API response:", response);
 
         // Get team data from response
         // response is already the JSON payload (not axios response)
@@ -174,8 +199,6 @@ const TeamDetailsModal = ({
         } else {
           teamData = {};
         }
-
-        console.log("Team data extracted:", teamData);
 
         // Look for owner ID in multiple possible locations
         let ownerId = null;
@@ -195,18 +218,12 @@ const TeamDetailsModal = ({
           teamData.members &&
           Array.isArray(teamData.members)
         ) {
-          console.log(
-            "Searching for owner in members array:",
-            teamData.members,
-          );
-
           const ownerMember = teamData.members.find(
             (m) => m.role === "owner" || m.role === "Owner",
           );
 
           if (ownerMember) {
             ownerId = parseInt(ownerMember.user_id || ownerMember.userId, 10);
-            console.log("Found owner ID from members array:", ownerId);
           }
         }
 
@@ -220,11 +237,8 @@ const TeamDetailsModal = ({
 
           if (isCurrentUserOwner) {
             ownerId = parseInt(user.id, 10);
-            console.log("Using current user as owner ID:", ownerId);
           }
         }
-
-        console.log("Final owner ID determination:", ownerId);
 
         // Process visibility - check both property names with OR logic
         const isPublicValue =
@@ -232,6 +246,15 @@ const TeamDetailsModal = ({
           teamData.isPublic === true ||
           teamData.is_public === "true" ||
           teamData.isPublic === "true";
+
+        const preservedDistanceKm =
+          team?.distance_km ??
+          team?.distanceKm ??
+          initialTeamData?.distance_km ??
+          initialTeamData?.distanceKm ??
+          teamData.distance_km ??
+          teamData.distanceKm ??
+          null;
 
         // Enhance team data with normalized values
         const enhancedTeamData = {
@@ -245,6 +268,8 @@ const TeamDetailsModal = ({
           city: teamData.city ?? null,
           state: teamData.state ?? null,
           country: teamData.country ?? null,
+          distance_km: preservedDistanceKm,
+          distanceKm: preservedDistanceKm,
           max_members:
             teamData.max_members !== undefined
               ? teamData.max_members
@@ -252,8 +277,6 @@ const TeamDetailsModal = ({
                 ? teamData.maxMembers
                 : undefined,
         };
-
-        console.log("Enhanced team data:", enhancedTeamData);
 
         // Store the enhanced team data
         setTeam(enhancedTeamData);
@@ -279,15 +302,6 @@ const TeamDetailsModal = ({
         const finalOwnerStatus =
           isUserAuthenticated && (isOwnerById || isOwnerByRole);
 
-        console.log("Owner check:", {
-          isUserAuthenticated,
-          userId: user?.id,
-          ownerId,
-          isOwnerById,
-          isOwnerByRole,
-          finalOwnerStatus,
-        });
-
         setIsOwner(finalOwnerStatus);
 
         // Determine user's role from members list
@@ -297,11 +311,8 @@ const TeamDetailsModal = ({
           );
           if (currentUserMember) {
             setInternalUserRole(currentUserMember.role);
-            console.log("User role set to:", currentUserMember.role);
           }
         }
-
-        console.log("Team tags data:", teamData.tags);
 
         // Determine the maxMembersMode based on current value
         // Determine the maxMembers value from backend data
@@ -374,29 +385,8 @@ const TeamDetailsModal = ({
         setLoading(false);
       }
     },
-    [effectiveTeamId, user, isAuthenticated, team],
+    [effectiveTeamId, initialTeamData, user, isAuthenticated, team],
   );
-
-  // Add effect to check team data after it's set
-  useEffect(() => {
-    if (team) {
-      console.log("Current team data in state:", team);
-      console.log("Team visibility value:", team.is_public);
-      console.log("Team owner:", team.owner_id, "Current user:", user?.id);
-    }
-  }, [team, user]);
-
-  useEffect(() => {
-    if (team) {
-      console.log("TeamDetailsModal - Team data:", {
-        name: team.name,
-        current_members_count: team.current_members_count,
-        max_members: team.max_members,
-        max_members_type: typeof team.max_members,
-        members_length: team.members?.length,
-      });
-    }
-  }, [team]);
 
   useEffect(() => {
     setIsModalVisible(isOpen);
@@ -425,6 +415,29 @@ const TeamDetailsModal = ({
     team,
     fetchTeamDetails,
   ]);
+
+  useEffect(() => {
+    if (!isModalVisible || !isAuthenticated || !user?.id) return;
+
+    const fetchUserTags = async () => {
+      try {
+        const tagsRes = await userService.getUserTags(user.id);
+        const tagData = Array.isArray(tagsRes?.data)
+          ? tagsRes.data
+          : tagsRes?.data?.data || [];
+        const ids = new Set(
+          tagData
+            .map((t) => Number(t.tagId ?? t.tag_id ?? t.id))
+            .filter(Number.isFinite),
+        );
+        setUserTagIds(ids);
+      } catch (err) {
+        console.warn("Could not fetch user tags for matching highlights:", err);
+      }
+    };
+
+    fetchUserTags();
+  }, [isModalVisible, isAuthenticated, user?.id]);
 
   useEffect(() => {
     // Reset state when modal closes
@@ -585,9 +598,6 @@ const TeamDetailsModal = ({
         ...prev,
         isPublic: checked, // Explicitly use the checked property
       }));
-
-      // Debug logging
-      console.log(`Changed isPublic to: ${checked} (${typeof checked})`);
       return;
     }
 
@@ -639,6 +649,108 @@ const TeamDetailsModal = ({
       return { ...prev, selectedTags: ids };
     });
   }, [isEditing, team]); // formData.selectedTags intentionally excluded
+
+  // Fetch current user's tag IDs for overlap highlighting on team focus areas
+  useEffect(() => {
+    if (!isModalVisible || !isAuthenticated || !user?.id) return;
+
+    const fetchCurrentUserTags = async () => {
+      try {
+        const tagsRes = await userService.getUserTags(user.id);
+        const tagData = Array.isArray(tagsRes?.data)
+          ? tagsRes.data
+          : tagsRes?.data?.data || [];
+        const ids = new Set(
+          tagData
+            .map((t) => Number(t.tagId ?? t.tag_id ?? t.id))
+            .filter(Number.isFinite),
+        );
+        setCurrentUserTagIds(ids);
+      } catch (err) {
+        console.warn("Could not fetch user tags for matching highlights:", err);
+      }
+    };
+
+    fetchCurrentUserTags();
+  }, [isModalVisible, isAuthenticated, user?.id]);
+
+  // Fetch aggregated member badges when modal opens
+  useEffect(() => {
+    if (!isModalVisible || !effectiveTeamId) return;
+
+    const fetchTeamBadges = async () => {
+      try {
+        const response = await teamService.getTeamMemberBadges(effectiveTeamId);
+        const badges = response?.data || [];
+        setTeamBadges(badges);
+        setTeamBadgesTotalCredits(response?.meta?.totalCredits || 0);
+      } catch (error) {
+        console.warn("Could not fetch team member badges:", error);
+        setTeamBadges([]);
+      }
+    };
+
+    fetchTeamBadges();
+  }, [isModalVisible, effectiveTeamId]);
+
+  // Fetch current user's badge names for match highlighting
+  useEffect(() => {
+    if (!isModalVisible || !isAuthenticated || !user?.id) {
+      return;
+    }
+
+    const fetchCurrentUserBadges = async () => {
+      try {
+        const response = await userService.getUserBadges(user.id);
+        const rows = Array.isArray(response?.data) ? response.data : [];
+        const names = new Set(
+          rows
+            .map((r) => (r.badgeName ?? r.badge_name ?? r.name ?? "").trim().toLowerCase())
+            .filter(Boolean),
+        );
+        setCurrentUserBadgeNames(names);
+      } catch (err) {
+        console.warn("Could not fetch user badges for matching highlights:", err);
+      }
+    };
+
+    fetchCurrentUserBadges();
+  }, [isModalVisible, isAuthenticated, user?.id]);
+
+  useEffect(() => {
+    if (!isModalVisible || !isAuthenticated || !user?.id) {
+      setDistanceViewerUser(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    const fetchDistanceViewerUser = async () => {
+      try {
+        const response = await userService.getUserById(user.id);
+        const payload = response?.data ?? response;
+        const viewerData =
+          payload?.success !== undefined
+            ? payload?.data
+            : (payload?.data?.data ?? payload?.data ?? payload);
+
+        if (!cancelled) {
+          setDistanceViewerUser(viewerData ?? user);
+        }
+      } catch (err) {
+        console.warn("Could not fetch current user details for distance fallback:", err);
+        if (!cancelled) {
+          setDistanceViewerUser(user);
+        }
+      }
+    };
+
+    fetchDistanceViewerUser();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated, isModalVisible, user]);
 
   // Fetch structured tags when modal opens (needed for display AND edit mode)
   useEffect(() => {
@@ -698,11 +810,6 @@ const TeamDetailsModal = ({
 
       // Close modal and trigger leave callback after a short delay
       setTimeout(() => {
-        console.log(
-          "TeamDetailsModal: about to call onLeave with team.id:",
-          team.id,
-        );
-        console.log("TeamDetailsModal: onLeave is:", onLeave);
         if (onLeave) onLeave(team.id);
         if (onClose) onClose();
       }, 1500);
@@ -721,12 +828,13 @@ const TeamDetailsModal = ({
   };
 
   // Invitation response handlers
-  const handleInvitationAccept = async (invitationId, responseMessage = "") => {
+  const handleInvitationAccept = async (invitationId, responseMessage = "", fillRole = false) => {
     try {
       await teamService.respondToInvitation(
         invitationId,
         "accept",
         responseMessage,
+        fillRole,
       );
       setNotification({
         type: "success",
@@ -839,14 +947,7 @@ const TeamDetailsModal = ({
       setLoading(true);
       setNotification({ type: null, message: null });
 
-      console.log("Form data before submission:", formData);
-
       const isPublicBoolean = formData.isPublic === true;
-      console.log(
-        "Visibility value computed:",
-        isPublicBoolean,
-        typeof isPublicBoolean,
-      );
 
       // Decide what to send for max_members based on the mode
       let maxMembersForSubmit = null;
@@ -861,9 +962,6 @@ const TeamDetailsModal = ({
 
         maxMembersForSubmit = Number.isNaN(parsed) ? null : parsed;
       }
-
-      console.log("Edit Team - mode:", formData.maxMembersMode);
-      console.log("Edit Team - maxMembersForSubmit:", maxMembersForSubmit);
 
       // Prepare the submission data - PRESERVE EXISTING IMAGE URL
       const isRemoteBoolean = formData.isRemote === true;
@@ -896,7 +994,6 @@ const TeamDetailsModal = ({
 
         if (uploadResult.success) {
           submissionData.teamavatar_url = uploadResult.url;
-          console.log("New avatar uploaded:", submissionData.teamavatar_url);
         } else {
           console.error("Error uploading team avatar:", uploadResult.error);
           // Continue with the update even if image upload fails
@@ -905,14 +1002,7 @@ const TeamDetailsModal = ({
             message: "Team updated but avatar upload failed.",
           });
         }
-      } else {
-        console.log(
-          "No new image selected, preserving existing avatar URL:",
-          submissionData.teamavatar_url,
-        );
       }
-
-      console.log("Final submission data:", submissionData);
 
       // Always send tags
       submissionData.tags = (formData.selectedTags ?? [])
@@ -925,14 +1015,10 @@ const TeamDetailsModal = ({
         .filter((id) => Number.isFinite(id) && id > 0)
         .map((tag_id) => ({ tag_id }));
 
-      console.log("Final submission data with tags:", submissionData);
-
       const response = await teamService.updateTeam(
         effectiveTeamId,
         submissionData,
       );
-
-      console.log("Update response:", response);
 
       // Update our local state with the new visibility value
       setIsPublic(isPublicBoolean);
@@ -1014,40 +1100,6 @@ const TeamDetailsModal = ({
     }
   };
 
-  // Updated handleApplyToJoin function
-  const handleApplyToJoin = () => {
-    setIsApplicationModalOpen(true);
-  };
-
-  // New function to handle application submission
-  const handleApplicationSubmit = async (applicationData) => {
-    try {
-      setApplicationLoading(true);
-      await teamService.applyToJoinTeam(effectiveTeamId, applicationData);
-
-      // Refresh team details to show updated status
-      await fetchTeamDetails();
-
-      setNotification({
-        type: "success",
-        message: applicationData.isDraft
-          ? "Draft saved successfully"
-          : "Application sent successfully!",
-      });
-
-      if (!applicationData.isDraft) {
-        setIsApplicationModalOpen(false);
-      }
-    } catch (error) {
-      console.error("Error submitting application:", error);
-      throw new Error(
-        error.response?.data?.message || "Failed to submit application",
-      );
-    } finally {
-      setApplicationLoading(false);
-    }
-  };
-
   const isTeamMember = useMemo(() => {
     if (!team || !user) return false;
     return (
@@ -1086,7 +1138,7 @@ const TeamDetailsModal = ({
     }
 
     // Pending application CTA
-    const hasApp = Boolean(hasPendingApplication || pendingApplication);
+    const hasApp = Boolean((hasPendingApplication || pendingApplication) && !isMember);
 
     if (hasApp) {
       return (
@@ -1133,14 +1185,21 @@ const TeamDetailsModal = ({
             )}
           </div>
         ) : (
-          <Button
-            variant="primary"
-            onClick={handleApplyToJoin}
+          <TeamApplicationButton
+            team={team}
+            teamId={effectiveTeamId}
             disabled={loading}
             className="w-full"
-          >
-            Apply to Join Team
-          </Button>
+            onAfterSubmit={fetchTeamDetails}
+            onSuccess={(applicationData) => {
+              setNotification({
+                type: "success",
+                message: applicationData.isDraft
+                  ? "Draft saved successfully"
+                  : "Application sent successfully!",
+              });
+            }}
+          />
         )}
       </div>
     );
@@ -1169,34 +1228,81 @@ const TeamDetailsModal = ({
     setSelectedUserId(null);
   };
 
-  // Add detailed debugging
-  console.log("Team Details Debug:", {
-    // User information
-    "Current User ID": user?.id,
-    "User Object": user,
-
-    // Team information
-    "Team Owner ID": team?.owner_id,
-    "Team Object": team,
-
-    // Role information
-    "User Role": userRole,
-
-    // Computed values
-    "Is Owner": isOwner,
-    "Is Admin": userRole === "admin",
-    "Can Edit": canEditTeam,
-    "Is Public": isPublic,
-
-    // Modal state
-    "Is Editing": isEditing,
-    "Is Modal Visible": isModalVisible,
-
-    // Form Data
-    "Form Data": formData,
-  });
-
   // Create custom title with buttons
+  const effectiveTeamMatch = useMemo(() => {
+    const shouldResolveMatchData =
+      showMatchHighlights ||
+      matchScore > 0 ||
+      matchType != null ||
+      matchDetails != null ||
+      (!isFromSearch && (teamBadges?.length > 0 || team?.tags?.length > 0));
+
+    if (!shouldResolveMatchData || !team || !user) {
+      return { matchScore, matchType, matchDetails };
+    }
+
+    const viewerProfile = buildViewerTeamMatchProfile({
+      user,
+      userTags: Array.from(currentUserTagIds ?? userTagIds ?? []),
+      userBadges: Array.from(currentUserBadgeNames ?? []),
+    });
+    const enrichedTeam = enrichTeamMatchData({
+      team: {
+        ...team,
+        bestMatchScore: matchScore,
+        best_match_score: matchScore,
+        matchType,
+        match_type: matchType,
+        matchDetails,
+        match_details: matchDetails,
+      },
+      viewerProfile,
+      teamBadges,
+    });
+
+    return {
+      matchScore: enrichedTeam.bestMatchScore ?? matchScore,
+      matchType: enrichedTeam.matchType ?? matchType,
+      matchDetails: enrichedTeam.matchDetails ?? matchDetails,
+    };
+  }, [
+    currentUserBadgeNames,
+    currentUserTagIds,
+    isFromSearch,
+    matchDetails,
+    matchScore,
+    matchType,
+    showMatchHighlights,
+    team,
+    teamBadges,
+    user,
+    userTagIds,
+  ]);
+
+  const effectiveTeamDistanceKm = useMemo(() => {
+    const rawDistance = team?.distance_km ?? team?.distanceKm;
+    const numericDistance = Number(rawDistance);
+    const viewerForDistance = distanceViewerUser ?? user;
+    const computedDistance = viewerForDistance
+      ? calculateDistanceKm(viewerForDistance, team)
+      : null;
+
+    if (computedDistance != null) {
+      return computedDistance;
+    }
+
+    if (Number.isFinite(numericDistance) && numericDistance < 999999) {
+      return numericDistance;
+    }
+
+    return null;
+  }, [distanceViewerUser, team, user]);
+
+  const teamMatchTier =
+    effectiveTeamMatch.matchScore != null
+      ? getMatchTier(effectiveTeamMatch.matchScore)
+      : null;
+
   const modalTitle = (
     <div className="flex justify-between items-center w-full">
       <h2 className="text-xl font-medium text-primary">
@@ -1251,7 +1357,7 @@ const TeamDetailsModal = ({
     <>
       {/* Main Modal using Modal.jsx component */}
       <Modal
-        isOpen={isModalVisible && !isApplicationModalOpen}
+        isOpen={isModalVisible}
         onClose={handleClose}
         title={modalTitle}
         position="center"
@@ -1261,6 +1367,8 @@ const TeamDetailsModal = ({
         closeOnBackdrop={true}
         closeOnEscape={true}
         showCloseButton={true}
+        zIndexStyle={zIndexStyle}
+        boxZIndexStyle={boxZIndexStyle}
       >
         {renderNotification()}
         {loading ? (
@@ -1292,13 +1400,8 @@ const TeamDetailsModal = ({
             ) : (
               <div className="space-y-6">
                 {/* Team header with avatar */}
-                {console.log("Team avatar debug:", {
-                  teamavatar_url: team?.teamavatar_url,
-                  teamavatarUrl: team?.teamavatarUrl,
-                  fullTeam: team,
-                })}
                 <div className="flex items-start space-x-4 mb-6">
-                  <div className="avatar placeholder">
+                  <div className="avatar placeholder relative">
                     <div className="bg-primary text-primary-content rounded-full w-16 h-16 flex items-center justify-center">
                       {(team?.teamavatar_url || team?.teamavatarUrl) &&
                       !teamImageError ? (
@@ -1312,6 +1415,18 @@ const TeamDetailsModal = ({
                         <span className="text-xl">{getTeamInitials()}</span>
                       )}
                     </div>
+                    {teamMatchTier && (
+                      <div
+                        className={`absolute -top-1 -left-1 w-6 h-6 rounded-full ring-2 ring-white flex items-center justify-center ${teamMatchTier.bg}`}
+                        title={`${teamMatchTier.pct}% ${teamMatchTier.label.toLowerCase()}`}
+                      >
+                        <teamMatchTier.Icon
+                          size={12}
+                          className="text-white"
+                          strokeWidth={2.5}
+                        />
+                      </div>
+                    )}
                   </div>
                   <div>
                     <h1 className="text-2xl font-bold leading-[120%] mb-[0.2em]">
@@ -1368,7 +1483,7 @@ const TeamDetailsModal = ({
                   </div>
                 </div>
 
-                <div className="space-y-6">
+                <div className="space-y-8">
                   {/* Team description */}
                   {team?.description && (
                     <div>
@@ -1378,15 +1493,28 @@ const TeamDetailsModal = ({
                     </div>
                   )}
 
+                  {/* Match Score */}
+                  <MatchScoreSection
+                    matchScore={effectiveTeamMatch.matchScore}
+                    matchType={effectiveTeamMatch.matchType}
+                    matchDetails={effectiveTeamMatch.matchDetails}
+                    comparisonLabel="this team"
+                  />
+
                   {/* Team Location */}
-                  <LocationSection entity={team} entityType="team" />
+                  <LocationSection
+                    entity={team}
+                    entityType="team"
+                    distance={showHighlightsForContext ? effectiveTeamDistanceKm : null}
+                    showDefaultHeaderRight={showHighlightsForContext}
+                  />
 
                   {/* Team Focus Areas */}
-                  {console.log("Team tags for FocusAreasSection:", team?.tags)}
                   {!isEditing && (
                     <TagsDisplaySection
                       title={UI_TEXT.focusAreas.title}
                       tags={team?.tags || []}
+                      matchingTagIds={showHighlightsForContext ? currentUserTagIds : null}
                       allTags={allTags}
                       canEdit={false}
                       onSave={undefined}
@@ -1395,6 +1523,65 @@ const TeamDetailsModal = ({
                       entityType="team"
                       emptyMessage={UI_TEXT.focusAreas.emptyTeam}
                       placeholder={UI_TEXT.focusAreas.placeholderTeam}
+                      headerRight={showHighlightsForContext && currentUserTagIds && currentUserTagIds.size > 0 ? (() => {
+                        const teamTags = team?.tags || [];
+                        if (!Array.isArray(teamTags) || teamTags.length === 0) return null;
+                        const total = teamTags.length;
+                        const matchCount = teamTags.filter((t) => {
+                          const tagId = Number(t.id ?? t.tag_id ?? t.tagId);
+                          return currentUserTagIds.has(tagId);
+                        }).length;
+                        if (matchCount > 0) {
+                          return (
+                            <span className="flex items-center gap-1.5 text-sm text-success">
+                              <Check size={14} className="flex-shrink-0" />
+                              <span>{matchCount}/{total} in common</span>
+                            </span>
+                          );
+                        }
+                        return (
+                          <span className="flex items-center gap-1.5 text-sm text-error/70">
+                            <X size={14} className="flex-shrink-0" />
+                            <span>None in common</span>
+                          </span>
+                        );
+                      })() : null}
+                    />
+                  )}
+
+                  {/* Team Badges */}
+                  {!isEditing && teamBadges && teamBadges.length > 0 && (
+                    <BadgesDisplaySection
+                      title="Badges"
+                      badges={teamBadges}
+                      emptyMessage="No badges earned yet"
+                      maxVisible={10}
+                      groupByCategory={true}
+                      showCredits={true}
+                      onCategoryClick={handleBadgeCategoryClick}
+                      onBadgeClick={handleBadgeClick}
+                      matchingBadgeNames={showHighlightsForContext ? (roleMatchBadgeNames || currentUserBadgeNames) : null}
+                      headerRight={showHighlightsForContext && (roleMatchBadgeNames || currentUserBadgeNames) ? (() => {
+                        const activeMatchNames = roleMatchBadgeNames || currentUserBadgeNames;
+                        const total = teamBadges.length;
+                        const matchCount = teamBadges.filter((b) =>
+                          activeMatchNames.has((b.name ?? "").trim().toLowerCase())
+                        ).length;
+                        if (matchCount > 0) {
+                          return (
+                            <span className="flex items-center gap-1.5 text-sm text-success">
+                              <Check size={14} className="flex-shrink-0" />
+                              <span>{matchCount}/{total} in common</span>
+                            </span>
+                          );
+                        }
+                        return (
+                          <span className="flex items-center gap-1.5 text-sm text-error/70">
+                            <X size={14} className="flex-shrink-0" />
+                            <span>None in common</span>
+                          </span>
+                        );
+                      })() : null}
                     />
                   )}
 
@@ -1409,15 +1596,18 @@ const TeamDetailsModal = ({
                     isOwner={isOwner}
                     onRoleChange={fetchTeamDetails}
                     onMemberRemoved={fetchTeamDetails}
+                    roles={teamRoles}
                   />
 
-{/* Vacant Team Roles */}
+                  {/* Vacant Team Roles */}
                   <VacantRolesSection
+                    team={team}
                     teamId={effectiveTeamId}
                     canManage={isOwner || internalUserRole === "admin"}
+                    isTeamMember={isTeamMember}
                     isEditing={isEditing}
+                    onRolesLoaded={setTeamRoles}
                   />
-
                 </div>
 
                 {/* Join / Leave / Message Buttons */}
@@ -1435,17 +1625,17 @@ const TeamDetailsModal = ({
           userId={selectedUserId}
           onClose={handleUserModalClose}
           mode="view"
+          filledRoleName={(() => {
+            const r = teamRoles.find((r) => {
+              if (String(r.status ?? "").toLowerCase() !== "filled") return false;
+              const fid = r.filledByUserId ?? r.filled_by_user_id ?? r.filledBy ?? r.filled_by ?? null;
+              return fid != null && String(fid) === String(selectedUserId);
+            });
+            return r?.roleName ?? r?.role_name ?? null;
+          })()}
+          teamName={team?.name ?? null}
         />
       )}
-
-      {/* Application Modal */}
-      <TeamApplicationModal
-        isOpen={isApplicationModalOpen}
-        onClose={() => setIsApplicationModalOpen(false)}
-        team={team}
-        onSubmit={handleApplicationSubmit}
-        loading={applicationLoading}
-      />
 
       {/* Leave Team Confirmation Dialog */}
       {isLeaveDialogOpen && (
@@ -1493,6 +1683,12 @@ const TeamDetailsModal = ({
       )}
       <TagAwardsModal {...tagAwardsModalProps} />
       <SupercategoryAwardsModal {...supercategoryModalProps} />
+
+      {/* Badge Category Modal */}
+      <BadgeCategoryModal
+        {...badgeCategoryModalProps}
+        onOpenUser={handleMemberClick}
+      />
 
       {/* Invitation Details Modal */}
       {pendingInvitation && (

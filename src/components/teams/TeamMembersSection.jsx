@@ -1,5 +1,5 @@
-import React from "react";
-import { Users, MapPin, Ruler } from "lucide-react";
+import React, { useState } from "react";
+import { Users, MapPin, Ruler, ChevronRight, ChevronUp, UserCheck } from "lucide-react";
 import RoleBadgeDropdown from "./RoleBadgeDropdown";
 import Alert from "../common/Alert";
 import { teamService } from "../../services/teamService";
@@ -24,11 +24,14 @@ const TeamMembersSection = ({
   onRoleChange = null,
   onMemberRemoved = null,
   className = "",
+  roles = [],
 }) => {
   const [notification, setNotification] = React.useState({
     type: null,
     message: null,
   });
+  const [isExpanded, setIsExpanded] = useState(false);
+  const COLLAPSED_COUNT = 4;
 
   // Helper function to get member initials (2 letters: "NK" for Nam Khoa)
   const getMemberInitials = (member) => {
@@ -53,11 +56,16 @@ const TeamMembersSection = ({
   }
 
   return (
-    <div className={`mt-6 mb-6 ${className}`}>
+    <div className={className}>
       {/* Section Header */}
       <div className="flex items-center mb-4">
         <Users size={18} className="mr-2 text-primary flex-shrink-0" />
-        <h3 className="font-medium">Team Members</h3>
+        <h3 className="font-medium">
+          Team Members
+          <span className="font-normal text-sm text-base-content/60 ml-1">
+            ({team.members.length} {team.members.length === 1 ? 'member' : 'members'})
+          </span>
+        </h3>
       </div>
 
       {/* Notification Alert */}
@@ -77,15 +85,22 @@ const TeamMembersSection = ({
           .map((m) => `${m.user_id || m.userId}-${m.role}`)
           .join(",")}
       >
-        {team.members.map((member) => {
-          console.log("Member data:", member); // Debug info
-
+        {(isExpanded ? team.members : team.members.slice(0, COLLAPSED_COUNT)).map((member) => {
           // Check which property is available (userId or user_id)
           const memberId = member.userId || member.user_id;
           const isCurrentUser = memberId === user?.id;
 
           // Determine if this member should be anonymized
           const anonymize = shouldAnonymizeMember(member);
+
+          // Find the filled role this member is filling (if any)
+          const filledRole = roles.find((r) => {
+            if (String(r.status ?? "").toLowerCase() !== "filled") return false;
+            const filledById =
+              r.filledByUserId ?? r.filled_by_user_id ?? r.filledBy ?? r.filled_by ?? null;
+            return filledById != null && String(filledById) === String(memberId);
+          });
+          const filledRoleName = filledRole?.roleName ?? filledRole?.role_name ?? null;
 
           // Role management logic - Owners and admins can manage roles
           const currentUserMember = team.members?.find(
@@ -229,7 +244,8 @@ const TeamMembersSection = ({
                   {!anonymize &&
                     (member.city ||
                       member.country ||
-                      member.distance_km != null) && (
+                      member.distance_km != null ||
+                      filledRoleName) && (
                       <CardMetaRow>
                         {(member.city || member.country) && (
                           <CardMetaItem icon={MapPin}>
@@ -242,6 +258,12 @@ const TeamMembersSection = ({
                         {member.distance_km != null && (
                           <CardMetaItem icon={Ruler} tone="muted" nowrap>
                             {Math.round(member.distance_km)} km away
+                          </CardMetaItem>
+                        )}
+
+                        {filledRoleName && (
+                          <CardMetaItem icon={UserCheck} nowrap>
+                            {filledRoleName}
                           </CardMetaItem>
                         )}
                       </CardMetaRow>
@@ -265,6 +287,16 @@ const TeamMembersSection = ({
           );
         })}
       </div>
+      {team.members.length > COLLAPSED_COUNT && (
+        <button
+          type="button"
+          className="flex items-center gap-1 mt-3 text-sm text-base-content/50 hover:text-base-content/80 transition-colors"
+          onClick={() => setIsExpanded((v) => !v)}
+        >
+          {isExpanded ? <ChevronUp size={14} /> : <ChevronRight size={14} />}
+          {isExpanded ? "Show less" : "Show all"}
+        </button>
+      )}
     </div>
   );
 };

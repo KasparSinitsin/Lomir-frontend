@@ -2,24 +2,16 @@ import api from "./api";
 
 /**
  * Extract a human-friendly message from Axios/backend errors.
- * Backend shape you showed:
- * { success:false, message:"Error performing search", error:"userParamIdx is not defined" }
  */
 export const getApiErrorMessage = (error) => {
   const data = error?.response?.data;
 
-  // Backend-provided details
   if (data?.error && data?.message) {
-    // Return the specific error (more useful), optionally keep the generic message
-    // Example: "userParamIdx is not defined"
     return data.error;
-    // If you prefer: return `${data.message}: ${data.error}`;
   }
 
   if (data?.error) return String(data.error);
   if (data?.message) return String(data.message);
-
-  // Axios fallback
   if (error?.message) return String(error.message);
 
   return "Something went wrong";
@@ -45,36 +37,83 @@ const normalizeTeamData = (team) => {
   return normalizedTeam;
 };
 
+const VALID_SEARCH_TYPES = new Set(["all", "teams", "users", "roles"]);
+
+const normalizeSearchType = (searchType = "all") =>
+  VALID_SEARCH_TYPES.has(searchType) ? searchType : "all";
+
+const normalizeSearchResponse = (payload = {}) => {
+  const data = payload?.data ?? {};
+  const pagination = payload?.pagination ?? {};
+
+  return {
+    ...payload,
+    data: {
+      ...data,
+      teams: Array.isArray(data.teams)
+        ? data.teams.map(normalizeTeamData)
+        : [],
+      users: data.users ?? [],
+      roles: data.roles ?? [],
+    },
+    pagination: {
+      ...pagination,
+      totalTeams: pagination.totalTeams ?? 0,
+      totalUsers: pagination.totalUsers ?? 0,
+      totalRoles: pagination.totalRoles ?? 0,
+    },
+  };
+};
+
+const buildSearchParams = ({
+  query,
+  isAuthenticated = false,
+  page = 1,
+  limit = 20,
+  searchType = "all",
+  sortBy = "name",
+  sortDir = "asc",
+  maxDistance = null,
+  openRolesOnly = false,
+  excludeOwnTeams = false,
+  capacityMode = "spots",
+  tagIds = [],
+  badgeIds = [],
+  roleId = null,
+  excludeTeamId = null,
+} = {}) => {
+  const params = {
+    authenticated: isAuthenticated,
+    page,
+    limit,
+    searchType: normalizeSearchType(searchType),
+    sortBy,
+    sortDir,
+    openRolesOnly,
+  };
+
+  if (query) params.query = query;
+  if (maxDistance) params.maxDistance = maxDistance;
+  if (excludeOwnTeams) params.excludeOwnTeams = true;
+
+  if (sortBy === "capacity") {
+    params.capacityMode = capacityMode;
+  }
+
+  if (tagIds && tagIds.length > 0) params.tagIds = tagIds.join(",");
+  if (badgeIds && badgeIds.length > 0) params.badgeIds = badgeIds.join(",");
+  if (roleId) params.roleId = roleId;
+  if (excludeTeamId) params.excludeTeamId = excludeTeamId;
+
+  return params;
+};
+
 export const searchService = {
-  async globalSearch(
-    query,
-    isAuthenticated = false,
-    page = 1,
-    limit = 20,
-    sortBy = "name",
-    sortDir = "asc",
-    maxDistance = null, // ← ADD
-  ) {
-    const params = {
-      query,
-      authenticated: isAuthenticated,
-      page,
-      limit,
-      sortBy,
-      sortDir,
-    };
-
-    // Only include when set (matches your colleague's direction)
-    if (maxDistance) params.maxDistance = maxDistance;
-
+  async globalSearch(criteria = {}) {
+    const params = buildSearchParams(criteria);
     const response = await api.get("/api/search/global", { params });
 
-    if (response.data?.data?.teams) {
-      response.data.data.teams =
-        response.data.data.teams.map(normalizeTeamData);
-    }
-
-    return response.data;
+    return normalizeSearchResponse(response.data);
   },
 
   async getRecommended(userId, isAuthenticated = false) {
@@ -93,33 +132,11 @@ export const searchService = {
     return response.data;
   },
 
-  async getAllUsersAndTeams(
-    isAuthenticated = false,
-    page = 1,
-    limit = 20,
-    sortBy = "name",
-    sortDir = "asc",
-    maxDistance = null,
-  ) {
-    const params = {
-      authenticated: isAuthenticated,
-      page,
-      limit,
-      sortBy,
-      sortDir,
-    };
-
-    // Only include when set
-    if (maxDistance) params.maxDistance = maxDistance;
-
+  async getAllUsersAndTeams(criteria = {}) {
+    const params = buildSearchParams(criteria);
     const response = await api.get("/api/search/all", { params });
 
-    if (response.data?.data?.teams) {
-      response.data.data.teams =
-        response.data.data.teams.map(normalizeTeamData);
-    }
-
-    return response.data;
+    return normalizeSearchResponse(response.data);
   },
 };
 

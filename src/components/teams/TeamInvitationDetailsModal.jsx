@@ -6,15 +6,31 @@ import {
   Check,
   X,
   MailOpen,
+  UserPlus,
 } from "lucide-react";
 import Modal from "../common/Modal";
 import Button from "../common/Button";
 import UserDetailsModal from "../users/UserDetailsModal";
 import TeamDetailsModal from "./TeamDetailsModal";
-import { getUserInitials, getDisplayName } from "../../utils/userHelpers";
+import VacantRoleCard from "./VacantRoleCard";
 import Alert from "../common/Alert";
 import { format } from "date-fns";
 import InlineUserLink from "../users/InlineUserLink";
+import { useHydratedRole } from "../../hooks/useHydratedRole";
+
+const extractRoleMatchData = (roleLike) => {
+  const rawScore = roleLike?.matchScore ?? roleLike?.match_score ?? null;
+  const numericScore = Number(rawScore);
+
+  return {
+    matchScore: Number.isFinite(numericScore) ? numericScore : null,
+    matchDetails:
+      roleLike?.matchDetails ??
+      roleLike?.match_details ??
+      roleLike?.scoreBreakdown ??
+      null,
+  };
+};
 
 /**
  * TeamInvitationDetailsModal Component
@@ -36,8 +52,8 @@ const TeamInvitationDetailsModal = ({
   onDecline,
 }) => {
   // ============ State ============
-  const [loading, setLoading] = useState(false);
-  const [actionLoading, setActionLoading] = useState(null); // "accept" | "decline" | null
+  const [loading] = useState(false);
+  const [actionLoading, setActionLoading] = useState(null); // "acceptRole" | "acceptTeam" | "decline" | null
   const [error, setError] = useState(null);
   const [responseMessage, setResponseMessage] = useState("");
   const [selectedUserId, setSelectedUserId] = useState(null);
@@ -47,6 +63,31 @@ const TeamInvitationDetailsModal = ({
 
   // Get team data from invitation
   const team = invitation?.team || {};
+  const roleId =
+    invitation?.role?.id ?? invitation?.roleId ?? invitation?.role_id ?? null;
+  const teamId = team?.id ?? null;
+  const {
+    hydratedRole,
+    roleMatchScore: fetchedRoleMatchScore,
+    roleMatchDetails: fetchedRoleMatchDetails,
+  } = useHydratedRole({
+    isOpen,
+    roleId,
+    teamId,
+  });
+  const invitationRoleMatch = extractRoleMatchData(invitation?.role);
+  const hydratedRoleMatch = extractRoleMatchData(hydratedRole);
+  const isUsingHydratedRoleMatch =
+    fetchedRoleMatchScore === hydratedRoleMatch.matchScore &&
+    fetchedRoleMatchDetails === hydratedRoleMatch.matchDetails;
+  const roleMatchScore =
+    invitationRoleMatch.matchScore != null && isUsingHydratedRoleMatch
+      ? invitationRoleMatch.matchScore
+      : fetchedRoleMatchScore ?? invitationRoleMatch.matchScore;
+  const roleMatchDetails =
+    invitationRoleMatch.matchScore != null && isUsingHydratedRoleMatch
+      ? invitationRoleMatch.matchDetails
+      : fetchedRoleMatchDetails ?? invitationRoleMatch.matchDetails;
   const inviter = invitation?.inviter || {};
 
   // Format invitation date
@@ -65,16 +106,6 @@ const TeamInvitationDetailsModal = ({
       console.error("Error formatting date:", error);
       return "Unknown date";
     }
-  };
-
-  // Get inviter display name
-  const getInviterName = () => {
-    return getDisplayName(inviter);
-  };
-
-  // Get inviter avatar
-  const getInviterAvatar = () => {
-    return inviter.avatar_url || inviter.avatarUrl || null;
   };
 
   const getTeamAvatar = () => {
@@ -127,11 +158,25 @@ const TeamInvitationDetailsModal = ({
 
   // ============ Handlers ============
 
-  const handleAccept = async () => {
+  const handleAcceptWithRole = async () => {
     try {
-      setActionLoading("accept");
+      setActionLoading("acceptRole");
       setError(null);
-      await onAccept(invitation.id, responseMessage);
+      await onAccept(invitation.id, responseMessage, true);
+      setResponseMessage("");
+      onClose();
+    } catch (err) {
+      setError(err.message || "Failed to accept invitation");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleAcceptTeamOnly = async () => {
+    try {
+      setActionLoading("acceptTeam");
+      setError(null);
+      await onAccept(invitation.id, responseMessage, false);
       setResponseMessage("");
       onClose();
     } catch (err) {
@@ -163,6 +208,21 @@ const TeamInvitationDetailsModal = ({
 
   // ============ Render ============
 
+  const hasRoleInvitation = !!(invitation?.role_id ?? invitation?.roleId ?? invitation?.role?.id);
+  const isInternal = invitation?.isInternal ?? invitation?.is_internal ?? false;
+  const isAcceptRoleLoading = actionLoading === "acceptRole";
+  const isAcceptTeamLoading = actionLoading === "acceptTeam";
+  const isDeclineLoading = actionLoading === "decline";
+  const isActionPending =
+    isAcceptRoleLoading || isAcceptTeamLoading || isDeclineLoading;
+  const isControlsDisabled = loading || isActionPending;
+
+  const headerSubtitle = isInternal
+    ? "You've been invited to fill a role!"
+    : hasRoleInvitation
+      ? "You are invited for a role!"
+      : "You are invited!";
+
   // Custom header
   const customHeader = (
     <div>
@@ -170,8 +230,8 @@ const TeamInvitationDetailsModal = ({
         {team.name || "Unknown Team"}
       </h2>
       <p className="text-sm text-base-content/70 flex items-center">
-        <MailOpen size={14} className="mr-1.5" />
-        You are invited!
+        <MailOpen size={14} className={`mr-1.5 ${isInternal ? "text-orange-500" : ""}`} />
+        {headerSubtitle}
       </p>
     </div>
   );
@@ -179,7 +239,7 @@ const TeamInvitationDetailsModal = ({
   // Footer with action buttons + "Sent by" (left)
   const footer = (
     <div className="space-y-3">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         {/* Sent by (left) */}
         <InlineUserLink
           label="Invite sent by"
@@ -188,25 +248,61 @@ const TeamInvitationDetailsModal = ({
         />
 
         {/* Buttons (right) */}
-        <div className="flex justify-end gap-2">
+        <div className="flex flex-wrap justify-end gap-2">
           <Button
             variant="errorOutline"
             size="sm"
             onClick={handleDecline}
-            disabled={loading || actionLoading !== null}
+            disabled={isControlsDisabled}
             icon={<X size={16} />}
           >
-            {actionLoading === "decline" ? "Declining..." : "Decline"}
+            {isDeclineLoading ? "Declining..." : "Decline"}
           </Button>
-          <Button
-            variant="successOutline"
-            size="sm"
-            onClick={handleAccept}
-            disabled={loading || actionLoading !== null}
-            icon={<Check size={16} />}
-          >
-            {actionLoading === "accept" ? "Accepting..." : "Accept & Join Team"}
-          </Button>
+          {hasRoleInvitation && isInternal ? (
+            // Internal role invite: user is already a member, just accept/fill the role
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={handleAcceptWithRole}
+              disabled={isControlsDisabled}
+              icon={<Check size={16} />}
+            >
+              {isAcceptRoleLoading ? "Accepting..." : "Accept Role"}
+            </Button>
+          ) : hasRoleInvitation ? (
+            // External invite with a role: offer team-only or fill-role options
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleAcceptTeamOnly}
+                disabled={isControlsDisabled}
+                icon={<UserPlus size={16} />}
+              >
+                {isAcceptTeamLoading ? "Joining..." : "Join Team Only"}
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={handleAcceptWithRole}
+                disabled={isControlsDisabled}
+                icon={<Check size={16} />}
+              >
+                {isAcceptRoleLoading ? "Joining..." : "Accept & Fill Role"}
+              </Button>
+            </>
+          ) : (
+            // No role: simple accept
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={handleAcceptTeamOnly}
+              disabled={isControlsDisabled}
+              icon={<Check size={16} />}
+            >
+              {isAcceptTeamLoading ? "Joining..." : "Accept"}
+            </Button>
+          )}
         </div>
       </div>
     </div>
@@ -299,6 +395,27 @@ const TeamInvitationDetailsModal = ({
           </p>
         )}
 
+        {/* Vacant role card — shown when invitation targets a specific role */}
+        {(hydratedRole || invitation?.role || invitation?.roleId || invitation?.role_id) && (
+          <div className="mb-5">
+            <p className="text-xs text-base-content/60 mb-2 flex items-center">
+              <MailOpen size={12} className="text-info mr-1" />
+              Invited for this role:
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <VacantRoleCard
+                role={hydratedRole ?? invitation?.role ?? { id: invitation?.roleId ?? invitation?.role_id }}
+                team={team}
+                matchScore={roleMatchScore}
+                matchDetails={roleMatchDetails}
+                canManage={false}
+                isTeamMember={false}
+                hideActions={true}
+              />
+            </div>
+          </div>
+        )}
+
         {/* Invitation Message */}
         {invitation?.message && (
           <div className="mb-4">
@@ -325,7 +442,7 @@ const TeamInvitationDetailsModal = ({
             onChange={(e) => setResponseMessage(e.target.value)}
             className="textarea textarea-bordered textarea-sm w-full h-20 resize-none text-sm"
             placeholder="Add a personal message to your decision. Decline messages will be sent as DM to the inviter only. Acceptance messages will be sent to the team chat."
-            disabled={loading || actionLoading !== null}
+            disabled={isControlsDisabled}
           />
         </div>
       </Modal>
@@ -335,7 +452,6 @@ const TeamInvitationDetailsModal = ({
         teamId={team?.id}
         initialTeamData={team}
         onClose={() => setIsTeamDetailsOpen(false)}
-        isFromSearch={true}
         hasPendingInvitation={true}
       />
 

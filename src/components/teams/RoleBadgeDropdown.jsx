@@ -9,7 +9,7 @@ const RoleBadgeDropdown = ({
   onRoleChange,
   onRemoveMember,
   isOwner = false,
-  isTeamArchived = false, 
+  isTeamArchived = false,
 }) => {
   const [isLoading, setIsLoading] = useState(false);
 
@@ -76,7 +76,7 @@ const RoleBadgeDropdown = ({
 
     if (
       window.confirm(
-        `Are you sure you want to remove ${memberName} from the team? This action cannot be undone.`
+        `Are you sure you want to remove ${memberName} from the team? This action cannot be undone.`,
       )
     ) {
       setIsLoading(true);
@@ -91,15 +91,15 @@ const RoleBadgeDropdown = ({
   };
 
   // Create the trigger badge
-const triggerBadge = (
-  <RoleBadgePill
-    icon={RoleIcon}
-    label={roleInfo.label}
-    badgeColorClass={roleInfo.badgeColor}
-    interactive={canManage}
-    loading={isLoading}
-  />
-);
+  const triggerBadge = (
+    <RoleBadgePill
+      icon={RoleIcon}
+      label={roleInfo.label}
+      badgeColorClass={roleInfo.badgeColor}
+      interactive={canManage}
+      loading={isLoading}
+    />
+  );
 
   // If user can't manage this member, show static badge
   if (!canManage || isLoading) {
