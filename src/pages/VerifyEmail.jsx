@@ -32,7 +32,7 @@ const VerifyEmail = () => {
 
   const verifyEmail = async (token) => {
     try {
-      const response = await api.get(`/api/auth/verify-email/${token}`);
+      const response = await api.get(`/api/auth/verify-email?token=${token}`);
 
       if (response.data.success) {
         setStatus("success");
