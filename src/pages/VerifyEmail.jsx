@@ -3,13 +3,7 @@ import { useSearchParams, Link } from "react-router-dom";
 import api from "../services/api";
 import Card from "../components/common/Card";
 import Button from "../components/common/Button";
-import {
-  Loader2,
-  BadgeCheck,
-  Info,
-  XCircle,
-  MailCheck,
-} from "lucide-react";
+import { Loader2, BadgeCheck, Info, XCircle, MailCheck } from "lucide-react";
 
 const VerifyEmail = () => {
   const [searchParams] = useSearchParams();
@@ -38,7 +32,7 @@ const VerifyEmail = () => {
         setStatus("success");
         setMessage("Your email has been verified successfully!");
 
-        const { token: authToken } = response.data.data;
+        const authToken = response.data?.data?.token;
         if (authToken) localStorage.setItem("token", authToken);
       }
     } catch (error) {
@@ -64,7 +58,9 @@ const VerifyEmail = () => {
     const size = 56;
 
     if (status === "verifying")
-      return <Loader2 size={size} className={`${base} text-primary animate-spin`} />;
+      return (
+        <Loader2 size={size} className={`${base} text-primary animate-spin`} />
+      );
     if (status === "success")
       return <BadgeCheck size={size} className={`${base} text-success`} />;
     if (status === "info")
