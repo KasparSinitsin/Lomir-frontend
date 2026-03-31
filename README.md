@@ -200,3 +200,4 @@ Lomir-frontend/
 ## Related
 
 - **Backend repo:** [Lomir-backend](https://github.com/KasparSinitsin/Lomir-backend)
+
