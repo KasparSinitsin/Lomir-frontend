@@ -6,7 +6,15 @@ import TagInput from "../tags/TagInput";
 import Card from "../common/Card";
 import Button from "../common/Button";
 import FormSectionDivider from "../common/FormSectionDivider";
-import { Tag, MailCheck, KeyRound, User, Camera } from "lucide-react";
+import {
+  Tag,
+  MailCheck,
+  KeyRound,
+  User,
+  Camera,
+  Eye,
+  EyeOff,
+} from "lucide-react";
 import ImageUploader from "../common/ImageUploader";
 import { uploadToCloudinary } from "../../config/cloudinary";
 import api from "../../services/api";
@@ -42,6 +50,8 @@ const RegisterForm = () => {
   const [registrationSuccess, setRegistrationSuccess] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState(null);
   const turnstileRef = useRef(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const [resendStatus, setResendStatus] = useState("idle"); // 'idle' | 'sending' | 'sent' | 'error'
   const [resendMessage, setResendMessage] = useState("");
@@ -101,6 +111,68 @@ const RegisterForm = () => {
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
+  };
+
+  const clearFieldError = (fieldName) => {
+    setErrors((prev) => {
+      if (!prev[fieldName]) {
+        return prev;
+      }
+
+      const remainingErrors = { ...prev };
+      delete remainingErrors[fieldName];
+      return remainingErrors;
+    });
+  };
+
+  const getPasswordValidationErrors = (password) => {
+    const passwordValidationErrors = [];
+
+    if (password.length < 8) {
+      passwordValidationErrors.push("Password must be at least 8 characters");
+    }
+
+    if (!/[A-Za-z]/.test(password)) {
+      passwordValidationErrors.push("Must contain at least one letter");
+    }
+
+    if (!/\d/.test(password)) {
+      passwordValidationErrors.push("Must contain at least one number");
+    }
+
+    return passwordValidationErrors;
+  };
+
+  const handlePasswordBlur = () => {
+    const passwordValidationErrors = getPasswordValidationErrors(
+      formData.password,
+    );
+
+    setErrors((prev) => {
+      const nextErrors = { ...prev };
+
+      if (passwordValidationErrors.length > 0) {
+        nextErrors.password = passwordValidationErrors;
+      } else {
+        delete nextErrors.password;
+      }
+
+      return nextErrors;
+    });
+  };
+
+  const handleConfirmPasswordBlur = () => {
+    setErrors((prev) => {
+      const nextErrors = { ...prev };
+
+      if (formData.password !== formData.confirmPassword) {
+        nextErrors.confirmPassword = "Passwords do not match";
+      } else {
+        delete nextErrors.confirmPassword;
+      }
+
+      return nextErrors;
+    });
   };
 
   const handleChange = (e) => {
@@ -237,6 +309,12 @@ const RegisterForm = () => {
       );
     }
   };
+
+  const passwordErrorMessages = Array.isArray(errors.password)
+    ? errors.password
+    : errors.password
+      ? [errors.password]
+      : [];
 
   if (registrationSuccess) {
     return (
@@ -376,21 +454,50 @@ const RegisterForm = () => {
                       Password <span className="text-error">*</span>
                     </span>
                   </label>
-                  <input
-                    type="password"
-                    placeholder="Min. 8 characters, with letters and numbers"
-                    className={`input input-bordered w-full ${
-                      errors.password ? "input-error" : ""
-                    }`}
-                    value={formData.password}
-                    onChange={handleChange}
-                    name="password"
-                  />
-                  {errors.password && (
-                    <label className="label">
-                      <span className="label-text-alt text-error">
-                        {errors.password}
-                      </span>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Min. 8 characters, with letters and numbers"
+                      className={`input input-bordered w-full pr-12 ${
+                        passwordErrorMessages.length > 0 ? "input-error" : ""
+                      }`}
+                      value={formData.password}
+                      onChange={handleChange}
+                      onFocus={() => clearFieldError("password")}
+                      onBlur={handlePasswordBlur}
+                      name="password"
+                    />
+                    <button
+                      type="button"
+                      className="absolute inset-y-0 right-0 flex items-center px-3 text-base-content/60 transition-colors hover:text-base-content"
+                      onClick={() => setShowPassword((prev) => !prev)}
+                      onMouseDown={(e) => e.preventDefault()}
+                      aria-label={showPassword ? "Hide password" : "Show password"}
+                      aria-pressed={showPassword}
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </button>
+                  </div>
+                  {passwordErrorMessages.length === 0 && (
+                    <p className="form-helper-text mt-2 px-1">
+                      At least 8 characters with at least one letter and one
+                      number.
+                    </p>
+                  )}
+                  {passwordErrorMessages.length > 0 && (
+                    <label className="label mt-2 flex flex-col items-start gap-0.5">
+                      {passwordErrorMessages.map((passwordError) => (
+                        <span
+                          key={passwordError}
+                          className="label-text-alt text-error"
+                        >
+                          {passwordError}
+                        </span>
+                      ))}
                     </label>
                   )}
                 </div>
@@ -401,16 +508,36 @@ const RegisterForm = () => {
                       Confirm Password <span className="text-error">*</span>
                     </span>
                   </label>
-                  <input
-                    type="password"
-                    placeholder="Confirm your password"
-                    className={`input input-bordered w-full ${
-                      errors.confirmPassword ? "input-error" : ""
-                    }`}
-                    value={formData.confirmPassword}
-                    onChange={handleChange}
-                    name="confirmPassword"
-                  />
+                  <div className="relative">
+                    <input
+                      type={showConfirmPassword ? "text" : "password"}
+                      placeholder="Confirm your password"
+                      className={`input input-bordered w-full pr-12 ${
+                        errors.confirmPassword ? "input-error" : ""
+                      }`}
+                      value={formData.confirmPassword}
+                      onChange={handleChange}
+                      onFocus={() => clearFieldError("confirmPassword")}
+                      onBlur={handleConfirmPasswordBlur}
+                      name="confirmPassword"
+                    />
+                    <button
+                      type="button"
+                      className="absolute inset-y-0 right-0 flex items-center px-3 text-base-content/60 transition-colors hover:text-base-content"
+                      onClick={() => setShowConfirmPassword((prev) => !prev)}
+                      onMouseDown={(e) => e.preventDefault()}
+                      aria-label={
+                        showConfirmPassword ? "Hide password" : "Show password"
+                      }
+                      aria-pressed={showConfirmPassword}
+                    >
+                      {showConfirmPassword ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </button>
+                  </div>
                   {errors.confirmPassword && (
                     <label className="label">
                       <span className="label-text-alt text-error">
