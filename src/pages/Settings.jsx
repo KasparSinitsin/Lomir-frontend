@@ -102,8 +102,14 @@ const Settings = () => {
       errs.currentPassword = "Current password is required";
     if (!passwordData.newPassword)
       errs.newPassword = "New password is required";
-    else if (passwordData.newPassword.length < 6)
-      errs.newPassword = "Minimum 6 characters";
+    else if (passwordData.newPassword.length < 8)
+      errs.newPassword = "Password must be at least 8 characters";
+    else if (
+      !/[A-Za-z]/.test(passwordData.newPassword) ||
+      !/\d/.test(passwordData.newPassword)
+    )
+      errs.newPassword =
+        "Password must contain at least one letter and one number";
     if (passwordData.newPassword !== passwordData.confirmPassword)
       errs.confirmPassword = "Passwords do not match";
     setPasswordErrors(errs);

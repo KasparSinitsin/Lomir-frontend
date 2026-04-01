@@ -81,8 +81,14 @@ const RegisterForm = () => {
 
     if (!formData.password) {
       newErrors.password = "Password is required";
-    } else if (formData.password.length < 6) {
-      newErrors.password = "Password must be at least 6 characters";
+    } else if (formData.password.length < 8) {
+      newErrors.password = "Password must be at least 8 characters";
+    } else if (
+      !/[A-Za-z]/.test(formData.password) ||
+      !/\d/.test(formData.password)
+    ) {
+      newErrors.password =
+        "Password must contain at least one letter and one number";
     }
 
     if (formData.password !== formData.confirmPassword) {
@@ -372,7 +378,7 @@ const RegisterForm = () => {
                   </label>
                   <input
                     type="password"
-                    placeholder="Min. 6 characters"
+                    placeholder="Min. 8 characters, with letters and numbers"
                     className={`input input-bordered w-full ${
                       errors.password ? "input-error" : ""
                     }`}
