@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { UI_TEXT } from "../../constants/uiText";
@@ -13,10 +13,12 @@ import api from "../../services/api";
 import LocationInput from "../common/LocationInput";
 import { useLocationAutoFill } from "../../hooks/useLocationAutoFill";
 import VisibilityToggle from "../common/VisibilityToggle";
+import TurnstileWidget from "../common/TurnstileWidget";
 
 const RegisterForm = () => {
   const navigate = useNavigate();
   const { register } = useAuth();
+  const hasTurnstile = Boolean(import.meta.env.VITE_TURNSTILE_SITE_KEY);
 
   const [formData, setFormData] = useState({
     username: "",
@@ -38,6 +40,8 @@ const RegisterForm = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [imagePreview, setImagePreview] = useState(null);
   const [registrationSuccess, setRegistrationSuccess] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState(null);
+  const turnstileRef = useRef(null);
 
   const [resendStatus, setResendStatus] = useState("idle"); // 'idle' | 'sending' | 'sent' | 'error'
   const [resendMessage, setResendMessage] = useState("");
@@ -85,6 +89,10 @@ const RegisterForm = () => {
       newErrors.confirmPassword = "Passwords do not match";
     }
 
+    if (hasTurnstile && !turnstileToken) {
+      newErrors.turnstile = "Please complete the CAPTCHA verification";
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -116,6 +124,11 @@ const RegisterForm = () => {
     return formData.username?.charAt(0)?.toUpperCase() || "?";
   };
 
+  const resetTurnstile = () => {
+    turnstileRef.current?.reset();
+    setTurnstileToken(null);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
@@ -140,6 +153,7 @@ const RegisterForm = () => {
                 .filter((n) => Number.isFinite(n))
                 .map((id) => ({ tag_id: id }))
             : [],
+        ...(hasTurnstile ? { turnstile_token: turnstileToken } : {}),
       };
 
       if (formData.profile_image) {
@@ -168,12 +182,14 @@ const RegisterForm = () => {
           navigate("/profile");
         }
       } else {
+        resetTurnstile();
         setErrors((prev) => ({
           ...prev,
           form: result.message,
         }));
       }
     } catch (error) {
+      resetTurnstile();
       console.error("Full Registration error:", error);
       setErrors((prev) => ({
         ...prev,
@@ -529,6 +545,37 @@ const RegisterForm = () => {
             <div className="divider mt-12 mb-0"></div>
 
             <section className="space-y-4 !mt-4">
+              {hasTurnstile && (
+                <div className="form-control w-full">
+                  <div className="flex justify-center">
+                    <TurnstileWidget
+                      ref={turnstileRef}
+                      onVerify={(token) => {
+                        setTurnstileToken(token);
+                        setErrors((prev) => {
+                          if (!prev.turnstile) {
+                            return prev;
+                          }
+
+                          const remainingErrors = { ...prev };
+                          delete remainingErrors.turnstile;
+                          return remainingErrors;
+                        });
+                      }}
+                      onExpire={() => setTurnstileToken(null)}
+                      onError={() => setTurnstileToken(null)}
+                    />
+                  </div>
+                  {errors.turnstile && (
+                    <label className="label">
+                      <span className="label-text-alt text-error">
+                        {errors.turnstile}
+                      </span>
+                    </label>
+                  )}
+                </div>
+              )}
+
               <Button
                 type="submit"
                 variant="primary"
