@@ -92,13 +92,41 @@ export const userService = {
   },
 
   /**
+   * Fetches a preview of everything affected by deleting the current user's account.
+   * @param {string|number} userId - The ID of the user to preview deletion for.
+   * @param {string} password - The user's current password.
+   * @returns {Promise<object>} A promise resolving to the deletion preview data.
+   */
+  deletionPreview: async (userId, password) => {
+    try {
+      const response = await api.post(
+        `/api/users/${userId}/deletion-preview`,
+        { password },
+        { skipAuthRedirect: true },
+      );
+      return response.data;
+    } catch (error) {
+      console.error(`Error fetching deletion preview for user ${userId}:`, error);
+      throw error;
+    }
+  },
+
+  /**
    * Deletes the current user's profile and all associated data.
    * @param {string|number} userId - The ID of the user to delete.
+   * @param {string} password - The user's current password.
+   * @param {Array<object>} ownershipOverrides - Optional ownership transfer overrides.
    * @returns {Promise<object>} A promise resolving to the deletion result.
    */
-  deleteUser: async (userId) => {
+  deleteUser: async (userId, password, ownershipOverrides = []) => {
     try {
-      const response = await api.delete(`/api/users/${userId}`);
+      const response = await api.delete(`/api/users/${userId}`, {
+        data: {
+          password,
+          ownershipOverrides,
+        },
+        skipAuthRedirect: true,
+      });
       return response.data;
     } catch (error) {
       console.error(`Error deleting user ${userId}:`, error);

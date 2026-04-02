@@ -1,6 +1,10 @@
 import React from "react";
-import { getUserInitials, getDisplayName } from "../../utils/userHelpers";
 import { useUserModalSafe } from "../../contexts/UserModalContext";
+import {
+  getDisplayName,
+  isDeletedUser,
+} from "../../utils/deletedUser";
+import UserAvatar from "./UserAvatar";
 
 /**
  * InlineUserLink Component
@@ -48,11 +52,11 @@ const InlineUserLink = ({
 
   // Normalize user ID from various possible field names
   const userId = user?.id || user?.user_id || user?.userId;
-  const avatarUrl = user?.avatar_url || user?.avatarUrl || null;
   const name = getDisplayName(user) || "Unknown";
+  const isFormerUser = isDeletedUser(user);
 
   // Determine if we can handle clicks
-  const canClick = userId && (userModalContext || onOpenUser);
+  const canClick = !isFormerUser && userId && (userModalContext || onOpenUser);
 
   const handleClick = (e) => {
     if (!canClick) return;
@@ -77,43 +81,28 @@ const InlineUserLink = ({
 
       {/* Avatar */}
       {showAvatar && (
-        <div
-          className={`avatar ${canClick ? "cursor-pointer hover:opacity-80 transition-opacity" : ""} mr-1`}
-          onClick={canClick ? handleClick : undefined}
+        <UserAvatar
+          user={user}
+          deleted={isFormerUser}
+          sizeClass={avatarSize}
+          className="mr-1"
+          clickable={Boolean(canClick)}
+          onClick={handleClick}
           title={canClick ? "View profile" : undefined}
-        >
-          <div className={`${avatarSize} rounded-full relative`}>
-            {avatarUrl ? (
-              <img
-                src={avatarUrl}
-                alt={name}
-                className="object-cover w-full h-full rounded-full"
-                onError={(e) => {
-                  e.target.style.display = "none";
-                  const fallback =
-                    e.target.parentElement.querySelector(".avatar-fallback");
-                  if (fallback) fallback.style.display = "flex";
-                }}
-              />
-            ) : null}
-
-            {/* Fallback initials */}
-            <div
-              className="avatar-fallback bg-primary text-primary-content flex items-center justify-center w-full h-full rounded-full absolute inset-0"
-              style={{
-                display: avatarUrl ? "none" : "flex",
-                fontSize: avatarSize === "w-4 h-4" ? "8px" : "10px",
-              }}
-            >
-              <span className="font-medium">{getUserInitials(user)}</span>
-            </div>
-          </div>
-        </div>
+          iconSize={avatarSize === "w-4 h-4" ? 10 : 12}
+          initialsClassName={
+            avatarSize === "w-4 h-4"
+              ? "text-[8px] font-medium"
+              : "text-[10px] font-medium"
+          }
+        />
       )}
 
       {/* Name */}
       <span
-        className={`font-medium text-base-content/80 ${canClick ? "cursor-pointer hover:text-primary transition-colors" : ""}`}
+        className={`font-medium ${
+          isFormerUser ? "text-base-content/50" : "text-base-content/80"
+        } ${canClick ? "cursor-pointer hover:text-primary transition-colors" : ""}`}
         onClick={canClick ? handleClick : undefined}
         title={canClick ? "View profile" : undefined}
       >

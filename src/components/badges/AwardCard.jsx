@@ -14,6 +14,10 @@ import { useTeamModalSafe } from "../../contexts/TeamModalContext";
 import { useUserModalSafe } from "../../contexts/UserModalContext";
 import { getBadgeIcon } from "../../utils/badgeIconUtils";
 import { useChildModalZIndex } from "../../contexts/ModalLayerContext";
+import {
+  getDisplayName as getDeletedUserDisplayName,
+  isDeletedUser,
+} from "../../utils/deletedUser";
 
 /**
  * AwardCard
@@ -95,6 +99,14 @@ const AwardCard = ({
   const awardedByAvatarUrl =
     award?.awardedByAvatarUrl || award?.awarded_by_avatar_url;
 
+  const awardedByUser = {
+    id: awardedByUserId,
+    first_name: awardedByFirstName,
+    last_name: awardedByLastName,
+    username: awardedByUsername,
+    avatar_url: awardedByAvatarUrl,
+  };
+
   // --- Awarded TO / Awardee (title row — team context) ---
   const awardedToUserId =
     award?.awardedToUserId || award?.awarded_to_user_id || null;
@@ -111,7 +123,8 @@ const AwardCard = ({
 
   const awarderName = awardedByFirstName
     ? `${awardedByFirstName}${awardedByLastName ? ` ${awardedByLastName}` : ""}`
-    : awardedByUsername || "Someone";
+    : awardedByUsername || getDeletedUserDisplayName(awardedByUser);
+  const isDeletedAwarder = !awardedByUserId || isDeletedUser(awardedByUser);
 
   // --- Team modal integration (global fallback) ---
   const teamModal = useTeamModalSafe();
@@ -225,18 +238,21 @@ const AwardCard = ({
                 <span className="flex-shrink-0">awarded by</span>
                 <span
                   className={[
-                    "truncate font-medium text-base-content/70",
-                    awardedByUserId && canOpenUser
+                    "truncate font-medium",
+                    isDeletedAwarder
+                      ? "text-base-content/50"
+                      : "text-base-content/70",
+                    awardedByUserId && canOpenUser && !isDeletedAwarder
                       ? "cursor-pointer hover:text-primary transition-colors"
                       : "",
                   ].join(" ")}
                   title={
-                    awardedByUserId && canOpenUser
+                    awardedByUserId && canOpenUser && !isDeletedAwarder
                       ? "View profile"
                       : awarderName
                   }
                   onClick={
-                    awardedByUserId && canOpenUser
+                    awardedByUserId && canOpenUser && !isDeletedAwarder
                       ? () => openUser(awardedByUserId)
                       : undefined
                   }
@@ -368,13 +384,7 @@ const AwardCard = ({
         ) : (
           <InlineUserLink
             label="Awarded by"
-            user={{
-              id: awardedByUserId,
-              first_name: awardedByFirstName,
-              last_name: awardedByLastName,
-              username: awardedByUsername,
-              avatar_url: awardedByAvatarUrl,
-            }}
+            user={awardedByUser}
             onOpenUser={openUser}
           />
         )}
