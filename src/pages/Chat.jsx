@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { LogOut } from "lucide-react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import PageContainer from "../components/layout/PageContainer";
@@ -11,8 +11,35 @@ import socketService from "../services/socketService";
 import { userService } from "../services/userService";
 import { teamService } from "../services/teamService";
 import Alert from "../components/common/Alert";
-import axios from "axios";
 import { uploadToCloudinary } from "../config/cloudinary";
+
+const getConversationPartnerId = (conversation) =>
+  conversation?.partner?.id ??
+  conversation?.partnerUser?.id ??
+  conversation?.partnerId ??
+  conversation?.partner_id ??
+  null;
+
+const isDirectConversationForPartner = (conversation, partnerId) =>
+  conversation?.type === "direct" &&
+  String(getConversationPartnerId(conversation)) === String(partnerId);
+
+const dedupeConversations = (list) =>
+  (list || []).filter((conv, index, self) => {
+    if (conv.type === "direct") {
+      return (
+        index ===
+        self.findIndex((candidate) =>
+          isDirectConversationForPartner(
+            candidate,
+            getConversationPartnerId(conv),
+          ),
+        )
+      );
+    }
+
+    return index === self.findIndex((candidate) => candidate.id === conv.id);
+  });
 
 const Chat = () => {
   const { conversationId } = useParams();
@@ -30,10 +57,14 @@ const Chat = () => {
   const [isTeamArchived, setIsTeamArchived] = useState(false);
   const [hasMoreMessages, setHasMoreMessages] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [teamMembersRefreshSignal, setTeamMembersRefreshSignal] =
+    useState(null);
 
   const typingTimeoutRef = useRef(null);
   const messagesContainerRef = useRef(null);
   const pendingScrollAdjustmentRef = useRef(null);
+  const conversationsRef = useRef([]);
+  const activeConversationRef = useRef(null);
   const [loadingMessages, setLoadingMessages] = useState(false);
 
   // ---- Message de-duplication (focus: ownership/system duplicates) ----
@@ -109,6 +140,23 @@ const Chat = () => {
   const teamMembers =
     conversationType === "team" ? activeConversation?.team?.members || [] : [];
 
+  useEffect(() => {
+    conversationsRef.current = conversations;
+  }, [conversations]);
+
+  useEffect(() => {
+    activeConversationRef.current = activeConversation;
+  }, [activeConversation]);
+
+  const refreshConversationList = useCallback(async () => {
+    try {
+      const response = await messageService.getConversations();
+      setConversations(dedupeConversations(response.data || []));
+    } catch (err) {
+      console.error("Error refreshing conversations:", err);
+    }
+  }, []);
+
   // Fetch conversations
   useEffect(() => {
     const fetchConversations = async () => {
@@ -162,28 +210,14 @@ const Chat = () => {
           }
         }
 
-        // Deduplicate conversations by partner id (for direct) or id (for team)
-        const deduplicatedList = conversationsList.filter(
-          (conv, index, self) => {
-            if (conv.type === "direct") {
-              return (
-                index ===
-                self.findIndex(
-                  (c) =>
-                    c.type === "direct" && c.partner?.id === conv.partner?.id,
-                )
-              );
-            }
-            return index === self.findIndex((c) => c.id === conv.id);
-          },
-        );
+        const deduplicatedList = dedupeConversations(conversationsList);
         setConversations(deduplicatedList);
 
         // If there are conversations but none is selected, select the first one
-        if (conversationsList.length > 0 && !conversationId) {
-          const firstConversationType = conversationsList[0].type || "direct";
+        if (deduplicatedList.length > 0 && !conversationId) {
+          const firstConversationType = deduplicatedList[0].type || "direct";
           navigate(
-            `/chat/${conversationsList[0].id}?type=${firstConversationType}`,
+            `/chat/${deduplicatedList[0].id}?type=${firstConversationType}`,
           );
         }
 
@@ -453,6 +487,29 @@ const Chat = () => {
     pendingScrollAdjustmentRef.current = null;
   }, [messages, hasMoreMessages]);
 
+  const handleKickedFromTeam = useCallback(
+    (data) => {
+      if (
+        conversationType === "team" &&
+        parseInt(conversationId, 10) === data.teamId
+      ) {
+        setError("You have been removed from this team.");
+        setConversations((prev) =>
+          prev.filter((c) => !(c.type === "team" && c.id === data.teamId)),
+        );
+        navigate("/chat");
+        setActiveConversation(null);
+        setMessages([]);
+        return;
+      }
+
+      setConversations((prev) =>
+        prev.filter((c) => !(c.type === "team" && c.id === data.teamId)),
+      );
+    },
+    [conversationId, conversationType, navigate],
+  );
+
   // Set up WebSocket event listeners
   useEffect(() => {
     const socket = socketService.getSocket();
@@ -468,6 +525,8 @@ const Chat = () => {
     socket.off("typing:update");
     socket.off("message:status");
     socket.off("conversation:updated");
+    socket.off("team:member_left");
+    socket.off("conversation:deleted");
 
     // Handle online users
     const handleOnlineUsers = (users) => {
@@ -582,19 +641,7 @@ const Chat = () => {
           return conv;
         });
 
-        // Deduplicate by partner id (for direct) or conversation id (for team)
-        const deduplicatedList = updatedList.filter((conv, index, self) => {
-          if (conv.type === "direct") {
-            return (
-              index ===
-              self.findIndex(
-                (c) =>
-                  c.type === "direct" && c.partner?.id === conv.partner?.id,
-              )
-            );
-          }
-          return index === self.findIndex((c) => c.id === conv.id);
-        });
+        const deduplicatedList = dedupeConversations(updatedList);
 
         return deduplicatedList.sort(
           (a, b) => new Date(b.updatedAt) - new Date(a.updatedAt),
@@ -641,28 +688,7 @@ const Chat = () => {
         );
 
         if (conversationIndex === -1) {
-          messageService
-            .getConversations()
-            .then((response) => {
-              const list = response.data || [];
-              const deduplicatedList = list.filter((conv, index, self) => {
-                if (conv.type === "direct") {
-                  return (
-                    index ===
-                    self.findIndex(
-                      (c) =>
-                        c.type === "direct" &&
-                        c.partner?.id === conv.partner?.id,
-                    )
-                  );
-                }
-                return index === self.findIndex((c) => c.id === conv.id);
-              });
-              setConversations(deduplicatedList);
-            })
-            .catch((err) =>
-              console.error("Error refreshing conversations:", err),
-            );
+          refreshConversationList();
           return prev;
         }
 
@@ -673,24 +699,116 @@ const Chat = () => {
           updatedAt: data.updatedAt,
         };
 
-        // Deduplicate by partner id (for direct) or conversation id (for team)
-        const deduplicatedList = updatedList.filter((conv, index, self) => {
-          if (conv.type === "direct") {
-            return (
-              index ===
-              self.findIndex(
-                (c) =>
-                  c.type === "direct" && c.partner?.id === conv.partner?.id,
-              )
-            );
-          }
-          return index === self.findIndex((c) => c.id === conv.id);
-        });
+        const deduplicatedList = dedupeConversations(updatedList);
 
         return deduplicatedList.sort(
           (a, b) => new Date(b.updatedAt) - new Date(a.updatedAt),
         );
       });
+    };
+
+    const handleTeamMemberLeft = (data) => {
+      if (!data?.teamId) return;
+
+      setTeamMembersRefreshSignal({
+        teamId: data.teamId,
+        userId: data.userId ?? null,
+        receivedAt: Date.now(),
+      });
+
+      const hasTeamConversation = conversationsRef.current.some(
+        (conversation) =>
+          conversation.type === "team" &&
+          String(conversation.id) === String(data.teamId),
+      );
+
+      if (hasTeamConversation) {
+        refreshConversationList();
+      }
+
+      const activeTeamId =
+        activeConversationRef.current?.team?.id ?? activeConversationRef.current?.id;
+
+      if (String(activeTeamId) !== String(data.teamId)) {
+        return;
+      }
+
+      teamService
+        .getTeamById(data.teamId)
+        .then((response) => {
+          const teamPayload =
+            response?.data && typeof response.data === "object"
+              ? response.data
+              : response;
+
+          if (!Array.isArray(teamPayload?.members)) {
+            return;
+          }
+
+          setActiveConversation((prev) => {
+            if (
+              !prev ||
+              prev.type !== "team" ||
+              String(prev.team?.id ?? prev.id) !== String(data.teamId)
+            ) {
+              return prev;
+            }
+
+            return {
+              ...prev,
+              team: {
+                ...prev.team,
+                members: teamPayload.members,
+              },
+            };
+          });
+        })
+        .catch((err) =>
+          console.error("Error refreshing active team members:", err),
+        );
+    };
+
+    const handleConversationDeleted = (data) => {
+      if (!data?.partnerId) return;
+
+      setConversations((prev) =>
+        prev.filter(
+          (conversation) =>
+            !isDirectConversationForPartner(conversation, data.partnerId),
+        ),
+      );
+
+      const currentUrlType =
+        new URLSearchParams(window.location.search).get("type") ||
+        activeConversationRef.current?.type ||
+        "direct";
+
+      const activePartnerId =
+        getConversationPartnerId(activeConversationRef.current) ??
+        getConversationPartnerId(
+          conversationsRef.current.find(
+            (conversation) =>
+              conversation.type === "direct" &&
+              String(conversation.id) === String(conversationId),
+          ),
+        );
+
+      const isCurrentConversationDeleted =
+        currentUrlType === "direct" &&
+        (String(activePartnerId ?? "") === String(data.partnerId) ||
+          String(conversationId ?? "") === String(data.partnerId));
+
+      if (!isCurrentConversationDeleted) {
+        return;
+      }
+
+      setError("This conversation is no longer available.");
+      setActiveConversation(null);
+      setMessages([]);
+      setTypingUsers({});
+      setHighlightMessageIds([]);
+      setHasMoreMessages(false);
+      navigate("/chat", { replace: true });
     };
 
     // Handle message deleted (soft delete broadcast)
@@ -720,6 +838,8 @@ const Chat = () => {
     socket.on("typing:update", handleTypingUpdate);
     socket.on("message:status", handleMessageStatus);
     socket.on("conversation:updated", handleConversationUpdate);
+    socket.on("team:member_left", handleTeamMemberLeft);
+    socket.on("conversation:deleted", handleConversationDeleted);
     socket.on("team:member_kicked", handleKickedFromTeam);
     socket.on("message:deleted", handleMessageDeleted);
 
@@ -730,10 +850,21 @@ const Chat = () => {
       socket.off("typing:update", handleTypingUpdate);
       socket.off("message:status", handleMessageStatus);
       socket.off("conversation:updated", handleConversationUpdate);
+      socket.off("team:member_left", handleTeamMemberLeft);
+      socket.off("conversation:deleted", handleConversationDeleted);
       socket.off("team:member_kicked", handleKickedFromTeam);
       socket.off("message:deleted", handleMessageDeleted);
     };
-  }, [isAuthenticated, conversationId, user?.id, user?.username, searchParams]);
+  }, [
+    conversationId,
+    handleKickedFromTeam,
+    isAuthenticated,
+    navigate,
+    refreshConversationList,
+    searchParams,
+    user?.id,
+    user?.username,
+  ]);
 
   // Handle leaving a deleted team (removes from conversation list)
   const handleLeaveTeam = async () => {
@@ -765,32 +896,6 @@ const Chat = () => {
     } catch (error) {
       console.error("Error leaving team:", error);
       setError("Failed to leave team. Please try again.");
-    }
-  };
-
-  // Handle being kicked from a team
-  const handleKickedFromTeam = (data) => {
-    // If currently viewing this team's chat, navigate away
-    if (
-      conversationType === "team" &&
-      parseInt(conversationId) === data.teamId
-    ) {
-      setError("You have been removed from this team.");
-
-      // Remove from conversation list
-      setConversations((prev) =>
-        prev.filter((c) => !(c.type === "team" && c.id === data.teamId)),
-      );
-
-      // Navigate away
-      navigate("/chat");
-      setActiveConversation(null);
-      setMessages([]);
-    } else {
-      // Just remove from conversation list if not currently viewing
-      setConversations((prev) =>
-        prev.filter((c) => !(c.type === "team" && c.id === data.teamId)),
-      );
     }
   };
 
@@ -1050,6 +1155,7 @@ const Chat = () => {
             onSelectConversation={selectConversation}
             loading={loading}
             onlineUsers={onlineUsers}
+            teamMembersRefreshSignal={teamMembersRefreshSignal}
           />
         </div>
 
@@ -1070,6 +1176,7 @@ const Chat = () => {
                   highlightMessageIds={highlightMessageIds}
                   hasMoreMessages={hasMoreMessages}
                   loadingMore={loadingMore}
+                  teamMembersRefreshSignal={teamMembersRefreshSignal}
                   onLoadEarlierMessages={loadEarlierMessages}
                   onDeleteConversation={handleDeleteConversation}
                   onDeleteMessage={handleDeleteMessage}

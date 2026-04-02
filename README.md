@@ -6,6 +6,20 @@ Built with React 19, Vite, Tailwind CSS, and DaisyUI.
 
 ---
 
+## Live Demo
+
+**Try it now:** [lomir-frontend.vercel.app](https://lomir-frontend.vercel.app)
+
+> The backend runs on Render's free tier and enters sleep mode after inactivity. The first request may take 15–30 seconds to wake up — after that, everything responds normally.
+
+| Service  | Platform | URL |
+|----------|----------|-----|
+| Frontend | Vercel   | [lomir-frontend.vercel.app](https://lomir-frontend.vercel.app) |
+| Backend  | Render   | [lomir-backend-knae.onrender.com](https://lomir-backend-knae.onrender.com) |
+| Database | Neon     | PostgreSQL (remote) |
+
+---
+
 ## Features
 
 - **Search & Discovery** — Find teams, users, and vacant roles by keyword, tags, badges, or location with list and map views
@@ -76,6 +90,9 @@ VITE_CLOUDINARY_PRESET_AVATARS=<preset-avatars>
 VITE_CLOUDINARY_PRESET_TEAM_AVATARS=<preset-team-avatars>
 VITE_CLOUDINARY_PRESET_CHAT_IMAGES=<preset-chat-images>
 VITE_CLOUDINARY_PRESET_CHAT_FILES=<preset-chat-files>
+
+# Cloudflare Turnstile (optional for local dev — if unset, CAPTCHA widget is not shown)
+# VITE_TURNSTILE_SITE_KEY=<turnstile-site-key>
 ```
 
 > Get the Cloudinary values from the project owner.
@@ -138,7 +155,7 @@ Lomir-frontend/
 │   │   ├── badges/                 # Badge display, awarding, category modals
 │   │   ├── tags/                   # Tag input, display, and selection
 │   │   ├── chat/                   # Chat UI components
-│   │   ├── common/                 # Shared UI (Button, Card, Modal, Alert, Pagination...)
+│   │   ├── common/                 # Shared UI (Button, Card, Modal, Alert, Pagination, TurnstileWidget...)
 │   │   └── layout/                 # Navbar, Footer, PageContainer, Grid, Section
 │   ├── contexts/
 │   │   ├── AuthContext.jsx         # Authentication state + JWT management
@@ -200,4 +217,3 @@ Lomir-frontend/
 ## Related
 
 - **Backend repo:** [Lomir-backend](https://github.com/KasparSinitsin/Lomir-backend)
-
