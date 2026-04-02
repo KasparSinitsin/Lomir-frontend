@@ -389,6 +389,7 @@ const MessageDisplay = ({
   highlightMessageIds = [],
   hasMoreMessages = false,
   loadingMore = false,
+  teamMembersRefreshSignal = null,
   onLoadEarlierMessages,
   onDeleteConversation,
   onDeleteMessage,
@@ -406,6 +407,7 @@ const MessageDisplay = ({
   const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
 
   const [selectedTeamId, setSelectedTeamId] = useState(null);
+  const [teamMembersRefreshKey, setTeamMembersRefreshKey] = useState(0);
 
   // State for user details modal
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
@@ -450,6 +452,27 @@ const MessageDisplay = ({
       return () => clearTimeout(timer);
     }
   }, [highlightMessageIds]);
+
+  useEffect(() => {
+    const openTeamModalId =
+      conversationType === "team" ? teamData?.id : selectedTeamId;
+
+    if (
+      !teamMembersRefreshSignal?.teamId ||
+      !isTeamModalOpen ||
+      String(openTeamModalId) !== String(teamMembersRefreshSignal.teamId)
+    ) {
+      return;
+    }
+
+    setTeamMembersRefreshKey((prev) => prev + 1);
+  }, [
+    conversationType,
+    isTeamModalOpen,
+    selectedTeamId,
+    teamData?.id,
+    teamMembersRefreshSignal,
+  ]);
 
   // Handle team avatar/name click
   const handleTeamClick = () => {
@@ -2089,6 +2112,7 @@ const MessageDisplay = ({
           isOpen={isTeamModalOpen}
           teamId={conversationType === "team" ? teamData?.id : selectedTeamId}
           initialTeamData={conversationType === "team" ? teamData : null}
+          membersRefreshKey={teamMembersRefreshKey}
           onClose={handleTeamModalClose}
         />
 
@@ -2769,6 +2793,7 @@ const MessageDisplay = ({
         isOpen={isTeamModalOpen}
         teamId={conversationType === "team" ? teamData?.id : selectedTeamId}
         initialTeamData={conversationType === "team" ? teamData : null}
+        membersRefreshKey={teamMembersRefreshKey}
         onClose={handleTeamModalClose}
       />
 

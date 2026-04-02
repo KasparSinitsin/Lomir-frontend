@@ -18,6 +18,7 @@ import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Profile from "./pages/Profile";
+import PublicProfile from "./pages/PublicProfile";
 import VerifyEmail from "./pages/VerifyEmail";
 import BadgeOverview from "./pages/BadgeOverview";
 import MyTeams from "./pages/MyTeams";
@@ -75,6 +76,7 @@ function AppLayout() {
                 )}
                 <Route path="/forgot-password" element={<ForgotPassword />} />
                 <Route path="/reset-password" element={<ResetPassword />} />
+                <Route path="/profile/:id" element={<PublicProfile />} />
 
                 {/* Protected routes */}
                 <Route element={<ProtectedRoute />}>
