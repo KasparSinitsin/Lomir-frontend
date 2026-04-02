@@ -97,6 +97,7 @@ const TeamDetailsModal = ({
   matchScore = null,
   matchType = null,
   matchDetails = null,
+  membersRefreshKey = 0,
   zIndexStyle = null,
   boxZIndexStyle = null,
 }) => {
@@ -170,6 +171,7 @@ const TeamDetailsModal = ({
 
   const [teamImageError, setTeamImageError] = useState(false);
   const showHighlightsForContext = !isFromSearch || showMatchHighlights;
+  const handledMembersRefreshKeyRef = useRef(0);
 
   const fetchTeamDetails = useCallback(
     async (forceRefresh = false) => {
@@ -415,6 +417,20 @@ const TeamDetailsModal = ({
     team,
     fetchTeamDetails,
   ]);
+
+  useEffect(() => {
+    if (
+      !isModalVisible ||
+      !effectiveTeamId ||
+      membersRefreshKey === 0 ||
+      handledMembersRefreshKeyRef.current === membersRefreshKey
+    ) {
+      return;
+    }
+
+    handledMembersRefreshKeyRef.current = membersRefreshKey;
+    fetchTeamDetails(true);
+  }, [effectiveTeamId, fetchTeamDetails, isModalVisible, membersRefreshKey]);
 
   useEffect(() => {
     if (!isModalVisible || !isAuthenticated || !user?.id) return;

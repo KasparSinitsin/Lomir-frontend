@@ -1,8 +1,13 @@
 import React, { useState, useEffect, useRef } from "react";
-import { getUserInitials, getTeamInitials } from "../../utils/userHelpers";
+import { getTeamInitials } from "../../utils/userHelpers";
 import { formatDistanceToNow } from "date-fns";
 import TeamDetailsModal from "../teams/TeamDetailsModal";
 import UserDetailsModal from "../users/UserDetailsModal";
+import UserAvatar from "../users/UserAvatar";
+import {
+  DELETED_USER_DISPLAY_NAME,
+  getDisplayName as getDeletedUserDisplayName,
+} from "../../utils/deletedUser";
 
 const ConversationList = ({
   conversations,
@@ -10,11 +15,13 @@ const ConversationList = ({
   onSelectConversation,
   loading,
   onlineUsers = [],
+  teamMembersRefreshSignal = null,
 }) => {
   // State for team details modal
   const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
   const [selectedTeamId, setSelectedTeamId] = useState(null);
   const [selectedTeamData, setSelectedTeamData] = useState(null);
+  const [teamMembersRefreshKey, setTeamMembersRefreshKey] = useState(0);
 
   // State for user details modal
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
@@ -36,6 +43,18 @@ const ConversationList = ({
       return () => clearTimeout(timer);
     }
   }, [activeConversationId]);
+
+  useEffect(() => {
+    if (
+      !teamMembersRefreshSignal?.teamId ||
+      !isTeamModalOpen ||
+      String(selectedTeamId) !== String(teamMembersRefreshSignal.teamId)
+    ) {
+      return;
+    }
+
+    setTeamMembersRefreshKey((prev) => prev + 1);
+  }, [isTeamModalOpen, selectedTeamId, teamMembersRefreshSignal]);
 
   // Handle team avatar/name click to open TeamDetailsModal
   const handleTeamClick = (e, team) => {
@@ -97,16 +116,20 @@ const ConversationList = ({
           const isTeam = conversation.type === "team";
           const conversationData = isTeam
             ? conversation.team
-            : conversation.partner;
+            : conversation.partner || conversation.partnerUser;
+          const directDisplayName = isTeam
+            ? ""
+            : getDeletedUserDisplayName(conversationData, "");
+          const isFormerPartner = !isTeam && !directDisplayName;
+          const isUserClickable =
+            !isTeam && !isFormerPartner && Boolean(conversationData?.id);
           const isOnline =
-            !isTeam && onlineUsers.includes(conversationData?.id);
+            isUserClickable && onlineUsers.includes(conversationData?.id);
 
           // Get display name
           const displayName = isTeam
             ? conversationData?.name
-            : conversationData?.firstName && conversationData?.lastName
-              ? `${conversationData.firstName} ${conversationData.lastName}`
-              : conversationData?.username;
+            : directDisplayName || DELETED_USER_DISPLAY_NAME;
 
           const isActive =
             String(activeConversationId) === String(conversation.id);
@@ -128,48 +151,63 @@ const ConversationList = ({
               <div className="flex items-center">
                 {/* Avatar - Clickable for both team and direct conversations */}
                 <div
-                  className="avatar indicator mr-3 cursor-pointer hover:opacity-80 transition-opacity"
+                  className={`avatar indicator mr-3 ${
+                    isTeam || isUserClickable
+                      ? "cursor-pointer hover:opacity-80 transition-opacity"
+                      : ""
+                  }`}
                   onClick={
                     isTeam
                       ? (e) => handleTeamClick(e, conversationData)
-                      : (e) => handleUserClick(e, conversationData)
+                      : isUserClickable
+                        ? (e) => handleUserClick(e, conversationData)
+                        : undefined
                   }
                   title={
                     isTeam
                       ? `View ${conversationData?.name} details`
-                      : `View ${displayName} details`
+                      : isUserClickable
+                        ? `View ${displayName} details`
+                        : undefined
                   }
                 >
-                  <div className="w-12 h-12 rounded-full relative">
-                    {conversationData?.avatarUrl ? (
-                      <img
-                        src={conversationData.avatarUrl}
-                        alt={displayName}
-                        className="object-cover w-full h-full rounded-full"
-                        onError={(e) => {
-                          e.target.style.display = "none";
-                          const fallback =
-                            e.target.parentElement.querySelector(
-                              ".avatar-fallback",
-                            );
-                          if (fallback) fallback.style.display = "flex";
+                  {isTeam ? (
+                    <div className="w-12 h-12 rounded-full relative">
+                      {conversationData?.avatarUrl ? (
+                        <img
+                          src={conversationData.avatarUrl}
+                          alt={displayName}
+                          className="object-cover w-full h-full rounded-full"
+                          onError={(e) => {
+                            e.target.style.display = "none";
+                            const fallback =
+                              e.target.parentElement.querySelector(
+                                ".avatar-fallback",
+                              );
+                            if (fallback) fallback.style.display = "flex";
+                          }}
+                        />
+                      ) : null}
+                      <div
+                        className="avatar-fallback bg-primary text-primary-content flex items-center justify-center w-full h-full rounded-full absolute inset-0"
+                        style={{
+                          display: conversationData?.avatarUrl ? "none" : "flex",
                         }}
-                      />
-                    ) : null}
-                    {/* Fallback initials */}
-                    <div
-                      className="avatar-fallback bg-primary text-primary-content flex items-center justify-center w-full h-full rounded-full absolute inset-0"
-                      style={{
-                        display: conversationData?.avatarUrl ? "none" : "flex",
-                      }}
-                    >
-                      <span className="text-lg font-medium">
-                        {isTeam
-                          ? getTeamInitials(conversationData)
-                          : getUserInitials(conversationData)}
-                      </span>
+                      >
+                        <span className="text-lg font-medium">
+                          {getTeamInitials(conversationData)}
+                        </span>
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    <UserAvatar
+                      user={isFormerPartner ? null : conversationData}
+                      deleted={isFormerPartner}
+                      sizeClass="w-12 h-12"
+                      iconSize={24}
+                      initialsClassName="text-lg font-medium"
+                    />
+                  )}
                   {isOnline && (
                     <span className="indicator-item badge badge-success badge-xs"></span>
                   )}
@@ -179,16 +217,24 @@ const ConversationList = ({
                   <div className="flex justify-between items-center">
                     {/* Name - Clickable for both team and direct conversations */}
                     <h3
-                      className="font-medium truncate cursor-pointer hover:text-primary transition-colors"
+                      className={`font-medium truncate ${
+                        isTeam || isUserClickable
+                          ? "cursor-pointer hover:text-primary transition-colors"
+                          : ""
+                      }`}
                       onClick={
                         isTeam
                           ? (e) => handleTeamClick(e, conversationData)
-                          : (e) => handleUserClick(e, conversationData)
+                          : isUserClickable
+                            ? (e) => handleUserClick(e, conversationData)
+                            : undefined
                       }
                       title={
                         isTeam
                           ? `View ${conversationData?.name} details`
-                          : `View ${displayName} details`
+                          : isUserClickable
+                            ? `View ${displayName} details`
+                            : undefined
                       }
                     >
                       {displayName || "Unknown"}
@@ -222,6 +268,7 @@ const ConversationList = ({
         isOpen={isTeamModalOpen}
         teamId={selectedTeamId}
         initialTeamData={selectedTeamData}
+        membersRefreshKey={teamMembersRefreshKey}
         onClose={handleTeamModalClose}
       />
 

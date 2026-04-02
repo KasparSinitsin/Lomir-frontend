@@ -199,8 +199,14 @@ const Navbar = () => {
         console.error("Error marking notification as read:", error);
       }
 
-      // Navigate to the notification target
-      navigate(firstUnreadNotification.navigateTo);
+      const canNavigateToNotification =
+        firstUnreadNotification.referenceId != null &&
+        Boolean(firstUnreadNotification.navigateTo);
+
+      if (canNavigateToNotification) {
+        // Navigate to the notification target
+        navigate(firstUnreadNotification.navigateTo);
+      }
 
       // Refetch after a delay to get the NEXT unread notification
       setTimeout(() => {

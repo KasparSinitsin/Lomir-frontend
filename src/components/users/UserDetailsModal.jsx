@@ -19,6 +19,7 @@ import BadgeAwardModal from "../badges/BadgeAwardModal";
 import SupercategoryAwardsModal from "../badges/SupercategoryAwardsModal";
 import useAwardModals from "../../hooks/useAwardModals";
 import MatchScoreSection from "../common/MatchScoreSection";
+import DeletedUserProfilePlaceholder from "./DeletedUserProfilePlaceholder";
 import {
   buildViewerTeamMatchProfile,
   enrichUserMatchData,
@@ -100,6 +101,8 @@ const UserDetailsModal = ({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [user, setUser] = useState(null);
+  const [showDeletedUserPlaceholder, setShowDeletedUserPlaceholder] =
+    useState(false);
 
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(mode === "edit");
@@ -140,11 +143,13 @@ const UserDetailsModal = ({
 
   const showEdit = !isEditing && isAuthenticated && ownProfile;
   const showChatInvite = !isEditing && isAuthenticated && !ownProfile;
+  const isNumericUserId = /^\d+$/.test(String(userId ?? "").trim());
 
   const fetchUserDetails = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
+      setShowDeletedUserPlaceholder(false);
 
       const response = await userService.getUserById(userId);
 
@@ -189,11 +194,19 @@ const UserDetailsModal = ({
       });
     } catch (err) {
       console.error("Error fetching user details:", err);
+      if (err.response?.status === 404 && isNumericUserId) {
+        setUser(null);
+        setUserTags([]);
+        setError(null);
+        setShowDeletedUserPlaceholder(true);
+        return;
+      }
+      setShowDeletedUserPlaceholder(false);
       setError("Failed to load user details. Please try again.");
     } finally {
       setLoading(false);
     }
-  }, [distanceKm, user?.distanceKm, user?.distance_km, userId]);
+  }, [distanceKm, isNumericUserId, user?.distanceKm, user?.distance_km, userId]);
 
   useEffect(() => {
     if (isOpen && userId) {
@@ -530,7 +543,7 @@ const UserDetailsModal = ({
       </h2>
 
       <div className="flex items-center space-x-2">
-        {!isEditing && (
+        {!isEditing && !showDeletedUserPlaceholder && (
           <>
             {showEdit && (
               <Button
@@ -608,6 +621,8 @@ const UserDetailsModal = ({
           <div className="flex justify-center items-center py-12">
             <div className="loading loading-spinner loading-lg text-primary"></div>
           </div>
+        ) : showDeletedUserPlaceholder ? (
+          <DeletedUserProfilePlaceholder onNavigateAway={onClose} />
         ) : error ? (
           <Alert type="error" message={error} />
         ) : isEditing ? (

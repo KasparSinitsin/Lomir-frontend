@@ -19,12 +19,17 @@ import {
 } from "lucide-react";
 import TeamDetailsModal from "../teams/TeamDetailsModal";
 import UserDetailsModal from "../users/UserDetailsModal";
+import UserAvatar from "../users/UserAvatar";
 import { userService } from "../../services/userService";
 import {
   getFileExpirationStatus,
   formatFileSize,
 } from "../../utils/fileExpiration";
 import MessageText from "./MessageText";
+import {
+  DELETED_USER_DISPLAY_NAME,
+  getDisplayName as getDeletedUserDisplayName,
+} from "../../utils/deletedUser";
 
 const parseIdNameToken = (token) => {
   const t = (token || "").trim();
@@ -384,6 +389,7 @@ const MessageDisplay = ({
   highlightMessageIds = [],
   hasMoreMessages = false,
   loadingMore = false,
+  teamMembersRefreshSignal = null,
   onLoadEarlierMessages,
   onDeleteConversation,
   onDeleteMessage,
@@ -401,6 +407,7 @@ const MessageDisplay = ({
   const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
 
   const [selectedTeamId, setSelectedTeamId] = useState(null);
+  const [teamMembersRefreshKey, setTeamMembersRefreshKey] = useState(0);
 
   // State for user details modal
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
@@ -445,6 +452,27 @@ const MessageDisplay = ({
       return () => clearTimeout(timer);
     }
   }, [highlightMessageIds]);
+
+  useEffect(() => {
+    const openTeamModalId =
+      conversationType === "team" ? teamData?.id : selectedTeamId;
+
+    if (
+      !teamMembersRefreshSignal?.teamId ||
+      !isTeamModalOpen ||
+      String(openTeamModalId) !== String(teamMembersRefreshSignal.teamId)
+    ) {
+      return;
+    }
+
+    setTeamMembersRefreshKey((prev) => prev + 1);
+  }, [
+    conversationType,
+    isTeamModalOpen,
+    selectedTeamId,
+    teamData?.id,
+    teamMembersRefreshSignal,
+  ]);
 
   // Handle team avatar/name click
   const handleTeamClick = () => {
@@ -565,6 +593,9 @@ const MessageDisplay = ({
   const Mention = ({ name }) => {
     const safe = (name || "").trim();
     if (!safe) return null;
+    if (safe === DELETED_USER_DISPLAY_NAME) {
+      return <span className="font-medium text-base-content/50">{safe}</span>;
+    }
 
     return (
       <button
@@ -581,7 +612,13 @@ const MessageDisplay = ({
 
   const MentionById = ({ userId, name }) => {
     const safeName = (name || "").trim() || "User";
-    if (!userId) return <Mention name={safeName} />;
+    if (!userId) {
+      return safeName === DELETED_USER_DISPLAY_NAME ? (
+        <span className="font-medium text-base-content/50">{safeName}</span>
+      ) : (
+        <Mention name={safeName} />
+      );
+    }
 
     return (
       <button
@@ -658,30 +695,49 @@ const MessageDisplay = ({
 
       if (member) {
         return {
+          id: member.user_id || member.userId || senderId,
           username: member.username,
           firstName: member.first_name || member.firstName,
           lastName: member.last_name || member.lastName,
           avatarUrl: member.avatar_url || member.avatarUrl,
           isCurrentMember: true,
+          isDeletedUser: false,
         };
       }
     }
 
     if (conversationPartner && senderId === conversationPartner.id) {
-      return { ...conversationPartner, isCurrentMember: true };
+      return {
+        ...conversationPartner,
+        isCurrentMember: true,
+        isDeletedUser: false,
+      };
     }
 
     // Fallback: Use sender info embedded in the message (for former team members)
     if (message && conversationType === "team") {
+      const embeddedSender = {
+        id: message.senderId ?? message.sender_id ?? senderId ?? null,
+        userId: message.senderId ?? message.sender_id ?? senderId ?? null,
+        username: message.senderUsername ?? message.sender_username ?? null,
+        firstName:
+          message.senderFirstName ?? message.sender_first_name ?? null,
+        lastName: message.senderLastName ?? message.sender_last_name ?? null,
+        avatarUrl: message.senderAvatarUrl ?? message.sender_avatar_url ?? null,
+        isCurrentMember: message.isCurrentMember === true,
+      };
       const hasMessageSenderInfo =
-        message.senderUsername || message.senderFirstName;
-      if (hasMessageSenderInfo) {
+        embeddedSender.username ||
+        embeddedSender.firstName ||
+        embeddedSender.lastName ||
+        embeddedSender.avatarUrl;
+      const isDeletedSender =
+        embeddedSender.id == null || !embeddedSender.username;
+
+      if (hasMessageSenderInfo || isDeletedSender) {
         return {
-          username: message.senderUsername,
-          firstName: message.senderFirstName,
-          lastName: message.senderLastName,
-          avatarUrl: message.senderAvatarUrl,
-          isCurrentMember: message.isCurrentMember === true,
+          ...embeddedSender,
+          isDeletedUser: isDeletedSender,
         };
       }
     }
@@ -690,17 +746,12 @@ const MessageDisplay = ({
   };
 
   // Get display name with former member indicator
-  const getDisplayName = (senderInfo, includeFormerLabel = true) => {
-    if (!senderInfo) return "Unknown";
-
-    let name;
-    if (senderInfo.firstName && senderInfo.lastName) {
-      name = `${senderInfo.firstName} ${senderInfo.lastName}`;
-    } else if (senderInfo.firstName) {
-      name = senderInfo.firstName;
-    } else {
-      name = senderInfo.username || "Unknown";
+  const getSenderDisplayName = (senderInfo, includeFormerLabel = true) => {
+    if (!senderInfo || senderInfo.isDeletedUser) {
+      return DELETED_USER_DISPLAY_NAME;
     }
+
+    let name = getDeletedUserDisplayName(senderInfo, "Unknown");
 
     // Add "(former team member)" suffix if they're no longer a member
     if (includeFormerLabel && senderInfo.isCurrentMember === false) {
@@ -714,57 +765,97 @@ const MessageDisplay = ({
     if (!senderInfo) return null;
 
     const isFormerMember = senderInfo.isCurrentMember === false;
-    const handleClick =
-      clickable && userId ? () => handleUserClick(userId) : undefined;
+    const isDeletedSender = senderInfo.isDeletedUser === true;
+    const isClickable = clickable && userId && !isDeletedSender;
+    const handleClick = isClickable ? () => handleUserClick(userId) : undefined;
 
-    // Former members: lighter colors and "FM" initials
-    const avatarBgClass = isFormerMember ? "bg-base-300" : "bg-primary";
-    const avatarTextClass = isFormerMember
-      ? "text-base-content/60"
-      : "text-primary-content";
+    if (isDeletedSender) {
+      return (
+        <UserAvatar
+          user={senderInfo}
+          deleted
+          sizeClass="w-8 h-8"
+          className="mr-2 flex-shrink-0"
+          iconSize={16}
+          title={DELETED_USER_DISPLAY_NAME}
+        />
+      );
+    }
+
+    if (!isFormerMember) {
+      return (
+        <UserAvatar
+          user={senderInfo}
+          sizeClass="w-8 h-8"
+          className="mr-2 flex-shrink-0"
+          clickable={Boolean(isClickable)}
+          onClick={handleClick}
+          title={
+            isClickable
+              ? `View ${getSenderDisplayName(senderInfo, false)} details`
+              : undefined
+          }
+          iconSize={16}
+          initialsClassName="text-sm font-medium event-message-text"
+        />
+      );
+    }
 
     return (
       <div
         className={`avatar mr-2 flex-shrink-0 ${
-          clickable ? "cursor-pointer hover:opacity-80 transition-opacity" : ""
+          isClickable ? "cursor-pointer hover:opacity-80 transition-opacity" : ""
         } ${isFormerMember ? "opacity-70" : ""}`}
         onClick={handleClick}
         title={
-          clickable
-            ? `View ${getDisplayName(senderInfo, false)} details`
+          isClickable
+            ? `View ${getSenderDisplayName(senderInfo, false)} details`
             : isFormerMember
               ? "Former team member"
               : undefined
         }
       >
         <div className="w-8 h-8 rounded-full relative">
-          {/* For former members, always show "FM" - don't use their avatar */}
-          {!isFormerMember && senderInfo.avatarUrl ? (
-            <img
-              src={senderInfo.avatarUrl}
-              alt={senderInfo.username || "User"}
-              className="object-cover w-full h-full rounded-full"
-              onError={(e) => {
-                e.target.style.display = "none";
-                const fallback =
-                  e.target.parentElement.querySelector(".avatar-fallback");
-                if (fallback) fallback.style.display = "flex";
-              }}
-            />
-          ) : null}
-          {/* Fallback: "FM" for former members, initials for current members */}
           <div
-            className={`avatar-fallback ${avatarBgClass} ${avatarTextClass} flex items-center justify-center w-full h-full rounded-full absolute inset-0`}
-            style={{
-              display:
-                isFormerMember || !senderInfo.avatarUrl ? "flex" : "none",
-            }}
+            className="avatar-fallback bg-base-300 text-base-content/60 flex items-center justify-center w-full h-full rounded-full absolute inset-0"
           >
             <span className="text-sm font-medium event-message-text">
-              {isFormerMember ? "FM" : getUserInitials(senderInfo)}
+              FM
             </span>
           </div>
         </div>
+      </div>
+    );
+  };
+
+  const renderSenderName = (senderInfo, senderId, className = "") => {
+    if (!senderInfo) return null;
+
+    const displayName = getSenderDisplayName(senderInfo);
+    const isDeletedSender = senderInfo.isDeletedUser === true;
+    const isFormerMember = senderInfo.isCurrentMember === false;
+    const canClick = Boolean(!isDeletedSender && senderId);
+
+    return (
+      <div
+        className={[
+          className,
+          canClick ? "cursor-pointer hover:text-primary transition-colors" : "",
+          isDeletedSender ? "text-base-content/50" : "",
+        ].join(" ")}
+        style={
+          isDeletedSender
+            ? undefined
+            : {
+                color: isFormerMember ? "#6b7280" : "#036b0c",
+              }
+        }
+        onClick={canClick ? () => handleUserClick(senderId, displayName) : undefined}
+        title={
+          canClick ? `View ${getSenderDisplayName(senderInfo, false)} details` : undefined
+        }
+      >
+        {displayName}
       </div>
     );
   };
@@ -1130,8 +1221,6 @@ const MessageDisplay = ({
     isCurrentUser,
     senderId,
   ) => {
-    const displayName = getDisplayName(senderInfo);
-
     const pronoun = isCurrentUser ? "you" : "them";
     const welcomeText = isCurrentUser ? (
       <>You joined the team. Welcome aboard!</>
@@ -1161,15 +1250,12 @@ const MessageDisplay = ({
             {!isCurrentUser && renderAvatar(senderInfo, true, senderId)}
 
             <div className="flex flex-col max-w-[70%]">
-              {!isCurrentUser && (
-                <div
-                  className="text-xs font-medium mb-1 ml-3 cursor-pointer hover:text-primary transition-colors"
-                  style={{ color: "#036b0c" }}
-                  onClick={() => handleUserClick(senderId, displayName)}
-                  title={`View ${displayName} details`}
-                >
-                  {displayName}
-                </div>
+            {!isCurrentUser && (
+                renderSenderName(
+                  senderInfo,
+                  senderId,
+                  "text-xs font-medium mb-1 ml-3",
+                )
               )}
 
               <div
@@ -2026,6 +2112,7 @@ const MessageDisplay = ({
           isOpen={isTeamModalOpen}
           teamId={conversationType === "team" ? teamData?.id : selectedTeamId}
           initialTeamData={conversationType === "team" ? teamData : null}
+          membersRefreshKey={teamMembersRefreshKey}
           onClose={handleTeamModalClose}
         />
 
@@ -2214,7 +2301,6 @@ const MessageDisplay = ({
                 messageGroup.senderId,
                 messageGroup.messages[0],
               );
-              const displayName = getDisplayName(senderInfo);
 
               // System message rendering
               if (messageGroup.messages.length === 1) {
@@ -2468,25 +2554,16 @@ const MessageDisplay = ({
                     {conversationType === "team" &&
                       !isCurrentUser &&
                       messageGroup.showSenderInfo && (
-                        <div
-                          className={`text-xs font-medium mb-1 ml-3 cursor-pointer hover:text-primary transition-colors ${
-                            senderInfo?.isCurrentMember === false
+                        renderSenderName(
+                          senderInfo,
+                          messageGroup.senderId,
+                          `text-xs font-medium mb-1 ml-3 ${
+                            senderInfo?.isCurrentMember === false &&
+                            senderInfo?.isDeletedUser !== true
                               ? "opacity-70"
                               : ""
-                          }`}
-                          style={{
-                            color:
-                              senderInfo?.isCurrentMember === false
-                                ? "#6b7280"
-                                : "#036b0c",
-                          }}
-                          onClick={() =>
-                            handleUserClick(messageGroup.senderId, displayName)
-                          }
-                          title={`View ${getDisplayName(senderInfo, false)} details`}
-                        >
-                          {displayName}
-                        </div>
+                          }`,
+                        )
                       )}
 
                     <div className="space-y-1">
@@ -2716,6 +2793,7 @@ const MessageDisplay = ({
         isOpen={isTeamModalOpen}
         teamId={conversationType === "team" ? teamData?.id : selectedTeamId}
         initialTeamData={conversationType === "team" ? teamData : null}
+        membersRefreshKey={teamMembersRefreshKey}
         onClose={handleTeamModalClose}
       />
 
