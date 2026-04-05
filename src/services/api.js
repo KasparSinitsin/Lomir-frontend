@@ -1,7 +1,7 @@
 import axios from "axios";
 import { snakeToCamel, camelToSnake } from "../utils/formatters";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5001";
+const API_URL = import.meta.env.VITE_API_URL || "http://172.22.240.116:3000";
 
 const api = axios.create({
   baseURL: API_URL,

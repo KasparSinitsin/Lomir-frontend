@@ -1,219 +1,113 @@
-# Lomir — Frontend
+# zrok - Secure internet sharing made simple
 
-React single-page application for **Lomir**, a team-matching platform that helps people find collaborators based on shared interests, skills, badges, and location.
+![zrok logo](docs/images/zrok_cover.png)
 
-Built with React 19, Vite, Tailwind CSS, and DaisyUI.
+**Share anything, anywhere, instantly. Enterprise reliability. No firewall changes. No port forwarding. No hassle.**
 
----
+zrok lets you securely share web services, files, and network resources with anyone—whether they're across the internet or your private network. Built on zero-trust networking, it works through firewalls and NAT without requiring any network configuration changes.
 
-## Live Demo
+## Quick start
 
-**Try it now:** [lomir-frontend.vercel.app](https://lomir-frontend.vercel.app)
+Get sharing in under 2 minutes:
 
-> The backend runs on Render's free tier and enters sleep mode after inactivity. The first request may take 15–30 seconds to wake up — after that, everything responds normally.
+1. **[Install zrok](https://docs.zrok.io/docs/guides/install/)** for your platform
+2. **Get an account**: `zrok invite` (use the free [zrok.io service](https://docs.zrok.io/docs/getting-started/))
+3. **Enable sharing**: `zrok enable`
 
-| Service  | Platform | URL |
-|----------|----------|-----|
-| Frontend | Vercel   | [lomir-frontend.vercel.app](https://lomir-frontend.vercel.app) |
-| Backend  | Render   | [lomir-backend-knae.onrender.com](https://lomir-backend-knae.onrender.com) |
-| Database | Neon     | PostgreSQL (remote) |
-
----
-
-## Features
-
-- **Search & Discovery** — Find teams, users, and vacant roles by keyword, tags, badges, or location with list and map views
-- **Best Match Sorting** — Weighted matching algorithm scores teams and roles against your profile
-- **Team Management** — Create teams, manage members, post vacant roles, handle applications and invitations
-- **User Profiles** — Customizable profiles with interest tags, badges, avatar uploads, and location
-- **Real-Time Chat** — Direct and team group messaging with typing indicators and read receipts (Socket.IO)
-- **Badge System** — Browse 30 badges across 5 color-coded categories; award badges to teammates
-- **Interactive Map** — Toggle between list and map views with React Leaflet; distance-based filtering
-- **Notifications** — In-app notification center for invitations, applications, and badge awards
-- **Boolean Search** — Advanced search input with pill-based tag/badge/criteria filters
-
----
-
-## Tech Stack
-
-| Layer | Technology |
-|---|---|
-| Framework | React 19 |
-| Build Tool | Vite 6 |
-| Styling | Tailwind CSS 3 + DaisyUI 5 |
-| Routing | React Router 7 |
-| HTTP Client | Axios |
-| Real-time | Socket.IO Client |
-| Maps | Leaflet + React Leaflet |
-| Icons | Lucide React, React Icons |
-| Date Utilities | date-fns |
-
----
-
-## Getting Started
-
-### Prerequisites
-
-- **Node.js** v18+ and npm
-- The [Lomir backend](https://github.com/KasparSinitsin/Lomir-backend) running on `http://localhost:5001`
-
-### 1. Clone and switch to `dev`
+That's it! Now you can share anything:
 
 ```bash
-git clone https://github.com/KasparSinitsin/Lomir-frontend.git
-cd Lomir-frontend
-git checkout dev
-git pull origin dev
+# Share a web service publicly
+$ zrok share public localhost:8080
+
+# Share files as a network drive  
+$ zrok share public --backend-mode drive ~/Documents
+
+# Share privately with other zrok users
+$ zrok share private localhost:3000
 ```
 
-### 2. Install dependencies
+![zrok Web Console](docs/images/zrok_web_console.png)
+
+## What you can share
+
+### Web services
+
+Instantly make local web apps accessible over the internet:
 
 ```bash
-npm install
+zrok share public localhost:8080
 ```
 
-### 3. Create `.env`
+![zrok share public](docs/images/zrok_share_public.png)
 
-Create a `.env` file in the project root:
+### Files & directories
 
-```env
-# API connection
-VITE_API_URL=http://localhost:5001
-
-# Optional Socket.IO override
-VITE_SOCKET_URL=http://localhost:5001
-
-# Cloudinary (frontend presets for direct uploads)
-VITE_CLOUDINARY_CLOUD_NAME=<cloud-name>
-VITE_CLOUDINARY_UPLOAD_PRESET=<upload-preset>
-VITE_CLOUDINARY_PRESET_AVATARS=<preset-avatars>
-VITE_CLOUDINARY_PRESET_TEAM_AVATARS=<preset-team-avatars>
-VITE_CLOUDINARY_PRESET_CHAT_IMAGES=<preset-chat-images>
-VITE_CLOUDINARY_PRESET_CHAT_FILES=<preset-chat-files>
-
-# Cloudflare Turnstile (optional for local dev — if unset, CAPTCHA widget is not shown)
-# VITE_TURNSTILE_SITE_KEY=<turnstile-site-key>
-```
-
-> Get the Cloudinary values from the project owner.
-
-### 4. Verify the API base URL
-
-Open `src/services/api.js` and make sure it points to localhost:
-
-```js
-const API_URL = "http://localhost:5001";
-```
-
-### 5. Start the dev server
+Turn any folder into a shareable network drive:
 
 ```bash
-npm run dev
+zrok share public --backend-mode drive ~/Repos/zrok
 ```
 
-The app starts on `http://localhost:5173` with hot module replacement.
+![zrok share public -b drive](docs/images/zrok_share_public_drive.png)
+![mounted zrok drive](docs/images/zrok_share_public_drive_explorer.png)
 
----
+### Private resources
 
-## Available Scripts
+Share TCP/UDP services securely with other zrok users—no public internet exposure.
 
-| Command | Description |
-|---|---|
-| `npm run dev` | Start Vite dev server with HMR |
-| `npm run build` | Production build to `dist/` |
-| `npm run preview` | Preview the production build locally |
-| `npm run lint` | Run ESLint |
+## Key features
 
----
+- **Zero Configuration**: Works through firewalls, NAT, and corporate networks
+- **Secure by Default**: End-to-end encryption with zero-trust architecture  
+- **Public & Private Sharing**: Share with anyone or just specific users
+- **Multiple Protocols**: HTTP/HTTPS, TCP, UDP, and file sharing
+- **Cross-Platform**: Windows, macOS, Linux, and Raspberry Pi
+- **Self-Hostable**: Run your own zrok service instance
 
-## Project Structure
+## How it works
 
-```text
-Lomir-frontend/
-├── public/
-├── src/
-│   ├── main.jsx                    # App entry point
-│   ├── App.jsx                     # Root component with routing
-│   ├── index.css                   # Global styles + Tailwind imports
-│   ├── pages/
-│   │   ├── Home.jsx                # Public landing page
-│   │   ├── SearchPage.jsx          # Search with list/map view toggle
-│   │   ├── MyTeams.jsx             # User's teams, invitations, applications
-│   │   ├── Profile.jsx             # User profile editing
-│   │   ├── Register.jsx            # Multi-step registration
-│   │   ├── Login.jsx
-│   │   ├── Chat.jsx                # Direct + team messaging
-│   │   ├── BadgeOverview.jsx       # Badge catalog and details
-│   │   ├── ForgotPassword.jsx
-│   │   ├── ResetPassword.jsx
-│   │   ├── VerifyEmail.jsx
-│   │   └── Settings.jsx
-│   ├── components/
-│   │   ├── auth/                   # Login/register forms
-│   │   ├── teams/                  # Team cards, modals, vacant roles, applications
-│   │   ├── users/                  # User cards and detail modals
-│   │   ├── badges/                 # Badge display, awarding, category modals
-│   │   ├── tags/                   # Tag input, display, and selection
-│   │   ├── chat/                   # Chat UI components
-│   │   ├── common/                 # Shared UI (Button, Card, Modal, Alert, Pagination, TurnstileWidget...)
-│   │   └── layout/                 # Navbar, Footer, PageContainer, Grid, Section
-│   ├── contexts/
-│   │   ├── AuthContext.jsx         # Authentication state + JWT management
-│   │   ├── UserModalContext.jsx    # Global user detail modal
-│   │   ├── TeamModalContext.jsx    # Global team detail modal state
-│   │   └── ModalLayerContext.jsx   # Modal stacking support
-│   ├── services/
-│   │   ├── api.js                  # Axios instance with interceptors
-│   │   ├── authService.js
-│   │   ├── userService.js
-│   │   ├── teamService.js
-│   │   ├── searchService.js
-│   │   ├── matchingService.js
-│   │   ├── vacantRoleService.js
-│   │   ├── badgeService.js
-│   │   ├── tagService.js
-│   │   ├── messageService.js
-│   │   ├── notificationService.js
-│   │   ├── socketService.js        # Socket.IO client wrapper
-│   │   └── geocodingService.js
-│   ├── hooks/                      # Custom hooks (useViewerMatchProfile, useAwardModals...)
-│   ├── utils/                      # Helper functions (teamMatchUtils, locationUtils...)
-│   ├── constants/                  # Badge constants, UI text, pagination config
-│   ├── config/
-│   │   └── cloudinary.js           # Cloudinary upload helper
-│   └── assets/                     # Logos, gradients, and icon assets
-├── tailwind.config.js
-├── postcss.config.js
-├── vite.config.js
-├── .env                            # Environment variables (not committed)
-├── package.json
-└── README.md
+zrok is built on [OpenZiti](https://docs.openziti.io/docs/learn/introduction/), a programmable zero-trust network overlay. This means:
+
+- **No inbound connectivity required**: Works from behind firewalls and NAT
+- **End-to-end encryption**: All traffic is encrypted, even from zrok servers
+- **Peer-to-peer connections**: Direct connections between users when possible
+- **Identity-based access**: Share with specific users, not IP addresses
+
+## Developer SDK
+
+Embed zrok sharing into your applications with our Go SDK:
+
+```go
+// Create a share
+shr, err := sdk.CreateShare(root, &sdk.ShareRequest{
+    BackendMode: sdk.TcpTunnelBackendMode,
+    ShareMode:   sdk.PrivateShareMode,
+})
+
+// Accept connections
+listener, err := sdk.NewListener(shr.Token, root)
 ```
 
----
+[Read the SDK guide](https://blog.openziti.io/the-zrok-sdk) for complete examples.
 
-## Key Pages
+## Self-hosting
 
-| Route | Page | Description |
-|---|---|---|
-| `/` | Landing Page | Public homepage |
-| `/search` | Search | Find teams, users, and roles — list or map view |
-| `/teams/my-teams` | My Teams | Teams you belong to, pending invitations and applications |
-| `/profile` | Profile | Edit your profile, tags, avatar, and location |
-| `/chat` | Chat | Direct messages and team group chat |
-| `/badges` | Badges | Browse all badges and their categories |
+Run your own zrok service—from Raspberry Pi to enterprise scale:
 
----
+- Single binary contains everything you need
+- Scales from small personal instances to large public services
+- Built on the same codebase as the public zrok.io service
 
-## Troubleshooting
+[Self-Hosting Guide](https://docs.zrok.io/docs/guides/self-hosting/self_hosting_guide/)
 
-- **CORS errors** — Make sure the backend is running on port 5001 and the frontend on 5173
-- **Socket.IO won't connect** — Verify `VITE_SOCKET_URL` in `.env` if you set it; otherwise the client falls back to `http://localhost:5001`
-- **"Access denied. No token provided."** — You need to be logged in; check that `localStorage` has a valid token
-- **Port already in use** — `lsof -i :5173` to find the process, `kill -9 <PID>` to free it
+## Resources
+
+- **[Documentation](https://docs.zrok.io/)**
+- **[Office Hours Videos](https://www.youtube.com/watch?v=Edqv7yRmXb0&list=PLMUj_5fklasLuM6XiCNqwAFBuZD1t2lO2)**
+- **[Building from source](./BUILD.md)**
+- **[Contributing](./CONTRIBUTING.md)**
 
 ---
 
-## Related
-
-- **Backend repo:** [Lomir-backend](https://github.com/KasparSinitsin/Lomir-backend)
+*Ready to start sharing? [Get started with zrok →](https://docs.zrok.io/docs/getting-started)*

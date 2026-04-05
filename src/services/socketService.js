@@ -1,5 +1,4 @@
 import { io } from "socket.io-client";
-
 let socket = null;
 
 const socketService = {
@@ -16,7 +15,7 @@ const socketService = {
     }
 
     const SOCKET_URL =
-      import.meta.env.VITE_SOCKET_URL || "http://localhost:5001";
+      import.meta.env.VITE_SOCKET_URL || "https://lomir-backend.shares.zrok.io"
 
     const newSocket = io(SOCKET_URL, {
       auth: { token },
