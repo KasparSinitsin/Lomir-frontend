@@ -135,7 +135,7 @@ export const userService = {
   },
 
   /**
-   * Deletes the user's avatar image from Cloudinary and removes it from the profile.
+   * Deletes the user's avatar image and removes it from the profile.
    * @param {string|number} userId - The ID of the user whose avatar to delete.
    * @returns {Promise<object>} A promise resolving to the deletion result.
    */

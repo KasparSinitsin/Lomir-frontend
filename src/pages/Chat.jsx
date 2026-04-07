@@ -11,7 +11,7 @@ import socketService from "../services/socketService";
 import { userService } from "../services/userService";
 import { teamService } from "../services/teamService";
 import Alert from "../components/common/Alert";
-import { uploadToCloudinary } from "../config/cloudinary";
+import { uploadToImageKit } from "../config/imagekit";
 
 const getConversationPartnerId = (conversation) =>
   conversation?.partner?.id ??
@@ -971,8 +971,8 @@ const Chat = () => {
     if (!activeConversation || !file) return;
 
     try {
-      // Upload to Cloudinary using chat-files preset
-      const uploadResult = await uploadToCloudinary(file, "chatFiles");
+      // Upload file attachment before sending the message
+      const uploadResult = await uploadToImageKit(file, "chatFiles");
 
       if (!uploadResult.success) {
         setError(uploadResult.error || "Failed to upload file");
@@ -1005,8 +1005,8 @@ const Chat = () => {
     if (!activeConversation || !file) return;
 
     try {
-      // Upload to Cloudinary using chat-images preset
-      const uploadResult = await uploadToCloudinary(file, "chatImages");
+      // Upload image attachment before sending the message
+      const uploadResult = await uploadToImageKit(file, "chatImages");
 
       if (!uploadResult.success) {
         setError(uploadResult.error || "Failed to upload image");
