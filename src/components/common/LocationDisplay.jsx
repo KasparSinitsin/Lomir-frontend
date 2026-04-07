@@ -44,7 +44,7 @@ const LocationDisplay = ({
   });
 
   // Return null if no location data
-  if (!locationData.city && !locationData.postalCode) {
+  if (!locationData.hasLocation) {
     return null;
   }
 
