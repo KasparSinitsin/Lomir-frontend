@@ -22,15 +22,16 @@ Built with React 19, Vite, Tailwind CSS, and DaisyUI.
 
 ## Features
 
-- **Search & Discovery** — Find teams, users, and vacant roles by keyword, tags, badges, or location with list and map views
+- **Search & Discovery** — Find teams, users, and vacant roles by keyword, tags, badges, or location in list view; map view is planned
 - **Best Match Sorting** — Weighted matching algorithm scores teams and roles against your profile
 - **Team Management** — Create teams, manage members, post vacant roles, handle applications and invitations
 - **User Profiles** — Customizable profiles with interest tags, badges, avatar uploads, and location
 - **Real-Time Chat** — Direct and team group messaging with typing indicators and read receipts (Socket.IO)
 - **Badge System** — Browse 30 badges across 5 color-coded categories; award badges to teammates
-- **Interactive Map** — Toggle between list and map views with React Leaflet; distance-based filtering
+- **Interactive Map (Planned)** — Leaflet/React Leaflet-powered map view and distance-based filtering are planned but not yet implemented
 - **Notifications** — In-app notification center for invitations, applications, and badge awards
 - **Boolean Search** — Advanced search input with pill-based tag/badge/criteria filters
+- **Account Deletion** — Multi-step account deletion with impact preview, automatic team ownership transfer, and graceful "Former Lomir User" handling across chat, badges, and notifications
 
 ---
 
@@ -44,7 +45,7 @@ Built with React 19, Vite, Tailwind CSS, and DaisyUI.
 | Routing | React Router 7 |
 | HTTP Client | Axios |
 | Real-time | Socket.IO Client |
-| Maps | Leaflet + React Leaflet |
+| Maps (planned) | Leaflet + React Leaflet |
 | Icons | Lucide React, React Icons |
 | Date Utilities | date-fns |
 
@@ -137,7 +138,7 @@ Lomir-frontend/
 │   ├── index.css                   # Global styles + Tailwind imports
 │   ├── pages/
 │   │   ├── Home.jsx                # Public landing page
-│   │   ├── SearchPage.jsx          # Search with list/map view toggle
+│   │   ├── SearchPage.jsx          # Search page; map view is planned
 │   │   ├── MyTeams.jsx             # User's teams, invitations, applications
 │   │   ├── Profile.jsx             # User profile editing
 │   │   ├── Register.jsx            # Multi-step registration
@@ -147,11 +148,12 @@ Lomir-frontend/
 │   │   ├── ForgotPassword.jsx
 │   │   ├── ResetPassword.jsx
 │   │   ├── VerifyEmail.jsx
+│   │   ├── PublicProfile.jsx       # Deleted user profile placeholder
 │   │   └── Settings.jsx
 │   ├── components/
 │   │   ├── auth/                   # Login/register forms
 │   │   ├── teams/                  # Team cards, modals, vacant roles, applications
-│   │   ├── users/                  # User cards and detail modals
+│   │   ├── users/                  # User cards, detail modals, deleted user handling
 │   │   ├── badges/                 # Badge display, awarding, category modals
 │   │   ├── tags/                   # Tag input, display, and selection
 │   │   ├── chat/                   # Chat UI components
@@ -178,6 +180,7 @@ Lomir-frontend/
 │   │   └── geocodingService.js
 │   ├── hooks/                      # Custom hooks (useViewerMatchProfile, useAwardModals...)
 │   ├── utils/                      # Helper functions (teamMatchUtils, locationUtils...)
+│   │   ├── deletedUser.js          # "Former Lomir User" display utilities
 │   ├── constants/                  # Badge constants, UI text, pagination config
 │   ├── config/
 │   │   └── cloudinary.js           # Cloudinary upload helper
@@ -197,9 +200,10 @@ Lomir-frontend/
 | Route | Page | Description |
 |---|---|---|
 | `/` | Landing Page | Public homepage |
-| `/search` | Search | Find teams, users, and roles — list or map view |
+| `/search` | Search | Find teams, users, and roles in list view; map view is planned |
 | `/teams/my-teams` | My Teams | Teams you belong to, pending invitations and applications |
 | `/profile` | Profile | Edit your profile, tags, avatar, and location |
+| `/profile/:id` | Public Profile | View any user's profile; shows placeholder for deleted users |
 | `/chat` | Chat | Direct messages and team group chat |
 | `/badges` | Badges | Browse all badges and their categories |
 

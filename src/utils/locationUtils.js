@@ -246,7 +246,7 @@ export const formatLocation = (locationData, options = {}) => {
 
   const { postalCode, city, state, countryName } = locationData;
 
-  if (!city && !postalCode) {
+  if (!city && !postalCode && !state && !countryName) {
     return "";
   }
 

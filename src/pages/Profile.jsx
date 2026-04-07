@@ -623,6 +623,11 @@ const Profile = () => {
           bio: formData.bio,
           postal_code: formData.postalCode,
           city: formData.city,
+          country: formData.country,
+          // Pick up geocoded state & coordinates from the API response
+          state: response.data?.state ?? user.state,
+          latitude: response.data?.latitude ?? user.latitude,
+          longitude: response.data?.longitude ?? user.longitude,
           // Use the avatar URL from Cloudinary if we uploaded a new image,
           // otherwise use the response data or keep the existing avatar
           avatar_url: avatarUrl || response.data?.avatar_url || user.avatar_url,
@@ -703,6 +708,19 @@ const Profile = () => {
       </PageContainer>
     );
   }
+
+  const profileLocation = {
+    postalCode: displayUser.postalCode || displayUser.postal_code || "",
+    city: displayUser.city || "",
+    state: displayUser.state || "",
+    country: displayUser.country || "",
+  };
+  const hasProfileLocation = Boolean(
+    profileLocation.postalCode ||
+      profileLocation.city ||
+      profileLocation.state ||
+      profileLocation.country,
+  );
 
   return (
     <div className="space-y-6">
@@ -1047,12 +1065,12 @@ const Profile = () => {
                           />
                           <h3 className="font-medium">Location</h3>
                         </div>
-                        {user.postalCode || user.postal_code || user.city ? (
+                        {hasProfileLocation ? (
                           <LocationDisplay
-                            postalCode={user.postal_code || user.postalCode}
-                            city={user.city}
-                            state={user.state}
-                            country={user.country}
+                            postalCode={profileLocation.postalCode}
+                            city={profileLocation.city}
+                            state={profileLocation.state}
+                            country={profileLocation.country}
                             className="text-sm text-base-content/60"
                             showIcon={false}
                             showPostalCode={true}
@@ -1117,12 +1135,12 @@ const Profile = () => {
                             />
                             <h3 className="font-medium">Location</h3>
                           </div>
-                          {user.postalCode || user.postal_code || user.city ? (
+                          {hasProfileLocation ? (
                             <LocationDisplay
-                              postalCode={user.postal_code || user.postalCode}
-                              city={user.city}
-                              state={user.state}
-                              country={user.country}
+                              postalCode={profileLocation.postalCode}
+                              city={profileLocation.city}
+                              state={profileLocation.state}
+                              country={profileLocation.country}
                               className="text-sm text-base-content/60"
                               showIcon={false}
                               showPostalCode={true}

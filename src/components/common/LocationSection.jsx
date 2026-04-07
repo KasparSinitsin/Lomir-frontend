@@ -140,7 +140,7 @@ const LocationSection = ({
               (No physical location)
             </span>
           </div>
-        ) : location.city || location.postalCode ? (
+        ) : location.hasLocation ? (
           <div className="flex items-start text-sm text-base-content/70">
             {!shouldShowTitle && (
               <MapPin size={16} className="mr-2 flex-shrink-0 mt-0.5" />
