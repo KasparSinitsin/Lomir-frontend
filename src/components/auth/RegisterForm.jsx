@@ -242,6 +242,7 @@ const RegisterForm = () => {
 
         if (uploadResult.success) {
           userData.avatar_url = uploadResult.url;
+          userData.avatar_file_id = uploadResult.fileId;
         } else {
           console.error("Avatar upload failed:", uploadResult.error);
         }
