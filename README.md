@@ -84,19 +84,15 @@ VITE_API_URL=http://localhost:5001
 # Optional Socket.IO override
 VITE_SOCKET_URL=http://localhost:5001
 
-# Cloudinary (frontend presets for direct uploads)
-VITE_CLOUDINARY_CLOUD_NAME=<cloud-name>
-VITE_CLOUDINARY_UPLOAD_PRESET=<upload-preset>
-VITE_CLOUDINARY_PRESET_AVATARS=<preset-avatars>
-VITE_CLOUDINARY_PRESET_TEAM_AVATARS=<preset-team-avatars>
-VITE_CLOUDINARY_PRESET_CHAT_IMAGES=<preset-chat-images>
-VITE_CLOUDINARY_PRESET_CHAT_FILES=<preset-chat-files>
+# ImageKit (image/file uploads — get values from the project owner)
+VITE_IMAGEKIT_PUBLIC_KEY=<your-public-key>
+VITE_IMAGEKIT_URL_ENDPOINT=https://ik.imagekit.io/<your-id>
 
 # Cloudflare Turnstile (optional for local dev — if unset, CAPTCHA widget is not shown)
 # VITE_TURNSTILE_SITE_KEY=<turnstile-site-key>
 ```
 
-> Get the Cloudinary values from the project owner.
+> Get the ImageKit values from the project owner.
 
 ### 4. Verify the API base URL
 
@@ -183,7 +179,7 @@ Lomir-frontend/
 │   │   ├── deletedUser.js          # "Former Lomir User" display utilities
 │   ├── constants/                  # Badge constants, UI text, pagination config
 │   ├── config/
-│   │   └── cloudinary.js           # Cloudinary upload helper
+│   │   └── imagekit.js             # ImageKit upload helper
 │   └── assets/                     # Logos, gradients, and icon assets
 ├── tailwind.config.js
 ├── postcss.config.js

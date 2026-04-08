@@ -16,7 +16,7 @@ import SendMessageButton from "../common/SendMessageButton";
 import Alert from "../common/Alert";
 import TagDisplay from "../common/TagDisplay";
 import LocationDisplay from "../common/LocationDisplay";
-import { uploadToCloudinary } from "../../config/cloudinary";
+import { uploadToImageKit } from "../../config/imagekit";
 import {
   X,
   Edit,
@@ -1003,7 +1003,7 @@ const TeamDetailsModal = ({
 
       // Handle avatar file upload if a new file was selected
       if (formData.teamavatarFile) {
-        const uploadResult = await uploadToCloudinary(
+        const uploadResult = await uploadToImageKit(
           formData.teamavatarFile,
           "teamAvatars",
         );

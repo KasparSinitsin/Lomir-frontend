@@ -16,7 +16,7 @@ import {
   EyeOff,
 } from "lucide-react";
 import ImageUploader from "../common/ImageUploader";
-import { uploadToCloudinary } from "../../config/cloudinary";
+import { uploadToImageKit } from "../../config/imagekit";
 import api from "../../services/api";
 import LocationInput from "../common/LocationInput";
 import { useLocationAutoFill } from "../../hooks/useLocationAutoFill";
@@ -235,7 +235,7 @@ const RegisterForm = () => {
       };
 
       if (formData.profile_image) {
-        const uploadResult = await uploadToCloudinary(
+        const uploadResult = await uploadToImageKit(
           formData.profile_image,
           "avatars",
         );

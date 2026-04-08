@@ -331,7 +331,7 @@ export const teamService = {
   },
 
   /**
-   * Deletes the team's avatar image from Cloudinary and removes it from the team.
+   * Deletes the team's avatar image and removes it from the team.
    * @param {string|number} teamId - The ID of the team whose avatar to delete.
    * @returns {Promise<object>} A promise resolving to the deletion result.
    */
