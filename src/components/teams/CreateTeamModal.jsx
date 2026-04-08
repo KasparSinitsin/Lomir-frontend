@@ -11,7 +11,7 @@ import LocationModeToggle from "../common/LocationModeToggle";
 import FormSectionDivider from "../common/FormSectionDivider";
 import { UI_TEXT } from "../../constants/uiText";
 import { teamService } from "../../services/teamService";
-import { uploadToCloudinary } from "../../config/cloudinary";
+import { uploadToImageKit } from "../../config/imagekit";
 import { useLocationAutoFill } from "../../hooks/useLocationAutoFill";
 import TeamDetailsModal from "./TeamDetailsModal";
 import {
@@ -291,7 +291,7 @@ const CreateTeamModal = ({ isOpen, onClose, onTeamCreated }) => {
 
       // Upload image if selected
       if (formData.teamImage) {
-        const uploadResult = await uploadToCloudinary(
+        const uploadResult = await uploadToImageKit(
           formData.teamImage,
           "teamAvatars",
         );

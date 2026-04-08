@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import axios from "axios";
 import FormSectionDivider from "../components/common/FormSectionDivider";
 import { useAuth } from "../contexts/AuthContext";
 import PageContainer from "../components/layout/PageContainer";
@@ -10,7 +9,7 @@ import Card from "../components/common/Card";
 import Button from "../components/common/Button";
 import DataDisplay from "../components/common/DataDisplay";
 import Alert from "../components/common/Alert";
-import { uploadToCloudinary } from "../config/cloudinary";
+import { uploadToImageKit } from "../config/imagekit";
 import {
   Mail,
   MapPin,
@@ -550,38 +549,18 @@ const Profile = () => {
       // Handle image upload if a new image was selected
       let avatarUrl = null;
       if (formData.profileImage) {
-        const cloudinaryData = new FormData();
-        cloudinaryData.append("file", formData.profileImage);
-        cloudinaryData.append(
-          "upload_preset",
-          import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET,
+        const uploadResult = await uploadToImageKit(
+          formData.profileImage,
+          "avatars",
         );
-
-        try {
-          const cloudinaryResponse = await axios.post(
-            `https://api.cloudinary.com/v1_1/${
-              import.meta.env.VITE_CLOUDINARY_CLOUD_NAME
-            }/image/upload`,
-            cloudinaryData,
-            {
-              headers: {
-                "Content-Type": "multipart/form-data",
-              },
-            },
-          );
-
-          // Get and store the image URL
-          if (cloudinaryResponse.data && cloudinaryResponse.data.secure_url) {
-            avatarUrl = cloudinaryResponse.data.secure_url;
-            userData.avatar_url = avatarUrl;
-
-            // IMPORTANT: Update image preview immediately
-            setImagePreview(avatarUrl);
-          }
-        } catch (cloudinaryError) {
-          console.error("Error uploading to Cloudinary:", cloudinaryError);
+        if (uploadResult.success) {
+          avatarUrl = uploadResult.url;
+          userData.avatar_url = avatarUrl;
+          setImagePreview(avatarUrl);
+        } else {
+          console.error("Avatar upload failed:", uploadResult.error);
           setError(
-            "Failed to upload image. Please try a different image or try again later.",
+            "Failed to upload image. Please try again.",
           );
           setLoading(false);
           return;
@@ -628,7 +607,7 @@ const Profile = () => {
           state: response.data?.state ?? user.state,
           latitude: response.data?.latitude ?? user.latitude,
           longitude: response.data?.longitude ?? user.longitude,
-          // Use the avatar URL from Cloudinary if we uploaded a new image,
+          // Use the uploaded avatar URL if we uploaded a new image,
           // otherwise use the response data or keep the existing avatar
           avatar_url: avatarUrl || response.data?.avatar_url || user.avatar_url,
           avatarUrl: avatarUrl || response.data?.avatar_url || user.avatarUrl,
