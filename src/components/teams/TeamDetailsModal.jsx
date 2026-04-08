@@ -1010,6 +1010,7 @@ const TeamDetailsModal = ({
 
         if (uploadResult.success) {
           submissionData.teamavatar_url = uploadResult.url;
+          submissionData.teamavatar_file_id = uploadResult.fileId;
         } else {
           console.error("Error uploading team avatar:", uploadResult.error);
           // Continue with the update even if image upload fails

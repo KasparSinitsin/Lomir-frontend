@@ -556,11 +556,12 @@ const Profile = () => {
         if (uploadResult.success) {
           avatarUrl = uploadResult.url;
           userData.avatar_url = avatarUrl;
+          userData.avatar_file_id = uploadResult.fileId;
           setImagePreview(avatarUrl);
         } else {
           console.error("Avatar upload failed:", uploadResult.error);
           setError(
-            "Failed to upload image. Please try again.",
+            "Failed to upload image. Please try a different image or try again later.",
           );
           setLoading(false);
           return;
@@ -607,7 +608,7 @@ const Profile = () => {
           state: response.data?.state ?? user.state,
           latitude: response.data?.latitude ?? user.latitude,
           longitude: response.data?.longitude ?? user.longitude,
-          // Use the uploaded avatar URL if we uploaded a new image,
+          // Use the avatar URL from ImageKit if we uploaded a new image,
           // otherwise use the response data or keep the existing avatar
           avatar_url: avatarUrl || response.data?.avatar_url || user.avatar_url,
           avatarUrl: avatarUrl || response.data?.avatar_url || user.avatarUrl,
