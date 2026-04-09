@@ -1,3 +1,6 @@
+import daisyui from "daisyui";
+import daisyuiTheme from "daisyui/theme/index.js";
+
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
@@ -61,81 +64,38 @@ export default {
       "2xl": "1536px",
     },
   },
-  plugins: [require("daisyui")],
-  daisyui: {
-    themes: [
-      {
-        lomirlite: {
-          primary: "var(--color-primary)",
-          "primary-focus": "var(--color-primary-focus)",
-          "primary-content": "var(--color-primary-content)",
-
-          secondary: "#bbeabf",
-          "secondary-focus": "#7ace82",
-          "secondary-content": "var(--color-primary-focus)",
-
-          accent: "#7ace82",
-          neutral: "#3D4451",
-
-          "base-100": "var(--color-background)",
-          "base-200": "var(--color-background-soft)",
-          "base-300": "#F1F5F9",
-          "base-content": "var(--color-text)",
-
-          info: "var(--color-info)",
-          "info-content": "#ffffff",
-
-          success: "var(--color-success)",
-          "success-content": "#ffffff",
-
-          warning: "var(--color-warning)",
-          "warning-content": "#ffffff",
-
-          error: "var(--color-error)",
-          "error-content": "#ffffff",
-
-          "font-family": "'Roboto', sans-serif",
-          "text-primary": "var(--color-primary-focus)",
-        },
-      },
-      // Optional: Add a dark theme version here for future use
-      /* Uncomment when dark mode is implemented
-      {
-        lomirdark: {
-          "primary": "var(--color-primary)",
-          "primary-focus": "var(--color-primary-focus)",
-          "primary-content": "var(--color-primary-content)",
-
-          "secondary": "#262B42",
-          "secondary-focus": "#1F2235",
-          "secondary-content": "var(--color-primary-content)",
-
-          "accent": "#373F67",
-          "neutral": "#1A1E2C",
-
-          "base-100": "#1C1F2E",
-          "base-200": "#16192A",
-          "base-300": "#131625",
-          "base-content": "#EAEDF6",
-
-          "info": "var(--color-info)",
-          "info-content": "#ffffff",
-          
-          "success": "var(--color-success)",
-          "success-content": "#ffffff",
-          
-          "warning": "var(--color-warning)",
-          "warning-content": "#ffffff",
-          
-          "error": "var(--color-error)",
-          "error-content": "#ffffff",
-
-          "font-family": "'Roboto', sans-serif",
-          "text-primary": "var(--color-primary-focus)",
-        },
-      },
-      */
-    ],
-    defaultTheme: "lomirlite",
-  },
+  plugins: [
+    daisyui({
+      // Dark mode is intentionally suspended for now.
+      // Ship only DaisyUI's light theme so it does not generate a prefers-color-scheme dark override.
+      // Revisit this when a tested, accessible dark theme is ready to ship.
+      themes: ["light --default"],
+    }),
+    daisyuiTheme({
+      // Preserve the existing Lomir light palette while dark mode is suspended.
+      // We override DaisyUI's built-in light theme instead of using a separate dark-enabled theme setup.
+      name: "light",
+      default: true,
+      prefersdark: false,
+      "color-scheme": "only light",
+      "--color-base-100": "#ffffff",
+      "--color-base-200": "#f8fafc",
+      "--color-base-300": "#F1F5F9",
+      "--color-base-content": "#033f05",
+      "--color-primary": "#009213",
+      "--color-primary-content": "#ffffff",
+      "--color-secondary": "#bbeabf",
+      "--color-secondary-content": "#036b0c",
+      "--color-accent": "#7ace82",
+      "--color-neutral": "#3D4451",
+      "--color-info": "#766aea",
+      "--color-info-content": "#ffffff",
+      "--color-success": "#009213",
+      "--color-success-content": "#ffffff",
+      "--color-warning": "#df385b",
+      "--color-warning-content": "#ffffff",
+      "--color-error": "#df385b",
+      "--color-error-content": "#ffffff",
+    }),
+  ],
 };

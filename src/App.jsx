@@ -45,7 +45,7 @@ function AppLayout() {
     <TeamModalProvider>
       <UserModalProvider>
         <div
-          data-theme="lomirlite"
+          data-theme="light"
           style={{
             backgroundImage: `url(${backgroundImage})`,
             backgroundSize: "cover",

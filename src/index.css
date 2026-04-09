@@ -35,6 +35,9 @@
 }
 
 :root {
+  /* Keep browser-painted UI in light mode until the app has an accessible dark theme. */
+  color-scheme: only light;
+
   /* Primary Brand Colors */
   --color-primary: #009213;
   --color-primary-focus: #036b0c;

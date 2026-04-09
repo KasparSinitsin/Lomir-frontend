@@ -6,8 +6,8 @@ import Colors from '../utils/Colors';
  * Provides access to colors and theme utilities
  */
 export function useTheme() {
-  // Get the current theme (for future dark/light mode toggle)
-  const [theme, setTheme] = useState('lomirlite');
+  // Keep the app in DaisyUI's light theme until the accessible dark mode is implemented.
+  const [theme, setTheme] = useState('light');
   
   // Function to set a custom CSS variable at runtime
   const setCustomColor = (name, value) => {
@@ -20,12 +20,11 @@ export function useTheme() {
       .getPropertyValue(`--${name}`).trim();
   };
   
-  // Toggle between themes (for future implementation)
+  // Dark mode is intentionally suspended until the proper accessible theme is ready.
+  // Keep this light-only safeguard in place until the future dark theme is fully implemented.
   const toggleTheme = () => {
-    const newTheme = theme === 'lomirlite' ? 'lomirdark' : 'lomirlite';
-    setTheme(newTheme);
-    document.documentElement.setAttribute('data-theme', newTheme);
-    // You could load different CSS variable values here
+    setTheme('light');
+    document.documentElement.setAttribute('data-theme', 'light');
   };
   
   // Initialize theme on component mount
