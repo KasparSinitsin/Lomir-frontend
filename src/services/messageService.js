@@ -90,6 +90,17 @@ export const messageService = {
       throw error;
     }
   },
+
+  // Soft-delete a message
+  deleteMessage: async (messageId) => {
+    try {
+      const response = await api.delete(`/api/messages/${messageId}`);
+      return response.data;
+    } catch (error) {
+      console.error(`Error deleting message ${messageId}:`, error);
+      throw error;
+    }
+  },
 };
 
 export default messageService;

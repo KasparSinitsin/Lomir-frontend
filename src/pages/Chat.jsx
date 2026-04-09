@@ -1054,17 +1054,7 @@ const Chat = () => {
         ),
       );
 
-      // Use your service if you have it
-      // await messageService.deleteMessage(messageId);
-
-      // Or your fetch (as you wrote)
-      await fetch(`${import.meta.env.VITE_API_URL}/messages/${messageId}`, {
-        method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-      });
+      await messageService.deleteMessage(messageId);
     } catch (err) {
       console.error("Failed to delete message:", err);
       setError("Failed to delete message. Please try again.");
