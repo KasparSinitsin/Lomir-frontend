@@ -9,6 +9,7 @@ import Card from "../components/common/Card";
 import Button from "../components/common/Button";
 import DataDisplay from "../components/common/DataDisplay";
 import Alert from "../components/common/Alert";
+import Tooltip from "../components/common/Tooltip";
 import { uploadToImageKit } from "../config/imagekit";
 import {
   Mail,
@@ -21,6 +22,7 @@ import {
   Camera,
   Tag,
   Calendar,
+  FlaskConical,
 } from "lucide-react";
 import useAwardModals from "../hooks/useAwardModals";
 import { CATEGORY_COLORS } from "../constants/badgeConstants";
@@ -37,7 +39,11 @@ import LocationDisplay from "../components/common/LocationDisplay";
 import { geocodingService } from "../services/geocodingService";
 import { useLocationAutoFill } from "../hooks/useLocationAutoFill";
 import ImageUploader from "../components/common/ImageUploader";
-import { getUserInitials } from "../utils/userHelpers";
+import {
+  DEMO_PROFILE_TOOLTIP,
+  getUserInitials,
+  isSyntheticUser,
+} from "../utils/userHelpers";
 import Modal from "../components/common/Modal";
 import LocationInput from "../components/common/LocationInput";
 import { format } from "date-fns";
@@ -970,6 +976,15 @@ const Profile = () => {
                 {/* Username, visibility, and date in one row */}
                 <div className="flex items-center text-base flex-wrap gap-x-4 gap-y-1">
                   <span className="text-base-content/70">@{user.username}</span>
+                  {isSyntheticUser(user) && (
+                    <Tooltip
+                      content={DEMO_PROFILE_TOOLTIP}
+                      wrapperClassName="flex items-start text-base-content/50"
+                    >
+                      <FlaskConical className="h-3.5 w-auto mr-0.5 flex-shrink-0 mt-px" />
+                      <span className="leading-[1.15]">Demo Profile</span>
+                    </Tooltip>
+                  )}
                   <div
                     className="flex items-center text-base-content/70 tooltip tooltip-bottom tooltip-lomir cursor-help"
                     data-tip={

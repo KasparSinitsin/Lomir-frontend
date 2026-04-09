@@ -1,6 +1,17 @@
 import React, { useState } from "react";
-import { Eye, EyeClosed, Calendar, UserCheck } from "lucide-react";
-import { getUserInitials } from "../../utils/userHelpers";
+import Tooltip from "../common/Tooltip";
+import {
+  Eye,
+  EyeClosed,
+  Calendar,
+  UserCheck,
+  FlaskConical,
+} from "lucide-react";
+import {
+  DEMO_PROFILE_TOOLTIP,
+  getUserInitials,
+  isSyntheticUser,
+} from "../../utils/userHelpers";
 import { getMatchTier } from "../../utils/matchScoreUtils";
 import { format } from "date-fns";
 
@@ -122,6 +133,15 @@ const UserProfileHeaderSection = ({
         </h1>
         <div className="flex items-center flex-wrap gap-x-3 gap-y-0.5 text-sm">
           <span className="text-base-content/70">@{user?.username}</span>
+          {isSyntheticUser(user) && (
+            <Tooltip
+              content={DEMO_PROFILE_TOOLTIP}
+              wrapperClassName="flex items-start text-base-content/50 text-sm"
+            >
+              <FlaskConical className="h-3.5 w-auto mr-0.5 flex-shrink-0 mt-px" />
+              <span className="leading-[1.15]">Demo Profile</span>
+            </Tooltip>
+          )}
 
           {filledRoleName && (
             <span className="flex items-center gap-1 text-base-content/70">

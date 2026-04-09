@@ -59,3 +59,15 @@ export const getDisplayName = (user) => {
   if (fullName.length > 0) return fullName;
   return user.username || "Unknown";
 };
+
+/**
+ * Check if a user is a synthetic/demo user
+ * Handles both snake_case (from API) and camelCase (from frontend state)
+ */
+export const isSyntheticUser = (user) => {
+  if (!user) return false;
+  return user.is_synthetic === true || user.isSynthetic === true;
+};
+
+export const DEMO_PROFILE_TOOLTIP =
+  "Demo Profile: For testing purposes, no real person";
