@@ -214,7 +214,13 @@ const UserCard = ({
             ? "text-[9px]"
             : "text-[10px]"
       }
-      textTranslateClassName={viewMode === "list" ? "-translate-y-px" : undefined}
+      textTranslateClassName={
+        viewMode === "list"
+          ? "-translate-y-[2px]"
+          : viewMode === "mini"
+            ? "-translate-y-[4px]"
+            : "-translate-y-[4px]"
+      }
     />
   ) : null;
 

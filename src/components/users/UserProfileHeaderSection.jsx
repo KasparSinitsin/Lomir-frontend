@@ -112,7 +112,12 @@ const UserProfileHeaderSection = ({
               <span className="text-2xl">{getUserInitials(user)}</span>
             </div>
           )}
-          {isSyntheticUser(user) && <DemoAvatarOverlay textClassName="text-[9px]" />}
+          {isSyntheticUser(user) && (
+            <DemoAvatarOverlay
+              textClassName="text-[9px]"
+              textTranslateClassName="-translate-y-[4px]"
+            />
+          )}
         </div>
         {matchTier && (
           <div
