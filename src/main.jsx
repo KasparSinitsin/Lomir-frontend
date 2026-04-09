@@ -5,7 +5,8 @@ import "./index.css";
 
 function RootWrapper() {
   React.useEffect(() => {
-    document.documentElement.setAttribute("data-theme", "lomirlite");
+    // Keep the app in DaisyUI's light theme until the real dark mode is implemented.
+    document.documentElement.setAttribute("data-theme", "light");
   }, []);
 
   return <App />;
