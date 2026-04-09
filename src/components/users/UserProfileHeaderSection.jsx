@@ -12,6 +12,7 @@ import {
   getUserInitials,
   isSyntheticUser,
 } from "../../utils/userHelpers";
+import DemoAvatarOverlay from "./DemoAvatarOverlay";
 import { getMatchTier } from "../../utils/matchScoreUtils";
 import { format } from "date-fns";
 
@@ -98,7 +99,7 @@ const UserProfileHeaderSection = ({
     <div className={`flex items-start space-x-4 ${className}`}>
       {/* Avatar */}
       <div className="avatar relative">
-        <div className="w-20 h-20 rounded-full">
+        <div className="w-20 h-20 rounded-full relative overflow-hidden">
           {getProfileImage() && !imageError ? (
             <img
               src={getProfileImage()}
@@ -111,6 +112,7 @@ const UserProfileHeaderSection = ({
               <span className="text-2xl">{getUserInitials(user)}</span>
             </div>
           )}
+          {isSyntheticUser(user) && <DemoAvatarOverlay textClassName="text-[9px]" />}
         </div>
         {matchTier && (
           <div

@@ -20,6 +20,7 @@ import {
   getUserInitials,
   isSyntheticUser,
 } from "../../utils/userHelpers";
+import DemoAvatarOverlay from "./DemoAvatarOverlay";
 import LocationDistanceTagsRow from "../common/LocationDistanceTagsRow";
 import SearchResultTypeOverlay from "../common/SearchResultTypeOverlay";
 import { getMatchTier } from "../../utils/matchScoreUtils";
@@ -204,6 +205,18 @@ const UserCard = ({
   ) : (
     matchOverlay
   );
+  const demoAvatarOverlay = isSyntheticUser(user) ? (
+    <DemoAvatarOverlay
+      textClassName={
+        viewMode === "list"
+          ? "text-[5px]"
+          : viewMode === "mini"
+            ? "text-[9px]"
+            : "text-[10px]"
+      }
+      textTranslateClassName={viewMode === "list" ? "-translate-y-px" : undefined}
+    />
+  ) : null;
 
   // ============ LIST VIEW ============
   if (viewMode === "list") {
@@ -278,6 +291,7 @@ const UserCard = ({
         className=""
         clickTooltip="Click to view User details"
         imageOverlay={avatarOverlay}
+        imageInnerOverlay={demoAvatarOverlay}
       >
         <div className="w-56 flex-shrink-0 flex items-center gap-3 overflow-hidden">
           <div className="w-16 flex-shrink-0 overflow-hidden">
@@ -414,6 +428,7 @@ const UserCard = ({
       }
       marginClassName={viewMode === "mini" ? "mb-2" : ""}
       imageOverlay={avatarOverlay}
+      imageInnerOverlay={demoAvatarOverlay}
     >
       {viewMode !== "mini" && (user.bio || user.biography) && (
         <p className="text-base-content/80 mb-4">

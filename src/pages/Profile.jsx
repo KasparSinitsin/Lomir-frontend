@@ -44,6 +44,7 @@ import {
   getUserInitials,
   isSyntheticUser,
 } from "../utils/userHelpers";
+import DemoAvatarOverlay from "../components/users/DemoAvatarOverlay";
 import Modal from "../components/common/Modal";
 import LocationInput from "../components/common/LocationInput";
 import { format } from "date-fns";
@@ -950,7 +951,7 @@ const Profile = () => {
               {/* Avatar */}
               <div className="mb-4 md:mb-0 md:mr-8 flex-shrink-0">
                 <div className="avatar placeholder">
-                  <div className="bg-primary text-primary-content rounded-full w-32 h-32">
+                  <div className="bg-primary text-primary-content rounded-full w-32 h-32 relative overflow-hidden">
                     {(user.avatarUrl || user.avatar_url) && !imageError ? (
                       <img
                         src={user.avatarUrl || user.avatar_url}
@@ -961,6 +962,7 @@ const Profile = () => {
                     ) : (
                       <span className="text-4xl">{getUserInitials(user)}</span>
                     )}
+                    {isSyntheticUser(user) && <DemoAvatarOverlay textClassName="text-[11px]" />}
                   </div>
                 </div>
               </div>

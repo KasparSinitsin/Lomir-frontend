@@ -8,6 +8,7 @@ import {
   getUserInitials,
   isSyntheticUser,
 } from "../../utils/userHelpers";
+import DemoAvatarOverlay from "../users/DemoAvatarOverlay";
 
 /**
  * PersonRequestCard Component
@@ -108,7 +109,7 @@ const PersonRequestCard = ({
           onClick={handleUserClick}
           title={clickable ? "View profile" : undefined}
         >
-          <div className="w-12 h-12 rounded-full relative">
+          <div className="w-12 h-12 rounded-full relative overflow-hidden">
             {getAvatarUrl() ? (
               <img
                 src={getAvatarUrl()}
@@ -133,6 +134,7 @@ const PersonRequestCard = ({
                 {getUserInitials(user)}
               </span>
             </div>
+            {isSyntheticUser(user) && <DemoAvatarOverlay textClassName="text-[8px]" />}
           </div>
         </div>
 

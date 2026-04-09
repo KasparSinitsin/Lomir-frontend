@@ -27,6 +27,7 @@ const Card = ({
   viewMode = "card",
   clickTooltip = null,
   imageOverlay = null,
+  imageInnerOverlay = null,
   imageReplacement = null,
   listEdgeRounding = true,
 }) => {
@@ -83,7 +84,7 @@ const Card = ({
       >
         <div className="avatar placeholder relative">
           <div
-            className={`${shapeClass} ${sizeClass} flex items-center justify-center overflow-hidden ${imageReplacement ? "" : "bg-primary text-primary-content"}`}
+            className={`${shapeClass} ${sizeClass} relative flex items-center justify-center overflow-hidden ${imageReplacement ? "" : "bg-primary text-primary-content"}`}
           >
             {imageReplacement ? (
               imageReplacement
@@ -99,6 +100,7 @@ const Card = ({
                 {fallbackContent}
               </span>
             )}
+            {!imageReplacement && imageInnerOverlay}
           </div>
           {!imageReplacement && imageOverlay}
         </div>
@@ -206,7 +208,7 @@ const Card = ({
       >
         {(image || imageFallback || imageReplacement) && (
           <div className="avatar placeholder flex-shrink-0 relative">
-            <div className={`rounded-full w-9 h-9 flex items-center justify-center overflow-hidden ${imageReplacement ? "" : "bg-primary text-primary-content"}`}>
+            <div className={`rounded-full w-9 h-9 relative flex items-center justify-center overflow-hidden ${imageReplacement ? "" : "bg-primary text-primary-content"}`}>
               {imageReplacement ? (
                 imageReplacement
               ) : typeof image === "string" &&
@@ -228,6 +230,7 @@ const Card = ({
                       : "?")}
                 </span>
               )}
+              {!imageReplacement && imageInnerOverlay}
             </div>
             {!imageReplacement && imageOverlay}
           </div>
