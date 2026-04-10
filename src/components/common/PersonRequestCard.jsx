@@ -1,8 +1,14 @@
 import React from "react";
-import { Calendar, MapPin } from "lucide-react";
+import { Calendar, MapPin, FlaskConical } from "lucide-react";
 import { format } from "date-fns";
 import LocationDisplay from "./LocationDisplay";
-import { getUserInitials } from "../../utils/userHelpers";
+import Tooltip from "./Tooltip";
+import {
+  DEMO_PROFILE_TOOLTIP,
+  getUserInitials,
+  isSyntheticUser,
+} from "../../utils/userHelpers";
+import DemoAvatarOverlay from "../users/DemoAvatarOverlay";
 
 /**
  * PersonRequestCard Component
@@ -103,7 +109,7 @@ const PersonRequestCard = ({
           onClick={handleUserClick}
           title={clickable ? "View profile" : undefined}
         >
-          <div className="w-12 h-12 rounded-full relative">
+          <div className="w-12 h-12 rounded-full relative overflow-hidden">
             {getAvatarUrl() ? (
               <img
                 src={getAvatarUrl()}
@@ -128,6 +134,7 @@ const PersonRequestCard = ({
                 {getUserInitials(user)}
               </span>
             </div>
+            {isSyntheticUser(user) && <DemoAvatarOverlay textClassName="text-[8px]" />}
           </div>
         </div>
 
@@ -142,7 +149,8 @@ const PersonRequestCard = ({
           </h4>
 
           {/* Username (if different from display name) */}
-          {user?.username && getDisplayName() !== user.username && (
+          {user?.username &&
+            (getDisplayName() !== user.username || isSyntheticUser(user)) && (
             <p
               className={`text-sm text-base-content/70 ${clickableTextStyles}`}
               onClick={handleUserClick}
@@ -150,6 +158,15 @@ const PersonRequestCard = ({
             >
               @{user.username}
             </p>
+            )}
+          {isSyntheticUser(user) && (
+            <Tooltip
+              content={DEMO_PROFILE_TOOLTIP}
+              wrapperClassName="flex items-start text-base-content/50 text-xs"
+            >
+              <FlaskConical className="h-3 w-auto mr-0.5 flex-shrink-0 mt-px" />
+              <span className="leading-[1.15]">Demo Profile</span>
+            </Tooltip>
           )}
 
           {/* Location if available and showLocation is true */}
