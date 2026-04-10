@@ -978,15 +978,6 @@ const Profile = () => {
                 {/* Username, visibility, and date in one row */}
                 <div className="flex items-center text-base flex-wrap gap-x-4 gap-y-1">
                   <span className="text-base-content/70">@{user.username}</span>
-                  {isSyntheticUser(user) && (
-                    <Tooltip
-                      content={DEMO_PROFILE_TOOLTIP}
-                      wrapperClassName="flex items-start text-base-content/50"
-                    >
-                      <FlaskConical className="h-3.5 w-auto mr-0.5 flex-shrink-0 mt-px" />
-                      <span className="leading-[1.15]">Demo Profile</span>
-                    </Tooltip>
-                  )}
                   <div
                     className="flex items-center text-base-content/70 tooltip tooltip-bottom tooltip-lomir cursor-help"
                     data-tip={
@@ -1007,6 +998,15 @@ const Profile = () => {
                       </>
                     )}
                   </div>
+                  {isSyntheticUser(user) && (
+                    <Tooltip
+                      content={DEMO_PROFILE_TOOLTIP}
+                      wrapperClassName="flex items-start text-base-content/50"
+                    >
+                      <FlaskConical className="h-3.5 w-auto mr-0.5 flex-shrink-0 mt-px" />
+                      <span className="leading-[1.15]">Demo Profile</span>
+                    </Tooltip>
+                  )}
                 </div>
               </div>
 

@@ -1,6 +1,9 @@
 import React, { useRef, useEffect, useState } from "react";
 import { format, isToday, isYesterday } from "date-fns";
-import { getUserInitials, getTeamInitials } from "../../utils/userHelpers";
+import {
+  getTeamInitials,
+  isSyntheticTeam,
+} from "../../utils/userHelpers";
 import {
   UserPlus,
   UserMinus,
@@ -20,6 +23,7 @@ import {
 import TeamDetailsModal from "../teams/TeamDetailsModal";
 import UserDetailsModal from "../users/UserDetailsModal";
 import UserAvatar from "../users/UserAvatar";
+import DemoAvatarOverlay from "../users/DemoAvatarOverlay";
 import { userService } from "../../services/userService";
 import {
   getFileExpirationStatus,
@@ -30,6 +34,13 @@ import {
   DELETED_USER_DISPLAY_NAME,
   getDisplayName as getDeletedUserDisplayName,
 } from "../../utils/deletedUser";
+import {
+  getCachedChatTeamProfile,
+  getCachedChatUserProfile,
+  getTeamAvatarUrl,
+  mergeResolvedTeamData,
+  mergeResolvedUserData,
+} from "../../utils/chatEntityResolvers";
 
 const parseIdNameToken = (token) => {
   const t = (token || "").trim();
@@ -418,6 +429,8 @@ const MessageDisplay = ({
   const [nameResolveError, setNameResolveError] = useState(null);
 
   const [nameToIdCache, setNameToIdCache] = useState({});
+  const [resolvedChatUsers, setResolvedChatUsers] = useState({});
+  const [resolvedChatTeams, setResolvedChatTeams] = useState({});
 
   useEffect(() => {
     const previousSnapshot = previousMessageSnapshotRef.current;
@@ -474,6 +487,96 @@ const MessageDisplay = ({
     teamMembersRefreshSignal,
   ]);
 
+  useEffect(() => {
+    const userIdsToFetch = [];
+
+    if (
+      conversationPartner?.id != null &&
+      !conversationPartner?.isDeletedUser &&
+      (!(conversationPartner?.avatar_url || conversationPartner?.avatarUrl) ||
+        (conversationPartner?.is_synthetic == null &&
+          conversationPartner?.isSynthetic == null))
+    ) {
+      userIdsToFetch.push(conversationPartner.id);
+    }
+
+    (teamMembers || []).forEach((member) => {
+      const memberId = member?.user_id ?? member?.userId ?? null;
+      if (memberId == null) return;
+
+      if (
+        !(member?.avatar_url || member?.avatarUrl) ||
+        (member?.is_synthetic == null && member?.isSynthetic == null)
+      ) {
+        userIdsToFetch.push(memberId);
+      }
+    });
+
+    const uniqueUserIds = [...new Set(userIdsToFetch)];
+
+    if (uniqueUserIds.length === 0) {
+      return undefined;
+    }
+
+    let cancelled = false;
+
+    Promise.allSettled(
+      uniqueUserIds.map(async (userId) => ({
+        userId,
+        profile: await getCachedChatUserProfile(userId),
+      })),
+    ).then((results) => {
+      if (cancelled) return;
+
+      const fetchedProfiles = {};
+
+      results.forEach((result) => {
+        if (result.status !== "fulfilled") return;
+        fetchedProfiles[String(result.value.userId)] = result.value.profile;
+      });
+
+      if (Object.keys(fetchedProfiles).length > 0) {
+        setResolvedChatUsers((prev) => ({
+          ...prev,
+          ...fetchedProfiles,
+        }));
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [conversationPartner, teamMembers]);
+
+  useEffect(() => {
+    const teamId = teamData?.id;
+
+    if (
+      teamId == null ||
+      (getTeamAvatarUrl(teamData) &&
+        (teamData?.is_synthetic != null || teamData?.isSynthetic != null))
+    ) {
+      return undefined;
+    }
+
+    let cancelled = false;
+
+    getCachedChatTeamProfile(teamId)
+      .then((profile) => {
+        if (!cancelled) {
+          setResolvedChatTeams((prev) => ({
+            ...prev,
+            [String(teamId)]: profile,
+          }));
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      cancelled = true;
+    };
+  }, [teamData]);
+
   // Handle team avatar/name click
   const handleTeamClick = () => {
     if (conversationType !== "team") return;
@@ -519,6 +622,24 @@ const MessageDisplay = ({
     setIsUserModalOpen(false);
     setSelectedUserId(null);
   };
+
+  const resolvedConversationPartner = mergeResolvedUserData(
+    conversationPartner,
+    conversationPartner?.id != null
+      ? resolvedChatUsers[String(conversationPartner.id)]
+      : null,
+  );
+
+  const resolvedTeamData = mergeResolvedTeamData(
+    teamData,
+    teamData?.id != null ? resolvedChatTeams[String(teamData.id)] : null,
+  );
+
+  const getResolvedUserData = (userData, userId = null) =>
+    mergeResolvedUserData(
+      userData,
+      userId != null ? resolvedChatUsers[String(userId)] : null,
+    );
 
   const getTeamMemberFullName = (m) => {
     const first = m.first_name ?? m.firstName;
@@ -694,7 +815,8 @@ const MessageDisplay = ({
       );
 
       if (member) {
-        return {
+        return getResolvedUserData(
+          {
           id: member.user_id || member.userId || senderId,
           username: member.username,
           firstName: member.first_name || member.firstName,
@@ -702,13 +824,15 @@ const MessageDisplay = ({
           avatarUrl: member.avatar_url || member.avatarUrl,
           isCurrentMember: true,
           isDeletedUser: false,
-        };
+          },
+          member.user_id || member.userId || senderId,
+        );
       }
     }
 
-    if (conversationPartner && senderId === conversationPartner.id) {
+    if (resolvedConversationPartner && senderId === resolvedConversationPartner.id) {
       return {
-        ...conversationPartner,
+        ...resolvedConversationPartner,
         isCurrentMember: true,
         isDeletedUser: false,
       };
@@ -735,10 +859,13 @@ const MessageDisplay = ({
         embeddedSender.id == null || !embeddedSender.username;
 
       if (hasMessageSenderInfo || isDeletedSender) {
-        return {
-          ...embeddedSender,
-          isDeletedUser: isDeletedSender,
-        };
+        return getResolvedUserData(
+          {
+            ...embeddedSender,
+            isDeletedUser: isDeletedSender,
+          },
+          embeddedSender.id,
+        );
       }
     }
 
@@ -797,6 +924,9 @@ const MessageDisplay = ({
           }
           iconSize={16}
           initialsClassName="text-sm font-medium event-message-text"
+          showDemoOverlay
+          demoOverlayTextClassName="text-[5px]"
+          demoOverlayTextTranslateClassName="-translate-y-[1px]"
         />
       );
     }
@@ -856,6 +986,73 @@ const MessageDisplay = ({
         }
       >
         {displayName}
+      </div>
+    );
+  };
+
+  const renderConversationPartnerAvatar = () => {
+    if (!resolvedConversationPartner) return null;
+
+    return (
+      <UserAvatar
+        user={resolvedConversationPartner}
+        sizeClass="w-16 h-16"
+        className="mb-2 mx-auto"
+        clickable
+        onClick={() => handleUserClick(resolvedConversationPartner.id)}
+        title={`View ${
+          resolvedConversationPartner.firstName ||
+          resolvedConversationPartner.username
+        } details`}
+        iconSize={24}
+        initialsClassName="text-xl font-medium"
+        showDemoOverlay
+        demoOverlayTextClassName="text-[9px]"
+        demoOverlayTextTranslateClassName="-translate-y-[4px]"
+      />
+    );
+  };
+
+  const renderTeamConversationAvatar = () => {
+    if (!resolvedTeamData) return null;
+
+    const teamAvatarUrl = getTeamAvatarUrl(resolvedTeamData);
+
+    return (
+      <div
+        className="avatar mb-2 cursor-pointer hover:opacity-80 transition-opacity"
+        onClick={handleTeamClick}
+        title={`View ${resolvedTeamData.name} details`}
+      >
+        <div className="w-16 h-16 rounded-full mx-auto relative overflow-hidden">
+          {teamAvatarUrl ? (
+            <img
+              src={teamAvatarUrl}
+              alt={resolvedTeamData.name}
+              className="object-cover w-full h-full rounded-full"
+              onError={(e) => {
+                e.target.style.display = "none";
+                const fallback =
+                  e.target.parentElement.querySelector(".avatar-fallback");
+                if (fallback) fallback.style.display = "flex";
+              }}
+            />
+          ) : null}
+          <div
+            className="avatar-fallback bg-primary text-primary-content flex items-center justify-center w-full h-full rounded-full absolute inset-0"
+            style={{ display: teamAvatarUrl ? "none" : "flex" }}
+          >
+            <span className="text-xl font-medium">
+              {getTeamInitials(resolvedTeamData)}
+            </span>
+          </div>
+          {isSyntheticTeam(resolvedTeamData) && (
+            <DemoAvatarOverlay
+              textClassName="text-[9px]"
+              textTranslateClassName="-translate-y-[4px]"
+            />
+          )}
+        </div>
       </div>
     );
   };
@@ -2006,96 +2203,34 @@ const MessageDisplay = ({
             <div className="mb-2 text-sm text-warning">{nameResolveError}</div>
           )}
 
-          {conversationPartner && conversationType === "direct" && (
+          {resolvedConversationPartner && conversationType === "direct" && (
             <div className="text-center pb-4 mb-4 border-b border-base-200">
-              <div
-                className="avatar mb-2 cursor-pointer hover:opacity-80 transition-opacity"
-                onClick={() => handleUserClick(conversationPartner.id)}
-                title={`View ${
-                  conversationPartner.firstName || conversationPartner.username
-                } details`}
-              >
-                <div className="w-16 h-16 rounded-full mx-auto relative">
-                  {conversationPartner.avatarUrl ? (
-                    <img
-                      src={conversationPartner.avatarUrl}
-                      alt={conversationPartner.username}
-                      className="object-cover w-full h-full rounded-full"
-                      onError={(e) => {
-                        e.target.style.display = "none";
-                        const fallback =
-                          e.target.parentElement.querySelector(
-                            ".avatar-fallback",
-                          );
-                        if (fallback) fallback.style.display = "flex";
-                      }}
-                    />
-                  ) : null}
-                  <div
-                    className="avatar-fallback bg-primary text-primary-content flex items-center justify-center w-full h-full rounded-full absolute inset-0"
-                    style={{
-                      display: conversationPartner.avatarUrl ? "none" : "flex",
-                    }}
-                  >
-                    <span className="text-xl font-medium">
-                      {getUserInitials(conversationPartner)}
-                    </span>
-                  </div>
-                </div>
-              </div>
+              {renderConversationPartnerAvatar()}
               <h3
                 className="text-lg font-medium leading-[120%] mb-[0.2em] cursor-pointer hover:text-primary transition-colors"
-                onClick={() => handleUserClick(conversationPartner.id)}
+                onClick={() => handleUserClick(resolvedConversationPartner.id)}
                 title={`View ${
-                  conversationPartner.firstName || conversationPartner.username
+                  resolvedConversationPartner.firstName ||
+                  resolvedConversationPartner.username
                 } details`}
               >
-                {conversationPartner.firstName && conversationPartner.lastName
-                  ? `${conversationPartner.firstName} ${conversationPartner.lastName}`
-                  : conversationPartner.username}
+                {resolvedConversationPartner.firstName &&
+                resolvedConversationPartner.lastName
+                  ? `${resolvedConversationPartner.firstName} ${resolvedConversationPartner.lastName}`
+                  : resolvedConversationPartner.username}
               </h3>
             </div>
           )}
 
-          {teamData && conversationType === "team" && (
+          {resolvedTeamData && conversationType === "team" && (
             <div className="text-center pb-4 mb-4 border-b border-base-200">
-              <div
-                className="avatar mb-2 cursor-pointer hover:opacity-80 transition-opacity"
-                onClick={handleTeamClick}
-                title={`View ${teamData.name} details`}
-              >
-                <div className="w-16 h-16 rounded-full mx-auto relative">
-                  {teamData.avatarUrl ? (
-                    <img
-                      src={teamData.avatarUrl}
-                      alt={teamData.name}
-                      className="object-cover w-full h-full rounded-full"
-                      onError={(e) => {
-                        e.target.style.display = "none";
-                        const fallback =
-                          e.target.parentElement.querySelector(
-                            ".avatar-fallback",
-                          );
-                        if (fallback) fallback.style.display = "flex";
-                      }}
-                    />
-                  ) : null}
-                  <div
-                    className="avatar-fallback bg-primary text-primary-content flex items-center justify-center w-full h-full rounded-full absolute inset-0"
-                    style={{ display: teamData.avatarUrl ? "none" : "flex" }}
-                  >
-                    <span className="text-xl font-medium">
-                      {getTeamInitials(teamData)}
-                    </span>
-                  </div>
-                </div>
-              </div>
+              {renderTeamConversationAvatar()}
               <h3
                 className="text-lg font-medium leading-[120%] mb-[0.2em] cursor-pointer hover:text-primary transition-colors"
                 onClick={handleTeamClick}
-                title={`View ${teamData.name} details`}
+                title={`View ${resolvedTeamData.name} details`}
               >
-                {teamData.name}
+                {resolvedTeamData.name}
               </h3>
             </div>
           )}
@@ -2174,97 +2309,35 @@ const MessageDisplay = ({
         )}
 
         {/* Show conversation partner header for direct messages - CLICKABLE */}
-        {conversationPartner && conversationType === "direct" && (
+        {resolvedConversationPartner && conversationType === "direct" && (
           <div className="text-center pb-4 mb-4 border-b border-base-200">
-            <div
-              className="avatar mb-2 cursor-pointer hover:opacity-80 transition-opacity"
-              onClick={() => handleUserClick(conversationPartner.id)}
-              title={`View ${
-                conversationPartner.firstName || conversationPartner.username
-              } details`}
-            >
-              <div className="w-16 h-16 rounded-full mx-auto relative">
-                {conversationPartner.avatarUrl ? (
-                  <img
-                    src={conversationPartner.avatarUrl}
-                    alt={conversationPartner.username}
-                    className="object-cover w-full h-full rounded-full"
-                    onError={(e) => {
-                      e.target.style.display = "none";
-                      const fallback =
-                        e.target.parentElement.querySelector(
-                          ".avatar-fallback",
-                        );
-                      if (fallback) fallback.style.display = "flex";
-                    }}
-                  />
-                ) : null}
-                <div
-                  className="avatar-fallback bg-primary text-primary-content flex items-center justify-center w-full h-full rounded-full absolute inset-0"
-                  style={{
-                    display: conversationPartner.avatarUrl ? "none" : "flex",
-                  }}
-                >
-                  <span className="text-xl font-medium">
-                    {getUserInitials(conversationPartner)}
-                  </span>
-                </div>
-              </div>
-            </div>
+            {renderConversationPartnerAvatar()}
             <h3
               className="text-lg font-medium leading-[120%] mb-[0.2em] cursor-pointer hover:text-primary transition-colors"
-              onClick={() => handleUserClick(conversationPartner.id)}
+              onClick={() => handleUserClick(resolvedConversationPartner.id)}
               title={`View ${
-                conversationPartner.firstName || conversationPartner.username
+                resolvedConversationPartner.firstName ||
+                resolvedConversationPartner.username
               } details`}
             >
-              {conversationPartner.firstName && conversationPartner.lastName
-                ? `${conversationPartner.firstName} ${conversationPartner.lastName}`
-                : conversationPartner.username}
+              {resolvedConversationPartner.firstName &&
+              resolvedConversationPartner.lastName
+                ? `${resolvedConversationPartner.firstName} ${resolvedConversationPartner.lastName}`
+                : resolvedConversationPartner.username}
             </h3>
           </div>
         )}
 
         {/* Show team header for team conversations - CLICKABLE */}
-        {teamData && conversationType === "team" && (
+        {resolvedTeamData && conversationType === "team" && (
           <div className="text-center pb-4 mb-4 border-b border-base-200">
-            <div
-              className="avatar mb-2 cursor-pointer hover:opacity-80 transition-opacity"
-              onClick={handleTeamClick}
-              title={`View ${teamData.name} details`}
-            >
-              <div className="w-16 h-16 rounded-full mx-auto relative">
-                {teamData.avatarUrl ? (
-                  <img
-                    src={teamData.avatarUrl}
-                    alt={teamData.name}
-                    className="object-cover w-full h-full rounded-full"
-                    onError={(e) => {
-                      e.target.style.display = "none";
-                      const fallback =
-                        e.target.parentElement.querySelector(
-                          ".avatar-fallback",
-                        );
-                      if (fallback) fallback.style.display = "flex";
-                    }}
-                  />
-                ) : null}
-                <div
-                  className="avatar-fallback bg-primary text-primary-content flex items-center justify-center w-full h-full rounded-full absolute inset-0"
-                  style={{ display: teamData.avatarUrl ? "none" : "flex" }}
-                >
-                  <span className="text-xl font-medium">
-                    {getTeamInitials(teamData)}
-                  </span>
-                </div>
-              </div>
-            </div>
+            {renderTeamConversationAvatar()}
             <h3
               className="text-lg font-medium leading-[120%] mb-[0.2em] cursor-pointer hover:text-primary transition-colors"
               onClick={handleTeamClick}
-              title={`View ${teamData.name} details`}
+              title={`View ${resolvedTeamData.name} details`}
             >
-              {teamData.name}
+              {resolvedTeamData.name}
             </h3>
           </div>
         )}

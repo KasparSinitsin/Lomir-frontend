@@ -1,6 +1,7 @@
 import React from "react";
 import { User } from "lucide-react";
-import { getUserInitials } from "../../utils/userHelpers";
+import DemoAvatarOverlay from "./DemoAvatarOverlay";
+import { getUserInitials, isSyntheticUser } from "../../utils/userHelpers";
 import {
   getDisplayName,
   isDeletedUser,
@@ -17,11 +18,16 @@ const UserAvatar = ({
   title,
   iconSize = 12,
   initialsClassName = "text-[10px] font-medium",
+  showDemoOverlay = false,
+  demoOverlayTextClassName = "text-[7px]",
+  demoOverlayTextTranslateClassName = "-translate-y-[2px]",
 }) => {
   const isFormerUser = deleted || isDeletedUser(user);
   const avatarUrl =
     !isFormerUser && (user?.avatar_url || user?.avatarUrl || null);
   const displayName = getDisplayName(user, DELETED_USER_DISPLAY_NAME);
+  const showSyntheticOverlay =
+    showDemoOverlay && !isFormerUser && isSyntheticUser(user);
 
   return (
     <div
@@ -31,7 +37,7 @@ const UserAvatar = ({
       onClick={clickable ? onClick : undefined}
       title={title}
     >
-      <div className={`${sizeClass} rounded-full relative`}>
+      <div className={`${sizeClass} rounded-full relative overflow-hidden`}>
         {avatarUrl ? (
           <img
             src={avatarUrl}
@@ -60,6 +66,13 @@ const UserAvatar = ({
             <span className={initialsClassName}>{getUserInitials(user)}</span>
           )}
         </div>
+
+        {showSyntheticOverlay && (
+          <DemoAvatarOverlay
+            textClassName={demoOverlayTextClassName}
+            textTranslateClassName={demoOverlayTextTranslateClassName}
+          />
+        )}
       </div>
     </div>
   );

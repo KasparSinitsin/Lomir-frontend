@@ -1,3 +1,14 @@
+const hasTruthySyntheticFlag = (value) => {
+  if (value === true || value === 1) return true;
+
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    return normalized === "true" || normalized === "1";
+  }
+
+  return false;
+};
+
 /**
  * Get user initials for avatar fallback
  * Returns 2 letters for users with first and last name (e.g., "VL" for Valentina Lopez)
@@ -66,7 +77,10 @@ export const getDisplayName = (user) => {
  */
 export const isSyntheticUser = (user) => {
   if (!user) return false;
-  return user.is_synthetic === true || user.isSynthetic === true;
+  return (
+    hasTruthySyntheticFlag(user.is_synthetic) ||
+    hasTruthySyntheticFlag(user.isSynthetic)
+  );
 };
 
 /**
@@ -75,7 +89,22 @@ export const isSyntheticUser = (user) => {
  */
 export const isSyntheticTeam = (team) => {
   if (!team) return false;
-  return team.is_synthetic === true || team.isSynthetic === true;
+  return (
+    hasTruthySyntheticFlag(team.is_synthetic) ||
+    hasTruthySyntheticFlag(team.isSynthetic)
+  );
+};
+
+/**
+ * Check if a vacant role is a synthetic/demo role
+ * Handles both snake_case (from API) and camelCase (from frontend state)
+ */
+export const isSyntheticRole = (role) => {
+  if (!role) return false;
+  return (
+    hasTruthySyntheticFlag(role.is_synthetic) ||
+    hasTruthySyntheticFlag(role.isSynthetic)
+  );
 };
 
 export const DEMO_PROFILE_TOOLTIP =
@@ -83,3 +112,6 @@ export const DEMO_PROFILE_TOOLTIP =
 
 export const DEMO_TEAM_TOOLTIP =
   "Demo Team: for testing purposes, no real team";
+
+export const DEMO_ROLE_TOOLTIP =
+  "Demo Role: for testing purposes, no real role";

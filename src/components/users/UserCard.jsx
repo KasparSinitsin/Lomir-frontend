@@ -264,15 +264,6 @@ const UserCard = ({
       <span className="flex min-w-0 flex-nowrap items-center gap-1 overflow-hidden whitespace-nowrap text-base-content/60">
         {scoreSubtitleItem}
         {user.username && <span>@{user.username}</span>}
-        {isSyntheticUser(user) && (
-          <Tooltip
-            content={DEMO_PROFILE_TOOLTIP}
-            wrapperClassName="flex items-center gap-0.5 whitespace-nowrap text-base-content/50"
-          >
-            <FlaskConical className="h-[11px] w-auto flex-shrink-0" />
-            <span>Demo</span>
-          </Tooltip>
-        )}
         {shouldShowVisibilityIcon() && (
           <Tooltip content={isUserProfilePublic() ? "Public Profile - visible for everyone" : "Private Profile - only visible for you"}>
             {isUserProfilePublic() ? (
@@ -280,6 +271,14 @@ const UserCard = ({
             ) : (
               <EyeClosed size={11} className="text-gray-500" />
             )}
+          </Tooltip>
+        )}
+        {isSyntheticUser(user) && (
+          <Tooltip
+            content={DEMO_PROFILE_TOOLTIP}
+            wrapperClassName="flex items-center whitespace-nowrap text-base-content/50"
+          >
+            <FlaskConical className="h-[11px] w-auto flex-shrink-0" />
           </Tooltip>
         )}
       </span>
@@ -357,19 +356,6 @@ const UserCard = ({
         >
           {scoreSubtitleItem}
           {user.username && <span>@{user.username}</span>}
-          {isSyntheticUser(user) && (
-            <Tooltip
-              content={DEMO_PROFILE_TOOLTIP}
-              wrapperClassName="flex items-start text-base-content/50"
-            >
-              <FlaskConical
-                className={`w-auto mr-0.5 flex-shrink-0 ${viewMode === "mini" ? "h-3 mt-px" : "h-[13px] mt-px"}`}
-              />
-              <span className="leading-[1.15]">
-                {viewMode === "mini" ? "Demo" : "Demo Profile"}
-              </span>
-            </Tooltip>
-          )}
           {shouldShowVisibilityIcon() && (
             <Tooltip
               content={
@@ -407,6 +393,19 @@ const UserCard = ({
                 </span>
               </span>
             )}
+          {isSyntheticUser(user) && (
+            <Tooltip
+              content={DEMO_PROFILE_TOOLTIP}
+              wrapperClassName="flex items-start text-base-content/50"
+            >
+              <FlaskConical
+                className={`w-auto mr-0.5 flex-shrink-0 ${viewMode === "mini" ? "h-3 mt-px" : "h-[13px] mt-px"}`}
+              />
+              <span className="leading-[1.15]">
+                {viewMode === "mini" ? "Demo" : "Demo Profile"}
+              </span>
+            </Tooltip>
+          )}
         </span>
       }
       hoverable

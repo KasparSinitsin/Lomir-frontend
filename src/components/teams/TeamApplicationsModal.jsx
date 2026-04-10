@@ -490,11 +490,26 @@ const TeamApplicationsModal = ({
           application?.roleId ??
           application?.role_id ??
           null;
+        const syntheticRoleFlag =
+          application?.role?.is_synthetic ??
+          application?.role?.isSynthetic ??
+          application?.role_is_synthetic ??
+          application?.roleIsSynthetic ??
+          application?.is_synthetic ??
+          application?.isSynthetic;
         const roleOverride = roleId ? roleStatusOverrides[roleId] : null;
         const role =
           application?.role && roleId
             ? {
                 ...application.role,
+                is_synthetic:
+                  application.role.is_synthetic ??
+                  application.role.isSynthetic ??
+                  syntheticRoleFlag,
+                isSynthetic:
+                  application.role.isSynthetic ??
+                  application.role.is_synthetic ??
+                  syntheticRoleFlag,
                 status:
                   roleOverride?.status ??
                   application.role.status ??
@@ -510,7 +525,19 @@ const TeamApplicationsModal = ({
                   application.role.filled_by_user ??
                   null,
               }
-            : application?.role ?? null;
+            : application?.role
+              ? {
+                  ...application.role,
+                  is_synthetic:
+                    application.role.is_synthetic ??
+                    application.role.isSynthetic ??
+                    syntheticRoleFlag,
+                  isSynthetic:
+                    application.role.isSynthetic ??
+                    application.role.is_synthetic ??
+                    syntheticRoleFlag,
+                }
+              : null;
         const applicantRoleMatch =
           roleId != null && applicantId != null
             ? roleCandidateMatchMap[String(roleId)]?.[String(applicantId)] ?? null
