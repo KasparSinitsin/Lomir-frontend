@@ -69,5 +69,17 @@ export const isSyntheticUser = (user) => {
   return user.is_synthetic === true || user.isSynthetic === true;
 };
 
+/**
+ * Check if a team is a synthetic/demo team
+ * Handles both snake_case (from API) and camelCase (from frontend state)
+ */
+export const isSyntheticTeam = (team) => {
+  if (!team) return false;
+  return team.is_synthetic === true || team.isSynthetic === true;
+};
+
 export const DEMO_PROFILE_TOOLTIP =
   "Demo Profile: For testing purposes, no real person";
+
+export const DEMO_TEAM_TOOLTIP =
+  "Demo Team: for testing purposes, no real team";
