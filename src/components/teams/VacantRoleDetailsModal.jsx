@@ -15,6 +15,7 @@ import {
   ChevronRight,
   ChevronUp,
   SendHorizontal,
+  FlaskConical,
 } from "lucide-react";
 import Modal from "../common/Modal";
 import {
@@ -33,6 +34,7 @@ import {
 } from "../../constants/badgeConstants";
 import Button from "../common/Button";
 import Tooltip from "../common/Tooltip";
+import DemoAvatarOverlay from "../users/DemoAvatarOverlay";
 import CardMetaItem from "../common/CardMetaItem";
 import CardMetaRow from "../common/CardMetaRow";
 import TeamApplicationButton from "./TeamApplicationButton";
@@ -47,7 +49,12 @@ import { matchingService } from "../../services/matchingService";
 import { teamService } from "../../services/teamService";
 import { vacantRoleService } from "../../services/vacantRoleService";
 import { getMatchTier } from "../../utils/matchScoreUtils";
-import { getDisplayName, getUserInitials } from "../../utils/userHelpers";
+import {
+  DEMO_ROLE_TOOLTIP,
+  getDisplayName,
+  getUserInitials,
+  isSyntheticRole,
+} from "../../utils/userHelpers";
 import {
   calculateDistanceKm,
   normalizeLocationData,
@@ -1447,6 +1454,12 @@ const VacantRoleDetailsModal = ({
   };
 
   const modalStatusTitle = isFilledRole ? "Filled Role" : "Vacant Role";
+  const demoAvatarOverlay = isSyntheticRole(displayRole) ? (
+    <DemoAvatarOverlay
+      textClassName="text-[9px]"
+      textTranslateClassName="-translate-y-[4px]"
+    />
+  ) : null;
   const ModalStatusIcon = isFilledRole ? UserCheck : UserSearch;
   const summarySuffix = isComparisonSelf
     ? " with you"
@@ -1735,7 +1748,7 @@ const VacantRoleDetailsModal = ({
             {isFilledRole ? (
               <Tooltip content={filledRoleUser?.id ? `Click to view ${filledRoleDisplayName || "this user"}'s profile` : undefined}>
               <div
-                className={`w-20 h-20 rounded-full ${filledRoleUser?.id ? "cursor-pointer" : ""}`}
+                className={`w-20 h-20 rounded-full relative overflow-hidden ${filledRoleUser?.id ? "cursor-pointer" : ""}`}
                 onClick={filledRoleUser?.id ? handleFilledUserClick : undefined}
                 role={filledRoleUser?.id ? "button" : undefined}
                 tabIndex={filledRoleUser?.id ? 0 : undefined}
@@ -1764,6 +1777,7 @@ const VacantRoleDetailsModal = ({
                       : getRoleInitials()}
                   </span>
                 </div>
+                {demoAvatarOverlay}
               </div>
               </Tooltip>
             ) : effectivePct !== null ? (
@@ -1780,10 +1794,12 @@ const VacantRoleDetailsModal = ({
                 <span className="relative text-2xl font-bold">
                   {effectivePct}%
                 </span>
+                {demoAvatarOverlay}
               </div>
             ) : (
-              <div className="bg-amber-500 text-white rounded-full w-20 h-20 flex items-center justify-center">
+              <div className="bg-amber-500 text-white rounded-full w-20 h-20 relative flex items-center justify-center overflow-hidden">
                 <span className="text-2xl">{getRoleInitials()}</span>
+                {demoAvatarOverlay}
               </div>
             )}
             {isFilledRole && MatchTierIcon && (
@@ -1871,6 +1887,16 @@ const VacantRoleDetailsModal = ({
                   </span>
                 ) : null}
               </div>
+            )}
+
+            {isSyntheticRole(displayRole) && (
+              <Tooltip
+                content={DEMO_ROLE_TOOLTIP}
+                wrapperClassName="mt-1 flex items-center gap-1 text-base-content/50 text-xs"
+              >
+                <FlaskConical size={12} className="flex-shrink-0" />
+                <span>Demo Role</span>
+              </Tooltip>
             )}
           </div>
         </div>

@@ -600,6 +600,30 @@ const TeamInvitesModal = ({
           invitation?.roleId ??
           invitation?.role_id ??
           null;
+        const syntheticRoleFlag =
+          invitation?.role?.is_synthetic ??
+          invitation?.role?.isSynthetic ??
+          invitation?.role_is_synthetic ??
+          invitation?.roleIsSynthetic;
+        const roleForCard = invitation?.role
+          ? {
+              ...invitation.role,
+              is_synthetic:
+                invitation.role.is_synthetic ??
+                invitation.role.isSynthetic ??
+                syntheticRoleFlag,
+              isSynthetic:
+                invitation.role.isSynthetic ??
+                invitation.role.is_synthetic ??
+                syntheticRoleFlag,
+            }
+          : {
+              id: invitation?.roleId ?? invitation?.role_id,
+              roleName: invitation?.roleName ?? invitation?.role_name,
+              role_name: invitation?.role_name ?? invitation?.roleName,
+              is_synthetic: syntheticRoleFlag,
+              isSynthetic: syntheticRoleFlag,
+            };
         const isSelfInvitation =
           currentUser?.id === (invitation.invitee?.id ?? invitation.invitee_id);
         const inviteeRoleMatch =
@@ -720,7 +744,7 @@ const TeamInvitesModal = ({
             {(invitation.role || invitation.roleId || invitation.role_id) && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-3">
                 <VacantRoleCard
-                  role={invitation.role || { id: invitation.roleId ?? invitation.role_id, roleName: invitation.roleName ?? invitation.role_name }}
+                  role={roleForCard}
                   team={{ id: teamId, name: teamName }}
                   matchScore={
                     inviteeRoleMatch?.matchScore ??

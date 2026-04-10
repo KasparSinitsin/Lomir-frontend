@@ -39,7 +39,12 @@ import LocationDistanceTagsRow from "../common/LocationDistanceTagsRow";
 import { getMatchTier } from "../../utils/matchScoreUtils";
 import { getResultMatchScore } from "../../utils/teamMatchUtils";
 import { calculateDistanceKm } from "../../utils/locationUtils";
-import { DEMO_TEAM_TOOLTIP, isSyntheticTeam } from "../../utils/userHelpers";
+import {
+  DEMO_ROLE_TOOLTIP,
+  DEMO_TEAM_TOOLTIP,
+  isSyntheticRole,
+  isSyntheticTeam,
+} from "../../utils/userHelpers";
 import DemoAvatarOverlay from "../users/DemoAvatarOverlay";
 
 const teamMemberBadgesCache = new Map();
@@ -495,6 +500,17 @@ const TeamCard = ({
     : isRoleInvitationVariant
       ? invitation?.team?.id ?? null
       : null;
+  const syntheticRoleFlag = isRoleApplicationVariant
+    ? application?.role?.is_synthetic ??
+      application?.role?.isSynthetic ??
+      application?.role_is_synthetic ??
+      application?.roleIsSynthetic
+    : isRoleInvitationVariant
+      ? invitation?.role?.is_synthetic ??
+        invitation?.role?.isSynthetic ??
+        invitation?.role_is_synthetic ??
+        invitation?.roleIsSynthetic
+      : undefined;
 
   // ========= ALL HOOKS (useState, useAuth, useCallback, useEffect) =========
 
@@ -1854,7 +1870,23 @@ const TeamCard = ({
   ) : (
     matchOverlay
   );
-  const demoAvatarOverlay = isSyntheticTeam(teamData) ? (
+  const demoTeamData = isRoleVariant ? (roleTeamData ?? teamData) : teamData;
+  const showDemoRoleIndicator =
+    isRoleVariant &&
+    (isSyntheticRole(roleData) || syntheticRoleFlag === true);
+  const showDemoTeamIndicator =
+    !showDemoRoleIndicator && isSyntheticTeam(demoTeamData);
+  const showDemoIndicator = showDemoRoleIndicator || showDemoTeamIndicator;
+  const demoTooltip = showDemoRoleIndicator
+    ? DEMO_ROLE_TOOLTIP
+    : DEMO_TEAM_TOOLTIP;
+  const demoLabel =
+    viewMode === "list" || viewMode === "mini"
+      ? "Demo"
+      : showDemoRoleIndicator
+        ? "Demo Role"
+        : "Demo Team";
+  const demoAvatarOverlay = showDemoIndicator ? (
     <DemoAvatarOverlay
       textClassName={
         viewMode === "list"
@@ -2051,13 +2083,12 @@ const TeamCard = ({
             )}
           </Tooltip>
         )}
-        {isSyntheticTeam(teamData) && (
+        {showDemoIndicator && (
           <Tooltip
-            content={DEMO_TEAM_TOOLTIP}
-            wrapperClassName="flex items-center gap-1 whitespace-nowrap text-base-content/50"
+            content={demoTooltip}
+            wrapperClassName="flex items-center whitespace-nowrap text-base-content/50"
           >
             <FlaskConical size={11} className="flex-shrink-0" />
-            <span>Demo Team</span>
           </Tooltip>
         )}
       </span>
@@ -2541,19 +2572,6 @@ const TeamCard = ({
               </Tooltip>
             )}
 
-            {isSyntheticTeam(teamData) && (
-              <Tooltip
-                content={DEMO_TEAM_TOOLTIP}
-                wrapperClassName="flex items-center gap-1 text-base-content/50"
-              >
-                <FlaskConical
-                  size={viewMode === "mini" ? 12 : 14}
-                  className="flex-shrink-0"
-                />
-                <span>Demo Team</span>
-              </Tooltip>
-            )}
-
             {/* Pending role application indicator */}
             {!shouldMoveSearchResultRoleApplicationIndicator &&
               isPendingRoleApplicationForTeam && (
@@ -2622,6 +2640,18 @@ const TeamCard = ({
                   )}
                 </span>
               )}
+            {showDemoIndicator && (
+              <Tooltip
+                content={demoTooltip}
+                wrapperClassName="flex items-center gap-1 text-base-content/50"
+              >
+                <FlaskConical
+                  size={viewMode === "mini" ? 12 : 14}
+                  className="flex-shrink-0"
+                />
+                <span>{demoLabel}</span>
+              </Tooltip>
+            )}
           </span>
         }
         hoverable

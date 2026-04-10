@@ -78,8 +78,20 @@ export const isSyntheticTeam = (team) => {
   return team.is_synthetic === true || team.isSynthetic === true;
 };
 
+/**
+ * Check if a vacant role is a synthetic/demo role
+ * Handles both snake_case (from API) and camelCase (from frontend state)
+ */
+export const isSyntheticRole = (role) => {
+  if (!role) return false;
+  return role.is_synthetic === true || role.isSynthetic === true;
+};
+
 export const DEMO_PROFILE_TOOLTIP =
   "Demo Profile: For testing purposes, no real person";
 
 export const DEMO_TEAM_TOOLTIP =
   "Demo Team: for testing purposes, no real team";
+
+export const DEMO_ROLE_TOOLTIP =
+  "Demo Role: for testing purposes, no real role";

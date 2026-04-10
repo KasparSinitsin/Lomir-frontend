@@ -197,6 +197,32 @@ const TeamApplicationDetailsModal = ({
     application?.isInternalRoleApplication ?? application?.is_internal_role_application ?? false;
   const roleName =
     application?.role?.roleName ?? application?.role?.role_name ?? null;
+  const syntheticRoleFlag =
+    application?.role?.is_synthetic ??
+    application?.role?.isSynthetic ??
+    application?.role_is_synthetic ??
+    application?.roleIsSynthetic;
+  const roleForCard =
+    hydratedRole ??
+    (application?.role
+      ? {
+          ...application.role,
+          is_synthetic:
+            application.role.is_synthetic ??
+            application.role.isSynthetic ??
+            syntheticRoleFlag,
+          isSynthetic:
+            application.role.isSynthetic ??
+            application.role.is_synthetic ??
+            syntheticRoleFlag,
+        }
+      : {
+          id: application?.roleId,
+          roleName: application?.roleName ?? application?.role_name,
+          role_name: application?.role_name ?? application?.roleName,
+          is_synthetic: syntheticRoleFlag,
+          isSynthetic: syntheticRoleFlag,
+        });
 
   // Custom header
   const customHeader = (
@@ -388,7 +414,7 @@ const TeamApplicationDetailsModal = ({
         {(application?.role || application?.roleId) && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
             <VacantRoleCard
-              role={hydratedRole ?? application?.role ?? { id: application?.roleId }}
+              role={roleForCard}
               team={team}
               matchScore={roleMatchScore}
               matchDetails={roleMatchDetails}

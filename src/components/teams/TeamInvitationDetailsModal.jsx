@@ -222,6 +222,32 @@ const TeamInvitationDetailsModal = ({
     : hasRoleInvitation
       ? "You are invited for a role!"
       : "You are invited!";
+  const syntheticRoleFlag =
+    invitation?.role?.is_synthetic ??
+    invitation?.role?.isSynthetic ??
+    invitation?.role_is_synthetic ??
+    invitation?.roleIsSynthetic;
+  const roleForCard =
+    hydratedRole ??
+    (invitation?.role
+      ? {
+          ...invitation.role,
+          is_synthetic:
+            invitation.role.is_synthetic ??
+            invitation.role.isSynthetic ??
+            syntheticRoleFlag,
+          isSynthetic:
+            invitation.role.isSynthetic ??
+            invitation.role.is_synthetic ??
+            syntheticRoleFlag,
+        }
+      : {
+          id: invitation?.roleId ?? invitation?.role_id,
+          roleName: invitation?.roleName ?? invitation?.role_name,
+          role_name: invitation?.role_name ?? invitation?.roleName,
+          is_synthetic: syntheticRoleFlag,
+          isSynthetic: syntheticRoleFlag,
+        });
 
   // Custom header
   const customHeader = (
@@ -404,7 +430,7 @@ const TeamInvitationDetailsModal = ({
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <VacantRoleCard
-                role={hydratedRole ?? invitation?.role ?? { id: invitation?.roleId ?? invitation?.role_id }}
+                role={roleForCard}
                 team={team}
                 matchScore={roleMatchScore}
                 matchDetails={roleMatchDetails}

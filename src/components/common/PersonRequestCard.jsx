@@ -159,15 +159,6 @@ const PersonRequestCard = ({
               @{user.username}
             </p>
             )}
-          {isSyntheticUser(user) && (
-            <Tooltip
-              content={DEMO_PROFILE_TOOLTIP}
-              wrapperClassName="flex items-start text-base-content/50 text-xs"
-            >
-              <FlaskConical className="h-3 w-auto mr-0.5 flex-shrink-0 mt-px" />
-              <span className="leading-[1.15]">Demo Profile</span>
-            </Tooltip>
-          )}
 
           {/* Location if available and showLocation is true */}
           {showLocation && getPostalCode() && (
@@ -182,6 +173,15 @@ const PersonRequestCard = ({
                 displayType="short"
               />
             </div>
+          )}
+          {isSyntheticUser(user) && (
+            <Tooltip
+              content={DEMO_PROFILE_TOOLTIP}
+              wrapperClassName="flex items-start text-base-content/50 text-xs"
+            >
+              <FlaskConical className="h-3 w-auto mr-0.5 flex-shrink-0 mt-px" />
+              <span className="leading-[1.15]">Demo Profile</span>
+            </Tooltip>
           )}
         </div>
 
