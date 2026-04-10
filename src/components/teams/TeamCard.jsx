@@ -18,6 +18,7 @@ import {
   MapPin,
   Ruler,
   Calendar,
+  FlaskConical,
 } from "lucide-react";
 import TeamDetailsModal from "./TeamDetailsModal";
 import UserDetailsModal from "../users/UserDetailsModal";
@@ -38,6 +39,8 @@ import LocationDistanceTagsRow from "../common/LocationDistanceTagsRow";
 import { getMatchTier } from "../../utils/matchScoreUtils";
 import { getResultMatchScore } from "../../utils/teamMatchUtils";
 import { calculateDistanceKm } from "../../utils/locationUtils";
+import { DEMO_TEAM_TOOLTIP, isSyntheticTeam } from "../../utils/userHelpers";
+import DemoAvatarOverlay from "../users/DemoAvatarOverlay";
 
 const teamMemberBadgesCache = new Map();
 const viewerRoleProfileCache = new Map();
@@ -1851,6 +1854,24 @@ const TeamCard = ({
   ) : (
     matchOverlay
   );
+  const demoAvatarOverlay = isSyntheticTeam(teamData) ? (
+    <DemoAvatarOverlay
+      textClassName={
+        viewMode === "list"
+          ? "text-[5px]"
+          : viewMode === "mini"
+            ? "text-[9px]"
+            : "text-[10px]"
+      }
+      textTranslateClassName={
+        viewMode === "list"
+          ? "-translate-y-[2px]"
+          : viewMode === "mini"
+            ? "-translate-y-[4px]"
+            : "-translate-y-[4px]"
+      }
+    />
+  ) : null;
 
   // ============ LIST VIEW ============
 
@@ -2030,6 +2051,15 @@ const TeamCard = ({
             )}
           </Tooltip>
         )}
+        {isSyntheticTeam(teamData) && (
+          <Tooltip
+            content={DEMO_TEAM_TOOLTIP}
+            wrapperClassName="flex items-center gap-1 whitespace-nowrap text-base-content/50"
+          >
+            <FlaskConical size={11} className="flex-shrink-0" />
+            <span>Demo Team</span>
+          </Tooltip>
+        )}
       </span>
     );
 
@@ -2047,6 +2077,7 @@ const TeamCard = ({
           className={listClassName}
           clickTooltip={cardClickTooltip}
           imageOverlay={avatarOverlay}
+          imageInnerOverlay={demoAvatarOverlay}
           listEdgeRounding={!disableListEdgeRounding}
       >
           <div
@@ -2510,6 +2541,19 @@ const TeamCard = ({
               </Tooltip>
             )}
 
+            {isSyntheticTeam(teamData) && (
+              <Tooltip
+                content={DEMO_TEAM_TOOLTIP}
+                wrapperClassName="flex items-center gap-1 text-base-content/50"
+              >
+                <FlaskConical
+                  size={viewMode === "mini" ? 12 : 14}
+                  className="flex-shrink-0"
+                />
+                <span>Demo Team</span>
+              </Tooltip>
+            )}
+
             {/* Pending role application indicator */}
             {!shouldMoveSearchResultRoleApplicationIndicator &&
               isPendingRoleApplicationForTeam && (
@@ -2606,6 +2650,7 @@ const TeamCard = ({
         }
         marginClassName={viewMode === "mini" ? "mb-2" : ""}
         imageOverlay={avatarOverlay}
+        imageInnerOverlay={demoAvatarOverlay}
       >
         {reminderNotice && (
           <Alert
