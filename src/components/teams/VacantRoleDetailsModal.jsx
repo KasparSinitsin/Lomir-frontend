@@ -50,10 +50,12 @@ import { teamService } from "../../services/teamService";
 import { vacantRoleService } from "../../services/vacantRoleService";
 import { getMatchTier } from "../../utils/matchScoreUtils";
 import {
+  DEMO_PROFILE_TOOLTIP,
   DEMO_ROLE_TOOLTIP,
   getDisplayName,
   getUserInitials,
   isSyntheticRole,
+  isSyntheticUser,
 } from "../../utils/userHelpers";
 import {
   calculateDistanceKm,
@@ -2783,6 +2785,7 @@ const VacantRoleDetailsModal = ({
                     member.avatarUrl ?? member.avatar_url ?? null;
                   const displayName = getDisplayName(member);
                   const initials = getUserInitials(member);
+                  const showDemoAvatarOverlay = isSyntheticUser(member);
                   const memberScore =
                     memberRow.matchScore != null
                       ? Number(memberRow.matchScore)
@@ -2817,7 +2820,7 @@ const VacantRoleDetailsModal = ({
                         onClick={() => handleTeamMemberClick(memberRow)}
                       >
                         <div className="avatar relative flex-shrink-0">
-                          <div className="w-12 h-12 rounded-full">
+                          <div className="w-12 h-12 rounded-full relative overflow-hidden">
                             {avatarUrl ? (
                               <img
                                 src={avatarUrl}
@@ -2837,6 +2840,9 @@ const VacantRoleDetailsModal = ({
                             >
                               <span className="text-lg">{initials}</span>
                             </div>
+                            {showDemoAvatarOverlay && (
+                              <DemoAvatarOverlay textClassName="text-[8px]" />
+                            )}
                           </div>
                           {MemberMatchIcon && (
                             <div
@@ -2877,6 +2883,18 @@ const VacantRoleDetailsModal = ({
                               <CardMetaItem icon={MapPin}>
                                 {locationLabel}
                               </CardMetaItem>
+                              {showDemoAvatarOverlay && (
+                                <Tooltip
+                                  content={DEMO_PROFILE_TOOLTIP}
+                                  wrapperClassName="flex items-start gap-0.5 text-base-content/50"
+                                >
+                                  <FlaskConical
+                                    size={10}
+                                    className="shrink-0 mt-[3px]"
+                                  />
+                                  <span className="leading-tight">Demo</span>
+                                </Tooltip>
+                              )}
                             </CardMetaRow>
                           </div>
                         </div>
