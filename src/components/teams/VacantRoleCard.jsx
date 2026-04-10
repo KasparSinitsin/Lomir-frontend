@@ -837,6 +837,15 @@ const VacantRoleCard = ({
       </span>
     </Tooltip>
   ) : null;
+  const demoRoleMetaItem = isSyntheticRole(role) ? (
+    <Tooltip
+      content={DEMO_ROLE_TOOLTIP}
+      wrapperClassName="flex items-center gap-1 whitespace-nowrap text-base-content/50"
+    >
+      <FlaskConical size={12} className="flex-shrink-0" />
+      <span>{viewMode === "mini" ? "Demo" : "Demo Role"}</span>
+    </Tooltip>
+  ) : null;
 
   const renderMatchOverlay = ({ size, iconSize }) => {
     if (!matchTier) return null;
@@ -1294,15 +1303,6 @@ const VacantRoleCard = ({
                   {teamContext.name}
                 </p>
               )}
-              {isSyntheticRole(role) && (
-                <Tooltip
-                  content={DEMO_ROLE_TOOLTIP}
-                  wrapperClassName="mt-0.5 flex items-center gap-1 text-base-content/50 text-xs"
-                >
-                  <FlaskConical size={12} className="flex-shrink-0" />
-                  <span>{isMiniView ? "Demo" : "Demo Role"}</span>
-                </Tooltip>
-              )}
             </div>
 
             <div className="relative flex-shrink-0" data-dropdown-menu>
@@ -1424,17 +1424,20 @@ const VacantRoleCard = ({
               <div className="flex items-center gap-1 text-xs text-base-content/60">
                 <UserCheck size={12} className="shrink-0" />
                 <span className="truncate">{filledByText}</span>
+                {demoRoleMetaItem}
               </div>
-            ) : locationText ? (
+            ) : locationText || (!is_remote && max_distance_km) || demoRoleMetaItem ? (
               <div className="flex flex-wrap items-center gap-2 text-xs text-base-content/60">
-                <span className="flex items-center gap-1 min-w-0">
-                  {is_remote ? (
-                    <Globe size={12} className="shrink-0" />
-                  ) : (
-                    <MapPin size={12} className="shrink-0" />
-                  )}
-                  <span className="truncate">{locationText}</span>
-                </span>
+                {locationText && (
+                  <span className="flex items-center gap-1 min-w-0">
+                    {is_remote ? (
+                      <Globe size={12} className="shrink-0" />
+                    ) : (
+                      <MapPin size={12} className="shrink-0" />
+                    )}
+                    <span className="truncate">{locationText}</span>
+                  </span>
+                )}
 
                 {!is_remote && max_distance_km && (
                   <span className="flex items-center gap-1 text-base-content/50">
@@ -1442,23 +1445,28 @@ const VacantRoleCard = ({
                     <span>{max_distance_km} km</span>
                   </span>
                 )}
+                {demoRoleMetaItem}
               </div>
             ) : null
           ) : isFilled ? (
             <CardMetaRow>
               <CardMetaItem icon={UserCheck}>{filledByText}</CardMetaItem>
+              {demoRoleMetaItem}
             </CardMetaRow>
-          ) : locationText ? (
+          ) : locationText || (!is_remote && max_distance_km) || demoRoleMetaItem ? (
             <CardMetaRow>
-              <CardMetaItem icon={is_remote ? Globe : MapPin}>
-                {locationText}
-              </CardMetaItem>
+              {locationText && (
+                <CardMetaItem icon={is_remote ? Globe : MapPin}>
+                  {locationText}
+                </CardMetaItem>
+              )}
 
               {!is_remote && max_distance_km && (
                 <CardMetaItem icon={CircleDot} tone="muted" nowrap>
                   {max_distance_km} km
                 </CardMetaItem>
               )}
+              {demoRoleMetaItem}
             </CardMetaRow>
           ) : null}
         </div>

@@ -96,6 +96,10 @@ const PersonRequestCard = ({
   const clickableTextStyles = clickable
     ? "cursor-pointer hover:text-primary transition-colors"
     : "";
+  const showUsername =
+    user?.username &&
+    (getDisplayName() !== user.username || isSyntheticUser(user));
+  const showDemoProfile = isSyntheticUser(user);
 
   // ============ Render ============
 
@@ -148,17 +152,28 @@ const PersonRequestCard = ({
             {getDisplayName()}
           </h4>
 
-          {/* Username (if different from display name) */}
-          {user?.username &&
-            (getDisplayName() !== user.username || isSyntheticUser(user)) && (
-            <p
-              className={`text-sm text-base-content/70 ${clickableTextStyles}`}
-              onClick={handleUserClick}
-              title={clickable ? "View profile" : undefined}
-            >
-              @{user.username}
-            </p>
-            )}
+          {(showUsername || showDemoProfile) && (
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+              {showUsername && (
+                <p
+                  className={`text-xs text-base-content/70 ${clickableTextStyles}`}
+                  onClick={handleUserClick}
+                  title={clickable ? "View profile" : undefined}
+                >
+                  @{user.username}
+                </p>
+              )}
+              {showDemoProfile && (
+                <Tooltip
+                  content={DEMO_PROFILE_TOOLTIP}
+                  wrapperClassName="flex items-center gap-0.5 text-base-content/50 text-xs"
+                >
+                  <FlaskConical size={12} className="flex-shrink-0" />
+                  <span>Demo Profile</span>
+                </Tooltip>
+              )}
+            </div>
+          )}
 
           {/* Location if available and showLocation is true */}
           {showLocation && getPostalCode() && (
@@ -173,15 +188,6 @@ const PersonRequestCard = ({
                 displayType="short"
               />
             </div>
-          )}
-          {isSyntheticUser(user) && (
-            <Tooltip
-              content={DEMO_PROFILE_TOOLTIP}
-              wrapperClassName="flex items-start text-base-content/50 text-xs"
-            >
-              <FlaskConical className="h-3 w-auto mr-0.5 flex-shrink-0 mt-px" />
-              <span className="leading-[1.15]">Demo Profile</span>
-            </Tooltip>
           )}
         </div>
 

@@ -31,7 +31,7 @@ const UserAvatar = ({
       onClick={clickable ? onClick : undefined}
       title={title}
     >
-      <div className={`${sizeClass} rounded-full relative`}>
+      <div className={`${sizeClass} rounded-full relative overflow-hidden`}>
         {avatarUrl ? (
           <img
             src={avatarUrl}

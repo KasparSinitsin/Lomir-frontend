@@ -1,15 +1,28 @@
 import React, { useState, useEffect, useRef } from "react";
-import { User, MapPin, Calendar, SendHorizontal } from "lucide-react";
+import {
+  User,
+  MapPin,
+  Calendar,
+  SendHorizontal,
+  FlaskConical,
+} from "lucide-react";
 import RequestListModal from "../common/RequestListModal";
 import Button from "../common/Button";
+import Tooltip from "../common/Tooltip";
 import InlineUserLink, { InvitedByLink } from "../users/InlineUserLink";
+import DemoAvatarOverlay from "../users/DemoAvatarOverlay";
 import VacantRoleCard from "./VacantRoleCard";
 import { matchingService } from "../../services/matchingService";
 import { userService } from "../../services/userService";
 import { vacantRoleService } from "../../services/vacantRoleService";
 import { useAuth } from "../../contexts/AuthContext";
 import { useUserModal } from "../../contexts/UserModalContext";
-import { getUserInitials, getDisplayName } from "../../utils/userHelpers";
+import {
+  DEMO_PROFILE_TOOLTIP,
+  getUserInitials,
+  getDisplayName,
+  isSyntheticUser,
+} from "../../utils/userHelpers";
 import { calculateDistanceKm } from "../../utils/locationUtils";
 import { format } from "date-fns";
 
@@ -646,6 +659,11 @@ const TeamInvitesModal = ({
           highlightUserId != null &&
           inviteeId != null &&
           String(inviteeId) === String(highlightUserId);
+        const showInviteeUsername =
+          invitation.invitee?.username &&
+          (getDisplayName(invitation.invitee) !== invitation.invitee?.username ||
+            isSyntheticUser(invitation.invitee));
+        const showInviteeDemoProfile = isSyntheticUser(invitation.invitee);
 
         return (
           <div
@@ -665,7 +683,7 @@ const TeamInvitesModal = ({
                 onClick={() => handleInviteeClick(invitation.invitee?.id)}
                 title="View profile"
               >
-                <div className="w-10 h-10 rounded-full relative">
+                <div className="w-10 h-10 rounded-full relative overflow-hidden">
                   {getAvatarUrl(invitation.invitee) ? (
                     <img
                       src={getAvatarUrl(invitation.invitee)}
@@ -694,6 +712,9 @@ const TeamInvitesModal = ({
                       {getUserInitials(invitation.invitee)}
                     </span>
                   </div>
+                  {isSyntheticUser(invitation.invitee) && (
+                    <DemoAvatarOverlay textClassName="text-[7px]" />
+                  )}
                 </div>
               </div>
 
@@ -707,11 +728,23 @@ const TeamInvitesModal = ({
                 >
                   {getDisplayName(invitation.invitee)}
                 </h4>
-                {/* Username */}
-                {invitation.invitee?.username && (
-                  <p className="text-sm text-base-content/70">
-                    @{invitation.invitee.username}
-                  </p>
+                {(showInviteeUsername || showInviteeDemoProfile) && (
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                    {showInviteeUsername && (
+                      <p className="text-xs text-base-content/70">
+                        @{invitation.invitee.username}
+                      </p>
+                    )}
+                    {showInviteeDemoProfile && (
+                      <Tooltip
+                        content={DEMO_PROFILE_TOOLTIP}
+                        wrapperClassName="flex items-center gap-0.5 text-base-content/50 text-xs"
+                      >
+                        <FlaskConical size={12} className="flex-shrink-0" />
+                        <span>Demo Profile</span>
+                      </Tooltip>
+                    )}
+                  </div>
                 )}
               </div>
 

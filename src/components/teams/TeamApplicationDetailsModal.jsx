@@ -11,11 +11,11 @@ import Button from "../common/Button";
 import Tooltip from "../common/Tooltip";
 import TeamDetailsModal from "./TeamDetailsModal";
 import UserDetailsModal from "../users/UserDetailsModal";
+import InlineUserLink from "../users/InlineUserLink";
 import VacantRoleCard from "./VacantRoleCard";
 import DemoAvatarOverlay from "../users/DemoAvatarOverlay";
 import {
   DEMO_TEAM_TOOLTIP,
-  getUserInitials,
   isSyntheticTeam,
 } from "../../utils/userHelpers";
 import Alert from "../common/Alert";
@@ -161,10 +161,6 @@ const TeamApplicationDetailsModal = ({
     return max === null || max === undefined ? "∞" : max;
   };
 
-  const getOwnerAvatar = () => {
-    return owner.avatar_url || owner.avatarUrl || null;
-  };
-
   const handleTeamClick = () => {
     if (team?.id) setIsTeamDetailsOpen(true);
   };
@@ -283,57 +279,11 @@ const TeamApplicationDetailsModal = ({
   const footer = (
     <div className="flex items-center justify-between gap-3">
       {/* Received by (left) */}
-      <div className="flex items-center text-xs text-base-content/60">
-        <span className="mr-1">Received by</span>
-
-        {/* Owner Avatar */}
-        <div
-          className="avatar cursor-pointer hover:opacity-80 transition-opacity mr-1"
-          onClick={() => handleUserClick(owner?.id)}
-          title="View profile"
-        >
-          <div className="w-4 h-4 rounded-full relative">
-            {getOwnerAvatar() ? (
-              <img
-                src={getOwnerAvatar()}
-                alt="Owner"
-                className="object-cover w-full h-full rounded-full"
-                onError={(e) => {
-                  e.target.style.display = "none";
-                  const fallback =
-                    e.target.parentElement.querySelector(".avatar-fallback");
-                  if (fallback) fallback.style.display = "flex";
-                }}
-              />
-            ) : null}
-
-            {/* Fallback initials */}
-            <div
-              className="avatar-fallback bg-primary text-primary-content flex items-center justify-center w-full h-full rounded-full absolute inset-0"
-              style={{
-                display: getOwnerAvatar() ? "none" : "flex",
-                fontSize: "8px",
-              }}
-            >
-              <span className="font-medium">{getUserInitials(owner)}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Owner Name - consistent with TeamInvitationDetailsModal pattern */}
-        <span
-          className="font-medium text-base-content/80 cursor-pointer hover:text-primary transition-colors"
-          onClick={() => handleUserClick(owner?.id)}
-          title="View profile"
-        >
-          {(() => {
-            const firstName = owner.first_name || owner.firstName;
-            const lastName = owner.last_name || owner.lastName;
-            const full = `${firstName || ""} ${lastName || ""}`.trim();
-            return full.length > 0 ? full : "Unknown";
-          })()}
-        </span>
-      </div>
+      <InlineUserLink
+        label="Received by"
+        user={owner}
+        onOpenUser={handleUserClick}
+      />
 
       {/* Buttons (right) */}
       <div className="flex justify-end gap-2">
