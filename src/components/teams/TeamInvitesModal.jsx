@@ -604,7 +604,9 @@ const TeamInvitesModal = ({
           invitation?.role?.is_synthetic ??
           invitation?.role?.isSynthetic ??
           invitation?.role_is_synthetic ??
-          invitation?.roleIsSynthetic;
+          invitation?.roleIsSynthetic ??
+          invitation?.is_synthetic ??
+          invitation?.isSynthetic;
         const roleForCard = invitation?.role
           ? {
               ...invitation.role,

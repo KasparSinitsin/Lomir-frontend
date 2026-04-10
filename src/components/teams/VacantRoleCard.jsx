@@ -955,6 +955,12 @@ const VacantRoleCard = ({
       }
     />
   ) : null;
+  const compactDemoAvatarOverlay = isSyntheticRole(role) ? (
+    <DemoAvatarOverlay
+      textClassName={isMiniView ? "text-[6px]" : "text-[7px]"}
+      textTranslateClassName="-translate-y-[3px]"
+    />
+  ) : null;
 
   if (viewMode === "list") {
     const roundedDistanceKm = showDistance ? Math.round(rawDistanceKm) : null;
@@ -1237,7 +1243,7 @@ const VacantRoleCard = ({
                     {getUserInitials(filledUser)}
                   </span>
                 </div>
-                {isSyntheticRole(role) && demoAvatarOverlay}
+                {compactDemoAvatarOverlay}
                 {miniMatchOverlay}
               </div>
             </div>
@@ -1253,7 +1259,7 @@ const VacantRoleCard = ({
                   >
                     {pct}%
                   </span>
-                  {isSyntheticRole(role) && demoAvatarOverlay}
+                  {compactDemoAvatarOverlay}
                 </div>
               </div>
             </Tooltip>
@@ -1263,7 +1269,7 @@ const VacantRoleCard = ({
                 className={`${initialsAvatarClass} ${avatarSizeClass} rounded-full relative flex items-center justify-center overflow-hidden`}
               >
                 <span className={avatarTextClass}>{getRoleInitials()}</span>
-                {isSyntheticRole(role) && demoAvatarOverlay}
+                {compactDemoAvatarOverlay}
                 {miniMatchOverlay}
               </div>
             </div>

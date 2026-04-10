@@ -1,3 +1,14 @@
+const hasTruthySyntheticFlag = (value) => {
+  if (value === true || value === 1) return true;
+
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    return normalized === "true" || normalized === "1";
+  }
+
+  return false;
+};
+
 /**
  * Get user initials for avatar fallback
  * Returns 2 letters for users with first and last name (e.g., "VL" for Valentina Lopez)
@@ -66,7 +77,10 @@ export const getDisplayName = (user) => {
  */
 export const isSyntheticUser = (user) => {
   if (!user) return false;
-  return user.is_synthetic === true || user.isSynthetic === true;
+  return (
+    hasTruthySyntheticFlag(user.is_synthetic) ||
+    hasTruthySyntheticFlag(user.isSynthetic)
+  );
 };
 
 /**
@@ -75,7 +89,10 @@ export const isSyntheticUser = (user) => {
  */
 export const isSyntheticTeam = (team) => {
   if (!team) return false;
-  return team.is_synthetic === true || team.isSynthetic === true;
+  return (
+    hasTruthySyntheticFlag(team.is_synthetic) ||
+    hasTruthySyntheticFlag(team.isSynthetic)
+  );
 };
 
 /**
@@ -84,7 +101,10 @@ export const isSyntheticTeam = (team) => {
  */
 export const isSyntheticRole = (role) => {
   if (!role) return false;
-  return role.is_synthetic === true || role.isSynthetic === true;
+  return (
+    hasTruthySyntheticFlag(role.is_synthetic) ||
+    hasTruthySyntheticFlag(role.isSynthetic)
+  );
 };
 
 export const DEMO_PROFILE_TOOLTIP =

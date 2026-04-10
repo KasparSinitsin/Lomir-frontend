@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import Card from "../common/Card";
 import Button from "../common/Button";
 import Tooltip from "../common/Tooltip";
@@ -479,38 +479,136 @@ const TeamCard = ({
     };
   };
 
-  const normalizedData = getNormalizedData();
-  const roleData = isRoleApplicationVariant
-    ? application?.role ?? null
+  const normalizedData = useMemo(
+    () => getNormalizedData(),
+    [team, application, invitation, effectiveVariant],
+  );
+  const roleSource = isRoleApplicationVariant
+    ? application ?? null
     : isRoleInvitationVariant
-      ? invitation?.role ?? null
+      ? invitation ?? null
       : null;
+  const nestedRoleData = roleSource?.role ?? null;
+  const flatRoleName = roleSource?.roleName ?? roleSource?.role_name ?? null;
+  const flatRoleBio = roleSource?.bio ?? roleSource?.roleBio ?? null;
+  const flatRoleCity = roleSource?.city ?? null;
+  const flatRoleCountry = roleSource?.country ?? null;
+  const flatRoleTags = roleSource?.tags ?? [];
+  const flatRoleBadges = roleSource?.badges ?? [];
+  const flatRoleIsRemote =
+    roleSource?.isRemote ?? roleSource?.is_remote ?? undefined;
+  const syntheticRoleFlag = isRoleApplicationVariant
+    ? application?.role?.is_synthetic ??
+      application?.role?.isSynthetic ??
+      application?.role_is_synthetic ??
+      application?.roleIsSynthetic ??
+      application?.is_synthetic ??
+      application?.isSynthetic
+    : isRoleInvitationVariant
+      ? invitation?.role?.is_synthetic ??
+        invitation?.role?.isSynthetic ??
+        invitation?.role_is_synthetic ??
+        invitation?.roleIsSynthetic ??
+        invitation?.is_synthetic ??
+        invitation?.isSynthetic
+      : undefined;
+  const roleDataId = isRoleApplicationVariant
+    ? application?.role?.id ?? application?.roleId ?? application?.role_id ?? null
+    : isRoleInvitationVariant
+      ? invitation?.role?.id ?? invitation?.roleId ?? invitation?.role_id ?? null
+      : null;
+  const roleData = useMemo(() => {
+    if (!isRoleVariant) return null;
+
+    if (nestedRoleData) {
+      const needsFallbackFields =
+        (nestedRoleData.id == null && roleDataId != null) ||
+        (!nestedRoleData.roleName &&
+          !nestedRoleData.role_name &&
+          flatRoleName != null) ||
+        (nestedRoleData.bio == null &&
+          nestedRoleData.roleBio == null &&
+          flatRoleBio != null) ||
+        (nestedRoleData.city == null && flatRoleCity != null) ||
+        (nestedRoleData.country == null && flatRoleCountry != null) ||
+        (nestedRoleData.is_synthetic == null &&
+          nestedRoleData.isSynthetic == null &&
+          syntheticRoleFlag != null) ||
+        (nestedRoleData.tags == null && flatRoleTags.length > 0) ||
+        (nestedRoleData.badges == null && flatRoleBadges.length > 0);
+
+      if (!needsFallbackFields) {
+        return nestedRoleData;
+      }
+
+      return {
+        ...nestedRoleData,
+        id: nestedRoleData.id ?? roleDataId,
+        roleName: nestedRoleData.roleName ?? nestedRoleData.role_name ?? flatRoleName,
+        role_name: nestedRoleData.role_name ?? nestedRoleData.roleName ?? flatRoleName,
+        bio: nestedRoleData.bio ?? nestedRoleData.roleBio ?? flatRoleBio,
+        roleBio: nestedRoleData.roleBio ?? nestedRoleData.bio ?? flatRoleBio,
+        city: nestedRoleData.city ?? flatRoleCity,
+        country: nestedRoleData.country ?? flatRoleCountry,
+        is_remote:
+          nestedRoleData.is_remote ??
+          nestedRoleData.isRemote ??
+          flatRoleIsRemote,
+        isRemote:
+          nestedRoleData.isRemote ??
+          nestedRoleData.is_remote ??
+          flatRoleIsRemote,
+        tags: nestedRoleData.tags ?? flatRoleTags,
+        badges: nestedRoleData.badges ?? flatRoleBadges,
+        is_synthetic:
+          nestedRoleData.is_synthetic ??
+          nestedRoleData.isSynthetic ??
+          syntheticRoleFlag,
+        isSynthetic:
+          nestedRoleData.isSynthetic ??
+          nestedRoleData.is_synthetic ??
+          syntheticRoleFlag,
+      };
+    }
+
+    return {
+      id: roleDataId,
+      roleName: flatRoleName,
+      role_name: flatRoleName,
+      bio: flatRoleBio,
+      roleBio: flatRoleBio,
+      city: flatRoleCity,
+      country: flatRoleCountry,
+      is_remote: flatRoleIsRemote,
+      isRemote: flatRoleIsRemote,
+      tags: flatRoleTags,
+      badges: flatRoleBadges,
+      is_synthetic: syntheticRoleFlag,
+      isSynthetic: syntheticRoleFlag,
+    };
+  }, [
+    isRoleVariant,
+    nestedRoleData,
+    roleDataId,
+    flatRoleName,
+    flatRoleBio,
+    flatRoleCity,
+    flatRoleCountry,
+    flatRoleIsRemote,
+    flatRoleTags,
+    flatRoleBadges,
+    syntheticRoleFlag,
+  ]);
   const roleTeamData = isRoleApplicationVariant
     ? application?.team ?? null
     : isRoleInvitationVariant
       ? invitation?.team ?? null
-      : null;
-  const roleDataId = isRoleApplicationVariant
-    ? application?.role?.id ?? application?.roleId ?? null
-    : isRoleInvitationVariant
-      ? invitation?.role?.id ?? invitation?.roleId ?? null
       : null;
   const roleTeamId = isRoleApplicationVariant
     ? application?.team?.id ?? null
     : isRoleInvitationVariant
       ? invitation?.team?.id ?? null
       : null;
-  const syntheticRoleFlag = isRoleApplicationVariant
-    ? application?.role?.is_synthetic ??
-      application?.role?.isSynthetic ??
-      application?.role_is_synthetic ??
-      application?.roleIsSynthetic
-    : isRoleInvitationVariant
-      ? invitation?.role?.is_synthetic ??
-        invitation?.role?.isSynthetic ??
-        invitation?.role_is_synthetic ??
-        invitation?.roleIsSynthetic
-      : undefined;
 
   // ========= ALL HOOKS (useState, useAuth, useCallback, useEffect) =========
 
@@ -530,6 +628,8 @@ const TeamCard = ({
   const [isApplicationsModalOpen, setIsApplicationsModalOpen] = useState(false);
   const [pendingSentInvitations, setPendingSentInvitations] = useState([]);
   const [isInvitesModalOpen, setIsInvitesModalOpen] = useState(false);
+  const [pendingApplicationsLoaded, setPendingApplicationsLoaded] = useState(false);
+  const [pendingInvitationsLoaded, setPendingInvitationsLoaded] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState(null);
   const [responses, setResponses] = useState({});
   const [isInvitationDetailsModalOpen, setIsInvitationDetailsModalOpen] =
@@ -560,7 +660,7 @@ const TeamCard = ({
 
   // Check if user is admin (owner or admin role can manage invitations)
   const isAdmin = userRole === "admin";
-  const canManageInvitations = isOwner || isAdmin;
+  const canManageInvitations = userRole === "owner" || isAdmin;
 
   // Update local team data when props change
   useEffect(() => {
@@ -674,8 +774,11 @@ const TeamCard = ({
       try {
         const response = await teamService.getTeamApplications(teamData.id);
         setPendingApplications(response.data || []);
+        setPendingApplicationsLoaded(true);
       } catch (error) {
         console.error("Error fetching applications:", error);
+        setPendingApplications([]);
+        setPendingApplicationsLoaded(true);
       }
     }
   }, [canManageInvitations, teamData?.id, effectiveVariant]);
@@ -686,21 +789,33 @@ const TeamCard = ({
       try {
         const response = await teamService.getTeamSentInvitations(teamData.id);
         setPendingSentInvitations(response.data || []);
+        setPendingInvitationsLoaded(true);
       } catch (error) {
         console.error("Error fetching sent invitations:", error);
         setPendingSentInvitations([]);
+        setPendingInvitationsLoaded(true);
       }
     }
   }, [canManageInvitations, teamData?.id, effectiveVariant]);
 
   useEffect(() => {
-    fetchPendingApplications();
-  }, [fetchPendingApplications]);
+    if (effectiveVariant !== "member" || !teamData?.id || !canManageInvitations) {
+      setPendingApplications([]);
+      setPendingSentInvitations([]);
+      setPendingApplicationsLoaded(false);
+      setPendingInvitationsLoaded(false);
+    }
+  }, [effectiveVariant, teamData?.id, canManageInvitations]);
 
-  // Fetch sent invitations
   useEffect(() => {
+    if (!isApplicationsModalOpen && !autoOpenApplications) return;
+    fetchPendingApplications();
+  }, [fetchPendingApplications, isApplicationsModalOpen, autoOpenApplications]);
+
+  useEffect(() => {
+    if (!isInvitesModalOpen) return;
     fetchSentInvitations();
-  }, [fetchSentInvitations]);
+  }, [fetchSentInvitations, isInvitesModalOpen]);
 
   useEffect(() => {
     const fetchCompleteTeamData = async () => {
@@ -963,7 +1078,7 @@ const TeamCard = ({
     return () => {
       isCancelled = true;
     };
-  }, [isRoleVariant, showMatchScore, roleDataId, roleTeamId, roleData, user]);
+  }, [isRoleVariant, showMatchScore, roleDataId, roleTeamId, user?.id]);
 
   // ================= GUARD CLAUSE – AFTER ALL HOOKS =================
 
@@ -1872,8 +1987,7 @@ const TeamCard = ({
   );
   const demoTeamData = isRoleVariant ? (roleTeamData ?? teamData) : teamData;
   const showDemoRoleIndicator =
-    isRoleVariant &&
-    (isSyntheticRole(roleData) || syntheticRoleFlag === true);
+    isRoleVariant && isSyntheticRole(roleData);
   const showDemoTeamIndicator =
     !showDemoRoleIndicator && isSyntheticTeam(demoTeamData);
   const showDemoIndicator = showDemoRoleIndicator || showDemoTeamIndicator;

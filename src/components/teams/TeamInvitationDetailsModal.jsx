@@ -7,9 +7,11 @@ import {
   X,
   MailOpen,
   UserPlus,
+  FlaskConical,
 } from "lucide-react";
 import Modal from "../common/Modal";
 import Button from "../common/Button";
+import Tooltip from "../common/Tooltip";
 import UserDetailsModal from "../users/UserDetailsModal";
 import TeamDetailsModal from "./TeamDetailsModal";
 import VacantRoleCard from "./VacantRoleCard";
@@ -17,6 +19,8 @@ import Alert from "../common/Alert";
 import { format } from "date-fns";
 import InlineUserLink from "../users/InlineUserLink";
 import { useHydratedRole } from "../../hooks/useHydratedRole";
+import DemoAvatarOverlay from "../users/DemoAvatarOverlay";
+import { DEMO_TEAM_TOOLTIP, isSyntheticTeam } from "../../utils/userHelpers";
 
 const extractRoleMatchData = (roleLike) => {
   const rawScore = roleLike?.matchScore ?? roleLike?.match_score ?? null;
@@ -62,7 +66,19 @@ const TeamInvitationDetailsModal = ({
   // ============ Helpers ============
 
   // Get team data from invitation
-  const team = invitation?.team || {};
+  const baseTeam = invitation?.team || {};
+  const syntheticTeamFlag =
+    baseTeam?.is_synthetic ??
+    baseTeam?.isSynthetic ??
+    invitation?.team_is_synthetic ??
+    invitation?.teamIsSynthetic;
+  const team = {
+    ...baseTeam,
+    is_synthetic:
+      baseTeam?.is_synthetic ?? baseTeam?.isSynthetic ?? syntheticTeamFlag,
+    isSynthetic:
+      baseTeam?.isSynthetic ?? baseTeam?.is_synthetic ?? syntheticTeamFlag,
+  };
   const roleId =
     invitation?.role?.id ?? invitation?.roleId ?? invitation?.role_id ?? null;
   const teamId = team?.id ?? null;
@@ -226,10 +242,23 @@ const TeamInvitationDetailsModal = ({
     invitation?.role?.is_synthetic ??
     invitation?.role?.isSynthetic ??
     invitation?.role_is_synthetic ??
-    invitation?.roleIsSynthetic;
+    invitation?.roleIsSynthetic ??
+    invitation?.is_synthetic ??
+    invitation?.isSynthetic;
   const roleForCard =
-    hydratedRole ??
-    (invitation?.role
+    hydratedRole
+      ? {
+          ...hydratedRole,
+          is_synthetic:
+            hydratedRole.is_synthetic ??
+            hydratedRole.isSynthetic ??
+            syntheticRoleFlag,
+          isSynthetic:
+            hydratedRole.isSynthetic ??
+            hydratedRole.is_synthetic ??
+            syntheticRoleFlag,
+        }
+      : invitation?.role
       ? {
           ...invitation.role,
           is_synthetic:
@@ -247,7 +276,7 @@ const TeamInvitationDetailsModal = ({
           role_name: invitation?.role_name ?? invitation?.roleName,
           is_synthetic: syntheticRoleFlag,
           isSynthetic: syntheticRoleFlag,
-        });
+        };
 
   // Custom header
   const customHeader = (
@@ -367,7 +396,7 @@ const TeamInvitationDetailsModal = ({
             title="View team details"
           >
             <div className="avatar">
-              <div className="w-12 h-12 rounded-full relative">
+              <div className="w-12 h-12 rounded-full relative overflow-hidden">
                 {getTeamAvatar() ? (
                   <img
                     src={getTeamAvatar()}
@@ -393,6 +422,13 @@ const TeamInvitationDetailsModal = ({
                     {getTeamInitials()}
                   </span>
                 </div>
+
+                {isSyntheticTeam(team) && (
+                  <DemoAvatarOverlay
+                    textClassName="text-[7px]"
+                    textTranslateClassName="-translate-y-[3px]"
+                  />
+                )}
               </div>
             </div>
 
@@ -400,10 +436,23 @@ const TeamInvitationDetailsModal = ({
               <h4 className="font-medium text-base-content hover:text-primary transition-colors leading-[120%] mb-[0.2em]">
                 {team.name || "Unknown Team"}
               </h4>
-              <p className="text-sm text-base-content/70 flex items-center">
-                <Users size={14} className="mr-1 text-primary" />
-                {getMemberCount()}/{getMaxMembers()}
-              </p>
+              <div className="text-sm text-base-content/70 flex items-center flex-wrap gap-x-1.5 gap-y-px">
+                <span className="flex items-center">
+                  <Users size={14} className="mr-1 text-primary" />
+                  <span>
+                    {getMemberCount()}/{getMaxMembers()}
+                  </span>
+                </span>
+                {isSyntheticTeam(team) && (
+                  <Tooltip
+                    content={DEMO_TEAM_TOOLTIP}
+                    wrapperClassName="flex items-center gap-1 text-base-content/50 text-sm"
+                  >
+                    <FlaskConical size={14} className="flex-shrink-0" />
+                    <span>Demo Team</span>
+                  </Tooltip>
+                )}
+              </div>
             </div>
           </div>
 

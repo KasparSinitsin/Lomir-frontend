@@ -494,7 +494,9 @@ const TeamApplicationsModal = ({
           application?.role?.is_synthetic ??
           application?.role?.isSynthetic ??
           application?.role_is_synthetic ??
-          application?.roleIsSynthetic;
+          application?.roleIsSynthetic ??
+          application?.is_synthetic ??
+          application?.isSynthetic;
         const roleOverride = roleId ? roleStatusOverrides[roleId] : null;
         const role =
           application?.role && roleId
