@@ -660,7 +660,7 @@ const TeamCard = ({
 
   // Check if user is admin (owner or admin role can manage invitations)
   const isAdmin = userRole === "admin";
-  const canManageInvitations = userRole === "owner" || isAdmin;
+  const canManageInvitations = isOwner || isAdmin;
 
   // Update local team data when props change
   useEffect(() => {
@@ -808,14 +808,12 @@ const TeamCard = ({
   }, [effectiveVariant, teamData?.id, canManageInvitations]);
 
   useEffect(() => {
-    if (!isApplicationsModalOpen && !autoOpenApplications) return;
     fetchPendingApplications();
-  }, [fetchPendingApplications, isApplicationsModalOpen, autoOpenApplications]);
+  }, [fetchPendingApplications]);
 
   useEffect(() => {
-    if (!isInvitesModalOpen) return;
     fetchSentInvitations();
-  }, [fetchSentInvitations, isInvitesModalOpen]);
+  }, [fetchSentInvitations]);
 
   useEffect(() => {
     const fetchCompleteTeamData = async () => {
