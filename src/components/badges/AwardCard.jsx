@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { format } from "date-fns";
 import {
   Users,
@@ -8,12 +8,19 @@ import {
   User,
   Tag,
   Award,
+  FlaskConical,
 } from "lucide-react";
+import Tooltip from "../common/Tooltip";
 import InlineUserLink from "../users/InlineUserLink";
 import { useTeamModalSafe } from "../../contexts/TeamModalContext";
 import { useUserModalSafe } from "../../contexts/UserModalContext";
 import { getBadgeIcon } from "../../utils/badgeIconUtils";
+import {
+  getCachedChatTeamProfile,
+  mergeResolvedTeamData,
+} from "../../utils/chatEntityResolvers";
 import { useChildModalZIndex } from "../../contexts/ModalLayerContext";
+import { isSyntheticTeam, DEMO_TEAM_TOOLTIP } from "../../utils/userHelpers";
 import {
   getDisplayName as getDeletedUserDisplayName,
   isDeletedUser,
@@ -85,6 +92,25 @@ const AwardCard = ({
     award?.context_team_id ??
     (contextType === "team" ? (award?.contextId ?? award?.context_id) : null) ??
     null;
+  const baseTeam = award?.team ?? award?.contextTeam ?? award?.context_team ?? {};
+  const syntheticTeamFlag =
+    baseTeam?.is_synthetic ??
+    baseTeam?.isSynthetic ??
+    award?.teamIsSynthetic ??
+    award?.team_is_synthetic ??
+    award?.contextTeamIsSynthetic ??
+    award?.context_team_is_synthetic;
+  const teamObj = {
+    ...baseTeam,
+    id: baseTeam?.id ?? teamId,
+    name: baseTeam?.name ?? teamName,
+    is_synthetic:
+      baseTeam?.is_synthetic ?? baseTeam?.isSynthetic ?? syntheticTeamFlag,
+    isSynthetic:
+      baseTeam?.isSynthetic ?? baseTeam?.is_synthetic ?? syntheticTeamFlag,
+  };
+  const hasDirectTeamSyntheticFlag =
+    teamObj?.is_synthetic != null || teamObj?.isSynthetic != null;
 
   const tagName = award?.tagName ?? award?.tag_name ?? null;
 
@@ -172,6 +198,35 @@ const AwardCard = ({
 
   const { label: contextLabel, Icon: ContextIcon } =
     getContextMeta(contextType);
+  const [resolvedTeamProfile, setResolvedTeamProfile] = useState(null);
+
+  useEffect(() => {
+    if (!teamId || hasDirectTeamSyntheticFlag) {
+      setResolvedTeamProfile(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    getCachedChatTeamProfile(teamId)
+      .then((profile) => {
+        if (!cancelled) {
+          setResolvedTeamProfile(profile);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setResolvedTeamProfile(null);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [hasDirectTeamSyntheticFlag, teamId]);
+
+  const resolvedTeam = mergeResolvedTeamData(teamObj, resolvedTeamProfile);
+  const isTeamSynthetic = isSyntheticTeam(resolvedTeam);
 
   // ============================================================
   // Render
@@ -285,6 +340,14 @@ const AwardCard = ({
                       >
                         {teamName}
                       </span>
+                      {isTeamSynthetic && (
+                        <Tooltip
+                          content={DEMO_TEAM_TOOLTIP}
+                          wrapperClassName="flex items-center text-base-content/50 ml-0.5"
+                        >
+                          <FlaskConical size={11} className="flex-shrink-0" />
+                        </Tooltip>
+                      )}
                     </>
                   ) : (
                     <span className="truncate">Team</span>
@@ -324,6 +387,14 @@ const AwardCard = ({
                 >
                   {teamName}
                 </span>
+                {isTeamSynthetic && (
+                  <Tooltip
+                    content={DEMO_TEAM_TOOLTIP}
+                    wrapperClassName="flex items-center text-base-content/50 ml-0.5"
+                  >
+                    <FlaskConical size={11} className="flex-shrink-0" />
+                  </Tooltip>
+                )}
               </span>
             )}
 
