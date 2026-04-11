@@ -1,13 +1,16 @@
-import React from "react";
+import React, { useState } from "react";
 import { Users, Handshake, MessageCircle } from "lucide-react"; // Correct way to import icons
 import { Link } from "react-router-dom";
-import PageContainer from "../components/layout/PageContainer";
 import Section from "../components/layout/Section";
 import InfoCard from "../components/common/InfoCard";
+import CreateTeamModal from "../components/teams/CreateTeamModal";
 import { useAuth } from "../contexts/AuthContext";
 
 const Home = () => {
   const { isAuthenticated } = useAuth();
+  const [isCreateTeamModalOpen, setIsCreateTeamModalOpen] = useState(false);
+
+  const handleTeamCreated = () => undefined;
 
   return (
     <div className="align-items-center text-center space-y-12">
@@ -40,12 +43,13 @@ const Home = () => {
                   >
                     Browse Teams
                   </Link>
-                  <Link
-                    to="/teams/create"
+                  <button
+                    type="button"
+                    onClick={() => setIsCreateTeamModalOpen(true)}
                     className="btn btn-outline btn-primary"
                   >
                     Create Team
-                  </Link>
+                  </button>
                 </>
               )}
             </div>
@@ -96,6 +100,12 @@ const Home = () => {
           </InfoCard>
         </div>
       </Section>
+
+      <CreateTeamModal
+        isOpen={isCreateTeamModalOpen}
+        onClose={() => setIsCreateTeamModalOpen(false)}
+        onTeamCreated={handleTeamCreated}
+      />
     </div>
   );
 };
