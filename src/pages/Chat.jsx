@@ -194,6 +194,10 @@ const Chat = () => {
                     firstName: userData.firstName || userData.first_name,
                     lastName: userData.lastName || userData.last_name,
                     avatarUrl: userData.avatarUrl || userData.avatar_url,
+                    isSynthetic:
+                      userData.isSynthetic ?? userData.is_synthetic ?? undefined,
+                    is_synthetic:
+                      userData.is_synthetic ?? userData.isSynthetic ?? undefined,
                   },
                   lastMessage: "Start your conversation...",
                   updatedAt: new Date().toISOString(),
@@ -275,6 +279,25 @@ const Chat = () => {
               if (teamDetails?.data?.members) {
                 conversationDetails.data.team = {
                   ...conversationDetails.data.team,
+                  avatarUrl:
+                    conversationDetails.data.team.avatarUrl ||
+                    conversationDetails.data.team.teamavatarUrl ||
+                    conversationDetails.data.team.teamavatar_url ||
+                    teamDetails.data.avatarUrl ||
+                    teamDetails.data.teamavatarUrl ||
+                    teamDetails.data.teamavatar_url,
+                  isSynthetic:
+                    conversationDetails.data.team.isSynthetic ??
+                    conversationDetails.data.team.is_synthetic ??
+                    teamDetails.data.isSynthetic ??
+                    teamDetails.data.is_synthetic ??
+                    undefined,
+                  is_synthetic:
+                    conversationDetails.data.team.is_synthetic ??
+                    conversationDetails.data.team.isSynthetic ??
+                    teamDetails.data.is_synthetic ??
+                    teamDetails.data.isSynthetic ??
+                    undefined,
                   members: teamDetails.data.members,
                 };
               }
@@ -302,6 +325,14 @@ const Chat = () => {
                     id: conversationDetails.data.team.id,
                     name: conversationDetails.data.team.name,
                     avatarUrl: conversationDetails.data.team.avatarUrl,
+                    isSynthetic:
+                      conversationDetails.data.team.isSynthetic ??
+                      conversationDetails.data.team.is_synthetic ??
+                      undefined,
+                    is_synthetic:
+                      conversationDetails.data.team.is_synthetic ??
+                      conversationDetails.data.team.isSynthetic ??
+                      undefined,
                   },
                   lastMessage: "Start your team conversation...",
                   updatedAt: new Date().toISOString(),
@@ -342,6 +373,25 @@ const Chat = () => {
               if (teamDetails?.data?.members) {
                 conversationDetails.data.team = {
                   ...conversationDetails.data.team,
+                  avatarUrl:
+                    conversationDetails.data.team.avatarUrl ||
+                    conversationDetails.data.team.teamavatarUrl ||
+                    conversationDetails.data.team.teamavatar_url ||
+                    teamDetails.data.avatarUrl ||
+                    teamDetails.data.teamavatarUrl ||
+                    teamDetails.data.teamavatar_url,
+                  isSynthetic:
+                    conversationDetails.data.team.isSynthetic ??
+                    conversationDetails.data.team.is_synthetic ??
+                    teamDetails.data.isSynthetic ??
+                    teamDetails.data.is_synthetic ??
+                    undefined,
+                  is_synthetic:
+                    conversationDetails.data.team.is_synthetic ??
+                    conversationDetails.data.team.isSynthetic ??
+                    teamDetails.data.is_synthetic ??
+                    teamDetails.data.isSynthetic ??
+                    undefined,
                   members: teamDetails.data.members,
                 };
               }

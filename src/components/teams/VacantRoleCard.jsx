@@ -19,6 +19,7 @@ import {
   Sparkles,
   TrendingUp,
   TrendingDown,
+  FlaskConical,
 } from "lucide-react";
 import VacantRoleDetailsModal from "./VacantRoleDetailsModal";
 import Card from "../common/Card";
@@ -28,7 +29,13 @@ import CardMetaRow from "../common/CardMetaRow";
 import LocationDistanceTagsRow from "../common/LocationDistanceTagsRow";
 import SearchResultTypeOverlay from "../common/SearchResultTypeOverlay";
 import Tooltip from "../common/Tooltip";
-import { getDisplayName, getUserInitials } from "../../utils/userHelpers";
+import {
+  DEMO_ROLE_TOOLTIP,
+  getDisplayName,
+  getUserInitials,
+  isSyntheticRole,
+} from "../../utils/userHelpers";
+import DemoAvatarOverlay from "../users/DemoAvatarOverlay";
 import { resolveFilledRoleUser } from "../../utils/vacantRoleUtils";
 import {
   getMatchTier,
@@ -830,6 +837,15 @@ const VacantRoleCard = ({
       </span>
     </Tooltip>
   ) : null;
+  const demoRoleMetaItem = isSyntheticRole(role) ? (
+    <Tooltip
+      content={DEMO_ROLE_TOOLTIP}
+      wrapperClassName="flex items-center gap-1 whitespace-nowrap text-base-content/50"
+    >
+      <FlaskConical size={12} className="flex-shrink-0" />
+      <span>{viewMode === "mini" ? "Demo" : "Demo Role"}</span>
+    </Tooltip>
+  ) : null;
 
   const renderMatchOverlay = ({ size, iconSize }) => {
     if (!matchTier) return null;
@@ -930,6 +946,30 @@ const VacantRoleCard = ({
       hideActions={hideActions && !usesSharedSearchCard}
     />
   );
+  const demoAvatarOverlay = isSyntheticRole(role) ? (
+    <DemoAvatarOverlay
+      textClassName={
+        viewMode === "list"
+          ? "text-[5px]"
+          : viewMode === "mini"
+            ? "text-[9px]"
+            : "text-[10px]"
+      }
+      textTranslateClassName={
+        viewMode === "list"
+          ? "-translate-y-[2px]"
+          : viewMode === "mini"
+            ? "-translate-y-[4px]"
+            : "-translate-y-[4px]"
+      }
+    />
+  ) : null;
+  const compactDemoAvatarOverlay = isSyntheticRole(role) ? (
+    <DemoAvatarOverlay
+      textClassName={isMiniView ? "text-[6px]" : "text-[7px]"}
+      textTranslateClassName="-translate-y-[3px]"
+    />
+  ) : null;
 
   if (viewMode === "list") {
     const roundedDistanceKm = showDistance ? Math.round(rawDistanceKm) : null;
@@ -950,13 +990,22 @@ const VacantRoleCard = ({
       postedDateSubtitleItem ||
       teamSubtitleItem ||
       roleInvitationSubtitleItem ||
-      roleApplicationSubtitleItem ? (
+      roleApplicationSubtitleItem ||
+      isSyntheticRole(role) ? (
         <span className="flex min-w-0 flex-nowrap items-center gap-1 overflow-hidden whitespace-nowrap text-base-content/60">
           {scoreSubtitleItem}
           {postedDateSubtitleItem}
           {roleInvitationSubtitleItem}
           {roleApplicationSubtitleItem}
           {teamSubtitleItem}
+          {isSyntheticRole(role) && (
+            <Tooltip
+              content={DEMO_ROLE_TOOLTIP}
+              wrapperClassName="flex items-center whitespace-nowrap text-base-content/50"
+            >
+              <FlaskConical size={11} className="flex-shrink-0" />
+            </Tooltip>
+          )}
         </span>
       ) : null;
 
@@ -970,6 +1019,7 @@ const VacantRoleCard = ({
           imageOverlay={
             searchResultTypeOverlay ?? renderMatchOverlay({ size: 14, iconSize: 7 })
           }
+          imageInnerOverlay={demoAvatarOverlay}
           onClick={() => setIsDetailsOpen(true)}
           viewMode="list"
           titleClassName="text-sm font-semibold"
@@ -1061,6 +1111,18 @@ const VacantRoleCard = ({
         {roleInvitationSubtitleItem}
         {roleApplicationSubtitleItem}
         {miniLocationSubtitleItem}
+        {isSyntheticRole(role) && (
+          <Tooltip
+            content={DEMO_ROLE_TOOLTIP}
+            wrapperClassName="flex items-center gap-1 text-base-content/50"
+          >
+            <FlaskConical
+              size={viewMode === "mini" ? 12 : 14}
+              className="flex-shrink-0"
+            />
+            <span>{viewMode === "mini" ? "Demo" : "Demo Role"}</span>
+          </Tooltip>
+        )}
       </span>
     );
 
@@ -1103,6 +1165,7 @@ const VacantRoleCard = ({
             searchResultTypeOverlay ??
             (matchTier ? renderMatchOverlay({ size: 20, iconSize: 10 }) : null)
           }
+          imageInnerOverlay={demoAvatarOverlay}
         >
           {viewMode !== "mini" && (
             <p className="text-base-content/80 mb-4">
@@ -1167,7 +1230,7 @@ const VacantRoleCard = ({
         <div className="flex-shrink-0">
           {isFilled && filledUser ? (
             <div className="avatar">
-              <div className={`${avatarSizeClass} rounded-full relative`}>
+              <div className={`${avatarSizeClass} rounded-full relative overflow-hidden`}>
                 {filledUserAvatarUrl ? (
                   <img
                     src={filledUserAvatarUrl}
@@ -1189,6 +1252,7 @@ const VacantRoleCard = ({
                     {getUserInitials(filledUser)}
                   </span>
                 </div>
+                {compactDemoAvatarOverlay}
                 {miniMatchOverlay}
               </div>
             </div>
@@ -1204,15 +1268,17 @@ const VacantRoleCard = ({
                   >
                     {pct}%
                   </span>
+                  {compactDemoAvatarOverlay}
                 </div>
               </div>
             </Tooltip>
           ) : (
             <div className="avatar placeholder">
               <div
-                className={`${initialsAvatarClass} ${avatarSizeClass} rounded-full relative flex items-center justify-center`}
+                className={`${initialsAvatarClass} ${avatarSizeClass} rounded-full relative flex items-center justify-center overflow-hidden`}
               >
                 <span className={avatarTextClass}>{getRoleInitials()}</span>
+                {compactDemoAvatarOverlay}
                 {miniMatchOverlay}
               </div>
             </div>
@@ -1358,17 +1424,20 @@ const VacantRoleCard = ({
               <div className="flex items-center gap-1 text-xs text-base-content/60">
                 <UserCheck size={12} className="shrink-0" />
                 <span className="truncate">{filledByText}</span>
+                {demoRoleMetaItem}
               </div>
-            ) : locationText ? (
+            ) : locationText || (!is_remote && max_distance_km) || demoRoleMetaItem ? (
               <div className="flex flex-wrap items-center gap-2 text-xs text-base-content/60">
-                <span className="flex items-center gap-1 min-w-0">
-                  {is_remote ? (
-                    <Globe size={12} className="shrink-0" />
-                  ) : (
-                    <MapPin size={12} className="shrink-0" />
-                  )}
-                  <span className="truncate">{locationText}</span>
-                </span>
+                {locationText && (
+                  <span className="flex items-center gap-1 min-w-0">
+                    {is_remote ? (
+                      <Globe size={12} className="shrink-0" />
+                    ) : (
+                      <MapPin size={12} className="shrink-0" />
+                    )}
+                    <span className="truncate">{locationText}</span>
+                  </span>
+                )}
 
                 {!is_remote && max_distance_km && (
                   <span className="flex items-center gap-1 text-base-content/50">
@@ -1376,23 +1445,28 @@ const VacantRoleCard = ({
                     <span>{max_distance_km} km</span>
                   </span>
                 )}
+                {demoRoleMetaItem}
               </div>
             ) : null
           ) : isFilled ? (
             <CardMetaRow>
               <CardMetaItem icon={UserCheck}>{filledByText}</CardMetaItem>
+              {demoRoleMetaItem}
             </CardMetaRow>
-          ) : locationText ? (
+          ) : locationText || (!is_remote && max_distance_km) || demoRoleMetaItem ? (
             <CardMetaRow>
-              <CardMetaItem icon={is_remote ? Globe : MapPin}>
-                {locationText}
-              </CardMetaItem>
+              {locationText && (
+                <CardMetaItem icon={is_remote ? Globe : MapPin}>
+                  {locationText}
+                </CardMetaItem>
+              )}
 
               {!is_remote && max_distance_km && (
                 <CardMetaItem icon={CircleDot} tone="muted" nowrap>
                   {max_distance_km} km
                 </CardMetaItem>
               )}
+              {demoRoleMetaItem}
             </CardMetaRow>
           ) : null}
         </div>

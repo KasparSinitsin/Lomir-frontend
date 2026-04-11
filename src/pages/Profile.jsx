@@ -9,6 +9,7 @@ import Card from "../components/common/Card";
 import Button from "../components/common/Button";
 import DataDisplay from "../components/common/DataDisplay";
 import Alert from "../components/common/Alert";
+import Tooltip from "../components/common/Tooltip";
 import { uploadToImageKit } from "../config/imagekit";
 import {
   Mail,
@@ -21,6 +22,7 @@ import {
   Camera,
   Tag,
   Calendar,
+  FlaskConical,
 } from "lucide-react";
 import useAwardModals from "../hooks/useAwardModals";
 import { CATEGORY_COLORS } from "../constants/badgeConstants";
@@ -37,7 +39,12 @@ import LocationDisplay from "../components/common/LocationDisplay";
 import { geocodingService } from "../services/geocodingService";
 import { useLocationAutoFill } from "../hooks/useLocationAutoFill";
 import ImageUploader from "../components/common/ImageUploader";
-import { getUserInitials } from "../utils/userHelpers";
+import {
+  DEMO_PROFILE_TOOLTIP,
+  getUserInitials,
+  isSyntheticUser,
+} from "../utils/userHelpers";
+import DemoAvatarOverlay from "../components/users/DemoAvatarOverlay";
 import Modal from "../components/common/Modal";
 import LocationInput from "../components/common/LocationInput";
 import { format } from "date-fns";
@@ -944,7 +951,7 @@ const Profile = () => {
               {/* Avatar */}
               <div className="mb-4 md:mb-0 md:mr-8 flex-shrink-0">
                 <div className="avatar placeholder">
-                  <div className="bg-primary text-primary-content rounded-full w-32 h-32">
+                  <div className="bg-primary text-primary-content rounded-full w-32 h-32 relative overflow-hidden">
                     {(user.avatarUrl || user.avatar_url) && !imageError ? (
                       <img
                         src={user.avatarUrl || user.avatar_url}
@@ -955,6 +962,7 @@ const Profile = () => {
                     ) : (
                       <span className="text-4xl">{getUserInitials(user)}</span>
                     )}
+                    {isSyntheticUser(user) && <DemoAvatarOverlay textClassName="text-[14px]" textTranslateClassName="-translate-y-[7px]" />}
                   </div>
                 </div>
               </div>
@@ -990,6 +998,15 @@ const Profile = () => {
                       </>
                     )}
                   </div>
+                  {isSyntheticUser(user) && (
+                    <Tooltip
+                      content={DEMO_PROFILE_TOOLTIP}
+                      wrapperClassName="flex items-start text-base-content/50"
+                    >
+                      <FlaskConical className="h-3.5 w-auto mr-0.5 flex-shrink-0 mt-px" />
+                      <span className="leading-[1.15]">Demo Profile</span>
+                    </Tooltip>
+                  )}
                 </div>
               </div>
 

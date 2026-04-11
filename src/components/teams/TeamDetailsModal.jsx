@@ -14,6 +14,7 @@ import { userService } from "../../services/userService";
 import Button from "../common/Button";
 import SendMessageButton from "../common/SendMessageButton";
 import Alert from "../common/Alert";
+import Tooltip from "../common/Tooltip";
 import TagDisplay from "../common/TagDisplay";
 import LocationDisplay from "../common/LocationDisplay";
 import { uploadToImageKit } from "../../config/imagekit";
@@ -30,9 +31,11 @@ import {
   SendHorizontal,
   Archive,
   Check,
+  FlaskConical,
 } from "lucide-react";
 import VisibilityToggle from "../common/VisibilityToggle";
 import UserDetailsModal from "../users/UserDetailsModal";
+import DemoAvatarOverlay from "../users/DemoAvatarOverlay";
 import TagsDisplaySection from "../tags/TagsDisplaySection";
 import { UI_TEXT } from "../../constants/uiText";
 import { tagService } from "../../services/tagService";
@@ -57,6 +60,7 @@ import {
 } from "../../utils/teamMatchUtils";
 import { getMatchTier } from "../../utils/matchScoreUtils";
 import { calculateDistanceKm } from "../../utils/locationUtils";
+import { DEMO_TEAM_TOOLTIP, isSyntheticTeam } from "../../utils/userHelpers";
 
 const normalizeTeamTagIds = (team) => {
   const raw = team?.tags ?? team?.tags_json ?? team?.selectedTags ?? [];
@@ -1419,7 +1423,7 @@ const TeamDetailsModal = ({
                 {/* Team header with avatar */}
                 <div className="flex items-start space-x-4 mb-6">
                   <div className="avatar placeholder relative">
-                    <div className="bg-primary text-primary-content rounded-full w-16 h-16 flex items-center justify-center">
+                    <div className="bg-primary text-primary-content rounded-full w-16 h-16 relative flex items-center justify-center overflow-hidden">
                       {(team?.teamavatar_url || team?.teamavatarUrl) &&
                       !teamImageError ? (
                         <img
@@ -1430,6 +1434,12 @@ const TeamDetailsModal = ({
                         />
                       ) : (
                         <span className="text-xl">{getTeamInitials()}</span>
+                      )}
+                      {isSyntheticTeam(team) && (
+                        <DemoAvatarOverlay
+                          textClassName="text-[9px]"
+                          textTranslateClassName="-translate-y-[4px]"
+                        />
                       )}
                     </div>
                     {teamMatchTier && (
@@ -1496,6 +1506,16 @@ const TeamDetailsModal = ({
                             )}
                           </div>
                         )}
+
+                      {isSyntheticTeam(team) && (
+                        <Tooltip
+                          content={DEMO_TEAM_TOOLTIP}
+                          wrapperClassName="flex items-center gap-1 text-base-content/50 text-sm"
+                        >
+                          <FlaskConical size={14} className="flex-shrink-0" />
+                          <span>Demo Team</span>
+                        </Tooltip>
+                      )}
                     </div>
                   </div>
                 </div>

@@ -4,7 +4,8 @@ import { useAuth } from "../../contexts/AuthContext";
 import LomirLogo from "../../assets/images/Lomir-logowordmark-color.svg";
 import { Bell, MessageCircle, Search, User, Settings, LogOut } from "lucide-react";
 import Colors from "../../utils/Colors";
-import { getUserInitials } from "../../utils/userHelpers";
+import DemoAvatarOverlay from "../users/DemoAvatarOverlay";
+import { getUserInitials, isSyntheticUser } from "../../utils/userHelpers";
 import { messageService } from "../../services/messageService";
 import { notificationService } from "../../services/notificationService";
 import socketService from "../../services/socketService";
@@ -303,7 +304,7 @@ const Navbar = () => {
                 tabIndex={0}
                 className="btn btn-circle avatar bg-primary text-white btn-sm sm:btn-md"
               >
-                <div className="rounded-full flex items-center justify-center text-sm sm:text-base">
+                <div className="rounded-full flex items-center justify-center text-sm sm:text-base relative overflow-hidden w-full h-full">
                   {(user.avatarUrl || user.avatar_url) && !imageError ? (
                     <img
                       src={user.avatarUrl || user.avatar_url}
@@ -313,6 +314,9 @@ const Navbar = () => {
                     />
                   ) : (
                     <span>{getUserInitials(user)}</span>
+                  )}
+                  {isSyntheticUser(user) && (
+                    <DemoAvatarOverlay textClassName="text-[7px]" />
                   )}
                 </div>
               </label>

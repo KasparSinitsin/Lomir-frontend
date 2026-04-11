@@ -2,10 +2,25 @@ import React from "react";
 import Card from "../common/Card";
 import Button from "../common/Button";
 import Tooltip from "../common/Tooltip";
-import { Eye, EyeClosed, MapPin, Globe, Tag, Award, Ruler, User } from "lucide-react";
+import {
+  Eye,
+  EyeClosed,
+  MapPin,
+  Globe,
+  Tag,
+  Award,
+  Ruler,
+  User,
+  FlaskConical,
+} from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 import { useUserModal } from "../../contexts/UserModalContext";
-import { getUserInitials } from "../../utils/userHelpers";
+import {
+  DEMO_PROFILE_TOOLTIP,
+  getUserInitials,
+  isSyntheticUser,
+} from "../../utils/userHelpers";
+import DemoAvatarOverlay from "./DemoAvatarOverlay";
 import LocationDistanceTagsRow from "../common/LocationDistanceTagsRow";
 import SearchResultTypeOverlay from "../common/SearchResultTypeOverlay";
 import { getMatchTier } from "../../utils/matchScoreUtils";
@@ -190,6 +205,24 @@ const UserCard = ({
   ) : (
     matchOverlay
   );
+  const demoAvatarOverlay = isSyntheticUser(user) ? (
+    <DemoAvatarOverlay
+      textClassName={
+        viewMode === "list"
+          ? "text-[5px]"
+          : viewMode === "mini"
+            ? "text-[9px]"
+            : "text-[10px]"
+      }
+      textTranslateClassName={
+        viewMode === "list"
+          ? "-translate-y-[2px]"
+          : viewMode === "mini"
+            ? "-translate-y-[4px]"
+            : "-translate-y-[4px]"
+      }
+    />
+  ) : null;
 
   // ============ LIST VIEW ============
   if (viewMode === "list") {
@@ -222,8 +255,13 @@ const UserCard = ({
         ? visibleBadges.join(", ") + (remainingBadges > 0 ? ` +${remainingBadges}` : "")
         : "";
 
-    const listSubtitle = (scoreSubtitleItem || user.username || shouldShowVisibilityIcon()) ? (
-      <span className="flex items-center gap-1">
+    const listSubtitle = (
+      scoreSubtitleItem ||
+      user.username ||
+      isSyntheticUser(user) ||
+      shouldShowVisibilityIcon()
+    ) ? (
+      <span className="flex min-w-0 flex-nowrap items-center gap-1 overflow-hidden whitespace-nowrap text-base-content/60">
         {scoreSubtitleItem}
         {user.username && <span>@{user.username}</span>}
         {shouldShowVisibilityIcon() && (
@@ -233,6 +271,14 @@ const UserCard = ({
             ) : (
               <EyeClosed size={11} className="text-gray-500" />
             )}
+          </Tooltip>
+        )}
+        {isSyntheticUser(user) && (
+          <Tooltip
+            content={DEMO_PROFILE_TOOLTIP}
+            wrapperClassName="flex items-center whitespace-nowrap text-base-content/50"
+          >
+            <FlaskConical className="h-[11px] w-auto flex-shrink-0" />
           </Tooltip>
         )}
       </span>
@@ -250,6 +296,7 @@ const UserCard = ({
         className=""
         clickTooltip="Click to view User details"
         imageOverlay={avatarOverlay}
+        imageInnerOverlay={demoAvatarOverlay}
       >
         <div className="w-56 flex-shrink-0 flex items-center gap-3 overflow-hidden">
           <div className="w-16 flex-shrink-0 overflow-hidden">
@@ -305,7 +352,7 @@ const UserCard = ({
       title={displayName()}
       subtitle={
         <span
-          className={`flex items-center flex-wrap text-base-content/70 ${viewMode === "mini" ? "text-xs gap-x-1 gap-y-0.5 w-full" : "text-sm gap-1.5"}`}
+          className={`flex items-center flex-wrap leading-snug text-base-content/70 ${viewMode === "mini" ? "text-xs gap-x-1 gap-y-px w-full" : "text-sm gap-x-1.5 gap-y-px"}`}
         >
           {scoreSubtitleItem}
           {user.username && <span>@{user.username}</span>}
@@ -346,6 +393,19 @@ const UserCard = ({
                 </span>
               </span>
             )}
+          {isSyntheticUser(user) && (
+            <Tooltip
+              content={DEMO_PROFILE_TOOLTIP}
+              wrapperClassName="flex items-start text-base-content/50"
+            >
+              <FlaskConical
+                className={`w-auto mr-0.5 flex-shrink-0 ${viewMode === "mini" ? "h-3 mt-px" : "h-[13px] mt-px"}`}
+              />
+              <span className="leading-[1.15]">
+                {viewMode === "mini" ? "Demo" : "Demo Profile"}
+              </span>
+            </Tooltip>
+          )}
         </span>
       }
       hoverable
@@ -373,6 +433,7 @@ const UserCard = ({
       }
       marginClassName={viewMode === "mini" ? "mb-2" : ""}
       imageOverlay={avatarOverlay}
+      imageInnerOverlay={demoAvatarOverlay}
     >
       {viewMode !== "mini" && (user.bio || user.biography) && (
         <p className="text-base-content/80 mb-4">

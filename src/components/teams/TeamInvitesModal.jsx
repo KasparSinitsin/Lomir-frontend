@@ -1,15 +1,28 @@
 import React, { useState, useEffect, useRef } from "react";
-import { User, MapPin, Calendar, SendHorizontal } from "lucide-react";
+import {
+  User,
+  MapPin,
+  Calendar,
+  SendHorizontal,
+  FlaskConical,
+} from "lucide-react";
 import RequestListModal from "../common/RequestListModal";
 import Button from "../common/Button";
+import Tooltip from "../common/Tooltip";
 import InlineUserLink, { InvitedByLink } from "../users/InlineUserLink";
+import DemoAvatarOverlay from "../users/DemoAvatarOverlay";
 import VacantRoleCard from "./VacantRoleCard";
 import { matchingService } from "../../services/matchingService";
 import { userService } from "../../services/userService";
 import { vacantRoleService } from "../../services/vacantRoleService";
 import { useAuth } from "../../contexts/AuthContext";
 import { useUserModal } from "../../contexts/UserModalContext";
-import { getUserInitials, getDisplayName } from "../../utils/userHelpers";
+import {
+  DEMO_PROFILE_TOOLTIP,
+  getUserInitials,
+  getDisplayName,
+  isSyntheticUser,
+} from "../../utils/userHelpers";
 import { calculateDistanceKm } from "../../utils/locationUtils";
 import { format } from "date-fns";
 
@@ -600,6 +613,32 @@ const TeamInvitesModal = ({
           invitation?.roleId ??
           invitation?.role_id ??
           null;
+        const syntheticRoleFlag =
+          invitation?.role?.is_synthetic ??
+          invitation?.role?.isSynthetic ??
+          invitation?.role_is_synthetic ??
+          invitation?.roleIsSynthetic ??
+          invitation?.is_synthetic ??
+          invitation?.isSynthetic;
+        const roleForCard = invitation?.role
+          ? {
+              ...invitation.role,
+              is_synthetic:
+                invitation.role.is_synthetic ??
+                invitation.role.isSynthetic ??
+                syntheticRoleFlag,
+              isSynthetic:
+                invitation.role.isSynthetic ??
+                invitation.role.is_synthetic ??
+                syntheticRoleFlag,
+            }
+          : {
+              id: invitation?.roleId ?? invitation?.role_id,
+              roleName: invitation?.roleName ?? invitation?.role_name,
+              role_name: invitation?.role_name ?? invitation?.roleName,
+              is_synthetic: syntheticRoleFlag,
+              isSynthetic: syntheticRoleFlag,
+            };
         const isSelfInvitation =
           currentUser?.id === (invitation.invitee?.id ?? invitation.invitee_id);
         const inviteeRoleMatch =
@@ -620,6 +659,11 @@ const TeamInvitesModal = ({
           highlightUserId != null &&
           inviteeId != null &&
           String(inviteeId) === String(highlightUserId);
+        const showInviteeUsername =
+          invitation.invitee?.username &&
+          (getDisplayName(invitation.invitee) !== invitation.invitee?.username ||
+            isSyntheticUser(invitation.invitee));
+        const showInviteeDemoProfile = isSyntheticUser(invitation.invitee);
 
         return (
           <div
@@ -639,7 +683,7 @@ const TeamInvitesModal = ({
                 onClick={() => handleInviteeClick(invitation.invitee?.id)}
                 title="View profile"
               >
-                <div className="w-10 h-10 rounded-full relative">
+                <div className="w-10 h-10 rounded-full relative overflow-hidden">
                   {getAvatarUrl(invitation.invitee) ? (
                     <img
                       src={getAvatarUrl(invitation.invitee)}
@@ -668,6 +712,9 @@ const TeamInvitesModal = ({
                       {getUserInitials(invitation.invitee)}
                     </span>
                   </div>
+                  {isSyntheticUser(invitation.invitee) && (
+                    <DemoAvatarOverlay textClassName="text-[7px]" />
+                  )}
                 </div>
               </div>
 
@@ -681,11 +728,23 @@ const TeamInvitesModal = ({
                 >
                   {getDisplayName(invitation.invitee)}
                 </h4>
-                {/* Username */}
-                {invitation.invitee?.username && (
-                  <p className="text-sm text-base-content/70">
-                    @{invitation.invitee.username}
-                  </p>
+                {(showInviteeUsername || showInviteeDemoProfile) && (
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                    {showInviteeUsername && (
+                      <p className="text-xs text-base-content/70">
+                        @{invitation.invitee.username}
+                      </p>
+                    )}
+                    {showInviteeDemoProfile && (
+                      <Tooltip
+                        content={DEMO_PROFILE_TOOLTIP}
+                        wrapperClassName="flex items-center gap-0.5 text-base-content/50 text-xs"
+                      >
+                        <FlaskConical size={12} className="flex-shrink-0" />
+                        <span>Demo Profile</span>
+                      </Tooltip>
+                    )}
+                  </div>
                 )}
               </div>
 
@@ -720,7 +779,7 @@ const TeamInvitesModal = ({
             {(invitation.role || invitation.roleId || invitation.role_id) && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-3">
                 <VacantRoleCard
-                  role={invitation.role || { id: invitation.roleId ?? invitation.role_id, roleName: invitation.roleName ?? invitation.role_name }}
+                  role={roleForCard}
                   team={{ id: teamId, name: teamName }}
                   matchScore={
                     inviteeRoleMatch?.matchScore ??

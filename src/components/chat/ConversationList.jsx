@@ -1,13 +1,21 @@
 import React, { useState, useEffect, useRef } from "react";
-import { getTeamInitials } from "../../utils/userHelpers";
+import { getTeamInitials, isSyntheticTeam } from "../../utils/userHelpers";
 import { formatDistanceToNow } from "date-fns";
 import TeamDetailsModal from "../teams/TeamDetailsModal";
 import UserDetailsModal from "../users/UserDetailsModal";
 import UserAvatar from "../users/UserAvatar";
+import DemoAvatarOverlay from "../users/DemoAvatarOverlay";
 import {
   DELETED_USER_DISPLAY_NAME,
   getDisplayName as getDeletedUserDisplayName,
 } from "../../utils/deletedUser";
+import {
+  getCachedChatTeamProfile,
+  getCachedChatUserProfile,
+  getTeamAvatarUrl,
+  mergeResolvedTeamData,
+  mergeResolvedUserData,
+} from "../../utils/chatEntityResolvers";
 
 const ConversationList = ({
   conversations,
@@ -26,6 +34,8 @@ const ConversationList = ({
   // State for user details modal
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState(null);
+  const [resolvedConversationUsers, setResolvedConversationUsers] = useState({});
+  const [resolvedConversationTeams, setResolvedConversationTeams] = useState({});
 
   // Ref for the active conversation item
   const activeConversationRef = useRef(null);
@@ -43,6 +53,102 @@ const ConversationList = ({
       return () => clearTimeout(timer);
     }
   }, [activeConversationId]);
+
+  useEffect(() => {
+    const userIdsToFetch = [];
+    const teamIdsToFetch = [];
+
+    conversations.forEach((conversation) => {
+      if (conversation.type === "team") {
+        const team = conversation.team;
+        const teamId = team?.id ?? conversation.id;
+
+        if (
+          teamId != null &&
+          (!getTeamAvatarUrl(team) ||
+            (team?.is_synthetic == null && team?.isSynthetic == null))
+        ) {
+          teamIdsToFetch.push(teamId);
+        }
+
+        return;
+      }
+
+      const partner = conversation.partner || conversation.partnerUser;
+      const userId = partner?.id;
+
+      if (
+        userId != null &&
+        (!(partner?.avatar_url || partner?.avatarUrl) ||
+          (partner?.is_synthetic == null && partner?.isSynthetic == null))
+      ) {
+        userIdsToFetch.push(userId);
+      }
+    });
+
+    const uniqueUserIds = [...new Set(userIdsToFetch)];
+    const uniqueTeamIds = [...new Set(teamIdsToFetch)];
+
+    if (uniqueUserIds.length === 0 && uniqueTeamIds.length === 0) {
+      return undefined;
+    }
+
+    let cancelled = false;
+
+    if (uniqueUserIds.length > 0) {
+      Promise.allSettled(
+        uniqueUserIds.map(async (userId) => ({
+          userId,
+          profile: await getCachedChatUserProfile(userId),
+        })),
+      ).then((results) => {
+        if (cancelled) return;
+
+        const fetchedProfiles = {};
+
+        results.forEach((result) => {
+          if (result.status !== "fulfilled") return;
+          fetchedProfiles[String(result.value.userId)] = result.value.profile;
+        });
+
+        if (Object.keys(fetchedProfiles).length > 0) {
+          setResolvedConversationUsers((prev) => ({
+            ...prev,
+            ...fetchedProfiles,
+          }));
+        }
+      });
+    }
+
+    if (uniqueTeamIds.length > 0) {
+      Promise.allSettled(
+        uniqueTeamIds.map(async (teamId) => ({
+          teamId,
+          profile: await getCachedChatTeamProfile(teamId),
+        })),
+      ).then((results) => {
+        if (cancelled) return;
+
+        const fetchedProfiles = {};
+
+        results.forEach((result) => {
+          if (result.status !== "fulfilled") return;
+          fetchedProfiles[String(result.value.teamId)] = result.value.profile;
+        });
+
+        if (Object.keys(fetchedProfiles).length > 0) {
+          setResolvedConversationTeams((prev) => ({
+            ...prev,
+            ...fetchedProfiles,
+          }));
+        }
+      });
+    }
+
+    return () => {
+      cancelled = true;
+    };
+  }, [conversations]);
 
   useEffect(() => {
     if (
@@ -114,9 +220,25 @@ const ConversationList = ({
         {conversations.map((conversation) => {
           // Handle both direct messages and team conversations
           const isTeam = conversation.type === "team";
-          const conversationData = isTeam
+          const rawConversationData = isTeam
             ? conversation.team
             : conversation.partner || conversation.partnerUser;
+          const conversationEntityId = isTeam
+            ? rawConversationData?.id ?? conversation.id
+            : rawConversationData?.id;
+          const conversationData = isTeam
+            ? mergeResolvedTeamData(
+                rawConversationData,
+                conversationEntityId != null
+                  ? resolvedConversationTeams[String(conversationEntityId)]
+                  : null,
+              )
+            : mergeResolvedUserData(
+                rawConversationData,
+                conversationEntityId != null
+                  ? resolvedConversationUsers[String(conversationEntityId)]
+                  : null,
+              );
           const directDisplayName = isTeam
             ? ""
             : getDeletedUserDisplayName(conversationData, "");
@@ -172,10 +294,10 @@ const ConversationList = ({
                   }
                 >
                   {isTeam ? (
-                    <div className="w-12 h-12 rounded-full relative">
-                      {conversationData?.avatarUrl ? (
+                    <div className="w-12 h-12 rounded-full relative overflow-hidden">
+                      {getTeamAvatarUrl(conversationData) ? (
                         <img
-                          src={conversationData.avatarUrl}
+                          src={getTeamAvatarUrl(conversationData)}
                           alt={displayName}
                           className="object-cover w-full h-full rounded-full"
                           onError={(e) => {
@@ -191,13 +313,18 @@ const ConversationList = ({
                       <div
                         className="avatar-fallback bg-primary text-primary-content flex items-center justify-center w-full h-full rounded-full absolute inset-0"
                         style={{
-                          display: conversationData?.avatarUrl ? "none" : "flex",
+                          display: getTeamAvatarUrl(conversationData)
+                            ? "none"
+                            : "flex",
                         }}
                       >
                         <span className="text-lg font-medium">
                           {getTeamInitials(conversationData)}
                         </span>
                       </div>
+                      {isSyntheticTeam(conversationData) && (
+                        <DemoAvatarOverlay textClassName="text-[7px]" />
+                      )}
                     </div>
                   ) : (
                     <UserAvatar
@@ -206,6 +333,9 @@ const ConversationList = ({
                       sizeClass="w-12 h-12"
                       iconSize={24}
                       initialsClassName="text-lg font-medium"
+                      showDemoOverlay
+                      demoOverlayTextClassName="text-[7px]"
+                      demoOverlayTextTranslateClassName="-translate-y-[2px]"
                     />
                   )}
                   {isOnline && (

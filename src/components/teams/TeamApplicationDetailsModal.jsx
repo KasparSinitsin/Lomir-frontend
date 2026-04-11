@@ -1,11 +1,23 @@
 import React, { useState } from "react";
-import { Calendar, Users, X, SendHorizontal } from "lucide-react";
+import {
+  Calendar,
+  Users,
+  X,
+  SendHorizontal,
+  FlaskConical,
+} from "lucide-react";
 import Modal from "../common/Modal";
 import Button from "../common/Button";
+import Tooltip from "../common/Tooltip";
 import TeamDetailsModal from "./TeamDetailsModal";
 import UserDetailsModal from "../users/UserDetailsModal";
+import InlineUserLink from "../users/InlineUserLink";
 import VacantRoleCard from "./VacantRoleCard";
-import { getUserInitials } from '../../utils/userHelpers';
+import DemoAvatarOverlay from "../users/DemoAvatarOverlay";
+import {
+  DEMO_TEAM_TOOLTIP,
+  isSyntheticTeam,
+} from "../../utils/userHelpers";
 import Alert from "../common/Alert";
 import { format } from "date-fns";
 import { useHydratedRole } from "../../hooks/useHydratedRole";
@@ -47,7 +59,19 @@ const TeamApplicationDetailsModal = ({
   // ============ Helpers ============
 
   // Get team data from application
-  const team = application?.team || {};
+  const baseTeam = application?.team || {};
+  const syntheticTeamFlag =
+    baseTeam?.is_synthetic ??
+    baseTeam?.isSynthetic ??
+    application?.team_is_synthetic ??
+    application?.teamIsSynthetic;
+  const team = {
+    ...baseTeam,
+    is_synthetic:
+      baseTeam?.is_synthetic ?? baseTeam?.isSynthetic ?? syntheticTeamFlag,
+    isSynthetic:
+      baseTeam?.isSynthetic ?? baseTeam?.is_synthetic ?? syntheticTeamFlag,
+  };
   const roleId = application?.role?.id ?? application?.roleId ?? null;
   const teamId = team?.id ?? null;
   const {
@@ -137,10 +161,6 @@ const TeamApplicationDetailsModal = ({
     return max === null || max === undefined ? "∞" : max;
   };
 
-  const getOwnerAvatar = () => {
-    return owner.avatar_url || owner.avatarUrl || null;
-  };
-
   const handleTeamClick = () => {
     if (team?.id) setIsTeamDetailsOpen(true);
   };
@@ -197,6 +217,45 @@ const TeamApplicationDetailsModal = ({
     application?.isInternalRoleApplication ?? application?.is_internal_role_application ?? false;
   const roleName =
     application?.role?.roleName ?? application?.role?.role_name ?? null;
+  const syntheticRoleFlag =
+    application?.role?.is_synthetic ??
+    application?.role?.isSynthetic ??
+    application?.role_is_synthetic ??
+    application?.roleIsSynthetic ??
+    application?.is_synthetic ??
+    application?.isSynthetic;
+  const roleForCard =
+    hydratedRole
+      ? {
+          ...hydratedRole,
+          is_synthetic:
+            hydratedRole.is_synthetic ??
+            hydratedRole.isSynthetic ??
+            syntheticRoleFlag,
+          isSynthetic:
+            hydratedRole.isSynthetic ??
+            hydratedRole.is_synthetic ??
+            syntheticRoleFlag,
+        }
+      : application?.role
+      ? {
+          ...application.role,
+          is_synthetic:
+            application.role.is_synthetic ??
+            application.role.isSynthetic ??
+            syntheticRoleFlag,
+          isSynthetic:
+            application.role.isSynthetic ??
+            application.role.is_synthetic ??
+            syntheticRoleFlag,
+        }
+      : {
+          id: application?.roleId,
+          roleName: application?.roleName ?? application?.role_name,
+          role_name: application?.role_name ?? application?.roleName,
+          is_synthetic: syntheticRoleFlag,
+          isSynthetic: syntheticRoleFlag,
+        };
 
   // Custom header
   const customHeader = (
@@ -220,57 +279,11 @@ const TeamApplicationDetailsModal = ({
   const footer = (
     <div className="flex items-center justify-between gap-3">
       {/* Received by (left) */}
-      <div className="flex items-center text-xs text-base-content/60">
-        <span className="mr-1">Received by</span>
-
-        {/* Owner Avatar */}
-        <div
-          className="avatar cursor-pointer hover:opacity-80 transition-opacity mr-1"
-          onClick={() => handleUserClick(owner?.id)}
-          title="View profile"
-        >
-          <div className="w-4 h-4 rounded-full relative">
-            {getOwnerAvatar() ? (
-              <img
-                src={getOwnerAvatar()}
-                alt="Owner"
-                className="object-cover w-full h-full rounded-full"
-                onError={(e) => {
-                  e.target.style.display = "none";
-                  const fallback =
-                    e.target.parentElement.querySelector(".avatar-fallback");
-                  if (fallback) fallback.style.display = "flex";
-                }}
-              />
-            ) : null}
-
-            {/* Fallback initials */}
-            <div
-              className="avatar-fallback bg-primary text-primary-content flex items-center justify-center w-full h-full rounded-full absolute inset-0"
-              style={{
-                display: getOwnerAvatar() ? "none" : "flex",
-                fontSize: "8px",
-              }}
-            >
-              <span className="font-medium">{getUserInitials(owner)}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Owner Name - consistent with TeamInvitationDetailsModal pattern */}
-        <span
-          className="font-medium text-base-content/80 cursor-pointer hover:text-primary transition-colors"
-          onClick={() => handleUserClick(owner?.id)}
-          title="View profile"
-        >
-          {(() => {
-            const firstName = owner.first_name || owner.firstName;
-            const lastName = owner.last_name || owner.lastName;
-            const full = `${firstName || ""} ${lastName || ""}`.trim();
-            return full.length > 0 ? full : "Unknown";
-          })()}
-        </span>
-      </div>
+      <InlineUserLink
+        label="Received by"
+        user={owner}
+        onOpenUser={handleUserClick}
+      />
 
       {/* Buttons (right) */}
       <div className="flex justify-end gap-2">
@@ -330,7 +343,7 @@ const TeamApplicationDetailsModal = ({
             title="View team details"
           >
             <div className="avatar">
-              <div className="w-12 h-12 rounded-full relative">
+              <div className="w-12 h-12 rounded-full relative overflow-hidden">
                 {getTeamAvatar() ? (
                   <img
                     src={getTeamAvatar()}
@@ -356,6 +369,13 @@ const TeamApplicationDetailsModal = ({
                     {getTeamInitials()}
                   </span>
                 </div>
+
+                {isSyntheticTeam(team) && (
+                  <DemoAvatarOverlay
+                    textClassName="text-[7px]"
+                    textTranslateClassName="-translate-y-[3px]"
+                  />
+                )}
               </div>
             </div>
 
@@ -363,10 +383,23 @@ const TeamApplicationDetailsModal = ({
               <h4 className="font-medium text-base-content hover:text-primary transition-colors leading-[120%] mb-[0.2em]">
                 {team.name || "Unknown Team"}
               </h4>
-              <p className="text-sm text-base-content/70 flex items-center">
-                <Users size={14} className="mr-1 text-primary" />
-                {getMemberCount()}/{getMaxMembers()}
-              </p>
+              <div className="text-sm text-base-content/70 flex items-center flex-wrap gap-x-1.5 gap-y-px">
+                <span className="flex items-center">
+                  <Users size={14} className="mr-1 text-primary" />
+                  <span>
+                    {getMemberCount()}/{getMaxMembers()}
+                  </span>
+                </span>
+                {isSyntheticTeam(team) && (
+                  <Tooltip
+                    content={DEMO_TEAM_TOOLTIP}
+                    wrapperClassName="flex items-center gap-1 text-base-content/50 text-sm"
+                  >
+                    <FlaskConical size={14} className="flex-shrink-0" />
+                    <span>Demo Team</span>
+                  </Tooltip>
+                )}
+              </div>
             </div>
           </div>
 
@@ -388,7 +421,7 @@ const TeamApplicationDetailsModal = ({
         {(application?.role || application?.roleId) && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
             <VacantRoleCard
-              role={hydratedRole ?? application?.role ?? { id: application?.roleId }}
+              role={roleForCard}
               team={team}
               matchScore={roleMatchScore}
               matchDetails={roleMatchDetails}

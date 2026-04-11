@@ -240,6 +240,14 @@ export const AuthProvider = ({ children }) => {
         newUser.is_public = userData.isPublic;
       }
 
+      if (userData.is_synthetic !== undefined) {
+        newUser.is_synthetic = userData.is_synthetic;
+        newUser.isSynthetic = userData.is_synthetic;
+      } else if (userData.isSynthetic !== undefined) {
+        newUser.isSynthetic = userData.isSynthetic;
+        newUser.is_synthetic = userData.isSynthetic;
+      }
+
       // Ensure we don't override with undefined values
       if (newUser.is_public === undefined && newUser.isPublic === undefined) {
         // Keep the existing values if both are undefined

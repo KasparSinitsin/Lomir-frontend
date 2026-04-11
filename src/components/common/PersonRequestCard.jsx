@@ -1,8 +1,14 @@
 import React from "react";
-import { Calendar, MapPin } from "lucide-react";
+import { Calendar, MapPin, FlaskConical } from "lucide-react";
 import { format } from "date-fns";
 import LocationDisplay from "./LocationDisplay";
-import { getUserInitials } from "../../utils/userHelpers";
+import Tooltip from "./Tooltip";
+import {
+  DEMO_PROFILE_TOOLTIP,
+  getUserInitials,
+  isSyntheticUser,
+} from "../../utils/userHelpers";
+import DemoAvatarOverlay from "../users/DemoAvatarOverlay";
 
 /**
  * PersonRequestCard Component
@@ -90,6 +96,10 @@ const PersonRequestCard = ({
   const clickableTextStyles = clickable
     ? "cursor-pointer hover:text-primary transition-colors"
     : "";
+  const showUsername =
+    user?.username &&
+    (getDisplayName() !== user.username || isSyntheticUser(user));
+  const showDemoProfile = isSyntheticUser(user);
 
   // ============ Render ============
 
@@ -103,7 +113,7 @@ const PersonRequestCard = ({
           onClick={handleUserClick}
           title={clickable ? "View profile" : undefined}
         >
-          <div className="w-12 h-12 rounded-full relative">
+          <div className="w-12 h-12 rounded-full relative overflow-hidden">
             {getAvatarUrl() ? (
               <img
                 src={getAvatarUrl()}
@@ -128,6 +138,7 @@ const PersonRequestCard = ({
                 {getUserInitials(user)}
               </span>
             </div>
+            {isSyntheticUser(user) && <DemoAvatarOverlay textClassName="text-[8px]" />}
           </div>
         </div>
 
@@ -141,15 +152,27 @@ const PersonRequestCard = ({
             {getDisplayName()}
           </h4>
 
-          {/* Username (if different from display name) */}
-          {user?.username && getDisplayName() !== user.username && (
-            <p
-              className={`text-sm text-base-content/70 ${clickableTextStyles}`}
-              onClick={handleUserClick}
-              title={clickable ? "View profile" : undefined}
-            >
-              @{user.username}
-            </p>
+          {(showUsername || showDemoProfile) && (
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+              {showUsername && (
+                <p
+                  className={`text-xs text-base-content/70 ${clickableTextStyles}`}
+                  onClick={handleUserClick}
+                  title={clickable ? "View profile" : undefined}
+                >
+                  @{user.username}
+                </p>
+              )}
+              {showDemoProfile && (
+                <Tooltip
+                  content={DEMO_PROFILE_TOOLTIP}
+                  wrapperClassName="flex items-center gap-0.5 text-base-content/50 text-xs"
+                >
+                  <FlaskConical size={12} className="flex-shrink-0" />
+                  <span>Demo Profile</span>
+                </Tooltip>
+              )}
+            </div>
           )}
 
           {/* Location if available and showLocation is true */}

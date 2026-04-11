@@ -81,6 +81,7 @@ const buildSearchParams = ({
   badgeIds = [],
   roleId = null,
   excludeTeamId = null,
+  includeDemoData = true,
 } = {}) => {
   const params = {
     authenticated: isAuthenticated,
@@ -90,6 +91,7 @@ const buildSearchParams = ({
     sortBy,
     sortDir,
     openRolesOnly,
+    includeDemoData: String(includeDemoData),
   };
 
   if (query) params.query = query;

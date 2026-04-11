@@ -1,10 +1,80 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
+import { FlaskConical } from "lucide-react";
 import { useUserModalSafe } from "../../contexts/UserModalContext";
+import { userService } from "../../services/userService";
+import Tooltip from "../common/Tooltip";
+import { DEMO_PROFILE_TOOLTIP } from "../../utils/userHelpers";
 import {
   getDisplayName,
   isDeletedUser,
 } from "../../utils/deletedUser";
 import UserAvatar from "./UserAvatar";
+
+const inlineUserProfileCache = new Map();
+
+const extractProfilePayload = (response) => {
+  const payload = response?.data ?? response;
+
+  if (!payload) return null;
+  if (payload?.success !== undefined) return payload?.data ?? null;
+
+  return payload?.data?.data ?? payload?.data ?? payload;
+};
+
+const getCachedInlineUserProfile = async (userId) => {
+  const cacheKey = String(userId);
+
+  if (inlineUserProfileCache.has(cacheKey)) {
+    return inlineUserProfileCache.get(cacheKey);
+  }
+
+  const request = (async () => {
+    const response = await userService.getUserById(userId);
+    return extractProfilePayload(response);
+  })();
+
+  inlineUserProfileCache.set(cacheKey, request);
+
+  try {
+    const result = await request;
+    inlineUserProfileCache.set(cacheKey, Promise.resolve(result));
+    return result;
+  } catch (error) {
+    inlineUserProfileCache.delete(cacheKey);
+    throw error;
+  }
+};
+
+const mergeInlineUserData = (user, profile) => {
+  if (!profile) return user;
+
+  const resolvedAvatarUrl =
+    user?.avatar_url ??
+    user?.avatarUrl ??
+    profile?.avatar_url ??
+    profile?.avatarUrl ??
+    null;
+  const resolvedSyntheticStatus =
+    user?.is_synthetic ??
+    user?.isSynthetic ??
+    profile?.is_synthetic ??
+    profile?.isSynthetic ??
+    undefined;
+
+  return {
+    ...profile,
+    ...user,
+    avatar_url: resolvedAvatarUrl,
+    avatarUrl:
+      user?.avatarUrl ??
+      user?.avatar_url ??
+      profile?.avatarUrl ??
+      profile?.avatar_url ??
+      null,
+    is_synthetic: resolvedSyntheticStatus,
+    isSynthetic: resolvedSyntheticStatus,
+  };
+};
 
 /**
  * InlineUserLink Component
@@ -47,16 +117,49 @@ const InlineUserLink = ({
 }) => {
   // Try to get global modal context (returns null if not available)
   const userModalContext = useUserModalSafe();
-
-  if (!user) return null;
+  const [resolvedInlineProfile, setResolvedInlineProfile] = useState(null);
 
   // Normalize user ID from various possible field names
   const userId = user?.id || user?.user_id || user?.userId;
-  const name = getDisplayName(user) || "Unknown";
   const isFormerUser = isDeletedUser(user);
+  const hasInlineAvatar = Boolean(user?.avatar_url || user?.avatarUrl);
+  const hasInlineSyntheticFlag =
+    user?.is_synthetic != null || user?.isSynthetic != null;
+  const needsInlineHydration =
+    !isFormerUser && Boolean(userId) && (!hasInlineAvatar || !hasInlineSyntheticFlag);
+
+  useEffect(() => {
+    if (!needsInlineHydration) {
+      setResolvedInlineProfile(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    getCachedInlineUserProfile(userId)
+      .then((profile) => {
+        if (!cancelled) {
+          setResolvedInlineProfile(profile);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setResolvedInlineProfile(null);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [needsInlineHydration, userId]);
+
+  if (!user) return null;
 
   // Determine if we can handle clicks
   const canClick = !isFormerUser && userId && (userModalContext || onOpenUser);
+  const inlineUser = mergeInlineUserData(user, resolvedInlineProfile);
+  const name = getDisplayName(inlineUser) || "Unknown";
+  const showDemoIndicator = !isFormerUser && Boolean(inlineUser?.is_synthetic || inlineUser?.isSynthetic);
 
   const handleClick = (e) => {
     if (!canClick) return;
@@ -82,7 +185,7 @@ const InlineUserLink = ({
       {/* Avatar */}
       {showAvatar && (
         <UserAvatar
-          user={user}
+          user={inlineUser}
           deleted={isFormerUser}
           sizeClass={avatarSize}
           className="mr-1"
@@ -108,6 +211,14 @@ const InlineUserLink = ({
       >
         {name}
       </span>
+      {showDemoIndicator && (
+        <Tooltip
+          content={DEMO_PROFILE_TOOLTIP}
+          wrapperClassName="ml-1 flex items-center text-base-content/50"
+        >
+          <FlaskConical size={10} className="shrink-0" />
+        </Tooltip>
+      )}
     </div>
   );
 };

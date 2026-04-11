@@ -1,6 +1,18 @@
 import React, { useState } from "react";
-import { Eye, EyeClosed, Calendar, UserCheck } from "lucide-react";
-import { getUserInitials } from "../../utils/userHelpers";
+import Tooltip from "../common/Tooltip";
+import {
+  Eye,
+  EyeClosed,
+  Calendar,
+  UserCheck,
+  FlaskConical,
+} from "lucide-react";
+import {
+  DEMO_PROFILE_TOOLTIP,
+  getUserInitials,
+  isSyntheticUser,
+} from "../../utils/userHelpers";
+import DemoAvatarOverlay from "./DemoAvatarOverlay";
 import { getMatchTier } from "../../utils/matchScoreUtils";
 import { format } from "date-fns";
 
@@ -87,7 +99,7 @@ const UserProfileHeaderSection = ({
     <div className={`flex items-start space-x-4 ${className}`}>
       {/* Avatar */}
       <div className="avatar relative">
-        <div className="w-20 h-20 rounded-full">
+        <div className="w-20 h-20 rounded-full relative overflow-hidden">
           {getProfileImage() && !imageError ? (
             <img
               src={getProfileImage()}
@@ -99,6 +111,12 @@ const UserProfileHeaderSection = ({
             <div className="bg-primary text-primary-content flex items-center justify-center w-full h-full rounded-full">
               <span className="text-2xl">{getUserInitials(user)}</span>
             </div>
+          )}
+          {isSyntheticUser(user) && (
+            <DemoAvatarOverlay
+              textClassName="text-[9px]"
+              textTranslateClassName="-translate-y-[4px]"
+            />
           )}
         </div>
         {matchTier && (
@@ -148,6 +166,15 @@ const UserProfileHeaderSection = ({
                 </>
               )}
             </div>
+          )}
+          {isSyntheticUser(user) && (
+            <Tooltip
+              content={DEMO_PROFILE_TOOLTIP}
+              wrapperClassName="flex items-start text-base-content/50 text-sm"
+            >
+              <FlaskConical className="h-3.5 w-auto mr-0.5 flex-shrink-0 mt-px" />
+              <span className="leading-[1.15]">Demo Profile</span>
+            </Tooltip>
           )}
         </div>
       </div>
