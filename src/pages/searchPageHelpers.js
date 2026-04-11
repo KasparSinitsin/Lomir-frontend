@@ -37,6 +37,7 @@ export const getSortOptionDisplay = ({
       IconComponent: option.iconAsc,
       label: option.labelAsc,
       shortLabel: option.shortLabelAsc,
+      tooltip: option.tooltipAsc,
     };
   }
 
@@ -47,6 +48,7 @@ export const getSortOptionDisplay = ({
       IconComponent: option.iconRemote,
       label: option.labelRemote,
       shortLabel: option.shortLabelRemote,
+      tooltip: option.tooltipRemote,
     };
   }
 
@@ -56,6 +58,7 @@ export const getSortOptionDisplay = ({
     IconComponent: option.iconDesc,
     label: option.labelDesc,
     shortLabel: option.shortLabelDesc,
+    tooltip: option.tooltipDesc,
   };
 };
 
@@ -109,6 +112,8 @@ export const getActiveCriteriaPills = ({
           : sortDir === "desc"
             ? "Farthest"
             : "Nearest",
+      shortLabel:
+        sortDir === "remote" ? "Remote" : sortDir === "desc" ? "Far" : "Near",
     });
   }
 

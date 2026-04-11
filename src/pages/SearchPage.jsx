@@ -246,6 +246,8 @@ const SearchPage = () => {
       labelDesc: "Name (Z-A)",
       shortLabelAsc: "A-Z",
       shortLabelDesc: "Z-A",
+      tooltipAsc: "Sort alphabetically from A to Z",
+      tooltipDesc: "Sort alphabetically from Z to A",
       iconAsc: ArrowDownAZ,
       iconDesc: ArrowUpZA,
       teamsOnly: false,
@@ -257,6 +259,8 @@ const SearchPage = () => {
       labelDesc: "Active",
       shortLabelAsc: "Inactive",
       shortLabelDesc: "Active",
+      tooltipAsc: "Show the least recently active results first",
+      tooltipDesc: "Show the most recently active results first",
       iconAsc: Clock,
       iconDesc: Clock,
       teamsOnly: false,
@@ -268,6 +272,8 @@ const SearchPage = () => {
       labelDesc: "Newest",
       shortLabelAsc: "Oldest",
       shortLabelDesc: "Newest",
+      tooltipAsc: "Show the oldest results first",
+      tooltipDesc: "Show the newest results first",
       iconAsc: Sparkles,
       iconDesc: Sparkles,
       teamsOnly: false,
@@ -277,6 +283,7 @@ const SearchPage = () => {
       defaultDir: "asc",
       labelAsc: "Best Match",
       shortLabelAsc: "Match",
+      tooltipAsc: "Sort results by how well they match your profile",
       iconAsc: Target,
       authOnly: true,
     },
@@ -289,6 +296,9 @@ const SearchPage = () => {
       shortLabelAsc: "Near",
       shortLabelDesc: "Far",
       shortLabelRemote: "Remote",
+      tooltipAsc: "Show the nearest results first",
+      tooltipDesc: "Show the farthest results first",
+      tooltipRemote: "Show remote-friendly results first",
       iconAsc: MapPin,
       iconDesc: MapPin,
       iconRemote: Globe,
@@ -300,6 +310,8 @@ const SearchPage = () => {
       labelDesc: "Most Spots",
       shortLabelAsc: "Full",
       shortLabelDesc: "Spots",
+      tooltipAsc: "Show teams with the fewest open spots first\nTeams only",
+      tooltipDesc: "Show teams with the most open spots first\nTeams only",
       iconAsc: UserMinus,
       iconDesc: UserPlus,
       teamsOnly: true,
@@ -1628,16 +1640,19 @@ const SearchPage = () => {
                     className="contents"
                   >
                     {visibleSortOptions.map((option) => {
-                      const { isActive, IconComponent, label, shortLabel } =
+                      const {
+                        isActive,
+                        IconComponent,
+                        label,
+                        shortLabel,
+                        tooltip,
+                      } =
                         getSortOptionDisplay({
                           option,
                           sortBy,
                           sortDir,
                           isCapacitySpotsSort,
                         });
-                      const optionTooltip = option.teamsOnly
-                        ? "Teams only"
-                        : undefined;
                       const optionButton = (
                         <button
                           ref={(node) => {
@@ -1653,7 +1668,7 @@ const SearchPage = () => {
                               : "text-[var(--color-primary-focus)]/70 hover:text-[var(--color-primary-focus)] hover:font-medium"
                           }`}
                           disabled={loading}
-                          aria-label={optionTooltip ? `${label} - ${optionTooltip}` : undefined}
+                          aria-label={tooltip ? `${label} - ${tooltip}` : label}
                         >
                           <IconComponent className="w-3.5 h-3.5 shrink-0" />
                           <span className="hidden sm:inline">{label}</span>
@@ -1661,10 +1676,10 @@ const SearchPage = () => {
                         </button>
                       );
 
-                      return optionTooltip ? (
+                      return tooltip ? (
                         <Tooltip
                           key={option.value}
-                          content={optionTooltip}
+                          content={tooltip}
                           wrapperClassName="inline-flex items-center shrink-0"
                         >
                           {optionButton}
