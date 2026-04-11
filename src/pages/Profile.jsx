@@ -962,7 +962,7 @@ const Profile = () => {
                     ) : (
                       <span className="text-4xl">{getUserInitials(user)}</span>
                     )}
-                    {isSyntheticUser(user) && <DemoAvatarOverlay textClassName="text-[11px]" />}
+                    {isSyntheticUser(user) && <DemoAvatarOverlay textClassName="text-[14px]" textTranslateClassName="-translate-y-[7px]" />}
                   </div>
                 </div>
               </div>
