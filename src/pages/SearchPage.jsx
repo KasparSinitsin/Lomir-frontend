@@ -16,11 +16,13 @@ import VacantRoleCard from "../components/teams/VacantRoleCard";
 import UserCard from "../components/users/UserCard";
 import Pagination from "../components/common/Pagination";
 import BooleanSearchInput from "../components/BooleanSearchInput";
+import Tooltip from "../components/common/Tooltip";
 import {
   User,
   UserSearch,
   Users2,
   Clock,
+  FlaskConical,
   Sparkles,
   ArrowDownAZ,
   ArrowUpZA,
@@ -121,6 +123,7 @@ const SearchPage = () => {
   const [userHasCoordinates, setUserHasCoordinates] = useState(false);
   const [openRolesOnly, setOpenRolesOnly] = useState(false);
   const [includeOwnTeams, setIncludeOwnTeams] = useState(true);
+  const [includeDemoData, setIncludeDemoData] = useState(true);
 
   // ===== CAPACITY FILTER STATE =====
   const [capacityMode, setCapacityMode] = useState("spots");
@@ -679,6 +682,7 @@ const SearchPage = () => {
     maxDistance,
     effectiveOpenRolesOnly,
     effectiveIncludeOwnTeams,
+    includeDemoData,
     matchRoleId,
     matchRoleName,
     excludeTeamId,
@@ -703,6 +707,7 @@ const SearchPage = () => {
           maxDistance,
           effectiveOpenRolesOnly,
           effectiveIncludeOwnTeams,
+          includeDemoData,
           capacityMode,
           filterTagIds,
           filterBadgeIds,
@@ -766,6 +771,7 @@ const SearchPage = () => {
     openRolesOnly,
     effectiveOpenRolesOnly,
     effectiveIncludeOwnTeams,
+    includeDemoData,
     capacityMode,
     hasSearched,
     searchQuery,
@@ -858,11 +864,32 @@ const SearchPage = () => {
         .filter(Boolean)
         .map((button) => button.getBoundingClientRect().top);
       const submenuHeight = submenuEl?.offsetHeight || 30;
+      const submenuItemRects = submenuEl
+        ? Array.from(
+            submenuEl.querySelectorAll('[data-submenu-item="true"]'),
+          ).map((item) => item.getBoundingClientRect())
+        : [];
+      const visibleSubmenuItemRects = submenuItemRects.filter(
+        (rect) => rect.width > 0 && rect.height > 0,
+      );
       const submenuWidth = submenuEl?.offsetWidth || 0;
 
       const submenuTop = anchorRect.bottom + 6;
       const anchorMidY = anchorRect.top + anchorRect.height / 2;
-      const submenuMidY = submenuTop + submenuHeight / 2;
+      const submenuAnchorHeight =
+        visibleSubmenuItemRects.length > 0
+          ? (() => {
+              const firstRowTop = Math.min(
+                ...visibleSubmenuItemRects.map((rect) => rect.top),
+              );
+              const firstRowRects = visibleSubmenuItemRects.filter(
+                (rect) => Math.abs(rect.top - firstRowTop) < 2,
+              );
+
+              return Math.max(...firstRowRects.map((rect) => rect.bottom)) - firstRowTop;
+            })()
+          : submenuHeight;
+      const submenuMidY = submenuTop + submenuAnchorHeight / 2;
       const firstRowTop =
         visibleButtonTops.length > 0
           ? Math.min(...visibleButtonTops)
@@ -1216,6 +1243,10 @@ const SearchPage = () => {
         setIncludeOwnTeams(true);
         setCurrentPage(1);
         break;
+      case "includeDemoData":
+        setIncludeDemoData(true);
+        setCurrentPage(1);
+        break;
       case "matchRole":
         setMatchRoleId(null);
         setMatchRoleName(null);
@@ -1290,6 +1321,7 @@ const SearchPage = () => {
     maxDistance !== null ||
     effectiveOpenRolesOnly ||
     !effectiveIncludeOwnTeams ||
+    !includeDemoData ||
     (sortBy === "capacity" && capacityMode !== "spots") ||
     (customDistanceInput && customDistanceInput.trim() !== "");
 
@@ -1309,6 +1341,7 @@ const SearchPage = () => {
         {activeSubmenuKey === "capacity" && (
           <div className="flex items-center justify-end gap-3 pr-1">
             <button
+              data-submenu-item="true"
               type="button"
               onClick={() => handleCapacityModeChange("roles")}
               disabled={loading}
@@ -1324,6 +1357,7 @@ const SearchPage = () => {
             </button>
 
             <button
+              data-submenu-item="true"
               type="button"
               onClick={handleOpenRolesOnlyToggle}
               disabled={loading}
@@ -1339,24 +1373,30 @@ const SearchPage = () => {
         )}
 
         {activeSubmenuKey === DISTANCE_SUBMENU_TYPE && (
-          <div className="flex items-center justify-end flex-wrap gap-1 pr-1">
-            {distancePresets.map((km) => (
-              <button
-                key={km}
-                type="button"
-                onClick={() => handleDistancePreset(km)}
-                disabled={loading}
-                className={`px-1 py-0.5 text-xs rounded transition-colors ${
-                  maxDistance === km
-                    ? "text-[var(--color-primary)] font-bold"
-                    : "text-[var(--color-primary-focus)] hover:text-[var(--color-primary-focus)] hover:font-medium"
-                }`}
-              >
-                {km}km
-              </button>
-            ))}
+          <div className="flex items-center justify-end flex-wrap gap-x-[5px] gap-y-1 pr-1">
+            <div className="hidden sm:contents">
+              {distancePresets.map((km) => (
+                <button
+                  data-submenu-item="true"
+                  key={km}
+                  type="button"
+                  onClick={() => handleDistancePreset(km)}
+                  disabled={loading}
+                  className={`px-1 text-xs leading-none rounded transition-colors ${
+                    maxDistance === km
+                      ? "text-[var(--color-primary)] font-bold"
+                      : "text-[var(--color-primary-focus)] hover:text-[var(--color-primary-focus)] hover:font-medium"
+                  }`}
+                >
+                  {km}km
+                </button>
+              ))}
+            </div>
 
-            <div className="flex items-center gap-0.5">
+            <div
+              data-submenu-item="true"
+              className="flex h-4 items-center gap-0.5"
+            >
               <input
                 type="number"
                 min="1"
@@ -1371,7 +1411,7 @@ const SearchPage = () => {
                     (customDistanceInput?.length || 0) + 2,
                   )}ch`,
                 }}
-                className={`px-1 py-0.5 text-xs rounded border transition-colors
+                className={`h-4 px-1 text-xs leading-none rounded border transition-colors
                 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none
                 ${
                   maxDistance && !distancePresets.includes(maxDistance)
@@ -1381,7 +1421,7 @@ const SearchPage = () => {
                 bg-transparent focus:outline-none focus:border-[var(--color-success)]`}
                 disabled={loading}
               />
-              <span className="text-xs text-[var(--color-primary-focus)]">
+              <span className="text-xs leading-none text-[var(--color-primary-focus)]">
                 km
               </span>
             </div>
@@ -1581,11 +1621,11 @@ const SearchPage = () => {
 
             {showSortDropdown && (
               <div className="mt-2 py-1 pl-11">
-                <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-start sm:gap-4">
+                <div className="flex flex-row flex-wrap items-start gap-x-3 gap-y-[6px]">
                   <div
                     role="group"
                     aria-label="Sort options"
-                    className="flex items-center gap-3 flex-wrap"
+                    className="contents"
                   >
                     {visibleSortOptions.map((option) => {
                       const { isActive, IconComponent, label, shortLabel } =
@@ -1595,10 +1635,11 @@ const SearchPage = () => {
                           sortDir,
                           isCapacitySpotsSort,
                         });
-
-                      return (
+                      const optionTooltip = option.teamsOnly
+                        ? "Teams only"
+                        : undefined;
+                      const optionButton = (
                         <button
-                          key={option.value}
                           ref={(node) => {
                             sortButtonRefs.current[option.value] = node;
                           }}
@@ -1612,12 +1653,26 @@ const SearchPage = () => {
                               : "text-[var(--color-primary-focus)]/70 hover:text-[var(--color-primary-focus)] hover:font-medium"
                           }`}
                           disabled={loading}
-                          title={option.teamsOnly ? "Teams only" : ""}
+                          aria-label={optionTooltip ? `${label} - ${optionTooltip}` : undefined}
                         >
                           <IconComponent className="w-3.5 h-3.5 shrink-0" />
                           <span className="hidden sm:inline">{label}</span>
                           <span className="sm:hidden">{shortLabel}</span>
                         </button>
+                      );
+
+                      return optionTooltip ? (
+                        <Tooltip
+                          key={option.value}
+                          content={optionTooltip}
+                          wrapperClassName="inline-flex items-center shrink-0"
+                        >
+                          {optionButton}
+                        </Tooltip>
+                      ) : (
+                        <React.Fragment key={option.value}>
+                          {optionButton}
+                        </React.Fragment>
                       );
                     })}
                   </div>
@@ -1626,37 +1681,83 @@ const SearchPage = () => {
                     <div
                       role="group"
                       aria-label="Search filters"
-                      className="flex items-center gap-3 flex-wrap pt-1 sm:pt-0"
+                      className="contents"
+                    >
+                      <Tooltip
+                        content={
+                          effectiveIncludeOwnTeams
+                            ? "Include My Teams"
+                            : "Exclude My Teams"
+                        }
+                        wrapperClassName="inline-flex items-center shrink-0"
+                      >
+                        <button
+                          type="button"
+                          onClick={handleIncludeOwnTeamsToggle}
+                          className={`flex items-center gap-1 px-1 text-xs rounded transition-colors shrink-0 ${
+                            !effectiveIncludeOwnTeams
+                              ? "text-[var(--color-primary)] font-bold"
+                              : "text-[var(--color-primary-focus)]/70 hover:text-[var(--color-primary-focus)] hover:font-medium"
+                          }`}
+                          disabled={loading}
+                          aria-label={
+                            effectiveIncludeOwnTeams
+                              ? "Include My Teams"
+                              : "Exclude My Teams"
+                          }
+                        >
+                          <IncludeOwnTeamsIcon className="w-3.5 h-3.5 shrink-0" />
+                          <span>
+                            {effectiveIncludeOwnTeams
+                              ? "+ My Teams"
+                              : "- My Teams"}
+                          </span>
+                        </button>
+                      </Tooltip>
+                    </div>
+                  )}
+
+                  <div
+                    role="group"
+                    aria-label="Demo data filter"
+                    className="contents"
+                  >
+                    <Tooltip
+                      content={
+                        includeDemoData
+                          ? "Include test/demo profiles, roles and teams"
+                          : "Show only real users, roles and teams"
+                      }
+                      wrapperClassName="inline-flex items-center shrink-0"
                     >
                       <button
                         type="button"
-                        onClick={handleIncludeOwnTeamsToggle}
+                        onClick={() => {
+                          setIncludeDemoData((prev) => !prev);
+                          setCurrentPage(1);
+                        }}
                         className={`flex items-center gap-1 px-1 text-xs rounded transition-colors shrink-0 ${
-                          !effectiveIncludeOwnTeams
+                          !includeDemoData
                             ? "text-[var(--color-primary)] font-bold"
                             : "text-[var(--color-primary-focus)]/70 hover:text-[var(--color-primary-focus)] hover:font-medium"
                         }`}
                         disabled={loading}
-                        title={
-                          effectiveIncludeOwnTeams
-                            ? "Include My Teams"
-                            : "Exclude My Teams"
-                        }
                         aria-label={
-                          effectiveIncludeOwnTeams
-                            ? "Include My Teams"
-                            : "Exclude My Teams"
+                          includeDemoData
+                            ? "Include test/demo profiles, roles and teams"
+                            : "Show only real users, roles and teams"
                         }
                       >
-                        <IncludeOwnTeamsIcon className="w-3.5 h-3.5 shrink-0" />
-                        <span>
-                          {effectiveIncludeOwnTeams
-                            ? "+ My Teams"
-                            : "- My Teams"}
+                        <FlaskConical className="w-3.5 h-3.5 shrink-0" />
+                        <span className="hidden sm:inline">
+                          {includeDemoData ? "+ Demo Data" : "- Demo Data"}
+                        </span>
+                        <span className="sm:hidden">
+                          {includeDemoData ? "+ Demo" : "- Demo"}
                         </span>
                       </button>
-                    </div>
-                  )}
+                    </Tooltip>
+                  </div>
                 </div>
               </div>
             )}

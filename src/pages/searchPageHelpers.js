@@ -66,6 +66,7 @@ export const getActiveCriteriaPills = ({
   maxDistance,
   effectiveOpenRolesOnly,
   effectiveIncludeOwnTeams,
+  includeDemoData,
   matchRoleId,
   matchRoleName,
   excludeTeamId,
@@ -129,6 +130,13 @@ export const getActiveCriteriaPills = ({
     });
   }
 
+  if (!includeDemoData) {
+    pills.push({
+      key: "includeDemoData",
+      label: "Exclude Demo Data",
+    });
+  }
+
   if (matchRoleId && matchRoleName) {
     pills.unshift({
       key: "matchRole",
@@ -159,6 +167,7 @@ export const buildSearchRequestCriteria = ({
   maxDistance,
   effectiveOpenRolesOnly,
   effectiveIncludeOwnTeams,
+  includeDemoData,
   capacityMode,
   filterTagIds,
   filterBadgeIds,
@@ -175,6 +184,7 @@ export const buildSearchRequestCriteria = ({
   maxDistance,
   openRolesOnly: effectiveOpenRolesOnly,
   excludeOwnTeams: !effectiveIncludeOwnTeams,
+  includeDemoData,
   capacityMode,
   tagIds: filterTagIds,
   badgeIds: filterBadgeIds,
