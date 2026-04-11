@@ -37,6 +37,7 @@ export const getSortOptionDisplay = ({
       IconComponent: option.iconAsc,
       label: option.labelAsc,
       shortLabel: option.shortLabelAsc,
+      tooltip: option.tooltipAsc,
     };
   }
 
@@ -47,6 +48,7 @@ export const getSortOptionDisplay = ({
       IconComponent: option.iconRemote,
       label: option.labelRemote,
       shortLabel: option.shortLabelRemote,
+      tooltip: option.tooltipRemote,
     };
   }
 
@@ -56,6 +58,7 @@ export const getSortOptionDisplay = ({
     IconComponent: option.iconDesc,
     label: option.labelDesc,
     shortLabel: option.shortLabelDesc,
+    tooltip: option.tooltipDesc,
   };
 };
 
@@ -66,6 +69,7 @@ export const getActiveCriteriaPills = ({
   maxDistance,
   effectiveOpenRolesOnly,
   effectiveIncludeOwnTeams,
+  includeDemoData,
   matchRoleId,
   matchRoleName,
   excludeTeamId,
@@ -108,6 +112,8 @@ export const getActiveCriteriaPills = ({
           : sortDir === "desc"
             ? "Farthest"
             : "Nearest",
+      shortLabel:
+        sortDir === "remote" ? "Remote" : sortDir === "desc" ? "Far" : "Near",
     });
   }
 
@@ -126,6 +132,13 @@ export const getActiveCriteriaPills = ({
     pills.push({
       key: "includeOwnTeams",
       label: "Exclude My Teams",
+    });
+  }
+
+  if (!includeDemoData) {
+    pills.push({
+      key: "includeDemoData",
+      label: "Exclude Demo Data",
     });
   }
 
@@ -159,6 +172,7 @@ export const buildSearchRequestCriteria = ({
   maxDistance,
   effectiveOpenRolesOnly,
   effectiveIncludeOwnTeams,
+  includeDemoData,
   capacityMode,
   filterTagIds,
   filterBadgeIds,
@@ -175,6 +189,7 @@ export const buildSearchRequestCriteria = ({
   maxDistance,
   openRolesOnly: effectiveOpenRolesOnly,
   excludeOwnTeams: !effectiveIncludeOwnTeams,
+  includeDemoData,
   capacityMode,
   tagIds: filterTagIds,
   badgeIds: filterBadgeIds,

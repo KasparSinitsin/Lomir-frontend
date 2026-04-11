@@ -332,6 +332,15 @@ const BooleanSearchInput = ({
   );
 
   const renderCriteriaPill = (pill) => {
+    const pillLabelNode = pill.shortLabel ? (
+      <>
+        <span className="hidden sm:inline">{pill.label}</span>
+        <span className="sm:hidden">{pill.shortLabel}</span>
+      </>
+    ) : (
+      <span>{pill.label}</span>
+    );
+
     if (pill.type === "role") {
       return (
         <button
@@ -342,7 +351,7 @@ const BooleanSearchInput = ({
           title={`Remove ${pill.label}`}
         >
           <UserSearch size={12} className="flex-shrink-0" />
-          <span>{pill.label}</span>
+          {pillLabelNode}
           <span aria-hidden="true">×</span>
         </button>
       );
@@ -357,7 +366,7 @@ const BooleanSearchInput = ({
           title={`Remove ${pill.label}`}
         >
           <Users size={12} className="flex-shrink-0" />
-          <span>{pill.label}</span>
+          {pillLabelNode}
           <span aria-hidden="true">×</span>
         </button>
       );
@@ -370,7 +379,7 @@ const BooleanSearchInput = ({
         className="inline-flex items-center gap-1 rounded-full border border-[var(--color-primary)] bg-[#f0fdf4] px-2 py-0.5 text-xs font-bold text-[var(--color-primary)] transition-colors hover:border-[var(--color-primary-focus)] hover:bg-[#dcfce7] hover:text-[var(--color-primary-focus)]"
         title={`Remove ${pill.label}`}
       >
-        <span>{pill.label}</span>
+        {pillLabelNode}
         <span aria-hidden="true">x</span>
       </button>
     );
