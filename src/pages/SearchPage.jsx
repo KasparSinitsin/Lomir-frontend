@@ -14,6 +14,7 @@ import Grid from "../components/layout/Grid";
 import TeamCard from "../components/teams/TeamCard";
 import VacantRoleCard from "../components/teams/VacantRoleCard";
 import UserCard from "../components/users/UserCard";
+import SearchMapView from "../components/search/SearchMapView";
 import Pagination from "../components/common/Pagination";
 import BooleanSearchInput from "../components/BooleanSearchInput";
 import Tooltip from "../components/common/Tooltip";
@@ -593,6 +594,17 @@ const SearchPage = () => {
     : searchType === "teams"
       ? []
       : sortedUsers.slice(0, Math.max(0, resultsPerPage - displayedTeams.length));
+  const visibleMapItems = mergedDisplayItems || (
+    searchType === "roles"
+      ? filteredResults.roles.map((role) => ({ ...role, _resultType: "role" }))
+      : [
+          ...displayedTeams.map((team) => ({ ...team, _resultType: "team" })),
+          ...displayedUsers.map((matchedUser) => ({
+            ...matchedUser,
+            _resultType: "user",
+          })),
+        ]
+  );
 
   const hasActiveFilters =
     filterTagIds.length > 0 || filterBadgeIds.length > 0 || !!matchRoleId;
@@ -1830,9 +1842,10 @@ const SearchPage = () => {
                   </span>
                 </h2>
 
-                <div className="flex items-center text-sm font-normal text-base-content/60 gap-1">
+                <div className="flex flex-wrap items-center justify-end text-sm font-normal text-base-content/60 gap-1">
                   <button
                     type="button"
+                    aria-pressed={resultView === "card"}
                     onClick={() => setResultView("card")}
                     className={`px-2 py-1 rounded hover:text-base-content transition-colors ${
                       resultView === "card" ? "font-bold text-base-content" : ""
@@ -1843,6 +1856,7 @@ const SearchPage = () => {
                   <span className="text-base-content/30">|</span>
                   <button
                     type="button"
+                    aria-pressed={resultView === "mini"}
                     onClick={() => setResultView("mini")}
                     className={`px-2 py-1 rounded hover:text-base-content transition-colors ${
                       resultView === "mini" ? "font-bold text-base-content" : ""
@@ -1853,6 +1867,7 @@ const SearchPage = () => {
                   <span className="text-base-content/30">|</span>
                   <button
                     type="button"
+                    aria-pressed={resultView === "list"}
                     onClick={() => setResultView("list")}
                     className={`px-2 py-1 rounded hover:text-base-content transition-colors ${
                       resultView === "list" ? "font-bold text-base-content" : ""
@@ -1860,10 +1875,37 @@ const SearchPage = () => {
                   >
                     List
                   </button>
+                  <span className="text-base-content/30">|</span>
+                  <button
+                    type="button"
+                    aria-pressed={resultView === "map"}
+                    onClick={() => setResultView("map")}
+                    className={`px-2 py-1 rounded hover:text-base-content transition-colors ${
+                      resultView === "map" ? "font-bold text-base-content" : ""
+                    }`}
+                  >
+                    Map
+                  </button>
                 </div>
               </div>
 
-              {searchType !== "roles" &&
+              {resultView === "map" && (
+                <SearchMapView
+                  items={visibleMapItems}
+                  roleMatchTagIds={roleMatchTagIds}
+                  roleMatchBadgeNames={roleMatchBadgeNames}
+                  roleMatchName={matchRoleName}
+                  roleMatchMaxDistanceKm={matchRoleMaxDistanceKm}
+                  invitationPrefillTeamId={excludeTeamId}
+                  invitationPrefillRoleId={matchRoleId}
+                  invitationPrefillTeamName={excludeTeamName}
+                  invitationPrefillRoleName={matchRoleName}
+                  showMatchHighlights={sortBy === "match"}
+                  showMatchScore={sortBy === "match"}
+                />
+              )}
+
+              {searchType !== "roles" && resultView !== "map" &&
                 (resultView === "list" ? (
                   <div className="background-opacity bg-opacity-70 shadow-soft rounded-xl divide-y divide-base-200">
                     {(mergedDisplayItems || [...displayedTeams.map((t) => ({ ...t, _resultType: "team" })), ...displayedUsers.map((u) => ({ ...u, _resultType: "user" }))]).map((item) =>
@@ -2044,7 +2086,7 @@ const SearchPage = () => {
                 </div>
               )}
 
-              {searchType === "roles" && resultView !== "list" && (
+              {searchType === "roles" && resultView !== "list" && resultView !== "map" && (
                 <Grid
                   cols={1}
                   md={resultView === "mini" ? 3 : 2}
