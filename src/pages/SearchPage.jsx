@@ -594,17 +594,25 @@ const SearchPage = () => {
     : searchType === "teams"
       ? []
       : sortedUsers.slice(0, Math.max(0, resultsPerPage - displayedTeams.length));
-  const visibleMapItems = mergedDisplayItems || (
-    searchType === "roles"
-      ? filteredResults.roles.map((role) => ({ ...role, _resultType: "role" }))
-      : [
-          ...displayedTeams.map((team) => ({ ...team, _resultType: "team" })),
-          ...displayedUsers.map((matchedUser) => ({
+  const visibleMapItems =
+    searchType === "all"
+      ? [
+          ...filteredResults.teams.map((team) => ({ ...team, _resultType: "team" })),
+          ...filteredResults.users.map((matchedUser) => ({
             ...matchedUser,
             _resultType: "user",
           })),
+          ...filteredResults.roles.map((role) => ({ ...role, _resultType: "role" })),
         ]
-  );
+      : searchType === "roles"
+        ? filteredResults.roles.map((role) => ({ ...role, _resultType: "role" }))
+        : [
+            ...displayedTeams.map((team) => ({ ...team, _resultType: "team" })),
+            ...displayedUsers.map((matchedUser) => ({
+              ...matchedUser,
+              _resultType: "user",
+            })),
+          ];
 
   const hasActiveFilters =
     filterTagIds.length > 0 || filterBadgeIds.length > 0 || !!matchRoleId;
@@ -1892,6 +1900,7 @@ const SearchPage = () => {
               {resultView === "map" && (
                 <SearchMapView
                   items={visibleMapItems}
+                  searchType={searchType}
                   roleMatchTagIds={roleMatchTagIds}
                   roleMatchBadgeNames={roleMatchBadgeNames}
                   roleMatchName={matchRoleName}
@@ -1902,6 +1911,12 @@ const SearchPage = () => {
                   invitationPrefillRoleName={matchRoleName}
                   showMatchHighlights={sortBy === "match"}
                   showMatchScore={sortBy === "match"}
+                  viewerLocation={viewerDistanceSource}
+                  proximityRadiusKm={
+                    sortBy === "proximity" && sortDir !== "remote"
+                      ? maxDistance
+                      : null
+                  }
                 />
               )}
 
