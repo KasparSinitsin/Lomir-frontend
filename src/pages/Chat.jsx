@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { LogOut } from "lucide-react";
+import { LogOut, ChevronRight, ChevronLeft, Users, User } from "lucide-react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import PageContainer from "../components/layout/PageContainer";
 import ConversationList from "../components/chat/ConversationList";
@@ -11,7 +11,14 @@ import socketService from "../services/socketService";
 import { userService } from "../services/userService";
 import { teamService } from "../services/teamService";
 import Alert from "../components/common/Alert";
+import Tooltip from "../components/common/Tooltip";
 import { uploadToImageKit } from "../config/imagekit";
+import UserAvatar from "../components/users/UserAvatar";
+import DemoAvatarOverlay from "../components/users/DemoAvatarOverlay";
+import TeamDetailsModal from "../components/teams/TeamDetailsModal";
+import UserDetailsModal from "../components/users/UserDetailsModal";
+import { getTeamInitials, isSyntheticTeam } from "../utils/userHelpers";
+import { getTeamAvatarUrl } from "../utils/chatEntityResolvers";
 
 const getConversationPartnerId = (conversation) =>
   conversation?.partner?.id ??
@@ -59,6 +66,12 @@ const Chat = () => {
   const [loadingMore, setLoadingMore] = useState(false);
   const [teamMembersRefreshSignal, setTeamMembersRefreshSignal] =
     useState(null);
+  const [showChatView, setShowChatView] = useState(true); // Toggle between list and chat on mobile
+  const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
+  const [selectedTeamId, setSelectedTeamId] = useState(null);
+  const [selectedTeamData, setSelectedTeamData] = useState(null);
+  const [isUserModalOpen, setIsUserModalOpen] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState(null);
 
   const typingTimeoutRef = useRef(null);
   const messagesContainerRef = useRef(null);
@@ -916,6 +929,23 @@ const Chat = () => {
     user?.username,
   ]);
 
+  const handleHeaderTeamClick = (e) => {
+    e.stopPropagation();
+    if (teamData?.id) {
+      setSelectedTeamId(teamData.id);
+      setSelectedTeamData(teamData);
+      setIsTeamModalOpen(true);
+    }
+  };
+
+  const handleHeaderUserClick = (e) => {
+    e.stopPropagation();
+    if (conversationPartner?.id) {
+      setSelectedUserId(conversationPartner.id);
+      setIsUserModalOpen(true);
+    }
+  };
+
   // Handle leaving a deleted team (removes from conversation list)
   const handleLeaveTeam = async () => {
     if (!activeConversation?.team?.id) {
@@ -1171,6 +1201,9 @@ const Chat = () => {
       prev.map((conv) => (conv.id === id ? { ...conv, unreadCount: 0 } : conv)),
     );
 
+    // Show chat view on mobile/tablet when conversation is selected
+    setShowChatView(true);
+
     // Navigate with type parameter
     navigate(`/chat/${id}?type=${type}`);
   };
@@ -1188,7 +1221,9 @@ const Chat = () => {
 
       <div className="flex h-[calc(100vh-200px)] bg-base-100 rounded-xl overflow-hidden">
         {/* Conversation List - Left Sidebar */}
-        <div className="w-1/3 border-r border-base-200 overflow-y-auto">
+        <div className={`border-r border-base-200 overflow-y-auto transition-all duration-300 ${
+          showChatView ? "hidden md:block md:w-1/3" : "w-full md:w-1/3"
+        }`}>
           <ConversationList
             conversations={conversations}
             activeConversationId={conversationId}
@@ -1200,9 +1235,119 @@ const Chat = () => {
         </div>
 
         {/* Message Display - Right Side */}
-        <div className="w-2/3 flex flex-col">
+        <div className={`flex flex-col transition-all duration-300 ${
+          showChatView ? "w-full md:w-2/3" : "hidden md:flex md:w-2/3"
+        }`}>
           {conversationId ? (
             <>
+              {/* Header with back button and conversation info - hidden on md and up */}
+              <div className="flex items-center justify-between border-b border-base-200 p-3 md:p-4 bg-base-100 md:hidden">
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  {/* Back/List toggle button - visible on small screens */}
+                  <button
+                    onClick={() => setShowChatView(false)}
+                    className="md:hidden flex items-center justify-center p-2 hover:bg-base-200 rounded-lg transition-colors"
+                    title="Back to conversation list"
+                  >
+                    <ChevronLeft size={20} />
+                  </button>
+                  
+                  {/* Conversation Header - Avatar and name */}
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    {conversationType === "team" && teamData ? (
+                      <Tooltip
+                        content={`View ${teamData.name} details`}
+                        position="bottom"
+                        wrapperClassName="inline-flex items-center flex-shrink-0"
+                      >
+                        <div
+                          className="w-10 h-10 rounded-full relative overflow-hidden cursor-pointer hover:opacity-80 transition-opacity"
+                          onClick={handleHeaderTeamClick}
+                        >
+                          {getTeamAvatarUrl(teamData) ? (
+                            <img
+                              src={getTeamAvatarUrl(teamData)}
+                              alt={teamData.name}
+                              className="object-cover w-full h-full rounded-full"
+                              onError={(e) => {
+                                e.target.style.display = "none";
+                                const fallback = e.target.parentElement.querySelector(".avatar-fallback");
+                                if (fallback) fallback.style.display = "flex";
+                              }}
+                            />
+                          ) : null}
+                          <div
+                            className="avatar-fallback bg-[var(--color-primary-focus)] text-primary-content flex items-center justify-center w-full h-full rounded-full absolute inset-0"
+                            style={{ display: getTeamAvatarUrl(teamData) ? "none" : "flex" }}
+                          >
+                            <span className="text-sm font-medium">{getTeamInitials(teamData)}</span>
+                          </div>
+                          {isSyntheticTeam(teamData) && (
+                            <DemoAvatarOverlay textClassName="text-[7px]" />
+                          )}
+                        </div>
+                      </Tooltip>
+                    ) : conversationPartner ? (
+                      <Tooltip
+                        content={`View ${[conversationPartner.firstName, conversationPartner.lastName].filter(Boolean).join(" ")} details`}
+                        position="bottom"
+                        wrapperClassName="inline-flex items-center flex-shrink-0"
+                      >
+                        <div
+                          className="cursor-pointer hover:opacity-80 transition-opacity"
+                          onClick={handleHeaderUserClick}
+                        >
+                          <UserAvatar
+                            user={conversationPartner}
+                            sizeClass="w-10 h-10"
+                            iconSize={20}
+                            initialsClassName="text-sm font-medium"
+                            showDemoOverlay
+                            demoOverlayTextClassName="text-[7px]"
+                            demoOverlayTextTranslateClassName="-translate-y-[2px]"
+                          />
+                        </div>
+                      </Tooltip>
+                    ) : null}
+                    <div className="min-w-0 flex-1">
+                      <Tooltip
+                        content={
+                          conversationType === "team"
+                            ? `View ${teamData?.name} details`
+                            : `View ${[conversationPartner?.firstName, conversationPartner?.lastName].filter(Boolean).join(" ")} details`
+                        }
+                        position="bottom"
+                        wrapperClassName="block min-w-0"
+                      >
+                        <h3
+                          className="font-medium truncate text-sm cursor-pointer hover:text-primary transition-colors"
+                          onClick={conversationType === "team" ? handleHeaderTeamClick : handleHeaderUserClick}
+                        >
+                          {conversationType === "team" ? teamData?.name : [conversationPartner?.firstName, conversationPartner?.lastName].filter(Boolean).join(" ")}
+                        </h3>
+                      </Tooltip>
+                      {conversationType === "team" ? (
+                        <p className="text-xs text-base-content/60 flex items-center gap-1.5">
+                          <Users size={12} className="flex-shrink-0" />
+                          <span>Team Chat</span>
+                          {teamData?.members && (
+                            <>
+                              <span>·</span>
+                              <span>{teamData.members.length} {teamData.members.length === 1 ? "member" : "members"}</span>
+                            </>
+                          )}
+                        </p>
+                      ) : conversationType === "direct" ? (
+                        <p className="text-xs text-base-content/60 flex items-center gap-1.5">
+                          <User size={12} className="flex-shrink-0" />
+                          <span>Direct Message Chat</span>
+                        </p>
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <div ref={messagesContainerRef} className="flex-grow overflow-y-auto p-4">
                 <MessageDisplay
                   messages={messages}
@@ -1275,14 +1420,33 @@ const Chat = () => {
               </div>
             </>
           ) : (
-            <div className="flex items-center justify-center h-full">
+            <div className="flex flex-col items-center justify-center h-full gap-4">
               <p className="text-base-content/70">
                 Select a conversation to start chatting
               </p>
+              <button
+                onClick={() => setShowChatView(false)}
+                className="md:hidden flex items-center gap-2 btn btn-sm btn-outline"
+              >
+                <ChevronLeft size={16} />
+                Back to conversations
+              </button>
             </div>
           )}
         </div>
       </div>
+      <TeamDetailsModal
+        isOpen={isTeamModalOpen}
+        teamId={selectedTeamId}
+        initialTeamData={selectedTeamData}
+        onClose={() => { setIsTeamModalOpen(false); setSelectedTeamId(null); setSelectedTeamData(null); }}
+      />
+
+      <UserDetailsModal
+        isOpen={isUserModalOpen}
+        userId={selectedUserId}
+        onClose={() => { setIsUserModalOpen(false); setSelectedUserId(null); }}
+      />
     </PageContainer>
   );
 };

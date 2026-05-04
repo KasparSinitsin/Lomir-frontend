@@ -30,6 +30,7 @@ import {
   formatFileSize,
 } from "../../utils/fileExpiration";
 import MessageText from "./MessageText";
+import Tooltip from "../common/Tooltip";
 import {
   DELETED_USER_DISPLAY_NAME,
   getDisplayName as getDeletedUserDisplayName,
@@ -719,15 +720,16 @@ const MessageDisplay = ({
     }
 
     return (
-      <button
-        type="button"
-        className="font-medium underline underline-offset-2 hover:no-underline hover:text-primary transition-colors"
-        onClick={() => handleMentionClick(safe)}
-        disabled={resolvingName}
-        title={`Open ${safe}`}
-      >
-        {safe}
-      </button>
+      <Tooltip content={`Open ${safe}`} position="top">
+        <button
+          type="button"
+          className="font-medium underline underline-offset-2 hover:no-underline hover:text-primary transition-colors"
+          onClick={() => handleMentionClick(safe)}
+          disabled={resolvingName}
+        >
+          {safe}
+        </button>
+      </Tooltip>
     );
   };
 
@@ -742,14 +744,15 @@ const MessageDisplay = ({
     }
 
     return (
-      <button
-        type="button"
-        className="font-medium underline underline-offset-2 hover:no-underline hover:text-primary transition-colors"
-        onClick={() => handleUserClick(userId, safeName)}
-        title={`Open ${safeName}`}
-      >
-        {safeName}
-      </button>
+      <Tooltip content={`Open ${safeName}`} position="top">
+        <button
+          type="button"
+          className="font-medium underline underline-offset-2 hover:no-underline hover:text-primary transition-colors"
+          onClick={() => handleUserClick(userId, safeName)}
+        >
+          {safeName}
+        </button>
+      </Tooltip>
     );
   };
 
@@ -774,14 +777,15 @@ const MessageDisplay = ({
     if (!teamId) return <span className="font-medium">"{safeName}"</span>;
 
     return (
-      <button
-        type="button"
-        className="font-medium underline underline-offset-2 hover:no-underline hover:text-primary transition-colors"
-        onClick={() => openTeamModal(teamId)}
-        title={`Open ${safeName}`}
-      >
-        "{safeName}"
-      </button>
+      <Tooltip content={`Open ${safeName}`} position="top">
+        <button
+          type="button"
+          className="font-medium underline underline-offset-2 hover:no-underline hover:text-primary transition-colors"
+          onClick={() => openTeamModal(teamId)}
+        >
+          "{safeName}"
+        </button>
+      </Tooltip>
     );
   };
 
@@ -898,52 +902,51 @@ const MessageDisplay = ({
 
     if (isDeletedSender) {
       return (
-        <UserAvatar
-          user={senderInfo}
-          deleted
-          sizeClass="w-8 h-8"
-          className="mr-2 flex-shrink-0"
-          iconSize={16}
-          title={DELETED_USER_DISPLAY_NAME}
-        />
+        <Tooltip content={DELETED_USER_DISPLAY_NAME} wrapperClassName="inline-flex flex-shrink-0 mr-2">
+          <UserAvatar
+            user={senderInfo}
+            deleted
+            sizeClass="w-8 h-8"
+            iconSize={16}
+          />
+        </Tooltip>
       );
     }
 
     if (!isFormerMember) {
       return (
-        <UserAvatar
-          user={senderInfo}
-          sizeClass="w-8 h-8"
-          className="mr-2 flex-shrink-0"
-          clickable={Boolean(isClickable)}
-          onClick={handleClick}
-          title={
-            isClickable
-              ? `View ${getSenderDisplayName(senderInfo, false)} details`
-              : undefined
-          }
-          iconSize={16}
-          initialsClassName="text-sm font-medium event-message-text"
-          showDemoOverlay
-          demoOverlayTextClassName="text-[5px]"
-          demoOverlayTextTranslateClassName="-translate-y-[1px]"
-        />
+        <Tooltip
+          content={isClickable ? `View ${getSenderDisplayName(senderInfo, false)} details` : undefined}
+          wrapperClassName="inline-flex flex-shrink-0 mr-2"
+        >
+          <UserAvatar
+            user={senderInfo}
+            sizeClass="w-8 h-8"
+            clickable={Boolean(isClickable)}
+            onClick={handleClick}
+            iconSize={16}
+            initialsClassName="text-sm font-medium event-message-text"
+            showDemoOverlay
+            demoOverlayTextClassName="text-[5px]"
+            demoOverlayTextTranslateClassName="-translate-y-[1px]"
+          />
+        </Tooltip>
       );
     }
 
+    const formerMemberTooltip = isClickable
+      ? `View ${getSenderDisplayName(senderInfo, false)} details`
+      : isFormerMember
+        ? "Former team member"
+        : undefined;
+
     return (
+      <Tooltip content={formerMemberTooltip} wrapperClassName="inline-flex flex-shrink-0 mr-2">
       <div
-        className={`avatar mr-2 flex-shrink-0 ${
+        className={`avatar ${
           isClickable ? "cursor-pointer hover:opacity-80 transition-opacity" : ""
         } ${isFormerMember ? "opacity-70" : ""}`}
         onClick={handleClick}
-        title={
-          isClickable
-            ? `View ${getSenderDisplayName(senderInfo, false)} details`
-            : isFormerMember
-              ? "Former team member"
-              : undefined
-        }
       >
         <div className="w-8 h-8 rounded-full relative">
           <div
@@ -955,6 +958,7 @@ const MessageDisplay = ({
           </div>
         </div>
       </div>
+      </Tooltip>
     );
   };
 
@@ -967,26 +971,28 @@ const MessageDisplay = ({
     const canClick = Boolean(!isDeletedSender && senderId);
 
     return (
-      <div
-        className={[
-          className,
-          canClick ? "cursor-pointer hover:text-primary transition-colors" : "",
-          isDeletedSender ? "text-base-content/50" : "",
-        ].join(" ")}
-        style={
-          isDeletedSender
-            ? undefined
-            : {
-                color: isFormerMember ? "#6b7280" : "#036b0c",
-              }
-        }
-        onClick={canClick ? () => handleUserClick(senderId, displayName) : undefined}
-        title={
-          canClick ? `View ${getSenderDisplayName(senderInfo, false)} details` : undefined
-        }
+      <Tooltip
+        content={canClick ? `View ${getSenderDisplayName(senderInfo, false)} details` : undefined}
+        position="top"
       >
-        {displayName}
-      </div>
+        <div
+          className={[
+            className,
+            canClick ? "cursor-pointer hover:text-primary transition-colors" : "",
+            isDeletedSender ? "text-base-content/50" : "",
+          ].join(" ")}
+          style={
+            isDeletedSender
+              ? undefined
+              : {
+                  color: isFormerMember ? "#6b7280" : "#036b0c",
+                }
+          }
+          onClick={canClick ? () => handleUserClick(senderId, displayName) : undefined}
+        >
+          {displayName}
+        </div>
+      </Tooltip>
     );
   };
 
@@ -994,22 +1000,22 @@ const MessageDisplay = ({
     if (!resolvedConversationPartner) return null;
 
     return (
-      <UserAvatar
-        user={resolvedConversationPartner}
-        sizeClass="w-16 h-16"
-        className="mb-2 mx-auto"
-        clickable
-        onClick={() => handleUserClick(resolvedConversationPartner.id)}
-        title={`View ${
-          resolvedConversationPartner.firstName ||
-          resolvedConversationPartner.username
-        } details`}
-        iconSize={24}
-        initialsClassName="text-xl font-medium"
-        showDemoOverlay
-        demoOverlayTextClassName="text-[9px]"
-        demoOverlayTextTranslateClassName="-translate-y-[4px]"
-      />
+      <Tooltip
+        content={`View ${resolvedConversationPartner.firstName || resolvedConversationPartner.username} details`}
+        wrapperClassName="inline-flex mb-2 mx-auto"
+      >
+        <UserAvatar
+          user={resolvedConversationPartner}
+          sizeClass="w-16 h-16"
+          clickable
+          onClick={() => handleUserClick(resolvedConversationPartner.id)}
+          iconSize={24}
+          initialsClassName="text-xl font-medium"
+          showDemoOverlay
+          demoOverlayTextClassName="text-[9px]"
+          demoOverlayTextTranslateClassName="-translate-y-[4px]"
+        />
+      </Tooltip>
     );
   };
 
@@ -1019,10 +1025,10 @@ const MessageDisplay = ({
     const teamAvatarUrl = getTeamAvatarUrl(resolvedTeamData);
 
     return (
+      <Tooltip content={`View ${resolvedTeamData.name} details`} wrapperClassName="inline-flex mb-2">
       <div
-        className="avatar mb-2 cursor-pointer hover:opacity-80 transition-opacity"
+        className="avatar cursor-pointer hover:opacity-80 transition-opacity"
         onClick={handleTeamClick}
-        title={`View ${resolvedTeamData.name} details`}
       >
         <div className="w-16 h-16 rounded-full mx-auto relative overflow-hidden">
           {teamAvatarUrl ? (
@@ -1054,6 +1060,7 @@ const MessageDisplay = ({
           )}
         </div>
       </div>
+      </Tooltip>
     );
   };
 
@@ -2206,32 +2213,37 @@ const MessageDisplay = ({
           {resolvedConversationPartner && conversationType === "direct" && (
             <div className="text-center pb-4 mb-4 border-b border-base-200">
               {renderConversationPartnerAvatar()}
-              <h3
-                className="text-lg font-medium leading-[120%] mb-[0.2em] cursor-pointer hover:text-primary transition-colors"
-                onClick={() => handleUserClick(resolvedConversationPartner.id)}
-                title={`View ${
-                  resolvedConversationPartner.firstName ||
-                  resolvedConversationPartner.username
-                } details`}
+              <Tooltip
+                content={`View ${resolvedConversationPartner.firstName || resolvedConversationPartner.username} details`}
+                wrapperClassName="block"
               >
-                {resolvedConversationPartner.firstName &&
-                resolvedConversationPartner.lastName
-                  ? `${resolvedConversationPartner.firstName} ${resolvedConversationPartner.lastName}`
-                  : resolvedConversationPartner.username}
-              </h3>
+                <h3
+                  className="text-lg font-medium leading-[120%] mb-[0.2em] cursor-pointer hover:text-primary transition-colors"
+                  onClick={() => handleUserClick(resolvedConversationPartner.id)}
+                >
+                  {resolvedConversationPartner.firstName &&
+                  resolvedConversationPartner.lastName
+                    ? `${resolvedConversationPartner.firstName} ${resolvedConversationPartner.lastName}`
+                    : resolvedConversationPartner.username}
+                </h3>
+              </Tooltip>
             </div>
           )}
 
           {resolvedTeamData && conversationType === "team" && (
             <div className="text-center pb-4 mb-4 border-b border-base-200">
               {renderTeamConversationAvatar()}
-              <h3
-                className="text-lg font-medium leading-[120%] mb-[0.2em] cursor-pointer hover:text-primary transition-colors"
-                onClick={handleTeamClick}
-                title={`View ${resolvedTeamData.name} details`}
+              <Tooltip
+                content={`View ${resolvedTeamData.name} details`}
+                wrapperClassName="block"
               >
-                {resolvedTeamData.name}
-              </h3>
+                <h3
+                  className="text-lg font-medium leading-[120%] mb-[0.2em] cursor-pointer hover:text-primary transition-colors"
+                  onClick={handleTeamClick}
+                >
+                  {resolvedTeamData.name}
+                </h3>
+              </Tooltip>
             </div>
           )}
 
@@ -2312,19 +2324,20 @@ const MessageDisplay = ({
         {resolvedConversationPartner && conversationType === "direct" && (
           <div className="text-center pb-4 mb-4 border-b border-base-200">
             {renderConversationPartnerAvatar()}
-            <h3
-              className="text-lg font-medium leading-[120%] mb-[0.2em] cursor-pointer hover:text-primary transition-colors"
-              onClick={() => handleUserClick(resolvedConversationPartner.id)}
-              title={`View ${
-                resolvedConversationPartner.firstName ||
-                resolvedConversationPartner.username
-              } details`}
+            <Tooltip
+              content={`View ${resolvedConversationPartner.firstName || resolvedConversationPartner.username} details`}
+              wrapperClassName="block"
             >
-              {resolvedConversationPartner.firstName &&
-              resolvedConversationPartner.lastName
-                ? `${resolvedConversationPartner.firstName} ${resolvedConversationPartner.lastName}`
-                : resolvedConversationPartner.username}
-            </h3>
+              <h3
+                className="text-lg font-medium leading-[120%] mb-[0.2em] cursor-pointer hover:text-primary transition-colors"
+                onClick={() => handleUserClick(resolvedConversationPartner.id)}
+              >
+                {resolvedConversationPartner.firstName &&
+                resolvedConversationPartner.lastName
+                  ? `${resolvedConversationPartner.firstName} ${resolvedConversationPartner.lastName}`
+                  : resolvedConversationPartner.username}
+              </h3>
+            </Tooltip>
           </div>
         )}
 
@@ -2332,13 +2345,17 @@ const MessageDisplay = ({
         {resolvedTeamData && conversationType === "team" && (
           <div className="text-center pb-4 mb-4 border-b border-base-200">
             {renderTeamConversationAvatar()}
-            <h3
-              className="text-lg font-medium leading-[120%] mb-[0.2em] cursor-pointer hover:text-primary transition-colors"
-              onClick={handleTeamClick}
-              title={`View ${resolvedTeamData.name} details`}
+            <Tooltip
+              content={`View ${resolvedTeamData.name} details`}
+              wrapperClassName="block"
             >
-              {resolvedTeamData.name}
-            </h3>
+              <h3
+                className="text-lg font-medium leading-[120%] mb-[0.2em] cursor-pointer hover:text-primary transition-colors"
+                onClick={handleTeamClick}
+              >
+                {resolvedTeamData.name}
+              </h3>
+            </Tooltip>
           </div>
         )}
 
@@ -2680,22 +2697,22 @@ const MessageDisplay = ({
                               !isDeleted &&
                               !String(message.id).startsWith("temp-") &&
                               typeof onDeleteMessage === "function" && (
-                                <button
-                                  type="button"
-                                  onClick={() => onDeleteMessage(message.id)}
-                                  className="
-          absolute -top-2 -right-2
-          opacity-0 group-hover:opacity-100 transition-opacity
-          bg-base-100 border border-base-300 rounded-full p-1 shadow-sm
-          hover:shadow
-        "
-                                  title="Delete message"
+                                <Tooltip
+                                  content="Delete message"
+                                  position="top"
+                                  wrapperClassName="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity inline-flex"
                                 >
-                                  <Trash2
-                                    size={14}
-                                    className="text-base-content/50 hover:text-error"
-                                  />
-                                </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => onDeleteMessage(message.id)}
+                                    className="bg-base-100 border border-base-300 rounded-full p-1 shadow-sm hover:shadow"
+                                  >
+                                    <Trash2
+                                      size={14}
+                                      className="text-base-content/50 hover:text-error"
+                                    />
+                                  </button>
+                                </Tooltip>
                               )}
 
                             {/* Only render media/text when NOT deleted */}

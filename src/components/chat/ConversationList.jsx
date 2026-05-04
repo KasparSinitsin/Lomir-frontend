@@ -1,4 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
+import { Users, User, ChevronRight } from "lucide-react";
+import SearchResultTypeOverlay from "../common/SearchResultTypeOverlay";
+import Tooltip from "../common/Tooltip";
 import { getTeamInitials, isSyntheticTeam } from "../../utils/userHelpers";
 import { formatDistanceToNow } from "date-fns";
 import TeamDetailsModal from "../teams/TeamDetailsModal";
@@ -216,7 +219,7 @@ const ConversationList = ({
 
   return (
     <>
-      <div className="divide-y divide-base-200">
+      <div className="divide-y divide-base-200 w-full min-w-0">
         {conversations.map((conversation) => {
           // Handle both direct messages and team conversations
           const isTeam = conversation.type === "team";
@@ -261,10 +264,10 @@ const ConversationList = ({
               key={`${conversation.type}-${conversation.id}`}
               ref={isActive ? activeConversationRef : null}
               className={`
-                p-4 cursor-pointer transition-colors duration-200
+                p-4 cursor-pointer transition-colors duration-200 group
                 ${
                   isActive
-                    ? "bg-green-100 border-l-4 border-green-500"
+                    ? "bg-green-100"
                     : "hover:bg-base-200/50"
                 }
               `}
@@ -272,8 +275,18 @@ const ConversationList = ({
             >
               <div className="flex items-center">
                 {/* Avatar - Clickable for both team and direct conversations */}
+                <Tooltip
+                  content={
+                    isTeam
+                      ? `View ${conversationData?.name} details`
+                      : isUserClickable
+                        ? `View ${displayName} details`
+                        : undefined
+                  }
+                  wrapperClassName="inline-flex items-center mr-3"
+                >
                 <div
-                  className={`avatar indicator mr-3 ${
+                  className={`avatar indicator relative ${
                     isTeam || isUserClickable
                       ? "cursor-pointer hover:opacity-80 transition-opacity"
                       : ""
@@ -285,16 +298,13 @@ const ConversationList = ({
                         ? (e) => handleUserClick(e, conversationData)
                         : undefined
                   }
-                  title={
-                    isTeam
-                      ? `View ${conversationData?.name} details`
-                      : isUserClickable
-                        ? `View ${displayName} details`
-                        : undefined
-                  }
                 >
+                  <SearchResultTypeOverlay
+                    icon={isTeam ? Users : User}
+                    bgClassName={isTeam ? "bg-pink-500" : "bg-success"}
+                  />
                   {isTeam ? (
-                    <div className="w-12 h-12 rounded-full relative overflow-hidden">
+                    <div className="w-14 h-14 rounded-full relative overflow-hidden">
                       {getTeamAvatarUrl(conversationData) ? (
                         <img
                           src={getTeamAvatarUrl(conversationData)}
@@ -318,23 +328,23 @@ const ConversationList = ({
                             : "flex",
                         }}
                       >
-                        <span className="text-lg font-medium">
+                        <span className="text-xl font-medium">
                           {getTeamInitials(conversationData)}
                         </span>
                       </div>
                       {isSyntheticTeam(conversationData) && (
-                        <DemoAvatarOverlay textClassName="text-[7px]" />
+                        <DemoAvatarOverlay textClassName="text-[8px]" />
                       )}
                     </div>
                   ) : (
                     <UserAvatar
                       user={isFormerPartner ? null : conversationData}
                       deleted={isFormerPartner}
-                      sizeClass="w-12 h-12"
-                      iconSize={24}
-                      initialsClassName="text-lg font-medium"
+                      sizeClass="w-14 h-14"
+                      iconSize={28}
+                      initialsClassName="text-xl font-medium"
                       showDemoOverlay
-                      demoOverlayTextClassName="text-[7px]"
+                      demoOverlayTextClassName="text-[8px]"
                       demoOverlayTextTranslateClassName="-translate-y-[2px]"
                     />
                   )}
@@ -342,51 +352,76 @@ const ConversationList = ({
                     <span className="indicator-item badge badge-success badge-xs"></span>
                   )}
                 </div>
+                </Tooltip>
 
-                <div className="flex-grow min-w-0">
-                  <div className="flex justify-between items-center">
+                <div className="flex-grow min-w-0 flex flex-col justify-center">
+                  <div className="flex justify-between items-center min-w-0">
                     {/* Name - Clickable for both team and direct conversations */}
-                    <h3
-                      className={`font-medium truncate ${
-                        isTeam || isUserClickable
-                          ? "cursor-pointer hover:text-primary transition-colors"
-                          : ""
-                      }`}
-                      onClick={
-                        isTeam
-                          ? (e) => handleTeamClick(e, conversationData)
-                          : isUserClickable
-                            ? (e) => handleUserClick(e, conversationData)
-                            : undefined
-                      }
-                      title={
-                        isTeam
-                          ? `View ${conversationData?.name} details`
-                          : isUserClickable
-                            ? `View ${displayName} details`
-                            : undefined
-                      }
+                    <Tooltip
+                      content={displayName?.length > 22 ? displayName : undefined}
+                      wrapperClassName="block min-w-0 flex-1 overflow-hidden"
                     >
-                      {displayName || "Unknown"}
-                    </h3>
-                    <span className="text-xs text-base-content/50 whitespace-nowrap ml-2">
+                      <h3
+                        className={`font-medium truncate text-sm ${
+                          isTeam || isUserClickable
+                            ? "cursor-pointer hover:text-primary transition-colors"
+                            : ""
+                        }`}
+                        style={{ color: "#036b0c" }}
+                        onClick={
+                          isTeam
+                            ? (e) => handleTeamClick(e, conversationData)
+                            : isUserClickable
+                              ? (e) => handleUserClick(e, conversationData)
+                              : undefined
+                        }
+                      >
+                        {displayName || "Unknown"}
+                      </h3>
+                    </Tooltip>
+                  </div>
+                  <Tooltip
+                    content={
+                      (conversation.lastMessage?.length ?? 0) > 60
+                        ? conversation.lastMessage
+                        : undefined
+                    }
+                    position="bottom"
+                    wrapperClassName="block min-w-0 overflow-hidden"
+                  >
+                    <p className="text-sm text-base-content/70 truncate">
+                      {conversation.lastMessage || "No messages yet"}
+                    </p>
+                  </Tooltip>
+                  <div className="flex items-center min-w-0">
+                    <p
+                      className="text-xs truncate flex-1 min-w-0"
+                      style={{ color: "#036b0c" }}
+                    >
+                      {isTeam ? "Team Chat" : "Direct Message"}
+                    </p>
+                    <span className="flex-shrink-0 ml-2 text-xs whitespace-nowrap" style={{ color: "#036b0c" }}>
                       {conversation.updatedAt
                         ? formatDistanceToNow(
                             new Date(conversation.updatedAt),
                             {
                               addSuffix: true,
                             },
-                          )
+                          ).replace("about ", "")
                         : ""}
                     </span>
                   </div>
-                  <p className="text-sm text-base-content/70 truncate">
-                    {conversation.lastMessage || "No messages yet"}
-                  </p>
-                  <p className="text-xs" style={{ color: "#036b0c" }}>
-                    {isTeam ? "Team Chat" : "Direct Message"}
-                  </p>
                 </div>
+
+                {/* Chevron button - visible on mobile, hover on desktop */}
+                <Tooltip content="Open conversation" position="top" wrapperClassName="inline-flex items-center flex-shrink-0 ml-1 -mr-4">
+                  <button
+                    onClick={() => onSelectConversation(conversation.id)}
+                    className="flex items-center justify-center p-2 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
+                  >
+                    <ChevronRight size={16} className="text-base-content/70" />
+                  </button>
+                </Tooltip>
               </div>
             </div>
           );
