@@ -104,6 +104,7 @@ const TeamDetailsModal = ({
   matchScore = null,
   matchType = null,
   matchDetails = null,
+  hideMatchData = false,
   membersRefreshKey = 0,
   zIndexStyle = null,
   boxZIndexStyle = null,
@@ -1255,11 +1256,12 @@ const TeamDetailsModal = ({
   // Create custom title with buttons
   const effectiveTeamMatch = useMemo(() => {
     const shouldResolveMatchData =
-      showMatchHighlights ||
-      matchScore > 0 ||
-      matchType != null ||
-      matchDetails != null ||
-      (!isFromSearch && (teamBadges?.length > 0 || team?.tags?.length > 0));
+      !hideMatchData &&
+      (showMatchHighlights ||
+        matchScore > 0 ||
+        matchType != null ||
+        matchDetails != null ||
+        (!isFromSearch && (teamBadges?.length > 0 || team?.tags?.length > 0)));
 
     if (!shouldResolveMatchData || !team || !user) {
       return { matchScore, matchType, matchDetails };
@@ -1292,6 +1294,7 @@ const TeamDetailsModal = ({
   }, [
     currentUserBadgeNames,
     currentUserTagIds,
+    hideMatchData,
     isFromSearch,
     matchDetails,
     matchScore,

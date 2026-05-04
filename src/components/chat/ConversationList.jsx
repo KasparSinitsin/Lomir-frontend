@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Users, User, ChevronRight } from "lucide-react";
-import SearchResultTypeOverlay from "../common/SearchResultTypeOverlay";
 import Tooltip from "../common/Tooltip";
+import { CountBadge } from "../common/NotificationBadge";
 import { getTeamInitials, isSyntheticTeam } from "../../utils/userHelpers";
 import { formatDistanceToNow } from "date-fns";
 import TeamDetailsModal from "../teams/TeamDetailsModal";
@@ -299,10 +299,6 @@ const ConversationList = ({
                         : undefined
                   }
                 >
-                  <SearchResultTypeOverlay
-                    icon={isTeam ? Users : User}
-                    bgClassName={isTeam ? "bg-pink-500" : "bg-success"}
-                  />
                   {isTeam ? (
                     <div className="w-14 h-14 rounded-full relative overflow-hidden">
                       {getTeamAvatarUrl(conversationData) ? (
@@ -348,8 +344,11 @@ const ConversationList = ({
                       demoOverlayTextTranslateClassName="-translate-y-[2px]"
                     />
                   )}
-                  {isOnline && (
-                    <span className="indicator-item badge badge-success badge-xs"></span>
+                  {(conversation.unreadCount || conversation.unread_count) > 0 && (
+                    <CountBadge
+                      count={conversation.unreadCount ?? conversation.unread_count}
+                      className="absolute -top-1 -left-2 z-10"
+                    />
                   )}
                 </div>
                 </Tooltip>
@@ -393,12 +392,22 @@ const ConversationList = ({
                       {conversation.lastMessage || "No messages yet"}
                     </p>
                   </Tooltip>
-                  <div className="flex items-center min-w-0">
+                  <div className="flex items-center min-w-0 gap-2">
                     <p
-                      className="text-xs truncate flex-1 min-w-0"
+                      className="text-xs truncate flex-1 min-w-0 flex items-center gap-1"
                       style={{ color: "#036b0c" }}
                     >
-                      {isTeam ? "Team Chat" : "Direct Message"}
+                      {isTeam ? (
+                        <>
+                          <Users size={12} className="flex-shrink-0" />
+                          <span>Team chat</span>
+                        </>
+                      ) : (
+                        <>
+                          <User size={12} className="flex-shrink-0" />
+                          <span>Direct message</span>
+                        </>
+                      )}
                     </p>
                     <span className="flex-shrink-0 ml-2 text-xs whitespace-nowrap" style={{ color: "#036b0c" }}>
                       {conversation.updatedAt
@@ -434,6 +443,7 @@ const ConversationList = ({
         teamId={selectedTeamId}
         initialTeamData={selectedTeamData}
         membersRefreshKey={teamMembersRefreshKey}
+        hideMatchData
         onClose={handleTeamModalClose}
       />
 

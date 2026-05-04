@@ -95,9 +95,9 @@ const socketService = {
   },
 
   // Send typing indicator
-  sendTypingStart: (conversationId, type = "direct") => {
+  sendTypingStart: (conversationId, type = "direct", userData = {}) => {
     if (socket && socket.connected) {
-      socket.emit("typing:start", { conversationId, type });
+      socket.emit("typing:start", { conversationId, type, ...userData });
     }
   },
 

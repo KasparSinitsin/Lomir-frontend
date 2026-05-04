@@ -2260,6 +2260,7 @@ const MessageDisplay = ({
           teamId={conversationType === "team" ? teamData?.id : selectedTeamId}
           initialTeamData={conversationType === "team" ? teamData : null}
           membersRefreshKey={teamMembersRefreshKey}
+          hideMatchData
           onClose={handleTeamModalClose}
         />
 
@@ -2884,6 +2885,7 @@ const MessageDisplay = ({
         teamId={conversationType === "team" ? teamData?.id : selectedTeamId}
         initialTeamData={conversationType === "team" ? teamData : null}
         membersRefreshKey={teamMembersRefreshKey}
+        hideMatchData
         onClose={handleTeamModalClose}
       />
 
