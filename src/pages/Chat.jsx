@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { LogOut, ChevronRight, ChevronLeft } from "lucide-react";
+import { LogOut, ChevronRight, ChevronLeft, Users, User } from "lucide-react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import PageContainer from "../components/layout/PageContainer";
 import ConversationList from "../components/chat/ConversationList";
@@ -11,9 +11,12 @@ import socketService from "../services/socketService";
 import { userService } from "../services/userService";
 import { teamService } from "../services/teamService";
 import Alert from "../components/common/Alert";
+import Tooltip from "../components/common/Tooltip";
 import { uploadToImageKit } from "../config/imagekit";
 import UserAvatar from "../components/users/UserAvatar";
 import DemoAvatarOverlay from "../components/users/DemoAvatarOverlay";
+import TeamDetailsModal from "../components/teams/TeamDetailsModal";
+import UserDetailsModal from "../components/users/UserDetailsModal";
 import { getTeamInitials, isSyntheticTeam } from "../utils/userHelpers";
 import { getTeamAvatarUrl } from "../utils/chatEntityResolvers";
 
@@ -64,6 +67,11 @@ const Chat = () => {
   const [teamMembersRefreshSignal, setTeamMembersRefreshSignal] =
     useState(null);
   const [showChatView, setShowChatView] = useState(true); // Toggle between list and chat on mobile
+  const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
+  const [selectedTeamId, setSelectedTeamId] = useState(null);
+  const [selectedTeamData, setSelectedTeamData] = useState(null);
+  const [isUserModalOpen, setIsUserModalOpen] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState(null);
 
   const typingTimeoutRef = useRef(null);
   const messagesContainerRef = useRef(null);
@@ -921,6 +929,23 @@ const Chat = () => {
     user?.username,
   ]);
 
+  const handleHeaderTeamClick = (e) => {
+    e.stopPropagation();
+    if (teamData?.id) {
+      setSelectedTeamId(teamData.id);
+      setSelectedTeamData(teamData);
+      setIsTeamModalOpen(true);
+    }
+  };
+
+  const handleHeaderUserClick = (e) => {
+    e.stopPropagation();
+    if (conversationPartner?.id) {
+      setSelectedUserId(conversationPartner.id);
+      setIsUserModalOpen(true);
+    }
+  };
+
   // Handle leaving a deleted team (removes from conversation list)
   const handleLeaveTeam = async () => {
     if (!activeConversation?.team?.id) {
@@ -1230,48 +1255,92 @@ const Chat = () => {
                   {/* Conversation Header - Avatar and name */}
                   <div className="flex items-center gap-3 min-w-0 flex-1">
                     {conversationType === "team" && teamData ? (
-                      <div className="w-10 h-10 rounded-full relative overflow-hidden flex-shrink-0">
-                        {getTeamAvatarUrl(teamData) ? (
-                          <img
-                            src={getTeamAvatarUrl(teamData)}
-                            alt={teamData.name}
-                            className="object-cover w-full h-full rounded-full"
-                            onError={(e) => {
-                              e.target.style.display = "none";
-                              const fallback = e.target.parentElement.querySelector(".avatar-fallback");
-                              if (fallback) fallback.style.display = "flex";
-                            }}
-                          />
-                        ) : null}
+                      <Tooltip
+                        content={`View ${teamData.name} details`}
+                        position="bottom"
+                        wrapperClassName="inline-flex items-center flex-shrink-0"
+                      >
                         <div
-                          className="avatar-fallback bg-[var(--color-primary-focus)] text-primary-content flex items-center justify-center w-full h-full rounded-full absolute inset-0"
-                          style={{ display: getTeamAvatarUrl(teamData) ? "none" : "flex" }}
+                          className="w-10 h-10 rounded-full relative overflow-hidden cursor-pointer hover:opacity-80 transition-opacity"
+                          onClick={handleHeaderTeamClick}
                         >
-                          <span className="text-sm font-medium">{getTeamInitials(teamData)}</span>
+                          {getTeamAvatarUrl(teamData) ? (
+                            <img
+                              src={getTeamAvatarUrl(teamData)}
+                              alt={teamData.name}
+                              className="object-cover w-full h-full rounded-full"
+                              onError={(e) => {
+                                e.target.style.display = "none";
+                                const fallback = e.target.parentElement.querySelector(".avatar-fallback");
+                                if (fallback) fallback.style.display = "flex";
+                              }}
+                            />
+                          ) : null}
+                          <div
+                            className="avatar-fallback bg-[var(--color-primary-focus)] text-primary-content flex items-center justify-center w-full h-full rounded-full absolute inset-0"
+                            style={{ display: getTeamAvatarUrl(teamData) ? "none" : "flex" }}
+                          >
+                            <span className="text-sm font-medium">{getTeamInitials(teamData)}</span>
+                          </div>
+                          {isSyntheticTeam(teamData) && (
+                            <DemoAvatarOverlay textClassName="text-[7px]" />
+                          )}
                         </div>
-                        {isSyntheticTeam(teamData) && (
-                          <DemoAvatarOverlay textClassName="text-[7px]" />
-                        )}
-                      </div>
+                      </Tooltip>
                     ) : conversationPartner ? (
-                      <UserAvatar
-                        user={conversationPartner}
-                        sizeClass="w-10 h-10"
-                        iconSize={20}
-                        initialsClassName="text-sm font-medium"
-                        showDemoOverlay
-                        demoOverlayTextClassName="text-[7px]"
-                        demoOverlayTextTranslateClassName="-translate-y-[2px]"
-                        className="flex-shrink-0"
-                      />
+                      <Tooltip
+                        content={`View ${[conversationPartner.firstName, conversationPartner.lastName].filter(Boolean).join(" ")} details`}
+                        position="bottom"
+                        wrapperClassName="inline-flex items-center flex-shrink-0"
+                      >
+                        <div
+                          className="cursor-pointer hover:opacity-80 transition-opacity"
+                          onClick={handleHeaderUserClick}
+                        >
+                          <UserAvatar
+                            user={conversationPartner}
+                            sizeClass="w-10 h-10"
+                            iconSize={20}
+                            initialsClassName="text-sm font-medium"
+                            showDemoOverlay
+                            demoOverlayTextClassName="text-[7px]"
+                            demoOverlayTextTranslateClassName="-translate-y-[2px]"
+                          />
+                        </div>
+                      </Tooltip>
                     ) : null}
                     <div className="min-w-0 flex-1">
-                      <h3 className="font-medium truncate text-sm">
-                        {conversationType === "team" ? teamData?.name : conversationPartner?.firstName}
-                      </h3>
-                      {conversationType === "team" && teamData?.members ? (
-                        <p className="text-xs text-base-content/60">
-                          {teamData.members.length} {teamData.members.length === 1 ? "member" : "members"}
+                      <Tooltip
+                        content={
+                          conversationType === "team"
+                            ? `View ${teamData?.name} details`
+                            : `View ${[conversationPartner?.firstName, conversationPartner?.lastName].filter(Boolean).join(" ")} details`
+                        }
+                        position="bottom"
+                        wrapperClassName="block min-w-0"
+                      >
+                        <h3
+                          className="font-medium truncate text-sm cursor-pointer hover:text-primary transition-colors"
+                          onClick={conversationType === "team" ? handleHeaderTeamClick : handleHeaderUserClick}
+                        >
+                          {conversationType === "team" ? teamData?.name : [conversationPartner?.firstName, conversationPartner?.lastName].filter(Boolean).join(" ")}
+                        </h3>
+                      </Tooltip>
+                      {conversationType === "team" ? (
+                        <p className="text-xs text-base-content/60 flex items-center gap-1.5">
+                          <Users size={12} className="flex-shrink-0" />
+                          <span>Team Chat</span>
+                          {teamData?.members && (
+                            <>
+                              <span>·</span>
+                              <span>{teamData.members.length} {teamData.members.length === 1 ? "member" : "members"}</span>
+                            </>
+                          )}
+                        </p>
+                      ) : conversationType === "direct" ? (
+                        <p className="text-xs text-base-content/60 flex items-center gap-1.5">
+                          <User size={12} className="flex-shrink-0" />
+                          <span>Direct Message Chat</span>
                         </p>
                       ) : null}
                     </div>
@@ -1366,6 +1435,18 @@ const Chat = () => {
           )}
         </div>
       </div>
+      <TeamDetailsModal
+        isOpen={isTeamModalOpen}
+        teamId={selectedTeamId}
+        initialTeamData={selectedTeamData}
+        onClose={() => { setIsTeamModalOpen(false); setSelectedTeamId(null); setSelectedTeamData(null); }}
+      />
+
+      <UserDetailsModal
+        isOpen={isUserModalOpen}
+        userId={selectedUserId}
+        onClose={() => { setIsUserModalOpen(false); setSelectedUserId(null); }}
+      />
     </PageContainer>
   );
 };
