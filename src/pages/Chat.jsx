@@ -12,6 +12,10 @@ import { userService } from "../services/userService";
 import { teamService } from "../services/teamService";
 import Alert from "../components/common/Alert";
 import { uploadToImageKit } from "../config/imagekit";
+import UserAvatar from "../components/users/UserAvatar";
+import DemoAvatarOverlay from "../components/users/DemoAvatarOverlay";
+import { getTeamInitials, isSyntheticTeam } from "../utils/userHelpers";
+import { getTeamAvatarUrl } from "../utils/chatEntityResolvers";
 
 const getConversationPartnerId = (conversation) =>
   conversation?.partner?.id ??
@@ -1226,17 +1230,40 @@ const Chat = () => {
                   {/* Conversation Header - Avatar and name */}
                   <div className="flex items-center gap-3 min-w-0 flex-1">
                     {conversationType === "team" && teamData ? (
-                      <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
-                        <span className="text-sm font-medium">
-                          {teamData.name?.substring(0, 2).toUpperCase() || "TM"}
-                        </span>
+                      <div className="w-10 h-10 rounded-full relative overflow-hidden flex-shrink-0">
+                        {getTeamAvatarUrl(teamData) ? (
+                          <img
+                            src={getTeamAvatarUrl(teamData)}
+                            alt={teamData.name}
+                            className="object-cover w-full h-full rounded-full"
+                            onError={(e) => {
+                              e.target.style.display = "none";
+                              const fallback = e.target.parentElement.querySelector(".avatar-fallback");
+                              if (fallback) fallback.style.display = "flex";
+                            }}
+                          />
+                        ) : null}
+                        <div
+                          className="avatar-fallback bg-[var(--color-primary-focus)] text-primary-content flex items-center justify-center w-full h-full rounded-full absolute inset-0"
+                          style={{ display: getTeamAvatarUrl(teamData) ? "none" : "flex" }}
+                        >
+                          <span className="text-sm font-medium">{getTeamInitials(teamData)}</span>
+                        </div>
+                        {isSyntheticTeam(teamData) && (
+                          <DemoAvatarOverlay textClassName="text-[7px]" />
+                        )}
                       </div>
                     ) : conversationPartner ? (
-                      <div className="w-10 h-10 rounded-full bg-success/20 flex items-center justify-center flex-shrink-0">
-                        <span className="text-sm font-medium">
-                          {conversationPartner.firstName?.substring(0, 1).toUpperCase() || "U"}
-                        </span>
-                      </div>
+                      <UserAvatar
+                        user={conversationPartner}
+                        sizeClass="w-10 h-10"
+                        iconSize={20}
+                        initialsClassName="text-sm font-medium"
+                        showDemoOverlay
+                        demoOverlayTextClassName="text-[7px]"
+                        demoOverlayTextTranslateClassName="-translate-y-[2px]"
+                        className="flex-shrink-0"
+                      />
                     ) : null}
                     <div className="min-w-0 flex-1">
                       <h3 className="font-medium truncate text-sm">
