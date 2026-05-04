@@ -12,12 +12,15 @@ import { userService } from "../services/userService";
 import { teamService } from "../services/teamService";
 import Alert from "../components/common/Alert";
 import Tooltip from "../components/common/Tooltip";
+import { CountBadge } from "../components/common/NotificationBadge";
 import { uploadToImageKit } from "../config/imagekit";
 import UserAvatar from "../components/users/UserAvatar";
 import DemoAvatarOverlay from "../components/users/DemoAvatarOverlay";
 import TeamDetailsModal from "../components/teams/TeamDetailsModal";
 import UserDetailsModal from "../components/users/UserDetailsModal";
 import { getTeamInitials, isSyntheticTeam } from "../utils/userHelpers";
+import { formatDisplayName } from "../utils/nameFormatters";
+import { formatDistanceToNow } from "date-fns";
 import { getTeamAvatarUrl } from "../utils/chatEntityResolvers";
 
 const getConversationPartnerId = (conversation) =>
@@ -26,6 +29,57 @@ const getConversationPartnerId = (conversation) =>
   conversation?.partnerId ??
   conversation?.partner_id ??
   null;
+
+const resolveTypingUserId = (payload) =>
+  payload?.userId ??
+  payload?.user_id ??
+  payload?.senderId ??
+  payload?.sender_id ??
+  payload?.id ??
+  null;
+
+const resolveTypingDisplayName = (payload) => {
+  const first = payload?.firstName || payload?.first_name || "";
+  const last = payload?.lastName || payload?.last_name || "";
+  const fullName = `${first} ${last}`.trim();
+  return fullName || payload?.username || payload?.userName || payload?.name || null;
+};
+
+const resolveConversationUser = (conversation, userId) => {
+  if (!conversation || !userId) return null;
+
+  if (conversation.type === "direct") {
+    const partner = conversation.partner || conversation.partnerUser;
+    if (
+      partner &&
+      String(getConversationPartnerId(conversation)) === String(userId)
+    ) {
+      return partner;
+    }
+  }
+
+  if (conversation.type === "team") {
+    const members = conversation.team?.members || conversation.members || [];
+    const matchedMember = members.find((member) => {
+      const memberUser = member.user || member;
+      const memberId =
+        memberUser?.id ??
+        memberUser?.userId ??
+        memberUser?.user_id ??
+        member?.id ??
+        member?.userId ??
+        member?.user_id ??
+        null;
+      return String(memberId) === String(userId);
+    });
+
+    if (matchedMember) {
+      return matchedMember.user || matchedMember;
+    }
+  }
+
+  return null;
+};
 
 const isDirectConversationForPartner = (conversation, partnerId) =>
   conversation?.type === "direct" &&
@@ -60,6 +114,7 @@ const Chat = () => {
   const [error, setError] = useState(null);
   const [onlineUsers, setOnlineUsers] = useState([]);
   const [typingUsers, setTypingUsers] = useState({});
+  const [users, setUsers] = useState({});
   const [highlightMessageIds, setHighlightMessageIds] = useState([]);
   const [isTeamArchived, setIsTeamArchived] = useState(false);
   const [hasMoreMessages, setHasMoreMessages] = useState(false);
@@ -713,21 +768,48 @@ const Chat = () => {
     };
 
     // Handle typing indicators
-    const handleTypingUpdate = (data) => {
-      if (String(data.conversationId) === String(conversationId)) {
-        setTypingUsers((prev) => {
-          const updated = {
-            ...prev,
-            [data.userId]: data.isTyping ? data.username : null,
-          };
-          Object.keys(updated).forEach((key) => {
-            if (updated[key] === null) {
-              delete updated[key];
-            }
-          });
-          return updated;
-        });
+    const handleTypingUpdate = async (data) => {
+      if (String(data.conversationId) !== String(conversationId)) {
+        return;
       }
+
+      const typingUserId = resolveTypingUserId(data);
+      if (!typingUserId) {
+        return;
+      }
+
+      let displayName = resolveTypingDisplayName(data) || "User";
+      const conversationUser = resolveConversationUser(activeConversation, typingUserId);
+
+      if (conversationUser) {
+        displayName = formatDisplayName(conversationUser);
+      } else if (users[typingUserId]) {
+        displayName = formatDisplayName(users[typingUserId]);
+      } else if (data.isTyping) {
+        try {
+          const userData = await userService.getUserById(typingUserId);
+          setUsers((prev) => ({ ...prev, [typingUserId]: userData }));
+          displayName = formatDisplayName(userData);
+        } catch (error) {
+          console.error("Error fetching user for typing:", error);
+          displayName = resolveTypingDisplayName(data) || "User";
+        }
+      }
+
+      setTypingUsers((prev) => {
+        const updated = {
+          ...prev,
+          [typingUserId]: data.isTyping ? displayName : null,
+        };
+
+        Object.keys(updated).forEach((key) => {
+          if (updated[key] === null) {
+            delete updated[key];
+          }
+        });
+
+        return updated;
+      });
     };
 
     // Handle message status updates
@@ -924,9 +1006,11 @@ const Chat = () => {
     isAuthenticated,
     navigate,
     refreshConversationList,
+    activeConversation,
     searchParams,
     user?.id,
     user?.username,
+    users,
   ]);
 
   const handleHeaderTeamClick = (e) => {
@@ -1182,7 +1266,11 @@ const Chat = () => {
     }
 
     if (isTyping) {
-      socketService.sendTypingStart(conversationId, type);
+      socketService.sendTypingStart(conversationId, type, {
+        firstName: user.firstName,
+        lastName: user.lastName,
+        username: user.username,
+      });
       typingTimeoutRef.current = setTimeout(() => {
         socketService.sendTypingStop(conversationId, type);
       }, 3000);
@@ -1285,6 +1373,12 @@ const Chat = () => {
                           {isSyntheticTeam(teamData) && (
                             <DemoAvatarOverlay textClassName="text-[7px]" />
                           )}
+                          {(activeConversation?.unreadCount || activeConversation?.unread_count) > 0 && (
+                            <CountBadge
+                              count={activeConversation.unreadCount ?? activeConversation.unread_count}
+                              className="absolute -top-1 -left-2 z-10"
+                            />
+                          )}
                         </div>
                       </Tooltip>
                     ) : conversationPartner ? (
@@ -1294,7 +1388,7 @@ const Chat = () => {
                         wrapperClassName="inline-flex items-center flex-shrink-0"
                       >
                         <div
-                          className="cursor-pointer hover:opacity-80 transition-opacity"
+                          className="cursor-pointer hover:opacity-80 transition-opacity relative"
                           onClick={handleHeaderUserClick}
                         >
                           <UserAvatar
@@ -1306,6 +1400,12 @@ const Chat = () => {
                             demoOverlayTextClassName="text-[7px]"
                             demoOverlayTextTranslateClassName="-translate-y-[2px]"
                           />
+                          {(activeConversation?.unreadCount || activeConversation?.unread_count) > 0 && (
+                            <CountBadge
+                              count={activeConversation.unreadCount ?? activeConversation.unread_count}
+                              className="absolute -top-1 -left-2 z-10"
+                            />
+                          )}
                         </div>
                       </Tooltip>
                     ) : null}
@@ -1327,21 +1427,35 @@ const Chat = () => {
                         </h3>
                       </Tooltip>
                       {conversationType === "team" ? (
-                        <p className="text-xs text-base-content/60 flex items-center gap-1.5">
-                          <Users size={12} className="flex-shrink-0" />
-                          <span>Team Chat</span>
-                          {teamData?.members && (
-                            <>
-                              <span>·</span>
-                              <span>{teamData.members.length} {teamData.members.length === 1 ? "member" : "members"}</span>
-                            </>
+                        <div className="text-xs text-base-content/60 flex items-center justify-between gap-1.5">
+                          <div className="flex items-center gap-1.5">
+                            <Users size={12} className="flex-shrink-0" />
+                            <span>Team chat</span>
+                            {teamData?.members && (
+                              <>
+                                <span>·</span>
+                                <span>{teamData.members.length} {teamData.members.length === 1 ? "member" : "members"}</span>
+                              </>
+                            )}
+                          </div>
+                          {activeConversation?.updatedAt && (
+                            <span className="text-xs text-base-content/50 whitespace-nowrap ml-2">
+                              {formatDistanceToNow(new Date(activeConversation.updatedAt), { addSuffix: true })}
+                            </span>
                           )}
-                        </p>
+                        </div>
                       ) : conversationType === "direct" ? (
-                        <p className="text-xs text-base-content/60 flex items-center gap-1.5">
-                          <User size={12} className="flex-shrink-0" />
-                          <span>Direct Message Chat</span>
-                        </p>
+                        <div className="text-xs text-base-content/60 flex items-center justify-between gap-1.5">
+                          <div className="flex items-center gap-1.5">
+                            <User size={12} className="flex-shrink-0" />
+                            <span>Direct message</span>
+                          </div>
+                          {activeConversation?.updatedAt && (
+                            <span className="text-xs text-base-content/50 whitespace-nowrap ml-2">
+                              {formatDistanceToNow(new Date(activeConversation.updatedAt), { addSuffix: true })}
+                            </span>
+                          )}
+                        </div>
                       ) : null}
                     </div>
                   </div>
@@ -1439,6 +1553,7 @@ const Chat = () => {
         isOpen={isTeamModalOpen}
         teamId={selectedTeamId}
         initialTeamData={selectedTeamData}
+        hideMatchData
         onClose={() => { setIsTeamModalOpen(false); setSelectedTeamId(null); setSelectedTeamData(null); }}
       />
 
