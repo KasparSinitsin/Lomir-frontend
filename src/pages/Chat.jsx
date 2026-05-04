@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { LogOut } from "lucide-react";
+import { LogOut, ChevronRight, ChevronLeft } from "lucide-react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import PageContainer from "../components/layout/PageContainer";
 import ConversationList from "../components/chat/ConversationList";
@@ -59,6 +59,7 @@ const Chat = () => {
   const [loadingMore, setLoadingMore] = useState(false);
   const [teamMembersRefreshSignal, setTeamMembersRefreshSignal] =
     useState(null);
+  const [showChatView, setShowChatView] = useState(true); // Toggle between list and chat on mobile
 
   const typingTimeoutRef = useRef(null);
   const messagesContainerRef = useRef(null);
@@ -1171,6 +1172,9 @@ const Chat = () => {
       prev.map((conv) => (conv.id === id ? { ...conv, unreadCount: 0 } : conv)),
     );
 
+    // Show chat view on mobile/tablet when conversation is selected
+    setShowChatView(true);
+
     // Navigate with type parameter
     navigate(`/chat/${id}?type=${type}`);
   };
@@ -1188,7 +1192,9 @@ const Chat = () => {
 
       <div className="flex h-[calc(100vh-200px)] bg-base-100 rounded-xl overflow-hidden">
         {/* Conversation List - Left Sidebar */}
-        <div className="w-1/3 border-r border-base-200 overflow-y-auto">
+        <div className={`border-r border-base-200 overflow-y-auto transition-all duration-300 ${
+          showChatView ? "hidden md:flex md:w-1/3" : "w-full md:w-1/3"
+        }`}>
           <ConversationList
             conversations={conversations}
             activeConversationId={conversationId}
@@ -1200,9 +1206,52 @@ const Chat = () => {
         </div>
 
         {/* Message Display - Right Side */}
-        <div className="w-2/3 flex flex-col">
+        <div className={`flex flex-col transition-all duration-300 ${
+          showChatView ? "w-full md:w-2/3" : "hidden md:flex md:w-2/3"
+        }`}>
           {conversationId ? (
             <>
+              {/* Header with back button and conversation info - hidden on md and up */}
+              <div className="flex items-center justify-between border-b border-base-200 p-3 md:p-4 bg-base-100 md:hidden">
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  {/* Back/List toggle button - visible on small screens */}
+                  <button
+                    onClick={() => setShowChatView(false)}
+                    className="md:hidden flex items-center justify-center p-2 hover:bg-base-200 rounded-lg transition-colors"
+                    title="Back to conversation list"
+                  >
+                    <ChevronLeft size={20} />
+                  </button>
+                  
+                  {/* Conversation Header - Avatar and name */}
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    {conversationType === "team" && teamData ? (
+                      <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+                        <span className="text-sm font-medium">
+                          {teamData.name?.substring(0, 2).toUpperCase() || "TM"}
+                        </span>
+                      </div>
+                    ) : conversationPartner ? (
+                      <div className="w-10 h-10 rounded-full bg-success/20 flex items-center justify-center flex-shrink-0">
+                        <span className="text-sm font-medium">
+                          {conversationPartner.firstName?.substring(0, 1).toUpperCase() || "U"}
+                        </span>
+                      </div>
+                    ) : null}
+                    <div className="min-w-0 flex-1">
+                      <h3 className="font-medium truncate text-sm">
+                        {conversationType === "team" ? teamData?.name : conversationPartner?.firstName}
+                      </h3>
+                      {conversationType === "team" && teamData?.members ? (
+                        <p className="text-xs text-base-content/60">
+                          {teamData.members.length} {teamData.members.length === 1 ? "member" : "members"}
+                        </p>
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <div ref={messagesContainerRef} className="flex-grow overflow-y-auto p-4">
                 <MessageDisplay
                   messages={messages}
@@ -1275,10 +1324,17 @@ const Chat = () => {
               </div>
             </>
           ) : (
-            <div className="flex items-center justify-center h-full">
+            <div className="flex flex-col items-center justify-center h-full gap-4">
               <p className="text-base-content/70">
                 Select a conversation to start chatting
               </p>
+              <button
+                onClick={() => setShowChatView(false)}
+                className="md:hidden flex items-center gap-2 btn btn-sm btn-outline"
+              >
+                <ChevronLeft size={16} />
+                Back to conversations
+              </button>
             </div>
           )}
         </div>

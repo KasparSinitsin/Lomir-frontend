@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Users, User } from "lucide-react";
+import { Users, User, ChevronRight } from "lucide-react";
 import SearchResultTypeOverlay from "../common/SearchResultTypeOverlay";
 import Tooltip from "../common/Tooltip";
 import { getTeamInitials, isSyntheticTeam } from "../../utils/userHelpers";
@@ -264,7 +264,7 @@ const ConversationList = ({
               key={`${conversation.type}-${conversation.id}`}
               ref={isActive ? activeConversationRef : null}
               className={`
-                p-4 cursor-pointer transition-colors duration-200
+                p-4 cursor-pointer transition-colors duration-200 group
                 ${
                   isActive
                     ? "bg-green-100"
@@ -408,6 +408,15 @@ const ConversationList = ({
                     </span>
                   </div>
                 </div>
+
+                {/* Chevron button - visible on mobile, hover on desktop */}
+                <button
+                  onClick={() => onSelectConversation(conversation.id)}
+                  className="flex items-center justify-center p-2 ml-2 flex-shrink-0 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
+                  title="Open conversation"
+                >
+                  <ChevronRight size={20} className="text-base-content/70" />
+                </button>
               </div>
             </div>
           );
