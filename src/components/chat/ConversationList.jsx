@@ -219,7 +219,7 @@ const ConversationList = ({
 
   return (
     <>
-      <div className="divide-y divide-base-200">
+      <div className="divide-y divide-base-200 w-full min-w-0">
         {conversations.map((conversation) => {
           // Handle both direct messages and team conversations
           const isTeam = conversation.type === "team";
@@ -355,20 +355,14 @@ const ConversationList = ({
                 </Tooltip>
 
                 <div className="flex-grow min-w-0 flex flex-col justify-center">
-                  <div className="flex justify-between items-center">
+                  <div className="flex justify-between items-center min-w-0">
                     {/* Name - Clickable for both team and direct conversations */}
                     <Tooltip
-                      content={
-                        isTeam
-                          ? `View ${conversationData?.name} details`
-                          : isUserClickable
-                            ? `View ${displayName} details`
-                            : undefined
-                      }
-                      wrapperClassName="min-w-0 flex-1"
+                      content={displayName?.length > 22 ? displayName : undefined}
+                      wrapperClassName="block min-w-0 flex-1 overflow-hidden"
                     >
                       <h3
-                        className={`font-medium truncate ${
+                        className={`font-medium truncate text-sm ${
                           isTeam || isUserClickable
                             ? "cursor-pointer hover:text-primary transition-colors"
                             : ""
@@ -386,17 +380,27 @@ const ConversationList = ({
                       </h3>
                     </Tooltip>
                   </div>
-                  <p className="text-sm text-base-content/70 truncate">
-                    {conversation.lastMessage || "No messages yet"}
-                  </p>
-                  <div className="flex justify-between items-center">
+                  <Tooltip
+                    content={
+                      (conversation.lastMessage?.length ?? 0) > 60
+                        ? conversation.lastMessage
+                        : undefined
+                    }
+                    position="bottom"
+                    wrapperClassName="block min-w-0 overflow-hidden"
+                  >
+                    <p className="text-sm text-base-content/70 truncate">
+                      {conversation.lastMessage || "No messages yet"}
+                    </p>
+                  </Tooltip>
+                  <div className="flex items-center min-w-0">
                     <p
-                      className="text-xs"
+                      className="text-xs truncate flex-1 min-w-0"
                       style={{ color: "#036b0c" }}
                     >
                       {isTeam ? "Team Chat" : "Direct Message"}
                     </p>
-                    <span className="whitespace-nowrap ml-2 text-xs" style={{ color: "#036b0c" }}>
+                    <span className="flex-shrink-0 ml-2 text-xs whitespace-nowrap" style={{ color: "#036b0c" }}>
                       {conversation.updatedAt
                         ? formatDistanceToNow(
                             new Date(conversation.updatedAt),
@@ -410,13 +414,14 @@ const ConversationList = ({
                 </div>
 
                 {/* Chevron button - visible on mobile, hover on desktop */}
-                <button
-                  onClick={() => onSelectConversation(conversation.id)}
-                  className="flex items-center justify-center p-2 ml-2 flex-shrink-0 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
-                  title="Open conversation"
-                >
-                  <ChevronRight size={20} className="text-base-content/70" />
-                </button>
+                <Tooltip content="Open conversation" position="top" wrapperClassName="inline-flex items-center flex-shrink-0 ml-1 -mr-4">
+                  <button
+                    onClick={() => onSelectConversation(conversation.id)}
+                    className="flex items-center justify-center p-2 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
+                  >
+                    <ChevronRight size={16} className="text-base-content/70" />
+                  </button>
+                </Tooltip>
               </div>
             </div>
           );

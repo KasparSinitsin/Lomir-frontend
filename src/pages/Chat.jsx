@@ -1222,7 +1222,7 @@ const Chat = () => {
       <div className="flex h-[calc(100vh-200px)] bg-base-100 rounded-xl overflow-hidden">
         {/* Conversation List - Left Sidebar */}
         <div className={`border-r border-base-200 overflow-y-auto transition-all duration-300 ${
-          showChatView ? "hidden md:flex md:w-1/3" : "w-full md:w-1/3"
+          showChatView ? "hidden md:block md:w-1/3" : "w-full md:w-1/3"
         }`}>
           <ConversationList
             conversations={conversations}
