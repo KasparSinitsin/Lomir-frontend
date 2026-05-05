@@ -2221,10 +2221,10 @@ const TeamCard = ({
           listEdgeRounding={!disableListEdgeRounding}
       >
           <div
-            className={`box-border w-56 flex-shrink-0 flex items-center gap-3 overflow-hidden ${listLocationWidthClassName} ${listLocationInsetClassName}`}
+            className={`box-border flex w-24 flex-shrink-0 items-center gap-3 overflow-hidden sm:w-56 ${listLocationWidthClassName} ${listLocationInsetClassName}`}
           >
             {showDistance && (
-              <div className="w-16 flex-shrink-0 overflow-hidden">
+              <div className="hidden w-16 flex-shrink-0 overflow-hidden md:block">
                 <div className="text-xs text-base-content flex items-center gap-1 overflow-hidden">
                   <Tooltip content={`${Math.round(distance)} km away from you`}>
                     <div className="flex items-center gap-1">
@@ -2254,7 +2254,7 @@ const TeamCard = ({
             )}
           </div>
           <div
-            className={`w-52 flex-shrink-0 text-xs text-base-content/60 hidden sm:flex items-center gap-1 overflow-hidden ${listTagsWidthClassName}`}
+            className={`hidden w-52 flex-shrink-0 text-xs text-base-content/60 lg:flex items-center gap-1 overflow-hidden ${listTagsWidthClassName}`}
           >
             {tagsSummary && (
               <Tooltip content={tagNames.join(", ")} wrapperClassName="flex items-center gap-1 min-w-0 overflow-hidden w-full">
@@ -2264,7 +2264,7 @@ const TeamCard = ({
             )}
           </div>
           <div
-            className={`w-48 flex-shrink-0 text-xs text-base-content/60 hidden sm:flex items-center gap-1 overflow-hidden ${listBadgesWidthClassName}`}
+            className={`hidden w-48 flex-shrink-0 text-xs text-base-content/60 xl:flex items-center gap-1 overflow-hidden ${listBadgesWidthClassName}`}
           >
             {badgesSummary && (
               <Tooltip content={badgeNames.join(", ")} wrapperClassName="flex items-center gap-1 min-w-0 overflow-hidden w-full">
