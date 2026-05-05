@@ -744,6 +744,9 @@ const Chat = () => {
               fileSize: message.fileSize,
               fileExpiresAt: message.fileExpiresAt,
               fileDeletedAt: message.fileDeletedAt,
+              readCount: message.readCount,
+              recipientCount: message.recipientCount,
+              readByUsers: message.readByUsers,
             };
 
             return dedupeMessages([...withoutOptimistic, newMessage]);
@@ -766,6 +769,9 @@ const Chat = () => {
               fileSize: message.fileSize,
               fileExpiresAt: message.fileExpiresAt,
               fileDeletedAt: message.fileDeletedAt,
+              readCount: message.readCount,
+              recipientCount: message.recipientCount,
+              readByUsers: message.readByUsers,
             };
 
             return dedupeMessages([...prev, newMessage]);
@@ -857,12 +863,42 @@ const Chat = () => {
     // Handle message status updates
     const handleMessageStatus = (data) => {
       if (String(data.conversationId) === String(conversationId)) {
+        const readCountByMessageId = new Map(
+          (data.messageReadCounts || []).map((status) => [
+            String(status.messageId),
+            status,
+          ]),
+        );
+
         setMessages((prev) =>
-          prev.map((msg) => ({
-            ...msg,
-            readAt:
-              msg.readAt || (msg.senderId !== user.id ? data.readAt : null),
-          })),
+          prev.map((msg) => {
+            if (data.type === "team") {
+              const status = readCountByMessageId.get(String(msg.id));
+
+              if (!status) {
+                return msg;
+              }
+
+              return {
+                ...msg,
+                readAt: msg.readAt || status.firstReadAt || data.readAt,
+                readCount: status.readCount,
+                recipientCount: status.recipientCount,
+                readByUsers: status.readByUsers || msg.readByUsers,
+              };
+            }
+
+            if (msg.senderId !== user.id) {
+              return msg;
+            }
+
+            return {
+              ...msg,
+              readAt: msg.readAt || data.readAt,
+              readCount: 1,
+              recipientCount: 1,
+            };
+          }),
         );
       }
     };

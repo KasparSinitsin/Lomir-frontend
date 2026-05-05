@@ -15,7 +15,7 @@ const COUNTRY_TIMEZONES = {
   FI: "Europe/Helsinki", EE: "Europe/Tallinn",  LV: "Europe/Riga",
   LT: "Europe/Vilnius",  RO: "Europe/Bucharest", BG: "Europe/Sofia",
   HR: "Europe/Zagreb",   SI: "Europe/Ljubljana", GR: "Europe/Athens",
-  ZA: "Africa/Johannesburg", CO: "America/Bogota",
+  ZA: "Africa/Johannesburg", CO: "America/Bogota", AU: "Australia/Sydney",
   // English names
   Germany: "Europe/Berlin",       Austria: "Europe/Vienna",
   Switzerland: "Europe/Zurich",   Netherlands: "Europe/Amsterdam",
@@ -32,6 +32,7 @@ const COUNTRY_TIMEZONES = {
   Bulgaria: "Europe/Sofia",       Croatia: "Europe/Zagreb",
   Slovenia: "Europe/Ljubljana",   Greece: "Europe/Athens",
   "South Africa": "Africa/Johannesburg", Colombia: "America/Bogota",
+  Australia: "Australia/Sydney",
   // Local language names (Nominatim returns these when no language is specified)
   Deutschland: "Europe/Berlin",   Österreich: "Europe/Vienna",
   Schweiz: "Europe/Zurich",       Suisse: "Europe/Zurich",
@@ -45,17 +46,68 @@ const COUNTRY_TIMEZONES = {
   Lettland: "Europe/Riga",        Litauen: "Europe/Vilnius",
   Rumänien: "Europe/Bucharest",   Bulgarien: "Europe/Sofia",
   Kroatien: "Europe/Zagreb",      Slowenien: "Europe/Ljubljana",
-  Griechenland: "Europe/Athens",
+  Griechenland: "Europe/Athens",  Australien: "Australia/Sydney",
 };
+
+const CITY_TIMEZONES = {
+  Adelaide: "Australia/Adelaide",
+  Sydney: "Australia/Sydney",
+  Melbourne: "Australia/Melbourne",
+  Brisbane: "Australia/Brisbane",
+  Perth: "Australia/Perth",
+  Darwin: "Australia/Darwin",
+  Hobart: "Australia/Hobart",
+  Canberra: "Australia/Sydney",
+};
+
+// ISO-2 codes and names for German-speaking countries.
+const GERMAN_LOCALE_COUNTRIES = new Set([
+  "DE", "AT", "CH", "LI",
+  "Germany", "Austria", "Switzerland", "Liechtenstein",
+  "Deutschland", "Österreich", "Schweiz", "Suisse", "Svizzera",
+]);
+
+// ISO-2 codes and names for English-speaking countries (AM/PM convention).
+const ENGLISH_LOCALE_COUNTRIES = new Set([
+  "US", "CA", "AU", "NZ", "IE", "GB", "ZA", "BS", "PH", "SG", "MY",
+  "United States", "Canada", "Australia", "New Zealand", "Ireland",
+  "United Kingdom", "South Africa", "Bahamas", "Philippines",
+  "Singapore", "Malaysia", "Australien",
+]);
+
+const ENGLISH_LOCALE_CITIES = new Set([
+  "Adelaide", "Sydney", "Melbourne", "Brisbane", "Perth", "Darwin",
+  "Hobart", "Canberra",
+]);
 
 // Set by AuthContext after the user profile is loaded.
 let _userTimezone = null;
+let _userLocale = null;
 
 // Call this from AuthContext whenever user data changes.
 export const setUserTimezone = (user) => {
-  if (!user) { _userTimezone = null; return; }
+  if (!user) { _userTimezone = null; _userLocale = null; return; }
 
   const country = (user.country || user.country_code || "").trim();
+  const city = (user.city || "").trim();
+
+  // Derive locale from profile country.
+  const countryLower = country.toLowerCase();
+  const cityLower = city.toLowerCase();
+  const isGerman = GERMAN_LOCALE_COUNTRIES.has(country) ||
+    [...GERMAN_LOCALE_COUNTRIES].some(k => k.toLowerCase() === countryLower);
+  const isEnglish = !isGerman && (
+    ENGLISH_LOCALE_COUNTRIES.has(country) ||
+    [...ENGLISH_LOCALE_COUNTRIES].some(k => k.toLowerCase() === countryLower) ||
+    [...ENGLISH_LOCALE_CITIES].some(k => k.toLowerCase() === cityLower)
+  );
+  _userLocale = isGerman ? "de-DE" : isEnglish ? "en-US" : null;
+
+  const cityMatch = Object.keys(CITY_TIMEZONES).find(k => k.toLowerCase() === cityLower);
+  if (cityMatch) {
+    _userTimezone = CITY_TIMEZONES[cityMatch];
+    return;
+  }
 
   // Direct match
   if (COUNTRY_TIMEZONES[country]) {
@@ -75,6 +127,7 @@ export const setUserTimezone = (user) => {
   const postal = (user.postalCode || user.postal_code || "").trim();
   if (/^\d{5}$/.test(postal)) {
     _userTimezone = "Europe/Berlin";
+    _userLocale = "de-DE";
     return;
   }
 
@@ -82,9 +135,14 @@ export const setUserTimezone = (user) => {
   console.warn("[dateHelpers] Could not resolve timezone from user profile. country =", JSON.stringify(country), "| postal =", JSON.stringify(postal));
 };
 
-// Returns the best available timezone: profile-derived > browser > UTC.
+// Display chat timestamps in the viewer's device timezone. Profile location only
+// decides locale style (12-hour vs 24-hour), not the actual clock conversion.
 const resolveTimezone = () =>
-  _userTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+  Intl.DateTimeFormat().resolvedOptions().timeZone || _userTimezone || "UTC";
+
+// Returns the best available locale: profile-derived > browser default.
+const resolveLocale = () =>
+  _userLocale || navigator.language || undefined;
 
 const hasTimezoneOffset = (value) => /[zZ]$|[+-]\d{2}(?::?\d{2})?$/.test(value);
 
@@ -116,11 +174,16 @@ export const normalizeTimestampToDate = (value) => {
 export const formatLocalTime = (value) => {
   const date = normalizeTimestampToDate(value);
   if (!date) return "";
-  return new Intl.DateTimeFormat(undefined, {
+  const locale = resolveLocale();
+  const isGerman = _userLocale != null && _userLocale.startsWith("de");
+  const isEnglish = _userLocale != null && _userLocale.startsWith("en");
+  const formatted = new Intl.DateTimeFormat(locale, {
     hour: "numeric",
     minute: "2-digit",
+    hour12: isGerman ? false : isEnglish ? true : undefined,
     timeZone: resolveTimezone(),
   }).format(date);
+  return isGerman ? `${formatted} Uhr` : formatted;
 };
 
 // Returns "YYYY-MM-DD" in the user's local timezone — used to group messages by day.
