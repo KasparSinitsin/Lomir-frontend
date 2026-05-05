@@ -737,6 +737,9 @@ const Chat = () => {
               readCount: message.readCount,
               recipientCount: message.recipientCount,
               readByUsers: message.readByUsers,
+              editedAt: message.editedAt || message.edited_at,
+              editedBy: message.editedBy ?? message.edited_by,
+              isEdited: message.isEdited || message.is_edited,
             };
 
             return dedupeMessages([...withoutOptimistic, newMessage]);
@@ -762,6 +765,9 @@ const Chat = () => {
               readCount: message.readCount,
               recipientCount: message.recipientCount,
               readByUsers: message.readByUsers,
+              editedAt: message.editedAt || message.edited_at,
+              editedBy: message.editedBy ?? message.edited_by,
+              isEdited: message.isEdited || message.is_edited,
             };
 
             return dedupeMessages([...prev, newMessage]);
@@ -1047,6 +1053,47 @@ const Chat = () => {
       );
     };
 
+    const handleMessageEdited = (payload) => {
+      const messageId = payload.messageId ?? payload.id;
+      if (!messageId) return;
+      const nextContent = payload.content;
+
+      setMessages((prev) =>
+        prev.map((m) =>
+          String(m.id) === String(messageId)
+            ? {
+                ...m,
+                content: nextContent ?? m.content,
+                editedAt:
+                  payload.editedAt ||
+                  payload.edited_at ||
+                  payload.updatedAt ||
+                  payload.updated_at ||
+                  new Date().toISOString(),
+                editedBy: payload.editedBy ?? payload.edited_by ?? m.editedBy,
+                isEdited: true,
+              }
+            : m,
+        ),
+      );
+
+      if (payload.isLatestMessage || payload.isLastMessage) {
+        setConversations((prev) =>
+          prev.map((conversation) =>
+            String(conversation.id) === String(payload.conversationId) ||
+            (payload.type === "direct" &&
+              (String(conversation.id) === String(payload.senderId) ||
+                String(conversation.id) === String(payload.receiverId)))
+              ? {
+                  ...conversation,
+                  lastMessage: nextContent ?? conversation.lastMessage,
+                }
+              : conversation,
+          ),
+        );
+      }
+    };
+
     // Subscribe to events
     socket.on("users:online", handleOnlineUsers);
     socket.on("message:received", handleNewMessage);
@@ -1057,6 +1104,7 @@ const Chat = () => {
     socket.on("conversation:deleted", handleConversationDeleted);
     socket.on("team:member_kicked", handleKickedFromTeam);
     socket.on("message:deleted", handleMessageDeleted);
+    socket.on("message:edited", handleMessageEdited);
 
     // Cleanup function to remove listeners
     return () => {
@@ -1069,6 +1117,7 @@ const Chat = () => {
       socket.off("conversation:deleted", handleConversationDeleted);
       socket.off("team:member_kicked", handleKickedFromTeam);
       socket.off("message:deleted", handleMessageDeleted);
+      socket.off("message:edited", handleMessageEdited);
     };
   }, [
     conversationId,
@@ -1295,6 +1344,106 @@ const Chat = () => {
 
       // Optional: re-fetch messages for correctness after failure
       // (you can leave this out if you don’t want)
+    }
+  };
+
+  const handleEditMessage = async (messageId, content) => {
+    if (!messageId) return;
+
+    const trimmedContent = content.trim();
+    if (!trimmedContent) {
+      throw new Error("Message cannot be empty.");
+    }
+
+    const previousMessage = messages.find(
+      (m) => String(m.id) === String(messageId),
+    );
+    const isLatestMessage =
+      messages.length > 0 &&
+      String(messages[messages.length - 1]?.id) === String(messageId);
+    const editedAt = new Date().toISOString();
+
+    setMessages((prev) =>
+      prev.map((m) =>
+        String(m.id) === String(messageId)
+          ? {
+              ...m,
+              content: trimmedContent,
+              editedAt,
+              editedBy: user?.id,
+              isEdited: true,
+            }
+          : m,
+      ),
+    );
+
+    if (isLatestMessage) {
+      setConversations((prev) =>
+        prev.map((conversation) =>
+          String(conversation.id) === String(conversationId)
+            ? {
+                ...conversation,
+                lastMessage: trimmedContent,
+              }
+            : conversation,
+        ),
+      );
+    }
+
+    try {
+      const response = await messageService.updateMessage(
+        messageId,
+        trimmedContent,
+      );
+      const updatedMessage = response?.data || response?.message || response;
+
+      if (updatedMessage && typeof updatedMessage === "object") {
+        setMessages((prev) =>
+          prev.map((m) =>
+            String(m.id) === String(messageId)
+              ? {
+                  ...m,
+                  ...updatedMessage,
+                  content: updatedMessage.content ?? trimmedContent,
+                  editedAt:
+                    updatedMessage.editedAt ||
+                    updatedMessage.edited_at ||
+                    updatedMessage.updatedAt ||
+                    updatedMessage.updated_at ||
+                    editedAt,
+                  editedBy:
+                    updatedMessage.editedBy ??
+                    updatedMessage.edited_by ??
+                    user?.id,
+                  isEdited: true,
+                }
+              : m,
+          ),
+        );
+      }
+    } catch (err) {
+      if (previousMessage) {
+        setMessages((prev) =>
+          prev.map((m) =>
+            String(m.id) === String(messageId) ? previousMessage : m,
+          ),
+        );
+      }
+      if (isLatestMessage) {
+        setConversations((prev) =>
+          prev.map((conversation) =>
+            String(conversation.id) === String(conversationId)
+              ? {
+                  ...conversation,
+                  lastMessage: previousMessage?.content || conversation.lastMessage,
+                }
+              : conversation,
+          ),
+        );
+      }
+      console.error("Failed to edit message:", err);
+      setError("Failed to edit message. Please try again.");
+      throw err;
     }
   };
 
@@ -1549,6 +1698,7 @@ const Chat = () => {
                   onLoadEarlierMessages={loadEarlierMessages}
                   onDeleteConversation={handleDeleteConversation}
                   onDeleteMessage={handleDeleteMessage}
+                  onEditMessage={handleEditMessage}
                   onLeaveTeam={handleLeaveTeam}
                 />
               </div>
