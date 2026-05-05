@@ -51,7 +51,7 @@ const Section = ({
             )}
             {subtitle && (
               <div
-                className={`flex items-center justify-between mt-1 ${
+                className={`flex items-center justify-between gap-2 mt-1 ${
                   collapsible ? "cursor-pointer select-none group" : ""
                 }`}
                 onClick={
@@ -60,18 +60,20 @@ const Section = ({
                     : undefined
                 }
               >
-                <p className="text-base-content/70 text-sm">{subtitle}</p>
-                <div className="flex items-center gap-2 mr-4">
-                  <div onClick={(e) => e.stopPropagation()}>
-                    {subtitleAction}
-                  </div>
-                  {collapsible && (
-                    <ChevronIcon
-                      size={22}
-                      className="text-success group-hover:text-success/70 transition-colors flex-shrink-0"
-                    />
+                <div className="flex flex-wrap items-center justify-between flex-1 min-w-0 gap-y-0.5">
+                  <p className="text-base-content/70 text-sm">{subtitle}</p>
+                  {subtitleAction && (
+                    <div onClick={(e) => e.stopPropagation()}>
+                      {subtitleAction}
+                    </div>
                   )}
                 </div>
+                {collapsible && (
+                  <ChevronIcon
+                    size={22}
+                    className="text-success group-hover:text-success/70 transition-colors flex-shrink-0"
+                  />
+                )}
               </div>
             )}
           </div>
