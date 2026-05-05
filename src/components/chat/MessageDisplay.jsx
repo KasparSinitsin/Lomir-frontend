@@ -25,6 +25,8 @@ import {
   AlertTriangle,
   Clock,
   Trash2,
+  Pencil,
+  X,
   Check,
   CheckCheck,
 } from "lucide-react";
@@ -413,6 +415,7 @@ const MessageDisplay = ({
   onLoadEarlierMessages,
   onDeleteConversation,
   onDeleteMessage,
+  onEditMessage,
   onLeaveTeam,
 }) => {
   const messagesEndRef = useRef(null);
@@ -440,6 +443,65 @@ const MessageDisplay = ({
   const [nameToIdCache, setNameToIdCache] = useState({});
   const [resolvedChatUsers, setResolvedChatUsers] = useState({});
   const [resolvedChatTeams, setResolvedChatTeams] = useState({});
+  const [editingMessageId, setEditingMessageId] = useState(null);
+  const [editingContent, setEditingContent] = useState("");
+  const [editingError, setEditingError] = useState(null);
+  const [savingEditMessageId, setSavingEditMessageId] = useState(null);
+
+  const startEditingMessage = (message) => {
+    setEditingMessageId(message.id);
+    setEditingContent(message.content || "");
+    setEditingError(null);
+  };
+
+  const cancelEditingMessage = () => {
+    if (savingEditMessageId) return;
+    setEditingMessageId(null);
+    setEditingContent("");
+    setEditingError(null);
+  };
+
+  const saveEditingMessage = async (messageId) => {
+    const nextContent = editingContent.trim();
+
+    if (!nextContent) {
+      setEditingError("Message cannot be empty.");
+      return;
+    }
+
+    try {
+      setSavingEditMessageId(messageId);
+      setEditingError(null);
+      await onEditMessage(messageId, nextContent);
+      setEditingMessageId(null);
+      setEditingContent("");
+    } catch (err) {
+      setEditingError(
+        err?.response?.data?.message ||
+          err?.message ||
+          "Could not save your edit.",
+      );
+    } finally {
+      setSavingEditMessageId(null);
+    }
+  };
+
+  const isMessageEdited = (message) =>
+    Boolean(
+      message?.isEdited ||
+        message?.is_edited ||
+        message?.editedAt ||
+        message?.edited_at,
+    );
+
+  const getMessageDisplayTime = (message) =>
+    isMessageEdited(message)
+      ? message?.editedAt ||
+        message?.edited_at ||
+        message?.updatedAt ||
+        message?.updated_at ||
+        message?.createdAt
+      : message?.createdAt;
 
   const getDisplayName = (userData) => {
     if (!userData) return "";
@@ -2755,6 +2817,25 @@ const MessageDisplay = ({
                         const isDeleted = !!(
                           message.deletedAt || message.deleted_at
                         );
+                        const messageEdited = isMessageEdited(message);
+                        const isEditing =
+                          String(editingMessageId) === String(message.id);
+                        const canEditMessage =
+                          isCurrentUser &&
+                          !isDeleted &&
+                          !String(message.id).startsWith("temp-") &&
+                          Boolean(message.content) &&
+                          typeof onEditMessage === "function";
+                        const canDeleteMessage =
+                          isCurrentUser &&
+                          !isDeleted &&
+                          !String(message.id).startsWith("temp-") &&
+                          typeof onDeleteMessage === "function";
+                        const isSavingEdit =
+                          String(savingEditMessageId) === String(message.id);
+                        const showMessageMeta =
+                          messageIndex ===
+                            messageGroup.messages.length - 1 || messageEdited;
 
                         return (
                           <div
@@ -2779,27 +2860,53 @@ const MessageDisplay = ({
                       ${isHighlighted ? "message-highlight" : ""}
                     `}
                           >
-                            {/* DELETE BUTTON for messages */}
-                            {isCurrentUser &&
-                              !isDeleted &&
-                              !String(message.id).startsWith("temp-") &&
-                              typeof onDeleteMessage === "function" && (
-                                <Tooltip
-                                  content="Delete message"
-                                  position="top"
-                                  wrapperClassName="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity inline-flex"
-                                >
-                                  <button
-                                    type="button"
-                                    onClick={() => onDeleteMessage(message.id)}
-                                    className="bg-base-100 border border-base-300 rounded-full p-1 shadow-sm hover:shadow"
-                                  >
-                                    <Trash2
-                                      size={14}
-                                      className="text-base-content/50 hover:text-error"
-                                    />
-                                  </button>
-                                </Tooltip>
+                            {(canEditMessage || canDeleteMessage) &&
+                              !isEditing && (
+                                <div className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity inline-flex items-center gap-1">
+                                  {canEditMessage && (
+                                    <Tooltip
+                                      content="Edit message"
+                                      position="top"
+                                      wrapperClassName="inline-flex"
+                                    >
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          startEditingMessage(message)
+                                        }
+                                        className="bg-base-100 border border-base-300 rounded-full p-1 shadow-sm hover:shadow"
+                                        aria-label="Edit message"
+                                      >
+                                        <Pencil
+                                          size={14}
+                                          className="text-base-content/50 hover:text-primary"
+                                        />
+                                      </button>
+                                    </Tooltip>
+                                  )}
+
+                                  {canDeleteMessage && (
+                                    <Tooltip
+                                      content="Delete message"
+                                      position="top"
+                                      wrapperClassName="inline-flex"
+                                    >
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          onDeleteMessage(message.id)
+                                        }
+                                        className="bg-base-100 border border-base-300 rounded-full p-1 shadow-sm hover:shadow"
+                                        aria-label="Delete message"
+                                      >
+                                        <Trash2
+                                          size={14}
+                                          className="text-base-content/50 hover:text-error"
+                                        />
+                                      </button>
+                                    </Tooltip>
+                                  )}
+                                </div>
                               )}
 
                             {/* Only render media/text when NOT deleted */}
@@ -2901,10 +3008,77 @@ const MessageDisplay = ({
                                 {renderFileAttachment(message)}
 
                                 {/* Text content */}
-                                {message.content && (
+                                {message.content && !isEditing && (
                                   <p>
                                     <MessageText content={message.content} />
                                   </p>
+                                )}
+
+                                {isEditing && (
+                                  <div className="space-y-2 min-w-[16rem] max-w-full">
+                                    <textarea
+                                      value={editingContent}
+                                      onChange={(event) =>
+                                        setEditingContent(event.target.value)
+                                      }
+                                      className="textarea textarea-bordered textarea-sm w-full min-h-20 resize-none bg-base-100 text-base-content"
+                                      maxLength={500}
+                                      disabled={isSavingEdit}
+                                      autoFocus
+                                      onKeyDown={(event) => {
+                                        if (
+                                          event.key === "Escape" &&
+                                          !isSavingEdit
+                                        ) {
+                                          cancelEditingMessage();
+                                        }
+
+                                        if (
+                                          event.key === "Enter" &&
+                                          (event.metaKey || event.ctrlKey)
+                                        ) {
+                                          event.preventDefault();
+                                          saveEditingMessage(message.id);
+                                        }
+                                      }}
+                                    />
+                                    {editingError && (
+                                      <p className="text-xs text-error">
+                                        {editingError}
+                                      </p>
+                                    )}
+                                    <div className="flex items-center justify-end gap-2">
+                                      <button
+                                        type="button"
+                                        className="btn btn-ghost btn-xs"
+                                        onClick={cancelEditingMessage}
+                                        disabled={isSavingEdit}
+                                      >
+                                        <X size={14} />
+                                        Cancel
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className="btn btn-primary btn-xs"
+                                        onClick={() =>
+                                          saveEditingMessage(message.id)
+                                        }
+                                        disabled={
+                                          isSavingEdit ||
+                                          !editingContent.trim() ||
+                                          editingContent.trim() ===
+                                            (message.content || "").trim()
+                                        }
+                                      >
+                                        {isSavingEdit ? (
+                                          <span className="loading loading-spinner loading-xs" />
+                                        ) : (
+                                          <Check size={14} />
+                                        )}
+                                        Save
+                                      </button>
+                                    </div>
+                                  </div>
                                 )}
                               </>
                             )}
@@ -2916,18 +3090,34 @@ const MessageDisplay = ({
                               </p>
                             )}
 
-                            {messageIndex ===
-                              messageGroup.messages.length - 1 && (
+                            {showMessageMeta && (
                               <div
                                 className={`
                           flex justify-between items-center text-xs mt-1
                           ${isCurrentUser ? "text-base-content/60" : "text-base-content/50"}
                         `}
                               >
-                                <span>
-                                  {formatLocalTime(message.createdAt)}
+                                <span className="inline-flex items-center gap-1">
+                                  {formatLocalTime(
+                                    getMessageDisplayTime(message),
+                                  )}
+                                  {messageEdited && (
+                                    <Tooltip
+                                      content="Message edited"
+                                      position="top"
+                                      wrapperClassName="inline-flex shrink-0"
+                                    >
+                                      <Pencil
+                                        size={12}
+                                        strokeWidth={2.25}
+                                        aria-label="Message edited"
+                                      />
+                                    </Tooltip>
+                                  )}
                                 </span>
-                                {renderReadReceipt(message, isCurrentUser)}
+                                <span className="inline-flex items-center">
+                                  {renderReadReceipt(message, isCurrentUser)}
+                                </span>
                               </div>
                             )}
                           </div>

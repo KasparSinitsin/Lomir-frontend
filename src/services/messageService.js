@@ -101,6 +101,19 @@ export const messageService = {
       throw error;
     }
   },
+
+  // Edit a message
+  updateMessage: async (messageId, content) => {
+    try {
+      const response = await api.patch(`/api/messages/${messageId}`, {
+        content: content.trim(),
+      });
+      return response.data;
+    } catch (error) {
+      console.error(`Error updating message ${messageId}:`, error);
+      throw error;
+    }
+  },
 };
 
 export default messageService;
