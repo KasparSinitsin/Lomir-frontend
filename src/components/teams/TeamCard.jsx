@@ -358,6 +358,7 @@ const TeamCard = ({
   viewerDistanceSource = null,
   listLocationInsetClassName = "",
   listLocationWidthClassName = "",
+  listLocationVisibilityClassName = "flex",
   listTagsWidthClassName = "",
   listBadgesWidthClassName = "",
   hideDistanceInfo = false,
@@ -2221,7 +2222,7 @@ const TeamCard = ({
           listEdgeRounding={!disableListEdgeRounding}
       >
           <div
-            className={`box-border flex w-24 flex-shrink-0 items-center gap-3 overflow-hidden sm:w-56 ${listLocationWidthClassName} ${listLocationInsetClassName}`}
+            className={`box-border ${listLocationVisibilityClassName} w-24 flex-shrink-0 items-center gap-3 overflow-hidden sm:w-56 ${listLocationWidthClassName} ${listLocationInsetClassName}`}
           >
             {showDistance && (
               <div className="hidden w-16 flex-shrink-0 overflow-hidden md:block">
