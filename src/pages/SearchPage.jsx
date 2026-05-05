@@ -2201,13 +2201,15 @@ const SearchPage = () => {
         <div>
           {hasVisibleResults && (
             <section className="mb-8">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-semibold">
-                  {searchType === "all" && "Teams, People & Open Roles"}
-                  {searchType === "teams" && "Teams"}
-                  {searchType === "users" && "People"}
-                  {searchType === "roles" && "Open Roles"}
-                  <span className="text-sm font-normal text-base-content/60 ml-2">
+              <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1 mb-4">
+                <h2 className="flex flex-wrap items-baseline gap-x-2 text-sm leading-[1.15] font-semibold">
+                  <span className="whitespace-nowrap">
+                    {searchType === "all" && "All"}
+                    {searchType === "teams" && "Teams"}
+                    {searchType === "users" && "People"}
+                    {searchType === "roles" && "Open Roles"}
+                  </span>
+                  <span className="whitespace-nowrap text-sm font-normal text-base-content/60">
                     (
                     {searchType === "all"
                       ? `${effectivePagination.totalItems} results`
@@ -2220,12 +2222,12 @@ const SearchPage = () => {
                   </span>
                 </h2>
 
-                <div className="flex flex-wrap items-center justify-end text-sm font-normal text-base-content/60 gap-1">
+                <div className="flex flex-wrap items-center justify-end text-sm leading-[1.15] font-normal text-base-content/60 gap-1">
                   <button
                     type="button"
                     aria-pressed={resultView === "card"}
                     onClick={() => setResultView("card")}
-                    className={`px-2 py-1 rounded hover:text-base-content transition-colors ${
+                    className={`pl-0 pr-2 rounded hover:text-base-content transition-colors ${
                       resultView === "card" ? "font-bold text-base-content" : ""
                     }`}
                   >
@@ -2236,7 +2238,7 @@ const SearchPage = () => {
                     type="button"
                     aria-pressed={resultView === "mini"}
                     onClick={() => setResultView("mini")}
-                    className={`px-2 py-1 rounded hover:text-base-content transition-colors ${
+                    className={`px-2 rounded hover:text-base-content transition-colors ${
                       resultView === "mini" ? "font-bold text-base-content" : ""
                     }`}
                   >
@@ -2247,7 +2249,7 @@ const SearchPage = () => {
                     type="button"
                     aria-pressed={resultView === "list"}
                     onClick={() => setResultView("list")}
-                    className={`px-2 py-1 rounded hover:text-base-content transition-colors ${
+                    className={`px-2 rounded hover:text-base-content transition-colors ${
                       resultView === "list" ? "font-bold text-base-content" : ""
                     }`}
                   >
@@ -2258,7 +2260,7 @@ const SearchPage = () => {
                     type="button"
                     aria-pressed={resultView === "map"}
                     onClick={() => setResultView("map")}
-                    className={`px-2 py-1 rounded hover:text-base-content transition-colors ${
+                    className={`px-2 rounded hover:text-base-content transition-colors ${
                       resultView === "map" ? "font-bold text-base-content" : ""
                     }`}
                   >
