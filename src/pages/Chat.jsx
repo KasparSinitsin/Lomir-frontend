@@ -20,7 +20,8 @@ import TeamDetailsModal from "../components/teams/TeamDetailsModal";
 import UserDetailsModal from "../components/users/UserDetailsModal";
 import { getTeamInitials, isSyntheticTeam } from "../utils/userHelpers";
 import { formatDisplayName } from "../utils/nameFormatters";
-import { formatDistanceToNow } from "date-fns";
+import { formatDistanceToNowStrict } from "date-fns";
+import { normalizeTimestampToDate } from "../utils/dateHelpers";
 import { getTeamAvatarUrl } from "../utils/chatEntityResolvers";
 
 const getConversationPartnerId = (conversation) =>
@@ -81,6 +82,41 @@ const resolveConversationUser = (conversation, userId) => {
   return null;
 };
 
+const getConversationUpdatedAt = (conversation) => {
+  const timestamp =
+    conversation?.updatedAt ??
+    conversation?.updated_at ??
+    conversation?.createdAt ??
+    conversation?.created_at ??
+    conversation?.lastMessage?.createdAt ??
+    conversation?.lastMessage?.created_at ??
+    conversation?.team?.updatedAt ??
+    conversation?.team?.updated_at ??
+    null;
+
+  if (!timestamp) return null;
+  const parsedDate = normalizeTimestampToDate(timestamp);
+  return parsedDate;
+};
+
+const formatChatTimestamp = (timestamp) => {
+  if (!timestamp) return "";
+  const now = new Date();
+  const date = normalizeTimestampToDate(timestamp);
+  if (!date) return "";
+  const minutes = Math.round((now - date) / 60000);
+  if (minutes < 60) {
+    return formatDistanceToNowStrict(date, {
+      addSuffix: true,
+      unit: "minute",
+    });
+  }
+  return formatDistanceToNowStrict(date, {
+    addSuffix: true,
+    unit: "hour",
+  });
+};
+
 const isDirectConversationForPartner = (conversation, partnerId) =>
   conversation?.type === "direct" &&
   String(getConversationPartnerId(conversation)) === String(partnerId);
@@ -138,7 +174,7 @@ const Chat = () => {
   // ---- Message de-duplication (focus: ownership/system duplicates) ----
   const toMinuteBucket = (isoOrDate) => {
     try {
-      const d = isoOrDate ? new Date(isoOrDate) : null;
+      const d = isoOrDate ? normalizeTimestampToDate(isoOrDate) : null;
       if (!d || Number.isNaN(d.getTime())) return "";
       return d.toISOString().slice(0, 16); // YYYY-MM-DDTHH:MM
     } catch {
@@ -207,6 +243,10 @@ const Chat = () => {
 
   const teamMembers =
     conversationType === "team" ? activeConversation?.team?.members || [] : [];
+
+  const conversationUpdatedAt =
+    getConversationUpdatedAt(activeConversation) ||
+    getConversationUpdatedAt(messages?.[messages.length - 1] || messages?.[0] || null);
 
   useEffect(() => {
     conversationsRef.current = conversations;
@@ -761,9 +801,11 @@ const Chat = () => {
 
         const deduplicatedList = dedupeConversations(updatedList);
 
-        return deduplicatedList.sort(
-          (a, b) => new Date(b.updatedAt) - new Date(a.updatedAt),
-        );
+        return deduplicatedList.sort((a, b) => {
+          const aDate = normalizeTimestampToDate(a.updatedAt)?.getTime() ?? 0;
+          const bDate = normalizeTimestampToDate(b.updatedAt)?.getTime() ?? 0;
+          return bDate - aDate;
+        });
       });
     };
 
@@ -846,9 +888,11 @@ const Chat = () => {
 
         const deduplicatedList = dedupeConversations(updatedList);
 
-        return deduplicatedList.sort(
-          (a, b) => new Date(b.updatedAt) - new Date(a.updatedAt),
-        );
+        return deduplicatedList.sort((a, b) => {
+          const aDate = normalizeTimestampToDate(a.updatedAt)?.getTime() ?? 0;
+          const bDate = normalizeTimestampToDate(b.updatedAt)?.getTime() ?? 0;
+          return bDate - aDate;
+        });
       });
     };
 
@@ -1427,32 +1471,32 @@ const Chat = () => {
                         </h3>
                       </Tooltip>
                       {conversationType === "team" ? (
-                        <div className="text-xs text-base-content/60 flex items-center justify-between gap-1.5">
-                          <div className="flex items-center gap-1.5">
+                        <div className="text-xs text-base-content/60 flex items-center justify-between gap-1.5 flex-nowrap">
+                          <div className="flex items-center gap-1.5 min-w-0">
                             <Users size={12} className="flex-shrink-0" />
-                            <span>Team chat</span>
+                            <span className="truncate">Team chat</span>
                             {teamData?.members && (
                               <>
                                 <span>·</span>
-                                <span>{teamData.members.length} {teamData.members.length === 1 ? "member" : "members"}</span>
+                                <span className="truncate">{teamData.members.length} {teamData.members.length === 1 ? "member" : "members"}</span>
                               </>
                             )}
                           </div>
-                          {activeConversation?.updatedAt && (
+                          {conversationUpdatedAt && (
                             <span className="text-xs text-base-content/50 whitespace-nowrap ml-2">
-                              {formatDistanceToNow(new Date(activeConversation.updatedAt), { addSuffix: true })}
+                              {formatChatTimestamp(conversationUpdatedAt)}
                             </span>
                           )}
                         </div>
                       ) : conversationType === "direct" ? (
-                        <div className="text-xs text-base-content/60 flex items-center justify-between gap-1.5">
-                          <div className="flex items-center gap-1.5">
+                        <div className="text-xs text-base-content/60 flex items-center justify-between gap-1.5 flex-nowrap">
+                          <div className="flex items-center gap-1.5 min-w-0">
                             <User size={12} className="flex-shrink-0" />
-                            <span>Direct message</span>
+                            <span className="truncate">DM Chat</span>
                           </div>
-                          {activeConversation?.updatedAt && (
+                          {conversationUpdatedAt && (
                             <span className="text-xs text-base-content/50 whitespace-nowrap ml-2">
-                              {formatDistanceToNow(new Date(activeConversation.updatedAt), { addSuffix: true })}
+                              {formatChatTimestamp(conversationUpdatedAt)}
                             </span>
                           )}
                         </div>

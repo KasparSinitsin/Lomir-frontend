@@ -1,6 +1,12 @@
 import React, { useRef, useEffect, useState } from "react";
 import { format, isToday, isYesterday } from "date-fns";
 import {
+  normalizeTimestampToDate,
+  formatLocalTime,
+  formatDateHeading as formatMessageDateHeading,
+  getDateGroupKey,
+} from "../../utils/dateHelpers";
+import {
   getTeamInitials,
   isSyntheticTeam,
 } from "../../utils/userHelpers";
@@ -791,7 +797,7 @@ const MessageDisplay = ({
 
   // Group messages by date
   const messagesByDate = messages.reduce((groups, message) => {
-    const date = format(new Date(message.createdAt), "yyyy-MM-dd");
+    const date = getDateGroupKey(message.createdAt);
     if (!groups[date]) {
       groups[date] = [];
     }
@@ -800,12 +806,7 @@ const MessageDisplay = ({
   }, {});
 
   // Format date heading
-  const formatDateHeading = (dateString) => {
-    const date = new Date(dateString);
-    if (isToday(date)) return "Today";
-    if (isYesterday(date)) return "Yesterday";
-    return format(date, "MMMM d, yyyy");
-  };
+  const formatDateHeading = (dateString) => formatMessageDateHeading(dateString);
 
   // Get sender info from team members or message data
   const getSenderInfo = (senderId, message = null) => {
@@ -1247,7 +1248,7 @@ const MessageDisplay = ({
         </div>
 
         <div className="text-xs text-base-content/50">
-          {format(new Date(message.createdAt), "p")}
+          {formatLocalTime(message.createdAt)}
         </div>
       </div>
     );
@@ -1289,7 +1290,7 @@ const MessageDisplay = ({
         </div>
 
         <div className="text-xs text-base-content/50">
-          {format(new Date(message.createdAt), "p")}
+          {formatLocalTime(message.createdAt)}
         </div>
       </div>
     );
@@ -1321,7 +1322,7 @@ const MessageDisplay = ({
         </div>
 
         <div className="text-xs text-base-content/50">
-          {format(new Date(message.createdAt), "p")}
+          {formatLocalTime(message.createdAt)}
         </div>
       </div>
     );
@@ -1362,7 +1363,7 @@ const MessageDisplay = ({
         </div>
 
         <div className="text-xs text-base-content/50">
-          {format(new Date(message.createdAt), "p")}
+          {formatLocalTime(message.createdAt)}
         </div>
       </div>
     );
@@ -1408,7 +1409,7 @@ const MessageDisplay = ({
         </div>
 
         <div className="text-xs text-base-content/50">
-          {format(new Date(message.createdAt), "p")}
+          {formatLocalTime(message.createdAt)}
         </div>
       </div>
     );
@@ -1483,7 +1484,7 @@ const MessageDisplay = ({
                     }
                   `}
                 >
-                  <span>{format(new Date(message.createdAt), "p")}</span>
+                  <span>{formatLocalTime(message.createdAt)}</span>
                   {isCurrentUser && message.readAt && (
                     <span className="ml-2">✓</span>
                   )}
@@ -1495,7 +1496,7 @@ const MessageDisplay = ({
 
         {!parsedMessage.personalMessage && (
           <div className="text-xs text-base-content/50">
-            {format(new Date(message.createdAt), "p")}
+            {formatLocalTime(message.createdAt)}
           </div>
         )}
       </div>
@@ -1556,7 +1557,7 @@ const MessageDisplay = ({
         </div>
 
         <div className="text-xs text-base-content/50">
-          {format(new Date(message.createdAt), "p")}
+          {formatLocalTime(message.createdAt)}
         </div>
       </div>
     );
@@ -1641,7 +1642,7 @@ const MessageDisplay = ({
         </div>
 
         <div className="text-xs text-base-content/50">
-          {format(new Date(message.createdAt), "p")}
+          {formatLocalTime(message.createdAt)}
         </div>
       </div>
     );
@@ -1706,7 +1707,7 @@ const MessageDisplay = ({
                     }
                   `}
                 >
-                  <span>{format(new Date(message.createdAt), "p")}</span>
+                  <span>{formatLocalTime(message.createdAt)}</span>
                   {isCurrentUser && message.readAt && (
                     <span className="ml-2">✓</span>
                   )}
@@ -1798,7 +1799,7 @@ const MessageDisplay = ({
         </div>
 
         <div className="text-xs text-base-content/50">
-          {format(new Date(message.createdAt), "p")}
+          {formatLocalTime(message.createdAt)}
         </div>
       </div>
     );
@@ -1855,7 +1856,7 @@ const MessageDisplay = ({
                     }
                   `}
                 >
-                  <span>{format(new Date(message.createdAt), "p")}</span>
+                  <span>{formatLocalTime(message.createdAt)}</span>
                   {isCurrentUser && message.readAt && (
                     <span className="ml-2">✓</span>
                   )}
@@ -1909,7 +1910,7 @@ const MessageDisplay = ({
         </div>
 
         <div className="text-xs text-base-content/50">
-          {format(new Date(message.createdAt), "p")}
+          {formatLocalTime(message.createdAt)}
         </div>
       </div>
     );
@@ -2022,7 +2023,7 @@ const MessageDisplay = ({
         </div>
 
         <div className="text-xs text-base-content/50">
-          {format(new Date(message.createdAt), "p")}
+          {formatLocalTime(message.createdAt)}
         </div>
       </div>
     );
@@ -2047,7 +2048,7 @@ const MessageDisplay = ({
         </div>
 
         <div className="text-xs text-base-content/50">
-          {format(new Date(message.createdAt), "p")}
+          {formatLocalTime(message.createdAt)}
         </div>
       </div>
     );
@@ -2096,7 +2097,7 @@ const MessageDisplay = ({
         </div>
 
         <div className="text-xs text-base-content/50">
-          {format(new Date(message.createdAt), "p")}
+          {formatLocalTime(message.createdAt)}
         </div>
       </div>
     );
@@ -2149,7 +2150,7 @@ const MessageDisplay = ({
         </div>
 
         <div className="text-xs text-base-content/50">
-          {format(new Date(message.createdAt), "p")}
+          {formatLocalTime(message.createdAt)}
         </div>
       </div>
     );
@@ -2193,7 +2194,7 @@ const MessageDisplay = ({
         </div>
 
         <div className="text-xs text-base-content/50">
-          {format(new Date(message.createdAt), "p")}
+          {formatLocalTime(message.createdAt)}
         </div>
       </div>
     );
@@ -2839,7 +2840,7 @@ const MessageDisplay = ({
                         `}
                               >
                                 <span>
-                                  {format(new Date(message.createdAt), "p")}
+                                  {formatLocalTime(message.createdAt)}
                                 </span>
                                 {isCurrentUser && message.readAt && (
                                   <span className="ml-2">✓</span>
