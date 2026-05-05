@@ -299,8 +299,8 @@ const UserCard = ({
         imageOverlay={avatarOverlay}
         imageInnerOverlay={demoAvatarOverlay}
       >
-        <div className="w-56 flex-shrink-0 flex items-center gap-3 overflow-hidden">
-          <div className="w-16 flex-shrink-0 overflow-hidden">
+        <div className="flex w-24 flex-shrink-0 items-center gap-3 overflow-hidden sm:w-56">
+          <div className="hidden w-16 flex-shrink-0 overflow-hidden md:block">
             {showDistance && (
               <div className="text-xs text-base-content flex items-center gap-1 overflow-hidden">
                 <Tooltip content={`${Math.round(distance)} km away from you`}>
@@ -327,7 +327,7 @@ const UserCard = ({
             </div>
           )}
         </div>
-        <div className="w-52 flex-shrink-0 text-xs text-base-content/60 hidden sm:flex items-center gap-1 overflow-hidden">
+        <div className="hidden w-52 flex-shrink-0 text-xs text-base-content/60 lg:flex items-center gap-1 overflow-hidden">
           {tagsSummary && (
             <Tooltip content={tagNames.join(", ")} wrapperClassName="flex items-center gap-1 min-w-0 overflow-hidden w-full">
               <Tag size={11} className="flex-shrink-0" />
@@ -335,7 +335,7 @@ const UserCard = ({
             </Tooltip>
           )}
         </div>
-        <div className="w-48 flex-shrink-0 text-xs text-base-content/60 hidden sm:flex items-center gap-1 overflow-hidden">
+        <div className="hidden w-48 flex-shrink-0 text-xs text-base-content/60 xl:flex items-center gap-1 overflow-hidden">
           {badgesSummary && (
             <Tooltip content={badgeNames.join(", ")} wrapperClassName="flex items-center gap-1 min-w-0 overflow-hidden w-full">
               <Award size={11} className="flex-shrink-0" />

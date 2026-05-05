@@ -1,13 +1,31 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import socketService from '../../services/socketService';
 import { messageService } from '../../services/messageService';
 import { useAuth } from '../../contexts/AuthContext';
+import {
+  getMessageConversationTarget,
+  getMessagePreviewText,
+  isMessageForCurrentChatPath,
+  isOwnMessage,
+} from '../../utils/messageNotificationUtils';
 
 const MessageNotifications = () => {
   const [notifications, setNotifications] = useState([]);
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuth();
+  const location = useLocation();
+  const locationRef = useRef({
+    pathname: location.pathname,
+    search: location.search,
+  });
+  const { isAuthenticated, user } = useAuth();
+
+  useEffect(() => {
+    locationRef.current = {
+      pathname: location.pathname,
+      search: location.search,
+    };
+  }, [location.pathname, location.search]);
   
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -16,10 +34,11 @@ const MessageNotifications = () => {
     const fetchUnreadCount = async () => {
       try {
         const response = await messageService.getUnreadCount();
-        if (response.data.count > 0) {
+        const count = response.data?.count ?? response.count ?? 0;
+        if (count > 0) {
           setNotifications([{ 
             id: 'initial', 
-            text: `You have ${response.data.count} unread messages` 
+            text: `You have ${count} unread messages` 
           }]);
         }
       } catch (error) {
@@ -29,24 +48,36 @@ const MessageNotifications = () => {
     
     fetchUnreadCount();
     
-    // Set up socket listener for new messages
-    const socket = socketService.getSocket();
-    
-    if (socket) {
+    let detachMessageListener = null;
+
+    const attachMessageListener = (socket) => {
+      if (!socket) return;
+
+      if (detachMessageListener) {
+        detachMessageListener();
+      }
+
       const handleNewMessage = (message) => {
-        // Only add notification if we're not already in that conversation
-        const currentPath = window.location.pathname;
-        const isInConversation = currentPath === `/chat/${message.conversationId}`;
+        if (isOwnMessage(message, user?.id)) return;
+
+        const isInConversation = isMessageForCurrentChatPath(
+          message,
+          locationRef.current.pathname,
+          locationRef.current.search,
+          user?.id,
+        );
         
         if (!isInConversation) {
+          const target = getMessageConversationTarget(message, user?.id);
           setNotifications(prev => [
             ...prev, 
             {
-              id: message.id,
-              conversationId: message.conversationId,
-              senderId: message.senderId,
+              id: message.id || `${target.type}-${target.conversationId}-${Date.now()}`,
+              conversationId: target.conversationId,
+              conversationType: target.type,
+              senderId: message.senderId || message.sender_id,
               senderName: message.senderUsername,
-              text: message.content,
+              text: getMessagePreviewText(message),
               time: new Date()
             }
           ]);
@@ -54,12 +85,21 @@ const MessageNotifications = () => {
       };
       
       socket.on('message:received', handleNewMessage);
-      
-      return () => {
+
+      detachMessageListener = () => {
         socket.off('message:received', handleNewMessage);
       };
-    }
-  }, [isAuthenticated]);
+    };
+
+    const unsubscribeSocketReady = socketService.onSocketReady(attachMessageListener);
+    
+    return () => {
+      unsubscribeSocketReady();
+      if (detachMessageListener) {
+        detachMessageListener();
+      }
+    };
+  }, [isAuthenticated, user?.id]);
   
   // Remove notification when clicked and navigate to conversation
   const handleNotificationClick = (notification) => {
@@ -68,7 +108,7 @@ const MessageNotifications = () => {
     );
     
     if (notification.conversationId) {
-      navigate(`/chat/${notification.conversationId}`);
+      navigate(`/chat/${notification.conversationId}?type=${notification.conversationType || 'direct'}`);
     } else {
       navigate('/chat');
     }

@@ -1,6 +1,12 @@
 import React, { useRef, useEffect, useState } from "react";
 import { format, isToday, isYesterday } from "date-fns";
 import {
+  normalizeTimestampToDate,
+  formatLocalTime,
+  formatDateHeading as formatMessageDateHeading,
+  getDateGroupKey,
+} from "../../utils/dateHelpers";
+import {
   getTeamInitials,
   isSyntheticTeam,
 } from "../../utils/userHelpers";
@@ -19,6 +25,10 @@ import {
   AlertTriangle,
   Clock,
   Trash2,
+  Pencil,
+  X,
+  Check,
+  CheckCheck,
 } from "lucide-react";
 import TeamDetailsModal from "../teams/TeamDetailsModal";
 import UserDetailsModal from "../users/UserDetailsModal";
@@ -30,6 +40,7 @@ import {
   formatFileSize,
 } from "../../utils/fileExpiration";
 import MessageText from "./MessageText";
+import Tooltip from "../common/Tooltip";
 import {
   DELETED_USER_DISPLAY_NAME,
   getDisplayName as getDeletedUserDisplayName,
@@ -404,6 +415,7 @@ const MessageDisplay = ({
   onLoadEarlierMessages,
   onDeleteConversation,
   onDeleteMessage,
+  onEditMessage,
   onLeaveTeam,
 }) => {
   const messagesEndRef = useRef(null);
@@ -431,6 +443,154 @@ const MessageDisplay = ({
   const [nameToIdCache, setNameToIdCache] = useState({});
   const [resolvedChatUsers, setResolvedChatUsers] = useState({});
   const [resolvedChatTeams, setResolvedChatTeams] = useState({});
+  const [editingMessageId, setEditingMessageId] = useState(null);
+  const [editingContent, setEditingContent] = useState("");
+  const [editingError, setEditingError] = useState(null);
+  const [savingEditMessageId, setSavingEditMessageId] = useState(null);
+
+  const startEditingMessage = (message) => {
+    setEditingMessageId(message.id);
+    setEditingContent(message.content || "");
+    setEditingError(null);
+  };
+
+  const cancelEditingMessage = () => {
+    if (savingEditMessageId) return;
+    setEditingMessageId(null);
+    setEditingContent("");
+    setEditingError(null);
+  };
+
+  const saveEditingMessage = async (messageId) => {
+    const nextContent = editingContent.trim();
+
+    if (!nextContent) {
+      setEditingError("Message cannot be empty.");
+      return;
+    }
+
+    try {
+      setSavingEditMessageId(messageId);
+      setEditingError(null);
+      await onEditMessage(messageId, nextContent);
+      setEditingMessageId(null);
+      setEditingContent("");
+    } catch (err) {
+      setEditingError(
+        err?.response?.data?.message ||
+          err?.message ||
+          "Could not save your edit.",
+      );
+    } finally {
+      setSavingEditMessageId(null);
+    }
+  };
+
+  const isMessageEdited = (message) =>
+    Boolean(
+      message?.isEdited ||
+        message?.is_edited ||
+        message?.editedAt ||
+        message?.edited_at,
+    );
+
+  const getMessageDisplayTime = (message) =>
+    isMessageEdited(message)
+      ? message?.editedAt ||
+        message?.edited_at ||
+        message?.updatedAt ||
+        message?.updated_at ||
+        message?.createdAt
+      : message?.createdAt;
+
+  const getDisplayName = (userData) => {
+    if (!userData) return "";
+    const first = userData.firstName ?? userData.first_name;
+    const last = userData.lastName ?? userData.last_name;
+    if (first && last) return `${first} ${last}`;
+    if (first) return first;
+    return userData.username ?? "";
+  };
+
+  const formatReadByTooltip = (names) => {
+    const uniqueNames = [...new Set((names || []).filter(Boolean))];
+    if (uniqueNames.length === 0) return "Read.";
+    if (uniqueNames.length === 1) return `Read by ${uniqueNames[0]}.`;
+    if (uniqueNames.length === 2) {
+      return `Read by ${uniqueNames[0]} and ${uniqueNames[1]}.`;
+    }
+
+    const lastName = uniqueNames[uniqueNames.length - 1];
+    const leadingNames = uniqueNames.slice(0, -1).join(", ");
+    return `Read by ${leadingNames} and ${lastName}.`;
+  };
+
+  const getReadByTooltip = (message) => {
+    if (conversationType === "team") {
+      const readByUsers = message.readByUsers ?? message.read_by_users ?? [];
+      return formatReadByTooltip(readByUsers.map(getDisplayName));
+    }
+
+    return formatReadByTooltip([getDisplayName(resolvedConversationPartner)]);
+  };
+
+  const renderReadReceipt = (message, isCurrentUser) => {
+    if (!isCurrentUser) return null;
+
+    const parsedReadCount = Number(message.readCount ?? message.read_count);
+    const readCount = Number.isFinite(parsedReadCount) ? parsedReadCount : 0;
+    const fallbackRecipientCount =
+      conversationType === "team"
+        ? (teamMembers || []).filter((member) => {
+            const memberId = member?.user_id ?? member?.userId ?? member?.id;
+            return String(memberId) !== String(currentUserId);
+          }).length
+        : 1;
+    const parsedRecipientCount = Number(
+      message.recipientCount ??
+        message.recipient_count ??
+        fallbackRecipientCount,
+    );
+    const recipientCount = Number.isFinite(parsedRecipientCount)
+      ? parsedRecipientCount
+      : fallbackRecipientCount;
+
+    if (conversationType === "team") {
+      if (readCount <= 0 && !message.readAt) return null;
+
+      const isReadByAll = recipientCount > 0 && readCount >= recipientCount;
+      const ReceiptIcon = isReadByAll ? CheckCheck : Check;
+
+      return (
+        <Tooltip
+          content={isReadByAll ? "Read by all" : getReadByTooltip(message)}
+          position="top"
+        >
+          <span className="ml-2 inline-flex shrink-0">
+            <ReceiptIcon
+              size={14}
+              strokeWidth={2.25}
+              aria-label={isReadByAll ? "Read by all" : "Read by someone"}
+            />
+          </span>
+        </Tooltip>
+      );
+    }
+
+    if (!message.readAt) return null;
+
+    return (
+      <Tooltip content={getReadByTooltip(message)} position="top">
+        <span className="ml-2 inline-flex shrink-0">
+          <CheckCheck
+            size={14}
+            strokeWidth={2.25}
+            aria-label="Read"
+          />
+        </span>
+      </Tooltip>
+    );
+  };
 
   useEffect(() => {
     const previousSnapshot = previousMessageSnapshotRef.current;
@@ -719,15 +879,16 @@ const MessageDisplay = ({
     }
 
     return (
-      <button
-        type="button"
-        className="font-medium underline underline-offset-2 hover:no-underline hover:text-primary transition-colors"
-        onClick={() => handleMentionClick(safe)}
-        disabled={resolvingName}
-        title={`Open ${safe}`}
-      >
-        {safe}
-      </button>
+      <Tooltip content={`Open ${safe}`} position="top">
+        <button
+          type="button"
+          className="font-medium underline underline-offset-2 hover:no-underline hover:text-primary transition-colors"
+          onClick={() => handleMentionClick(safe)}
+          disabled={resolvingName}
+        >
+          {safe}
+        </button>
+      </Tooltip>
     );
   };
 
@@ -742,14 +903,15 @@ const MessageDisplay = ({
     }
 
     return (
-      <button
-        type="button"
-        className="font-medium underline underline-offset-2 hover:no-underline hover:text-primary transition-colors"
-        onClick={() => handleUserClick(userId, safeName)}
-        title={`Open ${safeName}`}
-      >
-        {safeName}
-      </button>
+      <Tooltip content={`Open ${safeName}`} position="top">
+        <button
+          type="button"
+          className="font-medium underline underline-offset-2 hover:no-underline hover:text-primary transition-colors"
+          onClick={() => handleUserClick(userId, safeName)}
+        >
+          {safeName}
+        </button>
+      </Tooltip>
     );
   };
 
@@ -774,20 +936,21 @@ const MessageDisplay = ({
     if (!teamId) return <span className="font-medium">"{safeName}"</span>;
 
     return (
-      <button
-        type="button"
-        className="font-medium underline underline-offset-2 hover:no-underline hover:text-primary transition-colors"
-        onClick={() => openTeamModal(teamId)}
-        title={`Open ${safeName}`}
-      >
-        "{safeName}"
-      </button>
+      <Tooltip content={`Open ${safeName}`} position="top">
+        <button
+          type="button"
+          className="font-medium underline underline-offset-2 hover:no-underline hover:text-primary transition-colors"
+          onClick={() => openTeamModal(teamId)}
+        >
+          "{safeName}"
+        </button>
+      </Tooltip>
     );
   };
 
   // Group messages by date
   const messagesByDate = messages.reduce((groups, message) => {
-    const date = format(new Date(message.createdAt), "yyyy-MM-dd");
+    const date = getDateGroupKey(message.createdAt);
     if (!groups[date]) {
       groups[date] = [];
     }
@@ -796,12 +959,7 @@ const MessageDisplay = ({
   }, {});
 
   // Format date heading
-  const formatDateHeading = (dateString) => {
-    const date = new Date(dateString);
-    if (isToday(date)) return "Today";
-    if (isYesterday(date)) return "Yesterday";
-    return format(date, "MMMM d, yyyy");
-  };
+  const formatDateHeading = (dateString) => formatMessageDateHeading(dateString);
 
   // Get sender info from team members or message data
   const getSenderInfo = (senderId, message = null) => {
@@ -898,52 +1056,51 @@ const MessageDisplay = ({
 
     if (isDeletedSender) {
       return (
-        <UserAvatar
-          user={senderInfo}
-          deleted
-          sizeClass="w-8 h-8"
-          className="mr-2 flex-shrink-0"
-          iconSize={16}
-          title={DELETED_USER_DISPLAY_NAME}
-        />
+        <Tooltip content={DELETED_USER_DISPLAY_NAME} wrapperClassName="inline-flex flex-shrink-0 mr-2">
+          <UserAvatar
+            user={senderInfo}
+            deleted
+            sizeClass="w-8 h-8"
+            iconSize={16}
+          />
+        </Tooltip>
       );
     }
 
     if (!isFormerMember) {
       return (
-        <UserAvatar
-          user={senderInfo}
-          sizeClass="w-8 h-8"
-          className="mr-2 flex-shrink-0"
-          clickable={Boolean(isClickable)}
-          onClick={handleClick}
-          title={
-            isClickable
-              ? `View ${getSenderDisplayName(senderInfo, false)} details`
-              : undefined
-          }
-          iconSize={16}
-          initialsClassName="text-sm font-medium event-message-text"
-          showDemoOverlay
-          demoOverlayTextClassName="text-[5px]"
-          demoOverlayTextTranslateClassName="-translate-y-[1px]"
-        />
+        <Tooltip
+          content={isClickable ? `View ${getSenderDisplayName(senderInfo, false)} details` : undefined}
+          wrapperClassName="inline-flex flex-shrink-0 mr-2"
+        >
+          <UserAvatar
+            user={senderInfo}
+            sizeClass="w-8 h-8"
+            clickable={Boolean(isClickable)}
+            onClick={handleClick}
+            iconSize={16}
+            initialsClassName="text-sm font-medium event-message-text"
+            showDemoOverlay
+            demoOverlayTextClassName="text-[5px]"
+            demoOverlayTextTranslateClassName="-translate-y-[1px]"
+          />
+        </Tooltip>
       );
     }
 
+    const formerMemberTooltip = isClickable
+      ? `View ${getSenderDisplayName(senderInfo, false)} details`
+      : isFormerMember
+        ? "Former team member"
+        : undefined;
+
     return (
+      <Tooltip content={formerMemberTooltip} wrapperClassName="inline-flex flex-shrink-0 mr-2">
       <div
-        className={`avatar mr-2 flex-shrink-0 ${
+        className={`avatar ${
           isClickable ? "cursor-pointer hover:opacity-80 transition-opacity" : ""
         } ${isFormerMember ? "opacity-70" : ""}`}
         onClick={handleClick}
-        title={
-          isClickable
-            ? `View ${getSenderDisplayName(senderInfo, false)} details`
-            : isFormerMember
-              ? "Former team member"
-              : undefined
-        }
       >
         <div className="w-8 h-8 rounded-full relative">
           <div
@@ -955,6 +1112,7 @@ const MessageDisplay = ({
           </div>
         </div>
       </div>
+      </Tooltip>
     );
   };
 
@@ -967,26 +1125,28 @@ const MessageDisplay = ({
     const canClick = Boolean(!isDeletedSender && senderId);
 
     return (
-      <div
-        className={[
-          className,
-          canClick ? "cursor-pointer hover:text-primary transition-colors" : "",
-          isDeletedSender ? "text-base-content/50" : "",
-        ].join(" ")}
-        style={
-          isDeletedSender
-            ? undefined
-            : {
-                color: isFormerMember ? "#6b7280" : "#036b0c",
-              }
-        }
-        onClick={canClick ? () => handleUserClick(senderId, displayName) : undefined}
-        title={
-          canClick ? `View ${getSenderDisplayName(senderInfo, false)} details` : undefined
-        }
+      <Tooltip
+        content={canClick ? `View ${getSenderDisplayName(senderInfo, false)} details` : undefined}
+        position="top"
       >
-        {displayName}
-      </div>
+        <div
+          className={[
+            className,
+            canClick ? "cursor-pointer hover:text-primary transition-colors" : "",
+            isDeletedSender ? "text-base-content/50" : "",
+          ].join(" ")}
+          style={
+            isDeletedSender
+              ? undefined
+              : {
+                  color: isFormerMember ? "#6b7280" : "#036b0c",
+                }
+          }
+          onClick={canClick ? () => handleUserClick(senderId, displayName) : undefined}
+        >
+          {displayName}
+        </div>
+      </Tooltip>
     );
   };
 
@@ -994,22 +1154,22 @@ const MessageDisplay = ({
     if (!resolvedConversationPartner) return null;
 
     return (
-      <UserAvatar
-        user={resolvedConversationPartner}
-        sizeClass="w-16 h-16"
-        className="mb-2 mx-auto"
-        clickable
-        onClick={() => handleUserClick(resolvedConversationPartner.id)}
-        title={`View ${
-          resolvedConversationPartner.firstName ||
-          resolvedConversationPartner.username
-        } details`}
-        iconSize={24}
-        initialsClassName="text-xl font-medium"
-        showDemoOverlay
-        demoOverlayTextClassName="text-[9px]"
-        demoOverlayTextTranslateClassName="-translate-y-[4px]"
-      />
+      <Tooltip
+        content={`View ${resolvedConversationPartner.firstName || resolvedConversationPartner.username} details`}
+        wrapperClassName="inline-flex mb-2 mx-auto"
+      >
+        <UserAvatar
+          user={resolvedConversationPartner}
+          sizeClass="w-16 h-16"
+          clickable
+          onClick={() => handleUserClick(resolvedConversationPartner.id)}
+          iconSize={24}
+          initialsClassName="text-xl font-medium"
+          showDemoOverlay
+          demoOverlayTextClassName="text-[9px]"
+          demoOverlayTextTranslateClassName="-translate-y-[4px]"
+        />
+      </Tooltip>
     );
   };
 
@@ -1019,10 +1179,10 @@ const MessageDisplay = ({
     const teamAvatarUrl = getTeamAvatarUrl(resolvedTeamData);
 
     return (
+      <Tooltip content={`View ${resolvedTeamData.name} details`} wrapperClassName="inline-flex mb-2">
       <div
-        className="avatar mb-2 cursor-pointer hover:opacity-80 transition-opacity"
+        className="avatar cursor-pointer hover:opacity-80 transition-opacity"
         onClick={handleTeamClick}
-        title={`View ${resolvedTeamData.name} details`}
       >
         <div className="w-16 h-16 rounded-full mx-auto relative overflow-hidden">
           {teamAvatarUrl ? (
@@ -1054,6 +1214,7 @@ const MessageDisplay = ({
           )}
         </div>
       </div>
+      </Tooltip>
     );
   };
 
@@ -1240,7 +1401,7 @@ const MessageDisplay = ({
         </div>
 
         <div className="text-xs text-base-content/50">
-          {format(new Date(message.createdAt), "p")}
+          {formatLocalTime(message.createdAt)}
         </div>
       </div>
     );
@@ -1282,7 +1443,7 @@ const MessageDisplay = ({
         </div>
 
         <div className="text-xs text-base-content/50">
-          {format(new Date(message.createdAt), "p")}
+          {formatLocalTime(message.createdAt)}
         </div>
       </div>
     );
@@ -1314,7 +1475,7 @@ const MessageDisplay = ({
         </div>
 
         <div className="text-xs text-base-content/50">
-          {format(new Date(message.createdAt), "p")}
+          {formatLocalTime(message.createdAt)}
         </div>
       </div>
     );
@@ -1355,7 +1516,7 @@ const MessageDisplay = ({
         </div>
 
         <div className="text-xs text-base-content/50">
-          {format(new Date(message.createdAt), "p")}
+          {formatLocalTime(message.createdAt)}
         </div>
       </div>
     );
@@ -1401,7 +1562,7 @@ const MessageDisplay = ({
         </div>
 
         <div className="text-xs text-base-content/50">
-          {format(new Date(message.createdAt), "p")}
+          {formatLocalTime(message.createdAt)}
         </div>
       </div>
     );
@@ -1476,10 +1637,8 @@ const MessageDisplay = ({
                     }
                   `}
                 >
-                  <span>{format(new Date(message.createdAt), "p")}</span>
-                  {isCurrentUser && message.readAt && (
-                    <span className="ml-2">✓</span>
-                  )}
+                  <span>{formatLocalTime(message.createdAt)}</span>
+                  {renderReadReceipt(message, isCurrentUser)}
                 </div>
               </div>
             </div>
@@ -1488,7 +1647,7 @@ const MessageDisplay = ({
 
         {!parsedMessage.personalMessage && (
           <div className="text-xs text-base-content/50">
-            {format(new Date(message.createdAt), "p")}
+            {formatLocalTime(message.createdAt)}
           </div>
         )}
       </div>
@@ -1549,7 +1708,7 @@ const MessageDisplay = ({
         </div>
 
         <div className="text-xs text-base-content/50">
-          {format(new Date(message.createdAt), "p")}
+          {formatLocalTime(message.createdAt)}
         </div>
       </div>
     );
@@ -1634,7 +1793,7 @@ const MessageDisplay = ({
         </div>
 
         <div className="text-xs text-base-content/50">
-          {format(new Date(message.createdAt), "p")}
+          {formatLocalTime(message.createdAt)}
         </div>
       </div>
     );
@@ -1699,10 +1858,8 @@ const MessageDisplay = ({
                     }
                   `}
                 >
-                  <span>{format(new Date(message.createdAt), "p")}</span>
-                  {isCurrentUser && message.readAt && (
-                    <span className="ml-2">✓</span>
-                  )}
+                  <span>{formatLocalTime(message.createdAt)}</span>
+                  {renderReadReceipt(message, isCurrentUser)}
                 </div>
               </div>
             </div>
@@ -1791,7 +1948,7 @@ const MessageDisplay = ({
         </div>
 
         <div className="text-xs text-base-content/50">
-          {format(new Date(message.createdAt), "p")}
+          {formatLocalTime(message.createdAt)}
         </div>
       </div>
     );
@@ -1848,10 +2005,8 @@ const MessageDisplay = ({
                     }
                   `}
                 >
-                  <span>{format(new Date(message.createdAt), "p")}</span>
-                  {isCurrentUser && message.readAt && (
-                    <span className="ml-2">✓</span>
-                  )}
+                  <span>{formatLocalTime(message.createdAt)}</span>
+                  {renderReadReceipt(message, isCurrentUser)}
                 </div>
               </div>
             </div>
@@ -1902,7 +2057,7 @@ const MessageDisplay = ({
         </div>
 
         <div className="text-xs text-base-content/50">
-          {format(new Date(message.createdAt), "p")}
+          {formatLocalTime(message.createdAt)}
         </div>
       </div>
     );
@@ -2015,7 +2170,7 @@ const MessageDisplay = ({
         </div>
 
         <div className="text-xs text-base-content/50">
-          {format(new Date(message.createdAt), "p")}
+          {formatLocalTime(message.createdAt)}
         </div>
       </div>
     );
@@ -2040,7 +2195,7 @@ const MessageDisplay = ({
         </div>
 
         <div className="text-xs text-base-content/50">
-          {format(new Date(message.createdAt), "p")}
+          {formatLocalTime(message.createdAt)}
         </div>
       </div>
     );
@@ -2089,7 +2244,7 @@ const MessageDisplay = ({
         </div>
 
         <div className="text-xs text-base-content/50">
-          {format(new Date(message.createdAt), "p")}
+          {formatLocalTime(message.createdAt)}
         </div>
       </div>
     );
@@ -2142,7 +2297,7 @@ const MessageDisplay = ({
         </div>
 
         <div className="text-xs text-base-content/50">
-          {format(new Date(message.createdAt), "p")}
+          {formatLocalTime(message.createdAt)}
         </div>
       </div>
     );
@@ -2186,7 +2341,7 @@ const MessageDisplay = ({
         </div>
 
         <div className="text-xs text-base-content/50">
-          {format(new Date(message.createdAt), "p")}
+          {formatLocalTime(message.createdAt)}
         </div>
       </div>
     );
@@ -2206,32 +2361,37 @@ const MessageDisplay = ({
           {resolvedConversationPartner && conversationType === "direct" && (
             <div className="text-center pb-4 mb-4 border-b border-base-200">
               {renderConversationPartnerAvatar()}
-              <h3
-                className="text-lg font-medium leading-[120%] mb-[0.2em] cursor-pointer hover:text-primary transition-colors"
-                onClick={() => handleUserClick(resolvedConversationPartner.id)}
-                title={`View ${
-                  resolvedConversationPartner.firstName ||
-                  resolvedConversationPartner.username
-                } details`}
+              <Tooltip
+                content={`View ${resolvedConversationPartner.firstName || resolvedConversationPartner.username} details`}
+                wrapperClassName="block"
               >
-                {resolvedConversationPartner.firstName &&
-                resolvedConversationPartner.lastName
-                  ? `${resolvedConversationPartner.firstName} ${resolvedConversationPartner.lastName}`
-                  : resolvedConversationPartner.username}
-              </h3>
+                <h3
+                  className="text-lg font-medium leading-[120%] mb-[0.2em] cursor-pointer hover:text-primary transition-colors"
+                  onClick={() => handleUserClick(resolvedConversationPartner.id)}
+                >
+                  {resolvedConversationPartner.firstName &&
+                  resolvedConversationPartner.lastName
+                    ? `${resolvedConversationPartner.firstName} ${resolvedConversationPartner.lastName}`
+                    : resolvedConversationPartner.username}
+                </h3>
+              </Tooltip>
             </div>
           )}
 
           {resolvedTeamData && conversationType === "team" && (
             <div className="text-center pb-4 mb-4 border-b border-base-200">
               {renderTeamConversationAvatar()}
-              <h3
-                className="text-lg font-medium leading-[120%] mb-[0.2em] cursor-pointer hover:text-primary transition-colors"
-                onClick={handleTeamClick}
-                title={`View ${resolvedTeamData.name} details`}
+              <Tooltip
+                content={`View ${resolvedTeamData.name} details`}
+                wrapperClassName="block"
               >
-                {resolvedTeamData.name}
-              </h3>
+                <h3
+                  className="text-lg font-medium leading-[120%] mb-[0.2em] cursor-pointer hover:text-primary transition-colors"
+                  onClick={handleTeamClick}
+                >
+                  {resolvedTeamData.name}
+                </h3>
+              </Tooltip>
             </div>
           )}
 
@@ -2248,6 +2408,7 @@ const MessageDisplay = ({
           teamId={conversationType === "team" ? teamData?.id : selectedTeamId}
           initialTeamData={conversationType === "team" ? teamData : null}
           membersRefreshKey={teamMembersRefreshKey}
+          hideMatchData
           onClose={handleTeamModalClose}
         />
 
@@ -2312,19 +2473,20 @@ const MessageDisplay = ({
         {resolvedConversationPartner && conversationType === "direct" && (
           <div className="text-center pb-4 mb-4 border-b border-base-200">
             {renderConversationPartnerAvatar()}
-            <h3
-              className="text-lg font-medium leading-[120%] mb-[0.2em] cursor-pointer hover:text-primary transition-colors"
-              onClick={() => handleUserClick(resolvedConversationPartner.id)}
-              title={`View ${
-                resolvedConversationPartner.firstName ||
-                resolvedConversationPartner.username
-              } details`}
+            <Tooltip
+              content={`View ${resolvedConversationPartner.firstName || resolvedConversationPartner.username} details`}
+              wrapperClassName="block"
             >
-              {resolvedConversationPartner.firstName &&
-              resolvedConversationPartner.lastName
-                ? `${resolvedConversationPartner.firstName} ${resolvedConversationPartner.lastName}`
-                : resolvedConversationPartner.username}
-            </h3>
+              <h3
+                className="text-lg font-medium leading-[120%] mb-[0.2em] cursor-pointer hover:text-primary transition-colors"
+                onClick={() => handleUserClick(resolvedConversationPartner.id)}
+              >
+                {resolvedConversationPartner.firstName &&
+                resolvedConversationPartner.lastName
+                  ? `${resolvedConversationPartner.firstName} ${resolvedConversationPartner.lastName}`
+                  : resolvedConversationPartner.username}
+              </h3>
+            </Tooltip>
           </div>
         )}
 
@@ -2332,13 +2494,17 @@ const MessageDisplay = ({
         {resolvedTeamData && conversationType === "team" && (
           <div className="text-center pb-4 mb-4 border-b border-base-200">
             {renderTeamConversationAvatar()}
-            <h3
-              className="text-lg font-medium leading-[120%] mb-[0.2em] cursor-pointer hover:text-primary transition-colors"
-              onClick={handleTeamClick}
-              title={`View ${resolvedTeamData.name} details`}
+            <Tooltip
+              content={`View ${resolvedTeamData.name} details`}
+              wrapperClassName="block"
             >
-              {resolvedTeamData.name}
-            </h3>
+              <h3
+                className="text-lg font-medium leading-[120%] mb-[0.2em] cursor-pointer hover:text-primary transition-colors"
+                onClick={handleTeamClick}
+              >
+                {resolvedTeamData.name}
+              </h3>
+            </Tooltip>
           </div>
         )}
 
@@ -2651,6 +2817,25 @@ const MessageDisplay = ({
                         const isDeleted = !!(
                           message.deletedAt || message.deleted_at
                         );
+                        const messageEdited = isMessageEdited(message);
+                        const isEditing =
+                          String(editingMessageId) === String(message.id);
+                        const canEditMessage =
+                          isCurrentUser &&
+                          !isDeleted &&
+                          !String(message.id).startsWith("temp-") &&
+                          Boolean(message.content) &&
+                          typeof onEditMessage === "function";
+                        const canDeleteMessage =
+                          isCurrentUser &&
+                          !isDeleted &&
+                          !String(message.id).startsWith("temp-") &&
+                          typeof onDeleteMessage === "function";
+                        const isSavingEdit =
+                          String(savingEditMessageId) === String(message.id);
+                        const showMessageMeta =
+                          messageIndex ===
+                            messageGroup.messages.length - 1 || messageEdited;
 
                         return (
                           <div
@@ -2675,27 +2860,53 @@ const MessageDisplay = ({
                       ${isHighlighted ? "message-highlight" : ""}
                     `}
                           >
-                            {/* DELETE BUTTON for messages */}
-                            {isCurrentUser &&
-                              !isDeleted &&
-                              !String(message.id).startsWith("temp-") &&
-                              typeof onDeleteMessage === "function" && (
-                                <button
-                                  type="button"
-                                  onClick={() => onDeleteMessage(message.id)}
-                                  className="
-          absolute -top-2 -right-2
-          opacity-0 group-hover:opacity-100 transition-opacity
-          bg-base-100 border border-base-300 rounded-full p-1 shadow-sm
-          hover:shadow
-        "
-                                  title="Delete message"
-                                >
-                                  <Trash2
-                                    size={14}
-                                    className="text-base-content/50 hover:text-error"
-                                  />
-                                </button>
+                            {(canEditMessage || canDeleteMessage) &&
+                              !isEditing && (
+                                <div className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity inline-flex items-center gap-1">
+                                  {canEditMessage && (
+                                    <Tooltip
+                                      content="Edit message"
+                                      position="top"
+                                      wrapperClassName="inline-flex"
+                                    >
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          startEditingMessage(message)
+                                        }
+                                        className="bg-base-100 border border-base-300 rounded-full p-1 shadow-sm hover:shadow"
+                                        aria-label="Edit message"
+                                      >
+                                        <Pencil
+                                          size={14}
+                                          className="text-base-content/50 hover:text-primary"
+                                        />
+                                      </button>
+                                    </Tooltip>
+                                  )}
+
+                                  {canDeleteMessage && (
+                                    <Tooltip
+                                      content="Delete message"
+                                      position="top"
+                                      wrapperClassName="inline-flex"
+                                    >
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          onDeleteMessage(message.id)
+                                        }
+                                        className="bg-base-100 border border-base-300 rounded-full p-1 shadow-sm hover:shadow"
+                                        aria-label="Delete message"
+                                      >
+                                        <Trash2
+                                          size={14}
+                                          className="text-base-content/50 hover:text-error"
+                                        />
+                                      </button>
+                                    </Tooltip>
+                                  )}
+                                </div>
                               )}
 
                             {/* Only render media/text when NOT deleted */}
@@ -2797,10 +3008,77 @@ const MessageDisplay = ({
                                 {renderFileAttachment(message)}
 
                                 {/* Text content */}
-                                {message.content && (
+                                {message.content && !isEditing && (
                                   <p>
                                     <MessageText content={message.content} />
                                   </p>
+                                )}
+
+                                {isEditing && (
+                                  <div className="space-y-2 min-w-[16rem] max-w-full">
+                                    <textarea
+                                      value={editingContent}
+                                      onChange={(event) =>
+                                        setEditingContent(event.target.value)
+                                      }
+                                      className="textarea textarea-bordered textarea-sm w-full min-h-20 resize-none bg-base-100 text-base-content"
+                                      maxLength={500}
+                                      disabled={isSavingEdit}
+                                      autoFocus
+                                      onKeyDown={(event) => {
+                                        if (
+                                          event.key === "Escape" &&
+                                          !isSavingEdit
+                                        ) {
+                                          cancelEditingMessage();
+                                        }
+
+                                        if (
+                                          event.key === "Enter" &&
+                                          (event.metaKey || event.ctrlKey)
+                                        ) {
+                                          event.preventDefault();
+                                          saveEditingMessage(message.id);
+                                        }
+                                      }}
+                                    />
+                                    {editingError && (
+                                      <p className="text-xs text-error">
+                                        {editingError}
+                                      </p>
+                                    )}
+                                    <div className="flex items-center justify-end gap-2">
+                                      <button
+                                        type="button"
+                                        className="btn btn-ghost btn-xs"
+                                        onClick={cancelEditingMessage}
+                                        disabled={isSavingEdit}
+                                      >
+                                        <X size={14} />
+                                        Cancel
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className="btn btn-primary btn-xs"
+                                        onClick={() =>
+                                          saveEditingMessage(message.id)
+                                        }
+                                        disabled={
+                                          isSavingEdit ||
+                                          !editingContent.trim() ||
+                                          editingContent.trim() ===
+                                            (message.content || "").trim()
+                                        }
+                                      >
+                                        {isSavingEdit ? (
+                                          <span className="loading loading-spinner loading-xs" />
+                                        ) : (
+                                          <Check size={14} />
+                                        )}
+                                        Save
+                                      </button>
+                                    </div>
+                                  </div>
                                 )}
                               </>
                             )}
@@ -2812,20 +3090,34 @@ const MessageDisplay = ({
                               </p>
                             )}
 
-                            {messageIndex ===
-                              messageGroup.messages.length - 1 && (
+                            {showMessageMeta && (
                               <div
                                 className={`
                           flex justify-between items-center text-xs mt-1
                           ${isCurrentUser ? "text-base-content/60" : "text-base-content/50"}
                         `}
                               >
-                                <span>
-                                  {format(new Date(message.createdAt), "p")}
+                                <span className="inline-flex items-center gap-1">
+                                  {formatLocalTime(
+                                    getMessageDisplayTime(message),
+                                  )}
+                                  {messageEdited && (
+                                    <Tooltip
+                                      content="Message edited"
+                                      position="top"
+                                      wrapperClassName="inline-flex shrink-0"
+                                    >
+                                      <Pencil
+                                        size={12}
+                                        strokeWidth={2.25}
+                                        aria-label="Message edited"
+                                      />
+                                    </Tooltip>
+                                  )}
                                 </span>
-                                {isCurrentUser && message.readAt && (
-                                  <span className="ml-2">✓</span>
-                                )}
+                                <span className="inline-flex items-center">
+                                  {renderReadReceipt(message, isCurrentUser)}
+                                </span>
                               </div>
                             )}
                           </div>
@@ -2867,6 +3159,7 @@ const MessageDisplay = ({
         teamId={conversationType === "team" ? teamData?.id : selectedTeamId}
         initialTeamData={conversationType === "team" ? teamData : null}
         membersRefreshKey={teamMembersRefreshKey}
+        hideMatchData
         onClose={handleTeamModalClose}
       />
 

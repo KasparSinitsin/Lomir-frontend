@@ -1,5 +1,6 @@
 import React from "react";
 import { Cloud, Link as LinkIcon, ExternalLink } from "lucide-react";
+import Tooltip from "../common/Tooltip";
 
 // --- helpers -------------------------------------------------
 
@@ -100,44 +101,46 @@ const LinkChip = ({ href }) => {
   const { label, Icon } = classifyUrl(href);
 
   return (
+    <Tooltip content={href} position="top">
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="
+          inline-flex items-center gap-2
+          px-2 py-1 rounded-lg
+          bg-base-100/60 hover:bg-base-100
+          border border-base-200
+          text-sm text-base-content
+          max-w-full align-middle
+        "
+      >
+        <Icon size={16} className="text-primary flex-shrink-0" />
+        <span className="font-medium whitespace-nowrap">{label}</span>
+        <span className="text-base-content/60 truncate max-w-[12rem]">
+          {shortenForDisplay(href)}
+        </span>
+        <ExternalLink size={14} className="text-base-content/40 flex-shrink-0" />
+      </a>
+    </Tooltip>
+  );
+};
+
+const PlainLink = ({ href }) => (
+  <Tooltip content={href} position="top">
     <a
       href={href}
       target="_blank"
       rel="noopener noreferrer"
       className="
-        inline-flex items-center gap-2 
-        px-2 py-1 rounded-lg 
-        bg-base-100/60 hover:bg-base-100
-        border border-base-200
-        text-sm text-base-content
-        max-w-full align-middle
+        underline underline-offset-2
+        text-primary hover:no-underline
+        break-words
       "
-      title={href}
     >
-      <Icon size={16} className="text-primary flex-shrink-0" />
-      <span className="font-medium whitespace-nowrap">{label}</span>
-      <span className="text-base-content/60 truncate max-w-[12rem]">
-        {shortenForDisplay(href)}
-      </span>
-      <ExternalLink size={14} className="text-base-content/40 flex-shrink-0" />
+      {shortenForDisplay(href)}
     </a>
-  );
-};
-
-const PlainLink = ({ href }) => (
-  <a
-    href={href}
-    target="_blank"
-    rel="noopener noreferrer"
-    className="
-      underline underline-offset-2
-      text-primary hover:no-underline
-      break-words
-    "
-    title={href}
-  >
-    {shortenForDisplay(href)}
-  </a>
+  </Tooltip>
 );
 
 export default function MessageText({ content }) {
