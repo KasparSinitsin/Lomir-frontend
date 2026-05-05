@@ -1031,9 +1031,9 @@ const VacantRoleCard = ({
           }
           className={status !== "open" ? "opacity-70" : ""}
         >
-          <div className="w-56 flex-shrink-0 flex items-center gap-3 overflow-hidden">
+          <div className="flex w-24 flex-shrink-0 items-center gap-3 overflow-hidden sm:w-56">
             {showDistance && (
-              <div className="w-16 flex-shrink-0 overflow-hidden">
+              <div className="hidden w-16 flex-shrink-0 overflow-hidden md:block">
                 <div className="text-xs text-base-content flex items-center gap-1 overflow-hidden">
                   <Tooltip content={`${roundedDistanceKm} km away from you`}>
                     <div className="flex items-center gap-1">
@@ -1067,7 +1067,7 @@ const VacantRoleCard = ({
             )}
           </div>
 
-          <div className="w-52 flex-shrink-0 text-xs text-base-content/60 hidden sm:flex items-center gap-1 overflow-hidden">
+          <div className="hidden w-52 flex-shrink-0 text-xs text-base-content/60 lg:flex items-center gap-1 overflow-hidden">
             {tagsSummary && (
               <Tooltip
                 content={tagNames.join(", ")}
@@ -1079,7 +1079,7 @@ const VacantRoleCard = ({
             )}
           </div>
 
-          <div className="w-48 flex-shrink-0 text-xs text-base-content/60 hidden sm:flex items-center gap-1 overflow-hidden">
+          <div className="hidden w-48 flex-shrink-0 text-xs text-base-content/60 xl:flex items-center gap-1 overflow-hidden">
             {badgesSummary && (
               <Tooltip
                 content={badgeNames.join(", ")}
