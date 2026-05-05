@@ -10,6 +10,11 @@ import { messageService } from "../../services/messageService";
 import { notificationService } from "../../services/notificationService";
 import socketService from "../../services/socketService";
 import NotificationBadge from "../common/NotificationBadge";
+import {
+  getMessageConversationTarget,
+  isMessageForCurrentChatPath,
+  isOwnMessage,
+} from "../../utils/messageNotificationUtils";
 
 const Navbar = () => {
   const { isAuthenticated, user, logout } = useAuth();
@@ -26,6 +31,7 @@ const Navbar = () => {
   const lastMessageFetchRef = useRef(0);
   const lastNotificationFetchRef = useRef(0);
   const locationPathRef = useRef(location.pathname);
+  const locationSearchRef = useRef(location.search);
 
   // Define Tailwind class strings using CSS variables for consistent colors
   const iconClasses =
@@ -39,8 +45,8 @@ const Navbar = () => {
 
     try {
       const response = await messageService.getUnreadCount();
-      setUnreadMessageCount(response.data?.count || 0);
-      setFirstUnreadMessage(response.data?.firstUnread || null);
+      setUnreadMessageCount(response.data?.count ?? response.count ?? 0);
+      setFirstUnreadMessage(response.data?.firstUnread ?? response.firstUnread ?? null);
     } catch (error) {
       console.error("Error fetching unread message count:", error);
     }
@@ -77,7 +83,8 @@ const Navbar = () => {
 
   useEffect(() => {
     locationPathRef.current = location.pathname;
-  }, [location.pathname]);
+    locationSearchRef.current = location.search;
+  }, [location.pathname, location.search]);
 
   // Initial fetch and socket setup for messages
   useEffect(() => {
@@ -90,36 +97,28 @@ const Navbar = () => {
     lastMessageFetchRef.current = Date.now();
     fetchUnreadMessageCount();
 
-    // Set up socket listener for new messages
-    const socket = socketService.getSocket();
+    let detachSocketListeners = null;
 
-    if (socket) {
+    const attachSocketListeners = (socket) => {
+      if (!socket) return;
+
+      if (detachSocketListeners) {
+        detachSocketListeners();
+      }
+
       const handleNewMessage = (message) => {
-        // Only increment if we're not currently in that conversation
-        const currentPath = locationPathRef.current;
-        const currentConversationId = currentPath.startsWith("/chat/")
-          ? currentPath.split("/chat/")[1]?.split("?")[0]
-          : null;
+        if (isOwnMessage(message, user?.id)) return;
 
-        const messageConversationId =
-          message.teamId ||
-          message.team_id ||
-          message.conversationId ||
-          message.senderId;
-        const isInThisConversation =
-          currentConversationId &&
-          String(currentConversationId) === String(messageConversationId);
+        const isInThisConversation = isMessageForCurrentChatPath(
+          message,
+          locationPathRef.current,
+          locationSearchRef.current,
+          user?.id,
+        );
 
         if (!isInThisConversation) {
           setUnreadMessageCount((prev) => prev + 1);
-          // Set this as the first unread conversation
-          const isTeamMessage = !!(message.teamId || message.team_id);
-          setFirstUnreadMessage({
-            conversationId: isTeamMessage
-              ? message.teamId || message.team_id
-              : message.conversationId || message.senderId,
-            type: isTeamMessage ? "team" : "direct",
-          });
+          setFirstUnreadMessage(getMessageConversationTarget(message, user?.id));
         }
       };
 
@@ -131,12 +130,21 @@ const Navbar = () => {
       socket.on("message:received", handleNewMessage);
       socket.on("messages:read", handleMessagesRead);
 
-      return () => {
+      detachSocketListeners = () => {
         socket.off("message:received", handleNewMessage);
         socket.off("messages:read", handleMessagesRead);
       };
-    }
-  }, [isAuthenticated, fetchUnreadMessageCount]);
+    };
+
+    const unsubscribeSocketReady = socketService.onSocketReady(attachSocketListeners);
+
+    return () => {
+      unsubscribeSocketReady();
+      if (detachSocketListeners) {
+        detachSocketListeners();
+      }
+    };
+  }, [isAuthenticated, fetchUnreadMessageCount, user?.id]);
 
   // Initial fetch and socket setup for notifications
   useEffect(() => {
@@ -149,10 +157,15 @@ const Navbar = () => {
     lastNotificationFetchRef.current = Date.now();
     fetchUnreadNotificationCount();
 
-    // Set up socket listener for new notifications
-    const socket = socketService.getSocket();
+    let detachNotificationListener = null;
 
-    if (socket) {
+    const attachNotificationListener = (socket) => {
+      if (!socket) return;
+
+      if (detachNotificationListener) {
+        detachNotificationListener();
+      }
+
       const handleNewNotification = () => {
         // Refetch to get the latest count and firstUnread
         fetchUnreadNotificationCount();
@@ -160,10 +173,19 @@ const Navbar = () => {
 
       socket.on("notification:new", handleNewNotification);
 
-      return () => {
+      detachNotificationListener = () => {
         socket.off("notification:new", handleNewNotification);
       };
-    }
+    };
+
+    const unsubscribeSocketReady = socketService.onSocketReady(attachNotificationListener);
+
+    return () => {
+      unsubscribeSocketReady();
+      if (detachNotificationListener) {
+        detachNotificationListener();
+      }
+    };
   }, [isAuthenticated, fetchUnreadNotificationCount]);
 
   // Refetch message count when path changes

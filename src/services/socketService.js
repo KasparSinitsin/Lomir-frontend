@@ -1,11 +1,20 @@
 import { io } from "socket.io-client";
 
 let socket = null;
+const SOCKET_READY_EVENT = "lomir:socket-ready";
+
+const notifySocketReady = (socketInstance) => {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(
+    new CustomEvent(SOCKET_READY_EVENT, { detail: { socket: socketInstance } }),
+  );
+};
 
 const socketService = {
   // Connect to the socket server
   connect: (token) => {
     if (socket && socket.connected) {
+      notifySocketReady(socket);
       return socket;
     }
 
@@ -28,9 +37,11 @@ const socketService = {
 
     // Assign to global variable
     socket = newSocket;
+    notifySocketReady(newSocket);
 
     // Use newSocket in callbacks to avoid race conditions
     newSocket.on("connect", () => {
+      notifySocketReady(newSocket);
     });
 
     newSocket.on("connect_error", (error) => {
@@ -56,6 +67,24 @@ const socketService = {
 
   // Get the socket instance
   getSocket: () => socket,
+
+  onSocketReady: (callback) => {
+    if (typeof window === "undefined") return () => {};
+
+    const handleSocketReady = (event) => {
+      callback(event.detail?.socket || socket);
+    };
+
+    window.addEventListener(SOCKET_READY_EVENT, handleSocketReady);
+
+    if (socket) {
+      callback(socket);
+    }
+
+    return () => {
+      window.removeEventListener(SOCKET_READY_EVENT, handleSocketReady);
+    };
+  },
 
   // Join a conversation room
   joinConversation: (conversationId, type = "direct") => {
