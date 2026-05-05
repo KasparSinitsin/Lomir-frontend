@@ -4,6 +4,7 @@ import Tooltip from "../common/Tooltip";
 import { CountBadge } from "../common/NotificationBadge";
 import { getTeamInitials, isSyntheticTeam } from "../../utils/userHelpers";
 import { formatDistanceToNow } from "date-fns";
+import { normalizeTimestampToDate } from "../../utils/dateHelpers";
 import TeamDetailsModal from "../teams/TeamDetailsModal";
 import UserDetailsModal from "../users/UserDetailsModal";
 import UserAvatar from "../users/UserAvatar";
@@ -405,14 +406,14 @@ const ConversationList = ({
                       ) : (
                         <>
                           <User size={12} className="flex-shrink-0" />
-                          <span>Direct message</span>
+                          <span>DM Chat</span>
                         </>
                       )}
                     </p>
                     <span className="flex-shrink-0 ml-2 text-xs whitespace-nowrap" style={{ color: "#036b0c" }}>
                       {conversation.updatedAt
                         ? formatDistanceToNow(
-                            new Date(conversation.updatedAt),
+                            normalizeTimestampToDate(conversation.updatedAt) || new Date(),
                             {
                               addSuffix: true,
                             },

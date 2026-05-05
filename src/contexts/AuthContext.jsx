@@ -1,6 +1,7 @@
 import { createContext, useState, useEffect, useContext } from "react";
 import api from "../services/api";
 import socketService from "../services/socketService";
+import { setUserTimezone } from "../utils/dateHelpers";
 
 const AuthContext = createContext(null);
 
@@ -49,6 +50,7 @@ export const AuthProvider = ({ children }) => {
                 : true,
           };
           setUser(enhancedUserData);
+          setUserTimezone(enhancedUserData);
           setError(null);
 
           // Connect socket AFTER user is loaded
@@ -126,6 +128,7 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem("token", token);
       setToken(token);
       setUser(enhancedUser);
+      setUserTimezone(enhancedUser);
       setError(null);
 
       try {
@@ -189,6 +192,7 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem("token", token);
       setToken(token);
       setUser(enhancedUser);
+      setUserTimezone(enhancedUser);
       setError(null);
 
       // Initialize socket connection AFTER user is set
@@ -287,6 +291,7 @@ export const AuthProvider = ({ children }) => {
         newUser.avatarUrl = userData.avatarUrl;
         newUser.avatar_url = userData.avatarUrl;
       }
+      setUserTimezone(newUser);
       return newUser;
     });
   };
@@ -296,6 +301,7 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem("token");
     setToken(null);
     setUser(null);
+    setUserTimezone(null);
     setError(null); // Clear error when logging out
     // Disconnect socket
     socketService.disconnect();

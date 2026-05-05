@@ -1,6 +1,12 @@
 import React, { useRef, useEffect, useState } from "react";
 import { format, isToday, isYesterday } from "date-fns";
 import {
+  normalizeTimestampToDate,
+  formatLocalTime,
+  formatDateHeading as formatMessageDateHeading,
+  getDateGroupKey,
+} from "../../utils/dateHelpers";
+import {
   getTeamInitials,
   isSyntheticTeam,
 } from "../../utils/userHelpers";
@@ -19,6 +25,8 @@ import {
   AlertTriangle,
   Clock,
   Trash2,
+  Check,
+  CheckCheck,
 } from "lucide-react";
 import TeamDetailsModal from "../teams/TeamDetailsModal";
 import UserDetailsModal from "../users/UserDetailsModal";
@@ -433,6 +441,95 @@ const MessageDisplay = ({
   const [resolvedChatUsers, setResolvedChatUsers] = useState({});
   const [resolvedChatTeams, setResolvedChatTeams] = useState({});
 
+  const getDisplayName = (userData) => {
+    if (!userData) return "";
+    const first = userData.firstName ?? userData.first_name;
+    const last = userData.lastName ?? userData.last_name;
+    if (first && last) return `${first} ${last}`;
+    if (first) return first;
+    return userData.username ?? "";
+  };
+
+  const formatReadByTooltip = (names) => {
+    const uniqueNames = [...new Set((names || []).filter(Boolean))];
+    if (uniqueNames.length === 0) return "Read.";
+    if (uniqueNames.length === 1) return `Read by ${uniqueNames[0]}.`;
+    if (uniqueNames.length === 2) {
+      return `Read by ${uniqueNames[0]} and ${uniqueNames[1]}.`;
+    }
+
+    const lastName = uniqueNames[uniqueNames.length - 1];
+    const leadingNames = uniqueNames.slice(0, -1).join(", ");
+    return `Read by ${leadingNames} and ${lastName}.`;
+  };
+
+  const getReadByTooltip = (message) => {
+    if (conversationType === "team") {
+      const readByUsers = message.readByUsers ?? message.read_by_users ?? [];
+      return formatReadByTooltip(readByUsers.map(getDisplayName));
+    }
+
+    return formatReadByTooltip([getDisplayName(resolvedConversationPartner)]);
+  };
+
+  const renderReadReceipt = (message, isCurrentUser) => {
+    if (!isCurrentUser) return null;
+
+    const parsedReadCount = Number(message.readCount ?? message.read_count);
+    const readCount = Number.isFinite(parsedReadCount) ? parsedReadCount : 0;
+    const fallbackRecipientCount =
+      conversationType === "team"
+        ? (teamMembers || []).filter((member) => {
+            const memberId = member?.user_id ?? member?.userId ?? member?.id;
+            return String(memberId) !== String(currentUserId);
+          }).length
+        : 1;
+    const parsedRecipientCount = Number(
+      message.recipientCount ??
+        message.recipient_count ??
+        fallbackRecipientCount,
+    );
+    const recipientCount = Number.isFinite(parsedRecipientCount)
+      ? parsedRecipientCount
+      : fallbackRecipientCount;
+
+    if (conversationType === "team") {
+      if (readCount <= 0 && !message.readAt) return null;
+
+      const isReadByAll = recipientCount > 0 && readCount >= recipientCount;
+      const ReceiptIcon = isReadByAll ? CheckCheck : Check;
+
+      return (
+        <Tooltip
+          content={isReadByAll ? "Read by all" : getReadByTooltip(message)}
+          position="top"
+        >
+          <span className="ml-2 inline-flex shrink-0">
+            <ReceiptIcon
+              size={14}
+              strokeWidth={2.25}
+              aria-label={isReadByAll ? "Read by all" : "Read by someone"}
+            />
+          </span>
+        </Tooltip>
+      );
+    }
+
+    if (!message.readAt) return null;
+
+    return (
+      <Tooltip content={getReadByTooltip(message)} position="top">
+        <span className="ml-2 inline-flex shrink-0">
+          <CheckCheck
+            size={14}
+            strokeWidth={2.25}
+            aria-label="Read"
+          />
+        </span>
+      </Tooltip>
+    );
+  };
+
   useEffect(() => {
     const previousSnapshot = previousMessageSnapshotRef.current;
     const currentSnapshot = {
@@ -791,7 +888,7 @@ const MessageDisplay = ({
 
   // Group messages by date
   const messagesByDate = messages.reduce((groups, message) => {
-    const date = format(new Date(message.createdAt), "yyyy-MM-dd");
+    const date = getDateGroupKey(message.createdAt);
     if (!groups[date]) {
       groups[date] = [];
     }
@@ -800,12 +897,7 @@ const MessageDisplay = ({
   }, {});
 
   // Format date heading
-  const formatDateHeading = (dateString) => {
-    const date = new Date(dateString);
-    if (isToday(date)) return "Today";
-    if (isYesterday(date)) return "Yesterday";
-    return format(date, "MMMM d, yyyy");
-  };
+  const formatDateHeading = (dateString) => formatMessageDateHeading(dateString);
 
   // Get sender info from team members or message data
   const getSenderInfo = (senderId, message = null) => {
@@ -1247,7 +1339,7 @@ const MessageDisplay = ({
         </div>
 
         <div className="text-xs text-base-content/50">
-          {format(new Date(message.createdAt), "p")}
+          {formatLocalTime(message.createdAt)}
         </div>
       </div>
     );
@@ -1289,7 +1381,7 @@ const MessageDisplay = ({
         </div>
 
         <div className="text-xs text-base-content/50">
-          {format(new Date(message.createdAt), "p")}
+          {formatLocalTime(message.createdAt)}
         </div>
       </div>
     );
@@ -1321,7 +1413,7 @@ const MessageDisplay = ({
         </div>
 
         <div className="text-xs text-base-content/50">
-          {format(new Date(message.createdAt), "p")}
+          {formatLocalTime(message.createdAt)}
         </div>
       </div>
     );
@@ -1362,7 +1454,7 @@ const MessageDisplay = ({
         </div>
 
         <div className="text-xs text-base-content/50">
-          {format(new Date(message.createdAt), "p")}
+          {formatLocalTime(message.createdAt)}
         </div>
       </div>
     );
@@ -1408,7 +1500,7 @@ const MessageDisplay = ({
         </div>
 
         <div className="text-xs text-base-content/50">
-          {format(new Date(message.createdAt), "p")}
+          {formatLocalTime(message.createdAt)}
         </div>
       </div>
     );
@@ -1483,10 +1575,8 @@ const MessageDisplay = ({
                     }
                   `}
                 >
-                  <span>{format(new Date(message.createdAt), "p")}</span>
-                  {isCurrentUser && message.readAt && (
-                    <span className="ml-2">✓</span>
-                  )}
+                  <span>{formatLocalTime(message.createdAt)}</span>
+                  {renderReadReceipt(message, isCurrentUser)}
                 </div>
               </div>
             </div>
@@ -1495,7 +1585,7 @@ const MessageDisplay = ({
 
         {!parsedMessage.personalMessage && (
           <div className="text-xs text-base-content/50">
-            {format(new Date(message.createdAt), "p")}
+            {formatLocalTime(message.createdAt)}
           </div>
         )}
       </div>
@@ -1556,7 +1646,7 @@ const MessageDisplay = ({
         </div>
 
         <div className="text-xs text-base-content/50">
-          {format(new Date(message.createdAt), "p")}
+          {formatLocalTime(message.createdAt)}
         </div>
       </div>
     );
@@ -1641,7 +1731,7 @@ const MessageDisplay = ({
         </div>
 
         <div className="text-xs text-base-content/50">
-          {format(new Date(message.createdAt), "p")}
+          {formatLocalTime(message.createdAt)}
         </div>
       </div>
     );
@@ -1706,10 +1796,8 @@ const MessageDisplay = ({
                     }
                   `}
                 >
-                  <span>{format(new Date(message.createdAt), "p")}</span>
-                  {isCurrentUser && message.readAt && (
-                    <span className="ml-2">✓</span>
-                  )}
+                  <span>{formatLocalTime(message.createdAt)}</span>
+                  {renderReadReceipt(message, isCurrentUser)}
                 </div>
               </div>
             </div>
@@ -1798,7 +1886,7 @@ const MessageDisplay = ({
         </div>
 
         <div className="text-xs text-base-content/50">
-          {format(new Date(message.createdAt), "p")}
+          {formatLocalTime(message.createdAt)}
         </div>
       </div>
     );
@@ -1855,10 +1943,8 @@ const MessageDisplay = ({
                     }
                   `}
                 >
-                  <span>{format(new Date(message.createdAt), "p")}</span>
-                  {isCurrentUser && message.readAt && (
-                    <span className="ml-2">✓</span>
-                  )}
+                  <span>{formatLocalTime(message.createdAt)}</span>
+                  {renderReadReceipt(message, isCurrentUser)}
                 </div>
               </div>
             </div>
@@ -1909,7 +1995,7 @@ const MessageDisplay = ({
         </div>
 
         <div className="text-xs text-base-content/50">
-          {format(new Date(message.createdAt), "p")}
+          {formatLocalTime(message.createdAt)}
         </div>
       </div>
     );
@@ -2022,7 +2108,7 @@ const MessageDisplay = ({
         </div>
 
         <div className="text-xs text-base-content/50">
-          {format(new Date(message.createdAt), "p")}
+          {formatLocalTime(message.createdAt)}
         </div>
       </div>
     );
@@ -2047,7 +2133,7 @@ const MessageDisplay = ({
         </div>
 
         <div className="text-xs text-base-content/50">
-          {format(new Date(message.createdAt), "p")}
+          {formatLocalTime(message.createdAt)}
         </div>
       </div>
     );
@@ -2096,7 +2182,7 @@ const MessageDisplay = ({
         </div>
 
         <div className="text-xs text-base-content/50">
-          {format(new Date(message.createdAt), "p")}
+          {formatLocalTime(message.createdAt)}
         </div>
       </div>
     );
@@ -2149,7 +2235,7 @@ const MessageDisplay = ({
         </div>
 
         <div className="text-xs text-base-content/50">
-          {format(new Date(message.createdAt), "p")}
+          {formatLocalTime(message.createdAt)}
         </div>
       </div>
     );
@@ -2193,7 +2279,7 @@ const MessageDisplay = ({
         </div>
 
         <div className="text-xs text-base-content/50">
-          {format(new Date(message.createdAt), "p")}
+          {formatLocalTime(message.createdAt)}
         </div>
       </div>
     );
@@ -2839,11 +2925,9 @@ const MessageDisplay = ({
                         `}
                               >
                                 <span>
-                                  {format(new Date(message.createdAt), "p")}
+                                  {formatLocalTime(message.createdAt)}
                                 </span>
-                                {isCurrentUser && message.readAt && (
-                                  <span className="ml-2">✓</span>
-                                )}
+                                {renderReadReceipt(message, isCurrentUser)}
                               </div>
                             )}
                           </div>
