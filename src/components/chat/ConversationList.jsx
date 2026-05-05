@@ -26,7 +26,6 @@ const ConversationList = ({
   activeConversationId,
   onSelectConversation,
   loading,
-  onlineUsers = [],
   teamMembersRefreshSignal = null,
 }) => {
   // State for team details modal
@@ -249,9 +248,6 @@ const ConversationList = ({
           const isFormerPartner = !isTeam && !directDisplayName;
           const isUserClickable =
             !isTeam && !isFormerPartner && Boolean(conversationData?.id);
-          const isOnline =
-            isUserClickable && onlineUsers.includes(conversationData?.id);
-
           // Get display name
           const displayName = isTeam
             ? conversationData?.name
@@ -358,7 +354,15 @@ const ConversationList = ({
                   <div className="flex justify-between items-center min-w-0">
                     {/* Name - Clickable for both team and direct conversations */}
                     <Tooltip
-                      content={displayName?.length > 22 ? displayName : undefined}
+                      content={
+                        isUserClickable
+                          ? `Click to view ${displayName}'s details`
+                          : isTeam
+                            ? `Click to view ${displayName} details`
+                            : displayName?.length > 22
+                              ? displayName
+                              : undefined
+                      }
                       wrapperClassName="block min-w-0 flex-1 overflow-hidden"
                     >
                       <h3

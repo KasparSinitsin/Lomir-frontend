@@ -676,16 +676,6 @@ const Chat = () => {
       return;
     }
 
-    // Remove any existing listeners first to prevent duplicates
-    socket.off("users:online");
-    socket.off("message:received");
-    socket.off("message:deleted");
-    socket.off("typing:update");
-    socket.off("message:status");
-    socket.off("conversation:updated");
-    socket.off("team:member_left");
-    socket.off("conversation:deleted");
-
     // Handle online users
     const handleOnlineUsers = (users) => {
       setOnlineUsers(users);
