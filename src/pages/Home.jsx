@@ -70,8 +70,8 @@ const Home = () => {
           </p>
         </div>
 
-        <div className="flex justify-between gap-x-4">
-          <InfoCard className="w-1/3" title="Find Your People" hoverable={true}>
+        <div className="flex flex-col items-center sm:flex-row sm:items-stretch justify-between gap-4">
+          <InfoCard className="w-full sm:w-1/3" title="Find Your People" hoverable={true}>
             <div className="flex justify-center mb-4">
               <Users className="w-8 h-8 text-primary" />
             </div>
@@ -80,7 +80,7 @@ const Home = () => {
               skills.
             </p>
           </InfoCard>
-          <InfoCard className="w-1/3" title="Build Together" hoverable={true}>
+          <InfoCard className="w-full sm:w-1/3" title="Build Together" hoverable={true}>
             <div className="flex justify-center mb-4">
               <Handshake className="w-8 h-8 text-primary" />
             </div>
@@ -89,7 +89,7 @@ const Home = () => {
               skills on meaningful projects.
             </p>
           </InfoCard>
-          <InfoCard className="w-1/3" title="Stay in Touch" hoverable={true}>
+          <InfoCard className="w-full sm:w-1/3" title="Stay in Touch" hoverable={true}>
             <div className="flex justify-center mb-4">
               <MessageCircle className="w-8 h-8 text-primary" />
             </div>
