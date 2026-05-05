@@ -92,6 +92,48 @@ export const userService = {
   },
 
   /**
+   * Hide or unhide one badge type on the current user's profile.
+   * @param {string|number} userId - The profile owner.
+   * @param {string|number} badgeId - The badge catalog ID to update.
+   * @param {boolean} hidden - Whether the badge should be hidden.
+   * @returns {Promise<object>} A promise resolving to the updated visibility payload.
+   */
+  updateUserBadgeVisibility: async (userId, badgeId, hidden = true) => {
+    try {
+      const response = await api.patch(
+        `/api/users/${userId}/badges/${badgeId}/visibility`,
+        { hidden },
+      );
+      return response.data;
+    } catch (error) {
+      console.error(
+        `Error updating badge ${badgeId} visibility for user ${userId}:`,
+        error,
+      );
+      throw error;
+    }
+  },
+
+  /**
+   * Delete one awarded badge event from the current user's profile.
+   * @param {string|number} userId - The profile owner.
+   * @param {string|number} awardId - The awarded badge event ID.
+   * @returns {Promise<object>} A promise resolving to the deletion result.
+   */
+  deleteUserBadgeAward: async (userId, awardId) => {
+    try {
+      const response = await api.delete(`/api/badges/awards/${awardId}`);
+      return response.data;
+    } catch (error) {
+      console.error(
+        `Error deleting badge award ${awardId} for user ${userId}:`,
+        error,
+      );
+      throw error;
+    }
+  },
+
+  /**
    * Fetches a preview of everything affected by deleting the current user's account.
    * @param {string|number} userId - The ID of the user to preview deletion for.
    * @param {string} password - The user's current password.

@@ -37,6 +37,18 @@ export const AuthProvider = ({ children }) => {
                 : userData.isPublic !== undefined
                   ? userData.isPublic
                   : true,
+            hideBadges:
+              userData.hide_badges !== undefined
+                ? userData.hide_badges
+                : userData.hideBadges !== undefined
+                  ? userData.hideBadges
+                  : false,
+            hiddenBadgeIds:
+              Array.isArray(userData.hidden_badge_ids)
+                ? userData.hidden_badge_ids
+                : Array.isArray(userData.hiddenBadgeIds)
+                  ? userData.hiddenBadgeIds
+                  : [],
             // Add snake_case versions if missing
             first_name: userData.first_name || userData.firstName,
             last_name: userData.last_name || userData.lastName,
@@ -48,6 +60,18 @@ export const AuthProvider = ({ children }) => {
                 : userData.isPublic !== undefined
                 ? userData.isPublic
                 : true,
+            hide_badges:
+              userData.hide_badges !== undefined
+                ? userData.hide_badges
+                : userData.hideBadges !== undefined
+                  ? userData.hideBadges
+                  : false,
+            hidden_badge_ids:
+              Array.isArray(userData.hidden_badge_ids)
+                ? userData.hidden_badge_ids
+                : Array.isArray(userData.hiddenBadgeIds)
+                  ? userData.hiddenBadgeIds
+                  : [],
           };
           setUser(enhancedUserData);
           setUserTimezone(enhancedUserData);
@@ -113,6 +137,18 @@ export const AuthProvider = ({ children }) => {
             : user.isPublic !== undefined
               ? user.isPublic
               : false,
+        hideBadges:
+          user.hide_badges !== undefined
+            ? user.hide_badges
+            : user.hideBadges !== undefined
+              ? user.hideBadges
+              : false,
+        hiddenBadgeIds:
+          Array.isArray(user.hidden_badge_ids)
+            ? user.hidden_badge_ids
+            : Array.isArray(user.hiddenBadgeIds)
+              ? user.hiddenBadgeIds
+              : [],
         first_name: user.first_name || user.firstName,
         last_name: user.last_name || user.lastName,
         postal_code: user.postal_code || user.postalCode,
@@ -123,6 +159,18 @@ export const AuthProvider = ({ children }) => {
             : user.isPublic !== undefined
               ? user.isPublic
               : false,
+        hide_badges:
+          user.hide_badges !== undefined
+            ? user.hide_badges
+            : user.hideBadges !== undefined
+              ? user.hideBadges
+              : false,
+        hidden_badge_ids:
+          Array.isArray(user.hidden_badge_ids)
+            ? user.hidden_badge_ids
+            : Array.isArray(user.hiddenBadgeIds)
+              ? user.hiddenBadgeIds
+              : [],
       };
 
       localStorage.setItem("token", token);
@@ -176,6 +224,18 @@ export const AuthProvider = ({ children }) => {
             : user.isPublic !== undefined
               ? user.isPublic
               : false,
+        hideBadges:
+          user.hide_badges !== undefined
+            ? user.hide_badges
+            : user.hideBadges !== undefined
+              ? user.hideBadges
+              : false,
+        hiddenBadgeIds:
+          Array.isArray(user.hidden_badge_ids)
+            ? user.hidden_badge_ids
+            : Array.isArray(user.hiddenBadgeIds)
+              ? user.hiddenBadgeIds
+              : [],
         // Add snake_case versions
         first_name: user.first_name || user.firstName,
         last_name: user.last_name || user.lastName,
@@ -186,6 +246,12 @@ export const AuthProvider = ({ children }) => {
             ? user.is_public
             : user.isPublic !== undefined
               ? user.isPublic
+              : false,
+        hide_badges:
+          user.hide_badges !== undefined
+            ? user.hide_badges
+            : user.hideBadges !== undefined
+              ? user.hideBadges
               : false,
       };
 
@@ -242,6 +308,30 @@ export const AuthProvider = ({ children }) => {
       } else if (userData.isPublic !== undefined) {
         newUser.isPublic = userData.isPublic;
         newUser.is_public = userData.isPublic;
+      }
+
+      if (userData.hide_badges !== undefined) {
+        newUser.hide_badges = userData.hide_badges;
+        newUser.hideBadges = userData.hide_badges;
+      } else if (userData.hideBadges !== undefined) {
+        newUser.hideBadges = userData.hideBadges;
+        newUser.hide_badges = userData.hideBadges;
+      }
+
+      if (userData.hidden_badge_ids !== undefined) {
+        newUser.hidden_badge_ids = Array.isArray(userData.hidden_badge_ids)
+          ? userData.hidden_badge_ids
+          : [];
+        newUser.hiddenBadgeIds = Array.isArray(userData.hidden_badge_ids)
+          ? userData.hidden_badge_ids
+          : [];
+      } else if (userData.hiddenBadgeIds !== undefined) {
+        newUser.hiddenBadgeIds = Array.isArray(userData.hiddenBadgeIds)
+          ? userData.hiddenBadgeIds
+          : [];
+        newUser.hidden_badge_ids = Array.isArray(userData.hiddenBadgeIds)
+          ? userData.hiddenBadgeIds
+          : [];
       }
 
       if (userData.is_synthetic !== undefined) {

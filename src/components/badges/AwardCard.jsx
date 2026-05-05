@@ -9,6 +9,9 @@ import {
   Tag,
   Award,
   FlaskConical,
+  EyeOff,
+  Loader2,
+  Trash2,
 } from "lucide-react";
 import Tooltip from "../common/Tooltip";
 import InlineUserLink from "../users/InlineUserLink";
@@ -48,6 +51,9 @@ import {
  * - onOpenTeam: optional function(teamId, teamName)
  * - hideTag: boolean
  * - highlighted: boolean
+ * - onHideBadge: optional function(award)
+ * - onDeleteAward: optional function(award)
+ * - badgeActionLoadingKey: optional string used to show per-action loading
  */
 const AwardCard = ({
   award,
@@ -59,13 +65,24 @@ const AwardCard = ({
   hideTag = false,
   highlighted = false,
   showBadgeTitle = true,
+  onHideBadge = null,
+  onDeleteAward = null,
+  badgeActionLoadingKey = null,
 }) => {
   const catColor = categoryColor;
   const childTeamModalZIndex = useChildModalZIndex();
 
   // --- Normalize fields (camelCase + snake_case) ---
+  const awardId = award?.awardId || award?.award_id || award?.id || null;
+  const badgeId = award?.badgeId || award?.badge_id || null;
   const badgeName = award?.badgeName || award?.badge_name || "Badge";
   const credits = Number(award?.credits ?? 0);
+  const hideActionKey = `hide-${badgeId ?? badgeName}`;
+  const deleteActionKey = `delete-${awardId}`;
+  const isAnyBadgeActionLoading = Boolean(badgeActionLoadingKey);
+  const isHideLoading = badgeActionLoadingKey === hideActionKey;
+  const isDeleteLoading = badgeActionLoadingKey === deleteActionKey;
+  const showBadgeActions = Boolean(onHideBadge || onDeleteAward);
 
   const awardedAt = award?.awardedAt || award?.awarded_at;
   const reason = award?.reason;
@@ -234,7 +251,7 @@ const AwardCard = ({
 
   return (
     <div
-      className={`rounded-lg p-3 flex flex-col border ${highlighted ? "animate-badge-highlight" : ""}`}
+      className={`group relative rounded-lg p-3 flex flex-col border ${highlighted ? "animate-badge-highlight" : ""}`}
       style={{
         backgroundColor: highlighted
           ? `${catColor}20`
@@ -249,6 +266,72 @@ const AwardCard = ({
       }}
       title={category}
     >
+      {showBadgeActions && (
+        <div className="absolute -top-2 -right-2 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto focus-within:opacity-100 focus-within:pointer-events-auto transition-opacity inline-flex items-center gap-1">
+          {onHideBadge && (
+            <Tooltip
+              content="Hide badge"
+              position="top"
+              wrapperClassName="inline-flex"
+            >
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onHideBadge(award);
+                }}
+                disabled={isAnyBadgeActionLoading || !badgeId}
+                className="bg-base-100 border border-base-300 rounded-full p-1 shadow-sm hover:shadow disabled:opacity-60 disabled:cursor-not-allowed"
+                aria-label="Hide badge"
+              >
+                {isHideLoading ? (
+                  <Loader2
+                    size={14}
+                    className="text-base-content/50 animate-spin"
+                  />
+                ) : (
+                  <EyeOff
+                    size={14}
+                    className="text-base-content/50 hover:text-primary"
+                  />
+                )}
+              </button>
+            </Tooltip>
+          )}
+
+          {onDeleteAward && (
+            <Tooltip
+              content="Delete badge award"
+              position="top"
+              wrapperClassName="inline-flex"
+            >
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onDeleteAward(award);
+                }}
+                disabled={isAnyBadgeActionLoading || !awardId}
+                className="bg-base-100 border border-base-300 rounded-full p-1 shadow-sm hover:shadow disabled:opacity-60 disabled:cursor-not-allowed"
+                aria-label="Delete badge award"
+              >
+                {isDeleteLoading ? (
+                  <Loader2
+                    size={14}
+                    className="text-base-content/50 animate-spin"
+                  />
+                ) : (
+                  <Trash2
+                    size={14}
+                    className="text-base-content/50 hover:text-error"
+                  />
+                )}
+              </button>
+            </Tooltip>
+          )}
+        </div>
+      )}
+
       {/* ── Title row + credits pill ── */}
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">

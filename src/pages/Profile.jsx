@@ -42,6 +42,7 @@ import ImageUploader from "../components/common/ImageUploader";
 import {
   DEMO_PROFILE_TOOLTIP,
   getUserInitials,
+  isBadgeHiddenForUser,
   isSyntheticUser,
 } from "../utils/userHelpers";
 import DemoAvatarOverlay from "../components/users/DemoAvatarOverlay";
@@ -77,9 +78,12 @@ const Profile = () => {
     badgeCategoryModalProps,
     tagAwardsModalProps,
     supercategoryModalProps,
+    removeAwardFromBadgeModal,
+    removeBadgeFromBadgeModal,
   } = useAwardModals(profileUserId);
 
   const [avatarDeleteLoading, setAvatarDeleteLoading] = useState(false);
+  const [badgeActionLoadingKey, setBadgeActionLoadingKey] = useState(null);
   const [selectedUserId, setSelectedUserId] = useState(null);
 
   // Add form errors state
@@ -111,6 +115,11 @@ const Profile = () => {
 
   // Prefer freshest API user (includes badges totals). Fall back to auth context.
   const displayUser = localUser || user;
+  const displayBadges = Array.isArray(displayUser?.badges)
+    ? displayUser.badges.filter(
+        (badge) => !isBadgeHiddenForUser(badge, displayUser),
+      )
+    : [];
 
   // Auto-fill city from postal code lookup
   const { getSuggestedUpdates } = useLocationAutoFill({
@@ -474,6 +483,161 @@ const Profile = () => {
       );
     } finally {
       setAvatarDeleteLoading(false);
+    }
+  };
+
+  const getAwardId = (award) => award?.awardId ?? award?.award_id ?? award?.id;
+  const getBadgeId = (awardOrBadge) =>
+    awardOrBadge?.badgeId ?? awardOrBadge?.badge_id ?? awardOrBadge?.id;
+  const getBadgeName = (awardOrBadge) =>
+    (
+      awardOrBadge?.badgeName ??
+      awardOrBadge?.badge_name ??
+      awardOrBadge?.name ??
+      ""
+    ).trim();
+
+  const sameBadge = (badge, awardOrBadge) => {
+    const badgeId = getBadgeId(badge);
+    const targetBadgeId = getBadgeId(awardOrBadge);
+    if (
+      badgeId !== undefined &&
+      badgeId !== null &&
+      targetBadgeId !== undefined &&
+      targetBadgeId !== null
+    ) {
+      return String(badgeId) === String(targetBadgeId);
+    }
+
+    const badgeName = getBadgeName(badge).toLowerCase();
+    const targetBadgeName = getBadgeName(awardOrBadge).toLowerCase();
+    return Boolean(badgeName && targetBadgeName && badgeName === targetBadgeName);
+  };
+
+  const updateLocalUserBadges = (updater) => {
+    setLocalUser((prev) => {
+      const source = prev || user;
+      if (!source) return prev;
+
+      const nextUser = updater(source);
+      updateUser(nextUser);
+      return nextUser;
+    });
+  };
+
+  const handleHideBadge = async (award) => {
+    if (!user?.id) return;
+
+    const badgeId = getBadgeId(award);
+    if (!badgeId) {
+      setError("Could not hide this badge because it is missing a badge ID.");
+      return;
+    }
+
+    const ok = window.confirm("Hide this badge from your profile?");
+    if (!ok) return;
+
+    const loadingKey = `hide-${badgeId}`;
+
+    try {
+      setError(null);
+      setBadgeActionLoadingKey(loadingKey);
+      await userService.updateUserBadgeVisibility(user.id, badgeId, true);
+
+      removeBadgeFromBadgeModal(award);
+      updateLocalUserBadges((currentUser) => {
+        const hiddenIds =
+          currentUser.hidden_badge_ids ?? currentUser.hiddenBadgeIds ?? [];
+        const nextHiddenIds = hiddenIds
+          .map((value) => String(value))
+          .includes(String(badgeId))
+          ? hiddenIds
+          : [...hiddenIds, badgeId];
+
+        return {
+          ...currentUser,
+          badges: Array.isArray(currentUser.badges)
+            ? currentUser.badges.filter((badge) => !sameBadge(badge, award))
+            : currentUser.badges,
+          hidden_badge_ids: nextHiddenIds,
+          hiddenBadgeIds: nextHiddenIds,
+        };
+      });
+
+      setSuccess("Badge hidden from your profile.");
+    } catch (err) {
+      console.error("Failed to hide badge:", err);
+      setError(
+        err.response?.data?.message ||
+          err.message ||
+          "Failed to hide badge. Please try again.",
+      );
+    } finally {
+      setBadgeActionLoadingKey(null);
+    }
+  };
+
+  const handleDeleteBadgeAward = async (award) => {
+    if (!user?.id) return;
+
+    const awardId = getAwardId(award);
+    if (!awardId) {
+      setError("Could not delete this badge award because it is missing an ID.");
+      return;
+    }
+
+    const ok = window.confirm("Delete this badge award?");
+    if (!ok) return;
+
+    const loadingKey = `delete-${awardId}`;
+    const removedCredits = Number(award?.credits ?? 0);
+
+    try {
+      setError(null);
+      setBadgeActionLoadingKey(loadingKey);
+      await userService.deleteUserBadgeAward(user.id, awardId);
+
+      removeAwardFromBadgeModal(award);
+      updateLocalUserBadges((currentUser) => ({
+        ...currentUser,
+        badges: Array.isArray(currentUser.badges)
+          ? currentUser.badges
+              .map((badge) => {
+                if (!sameBadge(badge, award)) return badge;
+
+                const currentCredits = Number(
+                  badge.total_credits ?? badge.totalCredits ?? 0,
+                );
+                const currentAwardCount = Number(
+                  badge.award_count ?? badge.awardCount ?? 1,
+                );
+                const nextCredits = Math.max(0, currentCredits - removedCredits);
+                const nextAwardCount = Math.max(0, currentAwardCount - 1);
+
+                if (nextCredits <= 0 || nextAwardCount <= 0) return null;
+
+                return {
+                  ...badge,
+                  total_credits: nextCredits,
+                  totalCredits: nextCredits,
+                  award_count: nextAwardCount,
+                  awardCount: nextAwardCount,
+                };
+              })
+              .filter(Boolean)
+          : currentUser.badges,
+      }));
+
+      setSuccess("Badge award deleted.");
+    } catch (err) {
+      console.error("Failed to delete badge award:", err);
+      setError(
+        err.response?.data?.message ||
+          err.message ||
+          "Failed to delete badge award. Please try again.",
+      );
+    } finally {
+      setBadgeActionLoadingKey(null);
     }
   };
 
@@ -1033,8 +1197,7 @@ const Profile = () => {
                 userTagObjects.length > 0 ||
                 (selectedTags && selectedTags.length > 0);
               const hasBadges =
-                Array.isArray(displayUser?.badges) &&
-                displayUser.badges.length > 0;
+                displayBadges.length > 0;
               const bothEmpty = !hasTags && !hasBadges;
 
               return (
@@ -1169,7 +1332,7 @@ const Profile = () => {
                       <div ref={badgesSectionRef}>
                         <BadgesDisplaySection
                           title="My Badges"
-                          badges={displayUser?.badges}
+                          badges={displayBadges}
                           emptyMessage="No badges earned yet."
                           maxVisible={8}
                           groupByCategory={true}
@@ -1194,6 +1357,9 @@ const Profile = () => {
         {...badgeCategoryModalProps}
         onOpenUser={openUserModal}
         highlightBadgeName={highlightBadgeName}
+        onHideBadge={handleHideBadge}
+        onDeleteAward={handleDeleteBadgeAward}
+        badgeActionLoadingKey={badgeActionLoadingKey}
       />
 
       <TagAwardsModal
