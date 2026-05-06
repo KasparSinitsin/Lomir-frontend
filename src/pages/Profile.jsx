@@ -1016,16 +1016,28 @@ const Profile = () => {
         />
       )}
 
-      {success && (
-        <Alert
-          type="success"
-          message={success}
-          onClose={() => setSuccess(null)}
-        />
-      )}
+      {(success || error) && (
+        <div className="pointer-events-none fixed inset-0 z-[9999] flex items-center justify-center px-4">
+          <div className="flex max-w-[min(calc(100vw-2rem),32rem)] flex-col items-center gap-3">
+            {success && (
+              <Alert
+                type="success"
+                message={success}
+                onClose={() => setSuccess(null)}
+                className="pointer-events-auto max-w-full shadow-2xl"
+              />
+            )}
 
-      {error && (
-        <Alert type="error" message={error} onClose={() => setError(null)} />
+            {error && (
+              <Alert
+                type="error"
+                message={error}
+                onClose={() => setError(null)}
+                className="pointer-events-auto max-w-full shadow-2xl"
+              />
+            )}
+          </div>
+        </div>
       )}
 
       <Card className="overflow-visible">

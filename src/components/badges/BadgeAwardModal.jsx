@@ -370,7 +370,7 @@ const BadgeAwardModal = ({
       });
 
       setSuccess(
-        `${selectedBadge.name} badge awarded to ${getDisplayName()} (+${credits} ct.)!`,
+        `${selectedBadge.name} badge awarded to ${getDisplayName()} (+${credits} ct.). It will stay private until they make it visible.`,
       );
 
       // Notify parent to refresh badge data

@@ -277,7 +277,7 @@ const AwardCard = ({
 
   return (
     <div
-      className={`group relative rounded-lg p-3 flex flex-col border ${highlighted ? "animate-badge-highlight" : ""}`}
+      className={`group relative rounded-lg p-3 flex flex-col border ${showBadgeActions ? "hover:shadow-md transition-shadow" : ""} ${highlighted ? "animate-badge-highlight" : ""}`}
       style={{
         backgroundColor: cardBackgroundColor,
         borderColor: cardBorderColor,
