@@ -1065,6 +1065,7 @@ const Chat = () => {
             : m,
         ),
       );
+      refreshConversationList();
     };
 
     const handleMessageEdited = (payload) => {

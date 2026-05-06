@@ -84,10 +84,18 @@ const MessageNotifications = () => {
         }
       };
       
+      const handleMessageDeleted = (payload) => {
+        setNotifications((prev) =>
+          prev.filter((n) => String(n.id) !== String(payload.messageId)),
+        );
+      };
+
       socket.on('message:received', handleNewMessage);
+      socket.on('message:deleted', handleMessageDeleted);
 
       detachMessageListener = () => {
         socket.off('message:received', handleNewMessage);
+        socket.off('message:deleted', handleMessageDeleted);
       };
     };
 
