@@ -93,7 +93,16 @@ const PublicProfile = () => {
   const displayName = useMemo(() => getUserDisplayName(user), [user]);
   const username = user?.username ? `@${user.username}` : null;
   const bio = user?.bio || user?.biography || "";
-  const badges = Array.isArray(user?.badges) ? user.badges : [];
+  const shouldHideBadges =
+    user?.hide_badges === true || user?.hideBadges === true;
+  const badges = shouldHideBadges
+    ? []
+    : Array.isArray(user?.badges)
+      ? user.badges
+      : [];
+  const badgeEmptyMessage = shouldHideBadges
+    ? "This user's badges are hidden."
+    : "No badges earned yet";
 
   if (loading) {
     return (
@@ -160,7 +169,7 @@ const PublicProfile = () => {
             <BadgesDisplaySection
               title="Badges"
               badges={badges}
-              emptyMessage="No badges earned yet"
+              emptyMessage={badgeEmptyMessage}
               groupByCategory={true}
               showCredits={true}
             />

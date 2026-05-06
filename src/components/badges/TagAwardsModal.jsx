@@ -1,6 +1,5 @@
 import React, { useState } from "react";
-import { format } from "date-fns";
-import { Tag, Award, Users, Calendar } from "lucide-react";
+import { Tag, Award, Users } from "lucide-react";
 import {
   CATEGORY_COLORS,
   CATEGORY_SECTION_PASTELS,
@@ -12,7 +11,6 @@ import {
 } from "../../constants/badgeConstants";
 import { getCategoryIcon } from "../../utils/badgeIconUtils";
 import Modal from "../common/Modal";
-import InlineUserLink from "../users/InlineUserLink";
 import AwardCard from "./AwardCard";
 import TeamDetailsModal from "../teams/TeamDetailsModal";
 
@@ -32,31 +30,22 @@ import TeamDetailsModal from "../teams/TeamDetailsModal";
  * @param {Function} onOpenUser - Callback to open a user's profile
  */
 
-// Get context label
-const getContextLabel = (contextType) => {
-  switch (contextType) {
-    case "team":
-      return "Teamwork";
-    case "project":
-      return "Project";
-    case "personal":
-      return "Personal";
-    default:
-      return "Contribution";
-  }
-};
-
 const TagAwardsModal = ({
   isOpen,
   onClose,
   tagName,
-  dominantBadgeCategory,
   totalCredits = 0,
   awards = [],
   loading = false,
   onOpenUser,
   entityType,
   highlightBadgeName = null,
+  onHideBadge = null,
+  onShowBadge = null,
+  onDeleteAward = null,
+  badgeActionLoadingKey = null,
+  hiddenAwardIds = [],
+  showHiddenBadgeAwards = false,
 }) => {
   // Internal TeamDetailsModal state (mirrors SupercategoryAwardsModal)
   const [selectedTeamForDetails, setSelectedTeamForDetails] = useState(null);
@@ -73,10 +62,25 @@ const TagAwardsModal = ({
     setSelectedTeamForDetails(null);
   };
 
-  // const dominantColor = CATEGORY_COLORS[dominantBadgeCategory] || DEFAULT_COLOR;
+  const hiddenAwardIdSet = new Set(
+    (Array.isArray(hiddenAwardIds) ? hiddenAwardIds : [])
+      .filter((value) => value !== undefined && value !== null)
+      .map((value) => String(value)),
+  );
+
+  const isAwardHidden = (award) => {
+    const awardId = award?.awardId ?? award?.award_id ?? award?.id;
+    return awardId !== undefined && awardId !== null
+      ? hiddenAwardIdSet.has(String(awardId))
+      : false;
+  };
+
+  const visibleAwards = showHiddenBadgeAwards
+    ? awards
+    : awards.filter((award) => !isAwardHidden(award));
 
   // Group awards by badge category
-  const awardsByCategory = awards.reduce((acc, award) => {
+  const awardsByCategory = visibleAwards.reduce((acc, award) => {
     const category = award.badgeCategory || award.badge_category || "Other";
     if (!acc[category]) {
       acc[category] = {
@@ -100,12 +104,12 @@ const TagAwardsModal = ({
   const personCount =
     entityType === "team"
       ? new Set(
-          awards
+          visibleAwards
             .map((a) => a.awardedToUserId || a.awarded_to_user_id)
             .filter(Boolean),
         ).size
       : new Set(
-          awards
+          visibleAwards
             .map((a) => a.awardedByUserId || a.awarded_by_user_id)
             .filter(Boolean),
         ).size;
@@ -156,9 +160,9 @@ const TagAwardsModal = ({
                 <div className="flex items-center flex-wrap gap-x-4 gap-y-2 text-sm text-base-content/60 min-w-0">
                   <span className="inline-flex items-center gap-1 whitespace-nowrap">
                     <Award size={14} />
-                    <span className="font-medium">{awards.length}</span>
+                    <span className="font-medium">{visibleAwards.length}</span>
                     <span className="hidden sm:inline">
-                      award{awards.length !== 1 ? "s" : ""}
+                      award{visibleAwards.length !== 1 ? "s" : ""}
                     </span>
                   </span>
 
@@ -268,7 +272,7 @@ const TagAwardsModal = ({
                                 (award.awardId || award.award_id || award.id) ??
                                 `${category}-${idx}`
                               }
-                              award={award}
+                              award={normalizedAward}
                               category={category}
                               categoryColor={catColor}
                               categoryPastel={cardPastel}
@@ -277,6 +281,11 @@ const TagAwardsModal = ({
                                 handleOpenTeam(teamId, teamName)
                               }
                               hideTag
+                              onHideBadge={onHideBadge}
+                              onShowBadge={onShowBadge}
+                              onDeleteAward={onDeleteAward}
+                              isBadgeHidden={isAwardHidden(normalizedAward)}
+                              badgeActionLoadingKey={badgeActionLoadingKey}
                               highlighted={
                                 !!highlightBadgeName &&
                                 (
