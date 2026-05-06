@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from "react";
+import React, { useRef, useEffect, useState, useCallback } from "react";
 import { format, isToday, isYesterday } from "date-fns";
 import {
   normalizeTimestampToDate,
@@ -417,9 +417,12 @@ const MessageDisplay = ({
   onDeleteMessage,
   onEditMessage,
   onLeaveTeam,
+  onConversationHeaderVisibilityChange,
 }) => {
   const messagesEndRef = useRef(null);
   const highlightedMessageRef = useRef(null);
+  const [conversationHeaderElement, setConversationHeaderElement] =
+    useState(null);
   const previousMessageSnapshotRef = useRef({
     firstMessageId: null,
     lastMessageId: null,
@@ -447,6 +450,33 @@ const MessageDisplay = ({
   const [editingContent, setEditingContent] = useState("");
   const [editingError, setEditingError] = useState(null);
   const [savingEditMessageId, setSavingEditMessageId] = useState(null);
+
+  const setConversationHeaderRef = useCallback((node) => {
+    setConversationHeaderElement(node);
+  }, []);
+
+  useEffect(() => {
+    if (!onConversationHeaderVisibilityChange) return undefined;
+
+    if (!conversationHeaderElement) {
+      onConversationHeaderVisibilityChange(true);
+      return undefined;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        onConversationHeaderVisibilityChange(
+          entry.isIntersecting && entry.intersectionRatio > 0,
+        );
+      },
+      {
+        threshold: [0, 0.01, 1],
+      },
+    );
+
+    observer.observe(conversationHeaderElement);
+    return () => observer.disconnect();
+  }, [conversationHeaderElement, onConversationHeaderVisibilityChange]);
 
   const startEditingMessage = (message) => {
     setEditingMessageId(message.id);
@@ -1276,7 +1306,7 @@ const MessageDisplay = ({
           href={fileUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center gap-3 p-3 bg-base-100/50 rounded-lg hover:bg-base-100 transition-colors group"
+          className="flex items-center gap-3 p-3 bg-base-100/50 rounded-lg hover:bg-base-100 hover:shadow-soft transition-all duration-200 group"
           download={fileName || undefined}
         >
           {React.createElement(FileIcon, {
@@ -2359,7 +2389,10 @@ const MessageDisplay = ({
           )}
 
           {resolvedConversationPartner && conversationType === "direct" && (
-            <div className="text-center pb-4 mb-4 border-b border-base-200">
+            <div
+              ref={setConversationHeaderRef}
+              className="text-center pb-4 mb-4 border-b border-base-200"
+            >
               {renderConversationPartnerAvatar()}
               <Tooltip
                 content={`View ${resolvedConversationPartner.firstName || resolvedConversationPartner.username} details`}
@@ -2379,7 +2412,10 @@ const MessageDisplay = ({
           )}
 
           {resolvedTeamData && conversationType === "team" && (
-            <div className="text-center pb-4 mb-4 border-b border-base-200">
+            <div
+              ref={setConversationHeaderRef}
+              className="text-center pb-4 mb-4 border-b border-base-200"
+            >
               {renderTeamConversationAvatar()}
               <Tooltip
                 content={`View ${resolvedTeamData.name} details`}
@@ -2471,7 +2507,10 @@ const MessageDisplay = ({
 
         {/* Show conversation partner header for direct messages - CLICKABLE */}
         {resolvedConversationPartner && conversationType === "direct" && (
-          <div className="text-center pb-4 mb-4 border-b border-base-200">
+          <div
+            ref={setConversationHeaderRef}
+            className="text-center pb-4 mb-4 border-b border-base-200"
+          >
             {renderConversationPartnerAvatar()}
             <Tooltip
               content={`View ${resolvedConversationPartner.firstName || resolvedConversationPartner.username} details`}
@@ -2492,7 +2531,10 @@ const MessageDisplay = ({
 
         {/* Show team header for team conversations - CLICKABLE */}
         {resolvedTeamData && conversationType === "team" && (
-          <div className="text-center pb-4 mb-4 border-b border-base-200">
+          <div
+            ref={setConversationHeaderRef}
+            className="text-center pb-4 mb-4 border-b border-base-200"
+          >
             {renderTeamConversationAvatar()}
             <Tooltip
               content={`View ${resolvedTeamData.name} details`}

@@ -25,6 +25,7 @@ const ConversationList = ({
   activeConversationId,
   onSelectConversation,
   loading,
+  onActiveConversationVisibilityChange,
   teamMembersRefreshSignal = null,
 }) => {
   // State for team details modal
@@ -55,6 +56,38 @@ const ConversationList = ({
       return () => clearTimeout(timer);
     }
   }, [activeConversationId]);
+
+  useEffect(() => {
+    if (!onActiveConversationVisibilityChange) return undefined;
+
+    const activeItem = activeConversationRef.current;
+    if (!activeItem) {
+      onActiveConversationVisibilityChange(true);
+      return undefined;
+    }
+
+    const scrollRoot = activeItem.closest(
+      "[data-conversation-list-viewport='true']",
+    );
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        onActiveConversationVisibilityChange(
+          entry.isIntersecting && entry.intersectionRatio > 0,
+        );
+      },
+      {
+        root: scrollRoot,
+        threshold: [0, 0.01, 1],
+      },
+    );
+
+    observer.observe(activeItem);
+    return () => observer.disconnect();
+  }, [
+    activeConversationId,
+    conversations,
+    onActiveConversationVisibilityChange,
+  ]);
 
   useEffect(() => {
     const userIdsToFetch = [];

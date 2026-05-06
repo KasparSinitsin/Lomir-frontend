@@ -147,6 +147,12 @@ const Chat = () => {
   const [selectedTeamData, setSelectedTeamData] = useState(null);
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState(null);
+  const [isActiveConversationVisible, setIsActiveConversationVisible] =
+    useState(true);
+  const [
+    isRegularConversationHeaderVisible,
+    setIsRegularConversationHeaderVisible,
+  ] = useState(true);
 
   const typingTimeoutRef = useRef(null);
   const messagesContainerRef = useRef(null);
@@ -231,6 +237,10 @@ const Chat = () => {
   const conversationUpdatedAt =
     getConversationUpdatedAt(activeConversation) ||
     getConversationUpdatedAt(messages?.[messages.length - 1] || messages?.[0] || null);
+  const showCompactConversationHeader =
+    Boolean(conversationId) &&
+    !isActiveConversationVisible &&
+    !isRegularConversationHeaderVisible;
 
   useEffect(() => {
     conversationsRef.current = conversations;
@@ -239,6 +249,26 @@ const Chat = () => {
   useEffect(() => {
     activeConversationRef.current = activeConversation;
   }, [activeConversation]);
+
+  useEffect(() => {
+    setIsActiveConversationVisible(true);
+    setIsRegularConversationHeaderVisible(true);
+  }, [conversationId]);
+
+  const handleActiveConversationVisibilityChange = useCallback((isVisible) => {
+    setIsActiveConversationVisible((current) =>
+      current === isVisible ? current : isVisible,
+    );
+  }, []);
+
+  const handleRegularConversationHeaderVisibilityChange = useCallback(
+    (isVisible) => {
+      setIsRegularConversationHeaderVisible((current) =>
+        current === isVisible ? current : isVisible,
+      );
+    },
+    [],
+  );
 
   const refreshConversationList = useCallback(async () => {
     try {
@@ -1505,22 +1535,32 @@ const Chat = () => {
     .map(([_, username]) => username);
 
   return (
-    <PageContainer title="Messages" className="p-0 overflow-hidden">
+    <PageContainer
+      title="Messages"
+      className="p-0 overflow-hidden"
+      variant="muted"
+    >
       {error && (
         <Alert type="error" message={error} onClose={() => setError(null)} />
       )}
 
-      <div className="flex h-[calc(100vh-200px)] bg-base-100 rounded-xl overflow-hidden">
+      <div className="bg-white shadow-soft flex h-[calc(100vh-200px)] rounded-xl overflow-hidden">
         {/* Conversation List - Left Sidebar */}
-        <div className={`border-r border-base-200 overflow-y-auto transition-all duration-300 ${
-          showChatView ? "hidden md:block md:w-1/3" : "w-full md:w-1/3"
-        }`}>
+        <div
+          data-conversation-list-viewport="true"
+          className={`border-r border-base-200 overflow-y-auto transition-all duration-300 ${
+            showChatView ? "hidden md:block md:w-1/3" : "w-full md:w-1/3"
+          }`}
+        >
           <ConversationList
             conversations={conversations}
             activeConversationId={conversationId}
             onSelectConversation={selectConversation}
             loading={loading}
             onlineUsers={onlineUsers}
+            onActiveConversationVisibilityChange={
+              handleActiveConversationVisibilityChange
+            }
             teamMembersRefreshSignal={teamMembersRefreshSignal}
           />
         </div>
@@ -1531,17 +1571,27 @@ const Chat = () => {
         }`}>
           {conversationId ? (
             <>
-              {/* Header with back button and conversation info - hidden on md and up */}
-              <div className="flex items-center justify-between border-b border-base-200 p-3 md:p-4 bg-base-100 md:hidden">
+              {/* Compact header, also shown on desktop when both regular headers are out of view */}
+              <div
+                className={`flex items-center justify-between border-b border-base-200 p-3 md:p-4 bg-base-100 ${
+                  showCompactConversationHeader ? "md:flex" : "md:hidden"
+                }`}
+              >
                 <div className="flex items-center gap-2 min-w-0 flex-1">
                   {/* Back/List toggle button - visible on small screens */}
-                  <button
-                    onClick={() => setShowChatView(false)}
-                    className="md:hidden flex items-center justify-center p-2 hover:bg-base-200 rounded-lg transition-colors"
-                    title="Back to conversation list"
+                  <Tooltip
+                    content="Back to conversation list"
+                    position="bottom"
+                    wrapperClassName="md:hidden inline-flex items-center flex-shrink-0"
                   >
-                    <ChevronLeft size={20} />
-                  </button>
+                    <button
+                      onClick={() => setShowChatView(false)}
+                      className="flex items-center justify-center p-2 hover:bg-base-200 rounded-lg transition-colors"
+                      aria-label="Back to conversation list"
+                    >
+                      <ChevronLeft size={20} />
+                    </button>
+                  </Tooltip>
                   
                   {/* Conversation Header - Avatar and name */}
                   <div className="flex items-center gap-3 min-w-0 flex-1">
@@ -1682,6 +1732,9 @@ const Chat = () => {
                   onDeleteMessage={handleDeleteMessage}
                   onEditMessage={handleEditMessage}
                   onLeaveTeam={handleLeaveTeam}
+                  onConversationHeaderVisibilityChange={
+                    handleRegularConversationHeaderVisibilityChange
+                  }
                 />
               </div>
 
