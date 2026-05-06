@@ -36,8 +36,16 @@ const unwrapRows = (response) => {
 
 const getAwardId = (award) => award?.awardId ?? award?.award_id ?? award?.id;
 
-const getBadgeId = (awardOrBadge) =>
-  awardOrBadge?.badgeId ?? awardOrBadge?.badge_id ?? awardOrBadge?.id;
+const getBadgeId = (awardOrBadge) => {
+  const explicitBadgeId = awardOrBadge?.badgeId ?? awardOrBadge?.badge_id;
+  if (explicitBadgeId !== undefined && explicitBadgeId !== null) {
+    return explicitBadgeId;
+  }
+
+  const hasAwardId =
+    awardOrBadge?.awardId !== undefined || awardOrBadge?.award_id !== undefined;
+  return hasAwardId ? undefined : awardOrBadge?.id;
+};
 
 const getBadgeName = (awardOrBadge) =>
   (awardOrBadge?.badgeName ?? awardOrBadge?.badge_name ?? awardOrBadge?.name ?? "")
@@ -279,6 +287,8 @@ const useAwardModals = (userId) => {
   }, []);
 
   const removeAwardFromBadgeModal = useCallback((removedAward) => {
+    const removedAwardCredits = Number(removedAward?.credits ?? 0);
+
     setDetailedBadgeAwards((prevAwards) => {
       let removedCredits = 0;
       const nextAwards = prevAwards.filter((award) => {
@@ -293,6 +303,48 @@ const useAwardModals = (userId) => {
           totalCredits: Math.max(
             0,
             Number(prevModal.totalCredits ?? 0) - removedCredits,
+          ),
+        }));
+      }
+
+      return nextAwards;
+    });
+
+    setTagAwards((prevAwards) => {
+      let removed = false;
+      const nextAwards = prevAwards.filter((award) => {
+        if (!sameAward(award, removedAward)) return true;
+        removed = true;
+        return false;
+      });
+
+      if (removed && removedAwardCredits > 0) {
+        setTagAwardsModal((prevModal) => ({
+          ...prevModal,
+          totalCredits: Math.max(
+            0,
+            Number(prevModal.totalCredits ?? 0) - removedAwardCredits,
+          ),
+        }));
+      }
+
+      return nextAwards;
+    });
+
+    setSupercategoryAwards((prevAwards) => {
+      let removed = false;
+      const nextAwards = prevAwards.filter((award) => {
+        if (!sameAward(award, removedAward)) return true;
+        removed = true;
+        return false;
+      });
+
+      if (removed && removedAwardCredits > 0) {
+        setSupercategoryModal((prevModal) => ({
+          ...prevModal,
+          totalCredits: Math.max(
+            0,
+            Number(prevModal.totalCredits ?? 0) - removedAwardCredits,
           ),
         }));
       }

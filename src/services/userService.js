@@ -92,22 +92,22 @@ export const userService = {
   },
 
   /**
-   * Hide or unhide one badge type on the current user's profile.
+   * Hide or unhide one awarded badge event on the current user's profile.
    * @param {string|number} userId - The profile owner.
-   * @param {string|number} badgeId - The badge catalog ID to update.
+   * @param {string|number} awardId - The awarded badge event ID to update.
    * @param {boolean} hidden - Whether the badge should be hidden.
    * @returns {Promise<object>} A promise resolving to the updated visibility payload.
    */
-  updateUserBadgeVisibility: async (userId, badgeId, hidden = true) => {
+  updateUserBadgeVisibility: async (userId, awardId, hidden = true) => {
     try {
       const response = await api.patch(
-        `/api/users/${userId}/badges/${badgeId}/visibility`,
+        `/api/users/${userId}/badges/awards/${awardId}/visibility`,
         { hidden },
       );
       return response.data;
     } catch (error) {
       console.error(
-        `Error updating badge ${badgeId} visibility for user ${userId}:`,
+        `Error updating badge award ${awardId} visibility for user ${userId}:`,
         error,
       );
       throw error;

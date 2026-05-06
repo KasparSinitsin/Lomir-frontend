@@ -184,33 +184,40 @@ const InlineUserLink = ({
 
       {/* Avatar */}
       {showAvatar && (
-        <UserAvatar
-          user={inlineUser}
-          deleted={isFormerUser}
-          sizeClass={avatarSize}
-          className="mr-1"
-          clickable={Boolean(canClick)}
-          onClick={handleClick}
-          title={canClick ? "View profile" : undefined}
-          iconSize={avatarSize === "w-4 h-4" ? 10 : 12}
-          initialsClassName={
-            avatarSize === "w-4 h-4"
-              ? "text-[8px] font-medium"
-              : "text-[10px] font-medium"
-          }
-        />
+        <Tooltip
+          content={canClick ? "View profile" : null}
+          wrapperClassName="inline-flex mr-1"
+        >
+          <UserAvatar
+            user={inlineUser}
+            deleted={isFormerUser}
+            sizeClass={avatarSize}
+            clickable={Boolean(canClick)}
+            onClick={handleClick}
+            iconSize={avatarSize === "w-4 h-4" ? 10 : 12}
+            initialsClassName={
+              avatarSize === "w-4 h-4"
+                ? "text-[8px] font-medium"
+                : "text-[10px] font-medium"
+            }
+          />
+        </Tooltip>
       )}
 
       {/* Name */}
-      <span
-        className={`font-medium ${
-          isFormerUser ? "text-base-content/50" : "text-base-content/80"
-        } ${canClick ? "cursor-pointer hover:text-primary transition-colors" : ""}`}
-        onClick={canClick ? handleClick : undefined}
-        title={canClick ? "View profile" : undefined}
+      <Tooltip
+        content={canClick ? "View profile" : null}
+        wrapperClassName="inline-flex min-w-0"
       >
-        {name}
-      </span>
+        <span
+          className={`font-medium truncate ${
+            isFormerUser ? "text-base-content/50" : "text-base-content/80"
+          } ${canClick ? "cursor-pointer hover:text-primary transition-colors" : ""}`}
+          onClick={canClick ? handleClick : undefined}
+        >
+          {name}
+        </span>
+      </Tooltip>
       {showDemoIndicator && (
         <Tooltip
           content={DEMO_PROFILE_TOOLTIP}

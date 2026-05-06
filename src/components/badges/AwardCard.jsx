@@ -9,7 +9,8 @@ import {
   Tag,
   Award,
   FlaskConical,
-  EyeOff,
+  Eye,
+  EyeClosed,
   Loader2,
   Trash2,
 } from "lucide-react";
@@ -52,12 +53,13 @@ import {
  * - hideTag: boolean
  * - highlighted: boolean
  * - onHideBadge: optional function(award)
+ * - onShowBadge: optional function(award)
  * - onDeleteAward: optional function(award)
+ * - isBadgeHidden: boolean
  * - badgeActionLoadingKey: optional string used to show per-action loading
  */
 const AwardCard = ({
   award,
-  category = "Other",
   categoryColor = "#6B7280",
   categoryPastel,
   onOpenUser,
@@ -66,23 +68,47 @@ const AwardCard = ({
   highlighted = false,
   showBadgeTitle = true,
   onHideBadge = null,
+  onShowBadge = null,
   onDeleteAward = null,
+  isBadgeHidden = false,
   badgeActionLoadingKey = null,
 }) => {
-  const catColor = categoryColor;
+  const mutedBadgeColor = "#6B7280";
+  const mutedCardBackground = "#F3F4F6";
+  const mutedHighlightBackground = "#E5E7EB";
+  const mutedBorderColor = "#D1D5DB";
+  const catColor = isBadgeHidden ? mutedBadgeColor : categoryColor;
+  const cardBackgroundColor = isBadgeHidden
+    ? highlighted
+      ? mutedHighlightBackground
+      : mutedCardBackground
+    : highlighted
+      ? `${catColor}20`
+      : categoryPastel || "#F9FAFB";
+  const cardBorderColor = isBadgeHidden
+    ? mutedBorderColor
+    : highlighted
+      ? catColor
+      : `${catColor}33`;
+  const cardBoxShadow = highlighted
+    ? `0 0 12px ${isBadgeHidden ? "#9CA3AF66" : `${catColor}66`}`
+    : undefined;
   const childTeamModalZIndex = useChildModalZIndex();
 
   // --- Normalize fields (camelCase + snake_case) ---
   const awardId = award?.awardId || award?.award_id || award?.id || null;
-  const badgeId = award?.badgeId || award?.badge_id || null;
   const badgeName = award?.badgeName || award?.badge_name || "Badge";
   const credits = Number(award?.credits ?? 0);
-  const hideActionKey = `hide-${badgeId ?? badgeName}`;
+  const hideActionKey = `hide-${awardId}`;
+  const showActionKey = `show-${awardId}`;
   const deleteActionKey = `delete-${awardId}`;
   const isAnyBadgeActionLoading = Boolean(badgeActionLoadingKey);
   const isHideLoading = badgeActionLoadingKey === hideActionKey;
+  const isShowLoading = badgeActionLoadingKey === showActionKey;
   const isDeleteLoading = badgeActionLoadingKey === deleteActionKey;
-  const showBadgeActions = Boolean(onHideBadge || onDeleteAward);
+  const showBadgeActions = Boolean(
+    (onHideBadge && !isBadgeHidden) || onDeleteAward,
+  );
 
   const awardedAt = award?.awardedAt || award?.awarded_at;
   const reason = award?.reason;
@@ -253,24 +279,21 @@ const AwardCard = ({
     <div
       className={`group relative rounded-lg p-3 flex flex-col border ${highlighted ? "animate-badge-highlight" : ""}`}
       style={{
-        backgroundColor: highlighted
-          ? `${catColor}20`
-          : categoryPastel || "#F9FAFB",
-        borderColor: highlighted ? catColor : `${catColor}33`,
+        backgroundColor: cardBackgroundColor,
+        borderColor: cardBorderColor,
         ...(highlighted
           ? {
               borderWidth: "2px",
-              boxShadow: `0 0 12px ${catColor}66`,
+              boxShadow: cardBoxShadow,
             }
           : {}),
       }}
-      title={category}
     >
       {showBadgeActions && (
         <div className="absolute -top-2 -right-2 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto focus-within:opacity-100 focus-within:pointer-events-auto transition-opacity inline-flex items-center gap-1">
-          {onHideBadge && (
+          {onHideBadge && !isBadgeHidden && (
             <Tooltip
-              content="Hide badge"
+              content="Hide badge from others"
               position="top"
               wrapperClassName="inline-flex"
             >
@@ -280,9 +303,9 @@ const AwardCard = ({
                   event.stopPropagation();
                   onHideBadge(award);
                 }}
-                disabled={isAnyBadgeActionLoading || !badgeId}
+                disabled={isAnyBadgeActionLoading || !awardId}
                 className="bg-base-100 border border-base-300 rounded-full p-1 shadow-sm hover:shadow disabled:opacity-60 disabled:cursor-not-allowed"
-                aria-label="Hide badge"
+                aria-label="Hide badge from others"
               >
                 {isHideLoading ? (
                   <Loader2
@@ -290,7 +313,7 @@ const AwardCard = ({
                     className="text-base-content/50 animate-spin"
                   />
                 ) : (
-                  <EyeOff
+                  <EyeClosed
                     size={14}
                     className="text-base-content/50 hover:text-primary"
                   />
@@ -374,29 +397,33 @@ const AwardCard = ({
                   className="flex-shrink-0 text-base-content/70"
                 />
                 <span className="flex-shrink-0">awarded by</span>
-                <span
-                  className={[
-                    "truncate font-medium",
-                    isDeletedAwarder
-                      ? "text-base-content/50"
-                      : "text-base-content/70",
-                    awardedByUserId && canOpenUser && !isDeletedAwarder
-                      ? "cursor-pointer hover:text-primary transition-colors"
-                      : "",
-                  ].join(" ")}
-                  title={
+                <Tooltip
+                  content={
                     awardedByUserId && canOpenUser && !isDeletedAwarder
                       ? "View profile"
-                      : awarderName
+                      : null
                   }
-                  onClick={
-                    awardedByUserId && canOpenUser && !isDeletedAwarder
-                      ? () => openUser(awardedByUserId)
-                      : undefined
-                  }
+                  wrapperClassName="inline-flex min-w-0"
                 >
-                  {awarderName}
-                </span>
+                  <span
+                    className={[
+                      "truncate font-medium",
+                      isDeletedAwarder
+                        ? "text-base-content/50"
+                        : "text-base-content/70",
+                      awardedByUserId && canOpenUser && !isDeletedAwarder
+                        ? "cursor-pointer hover:text-primary transition-colors"
+                        : "",
+                    ].join(" ")}
+                    onClick={
+                      awardedByUserId && canOpenUser && !isDeletedAwarder
+                        ? () => openUser(awardedByUserId)
+                        : undefined
+                    }
+                  >
+                    {awarderName}
+                  </span>
+                </Tooltip>
               </span>
             )}
 
@@ -411,18 +438,22 @@ const AwardCard = ({
                   teamName ? (
                     <>
                       <span className="flex-shrink-0">Team:</span>
-                      <span
-                        className={[
-                          "truncate text-base-content/70",
-                          isTeamClickable
-                            ? "font-medium cursor-pointer hover:text-primary transition-colors"
-                            : "cursor-default",
-                        ].join(" ")}
-                        title={isTeamClickable ? "View team" : teamName}
-                        onClick={handleOpenTeam}
+                      <Tooltip
+                        content={isTeamClickable ? "View team" : teamName}
+                        wrapperClassName="inline-flex min-w-0"
                       >
-                        {teamName}
-                      </span>
+                        <span
+                          className={[
+                            "truncate text-base-content/70",
+                            isTeamClickable
+                              ? "font-medium cursor-pointer hover:text-primary transition-colors"
+                              : "cursor-default",
+                          ].join(" ")}
+                          onClick={handleOpenTeam}
+                        >
+                          {teamName}
+                        </span>
+                      </Tooltip>
                       {isTeamSynthetic && (
                         <Tooltip
                           content={DEMO_TEAM_TOOLTIP}
@@ -458,18 +489,22 @@ const AwardCard = ({
                   className="flex-shrink-0 text-base-content/70"
                 />
                 <span className="flex-shrink-0">Team:</span>
-                <span
-                  className={[
-                    "truncate text-base-content/70",
-                    isTeamClickable
-                      ? "font-medium cursor-pointer hover:text-primary transition-colors"
-                      : "cursor-default",
-                  ].join(" ")}
-                  title={isTeamClickable ? "View team" : teamName}
-                  onClick={handleOpenTeam}
+                <Tooltip
+                  content={isTeamClickable ? "View team" : teamName}
+                  wrapperClassName="inline-flex min-w-0"
                 >
-                  {teamName}
-                </span>
+                  <span
+                    className={[
+                      "truncate text-base-content/70",
+                      isTeamClickable
+                        ? "font-medium cursor-pointer hover:text-primary transition-colors"
+                        : "cursor-default",
+                    ].join(" ")}
+                    onClick={handleOpenTeam}
+                  >
+                    {teamName}
+                  </span>
+                </Tooltip>
                 {isTeamSynthetic && (
                   <Tooltip
                     content={DEMO_TEAM_TOOLTIP}
@@ -505,18 +540,64 @@ const AwardCard = ({
           </div>
         </div>
 
-        {/* Credits pill */}
-        <span
-          className="px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap text-white"
-          style={{ backgroundColor: catColor }}
-        >
-          +{credits} ct.
-        </span>
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          {isBadgeHidden && (
+            <div className="group/visibility relative h-5 w-5">
+              <EyeClosed
+                size={14}
+                className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-base-content/40 group-hover/visibility:opacity-0"
+                aria-hidden="true"
+              />
+              {onShowBadge && (
+                <Tooltip
+                  content="Make badge visible for others"
+                  position="top"
+                  wrapperClassName="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
+                >
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onShowBadge(award);
+                    }}
+                    disabled={isAnyBadgeActionLoading || !awardId}
+                    className="opacity-0 group-hover/visibility:opacity-100 bg-base-100 border border-base-300 rounded-full p-1 shadow-sm hover:shadow disabled:opacity-60 disabled:cursor-not-allowed transition-opacity"
+                    aria-label="Make badge visible for others"
+                  >
+                    {isShowLoading ? (
+                      <Loader2
+                        size={14}
+                        className="text-base-content/50 animate-spin"
+                      />
+                    ) : (
+                      <Eye
+                        size={14}
+                        className="text-base-content/50 hover:text-primary"
+                      />
+                    )}
+                  </button>
+                </Tooltip>
+              )}
+            </div>
+          )}
+
+          {/* Credits pill */}
+          <span
+            className="px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap text-white"
+            style={{ backgroundColor: catColor }}
+          >
+            +{credits} ct.
+          </span>
+        </div>
       </div>
 
       {/* Reason */}
       {reason && (
-        <p className="mt-2 text-sm text-base-content/80 italic">
+        <p
+          className={`mt-2 text-sm italic ${
+            isBadgeHidden ? "text-base-content/55" : "text-base-content/80"
+          }`}
+        >
           &ldquo;{reason}&rdquo;
         </p>
       )}
@@ -543,11 +624,15 @@ const AwardCard = ({
           />
         )}
 
-        <div className="flex items-center gap-1 text-xs text-base-content/60 leading-tight">
-          <Calendar size={12} className="flex-shrink-0" />
-          <span>
-            {awardedAt ? format(new Date(awardedAt), "MMM d, yyyy") : "Unknown"}
-          </span>
+        <div className="flex flex-col items-end gap-1">
+          <div className="flex items-center gap-1 text-xs text-base-content/60 leading-tight">
+            <Calendar size={12} className="flex-shrink-0" />
+            <span>
+              {awardedAt
+                ? format(new Date(awardedAt), "MMM d, yyyy")
+                : "Unknown"}
+            </span>
+          </div>
         </div>
       </div>
     </div>

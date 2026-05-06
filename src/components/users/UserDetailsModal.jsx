@@ -148,6 +148,8 @@ const UserDetailsModal = ({
   const showEdit = !isEditing && isAuthenticated && ownProfile;
   const showChatInvite = !isEditing && isAuthenticated && !ownProfile;
   const isNumericUserId = /^\d+$/.test(String(userId ?? "").trim());
+  const visibleUserBadges = Array.isArray(user?.badges) ? user.badges : [];
+  const hiddenAwardIds = user?.hidden_award_ids ?? user?.hiddenAwardIds ?? [];
 
   const fetchUserDetails = useCallback(async () => {
     try {
@@ -745,7 +747,7 @@ const UserDetailsModal = ({
             {/* Badges */}
             <BadgesDisplaySection
               title="Badges"
-              badges={user?.badges}
+              badges={visibleUserBadges}
               emptyMessage="No badges earned yet"
               maxVisible={8}
               groupByCategory={true}
@@ -763,7 +765,7 @@ const UserDetailsModal = ({
                   ? normalizedRoleMatchBadgeNames
                   : currentUserBadgeNames;
                 if (!effectiveMatchNames || effectiveMatchNames.size === 0) return null;
-                const badgeList = user?.badges || [];
+                const badgeList = visibleUserBadges;
                 if (!Array.isArray(badgeList) || badgeList.length === 0) return null;
                 const userBadgeNames = new Set(
                   badgeList
@@ -845,15 +847,24 @@ const UserDetailsModal = ({
       <BadgeCategoryModal
         {...badgeCategoryModalProps}
         onOpenUser={onOpenUser}
+        hiddenAwardIds={hiddenAwardIds}
+        showHiddenBadgeAwards={ownProfile}
       />
 
       {/* Tag Awards Modal */}
-      <TagAwardsModal {...tagAwardsModalProps} onOpenUser={onOpenUser} />
+      <TagAwardsModal
+        {...tagAwardsModalProps}
+        onOpenUser={onOpenUser}
+        hiddenAwardIds={hiddenAwardIds}
+        showHiddenBadgeAwards={ownProfile}
+      />
 
       {/* Supercategory Awards Modal */}
       <SupercategoryAwardsModal
         {...supercategoryModalProps}
         onOpenUser={onOpenUser}
+        hiddenAwardIds={hiddenAwardIds}
+        showHiddenBadgeAwards={ownProfile}
       />
 
       {/* Badge Award Modal */}

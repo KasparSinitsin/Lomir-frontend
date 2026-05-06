@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import { format } from "date-fns";
 import { Users, Lightbulb, Award } from "lucide-react";
 import {
   CATEGORY_SECTION_PASTELS,
@@ -24,7 +23,6 @@ const BadgeCategoryModal = ({
   onClose,
   category,
   color,
-  badges = [],
   detailedAwards = [],
   totalCredits = 0,
   loading = false,
@@ -32,8 +30,11 @@ const BadgeCategoryModal = ({
   focusedBadgeName = null,
   highlightBadgeName = null,
   onHideBadge = null,
+  onShowBadge = null,
   onDeleteAward = null,
   badgeActionLoadingKey = null,
+  hiddenAwardIds = [],
+  showHiddenBadgeAwards = false,
 }) => {
   // Team details modal state (for AwardCard team clicks)
   const [selectedTeamForDetails, setSelectedTeamForDetails] = useState(null);
@@ -50,8 +51,25 @@ const BadgeCategoryModal = ({
     setSelectedTeamForDetails(null);
   };
 
+  const hiddenAwardIdSet = new Set(
+    (Array.isArray(hiddenAwardIds) ? hiddenAwardIds : [])
+      .filter((value) => value !== undefined && value !== null)
+      .map((value) => String(value)),
+  );
+
+  const isAwardHidden = (award) => {
+    const awardId = award?.awardId ?? award?.award_id ?? award?.id;
+    return awardId !== undefined && awardId !== null
+      ? hiddenAwardIdSet.has(String(awardId))
+      : false;
+  };
+
+  const visibleDetailedAwards = showHiddenBadgeAwards
+    ? detailedAwards
+    : detailedAwards.filter((award) => !isAwardHidden(award));
+
   // Group detailed awards by badge name
-  const awardsByBadge = detailedAwards.reduce((acc, award) => {
+  const awardsByBadge = visibleDetailedAwards.reduce((acc, award) => {
     const badgeName = award.badgeName;
     if (!badgeName) return acc;
 
@@ -84,46 +102,23 @@ const BadgeCategoryModal = ({
   const pastelBg = CATEGORY_SECTION_PASTELS[category] || DEFAULT_SECTION_PASTEL;
   const cardPastel = CATEGORY_CARD_PASTELS[category] || DEFAULT_CARD_PASTEL;
 
-  // Unique badges in this category
-  const badgeCount = Object.keys(awardsByBadge).length;
-
   // Total awards in this category
-  const totalAwards = detailedAwards.length;
+  const totalAwards = visibleDetailedAwards.length;
 
   // Unique awarding users (people)
   const peopleCount = new Set(
-    detailedAwards.map((a) => a.awardedByUserId).filter(Boolean),
+    visibleDetailedAwards.map((a) => a.awardedByUserId).filter(Boolean),
   ).size;
 
   // Focus areas in this category = distinct tagName that received awards
   const creditedFocusAreaCount = new Set(
-    detailedAwards.map((a) => a.tagName).filter(Boolean),
+    visibleDetailedAwards.map((a) => a.tagName).filter(Boolean),
   ).size;
 
   // Unique teams with awards in this category
   const teamCount = new Set(
-    detailedAwards.map((a) => a.teamName).filter(Boolean),
+    visibleDetailedAwards.map((a) => a.teamName).filter(Boolean),
   ).size;
-
-  // Unique projects with awards in this category
-  const projectCount = new Set(
-    detailedAwards
-      .filter((a) => a.contextType === "project")
-      .map(
-        (a) =>
-          a.projectName ||
-          a.projectId ||
-          a.projectTitle ||
-          a.awardId ||
-          a.awardedAt,
-      )
-      .filter(Boolean),
-  ).size;
-
-  // Unique personal contributions in this category
-  const personalCount = detailedAwards.filter(
-    (a) => a.contextType === "personal",
-  ).length;
 
   const titleNode = (
     <div className="min-w-0">
@@ -309,7 +304,9 @@ const BadgeCategoryModal = ({
                         onOpenTeam={handleOpenTeam}
                         showBadgeTitle={false}
                         onHideBadge={onHideBadge}
+                        onShowBadge={onShowBadge}
                         onDeleteAward={onDeleteAward}
+                        isBadgeHidden={isAwardHidden(award)}
                         badgeActionLoadingKey={badgeActionLoadingKey}
                         highlighted={
                           !!highlightBadgeName &&

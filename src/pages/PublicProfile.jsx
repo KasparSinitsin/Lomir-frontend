@@ -8,7 +8,6 @@ import BadgesDisplaySection from "../components/badges/BadgesDisplaySection";
 import UserAvatar from "../components/users/UserAvatar";
 import DeletedUserProfilePlaceholder from "../components/users/DeletedUserProfilePlaceholder";
 import { userService } from "../services/userService";
-import { isBadgeHiddenForUser } from "../utils/userHelpers";
 
 const unwrapUserPayload = (response) => {
   const payload = response?.data ?? response;
@@ -99,7 +98,7 @@ const PublicProfile = () => {
   const badges = shouldHideBadges
     ? []
     : Array.isArray(user?.badges)
-      ? user.badges.filter((badge) => !isBadgeHiddenForUser(badge, user))
+      ? user.badges
       : [];
   const badgeEmptyMessage = shouldHideBadges
     ? "This user's badges are hidden."

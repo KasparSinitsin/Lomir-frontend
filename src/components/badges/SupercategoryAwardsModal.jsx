@@ -1,73 +1,20 @@
 import React, { useState } from "react";
-import { format } from "date-fns";
-import { Tag, Award, Users, Info, Briefcase, User } from "lucide-react";
+import { Tag, Award, Users } from "lucide-react";
 import {
   CATEGORY_COLORS,
-  CATEGORY_SECTION_PASTELS,
   CATEGORY_CARD_PASTELS,
   DEFAULT_COLOR,
-  DEFAULT_SECTION_PASTEL,
   DEFAULT_CARD_PASTEL,
   FOCUS_GREEN,
   FOCUS_GREEN_DARK,
   TAG_SECTION_BG,
-  SUPERCATEGORY_ORDER,
 } from "../../constants/badgeConstants";
 import {
-  getCategoryIcon,
-  getBadgeIcon,
   getSupercategoryIcon,
-  SUPERCATEGORY_ICONS,
 } from "../../utils/badgeIconUtils";
 import Modal from "../common/Modal";
-import InlineUserLink from "../users/InlineUserLink";
 import TeamDetailsModal from "../teams/TeamDetailsModal";
 import AwardCard from "./AwardCard";
-
-const getContextMeta = (contextType) => {
-  switch (contextType) {
-    case "team":
-      return { label: "Team contribution", Icon: Users };
-    case "project":
-      return { label: "Project contribution", Icon: Briefcase };
-    case "personal":
-    case "profile":
-    case "chat":
-      return { label: "Personal contribution", Icon: User };
-    default:
-      return { label: "Contribution", Icon: Info };
-  }
-};
-
-// Inline team link (mirrors the “Awarded by …” click affordance style)
-const InlineTeamLink = ({ teamId, teamName, onOpenTeam, contextLabel }) => {
-  const isClickable = Boolean(teamId && onOpenTeam);
-
-  return (
-    <span className="inline-flex items-center gap-1 min-w-0">
-      <Users size={12} className="flex-shrink-0" />
-      {/* label should NOT be bold */}
-      <span className="truncate">{contextLabel}:</span>
-
-      {/* team name bold + clickable */}
-      <span
-        className={[
-          "min-w-0 truncate font-medium text-base-content/80",
-          isClickable
-            ? "cursor-pointer hover:text-primary transition-colors"
-            : "cursor-default",
-        ].join(" ")}
-        title={isClickable ? "View team" : teamName}
-        onClick={() => {
-          if (!isClickable) return;
-          onOpenTeam(teamId);
-        }}
-      >
-        {teamName}
-      </span>
-    </span>
-  );
-};
 
 const SupercategoryAwardsModal = ({
   isOpen,
@@ -80,6 +27,12 @@ const SupercategoryAwardsModal = ({
   onOpenUser,
   entityType,
   highlightBadgeName = null,
+  onHideBadge = null,
+  onShowBadge = null,
+  onDeleteAward = null,
+  badgeActionLoadingKey = null,
+  hiddenAwardIds = [],
+  showHiddenBadgeAwards = false,
 }) => {
   // Internal TeamDetailsModal state (so the team click works even if parent doesn’t manage it)
   const [selectedTeamForDetails, setSelectedTeamForDetails] = useState(null);
@@ -96,8 +49,25 @@ const SupercategoryAwardsModal = ({
     setSelectedTeamForDetails(null);
   };
 
+  const hiddenAwardIdSet = new Set(
+    (Array.isArray(hiddenAwardIds) ? hiddenAwardIds : [])
+      .filter((value) => value !== undefined && value !== null)
+      .map((value) => String(value)),
+  );
+
+  const isAwardHidden = (award) => {
+    const awardId = award?.awardId ?? award?.award_id ?? award?.id;
+    return awardId !== undefined && awardId !== null
+      ? hiddenAwardIdSet.has(String(awardId))
+      : false;
+  };
+
+  const visibleAwards = showHiddenBadgeAwards
+    ? awards
+    : awards.filter((award) => !isAwardHidden(award));
+
   // Group awards by tag name
-  const awardsByTag = awards.reduce((acc, award) => {
+  const awardsByTag = visibleAwards.reduce((acc, award) => {
     const tagName = award.tagName ?? award.tag_name ?? "Unknown";
     if (!acc[tagName]) {
       acc[tagName] = { awards: [], totalCredits: 0 };
@@ -118,12 +88,12 @@ const SupercategoryAwardsModal = ({
   const personCount =
     entityType === "team"
       ? new Set(
-          awards
+          visibleAwards
             .map((a) => a.awardedToUserId || a.awarded_to_user_id)
             .filter(Boolean),
         ).size
       : new Set(
-          awards
+          visibleAwards
             .map((a) => a.awardedByUserId || a.awarded_by_user_id)
             .filter(Boolean),
         ).size;
@@ -173,9 +143,9 @@ const SupercategoryAwardsModal = ({
                 <div className="flex items-center flex-wrap gap-x-4 gap-y-2 text-sm text-base-content/60 min-w-0">
                   <span className="inline-flex items-center gap-1 whitespace-nowrap">
                     <Award size={14} />
-                    <span className="font-medium">{awards.length}</span>
+                    <span className="font-medium">{visibleAwards.length}</span>
                     <span className="hidden sm:inline">
-                      award{awards.length !== 1 ? "s" : ""}
+                      award{visibleAwards.length !== 1 ? "s" : ""}
                     </span>
                   </span>
 
@@ -273,9 +243,6 @@ const SupercategoryAwardsModal = ({
                           const category = award._category || "Other";
                           const catColor =
                             CATEGORY_COLORS[category] || DEFAULT_COLOR;
-                          const sectionPastel =
-                            CATEGORY_SECTION_PASTELS[category] ||
-                            DEFAULT_SECTION_PASTEL;
                           const cardPastel =
                             CATEGORY_CARD_PASTELS[category] ||
                             DEFAULT_CARD_PASTEL;
@@ -295,6 +262,11 @@ const SupercategoryAwardsModal = ({
                                 handleOpenTeam(teamId, teamName)
                               }
                               hideTag
+                              onHideBadge={onHideBadge}
+                              onShowBadge={onShowBadge}
+                              onDeleteAward={onDeleteAward}
+                              isBadgeHidden={isAwardHidden(award)}
+                              badgeActionLoadingKey={badgeActionLoadingKey}
                               highlighted={
                                 !!highlightBadgeName &&
                                 (
