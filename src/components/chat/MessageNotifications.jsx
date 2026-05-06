@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { MessageCircle } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import socketService from '../../services/socketService';
 import { messageService } from '../../services/messageService';
 import { useAuth } from '../../contexts/AuthContext';
 import {
+  getMessageSenderDisplayName,
   getMessageConversationTarget,
   getMessagePreviewText,
   isMessageForCurrentChatPath,
@@ -76,7 +78,7 @@ const MessageNotifications = () => {
               conversationId: target.conversationId,
               conversationType: target.type,
               senderId: message.senderId || message.sender_id,
-              senderName: message.senderUsername,
+              senderName: getMessageSenderDisplayName(message),
               text: getMessagePreviewText(message),
               time: new Date()
             }
@@ -146,13 +148,18 @@ const MessageNotifications = () => {
       {notifications.map(notification => (
         <div 
           key={notification.id}
-          className="bg-primary text-primary-content rounded-lg shadow-lg p-4 max-w-xs animate-slide-in cursor-pointer"
+          className="bg-white text-black rounded-lg rounded-br-none shadow-lg p-4 max-w-xs animate-slide-in cursor-pointer"
           onClick={() => handleNotificationClick(notification)}
         >
-          <h4 className="font-medium">New Message</h4>
-          <p className="text-sm truncate">{notification.text}</p>
+          <h4 className="text-xs font-medium text-primary-focus flex items-center gap-1.5 mb-2">
+            <MessageCircle size={12} strokeWidth={2.2} aria-hidden="true" />
+            <span>New Message</span>
+          </h4>
+          <p className="text-sm">{notification.text}</p>
           {notification.senderName && (
-            <p className="text-xs mt-1">From: {notification.senderName}</p>
+            <p className="text-[11px] mt-0.5 text-primary-focus truncate">
+              from {notification.senderName}
+            </p>
           )}
         </div>
       ))}

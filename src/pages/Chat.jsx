@@ -25,6 +25,7 @@ import {
   normalizeTimestampToDate,
 } from "../utils/dateHelpers";
 import { getTeamAvatarUrl } from "../utils/chatEntityResolvers";
+import { getMessageConversationTarget } from "../utils/messageNotificationUtils";
 
 const getConversationPartnerId = (conversation) =>
   conversation?.partner?.id ??
@@ -697,7 +698,10 @@ const Chat = () => {
 
     // Handle new messages
     const handleNewMessage = (message) => {
-      const messageConvId = String(message.conversationId);
+      const messageTarget = getMessageConversationTarget(message, user?.id);
+      const messageConvId = String(
+        messageTarget.conversationId ?? message.conversationId,
+      );
       const currentConvId = String(conversationId);
 
       // Get current conversation type from URL
@@ -798,22 +802,52 @@ const Chat = () => {
 
       // Update conversation list
       setConversations((prev) => {
+        const isUnreadIncoming =
+          messageConvId !== currentConvId && message.senderId !== user.id;
+        let conversationUpdated = false;
         const updatedList = prev.map((conv) => {
           if (String(conv.id) === messageConvId) {
+            conversationUpdated = true;
+            const currentUnreadCount = conv.unreadCount ?? conv.unread_count ?? 0;
+            const unreadCount = isUnreadIncoming
+              ? currentUnreadCount + 1
+              : currentUnreadCount;
+
             return {
               ...conv,
               lastMessage: message.content,
               updatedAt: message.createdAt,
               isVirtual: false,
-              // Increment unread count if not current conversation
-              unreadCount:
-                messageConvId !== currentConvId && message.senderId !== user.id
-                  ? (conv.unreadCount || 0) + 1
-                  : conv.unreadCount,
+              unreadCount,
+              unread_count: unreadCount,
             };
           }
           return conv;
         });
+
+        if (!conversationUpdated) {
+          if (messageTarget.type === "direct" && message.senderId !== user.id) {
+            updatedList.unshift({
+              id: Number.isNaN(Number(messageConvId))
+                ? messageConvId
+                : Number(messageConvId),
+              type: "direct",
+              partner: {
+                id: message.senderId,
+                username: message.senderUsername,
+                firstName: message.senderFirstName,
+                lastName: message.senderLastName,
+                avatarUrl: message.senderAvatarUrl,
+              },
+              lastMessage: message.content,
+              updatedAt: message.createdAt,
+              unreadCount: isUnreadIncoming ? 1 : 0,
+              unread_count: isUnreadIncoming ? 1 : 0,
+            });
+          }
+
+          refreshConversationList();
+        }
 
         const deduplicatedList = dedupeConversations(updatedList);
 
