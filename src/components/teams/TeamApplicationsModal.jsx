@@ -455,6 +455,7 @@ const TeamApplicationsModal = ({
             isOpen={showCloseGuard}
             onClose={() => setShowCloseGuard(false)}
             size="small"
+            bodyClassName="p-4"
             showCloseButton={false}
             closeOnBackdrop={false}
             title={

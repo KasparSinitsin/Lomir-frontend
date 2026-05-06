@@ -4,6 +4,7 @@ import { useAuth } from "../contexts/AuthContext";
 import Card from "../components/common/Card";
 import Button from "../components/common/Button";
 import Alert from "../components/common/Alert";
+import ScreenAlert from "../components/common/ScreenAlert";
 import FormSectionDivider from "../components/common/FormSectionDivider";
 import VisibilityToggle from "../components/common/VisibilityToggle";
 import Modal from "../components/common/Modal";
@@ -630,16 +631,20 @@ const Settings = () => {
 
   return (
     <div className="space-y-6">
-      {success && (
-        <Alert
-          type="success"
-          message={success}
-          onClose={() => setSuccess(null)}
-        />
-      )}
-      {error && (
-        <Alert type="error" message={error} onClose={() => setError(null)} />
-      )}
+      <ScreenAlert
+        alerts={[
+          success && {
+            type: "success",
+            message: success,
+            onClose: () => setSuccess(null),
+          },
+          error && {
+            type: "error",
+            message: error,
+            onClose: () => setError(null),
+          },
+        ]}
+      />
 
       <Card className="overflow-visible">
         {/* Page Header — sits directly in Card, no extra wrapper */}

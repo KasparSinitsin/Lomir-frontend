@@ -1,5 +1,12 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { LogOut, ChevronRight, ChevronLeft, Users, User } from "lucide-react";
+import {
+  LogOut,
+  ChevronRight,
+  ChevronLeft,
+  Users,
+  User,
+  Trash2,
+} from "lucide-react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import PageContainer from "../components/layout/PageContainer";
 import ConversationList from "../components/chat/ConversationList";
@@ -10,7 +17,9 @@ import { messageService } from "../services/messageService";
 import socketService from "../services/socketService";
 import { userService } from "../services/userService";
 import { teamService } from "../services/teamService";
-import Alert from "../components/common/Alert";
+import ScreenAlert from "../components/common/ScreenAlert";
+import Button from "../components/common/Button";
+import Modal from "../components/common/Modal";
 import Tooltip from "../components/common/Tooltip";
 import { CountBadge } from "../components/common/NotificationBadge";
 import { uploadToImageKit } from "../config/imagekit";
@@ -148,6 +157,9 @@ const Chat = () => {
   const [selectedTeamData, setSelectedTeamData] = useState(null);
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState(null);
+  const [pendingChatAction, setPendingChatAction] = useState(null);
+  const [pendingChatActionLoading, setPendingChatActionLoading] =
+    useState(false);
   const [isActiveConversationVisible, setIsActiveConversationVisible] =
     useState(true);
   const [
@@ -1198,6 +1210,11 @@ const Chat = () => {
     }
   };
 
+  const closePendingChatAction = () => {
+    if (pendingChatActionLoading) return;
+    setPendingChatAction(null);
+  };
+
   // Handle leaving a deleted team (removes from conversation list)
   const handleLeaveTeam = async () => {
     if (!activeConversation?.team?.id) {
@@ -1207,12 +1224,10 @@ const Chat = () => {
     const teamId = activeConversation.team.id;
     const teamName = activeConversation.team.name || "this team";
 
-    const confirmLeave = window.confirm(
-      `Are you sure you want to leave "${teamName}"? This will remove the chat from your conversation list.`,
-    );
+    setPendingChatAction({ type: "leave-team", teamId, teamName });
+  };
 
-    if (!confirmLeave) return;
-
+  const executeLeaveTeam = async ({ teamId }) => {
     try {
       // Call the existing leave team API
       await teamService.removeTeamMember(teamId, user.id);
@@ -1225,9 +1240,11 @@ const Chat = () => {
 
       setActiveConversation(null);
       setMessages([]);
+      return true;
     } catch (error) {
       console.error("Error leaving team:", error);
       setError("Failed to leave team. Please try again.");
+      return false;
     }
   };
 
@@ -1237,15 +1254,15 @@ const Chat = () => {
       return;
     }
 
-    const confirmDelete = window.confirm(
-      "Are you sure you want to remove this chat from your conversation list?",
-    );
+    setPendingChatAction({
+      type: "delete-conversation",
+      conversationId: activeConversation.id,
+    });
+  };
 
-    if (!confirmDelete) return;
-
+  const executeDeleteConversation = async ({ conversationId }) => {
     try {
-      const convId = activeConversation.id;
-      const type = activeConversation.type || conversationType;
+      const convId = conversationId;
 
       // Remove from local state
       setConversations((prev) => prev.filter((c) => c.id !== convId));
@@ -1255,9 +1272,11 @@ const Chat = () => {
 
       setActiveConversation(null);
       setMessages([]);
+      return true;
     } catch (error) {
       console.error("Error deleting conversation:", error);
       setError("Failed to delete conversation. Please try again.");
+      return false;
     }
   };
 
@@ -1364,9 +1383,10 @@ const Chat = () => {
   const handleDeleteMessage = async (messageId) => {
     if (!messageId) return;
 
-    const ok = window.confirm("Delete this message?");
-    if (!ok) return;
+    setPendingChatAction({ type: "delete-message", messageId });
+  };
 
+  const executeDeleteMessage = async ({ messageId }) => {
     try {
       // Optimistic UI update
       setMessages((prev) =>
@@ -1387,12 +1407,38 @@ const Chat = () => {
       );
 
       await messageService.deleteMessage(messageId);
+      return true;
     } catch (err) {
       console.error("Failed to delete message:", err);
       setError("Failed to delete message. Please try again.");
 
       // Optional: re-fetch messages for correctness after failure
       // (you can leave this out if you don’t want)
+      return false;
+    }
+  };
+
+  const confirmPendingChatAction = async () => {
+    if (!pendingChatAction) return;
+
+    try {
+      setPendingChatActionLoading(true);
+
+      let actionSucceeded = false;
+
+      if (pendingChatAction.type === "leave-team") {
+        actionSucceeded = await executeLeaveTeam(pendingChatAction);
+      } else if (pendingChatAction.type === "delete-conversation") {
+        actionSucceeded = await executeDeleteConversation(pendingChatAction);
+      } else if (pendingChatAction.type === "delete-message") {
+        actionSucceeded = await executeDeleteMessage(pendingChatAction);
+      }
+
+      if (actionSucceeded) {
+        setPendingChatAction(null);
+      }
+    } finally {
+      setPendingChatActionLoading(false);
     }
   };
 
@@ -1569,15 +1615,80 @@ const Chat = () => {
     .filter(([userId, username]) => userId !== user?.id && username)
     .map(([_, username]) => username);
 
+  const pendingChatActionType = pendingChatAction?.type;
+  const pendingChatActionConfig = {
+    "delete-message": {
+      title: "Delete Message",
+      message:
+        "Delete this message? It will be replaced with a deleted-message marker in this chat.",
+      confirmLabel: "Delete",
+      loadingLabel: "Deleting...",
+      variant: "error",
+      icon: <Trash2 size={16} />,
+    },
+    "delete-conversation": {
+      title: "Remove Chat",
+      message:
+        "Remove this chat from your conversation list? Your message history with this conversation will no longer be shown here.",
+      confirmLabel: "Remove",
+      loadingLabel: "Removing...",
+      variant: "error",
+      icon: <Trash2 size={16} />,
+    },
+    "leave-team": {
+      title: "Leave Team Chat",
+      message: `Leave "${pendingChatAction?.teamName || "this team"}"? This removes the chat from your conversation list.`,
+      confirmLabel: "Leave",
+      loadingLabel: "Leaving...",
+      variant: "error",
+      icon: <LogOut size={16} />,
+    },
+  }[pendingChatActionType];
+
   return (
     <PageContainer
       title="Messages"
       className="p-0 overflow-hidden"
       variant="muted"
     >
-      {error && (
-        <Alert type="error" message={error} onClose={() => setError(null)} />
-      )}
+      <ScreenAlert type="error" message={error} onClose={() => setError(null)} />
+
+      <Modal
+        isOpen={Boolean(pendingChatAction)}
+        onClose={closePendingChatAction}
+        title={pendingChatActionConfig?.title}
+        position="center"
+        size="small"
+        bodyClassName="p-4"
+        closeOnBackdrop={!pendingChatActionLoading}
+        closeOnEscape={!pendingChatActionLoading}
+        showCloseButton={!pendingChatActionLoading}
+        footer={
+          <div className="flex justify-end gap-3">
+            <Button
+              variant="ghost"
+              onClick={closePendingChatAction}
+              disabled={pendingChatActionLoading}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant={pendingChatActionConfig?.variant || "primary"}
+              onClick={confirmPendingChatAction}
+              disabled={pendingChatActionLoading}
+              icon={pendingChatActionConfig?.icon}
+            >
+              {pendingChatActionLoading
+                ? pendingChatActionConfig?.loadingLabel
+                : pendingChatActionConfig?.confirmLabel}
+            </Button>
+          </div>
+        }
+      >
+        <p className="text-sm text-base-content/80">
+          {pendingChatActionConfig?.message}
+        </p>
+      </Modal>
 
       <div className="bg-white shadow-soft flex h-[calc(100vh-200px)] rounded-xl overflow-hidden">
         {/* Conversation List - Left Sidebar */}

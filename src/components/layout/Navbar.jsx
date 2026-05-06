@@ -218,10 +218,12 @@ const Navbar = () => {
 
       socket.on("notification:new", handleNewNotification);
       socket.on("notification:updated", handleNewNotification);
+      socket.on("notification:deleted", handleNewNotification);
 
       detachNotificationListener = () => {
         socket.off("notification:new", handleNewNotification);
         socket.off("notification:updated", handleNewNotification);
+        socket.off("notification:deleted", handleNewNotification);
       };
     };
 
@@ -261,29 +263,42 @@ const Navbar = () => {
 
   // Handle notification badge click
   const handleNotificationClick = async () => {
-    if (unreadNotificationCount > 0 && firstUnreadNotification) {
-      // Mark this notification as read
+    // Always fetch fresh data before navigating so we never land on a deleted entity
+    let freshFirst = null;
+    try {
+      const response = await notificationService.getUnreadCount();
+      const fresh = response.data;
+      setUnreadNotificationCount(fresh?.count || 0);
+      setFirstUnreadNotification(fresh?.firstUnread || null);
+      setNotificationTypeCounts(fresh?.typeCounts || {});
+      freshFirst = fresh?.firstUnread || null;
+    } catch (error) {
+      console.error("Error fetching notifications:", error);
+      // Fall back to cached state on error
+      freshFirst = firstUnreadNotification;
+    }
+
+    if (freshFirst) {
       try {
-        await notificationService.markAsRead(firstUnreadNotification.id);
+        await notificationService.markAsRead(freshFirst.id);
       } catch (error) {
         console.error("Error marking notification as read:", error);
       }
 
-      const canNavigateToNotification =
-        firstUnreadNotification.referenceId != null &&
-        Boolean(firstUnreadNotification.navigateTo);
+      const canNavigate =
+        freshFirst.referenceId != null && Boolean(freshFirst.navigateTo);
 
-      if (canNavigateToNotification) {
-        // Navigate to the notification target
-        navigate(firstUnreadNotification.navigateTo);
+      if (canNavigate) {
+        navigate(freshFirst.navigateTo);
+      } else {
+        navigate("/teams/my-teams");
       }
 
-      // Refetch after a delay to get the NEXT unread notification
+      // Refetch after navigation to update the badge to the next unread
       setTimeout(() => {
         fetchUnreadNotificationCount();
       }, 1000);
     } else {
-      // No unread notifications, go to my-teams page
       navigate("/teams/my-teams");
     }
   };

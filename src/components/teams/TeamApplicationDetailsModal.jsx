@@ -5,9 +5,11 @@ import {
   X,
   SendHorizontal,
   FlaskConical,
+  Trash2,
 } from "lucide-react";
 import Modal from "../common/Modal";
 import Button from "../common/Button";
+import ConfirmModal from "../common/ConfirmModal";
 import Tooltip from "../common/Tooltip";
 import TeamDetailsModal from "./TeamDetailsModal";
 import UserDetailsModal from "../users/UserDetailsModal";
@@ -55,6 +57,7 @@ const TeamApplicationDetailsModal = ({
   const [error, setError] = useState(null);
   const [isTeamDetailsOpen, setIsTeamDetailsOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState(null);
+  const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
 
   // ============ Helpers ============
 
@@ -173,19 +176,21 @@ const TeamApplicationDetailsModal = ({
 
   // ============ Handlers ============
 
-  const handleCancelApplication = async () => {
-    if (
-      !window.confirm(
-        "Are you sure you want to cancel your application to this team?"
-      )
-    ) {
-      return;
-    }
+  const handleCancelApplication = () => {
+    setIsCancelDialogOpen(true);
+  };
 
+  const closeCancelApplicationDialog = () => {
+    if (actionLoading === "cancel") return;
+    setIsCancelDialogOpen(false);
+  };
+
+  const confirmCancelApplication = async () => {
     try {
       setActionLoading("cancel");
       setError(null);
       await onCancel(application.id);
+      setIsCancelDialogOpen(false);
       onClose();
     } catch (err) {
       setError(err.message || "Failed to cancel application");
@@ -457,6 +462,24 @@ const TeamApplicationDetailsModal = ({
           </div>
         )}
       </Modal>
+
+      <ConfirmModal
+        isOpen={isCancelDialogOpen}
+        onClose={closeCancelApplicationDialog}
+        onConfirm={confirmCancelApplication}
+        title="Cancel Application"
+        loading={actionLoading === "cancel"}
+        confirmLabel="Cancel Application"
+        loadingLabel="Canceling..."
+        confirmVariant="error"
+        confirmIcon={<Trash2 size={16} />}
+        cancelLabel="Keep"
+      >
+        <p className="text-sm text-base-content/80">
+          Cancel your application to {team.name || "this team"}? The team will
+          no longer be able to review it.
+        </p>
+      </ConfirmModal>
 
       {/* Team Details Modal */}
       <TeamDetailsModal

@@ -1,7 +1,7 @@
 import React from "react";
 import { User } from "lucide-react";
 import Modal from "./Modal";
-import Alert from "./Alert";
+import ScreenAlert from "./ScreenAlert";
 
 /**
  * RequestListModal Component
@@ -108,26 +108,6 @@ const RequestListModal = ({
         closeOnEscape={true}
         showCloseButton={true}
       >
-        {/* Error Alert */}
-        {error && (
-          <Alert
-            type="error"
-            message={error}
-            onClose={onErrorClose}
-            className="mb-4"
-          />
-        )}
-
-        {/* Success Alert */}
-        {success && (
-          <Alert
-            type="success"
-            message={success}
-            onClose={onSuccessClose}
-            className="mb-4"
-          />
-        )}
-
         {/* Content: Empty State or List */}
         {itemCount === 0 ? (
           <div className="text-center py-12">
@@ -146,6 +126,21 @@ const RequestListModal = ({
           <div className="space-y-4">{children}</div>
         )}
       </Modal>
+
+      <ScreenAlert
+        alerts={[
+          error && {
+            type: "error",
+            message: error,
+            onClose: onErrorClose,
+          },
+          success && {
+            type: "success",
+            message: success,
+            onClose: onSuccessClose,
+          },
+        ]}
+      />
 
       {/* Extra modals (e.g., UserDetailsModal) rendered outside */}
       {extraModals}
