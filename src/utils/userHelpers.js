@@ -115,3 +115,33 @@ export const DEMO_TEAM_TOOLTIP =
 
 export const DEMO_ROLE_TOOLTIP =
   "Demo Role: for testing purposes, no real role";
+
+export const normalizeHiddenBadgeIds = (user) => {
+  if (!user) return [];
+
+  const rawIds = user.hidden_badge_ids ?? user.hiddenBadgeIds ?? [];
+  if (!Array.isArray(rawIds)) return [];
+
+  return rawIds
+    .filter((value) => value !== undefined && value !== null)
+    .map((value) => String(value));
+};
+
+export const isBadgeHiddenForUser = (badge, user) => {
+  const hiddenIds = normalizeHiddenBadgeIds(user);
+  if (!hiddenIds.length) return false;
+
+  const badgeId =
+    badge?.id ?? badge?.badgeId ?? badge?.badge_id ?? badge?.badge_id;
+  if (badgeId !== undefined && badgeId !== null) {
+    if (hiddenIds.includes(String(badgeId))) return true;
+  }
+
+  const badgeName = (badge?.name ?? badge?.badgeName ?? badge?.badge_name ?? "")
+    .trim();
+  if (badgeName) {
+    return hiddenIds.includes(badgeName);
+  }
+
+  return false;
+};

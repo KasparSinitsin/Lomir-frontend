@@ -81,7 +81,7 @@ const MessageInput = ({
 
   return (
     <div className="relative">
-      <form onSubmit={handleSubmit} className="flex items-center gap-1">
+      <form onSubmit={handleSubmit} className="flex items-center gap-3">
         {/* Attachment Menu */}
         <ChatAttachmentMenu
           onEmojiSelect={handleEmojiSelect}

@@ -31,7 +31,7 @@ export const badgeService = {
    * @param {number} [awardData.contextId] - Optional context ID
    * @param {number} [awardData.teamId] - Optional team ID (required when contextType is "team")
    * @param {number} [awardData.tagId] - Optional tag ID (links award to a focus area)
-   * @returns {Promise<object>} { success: true, data: {...award} }
+   * @returns {Promise<object>} { success: true, data: {...award, hidden: true} }
    */
   awardBadge: async (awardData) => {
     try {

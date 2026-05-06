@@ -34,6 +34,44 @@ const unwrapRows = (response) => {
   return rows;
 };
 
+const getAwardId = (award) => award?.awardId ?? award?.award_id ?? award?.id;
+
+const getBadgeId = (awardOrBadge) => {
+  const explicitBadgeId = awardOrBadge?.badgeId ?? awardOrBadge?.badge_id;
+  if (explicitBadgeId !== undefined && explicitBadgeId !== null) {
+    return explicitBadgeId;
+  }
+
+  const hasAwardId =
+    awardOrBadge?.awardId !== undefined || awardOrBadge?.award_id !== undefined;
+  return hasAwardId ? undefined : awardOrBadge?.id;
+};
+
+const getBadgeName = (awardOrBadge) =>
+  (awardOrBadge?.badgeName ?? awardOrBadge?.badge_name ?? awardOrBadge?.name ?? "")
+    .trim();
+
+const sameAward = (a, b) => {
+  const aId = getAwardId(a);
+  const bId = getAwardId(b);
+  if (aId === undefined || aId === null || bId === undefined || bId === null) {
+    return false;
+  }
+  return String(aId) === String(bId);
+};
+
+const sameBadge = (a, b) => {
+  const aId = getBadgeId(a);
+  const bId = getBadgeId(b);
+  if (aId !== undefined && aId !== null && bId !== undefined && bId !== null) {
+    return String(aId) === String(bId);
+  }
+
+  const aName = getBadgeName(a).toLowerCase();
+  const bName = getBadgeName(b).toLowerCase();
+  return Boolean(aName && bName && aName === bName);
+};
+
 const useAwardModals = (userId) => {
   // ========= Badge Category Modal state =========
   const [badgeCategoryModal, setBadgeCategoryModal] = useState({
@@ -248,6 +286,95 @@ const useAwardModals = (userId) => {
     setSupercategoryAwards([]);
   }, []);
 
+  const removeAwardFromBadgeModal = useCallback((removedAward) => {
+    const removedAwardCredits = Number(removedAward?.credits ?? 0);
+
+    setDetailedBadgeAwards((prevAwards) => {
+      let removedCredits = 0;
+      const nextAwards = prevAwards.filter((award) => {
+        if (!sameAward(award, removedAward)) return true;
+        removedCredits += Number(award.credits ?? 0);
+        return false;
+      });
+
+      if (removedCredits > 0) {
+        setBadgeCategoryModal((prevModal) => ({
+          ...prevModal,
+          totalCredits: Math.max(
+            0,
+            Number(prevModal.totalCredits ?? 0) - removedCredits,
+          ),
+        }));
+      }
+
+      return nextAwards;
+    });
+
+    setTagAwards((prevAwards) => {
+      let removed = false;
+      const nextAwards = prevAwards.filter((award) => {
+        if (!sameAward(award, removedAward)) return true;
+        removed = true;
+        return false;
+      });
+
+      if (removed && removedAwardCredits > 0) {
+        setTagAwardsModal((prevModal) => ({
+          ...prevModal,
+          totalCredits: Math.max(
+            0,
+            Number(prevModal.totalCredits ?? 0) - removedAwardCredits,
+          ),
+        }));
+      }
+
+      return nextAwards;
+    });
+
+    setSupercategoryAwards((prevAwards) => {
+      let removed = false;
+      const nextAwards = prevAwards.filter((award) => {
+        if (!sameAward(award, removedAward)) return true;
+        removed = true;
+        return false;
+      });
+
+      if (removed && removedAwardCredits > 0) {
+        setSupercategoryModal((prevModal) => ({
+          ...prevModal,
+          totalCredits: Math.max(
+            0,
+            Number(prevModal.totalCredits ?? 0) - removedAwardCredits,
+          ),
+        }));
+      }
+
+      return nextAwards;
+    });
+  }, []);
+
+  const removeBadgeFromBadgeModal = useCallback((hiddenBadge) => {
+    setDetailedBadgeAwards((prevAwards) => {
+      let removedCredits = 0;
+      const nextAwards = prevAwards.filter((award) => {
+        if (!sameBadge(award, hiddenBadge)) return true;
+        removedCredits += Number(award.credits ?? 0);
+        return false;
+      });
+
+      setBadgeCategoryModal((prevModal) => ({
+        ...prevModal,
+        badges: prevModal.badges.filter((badge) => !sameBadge(badge, hiddenBadge)),
+        totalCredits: Math.max(
+          0,
+          Number(prevModal.totalCredits ?? 0) - removedCredits,
+        ),
+      }));
+
+      return nextAwards;
+    });
+  }, []);
+
   // ========= Props-spreader objects (for cleaner JSX) =========
 
   /** Spread onto <BadgeCategoryModal ... /> */
@@ -296,6 +423,8 @@ const useAwardModals = (userId) => {
     closeBadgeCategoryModal,
     closeTagAwardsModal,
     closeSupercategoryModal,
+    removeAwardFromBadgeModal,
+    removeBadgeFromBadgeModal,
 
     // Props-spreader objects (for JSX)
     badgeCategoryModalProps,

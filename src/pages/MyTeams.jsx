@@ -33,6 +33,7 @@ import {
 
 const MY_TEAMS_LIST_LOCATION_WIDTH_CLASSNAME = "sm:w-40";
 const MY_TEAMS_LIST_LOCATION_INSET_CLASSNAME = "sm:pl-[24px]";
+const MY_TEAMS_LIST_LOCATION_VISIBILITY_CLASSNAME = "hidden sm:flex";
 const MY_TEAMS_LIST_TAGS_WIDTH_CLASSNAME = "sm:w-36";
 const MY_TEAMS_LIST_BADGES_WIDTH_CLASSNAME = "sm:w-32";
 
@@ -504,7 +505,7 @@ const MyTeams = () => {
 
   return (
     <PageContainer title="My Teams" action={CreateTeamAction} variant="muted">
-      <div className="flex flex-wrap items-center justify-between gap-y-2 mb-6">
+      <div className="flex flex-wrap items-center justify-between gap-y-0.5 mb-6">
         <div className="flex flex-wrap items-center gap-1 -ml-2">
           <button
             type="button"
@@ -643,6 +644,7 @@ const MyTeams = () => {
                             }`}
                             listLocationWidthClassName={MY_TEAMS_LIST_LOCATION_WIDTH_CLASSNAME}
                             listLocationInsetClassName={MY_TEAMS_LIST_LOCATION_INSET_CLASSNAME}
+                            listLocationVisibilityClassName={MY_TEAMS_LIST_LOCATION_VISIBILITY_CLASSNAME}
                             listTagsWidthClassName={MY_TEAMS_LIST_TAGS_WIDTH_CLASSNAME}
                             listBadgesWidthClassName={MY_TEAMS_LIST_BADGES_WIDTH_CLASSNAME}
                             viewMode="list"
@@ -759,6 +761,7 @@ const MyTeams = () => {
                           hideDistanceInfo={true}
                           listLocationWidthClassName={MY_TEAMS_LIST_LOCATION_WIDTH_CLASSNAME}
                           listLocationInsetClassName={MY_TEAMS_LIST_LOCATION_INSET_CLASSNAME}
+                          listLocationVisibilityClassName={MY_TEAMS_LIST_LOCATION_VISIBILITY_CLASSNAME}
                           listTagsWidthClassName={MY_TEAMS_LIST_TAGS_WIDTH_CLASSNAME}
                           listBadgesWidthClassName={MY_TEAMS_LIST_BADGES_WIDTH_CLASSNAME}
                           viewMode="list"
@@ -833,16 +836,18 @@ const MyTeams = () => {
           <button
             type="button"
             onClick={() => handleSortChange("requests")}
-            className={`flex items-center gap-1 px-1 text-xs rounded transition-colors shrink-0 ${
+            className={`flex items-center gap-1 pr-1 text-xs rounded transition-colors shrink-0 ${
               sortBy === "requests"
                 ? "text-[var(--color-primary)] font-bold"
                 : "text-[var(--color-primary-focus)]/70 hover:text-[var(--color-primary-focus)] hover:font-medium"
             }`}
           >
             <Inbox className="w-3.5 h-3.5 shrink-0" />
-            {sortBy === "requests" && sortDir === "asc"
-              ? "Least Requests"
-              : "Most Requests"}
+            {sortBy === "requests"
+              ? sortDir === "asc"
+                ? "Sorted by least requests"
+                : "Sorted by most requests"
+              : "Sort by most requests"}
           </button>
         }
         collapsible
@@ -896,6 +901,7 @@ const MyTeams = () => {
                       }`}
                       listLocationWidthClassName={MY_TEAMS_LIST_LOCATION_WIDTH_CLASSNAME}
                       listLocationInsetClassName={MY_TEAMS_LIST_LOCATION_INSET_CLASSNAME}
+                      listLocationVisibilityClassName={MY_TEAMS_LIST_LOCATION_VISIBILITY_CLASSNAME}
                       listTagsWidthClassName={MY_TEAMS_LIST_TAGS_WIDTH_CLASSNAME}
                       listBadgesWidthClassName={MY_TEAMS_LIST_BADGES_WIDTH_CLASSNAME}
                       autoOpenApplications={
