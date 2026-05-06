@@ -20,8 +20,10 @@ import TeamDetailsModal from "../components/teams/TeamDetailsModal";
 import UserDetailsModal from "../components/users/UserDetailsModal";
 import { getTeamInitials, isSyntheticTeam } from "../utils/userHelpers";
 import { formatDisplayName } from "../utils/nameFormatters";
-import { formatDistanceToNowStrict } from "date-fns";
-import { normalizeTimestampToDate } from "../utils/dateHelpers";
+import {
+  formatRelativeChatTimestamp,
+  normalizeTimestampToDate,
+} from "../utils/dateHelpers";
 import { getTeamAvatarUrl } from "../utils/chatEntityResolvers";
 
 const getConversationPartnerId = (conversation) =>
@@ -97,24 +99,6 @@ const getConversationUpdatedAt = (conversation) => {
   if (!timestamp) return null;
   const parsedDate = normalizeTimestampToDate(timestamp);
   return parsedDate;
-};
-
-const formatChatTimestamp = (timestamp) => {
-  if (!timestamp) return "";
-  const now = new Date();
-  const date = normalizeTimestampToDate(timestamp);
-  if (!date) return "";
-  const minutes = Math.round((now - date) / 60000);
-  if (minutes < 60) {
-    return formatDistanceToNowStrict(date, {
-      addSuffix: true,
-      unit: "minute",
-    });
-  }
-  return formatDistanceToNowStrict(date, {
-    addSuffix: true,
-    unit: "hour",
-  });
 };
 
 const isDirectConversationForPartner = (conversation, partnerId) =>
@@ -1649,17 +1633,15 @@ const Chat = () => {
                         <div className="text-xs text-base-content/60 flex items-center justify-between gap-1.5 flex-nowrap">
                           <div className="flex items-center gap-1.5 min-w-0">
                             <Users size={12} className="flex-shrink-0" />
-                            <span className="truncate">Team chat</span>
-                            {teamData?.members && (
-                              <>
-                                <span>·</span>
-                                <span className="truncate">{teamData.members.length} {teamData.members.length === 1 ? "member" : "members"}</span>
-                              </>
-                            )}
+                            <span className="truncate">
+                              {teamData?.members
+                                ? `Team Chat with ${teamData.members.length} ${teamData.members.length === 1 ? "Member" : "Members"}`
+                                : "Team Chat"}
+                            </span>
                           </div>
                           {conversationUpdatedAt && (
                             <span className="text-xs text-base-content/50 whitespace-nowrap ml-2">
-                              {formatChatTimestamp(conversationUpdatedAt)}
+                              {formatRelativeChatTimestamp(conversationUpdatedAt)}
                             </span>
                           )}
                         </div>
@@ -1671,7 +1653,7 @@ const Chat = () => {
                           </div>
                           {conversationUpdatedAt && (
                             <span className="text-xs text-base-content/50 whitespace-nowrap ml-2">
-                              {formatChatTimestamp(conversationUpdatedAt)}
+                              {formatRelativeChatTimestamp(conversationUpdatedAt)}
                             </span>
                           )}
                         </div>

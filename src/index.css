@@ -20,6 +20,24 @@
     margin-top: 4rem; /* generous separation from fields */
     margin-bottom: 1.5rem;
   }
+
+  .lomir-conversation-kind {
+    container: lomir-conversation-kind / inline-size;
+  }
+
+  .lomir-conversation-kind-label {
+    display: inline-block;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  @container lomir-conversation-kind (max-width: 4.75rem) {
+    .lomir-conversation-kind-label {
+      display: none;
+    }
+  }
 }
 
 @layer components {
