@@ -3,8 +3,7 @@ import { Users, User, ChevronRight } from "lucide-react";
 import Tooltip from "../common/Tooltip";
 import { CountBadge } from "../common/NotificationBadge";
 import { getTeamInitials, isSyntheticTeam } from "../../utils/userHelpers";
-import { formatDistanceToNow } from "date-fns";
-import { normalizeTimestampToDate } from "../../utils/dateHelpers";
+import { formatRelativeChatTimestamp } from "../../utils/dateHelpers";
 import TeamDetailsModal from "../teams/TeamDetailsModal";
 import UserDetailsModal from "../users/UserDetailsModal";
 import UserAvatar from "../users/UserAvatar";
@@ -26,6 +25,7 @@ const ConversationList = ({
   activeConversationId,
   onSelectConversation,
   loading,
+  onActiveConversationVisibilityChange,
   teamMembersRefreshSignal = null,
 }) => {
   // State for team details modal
@@ -56,6 +56,38 @@ const ConversationList = ({
       return () => clearTimeout(timer);
     }
   }, [activeConversationId]);
+
+  useEffect(() => {
+    if (!onActiveConversationVisibilityChange) return undefined;
+
+    const activeItem = activeConversationRef.current;
+    if (!activeItem) {
+      onActiveConversationVisibilityChange(true);
+      return undefined;
+    }
+
+    const scrollRoot = activeItem.closest(
+      "[data-conversation-list-viewport='true']",
+    );
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        onActiveConversationVisibilityChange(
+          entry.isIntersecting && entry.intersectionRatio > 0,
+        );
+      },
+      {
+        root: scrollRoot,
+        threshold: [0, 0.01, 1],
+      },
+    );
+
+    observer.observe(activeItem);
+    return () => observer.disconnect();
+  }, [
+    activeConversationId,
+    conversations,
+    onActiveConversationVisibilityChange,
+  ]);
 
   useEffect(() => {
     const userIdsToFetch = [];
@@ -399,30 +431,23 @@ const ConversationList = ({
                   </Tooltip>
                   <div className="flex items-center min-w-0 gap-2">
                     <p
-                      className="text-xs truncate flex-1 min-w-0 flex items-center gap-1"
+                      className="lomir-conversation-kind text-xs truncate flex-1 min-w-0 flex items-center gap-1"
                       style={{ color: "#036b0c" }}
                     >
                       {isTeam ? (
                         <>
                           <Users size={12} className="flex-shrink-0" />
-                          <span>Team chat</span>
+                          <span className="lomir-conversation-kind-label">Team Chat</span>
                         </>
                       ) : (
                         <>
                           <User size={12} className="flex-shrink-0" />
-                          <span>DM Chat</span>
+                          <span className="lomir-conversation-kind-label">DM Chat</span>
                         </>
                       )}
                     </p>
                     <span className="flex-shrink-0 ml-2 text-xs whitespace-nowrap" style={{ color: "#036b0c" }}>
-                      {conversation.updatedAt
-                        ? formatDistanceToNow(
-                            normalizeTimestampToDate(conversation.updatedAt) || new Date(),
-                            {
-                              addSuffix: true,
-                            },
-                          ).replace("about ", "")
-                        : ""}
+                      {formatRelativeChatTimestamp(conversation.updatedAt)}
                     </span>
                   </div>
                 </div>

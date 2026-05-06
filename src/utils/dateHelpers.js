@@ -1,4 +1,4 @@
-import { parseISO } from "date-fns";
+import { formatDistanceToNow, parseISO } from "date-fns";
 
 // Maps country names (Nominatim) and ISO-2 codes to IANA timezone identifiers.
 // Country names come from the geocoding service (OpenStreetMap/Nominatim).
@@ -169,6 +169,13 @@ const normalizeServerTimestamp = (value) => {
 export const normalizeTimestampToDate = (value) => {
   const date = normalizeServerTimestamp(value);
   return date && !Number.isNaN(date.getTime()) ? date : null;
+};
+
+export const formatRelativeChatTimestamp = (value) => {
+  const date = normalizeTimestampToDate(value);
+  if (!date) return "";
+
+  return formatDistanceToNow(date, { addSuffix: true }).replace("about ", "");
 };
 
 export const formatLocalTime = (value) => {
