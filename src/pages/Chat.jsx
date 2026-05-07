@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import {
   LogOut,
   ChevronRight,
@@ -6,11 +6,13 @@ import {
   Users,
   User,
   Trash2,
+  Search,
+  X,
 } from "lucide-react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import PageContainer from "../components/layout/PageContainer";
 import ConversationList from "../components/chat/ConversationList";
-import MessageDisplay from "../components/chat/MessageDisplay";
+import MessageDisplay, { parseSystemMessage } from "../components/chat/MessageDisplay";
 import MessageInput from "../components/chat/MessageInput";
 import { useAuth } from "../contexts/AuthContext";
 import { messageService } from "../services/messageService";
@@ -115,6 +117,9 @@ const isDirectConversationForPartner = (conversation, partnerId) =>
   conversation?.type === "direct" &&
   String(getConversationPartnerId(conversation)) === String(partnerId);
 
+const CHAT_SEARCH_PAGE_SIZE = 100;
+const CHAT_SEARCH_MAX_MESSAGES_PER_CONVERSATION = 500;
+
 const dedupeConversations = (list) =>
   (list || []).filter((conv, index, self) => {
     if (conv.type === "direct") {
@@ -131,6 +136,282 @@ const dedupeConversations = (list) =>
 
     return index === self.findIndex((candidate) => candidate.id === conv.id);
   });
+
+const getConversationSearchKey = (conversation) =>
+  `${conversation?.type || "direct"}:${conversation?.id}`;
+
+const normalizeChatSearchText = (value) =>
+  String(value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+
+const countChatSearchMatches = (value, normalizedQuery) => {
+  if (!value || !normalizedQuery) return 0;
+
+  let count = 0;
+  let startIndex = 0;
+
+  while (startIndex < value.length) {
+    const matchIndex = value.indexOf(normalizedQuery, startIndex);
+    if (matchIndex === -1) break;
+
+    count += 1;
+    startIndex = matchIndex + normalizedQuery.length;
+  }
+
+  return count;
+};
+
+const addSearchPart = (parts, value) => {
+  if (value == null) return;
+
+  if (Array.isArray(value)) {
+    value.forEach((item) => addSearchPart(parts, item));
+    return;
+  }
+
+  if (typeof value === "object") return;
+
+  const text = String(value).trim();
+  if (text) parts.push(text);
+};
+
+const addUserSearchParts = (parts, user) => {
+  if (!user) return;
+  const hasUserText =
+    user.name ||
+    user.username ||
+    user.userName ||
+    user.firstName ||
+    user.first_name ||
+    user.lastName ||
+    user.last_name;
+
+  if (!hasUserText) return;
+
+  addSearchPart(parts, [
+    user.name,
+    user.username,
+    user.userName,
+    user.firstName,
+    user.first_name,
+    user.lastName,
+    user.last_name,
+    formatDisplayName(user),
+  ]);
+};
+
+const buildMessageSearchText = (message) => {
+  const parts = [];
+  const parsedSystemMessage = parseSystemMessage(message?.content);
+  const systemMessageText = buildSystemMessageSearchSnippet(parsedSystemMessage);
+
+  addSearchPart(parts, [
+    message?.content,
+    systemMessageText,
+    message?.fileName,
+    message?.file_name,
+    message?.senderUsername,
+    message?.sender_username,
+  ]);
+  addUserSearchParts(parts, message?.sender);
+  addUserSearchParts(parts, {
+    firstName: message?.senderFirstName,
+    first_name: message?.sender_first_name,
+    lastName: message?.senderLastName,
+    last_name: message?.sender_last_name,
+    username: message?.senderUsername || message?.sender_username,
+  });
+
+  return normalizeChatSearchText(parts.join(" "));
+};
+
+const buildSystemMessageSearchSnippet = (parsedMessage) => {
+  if (!parsedMessage) return "";
+
+  switch (parsedMessage.type) {
+    case "application_approved_dm":
+      return [
+        `You approved ${parsedMessage.applicantName}'s application for ${parsedMessage.teamName}`,
+        `Your application to ${parsedMessage.teamName} was approved by ${parsedMessage.approverName}`,
+        parsedMessage.hasPersonalMessage ? "who added this message" : "Welcome to the team",
+      ].join(". ");
+    case "application_approved":
+      return [
+        `Your application was approved by ${parsedMessage.approverName}. Welcome to the team`,
+        `${parsedMessage.applicantName} has applied successfully and was added by ${parsedMessage.approverName}. Say hello to them`,
+      ].join(". ");
+    case "application_declined":
+      return [
+        `You declined ${parsedMessage.applicantName}'s application for ${parsedMessage.teamName}`,
+        `Your application to ${parsedMessage.teamName} was declined by ${parsedMessage.approverName}`,
+        parsedMessage.hasPersonalMessage
+          ? "who added this message"
+          : "Want to reach out to them in this chat",
+      ].join(". ");
+    case "application_response":
+      return `Response to your application for ${parsedMessage.teamName}. Your decline response to ${parsedMessage.applicantName}'s application for ${parsedMessage.teamName}. ${parsedMessage.personalMessage || ""}`;
+    case "invitation_declined":
+      return [
+        `You declined ${parsedMessage.inviterName}'s invitation for ${parsedMessage.teamName}`,
+        `Your invitation for ${parsedMessage.teamName} was declined by ${parsedMessage.inviteeName}`,
+        parsedMessage.hasPersonalMessage
+          ? "who added this message"
+          : "Want to reach out to them in this chat",
+      ].join(". ");
+    case "invitation_response":
+      return `Response to your invitation for ${parsedMessage.teamName}. ${parsedMessage.personalMessage || ""}`;
+    case "team_join":
+      return `${parsedMessage.userName} joined the team. You joined the team. Welcome aboard. ${parsedMessage.personalMessage || ""}`;
+    case "team_leave":
+      return `${parsedMessage.userName} has left the team. You have left the team.`;
+    case "member_removed_public":
+      return `${parsedMessage.userName} has been removed from the team. You removed ${parsedMessage.userName} from the team.`;
+    case "invitation_cancelled":
+      return `${parsedMessage.cancellerName} cancelled your invitation to join ${parsedMessage.teamName}. You cancelled your invitation for ${parsedMessage.inviteeName} to join ${parsedMessage.teamName}.`;
+    case "application_cancelled":
+      return `${parsedMessage.applicantName} cancelled their application for ${parsedMessage.teamName}. You cancelled your application for ${parsedMessage.teamName}.`;
+    case "member_removed":
+      return `You were removed from ${parsedMessage.teamName} by ${parsedMessage.removerName}. You removed ${parsedMessage.memberName} from ${parsedMessage.teamName}.`;
+    case "role_changed":
+      return `Your role in ${parsedMessage.teamName} was changed to ${parsedMessage.newRole} by ${parsedMessage.changerName}. You changed ${parsedMessage.memberName}'s role to ${parsedMessage.newRole} in ${parsedMessage.teamName}.`;
+    case "ownership_team":
+      return `${parsedMessage.prevOwnerName} transferred ownership to ${parsedMessage.newOwnerName}`;
+    case "ownership_transferred":
+      return `${parsedMessage.prevOwnerName} transferred ownership of ${parsedMessage.teamName} to you. You transferred team ownership of ${parsedMessage.teamName} to ${parsedMessage.newOwnerName}. Congratulations`;
+    case "team_deleted":
+      return `${parsedMessage.ownerName} has initiated the deletion of the team ${parsedMessage.teamName}. You initiated the deletion of the team ${parsedMessage.teamName}. The team is archived and inactive now.`;
+    default:
+      return "";
+  }
+};
+
+const buildMessageSearchSnippet = (message) => {
+  const parsedSystemMessage = parseSystemMessage(message?.content);
+  const systemMessageText = buildSystemMessageSearchSnippet(parsedSystemMessage);
+  const senderName = [
+    message?.senderFirstName || message?.sender_first_name,
+    message?.senderLastName || message?.sender_last_name,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
+  const sender =
+    senderName ||
+    message?.senderUsername ||
+    message?.sender_username ||
+    message?.sender?.username ||
+    "";
+  const body =
+    systemMessageText ||
+    message?.content ||
+    message?.fileName ||
+    message?.file_name ||
+    (message?.imageUrl || message?.image_url ? "Image" : "") ||
+    (message?.fileUrl || message?.file_url ? "File" : "");
+
+  return [sender, body].filter(Boolean).join(": ");
+};
+
+const getMessageSearchId = (message) =>
+  message?.id || message?.messageId || message?.message_id || null;
+
+const getMessageSearchTimestamp = (message) => {
+  const timestamp =
+    message?.createdAt ||
+    message?.created_at ||
+    message?.sentAt ||
+    message?.sent_at ||
+    message?.updatedAt ||
+    message?.updated_at;
+  const parsedDate = normalizeTimestampToDate(timestamp);
+
+  return parsedDate?.getTime() ?? 0;
+};
+
+const getMessageSearchTimestampValue = (message) =>
+  message?.createdAt ||
+  message?.created_at ||
+  message?.sentAt ||
+  message?.sent_at ||
+  message?.updatedAt ||
+  message?.updated_at ||
+  null;
+
+const buildMessageSearchSnippets = (messages) =>
+  (messages || [])
+    .map((message, index) => ({
+      message,
+      index,
+      timestamp: getMessageSearchTimestamp(message),
+    }))
+    .sort((a, b) => a.timestamp - b.timestamp || a.index - b.index)
+    .map(({ message }) => ({
+      id: getMessageSearchId(message),
+      text: buildMessageSearchSnippet(message),
+      timestamp: getMessageSearchTimestampValue(message),
+    }))
+    .filter((snippet) => snippet.text);
+
+const buildLatestMatchPreview = (snippet, normalizedQuery) => {
+  const text = String(snippet || "").trim();
+  if (!text || !normalizedQuery) return text;
+
+  const normalizedText = normalizeChatSearchText(text);
+  const matchIndex = normalizedText.indexOf(normalizedQuery);
+  if (matchIndex === -1 || text.length <= 120) return text;
+
+  const contextBefore = 36;
+  const contextAfter = 72;
+  const start = Math.max(0, matchIndex - contextBefore);
+  const end = Math.min(
+    text.length,
+    matchIndex + normalizedQuery.length + contextAfter,
+  );
+  const prefix = start > 0 ? "..." : "";
+  const suffix = end < text.length ? "..." : "";
+
+  return `${prefix}${text.slice(start, end).trim()}${suffix}`;
+};
+
+const buildMessagesSearchText = (messages) =>
+  normalizeChatSearchText((messages || []).map(buildMessageSearchText).join(" "));
+
+const buildConversationSearchText = (conversation) => {
+  const parts = [];
+  const isTeam = conversation?.type === "team";
+
+  addSearchPart(parts, [
+    conversation?.type,
+    conversation?.lastMessage,
+    conversation?.last_message,
+    conversation?.lastMessage?.content,
+    conversation?.last_message?.content,
+  ]);
+
+  if (isTeam) {
+    const team = conversation?.team || {};
+    addSearchPart(parts, [
+      "team",
+      "team chat",
+      team.name,
+      team.teamName,
+      team.team_name,
+      team.description,
+    ]);
+
+    (team.members || conversation?.members || []).forEach((member) => {
+      addUserSearchParts(parts, member?.user || member);
+      addSearchPart(parts, [member?.role, member?.roleName, member?.role_name]);
+    });
+  } else {
+    addSearchPart(parts, ["direct", "dm", "direct message"]);
+    addUserSearchParts(parts, conversation?.partner || conversation?.partnerUser);
+  }
+
+  return normalizeChatSearchText(parts.join(" "));
+};
 
 const Chat = () => {
   const { conversationId } = useParams();
@@ -162,16 +443,20 @@ const Chat = () => {
     useState(false);
   const [isActiveConversationVisible, setIsActiveConversationVisible] =
     useState(true);
-  const [
-    isRegularConversationHeaderVisible,
-    setIsRegularConversationHeaderVisible,
-  ] = useState(true);
-
+  const [chatSearchQuery, setChatSearchQuery] = useState("");
+  const [chatMessageSearchIndex, setChatMessageSearchIndex] = useState({});
+  const [chatMessageSearchSnippets, setChatMessageSearchSnippets] = useState({});
+  const [searchingChatMessages, setSearchingChatMessages] = useState(false);
+  const [searchNoResultsToastQuery, setSearchNoResultsToastQuery] = useState(null);
+  const searchNoResultsQueryRef = useRef(null);
+  const [searchChatVisible, setSearchChatVisible] = useState(false);
   const typingTimeoutRef = useRef(null);
   const messagesContainerRef = useRef(null);
   const pendingScrollAdjustmentRef = useRef(null);
   const conversationsRef = useRef([]);
   const activeConversationRef = useRef(null);
+  const chatSearchLoadingKeysRef = useRef(new Set());
+  const pendingChatSearchTargetRef = useRef(null);
   const [loadingMessages, setLoadingMessages] = useState(false);
 
   // ---- Message de-duplication (focus: ownership/system duplicates) ----
@@ -252,8 +537,14 @@ const Chat = () => {
     getConversationUpdatedAt(messages?.[messages.length - 1] || messages?.[0] || null);
   const showCompactConversationHeader =
     Boolean(conversationId) &&
-    !isActiveConversationVisible &&
-    !isRegularConversationHeaderVisible;
+    !isActiveConversationVisible;
+  const showEmptyConversationState =
+    !loading && conversations.length === 0 && !conversationId;
+  const normalizedChatSearchQuery = useMemo(
+    () => normalizeChatSearchText(chatSearchQuery.trim()),
+    [chatSearchQuery],
+  );
+  const isChatSearchActive = normalizedChatSearchQuery.length > 0;
 
   useEffect(() => {
     conversationsRef.current = conversations;
@@ -263,9 +554,220 @@ const Chat = () => {
     activeConversationRef.current = activeConversation;
   }, [activeConversation]);
 
+  const fetchConversationSearchText = useCallback(async (conversation) => {
+    const conversationType = conversation?.type || "direct";
+    const allMessages = [];
+    let before;
+    let hasMore = true;
+
+    while (
+      hasMore &&
+      allMessages.length < CHAT_SEARCH_MAX_MESSAGES_PER_CONVERSATION
+    ) {
+      const remaining =
+        CHAT_SEARCH_MAX_MESSAGES_PER_CONVERSATION - allMessages.length;
+      const response = await messageService.getMessages(
+        conversation.id,
+        conversationType,
+        {
+          before,
+          limit: Math.min(CHAT_SEARCH_PAGE_SIZE, remaining),
+        },
+      );
+      const pageMessages = Array.isArray(response?.data) ? response.data : [];
+
+      if (pageMessages.length === 0) {
+        break;
+      }
+
+      allMessages.push(...pageMessages);
+      hasMore = Boolean(response?.hasMore);
+      before = pageMessages[0]?.id;
+
+      if (!before) {
+        break;
+      }
+    }
+
+    return {
+      text: buildMessagesSearchText(allMessages),
+      snippets: buildMessageSearchSnippets(allMessages),
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!conversationId || messages.length === 0) return;
+
+    const key = `${conversationType}:${conversationId}`;
+    const activeMessagesSearchText = buildMessagesSearchText(messages);
+
+    setChatMessageSearchIndex((prev) => ({
+      ...prev,
+      [key]: normalizeChatSearchText(
+        `${prev[key] || ""} ${activeMessagesSearchText}`,
+      ),
+    }));
+    setChatMessageSearchSnippets((prev) => ({
+      ...prev,
+      [key]: buildMessageSearchSnippets(messages),
+    }));
+  }, [conversationId, conversationType, messages]);
+
+  useEffect(() => {
+    if (!isAuthenticated || !isChatSearchActive || conversations.length === 0) {
+      setSearchingChatMessages(false);
+      return;
+    }
+
+    const missingConversations = conversations.filter((conversation) => {
+      const key = getConversationSearchKey(conversation);
+      return (
+        !chatMessageSearchIndex[key] &&
+        !chatSearchLoadingKeysRef.current.has(key)
+      );
+    });
+
+    if (missingConversations.length === 0) {
+      setSearchingChatMessages(chatSearchLoadingKeysRef.current.size > 0);
+      return;
+    }
+
+    missingConversations.forEach((conversation) => {
+      chatSearchLoadingKeysRef.current.add(getConversationSearchKey(conversation));
+    });
+    setSearchingChatMessages(true);
+
+    Promise.allSettled(
+      missingConversations.map(async (conversation) => ({
+        key: getConversationSearchKey(conversation),
+        result: await fetchConversationSearchText(conversation),
+      })),
+    ).then((results) => {
+      setChatMessageSearchIndex((prev) => {
+        const next = { ...prev };
+
+        results.forEach((result, index) => {
+          if (result.status === "fulfilled") {
+            next[result.value.key] = result.value.result.text || " ";
+            return;
+          }
+
+          next[getConversationSearchKey(missingConversations[index])] = " ";
+        });
+
+        return next;
+      });
+      setChatMessageSearchSnippets((prev) => {
+        const next = { ...prev };
+
+        results.forEach((result, index) => {
+          if (result.status === "fulfilled") {
+            next[result.value.key] = result.value.result.snippets || [];
+            return;
+          }
+
+          next[getConversationSearchKey(missingConversations[index])] = [];
+        });
+
+        return next;
+      });
+
+      results.forEach((result, index) => {
+        const key =
+          result.status === "fulfilled"
+            ? result.value.key
+            : getConversationSearchKey(missingConversations[index]);
+        chatSearchLoadingKeysRef.current.delete(key);
+      });
+      setSearchingChatMessages(chatSearchLoadingKeysRef.current.size > 0);
+    });
+  }, [
+    chatMessageSearchIndex,
+    conversations,
+    fetchConversationSearchText,
+    isAuthenticated,
+    isChatSearchActive,
+  ]);
+
+  const filteredConversations = useMemo(() => {
+    if (!isChatSearchActive) return conversations;
+
+    return conversations
+      .map((conversation) => {
+        const key = getConversationSearchKey(conversation);
+        const conversationSearchText = buildConversationSearchText(conversation);
+        const messageSearchText = chatMessageSearchIndex[key] || "";
+        const searchMatchCount =
+          countChatSearchMatches(
+            conversationSearchText,
+            normalizedChatSearchQuery,
+          ) +
+          countChatSearchMatches(messageSearchText, normalizedChatSearchQuery);
+        const matchedMessageSnippet = [
+          ...(chatMessageSearchSnippets[key] || []),
+        ]
+          .reverse()
+          .find((snippet) =>
+            normalizeChatSearchText(snippet.text).includes(
+              normalizedChatSearchQuery,
+            ),
+          );
+        const nextConversation = matchedMessageSnippet
+          ? {
+              ...conversation,
+              searchMatchPreview: buildLatestMatchPreview(
+                matchedMessageSnippet.text,
+                normalizedChatSearchQuery,
+              ),
+              searchMatchMessageId: matchedMessageSnippet.id,
+              searchMatchCreatedAt: matchedMessageSnippet.timestamp,
+            }
+          : conversation;
+
+        return {
+          conversation: nextConversation,
+          searchMatchCount,
+        };
+      })
+      .filter(({ searchMatchCount }) => searchMatchCount > 0)
+      .sort((a, b) => {
+        if (b.searchMatchCount !== a.searchMatchCount) {
+          return b.searchMatchCount - a.searchMatchCount;
+        }
+
+        const aDate = getConversationUpdatedAt(a.conversation)?.getTime() ?? 0;
+        const bDate = getConversationUpdatedAt(b.conversation)?.getTime() ?? 0;
+        return bDate - aDate;
+      })
+      .map(({ conversation, searchMatchCount }) => ({ ...conversation, searchMatchCount }));
+  }, [
+    chatMessageSearchIndex,
+    chatMessageSearchSnippets,
+    conversations,
+    isChatSearchActive,
+    normalizedChatSearchQuery,
+  ]);
+
+  useEffect(() => {
+    if (isChatSearchActive && !searchingChatMessages && filteredConversations.length === 0) {
+      const query = chatSearchQuery.trim();
+      if (searchNoResultsQueryRef.current !== query) {
+        searchNoResultsQueryRef.current = query;
+        setSearchNoResultsToastQuery(query);
+      }
+    } else {
+      searchNoResultsQueryRef.current = null;
+      setSearchNoResultsToastQuery(null);
+    }
+  }, [isChatSearchActive, searchingChatMessages, filteredConversations.length, chatSearchQuery]);
+
+  useEffect(() => {
+    setSearchChatVisible(false);
+    setHighlightMessageIds([]);
+  }, [chatSearchQuery]);
+
   useEffect(() => {
     setIsActiveConversationVisible(true);
-    setIsRegularConversationHeaderVisible(true);
   }, [conversationId]);
 
   const handleActiveConversationVisibilityChange = useCallback((isVisible) => {
@@ -273,15 +775,6 @@ const Chat = () => {
       current === isVisible ? current : isVisible,
     );
   }, []);
-
-  const handleRegularConversationHeaderVisibilityChange = useCallback(
-    (isVisible) => {
-      setIsRegularConversationHeaderVisible((current) =>
-        current === isVisible ? current : isVisible,
-      );
-    },
-    [],
-  );
 
   const refreshConversationList = useCallback(async () => {
     try {
@@ -561,14 +1054,81 @@ const Chat = () => {
             conversationId,
             type,
           );
-          const fetchedMessages = messagesResponse.data || [];
-          setHasMoreMessages(messagesResponse.hasMore || false);
+          const searchTarget = pendingChatSearchTargetRef.current;
+          const shouldRevealSearchTarget =
+            searchTarget?.messageId &&
+            String(searchTarget.conversationId) === String(conversationId) &&
+            searchTarget.type === type;
+          let fetchedMessages = messagesResponse.data || [];
+          let nextHasMoreMessages = messagesResponse.hasMore || false;
+
+          if (shouldRevealSearchTarget) {
+            let oldestMessage = fetchedMessages[0];
+            let loadedCount = fetchedMessages.length;
+
+            while (
+              nextHasMoreMessages &&
+              oldestMessage?.id &&
+              loadedCount < CHAT_SEARCH_MAX_MESSAGES_PER_CONVERSATION
+            ) {
+              const remaining =
+                CHAT_SEARCH_MAX_MESSAGES_PER_CONVERSATION - loadedCount;
+              const earlierResponse = await messageService.getMessages(
+                conversationId,
+                type,
+                {
+                  before: oldestMessage.id,
+                  limit: Math.min(50, remaining),
+                },
+              );
+              const earlierMessages = earlierResponse.data || [];
+
+              if (earlierMessages.length === 0) {
+                nextHasMoreMessages = false;
+                break;
+              }
+
+              fetchedMessages = [...earlierMessages, ...fetchedMessages];
+              loadedCount += earlierMessages.length;
+              nextHasMoreMessages = earlierResponse.hasMore || false;
+              oldestMessage = earlierMessages[0];
+            }
+          }
+
+          setHasMoreMessages(nextHasMoreMessages);
           setMessages(dedupeMessages(fetchedMessages));
 
           // Check if we need to highlight messages from a specific user (from notification)
           const highlightUser = searchParams.get("highlightUser");
 
-          if (highlightUser) {
+          if (
+            shouldRevealSearchTarget &&
+            fetchedMessages.some(
+              (msg) => String(msg.id) === String(searchTarget.messageId),
+            )
+          ) {
+            const query = searchTarget.query;
+            const allMatchingIds = query
+              ? fetchedMessages
+                  .filter((msg) => buildMessageSearchText(msg).includes(query))
+                  .map((msg) => msg.id)
+                  .filter(Boolean)
+              : [];
+            // Put the target (most recent match) first so the view scrolls to it
+            const highlightIds = [
+              searchTarget.messageId,
+              ...allMatchingIds.filter(
+                (id) => String(id) !== String(searchTarget.messageId),
+              ),
+            ];
+            setHighlightMessageIds(highlightIds);
+            pendingChatSearchTargetRef.current = null;
+            // No auto-clear — highlights persist until search query changes
+          } else if (highlightUser) {
+            if (shouldRevealSearchTarget) {
+              pendingChatSearchTargetRef.current = null;
+            }
+
             // Highlight the most recent messages from this user (join message + response)
             const userMessages = fetchedMessages
               .filter((msg) => String(msg.senderId) === String(highlightUser))
@@ -588,6 +1148,10 @@ const Chat = () => {
               }, 4000);
             }
           } else {
+            if (shouldRevealSearchTarget) {
+              pendingChatSearchTargetRef.current = null;
+            }
+
             // Default behavior: highlight unread messages
             const unreadIds = fetchedMessages
               .filter((msg) => msg.senderId !== user?.id && !msg.readAt)
@@ -1594,9 +2158,28 @@ const Chat = () => {
   };
 
   const selectConversation = (id) => {
+    // Deselect only when the chat panel is currently visible for this conversation
+    if (showChatView && String(id) === String(conversationId)) {
+      setShowChatView(false);
+      navigate("/chat");
+      return;
+    }
+
     // Find the conversation to get its type
-    const conversation = conversations.find((c) => c.id === id);
+    const conversation =
+      filteredConversations.find((c) => c.id === id) ||
+      conversations.find((c) => c.id === id);
     const type = conversation?.type || "direct";
+
+    pendingChatSearchTargetRef.current =
+      isChatSearchActive && conversation?.searchMatchMessageId
+        ? {
+            conversationId: id,
+            type,
+            messageId: conversation.searchMatchMessageId,
+            query: normalizedChatSearchQuery,
+          }
+        : null;
 
     // Reset unread count for selected conversation
     setConversations((prev) =>
@@ -1605,6 +2188,11 @@ const Chat = () => {
 
     // Show chat view on mobile/tablet when conversation is selected
     setShowChatView(true);
+
+    // When search is active, reveal the chat panel
+    if (isChatSearchActive) {
+      setSearchChatVisible(true);
+    }
 
     // Navigate with type parameter
     navigate(`/chat/${id}?type=${type}`);
@@ -1644,14 +2232,82 @@ const Chat = () => {
       icon: <LogOut size={16} />,
     },
   }[pendingChatActionType];
+  const isNoSearchResults =
+    isChatSearchActive && !searchingChatMessages && filteredConversations.length === 0;
+  const hideChatDuringSearch = isChatSearchActive && !searchChatVisible;
+  const totalSearchMatches = isChatSearchActive
+    ? filteredConversations.reduce((sum, conv) => sum + (conv.searchMatchCount || 0), 0)
+    : 0;
+  const chatSearchPlaceholder = "Search chats...";
+  const chatSearchInputWidth = `${Math.max(
+    chatSearchQuery.length,
+    chatSearchPlaceholder.length,
+  )}ch`;
+
+  const chatSearchAction = (
+    <div className="flex max-w-full flex-col items-start sm:items-end">
+      <label className="input input-bordered flex h-10 w-fit max-w-full items-center gap-2 rounded-lg bg-base-100">
+        <Search size={16} className="shrink-0 text-base-content/50" />
+        <input
+          type="search"
+          className="min-w-0 text-sm"
+          placeholder={chatSearchPlaceholder}
+          aria-label="Search chats"
+          value={chatSearchQuery}
+          onChange={(event) => setChatSearchQuery(event.target.value)}
+          style={{
+            width: chatSearchInputWidth,
+            minWidth: `${chatSearchPlaceholder.length}ch`,
+            maxWidth: "min(42vw, 24rem)",
+          }}
+        />
+        {chatSearchQuery && (
+          <button
+            type="button"
+            className="btn btn-ghost btn-xs ml-auto h-6 min-h-0 w-6 p-0"
+            onClick={() => setChatSearchQuery("")}
+            aria-label="Clear chat search"
+          >
+            <X size={14} />
+          </button>
+        )}
+      </label>
+      {isChatSearchActive && !isNoSearchResults && (
+        <p className="mt-1 text-xs text-base-content/60 sm:text-right">
+          {filteredConversations.length} of {conversations.length} chats
+          {searchingChatMessages
+            ? " · searching messages..."
+            : ` · ${totalSearchMatches} ${totalSearchMatches === 1 ? "match" : "matches"}`}
+        </p>
+      )}
+    </div>
+  );
+  const chatSearchEmptyState =
+    isChatSearchActive && searchingChatMessages
+      ? {
+          title: "Searching chats...",
+          description: `Looking through message history for "${chatSearchQuery.trim()}".`,
+          showActions: false,
+        }
+      : null;
 
   return (
     <PageContainer
-      title="Messages"
-      className="p-0 overflow-hidden"
+      title="Chats"
+      action={chatSearchAction}
+      className="p-0"
       variant="muted"
     >
       <ScreenAlert type="error" message={error} onClose={() => setError(null)} />
+      <ScreenAlert
+        type="violet"
+        message={
+          searchNoResultsToastQuery
+            ? `No user names, team names, or messages match "${searchNoResultsToastQuery}". Try a different search term.`
+            : null
+        }
+        onClose={() => setSearchNoResultsToastQuery(null)}
+      />
 
       <Modal
         isOpen={Boolean(pendingChatAction)}
@@ -1690,29 +2346,38 @@ const Chat = () => {
         </p>
       </Modal>
 
-      <div className="bg-white shadow-soft flex h-[calc(100vh-200px)] rounded-xl overflow-hidden">
+      <div className="flex h-[calc(100vh-200px)] gap-2">
         {/* Conversation List - Left Sidebar */}
         <div
           data-conversation-list-viewport="true"
-          className={`border-r border-base-200 overflow-y-auto transition-all duration-300 ${
-            showChatView ? "hidden md:block md:w-1/3" : "w-full md:w-1/3"
+          className={`lomir-conversation-list-scrollbar overflow-y-auto transition-all duration-300 ${
+            showEmptyConversationState || hideChatDuringSearch || !conversationId || !showChatView
+              ? "w-full"
+              : "hidden md:block md:w-1/3"
           }`}
+          style={{ direction: "rtl" }}
         >
-          <ConversationList
-            conversations={conversations}
-            activeConversationId={conversationId}
-            onSelectConversation={selectConversation}
-            loading={loading}
-            onlineUsers={onlineUsers}
-            onActiveConversationVisibilityChange={
-              handleActiveConversationVisibilityChange
-            }
-            teamMembersRefreshSignal={teamMembersRefreshSignal}
-          />
+          <div className="h-full" style={{ direction: "ltr" }}>
+            <ConversationList
+              conversations={isNoSearchResults ? conversations : filteredConversations}
+              activeConversationId={conversationId}
+              onSelectConversation={selectConversation}
+              loading={loading}
+              onlineUsers={onlineUsers}
+              onActiveConversationVisibilityChange={
+                handleActiveConversationVisibilityChange
+              }
+              teamMembersRefreshSignal={teamMembersRefreshSignal}
+              emptyState={isNoSearchResults ? null : chatSearchEmptyState}
+              searchQuery={isNoSearchResults ? "" : chatSearchQuery}
+              chatVisible={!hideChatDuringSearch && showChatView}
+            />
+          </div>
         </div>
 
         {/* Message Display - Right Side */}
-        <div className={`flex flex-col transition-all duration-300 ${
+        {!showEmptyConversationState && !hideChatDuringSearch && conversationId && showChatView && (
+        <div className={`bg-white shadow-soft rounded-xl overflow-hidden flex flex-col min-w-0 transition-all duration-300 ${
           showChatView ? "w-full md:w-2/3" : "hidden md:flex md:w-2/3"
         }`}>
           {conversationId ? (
@@ -1878,9 +2543,7 @@ const Chat = () => {
                   onDeleteMessage={handleDeleteMessage}
                   onEditMessage={handleEditMessage}
                   onLeaveTeam={handleLeaveTeam}
-                  onConversationHeaderVisibilityChange={
-                    handleRegularConversationHeaderVisibilityChange
-                  }
+                  searchQuery={chatSearchQuery}
                 />
               </div>
 
@@ -1949,6 +2612,7 @@ const Chat = () => {
             </div>
           )}
         </div>
+        )}
       </div>
       <TeamDetailsModal
         isOpen={isTeamModalOpen}
