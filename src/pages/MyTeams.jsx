@@ -861,12 +861,19 @@ const MyTeams = () => {
             <p className="text-base-content/70 mb-4">
               You haven't joined any teams yet.
             </p>
-            <Button
-              variant="primary"
-              onClick={() => setIsCreateTeamModalOpen(true)}
-            >
-              Create Your First Team
-            </Button>
+            <div className="flex flex-col items-center justify-center gap-3 sm:flex-row">
+              <Button
+                variant="primary"
+                onClick={() => setIsCreateTeamModalOpen(true)}
+              >
+                Create Your First Team
+              </Button>
+              <Link to="/search?type=teams">
+                <Button variant="primary" icon={<SearchIcon size={16} />}>
+                  Find Teams
+                </Button>
+              </Link>
+            </div>
           </div>
         ) : (
           <>
