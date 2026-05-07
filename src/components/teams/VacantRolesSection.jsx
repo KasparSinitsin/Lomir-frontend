@@ -1,9 +1,17 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { UserSearch, Plus, AlertCircle, ChevronRight, ChevronUp } from "lucide-react";
+import {
+  UserSearch,
+  Plus,
+  AlertCircle,
+  ChevronRight,
+  ChevronUp,
+  Trash2,
+} from "lucide-react";
 import VacantRoleCard from "./VacantRoleCard";
 import CreateVacantRoleModal from "./CreateVacantRoleModal";
 import Button from "../common/Button";
-import Alert from "../common/Alert";
+import ConfirmModal from "../common/ConfirmModal";
+import ScreenAlert from "../common/ScreenAlert";
 import { vacantRoleService } from "../../services/vacantRoleService";
 import { matchingService } from "../../services/matchingService";
 import { useAuth } from "../../contexts/AuthContext";
@@ -63,6 +71,11 @@ const VacantRolesSection = ({
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingRole, setEditingRole] = useState(null);
+  const [pendingDeleteRoleId, setPendingDeleteRoleId] = useState(null);
+  const [deleteRoleLoading, setDeleteRoleLoading] = useState(false);
+  const pendingDeleteRole = roles.find(
+    (role) => String(role.id) === String(pendingDeleteRoleId),
+  );
 
   // Fetch vacant roles
   const fetchRoles = useCallback(async () => {
@@ -143,17 +156,26 @@ const VacantRolesSection = ({
   };
 
   // Handle delete
-  const handleDelete = async (roleId) => {
-    if (!window.confirm("Are you sure you want to delete this vacant role?")) {
-      return;
-    }
+  const handleDelete = (roleId) => {
+    if (!roleId) return;
+    setPendingDeleteRoleId(roleId);
+  };
 
+  const closeDeleteRoleDialog = () => {
+    if (deleteRoleLoading) return;
+    setPendingDeleteRoleId(null);
+  };
+
+  const confirmDeleteRole = async () => {
+    if (!pendingDeleteRoleId) return;
     try {
-      await vacantRoleService.deleteVacantRole(teamId, roleId);
+      setDeleteRoleLoading(true);
+      await vacantRoleService.deleteVacantRole(teamId, pendingDeleteRoleId);
       setNotification({
         type: "success",
         message: "Vacant role deleted successfully",
       });
+      setPendingDeleteRoleId(null);
       await fetchRoles();
     } catch (err) {
       console.error("Error deleting vacant role:", err);
@@ -161,6 +183,8 @@ const VacantRolesSection = ({
         type: "error",
         message: err.response?.data?.message || "Failed to delete role",
       });
+    } finally {
+      setDeleteRoleLoading(false);
     }
   };
 
@@ -241,15 +265,11 @@ const VacantRolesSection = ({
         )}
       </div>
 
-      {/* Notification */}
-      {notification.type && (
-        <Alert
-          type={notification.type}
-          message={notification.message}
-          onClose={() => setNotification({ type: null, message: null })}
-          className="mb-4"
-        />
-      )}
+      <ScreenAlert
+        type={notification.type}
+        message={notification.message}
+        onClose={() => setNotification({ type: null, message: null })}
+      />
 
       {/* Error state */}
       {error && (
@@ -322,6 +342,26 @@ const VacantRolesSection = ({
         existingRole={editingRole}
         onSuccess={handleModalSuccess}
       />
+
+      <ConfirmModal
+        isOpen={Boolean(pendingDeleteRoleId)}
+        onClose={closeDeleteRoleDialog}
+        onConfirm={confirmDeleteRole}
+        title="Delete Vacant Role"
+        loading={deleteRoleLoading}
+        confirmLabel="Delete Role"
+        loadingLabel="Deleting..."
+        confirmVariant="error"
+        confirmIcon={<Trash2 size={16} />}
+      >
+        <p className="text-sm text-base-content/80">
+          Delete{" "}
+          {pendingDeleteRole?.roleName ||
+            pendingDeleteRole?.role_name ||
+            "this vacant role"}
+          ? This removes the role from your team.
+        </p>
+      </ConfirmModal>
     </div>
   );
 };

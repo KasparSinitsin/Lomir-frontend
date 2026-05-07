@@ -2,7 +2,8 @@ import React, { useState, useEffect } from "react";
 import { useAuth } from "../../contexts/AuthContext";
 import { teamService } from "../../services/teamService";
 import Button from "../common/Button";
-import Alert from "../common/Alert";
+import ConfirmModal from "../common/ConfirmModal";
+import ScreenAlert from "../common/ScreenAlert";
 import {
   Crown,
   Shield,
@@ -10,7 +11,6 @@ import {
   ChevronUp,
   ChevronDown,
   Loader2,
-  AlertTriangle,
 } from "lucide-react";
 
 const TeamRoleManager = ({ team, onRoleUpdate, className = "" }) => {
@@ -101,9 +101,13 @@ case "owner":
     try {
       await teamService.updateMemberRole(team.id, member.user_id, newRole);
 
+      const memberName =
+        member.first_name && member.last_name
+          ? `${member.first_name} ${member.last_name}`
+          : member.first_name || member.username;
       setNotification({
         type: "success",
-        message: `${member.first_name || member.username} has been ${
+        message: `${memberName} has been ${
           newRole === "admin" ? "promoted to admin" : "demoted to member"
         } successfully!`,
       });
@@ -164,15 +168,11 @@ case "owner":
         </div>
       </div>
 
-      {/* Notification */}
-      {notification.type && (
-        <Alert
-          type={notification.type}
-          message={notification.message}
-          onClose={() => setNotification({ type: null, message: null })}
-          className="mb-4"
-        />
-      )}
+      <ScreenAlert
+        type={notification.type}
+        message={notification.message}
+        onClose={() => setNotification({ type: null, message: null })}
+      />
 
       {/* Members List */}
       <div className="space-y-3">
@@ -296,52 +296,25 @@ case "owner":
       </div>
 
       {/* Confirmation Dialog */}
-      {confirmDialog.isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          {/* Backdrop */}
-          <div
-            className="absolute inset-0 bg-black bg-opacity-50"
-            onClick={closeConfirmDialog}
-          />
-
-          {/* Dialog */}
-          <div className="relative bg-base-100 rounded-lg p-6 max-w-md w-full mx-4 shadow-xl">
-            <div className="flex items-center space-x-3 mb-4">
-              <AlertTriangle className="w-6 h-6 text-warning" />
-              <h3 className="text-lg font-semibold">Confirm Role Change</h3>
-            </div>
-
-            <p className="text-base-content/80 mb-6">
-              Are you sure you want to {confirmDialog.action}{" "}
-              <strong>
-                {confirmDialog.member?.first_name ||
-                  confirmDialog.member?.username}
-              </strong>{" "}
-              to {confirmDialog.newRole}?
-            </p>
-
-            <div className="flex justify-end space-x-3">
-              <Button
-                variant="ghost"
-                onClick={closeConfirmDialog}
-                disabled={loading}
-              >
-                Cancel
-              </Button>
-              <Button
-                variant="primary"
-                onClick={executeRoleChange}
-                disabled={loading}
-                icon={
-                  loading ? <Loader2 className="w-4 h-4 animate-spin" /> : null
-                }
-              >
-                {loading ? "Updating..." : "Confirm"}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmModal
+        isOpen={confirmDialog.isOpen}
+        onClose={closeConfirmDialog}
+        onConfirm={executeRoleChange}
+        title="Confirm Role Change"
+        loading={loading}
+        confirmLabel="Confirm"
+        loadingLabel="Updating..."
+      >
+        <p className="text-sm text-base-content/80">
+          Are you sure you want to {confirmDialog.action}{" "}
+          <strong>
+            {confirmDialog.member?.first_name && confirmDialog.member?.last_name
+              ? `${confirmDialog.member.first_name} ${confirmDialog.member.last_name}`
+              : confirmDialog.member?.first_name || confirmDialog.member?.username}
+          </strong>{" "}
+          to {confirmDialog.newRole}?
+        </p>
+      </ConfirmModal>
     </div>
   );
 };

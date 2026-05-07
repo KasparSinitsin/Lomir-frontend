@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Crown, Shield, User, UserX } from "lucide-react";
 import Dropdown, { DropdownItem } from "../common/Dropdown";
 import RoleBadgePill from "../common/RoleBadgePill";
+import ConfirmModal from "../common/ConfirmModal";
 
 const RoleBadgeDropdown = ({
   member,
@@ -12,6 +13,7 @@ const RoleBadgeDropdown = ({
   isTeamArchived = false,
 }) => {
   const [isLoading, setIsLoading] = useState(false);
+  const [pendingAction, setPendingAction] = useState(null);
 
   // Get role display information
   const getRoleInfo = (role) => {
@@ -46,47 +48,93 @@ const RoleBadgeDropdown = ({
   const roleInfo = getRoleInfo(member.role);
   const RoleIcon = roleInfo.icon;
 
-  const handleRoleChange = async (newRole) => {
-    const memberName = member.username || member.first_name || "this member";
+  const getMemberName = () => {
+    const first = member.first_name || member.firstName;
+    const last = member.last_name || member.lastName;
+    if (first && last) return `${first} ${last}`;
+    return first || member.username || "this member";
+  };
 
-    let confirmMessage;
+  const handleRoleChange = (newRole) => {
+    const memberName = getMemberName();
+
+    let message;
+    let title;
+    let confirmLabel;
+    let variant = "primary";
+    let icon = null;
+
     if (newRole === "owner") {
-      confirmMessage = `Are you sure you want to transfer ownership to ${memberName}? You will become an Admin.`;
+      title = "Transfer Ownership";
+      message = `Transfer ownership to ${memberName}? You will become an Admin.`;
+      confirmLabel = "Transfer";
+      variant = "warning";
+      icon = <Crown size={16} />;
     } else if (newRole === "admin") {
-      confirmMessage = `Are you sure you want to promote ${memberName} to Admin?`;
+      title = "Promote Member";
+      message = `Promote ${memberName} to Admin?`;
+      confirmLabel = "Promote";
+      icon = <Shield size={16} />;
     } else {
-      confirmMessage = `Are you sure you want to demote ${memberName} to Member?`;
+      title = "Demote Admin";
+      message = `Demote ${memberName} to Member?`;
+      confirmLabel = "Demote";
+      icon = <User size={16} />;
     }
 
-    if (window.confirm(confirmMessage)) {
-      setIsLoading(true);
-      try {
-        await onRoleChange(newRole);
-      } catch (error) {
-        console.error("Role change error:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    }
+    setPendingAction({
+      type: "role",
+      newRole,
+      title,
+      message,
+      confirmLabel,
+      loadingLabel: "Updating...",
+      variant,
+      icon,
+    });
   };
 
   // Handle member removal
-  const handleRemoveMember = async () => {
-    const memberName = member.username || member.first_name || "this member";
+  const handleRemoveMember = () => {
+    const memberName = getMemberName();
 
-    if (
-      window.confirm(
-        `Are you sure you want to remove ${memberName} from the team? This action cannot be undone.`,
-      )
-    ) {
-      setIsLoading(true);
-      try {
+    setPendingAction({
+      type: "remove",
+      title: "Remove Team Member",
+      message: `Remove ${memberName} from the team? This action cannot be undone.`,
+      confirmLabel: "Remove",
+      loadingLabel: "Removing...",
+      variant: "error",
+      icon: <UserX size={16} />,
+    });
+  };
+
+  const closePendingAction = () => {
+    if (isLoading) return;
+    setPendingAction(null);
+  };
+
+  const confirmPendingAction = async () => {
+    if (!pendingAction) return;
+
+    setIsLoading(true);
+    try {
+      if (pendingAction.type === "role") {
+        await onRoleChange(pendingAction.newRole);
+      } else if (pendingAction.type === "remove") {
         await onRemoveMember(member.user_id || member.userId);
-      } catch (error) {
-        console.error("Remove member error:", error);
-      } finally {
-        setIsLoading(false);
       }
+
+      setPendingAction(null);
+    } catch (error) {
+      console.error(
+        pendingAction.type === "remove"
+          ? "Remove member error:"
+          : "Role change error:",
+        error,
+      );
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -102,7 +150,7 @@ const RoleBadgeDropdown = ({
   );
 
   // If user can't manage this member, show static badge
-  if (!canManage || isLoading) {
+  if (!canManage || (isLoading && !pendingAction)) {
     return triggerBadge;
   }
 
@@ -118,64 +166,82 @@ const RoleBadgeDropdown = ({
   }
 
   return (
-    <Dropdown
-      trigger={triggerBadge}
-      position="bottom-right"
-      openOnHover={true}
-      hoverDelay={150}
-      dropdownClassName="min-w-48"
-    >
-      {/* Promote to Admin - shown for members (NOT for archived teams) */}
-      {member.role === "member" && !isTeamArchived && (
-        <DropdownItem
-          icon={<Shield className="w-4 h-4" />}
-          onClick={() => handleRoleChange("admin")}
-          variant="default"
-        >
-          Promote to Admin
-        </DropdownItem>
-      )}
-
-      {/* Demote to Member - shown for admins (NOT for archived teams) */}
-      {member.role === "admin" && !isTeamArchived && (
-        <DropdownItem
-          icon={<User className="w-4 h-4" />}
-          onClick={() => handleRoleChange("member")}
-          variant="default"
-        >
-          Demote to Member
-        </DropdownItem>
-      )}
-
-      {/* Transfer Ownership - only shown to current owner (NOT for archived teams) */}
-      {isOwner && member.role !== "owner" && !isTeamArchived && (
-        <>
-          <div className="border-t border-base-300 my-1" />
+    <>
+      <Dropdown
+        trigger={triggerBadge}
+        position="bottom-right"
+        openOnHover={true}
+        hoverDelay={150}
+        dropdownClassName="min-w-48"
+      >
+        {/* Promote to Admin - shown for members (NOT for archived teams) */}
+        {member.role === "member" && !isTeamArchived && (
           <DropdownItem
-            icon={<Crown className="w-4 h-4 text-warning" />}
-            onClick={() => handleRoleChange("owner")}
-            variant="warning"
+            icon={<Shield className="w-4 h-4" />}
+            onClick={() => handleRoleChange("admin")}
+            variant="default"
           >
-            Transfer Ownership
+            Promote to Admin
           </DropdownItem>
-        </>
-      )}
+        )}
 
-      {/* Remove from Team - shown for non-owners (KEEP for archived teams) */}
-      {member.role !== "owner" && onRemoveMember && (
-        <>
-          {/* Only show divider if there were items above */}
-          {!isTeamArchived && <div className="border-t border-base-300 my-1" />}
+        {/* Demote to Member - shown for admins (NOT for archived teams) */}
+        {member.role === "admin" && !isTeamArchived && (
           <DropdownItem
-            icon={<UserX className="w-4 h-4 text-error" />}
-            onClick={handleRemoveMember}
-            variant="error"
+            icon={<User className="w-4 h-4" />}
+            onClick={() => handleRoleChange("member")}
+            variant="default"
           >
-            Remove from Team
+            Demote to Member
           </DropdownItem>
-        </>
-      )}
-    </Dropdown>
+        )}
+
+        {/* Transfer Ownership - only shown to current owner (NOT for archived teams) */}
+        {isOwner && member.role !== "owner" && !isTeamArchived && (
+          <>
+            <div className="border-t border-base-300 my-1" />
+            <DropdownItem
+              icon={<Crown className="w-4 h-4 text-warning" />}
+              onClick={() => handleRoleChange("owner")}
+              variant="warning"
+            >
+              Transfer Ownership
+            </DropdownItem>
+          </>
+        )}
+
+        {/* Remove from Team - shown for non-owners (KEEP for archived teams) */}
+        {member.role !== "owner" && onRemoveMember && (
+          <>
+            {/* Only show divider if there were items above */}
+            {!isTeamArchived && <div className="border-t border-base-300 my-1" />}
+            <DropdownItem
+              icon={<UserX className="w-4 h-4 text-error" />}
+              onClick={handleRemoveMember}
+              variant="error"
+            >
+              Remove from Team
+            </DropdownItem>
+          </>
+        )}
+      </Dropdown>
+
+      <ConfirmModal
+        isOpen={Boolean(pendingAction)}
+        onClose={closePendingAction}
+        onConfirm={confirmPendingAction}
+        title={pendingAction?.title}
+        loading={isLoading}
+        confirmLabel={pendingAction?.confirmLabel}
+        loadingLabel={pendingAction?.loadingLabel}
+        confirmVariant={pendingAction?.variant || "primary"}
+        confirmIcon={pendingAction?.icon}
+      >
+        <p className="text-sm text-base-content/80">
+          {pendingAction?.message}
+        </p>
+      </ConfirmModal>
+    </>
   );
 };
 

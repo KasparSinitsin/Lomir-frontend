@@ -16,16 +16,50 @@ import {
   isOwnMessage,
 } from "../../utils/messageNotificationUtils";
 
+const buildMessageTooltip = (count, teamCount, senderCount) => {
+  if (!count) return undefined;
+  const msg = `${count} unread message${count !== 1 ? "s" : ""}`;
+  const parts = [];
+  if (teamCount > 0) parts.push(`in ${teamCount} team${teamCount !== 1 ? "s" : ""}`);
+  if (senderCount > 0) parts.push(`from ${senderCount} person${senderCount !== 1 ? "s" : ""}`);
+  return parts.length ? `${msg}\n${parts.join(" and ")}` : msg;
+};
+
+const buildNotificationTooltip = (count, types) => {
+  if (!count || !types) return undefined;
+  const p = (n, s) => `${n} ${s}${n !== 1 ? "s" : ""}`;
+  const lines = [
+    types.invitationReceived && `${p(types.invitationReceived, "team invitation")} for you`,
+    types.applicationReceived && `${p(types.applicationReceived, "team application")} to review`,
+    types.applicationApproved && `${p(types.applicationApproved, "team")} joined successfully`,
+    types.applicationRejected && `${p(types.applicationRejected, "team application")} rejected`,
+    types.badgeAwarded && `${p(types.badgeAwarded, "new badge award")} for you`,
+    types.memberJoined && `${p(types.memberJoined, "new member")} joined your team${types.memberJoined !== 1 ? "s" : ""}`,
+    types.memberLeft && `${p(types.memberLeft, "member")} left your team${types.memberLeft !== 1 ? "s" : ""}`,
+    types.memberRemoved && `Removed from ${p(types.memberRemoved, "team")}`,
+    types.roleChanged && `${p(types.roleChanged, "role change")} in your team${types.roleChanged !== 1 ? "s" : ""}`,
+    types.ownershipTransferred && `${p(types.ownershipTransferred, "ownership transfer")}`,
+    types.teamDeleted && `${p(types.teamDeleted, "team")} deleted`,
+    types.invitationDeclined && `${p(types.invitationDeclined, "invitation")} declined`,
+    types.invitationCancelled && `${p(types.invitationCancelled, "invitation")} cancelled`,
+    types.applicationCancelled && `${p(types.applicationCancelled, "application")} cancelled`,
+  ].filter(Boolean);
+  return lines.length ? lines.join("\n") : `${p(count, "notification")}`;
+};
+
 const Navbar = () => {
   const { isAuthenticated, user, logout } = useAuth();
   const [imageError, setImageError] = useState(false);
   // Message notification state
   const [unreadMessageCount, setUnreadMessageCount] = useState(0);
   const [firstUnreadMessage, setFirstUnreadMessage] = useState(null);
+  const [messageTeamCount, setMessageTeamCount] = useState(0);
+  const [messageSenderCount, setMessageSenderCount] = useState(0);
 
   // General notification state (invitations, applications, etc.)
   const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
   const [firstUnreadNotification, setFirstUnreadNotification] = useState(null);
+  const [notificationTypeCounts, setNotificationTypeCounts] = useState({});
   const location = useLocation();
   const navigate = useNavigate();
   const lastMessageFetchRef = useRef(0);
@@ -47,6 +81,8 @@ const Navbar = () => {
       const response = await messageService.getUnreadCount();
       setUnreadMessageCount(response.data?.count ?? response.count ?? 0);
       setFirstUnreadMessage(response.data?.firstUnread ?? response.firstUnread ?? null);
+      setMessageTeamCount(response.data?.teamCount ?? 0);
+      setMessageSenderCount(response.data?.senderCount ?? 0);
     } catch (error) {
       console.error("Error fetching unread message count:", error);
     }
@@ -60,6 +96,7 @@ const Navbar = () => {
       const response = await notificationService.getUnreadCount();
       setUnreadNotificationCount(response.data?.count || 0);
       setFirstUnreadNotification(response.data?.firstUnread || null);
+      setNotificationTypeCounts(response.data?.typeCounts || {});
     } catch (error) {
       console.error("Error fetching unread notification count:", error);
     }
@@ -91,6 +128,8 @@ const Navbar = () => {
     if (!isAuthenticated) {
       setUnreadMessageCount(0);
       setFirstUnreadMessage(null);
+      setMessageTeamCount(0);
+      setMessageSenderCount(0);
       return;
     }
 
@@ -123,16 +162,21 @@ const Navbar = () => {
       };
 
       const handleMessagesRead = () => {
-        // Refetch count when messages are marked as read
+        fetchUnreadMessageCount();
+      };
+
+      const handleMessageDeleted = () => {
         fetchUnreadMessageCount();
       };
 
       socket.on("message:received", handleNewMessage);
       socket.on("messages:read", handleMessagesRead);
+      socket.on("message:deleted", handleMessageDeleted);
 
       detachSocketListeners = () => {
         socket.off("message:received", handleNewMessage);
         socket.off("messages:read", handleMessagesRead);
+        socket.off("message:deleted", handleMessageDeleted);
       };
     };
 
@@ -151,6 +195,7 @@ const Navbar = () => {
     if (!isAuthenticated) {
       setUnreadNotificationCount(0);
       setFirstUnreadNotification(null);
+      setNotificationTypeCounts({});
       return;
     }
 
@@ -172,9 +217,13 @@ const Navbar = () => {
       };
 
       socket.on("notification:new", handleNewNotification);
+      socket.on("notification:updated", handleNewNotification);
+      socket.on("notification:deleted", handleNewNotification);
 
       detachNotificationListener = () => {
         socket.off("notification:new", handleNewNotification);
+        socket.off("notification:updated", handleNewNotification);
+        socket.off("notification:deleted", handleNewNotification);
       };
     };
 
@@ -214,29 +263,42 @@ const Navbar = () => {
 
   // Handle notification badge click
   const handleNotificationClick = async () => {
-    if (unreadNotificationCount > 0 && firstUnreadNotification) {
-      // Mark this notification as read
+    // Always fetch fresh data before navigating so we never land on a deleted entity
+    let freshFirst = null;
+    try {
+      const response = await notificationService.getUnreadCount();
+      const fresh = response.data;
+      setUnreadNotificationCount(fresh?.count || 0);
+      setFirstUnreadNotification(fresh?.firstUnread || null);
+      setNotificationTypeCounts(fresh?.typeCounts || {});
+      freshFirst = fresh?.firstUnread || null;
+    } catch (error) {
+      console.error("Error fetching notifications:", error);
+      // Fall back to cached state on error
+      freshFirst = firstUnreadNotification;
+    }
+
+    if (freshFirst) {
       try {
-        await notificationService.markAsRead(firstUnreadNotification.id);
+        await notificationService.markAsRead(freshFirst.id);
       } catch (error) {
         console.error("Error marking notification as read:", error);
       }
 
-      const canNavigateToNotification =
-        firstUnreadNotification.referenceId != null &&
-        Boolean(firstUnreadNotification.navigateTo);
+      const canNavigate =
+        freshFirst.referenceId != null && Boolean(freshFirst.navigateTo);
 
-      if (canNavigateToNotification) {
-        // Navigate to the notification target
-        navigate(firstUnreadNotification.navigateTo);
+      if (canNavigate) {
+        navigate(freshFirst.navigateTo);
+      } else {
+        navigate("/teams/my-teams");
       }
 
-      // Refetch after a delay to get the NEXT unread notification
+      // Refetch after navigation to update the badge to the next unread
       setTimeout(() => {
         fetchUnreadNotificationCount();
       }, 1000);
     } else {
-      // No unread notifications, go to my-teams page
       navigate("/teams/my-teams");
     }
   };
@@ -278,6 +340,7 @@ const Navbar = () => {
                 <NotificationBadge
                   variant="alert"
                   count={unreadNotificationCount}
+                  title={buildNotificationTooltip(unreadNotificationCount, notificationTypeCounts)}
                 >
                   <Bell size={22} strokeWidth={2.2} />
                 </NotificationBadge>
@@ -293,6 +356,7 @@ const Navbar = () => {
                 <NotificationBadge
                   variant="message"
                   count={unreadMessageCount}
+                  title={buildMessageTooltip(unreadMessageCount, messageTeamCount, messageSenderCount)}
                 >
                   <MessageCircle size={22} strokeWidth={2.2} />
                 </NotificationBadge>

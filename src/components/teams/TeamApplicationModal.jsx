@@ -3,7 +3,7 @@ import { Send, Save, Users, SendHorizontal, UserSearch, MapPin, Globe, Check, Ci
 import { vacantRoleService } from "../../services/vacantRoleService";
 import Modal from "../common/Modal";
 import Button from "../common/Button";
-import Alert from "../common/Alert";
+import ScreenAlert from "../common/ScreenAlert";
 import TeamDetailsModal from "./TeamDetailsModal";
 
 /**
@@ -248,23 +248,22 @@ const TeamApplicationModal = ({
         closeOnEscape={!loading}
         showCloseButton={true}
       >
+        <ScreenAlert
+          alerts={[
+            error && {
+              type: "error",
+              message: error,
+              onClose: () => setError(null),
+            },
+            success && {
+              type: "success",
+              message: success,
+              onClose: () => setSuccess(null),
+            },
+          ]}
+        />
+
         <div className="space-y-5 bg-transparent">
-          {error && (
-            <Alert
-              type="error"
-              message={error}
-              onClose={() => setError(null)}
-            />
-          )}
-
-          {success && (
-            <Alert
-              type="success"
-              message={success}
-              onClose={() => setSuccess(null)}
-            />
-          )}
-
           {/* Team info (click + hover like TeamInvitationDetailsModal) */}
           <div className="flex items-start justify-between gap-4 mb-5">
             <div

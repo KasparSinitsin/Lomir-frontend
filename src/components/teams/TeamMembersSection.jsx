@@ -9,7 +9,7 @@ import {
   FlaskConical,
 } from "lucide-react";
 import RoleBadgeDropdown from "./RoleBadgeDropdown";
-import Alert from "../common/Alert";
+import ScreenAlert from "../common/ScreenAlert";
 import { teamService } from "../../services/teamService";
 import { userService } from "../../services/userService";
 import { formatDisplayName } from "../../utils/nameFormatters";
@@ -180,15 +180,11 @@ const TeamMembersSection = ({
         </h3>
       </div>
 
-      {/* Notification Alert */}
-      {notification.type && (
-        <Alert
-          type={notification.type}
-          message={notification.message}
-          onClose={() => setNotification({ type: null, message: null })}
-          className="mb-4"
-        />
-      )}
+      <ScreenAlert
+        type={notification.type}
+        message={notification.message}
+        onClose={() => setNotification({ type: null, message: null })}
+      />
 
       {/* Members Grid - using key to force re-render when roles change */}
       <div
@@ -319,7 +315,7 @@ const TeamMembersSection = ({
                           );
                           setNotification({
                             type: "success",
-                            message: `${member.username || "Member"} has been ${
+                            message: `${formatDisplayName(member)} has been ${
                               newRole === "admin"
                                 ? "promoted to Admin"
                                 : "demoted to Member"
@@ -343,9 +339,7 @@ const TeamMembersSection = ({
                           await teamService.removeTeamMember(team.id, memberId);
                           setNotification({
                             type: "success",
-                            message: `${
-                              member.username || "Member"
-                            } has been removed from the team.`,
+                            message: `${formatDisplayName(member)} has been removed from the team.`,
                           });
                           if (onMemberRemoved) {
                             await onMemberRemoved();

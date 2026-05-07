@@ -28,6 +28,7 @@ import {
  * @param {string} size - "small", "default", "large", or "lg"
  * @param {string} maxHeight - Max height class (default: "max-h-[90vh]")
  * @param {string} minHeight - Min height class
+ * @param {string} bodyClassName - Classes for the modal body wrapper
  * @param {boolean} closeOnBackdrop - Close when clicking backdrop
  * @param {boolean} closeOnEscape - Close when pressing ESC
  * @param {boolean} showCloseButton - Show X button in header
@@ -46,6 +47,7 @@ const Modal = ({
   size = "default",
   maxHeight = "max-h-[90vh]",
   minHeight = "",
+  bodyClassName = "p-6",
   closeOnBackdrop = true,
   closeOnEscape = true,
   showCloseButton = true,
@@ -160,7 +162,7 @@ const Modal = ({
         )}
 
         {/* Body - wrapped in ModalLayerProvider for child modals */}
-        <div className="p-6">
+        <div className={bodyClassName}>
           <ModalLayerProvider zIndex={childLayerZIndex}>
             {children}
           </ModalLayerProvider>

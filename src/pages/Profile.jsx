@@ -8,7 +8,7 @@ import Grid from "../components/layout/Grid";
 import Card from "../components/common/Card";
 import Button from "../components/common/Button";
 import DataDisplay from "../components/common/DataDisplay";
-import Alert from "../components/common/Alert";
+import ScreenAlert from "../components/common/ScreenAlert";
 import Tooltip from "../components/common/Tooltip";
 import { uploadToImageKit } from "../config/imagekit";
 import {
@@ -46,7 +46,7 @@ import {
   isSyntheticUser,
 } from "../utils/userHelpers";
 import DemoAvatarOverlay from "../components/users/DemoAvatarOverlay";
-import Modal from "../components/common/Modal";
+import ConfirmModal from "../components/common/ConfirmModal";
 import LocationInput from "../components/common/LocationInput";
 import { format } from "date-fns";
 
@@ -82,6 +82,8 @@ const Profile = () => {
   } = useAwardModals(profileUserId);
 
   const [avatarDeleteLoading, setAvatarDeleteLoading] = useState(false);
+  const [isAvatarDeleteDialogOpen, setIsAvatarDeleteDialogOpen] =
+    useState(false);
   const [badgeActionLoadingKey, setBadgeActionLoadingKey] = useState(null);
   const [pendingBadgeAction, setPendingBadgeAction] = useState(null);
   const [selectedUserId, setSelectedUserId] = useState(null);
@@ -435,16 +437,18 @@ const Profile = () => {
   };
 
   // Handle avatar deletion
-  const handleAvatarDelete = async () => {
+  const handleAvatarDelete = () => {
     if (!user) return;
+    setIsAvatarDeleteDialogOpen(true);
+  };
 
-    // Confirm deletion
-    if (
-      !window.confirm("Are you sure you want to remove your profile picture?")
-    ) {
-      return;
-    }
+  const closeAvatarDeleteDialog = () => {
+    if (avatarDeleteLoading) return;
+    setIsAvatarDeleteDialogOpen(false);
+  };
 
+  const confirmAvatarDelete = async () => {
+    if (!user) return;
     try {
       setAvatarDeleteLoading(true);
       setError(null);
@@ -471,6 +475,7 @@ const Profile = () => {
         }));
 
         setSuccess("Profile picture removed successfully");
+        setIsAvatarDeleteDialogOpen(false);
       } else {
         setError(response.message || "Failed to remove profile picture");
       }
@@ -1008,37 +1013,25 @@ const Profile = () => {
 
   return (
     <div className="space-y-6">
-      {registrationMessage && (
-        <Alert
-          type="success"
-          message={registrationMessage}
-          onClose={() => setRegistrationMessage("")}
-        />
-      )}
-
-      {(success || error) && (
-        <div className="pointer-events-none fixed inset-0 z-[9999] flex items-center justify-center px-4">
-          <div className="flex max-w-[min(calc(100vw-2rem),32rem)] flex-col items-center gap-3">
-            {success && (
-              <Alert
-                type="success"
-                message={success}
-                onClose={() => setSuccess(null)}
-                className="pointer-events-auto max-w-full shadow-2xl"
-              />
-            )}
-
-            {error && (
-              <Alert
-                type="error"
-                message={error}
-                onClose={() => setError(null)}
-                className="pointer-events-auto max-w-full shadow-2xl"
-              />
-            )}
-          </div>
-        </div>
-      )}
+      <ScreenAlert
+        alerts={[
+          registrationMessage && {
+            type: "success",
+            message: registrationMessage,
+            onClose: () => setRegistrationMessage(""),
+          },
+          success && {
+            type: "success",
+            message: success,
+            onClose: () => setSuccess(null),
+          },
+          error && {
+            type: "error",
+            message: error,
+            onClose: () => setError(null),
+          },
+        ]}
+      />
 
       <Card className="overflow-visible">
         {isEditing ? (
@@ -1510,59 +1503,40 @@ const Profile = () => {
         badgeActionLoadingKey={badgeActionLoadingKey}
       />
 
-      <Modal
+      <ConfirmModal
+        isOpen={isAvatarDeleteDialogOpen}
+        onClose={closeAvatarDeleteDialog}
+        onConfirm={confirmAvatarDelete}
+        title="Remove Profile Picture"
+        loading={avatarDeleteLoading}
+        confirmLabel="Remove"
+        loadingLabel="Removing..."
+        confirmVariant="error"
+        confirmIcon={<Trash2 size={16} />}
+      >
+        <p className="text-sm text-base-content/80">
+          Remove your profile picture? Your profile will show your initials
+          instead.
+        </p>
+      </ConfirmModal>
+
+      <ConfirmModal
         isOpen={Boolean(pendingBadgeAction)}
         onClose={closePendingBadgeAction}
-        title={
-          pendingBadgeActionType === "delete"
-            ? "Delete Badge Award"
-            : "Hide Badge Award"
-        }
-        position="center"
-        size="small"
-        closeOnBackdrop={!pendingBadgeActionLoading}
-        closeOnEscape={!pendingBadgeActionLoading}
-        showCloseButton={!pendingBadgeActionLoading}
-        footer={
-          <div className="flex justify-end gap-3">
-            <Button
-              variant="ghost"
-              onClick={closePendingBadgeAction}
-              disabled={pendingBadgeActionLoading}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant={
-                pendingBadgeActionType === "delete" ? "error" : "primary"
-              }
-              onClick={confirmPendingBadgeAction}
-              disabled={pendingBadgeActionLoading}
-              icon={
-                pendingBadgeActionType === "delete" ? (
-                  <Trash2 size={16} />
-                ) : (
-                  <EyeClosed size={16} />
-                )
-              }
-            >
-              {pendingBadgeActionLoading
-                ? pendingBadgeActionType === "delete"
-                  ? "Deleting..."
-                  : "Hiding..."
-                : pendingBadgeActionType === "delete"
-                  ? "Delete"
-                  : "Hide"}
-            </Button>
-          </div>
-        }
+        onConfirm={confirmPendingBadgeAction}
+        title={pendingBadgeActionType === "delete" ? "Delete Badge Award" : "Hide Badge Award"}
+        loading={pendingBadgeActionLoading}
+        confirmLabel={pendingBadgeActionType === "delete" ? "Delete" : "Hide"}
+        loadingLabel={pendingBadgeActionType === "delete" ? "Deleting..." : "Hiding..."}
+        confirmVariant={pendingBadgeActionType === "delete" ? "error" : "primary"}
+        confirmIcon={pendingBadgeActionType === "delete" ? <Trash2 size={16} /> : <EyeClosed size={16} />}
       >
         <p className="text-sm text-base-content/80">
           {pendingBadgeActionType === "delete"
             ? `Delete ${pendingBadgeAwardDescription} permanently? This removes only this awarded instance, not other awards for the same badge.`
             : `Hide ${pendingBadgeAwardDescription} from others? You will still see it on your profile with a closed-eye marker.`}
         </p>
-      </Modal>
+      </ConfirmModal>
 
       <TagAwardsModal
         {...tagAwardsModalProps}

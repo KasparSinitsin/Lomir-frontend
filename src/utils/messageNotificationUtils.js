@@ -1,3 +1,5 @@
+import { formatDisplayName } from "./nameFormatters";
+
 const asIdString = (value) =>
   value === null || value === undefined ? null : String(value);
 
@@ -94,6 +96,17 @@ export const isMessageForCurrentChatPath = (
     .filter(Boolean);
 
   return possibleDirectIds.includes(currentConversationId);
+};
+
+export const getMessageSenderDisplayName = (message) => {
+  const firstName =
+    message?.senderFirstName ?? message?.sender_first_name ?? message?.sender?.firstName;
+  const lastName =
+    message?.senderLastName ?? message?.sender_last_name ?? message?.sender?.lastName;
+
+  const displayName = formatDisplayName({ firstName, lastName });
+
+  return displayName === "Unknown" ? "" : displayName;
 };
 
 export const getMessagePreviewText = (message) => {
