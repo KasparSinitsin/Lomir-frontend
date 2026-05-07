@@ -19,6 +19,7 @@ import {
   Ruler,
   Calendar,
   FlaskConical,
+  Trash2,
 } from "lucide-react";
 import TeamDetailsModal from "./TeamDetailsModal";
 import UserDetailsModal from "../users/UserDetailsModal";
@@ -31,6 +32,7 @@ import { vacantRoleService } from "../../services/vacantRoleService";
 import { userService } from "../../services/userService";
 import { useAuth } from "../../contexts/AuthContext";
 import Alert from "../common/Alert";
+import ConfirmModal from "../common/ConfirmModal";
 import NotificationBadge from "../common/NotificationBadge";
 import SearchResultTypeOverlay from "../common/SearchResultTypeOverlay";
 import TeamApplicationsModal from "./TeamApplicationsModal";
@@ -619,6 +621,9 @@ const TeamCard = ({
   const [isRoleDetailsModalOpen, setIsRoleDetailsModalOpen] = useState(false);
   const [roleMatchData, setRoleMatchData] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isCancelApplicationDialogOpen, setIsCancelApplicationDialogOpen] =
+    useState(false);
   const [actionLoading, setActionLoading] = useState(null);
   const [reminderNotice, setReminderNotice] = useState(null);
   const [error, setError] = useState(null);
@@ -1530,16 +1535,19 @@ const TeamCard = ({
   // Member variant handlers
   const handleDeleteClick = async (e) => {
     e.stopPropagation();
-    if (
-      !window.confirm(
-        "Are you sure you want to delete this team? This action cannot be undone.",
-      )
-    ) {
-      return;
-    }
+    setIsDeleteDialogOpen(true);
+  };
+
+  const closeDeleteTeamDialog = () => {
+    if (isDeleting) return;
+    setIsDeleteDialogOpen(false);
+  };
+
+  const confirmDeleteTeam = async () => {
     try {
       setIsDeleting(true);
       await teamService.deleteTeam(teamData.id);
+      setIsDeleteDialogOpen(false);
       if (onDelete) onDelete(teamData.id);
     } catch (err) {
       console.error("Error deleting team:", err);
@@ -1555,21 +1563,24 @@ const TeamCard = ({
   };
 
   // Application variant handlers
-  const handleCancelApplication = async (e) => {
-    e.stopPropagation();
-    if (
-      !window.confirm(
-        "Are you sure you want to cancel your application to this team?",
-      )
-    ) {
-      return;
-    }
+  const handleCancelApplication = (e) => {
+    e?.stopPropagation();
+    setIsCancelApplicationDialogOpen(true);
+  };
+
+  const closeCancelApplicationDialog = () => {
+    if (actionLoading === "cancel") return;
+    setIsCancelApplicationDialogOpen(false);
+  };
+
+  const confirmCancelApplication = async () => {
     setActionLoading("cancel");
     try {
       const cancelHandler = onCancel || onCancelApplication;
       if (cancelHandler) {
         await cancelHandler(normalizedData.id);
       }
+      setIsCancelApplicationDialogOpen(false);
     } catch (err) {
       console.error("Error canceling application:", err);
       setError("Failed to cancel application. Please try again.");
@@ -2864,6 +2875,40 @@ const TeamCard = ({
         {/* Action buttons */}
         {renderActionButtons()}
       </Card>
+
+      <ConfirmModal
+        isOpen={isDeleteDialogOpen}
+        onClose={closeDeleteTeamDialog}
+        onConfirm={confirmDeleteTeam}
+        title="Delete Team"
+        loading={isDeleting}
+        confirmLabel="Delete Team"
+        loadingLabel="Deleting..."
+        confirmVariant="error"
+        confirmIcon={<Trash2 size={16} />}
+      >
+        <p className="text-sm text-base-content/80">
+          Delete this team? This action cannot be undone.
+        </p>
+      </ConfirmModal>
+
+      <ConfirmModal
+        isOpen={isCancelApplicationDialogOpen}
+        onClose={closeCancelApplicationDialog}
+        onConfirm={confirmCancelApplication}
+        title="Cancel Application"
+        loading={actionLoading === "cancel"}
+        confirmLabel="Cancel Application"
+        loadingLabel="Canceling..."
+        confirmVariant="error"
+        confirmIcon={<Trash2 size={16} />}
+        cancelLabel="Keep"
+      >
+        <p className="text-sm text-base-content/80">
+          Cancel your application to {teamData.name || "this team"}? The team
+          will no longer be able to review it.
+        </p>
+      </ConfirmModal>
 
       <TeamDetailsModal
         isOpen={isModalOpen}

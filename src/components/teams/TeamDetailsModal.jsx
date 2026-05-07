@@ -13,7 +13,7 @@ import { teamService } from "../../services/teamService";
 import { userService } from "../../services/userService";
 import Button from "../common/Button";
 import SendMessageButton from "../common/SendMessageButton";
-import Alert from "../common/Alert";
+import ScreenAlert from "../common/ScreenAlert";
 import Tooltip from "../common/Tooltip";
 import TagDisplay from "../common/TagDisplay";
 import LocationDisplay from "../common/LocationDisplay";
@@ -47,6 +47,7 @@ import TeamFocusAreaSection from "./TeamFocusAreaSection";
 import VacantRolesSection from "./VacantRolesSection";
 import axios from "axios";
 import Modal from "../common/Modal";
+import ConfirmModal from "../common/ConfirmModal";
 import LocationSection from "../common/LocationSection";
 import TagAwardsModal from "../badges/TagAwardsModal";
 import SupercategoryAwardsModal from "../badges/SupercategoryAwardsModal";
@@ -175,6 +176,7 @@ const TeamDetailsModal = ({
   const userHasEditedTagsRef = useRef(false);
   const [isLeaveDialogOpen, setIsLeaveDialogOpen] = useState(false);
   const [leaveLoading, setLeaveLoading] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isInvitationModalOpen, setIsInvitationModalOpen] = useState(false);
 
   const [teamImageError, setTeamImageError] = useState(false);
@@ -1090,38 +1092,42 @@ const TeamDetailsModal = ({
     }
   };
 
-  const handleDeleteTeam = async () => {
-    if (
-      window.confirm(
-        "Are you sure you want to delete this team? This action cannot be undone.",
-      )
-    ) {
-      try {
-        setLoading(true);
+  const handleDeleteTeam = () => {
+    setIsDeleteDialogOpen(true);
+  };
 
-        let success = false;
-        if (onDelete) {
-          success = await onDelete(effectiveTeamId);
-        } else {
-          await teamService.deleteTeam(effectiveTeamId);
-          success = true;
-        }
+  const closeDeleteTeamDialog = () => {
+    if (loading) return;
+    setIsDeleteDialogOpen(false);
+  };
 
-        if (success) {
-          handleClose();
-          // If we're on a team-specific route, navigate away
-          if (urlTeamId) {
-            navigate("/teams/my-teams");
-          }
-        }
-      } catch (err) {
-        console.error("Error deleting team:", err);
-        setNotification({
-          type: "error",
-          message: "Failed to delete team. Please try again.",
-        });
-        setLoading(false);
+  const confirmDeleteTeam = async () => {
+    try {
+      setLoading(true);
+
+      let success = false;
+      if (onDelete) {
+        success = await onDelete(effectiveTeamId);
+      } else {
+        await teamService.deleteTeam(effectiveTeamId);
+        success = true;
       }
+
+      if (success) {
+        setIsDeleteDialogOpen(false);
+        handleClose();
+        // If we're on a team-specific route, navigate away
+        if (urlTeamId) {
+          navigate("/teams/my-teams");
+        }
+      }
+    } catch (err) {
+      console.error("Error deleting team:", err);
+      setNotification({
+        type: "error",
+        message: "Failed to delete team. Please try again.",
+      });
+      setLoading(false);
     }
   };
 
@@ -1234,11 +1240,10 @@ const TeamDetailsModal = ({
     if (!notification.type || !notification.message) return null;
 
     return (
-      <Alert
+      <ScreenAlert
         type={notification.type}
         message={notification.message}
         onClose={() => setNotification({ type: null, message: null })}
-        className="mb-4"
       />
     );
   };
@@ -1690,50 +1695,43 @@ const TeamDetailsModal = ({
         />
       )}
 
+      <ConfirmModal
+        isOpen={isDeleteDialogOpen}
+        onClose={closeDeleteTeamDialog}
+        onConfirm={confirmDeleteTeam}
+        title="Delete Team"
+        loading={loading}
+        confirmLabel="Delete Team"
+        loadingLabel="Deleting..."
+        confirmVariant="error"
+        confirmIcon={<Trash2 size={16} />}
+      >
+        <p className="text-sm text-base-content/80">
+          Delete this team? This action cannot be undone.
+        </p>
+      </ConfirmModal>
+
       {/* Leave Team Confirmation Dialog */}
-      {isLeaveDialogOpen && (
-        <Modal
-          isOpen={isLeaveDialogOpen}
-          onClose={() => setIsLeaveDialogOpen(false)}
-          title="Leave Team"
-          position="center"
-          size="small"
-          closeOnBackdrop={!leaveLoading}
-          closeOnEscape={!leaveLoading}
-          showCloseButton={!leaveLoading}
-        >
-          <div className="py-4">
-            <p className="text-base-content">Really want to leave this team?</p>
-            {isOwner && (
-              <p className="text-warning text-sm mt-2">
-                Note: As an owner, you can only leave if there's another owner
-                to manage the team. Pass ownership before leaving.
-              </p>
-            )}
-          </div>
-          <div className="flex justify-end gap-3 mt-4">
-            <Button
-              variant="ghost"
-              onClick={() => setIsLeaveDialogOpen(false)}
-              disabled={leaveLoading}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="error"
-              onClick={handleLeaveTeam}
-              disabled={leaveLoading}
-              className="bg-red-500 hover:bg-red-600 text-white"
-            >
-              {leaveLoading ? (
-                <span className="loading loading-spinner loading-sm"></span>
-              ) : (
-                "Leave Team"
-              )}
-            </Button>
-          </div>
-        </Modal>
-      )}
+      <ConfirmModal
+        isOpen={isLeaveDialogOpen}
+        onClose={() => setIsLeaveDialogOpen(false)}
+        onConfirm={handleLeaveTeam}
+        title="Leave Team"
+        loading={leaveLoading}
+        confirmLabel="Leave Team"
+        loadingLabel="Leaving..."
+        confirmVariant="error"
+      >
+        <p className="text-sm text-base-content/80">
+          Really want to leave this team?
+        </p>
+        {isOwner && (
+          <p className="text-warning text-sm mt-2">
+            Note: As an owner, you can only leave if there&apos;s another owner
+            to manage the team. Pass ownership before leaving.
+          </p>
+        )}
+      </ConfirmModal>
       <TagAwardsModal {...tagAwardsModalProps} />
       <SupercategoryAwardsModal {...supercategoryModalProps} />
 

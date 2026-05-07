@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useEffect, useMemo } from "react";
 import Button from "../common/Button";
+import ConfirmModal from "../common/ConfirmModal";
 import VisibilityToggle from "../common/VisibilityToggle";
 import LocationModeToggle from "../common/LocationModeToggle";
 import FormSectionDivider from "../common/FormSectionDivider";
@@ -10,7 +11,7 @@ import LocationInput from "../common/LocationInput";
 import TagInput from "../tags/TagInput";
 import { UI_TEXT } from "../../constants/uiText";
 import { useLocationAutoFill } from "../../hooks/useLocationAutoFill";
-import { Camera, Users, Settings, Tag } from "lucide-react";
+import { Camera, Users, Settings, Tag, Trash2 } from "lucide-react";
 
 const PRESET_OPTIONS = [2, 3, 4, 5, 6, 8, 10, 12, 15, 20];
 const UNLIMITED_VALUE = null;
@@ -47,6 +48,8 @@ const TeamEditForm = ({
 }) => {
   const [uploadingImage, setUploadingImage] = useState(false);
   const [avatarDeleteLoading, setAvatarDeleteLoading] = useState(false);
+  const [isAvatarDeleteDialogOpen, setIsAvatarDeleteDialogOpen] =
+    useState(false);
 
   // Location auto-fill hook
   const { getSuggestedUpdates } = useLocationAutoFill({
@@ -172,13 +175,18 @@ const TeamEditForm = ({
   };
 
   // Handle avatar deletion
-  const handleAvatarDelete = async () => {
+  const handleAvatarDelete = () => {
     if (!team?.id) return;
+    setIsAvatarDeleteDialogOpen(true);
+  };
 
-    if (!window.confirm("Are you sure you want to remove the team picture?")) {
-      return;
-    }
+  const closeAvatarDeleteDialog = () => {
+    if (avatarDeleteLoading) return;
+    setIsAvatarDeleteDialogOpen(false);
+  };
 
+  const confirmAvatarDelete = async () => {
+    if (!team?.id) return;
     try {
       setAvatarDeleteLoading(true);
       const response = await teamService.deleteTeamAvatar(team.id);
@@ -191,6 +199,7 @@ const TeamEditForm = ({
         }));
 
         onAvatarDeleted?.();
+        setIsAvatarDeleteDialogOpen(false);
       }
     } catch (error) {
       console.error("Error deleting team avatar:", error);
@@ -239,7 +248,8 @@ const TeamEditForm = ({
   }, [formData.selectedTags, team?.tags]);
 
   return (
-    <form onSubmit={handleFormSubmit} className="space-y-4">
+    <>
+      <form onSubmit={handleFormSubmit} className="space-y-4">
       {/* Team Avatar Section */}
       <section className="space-y-4">
         <FormSectionDivider text="Team Avatar" icon={Camera} />
@@ -576,7 +586,24 @@ const TeamEditForm = ({
           {loading ? "Saving..." : "Save Changes"}
         </Button>
       </div>
-    </form>
+      </form>
+
+      <ConfirmModal
+        isOpen={isAvatarDeleteDialogOpen}
+        onClose={closeAvatarDeleteDialog}
+        onConfirm={confirmAvatarDelete}
+        title="Remove Team Picture"
+        loading={avatarDeleteLoading}
+        confirmLabel="Remove"
+        loadingLabel="Removing..."
+        confirmVariant="error"
+        confirmIcon={<Trash2 size={16} />}
+      >
+        <p className="text-sm text-base-content/80">
+          Remove the team picture? The team will show its initials instead.
+        </p>
+      </ConfirmModal>
+    </>
   );
 };
 

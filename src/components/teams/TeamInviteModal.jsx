@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import Modal from "../common/Modal";
 import Button from "../common/Button";
-import Alert from "../common/Alert";
+import ScreenAlert from "../common/ScreenAlert";
 import UserDetailsModal from "../users/UserDetailsModal";
 import TeamDetailsModal from "../teams/TeamDetailsModal";
 import TeamInvitesModal from "../teams/TeamInvitesModal";
@@ -943,19 +943,22 @@ const TeamInviteModal = ({
         closeOnEscape={!sending}
         showCloseButton={true}
       >
+        <ScreenAlert
+          alerts={[
+            success && {
+              type: "success",
+              message: success,
+              onClose: () => setSuccess(null),
+            },
+            error && {
+              type: "error",
+              message: error,
+              onClose: () => setError(null),
+            },
+          ]}
+        />
+
         <div className="space-y-5">
-          {/* Success message */}
-          {success && <Alert type="success" message={success} />}
-
-          {/* Error message */}
-          {error && (
-            <Alert
-              type="error"
-              message={error}
-              onClose={() => setError(null)}
-            />
-          )}
-
           {/* Invitee info */}
           <div className="flex items-start space-x-3 mb-3">
             <div

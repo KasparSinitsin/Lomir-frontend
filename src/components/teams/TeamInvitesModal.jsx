@@ -5,9 +5,11 @@ import {
   Calendar,
   SendHorizontal,
   FlaskConical,
+  Trash2,
 } from "lucide-react";
 import RequestListModal from "../common/RequestListModal";
 import Button from "../common/Button";
+import Modal from "../common/Modal";
 import Tooltip from "../common/Tooltip";
 import InlineUserLink, { InvitedByLink } from "../users/InlineUserLink";
 import DemoAvatarOverlay from "../users/DemoAvatarOverlay";
@@ -214,6 +216,8 @@ const TeamInvitesModal = ({
   const [roleCandidateMatchMap, setRoleCandidateMatchMap] = useState({});
   const [selfRoleMatchMap, setSelfRoleMatchMap] = useState({});
   const [localInviteeRoleMatchMap, setLocalInviteeRoleMatchMap] = useState({});
+  const [pendingCancelInvitationId, setPendingCancelInvitationId] =
+    useState(null);
 
   // ============ Refs ============
   const highlightedRef = useRef(null);
@@ -531,18 +535,27 @@ const TeamInvitesModal = ({
 
   // ============ Handlers ============
 
-  const handleCancelInvitation = async (invitationId) => {
-    if (!window.confirm("Are you sure you want to cancel this invitation?")) {
-      return;
-    }
+  const handleCancelInvitation = (invitationId) => {
+    if (!invitationId) return;
+    setPendingCancelInvitationId(invitationId);
+  };
+
+  const closeCancelInvitationModal = () => {
+    if (loading) return;
+    setPendingCancelInvitationId(null);
+  };
+
+  const confirmCancelInvitation = async () => {
+    if (!pendingCancelInvitationId) return;
 
     try {
       setLoading(true);
       setError(null);
 
-      await onCancelInvitation(invitationId);
+      await onCancelInvitation(pendingCancelInvitationId);
 
       setSuccess("Invitation canceled successfully!");
+      setPendingCancelInvitationId(null);
 
       // Clear success after 3 seconds
       setTimeout(() => setSuccess(null), 3000);
@@ -586,6 +599,14 @@ const TeamInvitesModal = ({
   };
 
   // ============ Render ============
+  const pendingCancelInvitation = invitations.find(
+    (invitation) => String(invitation.id) === String(pendingCancelInvitationId),
+  );
+  const pendingInviteeName =
+    pendingCancelInvitation?.invitee
+      ? getDisplayName(pendingCancelInvitation.invitee)
+      : "this user";
+
   return (
     <RequestListModal
       isOpen={isOpen}
@@ -602,7 +623,43 @@ const TeamInvitesModal = ({
       emptyIcon={User}
       emptyTitle="No pending invitations"
       emptyMessage="Invitations you send to users will appear here."
-      // No extraModals needed - UserModalContext handles it globally
+      extraModals={
+        <Modal
+          isOpen={Boolean(pendingCancelInvitationId)}
+          onClose={closeCancelInvitationModal}
+          title="Cancel Invitation"
+          position="center"
+          size="small"
+          bodyClassName="p-4"
+          closeOnBackdrop={!loading}
+          closeOnEscape={!loading}
+          showCloseButton={!loading}
+          footer={
+            <div className="flex justify-end gap-3">
+              <Button
+                variant="ghost"
+                onClick={closeCancelInvitationModal}
+                disabled={loading}
+              >
+                Keep
+              </Button>
+              <Button
+                variant="error"
+                onClick={confirmCancelInvitation}
+                disabled={loading}
+                icon={<Trash2 size={16} />}
+              >
+                {loading ? "Canceling..." : "Cancel Invitation"}
+              </Button>
+            </div>
+          }
+        >
+          <p className="text-sm text-base-content/80">
+            Cancel the invitation for {pendingInviteeName}? They will no longer
+            be able to respond to it.
+          </p>
+        </Modal>
+      }
     >
       {invitations.map((invitation) => {
         // Get invitee ID for highlighting comparison

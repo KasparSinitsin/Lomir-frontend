@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 
 const Alert = ({
   type = "info",
@@ -7,6 +7,19 @@ const Alert = ({
   onClose,
   className = "",
 }) => {
+  const [fading, setFading] = useState(false);
+
+  useEffect(() => {
+    if (!onClose) return;
+    setFading(false);
+    const fadeTimer = setTimeout(() => setFading(true), 2000);
+    const closeTimer = setTimeout(onClose, 3000);
+    return () => {
+      clearTimeout(fadeTimer);
+      clearTimeout(closeTimer);
+    };
+  }, [type, message, onClose]);
+
   const alertClasses = {
     info: "alert-info",
     success: "alert-success",
@@ -17,8 +30,7 @@ const Alert = ({
 
   return (
     <div
-      className={`alert ${alertClasses[type]} !text-white shadow-sm w-fit ${className}`}
-
+      className={`alert ${alertClasses[type]} !text-white shadow-sm w-fit transition-opacity duration-1000 ${fading ? "opacity-0" : "opacity-100"} ${className}`}
     >
       <div className="flex items-center gap-2">
         {type === "info" && (
