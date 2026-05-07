@@ -2238,23 +2238,33 @@ const Chat = () => {
   const totalSearchMatches = isChatSearchActive
     ? filteredConversations.reduce((sum, conv) => sum + (conv.searchMatchCount || 0), 0)
     : 0;
+  const chatSearchPlaceholder = "Search chats...";
+  const chatSearchInputWidth = `${Math.max(
+    chatSearchQuery.length,
+    chatSearchPlaceholder.length,
+  )}ch`;
 
   const chatSearchAction = (
-    <div className="flex flex-col items-start sm:items-end">
-      <label className="input input-bordered flex h-10 items-center gap-2 rounded-lg bg-base-100 !w-48">
+    <div className="flex max-w-full flex-col items-start sm:items-end">
+      <label className="input input-bordered flex h-10 w-fit max-w-full items-center gap-2 rounded-lg bg-base-100">
         <Search size={16} className="shrink-0 text-base-content/50" />
         <input
           type="search"
-          className="text-sm flex-1 min-w-0"
-          placeholder="Search chats..."
+          className="min-w-0 text-sm"
+          placeholder={chatSearchPlaceholder}
           aria-label="Search chats"
           value={chatSearchQuery}
           onChange={(event) => setChatSearchQuery(event.target.value)}
+          style={{
+            width: chatSearchInputWidth,
+            minWidth: `${chatSearchPlaceholder.length}ch`,
+            maxWidth: "min(42vw, 24rem)",
+          }}
         />
         {chatSearchQuery && (
           <button
             type="button"
-            className="btn btn-ghost btn-xs h-6 min-h-0 w-6 p-0"
+            className="btn btn-ghost btn-xs ml-auto h-6 min-h-0 w-6 p-0"
             onClick={() => setChatSearchQuery("")}
             aria-label="Clear chat search"
           >

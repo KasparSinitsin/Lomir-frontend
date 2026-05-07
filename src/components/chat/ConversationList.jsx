@@ -357,9 +357,8 @@ const ConversationList = ({
           const isActive =
             chatVisible && String(activeConversationId) === String(conversation.id);
 
-          return (
+          const conversationCard = (
             <div
-              key={`${conversation.type}-${conversation.id}`}
               ref={isActive ? activeConversationRef : null}
               className={`
                 p-4 mr-4 cursor-pointer rounded-lg border shadow-soft transition-all duration-300 hover:shadow-md group
@@ -562,10 +561,23 @@ const ConversationList = ({
                 </div>
 
                 {(!isActive || chatVisible) && (
-                  <Tooltip content="Open conversation" position="top" wrapperClassName="inline-flex items-center flex-shrink-0 ml-1 -mr-4">
+                  <Tooltip
+                    content={isActive ? "Deselect Conversation" : "Open conversation"}
+                    position="top"
+                    wrapperClassName="inline-flex items-center flex-shrink-0 ml-1 -mr-4"
+                  >
                     <button
-                      onClick={() => onSelectConversation(conversation.id)}
-                      className={`flex items-center justify-center p-2 transition-opacity ${isActive ? "" : "md:opacity-0 md:group-hover:opacity-100"}`}
+                      type="button"
+                      aria-label={isActive ? "Deselect Conversation" : "Open conversation"}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        onSelectConversation(conversation.id);
+                      }}
+                      className={`flex items-center justify-center p-2 transition-opacity ${
+                        isActive
+                          ? "opacity-0"
+                          : "md:opacity-0 md:group-hover:opacity-100"
+                      }`}
                     >
                       <ChevronRight size={16} className="text-base-content/70" />
                     </button>
@@ -573,6 +585,17 @@ const ConversationList = ({
                 )}
               </div>
             </div>
+          );
+
+          return (
+            <Tooltip
+              key={`${conversation.type}-${conversation.id}`}
+              content={isActive ? "Deselect Conversation" : undefined}
+              position="top"
+              wrapperClassName="block"
+            >
+              {conversationCard}
+            </Tooltip>
           );
         })}
       </div>
