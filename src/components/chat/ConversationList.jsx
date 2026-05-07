@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Users, User, ChevronRight } from "lucide-react";
+import { Link } from "react-router-dom";
 import Tooltip from "../common/Tooltip";
 import { CountBadge } from "../common/NotificationBadge";
 import { getTeamInitials, isSyntheticTeam } from "../../utils/userHelpers";
@@ -242,16 +243,32 @@ const ConversationList = ({
       <div className="flex flex-col items-center justify-center h-full p-4 text-center">
         <p className="text-base-content/70 mb-2">No conversations yet</p>
         <p className="text-sm text-base-content/50">
-          Start chatting with team members by visiting their profile and
-          clicking "Send Message"
+          Start chatting with other people or team members by visiting their
+          profile and clicking "Send Message"
         </p>
+        <div className="mt-5 flex flex-col items-center justify-center gap-3 sm:flex-row">
+          <Link
+            to="/search?type=users"
+            className="btn btn-sm btn-primary gap-2"
+          >
+            <User size={16} />
+            Find People
+          </Link>
+          <Link
+            to="/search?type=teams"
+            className="btn btn-sm btn-primary gap-2"
+          >
+            <Users size={16} />
+            Find Teams
+          </Link>
+        </div>
       </div>
     );
   }
 
   return (
     <>
-      <div className="divide-y divide-base-200 w-full min-w-0">
+      <div className="w-full min-w-0 space-y-3">
         {conversations.map((conversation) => {
           // Handle both direct messages and team conversations
           const isTeam = conversation.type === "team";
@@ -293,11 +310,11 @@ const ConversationList = ({
               key={`${conversation.type}-${conversation.id}`}
               ref={isActive ? activeConversationRef : null}
               className={`
-                p-4 cursor-pointer transition-colors duration-200 group
+                p-4 mr-4 cursor-pointer rounded-lg border shadow-soft transition-all duration-300 hover:shadow-md group
                 ${
                   isActive
-                    ? "bg-green-100"
-                    : "hover:bg-base-200/50"
+                    ? "lomir-active-conversation-card bg-green-100 border-transparent"
+                    : "bg-white/80 border-base-200"
                 }
               `}
               onClick={() => onSelectConversation(conversation.id)}
@@ -452,15 +469,16 @@ const ConversationList = ({
                   </div>
                 </div>
 
-                {/* Chevron button - visible on mobile, hover on desktop */}
-                <Tooltip content="Open conversation" position="top" wrapperClassName="inline-flex items-center flex-shrink-0 ml-1 -mr-4">
-                  <button
-                    onClick={() => onSelectConversation(conversation.id)}
-                    className="flex items-center justify-center p-2 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
-                  >
-                    <ChevronRight size={16} className="text-base-content/70" />
-                  </button>
-                </Tooltip>
+                {!isActive && (
+                  <Tooltip content="Open conversation" position="top" wrapperClassName="inline-flex items-center flex-shrink-0 ml-1 -mr-4">
+                    <button
+                      onClick={() => onSelectConversation(conversation.id)}
+                      className="flex items-center justify-center p-2 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
+                    >
+                      <ChevronRight size={16} className="text-base-content/70" />
+                    </button>
+                  </Tooltip>
+                )}
               </div>
             </div>
           );

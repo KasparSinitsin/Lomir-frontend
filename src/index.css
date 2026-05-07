@@ -38,6 +38,37 @@
       display: none;
     }
   }
+
+  .lomir-conversation-list-scrollbar {
+    scrollbar-width: thin;
+  }
+
+  .lomir-conversation-list-scrollbar::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .lomir-active-conversation-card {
+    position: relative;
+  }
+
+  .lomir-active-conversation-card::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    right: -1.5rem;
+    width: 36px;
+    height: 24px;
+    background-color: #dcfce7;
+    pointer-events: none;
+    transform: translateY(-50%) rotate(270deg);
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0.500009 1C3.5 1 3.00001 7 6.00001 7C9 7 8.5 1 11.5 1C12 1 12 0.5 12 0H0C0 0.5 0 1 0.500009 1Z' fill='white'/%3E%3C/svg%3E");
+    mask-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0.500009 1C3.5 1 3.00001 7 6.00001 7C9 7 8.5 1 11.5 1C12 1 12 0.5 12 0H0C0 0.5 0 1 0.500009 1Z' fill='white'/%3E%3C/svg%3E");
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-size: contain;
+    mask-size: contain;
+    filter: drop-shadow(0 2px 6px rgba(4, 80, 20, 0.12));
+  }
 }
 
 @layer components {

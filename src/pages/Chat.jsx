@@ -162,11 +162,6 @@ const Chat = () => {
     useState(false);
   const [isActiveConversationVisible, setIsActiveConversationVisible] =
     useState(true);
-  const [
-    isRegularConversationHeaderVisible,
-    setIsRegularConversationHeaderVisible,
-  ] = useState(true);
-
   const typingTimeoutRef = useRef(null);
   const messagesContainerRef = useRef(null);
   const pendingScrollAdjustmentRef = useRef(null);
@@ -252,8 +247,9 @@ const Chat = () => {
     getConversationUpdatedAt(messages?.[messages.length - 1] || messages?.[0] || null);
   const showCompactConversationHeader =
     Boolean(conversationId) &&
-    !isActiveConversationVisible &&
-    !isRegularConversationHeaderVisible;
+    !isActiveConversationVisible;
+  const showEmptyConversationState =
+    !loading && conversations.length === 0 && !conversationId;
 
   useEffect(() => {
     conversationsRef.current = conversations;
@@ -265,7 +261,6 @@ const Chat = () => {
 
   useEffect(() => {
     setIsActiveConversationVisible(true);
-    setIsRegularConversationHeaderVisible(true);
   }, [conversationId]);
 
   const handleActiveConversationVisibilityChange = useCallback((isVisible) => {
@@ -273,15 +268,6 @@ const Chat = () => {
       current === isVisible ? current : isVisible,
     );
   }, []);
-
-  const handleRegularConversationHeaderVisibilityChange = useCallback(
-    (isVisible) => {
-      setIsRegularConversationHeaderVisible((current) =>
-        current === isVisible ? current : isVisible,
-      );
-    },
-    [],
-  );
 
   const refreshConversationList = useCallback(async () => {
     try {
@@ -1647,8 +1633,8 @@ const Chat = () => {
 
   return (
     <PageContainer
-      title="Messages"
-      className="p-0 overflow-hidden"
+      title="Chats"
+      className="p-0"
       variant="muted"
     >
       <ScreenAlert type="error" message={error} onClose={() => setError(null)} />
@@ -1690,29 +1676,37 @@ const Chat = () => {
         </p>
       </Modal>
 
-      <div className="bg-white shadow-soft flex h-[calc(100vh-200px)] rounded-xl overflow-hidden">
+      <div className="flex h-[calc(100vh-200px)] gap-2">
         {/* Conversation List - Left Sidebar */}
         <div
           data-conversation-list-viewport="true"
-          className={`border-r border-base-200 overflow-y-auto transition-all duration-300 ${
-            showChatView ? "hidden md:block md:w-1/3" : "w-full md:w-1/3"
+          className={`lomir-conversation-list-scrollbar overflow-y-auto transition-all duration-300 ${
+            showEmptyConversationState
+              ? "w-full"
+              : showChatView
+                ? "hidden md:block md:w-1/3"
+                : "w-full md:w-1/3"
           }`}
+          style={{ direction: "rtl" }}
         >
-          <ConversationList
-            conversations={conversations}
-            activeConversationId={conversationId}
-            onSelectConversation={selectConversation}
-            loading={loading}
-            onlineUsers={onlineUsers}
-            onActiveConversationVisibilityChange={
-              handleActiveConversationVisibilityChange
-            }
-            teamMembersRefreshSignal={teamMembersRefreshSignal}
-          />
+          <div className="h-full" style={{ direction: "ltr" }}>
+            <ConversationList
+              conversations={conversations}
+              activeConversationId={conversationId}
+              onSelectConversation={selectConversation}
+              loading={loading}
+              onlineUsers={onlineUsers}
+              onActiveConversationVisibilityChange={
+                handleActiveConversationVisibilityChange
+              }
+              teamMembersRefreshSignal={teamMembersRefreshSignal}
+            />
+          </div>
         </div>
 
         {/* Message Display - Right Side */}
-        <div className={`flex flex-col transition-all duration-300 ${
+        {!showEmptyConversationState && (
+        <div className={`bg-white shadow-soft rounded-xl overflow-hidden flex flex-col min-w-0 transition-all duration-300 ${
           showChatView ? "w-full md:w-2/3" : "hidden md:flex md:w-2/3"
         }`}>
           {conversationId ? (
@@ -1878,9 +1872,6 @@ const Chat = () => {
                   onDeleteMessage={handleDeleteMessage}
                   onEditMessage={handleEditMessage}
                   onLeaveTeam={handleLeaveTeam}
-                  onConversationHeaderVisibilityChange={
-                    handleRegularConversationHeaderVisibilityChange
-                  }
                 />
               </div>
 
@@ -1949,6 +1940,7 @@ const Chat = () => {
             </div>
           )}
         </div>
+        )}
       </div>
       <TeamDetailsModal
         isOpen={isTeamModalOpen}
