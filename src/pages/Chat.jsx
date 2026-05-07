@@ -763,6 +763,7 @@ const Chat = () => {
 
   useEffect(() => {
     setSearchChatVisible(false);
+    setHighlightMessageIds([]);
   }, [chatSearchQuery]);
 
   useEffect(() => {
@@ -1061,12 +1062,7 @@ const Chat = () => {
           let fetchedMessages = messagesResponse.data || [];
           let nextHasMoreMessages = messagesResponse.hasMore || false;
 
-          if (
-            shouldRevealSearchTarget &&
-            !fetchedMessages.some(
-              (msg) => String(msg.id) === String(searchTarget.messageId),
-            )
-          ) {
+          if (shouldRevealSearchTarget) {
             let oldestMessage = fetchedMessages[0];
             let loadedCount = fetchedMessages.length;
 
@@ -1096,14 +1092,6 @@ const Chat = () => {
               loadedCount += earlierMessages.length;
               nextHasMoreMessages = earlierResponse.hasMore || false;
               oldestMessage = earlierMessages[0];
-
-              if (
-                fetchedMessages.some(
-                  (msg) => String(msg.id) === String(searchTarget.messageId),
-                )
-              ) {
-                break;
-              }
             }
           }
 
@@ -1119,12 +1107,23 @@ const Chat = () => {
               (msg) => String(msg.id) === String(searchTarget.messageId),
             )
           ) {
-            setHighlightMessageIds([searchTarget.messageId]);
+            const query = searchTarget.query;
+            const allMatchingIds = query
+              ? fetchedMessages
+                  .filter((msg) => buildMessageSearchText(msg).includes(query))
+                  .map((msg) => msg.id)
+                  .filter(Boolean)
+              : [];
+            // Put the target (most recent match) first so the view scrolls to it
+            const highlightIds = [
+              searchTarget.messageId,
+              ...allMatchingIds.filter(
+                (id) => String(id) !== String(searchTarget.messageId),
+              ),
+            ];
+            setHighlightMessageIds(highlightIds);
             pendingChatSearchTargetRef.current = null;
-
-            setTimeout(() => {
-              setHighlightMessageIds([]);
-            }, 4000);
+            // No auto-clear — highlights persist until search query changes
           } else if (highlightUser) {
             if (shouldRevealSearchTarget) {
               pendingChatSearchTargetRef.current = null;
@@ -2178,6 +2177,7 @@ const Chat = () => {
             conversationId: id,
             type,
             messageId: conversation.searchMatchMessageId,
+            query: normalizedChatSearchQuery,
           }
         : null;
 
@@ -2240,12 +2240,12 @@ const Chat = () => {
     : 0;
 
   const chatSearchAction = (
-    <div className="w-fit">
-      <label className="input input-bordered flex h-10 items-center gap-2 rounded-lg bg-base-100">
+    <div className="flex flex-col items-start sm:items-end">
+      <label className="input input-bordered flex h-10 items-center gap-2 rounded-lg bg-base-100 !w-48">
         <Search size={16} className="shrink-0 text-base-content/50" />
         <input
           type="search"
-          className="text-sm w-36"
+          className="text-sm flex-1 min-w-0"
           placeholder="Search chats..."
           aria-label="Search chats"
           value={chatSearchQuery}
@@ -2263,7 +2263,7 @@ const Chat = () => {
         )}
       </label>
       {isChatSearchActive && !isNoSearchResults && (
-        <p className="mt-1 text-xs text-base-content/60">
+        <p className="mt-1 text-xs text-base-content/60 sm:text-right">
           {filteredConversations.length} of {conversations.length} chats
           {searchingChatMessages
             ? " · searching messages..."
