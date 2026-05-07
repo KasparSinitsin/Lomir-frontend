@@ -64,7 +64,7 @@ const parseIdNameToken = (token) => {
  * Parse system messages (join notifications, invitation responses)
  * Returns structured data if it's a system message, null otherwise
  */
-const parseSystemMessage = (content) => {
+export const parseSystemMessage = (content) => {
   if (!content) return null;
 
   // Pattern 1: Team join message
@@ -399,6 +399,41 @@ const parseSystemMessage = (content) => {
   return null;
 };
 
+const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const renderHighlightedSearchText = (value, query) => {
+  const text = String(value ?? "");
+  const terms = String(query ?? "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map(escapeRegExp);
+
+  if (!text || terms.length === 0) return text;
+
+  const matcher = new RegExp(`(${terms.join("|")})`, "gi");
+  const parts = text.split(matcher);
+
+  return parts.map((part, index) => {
+    if (!part) return null;
+
+    const isMatch = terms.some((term) =>
+      new RegExp(`^${term}$`, "i").test(part),
+    );
+
+    if (!isMatch) return part;
+
+    return (
+      <mark
+        key={`${part}-${index}`}
+        className="rounded-full bg-yellow-100 px-1.5 py-0.5 text-[var(--color-primary-focus)]"
+      >
+        {part}
+      </mark>
+    );
+  });
+};
+
 const MessageDisplay = ({
   messages,
   currentUserId,
@@ -418,6 +453,7 @@ const MessageDisplay = ({
   onEditMessage,
   onLeaveTeam,
   onConversationHeaderVisibilityChange,
+  searchQuery = "",
 }) => {
   const messagesEndRef = useRef(null);
   const highlightedMessageRef = useRef(null);
@@ -450,6 +486,31 @@ const MessageDisplay = ({
   const [editingContent, setEditingContent] = useState("");
   const [editingError, setEditingError] = useState(null);
   const [savingEditMessageId, setSavingEditMessageId] = useState(null);
+
+  const highlightEventContent = useCallback(
+    (node) => {
+      if (node == null || typeof node === "boolean") return node;
+      if (typeof node === "string" || typeof node === "number") {
+        return renderHighlightedSearchText(node, searchQuery);
+      }
+      if (Array.isArray(node)) {
+        return node.map((child, index) => (
+          <React.Fragment key={index}>
+            {highlightEventContent(child)}
+          </React.Fragment>
+        ));
+      }
+      if (React.isValidElement(node)) {
+        const children = node.props?.children;
+        if (children == null) return node;
+        return React.cloneElement(node, {
+          children: highlightEventContent(children),
+        });
+      }
+      return node;
+    },
+    [searchQuery],
+  );
 
   const setConversationHeaderRef = useCallback((node) => {
     setConversationHeaderElement(node);
@@ -905,7 +966,11 @@ const MessageDisplay = ({
     const safe = (name || "").trim();
     if (!safe) return null;
     if (safe === DELETED_USER_DISPLAY_NAME) {
-      return <span className="font-medium text-base-content/50">{safe}</span>;
+      return (
+        <span className="font-medium text-base-content/50">
+          {renderHighlightedSearchText(safe, searchQuery)}
+        </span>
+      );
     }
 
     return (
@@ -916,7 +981,7 @@ const MessageDisplay = ({
           onClick={() => handleMentionClick(safe)}
           disabled={resolvingName}
         >
-          {safe}
+          {renderHighlightedSearchText(safe, searchQuery)}
         </button>
       </Tooltip>
     );
@@ -926,7 +991,9 @@ const MessageDisplay = ({
     const safeName = (name || "").trim() || "User";
     if (!userId) {
       return safeName === DELETED_USER_DISPLAY_NAME ? (
-        <span className="font-medium text-base-content/50">{safeName}</span>
+        <span className="font-medium text-base-content/50">
+          {renderHighlightedSearchText(safeName, searchQuery)}
+        </span>
       ) : (
         <Mention name={safeName} />
       );
@@ -939,7 +1006,7 @@ const MessageDisplay = ({
           className="font-medium underline underline-offset-2 hover:no-underline hover:text-primary transition-colors"
           onClick={() => handleUserClick(userId, safeName)}
         >
-          {safeName}
+          {renderHighlightedSearchText(safeName, searchQuery)}
         </button>
       </Tooltip>
     );
@@ -963,7 +1030,13 @@ const MessageDisplay = ({
     const safeName = (name || "").trim() || "Team";
 
     // legacy / missing id => non-clickable fallback
-    if (!teamId) return <span className="font-medium">"{safeName}"</span>;
+    if (!teamId) {
+      return (
+        <span className="font-medium">
+          "{renderHighlightedSearchText(safeName, searchQuery)}"
+        </span>
+      );
+    }
 
     return (
       <Tooltip content={`Open ${safeName}`} position="top">
@@ -972,7 +1045,7 @@ const MessageDisplay = ({
           className="font-medium underline underline-offset-2 hover:no-underline hover:text-primary transition-colors"
           onClick={() => openTeamModal(teamId)}
         >
-          "{safeName}"
+          "{renderHighlightedSearchText(safeName, searchQuery)}"
         </button>
       </Tooltip>
     );
@@ -1426,7 +1499,7 @@ const MessageDisplay = ({
         >
           <span className="text-sm font-medium event-message-text">
             <PartyPopper size={16} className="event-inline-icon ml-1" />{" "}
-            {messageText}.
+            {highlightEventContent(messageText)}.
           </span>
         </div>
 
@@ -1467,7 +1540,7 @@ const MessageDisplay = ({
         <div className="event-banner event-banner--success mb-3">
           <span className="text-sm font-medium event-message-text">
             <UserPlus size={16} className="event-inline-icon mr-1" />
-            {welcomeText}
+            {highlightEventContent(welcomeText)}
             <PartyPopper size={16} className="event-inline-icon ml-1" />
           </span>
         </div>
@@ -1500,7 +1573,7 @@ const MessageDisplay = ({
         <div className="event-banner event-banner--neutral mb-3">
           <span className="text-sm font-medium event-message-text">
             <UserMinus size={16} className="event-inline-icon mr-1" />
-            {leaveText}
+            {highlightEventContent(leaveText)}
           </span>
         </div>
 
@@ -1541,7 +1614,7 @@ const MessageDisplay = ({
         <div className="event-banner event-banner--neutral mb-3">
           <span className="text-sm font-medium event-message-text">
             <UserMinus size={16} className="event-inline-icon mr-1" />
-            {text}
+            {highlightEventContent(text)}
           </span>
         </div>
 
@@ -1586,7 +1659,7 @@ const MessageDisplay = ({
       <div className="flex flex-col items-center w-full my-4">
         <div className="event-banner event-banner--success mb-3">
           <span className="text-sm font-medium event-message-text">
-            {messageText}
+            {highlightEventContent(messageText)}
             <PartyPopper size={16} className="event-inline-icon ml-1" />
           </span>
         </div>
@@ -1624,7 +1697,7 @@ const MessageDisplay = ({
         <div className="event-banner event-banner--success mb-3">
           <span className="text-sm font-medium event-message-text">
             <UserPlus size={16} className="event-inline-icon mr-1" />
-            {welcomeText}
+            {highlightEventContent(welcomeText)}
             <PartyPopper size={16} className="event-inline-icon ml-1" />
           </span>
         </div>
@@ -1656,7 +1729,7 @@ const MessageDisplay = ({
                   }
                 `}
               >
-                <p>{parsedMessage.personalMessage}</p>
+                <p>{renderHighlightedSearchText(parsedMessage.personalMessage, searchQuery)}</p>
                 <div
                   className={`
                     flex justify-end items-center text-xs mt-1 
@@ -1733,7 +1806,7 @@ const MessageDisplay = ({
       <div className="flex flex-col items-center w-full my-4">
         <div className="event-banner event-banner--neutral mb-3">
           <span className="text-sm font-medium event-message-text">
-            {messageText}
+            {highlightEventContent(messageText)}
           </span>
         </div>
 
@@ -1818,7 +1891,7 @@ const MessageDisplay = ({
       <div className="flex flex-col items-center w-full my-4">
         <div className="event-banner event-banner--neutral mb-3">
           <span className="text-sm font-medium event-message-text">
-            {messageText}
+            {highlightEventContent(messageText)}
           </span>
         </div>
 
@@ -1843,19 +1916,19 @@ const MessageDisplay = ({
       <>
         Your decline response to <Mention name={parsedMessage.applicantName} />
         {"'s"} application for{" "}
-        <span className="font-medium">{parsedMessage.teamName}</span>
+        <span className="font-medium">{renderHighlightedSearchText(parsedMessage.teamName, searchQuery)}</span>
       </>
     ) : (
       <>
         Response to your application for{" "}
-        <span className="font-medium">{parsedMessage.teamName}</span>
+        <span className="font-medium">{renderHighlightedSearchText(parsedMessage.teamName, searchQuery)}</span>
       </>
     );
 
     return (
       <div className="flex flex-col w-full my-4">
         <div className="event-banner event-banner--neutral mb-3 mx-auto">
-          <span className="text-sm event-message-text">{bannerContent}</span>
+          <span className="text-sm event-message-text">{highlightEventContent(bannerContent)}</span>
         </div>
 
         {parsedMessage.personalMessage && (
@@ -1877,7 +1950,7 @@ const MessageDisplay = ({
                   }
                 `}
               >
-                <p>{parsedMessage.personalMessage}</p>
+                <p>{renderHighlightedSearchText(parsedMessage.personalMessage, searchQuery)}</p>
                 <div
                   className={`
                     flex justify-end items-center text-xs mt-1 
@@ -1973,7 +2046,7 @@ const MessageDisplay = ({
       <div className="flex flex-col items-center w-full my-4">
         <div className="event-banner event-banner--neutral mb-3">
           <span className="text-sm font-medium event-message-text">
-            {messageText}
+            {highlightEventContent(messageText)}
           </span>
         </div>
 
@@ -1999,7 +2072,7 @@ const MessageDisplay = ({
         <div className="event-banner event-banner--info mb-3 mx-auto">
           <span className="text-sm event-message-text">
             Response to invitation for{" "}
-            <span className="font-medium">{parsedMessage.teamName}</span>
+            <span className="font-medium">{renderHighlightedSearchText(parsedMessage.teamName, searchQuery)}</span>
           </span>
         </div>
 
@@ -2024,7 +2097,7 @@ const MessageDisplay = ({
                   }
                 `}
               >
-                <p>{parsedMessage.personalMessage}</p>
+                <p>{renderHighlightedSearchText(parsedMessage.personalMessage, searchQuery)}</p>
                 <div
                   className={`
                     flex justify-end items-center text-xs mt-1 
@@ -2082,7 +2155,7 @@ const MessageDisplay = ({
       <div className="flex flex-col items-center w-full my-4">
         <div className="event-banner event-banner--neutral mb-3">
           <span className="text-sm font-medium event-message-text">
-            {messageText}
+            {highlightEventContent(messageText)}
           </span>
         </div>
 
@@ -2192,7 +2265,7 @@ const MessageDisplay = ({
         <div className={`event-banner ${bannerClass} mb-3`}>
           <span className="text-sm font-medium event-message-text">
             <RoleIcon size={16} className="event-inline-icon mr-1" />
-            {messageText}
+            {highlightEventContent(messageText)}
             {isPromotion && !isCurrentUser && (
               <PartyPopper size={16} className="event-inline-icon ml-1" />
             )}
@@ -2268,7 +2341,7 @@ const MessageDisplay = ({
         <div className="event-banner event-banner--owner mb-3">
           <span className="text-sm font-medium event-message-text">
             <Crown size={16} className="event-inline-icon mr-1" />
-            {messageText}
+            {highlightEventContent(messageText)}
             <PartyPopper size={16} className="event-inline-icon ml-1" />
           </span>
         </div>
@@ -2322,7 +2395,7 @@ const MessageDisplay = ({
       <div className="flex flex-col items-center w-full my-4">
         <div className="event-banner event-banner--neutral mb-3">
           <span className="text-sm font-medium event-message-text">
-            {messageText}
+            {highlightEventContent(messageText)}
           </span>
         </div>
 
@@ -2356,7 +2429,7 @@ const MessageDisplay = ({
           }}
         >
           <span className="text-sm font-medium event-message-text">
-            {messageText}
+            {highlightEventContent(messageText)}
           </span>
 
           {onLeaveTeam && (
@@ -3052,7 +3125,10 @@ const MessageDisplay = ({
                                 {/* Text content */}
                                 {message.content && !isEditing && (
                                   <p>
-                                    <MessageText content={message.content} />
+                                    <MessageText
+                                      content={message.content}
+                                      searchQuery={searchQuery}
+                                    />
                                   </p>
                                 )}
 

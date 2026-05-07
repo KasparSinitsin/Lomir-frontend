@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Users, User, ChevronRight } from "lucide-react";
+import { Users, User, ChevronRight, Search } from "lucide-react";
 import { Link } from "react-router-dom";
 import Tooltip from "../common/Tooltip";
 import { CountBadge } from "../common/NotificationBadge";
 import { getTeamInitials, isSyntheticTeam } from "../../utils/userHelpers";
-import { formatRelativeChatTimestamp } from "../../utils/dateHelpers";
+import { formatRelativeChatTimestamp, formatShortRelativeChatTimestamp } from "../../utils/dateHelpers";
 import TeamDetailsModal from "../teams/TeamDetailsModal";
 import UserDetailsModal from "../users/UserDetailsModal";
 import UserAvatar from "../users/UserAvatar";
@@ -21,6 +21,41 @@ import {
   mergeResolvedUserData,
 } from "../../utils/chatEntityResolvers";
 
+const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const renderHighlightedText = (value, query) => {
+  const text = String(value ?? "");
+  const terms = String(query ?? "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map(escapeRegExp);
+
+  if (!text || terms.length === 0) return text;
+
+  const matcher = new RegExp(`(${terms.join("|")})`, "gi");
+  const parts = text.split(matcher);
+
+  return parts.map((part, index) => {
+    if (!part) return null;
+
+    const isMatch = terms.some((term) =>
+      new RegExp(`^${term}$`, "i").test(part),
+    );
+
+    if (!isMatch) return part;
+
+    return (
+      <mark
+        key={`${part}-${index}`}
+        className="rounded-full bg-yellow-100 px-1.5 py-0.5 text-[var(--color-primary-focus)]"
+      >
+        {part}
+      </mark>
+    );
+  });
+};
+
 const ConversationList = ({
   conversations,
   activeConversationId,
@@ -28,6 +63,9 @@ const ConversationList = ({
   loading,
   onActiveConversationVisibilityChange,
   teamMembersRefreshSignal = null,
+  emptyState = null,
+  searchQuery = "",
+  chatVisible = true,
 }) => {
   // State for team details modal
   const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
@@ -239,29 +277,34 @@ const ConversationList = ({
   }
 
   if (conversations.length === 0) {
+    const emptyTitle = emptyState?.title || "No conversations yet";
+    const emptyDescription =
+      emptyState?.description ||
+      `Start chatting with other people or team members by visiting their profile and clicking "Send Message"`;
+    const showEmptyActions = emptyState?.showActions !== false;
+
     return (
       <div className="flex flex-col items-center justify-center h-full p-4 text-center">
-        <p className="text-base-content/70 mb-2">No conversations yet</p>
-        <p className="text-sm text-base-content/50">
-          Start chatting with other people or team members by visiting their
-          profile and clicking "Send Message"
-        </p>
-        <div className="mt-5 flex flex-col items-center justify-center gap-3 sm:flex-row">
-          <Link
-            to="/search?type=users"
-            className="btn btn-sm btn-primary gap-2"
-          >
-            <User size={16} />
-            Find People
-          </Link>
-          <Link
-            to="/search?type=teams"
-            className="btn btn-sm btn-primary gap-2"
-          >
-            <Users size={16} />
-            Find Teams
-          </Link>
-        </div>
+        <p className="text-base-content/70 mb-2">{emptyTitle}</p>
+        <p className="text-sm text-base-content/50">{emptyDescription}</p>
+        {showEmptyActions && (
+          <div className="mt-5 flex flex-col items-center justify-center gap-3 sm:flex-row">
+            <Link
+              to="/search?type=users"
+              className="btn btn-sm btn-primary gap-2"
+            >
+              <User size={16} />
+              Find People
+            </Link>
+            <Link
+              to="/search?type=teams"
+              className="btn btn-sm btn-primary gap-2"
+            >
+              <Users size={16} />
+              Find Teams
+            </Link>
+          </div>
+        )}
       </div>
     );
   }
@@ -301,9 +344,18 @@ const ConversationList = ({
           const displayName = isTeam
             ? conversationData?.name
             : directDisplayName || DELETED_USER_DISPLAY_NAME;
+          const isSearchActive = Boolean(searchQuery.trim());
+          const previewText =
+            isSearchActive && conversation.searchMatchPreview
+              ? conversation.searchMatchPreview
+              : conversation.lastMessage || "No messages yet";
+          const timestamp =
+            isSearchActive && conversation.searchMatchCreatedAt
+              ? conversation.searchMatchCreatedAt
+              : conversation.updatedAt;
 
           const isActive =
-            String(activeConversationId) === String(conversation.id);
+            chatVisible && String(activeConversationId) === String(conversation.id);
 
           return (
             <div
@@ -429,51 +481,91 @@ const ConversationList = ({
                               : undefined
                         }
                       >
-                        {displayName || "Unknown"}
+                        {renderHighlightedText(displayName || "Unknown", searchQuery)}
                       </h3>
                     </Tooltip>
                   </div>
                   <Tooltip
                     content={
-                      (conversation.lastMessage?.length ?? 0) > 60
-                        ? conversation.lastMessage
+                      (previewText?.length ?? 0) > 60
+                        ? previewText
                         : undefined
                     }
                     position="bottom"
                     wrapperClassName="block min-w-0 overflow-hidden"
                   >
                     <p className="text-sm text-base-content/70 truncate">
-                      {conversation.lastMessage || "No messages yet"}
+                      {renderHighlightedText(
+                        previewText,
+                        searchQuery,
+                      )}
                     </p>
                   </Tooltip>
                   <div className="flex items-center min-w-0 gap-2">
                     <p
-                      className="lomir-conversation-kind text-xs truncate flex-1 min-w-0 flex items-center gap-1"
+                      className="lomir-conversation-kind text-xs flex-1 min-w-0 flex items-center gap-1 overflow-hidden"
                       style={{ color: "#036b0c" }}
                     >
                       {isTeam ? (
                         <>
                           <Users size={12} className="flex-shrink-0" />
-                          <span className="lomir-conversation-kind-label">Team Chat</span>
+                          <span className={`lomir-conversation-kind-label whitespace-nowrap ${isSearchActive && chatVisible ? "hidden sm:inline md:hidden" : "inline"}`}>
+                            {renderHighlightedText("Team Chat", searchQuery)}
+                          </span>
                         </>
                       ) : (
                         <>
                           <User size={12} className="flex-shrink-0" />
-                          <span className="lomir-conversation-kind-label">DM Chat</span>
+                          <span className={`lomir-conversation-kind-label whitespace-nowrap ${isSearchActive && chatVisible ? "hidden sm:inline md:hidden" : "inline"}`}>
+                            {renderHighlightedText("Direct Message Chat", searchQuery)}
+                          </span>
                         </>
                       )}
+                      {isSearchActive && conversation.searchMatchCount > 0 && (() => {
+                        const count = conversation.searchMatchCount;
+                        const matchWord = count === 1 ? "match" : "matches";
+                        const query = searchQuery.trim();
+                        return (
+                          <>
+                            <Search size={12} className="flex-shrink-0 ml-2" />
+                            {chatVisible ? (
+                              /* Split-view: narrow column */
+                              <>
+                                <span className="whitespace-nowrap sm:hidden">{count}</span>
+                                <span className="truncate whitespace-nowrap hidden sm:inline md:hidden">
+                                  {count} search {matchWord} for &ldquo;{query}&rdquo;
+                                </span>
+                                <span className="whitespace-nowrap hidden md:inline">{count}</span>
+                              </>
+                            ) : (
+                              /* Full-width: show full text at sm+ */
+                              <>
+                                <span className="whitespace-nowrap sm:hidden">{count}</span>
+                                <span className="truncate whitespace-nowrap hidden sm:inline">
+                                  {count} search {matchWord} for &ldquo;{query}&rdquo;
+                                </span>
+                              </>
+                            )}
+                          </>
+                        );
+                      })()}
                     </p>
                     <span className="flex-shrink-0 ml-2 text-xs whitespace-nowrap" style={{ color: "#036b0c" }}>
-                      {formatRelativeChatTimestamp(conversation.updatedAt)}
+                      {chatVisible ? (
+                        <>
+                          <span className="md:hidden">{formatRelativeChatTimestamp(timestamp)}</span>
+                          <span className="hidden md:inline">{formatShortRelativeChatTimestamp(timestamp)}</span>
+                        </>
+                      ) : formatRelativeChatTimestamp(timestamp)}
                     </span>
                   </div>
                 </div>
 
-                {!isActive && (
+                {(!isActive || chatVisible) && (
                   <Tooltip content="Open conversation" position="top" wrapperClassName="inline-flex items-center flex-shrink-0 ml-1 -mr-4">
                     <button
                       onClick={() => onSelectConversation(conversation.id)}
-                      className="flex items-center justify-center p-2 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
+                      className={`flex items-center justify-center p-2 transition-opacity ${isActive ? "" : "md:opacity-0 md:group-hover:opacity-100"}`}
                     >
                       <ChevronRight size={16} className="text-base-content/70" />
                     </button>

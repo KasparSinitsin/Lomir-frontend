@@ -95,6 +95,41 @@ const shortenForDisplay = (href) => {
   }
 };
 
+const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const renderHighlightedText = (value, query) => {
+  const text = String(value ?? "");
+  const terms = String(query ?? "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map(escapeRegExp);
+
+  if (!text || terms.length === 0) return text;
+
+  const matcher = new RegExp(`(${terms.join("|")})`, "gi");
+  const parts = text.split(matcher);
+
+  return parts.map((part, index) => {
+    if (!part) return null;
+
+    const isMatch = terms.some((term) =>
+      new RegExp(`^${term}$`, "i").test(part),
+    );
+
+    if (!isMatch) return part;
+
+    return (
+      <mark
+        key={`${part}-${index}`}
+        className="rounded-full bg-yellow-100 px-1.5 py-0.5 text-[var(--color-primary-focus)]"
+      >
+        {part}
+      </mark>
+    );
+  });
+};
+
 // --- UI ------------------------------------------------------
 
 const LinkChip = ({ href }) => {
@@ -143,11 +178,17 @@ const PlainLink = ({ href }) => (
   </Tooltip>
 );
 
-export default function MessageText({ content }) {
+export default function MessageText({ content, searchQuery = "" }) {
   if (!content) return null;
 
   const matches = findUrls(content);
-  if (matches.length === 0) return <span>{content}</span>;
+  if (matches.length === 0) {
+    return (
+      <span className="whitespace-pre-wrap break-words">
+        {renderHighlightedText(content, searchQuery)}
+      </span>
+    );
+  }
 
   const parts = [];
   let last = 0;
@@ -177,7 +218,11 @@ export default function MessageText({ content }) {
     <span className="whitespace-pre-wrap break-words">
       {parts.map((p, idx) => {
         if (p.type === "text")
-          return <React.Fragment key={idx}>{p.value}</React.Fragment>;
+          return (
+            <React.Fragment key={idx}>
+              {renderHighlightedText(p.value, searchQuery)}
+            </React.Fragment>
+          );
         if (p.type === "file")
           return (
             <React.Fragment key={idx}>

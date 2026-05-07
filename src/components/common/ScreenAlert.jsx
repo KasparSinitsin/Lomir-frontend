@@ -18,7 +18,7 @@ const ScreenAlert = ({ alerts, type, message, onClose }) => {
             type={alert.type}
             message={alert.message}
             onClose={alert.onClose}
-            className="pointer-events-auto max-w-full shadow-[0_24px_70px_rgba(31,41,55,0.26),0_8px_24px_rgba(31,41,55,0.16)] ring-1 ring-white/25"
+            className="pointer-events-auto max-w-full shadow-[0_4px_10px_rgba(0,0,0,0.12),0_12px_30px_rgba(0,0,0,0.18),0_28px_56px_rgba(0,0,0,0.14)] ring-1 ring-white/20"
           />
         ))}
       </div>

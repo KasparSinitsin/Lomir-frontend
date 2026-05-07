@@ -178,6 +178,13 @@ export const formatRelativeChatTimestamp = (value) => {
   return formatDistanceToNow(date, { addSuffix: true }).replace("about ", "");
 };
 
+export const formatShortRelativeChatTimestamp = (value) => {
+  return formatRelativeChatTimestamp(value).replace(
+    "less than a minute ago",
+    "< minute ago",
+  );
+};
+
 export const formatLocalTime = (value) => {
   const date = normalizeTimestampToDate(value);
   if (!date) return "";
