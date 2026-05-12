@@ -18,6 +18,9 @@ import {
   Crown,
   Shield,
   User,
+  UserCheck,
+  UserSearch,
+  CircleX,
   FileText,
   File,
   FileSpreadsheet,
@@ -31,10 +34,12 @@ import {
   CheckCheck,
 } from "lucide-react";
 import TeamDetailsModal from "../teams/TeamDetailsModal";
+import VacantRoleDetailsModal from "../teams/VacantRoleDetailsModal";
 import UserDetailsModal from "../users/UserDetailsModal";
 import UserAvatar from "../users/UserAvatar";
 import DemoAvatarOverlay from "../users/DemoAvatarOverlay";
 import { userService } from "../../services/userService";
+import { vacantRoleService } from "../../services/vacantRoleService";
 import {
   getFileExpirationStatus,
   formatFileSize,
@@ -67,16 +72,31 @@ const parseIdNameToken = (token) => {
 export const parseSystemMessage = (content) => {
   if (!content) return null;
 
-  // Pattern 1: Team join message
-  // Format: 👋 Name joined the team!\n\n"personal message"
+  // Pattern 1: Team join message — with optional role and optional personal message
+  // Format A: 👋 Name joined the team as Role!\n\n"personal message"
+  // Format B: 👋 Name joined the team as Role!
+  // Format C: 👋 Name joined the team!\n\n"personal message"
+  // Format D: 👋 Name joined the team!
+  const joinWithRoleMatch = content.match(
+    /^👋\s+(.+?)\s+joined the team as (.+?)!\s*(?:\n\n"([\s\S]+)")?$/,
+  );
+  if (joinWithRoleMatch) {
+    return {
+      type: "team_join",
+      userName: joinWithRoleMatch[1].trim(),
+      roleName: joinWithRoleMatch[2].trim(),
+      personalMessage: joinWithRoleMatch[3]?.trim() ?? null,
+    };
+  }
+
   const joinMatch = content.match(
-    /^👋\s+(.+?)\s+joined the team!\s*\n\n"(.+)"$/s,
+    /^👋\s+(.+?)\s+joined the team!\s*(?:\n\n"([\s\S]+)")?$/,
   );
   if (joinMatch) {
     return {
       type: "team_join",
       userName: joinMatch[1].trim(),
-      personalMessage: joinMatch[2].trim(),
+      personalMessage: joinMatch[2]?.trim() ?? null,
     };
   }
 
@@ -113,14 +133,87 @@ export const parseSystemMessage = (content) => {
     /^(.+?)'s application for (.+?) was approved\.?$/,
   );
   if (roleApplicationApprovedMatch) {
+    const applicant = parseIdNameToken(roleApplicationApprovedMatch[1].trim());
+    const role = parseIdNameToken(roleApplicationApprovedMatch[2].trim());
+
     return {
       type: "role_application_approved",
-      applicantName: roleApplicationApprovedMatch[1].trim(),
-      roleName: roleApplicationApprovedMatch[2].trim(),
+      applicantId: applicant.id,
+      applicantName: applicant.name,
+      roleId: role.id,
+      roleName: role.name,
     };
   }
 
-  // Pattern 4B: Application decline response (direct message to applicant)
+  // Pattern 4B: Filled role reopened message
+  // Format: 🔓 ROLE_REOPENED: teamId:teamName | roleId:roleName | userId:userName
+  const roleReopenedMatch = content.match(
+    /^(?:🔓\s*)?ROLE_REOPENED:\s*(.+?)\s+\|\s+(.+?)\s+\|\s+(.+)$/,
+  );
+  if (roleReopenedMatch) {
+    const team = parseIdNameToken(roleReopenedMatch[1].trim());
+    const role = parseIdNameToken(roleReopenedMatch[2].trim());
+    const user = parseIdNameToken(roleReopenedMatch[3].trim());
+
+    return {
+      type: "role_reopened",
+      teamId: team.id,
+      teamName: team.name,
+      roleId: role.id,
+      roleName: role.name,
+      userId: user.id,
+      userName: user.name,
+    };
+  }
+
+  const legacyRoleReopenedMatch = content.match(
+    /^(.+?)\s+has left the role\s+(.+?)\.\s+The role is open again to be filled\.$/,
+  );
+  if (legacyRoleReopenedMatch) {
+    return {
+      type: "role_reopened",
+      userId: null,
+      userName: legacyRoleReopenedMatch[1].trim(),
+      roleId: null,
+      roleName: legacyRoleReopenedMatch[2].trim(),
+    };
+  }
+
+  const legacyRoleReopenedNoUserMatch = content.match(
+    /^🔓\s+The role (.+?) is now open again\.$/,
+  );
+  if (legacyRoleReopenedNoUserMatch) {
+    return {
+      type: "role_reopened",
+      userId: null,
+      userName: null,
+      roleId: null,
+      roleName: legacyRoleReopenedNoUserMatch[1].trim(),
+    };
+  }
+
+  // Pattern 4C: Open role marked as filled message
+  // Format: ✅ ROLE_FILLED: teamId:teamName | roleId:roleName | userId:userName
+  const roleFilledMatch = content.match(
+    /^(?:✅\s*)?ROLE_FILLED:\s*(.+?)\s+\|\s+(.+?)\s+\|\s+(.+)$/,
+  );
+  if (roleFilledMatch) {
+    const team = parseIdNameToken(roleFilledMatch[1].trim());
+    const role = parseIdNameToken(roleFilledMatch[2].trim());
+    const user = parseIdNameToken(roleFilledMatch[3].trim());
+
+    return {
+      type: "role_filled",
+      teamId: team.id,
+      teamName: team.name,
+      roleId: role.id,
+      roleName: role.name,
+      userId: user.id,
+      userName: user.name,
+    };
+  }
+
+  // Pattern 4D: Application decline response (direct message to applicant)
   // Format: 📋 Application declined: [Applicant] for "[Team]":\n\n"personal message"
   const applicationDeclineMatch = content.match(
     /^📋\s+Application declined:\s+(.+?)\s+for\s+"(.+?)":\s*\n\n"(.+)"$/s,
@@ -508,6 +601,8 @@ const MessageDisplay = ({
   // State for user details modal
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState(null);
+  const [isRoleModalOpen, setIsRoleModalOpen] = useState(false);
+  const [selectedRoleData, setSelectedRoleData] = useState(null);
 
   // Mention lookup (frontend-only)
   const [resolvingName, setResolvingName] = useState(false);
@@ -908,6 +1003,11 @@ const MessageDisplay = ({
     setSelectedUserId(null);
   };
 
+  const handleRoleModalClose = () => {
+    setIsRoleModalOpen(false);
+    setSelectedRoleData(null);
+  };
+
   const resolvedConversationPartner = mergeResolvedUserData(
     conversationPartner,
     conversationPartner?.id != null
@@ -1083,6 +1183,215 @@ const MessageDisplay = ({
         </button>
       </Tooltip>
     );
+  };
+
+  const normalizeRoleLookupValue = (value) =>
+    String(value ?? "").trim().toLowerCase();
+
+  const getRoleName = (role) =>
+    role?.roleName ?? role?.role_name ?? role?.name ?? role?.title ?? "";
+
+  const getRoleFilledUserId = (role) =>
+    role?.filledByUser?.id ??
+    role?.filled_by_user?.id ??
+    role?.filledByUserId ??
+    role?.filled_by_user_id ??
+    role?.filledBy ??
+    role?.filled_by ??
+    null;
+
+  const getRoleFilledUserName = (role) => {
+    const user = role?.filledByUser ?? role?.filled_by_user ?? {};
+    const firstName =
+      user.firstName ?? user.first_name ?? role?.filledByUserFirstName ?? role?.filled_by_user_first_name ?? "";
+    const lastName =
+      user.lastName ?? user.last_name ?? role?.filledByUserLastName ?? role?.filled_by_user_last_name ?? "";
+    const fullName = `${firstName} ${lastName}`.trim();
+    return (
+      fullName ||
+      user.username ||
+      role?.filledByUserUsername ||
+      role?.filled_by_user_username ||
+      ""
+    );
+  };
+
+  const findMatchingRole = (
+    roles,
+    { roleId, roleName, filledUserId, filledUserName },
+  ) => {
+    const normalizedRoleName = normalizeRoleLookupValue(roleName);
+    const normalizedFilledUserName = normalizeRoleLookupValue(filledUserName);
+    const candidates = (roles || []).filter((role) => {
+      if (roleId != null && String(role?.id) === String(roleId)) return true;
+
+      return (
+        normalizedRoleName &&
+        normalizeRoleLookupValue(getRoleName(role)) === normalizedRoleName
+      );
+    });
+
+    if (candidates.length === 0) return null;
+
+    const matchingFilledRole = candidates.find((role) => {
+      const isFilled = normalizeRoleLookupValue(role?.status) === "filled";
+      if (!isFilled) return false;
+
+      const roleFilledUserId = getRoleFilledUserId(role);
+      if (
+        filledUserId != null &&
+        roleFilledUserId != null &&
+        String(roleFilledUserId) === String(filledUserId)
+      ) {
+        return true;
+      }
+
+      if (normalizedFilledUserName) {
+        return (
+          normalizeRoleLookupValue(getRoleFilledUserName(role)) ===
+          normalizedFilledUserName
+        );
+      }
+
+      return true;
+    });
+
+    if (matchingFilledRole) return matchingFilledRole;
+
+    const openRole = candidates.find(
+      (role) => normalizeRoleLookupValue(role?.status) === "open",
+    );
+
+    return openRole ?? candidates[0];
+  };
+
+  const openRoleModal = async ({
+    roleId = null,
+    roleName,
+    filledUserId = null,
+    filledUserName = null,
+    filledAt = null,
+  }) => {
+    const safeName = (roleName || "").trim();
+    if (!safeName && !roleId) return;
+
+    const teamId = resolvedTeamData?.id ?? teamData?.id ?? null;
+    const teamName = resolvedTeamData?.name ?? teamData?.name ?? null;
+    const safeFilledUserName = (filledUserName || "").trim();
+    const fallbackStatus =
+      filledUserId || safeFilledUserName || filledAt ? "filled" : "open";
+    const filledUser =
+      filledUserId || safeFilledUserName
+        ? {
+            id: filledUserId,
+            username: safeFilledUserName || undefined,
+          }
+        : null;
+
+    const fallbackRole = {
+      id: roleId,
+      roleName: safeName || "Vacant Role",
+      role_name: safeName || "Vacant Role",
+      status: fallbackStatus,
+      teamId,
+      team_id: teamId,
+      teamName,
+      team_name: teamName,
+      filledAt,
+      filled_at: filledAt,
+      filledBy: filledUserId,
+      filled_by: filledUserId,
+      filledByUserId: filledUserId,
+      filled_by_user_id: filledUserId,
+      filledByUser: filledUser,
+      filled_by_user: filledUser,
+    };
+
+    let resolvedRole = fallbackRole;
+
+    if (teamId) {
+      try {
+        if (roleId) {
+          const response = await vacantRoleService.getVacantRoleById(
+            teamId,
+            roleId,
+          );
+          resolvedRole = response?.data ?? response ?? fallbackRole;
+        } else {
+          const response = await vacantRoleService.getVacantRoles(teamId, "all");
+          const roles = response?.data ?? response ?? [];
+          resolvedRole =
+            findMatchingRole(roles, {
+              roleId,
+              roleName: safeName,
+              filledUserId,
+              filledUserName: safeFilledUserName,
+            }) ?? fallbackRole;
+        }
+      } catch (error) {
+        console.warn("Could not fetch role details for chat event:", error);
+      }
+    }
+
+    setSelectedRoleData({
+      ...fallbackRole,
+      ...resolvedRole,
+      status: resolvedRole?.status ?? fallbackRole.status,
+    });
+    setIsRoleModalOpen(true);
+  };
+
+  const RoleMentionById = ({
+    roleId = null,
+    name,
+    filledUserId = null,
+    filledUserName = null,
+    filledAt = null,
+  }) => {
+    const safeName = (name || "").trim() || "Role";
+
+    return (
+      <Tooltip content={`Open ${safeName}`} position="top">
+        <button
+          type="button"
+          className="font-medium underline underline-offset-2 hover:no-underline hover:opacity-80 transition-opacity"
+          onClick={() =>
+            openRoleModal({
+              roleId,
+              roleName: safeName,
+              filledUserId,
+              filledUserName,
+              filledAt,
+            })
+          }
+        >
+          {renderHighlightedSearchText(safeName, searchQuery)}
+        </button>
+      </Tooltip>
+    );
+  };
+
+  const isCurrentUserTeamMember = () => {
+    if (conversationType !== "team" || currentUserId == null) return false;
+
+    const members = [
+      ...(teamMembers || []),
+      ...(resolvedTeamData?.members || []),
+      ...(teamData?.members || []),
+    ];
+
+    return members.some((member) => {
+      const memberUser = member?.user || member;
+      const memberId =
+        memberUser?.id ??
+        memberUser?.userId ??
+        memberUser?.user_id ??
+        member?.userId ??
+        member?.user_id ??
+        member?.id ??
+        null;
+      return memberId != null && String(memberId) === String(currentUserId);
+    });
   };
 
   // Group messages by date
@@ -1524,16 +1833,11 @@ const MessageDisplay = ({
 
     return (
       <div className="flex flex-col items-center w-full my-4">
-        <div
-          className="flex items-center justify-center gap-2 px-4 py-3 rounded-2xl mb-3 max-w-md text-center"
-          style={{
-            backgroundColor: "rgba(34, 197, 94, 0.1)",
-            color: "#16a34a",
-          }}
-        >
+        <div className="event-banner event-banner--success mb-3">
           <span className="text-sm font-medium event-message-text">
-            <PartyPopper size={16} className="event-inline-icon ml-1" />{" "}
-            {highlightEventContent(messageText)}.
+            <UserPlus size={16} className="event-inline-icon mr-1" />
+            {highlightEventContent(messageText)}
+            <PartyPopper size={16} className="event-inline-icon ml-1" />
           </span>
         </div>
 
@@ -1587,6 +1891,142 @@ const MessageDisplay = ({
   };
 
   // =============================================================================
+  // renderRoleApplicationApprovedMessage - Orange role theme
+  // =============================================================================
+  const renderRoleApplicationApprovedMessage = (message, parsedMessage) => {
+    const messageText = (
+      <>
+        <Mention name={parsedMessage.applicantName} />
+        {"'s"} application for{" "}
+        <RoleMentionById
+          roleId={parsedMessage.roleId}
+          name={parsedMessage.roleName}
+          filledUserId={parsedMessage.applicantId}
+          filledUserName={parsedMessage.applicantName}
+          filledAt={message.createdAt}
+        />{" "}
+        was approved.
+      </>
+    );
+
+    return (
+      <div className="flex flex-col items-center w-full my-4">
+        <div
+          className="event-banner mb-3"
+          style={{
+            backgroundColor: "rgba(245, 158, 11, 0.1)",
+            color: "#f59e0b",
+          }}
+        >
+          <span className="text-sm font-medium event-message-text">
+            <UserCheck size={16} className="event-inline-icon mr-1" />
+            {highlightEventContent(messageText)}
+          </span>
+        </div>
+
+        <div className="text-xs text-base-content/50">
+          {formatLocalTime(message.createdAt)}
+        </div>
+      </div>
+    );
+  };
+
+  // =============================================================================
+  // renderRoleReopenedMessage - Orange role theme
+  // =============================================================================
+  const renderRoleReopenedMessage = (message, parsedMessage) => {
+    const roleMention = (
+      <RoleMentionById
+        roleId={parsedMessage.roleId}
+        name={parsedMessage.roleName}
+      />
+    );
+    const messageText = parsedMessage.userName ? (
+      <>
+        <MentionById
+          userId={parsedMessage.userId}
+          name={parsedMessage.userName}
+        />{" "}
+        has left the role {roleMention}. The role is open again to be filled.
+      </>
+    ) : (
+      <>The role {roleMention} is open again to be filled.</>
+    );
+
+    return (
+      <div className="flex flex-col items-center w-full my-4">
+        <div
+          className="event-banner mb-3"
+          style={{
+            backgroundColor: "rgba(245, 158, 11, 0.1)",
+            color: "#f59e0b",
+          }}
+        >
+          <span className="text-sm font-medium event-message-text">
+            <UserSearch size={16} className="event-inline-icon mr-1" />
+            {highlightEventContent(messageText)}
+          </span>
+        </div>
+
+        <div className="text-xs text-base-content/50">
+          {formatLocalTime(message.createdAt)}
+        </div>
+      </div>
+    );
+  };
+
+  // =============================================================================
+  // renderRoleFilledMessage - Orange role theme
+  // =============================================================================
+  const renderRoleFilledMessage = (message, parsedMessage) => {
+    const hasKnownFilledUser =
+      parsedMessage.userName &&
+      parsedMessage.userName.trim().toLowerCase() !== "someone";
+
+    const roleMention = (
+      <RoleMentionById
+        roleId={parsedMessage.roleId}
+        name={parsedMessage.roleName}
+        filledUserId={parsedMessage.userId}
+        filledUserName={hasKnownFilledUser ? parsedMessage.userName : null}
+        filledAt={message.createdAt}
+      />
+    );
+    const messageText = hasKnownFilledUser ? (
+      <>
+        <MentionById
+          userId={parsedMessage.userId}
+          name={parsedMessage.userName}
+        />{" "}
+        is now filling the role {roleMention}.
+      </>
+    ) : (
+      <>The role {roleMention} was marked as filled.</>
+    );
+
+    return (
+      <div className="flex flex-col items-center w-full my-4">
+        <div
+          className="event-banner mb-3"
+          style={{
+            backgroundColor: "rgba(245, 158, 11, 0.1)",
+            color: "#f59e0b",
+          }}
+        >
+          <span className="text-sm font-medium event-message-text">
+            <UserCheck size={16} className="event-inline-icon mr-1" />
+            {highlightEventContent(messageText)}
+          </span>
+        </div>
+
+        <div className="text-xs text-base-content/50">
+          {formatLocalTime(message.createdAt)}
+        </div>
+      </div>
+    );
+  };
+
+  // =============================================================================
   // renderLeaveMessage - Neutral grey theme (pill shape)
   // =============================================================================
   const renderLeaveMessage = (message, parsedMessage, isCurrentUser) => {
@@ -1607,6 +2047,28 @@ const MessageDisplay = ({
         <div className="event-banner event-banner--neutral mb-3">
           <span className="text-sm font-medium event-message-text">
             <UserMinus size={16} className="event-inline-icon mr-1" />
+            {highlightEventContent(leaveText)}
+          </span>
+        </div>
+
+        <div className="text-xs text-base-content/50">
+          {formatLocalTime(message.createdAt)}
+        </div>
+      </div>
+    );
+  };
+
+  // =============================================================================
+  // renderUserLeftLomirMessage - Neutral grey theme
+  // =============================================================================
+  const renderUserLeftLomirMessage = (message, parsedMessage) => {
+    const leaveText = <>Former Lomir Member has left Lomir.</>;
+
+    return (
+      <div className="flex flex-col items-center w-full my-4">
+        <div className="event-banner event-banner--neutral mb-3">
+          <span className="text-sm font-medium event-message-text">
+            <LogOut size={16} className="event-inline-icon mr-1" />
             {highlightEventContent(leaveText)}
           </span>
         </div>
@@ -1717,8 +2179,23 @@ const MessageDisplay = ({
     senderId,
   ) => {
     const pronoun = isCurrentUser ? "you" : "them";
+    const roleMention = parsedMessage.roleName ? (
+      <>
+        <UserCheck size={16} className="event-inline-icon mx-1" />
+        <Mention name={parsedMessage.roleName} />
+      </>
+    ) : null;
     const welcomeText = isCurrentUser ? (
-      <>You joined the team. Welcome aboard!</>
+      roleMention ? (
+        <>You joined the team as{" "}{roleMention}. Welcome aboard!</>
+      ) : (
+        <>You joined the team. Welcome aboard!</>
+      )
+    ) : roleMention ? (
+      <>
+        <Mention name={parsedMessage.userName} /> joined the team as{" "}
+        {roleMention}. Say hello to {pronoun}!
+      </>
     ) : (
       <>
         <Mention name={parsedMessage.userName} /> has followed your invite and
@@ -1840,6 +2317,7 @@ const MessageDisplay = ({
       <div className="flex flex-col items-center w-full my-4">
         <div className="event-banner event-banner--neutral mb-3">
           <span className="text-sm font-medium event-message-text">
+            <CircleX size={16} className="event-inline-icon mr-1" />
             {highlightEventContent(messageText)}
           </span>
         </div>
@@ -1925,6 +2403,7 @@ const MessageDisplay = ({
       <div className="flex flex-col items-center w-full my-4">
         <div className="event-banner event-banner--neutral mb-3">
           <span className="text-sm font-medium event-message-text">
+            <CircleX size={16} className="event-inline-icon mr-1" />
             {highlightEventContent(messageText)}
           </span>
         </div>
@@ -1960,9 +2439,12 @@ const MessageDisplay = ({
     );
 
     return (
-      <div className="flex flex-col w-full my-4">
-        <div className="event-banner event-banner--neutral mb-3 mx-auto">
-          <span className="text-sm event-message-text">{highlightEventContent(bannerContent)}</span>
+      <div className="flex flex-col items-center w-full my-4">
+        <div className="event-banner event-banner--neutral mb-3">
+          <span className="text-sm font-medium event-message-text">
+            <FileText size={16} className="event-inline-icon mr-1" />
+            {highlightEventContent(bannerContent)}
+          </span>
         </div>
 
         {parsedMessage.personalMessage && (
@@ -1976,7 +2458,7 @@ const MessageDisplay = ({
             <div className="flex flex-col max-w-[70%]">
               <div
                 className={`
-                  rounded-lg p-3 
+                  rounded-lg p-3
                   ${
                     isCurrentUser
                       ? "bg-green-100 text-base-content rounded-br-none ml-auto"
@@ -1987,7 +2469,7 @@ const MessageDisplay = ({
                 <p>{renderHighlightedSearchText(parsedMessage.personalMessage, searchQuery)}</p>
                 <div
                   className={`
-                    flex justify-end items-center text-xs mt-1 
+                    flex justify-end items-center text-xs mt-1
                     ${
                       isCurrentUser
                         ? "text-base-content/60"
@@ -2080,6 +2562,7 @@ const MessageDisplay = ({
       <div className="flex flex-col items-center w-full my-4">
         <div className="event-banner event-banner--neutral mb-3">
           <span className="text-sm font-medium event-message-text">
+            <CircleX size={16} className="event-inline-icon mr-1" />
             {highlightEventContent(messageText)}
           </span>
         </div>
@@ -2102,9 +2585,10 @@ const MessageDisplay = ({
     senderId,
   ) => {
     return (
-      <div className="flex flex-col w-full my-4">
-        <div className="event-banner event-banner--info mb-3 mx-auto">
-          <span className="text-sm event-message-text">
+      <div className="flex flex-col items-center w-full my-4">
+        <div className="event-banner event-banner--neutral mb-3">
+          <span className="text-sm font-medium event-message-text">
+            <FileText size={16} className="event-inline-icon mr-1" />
             Response to invitation for{" "}
             <span className="font-medium">{renderHighlightedSearchText(parsedMessage.teamName, searchQuery)}</span>
           </span>
@@ -2123,7 +2607,7 @@ const MessageDisplay = ({
             <div className="flex flex-col max-w-[70%]">
               <div
                 className={`
-                  rounded-lg p-3 
+                  rounded-lg p-3
                   ${
                     isCurrentUser
                       ? "bg-green-100 text-base-content rounded-br-none ml-auto"
@@ -2134,7 +2618,7 @@ const MessageDisplay = ({
                 <p>{renderHighlightedSearchText(parsedMessage.personalMessage, searchQuery)}</p>
                 <div
                   className={`
-                    flex justify-end items-center text-xs mt-1 
+                    flex justify-end items-center text-xs mt-1
                     ${
                       isCurrentUser
                         ? "text-base-content/60"
@@ -2189,6 +2673,7 @@ const MessageDisplay = ({
       <div className="flex flex-col items-center w-full my-4">
         <div className="event-banner event-banner--neutral mb-3">
           <span className="text-sm font-medium event-message-text">
+            <CircleX size={16} className="event-inline-icon mr-1" />
             {highlightEventContent(messageText)}
           </span>
         </div>
@@ -2429,6 +2914,7 @@ const MessageDisplay = ({
       <div className="flex flex-col items-center w-full my-4">
         <div className="event-banner event-banner--neutral mb-3">
           <span className="text-sm font-medium event-message-text">
+            <UserMinus size={16} className="event-inline-icon mr-1" />
             {highlightEventContent(messageText)}
           </span>
         </div>
@@ -2754,6 +3240,41 @@ const MessageDisplay = ({
                         )}
                       </div>
                     );
+                  } else if (
+                    parsedMessage.type === "role_application_approved"
+                  ) {
+                    return (
+                      <div
+                        key={`${dateString}-group-${groupIndex}`}
+                        ref={isFirstHighlighted ? highlightedMessageRef : null}
+                        className={wrapperClass}
+                      >
+                        {renderRoleApplicationApprovedMessage(
+                          message,
+                          parsedMessage,
+                        )}
+                      </div>
+                    );
+                  } else if (parsedMessage.type === "role_reopened") {
+                    return (
+                      <div
+                        key={`${dateString}-group-${groupIndex}`}
+                        ref={isFirstHighlighted ? highlightedMessageRef : null}
+                        className={wrapperClass}
+                      >
+                        {renderRoleReopenedMessage(message, parsedMessage)}
+                      </div>
+                    );
+                  } else if (parsedMessage.type === "role_filled") {
+                    return (
+                      <div
+                        key={`${dateString}-group-${groupIndex}`}
+                        ref={isFirstHighlighted ? highlightedMessageRef : null}
+                        className={wrapperClass}
+                      >
+                        {renderRoleFilledMessage(message, parsedMessage)}
+                      </div>
+                    );
                   } else if (parsedMessage.type === "application_response") {
                     return (
                       <div
@@ -2782,6 +3303,16 @@ const MessageDisplay = ({
                           parsedMessage,
                           isCurrentUser,
                         )}
+                      </div>
+                    );
+                  } else if (parsedMessage.type === "user_left_lomir") {
+                    return (
+                      <div
+                        key={`${dateString}-group-${groupIndex}`}
+                        ref={isFirstHighlighted ? highlightedMessageRef : null}
+                        className={wrapperClass}
+                      >
+                        {renderUserLeftLomirMessage(message, parsedMessage)}
                       </div>
                     );
                   } else if (parsedMessage.type === "member_removed_public") {
@@ -3313,6 +3844,27 @@ const MessageDisplay = ({
         membersRefreshKey={teamMembersRefreshKey}
         hideMatchData
         onClose={handleTeamModalClose}
+      />
+
+      <VacantRoleDetailsModal
+        isOpen={isRoleModalOpen}
+        onClose={handleRoleModalClose}
+        team={resolvedTeamData ?? teamData ?? null}
+        role={selectedRoleData}
+        isTeamMember={isCurrentUserTeamMember()}
+        viewAsUserId={
+          selectedRoleData?.filledByUserId ??
+          selectedRoleData?.filled_by_user_id ??
+          null
+        }
+        viewAsUser={
+          selectedRoleData?.filledByUser ??
+          selectedRoleData?.filled_by_user ??
+          null
+        }
+        hideActions={
+          String(selectedRoleData?.status ?? "").toLowerCase() !== "open"
+        }
       />
 
       <UserDetailsModal

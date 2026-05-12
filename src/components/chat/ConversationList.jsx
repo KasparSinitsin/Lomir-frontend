@@ -12,6 +12,7 @@ import {
   UserCheck,
   UserMinus,
   UserPlus,
+  UserSearch,
   Users,
 } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -47,6 +48,7 @@ const EVENT_PREVIEW_ICONS = {
   UserCheck,
   UserMinus,
   UserPlus,
+  UserSearch,
 };
 
 const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -557,12 +559,16 @@ const ConversationList = ({
                           <span className="truncate">{previewText}</span>
                         </span>
                       </p>
-                    ) : (
+                    ) : conversation.lastMessage ? (
                       <p className="text-sm text-base-content/70 truncate">
                         {renderHighlightedText(
                           previewText,
                           searchQuery,
                         )}
+                      </p>
+                    ) : (
+                      <p className="text-sm text-base-content/50 truncate italic">
+                        This message was deleted.
                       </p>
                     )}
                   </Tooltip>

@@ -266,6 +266,14 @@ const buildSystemMessageSearchSnippet = (parsedMessage) => {
       return `${parsedMessage.userName} joined the team. You joined the team. Welcome aboard. ${parsedMessage.personalMessage || ""}`;
     case "team_leave":
       return `${parsedMessage.userName} has left the team. You have left the team.`;
+    case "role_application_approved":
+      return `${parsedMessage.applicantName}'s application for ${parsedMessage.roleName} was approved.`;
+    case "role_reopened":
+      return `${parsedMessage.userName} has left the role ${parsedMessage.roleName}. The role is open again to be filled.`;
+    case "role_filled":
+      return parsedMessage.userName && parsedMessage.userName !== "Someone"
+        ? `${parsedMessage.userName} is now filling the role ${parsedMessage.roleName}.`
+        : `The role ${parsedMessage.roleName} was marked as filled.`;
     case "member_removed_public":
       return `${parsedMessage.userName} has been removed from the team. You removed ${parsedMessage.userName} from the team.`;
     case "invitation_cancelled":
@@ -455,6 +463,7 @@ const Chat = () => {
   const pendingScrollAdjustmentRef = useRef(null);
   const conversationsRef = useRef([]);
   const activeConversationRef = useRef(null);
+  const messagesRef = useRef([]);
   const chatSearchLoadingKeysRef = useRef(new Set());
   const pendingChatSearchTargetRef = useRef(null);
   const [loadingMessages, setLoadingMessages] = useState(false);
@@ -549,6 +558,10 @@ const Chat = () => {
   useEffect(() => {
     conversationsRef.current = conversations;
   }, [conversations]);
+
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
 
   useEffect(() => {
     activeConversationRef.current = activeConversation;

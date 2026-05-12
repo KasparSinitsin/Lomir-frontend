@@ -111,13 +111,17 @@ export const getEventPreview = (lastMessage, currentUser = null) => {
       };
     }
 
-    case "team_join":
+    case "team_join": {
+      const actor = getActorLabel(parsedMessage.userId, parsedMessage.userName, currentUser) || "Someone";
       return {
-        text: `${getActorLabel(parsedMessage.userId, parsedMessage.userName, currentUser) || "Someone"} joined the team`,
+        text: parsedMessage.roleName
+          ? `${actor} joined the team as ${parsedMessage.roleName}`
+          : `${actor} joined the team`,
         icon: "UserPlus",
         bannerClass: "event-banner--success",
         color: EVENT_PREVIEW_TEXT_COLORS["event-banner--success"],
       };
+    }
 
     case "team_leave": {
       const userName = getActorLabel(
@@ -139,7 +143,7 @@ export const getEventPreview = (lastMessage, currentUser = null) => {
 
     case "user_left_lomir":
       return {
-        text: `${getActorLabel(parsedMessage.userId, parsedMessage.userName, currentUser) || "User"} left Lomir`,
+        text: "Former Lomir Member left Lomir",
         icon: "LogOut",
         bannerClass: "event-banner--neutral",
         color: EVENT_PREVIEW_TEXT_COLORS["event-banner--neutral"],
@@ -227,6 +231,45 @@ export const getEventPreview = (lastMessage, currentUser = null) => {
 
       return {
         text: `${possessive(applicantName || "Applicant")} application for ${parsedMessage.roleName} was approved`,
+        icon: "UserCheck",
+        bannerClass: null,
+        color: EVENT_PREVIEW_TEXT_COLORS.role,
+      };
+    }
+
+    case "role_reopened": {
+      const userName = getActorLabel(
+        parsedMessage.userId,
+        parsedMessage.userName,
+        currentUser,
+      );
+
+      return {
+        text:
+          userName === "You"
+            ? `${parsedMessage.roleName} is open again`
+            : `A former team member has left the role ${parsedMessage.roleName}`,
+        icon: "UserSearch",
+        bannerClass: null,
+        color: EVENT_PREVIEW_TEXT_COLORS.role,
+      };
+    }
+
+    case "role_filled": {
+      const userName = getActorLabel(
+        parsedMessage.userId,
+        parsedMessage.userName,
+        currentUser,
+      );
+      const hasKnownFilledUser =
+        userName && userName.trim().toLowerCase() !== "someone";
+
+      return {
+        text: hasKnownFilledUser
+          ? userName === "You"
+            ? `You filled ${parsedMessage.roleName}`
+            : `${userName} filled ${parsedMessage.roleName}`
+          : `${parsedMessage.roleName} was marked as filled`,
         icon: "UserCheck",
         bannerClass: null,
         color: EVENT_PREVIEW_TEXT_COLORS.role,
