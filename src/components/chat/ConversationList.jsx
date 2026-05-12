@@ -86,6 +86,33 @@ const renderHighlightedText = (value, query) => {
   });
 };
 
+const MENTION_TOKEN_RE = /@\[([^\]]+)\]\([^)]+\)/g;
+
+const stripMentionTokens = (text) =>
+  text ? text.replace(/@\[([^\]]+)\]\([^)]+\)/g, "@$1") : text;
+
+const renderPreviewWithMentions = (text, query) => {
+  if (!text) return null;
+  const parts = [];
+  let last = 0;
+  let m;
+  MENTION_TOKEN_RE.lastIndex = 0;
+  while ((m = MENTION_TOKEN_RE.exec(text)) !== null) {
+    if (m.index > last) parts.push({ type: "text", value: text.slice(last, m.index) });
+    parts.push({ type: "mention", name: m[1] });
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) parts.push({ type: "text", value: text.slice(last) });
+
+  return parts.map((part, idx) =>
+    part.type === "mention" ? (
+      <span key={idx} className="text-primary font-medium">@{part.name}</span>
+    ) : (
+      <React.Fragment key={idx}>{renderHighlightedText(part.value, query)}</React.Fragment>
+    ),
+  );
+};
+
 const ConversationList = ({
   conversations,
   activeConversationId,
@@ -528,7 +555,7 @@ const ConversationList = ({
                   <Tooltip
                     content={
                       (previewText?.length ?? 0) > 60
-                        ? previewText
+                        ? stripMentionTokens(previewText)
                         : undefined
                     }
                     position="bottom"
@@ -561,10 +588,7 @@ const ConversationList = ({
                       </p>
                     ) : conversation.lastMessage ? (
                       <p className="text-sm text-base-content/70 truncate">
-                        {renderHighlightedText(
-                          previewText,
-                          searchQuery,
-                        )}
+                        {renderPreviewWithMentions(previewText, searchQuery)}
                       </p>
                     ) : (
                       <p className="text-sm text-base-content/50 truncate italic">

@@ -3693,6 +3693,7 @@ const MessageDisplay = ({
                                     <MessageText
                                       content={message.content}
                                       searchQuery={searchQuery}
+                                      onUserClick={handleUserClick}
                                     />
                                   </p>
                                 )}

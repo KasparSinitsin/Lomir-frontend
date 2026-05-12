@@ -541,6 +541,25 @@ const Chat = () => {
   const teamMembers =
     conversationType === "team" ? activeConversation?.team?.members || [] : [];
 
+  const mentionParticipants = useMemo(() => {
+    if (conversationType === "direct") {
+      return conversationPartner ? [conversationPartner] : [];
+    }
+    const members = teamMembers
+      .map((m) => m.user || m)
+      .filter((m) => {
+        const id = m.id ?? m.userId ?? m.user_id;
+        return id && String(id) !== String(user?.id);
+      })
+      .map((m) => ({
+        id: m.id ?? m.userId ?? m.user_id,
+        firstName: m.firstName || m.first_name || "",
+        lastName: m.lastName || m.last_name || "",
+        avatarUrl: m.avatarUrl || m.avatar_url || null,
+      }));
+    return [{ id: "all", firstName: "all", lastName: "" }, ...members];
+  }, [conversationType, conversationPartner, teamMembers, user?.id]);
+
   const conversationUpdatedAt =
     getConversationUpdatedAt(activeConversation) ||
     getConversationUpdatedAt(messages?.[messages.length - 1] || messages?.[0] || null);
@@ -2607,6 +2626,7 @@ const Chat = () => {
                     onSendFile={handleSendFile}
                     onTyping={handleTyping}
                     disabled={!activeConversation}
+                    participants={mentionParticipants}
                   />
                 </div>
               </div>
