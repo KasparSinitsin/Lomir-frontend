@@ -107,7 +107,20 @@ export const parseSystemMessage = (content) => {
     };
   }
 
-  // Pattern 4: Application decline response (direct message to applicant)
+  // Pattern 4A: Role application approved message
+  // Format: Anna Kowalski's application for Improv Performer was approved
+  const roleApplicationApprovedMatch = content.match(
+    /^(.+?)'s application for (.+?) was approved\.?$/,
+  );
+  if (roleApplicationApprovedMatch) {
+    return {
+      type: "role_application_approved",
+      applicantName: roleApplicationApprovedMatch[1].trim(),
+      roleName: roleApplicationApprovedMatch[2].trim(),
+    };
+  }
+
+  // Pattern 4B: Application decline response (direct message to applicant)
   // Format: 📋 Application declined: [Applicant] for "[Team]":\n\n"personal message"
   const applicationDeclineMatch = content.match(
     /^📋\s+Application declined:\s+(.+?)\s+for\s+"(.+?)":\s*\n\n"(.+)"$/s,
@@ -123,7 +136,8 @@ export const parseSystemMessage = (content) => {
 
   // Pattern 5A (NEW): Team leave message with userId
   // Format: 🚪 MEMBER_LEFT:<userId>:<displayName>
-  const leaveIdMatch = content.match(/^🚪\s*MEMBER_LEFT:(\d+):(.+)$/);
+  // Also accepts raw backend payloads without the emoji prefix.
+  const leaveIdMatch = content.match(/^(?:🚪\s*)?MEMBER_LEFT:(\d+):(.+)$/);
   if (leaveIdMatch) {
     return {
       type: "team_leave",
@@ -143,19 +157,34 @@ export const parseSystemMessage = (content) => {
     };
   }
 
-  // Pattern 5C (NEW): Member removed public message (team chat)
+  // Pattern 5C: User left Lomir message
+  // Format: 🚪 Name has left Lomir.
+  const userLeftLomirMatch = content.match(/^🚪\s+(.+?)\s+has left Lomir\.$/);
+  if (userLeftLomirMatch) {
+    return {
+      type: "user_left_lomir",
+      userId: null,
+      userName: userLeftLomirMatch[1].trim(),
+    };
+  }
+
+  // Pattern 5D (NEW): Member removed public message (team chat)
   // Format: 🚫 MEMBER_REMOVED_PUBLIC: <teamId>:<teamName> | <memberId>:<memberName>
+  // Also accepts raw backend payloads without the emoji prefix.
   const removedPublicMatch = content.match(
-    /^🚫\s*MEMBER_REMOVED_PUBLIC:\s*(\d+):(.+?)\s*\|\s*(\d+):(.+)$/,
+    /^(?:🚫\s*)?MEMBER_REMOVED_PUBLIC:\s*(.+?)\s*\|\s*(.+)$/,
   );
 
   if (removedPublicMatch) {
+    const team = parseIdNameToken(removedPublicMatch[1].trim());
+    const member = parseIdNameToken(removedPublicMatch[2].trim());
+
     return {
       type: "member_removed_public",
-      teamId: Number(removedPublicMatch[1]),
-      teamName: removedPublicMatch[2].trim(),
-      userId: Number(removedPublicMatch[3]),
-      userName: removedPublicMatch[4].trim(),
+      teamId: team.id,
+      teamName: team.name,
+      userId: member.id,
+      userName: member.name,
     };
   }
 
@@ -389,10 +418,15 @@ export const parseSystemMessage = (content) => {
     /^🗑️\s+TEAM_DELETED:\s+(.+?)\s+\|\s+(.+)$/,
   );
   if (teamDeletedMatch) {
+    const team = parseIdNameToken(teamDeletedMatch[1].trim());
+    const owner = parseIdNameToken(teamDeletedMatch[2].trim());
+
     return {
       type: "team_deleted",
-      teamName: teamDeletedMatch[1].trim(),
-      ownerName: teamDeletedMatch[2].trim(),
+      teamId: team.id,
+      teamName: team.name,
+      ownerId: owner.id,
+      ownerName: owner.name,
     };
   }
 

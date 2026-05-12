@@ -1,5 +1,19 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Users, User, ChevronRight, Search } from "lucide-react";
+import {
+  AlertTriangle,
+  ChevronRight,
+  CircleX,
+  Crown,
+  FileText,
+  LogOut,
+  Search,
+  Shield,
+  User,
+  UserCheck,
+  UserMinus,
+  UserPlus,
+  Users,
+} from "lucide-react";
 import { Link } from "react-router-dom";
 import Tooltip from "../common/Tooltip";
 import { CountBadge } from "../common/NotificationBadge";
@@ -20,6 +34,20 @@ import {
   mergeResolvedTeamData,
   mergeResolvedUserData,
 } from "../../utils/chatEntityResolvers";
+import { getEventPreview } from "../../utils/eventPreview";
+
+const EVENT_PREVIEW_ICONS = {
+  AlertTriangle,
+  CircleX,
+  Crown,
+  FileText,
+  LogOut,
+  Shield,
+  User,
+  UserCheck,
+  UserMinus,
+  UserPlus,
+};
 
 const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -66,6 +94,7 @@ const ConversationList = ({
   emptyState = null,
   searchQuery = "",
   chatVisible = true,
+  currentUser = null,
 }) => {
   // State for team details modal
   const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
@@ -345,10 +374,20 @@ const ConversationList = ({
             ? conversationData?.name
             : directDisplayName || DELETED_USER_DISPLAY_NAME;
           const isSearchActive = Boolean(searchQuery.trim());
+          const eventPreview = getEventPreview(
+            conversation.lastMessage,
+            currentUser,
+          );
+          const shouldUseEventPreview = !isSearchActive && eventPreview;
+          const EventPreviewIcon = shouldUseEventPreview
+            ? EVENT_PREVIEW_ICONS[eventPreview.icon]
+            : null;
           const previewText =
             isSearchActive && conversation.searchMatchPreview
               ? conversation.searchMatchPreview
-              : conversation.lastMessage || "No messages yet";
+              : shouldUseEventPreview
+                ? eventPreview.text
+                : conversation.lastMessage || "No messages yet";
           const timestamp =
             isSearchActive && conversation.searchMatchCreatedAt
               ? conversation.searchMatchCreatedAt
@@ -493,12 +532,39 @@ const ConversationList = ({
                     position="bottom"
                     wrapperClassName="block min-w-0 overflow-hidden"
                   >
-                    <p className="text-sm text-base-content/70 truncate">
-                      {renderHighlightedText(
-                        previewText,
-                        searchQuery,
-                      )}
-                    </p>
+                    {shouldUseEventPreview && EventPreviewIcon ? (
+                      <p
+                        className="text-sm font-medium truncate"
+                        style={{
+                          color: eventPreview.color,
+                          ...(eventPreview.backgroundColor
+                            ? {
+                                backgroundColor: eventPreview.backgroundColor,
+                                borderRadius: "0.375rem",
+                                maxWidth: "100%",
+                                paddingLeft: "3px",
+                                paddingRight: "3px",
+                                width: "fit-content",
+                              }
+                            : {}),
+                        }}
+                      >
+                        <span className="flex min-w-0 items-center gap-1">
+                          <EventPreviewIcon
+                            size={14}
+                            className="flex-shrink-0"
+                          />
+                          <span className="truncate">{previewText}</span>
+                        </span>
+                      </p>
+                    ) : (
+                      <p className="text-sm text-base-content/70 truncate">
+                        {renderHighlightedText(
+                          previewText,
+                          searchQuery,
+                        )}
+                      </p>
+                    )}
                   </Tooltip>
                   <div className="flex items-center min-w-0 gap-2">
                     <p

@@ -2371,6 +2371,7 @@ const Chat = () => {
               emptyState={isNoSearchResults ? null : chatSearchEmptyState}
               searchQuery={isNoSearchResults ? "" : chatSearchQuery}
               chatVisible={!hideChatDuringSearch && showChatView}
+              currentUser={user}
             />
           </div>
         </div>
