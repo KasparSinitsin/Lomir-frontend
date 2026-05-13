@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect } from "react";
+import { useAuth } from "../../contexts/AuthContext";
 import Modal from "../common/Modal";
 import Button from "../common/Button";
 import Alert from "../common/Alert";
@@ -8,6 +9,8 @@ import FormSectionDivider from "../common/FormSectionDivider";
 import TagInput from "../tags/TagInput";
 import Tooltip from "../common/Tooltip";
 import { vacantRoleService } from "../../services/vacantRoleService";
+import { messageService } from "../../services/messageService";
+import { buildRoleCreatedMessage, buildRoleUpdatedMessage } from "../../utils/roleEventMessages";
 import { useLocationAutoFill } from "../../hooks/useLocationAutoFill";
 import { getCategoryIcon, getBadgeIcon } from "../../utils/badgeIconUtils";
 import {
@@ -36,6 +39,7 @@ import api from "../../services/api";
  * @param {boolean} isOpen
  * @param {Function} onClose
  * @param {number} teamId
+ * @param {Object|null} team - Team object (used for chat event message on creation)
  * @param {Object|null} existingRole - If provided, modal is in edit mode
  * @param {Function} onSuccess - Called after successful create/update
  */
@@ -43,9 +47,11 @@ const CreateVacantRoleModal = ({
   isOpen,
   onClose,
   teamId,
+  team = null,
   existingRole = null,
   onSuccess,
 }) => {
+  const { user: currentUser } = useAuth();
   const SUCCESS_CLOSE_DELAY_MS = 3000;
   const isEditMode = !!existingRole;
 
@@ -284,13 +290,44 @@ const CreateVacantRoleModal = ({
       };
 
       if (isEditMode) {
-        await vacantRoleService.updateVacantRole(
-          teamId,
-          existingRole.id,
-          payload
-        );
+        await vacantRoleService.updateVacantRole(teamId, existingRole.id, payload);
+        try {
+          await messageService.sendMessage(
+            teamId,
+            buildRoleUpdatedMessage({
+              teamId,
+              teamName: team?.name,
+              role: {
+                id: existingRole.id,
+                roleName: formData.roleName.trim(),
+              },
+              updatedBy: currentUser,
+            }),
+            "team",
+          );
+        } catch (messageError) {
+          console.warn("Role updated, but chat event could not be sent:", messageError);
+        }
       } else {
-        await vacantRoleService.createVacantRole(teamId, payload);
+        const createdRoleResponse = await vacantRoleService.createVacantRole(teamId, payload);
+        const createdRole = createdRoleResponse?.data ?? createdRoleResponse;
+        try {
+          await messageService.sendMessage(
+            teamId,
+            buildRoleCreatedMessage({
+              teamId,
+              teamName: team?.name,
+              role: {
+                id: createdRole?.id ?? null,
+                roleName: formData.roleName.trim(),
+              },
+              creator: currentUser,
+            }),
+            "team",
+          );
+        } catch (messageError) {
+          console.warn("Role created, but chat event could not be sent:", messageError);
+        }
       }
 
       setSubmitSuccess(true);

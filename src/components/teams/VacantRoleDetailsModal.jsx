@@ -48,6 +48,8 @@ import { userService } from "../../services/userService";
 import { matchingService } from "../../services/matchingService";
 import { teamService } from "../../services/teamService";
 import { vacantRoleService } from "../../services/vacantRoleService";
+import { messageService } from "../../services/messageService";
+import { buildRoleInvitationAcceptedMessage } from "../../utils/roleEventMessages";
 import { getMatchTier } from "../../utils/matchScoreUtils";
 import {
   DEMO_PROFILE_TOOLTIP,
@@ -1253,12 +1255,33 @@ const VacantRoleDetailsModal = ({
     responseMessage = "",
     fillRole = false,
   ) => {
+    const roleForMessage = viewerRoleInvitationRecord?.role ?? displayRole;
     await teamService.respondToInvitation(
       invitationId,
       "accept",
       responseMessage,
       fillRole,
     );
+
+    if (teamId) {
+      try {
+        await messageService.sendMessage(
+          teamId,
+          buildRoleInvitationAcceptedMessage({
+            teamId,
+            teamName,
+            role: roleForMessage,
+            invitee: currentUser,
+            inviter: viewerRoleInvitationRecord?.inviter ?? null,
+            fillRole,
+          }),
+          "team",
+        );
+      } catch (messageError) {
+        console.warn("Invitation accepted, but chat event could not be sent:", messageError);
+      }
+    }
+
     setViewerRoleInvitationRecord(null);
     setIsViewerInvitationDetailsOpen(false);
   };

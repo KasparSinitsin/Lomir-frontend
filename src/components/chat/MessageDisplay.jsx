@@ -148,8 +148,9 @@ export const parseSystemMessage = (content) => {
 
   // Pattern 4A: Role application approved message
   // Format: Anna Kowalski's application for Improv Performer was approved
+  // Handle both straight (') and curly (') apostrophes from the backend
   const roleApplicationApprovedMatch = content.match(
-    /^(.+?)'s application for (.+?) was approved\.?$/,
+    /^(.+?)[’']s application for (.+?) was approved\.?$/,
   );
   if (roleApplicationApprovedMatch) {
     const applicant = parseIdNameToken(roleApplicationApprovedMatch[1].trim());
@@ -211,6 +212,27 @@ export const parseSystemMessage = (content) => {
     };
   }
 
+  // Pattern 4B-admin: Closed role reopened by admin
+  // Format: 🔓 ROLE_REOPENED_ADMIN: teamId:teamName | roleId:roleName | adminId:adminName
+  const roleReopenedAdminMatch = content.match(
+    /^(?:🔓\s*)?ROLE_REOPENED_ADMIN:\s*(.+?)\s+\|\s+(.+?)\s+\|\s+(.+)$/,
+  );
+  if (roleReopenedAdminMatch) {
+    const team = parseIdNameToken(roleReopenedAdminMatch[1].trim());
+    const role = parseIdNameToken(roleReopenedAdminMatch[2].trim());
+    const admin = parseIdNameToken(roleReopenedAdminMatch[3].trim());
+
+    return {
+      type: "role_reopened_admin",
+      teamId: team.id,
+      teamName: team.name,
+      roleId: role.id,
+      roleName: role.name,
+      userId: admin.id,
+      userName: admin.name,
+    };
+  }
+
   // Pattern 4C: Open role marked as filled message
   // Format: ✅ ROLE_FILLED: teamId:teamName | roleId:roleName | userId:userName
   const roleFilledMatch = content.match(
@@ -232,7 +254,182 @@ export const parseSystemMessage = (content) => {
     };
   }
 
-  // Pattern 4D: Application decline response (direct message to applicant)
+  // Pattern 4D: Vacant role closed message
+  // Format: 🔒 ROLE_CLOSED: teamId:teamName | roleId:roleName | closedById:closedByName
+  const roleClosedMatch = content.match(
+    /^(?:🔒\s*)?ROLE_CLOSED:\s*(.+?)\s+\|\s+(.+?)(?:\s+\|\s+(.+))?$/,
+  );
+  if (roleClosedMatch) {
+    const team = parseIdNameToken(roleClosedMatch[1].trim());
+    const role = parseIdNameToken(roleClosedMatch[2].trim());
+    const closedBy = roleClosedMatch[3]
+      ? parseIdNameToken(roleClosedMatch[3].trim())
+      : { id: null, name: null };
+
+    return {
+      type: "role_closed",
+      teamId: team.id,
+      teamName: team.name,
+      roleId: role.id,
+      roleName: role.name,
+      closedById: closedBy.id,
+      closedByName: closedBy.name,
+    };
+  }
+
+  // Pattern 4E: Vacant role updated message
+  // Format: ✏️ ROLE_UPDATED: teamId:teamName | roleId:roleName | updatedById:updatedByName
+  const roleUpdatedMatch = content.match(
+    /^(?:✏️\s*)?ROLE_UPDATED:\s*(.+?)\s+\|\s+(.+?)(?:\s+\|\s+(.+))?$/,
+  );
+  if (roleUpdatedMatch) {
+    const team = parseIdNameToken(roleUpdatedMatch[1].trim());
+    const role = parseIdNameToken(roleUpdatedMatch[2].trim());
+    const updatedBy = roleUpdatedMatch[3]
+      ? parseIdNameToken(roleUpdatedMatch[3].trim())
+      : { id: null, name: null };
+
+    return {
+      type: "role_updated",
+      teamId: team.id,
+      teamName: team.name,
+      roleId: role.id,
+      roleName: role.name,
+      updatedById: updatedBy.id,
+      updatedByName: updatedBy.name,
+    };
+  }
+
+  // Pattern 4F: Vacant role deleted message
+  // Format: 🗑️ ROLE_DELETED: teamId:teamName | roleId:roleName | deletorId:deletorName
+  // (deletor token is optional for backwards compatibility)
+  const roleDeletedMatch = content.match(
+    /^(?:🗑️\s*)?ROLE_DELETED:\s*(.+?)\s+\|\s+(.+?)(?:\s+\|\s+(.+))?$/,
+  );
+  if (roleDeletedMatch) {
+    const team = parseIdNameToken(roleDeletedMatch[1].trim());
+    const role = parseIdNameToken(roleDeletedMatch[2].trim());
+    const deletor = roleDeletedMatch[3]
+      ? parseIdNameToken(roleDeletedMatch[3].trim())
+      : { id: null, name: null };
+
+    return {
+      type: "role_deleted",
+      teamId: team.id,
+      teamName: team.name,
+      roleId: role.id,
+      roleName: role.name,
+      deletorId: deletor.id,
+      deletorName: deletor.name,
+    };
+  }
+
+  // Pattern 4E: New vacant role created message
+  // Format: 🆕 ROLE_CREATED: teamId:teamName | roleId:roleName | creatorId:creatorName
+  // (creator token is optional for backwards compatibility)
+  const roleCreatedMatch = content.match(
+    /^(?:🆕\s*)?ROLE_CREATED:\s*(.+?)\s+\|\s+(.+?)(?:\s+\|\s+(.+))?$/,
+  );
+  if (roleCreatedMatch) {
+    const team = parseIdNameToken(roleCreatedMatch[1].trim());
+    const role = parseIdNameToken(roleCreatedMatch[2].trim());
+    const creator = roleCreatedMatch[3]
+      ? parseIdNameToken(roleCreatedMatch[3].trim())
+      : { id: null, name: null };
+
+    return {
+      type: "role_created",
+      teamId: team.id,
+      teamName: team.name,
+      roleId: role.id,
+      roleName: role.name,
+      creatorId: creator.id,
+      creatorName: creator.name,
+    };
+  }
+
+  // Pattern 4G: Application approved + role filled combined message
+  // Format: ✅ ROLE_APPLICATION_FILLED: teamId:teamName | roleId:roleName | applicantId:applicantName
+  const roleApplicationFilledMatch = content.match(
+    /^(?:✅\s*)?ROLE_APPLICATION_FILLED:\s*(.+?)\s+\|\s+(.+?)\s+\|\s+(.+)$/,
+  );
+  if (roleApplicationFilledMatch) {
+    const team = parseIdNameToken(roleApplicationFilledMatch[1].trim());
+    const role = parseIdNameToken(roleApplicationFilledMatch[2].trim());
+    const applicant = parseIdNameToken(roleApplicationFilledMatch[3].trim());
+
+    return {
+      type: "role_application_filled",
+      teamId: team.id,
+      teamName: team.name,
+      roleId: role.id,
+      roleName: role.name,
+      applicantId: applicant.id,
+      applicantName: applicant.name,
+    };
+  }
+
+  // Pattern 4H: Invitation accepted + role filled combined message
+  // Format: ✅ ROLE_INVITATION_FILLED: teamId:teamName | roleId:roleName | inviteeId:inviteeName
+  const roleInvitationFilledMatch = content.match(
+    /^(?:✅\s*)?ROLE_INVITATION_FILLED:\s*(.+?)\s+\|\s+(.+?)\s+\|\s+(.+)$/,
+  );
+  if (roleInvitationFilledMatch) {
+    const team = parseIdNameToken(roleInvitationFilledMatch[1].trim());
+    const role = parseIdNameToken(roleInvitationFilledMatch[2].trim());
+    const invitee = parseIdNameToken(roleInvitationFilledMatch[3].trim());
+
+    return {
+      type: "role_invitation_filled",
+      teamId: team.id,
+      teamName: team.name,
+      roleId: role.id,
+      roleName: role.name,
+      inviteeId: invitee.id,
+      inviteeName: invitee.name,
+    };
+  }
+
+  // Pattern 4I: Invitation accepted (frontend message with inviter + fillRole flag)
+  // Format: 🤝 ROLE_INVITATION_ACCEPTED: teamId:teamName | roleId:roleName | inviteeId:inviteeName | inviterId:inviterName | true/false
+  const roleInvitationAcceptedMatch = content.match(
+    /^(?:🤝\s*)?ROLE_INVITATION_ACCEPTED:\s*(.+?)\s+\|\s+(.+?)\s+\|\s+(.+?)\s+\|\s+(.+?)\s+\|\s+(true|false)$/,
+  );
+  if (roleInvitationAcceptedMatch) {
+    const team = parseIdNameToken(roleInvitationAcceptedMatch[1].trim());
+    const role = parseIdNameToken(roleInvitationAcceptedMatch[2].trim());
+    const invitee = parseIdNameToken(roleInvitationAcceptedMatch[3].trim());
+    const inviter = parseIdNameToken(roleInvitationAcceptedMatch[4].trim());
+
+    return {
+      type: "role_invitation_accepted",
+      teamId: team.id,
+      teamName: team.name,
+      roleId: role.id,
+      roleName: role.name,
+      inviteeId: invitee.id,
+      inviteeName: invitee.name,
+      inviterId: inviter.id,
+      inviterName: inviter.name,
+      fillRole: roleInvitationAcceptedMatch[5] === "true",
+    };
+  }
+
+  // Pattern 4J: Backend "assigned to role" message (sent when invitation is accepted)
+  // Format: 🎯 Name was assigned the role RoleName!\n\n"personal message"
+  const roleInvitationAssignedMatch = content.match(
+    /^🎯\s+(.+?)\s+was assigned the role\s+(.+?)!(?:\s*\n+"(.+)")?$/s,
+  );
+  if (roleInvitationAssignedMatch) {
+    return {
+      type: "role_invitation_assigned_legacy",
+      inviteeName: roleInvitationAssignedMatch[1].trim(),
+      roleName: roleInvitationAssignedMatch[2].trim(),
+      personalMessage: roleInvitationAssignedMatch[3]?.trim() ?? null,
+    };
+  }
+
+  // Pattern 4E: Application decline response (direct message to applicant)
   // Format: 📋 Application declined: [Applicant] for "[Team]":\n\n"personal message"
   const applicationDeclineMatch = content.match(
     /^📋\s+Application declined:\s+(.+?)\s+for\s+"(.+?)":\s*\n\n"(.+)"$/s,
@@ -589,11 +786,77 @@ const getEventReactionPreview = (content) => {
         Icon: UserCheck,
         color: EVENT_REACTION_PREVIEW_COLORS.role,
       };
+    case "role_application_filled":
+      return {
+        text: `${parsedMessage.applicantName} has applied successfully for the role "${parsedMessage.roleName}" in this team and is now filling that role.`,
+        Icon: UserCheck,
+        color: EVENT_REACTION_PREVIEW_COLORS.role,
+      };
+    case "role_invitation_filled":
+      return {
+        text: `${parsedMessage.inviteeName} has accepted an invitation to fill the role "${parsedMessage.roleName}" in this team and is now filling that role.`,
+        Icon: UserCheck,
+        color: EVENT_REACTION_PREVIEW_COLORS.role,
+      };
+    case "role_invitation_accepted":
+      return {
+        text: parsedMessage.fillRole
+          ? `${parsedMessage.inviterName} invited ${parsedMessage.inviteeName} to fill "${parsedMessage.roleName}". They accepted and are now filling that role.`
+          : `${parsedMessage.inviterName} invited ${parsedMessage.inviteeName} for "${parsedMessage.roleName}". They accepted the invitation.`,
+        Icon: UserCheck,
+        color: EVENT_REACTION_PREVIEW_COLORS.role,
+      };
+    case "role_invitation_assigned_legacy":
+      return {
+        text: `${parsedMessage.inviteeName} accepted an invitation and was assigned to the role "${parsedMessage.roleName}".`,
+        Icon: UserCheck,
+        color: EVENT_REACTION_PREVIEW_COLORS.role,
+      };
+    case "role_created":
+      return {
+        text: parsedMessage.creatorName
+          ? `The new role "${parsedMessage.roleName}" has been created by ${parsedMessage.creatorName}. It is open to be filled.`
+          : `The new role "${parsedMessage.roleName}" is open to be filled.`,
+        Icon: UserSearch,
+        color: EVENT_REACTION_PREVIEW_COLORS.role,
+      };
+    case "role_closed":
+      return {
+        text: parsedMessage.closedByName
+          ? `The role "${parsedMessage.roleName}" has been closed by ${parsedMessage.closedByName}.`
+          : `The role "${parsedMessage.roleName}" has been closed.`,
+        Icon: CircleX,
+        color: EVENT_REACTION_PREVIEW_COLORS.neutral,
+      };
+    case "role_updated":
+      return {
+        text: parsedMessage.updatedByName
+          ? `The role "${parsedMessage.roleName}" has been updated by ${parsedMessage.updatedByName}.`
+          : `The role "${parsedMessage.roleName}" has been updated.`,
+        Icon: Pencil,
+        color: EVENT_REACTION_PREVIEW_COLORS.role,
+      };
+    case "role_deleted":
+      return {
+        text: parsedMessage.deletorName
+          ? `The role "${parsedMessage.roleName}" has been deleted by ${parsedMessage.deletorName}.`
+          : `The role "${parsedMessage.roleName}" has been deleted.`,
+        Icon: UserMinus,
+        color: EVENT_REACTION_PREVIEW_COLORS.neutral,
+      };
     case "role_reopened":
       return {
         text: parsedMessage.userName
           ? `${parsedMessage.userName} has left the role ${parsedMessage.roleName}. The role is open again to be filled.`
           : `The role ${parsedMessage.roleName} is open again to be filled.`,
+        Icon: UserSearch,
+        color: EVENT_REACTION_PREVIEW_COLORS.role,
+      };
+    case "role_reopened_admin":
+      return {
+        text: parsedMessage.userName
+          ? `${parsedMessage.userName} has reopened the role ${parsedMessage.roleName}. It is open again to be filled.`
+          : `The role ${parsedMessage.roleName} has been reopened and is open to be filled.`,
         Icon: UserSearch,
         color: EVENT_REACTION_PREVIEW_COLORS.role,
       };
@@ -2125,6 +2388,219 @@ const MessageDisplay = ({
   };
 
   // =============================================================================
+  // renderRoleApplicationFilledMessage - Orange role theme (combined approval + fill)
+  // =============================================================================
+  const renderRoleApplicationFilledMessage = (message, parsedMessage) => {
+    const roleMention = (
+      <RoleMentionById
+        roleId={parsedMessage.roleId}
+        name={parsedMessage.roleName}
+        filledUserId={parsedMessage.applicantId}
+        filledUserName={parsedMessage.applicantName}
+        filledAt={message.createdAt}
+      />
+    );
+
+    const messageText = parsedMessage.applicantName &&
+      parsedMessage.applicantName.trim().toLowerCase() !== "someone" ? (
+      <>
+        <MentionById
+          userId={parsedMessage.applicantId}
+          name={parsedMessage.applicantName}
+        />{" "}
+        has applied successfully for the role {roleMention} in this team and is
+        now filling that role.
+      </>
+    ) : (
+      <>
+        An application for the role {roleMention} was approved and the role is
+        now filled.
+      </>
+    );
+
+    return (
+      <div className="flex flex-col items-center w-full my-4">
+        <div
+          className="event-banner mb-3"
+          style={{
+            backgroundColor: "rgba(245, 158, 11, 0.1)",
+            color: "#f59e0b",
+          }}
+        >
+          <span className="text-sm font-medium event-message-text">
+            <UserCheck size={16} className="event-inline-icon mr-1" />
+            {highlightEventContent(messageText)}
+          </span>
+        </div>
+
+        <div className="text-xs text-base-content/50">
+          {formatLocalTime(message.createdAt)}
+        </div>
+      </div>
+    );
+  };
+
+  // =============================================================================
+  // renderRoleInvitationFilledMessage - Orange role theme (invitation accepted + fill)
+  // =============================================================================
+  const renderRoleInvitationFilledMessage = (message, parsedMessage) => {
+    const roleMention = (
+      <RoleMentionById
+        roleId={parsedMessage.roleId}
+        name={parsedMessage.roleName}
+        filledUserId={parsedMessage.inviteeId}
+        filledUserName={parsedMessage.inviteeName}
+        filledAt={message.createdAt}
+      />
+    );
+
+    const messageText = parsedMessage.inviteeName &&
+      parsedMessage.inviteeName.trim().toLowerCase() !== "someone" ? (
+      <>
+        <MentionById
+          userId={parsedMessage.inviteeId}
+          name={parsedMessage.inviteeName}
+        />{" "}
+        has accepted an invitation to fill the role {roleMention} in this team
+        and is now filling that role.
+      </>
+    ) : (
+      <>
+        An invitation to fill the role {roleMention} was accepted and the role
+        is now filled.
+      </>
+    );
+
+    return (
+      <div className="flex flex-col items-center w-full my-4">
+        <div
+          className="event-banner mb-3"
+          style={{
+            backgroundColor: "rgba(245, 158, 11, 0.1)",
+            color: "#f59e0b",
+          }}
+        >
+          <span className="text-sm font-medium event-message-text">
+            <UserCheck size={16} className="event-inline-icon mr-1" />
+            {highlightEventContent(messageText)}
+          </span>
+        </div>
+
+        <div className="text-xs text-base-content/50">
+          {formatLocalTime(message.createdAt)}
+        </div>
+      </div>
+    );
+  };
+
+  // =============================================================================
+  // renderRoleInvitationAcceptedMessage - Orange role theme (invitation accepted, with inviter)
+  // =============================================================================
+  const renderRoleInvitationAcceptedMessage = (message, parsedMessage) => {
+    const hasInvitee =
+      parsedMessage.inviteeName &&
+      parsedMessage.inviteeName.trim().toLowerCase() !== "someone";
+    const hasInviter =
+      parsedMessage.inviterName &&
+      parsedMessage.inviterName.trim().toLowerCase() !== "someone";
+
+    const roleMention = (
+      <RoleMentionById
+        roleId={parsedMessage.roleId}
+        name={parsedMessage.roleName}
+        filledUserId={parsedMessage.fillRole ? parsedMessage.inviteeId : null}
+        filledUserName={parsedMessage.fillRole && hasInvitee ? parsedMessage.inviteeName : null}
+        filledAt={parsedMessage.fillRole ? message.createdAt : null}
+      />
+    );
+
+    const messageText = parsedMessage.fillRole ? (
+      <>
+        {hasInviter && (
+          <>
+            <MentionById userId={parsedMessage.inviterId} name={parsedMessage.inviterName} />
+            {" invited "}
+          </>
+        )}
+        {hasInvitee ? (
+          <MentionById userId={parsedMessage.inviteeId} name={parsedMessage.inviteeName} />
+        ) : (
+          "Someone"
+        )}
+        {" for the role "}{roleMention}{". They accepted and are now filling that role."}
+      </>
+    ) : (
+      <>
+        {hasInviter && (
+          <>
+            <MentionById userId={parsedMessage.inviterId} name={parsedMessage.inviterName} />
+            {" invited "}
+          </>
+        )}
+        {hasInvitee ? (
+          <MentionById userId={parsedMessage.inviteeId} name={parsedMessage.inviteeName} />
+        ) : (
+          "Someone"
+        )}
+        {" for the role "}{roleMention}{". They accepted the invitation."}
+      </>
+    );
+
+    return (
+      <div className="flex flex-col items-center w-full my-4">
+        <div
+          className="event-banner mb-3"
+          style={{ backgroundColor: "rgba(245, 158, 11, 0.1)", color: "#f59e0b" }}
+        >
+          <span className="text-sm font-medium event-message-text">
+            <UserCheck size={16} className="event-inline-icon mr-1" />
+            {highlightEventContent(messageText)}
+          </span>
+        </div>
+        <div className="text-xs text-base-content/50">
+          {formatLocalTime(message.createdAt)}
+        </div>
+      </div>
+    );
+  };
+
+  // =============================================================================
+  // renderRoleInvitationAssignedLegacyMessage - Orange role theme (backend 🎯 format)
+  // =============================================================================
+  const renderRoleInvitationAssignedLegacyMessage = (message, parsedMessage) => {
+    const roleMention = (
+      <RoleMentionById
+        roleId={null}
+        name={parsedMessage.roleName}
+      />
+    );
+
+    const messageText = (
+      <>
+        <MentionById userId={null} name={parsedMessage.inviteeName} />
+        {" accepted an invitation to fill the role "}{roleMention}{" in this team."}
+      </>
+    );
+
+    return (
+      <div className="flex flex-col items-center w-full my-4">
+        <div
+          className="event-banner mb-3"
+          style={{ backgroundColor: "rgba(245, 158, 11, 0.1)", color: "#f59e0b" }}
+        >
+          <span className="text-sm font-medium event-message-text">
+            <UserCheck size={16} className="event-inline-icon mr-1" />
+            {highlightEventContent(messageText)}
+          </span>
+        </div>
+        <div className="text-xs text-base-content/50">
+          {formatLocalTime(message.createdAt)}
+        </div>
+      </div>
+    );
+  };
+
+  // =============================================================================
   // renderRoleReopenedMessage - Orange role theme
   // =============================================================================
   const renderRoleReopenedMessage = (message, parsedMessage) => {
@@ -2161,6 +2637,43 @@ const MessageDisplay = ({
           </span>
         </div>
 
+        <div className="text-xs text-base-content/50">
+          {formatLocalTime(message.createdAt)}
+        </div>
+      </div>
+    );
+  };
+
+  // =============================================================================
+  // renderRoleReopenedAdminMessage - Orange role theme (closed → open by admin)
+  // =============================================================================
+  const renderRoleReopenedAdminMessage = (message, parsedMessage) => {
+    const roleMention = (
+      <RoleMentionById roleId={parsedMessage.roleId} name={parsedMessage.roleName} />
+    );
+    const messageText = parsedMessage.userName ? (
+      <>
+        <MentionById userId={parsedMessage.userId} name={parsedMessage.userName} />{" "}
+        has reopened the role {roleMention}. It is open again to be filled.
+      </>
+    ) : (
+      <>The role {roleMention} has been reopened and is open to be filled.</>
+    );
+
+    return (
+      <div className="flex flex-col items-center w-full my-4">
+        <div
+          className="event-banner mb-3"
+          style={{
+            backgroundColor: "rgba(245, 158, 11, 0.1)",
+            color: "#f59e0b",
+          }}
+        >
+          <span className="text-sm font-medium event-message-text">
+            <UserSearch size={16} className="event-inline-icon mr-1" />
+            {highlightEventContent(messageText)}
+          </span>
+        </div>
         <div className="text-xs text-base-content/50">
           {formatLocalTime(message.createdAt)}
         </div>
@@ -2208,6 +2721,202 @@ const MessageDisplay = ({
         >
           <span className="text-sm font-medium event-message-text">
             <UserCheck size={16} className="event-inline-icon mr-1" />
+            {highlightEventContent(messageText)}
+          </span>
+        </div>
+
+        <div className="text-xs text-base-content/50">
+          {formatLocalTime(message.createdAt)}
+        </div>
+      </div>
+    );
+  };
+
+  // =============================================================================
+  // renderRoleCreatedMessage - Orange role theme
+  // =============================================================================
+  const renderRoleCreatedMessage = (message, parsedMessage, senderInfo = null, senderId = null) => {
+    const roleMention = (
+      <RoleMentionById
+        roleId={parsedMessage.roleId}
+        name={parsedMessage.roleName}
+      />
+    );
+
+    const creatorId = parsedMessage.creatorId ?? senderId ?? null;
+    const creatorName =
+      parsedMessage.creatorName ||
+      (senderInfo
+        ? [
+            senderInfo.firstName || senderInfo.first_name,
+            senderInfo.lastName || senderInfo.last_name,
+          ]
+            .filter(Boolean)
+            .join(" ") ||
+          senderInfo.username ||
+          senderInfo.userName ||
+          null
+        : null);
+
+    const messageText = creatorName ? (
+      <>
+        The new role {roleMention} has been created by{" "}
+        <MentionById userId={creatorId} name={creatorName} /> in this team. It
+        is open to be filled.
+      </>
+    ) : (
+      <>The new role {roleMention} is open to be filled.</>
+    );
+
+    return (
+      <div className="flex flex-col items-center w-full my-4">
+        <div
+          className="event-banner mb-3"
+          style={{
+            backgroundColor: "rgba(245, 158, 11, 0.1)",
+            color: "#f59e0b",
+          }}
+        >
+          <span className="text-sm font-medium event-message-text">
+            <UserSearch size={16} className="event-inline-icon mr-1" />
+            {highlightEventContent(messageText)}
+          </span>
+        </div>
+
+        <div className="text-xs text-base-content/50">
+          {formatLocalTime(message.createdAt)}
+        </div>
+      </div>
+    );
+  };
+
+  // =============================================================================
+  // renderRoleClosedMessage - Neutral grey theme
+  // =============================================================================
+  const renderRoleClosedMessage = (message, parsedMessage, senderInfo = null, senderId = null) => {
+    const closedById = parsedMessage.closedById ?? senderId ?? null;
+    const closedByName =
+      parsedMessage.closedByName ||
+      (senderInfo
+        ? [senderInfo.firstName || senderInfo.first_name, senderInfo.lastName || senderInfo.last_name]
+            .filter(Boolean)
+            .join(" ") ||
+          senderInfo.username ||
+          senderInfo.userName ||
+          null
+        : null);
+
+    const roleMention = (
+      <RoleMentionById roleId={parsedMessage.roleId} name={parsedMessage.roleName} />
+    );
+    const messageText = closedByName ? (
+      <>
+        The role {roleMention} has been closed by{" "}
+        <MentionById userId={closedById} name={closedByName} />.
+      </>
+    ) : (
+      <>The role {roleMention} has been closed.</>
+    );
+
+    return (
+      <div className="flex flex-col items-center w-full my-4">
+        <div className="event-banner mb-3 event-banner--neutral">
+          <span className="text-sm font-medium event-message-text">
+            <CircleX size={16} className="event-inline-icon mr-1" />
+            {highlightEventContent(messageText)}
+          </span>
+        </div>
+        <div className="text-xs text-base-content/50">{formatLocalTime(message.createdAt)}</div>
+      </div>
+    );
+  };
+
+  // =============================================================================
+  // renderRoleUpdatedMessage - Orange role theme
+  // =============================================================================
+  const renderRoleUpdatedMessage = (message, parsedMessage, senderInfo = null, senderId = null) => {
+    const updatedById = parsedMessage.updatedById ?? senderId ?? null;
+    const updatedByName =
+      parsedMessage.updatedByName ||
+      (senderInfo
+        ? [senderInfo.firstName || senderInfo.first_name, senderInfo.lastName || senderInfo.last_name]
+            .filter(Boolean)
+            .join(" ") ||
+          senderInfo.username ||
+          senderInfo.userName ||
+          null
+        : null);
+
+    const roleMention = (
+      <RoleMentionById roleId={parsedMessage.roleId} name={parsedMessage.roleName} />
+    );
+    const messageText = updatedByName ? (
+      <>
+        The role {roleMention} has been updated by{" "}
+        <MentionById userId={updatedById} name={updatedByName} />.
+      </>
+    ) : (
+      <>The role {roleMention} has been updated.</>
+    );
+
+    return (
+      <div className="flex flex-col items-center w-full my-4">
+        <div
+          className="event-banner mb-3"
+          style={{
+            backgroundColor: "rgba(245, 158, 11, 0.1)",
+            color: "#f59e0b",
+          }}
+        >
+          <span className="text-sm font-medium event-message-text">
+            <Pencil size={16} className="event-inline-icon mr-1" />
+            {highlightEventContent(messageText)}
+          </span>
+        </div>
+        <div className="text-xs text-base-content/50">{formatLocalTime(message.createdAt)}</div>
+      </div>
+    );
+  };
+
+  // =============================================================================
+  // renderRoleDeletedMessage - Neutral grey theme
+  // =============================================================================
+  const renderRoleDeletedMessage = (message, parsedMessage, senderInfo = null, senderId = null) => {
+    const deletorId = parsedMessage.deletorId ?? senderId ?? null;
+    const deletorName =
+      parsedMessage.deletorName ||
+      (senderInfo
+        ? [
+            senderInfo.firstName || senderInfo.first_name,
+            senderInfo.lastName || senderInfo.last_name,
+          ]
+            .filter(Boolean)
+            .join(" ") ||
+          senderInfo.username ||
+          senderInfo.userName ||
+          null
+        : null);
+
+    const messageText = deletorName ? (
+      <>
+        The role <span className="font-medium">{parsedMessage.roleName}</span>{" "}
+        has been deleted by{" "}
+        <MentionById userId={deletorId} name={deletorName} /> from this team.
+      </>
+    ) : (
+      <>
+        The role <span className="font-medium">{parsedMessage.roleName}</span>{" "}
+        has been deleted from this team.
+      </>
+    );
+
+    return (
+      <div className="flex flex-col items-center w-full my-4">
+        <div
+          className="event-banner mb-3 event-banner--neutral"
+        >
+          <span className="text-sm font-medium event-message-text">
+            <UserMinus size={16} className="event-inline-icon mr-1" />
             {highlightEventContent(messageText)}
           </span>
         </div>
@@ -3515,19 +4224,95 @@ const MessageDisplay = ({
                   } else if (
                     parsedMessage.type === "role_application_approved"
                   ) {
+                    // Suppress when a combined role_application_filled message exists for
+                    // the same role + applicant — avoids showing two separate messages.
+                    // Search all loaded messages (not just same-date) to handle timing
+                    // and cross-midnight edge cases. Backend message has no IDs, so fall
+                    // back to name comparison when IDs are null.
+                    const allLoadedMessages = Array.from(messagesById?.values() ?? []);
+                    const hasCombinedMessage = allLoadedMessages.some((m) => {
+                      const p = parseSystemMessage(m.content);
+                      if (p?.type !== "role_application_filled") return false;
+                      const roleMatch =
+                        parsedMessage.roleId != null && p.roleId != null
+                          ? String(p.roleId) === String(parsedMessage.roleId)
+                          : p.roleName?.trim().toLowerCase() ===
+                            parsedMessage.roleName?.trim().toLowerCase();
+                      const applicantMatch =
+                        parsedMessage.applicantId != null && p.applicantId != null
+                          ? String(p.applicantId) === String(parsedMessage.applicantId)
+                          : p.applicantName?.trim().toLowerCase() ===
+                            parsedMessage.applicantName?.trim().toLowerCase();
+                      return roleMatch && applicantMatch;
+                    });
+                    if (hasCombinedMessage) return null;
                     return renderSystemMessage(
                       renderRoleApplicationApprovedMessage(
                           message,
                           parsedMessage,
                         ),
                     );
+                  } else if (parsedMessage.type === "role_application_filled") {
+                    return renderSystemMessage(
+                      renderRoleApplicationFilledMessage(message, parsedMessage),
+                    );
+                  } else if (parsedMessage.type === "role_invitation_filled") {
+                    return renderSystemMessage(
+                      renderRoleInvitationFilledMessage(message, parsedMessage),
+                    );
+                  } else if (parsedMessage.type === "role_invitation_accepted") {
+                    return renderSystemMessage(
+                      renderRoleInvitationAcceptedMessage(message, parsedMessage),
+                    );
+                  } else if (parsedMessage.type === "role_invitation_assigned_legacy") {
+                    // Suppress if a richer frontend message exists for the same invitee + role
+                    const allLoadedMessages = Array.from(messagesById?.values() ?? []);
+                    const hasFrontendMessage = allLoadedMessages.some((m) => {
+                      const p = parseSystemMessage(m.content);
+                      if (
+                        p?.type !== "role_invitation_accepted" &&
+                        p?.type !== "role_invitation_filled"
+                      )
+                        return false;
+                      const roleMatch =
+                        p.roleName?.trim().toLowerCase() ===
+                        parsedMessage.roleName?.trim().toLowerCase();
+                      const inviteeMatch =
+                        p.inviteeName?.trim().toLowerCase() ===
+                        parsedMessage.inviteeName?.trim().toLowerCase();
+                      return roleMatch && inviteeMatch;
+                    });
+                    if (hasFrontendMessage) return null;
+                    return renderSystemMessage(
+                      renderRoleInvitationAssignedLegacyMessage(message, parsedMessage),
+                    );
                   } else if (parsedMessage.type === "role_reopened") {
                     return renderSystemMessage(
                       renderRoleReopenedMessage(message, parsedMessage),
                     );
+                  } else if (parsedMessage.type === "role_reopened_admin") {
+                    return renderSystemMessage(
+                      renderRoleReopenedAdminMessage(message, parsedMessage),
+                    );
                   } else if (parsedMessage.type === "role_filled") {
                     return renderSystemMessage(
                       renderRoleFilledMessage(message, parsedMessage),
+                    );
+                  } else if (parsedMessage.type === "role_created") {
+                    return renderSystemMessage(
+                      renderRoleCreatedMessage(message, parsedMessage, senderInfo, messageGroup.senderId),
+                    );
+                  } else if (parsedMessage.type === "role_closed") {
+                    return renderSystemMessage(
+                      renderRoleClosedMessage(message, parsedMessage, senderInfo, messageGroup.senderId),
+                    );
+                  } else if (parsedMessage.type === "role_updated") {
+                    return renderSystemMessage(
+                      renderRoleUpdatedMessage(message, parsedMessage, senderInfo, messageGroup.senderId),
+                    );
+                  } else if (parsedMessage.type === "role_deleted") {
+                    return renderSystemMessage(
+                      renderRoleDeletedMessage(message, parsedMessage, senderInfo, messageGroup.senderId),
                     );
                   } else if (parsedMessage.type === "application_response") {
                     return renderSystemMessage(
