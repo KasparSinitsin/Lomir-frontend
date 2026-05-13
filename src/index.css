@@ -822,6 +822,16 @@ body {
   text-align: center;
 }
 
+.event-message-reaction-group .event-banner {
+  transition: box-shadow 300ms ease;
+}
+
+.event-message-reaction-group:hover .event-banner {
+  box-shadow:
+    0 4px 6px -1px rgb(0 0 0 / 0.1),
+    0 2px 4px -2px rgb(0 0 0 / 0.1);
+}
+
 /* Inline icons inside event messages (baseline aligned, fixed sizing) */
 .event-inline-icon {
   display: inline-block;

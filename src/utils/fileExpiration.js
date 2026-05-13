@@ -56,6 +56,11 @@ export const getFileExpirationStatus = (message) => {
     message.image_url ||
     message.fileUrl ||
     message.file_url;
+  const mediaLabel =
+    (message.imageUrl || message.image_url) &&
+    !(message.fileUrl || message.file_url)
+      ? "Image"
+      : "File";
 
   if (!hasFile) {
     return { status: "none", daysLeft: null, message: "" };
@@ -88,14 +93,14 @@ export const getFileExpirationStatus = (message) => {
     return {
       status: "expiring-soon",
       daysLeft,
-      message: `This file will expire in ${daysLeft} day${daysLeft === 1 ? "" : "s"}. Download to keep a copy.`,
+      message: `${mediaLabel} expires in ${daysLeft} day${daysLeft === 1 ? "" : "s"}. Download to keep a copy.`,
     };
   }
 
   return {
     status: "active",
     daysLeft,
-    message: `File expires in ${daysLeft} days.`,
+    message: `${mediaLabel} expires in ${daysLeft} days.`,
   };
 };
 
