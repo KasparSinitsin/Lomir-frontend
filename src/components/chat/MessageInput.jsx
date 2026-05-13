@@ -45,6 +45,25 @@ const tokenizeMentions = (text, mentionMap) => {
   return result;
 };
 
+const MENTION_RE = /@\[([^\]]+)\]\([^)]+\)/g;
+const renderReplyText = (text) => {
+  const parts = [];
+  let last = 0;
+  let m;
+  MENTION_RE.lastIndex = 0;
+  while ((m = MENTION_RE.exec(text)) !== null) {
+    if (m.index > last) parts.push(text.slice(last, m.index));
+    parts.push(
+      <span key={m.index} className="font-medium text-primary">
+        @{m[1]}
+      </span>
+    );
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) parts.push(text.slice(last));
+  return parts;
+};
+
 const MessageInput = ({
   onSendMessage,
   onSendImage,
@@ -219,7 +238,7 @@ const MessageInput = ({
                 <div className="min-w-0 flex-1">
                   {replyingTo.content && (
                     <p className="text-xs text-base-content/60 truncate">
-                      {replyingTo.content.slice(0, 100)}
+                      {renderReplyText(replyingTo.content.slice(0, 100))}
                     </p>
                   )}
                   {replyExpirationStatus.status !== "none" &&
@@ -252,7 +271,9 @@ const MessageInput = ({
               </p>
             ) : (
               <p className="text-xs text-base-content/60 truncate">
-                {replyingTo.content?.slice(0, 100) || "Image / File"}
+                {replyingTo.content
+                  ? renderReplyText(replyingTo.content.slice(0, 100))
+                  : "Image / File"}
               </p>
             )}
           </div>
