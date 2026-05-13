@@ -12,7 +12,7 @@ import { vacantRoleService } from "../../services/vacantRoleService";
 import { messageService } from "../../services/messageService";
 import { useAuth } from "../../contexts/AuthContext";
 import {
-  buildRoleFilledMessage,
+  buildRoleApplicationFilledMessage,
   buildRoleReopenedMessage,
 } from "../../utils/roleEventMessages";
 import { resolveFilledRoleUser } from "../../utils/vacantRoleUtils";
@@ -113,16 +113,16 @@ const TeamApplicationsModal = ({
         try {
           await messageService.sendMessage(
             teamId,
-            buildRoleFilledMessage({
+            buildRoleApplicationFilledMessage({
               teamId,
               teamName,
               role: application.role,
-              filledUser: application.applicant ?? null,
+              applicant: application.applicant ?? null,
             }),
             "team",
           );
         } catch (messageError) {
-          console.warn("Role filled, but chat event could not be sent:", messageError);
+          console.warn("Role application filled, but chat event could not be sent:", messageError);
         }
       }
 
