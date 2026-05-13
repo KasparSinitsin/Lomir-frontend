@@ -31,7 +31,7 @@ Contact the project owner for a demo login, or register a new account with a val
 - **Map View** — Leaflet-powered map with custom markers for teams, users, and roles; popups with detail cards; distance-based filtering and proximity sorting
 - **Team Management** — Create teams, manage members and roles, post vacant roles, handle applications and invitations with role-specific targeting
 - **User Profiles** — Customizable profiles with interest tags, badges, avatar uploads (ImageKit), and geocoded location
-- **Real-Time Chat** — Direct and team group messaging with typing indicators, read receipts, and file/image sharing (Socket.IO)
+- **Real-Time Chat** — Direct and team group messaging with typing indicators, read receipts, file/image sharing, @mentions, reply threading, and rich system event messages (Socket.IO)
 - **Badge System** — Browse 30 badges across 5 color-coded categories; award badges to teammates with reasons and team context
 - **Notifications** — In-app notification center for invitations, applications, badge awards, and role updates
 - **Account Deletion** — Multi-step account deletion with impact preview, automatic team ownership transfer, and graceful "Former Lomir User" handling across chat, badges, and notifications
@@ -153,7 +153,9 @@ Lomir-frontend/
 │   │   │                           #   UserAvatar, DemoAvatarOverlay, deleted user handling
 │   │   ├── badges/                 # Badge display, awarding, category modals, AwardCard
 │   │   ├── tags/                   # Tag input, display, and selection
-│   │   ├── chat/                   # Chat UI, message bubbles, file previews
+│   │   ├── chat/                   # Chat UI, message bubbles, file/image previews,
+│   │   │                           #   MentionDropdown, MessageText (mentions + URLs),
+│   │   │                           #   reply previews, system event messages
 │   │   ├── search/                 # SearchMapView (Leaflet map with markers/popups)
 │   │   ├── common/                 # Shared UI: Button, Card, Modal, Alert, Pagination,
 │   │   │                           #   ImageUploader, LocationInput, TurnstileWidget,
@@ -188,7 +190,10 @@ Lomir-frontend/
 │   │   ├── userHelpers.js          # Initials, display names, isSynthetic* helpers, demo tooltips
 │   │   ├── teamMatchUtils.js       # Team/role match scoring + overlap calculations
 │   │   ├── matchScoreUtils.js      # Match tier color coding (green/yellow/orange)
-│   │   └── locationUtils.js        # Haversine distance calculation
+│   │   ├── locationUtils.js        # Haversine distance calculation
+│   │   ├── eventPreview.js         # Parse + format chat system event messages for previews
+│   │   ├── roleEventMessages.js    # Build role-filled / role-reopened chat event message strings
+│   │   └── fileExpiration.js       # File/image expiration status + formatted countdown strings
 │   ├── constants/
 │   │   ├── badgeConstants.js       # Badge category colors
 │   │   ├── uiText.js              # Shared UI strings
@@ -215,7 +220,7 @@ Lomir-frontend/
 | `/teams/my-teams` | My Teams | Teams you belong to, pending invitations and applications |
 | `/profile` | Profile | Edit your profile, tags, avatar, and location |
 | `/profile/:id` | Public Profile | View any user's profile; shows placeholder for deleted/missing users |
-| `/chat` | Chat | Direct messages and team group chat with file sharing |
+| `/chat` | Chat | Direct messages and team group chat with file/image sharing, @mentions, and reply threading |
 | `/badges` | Badges | Browse all 30 badges across 5 categories |
 | `/settings` | Settings | Change password and delete account |
 
@@ -244,6 +249,34 @@ The deletion flow in Settings follows a three-step process:
 3. **Confirm & execute** — Triggers the backend transaction; on success, logs out and redirects to home
 
 All components handle deleted user references gracefully: chat messages show "Former Lomir User" with a grey avatar, badge awards preserve the badge but show a null awarder, and profile links show a placeholder page.
+
+---
+
+## Chat
+
+The chat page supports both direct (1-to-1) and team group conversations.
+
+**Messaging**
+- Messages are delivered in real time via Socket.IO
+- Typing indicators and read receipts are shown per conversation
+- Messages can be replied to, edited, and soft-deleted; deleted messages show a placeholder
+
+**@Mentions**
+- Type `@` in the message input to open a dropdown of conversation participants
+- Select a person or "All members" to insert a mention token
+- Mention tokens render as styled `@Name` chips in message bubbles and reply previews
+- Unread @mention count is tracked separately and shown in the navbar badge
+
+**File & image sharing**
+- Images are uploaded to ImageKit and shown inline with a filename caption and a download overlay on hover
+- Non-image files (PDFs, Word docs, spreadsheets, etc.) render as a downloadable card with icon, filename, and file size
+- Excel / CSV files are labelled as "Spreadsheet"; other files as "File"
+- Uploaded files expire after 60 days; messages show a countdown and a warning when expiry is within 7 days
+
+**System event messages**
+- Team actions (joins, role changes, invitations accepted/declined, ownership transfers) post styled event banners into the team chat automatically
+- Approving a vacant role application or reopening a role also posts a chat event
+- Conversation list cards show a colour-coded icon and short preview for event messages instead of raw system text
 
 ---
 
