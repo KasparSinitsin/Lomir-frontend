@@ -16,13 +16,18 @@ import {
   isOwnMessage,
 } from "../../utils/messageNotificationUtils";
 
-const buildMessageTooltip = (count, teamCount, senderCount) => {
-  if (!count) return undefined;
-  const msg = `${count} unread message${count !== 1 ? "s" : ""}`;
+const buildMessageTooltip = (count, teamCount, senderCount, mentionCount) => {
+  if (!count && !mentionCount) return undefined;
   const parts = [];
-  if (teamCount > 0) parts.push(`in ${teamCount} team${teamCount !== 1 ? "s" : ""}`);
-  if (senderCount > 0) parts.push(`from ${senderCount} person${senderCount !== 1 ? "s" : ""}`);
-  return parts.length ? `${msg}\n${parts.join(" and ")}` : msg;
+  if (count) {
+    const msg = `${count} unread message${count !== 1 ? "s" : ""}`;
+    const sub = [];
+    if (teamCount > 0) sub.push(`in ${teamCount} team${teamCount !== 1 ? "s" : ""}`);
+    if (senderCount > 0) sub.push(`from ${senderCount} person${senderCount !== 1 ? "s" : ""}`);
+    parts.push(sub.length ? `${msg} ${sub.join(" and ")}` : msg);
+  }
+  if (mentionCount) parts.push(`${mentionCount} mention${mentionCount !== 1 ? "s" : ""}`);
+  return parts.join("\n");
 };
 
 const buildNotificationTooltip = (count, types) => {
@@ -30,14 +35,16 @@ const buildNotificationTooltip = (count, types) => {
   const p = (n, s) => `${n} ${s}${n !== 1 ? "s" : ""}`;
   const lines = [
     types.invitationReceived && `${p(types.invitationReceived, "team invitation")} for you`,
+    types.roleInvitation && `${p(types.roleInvitation, "role invitation")} for you`,
+    types.invitationAccepted && `${p(types.invitationAccepted, "invitation")} accepted`,
     types.applicationReceived && `${p(types.applicationReceived, "team application")} to review`,
     types.applicationApproved && `${p(types.applicationApproved, "team")} joined successfully`,
     types.applicationRejected && `${p(types.applicationRejected, "team application")} rejected`,
     types.badgeAwarded && `${p(types.badgeAwarded, "new badge award")} for you`,
-    types.memberJoined && `${p(types.memberJoined, "new member")} joined your team${types.memberJoined !== 1 ? "s" : ""}`,
-    types.memberLeft && `${p(types.memberLeft, "member")} left your team${types.memberLeft !== 1 ? "s" : ""}`,
+    types.memberJoined && `${p(types.memberJoined, "new member")} joined your team`,
+    types.memberLeft && `${p(types.memberLeft, "member")} left your team`,
     types.memberRemoved && `Removed from ${p(types.memberRemoved, "team")}`,
-    types.roleChanged && `${p(types.roleChanged, "role change")} in your team${types.roleChanged !== 1 ? "s" : ""}`,
+    types.roleChanged && `${p(types.roleChanged, "role change")} in your team`,
     types.ownershipTransferred && `${p(types.ownershipTransferred, "ownership transfer")}`,
     types.teamDeleted && `${p(types.teamDeleted, "team")} deleted`,
     types.invitationDeclined && `${p(types.invitationDeclined, "invitation")} declined`,
@@ -339,8 +346,8 @@ const Navbar = () => {
               >
                 <NotificationBadge
                   variant="alert"
-                  count={unreadNotificationCount}
-                  title={buildNotificationTooltip(unreadNotificationCount, notificationTypeCounts)}
+                  count={unreadNotificationCount - (notificationTypeCounts.messageMention || 0)}
+                  title={buildNotificationTooltip(unreadNotificationCount - (notificationTypeCounts.messageMention || 0), notificationTypeCounts)}
                 >
                   <Bell size={22} strokeWidth={2.2} />
                 </NotificationBadge>
@@ -356,7 +363,7 @@ const Navbar = () => {
                 <NotificationBadge
                   variant="message"
                   count={unreadMessageCount}
-                  title={buildMessageTooltip(unreadMessageCount, messageTeamCount, messageSenderCount)}
+                  title={buildMessageTooltip(unreadMessageCount, messageTeamCount, messageSenderCount, notificationTypeCounts.messageMention)}
                 >
                   <MessageCircle size={22} strokeWidth={2.2} />
                 </NotificationBadge>

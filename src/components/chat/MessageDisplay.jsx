@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState, useCallback } from "react";
+import React, { useRef, useEffect, useState, useCallback, useMemo } from "react";
 import { format, isToday, isYesterday } from "date-fns";
 import {
   normalizeTimestampToDate,
@@ -18,6 +18,9 @@ import {
   Crown,
   Shield,
   User,
+  UserCheck,
+  UserSearch,
+  CircleX,
   FileText,
   File,
   FileSpreadsheet,
@@ -26,15 +29,18 @@ import {
   Clock,
   Trash2,
   Pencil,
+  Reply,
   X,
   Check,
   CheckCheck,
 } from "lucide-react";
 import TeamDetailsModal from "../teams/TeamDetailsModal";
+import VacantRoleDetailsModal from "../teams/VacantRoleDetailsModal";
 import UserDetailsModal from "../users/UserDetailsModal";
 import UserAvatar from "../users/UserAvatar";
 import DemoAvatarOverlay from "../users/DemoAvatarOverlay";
 import { userService } from "../../services/userService";
+import { vacantRoleService } from "../../services/vacantRoleService";
 import {
   getFileExpirationStatus,
   formatFileSize,
@@ -53,6 +59,24 @@ import {
   mergeResolvedUserData,
 } from "../../utils/chatEntityResolvers";
 
+const MENTION_RE = /@\[([^\]]+)\]\([^)]+\)/g;
+
+const renderReplyContent = (text, maxLen = 120) => {
+  if (!text) return null;
+  const sliced = text.slice(0, maxLen);
+  const parts = [];
+  let last = 0;
+  let m;
+  MENTION_RE.lastIndex = 0;
+  while ((m = MENTION_RE.exec(sliced)) !== null) {
+    if (m.index > last) parts.push(<React.Fragment key={last}>{sliced.slice(last, m.index)}</React.Fragment>);
+    parts.push(<span key={m.index} className="font-medium text-primary">@{m[1]}</span>);
+    last = m.index + m[0].length;
+  }
+  if (last < sliced.length) parts.push(<React.Fragment key={last}>{sliced.slice(last)}</React.Fragment>);
+  return parts;
+};
+
 const parseIdNameToken = (token) => {
   const t = (token || "").trim();
   const m = t.match(/^(\d+)\s*:(.+)$/);
@@ -67,16 +91,31 @@ const parseIdNameToken = (token) => {
 export const parseSystemMessage = (content) => {
   if (!content) return null;
 
-  // Pattern 1: Team join message
-  // Format: 👋 Name joined the team!\n\n"personal message"
+  // Pattern 1: Team join message — with optional role and optional personal message
+  // Format A: 👋 Name joined the team as Role!\n\n"personal message"
+  // Format B: 👋 Name joined the team as Role!
+  // Format C: 👋 Name joined the team!\n\n"personal message"
+  // Format D: 👋 Name joined the team!
+  const joinWithRoleMatch = content.match(
+    /^👋\s+(.+?)\s+joined the team as (.+?)!\s*(?:\n\n"([\s\S]+)")?$/,
+  );
+  if (joinWithRoleMatch) {
+    return {
+      type: "team_join",
+      userName: joinWithRoleMatch[1].trim(),
+      roleName: joinWithRoleMatch[2].trim(),
+      personalMessage: joinWithRoleMatch[3]?.trim() ?? null,
+    };
+  }
+
   const joinMatch = content.match(
-    /^👋\s+(.+?)\s+joined the team!\s*\n\n"(.+)"$/s,
+    /^👋\s+(.+?)\s+joined the team!\s*(?:\n\n"([\s\S]+)")?$/,
   );
   if (joinMatch) {
     return {
       type: "team_join",
       userName: joinMatch[1].trim(),
-      personalMessage: joinMatch[2].trim(),
+      personalMessage: joinMatch[2]?.trim() ?? null,
     };
   }
 
@@ -107,7 +146,93 @@ export const parseSystemMessage = (content) => {
     };
   }
 
-  // Pattern 4: Application decline response (direct message to applicant)
+  // Pattern 4A: Role application approved message
+  // Format: Anna Kowalski's application for Improv Performer was approved
+  const roleApplicationApprovedMatch = content.match(
+    /^(.+?)'s application for (.+?) was approved\.?$/,
+  );
+  if (roleApplicationApprovedMatch) {
+    const applicant = parseIdNameToken(roleApplicationApprovedMatch[1].trim());
+    const role = parseIdNameToken(roleApplicationApprovedMatch[2].trim());
+
+    return {
+      type: "role_application_approved",
+      applicantId: applicant.id,
+      applicantName: applicant.name,
+      roleId: role.id,
+      roleName: role.name,
+    };
+  }
+
+  // Pattern 4B: Filled role reopened message
+  // Format: 🔓 ROLE_REOPENED: teamId:teamName | roleId:roleName | userId:userName
+  const roleReopenedMatch = content.match(
+    /^(?:🔓\s*)?ROLE_REOPENED:\s*(.+?)\s+\|\s+(.+?)\s+\|\s+(.+)$/,
+  );
+  if (roleReopenedMatch) {
+    const team = parseIdNameToken(roleReopenedMatch[1].trim());
+    const role = parseIdNameToken(roleReopenedMatch[2].trim());
+    const user = parseIdNameToken(roleReopenedMatch[3].trim());
+
+    return {
+      type: "role_reopened",
+      teamId: team.id,
+      teamName: team.name,
+      roleId: role.id,
+      roleName: role.name,
+      userId: user.id,
+      userName: user.name,
+    };
+  }
+
+  const legacyRoleReopenedMatch = content.match(
+    /^(.+?)\s+has left the role\s+(.+?)\.\s+The role is open again to be filled\.$/,
+  );
+  if (legacyRoleReopenedMatch) {
+    return {
+      type: "role_reopened",
+      userId: null,
+      userName: legacyRoleReopenedMatch[1].trim(),
+      roleId: null,
+      roleName: legacyRoleReopenedMatch[2].trim(),
+    };
+  }
+
+  const legacyRoleReopenedNoUserMatch = content.match(
+    /^🔓\s+The role (.+?) is now open again\.$/,
+  );
+  if (legacyRoleReopenedNoUserMatch) {
+    return {
+      type: "role_reopened",
+      userId: null,
+      userName: null,
+      roleId: null,
+      roleName: legacyRoleReopenedNoUserMatch[1].trim(),
+    };
+  }
+
+  // Pattern 4C: Open role marked as filled message
+  // Format: ✅ ROLE_FILLED: teamId:teamName | roleId:roleName | userId:userName
+  const roleFilledMatch = content.match(
+    /^(?:✅\s*)?ROLE_FILLED:\s*(.+?)\s+\|\s+(.+?)\s+\|\s+(.+)$/,
+  );
+  if (roleFilledMatch) {
+    const team = parseIdNameToken(roleFilledMatch[1].trim());
+    const role = parseIdNameToken(roleFilledMatch[2].trim());
+    const user = parseIdNameToken(roleFilledMatch[3].trim());
+
+    return {
+      type: "role_filled",
+      teamId: team.id,
+      teamName: team.name,
+      roleId: role.id,
+      roleName: role.name,
+      userId: user.id,
+      userName: user.name,
+    };
+  }
+
+  // Pattern 4D: Application decline response (direct message to applicant)
   // Format: 📋 Application declined: [Applicant] for "[Team]":\n\n"personal message"
   const applicationDeclineMatch = content.match(
     /^📋\s+Application declined:\s+(.+?)\s+for\s+"(.+?)":\s*\n\n"(.+)"$/s,
@@ -123,7 +248,8 @@ export const parseSystemMessage = (content) => {
 
   // Pattern 5A (NEW): Team leave message with userId
   // Format: 🚪 MEMBER_LEFT:<userId>:<displayName>
-  const leaveIdMatch = content.match(/^🚪\s*MEMBER_LEFT:(\d+):(.+)$/);
+  // Also accepts raw backend payloads without the emoji prefix.
+  const leaveIdMatch = content.match(/^(?:🚪\s*)?MEMBER_LEFT:(\d+):(.+)$/);
   if (leaveIdMatch) {
     return {
       type: "team_leave",
@@ -143,19 +269,34 @@ export const parseSystemMessage = (content) => {
     };
   }
 
-  // Pattern 5C (NEW): Member removed public message (team chat)
+  // Pattern 5C: User left Lomir message
+  // Format: 🚪 Name has left Lomir.
+  const userLeftLomirMatch = content.match(/^🚪\s+(.+?)\s+has left Lomir\.$/);
+  if (userLeftLomirMatch) {
+    return {
+      type: "user_left_lomir",
+      userId: null,
+      userName: userLeftLomirMatch[1].trim(),
+    };
+  }
+
+  // Pattern 5D (NEW): Member removed public message (team chat)
   // Format: 🚫 MEMBER_REMOVED_PUBLIC: <teamId>:<teamName> | <memberId>:<memberName>
+  // Also accepts raw backend payloads without the emoji prefix.
   const removedPublicMatch = content.match(
-    /^🚫\s*MEMBER_REMOVED_PUBLIC:\s*(\d+):(.+?)\s*\|\s*(\d+):(.+)$/,
+    /^(?:🚫\s*)?MEMBER_REMOVED_PUBLIC:\s*(.+?)\s*\|\s*(.+)$/,
   );
 
   if (removedPublicMatch) {
+    const team = parseIdNameToken(removedPublicMatch[1].trim());
+    const member = parseIdNameToken(removedPublicMatch[2].trim());
+
     return {
       type: "member_removed_public",
-      teamId: Number(removedPublicMatch[1]),
-      teamName: removedPublicMatch[2].trim(),
-      userId: Number(removedPublicMatch[3]),
-      userName: removedPublicMatch[4].trim(),
+      teamId: team.id,
+      teamName: team.name,
+      userId: member.id,
+      userName: member.name,
     };
   }
 
@@ -389,14 +530,175 @@ export const parseSystemMessage = (content) => {
     /^🗑️\s+TEAM_DELETED:\s+(.+?)\s+\|\s+(.+)$/,
   );
   if (teamDeletedMatch) {
+    const team = parseIdNameToken(teamDeletedMatch[1].trim());
+    const owner = parseIdNameToken(teamDeletedMatch[2].trim());
+
     return {
       type: "team_deleted",
-      teamName: teamDeletedMatch[1].trim(),
-      ownerName: teamDeletedMatch[2].trim(),
+      teamId: team.id,
+      teamName: team.name,
+      ownerId: owner.id,
+      ownerName: owner.name,
     };
   }
 
   return null;
+};
+
+const EVENT_REACTION_PREVIEW_COLORS = {
+  admin: "#9a8ef0",
+  member: "#33a742",
+  neutral: "#6b7280",
+  owner: "#e86a86",
+  role: "#f59e0b",
+  success: "#16a34a",
+  error: "#dc2626",
+};
+
+const getEventReactionPreview = (content) => {
+  const parsedMessage = parseSystemMessage(content);
+  if (!parsedMessage) return null;
+
+  switch (parsedMessage.type) {
+    case "team_join":
+      return {
+        text: parsedMessage.roleName
+          ? `${parsedMessage.userName} joined the team as ${parsedMessage.roleName}. Say hello to them!`
+          : `${parsedMessage.userName} has followed your invite and joined your team. Say hello to them!`,
+        Icon: UserPlus,
+        trailingIcon: PartyPopper,
+        color: EVENT_REACTION_PREVIEW_COLORS.success,
+      };
+    case "application_approved":
+      return {
+        text: `${parsedMessage.applicantName} has applied successfully and was added by ${parsedMessage.approverName}. Say hello to them!`,
+        Icon: UserPlus,
+        trailingIcon: PartyPopper,
+        color: EVENT_REACTION_PREVIEW_COLORS.success,
+      };
+    case "application_approved_dm":
+      return {
+        text: `${parsedMessage.applicantName}'s application for ${parsedMessage.teamName} was approved.`,
+        Icon: UserPlus,
+        trailingIcon: PartyPopper,
+        color: EVENT_REACTION_PREVIEW_COLORS.success,
+      };
+    case "role_application_approved":
+      return {
+        text: `${parsedMessage.applicantName}'s application for ${parsedMessage.roleName} was approved.`,
+        Icon: UserCheck,
+        color: EVENT_REACTION_PREVIEW_COLORS.role,
+      };
+    case "role_reopened":
+      return {
+        text: parsedMessage.userName
+          ? `${parsedMessage.userName} has left the role ${parsedMessage.roleName}. The role is open again to be filled.`
+          : `The role ${parsedMessage.roleName} is open again to be filled.`,
+        Icon: UserSearch,
+        color: EVENT_REACTION_PREVIEW_COLORS.role,
+      };
+    case "role_filled":
+      return {
+        text: parsedMessage.userName
+          ? `${parsedMessage.userName} is now filling the role ${parsedMessage.roleName}.`
+          : `The role ${parsedMessage.roleName} was marked as filled.`,
+        Icon: UserCheck,
+        color: EVENT_REACTION_PREVIEW_COLORS.role,
+      };
+    case "application_response":
+    case "invitation_response":
+      return {
+        text: `Response for ${parsedMessage.teamName}.`,
+        Icon: FileText,
+        color: EVENT_REACTION_PREVIEW_COLORS.neutral,
+      };
+    case "team_leave":
+      return {
+        text: `${parsedMessage.userName} has left the team.`,
+        Icon: UserMinus,
+        color: EVENT_REACTION_PREVIEW_COLORS.neutral,
+      };
+    case "user_left_lomir":
+      return {
+        text: "Former Lomir Member has left Lomir.",
+        Icon: LogOut,
+        color: EVENT_REACTION_PREVIEW_COLORS.neutral,
+      };
+    case "member_removed_public":
+      return {
+        text: `${parsedMessage.userName} has been removed from the team.`,
+        Icon: UserMinus,
+        color: EVENT_REACTION_PREVIEW_COLORS.neutral,
+      };
+    case "application_declined":
+      return {
+        text: `${parsedMessage.applicantName}'s application for ${parsedMessage.teamName} was declined.`,
+        Icon: CircleX,
+        color: EVENT_REACTION_PREVIEW_COLORS.neutral,
+      };
+    case "invitation_declined":
+      return {
+        text: `${parsedMessage.inviteeName} declined the invitation for ${parsedMessage.teamName}.`,
+        Icon: CircleX,
+        color: EVENT_REACTION_PREVIEW_COLORS.neutral,
+      };
+    case "invitation_cancelled":
+      return {
+        text: `Invitation for ${parsedMessage.inviteeName} to join ${parsedMessage.teamName} was cancelled.`,
+        Icon: CircleX,
+        color: EVENT_REACTION_PREVIEW_COLORS.neutral,
+      };
+    case "application_cancelled":
+      return {
+        text: `${parsedMessage.applicantName} cancelled their application for ${parsedMessage.teamName}.`,
+        Icon: CircleX,
+        color: EVENT_REACTION_PREVIEW_COLORS.neutral,
+      };
+    case "member_removed":
+      return {
+        text: `${parsedMessage.memberName} was removed from ${parsedMessage.teamName}.`,
+        Icon: UserMinus,
+        color: EVENT_REACTION_PREVIEW_COLORS.neutral,
+      };
+    case "role_changed": {
+      const isAdmin = parsedMessage.newRole === "admin";
+      return {
+        text: `${parsedMessage.memberName}'s role was changed to ${parsedMessage.newRole} in ${parsedMessage.teamName}.`,
+        Icon: isAdmin ? Shield : User,
+        trailingIcon: isAdmin ? PartyPopper : null,
+        color: isAdmin
+          ? EVENT_REACTION_PREVIEW_COLORS.admin
+          : EVENT_REACTION_PREVIEW_COLORS.member,
+      };
+    }
+    case "ownership_transferred":
+      return {
+        text: `${parsedMessage.prevOwnerName} transferred ownership of ${parsedMessage.teamName} to ${parsedMessage.newOwnerName}.`,
+        Icon: Crown,
+        trailingIcon: PartyPopper,
+        color: EVENT_REACTION_PREVIEW_COLORS.owner,
+      };
+    case "ownership_team":
+      return {
+        text: `${parsedMessage.prevOwnerName} transferred ownership to ${parsedMessage.newOwnerName}.`,
+        Icon: Crown,
+        color: EVENT_REACTION_PREVIEW_COLORS.owner,
+      };
+    case "team_deleted":
+      return {
+        text: `${parsedMessage.ownerName} archived ${parsedMessage.teamName}.`,
+        Icon: AlertTriangle,
+        color: EVENT_REACTION_PREVIEW_COLORS.error,
+      };
+    default:
+      return null;
+  }
+};
+
+const formatReplyTooltipText = (content, eventPreview = null) => {
+  if (eventPreview?.text) return eventPreview.text;
+
+  return String(content ?? "").replace(/@\[([^\]]+)\]\([^)]+\)/g, "@$1");
 };
 
 const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -452,6 +754,7 @@ const MessageDisplay = ({
   onDeleteMessage,
   onEditMessage,
   onLeaveTeam,
+  onReply,
   onConversationHeaderVisibilityChange,
   searchQuery = "",
 }) => {
@@ -474,6 +777,8 @@ const MessageDisplay = ({
   // State for user details modal
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState(null);
+  const [isRoleModalOpen, setIsRoleModalOpen] = useState(false);
+  const [selectedRoleData, setSelectedRoleData] = useState(null);
 
   // Mention lookup (frontend-only)
   const [resolvingName, setResolvingName] = useState(false);
@@ -486,6 +791,17 @@ const MessageDisplay = ({
   const [editingContent, setEditingContent] = useState("");
   const [editingError, setEditingError] = useState(null);
   const [savingEditMessageId, setSavingEditMessageId] = useState(null);
+  const messagesById = useMemo(() => {
+    const map = new Map();
+
+    messages.forEach((message) => {
+      if (message?.id != null) {
+        map.set(String(message.id), message);
+      }
+    });
+
+    return map;
+  }, [messages]);
 
   const highlightEventContent = useCallback(
     (node) => {
@@ -874,6 +1190,11 @@ const MessageDisplay = ({
     setSelectedUserId(null);
   };
 
+  const handleRoleModalClose = () => {
+    setIsRoleModalOpen(false);
+    setSelectedRoleData(null);
+  };
+
   const resolvedConversationPartner = mergeResolvedUserData(
     conversationPartner,
     conversationPartner?.id != null
@@ -1049,6 +1370,215 @@ const MessageDisplay = ({
         </button>
       </Tooltip>
     );
+  };
+
+  const normalizeRoleLookupValue = (value) =>
+    String(value ?? "").trim().toLowerCase();
+
+  const getRoleName = (role) =>
+    role?.roleName ?? role?.role_name ?? role?.name ?? role?.title ?? "";
+
+  const getRoleFilledUserId = (role) =>
+    role?.filledByUser?.id ??
+    role?.filled_by_user?.id ??
+    role?.filledByUserId ??
+    role?.filled_by_user_id ??
+    role?.filledBy ??
+    role?.filled_by ??
+    null;
+
+  const getRoleFilledUserName = (role) => {
+    const user = role?.filledByUser ?? role?.filled_by_user ?? {};
+    const firstName =
+      user.firstName ?? user.first_name ?? role?.filledByUserFirstName ?? role?.filled_by_user_first_name ?? "";
+    const lastName =
+      user.lastName ?? user.last_name ?? role?.filledByUserLastName ?? role?.filled_by_user_last_name ?? "";
+    const fullName = `${firstName} ${lastName}`.trim();
+    return (
+      fullName ||
+      user.username ||
+      role?.filledByUserUsername ||
+      role?.filled_by_user_username ||
+      ""
+    );
+  };
+
+  const findMatchingRole = (
+    roles,
+    { roleId, roleName, filledUserId, filledUserName },
+  ) => {
+    const normalizedRoleName = normalizeRoleLookupValue(roleName);
+    const normalizedFilledUserName = normalizeRoleLookupValue(filledUserName);
+    const candidates = (roles || []).filter((role) => {
+      if (roleId != null && String(role?.id) === String(roleId)) return true;
+
+      return (
+        normalizedRoleName &&
+        normalizeRoleLookupValue(getRoleName(role)) === normalizedRoleName
+      );
+    });
+
+    if (candidates.length === 0) return null;
+
+    const matchingFilledRole = candidates.find((role) => {
+      const isFilled = normalizeRoleLookupValue(role?.status) === "filled";
+      if (!isFilled) return false;
+
+      const roleFilledUserId = getRoleFilledUserId(role);
+      if (
+        filledUserId != null &&
+        roleFilledUserId != null &&
+        String(roleFilledUserId) === String(filledUserId)
+      ) {
+        return true;
+      }
+
+      if (normalizedFilledUserName) {
+        return (
+          normalizeRoleLookupValue(getRoleFilledUserName(role)) ===
+          normalizedFilledUserName
+        );
+      }
+
+      return true;
+    });
+
+    if (matchingFilledRole) return matchingFilledRole;
+
+    const openRole = candidates.find(
+      (role) => normalizeRoleLookupValue(role?.status) === "open",
+    );
+
+    return openRole ?? candidates[0];
+  };
+
+  const openRoleModal = async ({
+    roleId = null,
+    roleName,
+    filledUserId = null,
+    filledUserName = null,
+    filledAt = null,
+  }) => {
+    const safeName = (roleName || "").trim();
+    if (!safeName && !roleId) return;
+
+    const teamId = resolvedTeamData?.id ?? teamData?.id ?? null;
+    const teamName = resolvedTeamData?.name ?? teamData?.name ?? null;
+    const safeFilledUserName = (filledUserName || "").trim();
+    const fallbackStatus =
+      filledUserId || safeFilledUserName || filledAt ? "filled" : "open";
+    const filledUser =
+      filledUserId || safeFilledUserName
+        ? {
+            id: filledUserId,
+            username: safeFilledUserName || undefined,
+          }
+        : null;
+
+    const fallbackRole = {
+      id: roleId,
+      roleName: safeName || "Vacant Role",
+      role_name: safeName || "Vacant Role",
+      status: fallbackStatus,
+      teamId,
+      team_id: teamId,
+      teamName,
+      team_name: teamName,
+      filledAt,
+      filled_at: filledAt,
+      filledBy: filledUserId,
+      filled_by: filledUserId,
+      filledByUserId: filledUserId,
+      filled_by_user_id: filledUserId,
+      filledByUser: filledUser,
+      filled_by_user: filledUser,
+    };
+
+    let resolvedRole = fallbackRole;
+
+    if (teamId) {
+      try {
+        if (roleId) {
+          const response = await vacantRoleService.getVacantRoleById(
+            teamId,
+            roleId,
+          );
+          resolvedRole = response?.data ?? response ?? fallbackRole;
+        } else {
+          const response = await vacantRoleService.getVacantRoles(teamId, "all");
+          const roles = response?.data ?? response ?? [];
+          resolvedRole =
+            findMatchingRole(roles, {
+              roleId,
+              roleName: safeName,
+              filledUserId,
+              filledUserName: safeFilledUserName,
+            }) ?? fallbackRole;
+        }
+      } catch (error) {
+        console.warn("Could not fetch role details for chat event:", error);
+      }
+    }
+
+    setSelectedRoleData({
+      ...fallbackRole,
+      ...resolvedRole,
+      status: resolvedRole?.status ?? fallbackRole.status,
+    });
+    setIsRoleModalOpen(true);
+  };
+
+  const RoleMentionById = ({
+    roleId = null,
+    name,
+    filledUserId = null,
+    filledUserName = null,
+    filledAt = null,
+  }) => {
+    const safeName = (name || "").trim() || "Role";
+
+    return (
+      <Tooltip content={`Open ${safeName}`} position="top">
+        <button
+          type="button"
+          className="font-medium underline underline-offset-2 hover:no-underline hover:opacity-80 transition-opacity"
+          onClick={() =>
+            openRoleModal({
+              roleId,
+              roleName: safeName,
+              filledUserId,
+              filledUserName,
+              filledAt,
+            })
+          }
+        >
+          {renderHighlightedSearchText(safeName, searchQuery)}
+        </button>
+      </Tooltip>
+    );
+  };
+
+  const isCurrentUserTeamMember = () => {
+    if (conversationType !== "team" || currentUserId == null) return false;
+
+    const members = [
+      ...(teamMembers || []),
+      ...(resolvedTeamData?.members || []),
+      ...(teamData?.members || []),
+    ];
+
+    return members.some((member) => {
+      const memberUser = member?.user || member;
+      const memberId =
+        memberUser?.id ??
+        memberUser?.userId ??
+        memberUser?.user_id ??
+        member?.userId ??
+        member?.user_id ??
+        member?.id ??
+        null;
+      return memberId != null && String(memberId) === String(currentUserId);
+    });
   };
 
   // Group messages by date
@@ -1375,6 +1905,11 @@ const MessageDisplay = ({
           </div>
         )}
 
+        <Tooltip
+          content="Click to open and download file"
+          position="top"
+          wrapperClassName="block"
+        >
         <a
           href={fileUrl}
           target="_blank"
@@ -1401,6 +1936,7 @@ const MessageDisplay = ({
             className="text-base-content/40 group-hover:text-primary transition-colors flex-shrink-0"
           />
         </a>
+        </Tooltip>
 
         {/* Grey expiration info for files NOT expiring soon (>7 days) */}
         {expirationStatus.status === "active" &&
@@ -1490,16 +2026,11 @@ const MessageDisplay = ({
 
     return (
       <div className="flex flex-col items-center w-full my-4">
-        <div
-          className="flex items-center justify-center gap-2 px-4 py-3 rounded-2xl mb-3 max-w-md text-center"
-          style={{
-            backgroundColor: "rgba(34, 197, 94, 0.1)",
-            color: "#16a34a",
-          }}
-        >
+        <div className="event-banner event-banner--success mb-3">
           <span className="text-sm font-medium event-message-text">
-            <PartyPopper size={16} className="event-inline-icon ml-1" />{" "}
-            {highlightEventContent(messageText)}.
+            <UserPlus size={16} className="event-inline-icon mr-1" />
+            {highlightEventContent(messageText)}
+            <PartyPopper size={16} className="event-inline-icon ml-1" />
           </span>
         </div>
 
@@ -1553,6 +2084,142 @@ const MessageDisplay = ({
   };
 
   // =============================================================================
+  // renderRoleApplicationApprovedMessage - Orange role theme
+  // =============================================================================
+  const renderRoleApplicationApprovedMessage = (message, parsedMessage) => {
+    const messageText = (
+      <>
+        <Mention name={parsedMessage.applicantName} />
+        {"'s"} application for{" "}
+        <RoleMentionById
+          roleId={parsedMessage.roleId}
+          name={parsedMessage.roleName}
+          filledUserId={parsedMessage.applicantId}
+          filledUserName={parsedMessage.applicantName}
+          filledAt={message.createdAt}
+        />{" "}
+        was approved.
+      </>
+    );
+
+    return (
+      <div className="flex flex-col items-center w-full my-4">
+        <div
+          className="event-banner mb-3"
+          style={{
+            backgroundColor: "rgba(245, 158, 11, 0.1)",
+            color: "#f59e0b",
+          }}
+        >
+          <span className="text-sm font-medium event-message-text">
+            <UserCheck size={16} className="event-inline-icon mr-1" />
+            {highlightEventContent(messageText)}
+          </span>
+        </div>
+
+        <div className="text-xs text-base-content/50">
+          {formatLocalTime(message.createdAt)}
+        </div>
+      </div>
+    );
+  };
+
+  // =============================================================================
+  // renderRoleReopenedMessage - Orange role theme
+  // =============================================================================
+  const renderRoleReopenedMessage = (message, parsedMessage) => {
+    const roleMention = (
+      <RoleMentionById
+        roleId={parsedMessage.roleId}
+        name={parsedMessage.roleName}
+      />
+    );
+    const messageText = parsedMessage.userName ? (
+      <>
+        <MentionById
+          userId={parsedMessage.userId}
+          name={parsedMessage.userName}
+        />{" "}
+        has left the role {roleMention}. The role is open again to be filled.
+      </>
+    ) : (
+      <>The role {roleMention} is open again to be filled.</>
+    );
+
+    return (
+      <div className="flex flex-col items-center w-full my-4">
+        <div
+          className="event-banner mb-3"
+          style={{
+            backgroundColor: "rgba(245, 158, 11, 0.1)",
+            color: "#f59e0b",
+          }}
+        >
+          <span className="text-sm font-medium event-message-text">
+            <UserSearch size={16} className="event-inline-icon mr-1" />
+            {highlightEventContent(messageText)}
+          </span>
+        </div>
+
+        <div className="text-xs text-base-content/50">
+          {formatLocalTime(message.createdAt)}
+        </div>
+      </div>
+    );
+  };
+
+  // =============================================================================
+  // renderRoleFilledMessage - Orange role theme
+  // =============================================================================
+  const renderRoleFilledMessage = (message, parsedMessage) => {
+    const hasKnownFilledUser =
+      parsedMessage.userName &&
+      parsedMessage.userName.trim().toLowerCase() !== "someone";
+
+    const roleMention = (
+      <RoleMentionById
+        roleId={parsedMessage.roleId}
+        name={parsedMessage.roleName}
+        filledUserId={parsedMessage.userId}
+        filledUserName={hasKnownFilledUser ? parsedMessage.userName : null}
+        filledAt={message.createdAt}
+      />
+    );
+    const messageText = hasKnownFilledUser ? (
+      <>
+        <MentionById
+          userId={parsedMessage.userId}
+          name={parsedMessage.userName}
+        />{" "}
+        is now filling the role {roleMention}.
+      </>
+    ) : (
+      <>The role {roleMention} was marked as filled.</>
+    );
+
+    return (
+      <div className="flex flex-col items-center w-full my-4">
+        <div
+          className="event-banner mb-3"
+          style={{
+            backgroundColor: "rgba(245, 158, 11, 0.1)",
+            color: "#f59e0b",
+          }}
+        >
+          <span className="text-sm font-medium event-message-text">
+            <UserCheck size={16} className="event-inline-icon mr-1" />
+            {highlightEventContent(messageText)}
+          </span>
+        </div>
+
+        <div className="text-xs text-base-content/50">
+          {formatLocalTime(message.createdAt)}
+        </div>
+      </div>
+    );
+  };
+
+  // =============================================================================
   // renderLeaveMessage - Neutral grey theme (pill shape)
   // =============================================================================
   const renderLeaveMessage = (message, parsedMessage, isCurrentUser) => {
@@ -1573,6 +2240,28 @@ const MessageDisplay = ({
         <div className="event-banner event-banner--neutral mb-3">
           <span className="text-sm font-medium event-message-text">
             <UserMinus size={16} className="event-inline-icon mr-1" />
+            {highlightEventContent(leaveText)}
+          </span>
+        </div>
+
+        <div className="text-xs text-base-content/50">
+          {formatLocalTime(message.createdAt)}
+        </div>
+      </div>
+    );
+  };
+
+  // =============================================================================
+  // renderUserLeftLomirMessage - Neutral grey theme
+  // =============================================================================
+  const renderUserLeftLomirMessage = (message, parsedMessage) => {
+    const leaveText = <>Former Lomir Member has left Lomir.</>;
+
+    return (
+      <div className="flex flex-col items-center w-full my-4">
+        <div className="event-banner event-banner--neutral mb-3">
+          <span className="text-sm font-medium event-message-text">
+            <LogOut size={16} className="event-inline-icon mr-1" />
             {highlightEventContent(leaveText)}
           </span>
         </div>
@@ -1683,8 +2372,23 @@ const MessageDisplay = ({
     senderId,
   ) => {
     const pronoun = isCurrentUser ? "you" : "them";
+    const roleMention = parsedMessage.roleName ? (
+      <>
+        <UserCheck size={16} className="event-inline-icon mx-1" />
+        <Mention name={parsedMessage.roleName} />
+      </>
+    ) : null;
     const welcomeText = isCurrentUser ? (
-      <>You joined the team. Welcome aboard!</>
+      roleMention ? (
+        <>You joined the team as{" "}{roleMention}. Welcome aboard!</>
+      ) : (
+        <>You joined the team. Welcome aboard!</>
+      )
+    ) : roleMention ? (
+      <>
+        <Mention name={parsedMessage.userName} /> joined the team as{" "}
+        {roleMention}. Say hello to {pronoun}!
+      </>
     ) : (
       <>
         <Mention name={parsedMessage.userName} /> has followed your invite and
@@ -1806,6 +2510,7 @@ const MessageDisplay = ({
       <div className="flex flex-col items-center w-full my-4">
         <div className="event-banner event-banner--neutral mb-3">
           <span className="text-sm font-medium event-message-text">
+            <CircleX size={16} className="event-inline-icon mr-1" />
             {highlightEventContent(messageText)}
           </span>
         </div>
@@ -1891,6 +2596,7 @@ const MessageDisplay = ({
       <div className="flex flex-col items-center w-full my-4">
         <div className="event-banner event-banner--neutral mb-3">
           <span className="text-sm font-medium event-message-text">
+            <CircleX size={16} className="event-inline-icon mr-1" />
             {highlightEventContent(messageText)}
           </span>
         </div>
@@ -1926,9 +2632,12 @@ const MessageDisplay = ({
     );
 
     return (
-      <div className="flex flex-col w-full my-4">
-        <div className="event-banner event-banner--neutral mb-3 mx-auto">
-          <span className="text-sm event-message-text">{highlightEventContent(bannerContent)}</span>
+      <div className="flex flex-col items-center w-full my-4">
+        <div className="event-banner event-banner--neutral mb-3">
+          <span className="text-sm font-medium event-message-text">
+            <FileText size={16} className="event-inline-icon mr-1" />
+            {highlightEventContent(bannerContent)}
+          </span>
         </div>
 
         {parsedMessage.personalMessage && (
@@ -1942,7 +2651,7 @@ const MessageDisplay = ({
             <div className="flex flex-col max-w-[70%]">
               <div
                 className={`
-                  rounded-lg p-3 
+                  rounded-lg p-3
                   ${
                     isCurrentUser
                       ? "bg-green-100 text-base-content rounded-br-none ml-auto"
@@ -1953,7 +2662,7 @@ const MessageDisplay = ({
                 <p>{renderHighlightedSearchText(parsedMessage.personalMessage, searchQuery)}</p>
                 <div
                   className={`
-                    flex justify-end items-center text-xs mt-1 
+                    flex justify-end items-center text-xs mt-1
                     ${
                       isCurrentUser
                         ? "text-base-content/60"
@@ -2046,6 +2755,7 @@ const MessageDisplay = ({
       <div className="flex flex-col items-center w-full my-4">
         <div className="event-banner event-banner--neutral mb-3">
           <span className="text-sm font-medium event-message-text">
+            <CircleX size={16} className="event-inline-icon mr-1" />
             {highlightEventContent(messageText)}
           </span>
         </div>
@@ -2068,9 +2778,10 @@ const MessageDisplay = ({
     senderId,
   ) => {
     return (
-      <div className="flex flex-col w-full my-4">
-        <div className="event-banner event-banner--info mb-3 mx-auto">
-          <span className="text-sm event-message-text">
+      <div className="flex flex-col items-center w-full my-4">
+        <div className="event-banner event-banner--neutral mb-3">
+          <span className="text-sm font-medium event-message-text">
+            <FileText size={16} className="event-inline-icon mr-1" />
             Response to invitation for{" "}
             <span className="font-medium">{renderHighlightedSearchText(parsedMessage.teamName, searchQuery)}</span>
           </span>
@@ -2089,7 +2800,7 @@ const MessageDisplay = ({
             <div className="flex flex-col max-w-[70%]">
               <div
                 className={`
-                  rounded-lg p-3 
+                  rounded-lg p-3
                   ${
                     isCurrentUser
                       ? "bg-green-100 text-base-content rounded-br-none ml-auto"
@@ -2100,7 +2811,7 @@ const MessageDisplay = ({
                 <p>{renderHighlightedSearchText(parsedMessage.personalMessage, searchQuery)}</p>
                 <div
                   className={`
-                    flex justify-end items-center text-xs mt-1 
+                    flex justify-end items-center text-xs mt-1
                     ${
                       isCurrentUser
                         ? "text-base-content/60"
@@ -2155,6 +2866,7 @@ const MessageDisplay = ({
       <div className="flex flex-col items-center w-full my-4">
         <div className="event-banner event-banner--neutral mb-3">
           <span className="text-sm font-medium event-message-text">
+            <CircleX size={16} className="event-inline-icon mr-1" />
             {highlightEventContent(messageText)}
           </span>
         </div>
@@ -2395,6 +3107,7 @@ const MessageDisplay = ({
       <div className="flex flex-col items-center w-full my-4">
         <div className="event-banner event-banner--neutral mb-3">
           <span className="text-sm font-medium event-message-text">
+            <UserMinus size={16} className="event-inline-icon mr-1" />
             {highlightEventContent(messageText)}
           </span>
         </div>
@@ -2671,220 +3384,248 @@ const MessageDisplay = ({
                   const wrapperClass = isHighlighted
                     ? "message-highlight rounded-xl p-2"
                     : "";
+                  const canReactMessage =
+                    !(
+                      message.deletedAt ||
+                      message.deleted_at
+                    ) && typeof onReply === "function";
+                  const renderReactButton = () =>
+                    canReactMessage ? (
+                      <div className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity inline-flex items-center gap-1 z-10">
+                        <Tooltip
+                          content="React"
+                          position="top"
+                          wrapperClassName="inline-flex"
+                        >
+                          <button
+                            type="button"
+                            onClick={() =>
+                              onReply({
+                                id: message.id,
+                                  content: message.content,
+                                  createdAt:
+                                    message.createdAt || message.created_at,
+                                  imageUrl:
+                                    message.imageUrl || message.image_url,
+                                  fileUrl: message.fileUrl || message.file_url,
+                                  fileName:
+                                    message.fileName || message.file_name,
+                                  fileSize:
+                                    message.fileSize || message.file_size,
+                                  fileExpiresAt:
+                                    message.fileExpiresAt ||
+                                    message.file_expires_at,
+                                  fileDeletedAt:
+                                    message.fileDeletedAt ||
+                                    message.file_deleted_at,
+                                  senderId:
+                                    message.senderId || message.sender_id,
+                                senderUsername:
+                                  senderInfo?.username ||
+                                  message.senderUsername ||
+                                  message.sender_username,
+                                senderFirstName:
+                                  senderInfo?.firstName ||
+                                  senderInfo?.first_name ||
+                                  message.senderFirstName ||
+                                  message.sender_first_name,
+                              })
+                            }
+                            className="bg-base-100 border border-base-300 rounded-full p-1 shadow-sm hover:shadow"
+                            aria-label="React to message"
+                          >
+                            <Reply
+                              size={14}
+                              className="text-base-content/50 hover:text-primary"
+                            />
+                          </button>
+                        </Tooltip>
+                      </div>
+                    ) : null;
+                  const renderSystemContentWithReactButton = (content) => {
+                    if (!React.isValidElement(content)) return content;
+
+                    const children = React.Children.toArray(
+                      content.props.children,
+                    );
+                    let attachedReactButton = false;
+                    const nextChildren = children.map((child) => {
+                      if (
+                        attachedReactButton ||
+                        !React.isValidElement(child) ||
+                        !String(child.props.className || "").includes(
+                          "event-banner",
+                        )
+                      ) {
+                        return child;
+                      }
+
+                      attachedReactButton = true;
+                      return (
+                        <div className="relative inline-flex max-w-full">
+                          {child}
+                          {renderReactButton()}
+                        </div>
+                      );
+                    });
+
+                    return React.cloneElement(content, undefined, nextChildren);
+                  };
+                  const renderSystemMessage = (content) => (
+                    <div
+                      key={`${dateString}-group-${groupIndex}`}
+                      data-message-id={message.id}
+                      ref={isFirstHighlighted ? highlightedMessageRef : null}
+                      className={`${wrapperClass} relative group event-message-reaction-group`}
+                    >
+                      {renderSystemContentWithReactButton(content)}
+                    </div>
+                  );
 
                   if (parsedMessage.type === "team_join") {
-                    return (
-                      <div
-                        key={`${dateString}-group-${groupIndex}`}
-                        ref={isFirstHighlighted ? highlightedMessageRef : null}
-                        className={wrapperClass}
-                      >
-                        {renderJoinMessage(
+                    return renderSystemMessage(
+                      renderJoinMessage(
                           message,
                           parsedMessage,
                           senderInfo,
                           isCurrentUser,
                           messageGroup.senderId,
-                        )}
-                      </div>
+                        ),
                     );
                   } else if (parsedMessage.type === "invitation_response") {
-                    return (
-                      <div
-                        key={`${dateString}-group-${groupIndex}`}
-                        ref={isFirstHighlighted ? highlightedMessageRef : null}
-                        className={wrapperClass}
-                      >
-                        {renderInvitationResponseMessage(
+                    return renderSystemMessage(
+                      renderInvitationResponseMessage(
                           message,
                           parsedMessage,
                           senderInfo,
                           isCurrentUser,
                           messageGroup.senderId,
-                        )}
-                      </div>
+                        ),
                     );
                   } else if (parsedMessage.type === "application_approved") {
-                    return (
-                      <div
-                        key={`${dateString}-group-${groupIndex}`}
-                        ref={isFirstHighlighted ? highlightedMessageRef : null}
-                        className={wrapperClass}
-                      >
-                        {renderApplicationApprovedMessage(
+                    return renderSystemMessage(
+                      renderApplicationApprovedMessage(
                           message,
                           parsedMessage,
                           senderInfo,
                           isCurrentUser,
                           messageGroup.senderId,
-                        )}
-                      </div>
+                        ),
+                    );
+                  } else if (
+                    parsedMessage.type === "role_application_approved"
+                  ) {
+                    return renderSystemMessage(
+                      renderRoleApplicationApprovedMessage(
+                          message,
+                          parsedMessage,
+                        ),
+                    );
+                  } else if (parsedMessage.type === "role_reopened") {
+                    return renderSystemMessage(
+                      renderRoleReopenedMessage(message, parsedMessage),
+                    );
+                  } else if (parsedMessage.type === "role_filled") {
+                    return renderSystemMessage(
+                      renderRoleFilledMessage(message, parsedMessage),
                     );
                   } else if (parsedMessage.type === "application_response") {
-                    return (
-                      <div
-                        key={`${dateString}-group-${groupIndex}`}
-                        ref={isFirstHighlighted ? highlightedMessageRef : null}
-                        className={wrapperClass}
-                      >
-                        {renderApplicationResponseMessage(
+                    return renderSystemMessage(
+                      renderApplicationResponseMessage(
                           message,
                           parsedMessage,
                           senderInfo,
                           isCurrentUser,
                           messageGroup.senderId,
-                        )}
-                      </div>
+                        ),
                     );
                   } else if (parsedMessage.type === "team_leave") {
-                    return (
-                      <div
-                        key={`${dateString}-group-${groupIndex}`}
-                        ref={isFirstHighlighted ? highlightedMessageRef : null}
-                        className={wrapperClass}
-                      >
-                        {renderLeaveMessage(
+                    return renderSystemMessage(
+                      renderLeaveMessage(
                           message,
                           parsedMessage,
                           isCurrentUser,
-                        )}
-                      </div>
+                        ),
+                    );
+                  } else if (parsedMessage.type === "user_left_lomir") {
+                    return renderSystemMessage(
+                      renderUserLeftLomirMessage(message, parsedMessage),
                     );
                   } else if (parsedMessage.type === "member_removed_public") {
-                    return (
-                      <div
-                        key={`${dateString}-group-${groupIndex}`}
-                        ref={isFirstHighlighted ? highlightedMessageRef : null}
-                        className={wrapperClass}
-                      >
-                        {renderMemberRemovedPublicMessage(
+                    return renderSystemMessage(
+                      renderMemberRemovedPublicMessage(
                           message,
                           parsedMessage,
                           isCurrentUser,
-                        )}
-                      </div>
+                        ),
                     );
                   } else if (parsedMessage.type === "application_declined") {
-                    return (
-                      <div
-                        key={`${dateString}-group-${groupIndex}`}
-                        ref={isFirstHighlighted ? highlightedMessageRef : null}
-                        className={wrapperClass}
-                      >
-                        {renderApplicationDeclinedMessage(
+                    return renderSystemMessage(
+                      renderApplicationDeclinedMessage(
                           message,
                           parsedMessage,
                           isCurrentUser,
-                        )}
-                      </div>
+                        ),
                     );
                   } else if (parsedMessage.type === "application_approved_dm") {
-                    return (
-                      <div
-                        key={`${dateString}-group-${groupIndex}`}
-                        ref={isFirstHighlighted ? highlightedMessageRef : null}
-                        className={wrapperClass}
-                      >
-                        {renderApplicationApprovedDmMessage(
+                    return renderSystemMessage(
+                      renderApplicationApprovedDmMessage(
                           message,
                           parsedMessage,
                           isCurrentUser,
-                        )}
-                      </div>
+                        ),
                     );
                   } else if (parsedMessage.type === "invitation_declined") {
-                    return (
-                      <div
-                        key={`${dateString}-group-${groupIndex}`}
-                        ref={isFirstHighlighted ? highlightedMessageRef : null}
-                        className={wrapperClass}
-                      >
-                        {renderInvitationDeclinedMessage(
+                    return renderSystemMessage(
+                      renderInvitationDeclinedMessage(
                           message,
                           parsedMessage,
                           isCurrentUser,
-                        )}
-                      </div>
+                        ),
                     );
                   } else if (parsedMessage.type === "invitation_cancelled") {
-                    return (
-                      <div
-                        key={`${dateString}-group-${groupIndex}`}
-                        ref={isFirstHighlighted ? highlightedMessageRef : null}
-                        className={wrapperClass}
-                      >
-                        {renderInvitationCancelledMessage(
+                    return renderSystemMessage(
+                      renderInvitationCancelledMessage(
                           message,
                           parsedMessage,
                           isCurrentUser,
-                        )}
-                      </div>
+                        ),
                     );
                   } else if (parsedMessage.type === "application_cancelled") {
-                    return (
-                      <div
-                        key={`${dateString}-group-${groupIndex}`}
-                        ref={isFirstHighlighted ? highlightedMessageRef : null}
-                        className={wrapperClass}
-                      >
-                        {renderApplicationCancelledMessage(
+                    return renderSystemMessage(
+                      renderApplicationCancelledMessage(
                           message,
                           parsedMessage,
                           isCurrentUser,
-                        )}
-                      </div>
+                        ),
                     );
                   } else if (parsedMessage.type === "member_removed") {
-                    return (
-                      <div
-                        key={`${dateString}-group-${groupIndex}`}
-                        ref={isFirstHighlighted ? highlightedMessageRef : null}
-                        className={wrapperClass}
-                      >
-                        {renderMemberRemovedMessage(
+                    return renderSystemMessage(
+                      renderMemberRemovedMessage(
                           message,
                           parsedMessage,
                           isCurrentUser,
-                        )}
-                      </div>
+                        ),
                     );
                   } else if (parsedMessage.type === "role_changed") {
-                    return (
-                      <div
-                        key={`${dateString}-group-${groupIndex}`}
-                        ref={isFirstHighlighted ? highlightedMessageRef : null}
-                        className={wrapperClass}
-                      >
-                        {renderRoleChangedMessage(
+                    return renderSystemMessage(
+                      renderRoleChangedMessage(
                           message,
                           parsedMessage,
                           isCurrentUser,
-                        )}
-                      </div>
+                        ),
                     );
                   } else if (parsedMessage.type === "ownership_transferred") {
-                    return (
-                      <div
-                        key={`${dateString}-group-${groupIndex}`}
-                        ref={isFirstHighlighted ? highlightedMessageRef : null}
-                        className={wrapperClass}
-                      >
-                        {renderOwnershipTransferredMessage(
+                    return renderSystemMessage(
+                      renderOwnershipTransferredMessage(
                           message,
                           parsedMessage,
                           isCurrentUser,
-                        )}
-                      </div>
+                        ),
                     );
                   } else if (parsedMessage.type === "ownership_team") {
-                    return (
-                      <div
-                        key={`${dateString}-group-${groupIndex}`}
-                        ref={isFirstHighlighted ? highlightedMessageRef : null}
-                        className={wrapperClass}
-                      >
-                        {renderOwnershipTeamMessage(message, parsedMessage)}
-                      </div>
+                    return renderSystemMessage(
+                      renderOwnershipTeamMessage(message, parsedMessage),
                     );
                   } else if (parsedMessage.type === "team_deleted") {
                     // not rendered here (fixed banner elsewhere)
@@ -2941,6 +3682,8 @@ const MessageDisplay = ({
                           !String(message.id).startsWith("temp-") &&
                           Boolean(message.content) &&
                           typeof onEditMessage === "function";
+                        const canReplyMessage =
+                          !isDeleted && typeof onReply === "function";
                         const canDeleteMessage =
                           isCurrentUser &&
                           !isDeleted &&
@@ -2951,15 +3694,85 @@ const MessageDisplay = ({
                         const showMessageMeta =
                           messageIndex ===
                             messageGroup.messages.length - 1 || messageEdited;
+                        const replySourceMessage = message.replyTo?.id
+                          ? messagesById.get(String(message.replyTo.id))
+                          : null;
+                        const replyPreview = message.replyTo
+                          ? {
+                              ...replySourceMessage,
+                              ...message.replyTo,
+                              content:
+                                message.replyTo.content ??
+                                replySourceMessage?.content,
+                              createdAt:
+                                message.replyTo.createdAt ||
+                                message.replyTo.created_at ||
+                                replySourceMessage?.createdAt ||
+                                replySourceMessage?.created_at,
+                              imageUrl:
+                                message.replyTo.imageUrl ||
+                                message.replyTo.image_url ||
+                                replySourceMessage?.imageUrl ||
+                                replySourceMessage?.image_url,
+                              fileUrl:
+                                message.replyTo.fileUrl ||
+                                message.replyTo.file_url ||
+                                replySourceMessage?.fileUrl ||
+                                replySourceMessage?.file_url,
+                              fileName:
+                                message.replyTo.fileName ||
+                                message.replyTo.file_name ||
+                                replySourceMessage?.fileName ||
+                                replySourceMessage?.file_name,
+                              fileSize:
+                                message.replyTo.fileSize ||
+                                message.replyTo.file_size ||
+                                replySourceMessage?.fileSize ||
+                                replySourceMessage?.file_size,
+                              fileExpiresAt:
+                                message.replyTo.fileExpiresAt ||
+                                message.replyTo.file_expires_at ||
+                                replySourceMessage?.fileExpiresAt ||
+                                replySourceMessage?.file_expires_at,
+                              fileDeletedAt:
+                                message.replyTo.fileDeletedAt ||
+                                message.replyTo.file_deleted_at ||
+                                replySourceMessage?.fileDeletedAt ||
+                                replySourceMessage?.file_deleted_at,
+                            }
+                          : null;
+                        const replyImageUrl =
+                          replyPreview?.imageUrl || replyPreview?.image_url;
+                        const replyFileUrl =
+                          replyPreview?.fileUrl || replyPreview?.file_url;
+                        const replyFileName =
+                          replyPreview?.fileName || replyPreview?.file_name;
+                        const replyFileDeletedAt =
+                          replyPreview?.fileDeletedAt ||
+                          replyPreview?.file_deleted_at;
+                        const replyExpirationStatus = replyPreview
+                          ? getFileExpirationStatus(replyPreview)
+                          : { status: "active" };
+                        const replyMediaExpired =
+                          replyExpirationStatus.status === "expired" ||
+                          Boolean(replyFileDeletedAt);
+                        const replyHasMedia = Boolean(
+                          replyImageUrl || replyFileUrl || replyFileName,
+                        );
+                        const ReplyFileIcon = getFileIcon(replyFileName);
+                        const replyEventPreview = replyPreview?.content
+                          ? getEventReactionPreview(replyPreview.content)
+                          : null;
 
                         return (
                           <div
                             key={`${message.id}-${dateString}-${groupIndex}-${messageIndex}`}
+                            data-message-id={message.id}
                             ref={
                               isFirstHighlighted ? highlightedMessageRef : null
                             }
                             className={`
-                      relative group rounded-lg p-3
+                      relative group rounded-lg p-3 transition-all duration-300 hover:shadow-md
                       ${
                         isCurrentUser
                           ? "bg-green-100 text-base-content rounded-br-none ml-auto"
@@ -2975,9 +3788,69 @@ const MessageDisplay = ({
                       ${isHighlighted ? "message-highlight" : ""}
                     `}
                           >
-                            {(canEditMessage || canDeleteMessage) &&
+                            {(canReplyMessage ||
+                              canEditMessage ||
+                              canDeleteMessage) &&
                               !isEditing && (
                                 <div className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity inline-flex items-center gap-1">
+                                  {canReplyMessage && (
+                                    <Tooltip
+                                      content="React"
+                                      position="top"
+                                      wrapperClassName="inline-flex"
+                                    >
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          onReply({
+                                            id: message.id,
+                                            content: message.content,
+                                            createdAt:
+                                              message.createdAt ||
+                                              message.created_at,
+                                            imageUrl:
+                                              message.imageUrl ||
+                                              message.image_url,
+                                            fileUrl:
+                                              message.fileUrl ||
+                                              message.file_url,
+                                            fileName:
+                                              message.fileName ||
+                                              message.file_name,
+                                            fileSize:
+                                              message.fileSize ||
+                                              message.file_size,
+                                            fileExpiresAt:
+                                              message.fileExpiresAt ||
+                                              message.file_expires_at,
+                                            fileDeletedAt:
+                                              message.fileDeletedAt ||
+                                              message.file_deleted_at,
+                                            senderId:
+                                              message.senderId ||
+                                              message.sender_id,
+                                            senderUsername:
+                                              senderInfo?.username ||
+                                              message.senderUsername ||
+                                              message.sender_username,
+                                            senderFirstName:
+                                              senderInfo?.firstName ||
+                                              senderInfo?.first_name ||
+                                              message.senderFirstName ||
+                                              message.sender_first_name,
+                                          })
+                                        }
+                                        className="bg-base-100 border border-base-300 rounded-full p-1 shadow-sm hover:shadow"
+                                        aria-label="React to message"
+                                      >
+                                        <Reply
+                                          size={14}
+                                          className="text-base-content/50 hover:text-primary"
+                                        />
+                                      </button>
+                                    </Tooltip>
+                                  )}
+
                                   {canEditMessage && (
                                     <Tooltip
                                       content="Edit message"
@@ -3027,6 +3900,171 @@ const MessageDisplay = ({
                             {/* Only render media/text when NOT deleted */}
                             {!isDeleted && (
                               <>
+                                {replyPreview && (
+                                  <div
+                                    onClick={() => {
+                                      const targetEl =
+                                        document.querySelector(
+                                          `[data-message-id="${replyPreview.id}"]`,
+                                        );
+                                      if (targetEl) {
+                                        targetEl.scrollIntoView({
+                                          behavior: "smooth",
+                                          block: "center",
+                                        });
+                                        targetEl.classList.add("bg-primary/10");
+                                        setTimeout(
+                                          () =>
+                                            targetEl.classList.remove(
+                                              "bg-primary/10",
+                                            ),
+                                          2000,
+                                        );
+                                      }
+                                    }}
+                                    className="mb-1.5 px-2.5 py-1.5 rounded-lg bg-white cursor-pointer hover:bg-white transition-colors max-w-full"
+                                  >
+                                    <p className="text-xs font-semibold text-primary truncate">
+                                      {replyPreview.senderFirstName ||
+                                        replyPreview.senderUsername ||
+                                        "Former Lomir User"}
+                                    </p>
+                                    <Tooltip
+                                      content={
+                                        replyHasMedia && !replyPreview.content
+                                          ? replyMediaExpired
+                                            ? "Image or file no longer available"
+                                            : replyExpirationStatus.status !==
+                                                "none"
+                                              ? replyExpirationStatus.message
+                                              : replyImageUrl
+                                                ? "Image"
+                                                : replyFileName || "File"
+                                          : formatReplyTooltipText(
+                                              replyPreview.content,
+                                              replyEventPreview,
+                                            )
+                                      }
+                                      position="top"
+                                      wrapperClassName="block min-w-0 max-w-full"
+                                    >
+                                      {replyHasMedia && replyMediaExpired ? (
+                                        <div className="mt-1 flex min-w-0 items-center gap-2 text-warning">
+                                          <AlertTriangle
+                                            size={16}
+                                            className="shrink-0"
+                                          />
+                                          <p className="text-xs font-medium truncate">
+                                            Image or file no longer available
+                                          </p>
+                                        </div>
+                                      ) : replyImageUrl ? (
+                                        <div className="mt-1 min-w-0">
+                                          <img
+                                            src={replyImageUrl}
+                                            alt="Replied image"
+                                            className="rounded-lg max-w-full max-h-64 object-contain"
+                                            loading="lazy"
+                                          />
+                                          <div className="mt-1 min-w-0">
+                                            {replyPreview.content && (
+                                              <p className="text-xs text-base-content/60 truncate">
+                                                {renderReplyContent(replyPreview.content)}
+                                              </p>
+                                            )}
+                                            {replyExpirationStatus.status !==
+                                              "none" &&
+                                              replyExpirationStatus.daysLeft !==
+                                                null && (
+                                                <div
+                                                  className={`flex items-center gap-1 min-w-0 ${
+                                                    replyExpirationStatus.status ===
+                                                    "expiring-soon"
+                                                      ? "text-warning"
+                                                      : "text-base-content/40"
+                                                  }`}
+                                                >
+                                                  <Clock
+                                                    size={11}
+                                                    className="shrink-0"
+                                                  />
+                                                  <p className="text-[11px] truncate">
+                                                    {replyExpirationStatus.message}
+                                                  </p>
+                                                </div>
+                                              )}
+                                            {replyExpirationStatus.status ===
+                                              "none" &&
+                                              !replyPreview.content && (
+                                                <p className="text-xs text-base-content/60 truncate">
+                                                  Image
+                                                </p>
+                                              )}
+                                          </div>
+                                        </div>
+                                      ) : replyFileUrl ? (
+                                        <div className="mt-1 flex min-w-0 items-start gap-2">
+                                          <ReplyFileIcon
+                                            size={18}
+                                            className="text-primary shrink-0"
+                                          />
+                                          <div className="min-w-0 flex-1">
+                                            <p className="text-xs text-base-content/60 truncate">
+                                              {replyFileName || "File"}
+                                            </p>
+                                            {replyExpirationStatus.status !==
+                                              "none" &&
+                                              replyExpirationStatus.daysLeft !==
+                                                null && (
+                                                <div
+                                                  className={`flex items-center gap-1 min-w-0 ${
+                                                    replyExpirationStatus.status ===
+                                                    "expiring-soon"
+                                                      ? "text-warning"
+                                                      : "text-base-content/40"
+                                                  }`}
+                                                >
+                                                  <Clock
+                                                    size={11}
+                                                    className="shrink-0"
+                                                  />
+                                                  <p className="text-[11px] truncate">
+                                                    {replyExpirationStatus.message}
+                                                  </p>
+                                                </div>
+                                              )}
+                                          </div>
+                                        </div>
+                                      ) : replyEventPreview ? (
+                                        <p
+                                          className="flex min-w-0 items-center gap-1 text-xs font-medium truncate"
+                                          style={{ color: replyEventPreview.color }}
+                                        >
+                                          <replyEventPreview.Icon
+                                            size={13}
+                                            className="shrink-0"
+                                          />
+                                          <span className="truncate">
+                                            {replyEventPreview.text}
+                                          </span>
+                                          {replyEventPreview.trailingIcon && (
+                                            <replyEventPreview.trailingIcon
+                                              size={13}
+                                              className="shrink-0"
+                                            />
+                                          )}
+                                        </p>
+                                      ) : (
+                                        <p className="text-xs text-base-content/60 truncate">
+                                          {replyPreview.content
+                                            ? renderReplyContent(replyPreview.content)
+                                            : "Original message was deleted"}
+                                        </p>
+                                      )}
+                                    </Tooltip>
+                                  </div>
+                                )}
+
                                 {/* Image if present - handle both camelCase and snake_case */}
                                 {(() => {
                                   const imageUrl =
@@ -3036,6 +4074,8 @@ const MessageDisplay = ({
                                     message.file_deleted_at;
                                   const imageExpirationStatus =
                                     getFileExpirationStatus(message);
+                                  const imageName =
+                                    message.fileName || message.file_name;
 
                                   // If image was deleted/expired, show placeholder
                                   if (
@@ -3088,15 +4128,31 @@ const MessageDisplay = ({
                                             </p>
                                           </div>
                                         )}
-                                        <img
-                                          src={imageUrl}
-                                          alt="Shared image"
-                                          className="rounded-lg max-w-full max-h-64 object-contain cursor-pointer hover:opacity-90 transition-opacity"
-                                          onClick={() =>
-                                            window.open(imageUrl, "_blank")
-                                          }
-                                          loading="lazy"
-                                        />
+                                        <Tooltip
+                                          content="Click to open and download image in new tab"
+                                          position="top"
+                                          wrapperClassName="block"
+                                        >
+                                          <div
+                                            className="relative inline-block group/img cursor-pointer"
+                                            onClick={() => window.open(imageUrl, "_blank")}
+                                          >
+                                            <img
+                                              src={imageUrl}
+                                              alt="Shared image"
+                                              className="rounded-lg max-w-full max-h-64 object-contain transition-opacity group-hover/img:opacity-80"
+                                              loading="lazy"
+                                            />
+                                            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/img:opacity-100 transition-opacity pointer-events-none">
+                                              <Download size={64} className="text-white drop-shadow-lg" />
+                                            </div>
+                                          </div>
+                                        </Tooltip>
+                                        {imageName && (
+                                          <p className="text-xs text-base-content/60 mt-1 ml-1 truncate">
+                                            {imageName}
+                                          </p>
+                                        )}
                                         {/* Grey expiration info for images NOT expiring soon (>7 days) */}
                                         {imageExpirationStatus.status ===
                                           "active" &&
@@ -3128,6 +4184,7 @@ const MessageDisplay = ({
                                     <MessageText
                                       content={message.content}
                                       searchQuery={searchQuery}
+                                      onUserClick={handleUserClick}
                                     />
                                   </p>
                                 )}
@@ -3279,6 +4336,27 @@ const MessageDisplay = ({
         membersRefreshKey={teamMembersRefreshKey}
         hideMatchData
         onClose={handleTeamModalClose}
+      />
+
+      <VacantRoleDetailsModal
+        isOpen={isRoleModalOpen}
+        onClose={handleRoleModalClose}
+        team={resolvedTeamData ?? teamData ?? null}
+        role={selectedRoleData}
+        isTeamMember={isCurrentUserTeamMember()}
+        viewAsUserId={
+          selectedRoleData?.filledByUserId ??
+          selectedRoleData?.filled_by_user_id ??
+          null
+        }
+        viewAsUser={
+          selectedRoleData?.filledByUser ??
+          selectedRoleData?.filled_by_user ??
+          null
+        }
+        hideActions={
+          String(selectedRoleData?.status ?? "").toLowerCase() !== "open"
+        }
       />
 
       <UserDetailsModal

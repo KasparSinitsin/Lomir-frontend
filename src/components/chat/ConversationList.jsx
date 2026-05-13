@@ -1,5 +1,23 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Users, User, ChevronRight, Search } from "lucide-react";
+import {
+  AlertTriangle,
+  ChevronRight,
+  CircleX,
+  File,
+  Crown,
+  FileSpreadsheet,
+  FileText,
+  Image as ImageIcon,
+  LogOut,
+  Search,
+  Shield,
+  User,
+  UserCheck,
+  UserMinus,
+  UserPlus,
+  UserSearch,
+  Users,
+} from "lucide-react";
 import { Link } from "react-router-dom";
 import Tooltip from "../common/Tooltip";
 import { CountBadge } from "../common/NotificationBadge";
@@ -20,6 +38,21 @@ import {
   mergeResolvedTeamData,
   mergeResolvedUserData,
 } from "../../utils/chatEntityResolvers";
+import { getEventPreview } from "../../utils/eventPreview";
+
+const EVENT_PREVIEW_ICONS = {
+  AlertTriangle,
+  CircleX,
+  Crown,
+  FileText,
+  LogOut,
+  Shield,
+  User,
+  UserCheck,
+  UserMinus,
+  UserPlus,
+  UserSearch,
+};
 
 const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -56,6 +89,230 @@ const renderHighlightedText = (value, query) => {
   });
 };
 
+const MENTION_TOKEN_RE = /@\[([^\]]+)\]\([^)]+\)/g;
+
+const stripMentionTokens = (text) =>
+  text ? text.replace(/@\[([^\]]+)\]\([^)]+\)/g, "@$1") : text;
+
+const MESSAGE_PAYLOAD_KEYS = [
+  "lastMessage",
+  "last_message",
+  "latestMessage",
+  "latest_message",
+  "recentMessage",
+  "recent_message",
+  "message",
+];
+
+const FILE_NAME_KEYS = [
+  "fileName",
+  "file_name",
+  "filename",
+  "file",
+  "lastMessageFileName",
+  "last_message_file_name",
+  "lastMessageFilename",
+  "last_message_filename",
+  "lastFileName",
+  "last_file_name",
+  "latestMessageFileName",
+  "latest_message_file_name",
+];
+
+const FILE_URL_KEYS = [
+  "fileUrl",
+  "file_url",
+  "lastMessageFileUrl",
+  "last_message_file_url",
+  "lastFileUrl",
+  "last_file_url",
+  "latestMessageFileUrl",
+  "latest_message_file_url",
+];
+
+const IMAGE_URL_KEYS = [
+  "imageUrl",
+  "image_url",
+  "lastMessageImageUrl",
+  "last_message_image_url",
+  "lastImageUrl",
+  "last_image_url",
+  "latestMessageImageUrl",
+  "latest_message_image_url",
+];
+
+const CONTENT_KEYS = ["content", "message", "text", "body"];
+
+const pickFirst = (source, keys) => {
+  if (!source || typeof source !== "object") return undefined;
+
+  for (const key of keys) {
+    const value = source[key];
+    if (value != null && value !== "") return value;
+  }
+
+  return undefined;
+};
+
+const SPREADSHEET_EXTENSIONS = ["xls", "xlsx", "csv"];
+
+const getFileTypeLabel = (fileName) => {
+  const ext = fileName?.split(".").pop()?.toLowerCase();
+  if (SPREADSHEET_EXTENSIONS.includes(ext)) return "Spreadsheet";
+  return "File";
+};
+
+const normalizeFileName = (value) => {
+  if (!value) return "";
+  if (typeof value === "string") return value;
+  if (typeof value === "object") {
+    return value.fileName || value.file_name || value.name || "";
+  }
+  return String(value);
+};
+
+const getAttachmentPreviewIcon = (attachmentPreview) => {
+  if (attachmentPreview?.type === "image") return ImageIcon;
+
+  const extension = attachmentPreview?.fileName?.split(".").pop()?.toLowerCase();
+
+  if (["pdf", "doc", "docx", "txt"].includes(extension)) return FileText;
+  if (["xls", "xlsx", "csv"].includes(extension)) return FileSpreadsheet;
+
+  return File;
+};
+
+const getFormattedAttachmentPreview = (text) => {
+  const value = String(text || "");
+  const fileMatch = value.match(/^(?:File|Spreadsheet)\s+"(.+)"\s+sent$/);
+
+  if (fileMatch) {
+    return {
+      text: value,
+      type: "file",
+      fileName: fileMatch[1],
+    };
+  }
+
+  if (value === "Image sent") {
+    return {
+      text: value,
+      type: "image",
+    };
+  }
+
+  const imageMatch = value.match(/^Image\s+"(.+)"\s+sent$/);
+
+  if (imageMatch) {
+    return {
+      text: value,
+      type: "image",
+      fileName: imageMatch[1],
+    };
+  }
+
+  return null;
+};
+
+const getConversationLastMessagePayload = (conversation) => {
+  if (!conversation) return {};
+
+  for (const key of MESSAGE_PAYLOAD_KEYS) {
+    const value = conversation[key];
+    if (value && typeof value === "object") return value;
+  }
+
+  return {};
+};
+
+const getConversationMessagePayloadCandidates = (conversation) => {
+  const candidates = [conversation, getConversationLastMessagePayload(conversation)];
+
+  MESSAGE_PAYLOAD_KEYS.forEach((key) => {
+    const value = conversation?.[key];
+    if (value && typeof value === "object" && !candidates.includes(value)) {
+      candidates.push(value);
+    }
+  });
+
+  return candidates.filter(Boolean);
+};
+
+const getConversationLastMessageText = (conversation) => {
+  const lastMessage =
+    conversation?.lastMessage ??
+    conversation?.last_message ??
+    conversation?.latestMessage ??
+    conversation?.latest_message;
+
+  if (typeof lastMessage === "string") return lastMessage;
+
+  if (lastMessage && typeof lastMessage === "object") {
+    return pickFirst(lastMessage, CONTENT_KEYS) ?? "";
+  }
+
+  return pickFirst(conversation, [
+    "lastMessageContent",
+    "last_message_content",
+    "latestMessageContent",
+    "latest_message_content",
+  ]) ?? "";
+};
+
+const getConversationAttachmentPreview = (conversation) => {
+  const candidates = getConversationMessagePayloadCandidates(conversation);
+  const fileName = normalizeFileName(candidates
+    .map((candidate) => pickFirst(candidate, FILE_NAME_KEYS))
+    .find(Boolean));
+  const fileUrl = candidates
+    .map((candidate) => pickFirst(candidate, FILE_URL_KEYS))
+    .find(Boolean);
+  const imageUrl = candidates
+    .map((candidate) => pickFirst(candidate, IMAGE_URL_KEYS))
+    .find(Boolean);
+
+  if (imageUrl) {
+    return {
+      text: fileName ? `Image "${fileName}" sent` : "Image sent",
+      type: "image",
+      fileName,
+    };
+  }
+
+  if (fileName || fileUrl) {
+    const label = getFileTypeLabel(fileName);
+    return {
+      text: `${label} "${fileName || "attachment"}" sent`,
+      type: "file",
+      fileName,
+    };
+  }
+
+  return null;
+};
+
+const renderPreviewWithMentions = (text, query) => {
+  if (!text) return null;
+  const parts = [];
+  let last = 0;
+  let m;
+  MENTION_TOKEN_RE.lastIndex = 0;
+  while ((m = MENTION_TOKEN_RE.exec(text)) !== null) {
+    if (m.index > last) parts.push({ type: "text", value: text.slice(last, m.index) });
+    parts.push({ type: "mention", name: m[1] });
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) parts.push({ type: "text", value: text.slice(last) });
+
+  return parts.map((part, idx) =>
+    part.type === "mention" ? (
+      <span key={idx} className="text-primary font-medium">@{part.name}</span>
+    ) : (
+      <React.Fragment key={idx}>{renderHighlightedText(part.value, query)}</React.Fragment>
+    ),
+  );
+};
+
 const ConversationList = ({
   conversations,
   activeConversationId,
@@ -66,6 +323,7 @@ const ConversationList = ({
   emptyState = null,
   searchQuery = "",
   chatVisible = true,
+  currentUser = null,
 }) => {
   // State for team details modal
   const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
@@ -345,10 +603,35 @@ const ConversationList = ({
             ? conversationData?.name
             : directDisplayName || DELETED_USER_DISPLAY_NAME;
           const isSearchActive = Boolean(searchQuery.trim());
+          const lastMessageText = getConversationLastMessageText(conversation);
+          const attachmentPreview =
+            getConversationAttachmentPreview(conversation);
+          const eventPreview = getEventPreview(
+            lastMessageText,
+            currentUser,
+          );
+          const shouldUseEventPreview = !isSearchActive && eventPreview;
+          const EventPreviewIcon = shouldUseEventPreview
+            ? EVENT_PREVIEW_ICONS[eventPreview.icon]
+            : null;
           const previewText =
             isSearchActive && conversation.searchMatchPreview
               ? conversation.searchMatchPreview
-              : conversation.lastMessage || "No messages yet";
+              : shouldUseEventPreview
+                ? eventPreview.text
+                : attachmentPreview?.text || lastMessageText || "No messages yet";
+          const formattedAttachmentPreview =
+            !isSearchActive && !attachmentPreview
+              ? getFormattedAttachmentPreview(previewText)
+              : null;
+          const visibleAttachmentPreview =
+            attachmentPreview || formattedAttachmentPreview;
+          const hasConversationPreview = Boolean(
+            shouldUseEventPreview ||
+              visibleAttachmentPreview ||
+              lastMessageText ||
+              (isSearchActive && conversation.searchMatchPreview),
+          );
           const timestamp =
             isSearchActive && conversation.searchMatchCreatedAt
               ? conversation.searchMatchCreatedAt
@@ -487,18 +770,61 @@ const ConversationList = ({
                   <Tooltip
                     content={
                       (previewText?.length ?? 0) > 60
-                        ? previewText
+                        ? stripMentionTokens(previewText)
                         : undefined
                     }
                     position="bottom"
                     wrapperClassName="block min-w-0 overflow-hidden"
                   >
-                    <p className="text-sm text-base-content/70 truncate">
-                      {renderHighlightedText(
-                        previewText,
-                        searchQuery,
-                      )}
-                    </p>
+                    {shouldUseEventPreview && EventPreviewIcon ? (
+                      <p
+                        className="text-sm font-medium truncate"
+                        style={{
+                          color: eventPreview.color,
+                          ...(eventPreview.backgroundColor
+                            ? {
+                                backgroundColor: eventPreview.backgroundColor,
+                                borderRadius: "0.375rem",
+                                maxWidth: "100%",
+                                paddingLeft: "3px",
+                                paddingRight: "3px",
+                                width: "fit-content",
+                              }
+                            : {}),
+                        }}
+                      >
+                        <span className="flex min-w-0 items-center gap-1">
+                          <EventPreviewIcon
+                            size={14}
+                            className="flex-shrink-0"
+                          />
+                          <span className="truncate">{previewText}</span>
+                        </span>
+                      </p>
+                    ) : visibleAttachmentPreview ? (
+                      <p className="text-sm text-base-content/70 truncate">
+                        <span className="flex min-w-0 items-center gap-1">
+                          {React.createElement(
+                            getAttachmentPreviewIcon(visibleAttachmentPreview),
+                            {
+                              size: 14,
+                              className: "flex-shrink-0 text-primary",
+                            },
+                          )}
+                          <span className="truncate">
+                            {renderPreviewWithMentions(previewText, searchQuery)}
+                          </span>
+                        </span>
+                      </p>
+                    ) : hasConversationPreview ? (
+                      <p className="text-sm text-base-content/70 truncate">
+                        {renderPreviewWithMentions(previewText, searchQuery)}
+                      </p>
+                    ) : (
+                      <p className="text-sm text-base-content/50 truncate italic">
+                        This message was deleted.
+                      </p>
+                    )}
                   </Tooltip>
                   <div className="flex items-center min-w-0 gap-2">
                     <p

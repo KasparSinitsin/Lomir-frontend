@@ -9,7 +9,13 @@ import VacantRoleCard from "./VacantRoleCard";
 import TeamApplicationDetailsModal from "./TeamApplicationDetailsModal";
 import { matchingService } from "../../services/matchingService";
 import { vacantRoleService } from "../../services/vacantRoleService";
+import { messageService } from "../../services/messageService";
 import { useAuth } from "../../contexts/AuthContext";
+import {
+  buildRoleFilledMessage,
+  buildRoleReopenedMessage,
+} from "../../utils/roleEventMessages";
+import { resolveFilledRoleUser } from "../../utils/vacantRoleUtils";
 
 const ROLE_CANDIDATE_FETCH_MIN_LIMIT = 20;
 const SELF_ROLE_MATCH_FETCH_LIMIT = 1000;
@@ -103,6 +109,23 @@ const TeamApplicationsModal = ({
 
       await onApplicationAction(applicationId, action, response, fillRole);
 
+      if (action === "approve" && fillRole && teamId && application?.role) {
+        try {
+          await messageService.sendMessage(
+            teamId,
+            buildRoleFilledMessage({
+              teamId,
+              teamName,
+              role: application.role,
+              filledUser: application.applicant ?? null,
+            }),
+            "team",
+          );
+        } catch (messageError) {
+          console.warn("Role filled, but chat event could not be sent:", messageError);
+        }
+      }
+
       // If approved, clear the role status override for this application's role
       if (action === "approve") {
         const appRoleId = application?.role?.id ?? null;
@@ -185,6 +208,29 @@ const TeamApplicationsModal = ({
         setError(null);
 
         await vacantRoleService.updateVacantRoleStatus(teamId, roleId, "open", null);
+
+        if (originalRole) {
+          try {
+            await messageService.sendMessage(
+              teamId,
+              buildRoleReopenedMessage({
+                teamId,
+                teamName,
+                role: originalRole,
+                filledUser: resolveFilledRoleUser(originalRole, {
+                  viewAsUserId: currentUser?.id,
+                  viewAsUser: currentUser,
+                }),
+              }),
+              "team",
+            );
+          } catch (messageError) {
+            console.warn(
+              "Role reopened, but chat event could not be sent:",
+              messageError,
+            );
+          }
+        }
 
         // Clear any local override to reflect the server state
         setRoleStatusOverrides((prev) => {

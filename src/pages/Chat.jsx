@@ -266,6 +266,14 @@ const buildSystemMessageSearchSnippet = (parsedMessage) => {
       return `${parsedMessage.userName} joined the team. You joined the team. Welcome aboard. ${parsedMessage.personalMessage || ""}`;
     case "team_leave":
       return `${parsedMessage.userName} has left the team. You have left the team.`;
+    case "role_application_approved":
+      return `${parsedMessage.applicantName}'s application for ${parsedMessage.roleName} was approved.`;
+    case "role_reopened":
+      return `${parsedMessage.userName} has left the role ${parsedMessage.roleName}. The role is open again to be filled.`;
+    case "role_filled":
+      return parsedMessage.userName && parsedMessage.userName !== "Someone"
+        ? `${parsedMessage.userName} is now filling the role ${parsedMessage.roleName}.`
+        : `The role ${parsedMessage.roleName} was marked as filled.`;
     case "member_removed_public":
       return `${parsedMessage.userName} has been removed from the team. You removed ${parsedMessage.userName} from the team.`;
     case "invitation_cancelled":
@@ -316,6 +324,55 @@ const buildMessageSearchSnippet = (message) => {
 
 const getMessageSearchId = (message) =>
   message?.id || message?.messageId || message?.message_id || null;
+
+const buildConversationLastMessagePreview = (message) => {
+  if (message?.content) return message.content;
+
+  const fileName = message?.fileName || message?.file_name;
+  const fileUrl = message?.fileUrl || message?.file_url;
+  const imageUrl = message?.imageUrl || message?.image_url;
+
+  if (imageUrl) {
+    return fileName ? `Image "${fileName}" sent` : "Image sent";
+  }
+
+  if (fileName || fileUrl) {
+    const ext = fileName?.split(".").pop()?.toLowerCase();
+    const label = ["xls", "xlsx", "csv"].includes(ext) ? "Spreadsheet" : "File";
+    return `${label} "${fileName || "attachment"}" sent`;
+  }
+
+  return message?.content ?? "";
+};
+
+const hasConversationPreview = (conversation) => {
+  const lastMessage = conversation?.lastMessage ?? conversation?.last_message;
+
+  if (typeof lastMessage === "string") {
+    return lastMessage.trim().length > 0;
+  }
+
+  if (lastMessage && typeof lastMessage === "object") {
+    return Boolean(
+      lastMessage.content ||
+        lastMessage.fileName ||
+        lastMessage.file_name ||
+        lastMessage.fileUrl ||
+        lastMessage.file_url ||
+        lastMessage.imageUrl ||
+        lastMessage.image_url,
+    );
+  }
+
+  return Boolean(
+    conversation?.lastMessageFileName ||
+      conversation?.last_message_file_name ||
+      conversation?.lastMessageFileUrl ||
+      conversation?.last_message_file_url ||
+      conversation?.lastMessageImageUrl ||
+      conversation?.last_message_image_url,
+  );
+};
 
 const getMessageSearchTimestamp = (message) => {
   const timestamp =
@@ -421,6 +478,7 @@ const Chat = () => {
   const [conversations, setConversations] = useState([]);
   const [activeConversation, setActiveConversation] = useState(null);
   const [messages, setMessages] = useState([]);
+  const [replyingTo, setReplyingTo] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [onlineUsers, setOnlineUsers] = useState([]);
@@ -455,6 +513,7 @@ const Chat = () => {
   const pendingScrollAdjustmentRef = useRef(null);
   const conversationsRef = useRef([]);
   const activeConversationRef = useRef(null);
+  const messagesRef = useRef([]);
   const chatSearchLoadingKeysRef = useRef(new Set());
   const pendingChatSearchTargetRef = useRef(null);
   const [loadingMessages, setLoadingMessages] = useState(false);
@@ -532,6 +591,25 @@ const Chat = () => {
   const teamMembers =
     conversationType === "team" ? activeConversation?.team?.members || [] : [];
 
+  const mentionParticipants = useMemo(() => {
+    if (conversationType === "direct") {
+      return conversationPartner ? [conversationPartner] : [];
+    }
+    const members = teamMembers
+      .map((m) => m.user || m)
+      .filter((m) => {
+        const id = m.id ?? m.userId ?? m.user_id;
+        return id && String(id) !== String(user?.id);
+      })
+      .map((m) => ({
+        id: m.id ?? m.userId ?? m.user_id,
+        firstName: m.firstName || m.first_name || "",
+        lastName: m.lastName || m.last_name || "",
+        avatarUrl: m.avatarUrl || m.avatar_url || null,
+      }));
+    return [{ id: "all", firstName: "all", lastName: "" }, ...members];
+  }, [conversationType, conversationPartner, teamMembers, user?.id]);
+
   const conversationUpdatedAt =
     getConversationUpdatedAt(activeConversation) ||
     getConversationUpdatedAt(messages?.[messages.length - 1] || messages?.[0] || null);
@@ -547,8 +625,16 @@ const Chat = () => {
   const isChatSearchActive = normalizedChatSearchQuery.length > 0;
 
   useEffect(() => {
+    setReplyingTo(null);
+  }, [conversationId, conversationType]);
+
+  useEffect(() => {
     conversationsRef.current = conversations;
   }, [conversations]);
+
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
 
   useEffect(() => {
     activeConversationRef.current = activeConversation;
@@ -776,14 +862,78 @@ const Chat = () => {
     );
   }, []);
 
+  const hydrateMissingConversationPreviews = useCallback(async (conversationList) => {
+    const conversationsToHydrate = (conversationList || []).filter(
+      (conversation) => !conversation.isVirtual && !hasConversationPreview(conversation),
+    );
+
+    if (conversationsToHydrate.length === 0) return;
+
+    const hydratedPreviews = await Promise.allSettled(
+      conversationsToHydrate.map(async (conversation) => {
+        const type = conversation.type || "direct";
+        const response = await messageService.getMessages(conversation.id, type, {
+          limit: 1,
+        });
+        const latestMessage = response?.data?.[response.data.length - 1];
+        const preview = buildConversationLastMessagePreview(latestMessage);
+
+        if (!latestMessage || !preview) return null;
+
+        return {
+          id: conversation.id,
+          type,
+          preview,
+          updatedAt:
+            latestMessage.createdAt ||
+            latestMessage.created_at ||
+            conversation.updatedAt,
+        };
+      }),
+    );
+
+    const previewByKey = new Map();
+
+    hydratedPreviews.forEach((result) => {
+      if (result.status !== "fulfilled" || !result.value) return;
+      previewByKey.set(
+        `${result.value.type}:${String(result.value.id)}`,
+        result.value,
+      );
+    });
+
+    if (previewByKey.size === 0) return;
+
+    setConversations((prev) =>
+      prev.map((conversation) => {
+        const type = conversation.type || "direct";
+        const hydratedPreview = previewByKey.get(
+          `${type}:${String(conversation.id)}`,
+        );
+
+        if (!hydratedPreview || hasConversationPreview(conversation)) {
+          return conversation;
+        }
+
+        return {
+          ...conversation,
+          lastMessage: hydratedPreview.preview,
+          updatedAt: hydratedPreview.updatedAt || conversation.updatedAt,
+        };
+      }),
+    );
+  }, []);
+
   const refreshConversationList = useCallback(async () => {
     try {
       const response = await messageService.getConversations();
-      setConversations(dedupeConversations(response.data || []));
+      const deduplicatedList = dedupeConversations(response.data || []);
+      setConversations(deduplicatedList);
+      hydrateMissingConversationPreviews(deduplicatedList);
     } catch (err) {
       console.error("Error refreshing conversations:", err);
     }
-  }, []);
+  }, [hydrateMissingConversationPreviews]);
 
   // Fetch conversations
   useEffect(() => {
@@ -844,6 +994,7 @@ const Chat = () => {
 
         const deduplicatedList = dedupeConversations(conversationsList);
         setConversations(deduplicatedList);
+        hydrateMissingConversationPreviews(deduplicatedList);
 
         // If there are conversations but none is selected, select the first one
         if (deduplicatedList.length > 0 && !conversationId) {
@@ -864,7 +1015,7 @@ const Chat = () => {
     if (isAuthenticated) {
       fetchConversations();
     }
-  }, [isAuthenticated, conversationId, navigate]);
+  }, [hydrateMissingConversationPreviews, isAuthenticated, conversationId, navigate]);
 
   // Fetch messages when conversation changes
   useEffect(() => {
@@ -1097,6 +1248,28 @@ const Chat = () => {
 
           setHasMoreMessages(nextHasMoreMessages);
           setMessages(dedupeMessages(fetchedMessages));
+
+          const latestFetchedMessage =
+            fetchedMessages[fetchedMessages.length - 1] || null;
+          const latestPreview =
+            buildConversationLastMessagePreview(latestFetchedMessage);
+
+          if (latestFetchedMessage && latestPreview) {
+            setConversations((prev) =>
+              prev.map((conversation) =>
+                String(conversation.id) === String(conversationId)
+                  ? {
+                      ...conversation,
+                      lastMessage: latestPreview,
+                      updatedAt:
+                        latestFetchedMessage.createdAt ||
+                        latestFetchedMessage.created_at ||
+                        conversation.updatedAt,
+                    }
+                  : conversation,
+              ),
+            );
+          }
 
           // Check if we need to highlight messages from a specific user (from notification)
           const highlightUser = searchParams.get("highlightUser");
@@ -1334,6 +1507,8 @@ const Chat = () => {
               editedAt: message.editedAt || message.edited_at,
               editedBy: message.editedBy ?? message.edited_by,
               isEdited: message.isEdited || message.is_edited,
+              replyTo: message.replyTo,
+              replyToId: message.replyToId || message.reply_to_id,
             };
 
             return dedupeMessages([...withoutOptimistic, newMessage]);
@@ -1362,6 +1537,8 @@ const Chat = () => {
               editedAt: message.editedAt || message.edited_at,
               editedBy: message.editedBy ?? message.edited_by,
               isEdited: message.isEdited || message.is_edited,
+              replyTo: message.replyTo,
+              replyToId: message.replyToId || message.reply_to_id,
             };
 
             return dedupeMessages([...prev, newMessage]);
@@ -1380,6 +1557,7 @@ const Chat = () => {
       setConversations((prev) => {
         const isUnreadIncoming =
           messageConvId !== currentConvId && message.senderId !== user.id;
+        const lastMessagePreview = buildConversationLastMessagePreview(message);
         let conversationUpdated = false;
         const updatedList = prev.map((conv) => {
           if (String(conv.id) === messageConvId) {
@@ -1391,7 +1569,7 @@ const Chat = () => {
 
             return {
               ...conv,
-              lastMessage: message.content,
+              lastMessage: lastMessagePreview,
               updatedAt: message.createdAt,
               isVirtual: false,
               unreadCount,
@@ -1415,7 +1593,7 @@ const Chat = () => {
                 lastName: message.senderLastName,
                 avatarUrl: message.senderAvatarUrl,
               },
-              lastMessage: message.content,
+              lastMessage: lastMessagePreview,
               updatedAt: message.createdAt,
               unreadCount: isUnreadIncoming ? 1 : 0,
               unread_count: isUnreadIncoming ? 1 : 0,
@@ -1538,7 +1716,10 @@ const Chat = () => {
         const updatedList = [...prev];
         updatedList[conversationIndex] = {
           ...updatedList[conversationIndex],
-          lastMessage: data.lastMessage,
+          lastMessage:
+            buildConversationLastMessagePreview(data) ||
+            data.lastMessage ||
+            updatedList[conversationIndex].lastMessage,
           updatedAt: data.updatedAt,
         };
 
@@ -1844,6 +2025,30 @@ const Chat = () => {
     }
   };
 
+  const handleReplyToMessage = useCallback((message) => {
+    setReplyingTo({
+      id: message.id,
+      content: message.content,
+      createdAt: message.createdAt || message.created_at,
+      senderId: message.senderId || message.sender_id,
+      senderUsername: message.senderUsername || message.sender_username,
+      senderFirstName:
+        message.senderFirstName ||
+        message.sender_first_name ||
+        message.senderName,
+      imageUrl: message.imageUrl || message.image_url,
+      fileUrl: message.fileUrl || message.file_url,
+      fileName: message.fileName || message.file_name,
+      fileSize: message.fileSize || message.file_size,
+      fileExpiresAt: message.fileExpiresAt || message.file_expires_at,
+      fileDeletedAt: message.fileDeletedAt || message.file_deleted_at,
+    });
+  }, []);
+
+  const handleClearReply = useCallback(() => {
+    setReplyingTo(null);
+  }, []);
+
   const loadEarlierMessages = async () => {
     if (loadingMore || !hasMoreMessages || messages.length === 0) return;
 
@@ -1909,7 +2114,9 @@ const Chat = () => {
         null,
         uploadResult.url,
         file.name,
+        replyingTo?.id,
       );
+      setReplyingTo(null);
     } catch (error) {
       console.error("Error uploading file:", error);
       setError("Failed to upload file. Please try again.");
@@ -1936,7 +2143,16 @@ const Chat = () => {
           : activeConversation.partner?.id;
 
       // Send message with image via socket
-      socketService.sendMessage(targetId, null, type, uploadResult.url);
+      socketService.sendMessage(
+        targetId,
+        null,
+        type,
+        uploadResult.url,
+        null,
+        file.name,
+        replyingTo?.id,
+      );
+      setReplyingTo(null);
     } catch (error) {
       console.error("Error uploading image:", error);
       setError("Failed to upload image. Please try again.");
@@ -2122,13 +2338,24 @@ const Chat = () => {
       senderUsername: user.username,
       type: type,
       isOptimistic: true,
+      replyTo: replyingTo,
+      replyToId: replyingTo?.id,
     };
 
     // Add optimistic message to UI immediately
     setMessages((prev) => [...prev, optimisticMessage]);
 
     // Send message via WebSocket
-    socketService.sendMessage(conversationId, content, type);
+    socketService.sendMessage(
+      conversationId,
+      content,
+      type,
+      null,
+      null,
+      null,
+      replyingTo?.id,
+    );
+    setReplyingTo(null);
 
     // Clear typing indicator
     clearTimeout(typingTimeoutRef.current);
@@ -2371,6 +2598,7 @@ const Chat = () => {
               emptyState={isNoSearchResults ? null : chatSearchEmptyState}
               searchQuery={isNoSearchResults ? "" : chatSearchQuery}
               chatVisible={!hideChatDuringSearch && showChatView}
+              currentUser={user}
             />
           </div>
         </div>
@@ -2543,6 +2771,7 @@ const Chat = () => {
                   onDeleteMessage={handleDeleteMessage}
                   onEditMessage={handleEditMessage}
                   onLeaveTeam={handleLeaveTeam}
+                  onReply={handleReplyToMessage}
                   searchQuery={chatSearchQuery}
                 />
               </div>
@@ -2593,6 +2822,9 @@ const Chat = () => {
                     onSendFile={handleSendFile}
                     onTyping={handleTyping}
                     disabled={!activeConversation}
+                    participants={mentionParticipants}
+                    replyingTo={replyingTo}
+                    onClearReply={handleClearReply}
                   />
                 </div>
               </div>

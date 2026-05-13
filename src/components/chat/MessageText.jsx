@@ -4,6 +4,17 @@ import Tooltip from "../common/Tooltip";
 
 // --- helpers -------------------------------------------------
 
+const findMentions = (text) => {
+  if (!text) return [];
+  const regex = /@\[([^\]]+)\]\(([^)]+)\)/g;
+  const matches = [];
+  let m;
+  while ((m = regex.exec(text)) !== null) {
+    matches.push({ type: "mention", name: m[1], userId: m[2], index: m.index, end: m.index + m[0].length });
+  }
+  return matches;
+};
+
 const isHttpUrl = (raw) => {
   try {
     const u = new URL(raw);
@@ -161,6 +172,21 @@ const LinkChip = ({ href }) => {
   );
 };
 
+const MentionChip = ({ name, userId, onUserClick }) => {
+  if (userId === "all" || !onUserClick) {
+    return <span className="font-medium text-primary">@{name}</span>;
+  }
+  return (
+    <button
+      type="button"
+      className="font-medium text-primary underline underline-offset-2 hover:no-underline transition-colors"
+      onClick={() => onUserClick(userId, name)}
+    >
+      @{name}
+    </button>
+  );
+};
+
 const PlainLink = ({ href }) => (
   <Tooltip content={href} position="top">
     <a
@@ -178,11 +204,22 @@ const PlainLink = ({ href }) => (
   </Tooltip>
 );
 
-export default function MessageText({ content, searchQuery = "" }) {
+export default function MessageText({ content, searchQuery = "", onUserClick }) {
   if (!content) return null;
 
-  const matches = findUrls(content);
-  if (matches.length === 0) {
+  // Collect all special segments (mentions + URLs), sorted by position
+  const mentionMatches = findMentions(content);
+  const mentionRanges = mentionMatches.map((m) => [m.index, m.end]);
+  const urlMatches = findUrls(content).filter(
+    (u) => !mentionRanges.some(([s, e]) => u.index >= s && u.end <= e),
+  );
+
+  const allMatches = [
+    ...mentionMatches,
+    ...urlMatches.map((u) => ({ ...u, type: "url" })),
+  ].sort((a, b) => a.index - b.index);
+
+  if (allMatches.length === 0) {
     return (
       <span className="whitespace-pre-wrap break-words">
         {renderHighlightedText(content, searchQuery)}
@@ -193,18 +230,21 @@ export default function MessageText({ content, searchQuery = "" }) {
   const parts = [];
   let last = 0;
 
-  matches.forEach((match, i) => {
+  allMatches.forEach((match) => {
     if (match.index > last) {
       parts.push({ type: "text", value: content.slice(last, match.index) });
     }
 
-    const href = normalizeUrl(match.raw);
-    // Safety: only render clickable if valid http(s)
-    if (!isHttpUrl(href)) {
-      parts.push({ type: "text", value: match.raw });
+    if (match.type === "mention") {
+      parts.push({ type: "mention", name: match.name, userId: match.userId });
     } else {
-      const cls = classifyUrl(href);
-      parts.push({ type: cls.kind, href });
+      const href = normalizeUrl(match.raw);
+      if (!isHttpUrl(href)) {
+        parts.push({ type: "text", value: match.raw });
+      } else {
+        const cls = classifyUrl(href);
+        parts.push({ type: cls.kind, href });
+      }
     }
 
     last = match.end;
@@ -222,6 +262,15 @@ export default function MessageText({ content, searchQuery = "" }) {
             <React.Fragment key={idx}>
               {renderHighlightedText(p.value, searchQuery)}
             </React.Fragment>
+          );
+        if (p.type === "mention")
+          return (
+            <MentionChip
+              key={idx}
+              name={p.name}
+              userId={p.userId}
+              onUserClick={onUserClick}
+            />
           );
         if (p.type === "file")
           return (

@@ -14,7 +14,13 @@ import ConfirmModal from "../common/ConfirmModal";
 import ScreenAlert from "../common/ScreenAlert";
 import { vacantRoleService } from "../../services/vacantRoleService";
 import { matchingService } from "../../services/matchingService";
+import { messageService } from "../../services/messageService";
 import { useAuth } from "../../contexts/AuthContext";
+import {
+  buildRoleFilledMessage,
+  buildRoleReopenedMessage,
+} from "../../utils/roleEventMessages";
+import { resolveFilledRoleUser } from "../../utils/vacantRoleUtils";
 
 /**
  * VacantRolesSection Component
@@ -42,7 +48,7 @@ const VacantRolesSection = ({
   className = "",
   onRolesLoaded = null,
 }) => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
 
   const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -139,7 +145,60 @@ const VacantRolesSection = ({
   // Handle status change
   const handleStatusChange = async (roleId, newStatus) => {
     try {
-      await vacantRoleService.updateVacantRoleStatus(teamId, roleId, newStatus);
+      const roleBeforeChange = roles.find(
+        (role) => String(role?.id) === String(roleId),
+      );
+      const updateResponse = await vacantRoleService.updateVacantRoleStatus(
+        teamId,
+        roleId,
+        newStatus,
+      );
+      const updatedRole =
+        updateResponse?.data?.data ??
+        updateResponse?.data ??
+        updateResponse?.role ??
+        updateResponse;
+      const eventRole =
+        updatedRole && typeof updatedRole === "object"
+          ? { ...roleBeforeChange, ...updatedRole }
+          : roleBeforeChange;
+
+      if (newStatus === "open" && roleBeforeChange) {
+        try {
+          await messageService.sendMessage(
+            teamId,
+            buildRoleReopenedMessage({
+              teamId,
+              teamName: team?.name,
+              role: roleBeforeChange,
+              filledUser: resolveFilledRoleUser(roleBeforeChange, {
+                viewAsUserId: user?.id,
+                viewAsUser: user,
+              }),
+            }),
+            "team",
+          );
+        } catch (messageError) {
+          console.warn("Role reopened, but chat event could not be sent:", messageError);
+        }
+      }
+
+      if (newStatus === "filled" && roleBeforeChange) {
+        try {
+          await messageService.sendMessage(
+            teamId,
+            buildRoleFilledMessage({
+              teamId,
+              teamName: team?.name,
+              role: eventRole,
+            }),
+            "team",
+          );
+        } catch (messageError) {
+          console.warn("Role filled, but chat event could not be sent:", messageError);
+        }
+      }
+
       setNotification({
         type: "success",
         message: `Role ${newStatus === "filled" ? "marked as filled" : newStatus === "closed" ? "closed" : "reopened"} successfully`,
