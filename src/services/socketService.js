@@ -108,6 +108,7 @@ const socketService = {
     imageUrl = null,
     fileUrl = null,
     fileName = null,
+    replyToId = null,
   ) => {
     if (socket && socket.connected) {
       socket.emit("message:new", {
@@ -117,6 +118,7 @@ const socketService = {
         imageUrl,
         fileUrl,
         fileName,
+        replyToId,
       });
     } else {
       console.error("Cannot send message - socket not connected");
