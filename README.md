@@ -29,7 +29,7 @@ Contact the project owner for a demo login, or register a new account with a val
 - **Search & Discovery** — Find teams, users, and vacant roles by keyword, tags, badges, or location; toggle between list view and interactive map view
 - **Best Match Sorting** — Weighted matching algorithm scores teams and roles against your profile (tags 40%, badges 30%, distance 30%)
 - **Map View** — Leaflet-powered map with custom markers for teams, users, and roles; popups with detail cards; distance-based filtering and proximity sorting
-- **Team Management** — Create teams, manage members and roles, post vacant roles, handle applications and invitations with role-specific targeting
+- **Team Management** — Create teams, manage members and roles, post vacant roles, handle applications and invitations with role-specific targeting; action buttons for already-filled or closed roles are disabled with status-aware tooltips; role cards update in real time while modals are open
 - **User Profiles** — Customizable profiles with interest tags, badges, avatar uploads (ImageKit), and geocoded location
 - **Real-Time Chat** — Direct and team group messaging with typing indicators, read receipts, file/image sharing, @mentions, reply threading, and rich system event messages (Socket.IO)
 - **Badge System** — Browse 30 badges across 5 color-coded categories; award badges to teammates with reasons and team context
@@ -181,7 +181,7 @@ Lomir-frontend/
 │   │   ├── socketService.js        # Socket.IO client wrapper
 │   │   └── geocodingService.js
 │   ├── hooks/
-│   │   ├── useHydratedRole.js      # Fetch full role details + match score for modals
+│   │   ├── useHydratedRole.js      # Fetch full role details + match score for modals; polls role status every 20 s
 │   │   ├── useLocationAutoFill.js  # Geocoding-based city/country auto-fill from postal code
 │   │   ├── useAwardModals.js       # Badge award modal state management
 │   │   └── useViewerMatchProfile.js # Viewer's tags/badges/location for client-side scoring
@@ -191,8 +191,8 @@ Lomir-frontend/
 │   │   ├── teamMatchUtils.js       # Team/role match scoring + overlap calculations
 │   │   ├── matchScoreUtils.js      # Match tier color coding (green/yellow/orange)
 │   │   ├── locationUtils.js        # Haversine distance calculation
-│   │   ├── eventPreview.js         # Parse + format chat system event messages for previews
-│   │   ├── roleEventMessages.js    # Build role-filled / role-reopened chat event message strings
+│   │   ├── eventPreview.js         # Parse + format chat system event messages for previews and toasts
+│   │   ├── roleEventMessages.js    # Build role event message strings (filled, closed, updated, deleted, reopened)
 │   │   └── fileExpiration.js       # File/image expiration status + formatted countdown strings
 │   ├── constants/
 │   │   ├── badgeConstants.js       # Badge category colors
@@ -264,7 +264,7 @@ The chat page supports both direct (1-to-1) and team group conversations.
 **@Mentions**
 - Type `@` in the message input to open a dropdown of conversation participants
 - Select a person or "All members" to insert a mention token
-- Mention tokens render as styled `@Name` chips in message bubbles and reply previews
+- Mention tokens render as styled `@Name` chips in message bubbles, reply previews, and notification toasts
 - Unread @mention count is tracked separately and shown in the navbar badge
 
 **File & image sharing**
@@ -275,8 +275,8 @@ The chat page supports both direct (1-to-1) and team group conversations.
 
 **System event messages**
 - Team actions (joins, role changes, invitations accepted/declined, ownership transfers) post styled event banners into the team chat automatically
-- Approving a vacant role application or reopening a role also posts a chat event
-- Conversation list cards show a colour-coded icon and short preview for event messages instead of raw system text
+- Role lifecycle events post dedicated banners: role filled (via application or invitation acceptance), role closed, role updated, role deleted, and role reopened — each with a distinct icon and colour
+- Conversation list cards show a colour-coded icon and short preview for event messages instead of raw system text; notification toasts resolve the same icons and preview text
 
 ---
 
