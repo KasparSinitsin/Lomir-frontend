@@ -42,8 +42,12 @@ api.interceptors.response.use(
   },
   (error) => {
     if (error.response) {
-      console.error("API Error:", error.response.data);
       const skipAuthRedirect = error.config?.skipAuthRedirect === true;
+      const skipErrorLog = error.config?.skipErrorLog === true;
+
+      if (!skipErrorLog) {
+        console.error("API Error:", error.response.data);
+      }
 
       if (
         !skipAuthRedirect &&

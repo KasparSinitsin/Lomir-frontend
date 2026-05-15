@@ -32,6 +32,8 @@ const extractRoleMatchData = (roleLike) => {
   };
 };
 
+const ROLE_STATUS_POLL_INTERVAL_MS = 20_000;
+
 export const useHydratedRole = ({ isOpen, roleId, teamId }) => {
   const [hydratedRole, setHydratedRole] = useState(null);
   const [roleMatchScore, setRoleMatchScore] = useState(null);
@@ -47,6 +49,7 @@ export const useHydratedRole = ({ isOpen, roleId, teamId }) => {
 
     let isCancelled = false;
 
+    // Full fetch on open: role details + match scores
     const fetchRole = async () => {
       try {
         const [detailsRes, rolesRes, matchRes] = await Promise.allSettled([
@@ -102,10 +105,24 @@ export const useHydratedRole = ({ isOpen, roleId, teamId }) => {
       }
     };
 
+    // Lightweight poll: only role details, to pick up status changes while modal is open
+    const pollRoleStatus = async () => {
+      try {
+        const res = await vacantRoleService.getVacantRoleById(teamId, roleId);
+        if (isCancelled) return;
+        const roleData = extractRolePayload(res);
+        if (roleData) setHydratedRole(roleData);
+      } catch {
+        // silent — modal keeps showing last known state
+      }
+    };
+
     fetchRole();
+    const intervalId = setInterval(pollRoleStatus, ROLE_STATUS_POLL_INTERVAL_MS);
 
     return () => {
       isCancelled = true;
+      clearInterval(intervalId);
     };
   }, [isOpen, roleId, teamId]);
 

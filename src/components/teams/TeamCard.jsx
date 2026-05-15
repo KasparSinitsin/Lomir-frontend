@@ -30,6 +30,7 @@ import TeamInvitationDetailsModal from "./TeamInvitationDetailsModal";
 import { teamService } from "../../services/teamService";
 import { vacantRoleService } from "../../services/vacantRoleService";
 import { userService } from "../../services/userService";
+import socketService from "../../services/socketService";
 import { useAuth } from "../../contexts/AuthContext";
 import Alert from "../common/Alert";
 import ConfirmModal from "../common/ConfirmModal";
@@ -378,6 +379,8 @@ const TeamCard = ({
 
   autoOpenApplications = false,
   highlightApplicantId = null,
+  highlightApplicationId = null,
+  highlightInvitationId = null,
   onApplicationsModalClosed,
 }) => {
   const isInternalRoleApplication =
@@ -820,6 +823,73 @@ const TeamCard = ({
   useEffect(() => {
     fetchSentInvitations();
   }, [fetchSentInvitations]);
+
+  useEffect(() => {
+    if (effectiveVariant !== "member" || !teamData?.id || !canManageInvitations) {
+      return undefined;
+    }
+
+    let detachSocketListeners = null;
+
+    const attachSocketListeners = (socket) => {
+      if (!socket) return;
+
+      if (detachSocketListeners) {
+        detachSocketListeners();
+      }
+
+      const handleTeamRequestEvent = (payload = {}) => {
+        const payloadTeamId = payload.teamId ?? payload.team_id ?? null;
+        if (payloadTeamId != null && String(payloadTeamId) !== String(teamData.id)) {
+          return;
+        }
+
+        const type = String(payload.type ?? payload.notificationType ?? "").toLowerCase();
+        const shouldRefreshApplications =
+          !type ||
+          type.includes("application") ||
+          type === "member_joined" ||
+          type === "role_filled";
+        const shouldRefreshInvitations =
+          !type ||
+          type.includes("invitation") ||
+          type.includes("invite");
+
+        if (shouldRefreshApplications) {
+          fetchPendingApplications();
+        }
+
+        if (shouldRefreshInvitations) {
+          fetchSentInvitations();
+        }
+      };
+
+      socket.on("notification:new", handleTeamRequestEvent);
+      socket.on("notification:updated", handleTeamRequestEvent);
+      socket.on("notification:deleted", handleTeamRequestEvent);
+
+      detachSocketListeners = () => {
+        socket.off("notification:new", handleTeamRequestEvent);
+        socket.off("notification:updated", handleTeamRequestEvent);
+        socket.off("notification:deleted", handleTeamRequestEvent);
+      };
+    };
+
+    const unsubscribeSocketReady = socketService.onSocketReady(attachSocketListeners);
+
+    return () => {
+      unsubscribeSocketReady();
+      if (detachSocketListeners) {
+        detachSocketListeners();
+      }
+    };
+  }, [
+    canManageInvitations,
+    effectiveVariant,
+    fetchPendingApplications,
+    fetchSentInvitations,
+    teamData?.id,
+  ]);
 
   useEffect(() => {
     const fetchCompleteTeamData = async () => {
@@ -1528,6 +1598,16 @@ const TeamCard = ({
       await fetchSentInvitations();
     } catch (error) {
       console.error("Error canceling invitation:", error);
+      throw error;
+    }
+  };
+
+  const handleCancelRoleInvitation = async (invitationId) => {
+    try {
+      await teamService.cancelRoleInvitation(invitationId);
+      await fetchSentInvitations();
+    } catch (error) {
+      console.error("Error canceling role invitation:", error);
       throw error;
     }
   };
@@ -2389,6 +2469,7 @@ const TeamCard = ({
             onApplicationAction={handleApplicationAction}
             onRoleStatusChanged={handleVacantRoleStatusChange}
             teamName={teamData.name}
+            highlightApplicationId={highlightApplicationId}
             highlightUserId={highlightApplicantId}
           />
         )}
@@ -2404,7 +2485,9 @@ const TeamCard = ({
             teamId={teamData.id}
             invitations={pendingSentInvitations}
             onCancelInvitation={handleCancelInvitation}
+            onCancelRoleInvitation={handleCancelRoleInvitation}
             teamName={teamData.name}
+            highlightInvitationId={highlightInvitationId}
           />
         )}
 
@@ -2959,6 +3042,7 @@ const TeamCard = ({
           onApplicationAction={handleApplicationAction}
           onRoleStatusChanged={handleVacantRoleStatusChange}
           teamName={teamData.name}
+          highlightApplicationId={highlightApplicationId}
           highlightUserId={highlightApplicantId}
         />
       )}
@@ -2975,7 +3059,9 @@ const TeamCard = ({
           teamId={teamData.id}
           invitations={pendingSentInvitations}
           onCancelInvitation={handleCancelInvitation}
+          onCancelRoleInvitation={handleCancelRoleInvitation}
           teamName={teamData.name}
+          highlightInvitationId={highlightInvitationId}
         />
       )}
 

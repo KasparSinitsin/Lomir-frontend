@@ -543,5 +543,17 @@ export const teamService = {
       throw error;
     }
   },
+
+  cancelRoleInvitation: async (invitationId) => {
+    try {
+      const response = await api.delete(
+        `/api/teams/invitations/${invitationId}/role`,
+      );
+      return response.data;
+    } catch (error) {
+      console.error(`Error canceling role invitation ${invitationId}:`, error);
+      throw error;
+    }
+  },
 };
 export default teamService;

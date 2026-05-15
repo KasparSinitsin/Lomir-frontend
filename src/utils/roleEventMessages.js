@@ -105,16 +105,23 @@ export const buildRoleFilledMessage = ({
   teamName,
   role,
   filledUser = null,
+  filledBy = null,
 }) => {
   const resolvedFilledUser = filledUser ?? getFilledRoleUser(role);
   const filledUserId = getUserEventId(resolvedFilledUser);
   const filledUserName =
     getUserEventName(resolvedFilledUser) ??
     (filledUser ? null : getFilledRoleUserName(role));
+  const filledById = getUserEventId(filledBy);
+  const filledByName = getUserEventName(filledBy);
   const roleId = role?.id ?? role?.roleId ?? role?.role_id ?? null;
   const roleName = getRoleEventName(role);
 
-  return `✅ ROLE_FILLED: ${formatIdNameToken(teamId, teamName)} | ${formatIdNameToken(roleId, roleName)} | ${formatIdNameToken(filledUserId, filledUserName || "Someone")}`;
+  const baseMessage = `✅ ROLE_FILLED: ${formatIdNameToken(teamId, teamName)} | ${formatIdNameToken(roleId, roleName)} | ${formatIdNameToken(filledUserId, filledUserName || "Someone")}`;
+
+  return filledById != null || filledByName
+    ? `${baseMessage} | ${formatIdNameToken(filledById, filledByName || "Someone")}`
+    : baseMessage;
 };
 
 export const buildRoleInvitationFilledMessage = ({
@@ -154,11 +161,18 @@ export const buildRoleApplicationFilledMessage = ({
   teamName,
   role,
   applicant = null,
+  approver = null,
 }) => {
   const roleId = role?.id ?? role?.roleId ?? role?.role_id ?? null;
   const roleName = getRoleEventName(role);
   const applicantId = getUserEventId(applicant);
   const applicantName = getUserEventName(applicant) ?? "Someone";
+  const approverId = getUserEventId(approver);
+  const approverName = getUserEventName(approver);
 
-  return `✅ ROLE_APPLICATION_FILLED: ${formatIdNameToken(teamId, teamName)} | ${formatIdNameToken(roleId, roleName)} | ${formatIdNameToken(applicantId, applicantName)}`;
+  const baseMessage = `✅ ROLE_APPLICATION_FILLED: ${formatIdNameToken(teamId, teamName)} | ${formatIdNameToken(roleId, roleName)} | ${formatIdNameToken(applicantId, applicantName)}`;
+
+  return approverId != null || approverName
+    ? `${baseMessage} | ${formatIdNameToken(approverId, approverName || "Someone")}`
+    : baseMessage;
 };

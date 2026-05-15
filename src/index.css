@@ -619,6 +619,12 @@ body {
   border: none;
 }
 
+.badge-role-closed {
+  background-color: #6b7280;
+  color: white;
+  border: none;
+}
+
 /* Neon Effect */
 .neon {
   color: var(--color-primary);
@@ -710,7 +716,22 @@ body {
 }
 
 .animate-slide-in {
-  animation: slide-in 0.3s ease-out forwards;
+  animation: slide-in 0.38s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes toast-fade-out {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(16px);
+    opacity: 0;
+  }
+}
+
+.animate-toast-fade-out {
+  animation: toast-fade-out 0.7s ease-in forwards;
 }
 
 /* Highlight animation for unread messages - fading green outline */

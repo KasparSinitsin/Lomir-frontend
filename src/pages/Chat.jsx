@@ -325,6 +325,66 @@ const buildMessageSearchSnippet = (message) => {
 const getMessageSearchId = (message) =>
   message?.id || message?.messageId || message?.message_id || null;
 
+const NOTIFICATION_EVENT_MESSAGE_MARKERS = {
+  application_approved: ["APPLICATION_APPROVED"],
+  application_rejected: ["APPLICATION_DECLINED"],
+  application_cancelled: ["APPLICATION_CANCELLED"],
+  role_application_cancelled: ["APPLICATION_CANCELLED"],
+  invitation_declined: ["INVITATION_DECLINED"],
+  invitation_cancelled: ["INVITATION_CANCELLED"],
+  member_left: ["MEMBER_LEFT", "MEMBER_REMOVED_PUBLIC"],
+  member_removed: ["MEMBER_REMOVED"],
+  ownership_transferred: ["OWNERSHIP_TRANSFERRED"],
+  role_changed: ["ROLE_CHANGED"],
+  role_created: ["ROLE_CREATED"],
+  role_updated: ["ROLE_UPDATED"],
+  role_deleted: ["ROLE_DELETED"],
+  role_closed: ["ROLE_CLOSED"],
+  role_filled: [
+    "ROLE_FILLED",
+    "ROLE_APPLICATION_FILLED",
+    "ROLE_INVITATION_FILLED",
+  ],
+  role_reopened: ["ROLE_REOPENED"],
+  role_reopened_admin: ["ROLE_REOPENED_ADMIN"],
+  team_deleted: ["TEAM_DELETED"],
+};
+
+const getNotificationEventHighlightIds = (messages, eventTarget) => {
+  const type = String(eventTarget?.type || "").toLowerCase();
+  if (!type) return [];
+
+  const markers = NOTIFICATION_EVENT_MESSAGE_MARKERS[type] || [];
+  const referenceId = eventTarget.referenceId
+    ? String(eventTarget.referenceId)
+    : "";
+  const actorId = eventTarget.actorId ? String(eventTarget.actorId) : "";
+  const matchingMessages = (messages || []).filter((message) => {
+    const content = String(message?.content || "");
+    const normalizedContent = content.toUpperCase();
+    const markerMatches =
+      markers.length === 0 ||
+      markers.some((marker) => normalizedContent.includes(marker));
+
+    if (!markerMatches) return false;
+
+    const referenceMatches =
+      !referenceId ||
+      content.includes(`| ${referenceId}:`) ||
+      content.includes(`:${referenceId}:`) ||
+      String(message?.id) === referenceId;
+    const actorMatches =
+      !actorId ||
+      String(message?.senderId ?? message?.sender_id ?? "") === actorId ||
+      content.includes(`${actorId}:`);
+
+    return referenceMatches && actorMatches;
+  });
+
+  const target = matchingMessages[matchingMessages.length - 1];
+  return target?.id ? [target.id] : [];
+};
+
 const buildConversationLastMessagePreview = (message) => {
   if (message?.content) return message.content;
 
@@ -1032,6 +1092,19 @@ const Chat = () => {
 
         const urlParams = new URLSearchParams(window.location.search);
         const type = urlParams.get("type") || "direct";
+        const highlightedMessageId =
+          urlParams.get("highlightMessage") || urlParams.get("messageId");
+        const highlightedEventTarget = {
+          type:
+            urlParams.get("highlightEvent") ||
+            urlParams.get("highlightEventType") ||
+            "",
+          referenceId:
+            urlParams.get("highlightRef") ||
+            urlParams.get("highlightReferenceId") ||
+            "",
+          actorId: urlParams.get("highlightActor") || "",
+        };
 
         let conversationDetails;
         try {
@@ -1205,7 +1278,14 @@ const Chat = () => {
             conversationId,
             type,
           );
-          const searchTarget = pendingChatSearchTargetRef.current;
+          const searchTarget = highlightedMessageId
+            ? {
+                conversationId,
+                type,
+                messageId: highlightedMessageId,
+                query: null,
+              }
+            : pendingChatSearchTargetRef.current;
           const shouldRevealSearchTarget =
             searchTarget?.messageId &&
             String(searchTarget.conversationId) === String(conversationId) &&
@@ -1273,6 +1353,10 @@ const Chat = () => {
 
           // Check if we need to highlight messages from a specific user (from notification)
           const highlightUser = searchParams.get("highlightUser");
+          const eventHighlightIds = getNotificationEventHighlightIds(
+            fetchedMessages,
+            highlightedEventTarget,
+          );
 
           if (
             shouldRevealSearchTarget &&
@@ -1297,6 +1381,15 @@ const Chat = () => {
             setHighlightMessageIds(highlightIds);
             pendingChatSearchTargetRef.current = null;
             // No auto-clear — highlights persist until search query changes
+          } else if (eventHighlightIds.length > 0) {
+            if (shouldRevealSearchTarget) {
+              pendingChatSearchTargetRef.current = null;
+            }
+
+            setHighlightMessageIds(eventHighlightIds);
+            setTimeout(() => {
+              setHighlightMessageIds([]);
+            }, 3500);
           } else if (highlightUser) {
             if (shouldRevealSearchTarget) {
               pendingChatSearchTargetRef.current = null;
@@ -1613,6 +1706,36 @@ const Chat = () => {
       });
     };
 
+    const refreshTeamEventMessages = async (payload) => {
+      const teamId = payload?.teamId ?? payload?.team_id;
+      if (!teamId) return;
+
+      refreshConversationList();
+
+      const urlParams = new URLSearchParams(window.location.search);
+      const currentType = urlParams.get("type") || "direct";
+
+      if (
+        currentType !== "team" ||
+        String(teamId) !== String(conversationId)
+      ) {
+        return;
+      }
+
+      try {
+        const messagesResponse = await messageService.getMessages(
+          teamId,
+          "team",
+        );
+        const fetchedMessages = messagesResponse.data || [];
+        setHasMoreMessages(messagesResponse.hasMore || false);
+        setMessages(dedupeMessages(fetchedMessages));
+        socketService.markMessagesAsRead(teamId, "team");
+      } catch (err) {
+        console.error("Error refreshing team event messages:", err);
+      }
+    };
+
     // Handle typing indicators
     const handleTypingUpdate = async (data) => {
       if (String(data.conversationId) !== String(conversationId)) {
@@ -1911,6 +2034,7 @@ const Chat = () => {
     socket.on("team:member_kicked", handleKickedFromTeam);
     socket.on("message:deleted", handleMessageDeleted);
     socket.on("message:edited", handleMessageEdited);
+    socket.on("notification:new", refreshTeamEventMessages);
 
     // Cleanup function to remove listeners
     return () => {
@@ -1924,6 +2048,7 @@ const Chat = () => {
       socket.off("team:member_kicked", handleKickedFromTeam);
       socket.off("message:deleted", handleMessageDeleted);
       socket.off("message:edited", handleMessageEdited);
+      socket.off("notification:new", refreshTeamEventMessages);
     };
   }, [
     conversationId,

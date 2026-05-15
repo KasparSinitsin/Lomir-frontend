@@ -2329,6 +2329,7 @@ const SearchPage = () => {
                             showBadges: sortBy === "match",
                           }}
                           teamContext={{
+                            id: item.teamId ?? item.team_id,
                             name: item.teamName ?? item.team_name,
                             avatarUrl: item.teamAvatarUrl ?? item.team_avatar_url,
                           }}
@@ -2399,6 +2400,7 @@ const SearchPage = () => {
                             showBadges: sortBy === "match",
                           }}
                           teamContext={{
+                            id: item.teamId ?? item.team_id,
                             name: item.teamName ?? item.team_name,
                             avatarUrl: item.teamAvatarUrl ?? item.team_avatar_url,
                           }}
@@ -2447,6 +2449,7 @@ const SearchPage = () => {
                         showBadges: sortBy === "match",
                       }}
                       teamContext={{
+                        id: role.teamId ?? role.team_id,
                         name: role.teamName ?? role.team_name,
                         avatarUrl: role.teamAvatarUrl ?? role.team_avatar_url,
                       }}
@@ -2476,6 +2479,7 @@ const SearchPage = () => {
                         showBadges: sortBy === "match",
                       }}
                       teamContext={{
+                        id: role.teamId ?? role.team_id,
                         name: role.teamName ?? role.team_name,
                         avatarUrl: role.teamAvatarUrl ?? role.team_avatar_url,
                       }}

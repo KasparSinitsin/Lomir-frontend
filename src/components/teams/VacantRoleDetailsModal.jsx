@@ -381,6 +381,11 @@ const VacantRoleDetailsModal = ({
       .filter((id) => id != null)
       .map(String),
   );
+  const viewerIsTeamMember = Boolean(
+    isTeamMember ||
+      canManage ||
+      (currentUser?.id != null && currentTeamMemberIds.has(String(currentUser.id))),
+  );
   const teamMemberScoreMap = useMemo(() => {
     const map = {};
 
@@ -397,7 +402,7 @@ const VacantRoleDetailsModal = ({
 
     return map;
   }, [roleTeamMembers]);
-  const canViewTeamMemberMatches = canManage || isTeamMember;
+  const canViewTeamMemberMatches = canManage || viewerIsTeamMember;
   const teamMemberIdsKey = JSON.stringify(
     [
       ...new Set(
@@ -564,7 +569,7 @@ const VacantRoleDetailsModal = ({
             null,
           fallbackTeam,
           fallbackRole,
-          { isInternalRoleApplication: isTeamMember },
+          { isInternalRoleApplication: viewerIsTeamMember },
         )
       : null;
     const seededInvitation = hasActiveInvitationStatus(
@@ -596,7 +601,7 @@ const VacantRoleDetailsModal = ({
             null,
           fallbackTeam,
           fallbackRole,
-          { isInternal: isTeamMember },
+          { isInternal: viewerIsTeamMember },
         )
       : null;
 
@@ -633,7 +638,7 @@ const VacantRoleDetailsModal = ({
               foundApplication,
               fallbackTeam,
               fallbackRole,
-              { isInternalRoleApplication: isTeamMember },
+              { isInternalRoleApplication: viewerIsTeamMember },
             )
           : null;
       }
@@ -656,7 +661,7 @@ const VacantRoleDetailsModal = ({
               foundInvitation,
               fallbackTeam,
               fallbackRole,
-              { isInternal: isTeamMember },
+              { isInternal: viewerIsTeamMember },
             )
           : null;
       }
@@ -682,7 +687,7 @@ const VacantRoleDetailsModal = ({
     displayRole,
     isAuthenticated,
     isOpen,
-    isTeamMember,
+    viewerIsTeamMember,
     role,
     roleId,
     roleNameForStatusMatch,
@@ -1244,6 +1249,29 @@ const VacantRoleDetailsModal = ({
     }
   };
 
+  const handleCancelRoleInvitation = async (invitationId) => {
+    await teamService.cancelRoleInvitation(invitationId);
+    setRoleInvitations((prev) => prev.filter((invitation) => invitation.id !== invitationId));
+
+    try {
+      const refreshed = await teamService.getTeamSentInvitations(teamId);
+      const invitations = refreshed.data || [];
+      const currentRoleId = roleId;
+      setRoleInvitations(
+        invitations.filter((invitation) => {
+          const invitationRoleId =
+            invitation.role?.id ?? invitation.roleId ?? invitation.role_id ?? null;
+          return (
+            invitationRoleId != null &&
+            String(invitationRoleId) === String(currentRoleId)
+          );
+        }),
+      );
+    } catch (e) {
+      console.warn("Could not refresh invitations:", e);
+    }
+  };
+
   const handleViewerApplicationCancel = async (applicationId) => {
     await teamService.cancelApplication(applicationId);
     setViewerRoleApplicationRecord(null);
@@ -1731,7 +1759,7 @@ const VacantRoleDetailsModal = ({
           {modalStatusTitle}
         </h2>
       </div>
-      {!isFilledRole && isTeamMember && (tags.length > 0 || badges.length > 0) && !hideActions && (
+      {!isFilledRole && viewerIsTeamMember && (tags.length > 0 || badges.length > 0) && !hideActions && (
         <div className="flex items-center space-x-2">
           <Button
             variant="ghost"
@@ -2984,7 +3012,7 @@ const VacantRoleDetailsModal = ({
               <>
                 {isAuthenticated &&
                   !viewerRoleStatusLoading &&
-                  !isTeamMember &&
+                  !viewerIsTeamMember &&
                   isRoleOpen && (
                   <div className="mt-6 border-t border-base-200 pt-4">
                     <TeamApplicationButton
@@ -2992,14 +3020,37 @@ const VacantRoleDetailsModal = ({
                       teamId={teamId}
                       roleId={roleId}
                       className="w-full"
-                      buttonLabel="Apply to join Team and to fill this Role"
+                      buttonLabel="Apply to join team and to fill this role"
+                      onSuccess={(applicationData, submitResponse) => {
+                        const submittedApplication = submitResponse?.data ?? {};
+                        setViewerRoleApplicationRecord(
+                          buildRoleStatusRecord(
+                            {
+                              id: submittedApplication.applicationId,
+                              applicationId: submittedApplication.applicationId,
+                              status: submittedApplication.status ?? "pending",
+                              message: applicationData.message,
+                              created_at: new Date().toISOString(),
+                              roleId,
+                              role_id: roleId,
+                              teamId,
+                              team_id: teamId,
+                              isInternalRoleApplication: false,
+                              is_internal_role_application: false,
+                            },
+                            applicationTeam,
+                            displayRole,
+                            { isInternalRoleApplication: false },
+                          ),
+                        );
+                      }}
                     />
                   </div>
                 )}
 
                 {isAuthenticated &&
                   !viewerRoleStatusLoading &&
-                  isTeamMember &&
+                  viewerIsTeamMember &&
                   isRoleOpen &&
                   !applicationsLoading && (
                   <div className="mt-6 border-t border-base-200 pt-4">
@@ -3009,7 +3060,7 @@ const VacantRoleDetailsModal = ({
                       onClick={() => setIsInternalApplicationOpen(true)}
                       icon={<UserSearch size={16} />}
                     >
-                      Apply to fill this Role within your Team
+                      Apply to fill this role within your team
                     </Button>
                   </div>
                 )}
@@ -3054,6 +3105,7 @@ const VacantRoleDetailsModal = ({
         teamId={teamId}
         invitations={roleInvitations}
         onCancelInvitation={handleCancelInvitation}
+        onCancelRoleInvitation={handleCancelRoleInvitation}
         teamName={teamName}
         highlightUserId={highlightInviteeId}
       />
@@ -3078,10 +3130,31 @@ const VacantRoleDetailsModal = ({
       isInternal={true}
       onSubmit={async (applicationData) => {
         try {
-          await teamService.applyToJoinTeam(teamId, {
+          const submitResponse = await teamService.applyToJoinTeam(teamId, {
             ...applicationData,
             roleId: applicationData.roleId ?? roleId,
           });
+          const submittedApplication = submitResponse?.data ?? {};
+          setViewerRoleApplicationRecord(
+            buildRoleStatusRecord(
+              {
+                id: submittedApplication.applicationId,
+                applicationId: submittedApplication.applicationId,
+                status: submittedApplication.status ?? "pending",
+                message: applicationData.message,
+                created_at: new Date().toISOString(),
+                roleId,
+                role_id: roleId,
+                teamId,
+                team_id: teamId,
+                isInternalRoleApplication: true,
+                is_internal_role_application: true,
+              },
+              applicationTeam,
+              displayRole,
+              { isInternalRoleApplication: true },
+            ),
+          );
         } catch (error) {
           throw new Error(
             error.response?.data?.message || "Failed to submit role application"

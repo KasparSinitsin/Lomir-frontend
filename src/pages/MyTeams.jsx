@@ -7,6 +7,7 @@ import TeamCard from "../components/teams/TeamCard";
 import Section from "../components/layout/Section";
 import Pagination from "../components/common/Pagination";
 import { teamService } from "../services/teamService";
+import socketService from "../services/socketService";
 import { useAuth } from "../contexts/AuthContext";
 import {
   Plus,
@@ -71,6 +72,9 @@ const MyTeams = () => {
   // URL params for highlighting
   const [searchParams, setSearchParams] = useSearchParams();
   const highlightId = searchParams.get("highlight");
+  const highlightApplicationId = searchParams.get("highlightApplication");
+  const highlightApplicantId = searchParams.get("highlightApplicant") || highlightId;
+  const highlightInvitationId = searchParams.get("highlightInvitation");
   const openTeamId = searchParams.get("team");
   const shouldOpenApplications =
     searchParams.get("openApplications") === "true";
@@ -164,6 +168,51 @@ const MyTeams = () => {
     fetchPendingInvitations();
   }, [fetchPendingApplications, fetchPendingInvitations]);
 
+  useEffect(() => {
+    if (!user?.id) return undefined;
+
+    let detachSocketListeners = null;
+
+    const attachSocketListeners = (socket) => {
+      if (!socket) return;
+
+      if (detachSocketListeners) {
+        detachSocketListeners();
+      }
+
+      const handleRequestNotification = (payload = {}) => {
+        const type = String(payload.type ?? payload.notificationType ?? "").toLowerCase();
+
+        if (!type || type.includes("application")) {
+          fetchPendingApplications();
+        }
+
+        if (!type || type.includes("invitation") || type.includes("invite")) {
+          fetchPendingInvitations();
+        }
+      };
+
+      socket.on("notification:new", handleRequestNotification);
+      socket.on("notification:updated", handleRequestNotification);
+      socket.on("notification:deleted", handleRequestNotification);
+
+      detachSocketListeners = () => {
+        socket.off("notification:new", handleRequestNotification);
+        socket.off("notification:updated", handleRequestNotification);
+        socket.off("notification:deleted", handleRequestNotification);
+      };
+    };
+
+    const unsubscribeSocketReady = socketService.onSocketReady(attachSocketListeners);
+
+    return () => {
+      unsubscribeSocketReady();
+      if (detachSocketListeners) {
+        detachSocketListeners();
+      }
+    };
+  }, [fetchPendingApplications, fetchPendingInvitations, user?.id]);
+
   // Fetch teams when page or limit changes
   useEffect(() => {
     if (user?.id) {
@@ -204,7 +253,7 @@ const MyTeams = () => {
     }
 
     // Clear URL params after 5 seconds (so refresh doesn't keep highlighting)
-    if (highlightId || openTeamId) {
+    if (highlightId || highlightApplicationId || highlightInvitationId || openTeamId) {
       const timer = setTimeout(() => {
         setSearchParams({});
       }, 5000);
@@ -221,7 +270,14 @@ const MyTeams = () => {
         clearTimeout(openApplicationsTimer);
       }
     };
-  }, [highlightId, openTeamId, shouldOpenApplications, setSearchParams]);
+  }, [
+    highlightApplicationId,
+    highlightId,
+    highlightInvitationId,
+    openTeamId,
+    shouldOpenApplications,
+    setSearchParams,
+  ]);
 
   // Handler for page changes
   const handlePageChange = (newPage) => {
@@ -916,9 +972,15 @@ const MyTeams = () => {
                       }
                       highlightApplicantId={
                         team.id === autoOpenApplicationsTeamId
-                          ? highlightId
+                          ? highlightApplicantId
                           : null
                       }
+                      highlightApplicationId={
+                        team.id === autoOpenApplicationsTeamId
+                          ? highlightApplicationId
+                          : null
+                      }
+                      highlightInvitationId={highlightInvitationId}
                       onApplicationsModalClosed={() =>
                         setAutoOpenApplicationsTeamId(null)
                       }
@@ -960,9 +1022,15 @@ const MyTeams = () => {
                       }
                       highlightApplicantId={
                         team.id === autoOpenApplicationsTeamId
-                          ? highlightId
+                          ? highlightApplicantId
                           : null
                       }
+                      highlightApplicationId={
+                        team.id === autoOpenApplicationsTeamId
+                          ? highlightApplicationId
+                          : null
+                      }
+                      highlightInvitationId={highlightInvitationId}
                       onApplicationsModalClosed={() =>
                         setAutoOpenApplicationsTeamId(null)
                       }
