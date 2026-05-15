@@ -41,6 +41,7 @@ import { UI_TEXT } from "../../constants/uiText";
 import { tagService } from "../../services/tagService";
 import RoleBadgeDropdown from "./RoleBadgeDropdown";
 import TeamApplicationButton from "./TeamApplicationButton";
+import TeamApplicationDetailsModal from "./TeamApplicationDetailsModal";
 import TeamInvitationDetailsModal from "./TeamInvitationDetailsModal";
 import TeamMembersSection from "./TeamMembersSection";
 import TeamFocusAreaSection from "./TeamFocusAreaSection";
@@ -178,6 +179,9 @@ const TeamDetailsModal = ({
   const [leaveLoading, setLeaveLoading] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isInvitationModalOpen, setIsInvitationModalOpen] = useState(false);
+  const [localPendingApplication, setLocalPendingApplication] = useState(null);
+  const [isApplicationDetailsOpen, setIsApplicationDetailsOpen] =
+    useState(false);
 
   const [teamImageError, setTeamImageError] = useState(false);
   const showHighlightsForContext = !isFromSearch || showMatchHighlights;
@@ -403,6 +407,11 @@ const TeamDetailsModal = ({
   useEffect(() => {
     setIsModalVisible(isOpen);
   }, [isOpen]);
+
+  useEffect(() => {
+    setLocalPendingApplication(null);
+    setIsApplicationDetailsOpen(false);
+  }, [effectiveTeamId]);
 
   useEffect(() => {
     if (isModalVisible && effectiveTeamId) {
@@ -1169,14 +1178,25 @@ const TeamDetailsModal = ({
     }
 
     // Pending application CTA
-    const hasApp = Boolean((hasPendingApplication || pendingApplication) && !isMember);
+    const effectivePendingApplication =
+      localPendingApplication ?? pendingApplication;
+    const hasApp = Boolean(
+      (hasPendingApplication || effectivePendingApplication) && !isMember,
+    );
 
     if (hasApp) {
       return (
         <div className="mt-6 border-t border-base-200 pt-4">
           <Button
             variant="primary"
-            onClick={() => onViewApplicationDetails?.()}
+            onClick={() => {
+              if (effectivePendingApplication) {
+                setIsApplicationDetailsOpen(true);
+                return;
+              }
+
+              onViewApplicationDetails?.();
+            }}
             className="w-full"
             icon={<SendHorizontal size={16} />}
           >
@@ -1222,7 +1242,20 @@ const TeamDetailsModal = ({
             disabled={loading}
             className="w-full"
             onAfterSubmit={fetchTeamDetails}
-            onSuccess={(applicationData) => {
+            onSuccess={(applicationData, submitResponse) => {
+              const submittedApplication = submitResponse?.data ?? {};
+              setLocalPendingApplication({
+                id: submittedApplication.applicationId,
+                applicationId: submittedApplication.applicationId,
+                status: submittedApplication.status ?? "pending",
+                message: applicationData.message,
+                created_at: new Date().toISOString(),
+                team: team ?? { id: effectiveTeamId },
+                isInternalRoleApplication:
+                  submittedApplication.isInternalRoleApplication ?? false,
+                is_internal_role_application:
+                  submittedApplication.isInternalRoleApplication ?? false,
+              });
               setNotification({
                 type: "success",
                 message: applicationData.isDraft
@@ -1749,6 +1782,20 @@ const TeamDetailsModal = ({
           onClose={() => setIsInvitationModalOpen(false)}
           onAccept={handleInvitationAccept}
           onDecline={handleInvitationDecline}
+        />
+      )}
+
+      {(localPendingApplication || pendingApplication) && (
+        <TeamApplicationDetailsModal
+          isOpen={isApplicationDetailsOpen}
+          application={localPendingApplication ?? pendingApplication}
+          onClose={() => setIsApplicationDetailsOpen(false)}
+          onCancel={async (applicationId) => {
+            await teamService.cancelApplication(applicationId);
+            setLocalPendingApplication(null);
+            setIsApplicationDetailsOpen(false);
+            await fetchTeamDetails(true);
+          }}
         />
       )}
     </>

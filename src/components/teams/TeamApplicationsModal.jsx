@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Check, X as Decline, User, Mail, MessageSquare, AlertTriangle } from "lucide-react";
+import { Check, UserCheck, X as Decline, User, Mail, MessageSquare, AlertTriangle } from "lucide-react";
 import RequestListModal from "../common/RequestListModal";
 import PersonRequestCard from "../common/PersonRequestCard";
 import Button from "../common/Button";
 import Modal from "../common/Modal";
+import Tooltip from "../common/Tooltip";
 import UserDetailsModal from "../users/UserDetailsModal";
 import VacantRoleCard from "./VacantRoleCard";
 import TeamApplicationDetailsModal from "./TeamApplicationDetailsModal";
@@ -11,11 +12,7 @@ import { matchingService } from "../../services/matchingService";
 import { vacantRoleService } from "../../services/vacantRoleService";
 import { messageService } from "../../services/messageService";
 import { useAuth } from "../../contexts/AuthContext";
-import {
-  buildRoleApplicationFilledMessage,
-  buildRoleReopenedMessage,
-} from "../../utils/roleEventMessages";
-import { resolveFilledRoleUser } from "../../utils/vacantRoleUtils";
+import { buildRoleApplicationFilledMessage } from "../../utils/roleEventMessages";
 
 const ROLE_CANDIDATE_FETCH_MIN_LIMIT = 20;
 const SELF_ROLE_MATCH_FETCH_LIMIT = 1000;
@@ -49,6 +46,7 @@ const extractCandidateMatchData = (candidateLike) => {
  * @param {Array} applications - Array of pending application objects
  * @param {Function} onApplicationAction - Callback to handle approve/decline
  * @param {string} teamName - Name of the team (for display)
+ * @param {string|number|null} highlightApplicationId - Application ID to scroll to + highlight (optional)
  * @param {string|number|null} highlightUserId - User ID to scroll to + highlight (optional)
  */
 const TeamApplicationsModal = ({
@@ -59,6 +57,7 @@ const TeamApplicationsModal = ({
   onApplicationAction,
   onRoleStatusChanged,
   teamName,
+  highlightApplicationId = null,
   highlightUserId = null,
 }) => {
   // ============ Auth ============
@@ -76,6 +75,7 @@ const TeamApplicationsModal = ({
   const [applicationDetailsFor, setApplicationDetailsFor] = useState(null);
   const [roleCandidateMatchMap, setRoleCandidateMatchMap] = useState({});
   const [selfRoleMatchMap, setSelfRoleMatchMap] = useState({});
+  const [polledRoleStatusMap, setPolledRoleStatusMap] = useState({});
 
   // ============ Refs ============
   const highlightedRef = useRef(null);
@@ -91,7 +91,8 @@ const TeamApplicationsModal = ({
   const handleApplicationAction = async (
     applicationId,
     action,
-    response = ""
+    response = "",
+    fillRoleOverride = null
   ) => {
     try {
       setLoading(true);
@@ -100,9 +101,20 @@ const TeamApplicationsModal = ({
       // Determine if the admin toggled "Mark role as filled" for this application's role
       let fillRole = false;
       const application = applications.find((app) => app.id === applicationId);
+      const isInternalRoleApplication = Boolean(
+        application?.isInternalRoleApplication ??
+          application?.is_internal_role_application ??
+          false,
+      );
       if (action === "approve") {
         const appRoleId = application?.role?.id ?? null;
-        if (appRoleId && roleStatusOverrides[appRoleId]?.status === "filled") {
+        if (fillRoleOverride !== null && fillRoleOverride !== undefined) {
+          fillRole = Boolean(fillRoleOverride);
+        } else if (
+          appRoleId &&
+          (isInternalRoleApplication ||
+            roleStatusOverrides[appRoleId]?.status === "filled")
+        ) {
           fillRole = true;
         }
       }
@@ -118,6 +130,7 @@ const TeamApplicationsModal = ({
               teamName,
               role: application.role,
               applicant: application.applicant ?? null,
+              approver: currentUser ?? null,
             }),
             "team",
           );
@@ -209,29 +222,6 @@ const TeamApplicationsModal = ({
 
         await vacantRoleService.updateVacantRoleStatus(teamId, roleId, "open", null);
 
-        if (originalRole) {
-          try {
-            await messageService.sendMessage(
-              teamId,
-              buildRoleReopenedMessage({
-                teamId,
-                teamName,
-                role: originalRole,
-                filledUser: resolveFilledRoleUser(originalRole, {
-                  viewAsUserId: currentUser?.id,
-                  viewAsUser: currentUser,
-                }),
-              }),
-              "team",
-            );
-          } catch (messageError) {
-            console.warn(
-              "Role reopened, but chat event could not be sent:",
-              messageError,
-            );
-          }
-        }
-
         // Clear any local override to reflect the server state
         setRoleStatusOverrides((prev) => {
           const next = { ...prev };
@@ -289,18 +279,23 @@ const TeamApplicationsModal = ({
 
   // ============ Effects ============
   useEffect(() => {
-    if (isOpen && highlightUserId && highlightedRef.current) {
-      // Small delay to ensure modal is rendered
-      const t = setTimeout(() => {
+    if (!isOpen || (!highlightApplicationId && !highlightUserId)) return;
+
+    let frameId = null;
+    const t = setTimeout(() => {
+      frameId = window.requestAnimationFrame(() => {
         highlightedRef.current?.scrollIntoView({
           behavior: "smooth",
           block: "center",
         });
-      }, 100);
+      });
+    }, 150);
 
-      return () => clearTimeout(t);
-    }
-  }, [isOpen, highlightUserId]);
+    return () => {
+      clearTimeout(t);
+      if (frameId != null) window.cancelAnimationFrame(frameId);
+    };
+  }, [applications.length, highlightApplicationId, highlightUserId, isOpen]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -468,6 +463,60 @@ const TeamApplicationsModal = ({
     };
   }, [isOpen, applications]);
 
+  // Poll role status every 20s so VacantRoleCard reflects changes made by others
+  useEffect(() => {
+    if (!isOpen || !teamId) return;
+
+    const roleIds = [
+      ...new Set(
+        applications
+          .map(
+            (app) =>
+              app?.role?.id ?? app?.roleId ?? app?.role_id ?? null,
+          )
+          .filter(Boolean)
+          .map(String),
+      ),
+    ];
+
+    if (roleIds.length === 0) return;
+
+    let isCancelled = false;
+
+    const pollRoles = async () => {
+      try {
+        const results = await Promise.allSettled(
+          roleIds.map((id) =>
+            vacantRoleService.getVacantRoleById(teamId, id),
+          ),
+        );
+        if (isCancelled) return;
+        const nextMap = {};
+        results.forEach((result, i) => {
+          if (result.status === "fulfilled") {
+            const payload = result.value?.data ?? result.value;
+            const roleData =
+              payload?.success !== undefined
+                ? payload?.data ?? null
+                : payload?.data?.data ?? payload?.data ?? payload;
+            if (roleData) nextMap[roleIds[i]] = roleData;
+          }
+        });
+        setPolledRoleStatusMap((prev) => ({ ...prev, ...nextMap }));
+      } catch {
+        // silent — keep showing last known state
+      }
+    };
+
+    pollRoles();
+    const intervalId = setInterval(pollRoles, 20_000);
+
+    return () => {
+      isCancelled = true;
+      clearInterval(intervalId);
+    };
+  }, [isOpen, teamId, applications]);
+
   // ============ Render ============
   return (
     <RequestListModal
@@ -545,10 +594,12 @@ const TeamApplicationsModal = ({
           application?.is_synthetic ??
           application?.isSynthetic;
         const roleOverride = roleId ? roleStatusOverrides[roleId] : null;
+        const polledRole = roleId ? polledRoleStatusMap[String(roleId)] : null;
         const role =
           application?.role && roleId
             ? {
                 ...application.role,
+                ...(polledRole ?? {}),
                 is_synthetic:
                   application.role.is_synthetic ??
                   application.role.isSynthetic ??
@@ -559,15 +610,20 @@ const TeamApplicationsModal = ({
                   syntheticRoleFlag,
                 status:
                   roleOverride?.status ??
+                  polledRole?.status ??
                   application.role.status ??
                   "open",
                 filledBy:
                   roleOverride?.filledBy ??
+                  polledRole?.filledBy ??
+                  polledRole?.filled_by ??
                   application.role.filledBy ??
                   application.role.filled_by ??
                   null,
                 filledByUser:
                   roleOverride?.filledByUser ??
+                  polledRole?.filledByUser ??
+                  polledRole?.filled_by_user ??
                   application.role.filledByUser ??
                   application.role.filled_by_user ??
                   null,
@@ -575,6 +631,7 @@ const TeamApplicationsModal = ({
             : application?.role
               ? {
                   ...application.role,
+                  ...(polledRole ?? {}),
                   is_synthetic:
                     application.role.is_synthetic ??
                     application.role.isSynthetic ??
@@ -591,6 +648,14 @@ const TeamApplicationsModal = ({
             : null;
         const isSelfApplication =
           currentUser?.id === (application.applicant?.id ?? application.applicant_id);
+        const isInternalRoleApplication = Boolean(
+          application?.isInternalRoleApplication ??
+            application?.is_internal_role_application ??
+            false,
+        );
+        const hasRoleApplication = roleId != null;
+        const isExternalRoleApplication =
+          hasRoleApplication && !isInternalRoleApplication;
         const selfRoleMatch =
           roleId != null && isSelfApplication
             ? selfRoleMatchMap[String(roleId)] ?? null
@@ -598,9 +663,45 @@ const TeamApplicationsModal = ({
 
         // Normalize types to avoid "1" vs 1 mismatches
         const isHighlighted =
-          highlightUserId != null &&
-          applicantId != null &&
-          String(applicantId) === String(highlightUserId);
+          (highlightApplicationId != null &&
+            String(application.id) === String(highlightApplicationId)) ||
+          (highlightUserId != null &&
+            applicantId != null &&
+            String(applicantId) === String(highlightUserId));
+
+        // Role availability guards
+        const serverRoleStatus =
+          polledRole?.status ?? application.role?.status ?? "open";
+        const isServerFilled = serverRoleStatus === "filled";
+        const isServerClosed = serverRoleStatus === "closed";
+        const isRoleUnavailable = isServerFilled || isServerClosed;
+
+        const applicationTeamOwnerId =
+          application.ownerId ?? application.owner_id ?? null;
+        const isCurrentUserOwner =
+          applicationTeamOwnerId != null &&
+          currentUser?.id != null &&
+          String(currentUser.id) === String(applicationTeamOwnerId);
+
+        const filledByUserId =
+          application.role?.filledBy ?? application.role?.filled_by ?? null;
+        const isCurrentUserFilledBy =
+          filledByUserId != null &&
+          currentUser?.id != null &&
+          String(currentUser.id) === String(filledByUserId);
+
+        // Restrict the status toggle on the role card for unavailable roles:
+        // filled → only owner or the person filling it; closed → only owner
+        const canManageStatusForRole =
+          !isSelfApplication &&
+          (!isServerFilled || isCurrentUserOwner || isCurrentUserFilledBy) &&
+          (!isServerClosed || isCurrentUserOwner);
+
+        const unavailableTooltip = isInternalRoleApplication
+          ? (isServerFilled ? "This role is already filled" : "This role is closed")
+          : (isServerFilled
+              ? "This role is already filled — you can still add this person to the team"
+              : "This role is closed — you can still add this person to the team");
 
         return (
           <div
@@ -608,7 +709,7 @@ const TeamApplicationsModal = ({
             ref={isHighlighted ? highlightedRef : null}
             className={`transition-all duration-300 ${
               isHighlighted
-                ? "ring-2 ring-primary/30 rounded-xl bg-primary/5"
+                ? "ring-2 ring-green-500/70 ring-offset-2 rounded-xl bg-green-50"
                 : ""
             } ${isSelfApplication ? "opacity-60" : ""}`}
           >
@@ -643,7 +744,7 @@ const TeamApplicationsModal = ({
                           null
                         }
                         canManage={false}
-                        canManageStatus={!isSelfApplication}
+                        canManageStatus={canManageStatusForRole}
                         onViewApplicationDetails={
                           isSelfApplication
                             ? () => setApplicationDetailsFor(application)
@@ -717,7 +818,20 @@ const TeamApplicationsModal = ({
                     <span>Another owner or admin must review your application.</span>
                   </div>
                 ) : (
-                  <div className="flex justify-end space-x-2">
+                  <div className="flex flex-wrap justify-end gap-2">
+                    {isRoleUnavailable && (isExternalRoleApplication || isInternalRoleApplication) && (
+                      <Tooltip content={unavailableTooltip}>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          disabled={true}
+                          className="border border-base-content/30 text-base-content/40"
+                          icon={<UserCheck size={16} />}
+                        >
+                          {isInternalRoleApplication ? "Accept & Fill Role" : "Fill Role & Add to Team"}
+                        </Button>
+                      </Tooltip>
+                    )}
                     <Button
                       variant="errorOutline"
                       size="sm"
@@ -733,21 +847,61 @@ const TeamApplicationsModal = ({
                     >
                       Decline
                     </Button>
-                    <Button
-                      variant="successOutline"
-                      size="sm"
-                      onClick={() =>
-                        handleApplicationAction(
-                          application.id,
-                          "approve",
-                          responses[application.id] || ""
-                        )
-                      }
-                      disabled={loading}
-                      icon={<Check size={16} />}
-                    >
-                      Accept & Add to Team
-                    </Button>
+                    {isExternalRoleApplication ? (
+                      <>
+                        {!isRoleUnavailable && (
+                          <Button
+                            variant="successOutline"
+                            size="sm"
+                            onClick={() =>
+                              handleApplicationAction(
+                                application.id,
+                                "approve",
+                                responses[application.id] || "",
+                                true
+                              )
+                            }
+                            disabled={loading}
+                            icon={<Check size={16} />}
+                          >
+                            Fill Role & Add to Team
+                          </Button>
+                        )}
+                        <Button
+                          variant="successOutline"
+                          size="sm"
+                          onClick={() =>
+                            handleApplicationAction(
+                              application.id,
+                              "approve",
+                              responses[application.id] || "",
+                              false
+                            )
+                          }
+                          disabled={loading}
+                          icon={<Check size={16} />}
+                        >
+                          Add to Team Only
+                        </Button>
+                      </>
+                    ) : isInternalRoleApplication && isRoleUnavailable ? null : (
+                      <Button
+                        variant="successOutline"
+                        size="sm"
+                        onClick={() =>
+                          handleApplicationAction(
+                            application.id,
+                            "approve",
+                            responses[application.id] || "",
+                            isInternalRoleApplication
+                          )
+                        }
+                        disabled={loading}
+                        icon={<Check size={16} />}
+                      >
+                        {isInternalRoleApplication ? "Accept & Fill Role" : "Accept & Add to Team"}
+                      </Button>
+                    )}
                   </div>
                 )
               }

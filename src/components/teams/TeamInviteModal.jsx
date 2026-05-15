@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import {
   Users,
   Send,
@@ -21,6 +21,7 @@ import TeamApplicationsModal from "../teams/TeamApplicationsModal";
 import { getUserInitials } from "../../utils/userHelpers";
 import { teamService } from "../../services/teamService";
 import { vacantRoleService } from "../../services/vacantRoleService";
+import socketService from "../../services/socketService";
 
 const normalizeId = (value) => {
   if (value === null || value === undefined || value === "") return null;
@@ -805,6 +806,104 @@ const TeamInviteModal = ({
     );
   };
 
+  const refreshSelectedTeamRequests = useCallback(async () => {
+    if (!selectedTeamForModal?.id) return;
+
+    const teamId = selectedTeamForModal.id;
+    const [invitationsResult, applicationsResult] = await Promise.allSettled([
+      teamService.getTeamSentInvitations(teamId),
+      teamService.getTeamApplications(teamId),
+    ]);
+
+    const allInvitations =
+      invitationsResult.status === "fulfilled"
+        ? invitationsResult.value?.data || []
+        : selectedTeamInvitations;
+    const allApplications =
+      applicationsResult.status === "fulfilled"
+        ? applicationsResult.value?.data || []
+        : selectedTeamApplications;
+
+    setSelectedTeamInvitations(allInvitations);
+    setSelectedTeamApplications(allApplications);
+    setTeamStatusData((prev) => ({
+      ...prev,
+      [teamId]: {
+        ...prev[teamId],
+        allInvitations,
+        allApplications,
+        hasInviteForUser: allInvitations.some(
+          (inv) =>
+            (inv.invitee?.id === inviteeId || inv.invitee_id === inviteeId) &&
+            inv.status === "pending",
+        ),
+        hasApplicationFromUser: allApplications.some(
+          (app) =>
+            (app.applicant?.id === inviteeId || app.applicant_id === inviteeId) &&
+            app.status === "pending",
+        ),
+      },
+    }));
+  }, [
+    inviteeId,
+    selectedTeamApplications,
+    selectedTeamForModal?.id,
+    selectedTeamInvitations,
+  ]);
+
+  useEffect(() => {
+    if (!isOpen || !selectedTeamForModal?.id) return undefined;
+
+    let detachSocketListeners = null;
+
+    const attachSocketListeners = (socket) => {
+      if (!socket) return;
+
+      if (detachSocketListeners) {
+        detachSocketListeners();
+      }
+
+      const handleTeamRequestEvent = (payload = {}) => {
+        const payloadTeamId = payload.teamId ?? payload.team_id ?? null;
+        if (
+          payloadTeamId != null &&
+          String(payloadTeamId) !== String(selectedTeamForModal.id)
+        ) {
+          return;
+        }
+
+        const type = String(payload.type ?? payload.notificationType ?? "").toLowerCase();
+        if (
+          !type ||
+          type.includes("invitation") ||
+          type.includes("invite") ||
+          type.includes("application")
+        ) {
+          refreshSelectedTeamRequests();
+        }
+      };
+
+      socket.on("notification:new", handleTeamRequestEvent);
+      socket.on("notification:updated", handleTeamRequestEvent);
+      socket.on("notification:deleted", handleTeamRequestEvent);
+
+      detachSocketListeners = () => {
+        socket.off("notification:new", handleTeamRequestEvent);
+        socket.off("notification:updated", handleTeamRequestEvent);
+        socket.off("notification:deleted", handleTeamRequestEvent);
+      };
+    };
+
+    const unsubscribeSocketReady = socketService.onSocketReady(attachSocketListeners);
+
+    return () => {
+      unsubscribeSocketReady();
+      if (detachSocketListeners) {
+        detachSocketListeners();
+      }
+    };
+  }, [isOpen, refreshSelectedTeamRequests, selectedTeamForModal?.id]);
+
   // Handle cancel invitation (called from TeamInvitesModal)
   const handleCancelInvitation = async (invitationId) => {
     try {
@@ -835,6 +934,50 @@ const TeamInviteModal = ({
       }
     } catch (err) {
       console.error("Error canceling invitation:", err);
+      throw err;
+    }
+  };
+
+  const handleCancelRoleInvitation = async (invitationId) => {
+    try {
+      const result = await teamService.cancelRoleInvitation(invitationId);
+
+      if (selectedTeamForModal) {
+        const teamId = selectedTeamForModal.id;
+        const canceledInvitation =
+          result?.data?.canceledInvitation ?? result?.canceledInvitation ?? false;
+        const updatedInvitations = canceledInvitation
+          ? selectedTeamInvitations.filter((inv) => inv.id !== invitationId)
+          : selectedTeamInvitations.map((inv) =>
+              inv.id === invitationId
+                ? {
+                    ...inv,
+                    role: null,
+                    roleId: null,
+                    role_id: null,
+                    roleName: null,
+                    role_name: null,
+                  }
+                : inv,
+            );
+
+        setSelectedTeamInvitations(updatedInvitations);
+        setTeamStatusData((prev) => ({
+          ...prev,
+          [teamId]: {
+            ...prev[teamId],
+            allInvitations: updatedInvitations,
+            hasInviteForUser: updatedInvitations.some(
+              (inv) =>
+                (inv.invitee?.id === inviteeId ||
+                  inv.invitee_id === inviteeId) &&
+                inv.status === "pending"
+            ),
+          },
+        }));
+      }
+    } catch (err) {
+      console.error("Error canceling role invitation:", err);
       throw err;
     }
   };
@@ -1305,7 +1448,9 @@ const TeamInviteModal = ({
         teamId={selectedTeamForModal?.id}
         invitations={selectedTeamInvitations}
         onCancelInvitation={handleCancelInvitation}
+        onCancelRoleInvitation={handleCancelRoleInvitation}
         teamName={selectedTeamForModal?.name}
+        highlightInvitationId={selectedTeamInvitations?.[0]?.id ?? null}
         highlightUserId={inviteeId}
       />
 
@@ -1317,6 +1462,7 @@ const TeamInviteModal = ({
         applications={selectedTeamApplications}
         onApplicationAction={handleApplicationAction}
         teamName={selectedTeamForModal?.name}
+        highlightApplicationId={selectedTeamApplications?.[0]?.id ?? null}
         highlightUserId={inviteeId}
       />
     </>

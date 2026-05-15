@@ -234,14 +234,18 @@ export const parseSystemMessage = (content) => {
   }
 
   // Pattern 4C: Open role marked as filled message
-  // Format: ✅ ROLE_FILLED: teamId:teamName | roleId:roleName | userId:userName
+  // Format: ✅ ROLE_FILLED: teamId:teamName | roleId:roleName | filledUserId:filledUserName | filledById:filledByName
+  // (filledBy token is optional for backwards compatibility)
   const roleFilledMatch = content.match(
-    /^(?:✅\s*)?ROLE_FILLED:\s*(.+?)\s+\|\s+(.+?)\s+\|\s+(.+)$/,
+    /^(?:✅\s*)?ROLE_FILLED:\s*(.+?)\s+\|\s+(.+?)\s+\|\s+(.+?)(?:\s+\|\s+(.+))?$/,
   );
   if (roleFilledMatch) {
     const team = parseIdNameToken(roleFilledMatch[1].trim());
     const role = parseIdNameToken(roleFilledMatch[2].trim());
     const user = parseIdNameToken(roleFilledMatch[3].trim());
+    const filledBy = roleFilledMatch[4]
+      ? parseIdNameToken(roleFilledMatch[4].trim())
+      : { id: null, name: null };
 
     return {
       type: "role_filled",
@@ -251,6 +255,8 @@ export const parseSystemMessage = (content) => {
       roleName: role.name,
       userId: user.id,
       userName: user.name,
+      filledById: filledBy.id,
+      filledByName: filledBy.name,
     };
   }
 
@@ -349,14 +355,18 @@ export const parseSystemMessage = (content) => {
   }
 
   // Pattern 4G: Application approved + role filled combined message
-  // Format: ✅ ROLE_APPLICATION_FILLED: teamId:teamName | roleId:roleName | applicantId:applicantName
+  // Format: ✅ ROLE_APPLICATION_FILLED: teamId:teamName | roleId:roleName | applicantId:applicantName | approverId:approverName
+  // (approver token is optional for backwards compatibility)
   const roleApplicationFilledMatch = content.match(
-    /^(?:✅\s*)?ROLE_APPLICATION_FILLED:\s*(.+?)\s+\|\s+(.+?)\s+\|\s+(.+)$/,
+    /^(?:✅\s*)?ROLE_APPLICATION_FILLED:\s*(.+?)\s+\|\s+(.+?)\s+\|\s+(.+?)(?:\s+\|\s+(.+))?$/,
   );
   if (roleApplicationFilledMatch) {
     const team = parseIdNameToken(roleApplicationFilledMatch[1].trim());
     const role = parseIdNameToken(roleApplicationFilledMatch[2].trim());
     const applicant = parseIdNameToken(roleApplicationFilledMatch[3].trim());
+    const approver = roleApplicationFilledMatch[4]
+      ? parseIdNameToken(roleApplicationFilledMatch[4].trim())
+      : { id: null, name: null };
 
     return {
       type: "role_application_filled",
@@ -366,6 +376,8 @@ export const parseSystemMessage = (content) => {
       roleName: role.name,
       applicantId: applicant.id,
       applicantName: applicant.name,
+      approverId: approver.id,
+      approverName: approver.name,
     };
   }
 
@@ -788,7 +800,9 @@ const getEventReactionPreview = (content) => {
       };
     case "role_application_filled":
       return {
-        text: `${parsedMessage.applicantName} has applied successfully for the role "${parsedMessage.roleName}" in this team and is now filling that role.`,
+        text: parsedMessage.approverName
+          ? `The role "${parsedMessage.roleName}" has been filled by ${parsedMessage.applicantName}, approved by ${parsedMessage.approverName}.`
+          : `The role "${parsedMessage.roleName}" has been filled by ${parsedMessage.applicantName}.`,
         Icon: UserCheck,
         color: EVENT_REACTION_PREVIEW_COLORS.role,
       };
@@ -862,9 +876,11 @@ const getEventReactionPreview = (content) => {
       };
     case "role_filled":
       return {
-        text: parsedMessage.userName
-          ? `${parsedMessage.userName} is now filling the role ${parsedMessage.roleName}.`
-          : `The role ${parsedMessage.roleName} was marked as filled.`,
+        text: parsedMessage.userName && parsedMessage.filledByName
+          ? `The role ${parsedMessage.roleName} has been filled by ${parsedMessage.userName}, approved by ${parsedMessage.filledByName}.`
+          : parsedMessage.userName
+          ? `The role ${parsedMessage.roleName} has been filled by ${parsedMessage.userName}.`
+          : `The role ${parsedMessage.roleName} has been marked filled.`,
         Icon: UserCheck,
         color: EVENT_REACTION_PREVIEW_COLORS.role,
       };
@@ -2401,20 +2417,35 @@ const MessageDisplay = ({
       />
     );
 
-    const messageText = parsedMessage.applicantName &&
-      parsedMessage.applicantName.trim().toLowerCase() !== "someone" ? (
-      <>
-        <MentionById
-          userId={parsedMessage.applicantId}
-          name={parsedMessage.applicantName}
-        />{" "}
-        has applied successfully for the role {roleMention} in this team and is
-        now filling that role.
-      </>
+    const hasKnownApplicant =
+      parsedMessage.applicantName &&
+      parsedMessage.applicantName.trim().toLowerCase() !== "someone";
+    const hasKnownApprover =
+      parsedMessage.approverName &&
+      parsedMessage.approverName.trim().toLowerCase() !== "someone";
+    const applicantMention = hasKnownApplicant ? (
+      <MentionById
+        userId={parsedMessage.applicantId}
+        name={parsedMessage.applicantName}
+      />
     ) : (
+      "someone"
+    );
+    const approverMention = hasKnownApprover ? (
+      <MentionById
+        userId={parsedMessage.approverId}
+        name={parsedMessage.approverName}
+      />
+    ) : null;
+
+    const messageText = (
       <>
-        An application for the role {roleMention} was approved and the role is
-        now filled.
+        The role {roleMention} has been filled by {applicantMention}
+        {approverMention ? (
+          <span>, approved by {approverMention}.</span>
+        ) : (
+          "."
+        )}
       </>
     );
 
@@ -2688,6 +2719,9 @@ const MessageDisplay = ({
     const hasKnownFilledUser =
       parsedMessage.userName &&
       parsedMessage.userName.trim().toLowerCase() !== "someone";
+    const hasKnownFilledBy =
+      parsedMessage.filledByName &&
+      parsedMessage.filledByName.trim().toLowerCase() !== "someone";
 
     const roleMention = (
       <RoleMentionById
@@ -2698,13 +2732,24 @@ const MessageDisplay = ({
         filledAt={message.createdAt}
       />
     );
+    const filledByMention = hasKnownFilledBy ? (
+      <MentionById
+        userId={parsedMessage.filledById}
+        name={parsedMessage.filledByName}
+      />
+    ) : null;
     const messageText = hasKnownFilledUser ? (
       <>
+        The role {roleMention} has been filled by{" "}
         <MentionById
           userId={parsedMessage.userId}
           name={parsedMessage.userName}
-        />{" "}
-        is now filling the role {roleMention}.
+        />
+        {filledByMention ? (
+          <span>, approved by {filledByMention}.</span>
+        ) : (
+          "."
+        )}
       </>
     ) : (
       <>The role {roleMention} was marked as filled.</>
@@ -4084,11 +4129,12 @@ const MessageDisplay = ({
                 const parsedMessage = parseSystemMessage(message.content);
 
                 if (parsedMessage) {
-                  const isHighlighted = highlightMessageIds.includes(
-                    message.id,
+                  const isHighlighted = highlightMessageIds.some(
+                    (id) => String(id) === String(message.id),
                   );
                   const isFirstHighlighted =
-                    isHighlighted && message.id === highlightMessageIds[0];
+                    isHighlighted &&
+                    String(message.id) === String(highlightMessageIds[0]);
 
                   const wrapperClass = isHighlighted
                     ? "message-highlight rounded-xl p-2"
@@ -4158,7 +4204,7 @@ const MessageDisplay = ({
                       content.props.children,
                     );
                     let attachedReactButton = false;
-                    const nextChildren = children.map((child) => {
+                    const nextChildren = children.map((child, i) => {
                       if (
                         attachedReactButton ||
                         !React.isValidElement(child) ||
@@ -4171,7 +4217,7 @@ const MessageDisplay = ({
 
                       attachedReactButton = true;
                       return (
-                        <div className="relative inline-flex max-w-full">
+                        <div key={child.key ?? i} className="relative inline-flex max-w-full">
                           {child}
                           {renderReactButton()}
                         </div>
@@ -4448,12 +4494,12 @@ const MessageDisplay = ({
 
                     <div className="space-y-1">
                       {messageGroup.messages.map((message, messageIndex) => {
-                        const isHighlighted = highlightMessageIds.includes(
-                          message.id,
+                        const isHighlighted = highlightMessageIds.some(
+                          (id) => String(id) === String(message.id),
                         );
                         const isFirstHighlighted =
                           isHighlighted &&
-                          message.id === highlightMessageIds[0];
+                          String(message.id) === String(highlightMessageIds[0]);
 
                         const isDeleted = !!(
                           message.deletedAt || message.deleted_at

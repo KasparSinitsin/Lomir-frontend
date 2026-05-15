@@ -4,6 +4,7 @@ import {
   MessageSquare,
   Users,
   Check,
+  UserCheck,
   X,
   MailOpen,
   UserPlus,
@@ -278,6 +279,11 @@ const TeamInvitationDetailsModal = ({
           isSynthetic: syntheticRoleFlag,
         };
 
+  const roleStatus = roleForCard?.status;
+  const isRoleFilled = hasRoleInvitation && roleStatus === "filled";
+  const isRoleClosed = hasRoleInvitation && roleStatus === "closed";
+  const isRoleUnavailable = isRoleFilled || isRoleClosed;
+
   // Custom header
   const customHeader = (
     <div>
@@ -304,6 +310,27 @@ const TeamInvitationDetailsModal = ({
 
         {/* Buttons (right) */}
         <div className="flex flex-wrap justify-end gap-2">
+          {isRoleUnavailable && (
+            <Tooltip
+              content={
+                isInternal
+                  ? (isRoleFilled ? "This role is already filled" : "This role is closed")
+                  : (isRoleFilled
+                      ? "This role is already filled — you can still join the team"
+                      : "This role is closed — you can still join the team")
+              }
+            >
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={true}
+                className="border border-base-content/30 text-base-content/40"
+                icon={<UserCheck size={16} />}
+              >
+                {isInternal ? "Accept Role" : "Accept & Fill Role"}
+              </Button>
+            </Tooltip>
+          )}
           <Button
             variant="errorOutline"
             size="sm"
@@ -315,15 +342,17 @@ const TeamInvitationDetailsModal = ({
           </Button>
           {hasRoleInvitation && isInternal ? (
             // Internal role invite: user is already a member, just accept/fill the role
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={handleAcceptWithRole}
-              disabled={isControlsDisabled}
-              icon={<Check size={16} />}
-            >
-              {isAcceptRoleLoading ? "Accepting..." : "Accept Role"}
-            </Button>
+            !isRoleUnavailable && (
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={handleAcceptWithRole}
+                disabled={isControlsDisabled}
+                icon={<Check size={16} />}
+              >
+                {isAcceptRoleLoading ? "Accepting..." : "Accept Role"}
+              </Button>
+            )
           ) : hasRoleInvitation ? (
             // External invite with a role: offer team-only or fill-role options
             <>
@@ -336,15 +365,17 @@ const TeamInvitationDetailsModal = ({
               >
                 {isAcceptTeamLoading ? "Joining..." : "Join Team Only"}
               </Button>
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={handleAcceptWithRole}
-                disabled={isControlsDisabled}
-                icon={<Check size={16} />}
-              >
-                {isAcceptRoleLoading ? "Joining..." : "Accept & Fill Role"}
-              </Button>
+              {!isRoleUnavailable && (
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={handleAcceptWithRole}
+                  disabled={isControlsDisabled}
+                  icon={<Check size={16} />}
+                >
+                  {isAcceptRoleLoading ? "Joining..." : "Accept & Fill Role"}
+                </Button>
+              )}
             </>
           ) : (
             // No role: simple accept

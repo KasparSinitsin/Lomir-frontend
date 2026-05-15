@@ -182,7 +182,7 @@ const VacantRoleCard = ({
   onEdit,
   onDelete,
   onStatusChange,
-  allowedStatusActions = ["filled", "closed", "open"],
+  allowedStatusActions = ["closed", "open"],
   statusActionLoading = false,
   matchScore = null,
   matchDetails = null,
@@ -669,7 +669,8 @@ const VacantRoleCard = ({
   const canMarkFilled =
     canUpdateStatus &&
     status === "open" &&
-    statusActions.includes("filled");
+    statusActions.includes("filled") &&
+    Boolean(viewAsUser);
   const canCloseRole =
     canUpdateStatus &&
     status === "open" &&
@@ -686,6 +687,7 @@ const VacantRoleCard = ({
     canReopenRole;
   const canOpenBadgeMenu = hasBadgeActions && !statusActionLoading;
   const isFilled = status === "filled";
+  const isClosed = status === "closed";
   const filledUser = isFilled
     ? resolveFilledRoleUser(role, { viewAsUserId, viewAsUser })
     : null;
@@ -704,6 +706,12 @@ const VacantRoleCard = ({
         label: "Filled",
         badgeColorClass: "badge-role-filled",
       }
+    : isClosed
+    ? {
+        icon: XCircle,
+        label: "Closed",
+        badgeColorClass: "badge-role-closed",
+      }
     : {
         icon: UserSearch,
         label: "Vacant",
@@ -711,9 +719,13 @@ const VacantRoleCard = ({
       };
   const cardColorClass = isFilled
     ? "bg-green-50 hover:bg-green-100"
+    : isClosed
+    ? "bg-gray-50 hover:bg-gray-100"
     : "bg-amber-50 hover:bg-amber-100/70";
   const initialsAvatarClass = isFilled
     ? "bg-[var(--color-primary-focus)] text-white"
+    : isClosed
+    ? "bg-slate-400 text-white"
     : "bg-amber-500 text-white";
   const isMiniView = viewMode === "mini";
   const avatarSizeClass = isMiniView ? "w-10 h-10" : "w-12 h-12";
@@ -914,9 +926,9 @@ const VacantRoleCard = ({
 
   const resolvedTeam =
     team ??
-    ((role.teamId ?? role.team_id)
+    ((role.teamId ?? role.team_id ?? teamContext?.id)
       ? {
-          id: role.teamId ?? role.team_id,
+          id: role.teamId ?? role.team_id ?? teamContext?.id,
           name:
             role.teamName ??
             role.team_name ??

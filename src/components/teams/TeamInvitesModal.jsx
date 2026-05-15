@@ -17,6 +17,7 @@ import VacantRoleCard from "./VacantRoleCard";
 import { matchingService } from "../../services/matchingService";
 import { userService } from "../../services/userService";
 import { vacantRoleService } from "../../services/vacantRoleService";
+import teamService from "../../services/teamService";
 import { useAuth } from "../../contexts/AuthContext";
 import { useUserModal } from "../../contexts/UserModalContext";
 import {
@@ -198,6 +199,7 @@ const computeRoleUserMatch = ({
  * @param {Array} invitations - Array of pending invitation objects
  * @param {Function} onCancelInvitation - Callback to cancel an invitation
  * @param {string} teamName - Name of the team (for display)
+ * @param {string|number|null} highlightInvitationId - Invitation ID to scroll to + highlight (optional)
  * @param {string|number|null} highlightUserId - User ID to scroll to + highlight (optional)
  */
 const TeamInvitesModal = ({
@@ -206,7 +208,9 @@ const TeamInvitesModal = ({
   teamId = null,
   invitations = [],
   onCancelInvitation,
+  onCancelRoleInvitation,
   teamName,
+  highlightInvitationId = null,
   highlightUserId = null,
 }) => {
   // ============ State ============
@@ -218,6 +222,8 @@ const TeamInvitesModal = ({
   const [localInviteeRoleMatchMap, setLocalInviteeRoleMatchMap] = useState({});
   const [pendingCancelInvitationId, setPendingCancelInvitationId] =
     useState(null);
+  const [pendingCancelType, setPendingCancelType] = useState("team");
+  const [hydratedRoleMap, setHydratedRoleMap] = useState({});
 
   // ============ Refs ============
   const highlightedRef = useRef(null);
@@ -229,18 +235,23 @@ const TeamInvitesModal = ({
 
   // ============ Scroll to highlighted invitation ============
   useEffect(() => {
-    if (isOpen && highlightUserId && highlightedRef.current) {
-      // Small delay to ensure modal is rendered
-      const t = setTimeout(() => {
+    if (!isOpen || (!highlightInvitationId && !highlightUserId)) return;
+
+    let frameId = null;
+    const t = setTimeout(() => {
+      frameId = window.requestAnimationFrame(() => {
         highlightedRef.current?.scrollIntoView({
           behavior: "smooth",
           block: "center",
         });
-      }, 100);
+      });
+    }, 150);
 
-      return () => clearTimeout(t);
-    }
-  }, [isOpen, highlightUserId]);
+    return () => {
+      clearTimeout(t);
+      if (frameId != null) window.cancelAnimationFrame(frameId);
+    };
+  }, [highlightInvitationId, highlightUserId, invitations.length, isOpen]);
 
   useEffect(() => {
     const selfRoleIds = [
@@ -533,16 +544,72 @@ const TeamInvitesModal = ({
     };
   }, [isOpen, invitations]);
 
+  // Poll role status every 20s so VacantRoleCard reflects changes made by others
+  useEffect(() => {
+    if (!isOpen || !teamId) return;
+
+    const roleIds = [
+      ...new Set(
+        invitations
+          .map(
+            (inv) =>
+              inv?.role?.id ?? inv?.roleId ?? inv?.role_id ?? null,
+          )
+          .filter(Boolean)
+          .map(String),
+      ),
+    ];
+
+    if (roleIds.length === 0) return;
+
+    let isCancelled = false;
+
+    const pollRoles = async () => {
+      try {
+        const results = await Promise.allSettled(
+          roleIds.map((id) =>
+            vacantRoleService.getVacantRoleById(teamId, id),
+          ),
+        );
+        if (isCancelled) return;
+        const nextMap = {};
+        results.forEach((result, i) => {
+          if (result.status === "fulfilled") {
+            const payload = result.value?.data ?? result.value;
+            const roleData =
+              payload?.success !== undefined
+                ? payload?.data ?? null
+                : payload?.data?.data ?? payload?.data ?? payload;
+            if (roleData) nextMap[roleIds[i]] = roleData;
+          }
+        });
+        setHydratedRoleMap((prev) => ({ ...prev, ...nextMap }));
+      } catch {
+        // silent — keep showing last known state
+      }
+    };
+
+    pollRoles();
+    const intervalId = setInterval(pollRoles, 20_000);
+
+    return () => {
+      isCancelled = true;
+      clearInterval(intervalId);
+    };
+  }, [isOpen, teamId, invitations]);
+
   // ============ Handlers ============
 
-  const handleCancelInvitation = (invitationId) => {
+  const handleCancelInvitation = (invitationId, type = "team") => {
     if (!invitationId) return;
+    setPendingCancelType(type);
     setPendingCancelInvitationId(invitationId);
   };
 
   const closeCancelInvitationModal = () => {
     if (loading) return;
     setPendingCancelInvitationId(null);
+    setPendingCancelType("team");
   };
 
   const confirmCancelInvitation = async () => {
@@ -552,10 +619,23 @@ const TeamInvitesModal = ({
       setLoading(true);
       setError(null);
 
-      await onCancelInvitation(pendingCancelInvitationId);
+      if (pendingCancelType === "role") {
+        if (onCancelRoleInvitation) {
+          await onCancelRoleInvitation(pendingCancelInvitationId);
+        } else {
+          await teamService.cancelRoleInvitation(pendingCancelInvitationId);
+        }
+      } else {
+        await onCancelInvitation(pendingCancelInvitationId);
+      }
 
-      setSuccess("Invitation canceled successfully!");
+      setSuccess(
+        pendingCancelType === "role"
+          ? "Role invitation canceled successfully!"
+          : "Team invitation canceled successfully!",
+      );
       setPendingCancelInvitationId(null);
+      setPendingCancelType("team");
 
       // Clear success after 3 seconds
       setTimeout(() => setSuccess(null), 3000);
@@ -606,6 +686,13 @@ const TeamInvitesModal = ({
     pendingCancelInvitation?.invitee
       ? getDisplayName(pendingCancelInvitation.invitee)
       : "this user";
+  const pendingCancelIsRole = pendingCancelType === "role";
+  const pendingCancelTitle = pendingCancelIsRole
+    ? "Cancel Role Invitation"
+    : "Cancel Team Invitation";
+  const pendingCancelButtonLabel = pendingCancelIsRole
+    ? "Cancel Role Invitation"
+    : "Cancel Team Invitation";
 
   return (
     <RequestListModal
@@ -627,7 +714,7 @@ const TeamInvitesModal = ({
         <Modal
           isOpen={Boolean(pendingCancelInvitationId)}
           onClose={closeCancelInvitationModal}
-          title="Cancel Invitation"
+          title={pendingCancelTitle}
           position="center"
           size="small"
           bodyClassName="p-4"
@@ -649,14 +736,15 @@ const TeamInvitesModal = ({
                 disabled={loading}
                 icon={<Trash2 size={16} />}
               >
-                {loading ? "Canceling..." : "Cancel Invitation"}
+                {loading ? "Canceling..." : pendingCancelButtonLabel}
               </Button>
             </div>
           }
         >
           <p className="text-sm text-base-content/80">
-            Cancel the invitation for {pendingInviteeName}? They will no longer
-            be able to respond to it.
+            {pendingCancelIsRole
+              ? `Cancel the role invitation for ${pendingInviteeName}?`
+              : `Cancel the team invitation for ${pendingInviteeName}? They will no longer be able to respond to it.`}
           </p>
         </Modal>
       }
@@ -677,9 +765,11 @@ const TeamInvitesModal = ({
           invitation?.roleIsSynthetic ??
           invitation?.is_synthetic ??
           invitation?.isSynthetic;
+        const polledRole = roleId ? hydratedRoleMap[String(roleId)] : null;
         const roleForCard = invitation?.role
           ? {
               ...invitation.role,
+              ...(polledRole ?? {}),
               is_synthetic:
                 invitation.role.is_synthetic ??
                 invitation.role.isSynthetic ??
@@ -695,6 +785,7 @@ const TeamInvitesModal = ({
               role_name: invitation?.role_name ?? invitation?.roleName,
               is_synthetic: syntheticRoleFlag,
               isSynthetic: syntheticRoleFlag,
+              ...(polledRole ?? {}),
             };
         const isSelfInvitation =
           currentUser?.id === (invitation.invitee?.id ?? invitation.invitee_id);
@@ -710,12 +801,18 @@ const TeamInvitesModal = ({
           roleId != null && inviteeId != null
             ? localInviteeRoleMatchMap[String(roleId)]?.[String(inviteeId)] ?? null
             : null;
+        const hasRoleInvitation = roleId != null;
+        const isInternalInvitation = Boolean(
+          invitation?.isInternal ?? invitation?.is_internal ?? false,
+        );
 
         // Normalize types to avoid "1" vs 1 mismatches
         const isHighlighted =
-          highlightUserId != null &&
-          inviteeId != null &&
-          String(inviteeId) === String(highlightUserId);
+          (highlightInvitationId != null &&
+            String(invitation.id) === String(highlightInvitationId)) ||
+          (highlightUserId != null &&
+            inviteeId != null &&
+            String(inviteeId) === String(highlightUserId));
         const showInviteeUsername =
           invitation.invitee?.username &&
           (getDisplayName(invitation.invitee) !== invitation.invitee?.username ||
@@ -728,7 +825,7 @@ const TeamInvitesModal = ({
             ref={isHighlighted ? highlightedRef : null}
             className={`bg-base-200/30 rounded-lg border border-base-300 p-4 transition-all duration-300 ${
               isHighlighted
-                ? "ring-2 ring-primary ring-offset-2 bg-primary/5"
+                ? "ring-2 ring-green-500/70 ring-offset-2 border-green-400 bg-green-50"
                 : ""
             }`}
           >
@@ -890,15 +987,27 @@ const TeamInvitesModal = ({
               )}
 
               {/* Action Button (right) */}
-              <div className="flex justify-end">
-                <Button
-                  variant="errorOutline"
-                  size="sm"
-                  onClick={() => handleCancelInvitation(invitation.id)}
-                  disabled={loading}
-                >
-                  {loading ? "Canceling..." : "Cancel Invitation"}
-                </Button>
+              <div className="flex flex-wrap justify-end gap-2">
+                {hasRoleInvitation && (
+                  <Button
+                    variant="errorOutline"
+                    size="sm"
+                    onClick={() => handleCancelInvitation(invitation.id, "role")}
+                    disabled={loading}
+                  >
+                    {loading ? "Canceling..." : "Cancel Role Invitation"}
+                  </Button>
+                )}
+                {(!hasRoleInvitation || !isInternalInvitation) && (
+                  <Button
+                    variant="errorOutline"
+                    size="sm"
+                    onClick={() => handleCancelInvitation(invitation.id, "team")}
+                    disabled={loading}
+                  >
+                    {loading ? "Canceling..." : "Cancel Team Invitation"}
+                  </Button>
+                )}
               </div>
             </div>
           </div>

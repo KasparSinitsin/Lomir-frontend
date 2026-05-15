@@ -203,7 +203,7 @@ const TeamApplicationModal = ({
       )}
       <div>
         <h2 className="text-xl font-medium text-primary">
-          {isInternal ? "Apply to fill a role in your team" : "Apply to join this Team"}
+          {isInternal ? "Apply to fill this role within your team" : "Apply to join this Team"}
         </h2>
       </div>
     </div>
@@ -230,7 +230,7 @@ const TeamApplicationModal = ({
         disabled={loading || !message.trim() || (isInternal && !selectedRoleId)}
         icon={<Send size={16} />}
       >
-        {loading ? "Sending..." : isInternal ? "Send Role Application" : "Send Application"}
+        {loading ? "Sending..." : isInternal ? "Apply to fill this role within your team" : "Send Application"}
       </Button>
     </div>
   );

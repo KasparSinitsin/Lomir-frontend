@@ -137,10 +137,10 @@ const useMyTeamsSort = ({ teams = [], onSortChange } = {}) => {
           const [applicationsResponse, invitationsResponse] = await Promise.all(
             [
               teamService
-                .getTeamApplications(team.id, { skipAuthRedirect: true })
+                .getTeamApplications(team.id, { skipAuthRedirect: true, skipErrorLog: true })
                 .catch(() => ({ data: [] })),
               teamService
-                .getTeamSentInvitations(team.id, { skipAuthRedirect: true })
+                .getTeamSentInvitations(team.id, { skipAuthRedirect: true, skipErrorLog: true })
                 .catch(() => ({ data: [] })),
             ],
           );

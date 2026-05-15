@@ -2,7 +2,24 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "../../contexts/AuthContext";
 import LomirLogo from "../../assets/images/Lomir-logowordmark-color.svg";
-import { Bell, MessageCircle, Search, User, Settings, LogOut } from "lucide-react";
+import {
+  AlertTriangle,
+  Award,
+  Bell,
+  CircleX,
+  Crown,
+  LogOut,
+  Mail,
+  MessageCircle,
+  Pencil,
+  Search,
+  Settings,
+  User,
+  UserCheck,
+  UserMinus,
+  UserPlus,
+  UserSearch,
+} from "lucide-react";
 import Colors from "../../utils/Colors";
 import DemoAvatarOverlay from "../users/DemoAvatarOverlay";
 import { getUserInitials, isSyntheticUser } from "../../utils/userHelpers";
@@ -20,38 +37,72 @@ const buildMessageTooltip = (count, teamCount, senderCount, mentionCount) => {
   if (!count && !mentionCount) return undefined;
   const parts = [];
   if (count) {
-    const msg = `${count} unread message${count !== 1 ? "s" : ""}`;
-    const sub = [];
-    if (teamCount > 0) sub.push(`in ${teamCount} team${teamCount !== 1 ? "s" : ""}`);
-    if (senderCount > 0) sub.push(`from ${senderCount} person${senderCount !== 1 ? "s" : ""}`);
-    parts.push(sub.length ? `${msg} ${sub.join(" and ")}` : msg);
+    parts.push(`${count} unread message${count !== 1 ? "s" : ""}`);
+    if (teamCount > 0) parts.push(`in ${teamCount} team${teamCount !== 1 ? "s" : ""}`);
+    if (senderCount > 0) parts.push(`from ${senderCount} person${senderCount !== 1 ? "s" : ""}`);
   }
   if (mentionCount) parts.push(`${mentionCount} mention${mentionCount !== 1 ? "s" : ""}`);
   return parts.join("\n");
 };
 
-const buildNotificationTooltip = (count, types) => {
+// tc = number of distinct teams for this notification type
+const teamSuffix = (tc) => tc > 1 ? ` in ${tc} teams` : "";
+const inYourTeam = (tc) => tc > 1 ? `in ${tc} of your teams` : "in one of your teams";
+const yourTeams = (tc) => tc > 1 ? `in ${tc} of your teams` : "one of your teams";
+
+const NOTIFICATION_TYPE_META = [
+  { keys: ["invitationReceived", "invitation_received"],             Icon: Mail,          text: (p, n, tc) => `${p(n, "team invitation")} for you${teamSuffix(tc)}` },
+  { keys: ["roleInvitation", "role_invitation"],                     Icon: UserSearch,    text: (p, n, tc) => `${p(n, "role invitation")} for you${teamSuffix(tc)}` },
+  { keys: ["roleAssigned", "role_assigned"],                         Icon: UserCheck,     text: (p, n, tc) => `${p(n, "role assignment")} ${inYourTeam(tc)}` },
+  { keys: ["invitationAccepted", "invitation_accepted"],             Icon: UserCheck,     text: (p, n, tc) => `${p(n, "invitation")} accepted${teamSuffix(tc)}` },
+  { keys: ["applicationReceived", "application_received"],           Icon: Mail,          text: (p, n, tc) => `${p(n, "team application")} to review${teamSuffix(tc)}` },
+  { keys: ["applicationApproved", "application_approved"],           Icon: UserPlus,      text: (p, n, tc) => `${p(n, "team")} joined successfully${teamSuffix(tc)}` },
+  { keys: ["applicationRejected", "application_rejected"],           Icon: CircleX,       text: (p, n, tc) => `Your team application${n !== 1 ? `s (${n})` : ""} rejected${teamSuffix(tc)}` },
+  { keys: ["badgeAwarded", "badge_awarded"],                         Icon: Award,         text: (p, n)     => `${p(n, "new badge award")} for you` },
+  { keys: ["memberJoined", "member_joined"],                         Icon: UserPlus,      text: (p, n, tc) => `${p(n, "new member")} joined ${yourTeams(tc)}` },
+  { keys: ["memberLeft", "member_left"],                             Icon: LogOut,        text: (p, n, tc) => `${p(n, "member")} left ${yourTeams(tc)}` },
+  { keys: ["memberRemoved", "member_removed"],                       Icon: UserMinus,     text: (p, n, tc) => `Removed from ${tc > 1 ? `${tc} of your teams` : "a team"}` },
+  { keys: ["roleChanged", "role_changed"],                           Icon: Pencil,        text: (p, n, tc) => `${p(n, "role change")} ${inYourTeam(tc)}` },
+  { keys: ["roleCreated", "role_created"],                           Icon: UserSearch,    text: (p, n, tc) => `${p(n, "new role")} opened ${inYourTeam(tc)}` },
+  { keys: ["roleUpdated", "role_updated"],                           Icon: Pencil,        text: (p, n, tc) => `${n} role${n !== 1 ? "s" : ""} edited ${inYourTeam(tc)}` },
+  { keys: ["roleDeleted", "role_deleted"],                           Icon: UserMinus,     text: (p, n, tc) => `${p(n, "role")} deleted ${inYourTeam(tc)}` },
+  { keys: ["roleClosed", "role_closed"],                             Icon: CircleX,       text: (p, n, tc) => `${p(n, "role")} closed ${inYourTeam(tc)}` },
+  { keys: ["roleFilled", "role_filled"],                             Icon: UserCheck,     text: (p, n, tc) => `${p(n, "role")} filled ${inYourTeam(tc)}` },
+  { keys: ["roleReopened", "role_reopened", "role_reopened_admin"],  Icon: UserSearch,    text: (p, n, tc) => `${p(n, "role")} reopened ${inYourTeam(tc)}` },
+  { keys: ["ownershipTransferred", "ownership_transferred"],         Icon: Crown,         text: (p, n)     => `${p(n, "ownership transfer")}` },
+  { keys: ["teamDeleted", "team_deleted"],                           Icon: AlertTriangle, text: (p, n)     => `${p(n, "team")} deleted` },
+  { keys: ["invitationDeclined", "invitation_declined"],             Icon: CircleX,       text: (p, n, tc) => `Your invitation${n !== 1 ? `s (${n})` : ""} declined${teamSuffix(tc)}` },
+  { keys: ["invitationCancelled", "invitation_cancelled"],           Icon: CircleX,       text: (p, n, tc) => `Your invitation${n !== 1 ? `s (${n})` : ""} cancelled${teamSuffix(tc)}` },
+  { keys: ["applicationCancelled", "application_cancelled"],               Icon: CircleX,       text: (p, n, tc) => `${p(n, "team application")} withdrawn${teamSuffix(tc)}` },
+  { keys: ["roleApplicationCancelled", "role_application_cancelled"],      Icon: CircleX,       text: (p, n, tc) => `${p(n, "role application")} withdrawn${teamSuffix(tc)}` },
+];
+
+const buildNotificationTooltip = (count, types, teamCounts) => {
   if (!count || !types) return undefined;
   const p = (n, s) => `${n} ${s}${n !== 1 ? "s" : ""}`;
-  const lines = [
-    types.invitationReceived && `${p(types.invitationReceived, "team invitation")} for you`,
-    types.roleInvitation && `${p(types.roleInvitation, "role invitation")} for you`,
-    types.invitationAccepted && `${p(types.invitationAccepted, "invitation")} accepted`,
-    types.applicationReceived && `${p(types.applicationReceived, "team application")} to review`,
-    types.applicationApproved && `${p(types.applicationApproved, "team")} joined successfully`,
-    types.applicationRejected && `${p(types.applicationRejected, "team application")} rejected`,
-    types.badgeAwarded && `${p(types.badgeAwarded, "new badge award")} for you`,
-    types.memberJoined && `${p(types.memberJoined, "new member")} joined your team`,
-    types.memberLeft && `${p(types.memberLeft, "member")} left your team`,
-    types.memberRemoved && `Removed from ${p(types.memberRemoved, "team")}`,
-    types.roleChanged && `${p(types.roleChanged, "role change")} in your team`,
-    types.ownershipTransferred && `${p(types.ownershipTransferred, "ownership transfer")}`,
-    types.teamDeleted && `${p(types.teamDeleted, "team")} deleted`,
-    types.invitationDeclined && `${p(types.invitationDeclined, "invitation")} declined`,
-    types.invitationCancelled && `${p(types.invitationCancelled, "invitation")} cancelled`,
-    types.applicationCancelled && `${p(types.applicationCancelled, "application")} cancelled`,
-  ].filter(Boolean);
-  return lines.length ? lines.join("\n") : `${p(count, "notification")}`;
+  const typeCount = (...keys) =>
+    keys.reduce((sum, key) => sum + (Number(types[key]) || 0), 0);
+  const typeTeamCount = (...keys) =>
+    keys.reduce((max, key) => Math.max(max, Number(teamCounts?.[key]) || 0), 0);
+
+  const lines = NOTIFICATION_TYPE_META.map(({ keys, Icon, text }) => {
+    const n = typeCount(...keys);
+    const tc = typeTeamCount(...keys);
+    return n ? { Icon, label: text(p, n, tc) } : null;
+  }).filter(Boolean);
+
+  if (!lines.length) return `${p(count, "notification")}`;
+
+  return (
+    <div className="flex flex-col gap-1">
+      {lines.map(({ Icon, label }, i) => (
+        <div key={i} className="flex items-center gap-1.5">
+          <Icon size={11} strokeWidth={2.5} className="flex-shrink-0 opacity-70" />
+          <span>{label}</span>
+        </div>
+      ))}
+    </div>
+  );
 };
 
 const Navbar = () => {
@@ -67,6 +118,7 @@ const Navbar = () => {
   const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
   const [firstUnreadNotification, setFirstUnreadNotification] = useState(null);
   const [notificationTypeCounts, setNotificationTypeCounts] = useState({});
+  const [notificationTypeTeamCounts, setNotificationTypeTeamCounts] = useState({});
   const location = useLocation();
   const navigate = useNavigate();
   const lastMessageFetchRef = useRef(0);
@@ -79,6 +131,10 @@ const Navbar = () => {
     "inline-flex items-center text-[var(--color-primary)] hover:text-[var(--color-primary-focus)] hover:drop-shadow-neon transition duration-200";
   const navLinkClasses =
     "text-[var(--color-primary)] text-center border-2 border-transparent rounded-full px-2 py-1 transition-all duration-300";
+  const messageMentionNotificationCount =
+    notificationTypeCounts.messageMention ||
+    notificationTypeCounts.message_mention ||
+    0;
 
   // Fetch unread message count
   const fetchUnreadMessageCount = useCallback(async () => {
@@ -104,6 +160,7 @@ const Navbar = () => {
       setUnreadNotificationCount(response.data?.count || 0);
       setFirstUnreadNotification(response.data?.firstUnread || null);
       setNotificationTypeCounts(response.data?.typeCounts || {});
+      setNotificationTypeTeamCounts(response.data?.typeTeamCounts || {});
     } catch (error) {
       console.error("Error fetching unread notification count:", error);
     }
@@ -203,6 +260,7 @@ const Navbar = () => {
       setUnreadNotificationCount(0);
       setFirstUnreadNotification(null);
       setNotificationTypeCounts({});
+      setNotificationTypeTeamCounts({});
       return;
     }
 
@@ -219,8 +277,10 @@ const Navbar = () => {
       }
 
       const handleNewNotification = () => {
-        // Refetch to get the latest count and firstUnread
+        // Team events often create both a bell notification and a system chat
+        // message, so refresh both badge sources.
         fetchUnreadNotificationCount();
+        fetchUnreadMessageCount();
       };
 
       socket.on("notification:new", handleNewNotification);
@@ -242,7 +302,7 @@ const Navbar = () => {
         detachNotificationListener();
       }
     };
-  }, [isAuthenticated, fetchUnreadNotificationCount]);
+  }, [isAuthenticated, fetchUnreadMessageCount, fetchUnreadNotificationCount]);
 
   // Refetch message count when path changes
   useEffect(() => {
@@ -278,6 +338,7 @@ const Navbar = () => {
       setUnreadNotificationCount(fresh?.count || 0);
       setFirstUnreadNotification(fresh?.firstUnread || null);
       setNotificationTypeCounts(fresh?.typeCounts || {});
+      setNotificationTypeTeamCounts(fresh?.typeTeamCounts || {});
       freshFirst = fresh?.firstUnread || null;
     } catch (error) {
       console.error("Error fetching notifications:", error);
@@ -346,8 +407,8 @@ const Navbar = () => {
               >
                 <NotificationBadge
                   variant="alert"
-                  count={unreadNotificationCount - (notificationTypeCounts.messageMention || 0)}
-                  title={buildNotificationTooltip(unreadNotificationCount - (notificationTypeCounts.messageMention || 0), notificationTypeCounts)}
+                  count={unreadNotificationCount - messageMentionNotificationCount}
+                  title={buildNotificationTooltip(unreadNotificationCount - messageMentionNotificationCount, notificationTypeCounts, notificationTypeTeamCounts)}
                 >
                   <Bell size={22} strokeWidth={2.2} />
                 </NotificationBadge>
@@ -363,7 +424,7 @@ const Navbar = () => {
                 <NotificationBadge
                   variant="message"
                   count={unreadMessageCount}
-                  title={buildMessageTooltip(unreadMessageCount, messageTeamCount, messageSenderCount, notificationTypeCounts.messageMention)}
+                  title={buildMessageTooltip(unreadMessageCount, messageTeamCount, messageSenderCount, messageMentionNotificationCount)}
                 >
                   <MessageCircle size={22} strokeWidth={2.2} />
                 </NotificationBadge>
