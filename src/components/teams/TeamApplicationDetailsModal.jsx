@@ -50,6 +50,7 @@ const TeamApplicationDetailsModal = ({
   onClose,
   onCancel,
   onSendReminder,
+  notificationHighlight = false,
 }) => {
   // ============ State ============
   const loading = false;
@@ -432,6 +433,7 @@ const TeamApplicationDetailsModal = ({
               matchDetails={roleMatchDetails}
               canManage={false}
               isTeamMember={false}
+              notificationHighlight={notificationHighlight}
             />
           </div>
         )}

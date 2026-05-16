@@ -194,6 +194,7 @@ const VacantRoleCard = ({
   teamContext = null,
   activeFilters = { showLocation: true, showTags: true, showBadges: true },
   showSearchResultTypeOverlay = false,
+  notificationHighlight = false,
 }) => {
   const [showMenu, setShowMenu] = useState(false);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
@@ -1237,7 +1238,7 @@ const VacantRoleCard = ({
         onClick={handleCardClick}
         className={`flex items-start rounded-xl shadow gap-4 transition-all duration-200 hover:shadow-md cursor-pointer ${wrapperPaddingClass} ${cardColorClass} ${
           status !== "open" ? "opacity-70" : ""
-        }`}
+        } ${notificationHighlight ? "role-card-highlight" : ""}`}
       >
         <div className="flex-shrink-0">
           {isFilled && filledUser ? (

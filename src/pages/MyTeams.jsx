@@ -22,6 +22,8 @@ import {
   Users,
 } from "lucide-react";
 import CreateTeamModal from "../components/teams/CreateTeamModal";
+import TeamApplicationDetailsModal from "../components/teams/TeamApplicationDetailsModal";
+import TeamInvitationDetailsModal from "../components/teams/TeamInvitationDetailsModal";
 import { enrichTeamMatchData } from "../utils/teamMatchUtils";
 import useClientPagination from "../hooks/useClientPagination";
 import useMyTeamsSort from "../hooks/useMyTeamsSort";
@@ -78,6 +80,13 @@ const MyTeams = () => {
   const openTeamId = searchParams.get("team");
   const shouldOpenApplications =
     searchParams.get("openApplications") === "true";
+  // Notification click-through: auto-open the specific application/invitation modal
+  const openApplicationIdParam = searchParams.get("openApplication");
+  const openInvitationIdParam = searchParams.get("openInvitation");
+
+  // State for notification-triggered detail modals
+  const [notifApplicationModal, setNotifApplicationModal] = useState(null); // the application object
+  const [notifInvitationModal, setNotifInvitationModal] = useState(null); // the invitation object
 
   // Ref for scrolling to highlighted invitation
   const highlightedInvitationRef = useRef(null);
@@ -278,6 +287,40 @@ const MyTeams = () => {
     shouldOpenApplications,
     setSearchParams,
   ]);
+
+  // Auto-open application/invitation modal when navigated via notification
+  useEffect(() => {
+    if (openApplicationIdParam && !loadingApplications) {
+      const found = pendingApplications.find(
+        (a) => String(a.id) === openApplicationIdParam,
+      );
+      if (found) {
+        setNotifApplicationModal(found);
+        // Clear the param so a refresh doesn't re-open
+        setSearchParams((prev) => {
+          const next = new URLSearchParams(prev);
+          next.delete("openApplication");
+          return next;
+        });
+      }
+    }
+  }, [openApplicationIdParam, pendingApplications, loadingApplications, setSearchParams]);
+
+  useEffect(() => {
+    if (openInvitationIdParam && !loadingInvitations) {
+      const found = pendingInvitations.find(
+        (i) => String(i.id) === openInvitationIdParam,
+      );
+      if (found) {
+        setNotifInvitationModal(found);
+        setSearchParams((prev) => {
+          const next = new URLSearchParams(prev);
+          next.delete("openInvitation");
+          return next;
+        });
+      }
+    }
+  }, [openInvitationIdParam, pendingInvitations, loadingInvitations, setSearchParams]);
 
   // Handler for page changes
   const handlePageChange = (newPage) => {
@@ -1065,6 +1108,38 @@ const MyTeams = () => {
         onTeamCreated={handleTeamCreated}
       />
 
+      {/* Notification click-through: application details modal */}
+      {notifApplicationModal && (
+        <TeamApplicationDetailsModal
+          isOpen={true}
+          application={notifApplicationModal}
+          onClose={() => setNotifApplicationModal(null)}
+          onCancel={async (applicationId) => {
+            await handleApplicationCancel(applicationId);
+            setNotifApplicationModal(null);
+          }}
+          onSendReminder={handleSendReminder}
+          notificationHighlight={true}
+        />
+      )}
+
+      {/* Notification click-through: invitation details modal */}
+      {notifInvitationModal && (
+        <TeamInvitationDetailsModal
+          isOpen={true}
+          invitation={notifInvitationModal}
+          onClose={() => setNotifInvitationModal(null)}
+          onAccept={async (invitationId, responseMessage, fillRole) => {
+            await handleInvitationAccept(invitationId, responseMessage, fillRole);
+            setNotifInvitationModal(null);
+          }}
+          onDecline={async (invitationId, responseMessage) => {
+            await handleInvitationDecline(invitationId, responseMessage);
+            setNotifInvitationModal(null);
+          }}
+          notificationHighlight={true}
+        />
+      )}
 
     </PageContainer>
   );

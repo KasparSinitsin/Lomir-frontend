@@ -1,20 +1,28 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   AlertTriangle,
+  Award,
   CircleX,
   Clock,
+  Compass,
   Crown,
   FileText,
+  Heart,
+  Lightbulb,
   LogOut,
   MessageCircle,
   Pencil,
+  SendHorizontal,
+  Settings,
   Shield,
   User,
   UserCheck,
   UserMinus,
   UserPlus,
   UserSearch,
+  Users,
 } from 'lucide-react';
+import { CATEGORY_COLORS, DEFAULT_COLOR } from '../../constants/badgeConstants';
 import { useLocation, useNavigate } from 'react-router-dom';
 import socketService from '../../services/socketService';
 import { messageService } from '../../services/messageService';
@@ -30,17 +38,53 @@ import {
 
 const EVENT_PREVIEW_ICONS = {
   AlertTriangle,
+  Award,
   CircleX,
+  Compass,
   Crown,
   FileText,
+  Heart,
+  Lightbulb,
   LogOut,
   Pencil,
+  SendHorizontal,
+  Settings,
   Shield,
   User,
   UserCheck,
   UserMinus,
   UserPlus,
   UserSearch,
+  Users,
+};
+
+const BADGE_CATEGORY_ICON = {
+  'Collaboration Skills': 'Users',
+  'Technical Expertise': 'Settings',
+  'Creative Thinking': 'Lightbulb',
+  'Leadership Qualities': 'Compass',
+  'Personal Attributes': 'Heart',
+};
+
+const ROLE_CHANGE_PREVIEW = {
+  role_updated:       { text: (n, u) => `The role "${n}" you ${u === 'applicant' ? 'applied for' : 'were invited to'} has been updated`,  icon: 'Pencil',     color: '#f59e0b' },
+  role_closed:        { text: (n, u) => `The role "${n}" you ${u === 'applicant' ? 'applied for' : 'were invited to'} has been closed`,   icon: 'CircleX',    color: '#6b7280' },
+  role_filled:        { text: (n, u) => `The role "${n}" you ${u === 'applicant' ? 'applied for' : 'were invited to'} has been filled`,   icon: 'UserCheck',  color: '#f59e0b' },
+  role_deleted:       { text: (n, u) => `The role "${n}" you ${u === 'applicant' ? 'applied for' : 'were invited to'} has been deleted`,  icon: 'UserMinus',  color: '#f59e0b' },
+  role_reopened:      { text: (n, u) => `The role "${n}" you ${u === 'applicant' ? 'applied for' : 'were invited to'} is open again`,    icon: 'UserSearch', color: '#f59e0b' },
+  role_reopened_admin:{ text: (n, u) => `The role "${n}" you ${u === 'applicant' ? 'applied for' : 'were invited to'} is open again`,    icon: 'UserSearch', color: '#f59e0b' },
+};
+
+const getRoleStatusChangedPreview = (payload) => {
+  const { roleChangeType, roleName, userType } = payload;
+  const template = ROLE_CHANGE_PREVIEW[roleChangeType];
+  if (!template) return null;
+  return {
+    text: template.text(roleName || 'Vacant Role', userType),
+    icon: template.icon,
+    color: template.color,
+    senderPrefix: null,
+  };
 };
 
 const NOTIFICATION_VISIBLE_MS = 20000;
@@ -435,12 +479,77 @@ const MessageNotifications = () => {
         );
       };
 
+      const handleRoleStatusChanged = (payload) => {
+        const preview = getRoleStatusChangedPreview(payload);
+        if (!preview) return;
+        const id = `role-status-${payload.roleId}-${payload.userType}-${Date.now()}`;
+        setNotifications((prev) => [
+          // Replace any existing toast for the same role + change type so
+          // repeated edits don't stack up.
+          ...prev.filter(
+            (n) =>
+              !(
+                n.roleId === payload.roleId &&
+                n.roleChangeType === payload.roleChangeType &&
+                n.userType === payload.userType
+              ),
+          ),
+          {
+            id,
+            isEvent: true,
+            roleId: payload.roleId,
+            roleChangeType: payload.roleChangeType,
+            userType: payload.userType,
+            eventIcon: preview.icon,
+            eventColor: preview.color,
+            text: preview.text,
+            senderPrefix: 'by ',
+            senderName: payload.actorName || null,
+            navigateTo: payload.userType === 'applicant'
+              ? `/teams/my-teams?openApplication=${payload.applicationId}`
+              : `/teams/my-teams?openInvitation=${payload.invitationId}`,
+            time: new Date(),
+            expiresAt: Date.now() + NOTIFICATION_VISIBLE_MS,
+            removeAt: Date.now() + NOTIFICATION_VISIBLE_MS + NOTIFICATION_FADE_MS,
+          },
+        ]);
+      };
+
+      const handleBadgeAwarded = (payload) => {
+        const { badgeName, badgeCategory, awarderName } = payload;
+        if (!badgeName) return;
+        const categoryColor = CATEGORY_COLORS[badgeCategory] || DEFAULT_COLOR;
+        const id = `badge-awarded-${payload.badgeId}-${Date.now()}`;
+        setNotifications((prev) => [
+          ...prev,
+          {
+            id,
+            isEvent: true,
+            headerIconName: 'Award',
+            headerLabel: 'New Badge for you!',
+            eventIcon: BADGE_CATEGORY_ICON[badgeCategory] || 'Award',
+            eventColor: categoryColor,
+            text: `You received the "${badgeName}" badge!`,
+            senderPrefix: 'by ',
+            senderName: awarderName || null,
+            navigateTo: `/profile?scrollTo=badges&highlightBadge=${encodeURIComponent(badgeName)}`,
+            time: new Date(),
+            expiresAt: Date.now() + NOTIFICATION_VISIBLE_MS,
+            removeAt: Date.now() + NOTIFICATION_VISIBLE_MS + NOTIFICATION_FADE_MS,
+          },
+        ]);
+      };
+
       socket.on('message:received', handleNewMessage);
       socket.on('message:deleted', handleMessageDeleted);
+      socket.on('role:statusChanged', handleRoleStatusChanged);
+      socket.on('badge:awarded', handleBadgeAwarded);
 
       detachMessageListener = () => {
         socket.off('message:received', handleNewMessage);
         socket.off('message:deleted', handleMessageDeleted);
+        socket.off('role:statusChanged', handleRoleStatusChanged);
+        socket.off('badge:awarded', handleBadgeAwarded);
       };
     };
 
@@ -454,13 +563,15 @@ const MessageNotifications = () => {
     };
   }, [isAuthenticated, user?.id]);
   
-  // Remove notification when clicked and navigate to conversation
+  // Remove notification when clicked and navigate to the appropriate destination
   const handleNotificationClick = (notification) => {
-    setNotifications(prev => 
+    setNotifications(prev =>
       prev.filter(n => n.id !== notification.id)
     );
-    
-    if (notification.conversationId) {
+
+    if (notification.navigateTo) {
+      navigate(notification.navigateTo);
+    } else if (notification.conversationId) {
       navigate(`/chat/${notification.conversationId}?type=${notification.conversationType || 'direct'}`);
     } else {
       navigate('/chat');
@@ -518,7 +629,10 @@ const MessageNotifications = () => {
           getFallbackRoleEventPreview(notification.text) ||
           getEventPreview(notification.text, user);
         const isEvent = Boolean(renderEventPreview);
-        const HeaderIcon = isEvent ? Clock : MessageCircle;
+        const HeaderIcon = notification.headerIconName
+          ? EVENT_PREVIEW_ICONS[notification.headerIconName] || Clock
+          : isEvent ? Clock : MessageCircle;
+        const headerLabel = notification.headerLabel || (isEvent ? 'New Event' : 'New Message');
         const EventIcon = isEvent
           ? EVENT_PREVIEW_ICONS[renderEventPreview.icon] || Clock
           : MessageCircle;
@@ -535,7 +649,7 @@ const MessageNotifications = () => {
           >
             <h4 className="text-xs font-medium text-primary-focus flex items-center gap-1.5 mb-2">
               <HeaderIcon size={12} strokeWidth={2.2} aria-hidden="true" />
-              <span>{isEvent ? "New Event" : "New Message"}</span>
+              <span>{headerLabel}</span>
             </h4>
             {isEvent ? (
               <p
