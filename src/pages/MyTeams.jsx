@@ -7,7 +7,7 @@ import TeamCard from "../components/teams/TeamCard";
 import Section from "../components/layout/Section";
 import Pagination from "../components/common/Pagination";
 import { teamService } from "../services/teamService";
-import socketService from "../services/socketService";
+import useSocketEvents from "../hooks/useSocketEvents";
 import { useAuth } from "../contexts/AuthContext";
 import {
   Plus,
@@ -177,50 +177,28 @@ const MyTeams = () => {
     fetchPendingInvitations();
   }, [fetchPendingApplications, fetchPendingInvitations]);
 
-  useEffect(() => {
-    if (!user?.id) return undefined;
+  const handleRequestNotification = useCallback((payload = {}) => {
+    const type = String(payload.type ?? payload.notificationType ?? "").toLowerCase();
 
-    let detachSocketListeners = null;
+    if (!type || type.includes("application")) {
+      fetchPendingApplications();
+    }
 
-    const attachSocketListeners = (socket) => {
-      if (!socket) return;
+    if (!type || type.includes("invitation") || type.includes("invite")) {
+      fetchPendingInvitations();
+    }
+  }, [fetchPendingApplications, fetchPendingInvitations]);
 
-      if (detachSocketListeners) {
-        detachSocketListeners();
-      }
-
-      const handleRequestNotification = (payload = {}) => {
-        const type = String(payload.type ?? payload.notificationType ?? "").toLowerCase();
-
-        if (!type || type.includes("application")) {
-          fetchPendingApplications();
+  useSocketEvents(
+    user?.id
+      ? {
+          "notification:new": handleRequestNotification,
+          "notification:updated": handleRequestNotification,
+          "notification:deleted": handleRequestNotification,
         }
-
-        if (!type || type.includes("invitation") || type.includes("invite")) {
-          fetchPendingInvitations();
-        }
-      };
-
-      socket.on("notification:new", handleRequestNotification);
-      socket.on("notification:updated", handleRequestNotification);
-      socket.on("notification:deleted", handleRequestNotification);
-
-      detachSocketListeners = () => {
-        socket.off("notification:new", handleRequestNotification);
-        socket.off("notification:updated", handleRequestNotification);
-        socket.off("notification:deleted", handleRequestNotification);
-      };
-    };
-
-    const unsubscribeSocketReady = socketService.onSocketReady(attachSocketListeners);
-
-    return () => {
-      unsubscribeSocketReady();
-      if (detachSocketListeners) {
-        detachSocketListeners();
-      }
-    };
-  }, [fetchPendingApplications, fetchPendingInvitations, user?.id]);
+      : null,
+    [handleRequestNotification, user?.id],
+  );
 
   // Fetch teams when page or limit changes
   useEffect(() => {

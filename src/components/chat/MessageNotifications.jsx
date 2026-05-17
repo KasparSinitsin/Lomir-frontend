@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   AlertTriangle,
   Award,
@@ -24,9 +24,9 @@ import {
 } from 'lucide-react';
 import { CATEGORY_COLORS, DEFAULT_COLOR } from '../../constants/badgeConstants';
 import { useLocation, useNavigate } from 'react-router-dom';
-import socketService from '../../services/socketService';
 import { messageService } from '../../services/messageService';
 import { useAuth } from '../../contexts/AuthContext';
+import useSocketEvents from '../../hooks/useSocketEvents';
 import { getEventPreview } from '../../utils/eventPreview';
 import {
   getMessageSenderDisplayName,
@@ -404,15 +404,15 @@ const MessageNotifications = () => {
   
   useEffect(() => {
     if (!isAuthenticated) return;
-    
+
     // Fetch initial unread count
     const fetchUnreadCount = async () => {
       try {
         const response = await messageService.getUnreadCount();
         const count = response.data?.count ?? response.count ?? 0;
         if (count > 0) {
-          setNotifications([{ 
-            id: 'initial', 
+          setNotifications([{
+            id: 'initial',
             text: `You have ${count} unread messages`,
             expiresAt: Date.now() + NOTIFICATION_VISIBLE_MS,
             removeAt: Date.now() + NOTIFICATION_VISIBLE_MS + NOTIFICATION_FADE_MS,
@@ -422,146 +422,133 @@ const MessageNotifications = () => {
         console.error('Error fetching unread count:', error);
       }
     };
-    
+
     fetchUnreadCount();
-    
-    let detachMessageListener = null;
+  }, [isAuthenticated]);
 
-    const attachMessageListener = (socket) => {
-      if (!socket) return;
+  const handleNewMessage = useCallback((message) => {
+    if (isOwnMessage(message, user?.id)) return;
 
-      if (detachMessageListener) {
-        detachMessageListener();
-      }
+    const isInConversation = isMessageForCurrentChatPath(
+      message,
+      locationRef.current.pathname,
+      locationRef.current.search,
+      user?.id,
+    );
 
-      const handleNewMessage = (message) => {
-        if (isOwnMessage(message, user?.id)) return;
-
-        const isInConversation = isMessageForCurrentChatPath(
-          message,
-          locationRef.current.pathname,
-          locationRef.current.search,
-          user?.id,
-        );
-        
-        if (!isInConversation) {
-          const target = getMessageConversationTarget(message, user?.id);
-          const eventContent = pickEventContent(message);
-          const eventPreview =
-            getRoleEventTypePreview(message) ||
-            getEventPreview(eventContent, user) ||
-            getFallbackRoleEventPreview(eventContent);
-          setNotifications(prev => [
-            ...prev, 
-            {
-              id: message.id || `${target.type}-${target.conversationId}-${Date.now()}`,
-              conversationId: target.conversationId,
-              conversationType: target.type,
-              senderId: message.senderId || message.sender_id,
-              senderName: eventPreview?.senderName || getNotificationSenderName(message),
-              senderPrefix: eventPreview?.senderPrefix ?? null,
-              text: eventPreview?.text || getMessagePreviewText(message),
-              isEvent: Boolean(eventPreview),
-              eventIcon: eventPreview?.icon || null,
-              eventColor: eventPreview?.color || null,
-              eventBackgroundColor: eventPreview?.backgroundColor || null,
-              time: new Date(),
-              expiresAt: Date.now() + NOTIFICATION_VISIBLE_MS,
-              removeAt: Date.now() + NOTIFICATION_VISIBLE_MS + NOTIFICATION_FADE_MS,
-            }
-          ]);
+    if (!isInConversation) {
+      const target = getMessageConversationTarget(message, user?.id);
+      const eventContent = pickEventContent(message);
+      const eventPreview =
+        getRoleEventTypePreview(message) ||
+        getEventPreview(eventContent, user) ||
+        getFallbackRoleEventPreview(eventContent);
+      setNotifications(prev => [
+        ...prev,
+        {
+          id: message.id || `${target.type}-${target.conversationId}-${Date.now()}`,
+          conversationId: target.conversationId,
+          conversationType: target.type,
+          senderId: message.senderId || message.sender_id,
+          senderName: eventPreview?.senderName || getNotificationSenderName(message),
+          senderPrefix: eventPreview?.senderPrefix ?? null,
+          text: eventPreview?.text || getMessagePreviewText(message),
+          isEvent: Boolean(eventPreview),
+          eventIcon: eventPreview?.icon || null,
+          eventColor: eventPreview?.color || null,
+          eventBackgroundColor: eventPreview?.backgroundColor || null,
+          time: new Date(),
+          expiresAt: Date.now() + NOTIFICATION_VISIBLE_MS,
+          removeAt: Date.now() + NOTIFICATION_VISIBLE_MS + NOTIFICATION_FADE_MS,
         }
-      };
-      
-      const handleMessageDeleted = (payload) => {
-        setNotifications((prev) =>
-          prev.filter((n) => String(n.id) !== String(payload.messageId)),
-        );
-      };
+      ]);
+    }
+  }, [user]);
 
-      const handleRoleStatusChanged = (payload) => {
-        const preview = getRoleStatusChangedPreview(payload);
-        if (!preview) return;
-        const id = `role-status-${payload.roleId}-${payload.userType}-${Date.now()}`;
-        setNotifications((prev) => [
-          // Replace any existing toast for the same role + change type so
-          // repeated edits don't stack up.
-          ...prev.filter(
-            (n) =>
-              !(
-                n.roleId === payload.roleId &&
-                n.roleChangeType === payload.roleChangeType &&
-                n.userType === payload.userType
-              ),
+  const handleMessageDeleted = useCallback((payload) => {
+    setNotifications((prev) =>
+      prev.filter((n) => String(n.id) !== String(payload.messageId)),
+    );
+  }, []);
+
+  const handleRoleStatusChanged = useCallback((payload) => {
+    const preview = getRoleStatusChangedPreview(payload);
+    if (!preview) return;
+    const id = `role-status-${payload.roleId}-${payload.userType}-${Date.now()}`;
+    setNotifications((prev) => [
+      // Replace any existing toast for the same role + change type so
+      // repeated edits don't stack up.
+      ...prev.filter(
+        (n) =>
+          !(
+            n.roleId === payload.roleId &&
+            n.roleChangeType === payload.roleChangeType &&
+            n.userType === payload.userType
           ),
-          {
-            id,
-            isEvent: true,
-            roleId: payload.roleId,
-            roleChangeType: payload.roleChangeType,
-            userType: payload.userType,
-            eventIcon: preview.icon,
-            eventColor: preview.color,
-            text: preview.text,
-            senderPrefix: 'by ',
-            senderName: payload.actorName || null,
-            navigateTo: payload.userType === 'applicant'
-              ? `/teams/my-teams?openApplication=${payload.applicationId}`
-              : `/teams/my-teams?openInvitation=${payload.invitationId}`,
-            time: new Date(),
-            expiresAt: Date.now() + NOTIFICATION_VISIBLE_MS,
-            removeAt: Date.now() + NOTIFICATION_VISIBLE_MS + NOTIFICATION_FADE_MS,
-          },
-        ]);
-      };
+      ),
+      {
+        id,
+        isEvent: true,
+        roleId: payload.roleId,
+        roleChangeType: payload.roleChangeType,
+        userType: payload.userType,
+        eventIcon: preview.icon,
+        eventColor: preview.color,
+        text: preview.text,
+        senderPrefix: 'by ',
+        senderName: payload.actorName || null,
+        navigateTo: payload.userType === 'applicant'
+          ? `/teams/my-teams?openApplication=${payload.applicationId}`
+          : `/teams/my-teams?openInvitation=${payload.invitationId}`,
+        time: new Date(),
+        expiresAt: Date.now() + NOTIFICATION_VISIBLE_MS,
+        removeAt: Date.now() + NOTIFICATION_VISIBLE_MS + NOTIFICATION_FADE_MS,
+      },
+    ]);
+  }, []);
 
-      const handleBadgeAwarded = (payload) => {
-        const { badgeName, badgeCategory, awarderName } = payload;
-        if (!badgeName) return;
-        const categoryColor = CATEGORY_COLORS[badgeCategory] || DEFAULT_COLOR;
-        const id = `badge-awarded-${payload.badgeId}-${Date.now()}`;
-        setNotifications((prev) => [
-          ...prev,
-          {
-            id,
-            isEvent: true,
-            headerIconName: 'Award',
-            headerLabel: 'New Badge for you!',
-            eventIcon: BADGE_CATEGORY_ICON[badgeCategory] || 'Award',
-            eventColor: categoryColor,
-            text: `You received the "${badgeName}" badge!`,
-            senderPrefix: 'by ',
-            senderName: awarderName || null,
-            navigateTo: `/profile?scrollTo=badges&highlightBadge=${encodeURIComponent(badgeName)}`,
-            time: new Date(),
-            expiresAt: Date.now() + NOTIFICATION_VISIBLE_MS,
-            removeAt: Date.now() + NOTIFICATION_VISIBLE_MS + NOTIFICATION_FADE_MS,
-          },
-        ]);
-      };
+  const handleBadgeAwarded = useCallback((payload) => {
+    const { badgeName, badgeCategory, awarderName } = payload;
+    if (!badgeName) return;
+    const categoryColor = CATEGORY_COLORS[badgeCategory] || DEFAULT_COLOR;
+    const id = `badge-awarded-${payload.badgeId}-${Date.now()}`;
+    setNotifications((prev) => [
+      ...prev,
+      {
+        id,
+        isEvent: true,
+        headerIconName: 'Award',
+        headerLabel: 'New Badge for you!',
+        eventIcon: BADGE_CATEGORY_ICON[badgeCategory] || 'Award',
+        eventColor: categoryColor,
+        text: `You received the "${badgeName}" badge!`,
+        senderPrefix: 'by ',
+        senderName: awarderName || null,
+        navigateTo: `/profile?scrollTo=badges&highlightBadge=${encodeURIComponent(badgeName)}`,
+        time: new Date(),
+        expiresAt: Date.now() + NOTIFICATION_VISIBLE_MS,
+        removeAt: Date.now() + NOTIFICATION_VISIBLE_MS + NOTIFICATION_FADE_MS,
+      },
+    ]);
+  }, []);
 
-      socket.on('message:received', handleNewMessage);
-      socket.on('message:deleted', handleMessageDeleted);
-      socket.on('role:statusChanged', handleRoleStatusChanged);
-      socket.on('badge:awarded', handleBadgeAwarded);
-
-      detachMessageListener = () => {
-        socket.off('message:received', handleNewMessage);
-        socket.off('message:deleted', handleMessageDeleted);
-        socket.off('role:statusChanged', handleRoleStatusChanged);
-        socket.off('badge:awarded', handleBadgeAwarded);
-      };
-    };
-
-    const unsubscribeSocketReady = socketService.onSocketReady(attachMessageListener);
-    
-    return () => {
-      unsubscribeSocketReady();
-      if (detachMessageListener) {
-        detachMessageListener();
-      }
-    };
-  }, [isAuthenticated, user?.id]);
+  useSocketEvents(
+    isAuthenticated
+      ? {
+          'message:received': handleNewMessage,
+          'message:deleted': handleMessageDeleted,
+          'role:statusChanged': handleRoleStatusChanged,
+          'badge:awarded': handleBadgeAwarded,
+        }
+      : null,
+    [
+      isAuthenticated,
+      handleNewMessage,
+      handleMessageDeleted,
+      handleRoleStatusChanged,
+      handleBadgeAwarded,
+    ],
+  );
   
   // Remove notification when clicked and navigate to the appropriate destination
   const handleNotificationClick = (notification) => {

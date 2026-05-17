@@ -17,6 +17,7 @@ import MessageInput from "../components/chat/MessageInput";
 import { useAuth } from "../contexts/AuthContext";
 import { messageService } from "../services/messageService";
 import socketService from "../services/socketService";
+import useSocketEvents from "../hooks/useSocketEvents";
 import { userService } from "../services/userService";
 import { teamService } from "../services/teamService";
 import ScreenAlert from "../components/common/ScreenAlert";
@@ -1526,11 +1527,9 @@ const Chat = () => {
   );
 
   // Set up WebSocket event listeners
-  useEffect(() => {
-    const socket = socketService.getSocket();
-
+  useSocketEvents((socket) => {
     if (!socket || !isAuthenticated) {
-      return;
+      return undefined;
     }
 
     // Handle online users
