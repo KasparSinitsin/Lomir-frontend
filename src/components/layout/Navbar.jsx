@@ -249,7 +249,7 @@ const Navbar = () => {
     // message, so refresh both badge sources.
     fetchUnreadNotificationCount();
     fetchUnreadMessageCount();
-  }, [isAuthenticated, fetchUnreadMessageCount, fetchUnreadNotificationCount]);
+  }, [fetchUnreadMessageCount, fetchUnreadNotificationCount]);
 
   useSocketEvents(
     isAuthenticated
