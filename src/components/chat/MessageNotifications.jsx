@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   AlertTriangle,
   Award,
+  CheckCircle,
   CircleX,
   Clock,
   Compass,
@@ -10,6 +11,7 @@ import {
   Heart,
   Lightbulb,
   LogOut,
+  Mail,
   MessageCircle,
   Pencil,
   SendHorizontal,
@@ -21,6 +23,7 @@ import {
   UserPlus,
   UserSearch,
   Users,
+  UserX,
 } from 'lucide-react';
 import { CATEGORY_COLORS, DEFAULT_COLOR } from '../../constants/badgeConstants';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -39,13 +42,16 @@ import {
 const EVENT_PREVIEW_ICONS = {
   AlertTriangle,
   Award,
+  CheckCircle,
   CircleX,
+  Clock,
   Compass,
   Crown,
   FileText,
   Heart,
   Lightbulb,
   LogOut,
+  Mail,
   Pencil,
   SendHorizontal,
   Settings,
@@ -56,6 +62,7 @@ const EVENT_PREVIEW_ICONS = {
   UserPlus,
   UserSearch,
   Users,
+  UserX,
 };
 
 const BADGE_CATEGORY_ICON = {
@@ -64,6 +71,17 @@ const BADGE_CATEGORY_ICON = {
   'Creative Thinking': 'Lightbulb',
   'Leadership Qualities': 'Compass',
   'Personal Attributes': 'Heart',
+};
+
+const NOTIFICATION_TOAST_TYPES = {
+  invitation_received:  { icon: 'Mail',         label: 'Team Invitation' },
+  role_invitation:      { icon: 'Mail',         label: 'Role Invitation' },
+  invitation_accepted:  { icon: 'UserCheck',    label: 'Invitation Accepted' },
+  invitation_declined:  { icon: 'UserX',        label: 'Invitation Declined' },
+  invitation_cancelled: { icon: 'CircleX',      label: 'Invitation Cancelled' },
+  application_received: { icon: 'UserPlus',     label: 'New Application' },
+  application_approved: { icon: 'CheckCircle',  label: 'Application Approved' },
+  application_rejected: { icon: 'CircleX',      label: 'Application Declined' },
 };
 
 const ROLE_CHANGE_PREVIEW = {
@@ -532,6 +550,27 @@ const MessageNotifications = () => {
     ]);
   }, []);
 
+  const handleNotificationNew = useCallback((payload) => {
+    if (!payload?.title) return;
+    const config = NOTIFICATION_TOAST_TYPES[payload.type];
+    if (!config) return;
+    setNotifications((prev) => [
+      ...prev,
+      {
+        id: `notif-${payload.type}-${Date.now()}`,
+        isEvent: true,
+        headerIconName: config.icon,
+        headerLabel: config.label,
+        eventIcon: config.icon,
+        text: payload.title,
+        navigateTo: '/teams/my-teams',
+        time: new Date(),
+        expiresAt: Date.now() + NOTIFICATION_VISIBLE_MS,
+        removeAt: Date.now() + NOTIFICATION_VISIBLE_MS + NOTIFICATION_FADE_MS,
+      },
+    ]);
+  }, []);
+
   useSocketEvents(
     isAuthenticated
       ? {
@@ -539,6 +578,7 @@ const MessageNotifications = () => {
           'message:deleted': handleMessageDeleted,
           'role:statusChanged': handleRoleStatusChanged,
           'badge:awarded': handleBadgeAwarded,
+          'notification:new': handleNotificationNew,
         }
       : null,
     [
@@ -547,6 +587,7 @@ const MessageNotifications = () => {
       handleMessageDeleted,
       handleRoleStatusChanged,
       handleBadgeAwarded,
+      handleNotificationNew,
     ],
   );
   
