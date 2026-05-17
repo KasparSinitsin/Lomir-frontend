@@ -507,17 +507,6 @@ export const teamService = {
     }
   },
 
-  // LIAS to match the naming pattern used in MyTeams.jsx:
-  getUserPendingInvitations: async () => {
-    try {
-      const response = await api.get("/api/teams/invitations/received");
-      return response.data;
-    } catch (error) {
-      console.error("Error fetching user pending invitations:", error);
-      throw error;
-    }
-  },
-
   respondToInvitation: async (invitationId, action, responseMessage = "", fillRole = false) => {
     try {
       const response = await api.put(`/api/teams/invitations/${invitationId}`, {

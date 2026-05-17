@@ -132,22 +132,6 @@ export const searchService = {
     return normalizeSearchResponse(response.data);
   },
 
-  async getRecommended(userId, isAuthenticated = false) {
-    const response = await api.get("/api/search/recommended", {
-      params: {
-        userId,
-        authenticated: isAuthenticated,
-      },
-    });
-
-    if (response.data?.data?.teams) {
-      response.data.data.teams =
-        response.data.data.teams.map(normalizeTeamData);
-    }
-
-    return response.data;
-  },
-
   async getAllUsersAndTeams(criteria = {}) {
     const params = buildSearchParams(criteria);
     const response = await api.get("/api/search/all", { params });

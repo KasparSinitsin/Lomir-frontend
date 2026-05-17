@@ -159,7 +159,7 @@ const MyTeams = () => {
 
     try {
       setLoadingInvitations(true);
-      const response = await teamService.getUserPendingInvitations();
+      const response = await teamService.getUserReceivedInvitations();
 
       if (response.success) {
         setPendingInvitations(response.data || []);
