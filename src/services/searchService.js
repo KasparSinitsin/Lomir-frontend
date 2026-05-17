@@ -17,15 +17,7 @@ export const getApiErrorMessage = (error) => {
   return "Something went wrong";
 };
 
-const normalizePublicFlag = (item) =>
-  item?.is_public === true ||
-  item?.is_public === 1 ||
-  item?.is_public === "true" ||
-  item?.is_public === "1" ||
-  item?.isPublic === true ||
-  item?.isPublic === 1 ||
-  item?.isPublic === "true" ||
-  item?.isPublic === "1";
+const normalizePublicFlag = (item) => item?.isPublic === true;
 
 /**
  * Normalize team data to ensure consistent property names

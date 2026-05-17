@@ -461,9 +461,9 @@ const Navbar = () => {
                 className="btn btn-circle avatar bg-primary text-white btn-sm sm:btn-md"
               >
                 <div className="rounded-full flex items-center justify-center text-sm sm:text-base relative overflow-hidden w-full h-full">
-                  {(user.avatarUrl || user.avatar_url) && !imageError ? (
+                  {user.avatarUrl && !imageError ? (
                     <img
-                      src={user.avatarUrl || user.avatar_url}
+                      src={user.avatarUrl}
                       alt="Profile"
                       className="rounded-full object-cover w-full h-full"
                       onError={() => setImageError(true)}
