@@ -55,6 +55,7 @@ const TeamInvitationDetailsModal = ({
   onClose,
   onAccept,
   onDecline,
+  notificationHighlight = false,
 }) => {
   // ============ State ============
   const [loading] = useState(false);
@@ -517,6 +518,7 @@ const TeamInvitationDetailsModal = ({
                 canManage={false}
                 isTeamMember={false}
                 hideActions={true}
+                notificationHighlight={notificationHighlight}
               />
             </div>
           </div>

@@ -75,6 +75,8 @@ const NOTIFICATION_TYPE_META = [
   { keys: ["invitationCancelled", "invitation_cancelled"],           Icon: CircleX,       text: (p, n, tc) => `Your invitation${n !== 1 ? `s (${n})` : ""} cancelled${teamSuffix(tc)}` },
   { keys: ["applicationCancelled", "application_cancelled"],               Icon: CircleX,       text: (p, n, tc) => `${p(n, "team application")} withdrawn${teamSuffix(tc)}` },
   { keys: ["roleApplicationCancelled", "role_application_cancelled"],      Icon: CircleX,       text: (p, n, tc) => `${p(n, "role application")} withdrawn${teamSuffix(tc)}` },
+  { keys: ["roleStatusChangedApplicant", "role_status_changed_applicant"], Icon: Pencil,        text: (p, n)     => `${p(n, "role")} you applied for changed` },
+  { keys: ["roleStatusChangedInvitee",   "role_status_changed_invitee"],   Icon: Pencil,        text: (p, n)     => `${p(n, "role")} you were invited to changed` },
 ];
 
 const buildNotificationTooltip = (count, types, teamCounts) => {
