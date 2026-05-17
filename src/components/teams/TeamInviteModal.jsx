@@ -21,7 +21,7 @@ import TeamApplicationsModal from "../teams/TeamApplicationsModal";
 import { getUserInitials } from "../../utils/userHelpers";
 import { teamService } from "../../services/teamService";
 import { vacantRoleService } from "../../services/vacantRoleService";
-import socketService from "../../services/socketService";
+import useSocketEvents from "../../hooks/useSocketEvents";
 
 const normalizeId = (value) => {
   if (value === null || value === undefined || value === "") return null;
@@ -851,58 +851,36 @@ const TeamInviteModal = ({
     selectedTeamInvitations,
   ]);
 
-  useEffect(() => {
-    if (!isOpen || !selectedTeamForModal?.id) return undefined;
+  const handleTeamRequestEvent = useCallback((payload = {}) => {
+    const payloadTeamId = payload.teamId ?? payload.team_id ?? null;
+    if (
+      payloadTeamId != null &&
+      String(payloadTeamId) !== String(selectedTeamForModal.id)
+    ) {
+      return;
+    }
 
-    let detachSocketListeners = null;
+    const type = String(payload.type ?? payload.notificationType ?? "").toLowerCase();
+    if (
+      !type ||
+      type.includes("invitation") ||
+      type.includes("invite") ||
+      type.includes("application")
+    ) {
+      refreshSelectedTeamRequests();
+    }
+  }, [refreshSelectedTeamRequests, selectedTeamForModal?.id]);
 
-    const attachSocketListeners = (socket) => {
-      if (!socket) return;
-
-      if (detachSocketListeners) {
-        detachSocketListeners();
-      }
-
-      const handleTeamRequestEvent = (payload = {}) => {
-        const payloadTeamId = payload.teamId ?? payload.team_id ?? null;
-        if (
-          payloadTeamId != null &&
-          String(payloadTeamId) !== String(selectedTeamForModal.id)
-        ) {
-          return;
+  useSocketEvents(
+    isOpen && selectedTeamForModal?.id
+      ? {
+          "notification:new": handleTeamRequestEvent,
+          "notification:updated": handleTeamRequestEvent,
+          "notification:deleted": handleTeamRequestEvent,
         }
-
-        const type = String(payload.type ?? payload.notificationType ?? "").toLowerCase();
-        if (
-          !type ||
-          type.includes("invitation") ||
-          type.includes("invite") ||
-          type.includes("application")
-        ) {
-          refreshSelectedTeamRequests();
-        }
-      };
-
-      socket.on("notification:new", handleTeamRequestEvent);
-      socket.on("notification:updated", handleTeamRequestEvent);
-      socket.on("notification:deleted", handleTeamRequestEvent);
-
-      detachSocketListeners = () => {
-        socket.off("notification:new", handleTeamRequestEvent);
-        socket.off("notification:updated", handleTeamRequestEvent);
-        socket.off("notification:deleted", handleTeamRequestEvent);
-      };
-    };
-
-    const unsubscribeSocketReady = socketService.onSocketReady(attachSocketListeners);
-
-    return () => {
-      unsubscribeSocketReady();
-      if (detachSocketListeners) {
-        detachSocketListeners();
-      }
-    };
-  }, [isOpen, refreshSelectedTeamRequests, selectedTeamForModal?.id]);
+      : null,
+    [isOpen, refreshSelectedTeamRequests, selectedTeamForModal?.id],
+  );
 
   // Handle cancel invitation (called from TeamInvitesModal)
   const handleCancelInvitation = async (invitationId) => {

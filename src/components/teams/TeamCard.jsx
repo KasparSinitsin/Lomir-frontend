@@ -30,7 +30,7 @@ import TeamInvitationDetailsModal from "./TeamInvitationDetailsModal";
 import { teamService } from "../../services/teamService";
 import { vacantRoleService } from "../../services/vacantRoleService";
 import { userService } from "../../services/userService";
-import socketService from "../../services/socketService";
+import useSocketEvents from "../../hooks/useSocketEvents";
 import { useAuth } from "../../contexts/AuthContext";
 import Alert from "../common/Alert";
 import ConfirmModal from "../common/ConfirmModal";
@@ -824,72 +824,48 @@ const TeamCard = ({
     fetchSentInvitations();
   }, [fetchSentInvitations]);
 
-  useEffect(() => {
-    if (effectiveVariant !== "member" || !teamData?.id || !canManageInvitations) {
-      return undefined;
+  const handleTeamRequestEvent = useCallback((payload = {}) => {
+    const payloadTeamId = payload.teamId ?? payload.team_id ?? null;
+    if (payloadTeamId != null && String(payloadTeamId) !== String(teamData.id)) {
+      return;
     }
 
-    let detachSocketListeners = null;
+    const type = String(payload.type ?? payload.notificationType ?? "").toLowerCase();
+    const shouldRefreshApplications =
+      !type ||
+      type.includes("application") ||
+      type === "member_joined" ||
+      type === "role_filled";
+    const shouldRefreshInvitations =
+      !type ||
+      type.includes("invitation") ||
+      type.includes("invite");
 
-    const attachSocketListeners = (socket) => {
-      if (!socket) return;
+    if (shouldRefreshApplications) {
+      fetchPendingApplications();
+    }
 
-      if (detachSocketListeners) {
-        detachSocketListeners();
-      }
+    if (shouldRefreshInvitations) {
+      fetchSentInvitations();
+    }
+  }, [fetchPendingApplications, fetchSentInvitations, teamData?.id]);
 
-      const handleTeamRequestEvent = (payload = {}) => {
-        const payloadTeamId = payload.teamId ?? payload.team_id ?? null;
-        if (payloadTeamId != null && String(payloadTeamId) !== String(teamData.id)) {
-          return;
+  useSocketEvents(
+    effectiveVariant === "member" && teamData?.id && canManageInvitations
+      ? {
+          "notification:new": handleTeamRequestEvent,
+          "notification:updated": handleTeamRequestEvent,
+          "notification:deleted": handleTeamRequestEvent,
         }
-
-        const type = String(payload.type ?? payload.notificationType ?? "").toLowerCase();
-        const shouldRefreshApplications =
-          !type ||
-          type.includes("application") ||
-          type === "member_joined" ||
-          type === "role_filled";
-        const shouldRefreshInvitations =
-          !type ||
-          type.includes("invitation") ||
-          type.includes("invite");
-
-        if (shouldRefreshApplications) {
-          fetchPendingApplications();
-        }
-
-        if (shouldRefreshInvitations) {
-          fetchSentInvitations();
-        }
-      };
-
-      socket.on("notification:new", handleTeamRequestEvent);
-      socket.on("notification:updated", handleTeamRequestEvent);
-      socket.on("notification:deleted", handleTeamRequestEvent);
-
-      detachSocketListeners = () => {
-        socket.off("notification:new", handleTeamRequestEvent);
-        socket.off("notification:updated", handleTeamRequestEvent);
-        socket.off("notification:deleted", handleTeamRequestEvent);
-      };
-    };
-
-    const unsubscribeSocketReady = socketService.onSocketReady(attachSocketListeners);
-
-    return () => {
-      unsubscribeSocketReady();
-      if (detachSocketListeners) {
-        detachSocketListeners();
-      }
-    };
-  }, [
-    canManageInvitations,
-    effectiveVariant,
-    fetchPendingApplications,
-    fetchSentInvitations,
-    teamData?.id,
-  ]);
+      : null,
+    [
+      canManageInvitations,
+      effectiveVariant,
+      fetchPendingApplications,
+      fetchSentInvitations,
+      teamData?.id,
+    ],
+  );
 
   useEffect(() => {
     const fetchCompleteTeamData = async () => {
