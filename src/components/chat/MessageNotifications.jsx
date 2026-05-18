@@ -74,14 +74,14 @@ const BADGE_CATEGORY_ICON = {
 };
 
 const NOTIFICATION_TOAST_TYPES = {
-  invitation_received:  { icon: 'Mail',         label: 'Team Invitation',      color: '#3b82f6' },
-  role_invitation:      { icon: 'Mail',         label: 'Role Invitation',      color: '#3b82f6' },
-  invitation_accepted:  { icon: 'UserCheck',    label: 'Invitation Accepted',  color: '#16a34a' },
-  invitation_declined:  { icon: 'UserX',        label: 'Invitation Declined',  color: '#f97316' },
-  invitation_cancelled: { icon: 'CircleX',      label: 'Invitation Cancelled', color: '#6b7280' },
-  application_received: { icon: 'UserPlus',     label: 'New Application',      color: '#3b82f6' },
+  invitation_received:  { icon: 'Mail',         label: 'Team Invitation',      color: '#ec4899', senderPrefix: 'Invited by ' },
+  role_invitation:      { icon: 'Mail',         label: 'Role Invitation',      color: '#ec4899', senderPrefix: 'Invited by ' },
+  invitation_accepted:  { icon: 'UserCheck',    label: 'Invitation Accepted',  color: '#16a34a', senderColor: '#15803d', senderPrefix: 'Accepted by ' },
+  invitation_declined:  { icon: 'UserX',        label: 'Invitation Declined',  color: '#6b7280', senderPrefix: 'Declined by ' },
+  invitation_cancelled: { icon: 'CircleX',      label: 'Invitation Cancelled', color: '#6b7280', senderPrefix: 'Cancelled by ' },
+  application_received: { icon: 'Mail',         label: 'New Application',      color: '#ec4899', senderPrefix: 'Applied by ' },
   application_approved: { icon: 'CheckCircle',  label: 'Application Approved', color: '#16a34a', senderColor: '#15803d', senderPrefix: 'Approved by ' },
-  application_rejected: { icon: 'CircleX',      label: 'Application Declined', color: '#f97316' },
+  application_rejected: { icon: 'CircleX',      label: 'Application Declined', color: '#6b7280', senderPrefix: 'Declined by ' },
   member_removed:       { icon: 'UserMinus',    label: 'Removed from Team',    senderPrefix: 'Removed by ' },
 };
 
@@ -474,7 +474,10 @@ const MessageNotifications = () => {
       const eventContent = pickEventContent(message);
 
       // These system messages are shown via notification:new toast instead.
-      if (/APPLICATION_APPROVED:|MEMBER_REMOVED|INVITATION_DECLINED|INVITATION_CANCELLED/i.test(eventContent)) return;
+      if (/APPLICATION_APPROVED:|APPLICATION_DECLINED:|MEMBER_REMOVED|INVITATION_DECLINED|INVITATION_CANCELLED/i.test(eventContent)) return;
+
+      // Team join messages (👋/🎯) are visible in the team chat and covered by notification:new for the inviter.
+      if ((message.team_id || message.teamId) && /^[\u{1F44B}\u{1F3AF}]/u.test(eventContent.trim())) return;
 
       const eventPreview =
         getRoleEventTypePreview(message) ||
@@ -573,13 +576,21 @@ const MessageNotifications = () => {
     if (!payload?.title) return;
     const config = NOTIFICATION_TOAST_TYPES[payload.type];
     if (!config) return;
+    const isRoleInvite = (['invitation_received', 'invitation_cancelled', 'invitation_declined'].includes(payload.type) && !!payload.roleName)
+      || (payload.type === 'invitation_accepted' && !!payload.filledRoleName);
     setNotifications((prev) => [
       ...prev,
       {
         id: `notif-${payload.type}-${Date.now()}`,
         isEvent: true,
         headerIconName: config.icon,
-        headerLabel: config.label,
+        secondaryHeaderIconName: isRoleInvite ? 'UserSearch' : null,
+        headerLabel: isRoleInvite
+          ? payload.type === 'invitation_cancelled' ? 'Team & Role Invite Cancelled'
+            : payload.type === 'invitation_accepted' ? 'Team & Role Invite Accepted'
+            : payload.type === 'invitation_declined' ? 'Team & Role Invite Declined'
+            : 'Team & Role Invitation'
+          : config.label,
         eventIcon: config.icon,
         eventColor: config.color || null,
         text: payload.title,
@@ -683,6 +694,9 @@ const MessageNotifications = () => {
         const HeaderIcon = notification.headerIconName
           ? EVENT_PREVIEW_ICONS[notification.headerIconName] || Clock
           : isEvent ? Clock : MessageCircle;
+        const SecondaryHeaderIcon = notification.secondaryHeaderIconName
+          ? EVENT_PREVIEW_ICONS[notification.secondaryHeaderIconName] || null
+          : null;
         const headerLabel = notification.headerLabel || (isEvent ? 'New Event' : 'New Message');
         const EventIcon = isEvent
           ? EVENT_PREVIEW_ICONS[renderEventPreview.icon] || Clock
@@ -700,6 +714,7 @@ const MessageNotifications = () => {
           >
             <h4 className="text-xs font-medium text-primary-focus flex items-center gap-1.5 mb-2">
               <HeaderIcon size={12} strokeWidth={2.2} aria-hidden="true" />
+              {SecondaryHeaderIcon && <SecondaryHeaderIcon size={12} strokeWidth={2.2} aria-hidden="true" />}
               <span>{headerLabel}</span>
             </h4>
             {isEvent ? (
