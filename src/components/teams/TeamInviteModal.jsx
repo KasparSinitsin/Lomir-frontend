@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { lazy, Suspense, useState, useEffect, useMemo, useCallback } from "react";
 import {
   Users,
   Send,
@@ -10,19 +10,34 @@ import {
   UserSearch,
   MapPin,
   Globe,
+  FlaskConical,
+  ChevronRight,
+  ChevronUp,
 } from "lucide-react";
 import Modal from "../common/Modal";
 import Button from "../common/Button";
 import ScreenAlert from "../common/ScreenAlert";
+import CardMetaItem from "../common/CardMetaItem";
+import CardMetaRow from "../common/CardMetaRow";
 import RoleBadgePill from "../common/RoleBadgePill";
+import Tooltip from "../common/Tooltip";
+import DemoAvatarOverlay from "../users/DemoAvatarOverlay";
 import UserDetailsModal from "../users/UserDetailsModal";
 import TeamDetailsModal from "../teams/TeamDetailsModal";
 import TeamInvitesModal from "../teams/TeamInvitesModal";
 import TeamApplicationsModal from "../teams/TeamApplicationsModal";
-import { getUserInitials } from "../../utils/userHelpers";
+import {
+  DEMO_PROFILE_TOOLTIP,
+  DEMO_ROLE_TOOLTIP,
+  getUserInitials,
+  isSyntheticRole,
+  isSyntheticUser,
+} from "../../utils/userHelpers";
 import { teamService } from "../../services/teamService";
 import { vacantRoleService } from "../../services/vacantRoleService";
 import useSocketEvents from "../../hooks/useSocketEvents";
+
+const VacantRoleDetailsModal = lazy(() => import("./VacantRoleDetailsModal"));
 
 const normalizeId = (value) => {
   if (value === null || value === undefined || value === "") return null;
@@ -163,6 +178,10 @@ const unwrapTeamPayload = (payload) => {
  * @param {string} inviteeUsername - Username of the invitee
  * @param {string} inviteeAvatar - Avatar URL of the invitee
  * @param {string} inviteeBio - Bio/description of the invitee
+ * @param {string} inviteeCity - City of the invitee
+ * @param {string} inviteeCountry - Country of the invitee
+ * @param {boolean} inviteeIsRemote - Whether the invitee is remote
+ * @param {boolean} inviteeIsSynthetic - Whether the invitee is demo data
  * @param {string|number|null} prefillTeamId - Team ID to preselect when available
  * @param {string|number|null} prefillRoleId - Vacant role ID to preselect when available
  * @param {string|null} prefillTeamName - Team name for prefill context
@@ -178,6 +197,10 @@ const TeamInviteModal = ({
   inviteeUsername,
   inviteeAvatar,
   inviteeBio,
+  inviteeCity = null,
+  inviteeCountry = null,
+  inviteeIsRemote = false,
+  inviteeIsSynthetic = false,
   prefillTeamId = null,
   prefillRoleId = null,
   prefillTeamName = null,
@@ -211,6 +234,8 @@ const TeamInviteModal = ({
   const [selectedTeamForModal, setSelectedTeamForModal] = useState(null);
   const [selectedTeamInvitations, setSelectedTeamInvitations] = useState([]);
   const [selectedTeamApplications, setSelectedTeamApplications] = useState([]);
+  const [detailsRole, setDetailsRole] = useState(null);
+  const [isRoleSectionExpanded, setIsRoleSectionExpanded] = useState(false);
 
   // Fetch teams where user can invite
   useEffect(() => {
@@ -323,10 +348,15 @@ const TeamInviteModal = ({
       setSelectedTeamId(normalizedPrefillTeamId);
       setVacantRoles([]);
       setSelectedRoleId(normalizedPrefillRoleId);
+      setDetailsRole(null);
+      setIsRoleSectionExpanded(Boolean(normalizedPrefillRoleId));
       setMessage("");
       setLoadingRoles(false);
       setError(null);
       setSuccess(null);
+    } else {
+      setDetailsRole(null);
+      setIsRoleSectionExpanded(false);
     }
   }, [isOpen, normalizedPrefillTeamId, normalizedPrefillRoleId]);
 
@@ -481,14 +511,26 @@ const TeamInviteModal = ({
     return inviteeUsername || "unknown";
   };
 
+  const getInviteeLocation = () => {
+    if (inviteeIsRemote) return "Remote";
+
+    const parts = [inviteeCity, inviteeCountry].filter(Boolean);
+    return parts.length > 0 ? parts.join(", ") : null;
+  };
+
   // Build a user-like object for getUserInitials utility
   const getInviteeUserObject = () => {
     return {
       first_name: inviteeFirstName,
       last_name: inviteeLastName,
       username: inviteeUsername || inviteeName,
+      is_synthetic: inviteeIsSynthetic,
+      isSynthetic: inviteeIsSynthetic,
     };
   };
+
+  const inviteeIsDemo = isSyntheticUser(getInviteeUserObject());
+  const inviteeLocation = getInviteeLocation();
 
   // Get team avatar URL
   const getTeamAvatarUrl = (team) => {
@@ -687,12 +729,18 @@ const TeamInviteModal = ({
 
     const teamLabel = selectedTeam?.name || prefillTeamName || null;
 
-    if (prefillRoleName && teamLabel) {
-      return `Prefilled from match: ${prefillRoleName} in ${teamLabel}.`;
-    }
-
     if (prefillRoleName) {
-      return `Prefilled from match: ${prefillRoleName}.`;
+      const isPrefilledRoleStillSelected =
+        normalizedPrefillRoleId == null ||
+        idsMatch(selectedRoleId, normalizedPrefillRoleId);
+
+      if (!isPrefilledRoleStillSelected) return null;
+
+      if (!teamLabel) {
+        return `Prefilled from match: ${prefillRoleName}.`;
+      }
+
+      return `Prefilled from match: ${prefillRoleName} in ${teamLabel}.`;
     }
 
     if (teamLabel) {
@@ -704,6 +752,8 @@ const TeamInviteModal = ({
     prefillRoleName,
     prefillTeamName,
     normalizedPrefillTeamId,
+    normalizedPrefillRoleId,
+    selectedRoleId,
     selectedTeam,
     selectedTeamId,
   ]);
@@ -810,6 +860,14 @@ const TeamInviteModal = ({
     setSelectedRoleId((currentRoleId) =>
       idsMatch(currentRoleId, roleId) ? null : roleId,
     );
+  };
+
+  const handleRoleDetailsKeyDown = (event, role) => {
+    if (event.target.closest("button")) return;
+    if (event.key !== "Enter" && event.key !== " ") return;
+
+    event.preventDefault();
+    setDetailsRole(role);
   };
 
   const refreshSelectedTeamRequests = useCallback(async () => {
@@ -1040,6 +1098,15 @@ const TeamInviteModal = ({
     !sending &&
     !success &&
     (!selectedTeamRequiresRole || selectedRoleId !== null);
+  const shouldShowRolePicker =
+    selectedTeamId &&
+    (loadingRoles || vacantRoles.length > 0 || selectedTeamRequiresRole || isRoleSectionExpanded);
+  const roleAvailabilityLabel =
+    vacantRoles.length === 1
+      ? "1 open role available"
+      : `${vacantRoles.length} open roles available`;
+  const selectedRole =
+    vacantRoles.find((role) => idsMatch(role.id, selectedRoleId)) ?? null;
 
   const footer = (
     <div className="flex justify-end gap-3">
@@ -1093,7 +1160,7 @@ const TeamInviteModal = ({
               onClick={() => handleUserClick(inviteeId)}
               title="View profile"
             >
-              <div className="w-12 h-12 rounded-full relative">
+              <div className="w-12 h-12 rounded-full relative overflow-hidden">
                 {inviteeAvatar ? (
                   <img
                     src={inviteeAvatar}
@@ -1119,6 +1186,12 @@ const TeamInviteModal = ({
                     {getUserInitials(getInviteeUserObject())}
                   </span>
                 </div>
+                {inviteeIsDemo && (
+                  <DemoAvatarOverlay
+                    textClassName="text-[7px]"
+                    textTranslateClassName="-translate-y-[3px]"
+                  />
+                )}
               </div>
             </div>
 
@@ -1131,13 +1204,48 @@ const TeamInviteModal = ({
                 {getInviteeDisplayName()}
               </h4>
 
-              <p
-                className="text-sm text-base-content/70 cursor-pointer hover:text-primary transition-colors"
-                onClick={() => handleUserClick(inviteeId)}
-                title="View profile"
-              >
-                @{getUsername()}
-              </p>
+              <div className="flex flex-wrap items-center gap-x-1.5 text-sm">
+                <button
+                  type="button"
+                  className="text-base-content/70 cursor-pointer hover:text-primary transition-colors"
+                  onClick={() => handleUserClick(inviteeId)}
+                  title="View profile"
+                >
+                  @{getUsername()}
+                </button>
+                {inviteeLocation && (
+                  <span className="flex items-center gap-0.5 min-w-0 text-base-content/60">
+                    {inviteeIsRemote ? (
+                      <Globe
+                        size={10}
+                        className="text-base-content/60 shrink-0 mt-[1px]"
+                      />
+                    ) : (
+                      <MapPin
+                        size={10}
+                        className="text-base-content/60 shrink-0 mt-[1px]"
+                      />
+                    )}
+                    <span className="text-base-content/60 leading-tight break-words">
+                      {inviteeLocation}
+                    </span>
+                  </span>
+                )}
+                {inviteeIsDemo && (
+                  <Tooltip
+                    content={DEMO_PROFILE_TOOLTIP}
+                    wrapperClassName="flex items-center gap-0.5 min-w-0 text-base-content/50"
+                  >
+                    <FlaskConical
+                      size={10}
+                      className="text-base-content/50 shrink-0 mt-[1px]"
+                    />
+                    <span className="text-base-content/50 leading-tight break-words">
+                      Demo
+                    </span>
+                  </Tooltip>
+                )}
+              </div>
             </div>
           </div>
 
@@ -1290,12 +1398,33 @@ const TeamInviteModal = ({
           </div>
 
           {/* Vacant role selection */}
-          {selectedTeamId && (loadingRoles || vacantRoles.length > 0 || selectedTeamRequiresRole) && (
+          {shouldShowRolePicker && (
             <div className="pt-2">
-              <p className="text-xs text-base-content/60 mb-2 flex items-center">
-                <UserSearch size={12} className="text-orange-500 mr-1" />
-                Select a role you want to fill in this team:
-              </p>
+              <button
+                type="button"
+                className="flex w-full items-center justify-between text-xs text-base-content/60 mb-2 hover:text-base-content/80 transition-colors"
+                onClick={() => setIsRoleSectionExpanded((value) => !value)}
+                aria-expanded={isRoleSectionExpanded}
+              >
+                <span className="flex min-w-0 items-center">
+                  <UserSearch size={12} className="text-orange-500 mr-1" />
+                  <span className="truncate">
+                    Select a role you want to fill in this team:
+                  </span>
+                </span>
+                <span className="ml-2 flex items-center gap-1 text-base-content/40">
+                  {!isRoleSectionExpanded && vacantRoles.length > 0 && (
+                    <span className="whitespace-nowrap">
+                      {roleAvailabilityLabel}
+                    </span>
+                  )}
+                  {isRoleSectionExpanded ? (
+                    <ChevronUp size={14} />
+                  ) : (
+                    <ChevronRight size={14} />
+                  )}
+                </span>
+              </button>
 
               {prefillContextNote && (
                 <p className="text-xs text-base-content/40 mb-2">
@@ -1303,7 +1432,94 @@ const TeamInviteModal = ({
                 </p>
               )}
 
-              {loadingRoles ? (
+              {!isRoleSectionExpanded ? (
+                selectedRole ? (
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setDetailsRole(selectedRole)}
+                    onKeyDown={(event) =>
+                      handleRoleDetailsKeyDown(event, selectedRole)
+                    }
+                    className="flex items-start gap-3 rounded-xl bg-amber-100 p-3 text-left shadow ring-2 ring-amber-400 transition-all duration-200 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+                  >
+                    <div className="avatar">
+                      <div className="w-10 h-10 rounded-full relative overflow-hidden">
+                        <div className="avatar-fallback bg-amber-500 text-white flex items-center justify-center w-full h-full rounded-full absolute inset-0">
+                          <span className="text-sm font-medium">
+                            {getRoleInitials(
+                              selectedRole.roleName ??
+                                selectedRole.role_name ??
+                                "Vacant Role",
+                            )}
+                          </span>
+                        </div>
+                        {isSyntheticRole(selectedRole) && (
+                          <DemoAvatarOverlay
+                            textClassName="text-[6px]"
+                            textTranslateClassName="-translate-y-[3px]"
+                          />
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex-1 min-w-0 pt-[1px]">
+                      <div className="flex items-center justify-between">
+                        <h3 className="font-medium text-sm truncate leading-[120%] min-w-0">
+                          {selectedRole.roleName ??
+                            selectedRole.role_name ??
+                            "Vacant Role"}
+                        </h3>
+                        <div className="shrink-0 ml-1">
+                          <RoleBadgePill
+                            icon={Check}
+                            label="Selected"
+                            badgeColorClass="bg-amber-800 text-white"
+                            interactive
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              handleRoleCardClick(selectedRole.id);
+                            }}
+                            className="shrink-0"
+                          />
+                        </div>
+                      </div>
+
+                      {(getRoleLocation(selectedRole) ||
+                        isSyntheticRole(selectedRole)) && (
+                        <CardMetaRow>
+                          {getRoleLocation(selectedRole) && (
+                            <CardMetaItem
+                              icon={
+                                (selectedRole.isRemote ??
+                                  selectedRole.is_remote)
+                                  ? Globe
+                                  : MapPin
+                              }
+                            >
+                              {getRoleLocation(selectedRole)}
+                            </CardMetaItem>
+                          )}
+                          {isSyntheticRole(selectedRole) && (
+                            <Tooltip
+                              content={DEMO_ROLE_TOOLTIP}
+                              wrapperClassName="flex items-center gap-0.5 min-w-0 text-base-content/50"
+                            >
+                              <FlaskConical
+                                size={10}
+                                className="text-base-content/50 shrink-0 mt-[1px]"
+                              />
+                              <span className="text-base-content/50 leading-tight break-words">
+                                Demo
+                              </span>
+                            </Tooltip>
+                          )}
+                        </CardMetaRow>
+                      )}
+                    </div>
+                  </div>
+                ) : null
+              ) : loadingRoles ? (
                 <div className="flex justify-center py-6">
                   <div className="loading loading-spinner loading-md text-primary"></div>
                 </div>
@@ -1323,71 +1539,110 @@ const TeamInviteModal = ({
                   </p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-64 overflow-y-auto p-1">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-h-64 overflow-y-auto p-1">
                   {vacantRoles.map((role) => {
                     const roleName =
                       role.roleName ?? role.role_name ?? "Vacant Role";
                     const isSelected = idsMatch(selectedRoleId, role.id);
                     const locationText = getRoleLocation(role);
                     const isRemote = role.isRemote ?? role.is_remote;
+                    const showDemoRole = isSyntheticRole(role);
 
                     return (
                       <div
                         key={role.id}
-                        onClick={() => handleRoleCardClick(role.id)}
-                        className={`relative flex items-center gap-3 p-3 rounded-xl shadow cursor-pointer transition-all duration-200
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => setDetailsRole(role)}
+                        onKeyDown={(event) =>
+                          handleRoleDetailsKeyDown(event, role)
+                        }
+                        className={`flex items-start gap-4 p-4 rounded-xl text-left shadow cursor-pointer transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400
                           ${
                             isSelected
                               ? "bg-amber-100 ring-2 ring-amber-400 shadow-md"
-                              : "bg-amber-50 hover:bg-amber-100 hover:shadow-md"
+                              : "bg-amber-50 hover:bg-amber-100/70 hover:shadow-md"
                           }`}
                       >
-                        <div className="absolute top-2 right-2">
-                          <span
-                            className={`badge badge-sm gap-1 ${
-                              isSelected ? "" : "badge-role-member"
-                            }`}
-                            style={
-                              isSelected
-                                ? {
-                                    backgroundColor:
-                                      "var(--color-warning, #F59E0B)",
-                                    color: "#ffffff",
-                                  }
-                                : {}
-                            }
-                          >
-                            {isSelected ? (
-                              <Check className="w-3 h-3" />
-                            ) : (
-                              <UserSearch className="w-3 h-3" />
+                        <div className="avatar">
+                          <div className="w-12 h-12 rounded-full relative overflow-hidden">
+                            <div className="avatar-fallback bg-amber-500 text-white flex items-center justify-center w-full h-full rounded-full absolute inset-0">
+                              <span className="text-lg">
+                                {getRoleInitials(roleName)}
+                              </span>
+                            </div>
+                            {showDemoRole && (
+                              <DemoAvatarOverlay
+                                textClassName="text-[7px]"
+                                textTranslateClassName="-translate-y-[3px]"
+                              />
                             )}
-                            {isSelected ? "Selected" : "Select"}
-                          </span>
-                        </div>
-
-                        <div className="avatar placeholder flex-shrink-0">
-                          <div className="bg-amber-200 text-amber-800 rounded-full w-10 h-10 flex items-center justify-center">
-                            <span className="text-sm font-medium">
-                              {getRoleInitials(roleName)}
-                            </span>
                           </div>
                         </div>
 
-                        <div className="flex-1 min-w-0 pr-16">
-                          <h4 className="font-medium text-sm text-base-content leading-tight truncate">
-                            {roleName}
-                          </h4>
-                          {locationText && (
-                            <p className="text-xs text-base-content/60 flex items-center mt-0.5">
-                              {isRemote ? (
-                                <Globe size={10} className="mr-1 flex-shrink-0" />
-                              ) : (
-                                <MapPin size={10} className="mr-1 flex-shrink-0" />
+                        <div className="flex-1 min-w-0 pt-[1px]">
+                          <div className="flex flex-col">
+                            <div className="flex items-center justify-between">
+                              <h3 className="font-medium text-base truncate leading-[120%] min-w-0">
+                                {roleName}
+                              </h3>
+                              <div className="shrink-0 ml-1">
+                                <RoleBadgePill
+                                  icon={isSelected ? Check : UserSearch}
+                                  label={isSelected ? "Selected" : "Select"}
+                                  badgeColorClass={
+                                    isSelected
+                                      ? "bg-amber-800 text-white"
+                                      : "badge-role-vacant"
+                                  }
+                                  interactive
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    handleRoleCardClick(role.id);
+                                  }}
+                                  className="shrink-0"
+                                />
+                              </div>
+                            </div>
+
+                            {locationText && (
+                              <CardMetaRow>
+                                <CardMetaItem icon={isRemote ? Globe : MapPin}>
+                                  {locationText}
+                                </CardMetaItem>
+                                {showDemoRole && (
+                                  <Tooltip
+                                    content={DEMO_ROLE_TOOLTIP}
+                                    wrapperClassName="flex items-center gap-0.5 min-w-0 text-base-content/50"
+                                  >
+                                    <FlaskConical
+                                      size={10}
+                                      className="text-base-content/50 shrink-0 mt-[1px]"
+                                    />
+                                    <span className="text-base-content/50 leading-tight break-words">
+                                      Demo
+                                    </span>
+                                  </Tooltip>
+                                )}
+                              </CardMetaRow>
+                            )}
+                            {!locationText && showDemoRole && (
+                              <CardMetaRow>
+                                <Tooltip
+                                  content={DEMO_ROLE_TOOLTIP}
+                                  wrapperClassName="flex items-center gap-0.5 min-w-0 text-base-content/50"
+                                >
+                                  <FlaskConical
+                                    size={10}
+                                    className="text-base-content/50 shrink-0 mt-[1px]"
+                                  />
+                                  <span className="text-base-content/50 leading-tight break-words">
+                                    Demo
+                                  </span>
+                                </Tooltip>
+                              </CardMetaRow>
                               )}
-                              <span className="truncate">{locationText}</span>
-                            </p>
-                          )}
+                          </div>
                         </div>
                       </div>
                     );
@@ -1395,7 +1650,8 @@ const TeamInviteModal = ({
                 </div>
               )}
 
-              {!loadingRoles &&
+              {isRoleSectionExpanded &&
+                !loadingRoles &&
                 vacantRoles.length > 0 &&
                 selectedRoleId === null &&
                 selectedTeamRequiresRole && (
@@ -1405,7 +1661,8 @@ const TeamInviteModal = ({
                   </p>
                 )}
 
-              {!loadingRoles &&
+              {isRoleSectionExpanded &&
+                !loadingRoles &&
                 vacantRoles.length > 0 &&
                 selectedRoleId === null &&
                 !selectedTeamRequiresRole && (
@@ -1480,6 +1737,19 @@ const TeamInviteModal = ({
         highlightApplicationId={selectedTeamApplications?.[0]?.id ?? null}
         highlightUserId={inviteeId}
       />
+
+      <Suspense fallback={null}>
+        {detailsRole && (
+          <VacantRoleDetailsModal
+            isOpen={Boolean(detailsRole)}
+            onClose={() => setDetailsRole(null)}
+            team={selectedTeam}
+            role={detailsRole}
+            isTeamMember={selectedTeamRequiresRole}
+            hideActions={true}
+          />
+        )}
+      </Suspense>
     </>
   );
 };
