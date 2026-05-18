@@ -120,8 +120,7 @@ const Profile = () => {
   const displayBadges = Array.isArray(displayUser?.badges)
     ? displayUser.badges
     : [];
-  const hiddenAwardIds =
-    displayUser?.hidden_award_ids ?? displayUser?.hiddenAwardIds ?? [];
+  const hiddenAwardIds = displayUser?.hiddenAwardIds ?? [];
 
   // Auto-fill city from postal code lookup
   const { getSuggestedUpdates } = useLocationAutoFill({
@@ -157,9 +156,7 @@ const Profile = () => {
       }
 
       // Fall back to user context data
-      if (user.is_public === true) return true;
       if (user.isPublic === true) return true;
-      if (user.is_public === false) return false;
       if (user.isPublic === false) return false;
 
       // Default to hidden profile if not specified
@@ -184,26 +181,22 @@ const Profile = () => {
 
         // Update form data directly from API response
         setFormData({
-          firstName: apiUserData.firstName || apiUserData.first_name || "",
-          lastName: apiUserData.lastName || apiUserData.last_name || "",
+          firstName: apiUserData.firstName || "",
+          lastName: apiUserData.lastName || "",
           username: apiUserData.username || "",
           email: apiUserData.email || apiUserData.email || "",
           bio: apiUserData.bio || "",
-          postalCode: apiUserData.postalCode || apiUserData.postal_code || "",
+          postalCode: apiUserData.postalCode || "",
           city: apiUserData.city || "",
           country: apiUserData.country || "",
           isPublic:
-            apiUserData.isPublic !== undefined
-              ? apiUserData.isPublic
-              : apiUserData.is_public !== undefined
-                ? apiUserData.is_public
-                : true,
+            apiUserData.isPublic !== undefined ? apiUserData.isPublic : true,
           profileImage: null,
         });
 
         // Set image preview if available
-        if (apiUserData.avatarUrl || apiUserData.avatar_url) {
-          setImagePreview(apiUserData.avatarUrl || apiUserData.avatar_url);
+        if (apiUserData.avatarUrl) {
+          setImagePreview(apiUserData.avatarUrl);
         }
 
         // Store API user locally (includes badges totals as `badges`)
@@ -235,26 +228,22 @@ const Profile = () => {
     // Initialize form data from context if available and we haven't loaded from API yet
     if (user && !initialDataLoaded) {
       setFormData({
-        firstName: user.firstName || user.first_name || "",
-        lastName: user.lastName || user.last_name || "",
+        firstName: user.firstName || "",
+        lastName: user.lastName || "",
         username: user.username || "",
         email: user.email || "",
         bio: user.bio || "",
         city: user.city || "",
-        postalCode: user.postalCode || user.postal_code || "",
+        postalCode: user.postalCode || "",
         country: user.country || "",
         isPublic:
-          user.is_public !== undefined
-            ? user.is_public
-            : user.isPublic !== undefined
-              ? user.isPublic
-              : true,
+          user.isPublic !== undefined ? user.isPublic : true,
         profileImage: null,
       });
 
       // Set image preview if available
-      if (user.avatar_url || user.avatarUrl) {
-        setImagePreview(user.avatar_url || user.avatarUrl);
+      if (user.avatarUrl) {
+        setImagePreview(user.avatarUrl);
       }
     }
 
@@ -289,7 +278,7 @@ const Profile = () => {
   // Reset image error state when user changes
   useEffect(() => {
     setImageError(false);
-  }, [user?.avatarUrl, user?.avatar_url]);
+  }, [user?.avatarUrl]);
 
   // Auto-fill city and country when postal code lookup returns a result
   useEffect(() => {
@@ -462,7 +451,6 @@ const Profile = () => {
         // Update the user context to remove avatar
         const updatedUser = {
           ...user,
-          avatar_url: null,
           avatarUrl: null,
         };
         updateUser(updatedUser);
@@ -600,7 +588,7 @@ const Profile = () => {
 
       updateLocalUserBadges((currentUser) => {
         const hiddenIds =
-          currentUser.hidden_award_ids ?? currentUser.hiddenAwardIds ?? [];
+          currentUser.hiddenAwardIds ?? [];
         const nextHiddenIds = hiddenIds
           .map((value) => String(value))
           .includes(String(awardId))
@@ -609,7 +597,6 @@ const Profile = () => {
 
         return {
           ...currentUser,
-          hidden_award_ids: nextHiddenIds,
           hiddenAwardIds: nextHiddenIds,
         };
       });
@@ -646,14 +633,13 @@ const Profile = () => {
 
       updateLocalUserBadges((currentUser) => {
         const hiddenIds =
-          currentUser.hidden_award_ids ?? currentUser.hiddenAwardIds ?? [];
+          currentUser.hiddenAwardIds ?? [];
         const nextHiddenIds = hiddenIds.filter(
           (value) => String(value) !== String(awardId),
         );
 
         return {
           ...currentUser,
-          hidden_award_ids: nextHiddenIds,
           hiddenAwardIds: nextHiddenIds,
         };
       });
@@ -820,15 +806,15 @@ const Profile = () => {
 
       // Create an object to hold the updated user data
       const userData = {
-        first_name: formData.firstName,
-        last_name: formData.lastName,
+        firstName: formData.firstName,
+        lastName: formData.lastName,
         username: formData.username.trim(),
         email: formData.email,
         bio: formData.bio,
-        postal_code: formData.postalCode,
+        postalCode: formData.postalCode,
         city: formData.city,
         country: formData.country,
-        is_public: formData.isPublic,
+        isPublic: formData.isPublic,
       };
 
       // Handle image upload if a new image was selected
@@ -840,8 +826,8 @@ const Profile = () => {
         );
         if (uploadResult.success) {
           avatarUrl = uploadResult.url;
-          userData.avatar_url = avatarUrl;
-          userData.avatar_file_id = uploadResult.fileId;
+          userData.avatarUrl = avatarUrl;
+          userData.avatarFileId = uploadResult.fileId;
           setImagePreview(avatarUrl);
         } else {
           console.error("Avatar upload failed:", uploadResult.error);
@@ -879,14 +865,12 @@ const Profile = () => {
         // Create updated user object with correct avatar URL
         const updatedUser = {
           ...user,
-          is_public: formData.isPublic,
           isPublic: formData.isPublic,
-          first_name: formData.firstName,
-          last_name: formData.lastName,
+          firstName: formData.firstName,
+          lastName: formData.lastName,
           username: formData.username.trim(),
           email: formData.email, // Include email in the updated user object
           bio: formData.bio,
-          postal_code: formData.postalCode,
           city: formData.city,
           country: formData.country,
           // Pick up geocoded state & coordinates from the API response
@@ -895,11 +879,7 @@ const Profile = () => {
           longitude: response.data?.longitude ?? user.longitude,
           // Use the avatar URL from ImageKit if we uploaded a new image,
           // otherwise use the response data or keep the existing avatar
-          avatar_url: avatarUrl || response.data?.avatar_url || user.avatar_url,
-          avatarUrl: avatarUrl || response.data?.avatar_url || user.avatarUrl,
-          // Also set camelCase versions
-          firstName: formData.firstName,
-          lastName: formData.lastName,
+          avatarUrl: avatarUrl || response.data?.avatarUrl || user.avatarUrl,
           userName: formData.username,
           postalCode: formData.postalCode,
         };
@@ -913,15 +893,15 @@ const Profile = () => {
         // Reset form data with updated values
         setFormData((prev) => ({
           ...prev,
-          firstName: updatedUser.first_name || updatedUser.firstName || "",
-          lastName: updatedUser.last_name || updatedUser.lastName || "",
+          firstName: updatedUser.firstName || "",
+          lastName: updatedUser.lastName || "",
           username: updatedUser.username || "",
           email: updatedUser.email || "", // Keep the email in the form data
           bio: updatedUser.bio || "",
-          postalCode: updatedUser.postal_code || updatedUser.postalCode || "",
+          postalCode: updatedUser.postalCode || "",
           city: updatedUser.city || "",
           country: updatedUser.country || "",
-          isPublic: updatedUser.is_public || updatedUser.isPublic || false,
+          isPublic: updatedUser.isPublic || false,
           profileImage: null, // Reset profile image after successful update
         }));
       }
@@ -975,7 +955,7 @@ const Profile = () => {
   }
 
   const profileLocation = {
-    postalCode: displayUser.postalCode || displayUser.postal_code || "",
+    postalCode: displayUser.postalCode || "",
     city: displayUser.city || "",
     state: displayUser.state || "",
     country: displayUser.country || "",
@@ -1052,7 +1032,7 @@ const Profile = () => {
                 <div className="w-full max-w-md mt-5">
                   <ImageUploader
                     currentImage={
-                      imagePreview || user?.avatar_url || user?.avatarUrl
+                      imagePreview || user?.avatarUrl
                     }
                     onImageSelect={(file, previewUrl) => {
                       setFormData((prev) => ({
@@ -1068,7 +1048,7 @@ const Profile = () => {
                     disabled={loading}
                     loading={avatarDeleteLoading}
                     showRemoveButton={
-                      !!(imagePreview || user?.avatar_url || user?.avatarUrl) &&
+                      !!(imagePreview || user?.avatarUrl) &&
                       !formData.profileImage
                     }
                     removeButtonText="Remove Current Picture"
@@ -1254,9 +1234,9 @@ const Profile = () => {
               <div className="mb-4 md:mb-0 md:mr-8 flex-shrink-0">
                 <div className="avatar placeholder">
                   <div className="bg-[var(--color-primary-focus)] text-primary-content rounded-full w-32 h-32 relative overflow-hidden">
-                    {(user.avatarUrl || user.avatar_url) && !imageError ? (
+                    {user.avatarUrl && !imageError ? (
                       <img
-                        src={user.avatarUrl || user.avatar_url}
+                        src={user.avatarUrl}
                         alt="Profile"
                         className="rounded-full object-cover w-full h-full"
                         onError={() => setImageError(true)}
@@ -1273,8 +1253,8 @@ const Profile = () => {
               <div className="flex-grow min-w-0">
                 {/* Name */}
                 <h2 className="text-3xl font-bold leading-[120%] mb-[0.2em]">
-                  {user.firstName || user.first_name || ""}{" "}
-                  {user.lastName || user.last_name || ""}
+                  {user.firstName || ""}{" "}
+                  {user.lastName || ""}
                 </h2>
 
                 {/* Username, visibility, and date in one row */}

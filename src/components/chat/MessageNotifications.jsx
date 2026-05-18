@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   AlertTriangle,
   Award,
+  CheckCircle,
   CircleX,
   Clock,
   Compass,
@@ -10,6 +11,7 @@ import {
   Heart,
   Lightbulb,
   LogOut,
+  Mail,
   MessageCircle,
   Pencil,
   SendHorizontal,
@@ -21,12 +23,13 @@ import {
   UserPlus,
   UserSearch,
   Users,
+  UserX,
 } from 'lucide-react';
 import { CATEGORY_COLORS, DEFAULT_COLOR } from '../../constants/badgeConstants';
 import { useLocation, useNavigate } from 'react-router-dom';
-import socketService from '../../services/socketService';
 import { messageService } from '../../services/messageService';
 import { useAuth } from '../../contexts/AuthContext';
+import useSocketEvents from '../../hooks/useSocketEvents';
 import { getEventPreview } from '../../utils/eventPreview';
 import {
   getMessageSenderDisplayName,
@@ -39,13 +42,16 @@ import {
 const EVENT_PREVIEW_ICONS = {
   AlertTriangle,
   Award,
+  CheckCircle,
   CircleX,
+  Clock,
   Compass,
   Crown,
   FileText,
   Heart,
   Lightbulb,
   LogOut,
+  Mail,
   Pencil,
   SendHorizontal,
   Settings,
@@ -56,6 +62,7 @@ const EVENT_PREVIEW_ICONS = {
   UserPlus,
   UserSearch,
   Users,
+  UserX,
 };
 
 const BADGE_CATEGORY_ICON = {
@@ -64,6 +71,18 @@ const BADGE_CATEGORY_ICON = {
   'Creative Thinking': 'Lightbulb',
   'Leadership Qualities': 'Compass',
   'Personal Attributes': 'Heart',
+};
+
+const NOTIFICATION_TOAST_TYPES = {
+  invitation_received:  { icon: 'Mail',         label: 'Team Invitation',      color: '#ec4899', senderPrefix: 'Invited by ' },
+  role_invitation:      { icon: 'Mail',         label: 'Role Invitation',      color: '#ec4899', senderPrefix: 'Invited by ' },
+  invitation_accepted:  { icon: 'UserCheck',    label: 'Invitation Accepted',  color: '#16a34a', senderColor: '#15803d', senderPrefix: 'Accepted by ' },
+  invitation_declined:  { icon: 'UserX',        label: 'Invitation Declined',  color: '#6b7280', senderPrefix: 'Declined by ' },
+  invitation_cancelled: { icon: 'CircleX',      label: 'Invitation Cancelled', color: '#6b7280', senderPrefix: 'Cancelled by ' },
+  application_received: { icon: 'Mail',         label: 'New Application',      color: '#ec4899', senderPrefix: 'Applied by ' },
+  application_approved: { icon: 'CheckCircle',  label: 'Application Approved', color: '#16a34a', senderColor: '#15803d', senderPrefix: 'Approved by ' },
+  application_rejected: { icon: 'CircleX',      label: 'Application Declined', color: '#6b7280', senderPrefix: 'Declined by ' },
+  member_removed:       { icon: 'UserMinus',    label: 'Removed from Team',    senderPrefix: 'Removed by ' },
 };
 
 const ROLE_CHANGE_PREVIEW = {
@@ -394,6 +413,7 @@ const MessageNotifications = () => {
     search: location.search,
   });
   const { isAuthenticated, user } = useAuth();
+  const prevIsAuthenticatedRef = useRef(false);
 
   useEffect(() => {
     locationRef.current = {
@@ -401,18 +421,31 @@ const MessageNotifications = () => {
       search: location.search,
     };
   }, [location.pathname, location.search]);
-  
+
   useEffect(() => {
-    if (!isAuthenticated) return;
-    
-    // Fetch initial unread count
+    if (!isAuthenticated) {
+      // Only clear the flag when transitioning from authenticated → not (i.e. logout),
+      // not on the initial mount where isAuthenticated starts false while auth resolves.
+      if (prevIsAuthenticatedRef.current) {
+        sessionStorage.removeItem('lomir:initial_unread_checked');
+      }
+      prevIsAuthenticatedRef.current = false;
+      return;
+    }
+
+    prevIsAuthenticatedRef.current = true;
+
+    // Only show once per tab session (persists across page refreshes, cleared on logout).
+    if (sessionStorage.getItem('lomir:initial_unread_checked')) return;
+    sessionStorage.setItem('lomir:initial_unread_checked', '1');
+
     const fetchUnreadCount = async () => {
       try {
         const response = await messageService.getUnreadCount();
         const count = response.data?.count ?? response.count ?? 0;
         if (count > 0) {
-          setNotifications([{ 
-            id: 'initial', 
+          setNotifications([{
+            id: 'initial',
             text: `You have ${count} unread messages`,
             expiresAt: Date.now() + NOTIFICATION_VISIBLE_MS,
             removeAt: Date.now() + NOTIFICATION_VISIBLE_MS + NOTIFICATION_FADE_MS,
@@ -422,146 +455,175 @@ const MessageNotifications = () => {
         console.error('Error fetching unread count:', error);
       }
     };
-    
+
     fetchUnreadCount();
-    
-    let detachMessageListener = null;
+  }, [isAuthenticated]);
 
-    const attachMessageListener = (socket) => {
-      if (!socket) return;
+  const handleNewMessage = useCallback((message) => {
+    if (isOwnMessage(message, user?.id)) return;
 
-      if (detachMessageListener) {
-        detachMessageListener();
-      }
+    const isInConversation = isMessageForCurrentChatPath(
+      message,
+      locationRef.current.pathname,
+      locationRef.current.search,
+      user?.id,
+    );
 
-      const handleNewMessage = (message) => {
-        if (isOwnMessage(message, user?.id)) return;
+    if (!isInConversation) {
+      const target = getMessageConversationTarget(message, user?.id);
+      const eventContent = pickEventContent(message);
 
-        const isInConversation = isMessageForCurrentChatPath(
-          message,
-          locationRef.current.pathname,
-          locationRef.current.search,
-          user?.id,
-        );
-        
-        if (!isInConversation) {
-          const target = getMessageConversationTarget(message, user?.id);
-          const eventContent = pickEventContent(message);
-          const eventPreview =
-            getRoleEventTypePreview(message) ||
-            getEventPreview(eventContent, user) ||
-            getFallbackRoleEventPreview(eventContent);
-          setNotifications(prev => [
-            ...prev, 
-            {
-              id: message.id || `${target.type}-${target.conversationId}-${Date.now()}`,
-              conversationId: target.conversationId,
-              conversationType: target.type,
-              senderId: message.senderId || message.sender_id,
-              senderName: eventPreview?.senderName || getNotificationSenderName(message),
-              senderPrefix: eventPreview?.senderPrefix ?? null,
-              text: eventPreview?.text || getMessagePreviewText(message),
-              isEvent: Boolean(eventPreview),
-              eventIcon: eventPreview?.icon || null,
-              eventColor: eventPreview?.color || null,
-              eventBackgroundColor: eventPreview?.backgroundColor || null,
-              time: new Date(),
-              expiresAt: Date.now() + NOTIFICATION_VISIBLE_MS,
-              removeAt: Date.now() + NOTIFICATION_VISIBLE_MS + NOTIFICATION_FADE_MS,
-            }
-          ]);
+      // These system messages are shown via notification:new toast instead.
+      if (/APPLICATION_APPROVED:|APPLICATION_DECLINED:|MEMBER_REMOVED|INVITATION_DECLINED|INVITATION_CANCELLED/i.test(eventContent)) return;
+
+      // Team join messages (👋/🎯) are visible in the team chat and covered by notification:new for the inviter.
+      if ((message.team_id || message.teamId) && /^[\u{1F44B}\u{1F3AF}]/u.test(eventContent.trim())) return;
+
+      const eventPreview =
+        getRoleEventTypePreview(message) ||
+        getEventPreview(eventContent, user) ||
+        getFallbackRoleEventPreview(eventContent);
+      setNotifications(prev => [
+        ...prev,
+        {
+          id: message.id || `${target.type}-${target.conversationId}-${Date.now()}`,
+          conversationId: target.conversationId,
+          conversationType: target.type,
+          senderId: message.senderId || message.sender_id,
+          senderName: eventPreview?.senderName || getNotificationSenderName(message),
+          senderPrefix: eventPreview?.senderPrefix ?? null,
+          text: eventPreview?.text || getMessagePreviewText(message),
+          isEvent: Boolean(eventPreview),
+          eventIcon: eventPreview?.icon || null,
+          eventColor: eventPreview?.color || null,
+          eventBackgroundColor: eventPreview?.backgroundColor || null,
+          time: new Date(),
+          expiresAt: Date.now() + NOTIFICATION_VISIBLE_MS,
+          removeAt: Date.now() + NOTIFICATION_VISIBLE_MS + NOTIFICATION_FADE_MS,
         }
-      };
-      
-      const handleMessageDeleted = (payload) => {
-        setNotifications((prev) =>
-          prev.filter((n) => String(n.id) !== String(payload.messageId)),
-        );
-      };
+      ]);
+    }
+  }, [user]);
 
-      const handleRoleStatusChanged = (payload) => {
-        const preview = getRoleStatusChangedPreview(payload);
-        if (!preview) return;
-        const id = `role-status-${payload.roleId}-${payload.userType}-${Date.now()}`;
-        setNotifications((prev) => [
-          // Replace any existing toast for the same role + change type so
-          // repeated edits don't stack up.
-          ...prev.filter(
-            (n) =>
-              !(
-                n.roleId === payload.roleId &&
-                n.roleChangeType === payload.roleChangeType &&
-                n.userType === payload.userType
-              ),
+  const handleMessageDeleted = useCallback((payload) => {
+    setNotifications((prev) =>
+      prev.filter((n) => String(n.id) !== String(payload.messageId)),
+    );
+  }, []);
+
+  const handleRoleStatusChanged = useCallback((payload) => {
+    const preview = getRoleStatusChangedPreview(payload);
+    if (!preview) return;
+    const id = `role-status-${payload.roleId}-${payload.userType}-${Date.now()}`;
+    setNotifications((prev) => [
+      // Replace any existing toast for the same role + change type so
+      // repeated edits don't stack up.
+      ...prev.filter(
+        (n) =>
+          !(
+            n.roleId === payload.roleId &&
+            n.roleChangeType === payload.roleChangeType &&
+            n.userType === payload.userType
           ),
-          {
-            id,
-            isEvent: true,
-            roleId: payload.roleId,
-            roleChangeType: payload.roleChangeType,
-            userType: payload.userType,
-            eventIcon: preview.icon,
-            eventColor: preview.color,
-            text: preview.text,
-            senderPrefix: 'by ',
-            senderName: payload.actorName || null,
-            navigateTo: payload.userType === 'applicant'
-              ? `/teams/my-teams?openApplication=${payload.applicationId}`
-              : `/teams/my-teams?openInvitation=${payload.invitationId}`,
-            time: new Date(),
-            expiresAt: Date.now() + NOTIFICATION_VISIBLE_MS,
-            removeAt: Date.now() + NOTIFICATION_VISIBLE_MS + NOTIFICATION_FADE_MS,
-          },
-        ]);
-      };
+      ),
+      {
+        id,
+        isEvent: true,
+        roleId: payload.roleId,
+        roleChangeType: payload.roleChangeType,
+        userType: payload.userType,
+        eventIcon: preview.icon,
+        eventColor: preview.color,
+        text: preview.text,
+        senderPrefix: 'by ',
+        senderName: payload.actorName || null,
+        navigateTo: payload.userType === 'applicant'
+          ? `/teams/my-teams?openApplication=${payload.applicationId}`
+          : `/teams/my-teams?openInvitation=${payload.invitationId}`,
+        time: new Date(),
+        expiresAt: Date.now() + NOTIFICATION_VISIBLE_MS,
+        removeAt: Date.now() + NOTIFICATION_VISIBLE_MS + NOTIFICATION_FADE_MS,
+      },
+    ]);
+  }, []);
 
-      const handleBadgeAwarded = (payload) => {
-        const { badgeName, badgeCategory, awarderName } = payload;
-        if (!badgeName) return;
-        const categoryColor = CATEGORY_COLORS[badgeCategory] || DEFAULT_COLOR;
-        const id = `badge-awarded-${payload.badgeId}-${Date.now()}`;
-        setNotifications((prev) => [
-          ...prev,
-          {
-            id,
-            isEvent: true,
-            headerIconName: 'Award',
-            headerLabel: 'New Badge for you!',
-            eventIcon: BADGE_CATEGORY_ICON[badgeCategory] || 'Award',
-            eventColor: categoryColor,
-            text: `You received the "${badgeName}" badge!`,
-            senderPrefix: 'by ',
-            senderName: awarderName || null,
-            navigateTo: `/profile?scrollTo=badges&highlightBadge=${encodeURIComponent(badgeName)}`,
-            time: new Date(),
-            expiresAt: Date.now() + NOTIFICATION_VISIBLE_MS,
-            removeAt: Date.now() + NOTIFICATION_VISIBLE_MS + NOTIFICATION_FADE_MS,
-          },
-        ]);
-      };
+  const handleBadgeAwarded = useCallback((payload) => {
+    const { badgeName, badgeCategory, awarderName } = payload;
+    if (!badgeName) return;
+    const categoryColor = CATEGORY_COLORS[badgeCategory] || DEFAULT_COLOR;
+    const id = `badge-awarded-${payload.badgeId}-${Date.now()}`;
+    setNotifications((prev) => [
+      ...prev,
+      {
+        id,
+        isEvent: true,
+        headerIconName: 'Award',
+        headerLabel: 'New Badge for you!',
+        eventIcon: BADGE_CATEGORY_ICON[badgeCategory] || 'Award',
+        eventColor: categoryColor,
+        text: `You received the "${badgeName}" badge!`,
+        senderPrefix: 'by ',
+        senderName: awarderName || null,
+        navigateTo: `/profile?scrollTo=badges&highlightBadge=${encodeURIComponent(badgeName)}`,
+        time: new Date(),
+        expiresAt: Date.now() + NOTIFICATION_VISIBLE_MS,
+        removeAt: Date.now() + NOTIFICATION_VISIBLE_MS + NOTIFICATION_FADE_MS,
+      },
+    ]);
+  }, []);
 
-      socket.on('message:received', handleNewMessage);
-      socket.on('message:deleted', handleMessageDeleted);
-      socket.on('role:statusChanged', handleRoleStatusChanged);
-      socket.on('badge:awarded', handleBadgeAwarded);
+  const handleNotificationNew = useCallback((payload) => {
+    if (!payload?.title) return;
+    const config = NOTIFICATION_TOAST_TYPES[payload.type];
+    if (!config) return;
+    const isRoleInvite = (['invitation_received', 'invitation_cancelled', 'invitation_declined'].includes(payload.type) && !!payload.roleName)
+      || (payload.type === 'invitation_accepted' && !!payload.filledRoleName);
+    setNotifications((prev) => [
+      ...prev,
+      {
+        id: `notif-${payload.type}-${Date.now()}`,
+        isEvent: true,
+        headerIconName: config.icon,
+        secondaryHeaderIconName: isRoleInvite ? 'UserSearch' : null,
+        headerLabel: isRoleInvite
+          ? payload.type === 'invitation_cancelled' ? 'Team & Role Invite Cancelled'
+            : payload.type === 'invitation_accepted' ? 'Team & Role Invite Accepted'
+            : payload.type === 'invitation_declined' ? 'Team & Role Invite Declined'
+            : 'Team & Role Invitation'
+          : config.label,
+        eventIcon: config.icon,
+        eventColor: config.color || null,
+        text: payload.title,
+        senderName: payload.actorName || null,
+        senderPrefix: config.senderPrefix || null,
+        senderColor: config.senderColor || null,
+        navigateTo: '/teams/my-teams',
+        time: new Date(),
+        expiresAt: Date.now() + NOTIFICATION_VISIBLE_MS,
+        removeAt: Date.now() + NOTIFICATION_VISIBLE_MS + NOTIFICATION_FADE_MS,
+      },
+    ]);
+  }, []);
 
-      detachMessageListener = () => {
-        socket.off('message:received', handleNewMessage);
-        socket.off('message:deleted', handleMessageDeleted);
-        socket.off('role:statusChanged', handleRoleStatusChanged);
-        socket.off('badge:awarded', handleBadgeAwarded);
-      };
-    };
-
-    const unsubscribeSocketReady = socketService.onSocketReady(attachMessageListener);
-    
-    return () => {
-      unsubscribeSocketReady();
-      if (detachMessageListener) {
-        detachMessageListener();
-      }
-    };
-  }, [isAuthenticated, user?.id]);
+  useSocketEvents(
+    isAuthenticated
+      ? {
+          'message:received': handleNewMessage,
+          'message:deleted': handleMessageDeleted,
+          'role:statusChanged': handleRoleStatusChanged,
+          'badge:awarded': handleBadgeAwarded,
+          'notification:new': handleNotificationNew,
+        }
+      : null,
+    [
+      isAuthenticated,
+      handleNewMessage,
+      handleMessageDeleted,
+      handleRoleStatusChanged,
+      handleBadgeAwarded,
+      handleNotificationNew,
+    ],
+  );
   
   // Remove notification when clicked and navigate to the appropriate destination
   const handleNotificationClick = (notification) => {
@@ -632,6 +694,9 @@ const MessageNotifications = () => {
         const HeaderIcon = notification.headerIconName
           ? EVENT_PREVIEW_ICONS[notification.headerIconName] || Clock
           : isEvent ? Clock : MessageCircle;
+        const SecondaryHeaderIcon = notification.secondaryHeaderIconName
+          ? EVENT_PREVIEW_ICONS[notification.secondaryHeaderIconName] || null
+          : null;
         const headerLabel = notification.headerLabel || (isEvent ? 'New Event' : 'New Message');
         const EventIcon = isEvent
           ? EVENT_PREVIEW_ICONS[renderEventPreview.icon] || Clock
@@ -649,6 +714,7 @@ const MessageNotifications = () => {
           >
             <h4 className="text-xs font-medium text-primary-focus flex items-center gap-1.5 mb-2">
               <HeaderIcon size={12} strokeWidth={2.2} aria-hidden="true" />
+              {SecondaryHeaderIcon && <SecondaryHeaderIcon size={12} strokeWidth={2.2} aria-hidden="true" />}
               <span>{headerLabel}</span>
             </h4>
             {isEvent ? (
@@ -677,7 +743,10 @@ const MessageNotifications = () => {
               <p className="text-sm">{renderTextWithMentions(notification.text)}</p>
             )}
             {isEvent && notification.senderName && (
-              <p className="text-[11px] mt-0.5 text-primary-focus truncate">
+              <p
+                className="text-[11px] mt-0.5 text-primary-focus truncate"
+                style={notification.senderColor ? { color: notification.senderColor } : undefined}
+              >
                 {notification.senderPrefix ?? "by "}{notification.senderName}
               </p>
             )}

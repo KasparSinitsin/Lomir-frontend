@@ -211,9 +211,7 @@ const Settings = () => {
 
   // ── Visibility ───────────────────────────────────────────────
   const [visibilityLoading, setVisibilityLoading] = useState(false);
-  const [isPublic, setIsPublic] = useState(
-    user?.is_public ?? user?.isPublic ?? false,
-  );
+  const [isPublic, setIsPublic] = useState(user?.isPublic ?? false);
 
   const handleVisibilityChange = async (e) => {
     const newValue = e.target.checked;
@@ -223,8 +221,8 @@ const Settings = () => {
 
     try {
       setVisibilityLoading(true);
-      await userService.updateUser(user.id, { is_public: newValue });
-      updateUser({ is_public: newValue, isPublic: newValue });
+      await userService.updateUser(user.id, { isPublic: newValue });
+      updateUser({ isPublic: newValue });
       setSuccess("Profile visibility updated");
     } catch {
       setIsPublic(!newValue); // revert on failure

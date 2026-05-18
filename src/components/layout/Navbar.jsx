@@ -25,7 +25,7 @@ import DemoAvatarOverlay from "../users/DemoAvatarOverlay";
 import { getUserInitials, isSyntheticUser } from "../../utils/userHelpers";
 import { messageService } from "../../services/messageService";
 import { notificationService } from "../../services/notificationService";
-import socketService from "../../services/socketService";
+import useSocketEvents from "../../hooks/useSocketEvents";
 import NotificationBadge from "../common/NotificationBadge";
 import {
   getMessageConversationTarget,
@@ -189,7 +189,7 @@ const Navbar = () => {
     locationSearchRef.current = location.search;
   }, [location.pathname, location.search]);
 
-  // Initial fetch and socket setup for messages
+  // Initial fetch for messages
   useEffect(() => {
     if (!isAuthenticated) {
       setUnreadMessageCount(0);
@@ -201,62 +201,36 @@ const Navbar = () => {
 
     lastMessageFetchRef.current = Date.now();
     fetchUnreadMessageCount();
-
-    let detachSocketListeners = null;
-
-    const attachSocketListeners = (socket) => {
-      if (!socket) return;
-
-      if (detachSocketListeners) {
-        detachSocketListeners();
-      }
-
-      const handleNewMessage = (message) => {
-        if (isOwnMessage(message, user?.id)) return;
-
-        const isInThisConversation = isMessageForCurrentChatPath(
-          message,
-          locationPathRef.current,
-          locationSearchRef.current,
-          user?.id,
-        );
-
-        if (!isInThisConversation) {
-          setUnreadMessageCount((prev) => prev + 1);
-          setFirstUnreadMessage(getMessageConversationTarget(message, user?.id));
-        }
-      };
-
-      const handleMessagesRead = () => {
-        fetchUnreadMessageCount();
-      };
-
-      const handleMessageDeleted = () => {
-        fetchUnreadMessageCount();
-      };
-
-      socket.on("message:received", handleNewMessage);
-      socket.on("messages:read", handleMessagesRead);
-      socket.on("message:deleted", handleMessageDeleted);
-
-      detachSocketListeners = () => {
-        socket.off("message:received", handleNewMessage);
-        socket.off("messages:read", handleMessagesRead);
-        socket.off("message:deleted", handleMessageDeleted);
-      };
-    };
-
-    const unsubscribeSocketReady = socketService.onSocketReady(attachSocketListeners);
-
-    return () => {
-      unsubscribeSocketReady();
-      if (detachSocketListeners) {
-        detachSocketListeners();
-      }
-    };
   }, [isAuthenticated, fetchUnreadMessageCount, user?.id]);
 
-  // Initial fetch and socket setup for notifications
+  const handleNewMessage = useCallback((message) => {
+    if (isOwnMessage(message, user?.id)) return;
+
+    const isInThisConversation = isMessageForCurrentChatPath(
+      message,
+      locationPathRef.current,
+      locationSearchRef.current,
+      user?.id,
+    );
+
+    if (!isInThisConversation) {
+      setUnreadMessageCount((prev) => prev + 1);
+      setFirstUnreadMessage(getMessageConversationTarget(message, user?.id));
+    }
+  }, [user?.id]);
+
+  useSocketEvents(
+    isAuthenticated
+      ? {
+          "message:received": handleNewMessage,
+          "messages:read": fetchUnreadMessageCount,
+          "message:deleted": fetchUnreadMessageCount,
+        }
+      : null,
+    [isAuthenticated, handleNewMessage, fetchUnreadMessageCount],
+  );
+
+  // Initial fetch for notifications
   useEffect(() => {
     if (!isAuthenticated) {
       setUnreadNotificationCount(0);
@@ -268,43 +242,25 @@ const Navbar = () => {
 
     lastNotificationFetchRef.current = Date.now();
     fetchUnreadNotificationCount();
+  }, [isAuthenticated, fetchUnreadNotificationCount]);
 
-    let detachNotificationListener = null;
+  const handleNewNotification = useCallback(() => {
+    // Team events often create both a bell notification and a system chat
+    // message, so refresh both badge sources.
+    fetchUnreadNotificationCount();
+    fetchUnreadMessageCount();
+  }, [fetchUnreadMessageCount, fetchUnreadNotificationCount]);
 
-    const attachNotificationListener = (socket) => {
-      if (!socket) return;
-
-      if (detachNotificationListener) {
-        detachNotificationListener();
-      }
-
-      const handleNewNotification = () => {
-        // Team events often create both a bell notification and a system chat
-        // message, so refresh both badge sources.
-        fetchUnreadNotificationCount();
-        fetchUnreadMessageCount();
-      };
-
-      socket.on("notification:new", handleNewNotification);
-      socket.on("notification:updated", handleNewNotification);
-      socket.on("notification:deleted", handleNewNotification);
-
-      detachNotificationListener = () => {
-        socket.off("notification:new", handleNewNotification);
-        socket.off("notification:updated", handleNewNotification);
-        socket.off("notification:deleted", handleNewNotification);
-      };
-    };
-
-    const unsubscribeSocketReady = socketService.onSocketReady(attachNotificationListener);
-
-    return () => {
-      unsubscribeSocketReady();
-      if (detachNotificationListener) {
-        detachNotificationListener();
-      }
-    };
-  }, [isAuthenticated, fetchUnreadMessageCount, fetchUnreadNotificationCount]);
+  useSocketEvents(
+    isAuthenticated
+      ? {
+          "notification:new": handleNewNotification,
+          "notification:updated": handleNewNotification,
+          "notification:deleted": handleNewNotification,
+        }
+      : null,
+    [isAuthenticated, handleNewNotification],
+  );
 
   // Refetch message count when path changes
   useEffect(() => {
@@ -461,9 +417,9 @@ const Navbar = () => {
                 className="btn btn-circle avatar bg-primary text-white btn-sm sm:btn-md"
               >
                 <div className="rounded-full flex items-center justify-center text-sm sm:text-base relative overflow-hidden w-full h-full">
-                  {(user.avatarUrl || user.avatar_url) && !imageError ? (
+                  {user.avatarUrl && !imageError ? (
                     <img
-                      src={user.avatarUrl || user.avatar_url}
+                      src={user.avatarUrl}
                       alt="Profile"
                       className="rounded-full object-cover w-full h-full"
                       onError={() => setImageError(true)}
