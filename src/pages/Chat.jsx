@@ -20,6 +20,7 @@ import socketService from "../services/socketService";
 import useSocketEvents from "../hooks/useSocketEvents";
 import { userService } from "../services/userService";
 import { teamService } from "../services/teamService";
+import { reopenRolesFilledByMember } from "../services/teamMemberRoleReopenService";
 import ScreenAlert from "../components/common/ScreenAlert";
 import Button from "../components/common/Button";
 import Modal from "../components/common/Modal";
@@ -79,12 +80,12 @@ const resolveConversationUser = (conversation, userId) => {
     const matchedMember = members.find((member) => {
       const memberUser = member.user || member;
       const memberId =
-        memberUser?.id ??
-        memberUser?.userId ??
-        memberUser?.user_id ??
-        member?.id ??
         member?.userId ??
         member?.user_id ??
+        memberUser?.userId ??
+        memberUser?.user_id ??
+        memberUser?.id ??
+        member?.id ??
         null;
       return String(memberId) === String(userId);
     });
@@ -95,6 +96,126 @@ const resolveConversationUser = (conversation, userId) => {
   }
 
   return null;
+};
+
+const getTeamMemberUserId = (member) => {
+  const memberUser = member?.user || member;
+  return (
+    member?.userId ??
+    member?.user_id ??
+    memberUser?.userId ??
+    memberUser?.user_id ??
+    memberUser?.id ??
+    member?.id ??
+    null
+  );
+};
+
+const isActiveTeamMemberRow = (member) => {
+  if (!member) return false;
+
+  const rawStatus =
+    member.membershipStatus ??
+    member.membership_status ??
+    member.memberStatus ??
+    member.member_status ??
+    member.status ??
+    null;
+  const status = String(rawStatus ?? "").trim().toLowerCase();
+
+  if (
+    status &&
+    ["removed", "left", "former", "inactive", "deleted"].includes(status)
+  ) {
+    return false;
+  }
+
+  return !(
+    member.removedAt ||
+    member.removed_at ||
+    member.leftAt ||
+    member.left_at ||
+    member.deletedAt ||
+    member.deleted_at
+  );
+};
+
+const isUserTeamMember = (members, userId) => {
+  if (userId == null) return false;
+  if (!Array.isArray(members)) return false;
+
+  return members.some((member) => {
+    if (!isActiveTeamMemberRow(member)) return false;
+
+    const memberId = getTeamMemberUserId(member);
+    return memberId != null && String(memberId) === String(userId);
+  });
+};
+
+const getPayloadTeamId = (payload) =>
+  payload?.teamId ??
+  payload?.team_id ??
+  payload?.team?.id ??
+  payload?.data?.teamId ??
+  payload?.data?.team_id ??
+  payload?.metadata?.teamId ??
+  payload?.metadata?.team_id ??
+  null;
+
+const getPayloadType = (payload) =>
+  String(
+    payload?.type ??
+      payload?.notificationType ??
+      payload?.notification_type ??
+      payload?.eventType ??
+      payload?.event_type ??
+      payload?.data?.type ??
+      payload?.metadata?.type ??
+      "",
+  ).toLowerCase();
+
+const getRemovedMemberIdFromPayload = (payload) =>
+  payload?.memberId ??
+  payload?.member_id ??
+  payload?.removedUserId ??
+  payload?.removed_user_id ??
+  payload?.targetUserId ??
+  payload?.target_user_id ??
+  payload?.data?.memberId ??
+  payload?.data?.member_id ??
+  payload?.metadata?.memberId ??
+  payload?.metadata?.member_id ??
+  null;
+
+const getPayloadText = (payload) =>
+  [
+    payload?.message,
+    payload?.content,
+    payload?.text,
+    payload?.body,
+    payload?.title,
+    payload?.data?.message,
+    payload?.data?.content,
+    payload?.metadata?.message,
+    payload?.metadata?.content,
+  ]
+    .filter((value) => typeof value === "string")
+    .join(" ")
+    .toLowerCase();
+
+const isCurrentUserRemovalPayload = (payload, userId) => {
+  const type = getPayloadType(payload);
+  if (!type.includes("member_removed") && !type.includes("removed")) {
+    return false;
+  }
+
+  const removedMemberId = getRemovedMemberIdFromPayload(payload);
+  if (removedMemberId != null && String(removedMemberId) === String(userId)) {
+    return true;
+  }
+
+  const text = getPayloadText(payload);
+  return /\byou\b/.test(text) && /removed from/.test(text);
 };
 
 const getConversationUpdatedAt = (conversation) => {
@@ -651,19 +772,103 @@ const Chat = () => {
 
   const teamMembers =
     conversationType === "team" ? activeConversation?.team?.members || [] : [];
+  const isCurrentUserActiveTeamMember =
+    conversationType !== "team" || isUserTeamMember(teamMembers, user?.id);
+  const canSendInActiveConversation =
+    Boolean(activeConversation) && isCurrentUserActiveTeamMember;
+
+  const revokeTeamChatAccess = useCallback(
+    (teamId, message = "You no longer have access to this team chat.") => {
+      if (!teamId) return;
+
+      socketService.leaveConversation(teamId, "team");
+      setError(message);
+      setConversations((prev) =>
+        prev.filter(
+          (conversation) =>
+            !(
+              conversation.type === "team" &&
+              String(conversation.id) === String(teamId)
+            ),
+        ),
+      );
+
+      const activeTeamId =
+        activeConversationRef.current?.team?.id ?? activeConversationRef.current?.id;
+
+      if (
+        String(activeTeamId) === String(teamId) ||
+        (String(conversationId) === String(teamId) &&
+          (searchParams.get("type") || "direct") === "team")
+      ) {
+        setActiveConversation(null);
+        setMessages([]);
+        setTypingUsers({});
+        setReplyingTo(null);
+        setHighlightMessageIds([]);
+        setHasMoreMessages(false);
+        setShowChatView(false);
+        navigate("/chat", { replace: true });
+      }
+    },
+    [conversationId, navigate, searchParams],
+  );
+
+  const refreshActiveTeamMembership = useCallback(
+    async (teamId) => {
+      if (!teamId || !user?.id) return true;
+
+      const response = await teamService.getTeamById(teamId);
+      const teamPayload =
+        response?.data && typeof response.data === "object"
+          ? response.data
+          : response;
+
+      if (!Array.isArray(teamPayload?.members)) {
+        return true;
+      }
+
+      if (!isUserTeamMember(teamPayload.members, user.id)) {
+        revokeTeamChatAccess(teamId);
+        return false;
+      }
+
+      setActiveConversation((prev) => {
+        if (
+          !prev ||
+          prev.type !== "team" ||
+          String(prev.team?.id ?? prev.id) !== String(teamId)
+        ) {
+          return prev;
+        }
+
+        return {
+          ...prev,
+          team: {
+            ...prev.team,
+            members: teamPayload.members,
+          },
+        };
+      });
+
+      return true;
+    },
+    [revokeTeamChatAccess, user?.id],
+  );
 
   const mentionParticipants = useMemo(() => {
     if (conversationType === "direct") {
       return conversationPartner ? [conversationPartner] : [];
     }
     const members = teamMembers
+      .filter(isActiveTeamMemberRow)
       .map((m) => m.user || m)
       .filter((m) => {
-        const id = m.id ?? m.userId ?? m.user_id;
+        const id = m.userId ?? m.user_id ?? m.id;
         return id && String(id) !== String(user?.id);
       })
       .map((m) => ({
-        id: m.id ?? m.userId ?? m.user_id,
+        id: m.userId ?? m.user_id ?? m.id,
         firstName: m.firstName || m.first_name || "",
         lastName: m.lastName || m.last_name || "",
         avatarUrl: m.avatarUrl || m.avatar_url || null,
@@ -700,6 +905,49 @@ const Chat = () => {
   useEffect(() => {
     activeConversationRef.current = activeConversation;
   }, [activeConversation]);
+
+  useEffect(() => {
+    if (
+      conversationType !== "team" ||
+      !activeConversation?.team?.id ||
+      !user?.id
+    ) {
+      return undefined;
+    }
+
+    const teamId = activeConversation.team.id;
+    let cancelled = false;
+
+    const checkMembership = async () => {
+      try {
+        if (!cancelled) {
+          await refreshActiveTeamMembership(teamId);
+        }
+      } catch (err) {
+        console.error("Error checking active team chat access:", err);
+      }
+    };
+
+    checkMembership();
+    const intervalId = window.setInterval(checkMembership, 10000);
+
+    const handleFocus = () => {
+      checkMembership();
+    };
+
+    window.addEventListener("focus", handleFocus);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+      window.removeEventListener("focus", handleFocus);
+    };
+  }, [
+    activeConversation?.team?.id,
+    conversationType,
+    refreshActiveTeamMembership,
+    user?.id,
+  ]);
 
   const fetchConversationSearchText = useCallback(async (conversation) => {
     const conversationType = conversation?.type || "direct";
@@ -1130,6 +1378,25 @@ const Chat = () => {
               }
 
               if (teamDetails?.data?.members) {
+                if (!isUserTeamMember(teamDetails.data.members, user?.id)) {
+                  setError("You no longer have access to this team chat.");
+                  setConversations((prev) =>
+                    prev.filter(
+                      (conversation) =>
+                        !(
+                          conversation.type === "team" &&
+                          String(conversation.id) === String(conversationId)
+                        ),
+                    ),
+                  );
+                  setActiveConversation(null);
+                  setMessages([]);
+                  setLoadingMessages(false);
+                  setShowChatView(false);
+                  navigate("/chat", { replace: true });
+                  return;
+                }
+
                 conversationDetails.data.team = {
                   ...conversationDetails.data.team,
                   avatarUrl:
@@ -1224,6 +1491,25 @@ const Chat = () => {
               }
 
               if (teamDetails?.data?.members) {
+                if (!isUserTeamMember(teamDetails.data.members, user?.id)) {
+                  setError("You no longer have access to this team chat.");
+                  setConversations((prev) =>
+                    prev.filter(
+                      (conversation) =>
+                        !(
+                          conversation.type === "team" &&
+                          String(conversation.id) === String(conversationId)
+                        ),
+                    ),
+                  );
+                  setActiveConversation(null);
+                  setMessages([]);
+                  setLoadingMessages(false);
+                  setShowChatView(false);
+                  navigate("/chat", { replace: true });
+                  return;
+                }
+
                 conversationDetails.data.team = {
                   ...conversationDetails.data.team,
                   avatarUrl:
@@ -1509,13 +1795,7 @@ const Chat = () => {
         conversationType === "team" &&
         parseInt(conversationId, 10) === data.teamId
       ) {
-        setError("You have been removed from this team.");
-        setConversations((prev) =>
-          prev.filter((c) => !(c.type === "team" && c.id === data.teamId)),
-        );
-        navigate("/chat");
-        setActiveConversation(null);
-        setMessages([]);
+        revokeTeamChatAccess(data.teamId, "You have been removed from this team.");
         return;
       }
 
@@ -1523,7 +1803,7 @@ const Chat = () => {
         prev.filter((c) => !(c.type === "team" && c.id === data.teamId)),
       );
     },
-    [conversationId, conversationType, navigate],
+    [conversationId, conversationType, revokeTeamChatAccess],
   );
 
   // Set up WebSocket event listeners
@@ -1566,6 +1846,24 @@ const Chat = () => {
       }
 
       if (isForCurrentConversation) {
+        if (currentType === "team") {
+          const parsedMessage = parseSystemMessage(message.content);
+          const removedMemberId =
+            parsedMessage?.memberId ?? parsedMessage?.userId ?? null;
+
+          if (
+            ["member_removed", "member_removed_public"].includes(parsedMessage?.type) &&
+            removedMemberId != null &&
+            String(removedMemberId) === String(user?.id)
+          ) {
+            revokeTeamChatAccess(
+              messageConvId,
+              "You have been removed from this team.",
+            );
+            return;
+          }
+        }
+
         setMessages((prev) => {
           // If this is our own message, replace the optimistic version
           if (message.senderId === user.id) {
@@ -1706,13 +2004,21 @@ const Chat = () => {
     };
 
     const refreshTeamEventMessages = async (payload) => {
-      const teamId = payload?.teamId ?? payload?.team_id;
-      if (!teamId) return;
-
-      refreshConversationList();
-
       const urlParams = new URLSearchParams(window.location.search);
       const currentType = urlParams.get("type") || "direct";
+      const activeTeamId =
+        activeConversationRef.current?.team?.id ?? activeConversationRef.current?.id;
+      const teamId =
+        getPayloadTeamId(payload) ??
+        (currentType === "team" ? activeTeamId : null);
+      if (!teamId) return;
+
+      if (isCurrentUserRemovalPayload(payload, user?.id)) {
+        revokeTeamChatAccess(teamId, "You have been removed from this team.");
+        return;
+      }
+
+      refreshConversationList();
 
       if (
         currentType !== "team" ||
@@ -1722,6 +2028,12 @@ const Chat = () => {
       }
 
       try {
+        const canStillAccess = await refreshActiveTeamMembership(teamId);
+
+        if (!canStillAccess) {
+          return;
+        }
+
         const messagesResponse = await messageService.getMessages(
           teamId,
           "team",
@@ -1857,10 +2169,11 @@ const Chat = () => {
 
     const handleTeamMemberLeft = (data) => {
       if (!data?.teamId) return;
+      const leftUserId = data.userId ?? data.user_id ?? null;
 
       setTeamMembersRefreshSignal({
         teamId: data.teamId,
-        userId: data.userId ?? null,
+        userId: leftUserId,
         receivedAt: Date.now(),
       });
 
@@ -1881,6 +2194,11 @@ const Chat = () => {
         return;
       }
 
+      if (leftUserId != null && String(leftUserId) === String(user?.id)) {
+        revokeTeamChatAccess(data.teamId, "You have left this team chat.");
+        return;
+      }
+
       teamService
         .getTeamById(data.teamId)
         .then((response) => {
@@ -1890,6 +2208,11 @@ const Chat = () => {
               : response;
 
           if (!Array.isArray(teamPayload?.members)) {
+            return;
+          }
+
+          if (!isUserTeamMember(teamPayload.members, user?.id)) {
+            revokeTeamChatAccess(data.teamId);
             return;
           }
 
@@ -2054,7 +2377,9 @@ const Chat = () => {
     handleKickedFromTeam,
     isAuthenticated,
     navigate,
+    refreshActiveTeamMembership,
     refreshConversationList,
+    revokeTeamChatAccess,
     activeConversation,
     searchParams,
     user?.id,
@@ -2098,6 +2423,13 @@ const Chat = () => {
 
   const executeLeaveTeam = async ({ teamId }) => {
     try {
+      await reopenRolesFilledByMember({
+        teamId,
+        teamName: activeConversation?.team?.name,
+        member: user,
+        memberId: user.id,
+      });
+
       // Call the existing leave team API
       await teamService.removeTeamMember(teamId, user.id);
 
@@ -2109,11 +2441,35 @@ const Chat = () => {
 
       setActiveConversation(null);
       setMessages([]);
+      setShowChatView(false);
       return true;
     } catch (error) {
       console.error("Error leaving team:", error);
       setError("Failed to leave team. Please try again.");
       return false;
+    }
+  };
+
+  const handleTeamDetailsLeave = (teamId) => {
+    if (!teamId) return;
+
+    setConversations((prev) =>
+      prev.filter(
+        (conversation) =>
+          !(conversation.type === "team" && String(conversation.id) === String(teamId)),
+      ),
+    );
+
+    if (String(conversationId) === String(teamId)) {
+      setActiveConversation(null);
+      setMessages([]);
+      setTypingUsers({});
+      setReplyingTo(null);
+      setShowChatView(false);
+      setIsTeamModalOpen(false);
+      setSelectedTeamId(null);
+      setSelectedTeamData(null);
+      navigate("/chat", { replace: true });
     }
   };
 
@@ -2212,7 +2568,12 @@ const Chat = () => {
   };
 
   const handleSendFile = async (file) => {
-    if (!activeConversation || !file) return;
+    if (!canSendInActiveConversation || !file) {
+      if (!isCurrentUserActiveTeamMember) {
+        setError("You no longer have access to this team chat.");
+      }
+      return;
+    }
 
     try {
       // Upload file attachment before sending the message
@@ -2229,6 +2590,11 @@ const Chat = () => {
         type === "team"
           ? activeConversation.team?.id
           : activeConversation.partner?.id;
+
+      if (type === "team") {
+        const canStillAccess = await refreshActiveTeamMembership(targetId);
+        if (!canStillAccess) return;
+      }
 
       // Send message with file via socket
       socketService.sendMessage(
@@ -2248,7 +2614,12 @@ const Chat = () => {
   };
 
   const handleSendImage = async (file, previewUrl) => {
-    if (!activeConversation || !file) return;
+    if (!canSendInActiveConversation || !file) {
+      if (!isCurrentUserActiveTeamMember) {
+        setError("You no longer have access to this team chat.");
+      }
+      return;
+    }
 
     try {
       // Upload image attachment before sending the message
@@ -2265,6 +2636,11 @@ const Chat = () => {
         type === "team"
           ? activeConversation.team?.id
           : activeConversation.partner?.id;
+
+      if (type === "team") {
+        const canStillAccess = await refreshActiveTeamMembership(targetId);
+        if (!canStillAccess) return;
+      }
 
       // Send message with image via socket
       socketService.sendMessage(
@@ -2292,6 +2668,11 @@ const Chat = () => {
 
   const executeDeleteMessage = async ({ messageId }) => {
     try {
+      if ((searchParams.get("type") || "direct") === "team") {
+        const canStillAccess = await refreshActiveTeamMembership(conversationId);
+        if (!canStillAccess) return false;
+      }
+
       // Optimistic UI update
       setMessages((prev) =>
         prev.map((m) =>
@@ -2352,6 +2733,11 @@ const Chat = () => {
     const trimmedContent = content.trim();
     if (!trimmedContent) {
       throw new Error("Message cannot be empty.");
+    }
+
+    if ((searchParams.get("type") || "direct") === "team") {
+      const canStillAccess = await refreshActiveTeamMembership(conversationId);
+      if (!canStillAccess) return;
     }
 
     const previousMessage = messages.find(
@@ -2446,12 +2832,23 @@ const Chat = () => {
     }
   };
 
-  const handleSendMessage = (content) => {
+  const handleSendMessage = async (content) => {
     if (!content.trim() || !conversationId) return;
+    if (!canSendInActiveConversation) {
+      if (!isCurrentUserActiveTeamMember) {
+        setError("You no longer have access to this team chat.");
+      }
+      return;
+    }
 
     // Get type from URL parameters
     const urlParams = new URLSearchParams(window.location.search);
     const type = urlParams.get("type") || "direct";
+
+    if (type === "team") {
+      const canStillAccess = await refreshActiveTeamMembership(conversationId);
+      if (!canStillAccess) return;
+    }
 
     // Create optimistic message (show immediately)
     const optimisticMessage = {
@@ -2586,6 +2983,12 @@ const Chat = () => {
   const isNoSearchResults =
     isChatSearchActive && !searchingChatMessages && filteredConversations.length === 0;
   const hideChatDuringSearch = isChatSearchActive && !searchChatVisible;
+  const shouldShowConversationPanel =
+    !showEmptyConversationState &&
+    !hideChatDuringSearch &&
+    Boolean(conversationId) &&
+    showChatView &&
+    (Boolean(activeConversation) || loadingMessages);
   const totalSearchMatches = isChatSearchActive
     ? filteredConversations.reduce((sum, conv) => sum + (conv.searchMatchCount || 0), 0)
     : 0;
@@ -2702,7 +3105,7 @@ const Chat = () => {
         <div
           data-conversation-list-viewport="true"
           className={`lomir-conversation-list-scrollbar overflow-y-auto transition-all duration-300 ${
-            showEmptyConversationState || hideChatDuringSearch || !conversationId || !showChatView
+            showEmptyConversationState || hideChatDuringSearch || !shouldShowConversationPanel
               ? "w-full"
               : "hidden md:block md:w-1/3"
           }`}
@@ -2728,7 +3131,7 @@ const Chat = () => {
         </div>
 
         {/* Message Display - Right Side */}
-        {!showEmptyConversationState && !hideChatDuringSearch && conversationId && showChatView && (
+        {shouldShowConversationPanel && (
         <div className={`bg-white shadow-soft rounded-xl overflow-hidden flex flex-col min-w-0 transition-all duration-300 ${
           showChatView ? "w-full md:w-2/3" : "hidden md:flex md:w-2/3"
         }`}>
@@ -2938,14 +3341,19 @@ const Chat = () => {
                   </div>
                 )}
 
-                {/* Always show message input */}
+                {conversationType === "team" && !isCurrentUserActiveTeamMember && (
+                  <div className="mx-4 mt-4 rounded-lg bg-base-200 px-4 py-3 text-sm text-base-content/70">
+                    You are no longer a member of this team, so this chat is read-only.
+                  </div>
+                )}
+
                 <div className="p-4">
                   <MessageInput
                     onSendMessage={handleSendMessage}
                     onSendImage={handleSendImage}
                     onSendFile={handleSendFile}
                     onTyping={handleTyping}
-                    disabled={!activeConversation}
+                    disabled={!canSendInActiveConversation}
                     participants={mentionParticipants}
                     replyingTo={replyingTo}
                     onClearReply={handleClearReply}
@@ -2975,6 +3383,7 @@ const Chat = () => {
         teamId={selectedTeamId}
         initialTeamData={selectedTeamData}
         hideMatchData
+        onLeave={handleTeamDetailsLeave}
         onClose={() => { setIsTeamModalOpen(false); setSelectedTeamId(null); setSelectedTeamData(null); }}
       />
 

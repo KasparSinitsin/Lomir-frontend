@@ -31,6 +31,7 @@ import { messageService } from '../../services/messageService';
 import { useAuth } from '../../contexts/AuthContext';
 import useSocketEvents from '../../hooks/useSocketEvents';
 import { getEventPreview } from '../../utils/eventPreview';
+import { parseSystemMessage } from './MessageDisplay';
 import {
   getMessageSenderDisplayName,
   getMessageConversationTarget,
@@ -83,6 +84,7 @@ const NOTIFICATION_TOAST_TYPES = {
   application_approved: { icon: 'CheckCircle',  label: 'Application Approved', color: '#16a34a', senderColor: '#15803d', senderPrefix: 'Approved by ' },
   application_rejected: { icon: 'CircleX',      label: 'Application Declined', color: '#6b7280', senderPrefix: 'Declined by ' },
   member_removed:       { icon: 'UserMinus',    label: 'Removed from Team',    senderPrefix: 'Removed by ' },
+  member_removed_public:{ icon: 'UserMinus',    label: 'Removed from Team',    senderPrefix: null },
 };
 
 const ROLE_CHANGE_PREVIEW = {
@@ -108,6 +110,7 @@ const getRoleStatusChangedPreview = (payload) => {
 
 const NOTIFICATION_VISIBLE_MS = 20000;
 const NOTIFICATION_FADE_MS = 700;
+const TEAM_REMOVAL_SUPPRESS_MS = 15000;
 
 const EVENT_CONTENT_KEYS = [
   "content",
@@ -225,11 +228,14 @@ const getFallbackRoleEventPreview = (content) => {
   const roleName = roleToken.includes(":")
     ? roleToken.split(":").slice(1).join(":").trim()
     : roleToken.trim();
-  const filledUserToken = eventType === "ROLE_FILLED" ? roleEventMatch[3] || "" : "";
+  const actorToken =
+    eventType === "ROLE_FILLED" || eventType === "ROLE_REOPENED"
+      ? roleEventMatch[3] || ""
+      : "";
   const filledByToken = eventType === "ROLE_FILLED" ? roleEventMatch[4] || "" : "";
-  const filledUserName = filledUserToken.includes(":")
-    ? filledUserToken.split(":").slice(1).join(":").trim()
-    : filledUserToken.trim();
+  const filledUserName = actorToken.includes(":")
+    ? actorToken.split(":").slice(1).join(":").trim()
+    : actorToken.trim();
   const filledByName = filledByToken.includes(":")
     ? filledByToken.split(":").slice(1).join(":").trim()
     : filledByToken.trim();
@@ -244,7 +250,9 @@ const getFallbackRoleEventPreview = (content) => {
       : filledUserName
         ? `The role ${roleName || "Vacant Role"} has been filled by ${filledUserName}.`
         : `The role ${roleName || "Vacant Role"} has been marked filled.`,
-    ROLE_REOPENED: `Role reopened: ${roleName || "Vacant Role"}`,
+    ROLE_REOPENED: filledUserName
+      ? `${filledUserName} left the role ${roleName || "Vacant Role"}. It is open again.`
+      : `Role reopened: ${roleName || "Vacant Role"}`,
     ROLE_REOPENED_ADMIN: `Role reopened: ${roleName || "Vacant Role"}`,
   };
 
@@ -297,6 +305,8 @@ const getRoleEventTypePreview = (message) => {
     message?.filled_user_name ??
     message?.filledByUserName ??
     message?.filled_by_user_name ??
+    message?.userName ??
+    message?.user_name ??
     message?.filledByUser?.name ??
     message?.filled_by_user?.name ??
     null;
@@ -316,7 +326,9 @@ const getRoleEventTypePreview = (message) => {
       : filledUserName
         ? `The role ${roleName} has been filled by ${filledUserName}.`
         : `The role ${roleName} has been marked filled.`,
-    role_reopened: `Role reopened: ${roleName}`,
+    role_reopened: filledUserName
+      ? `${filledUserName} left the role ${roleName}. It is open again.`
+      : `Role reopened: ${roleName}`,
     role_reopened_admin: `Role reopened: ${roleName}`,
   };
 
@@ -349,6 +361,170 @@ const getRoleEventTypePreview = (message) => {
         ? "by "
         : undefined,
   };
+};
+
+const getRoleReopenedToastKey = (content, message = null) => {
+  const rawType =
+    message?.eventType ??
+    message?.event_type ??
+    message?.notificationType ??
+    message?.notification_type ??
+    message?.type;
+  const normalizedType = String(rawType || "").toLowerCase();
+
+  if (normalizedType === "role_reopened") {
+    const roleId = message?.roleId ?? message?.role_id ?? message?.role?.id ?? "";
+    const userId =
+      message?.userId ??
+      message?.user_id ??
+      message?.filledByUserId ??
+      message?.filled_by_user_id ??
+      message?.filledByUser?.id ??
+      message?.filled_by_user?.id ??
+      "";
+    const teamId = message?.teamId ?? message?.team_id ?? message?.team?.id ?? "";
+
+    return `role-reopened:${teamId}:${roleId}:${userId}`;
+  }
+
+  const match = String(content || "").match(
+    /(?:ROLE_REOPENED):\s*(.+?)\s+\|\s+(.+?)\s+\|\s+(.+)$/,
+  );
+
+  if (!match) return null;
+
+  return `role-reopened:${match[1].trim()}:${match[2].trim()}:${match[3].trim()}`;
+};
+
+const getTeamIdFromMessage = (message, parsedMessage = null) =>
+  parsedMessage?.teamId ??
+  message?.teamId ??
+  message?.team_id ??
+  message?.team?.id ??
+  null;
+
+const getTeamIdFromPayload = (payload) =>
+  payload?.teamId ??
+  payload?.team_id ??
+  payload?.team?.id ??
+  payload?.data?.teamId ??
+  payload?.data?.team_id ??
+  payload?.metadata?.teamId ??
+  payload?.metadata?.team_id ??
+  null;
+
+const getPayloadText = (payload) =>
+  [
+    payload?.title,
+    payload?.message,
+    payload?.content,
+    payload?.text,
+    payload?.body,
+    payload?.data?.title,
+    payload?.data?.message,
+    payload?.data?.content,
+    payload?.metadata?.title,
+    payload?.metadata?.message,
+    payload?.metadata?.content,
+  ]
+    .filter((value) => typeof value === 'string')
+    .join(' ');
+
+const getRemovedMemberIdFromPayload = (payload) =>
+  payload?.memberId ??
+  payload?.member_id ??
+  payload?.removedUserId ??
+  payload?.removed_user_id ??
+  payload?.targetUserId ??
+  payload?.target_user_id ??
+  payload?.data?.memberId ??
+  payload?.data?.member_id ??
+  payload?.metadata?.memberId ??
+  payload?.metadata?.member_id ??
+  null;
+
+const getRoleEventUserIdFromPayload = (payload) =>
+  payload?.userId ??
+  payload?.user_id ??
+  payload?.filledByUserId ??
+  payload?.filled_by_user_id ??
+  payload?.filledByUser?.id ??
+  payload?.filled_by_user?.id ??
+  payload?.data?.userId ??
+  payload?.data?.user_id ??
+  payload?.metadata?.userId ??
+  payload?.metadata?.user_id ??
+  null;
+
+const isCurrentUserName = (name, user) => {
+  const normalizedName = String(name || '').trim().toLowerCase();
+  if (!normalizedName) return false;
+
+  const userFullName = `${user?.firstName || user?.first_name || ''} ${user?.lastName || user?.last_name || ''}`
+    .trim()
+    .toLowerCase();
+
+  return (
+    normalizedName === userFullName ||
+    normalizedName === String(user?.username || '').trim().toLowerCase()
+  );
+};
+
+const isMemberRoleChange = (parsedMessage) =>
+  parsedMessage?.type === 'role_changed' &&
+  String(parsedMessage.newRole || '').trim().toLowerCase() === 'member';
+
+const isMemberRoleChangeForCurrentUser = (parsedMessage, user) => (
+  isMemberRoleChange(parsedMessage) &&
+  (
+    (parsedMessage.memberId != null && String(parsedMessage.memberId) === String(user?.id)) ||
+    isCurrentUserName(parsedMessage.memberName, user)
+  )
+);
+
+const isRemovalForCurrentUser = (payload, user) => {
+  const type = String(payload?.type ?? payload?.notificationType ?? '').toLowerCase();
+  if (!type.includes('member_removed') && !type.includes('removed')) return false;
+
+  const removedMemberId = getRemovedMemberIdFromPayload(payload);
+  if (removedMemberId != null && String(removedMemberId) === String(user?.id)) {
+    return true;
+  }
+
+  const text = getPayloadText(payload).toLowerCase();
+  return /\byou\b/.test(text) && /removed from/.test(text);
+};
+
+const isTemporaryDemotionToast = (payload) => {
+  const type = String(payload?.type ?? payload?.notificationType ?? '').toLowerCase();
+  const text = getPayloadText(payload).toLowerCase();
+
+  return (
+    type === 'role_changed' &&
+    (text.includes('demoted') ||
+      text.includes('changed to member') ||
+      text.includes('role changed to member') ||
+      text.includes('to member'))
+  );
+};
+
+const buildCurrentUserRemovalText = (payload) => {
+  const title = String(payload?.title || '').trim();
+  if (/^you\b/i.test(title)) return title;
+
+  const teamName =
+    payload?.teamName ??
+    payload?.team_name ??
+    payload?.team?.name ??
+    payload?.data?.teamName ??
+    payload?.data?.team_name ??
+    payload?.metadata?.teamName ??
+    payload?.metadata?.team_name ??
+    null;
+
+  return teamName
+    ? `You were removed from "${teamName}"`
+    : 'You were removed from the team';
 };
 
 const MENTION_REGEX = /@\[([^\]]+)\]\([^)]+\)/g;
@@ -414,6 +590,59 @@ const MessageNotifications = () => {
   });
   const { isAuthenticated, user } = useAuth();
   const prevIsAuthenticatedRef = useRef(false);
+  const currentUserRemovalSuppressionsRef = useRef(new Map());
+
+  const isTeamSuppressedForCurrentUserRemoval = useCallback((teamId) => {
+    if (teamId == null) return false;
+
+    const key = String(teamId);
+    const suppressUntil = currentUserRemovalSuppressionsRef.current.get(key);
+
+    if (!suppressUntil) return false;
+    if (suppressUntil <= Date.now()) {
+      currentUserRemovalSuppressionsRef.current.delete(key);
+      return false;
+    }
+
+    return true;
+  }, []);
+
+  const markTeamSuppressedForCurrentUserRemoval = useCallback((teamId) => {
+    if (teamId == null) return;
+
+    currentUserRemovalSuppressionsRef.current.set(
+      String(teamId),
+      Date.now() + TEAM_REMOVAL_SUPPRESS_MS,
+    );
+  }, []);
+
+  const upsertCurrentUserRemovalToast = useCallback((payload) => {
+    const teamId = getTeamIdFromPayload(payload);
+    markTeamSuppressedForCurrentUserRemoval(teamId);
+
+    const dedupeKey = `current-user-removed:${teamId ?? 'unknown'}`;
+    const now = Date.now();
+
+    setNotifications((prev) => [
+      ...prev.filter((notification) => notification.dedupeKey !== dedupeKey),
+      {
+        id: `notif-current-user-removed-${teamId ?? 'unknown'}-${now}`,
+        dedupeKey,
+        isEvent: true,
+        headerIconName: 'UserMinus',
+        headerLabel: 'Removed from Team',
+        eventIcon: 'UserMinus',
+        eventColor: '#6b7280',
+        text: buildCurrentUserRemovalText(payload),
+        senderPrefix: null,
+        senderName: null,
+        navigateTo: '/chat',
+        time: new Date(),
+        expiresAt: now + NOTIFICATION_VISIBLE_MS,
+        removeAt: now + NOTIFICATION_VISIBLE_MS + NOTIFICATION_FADE_MS,
+      },
+    ]);
+  }, [markTeamSuppressedForCurrentUserRemoval]);
 
   useEffect(() => {
     locationRef.current = {
@@ -462,6 +691,50 @@ const MessageNotifications = () => {
   const handleNewMessage = useCallback((message) => {
     if (isOwnMessage(message, user?.id)) return;
 
+    const eventContent = pickEventContent(message);
+    const parsedMessage = parseSystemMessage(eventContent);
+    const teamId = getTeamIdFromMessage(message, parsedMessage);
+
+    if (
+      parsedMessage?.type === 'member_removed_public' &&
+      parsedMessage.userId != null &&
+      String(parsedMessage.userId) === String(user?.id)
+    ) {
+      upsertCurrentUserRemovalToast({
+        type: 'member_removed',
+        teamId,
+        teamName: parsedMessage.teamName,
+        title: parsedMessage.teamName
+          ? `You were removed from "${parsedMessage.teamName}"`
+          : 'You were removed from the team',
+      });
+      return;
+    }
+
+    if (
+      isTeamSuppressedForCurrentUserRemoval(teamId) &&
+      (
+        parsedMessage?.type === 'role_reopened' ||
+        isMemberRoleChange(parsedMessage)
+      )
+    ) {
+      return;
+    }
+
+    if (
+      parsedMessage?.type === 'role_reopened' &&
+      (
+        (parsedMessage.userId != null && String(parsedMessage.userId) === String(user?.id)) ||
+        isCurrentUserName(parsedMessage.userName, user)
+      )
+    ) {
+      return;
+    }
+
+    if (isMemberRoleChangeForCurrentUser(parsedMessage, user)) {
+      return;
+    }
+
     const isInConversation = isMessageForCurrentChatPath(
       message,
       locationRef.current.pathname,
@@ -471,10 +744,9 @@ const MessageNotifications = () => {
 
     if (!isInConversation) {
       const target = getMessageConversationTarget(message, user?.id);
-      const eventContent = pickEventContent(message);
 
       // These system messages are shown via notification:new toast instead.
-      if (/APPLICATION_APPROVED:|APPLICATION_DECLINED:|MEMBER_REMOVED|INVITATION_DECLINED|INVITATION_CANCELLED/i.test(eventContent)) return;
+      if (/APPLICATION_APPROVED:|APPLICATION_DECLINED:|MEMBER_REMOVED:|INVITATION_DECLINED|INVITATION_CANCELLED/i.test(eventContent)) return;
 
       // Team join messages (👋/🎯) are visible in the team chat and covered by notification:new for the inviter.
       if ((message.team_id || message.teamId) && /^[\u{1F44B}\u{1F3AF}]/u.test(eventContent.trim())) return;
@@ -483,10 +755,16 @@ const MessageNotifications = () => {
         getRoleEventTypePreview(message) ||
         getEventPreview(eventContent, user) ||
         getFallbackRoleEventPreview(eventContent);
+      const dedupeKey =
+        getRoleReopenedToastKey(eventContent, message) ||
+        (parsedMessage?.type === 'member_removed_public'
+          ? `member-removed:${teamId ?? ''}:${parsedMessage.userId ?? ''}`
+          : null);
       setNotifications(prev => [
-        ...prev,
+        ...prev.filter((n) => !dedupeKey || n.dedupeKey !== dedupeKey),
         {
           id: message.id || `${target.type}-${target.conversationId}-${Date.now()}`,
+          dedupeKey,
           conversationId: target.conversationId,
           conversationType: target.type,
           senderId: message.senderId || message.sender_id,
@@ -503,7 +781,11 @@ const MessageNotifications = () => {
         }
       ]);
     }
-  }, [user]);
+  }, [
+    isTeamSuppressedForCurrentUserRemoval,
+    upsertCurrentUserRemovalToast,
+    user,
+  ]);
 
   const handleMessageDeleted = useCallback((payload) => {
     setNotifications((prev) =>
@@ -574,14 +856,41 @@ const MessageNotifications = () => {
 
   const handleNotificationNew = useCallback((payload) => {
     if (!payload?.title) return;
+
+    const teamId = getTeamIdFromPayload(payload);
+
+    if (isRemovalForCurrentUser(payload, user)) {
+      upsertCurrentUserRemovalToast(payload);
+      return;
+    }
+
+    if (
+      isTemporaryDemotionToast(payload) ||
+      (
+        isTeamSuppressedForCurrentUserRemoval(teamId) &&
+        ['role_reopened', 'role_changed'].includes(String(payload.type || '').toLowerCase())
+      ) ||
+      (
+        String(payload.type || '').toLowerCase() === 'role_reopened' &&
+        String(getRoleEventUserIdFromPayload(payload) ?? '') === String(user?.id ?? '')
+      )
+    ) {
+      return;
+    }
+
     const config = NOTIFICATION_TOAST_TYPES[payload.type];
     if (!config) return;
     const isRoleInvite = (['invitation_received', 'invitation_cancelled', 'invitation_declined'].includes(payload.type) && !!payload.roleName)
       || (payload.type === 'invitation_accepted' && !!payload.filledRoleName);
+    const dedupeKey =
+      payload.type?.includes?.('member_removed')
+        ? `member-removed:${teamId ?? ''}:${getRemovedMemberIdFromPayload(payload) ?? payload.title}`
+        : `notif-${payload.type}-${teamId ?? ''}-${payload.title}`;
     setNotifications((prev) => [
-      ...prev,
+      ...prev.filter((notification) => notification.dedupeKey !== dedupeKey),
       {
         id: `notif-${payload.type}-${Date.now()}`,
+        dedupeKey,
         isEvent: true,
         headerIconName: config.icon,
         secondaryHeaderIconName: isRoleInvite ? 'UserSearch' : null,
@@ -603,7 +912,11 @@ const MessageNotifications = () => {
         removeAt: Date.now() + NOTIFICATION_VISIBLE_MS + NOTIFICATION_FADE_MS,
       },
     ]);
-  }, []);
+  }, [
+    isTeamSuppressedForCurrentUserRemoval,
+    upsertCurrentUserRemovalToast,
+    user,
+  ]);
 
   useSocketEvents(
     isAuthenticated

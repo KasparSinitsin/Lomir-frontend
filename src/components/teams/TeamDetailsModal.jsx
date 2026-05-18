@@ -11,6 +11,7 @@ import TeamEditForm from "./TeamEditForm";
 import { useAuth } from "../../contexts/AuthContext";
 import { teamService } from "../../services/teamService";
 import { userService } from "../../services/userService";
+import { reopenRolesFilledByMember } from "../../services/teamMemberRoleReopenService";
 import Button from "../common/Button";
 import SendMessageButton from "../common/SendMessageButton";
 import ScreenAlert from "../common/ScreenAlert";
@@ -836,10 +837,21 @@ const TeamDetailsModal = ({
 
     setLeaveLoading(true);
     try {
+      const reopenedRoles = await reopenRolesFilledByMember({
+        teamId: team.id,
+        teamName: team.name,
+        member: user,
+        memberId: user.id,
+        roles: teamRoles,
+      });
+
       await teamService.removeTeamMember(team.id, user.id);
       setNotification({
         type: "success",
-        message: "You have left the team successfully.",
+        message:
+          reopenedRoles.length > 0
+            ? `You have left the team. ${reopenedRoles.length} filled ${reopenedRoles.length === 1 ? "role was" : "roles were"} reopened.`
+            : "You have left the team successfully.",
       });
       setIsLeaveDialogOpen(false);
 
