@@ -412,6 +412,7 @@ const MessageNotifications = () => {
     search: location.search,
   });
   const { isAuthenticated, user } = useAuth();
+  const prevIsAuthenticatedRef = useRef(false);
 
   useEffect(() => {
     locationRef.current = {
@@ -419,13 +420,19 @@ const MessageNotifications = () => {
       search: location.search,
     };
   }, [location.pathname, location.search]);
-  
+
   useEffect(() => {
-    // Clear the session flag on logout so the next login can show the toast.
     if (!isAuthenticated) {
-      sessionStorage.removeItem('lomir:initial_unread_checked');
+      // Only clear the flag when transitioning from authenticated → not (i.e. logout),
+      // not on the initial mount where isAuthenticated starts false while auth resolves.
+      if (prevIsAuthenticatedRef.current) {
+        sessionStorage.removeItem('lomir:initial_unread_checked');
+      }
+      prevIsAuthenticatedRef.current = false;
       return;
     }
+
+    prevIsAuthenticatedRef.current = true;
 
     // Only show once per tab session (persists across page refreshes, cleared on logout).
     if (sessionStorage.getItem('lomir:initial_unread_checked')) return;
