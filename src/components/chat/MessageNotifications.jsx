@@ -82,6 +82,7 @@ const NOTIFICATION_TOAST_TYPES = {
   application_received: { icon: 'UserPlus',     label: 'New Application' },
   application_approved: { icon: 'CheckCircle',  label: 'Application Approved', color: '#16a34a', senderColor: '#15803d', senderPrefix: 'Approved by ' },
   application_rejected: { icon: 'CircleX',      label: 'Application Declined' },
+  member_removed:       { icon: 'UserMinus',    label: 'Removed from Team',    senderPrefix: 'Removed by ' },
 };
 
 const ROLE_CHANGE_PREVIEW = {
@@ -472,8 +473,8 @@ const MessageNotifications = () => {
       const target = getMessageConversationTarget(message, user?.id);
       const eventContent = pickEventContent(message);
 
-      // APPLICATION_APPROVED system messages are shown via notification:new toast instead.
-      if (/APPLICATION_APPROVED:/i.test(eventContent)) return;
+      // These system messages are shown via notification:new toast instead.
+      if (/APPLICATION_APPROVED:|MEMBER_REMOVED/i.test(eventContent)) return;
 
       const eventPreview =
         getRoleEventTypePreview(message) ||
