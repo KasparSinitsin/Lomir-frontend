@@ -74,14 +74,14 @@ const BADGE_CATEGORY_ICON = {
 };
 
 const NOTIFICATION_TOAST_TYPES = {
-  invitation_received:  { icon: 'Mail',         label: 'Team Invitation' },
-  role_invitation:      { icon: 'Mail',         label: 'Role Invitation' },
-  invitation_accepted:  { icon: 'UserCheck',    label: 'Invitation Accepted' },
-  invitation_declined:  { icon: 'UserX',        label: 'Invitation Declined' },
-  invitation_cancelled: { icon: 'CircleX',      label: 'Invitation Cancelled' },
-  application_received: { icon: 'UserPlus',     label: 'New Application' },
+  invitation_received:  { icon: 'Mail',         label: 'Team Invitation',      color: '#3b82f6' },
+  role_invitation:      { icon: 'Mail',         label: 'Role Invitation',      color: '#3b82f6' },
+  invitation_accepted:  { icon: 'UserCheck',    label: 'Invitation Accepted',  color: '#16a34a' },
+  invitation_declined:  { icon: 'UserX',        label: 'Invitation Declined',  color: '#f97316' },
+  invitation_cancelled: { icon: 'CircleX',      label: 'Invitation Cancelled', color: '#6b7280' },
+  application_received: { icon: 'UserPlus',     label: 'New Application',      color: '#3b82f6' },
   application_approved: { icon: 'CheckCircle',  label: 'Application Approved', color: '#16a34a', senderColor: '#15803d', senderPrefix: 'Approved by ' },
-  application_rejected: { icon: 'CircleX',      label: 'Application Declined' },
+  application_rejected: { icon: 'CircleX',      label: 'Application Declined', color: '#f97316' },
   member_removed:       { icon: 'UserMinus',    label: 'Removed from Team',    senderPrefix: 'Removed by ' },
 };
 
@@ -474,7 +474,7 @@ const MessageNotifications = () => {
       const eventContent = pickEventContent(message);
 
       // These system messages are shown via notification:new toast instead.
-      if (/APPLICATION_APPROVED:|MEMBER_REMOVED/i.test(eventContent)) return;
+      if (/APPLICATION_APPROVED:|MEMBER_REMOVED|INVITATION_DECLINED|INVITATION_CANCELLED/i.test(eventContent)) return;
 
       const eventPreview =
         getRoleEventTypePreview(message) ||
