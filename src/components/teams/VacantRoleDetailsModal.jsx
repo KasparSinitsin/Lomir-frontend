@@ -1759,7 +1759,7 @@ const VacantRoleDetailsModal = ({
           {modalStatusTitle}
         </h2>
       </div>
-      {!isFilledRole && viewerIsTeamMember && (tags.length > 0 || badges.length > 0) && !hideActions && (
+      {!isFilledRole && canManage && !hideActions && (
         <div className="flex items-center space-x-2">
           <Button
             variant="ghost"
@@ -2479,7 +2479,7 @@ const VacantRoleDetailsModal = ({
                         className={`flex items-start rounded-xl shadow p-4 gap-4 transition-all duration-200 hover:shadow-md cursor-pointer text-left w-full ${
                           applicantIsTeamMember
                             ? "bg-green-50 hover:bg-green-100"
-                            : "bg-white hover:bg-base-100"
+                            : "bg-base-200 hover:bg-base-300"
                         }`}
                         onClick={() => {
                           setHighlightApplicantId(applicantId);
@@ -2693,7 +2693,7 @@ const VacantRoleDetailsModal = ({
                         className={`flex items-start rounded-xl shadow p-4 gap-4 transition-all duration-200 hover:shadow-md cursor-pointer text-left w-full ${
                           inviteeIsTeamMember
                             ? "bg-green-50 hover:bg-green-100"
-                            : "bg-white hover:bg-base-100"
+                            : "bg-base-200 hover:bg-base-300"
                         }`}
                         onClick={() => {
                           setHighlightInviteeId(inviteeId);

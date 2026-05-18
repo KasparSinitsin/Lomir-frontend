@@ -8,6 +8,7 @@ const RoleBadgePill = ({
   loading = false,
   onClick,
   className = "",
+  style,
 }) => {
   const Component = onClick ? "button" : "span";
 
@@ -15,6 +16,7 @@ const RoleBadgePill = ({
     <Component
       type={onClick ? "button" : undefined}
       onClick={onClick}
+      style={style}
       className={`group inline-flex items-center h-6 rounded-full overflow-hidden
   text-xs font-medium
   ${badgeColorClass}
@@ -32,8 +34,9 @@ const RoleBadgePill = ({
         className={`text-xs font-medium leading-none
     max-w-0 overflow-hidden whitespace-nowrap opacity-0
     transition-all duration-200 ease-out
-    group-hover:max-w-[80px] group-hover:opacity-100
-    group-focus-visible:max-w-[80px] group-focus-visible:opacity-100
+    group-hover:max-w-[120px] group-hover:opacity-100
+    group-focus-visible:max-w-[120px] group-focus-visible:opacity-100
+    pl-0 group-hover:pl-1 group-focus-visible:pl-1
     pr-0 group-hover:pr-2 group-focus-visible:pr-2`}
       >
         {label}

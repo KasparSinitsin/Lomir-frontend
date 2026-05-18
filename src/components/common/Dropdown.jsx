@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect } from "react";
-import { ChevronDown } from "lucide-react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 
 const Dropdown = ({
   trigger,
@@ -13,21 +13,40 @@ const Dropdown = ({
   hoverDelay = 150,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [menuStyle, setMenuStyle] = useState({});
   const [hoverTimeout, setHoverTimeout] = useState(null);
   const dropdownRef = useRef(null);
+  const menuRef = useRef(null);
 
-  // Position classes
-  const positionClasses = {
-    "bottom-left": "left-0 top-full mt-1",
-    "bottom-right": "right-0 top-full mt-1",
-    "top-left": "left-0 bottom-full mb-1",
-    "top-right": "right-0 bottom-full mb-1",
-  };
+  const computeMenuStyle = useCallback(() => {
+    if (!dropdownRef.current) return;
+    const rect = dropdownRef.current.getBoundingClientRect();
+    const style = { position: "fixed", zIndex: 9999 };
+
+    if (position.startsWith("bottom")) {
+      style.top = rect.bottom + 4;
+    } else {
+      style.bottom = window.innerHeight - rect.top + 4;
+    }
+
+    if (position.endsWith("right")) {
+      style.right = window.innerWidth - rect.right;
+    } else {
+      style.left = rect.left;
+    }
+
+    setMenuStyle(style);
+  }, [position]);
 
   // Handle click outside to close dropdown
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target) &&
+        menuRef.current &&
+        !menuRef.current.contains(event.target)
+      ) {
         setIsOpen(false);
       }
     };
@@ -35,6 +54,8 @@ const Dropdown = ({
     if (isOpen) {
       document.addEventListener("mousedown", handleClickOutside);
       document.addEventListener("touchstart", handleClickOutside);
+      window.addEventListener("scroll", () => setIsOpen(false), { passive: true });
+      window.addEventListener("resize", () => setIsOpen(false), { passive: true });
     }
 
     return () => {
@@ -49,6 +70,7 @@ const Dropdown = ({
       if (hoverTimeout) {
         clearTimeout(hoverTimeout);
       }
+      computeMenuStyle();
       setIsOpen(true);
     }
   };
@@ -65,6 +87,9 @@ const Dropdown = ({
   // Handle click events
   const handleClick = () => {
     if (!disabled && !openOnHover) {
+      if (!isOpen) {
+        computeMenuStyle();
+      }
       setIsOpen(!isOpen);
     }
   };
@@ -102,27 +127,26 @@ const Dropdown = ({
         {trigger}
       </div>
 
-      {/* Dropdown Menu */}
-      {isOpen && !disabled && (
+      {/* Dropdown Menu — rendered in a portal to escape stacking contexts */}
+      {isOpen && !disabled && createPortal(
         <>
           {/* Backdrop for mobile/touch devices */}
           <div
-            className="fixed inset-0 z-40 lg:hidden"
+            className="fixed inset-0 z-[9998] lg:hidden"
             onClick={() => setIsOpen(false)}
           />
 
           {/* Dropdown Content */}
           <div
-            className={`
-              absolute z-50 bg-white rounded-lg shadow-lg border border-gray-200 py-1 min-w-32
-              ${positionClasses[position]}
-              ${dropdownClassName}
-            `}
+            ref={menuRef}
+            style={menuStyle}
+            className={`bg-white rounded-lg shadow-lg border border-gray-200 py-1 min-w-32 ${dropdownClassName}`}
             onClick={handleItemClick}
           >
             {children}
           </div>
-        </>
+        </>,
+        document.body
       )}
     </div>
   );

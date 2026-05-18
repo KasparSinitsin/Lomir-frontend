@@ -58,14 +58,8 @@ const VacantRolesSection = ({
   const COLLAPSED_COUNT = 4;
   const shouldShowFilledRoles = canManage || isTeamMember;
   const visibleRoles = roles.filter((role) => {
-    if (canManage) return true;
-
-    const normalizedStatus = String(role?.status ?? "").toLowerCase();
-    if (isTeamMember) {
-      return normalizedStatus === "open" || normalizedStatus === "filled";
-    }
-
-    return normalizedStatus === "open";
+    if (canManage || isTeamMember) return true;
+    return String(role?.status ?? "").toLowerCase() === "open";
   });
 
   // Modal state

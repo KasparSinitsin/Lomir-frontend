@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   Award,
   Calendar,
@@ -197,6 +198,8 @@ const VacantRoleCard = ({
   notificationHighlight = false,
 }) => {
   const [showMenu, setShowMenu] = useState(false);
+  const [menuPosition, setMenuPosition] = useState(null);
+  const menuTriggerRef = useRef(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [pendingApplicationForRole, setPendingApplicationForRole] =
     useState(null);
@@ -1318,7 +1321,7 @@ const VacantRoleCard = ({
               )}
             </div>
 
-            <div className="relative flex-shrink-0" data-dropdown-menu>
+            <div ref={menuTriggerRef} className="relative flex-shrink-0" data-dropdown-menu>
               <RoleBadgePill
                 icon={badgeConfig.icon}
                 label={badgeConfig.label}
@@ -1329,101 +1332,118 @@ const VacantRoleCard = ({
                   canOpenBadgeMenu
                     ? (e) => {
                         e.stopPropagation();
+                        if (!showMenu && menuTriggerRef.current) {
+                          const rect = menuTriggerRef.current.getBoundingClientRect();
+                          setMenuPosition({
+                            top: rect.bottom + 4,
+                            right: window.innerWidth - rect.right,
+                          });
+                        }
                         setShowMenu(!showMenu);
                       }
                     : undefined
                 }
               />
-
-              {canOpenBadgeMenu && showMenu && (
-                <>
-                  <div
-                    className="fixed inset-0 z-[9]"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setShowMenu(false);
-                    }}
-                  />
-                  <div className="absolute right-0 top-8 z-20 bg-base-100 border border-base-300 rounded-lg shadow-lg py-1 min-w-[200px]">
-                    {canEditRole && (
-                      <button
-                        className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-base-200 text-left"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setShowMenu(false);
-                          onEdit(role);
-                        }}
-                      >
-                        <Edit size={14} />
-                        Edit Role
-                      </button>
-                    )}
-                    {canMarkFilled && (
-                      <button
-                        className="flex items-start gap-2 w-full px-3 py-2 text-sm hover:bg-base-200 text-left"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setShowMenu(false);
-                          onStatusChange(role.id, "filled");
-                        }}
-                      >
-                        <CheckCircle
-                          size={14}
-                          className="text-success flex-shrink-0 mt-[2px]"
-                        />
-                        {viewAsUser
-                          ? `Mark role as filled with ${
-                              viewAsUser.firstName ??
-                              viewAsUser.first_name ??
-                              viewAsUser.username ??
-                              "this applicant"
-                            }`
-                          : "Mark Filled"}
-                      </button>
-                    )}
-                    {canCloseRole && (
-                      <button
-                        className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-base-200 text-left"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setShowMenu(false);
-                          onStatusChange(role.id, "closed");
-                        }}
-                      >
-                        <XCircle size={14} className="text-warning" />
-                        Close Role
-                      </button>
-                    )}
-                    {canReopenRole && (
-                      <button
-                        className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-base-200 text-left"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setShowMenu(false);
-                          onStatusChange(role.id, "open");
-                        }}
-                      >
-                        <CheckCircle size={14} className="text-primary" />
-                        Reopen Role
-                      </button>
-                    )}
-                    {canDeleteRole && (
-                      <button
-                        className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-base-200 text-left text-error"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setShowMenu(false);
-                          onDelete(role.id);
-                        }}
-                      >
-                        <Trash2 size={14} />
-                        Delete Role
-                      </button>
-                    )}
-                  </div>
-                </>
-              )}
             </div>
+
+            {canOpenBadgeMenu && showMenu && menuPosition && createPortal(
+              <>
+                <div
+                  className="fixed inset-0"
+                  style={{ zIndex: 9998 }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowMenu(false);
+                  }}
+                />
+                <div
+                  style={{
+                    position: "fixed",
+                    top: menuPosition.top,
+                    right: menuPosition.right,
+                    zIndex: 9999,
+                  }}
+                  className="bg-base-100 border border-base-300 rounded-lg shadow-lg py-1 min-w-[200px]"
+                >
+                  {canEditRole && (
+                    <button
+                      className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-base-200 text-left"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowMenu(false);
+                        onEdit(role);
+                      }}
+                    >
+                      <Edit size={14} />
+                      Edit Role
+                    </button>
+                  )}
+                  {canMarkFilled && (
+                    <button
+                      className="flex items-start gap-2 w-full px-3 py-2 text-sm hover:bg-base-200 text-left"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowMenu(false);
+                        onStatusChange(role.id, "filled");
+                      }}
+                    >
+                      <CheckCircle
+                        size={14}
+                        className="text-success flex-shrink-0 mt-[2px]"
+                      />
+                      {viewAsUser
+                        ? `Mark role as filled with ${
+                            viewAsUser.firstName ??
+                            viewAsUser.first_name ??
+                            viewAsUser.username ??
+                            "this applicant"
+                          }`
+                        : "Mark Filled"}
+                    </button>
+                  )}
+                  {canCloseRole && (
+                    <button
+                      className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-base-200 text-left"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowMenu(false);
+                        onStatusChange(role.id, "closed");
+                      }}
+                    >
+                      <XCircle size={14} className="text-warning" />
+                      Close Role
+                    </button>
+                  )}
+                  {canReopenRole && (
+                    <button
+                      className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-base-200 text-left"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowMenu(false);
+                        onStatusChange(role.id, "open");
+                      }}
+                    >
+                      <CheckCircle size={14} className="text-primary" />
+                      Reopen Role
+                    </button>
+                  )}
+                  {canDeleteRole && (
+                    <button
+                      className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-base-200 text-left text-error"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowMenu(false);
+                        onDelete(role.id);
+                      }}
+                    >
+                      <Trash2 size={14} />
+                      Delete Role
+                    </button>
+                  )}
+                </div>
+              </>,
+              document.body
+            )}
           </div>
 
           {isMiniView && scoreSubtitleItem && (
