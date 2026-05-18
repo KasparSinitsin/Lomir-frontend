@@ -49,10 +49,8 @@ api.interceptors.response.use(
         console.error("API Error:", error.response.data);
       }
 
-      if (
-        !skipAuthRedirect &&
-        (error.response.status === 401 || error.response.status === 403)
-      ) {
+      // 401 = invalid/expired token → log out. 403 = forbidden resource → stay logged in.
+      if (!skipAuthRedirect && error.response.status === 401) {
         localStorage.removeItem("token");
         window.location.href = "/login";
       }
