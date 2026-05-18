@@ -11,6 +11,11 @@ import {
 import RoleBadgeDropdown from "./RoleBadgeDropdown";
 import ScreenAlert from "../common/ScreenAlert";
 import { teamService } from "../../services/teamService";
+import {
+  fetchRolesFilledByMember,
+  getRolesFilledByMember,
+  reopenRolesFilledByMember,
+} from "../../services/teamMemberRoleReopenService";
 import { userService } from "../../services/userService";
 import { formatDisplayName } from "../../utils/nameFormatters";
 import CardMetaItem from "../common/CardMetaItem";
@@ -53,6 +58,15 @@ const getCachedMemberSyntheticStatus = async (memberId) => {
     throw error;
   }
 };
+
+const getTeamMemberId = (member) =>
+  member?.userId ??
+  member?.user_id ??
+  member?.memberId ??
+  member?.member_id ??
+  member?.user?.id ??
+  member?.id ??
+  null;
 
 /**
  * TeamMembersSection Component
@@ -103,7 +117,7 @@ const TeamMembersSection = ({
     const memberIdsToFetch = [];
 
     members.forEach((member) => {
-      const memberId = member?.userId ?? member?.user_id ?? null;
+      const memberId = getTeamMemberId(member);
       if (memberId == null) return;
 
       const cacheKey = String(memberId);
@@ -190,13 +204,14 @@ const TeamMembersSection = ({
       <div
         className="grid grid-cols-1 sm:grid-cols-2 gap-4"
         key={team.members
-          .map((m) => `${m.user_id || m.userId}-${m.role}`)
+          .map((m) => `${getTeamMemberId(m)}-${m.role}`)
           .join(",")}
       >
         {(isExpanded ? team.members : team.members.slice(0, COLLAPSED_COUNT)).map((member) => {
           // Check which property is available (userId or user_id)
-          const memberId = member.userId || member.user_id;
-          const isCurrentUser = memberId === user?.id;
+          const memberId = getTeamMemberId(member);
+          const isCurrentUser =
+            memberId != null && String(memberId) === String(user?.id);
 
           // Determine if this member should be anonymized
           const anonymize = shouldAnonymizeMember(member);
@@ -225,7 +240,10 @@ const TeamMembersSection = ({
 
           // Role management logic - Owners and admins can manage roles
           const currentUserMember = team.members?.find(
-            (m) => m.user_id === user?.id || m.userId === user?.id,
+            (m) => {
+              const rowMemberId = getTeamMemberId(m);
+              return rowMemberId != null && String(rowMemberId) === String(user?.id);
+            },
           );
           const isAdmin = currentUserMember?.role === "admin";
 
@@ -334,17 +352,65 @@ const TeamMembersSection = ({
                           });
                         }
                       }}
-                      onRemoveMember={async () => {
+                      onRemoveMember={async (resolvedMemberId = memberId) => {
+                        let demotedForRemoval = false;
+
                         try {
-                          await teamService.removeTeamMember(team.id, memberId);
+                          if (resolvedMemberId == null) {
+                            throw new Error("Could not determine member ID");
+                          }
+
+                          const rolesToReopen =
+                            Array.isArray(roles) && roles.length > 0
+                              ? getRolesFilledByMember(roles, resolvedMemberId)
+                              : await fetchRolesFilledByMember(team.id, resolvedMemberId);
+
+                          if (member.role === "admin" && isAdmin && !isOwner) {
+                            await teamService.updateMemberRole(
+                              team.id,
+                              resolvedMemberId,
+                              "member",
+                            );
+                            demotedForRemoval = true;
+                          }
+
+                          await teamService.removeTeamMember(team.id, resolvedMemberId);
+
+                          const reopenedRoles = await reopenRolesFilledByMember({
+                            teamId: team.id,
+                            teamName: team.name,
+                            member,
+                            memberId: resolvedMemberId,
+                            roles: rolesToReopen,
+                            useProvidedRoles: true,
+                          });
+
                           setNotification({
                             type: "success",
-                            message: `${formatDisplayName(member)} has been removed from the team.`,
+                            message:
+                              reopenedRoles.length > 0
+                                ? `${formatDisplayName(member)} has been removed from the team. ${reopenedRoles.length} filled ${reopenedRoles.length === 1 ? "role was" : "roles were"} reopened.`
+                                : `${formatDisplayName(member)} has been removed from the team.`,
                           });
                           if (onMemberRemoved) {
                             await onMemberRemoved();
                           }
                         } catch (error) {
+                          if (demotedForRemoval) {
+                            try {
+                              await teamService.updateMemberRole(
+                                team.id,
+                                resolvedMemberId,
+                                "admin",
+                              );
+                            } catch (restoreError) {
+                              console.error(
+                                "Failed to restore admin role after removal failed:",
+                                restoreError,
+                              );
+                            }
+                          }
+
                           setNotification({
                             type: "error",
                             message:

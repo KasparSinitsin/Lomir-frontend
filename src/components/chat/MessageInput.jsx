@@ -96,6 +96,19 @@ const MessageInput = ({
       : { status: "none" };
 
   useEffect(() => {
+    if (disabled) {
+      if (typingTimerRef.current) {
+        clearTimeout(typingTimerRef.current);
+      }
+      if (isTypingRef.current) {
+        const urlParams = new URLSearchParams(window.location.search);
+        const type = urlParams.get("type") || "direct";
+        onTyping(false, type);
+        isTypingRef.current = false;
+      }
+      return undefined;
+    }
+
     const urlParams = new URLSearchParams(window.location.search);
     const type = urlParams.get("type") || "direct";
 
@@ -123,7 +136,7 @@ const MessageInput = ({
         clearTimeout(typingTimerRef.current);
       }
     };
-  }, [message, onTyping]);
+  }, [disabled, message, onTyping]);
 
   const detectMention = (value, cursorPos) => {
     const beforeCursor = value.slice(0, cursorPos);
@@ -173,6 +186,7 @@ const MessageInput = ({
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (disabled) return;
     if (!message.trim()) return;
 
     const urlParams = new URLSearchParams(window.location.search);
@@ -193,16 +207,19 @@ const MessageInput = ({
   };
 
   const handleEmojiSelect = (emoji) => {
+    if (disabled) return;
     setMessage((prev) => prev + emoji);
   };
 
   const handleImageSelect = async (file, previewUrl) => {
+    if (disabled) return;
     if (onSendImage) {
       await onSendImage(file, previewUrl);
     }
   };
 
   const handleFileSelect = async (file) => {
+    if (disabled) return;
     if (onSendFile) {
       await onSendFile(file);
     }

@@ -386,12 +386,20 @@ export const getEventPreview = (lastMessage, currentUser = null) => {
     }
 
     case "role_reopened": {
+      const userName = getActorLabel(
+        parsedMessage.userId,
+        parsedMessage.userName,
+        currentUser,
+      );
+
       return {
-        text: `Role reopened: ${parsedMessage.roleName || "Vacant Role"}`,
+        text: userName
+          ? `${userName} left the role ${parsedMessage.roleName || "Vacant Role"}. It is open again.`
+          : `Role reopened: ${parsedMessage.roleName || "Vacant Role"}`,
         icon: "UserSearch",
         bannerClass: null,
         color: EVENT_PREVIEW_TEXT_COLORS.role,
-        senderPrefix: "by ",
+        senderPrefix: userName ? null : "by ",
       };
     }
 

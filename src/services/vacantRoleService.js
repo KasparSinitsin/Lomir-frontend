@@ -78,10 +78,10 @@ export const vacantRoleService = {
    * @param {string} status - "open", "filled", or "closed"
    * @param {number|null} filledBy - user ID if status is "filled"
    */
-  async updateVacantRoleStatus(teamId, roleId, status, filledBy = null) {
+  async updateVacantRoleStatus(teamId, roleId, status, filledBy = null, { skipChatMessage = false } = {}) {
     const response = await api.put(
       `/api/teams/${teamId}/vacant-roles/${roleId}/status`,
-      { status, filled_by: filledBy },
+      { status, filled_by: filledBy, skip_chat_message: skipChatMessage || undefined },
     );
     return response.data;
   },
