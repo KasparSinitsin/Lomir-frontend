@@ -1359,10 +1359,30 @@ const VacantRoleDetailsModal = ({
     team?.name ??
     team?.team_name ??
     null;
+  const roleTeam = displayRole.team ?? {};
   const teamMemberCount =
-    displayRole.teamMemberCount ?? displayRole.team_member_count;
+    displayRole.teamMemberCount ??
+    displayRole.team_member_count ??
+    displayRole.current_members_count ??
+    displayRole.currentMembersCount ??
+    displayRole.member_count ??
+    displayRole.memberCount ??
+    displayRole.members_count ??
+    displayRole.membersCount ??
+    roleTeam.current_members_count ??
+    roleTeam.currentMembersCount ??
+    roleTeam.member_count ??
+    roleTeam.memberCount ??
+    roleTeam.members_count ??
+    roleTeam.membersCount ??
+    (Array.isArray(roleTeam.members) ? roleTeam.members.length : undefined);
   const teamMaxMembers =
-    displayRole.teamMaxMembers ?? displayRole.team_max_members;
+    displayRole.teamMaxMembers ??
+    displayRole.team_max_members ??
+    displayRole.max_members ??
+    displayRole.maxMembers ??
+    roleTeam.max_members ??
+    roleTeam.maxMembers;
   const teamDescription =
     displayRole.teamDescription ?? displayRole.team_description ?? "";
   const teamAvatarUrl =
@@ -1371,6 +1391,27 @@ const VacantRoleDetailsModal = ({
     displayRole.teamAvatarUrl ??
     displayRole.team_avatar_url ??
     null;
+  const teamIsRemote =
+    team?.isRemote ??
+    team?.is_remote ??
+    displayRole.teamIsRemote ??
+    displayRole.team_is_remote ??
+    roleTeam.isRemote ??
+    roleTeam.is_remote;
+  const teamCity =
+    team?.city ?? displayRole.teamCity ?? displayRole.team_city ?? roleTeam.city;
+  const teamCountry =
+    team?.country ??
+    displayRole.teamCountry ??
+    displayRole.team_country ??
+    roleTeam.country;
+  const teamIsSynthetic =
+    team?.is_synthetic ??
+    team?.isSynthetic ??
+    displayRole.teamIsSynthetic ??
+    displayRole.team_is_synthetic ??
+    roleTeam.is_synthetic ??
+    roleTeam.isSynthetic;
   const applicationTeam = {
     ...team,
     id: team?.id ?? teamId,
@@ -1381,8 +1422,14 @@ const VacantRoleDetailsModal = ({
       team?.currentMembersCount ??
       team?.member_count ??
       team?.memberCount ??
+      team?.members_count ??
+      team?.membersCount ??
       teamMemberCount,
     max_members: team?.max_members ?? team?.maxMembers ?? teamMaxMembers,
+    is_remote: teamIsRemote,
+    city: teamCity,
+    country: teamCountry,
+    is_synthetic: teamIsSynthetic,
     teamavatar_url:
       team?.teamavatar_url ??
       team?.teamavatarUrl ??
@@ -3124,7 +3171,7 @@ const VacantRoleDetailsModal = ({
     <TeamApplicationModal
       isOpen={isInternalApplicationOpen}
       onClose={() => setIsInternalApplicationOpen(false)}
-      team={team}
+      team={applicationTeam}
       teamId={teamId}
       initialRoleId={roleId}
       isInternal={true}
