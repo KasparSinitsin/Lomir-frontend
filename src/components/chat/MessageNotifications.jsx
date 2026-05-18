@@ -80,7 +80,7 @@ const NOTIFICATION_TOAST_TYPES = {
   invitation_declined:  { icon: 'UserX',        label: 'Invitation Declined' },
   invitation_cancelled: { icon: 'CircleX',      label: 'Invitation Cancelled' },
   application_received: { icon: 'UserPlus',     label: 'New Application' },
-  application_approved: { icon: 'CheckCircle',  label: 'Application Approved' },
+  application_approved: { icon: 'CheckCircle',  label: 'Application Approved', color: '#16a34a', senderColor: '#15803d', senderPrefix: 'Approved by ' },
   application_rejected: { icon: 'CircleX',      label: 'Application Declined' },
 };
 
@@ -471,6 +471,10 @@ const MessageNotifications = () => {
     if (!isInConversation) {
       const target = getMessageConversationTarget(message, user?.id);
       const eventContent = pickEventContent(message);
+
+      // APPLICATION_APPROVED system messages are shown via notification:new toast instead.
+      if (/APPLICATION_APPROVED:/i.test(eventContent)) return;
+
       const eventPreview =
         getRoleEventTypePreview(message) ||
         getEventPreview(eventContent, user) ||
@@ -576,7 +580,11 @@ const MessageNotifications = () => {
         headerIconName: config.icon,
         headerLabel: config.label,
         eventIcon: config.icon,
+        eventColor: config.color || null,
         text: payload.title,
+        senderName: payload.actorName || null,
+        senderPrefix: config.senderPrefix || null,
+        senderColor: config.senderColor || null,
         navigateTo: '/teams/my-teams',
         time: new Date(),
         expiresAt: Date.now() + NOTIFICATION_VISIBLE_MS,
@@ -719,7 +727,10 @@ const MessageNotifications = () => {
               <p className="text-sm">{renderTextWithMentions(notification.text)}</p>
             )}
             {isEvent && notification.senderName && (
-              <p className="text-[11px] mt-0.5 text-primary-focus truncate">
+              <p
+                className="text-[11px] mt-0.5 text-primary-focus truncate"
+                style={notification.senderColor ? { color: notification.senderColor } : undefined}
+              >
                 {notification.senderPrefix ?? "by "}{notification.senderName}
               </p>
             )}
