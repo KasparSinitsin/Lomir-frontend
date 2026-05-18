@@ -421,9 +421,16 @@ const MessageNotifications = () => {
   }, [location.pathname, location.search]);
   
   useEffect(() => {
-    if (!isAuthenticated) return;
+    // Clear the session flag on logout so the next login can show the toast.
+    if (!isAuthenticated) {
+      sessionStorage.removeItem('lomir:initial_unread_checked');
+      return;
+    }
 
-    // Fetch initial unread count
+    // Only show once per tab session (persists across page refreshes, cleared on logout).
+    if (sessionStorage.getItem('lomir:initial_unread_checked')) return;
+    sessionStorage.setItem('lomir:initial_unread_checked', '1');
+
     const fetchUnreadCount = async () => {
       try {
         const response = await messageService.getUnreadCount();
