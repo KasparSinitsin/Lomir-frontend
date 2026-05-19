@@ -6,6 +6,7 @@ import {
   SendHorizontal,
   FlaskConical,
   Trash2,
+  MailOpen,
 } from "lucide-react";
 import RequestListModal from "../common/RequestListModal";
 import Button from "../common/Button";
@@ -916,6 +917,44 @@ const TeamInvitesModal = ({
               </div>
             )}
 
+            {/* Invited role card — shown when invitation targets a specific role */}
+            {(invitation.role || invitation.roleId || invitation.role_id) && (
+              <div className="mb-3">
+                <p className="text-xs text-base-content/60 mb-2 flex items-center">
+                  <MailOpen size={12} className="text-info mr-1" />
+                  Invited for this role:
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <VacantRoleCard
+                    role={roleForCard}
+                    team={{ id: teamId, name: teamName }}
+                    matchScore={
+                      inviteeRoleMatch?.matchScore ??
+                      selfRoleMatch?.matchScore ??
+                      localInviteeRoleMatch?.matchScore ??
+                      invitation.role?.matchScore ??
+                      invitation.role?.match_score ??
+                      null
+                    }
+                    matchDetails={
+                      inviteeRoleMatch?.matchDetails ??
+                      selfRoleMatch?.matchDetails ??
+                      localInviteeRoleMatch?.matchDetails ??
+                      invitation.role?.matchDetails ??
+                      invitation.role?.match_details ??
+                      null
+                    }
+                    canManage={false}
+                    canManageStatus={false}
+                    isTeamMember={true}
+                    viewAsUserId={invitation.invitee?.id ?? invitation.invitee_id}
+                    viewAsUser={invitation.invitee}
+                    hideActions={true}
+                  />
+                </div>
+              </div>
+            )}
+
             {/* Invitation Message (if any) */}
             {invitation.message && (
               <div className="mb-3">
@@ -924,40 +963,39 @@ const TeamInvitesModal = ({
                   Invitation message:
                 </p>
                 <p className="text-sm text-base-content/90 leading-relaxed">
-                  {invitation.message}
+                  {(() => {
+                    const roleName = invitation.current_filled_role_name ?? invitation.currentFilledRoleName;
+                    if (isInternalInvitation && roleName) {
+                      const suffix = ` ${roleName}.`;
+                      return invitation.message.endsWith(suffix)
+                        ? invitation.message.slice(0, -suffix.length)
+                        : invitation.message;
+                    }
+                    return invitation.message;
+                  })()}
                 </p>
-              </div>
-            )}
-
-            {/* Vacant role card — shown when invitation targets a specific role */}
-            {(invitation.role || invitation.roleId || invitation.role_id) && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-3">
-                <VacantRoleCard
-                  role={roleForCard}
-                  team={{ id: teamId, name: teamName }}
-                  matchScore={
-                    inviteeRoleMatch?.matchScore ??
-                    selfRoleMatch?.matchScore ??
-                    localInviteeRoleMatch?.matchScore ??
-                    invitation.role?.matchScore ??
-                    invitation.role?.match_score ??
-                    null
-                  }
-                  matchDetails={
-                    inviteeRoleMatch?.matchDetails ??
-                    selfRoleMatch?.matchDetails ??
-                    localInviteeRoleMatch?.matchDetails ??
-                    invitation.role?.matchDetails ??
-                    invitation.role?.match_details ??
-                    null
-                  }
-                  canManage={false}
-                  canManageStatus={false}
-                  isTeamMember={true}
-                  viewAsUserId={invitation.invitee?.id ?? invitation.invitee_id}
-                  viewAsUser={invitation.invitee}
-                  hideActions={true}
-                />
+                {isInternalInvitation && (invitation.current_filled_role_id ?? invitation.currentFilledRoleId) && (
+                  <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <VacantRoleCard
+                      role={{
+                        id: invitation.current_filled_role_id ?? invitation.currentFilledRoleId,
+                        role_name: invitation.current_filled_role_name ?? invitation.currentFilledRoleName,
+                        roleName: invitation.current_filled_role_name ?? invitation.currentFilledRoleName,
+                        status: "filled",
+                        filled_by: invitation.invitee?.id ?? invitation.invitee_id,
+                        filled_by_user: invitation.invitee ?? null,
+                        is_synthetic: invitation.role_is_synthetic ?? false,
+                        isSynthetic: invitation.role_is_synthetic ?? false,
+                      }}
+                      team={{ id: teamId, name: teamName }}
+                      matchScore={null}
+                      canManage={false}
+                      canManageStatus={false}
+                      isTeamMember={true}
+                      hideActions={true}
+                    />
+                  </div>
+                )}
               </div>
             )}
 

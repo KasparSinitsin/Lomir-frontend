@@ -974,7 +974,7 @@ const TeamInviteModal = ({
     fillRole = false
   ) => {
     try {
-      await teamService.handleTeamApplication(applicationId, action, response, fillRole);
+      const result = await teamService.handleTeamApplication(applicationId, action, response, fillRole);
 
       // Update local state - remove the processed application
       if (selectedTeamForModal) {
@@ -999,6 +999,7 @@ const TeamInviteModal = ({
           },
         }));
       }
+      return result;
     } catch (err) {
       console.error(`Error ${action}ing application:`, err);
       throw err;

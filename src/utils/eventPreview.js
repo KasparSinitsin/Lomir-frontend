@@ -14,6 +14,7 @@ const teamText = (teamName) => (teamName ? ` for "${teamName}"` : "");
 const inTeamText = (teamName) => (teamName ? ` in "${teamName}"` : "");
 
 const possessive = (name) => (name === "You" ? "Your" : `${name}'s`);
+const sentenceObject = (name) => (name === "You" ? "you" : name);
 
 const getActorLabel = (userId, userName, currentUser) => {
   const currentUserName = currentUser ? getDisplayName(currentUser) : null;
@@ -258,12 +259,29 @@ export const getEventPreview = (lastMessage, currentUser = null) => {
 
       return {
         text: approverName
-          ? `The role ${parsedMessage.roleName} has been filled by ${applicantName || "Someone"}, approved by ${approverName}.`
-          : `The role ${parsedMessage.roleName} has been filled by ${applicantName || "Someone"}.`,
+          ? `The role ${parsedMessage.roleName} has been filled by ${sentenceObject(applicantName) || "Someone"}, approved by ${sentenceObject(approverName)}.`
+          : `The role ${parsedMessage.roleName} has been filled by ${sentenceObject(applicantName) || "Someone"}.`,
         icon: "UserCheck",
         bannerClass: null,
         color: EVENT_PREVIEW_TEXT_COLORS.role,
         senderName: approverName || parsedMessage.approverName || null,
+        senderPrefix: "by ",
+      };
+    }
+
+    case "role_application_deferred_invite": {
+      const applicantName = getActorLabel(
+        parsedMessage.applicantId,
+        parsedMessage.applicantName,
+        currentUser,
+      );
+
+      return {
+        text: `${possessive(applicantName || "Applicant")} application for ${parsedMessage.roleName} was approved as a role offer`,
+        icon: "UserSearch",
+        bannerClass: null,
+        color: EVENT_PREVIEW_TEXT_COLORS.role,
+        senderName: parsedMessage.approverName || null,
         senderPrefix: "by ",
       };
     }
@@ -394,7 +412,9 @@ export const getEventPreview = (lastMessage, currentUser = null) => {
 
       return {
         text: userName
-          ? `${userName} left the role ${parsedMessage.roleName || "Vacant Role"}. It is open again.`
+          ? userName === "You"
+            ? `You left the role ${parsedMessage.roleName || "Vacant Role"}. It is open again.`
+            : `${userName} left the role ${parsedMessage.roleName || "Vacant Role"}. It is open again.`
           : `Role reopened: ${parsedMessage.roleName || "Vacant Role"}`,
         icon: "UserSearch",
         bannerClass: null,
@@ -417,9 +437,9 @@ export const getEventPreview = (lastMessage, currentUser = null) => {
 
       return {
         text: filledUserName && filledByName
-          ? `The role ${parsedMessage.roleName} has been filled by ${filledUserName}, approved by ${filledByName}.`
+          ? `The role ${parsedMessage.roleName} has been filled by ${sentenceObject(filledUserName)}, approved by ${sentenceObject(filledByName)}.`
           : filledUserName
-            ? `The role ${parsedMessage.roleName} has been filled by ${filledUserName}.`
+            ? `The role ${parsedMessage.roleName} has been filled by ${sentenceObject(filledUserName)}.`
             : `The role ${parsedMessage.roleName} has been marked filled.`,
         icon: "UserCheck",
         bannerClass: null,

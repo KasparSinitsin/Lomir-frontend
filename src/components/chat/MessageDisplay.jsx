@@ -381,6 +381,33 @@ export const parseSystemMessage = (content) => {
     };
   }
 
+  // Pattern 4G.5: Application approved as a deferred role invitation
+  // Format: 📬 ROLE_APPLICATION_DEFERRED_INVITE: teamId:teamName | roleId:roleName | applicantId:applicantName | approverId:approverName | currentRoleId:currentRoleName
+  const roleApplicationDeferredInviteMatch = content.match(
+    /^(?:📬\s*)?ROLE_APPLICATION_DEFERRED_INVITE:\s*(.+?)\s+\|\s+(.+?)\s+\|\s+(.+?)\s+\|\s+(.+?)\s+\|\s+(.+)$/,
+  );
+  if (roleApplicationDeferredInviteMatch) {
+    const team = parseIdNameToken(roleApplicationDeferredInviteMatch[1].trim());
+    const role = parseIdNameToken(roleApplicationDeferredInviteMatch[2].trim());
+    const applicant = parseIdNameToken(roleApplicationDeferredInviteMatch[3].trim());
+    const approver = parseIdNameToken(roleApplicationDeferredInviteMatch[4].trim());
+    const currentRole = parseIdNameToken(roleApplicationDeferredInviteMatch[5].trim());
+
+    return {
+      type: "role_application_deferred_invite",
+      teamId: team.id,
+      teamName: team.name,
+      roleId: role.id,
+      roleName: role.name,
+      applicantId: applicant.id,
+      applicantName: applicant.name,
+      approverId: approver.id,
+      approverName: approver.name,
+      currentRoleId: currentRole.id,
+      currentRoleName: currentRole.name,
+    };
+  }
+
   // Pattern 4H: Invitation accepted + role filled combined message
   // Format: ✅ ROLE_INVITATION_FILLED: teamId:teamName | roleId:roleName | inviteeId:inviteeName
   const roleInvitationFilledMatch = content.match(
@@ -804,6 +831,12 @@ const getEventReactionPreview = (content) => {
           ? `The role "${parsedMessage.roleName}" has been filled by ${parsedMessage.applicantName}, approved by ${parsedMessage.approverName}.`
           : `The role "${parsedMessage.roleName}" has been filled by ${parsedMessage.applicantName}.`,
         Icon: UserCheck,
+        color: EVENT_REACTION_PREVIEW_COLORS.role,
+      };
+    case "role_application_deferred_invite":
+      return {
+        text: `${parsedMessage.applicantName}'s application for "${parsedMessage.roleName}" was approved as a role offer because they already fill "${parsedMessage.currentRoleName}".`,
+        Icon: UserSearch,
         color: EVENT_REACTION_PREVIEW_COLORS.role,
       };
     case "role_invitation_filled":
@@ -1860,6 +1893,32 @@ const MessageDisplay = ({
     });
   };
 
+  const isCurrentViewer = (userId) =>
+    userId != null &&
+    currentUserId != null &&
+    String(userId) === String(currentUserId);
+
+  const userMentionOrYou = (userId, name, { capitalized = false } = {}) => {
+    if (isCurrentViewer(userId)) return capitalized ? "You" : "you";
+
+    return userId ? (
+      <MentionById userId={userId} name={name} />
+    ) : (
+      <Mention name={name} />
+    );
+  };
+
+  const possessiveUserMentionOrYour = (userId, name) => {
+    if (isCurrentViewer(userId)) return "Your";
+
+    return (
+      <>
+        {userMentionOrYou(userId, name)}
+        {"'s"}
+      </>
+    );
+  };
+
   // Group messages by date
   const messagesByDate = messages.reduce((groups, message) => {
     const date = getDateGroupKey(message.createdAt);
@@ -2330,18 +2389,29 @@ const MessageDisplay = ({
     isCurrentUser,
     senderId,
   ) => {
-    const applicant = parsedMessage.applicantName;
-    const approver = parsedMessage.approverName;
+    const isApplicantCurrentUser = isCurrentViewer(parsedMessage.applicantId);
+    const isApproverCurrentUser = isCurrentViewer(parsedMessage.approverId);
 
-    const welcomeText = isCurrentUser ? (
+    const welcomeText = isApplicantCurrentUser ? (
       <>
-        Your application was approved by <Mention name={approver} />. Welcome to
-        the team!
+        Your application was approved by{" "}
+        {userMentionOrYou(parsedMessage.approverId, parsedMessage.approverName)}
+        . Welcome to the team!
+      </>
+    ) : isApproverCurrentUser ? (
+      <>
+        You approved{" "}
+        {userMentionOrYou(parsedMessage.applicantId, parsedMessage.applicantName)}
+        {"'s"} application. Say hello to them!
       </>
     ) : (
       <>
-        <Mention name={applicant} /> has applied successfully and was added by{" "}
-        <Mention name={approver} />. Say hello to them!
+        {userMentionOrYou(parsedMessage.applicantId, parsedMessage.applicantName, {
+          capitalized: true,
+        })}{" "}
+        has applied successfully and was added by{" "}
+        {userMentionOrYou(parsedMessage.approverId, parsedMessage.approverName)}
+        . Say hello to them!
       </>
     );
 
@@ -2368,8 +2438,11 @@ const MessageDisplay = ({
   const renderRoleApplicationApprovedMessage = (message, parsedMessage) => {
     const messageText = (
       <>
-        <Mention name={parsedMessage.applicantName} />
-        {"'s"} application for{" "}
+        {possessiveUserMentionOrYour(
+          parsedMessage.applicantId,
+          parsedMessage.applicantName,
+        )}{" "}
+        application for{" "}
         <RoleMentionById
           roleId={parsedMessage.roleId}
           name={parsedMessage.roleName}
@@ -2423,20 +2496,12 @@ const MessageDisplay = ({
     const hasKnownApprover =
       parsedMessage.approverName &&
       parsedMessage.approverName.trim().toLowerCase() !== "someone";
-    const applicantMention = hasKnownApplicant ? (
-      <MentionById
-        userId={parsedMessage.applicantId}
-        name={parsedMessage.applicantName}
-      />
-    ) : (
-      "someone"
-    );
-    const approverMention = hasKnownApprover ? (
-      <MentionById
-        userId={parsedMessage.approverId}
-        name={parsedMessage.approverName}
-      />
-    ) : null;
+    const applicantMention = hasKnownApplicant
+      ? userMentionOrYou(parsedMessage.applicantId, parsedMessage.applicantName)
+      : "someone";
+    const approverMention = hasKnownApprover
+      ? userMentionOrYou(parsedMessage.approverId, parsedMessage.approverName)
+      : null;
 
     const messageText = (
       <>
@@ -2472,6 +2537,72 @@ const MessageDisplay = ({
   };
 
   // =============================================================================
+  // renderRoleApplicationDeferredInviteMessage - Orange role theme (approval offer)
+  // =============================================================================
+  const renderRoleApplicationDeferredInviteMessage = (message, parsedMessage) => {
+    const roleMention = (
+      <RoleMentionById
+        roleId={parsedMessage.roleId}
+        name={parsedMessage.roleName}
+      />
+    );
+    const currentRoleMention = (
+      <RoleMentionById
+        roleId={parsedMessage.currentRoleId}
+        name={parsedMessage.currentRoleName}
+        filledUserId={parsedMessage.applicantId}
+        filledUserName={parsedMessage.applicantName}
+      />
+    );
+    const applicantMention = userMentionOrYou(
+      parsedMessage.applicantId,
+      parsedMessage.applicantName,
+      { capitalized: true },
+    );
+    const approverMention = userMentionOrYou(
+      parsedMessage.approverId,
+      parsedMessage.approverName,
+    );
+    const isApplicantCurrentUser = isCurrentViewer(parsedMessage.applicantId);
+
+    const messageText = (
+      <>
+        {isApplicantCurrentUser ? "Your application" : <>{applicantMention}{"'s application"}</>}
+        {" for "}{roleMention}{" was approved by "}
+        {approverMention}
+        {". "}
+        {isApplicantCurrentUser ? "You already fill " : "They already fill "}
+        {currentRoleMention}
+        {", so this is now a role offer "}
+        {isApplicantCurrentUser
+          ? "you can accept once you leave your current role."
+          : "they can accept once they leave their current role."}
+      </>
+    );
+
+    return (
+      <div className="flex flex-col items-center w-full my-4">
+        <div
+          className="event-banner mb-3"
+          style={{
+            backgroundColor: "rgba(245, 158, 11, 0.1)",
+            color: "#f59e0b",
+          }}
+        >
+          <span className="text-sm font-medium event-message-text">
+            <UserSearch size={16} className="event-inline-icon mr-1" />
+            {highlightEventContent(messageText)}
+          </span>
+        </div>
+
+        <div className="text-xs text-base-content/50">
+          {formatLocalTime(message.createdAt)}
+        </div>
+      </div>
+    );
+  };
+
+  // =============================================================================
   // renderRoleInvitationFilledMessage - Orange role theme (invitation accepted + fill)
   // =============================================================================
   const renderRoleInvitationFilledMessage = (message, parsedMessage) => {
@@ -2485,7 +2616,13 @@ const MessageDisplay = ({
       />
     );
 
-    const messageText = parsedMessage.inviteeName &&
+    const isInviteeCurrentUser = isCurrentViewer(parsedMessage.inviteeId);
+    const messageText = isInviteeCurrentUser ? (
+      <>
+        You accepted an invitation to fill the role {roleMention} in this team
+        and are now filling that role.
+      </>
+    ) : parsedMessage.inviteeName &&
       parsedMessage.inviteeName.trim().toLowerCase() !== "someone" ? (
       <>
         <MentionById
@@ -2534,6 +2671,7 @@ const MessageDisplay = ({
     const hasInviter =
       parsedMessage.inviterName &&
       parsedMessage.inviterName.trim().toLowerCase() !== "someone";
+    const isInviteeCurrentUser = isCurrentViewer(parsedMessage.inviteeId);
 
     const roleMention = (
       <RoleMentionById
@@ -2549,31 +2687,41 @@ const MessageDisplay = ({
       <>
         {hasInviter && (
           <>
-            <MentionById userId={parsedMessage.inviterId} name={parsedMessage.inviterName} />
+            {userMentionOrYou(parsedMessage.inviterId, parsedMessage.inviterName, {
+              capitalized: true,
+            })}
             {" invited "}
           </>
         )}
         {hasInvitee ? (
-          <MentionById userId={parsedMessage.inviteeId} name={parsedMessage.inviteeName} />
+          userMentionOrYou(parsedMessage.inviteeId, parsedMessage.inviteeName)
         ) : (
           "Someone"
         )}
-        {" for the role "}{roleMention}{". They accepted and are now filling that role."}
+        {" for the role "}{roleMention}
+        {isInviteeCurrentUser
+          ? ". You accepted and are now filling that role."
+          : ". They accepted and are now filling that role."}
       </>
     ) : (
       <>
         {hasInviter && (
           <>
-            <MentionById userId={parsedMessage.inviterId} name={parsedMessage.inviterName} />
+            {userMentionOrYou(parsedMessage.inviterId, parsedMessage.inviterName, {
+              capitalized: true,
+            })}
             {" invited "}
           </>
         )}
         {hasInvitee ? (
-          <MentionById userId={parsedMessage.inviteeId} name={parsedMessage.inviteeName} />
+          userMentionOrYou(parsedMessage.inviteeId, parsedMessage.inviteeName)
         ) : (
           "Someone"
         )}
-        {" for the role "}{roleMention}{". They accepted the invitation."}
+        {" for the role "}{roleMention}
+        {isInviteeCurrentUser
+          ? ". You accepted the invitation."
+          : ". They accepted the invitation."}
       </>
     );
 
@@ -2643,11 +2791,17 @@ const MessageDisplay = ({
     );
     const messageText = parsedMessage.userName ? (
       <>
-        <MentionById
-          userId={parsedMessage.userId}
-          name={parsedMessage.userName}
-        />{" "}
-        has left the role {roleMention}. The role is open again to be filled.
+        {isCurrentViewer(parsedMessage.userId) ? (
+          <>You have left the role {roleMention}. The role is open again to be filled.</>
+        ) : (
+          <>
+            <MentionById
+              userId={parsedMessage.userId}
+              name={parsedMessage.userName}
+            />{" "}
+            has left the role {roleMention}. The role is open again to be filled.
+          </>
+        )}
       </>
     ) : (
       <>The role {roleMention} is open again to be filled.</>
@@ -2684,8 +2838,14 @@ const MessageDisplay = ({
     );
     const messageText = parsedMessage.userName ? (
       <>
-        <MentionById userId={parsedMessage.userId} name={parsedMessage.userName} />{" "}
-        has reopened the role {roleMention}. It is open again to be filled.
+        {isCurrentViewer(parsedMessage.userId) ? (
+          <>You have reopened the role {roleMention}. It is open again to be filled.</>
+        ) : (
+          <>
+            <MentionById userId={parsedMessage.userId} name={parsedMessage.userName} />{" "}
+            has reopened the role {roleMention}. It is open again to be filled.
+          </>
+        )}
       </>
     ) : (
       <>The role {roleMention} has been reopened and is open to be filled.</>
@@ -2733,18 +2893,12 @@ const MessageDisplay = ({
       />
     );
     const filledByMention = hasKnownFilledBy ? (
-      <MentionById
-        userId={parsedMessage.filledById}
-        name={parsedMessage.filledByName}
-      />
+      userMentionOrYou(parsedMessage.filledById, parsedMessage.filledByName)
     ) : null;
     const messageText = hasKnownFilledUser ? (
       <>
         The role {roleMention} has been filled by{" "}
-        <MentionById
-          userId={parsedMessage.userId}
-          name={parsedMessage.userName}
-        />
+        {userMentionOrYou(parsedMessage.userId, parsedMessage.userName)}
         {filledByMention ? (
           <span>, approved by {filledByMention}.</span>
         ) : (
@@ -2806,7 +2960,7 @@ const MessageDisplay = ({
     const messageText = creatorName ? (
       <>
         The new role {roleMention} has been created by{" "}
-        <MentionById userId={creatorId} name={creatorName} /> in this team. It
+        {userMentionOrYou(creatorId, creatorName)} in this team. It
         is open to be filled.
       </>
     ) : (
@@ -2857,7 +3011,7 @@ const MessageDisplay = ({
     const messageText = closedByName ? (
       <>
         The role {roleMention} has been closed by{" "}
-        <MentionById userId={closedById} name={closedByName} />.
+        {userMentionOrYou(closedById, closedByName)}.
       </>
     ) : (
       <>The role {roleMention} has been closed.</>
@@ -2898,7 +3052,7 @@ const MessageDisplay = ({
     const messageText = updatedByName ? (
       <>
         The role {roleMention} has been updated by{" "}
-        <MentionById userId={updatedById} name={updatedByName} />.
+        {userMentionOrYou(updatedById, updatedByName)}.
       </>
     ) : (
       <>The role {roleMention} has been updated.</>
@@ -2946,7 +3100,7 @@ const MessageDisplay = ({
       <>
         The role <span className="font-medium">{parsedMessage.roleName}</span>{" "}
         has been deleted by{" "}
-        <MentionById userId={deletorId} name={deletorName} /> from this team.
+        {userMentionOrYou(deletorId, deletorName)} from this team.
       </>
     ) : (
       <>
@@ -3032,8 +3186,10 @@ const MessageDisplay = ({
     parsedMessage,
     isCurrentUser,
   ) => {
-    // If the remover is the sender of the system message (likely), they are "current user" here.
-    const text = isCurrentUser ? (
+    const isRemovedMemberCurrentUser = isCurrentViewer(parsedMessage.userId);
+    const text = isRemovedMemberCurrentUser ? (
+      "You were removed from the team."
+    ) : isCurrentUser ? (
       <>
         You removed{" "}
         <MentionById
@@ -3076,7 +3232,9 @@ const MessageDisplay = ({
     parsedMessage,
     isCurrentUser,
   ) => {
-    const messageText = isCurrentUser ? (
+    const isInviteeCurrentUser = isCurrentViewer(parsedMessage.inviteeId);
+    const isInviterCurrentUser = isCurrentViewer(parsedMessage.inviterId);
+    const messageText = isInviteeCurrentUser ? (
       <>
         You accepted <Mention name={parsedMessage.inviterName} />
         {"'s"} invitation for{" "}
@@ -3086,10 +3244,26 @@ const MessageDisplay = ({
         />
         . Welcome to the team!
       </>
+    ) : isInviterCurrentUser ? (
+      <>
+        {userMentionOrYou(parsedMessage.inviteeId, parsedMessage.inviteeName, {
+          capitalized: true,
+        })}{" "}
+        accepted your invitation for{" "}
+        <TeamMentionById
+          teamId={parsedMessage.teamId}
+          name={parsedMessage.teamName}
+        />
+        . Welcome to the team!
+      </>
     ) : (
       <>
-        <Mention name={parsedMessage.inviteeName} /> accepted your invitation
-        for{" "}
+        {userMentionOrYou(parsedMessage.inviteeId, parsedMessage.inviteeName, {
+          capitalized: true,
+        })}{" "}
+        accepted{" "}
+        {userMentionOrYou(parsedMessage.inviterId, parsedMessage.inviterName)}
+        {"'s"} invitation for{" "}
         <TeamMentionById
           teamId={parsedMessage.teamId}
           name={parsedMessage.teamName}
@@ -3665,8 +3839,10 @@ const MessageDisplay = ({
 
     const bannerClass = getRoleBannerClass(newRole);
     const RoleIcon = getRoleIcon(newRole);
+    const isChangerCurrentUser = isCurrentViewer(parsedMessage.changerId);
+    const isMemberCurrentUser = isCurrentViewer(parsedMessage.memberId);
 
-    const messageText = isCurrentUser ? (
+    const messageText = isChangerCurrentUser ? (
       isPromotion ? (
         <>
           You promoted{" "}
@@ -3696,7 +3872,8 @@ const MessageDisplay = ({
           .
         </>
       )
-    ) : isPromotion ? (
+    ) : isMemberCurrentUser ? (
+      isPromotion ? (
       <>
         You were promoted to Admin in{" "}
         <TeamMentionById
@@ -3710,18 +3887,31 @@ const MessageDisplay = ({
         />
         .
       </>
+      ) : (
+        <>
+          Your role in{" "}
+          <TeamMentionById
+            teamId={parsedMessage.teamId}
+            name={parsedMessage.teamName}
+          />{" "}
+          was changed to Member by{" "}
+          {userMentionOrYou(parsedMessage.changerId, parsedMessage.changerName)}
+          .
+        </>
+      )
     ) : (
       <>
-        Your role in{" "}
+        {possessiveUserMentionOrYour(
+          parsedMessage.memberId,
+          parsedMessage.memberName,
+        )}{" "}
+        role in{" "}
         <TeamMentionById
           teamId={parsedMessage.teamId}
           name={parsedMessage.teamName}
         />{" "}
-        was changed to Member by{" "}
-        <MentionById
-          userId={parsedMessage.changerId}
-          name={parsedMessage.changerName}
-        />
+        was {isPromotion ? "changed to Admin" : "changed to Member"} by{" "}
+        {userMentionOrYou(parsedMessage.changerId, parsedMessage.changerName)}
         .
       </>
     );
@@ -3732,7 +3922,7 @@ const MessageDisplay = ({
           <span className="text-sm font-medium event-message-text">
             <RoleIcon size={16} className="event-inline-icon mr-1" />
             {highlightEventContent(messageText)}
-            {isPromotion && !isCurrentUser && (
+            {isPromotion && isMemberCurrentUser && (
               <PartyPopper size={16} className="event-inline-icon ml-1" />
             )}
           </span>
@@ -3749,17 +3939,36 @@ const MessageDisplay = ({
   // renderOwnershipTeamMessage - Pink owner theme (team chat)
   // =============================================================================
   const renderOwnershipTeamMessage = (message, parsedMessage) => {
+    const isPreviousOwnerCurrentUser = isCurrentViewer(parsedMessage.prevOwnerId);
+    const isNewOwnerCurrentUser = isCurrentViewer(parsedMessage.newOwnerId);
+    const messageText = isPreviousOwnerCurrentUser ? (
+      <>
+        You transferred ownership to{" "}
+        {userMentionOrYou(parsedMessage.newOwnerId, parsedMessage.newOwnerName)}
+      </>
+    ) : isNewOwnerCurrentUser ? (
+      <>
+        {userMentionOrYou(parsedMessage.prevOwnerId, parsedMessage.prevOwnerName, {
+          capitalized: true,
+        })}{" "}
+        transferred ownership to you
+      </>
+    ) : (
+      <>
+        {userMentionOrYou(parsedMessage.prevOwnerId, parsedMessage.prevOwnerName, {
+          capitalized: true,
+        })}{" "}
+        transferred ownership to{" "}
+        {userMentionOrYou(parsedMessage.newOwnerId, parsedMessage.newOwnerName)}
+      </>
+    );
+
     return (
       <div className="flex flex-col items-center w-full my-4">
         <div className="event-banner event-banner--owner mb-3">
           <span className="text-sm font-medium event-message-text">
             <Crown size={16} className="event-inline-icon mr-1" />
-            <Mention name={parsedMessage.prevOwnerName} /> transferred ownership
-            to{" "}
-            <MentionById
-              userId={parsedMessage.newOwnerId}
-              name={parsedMessage.newOwnerName}
-            />
+            {highlightEventContent(messageText)}
           </span>
         </div>
 
@@ -4278,7 +4487,11 @@ const MessageDisplay = ({
                     const allLoadedMessages = Array.from(messagesById?.values() ?? []);
                     const hasCombinedMessage = allLoadedMessages.some((m) => {
                       const p = parseSystemMessage(m.content);
-                      if (p?.type !== "role_application_filled") return false;
+                      if (
+                        p?.type !== "role_application_filled" &&
+                        p?.type !== "role_application_deferred_invite"
+                      )
+                        return false;
                       const roleMatch =
                         parsedMessage.roleId != null && p.roleId != null
                           ? String(p.roleId) === String(parsedMessage.roleId)
@@ -4301,6 +4514,10 @@ const MessageDisplay = ({
                   } else if (parsedMessage.type === "role_application_filled") {
                     return renderSystemMessage(
                       renderRoleApplicationFilledMessage(message, parsedMessage),
+                    );
+                  } else if (parsedMessage.type === "role_application_deferred_invite") {
+                    return renderSystemMessage(
+                      renderRoleApplicationDeferredInviteMessage(message, parsedMessage),
                     );
                   } else if (parsedMessage.type === "role_invitation_filled") {
                     return renderSystemMessage(

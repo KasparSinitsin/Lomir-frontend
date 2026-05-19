@@ -119,9 +119,12 @@ const TeamApplicationsModal = ({
         }
       }
 
-      await onApplicationAction(applicationId, action, response, fillRole);
+      const actionResult = await onApplicationAction(applicationId, action, response, fillRole);
+      const actionData = actionResult?.data ?? actionResult ?? {};
+      const roleFilled = Boolean(actionData.roleFilled);
+      const roleInvitationCreated = Boolean(actionData.roleInvitationCreated);
 
-      if (action === "approve" && fillRole && teamId && application?.role) {
+      if (action === "approve" && fillRole && roleFilled && teamId && application?.role) {
         try {
           await messageService.sendMessage(
             teamId,
@@ -151,7 +154,17 @@ const TeamApplicationsModal = ({
         }
       }
 
-      if (action === "approve" && fillRole) {
+      if (action === "approve" && roleInvitationCreated) {
+        const roleName =
+          application?.role?.roleName ??
+          application?.role?.role_name ??
+          "the role";
+        const currentRoleName =
+          actionData.deferredByCurrentRoleName ?? "their current role";
+        setSuccess(
+          `Application approved! ${roleName} is now a role offer the member can accept once they leave ${currentRoleName}.`,
+        );
+      } else if (action === "approve" && fillRole && roleFilled) {
         const roleName =
           application?.role?.roleName ??
           application?.role?.role_name ??

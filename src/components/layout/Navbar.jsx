@@ -53,6 +53,7 @@ const yourTeams = (tc) => tc > 1 ? `in ${tc} of your teams` : "one of your teams
 const NOTIFICATION_TYPE_META = [
   { keys: ["invitationReceived", "invitation_received"],             Icon: Mail,          text: (p, n, tc) => `${p(n, "team invitation")} for you${teamSuffix(tc)}` },
   { keys: ["roleInvitation", "role_invitation"],                     Icon: UserSearch,    text: (p, n, tc) => `${p(n, "role invitation")} for you${teamSuffix(tc)}` },
+  { keys: ["roleApplicationDeferredInvite", "role_application_deferred_invite"], Icon: UserSearch, text: (p, n, tc) => `${p(n, "role offer")} created${teamSuffix(tc)}` },
   { keys: ["roleAssigned", "role_assigned"],                         Icon: UserCheck,     text: (p, n, tc) => `${p(n, "role assignment")} ${inYourTeam(tc)}` },
   { keys: ["invitationAccepted", "invitation_accepted"],             Icon: UserCheck,     text: (p, n, tc) => `${p(n, "invitation")} accepted${teamSuffix(tc)}` },
   { keys: ["applicationReceived", "application_received"],           Icon: Mail,          text: (p, n, tc) => `${p(n, "team application")} to review${teamSuffix(tc)}` },

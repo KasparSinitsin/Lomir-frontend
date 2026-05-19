@@ -16,6 +16,8 @@ import { vacantRoleService } from "../../services/vacantRoleService";
 import { matchingService } from "../../services/matchingService";
 import { useAuth } from "../../contexts/AuthContext";
 
+const getRoleStatus = (role) => String(role?.status ?? "").toLowerCase();
+
 /**
  * VacantRolesSection Component
  *
@@ -42,7 +44,7 @@ const VacantRolesSection = ({
   className = "",
   onRolesLoaded = null,
 }) => {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated } = useAuth();
 
   const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -56,9 +58,9 @@ const VacantRolesSection = ({
   const [matchScores, setMatchScores] = useState({});
   const [isExpanded, setIsExpanded] = useState(false);
   const COLLAPSED_COUNT = 4;
-  const shouldShowFilledRoles = canManage || isTeamMember;
+  const shouldShowAllRoleStatuses = canManage || isTeamMember;
   const visibleRoles = roles.filter((role) => {
-    if (canManage || isTeamMember) return true;
+    if (shouldShowAllRoleStatuses) return true;
     return String(role?.status ?? "").toLowerCase() === "open";
   });
 
@@ -78,9 +80,8 @@ const VacantRolesSection = ({
     try {
       setLoading(true);
       setError(null);
-      // Managers see all statuses, team members see open + filled,
-      // and outsiders still see only open roles.
-      const statusFilter = shouldShowFilledRoles ? "all" : "open";
+      // Managers and team members see all statuses; outsiders see only open roles.
+      const statusFilter = shouldShowAllRoleStatuses ? "all" : "open";
       const response = await vacantRoleService.getVacantRoles(
         teamId,
         statusFilter,
@@ -94,7 +95,7 @@ const VacantRolesSection = ({
     } finally {
       setLoading(false);
     }
-  }, [teamId, shouldShowFilledRoles]);
+  }, [teamId, shouldShowAllRoleStatuses, onRolesLoaded]);
 
   useEffect(() => {
     fetchRoles();
@@ -133,23 +134,11 @@ const VacantRolesSection = ({
   // Handle status change
   const handleStatusChange = async (roleId, newStatus) => {
     try {
-      const roleBeforeChange = roles.find(
-        (role) => String(role?.id) === String(roleId),
-      );
-      const updateResponse = await vacantRoleService.updateVacantRoleStatus(
+      await vacantRoleService.updateVacantRoleStatus(
         teamId,
         roleId,
         newStatus,
       );
-      const updatedRole =
-        updateResponse?.data?.data ??
-        updateResponse?.data ??
-        updateResponse?.role ??
-        updateResponse;
-      const eventRole =
-        updatedRole && typeof updatedRole === "object"
-          ? { ...roleBeforeChange, ...updatedRole }
-          : roleBeforeChange;
 
       setNotification({
         type: "success",
@@ -179,7 +168,6 @@ const VacantRolesSection = ({
 
   const confirmDeleteRole = async () => {
     if (!pendingDeleteRoleId) return;
-    const roleSnapshot = pendingDeleteRole;
     try {
       setDeleteRoleLoading(true);
       await vacantRoleService.deleteVacantRole(teamId, pendingDeleteRoleId);
@@ -246,6 +234,18 @@ const VacantRolesSection = ({
 
   // Count open roles for the title
   const openCount = roles.filter((r) => r.status === "open").length;
+  const sortedVisibleRoles = [...visibleRoles].sort((a, b) => {
+    const aIsClosed = getRoleStatus(a) === "closed";
+    const bIsClosed = getRoleStatus(b) === "closed";
+
+    if (aIsClosed !== bIsClosed) {
+      return aIsClosed ? 1 : -1;
+    }
+
+    const scoreA = matchScores[a.id]?.matchScore ?? -1;
+    const scoreB = matchScores[b.id]?.matchScore ?? -1;
+    return scoreB - scoreA;
+  });
 
   return (
     <div className={className}>
@@ -295,12 +295,7 @@ const VacantRolesSection = ({
       {visibleRoles.length > 0 ? (
         <>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {[...visibleRoles]
-              .sort((a, b) => {
-                const scoreA = matchScores[a.id]?.matchScore ?? -1;
-                const scoreB = matchScores[b.id]?.matchScore ?? -1;
-                return scoreB - scoreA;
-              })
+            {sortedVisibleRoles
               .slice(0, isExpanded ? undefined : COLLAPSED_COUNT)
               .map((role) => (
                 <VacantRoleCard

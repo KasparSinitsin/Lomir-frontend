@@ -1209,7 +1209,7 @@ const VacantRoleDetailsModal = ({
   ]);
 
   const handleApplicationAction = async (applicationId, action, response = "", fillRole = false) => {
-    await teamService.handleTeamApplication(applicationId, action, response, fillRole);
+    const result = await teamService.handleTeamApplication(applicationId, action, response, fillRole);
     try {
       const refreshed = await teamService.getTeamApplications(teamId);
       const apps = refreshed.data || [];
@@ -1224,6 +1224,7 @@ const VacantRoleDetailsModal = ({
     } catch (e) {
       console.warn("Could not refresh applications:", e);
     }
+    return result;
   };
 
   const handleCancelInvitation = async (invitationId) => {
@@ -1282,16 +1283,18 @@ const VacantRoleDetailsModal = ({
     invitationId,
     responseMessage = "",
     fillRole = false,
+    options = {},
   ) => {
     const roleForMessage = viewerRoleInvitationRecord?.role ?? displayRole;
-    await teamService.respondToInvitation(
+    const response = await teamService.respondToInvitation(
       invitationId,
       "accept",
       responseMessage,
       fillRole,
+      options,
     );
 
-    if (teamId) {
+    if (teamId && !response?.data?.roleSwitched) {
       try {
         await messageService.sendMessage(
           teamId,

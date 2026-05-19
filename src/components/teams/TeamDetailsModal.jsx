@@ -11,7 +11,6 @@ import TeamEditForm from "./TeamEditForm";
 import { useAuth } from "../../contexts/AuthContext";
 import { teamService } from "../../services/teamService";
 import { userService } from "../../services/userService";
-import { reopenRolesFilledByMember } from "../../services/teamMemberRoleReopenService";
 import Button from "../common/Button";
 import SendMessageButton from "../common/SendMessageButton";
 import ScreenAlert from "../common/ScreenAlert";
@@ -67,6 +66,16 @@ import {
   locationsHaveDifferentKnownParts,
 } from "../../utils/locationUtils";
 import { DEMO_TEAM_TOOLTIP, isSyntheticTeam } from "../../utils/userHelpers";
+
+const getTeamMemberUserId = (member) =>
+  member?.user_id ??
+  member?.userId ??
+  member?.user?.id ??
+  member?.id ??
+  null;
+
+const idsMatch = (left, right) =>
+  left != null && right != null && String(left) === String(right);
 
 const normalizeTeamTagIds = (team) => {
   const raw = team?.tags ?? team?.tags_json ?? team?.selectedTags ?? [];
@@ -248,7 +257,7 @@ const TeamDetailsModal = ({
         if (isNaN(ownerId) && user && teamData.members) {
           const isCurrentUserOwner = teamData.members.some(
             (member) =>
-              (member.user_id === user.id || member.userId === user.id) &&
+              idsMatch(getTeamMemberUserId(member), user.id) &&
               (member.role === "owner" || member.role === "Owner"),
           );
 
@@ -311,7 +320,7 @@ const TeamDetailsModal = ({
           (isUserAuthenticated &&
             teamData.members?.some(
               (member) =>
-                (member.user_id === user.id || member.userId === user.id) &&
+                idsMatch(getTeamMemberUserId(member), user.id) &&
                 (member.role === "owner" || member.role === "Owner"),
             )) ||
           false;
@@ -324,7 +333,7 @@ const TeamDetailsModal = ({
         // Determine user's role from members list
         if (isUserAuthenticated && teamData.members) {
           const currentUserMember = teamData.members.find(
-            (member) => member.user_id === user.id || member.userId === user.id,
+            (member) => idsMatch(getTeamMemberUserId(member), user.id),
           );
           if (currentUserMember) {
             setInternalUserRole(currentUserMember.role);
@@ -558,7 +567,7 @@ const TeamDetailsModal = ({
     // Show for team members
     if (team && team.members && Array.isArray(team.members)) {
       return team.members.some(
-        (member) => member.user_id === user.id || member.userId === user.id,
+        (member) => idsMatch(getTeamMemberUserId(member), user.id),
       );
     }
 
@@ -837,15 +846,11 @@ const TeamDetailsModal = ({
 
     setLeaveLoading(true);
     try {
-      const reopenedRoles = await reopenRolesFilledByMember({
-        teamId: team.id,
-        teamName: team.name,
-        member: user,
-        memberId: user.id,
-        roles: teamRoles,
-      });
+      const result = await teamService.removeTeamMember(team.id, user.id);
+      const reopenedRoles = Array.isArray(result?.data?.reopenedRoles)
+        ? result.data.reopenedRoles
+        : [];
 
-      await teamService.removeTeamMember(team.id, user.id);
       setNotification({
         type: "success",
         message:
@@ -875,13 +880,19 @@ const TeamDetailsModal = ({
   };
 
   // Invitation response handlers
-  const handleInvitationAccept = async (invitationId, responseMessage = "", fillRole = false) => {
+  const handleInvitationAccept = async (
+    invitationId,
+    responseMessage = "",
+    fillRole = false,
+    options = {},
+  ) => {
     try {
       await teamService.respondToInvitation(
         invitationId,
         "accept",
         responseMessage,
         fillRole,
+        options,
       );
       setNotification({
         type: "success",
@@ -898,7 +909,7 @@ const TeamDetailsModal = ({
       console.error("Error accepting invitation:", error);
       setNotification({
         type: "error",
-        message: "Failed to accept invitation. Please try again.",
+        message: error.message || "Failed to accept invitation. Please try again.",
       });
     }
   };
@@ -936,7 +947,7 @@ const TeamDetailsModal = ({
     if (!user?.id || !team?.members) return false;
 
     const currentMember = team.members.find(
-      (m) => m.user_id === user.id || m.userId === user.id,
+      (m) => idsMatch(getTeamMemberUserId(m), user.id),
     );
 
     if (!currentMember) return false;
@@ -1155,17 +1166,17 @@ const TeamDetailsModal = ({
   const isTeamMember = useMemo(() => {
     if (!team || !user) return false;
     return (
-      team.members?.some((member) => member.user_id === user.id) ||
+      team.members?.some((member) => idsMatch(getTeamMemberUserId(member), user.id)) ||
       isOwner || // Make sure this matches your variable name
-      userRole
+      Boolean(effectiveUserRole)
     );
-  }, [team, user, isOwner, userRole]);
+  }, [team, user, isOwner, effectiveUserRole]);
 
   const renderJoinButton = () => {
     if (!isAuthenticated) return null;
 
     const isMember = team?.members?.some(
-      (m) => m.user_id === user?.id || m.userId === user?.id,
+      (m) => idsMatch(getTeamMemberUserId(m), user?.id),
     );
 
     const isTeamArchived = team?.archived_at || team?.status === "inactive";
@@ -1706,7 +1717,7 @@ const TeamDetailsModal = ({
                   <VacantRolesSection
                     team={team}
                     teamId={effectiveTeamId}
-                    canManage={isOwner || internalUserRole === "admin"}
+                    canManage={isOwner || effectiveUserRole === "admin"}
                     isTeamMember={isTeamMember}
                     isEditing={isEditing}
                     onRolesLoaded={setTeamRoles}

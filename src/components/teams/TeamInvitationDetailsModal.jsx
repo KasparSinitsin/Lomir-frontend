@@ -9,6 +9,7 @@ import {
   MailOpen,
   UserPlus,
   FlaskConical,
+  ArrowRightLeft,
 } from "lucide-react";
 import Modal from "../common/Modal";
 import Button from "../common/Button";
@@ -22,6 +23,7 @@ import InlineUserLink from "../users/InlineUserLink";
 import { useHydratedRole } from "../../hooks/useHydratedRole";
 import DemoAvatarOverlay from "../users/DemoAvatarOverlay";
 import { DEMO_TEAM_TOOLTIP, isSyntheticTeam } from "../../utils/userHelpers";
+import { useAuth } from "../../contexts/AuthContext";
 
 const extractRoleMatchData = (roleLike) => {
   const rawScore = roleLike?.matchScore ?? roleLike?.match_score ?? null;
@@ -57,9 +59,12 @@ const TeamInvitationDetailsModal = ({
   onDecline,
   notificationHighlight = false,
 }) => {
+  // ============ Auth ============
+  const { user: currentUser } = useAuth();
+
   // ============ State ============
   const [loading] = useState(false);
-  const [actionLoading, setActionLoading] = useState(null); // "acceptRole" | "acceptTeam" | "decline" | null
+  const [actionLoading, setActionLoading] = useState(null); // "acceptRole" | "switchRole" | "acceptTeam" | "decline" | null
   const [error, setError] = useState(null);
   const [responseMessage, setResponseMessage] = useState("");
   const [selectedUserId, setSelectedUserId] = useState(null);
@@ -91,6 +96,13 @@ const TeamInvitationDetailsModal = ({
   } = useHydratedRole({
     isOpen,
     roleId,
+    teamId,
+  });
+  const currentFilledRoleId =
+    invitation?.current_filled_role_id ?? invitation?.currentFilledRoleId ?? null;
+  const { hydratedRole: hydratedCurrentFilledRole } = useHydratedRole({
+    isOpen,
+    roleId: currentFilledRoleId,
     teamId,
   });
   const invitationRoleMatch = extractRoleMatchData(invitation?.role);
@@ -190,6 +202,20 @@ const TeamInvitationDetailsModal = ({
     }
   };
 
+  const handleSwitchRole = async () => {
+    try {
+      setActionLoading("switchRole");
+      setError(null);
+      await onAccept(invitation.id, responseMessage, true, { switchRoles: true });
+      setResponseMessage("");
+      onClose();
+    } catch (err) {
+      setError(err.message || "Failed to switch roles");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   const handleAcceptTeamOnly = async () => {
     try {
       setActionLoading("acceptTeam");
@@ -229,10 +255,11 @@ const TeamInvitationDetailsModal = ({
   const hasRoleInvitation = !!(invitation?.role_id ?? invitation?.roleId ?? invitation?.role?.id);
   const isInternal = invitation?.isInternal ?? invitation?.is_internal ?? false;
   const isAcceptRoleLoading = actionLoading === "acceptRole";
+  const isSwitchRoleLoading = actionLoading === "switchRole";
   const isAcceptTeamLoading = actionLoading === "acceptTeam";
   const isDeclineLoading = actionLoading === "decline";
   const isActionPending =
-    isAcceptRoleLoading || isAcceptTeamLoading || isDeclineLoading;
+    isAcceptRoleLoading || isSwitchRoleLoading || isAcceptTeamLoading || isDeclineLoading;
   const isControlsDisabled = loading || isActionPending;
 
   const headerSubtitle = isInternal
@@ -284,6 +311,55 @@ const TeamInvitationDetailsModal = ({
   const isRoleFilled = hasRoleInvitation && roleStatus === "filled";
   const isRoleClosed = hasRoleInvitation && roleStatus === "closed";
   const isRoleUnavailable = isRoleFilled || isRoleClosed;
+  const currentFilledRole =
+    invitation?.currentFilledRole ??
+    invitation?.current_filled_role ??
+    (invitation?.current_filled_role_id || invitation?.currentFilledRoleId
+      ? {
+          id: invitation.current_filled_role_id ?? invitation.currentFilledRoleId,
+          roleName:
+            invitation.current_filled_role_name ??
+            invitation.currentFilledRoleName ??
+            "your current role",
+          role_name:
+            invitation.current_filled_role_name ??
+            invitation.currentFilledRoleName ??
+            "your current role",
+        }
+      : null);
+  const currentFilledRoleName =
+    currentFilledRole?.roleName ??
+    currentFilledRole?.role_name ??
+    invitation?.current_filled_role_name ??
+    invitation?.currentFilledRoleName ??
+    "your current role";
+  const currentFilledRoleForCard = hydratedCurrentFilledRole
+    ? {
+        ...hydratedCurrentFilledRole,
+        is_synthetic:
+          hydratedCurrentFilledRole.is_synthetic ??
+          hydratedCurrentFilledRole.isSynthetic ??
+          syntheticRoleFlag,
+        isSynthetic:
+          hydratedCurrentFilledRole.isSynthetic ??
+          hydratedCurrentFilledRole.is_synthetic ??
+          syntheticRoleFlag,
+      }
+    : currentFilledRole
+    ? {
+        ...currentFilledRole,
+        status: currentFilledRole.status ?? "filled",
+        filled_by: currentUser?.id ?? null,
+        filled_by_user: currentUser ?? null,
+        is_synthetic: syntheticRoleFlag,
+        isSynthetic: syntheticRoleFlag,
+      }
+    : null;
+  const canSwitchRole =
+    hasRoleInvitation &&
+    isInternal &&
+    !isRoleUnavailable &&
+    Boolean(currentFilledRole?.id ?? invitation?.current_filled_role_id ?? invitation?.currentFilledRoleId);
 
   // Custom header
   const customHeader = (
@@ -298,19 +374,18 @@ const TeamInvitationDetailsModal = ({
     </div>
   );
 
-  // Footer with action buttons + "Sent by" (left)
+  // Footer with action buttons + "Sent by"
   const footer = (
-    <div className="space-y-3">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        {/* Sent by (left) */}
-        <InlineUserLink
-          label="Invite sent by"
-          user={inviter}
-          onOpenUser={handleUserClick}
-        />
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+      {/* Sent by — shares row with buttons when there's space, own row otherwise */}
+      <InlineUserLink
+        label="Invite sent by"
+        user={inviter}
+        onOpenUser={handleUserClick}
+      />
 
-        {/* Buttons (right) */}
-        <div className="flex flex-wrap justify-end gap-2">
+      {/* Buttons — right-aligned, never wrap internally */}
+      <div className="flex flex-nowrap gap-2 ml-auto">
           {isRoleUnavailable && (
             <Tooltip
               content={
@@ -344,15 +419,31 @@ const TeamInvitationDetailsModal = ({
           {hasRoleInvitation && isInternal ? (
             // Internal role invite: user is already a member, just accept/fill the role
             !isRoleUnavailable && (
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={handleAcceptWithRole}
-                disabled={isControlsDisabled}
-                icon={<Check size={16} />}
-              >
-                {isAcceptRoleLoading ? "Accepting..." : "Accept Role"}
-              </Button>
+              canSwitchRole ? (
+                <Tooltip
+                  content={`Leave ${currentFilledRoleName} and fill this role instead.`}
+                >
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={handleSwitchRole}
+                    disabled={isControlsDisabled}
+                    icon={<ArrowRightLeft size={16} />}
+                  >
+                    {isSwitchRoleLoading ? "Switching..." : "Leave old role to fill new role"}
+                  </Button>
+                </Tooltip>
+              ) : (
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={handleAcceptWithRole}
+                  disabled={isControlsDisabled}
+                  icon={<Check size={16} />}
+                >
+                  {isAcceptRoleLoading ? "Accepting..." : "Accept Role"}
+                </Button>
+              )
             )
           ) : hasRoleInvitation ? (
             // External invite with a role: offer team-only or fill-role options
@@ -391,10 +482,8 @@ const TeamInvitationDetailsModal = ({
             </Button>
           )}
         </div>
-      </div>
     </div>
   );
-
   return (
     <>
       <Modal
@@ -531,11 +620,29 @@ const TeamInvitationDetailsModal = ({
               <MailOpen size={12} className="text-info mr-1" />
               Invitation message:
             </p>
-
-            {/* left-aligned with other content (no extra padding box) */}
             <p className="text-sm text-base-content/90 leading-relaxed">
-              {invitation.message}
+              {(() => {
+                if (isInternal && currentFilledRoleName && currentFilledRoleName !== "your current role") {
+                  const suffix = ` ${currentFilledRoleName}.`;
+                  return invitation.message.endsWith(suffix)
+                    ? invitation.message.slice(0, -suffix.length)
+                    : invitation.message;
+                }
+                return invitation.message;
+              })()}
             </p>
+            {isInternal && currentFilledRoleForCard && (
+              <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <VacantRoleCard
+                  role={currentFilledRoleForCard}
+                  team={team}
+                  matchScore={null}
+                  canManage={false}
+                  isTeamMember={true}
+                  hideActions={true}
+                />
+              </div>
+            )}
           </div>
         )}
 

@@ -115,7 +115,11 @@ export const teamService = {
       return apiResponse.data;
     } catch (error) {
       console.error(`Error handling application ${applicationId}:`, error);
-      throw error;
+      throw new Error(
+        error.response?.data?.message ||
+          error.message ||
+          `Failed to ${action} application`,
+      );
     }
   },
 
@@ -507,17 +511,28 @@ export const teamService = {
     }
   },
 
-  respondToInvitation: async (invitationId, action, responseMessage = "", fillRole = false) => {
+  respondToInvitation: async (
+    invitationId,
+    action,
+    responseMessage = "",
+    fillRole = false,
+    options = {},
+  ) => {
     try {
       const response = await api.put(`/api/teams/invitations/${invitationId}`, {
         action,
         response_message: responseMessage,
         fill_role: fillRole,
+        switch_roles: options.switchRoles || options.switch_roles || undefined,
       });
       return response.data;
     } catch (error) {
       console.error(`Error responding to invitation ${invitationId}:`, error);
-      throw error;
+      throw new Error(
+        error.response?.data?.message ||
+          error.message ||
+          `Failed to ${action} invitation`,
+      );
     }
   },
 

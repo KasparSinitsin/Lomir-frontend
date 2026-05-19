@@ -82,6 +82,7 @@ const NOTIFICATION_TOAST_TYPES = {
   invitation_cancelled: { icon: 'CircleX',      label: 'Invitation Cancelled', color: '#6b7280', senderPrefix: 'Cancelled by ' },
   application_received: { icon: 'Mail',         label: 'New Application',      color: '#ec4899', senderPrefix: 'Applied by ' },
   application_approved: { icon: 'CheckCircle',  label: 'Application Approved', color: '#16a34a', senderColor: '#15803d', senderPrefix: 'Approved by ' },
+  role_application_deferred_invite: { icon: 'UserSearch', label: 'Role Offer', color: '#f59e0b', senderPrefix: 'Approved by ' },
   application_rejected: { icon: 'CircleX',      label: 'Application Declined', color: '#6b7280', senderPrefix: 'Declined by ' },
   member_removed:       { icon: 'UserMinus',    label: 'Removed from Team',    senderPrefix: 'Removed by ' },
   member_removed_public:{ icon: 'UserMinus',    label: 'Removed from Team',    senderPrefix: null },
@@ -111,6 +112,7 @@ const getRoleStatusChangedPreview = (payload) => {
 const NOTIFICATION_VISIBLE_MS = 20000;
 const NOTIFICATION_FADE_MS = 700;
 const TEAM_REMOVAL_SUPPRESS_MS = 15000;
+const COMBINED_APPLICATION_APPROVAL_SUPPRESS_MS = 15000;
 
 const EVENT_CONTENT_KEYS = [
   "content",
@@ -283,7 +285,19 @@ const getFallbackRoleEventPreview = (content) => {
   };
 };
 
-const getRoleEventTypePreview = (message) => {
+const getToastActorLabel = (userId, userName, currentUser) => {
+  if (
+    userId != null &&
+    currentUser?.id != null &&
+    String(userId) === String(currentUser.id)
+  ) {
+    return "you";
+  }
+
+  return userName || null;
+};
+
+const getRoleEventTypePreview = (message, currentUser = null) => {
   const rawType =
     message?.eventType ??
     message?.event_type ??
@@ -310,24 +324,50 @@ const getRoleEventTypePreview = (message) => {
     message?.filledByUser?.name ??
     message?.filled_by_user?.name ??
     null;
+  const filledUserId =
+    message?.filledUserId ??
+    message?.filled_user_id ??
+    message?.filledByUserId ??
+    message?.filled_by_user_id ??
+    message?.userId ??
+    message?.user_id ??
+    message?.filledByUser?.id ??
+    message?.filled_by_user?.id ??
+    null;
   const filledActorName =
     message?.filledByName ??
     message?.filled_by_name ??
     message?.actorName ??
     message?.actor_name ??
     null;
+  const filledActorId =
+    message?.filledById ??
+    message?.filled_by_id ??
+    message?.actorId ??
+    message?.actor_id ??
+    null;
+  const filledUserLabel = getToastActorLabel(
+    filledUserId,
+    filledUserName,
+    currentUser,
+  );
+  const filledActorLabel = getToastActorLabel(
+    filledActorId,
+    filledActorName,
+    currentUser,
+  );
   const labels = {
     role_created: `New role ${roleName} created.`,
     role_updated: `Role edited: ${roleName}`,
     role_deleted: `Role deleted: ${roleName}`,
     role_closed: `Role closed: ${roleName}`,
-    role_filled: filledUserName && filledActorName
-      ? `The role ${roleName} has been filled by ${filledUserName}, approved by ${filledActorName}.`
-      : filledUserName
-        ? `The role ${roleName} has been filled by ${filledUserName}.`
+    role_filled: filledUserLabel && filledActorLabel
+      ? `The role ${roleName} has been filled by ${filledUserLabel}, approved by ${filledActorLabel}.`
+      : filledUserLabel
+        ? `The role ${roleName} has been filled by ${filledUserLabel}.`
         : `The role ${roleName} has been marked filled.`,
-    role_reopened: filledUserName
-      ? `${filledUserName} left the role ${roleName}. It is open again.`
+    role_reopened: filledUserLabel
+      ? `${filledUserLabel === "you" ? "You" : filledUserLabel} left the role ${roleName}. It is open again.`
       : `Role reopened: ${roleName}`,
     role_reopened_admin: `Role reopened: ${roleName}`,
   };
@@ -412,6 +452,37 @@ const getTeamIdFromPayload = (payload) =>
   payload?.metadata?.teamId ??
   payload?.metadata?.team_id ??
   null;
+
+const getRoleIdFromPayload = (payload) =>
+  payload?.roleId ??
+  payload?.role_id ??
+  payload?.role?.id ??
+  payload?.data?.roleId ??
+  payload?.data?.role_id ??
+  payload?.metadata?.roleId ??
+  payload?.metadata?.role_id ??
+  null;
+
+const getRoleNameFromPayload = (payload) =>
+  payload?.roleName ??
+  payload?.role_name ??
+  payload?.role?.roleName ??
+  payload?.role?.role_name ??
+  payload?.data?.roleName ??
+  payload?.data?.role_name ??
+  payload?.metadata?.roleName ??
+  payload?.metadata?.role_name ??
+  null;
+
+const getCombinedApplicationApprovalKey = ({ teamId, roleId, roleName }) => {
+  if (teamId == null) return null;
+
+  const normalizedRole = roleId != null
+    ? `id:${roleId}`
+    : `name:${String(roleName || "").trim().toLowerCase()}`;
+
+  return normalizedRole === "name:" ? null : `${teamId}:${normalizedRole}`;
+};
 
 const getPayloadText = (payload) =>
   [
@@ -591,6 +662,7 @@ const MessageNotifications = () => {
   const { isAuthenticated, user } = useAuth();
   const prevIsAuthenticatedRef = useRef(false);
   const currentUserRemovalSuppressionsRef = useRef(new Map());
+  const combinedApplicationApprovalSuppressionsRef = useRef(new Map());
 
   const isTeamSuppressedForCurrentUserRemoval = useCallback((teamId) => {
     if (teamId == null) return false;
@@ -614,6 +686,41 @@ const MessageNotifications = () => {
       String(teamId),
       Date.now() + TEAM_REMOVAL_SUPPRESS_MS,
     );
+  }, []);
+
+  const markCombinedApplicationApprovalSuppressed = useCallback((payload) => {
+    const key = getCombinedApplicationApprovalKey({
+      teamId: getTeamIdFromPayload(payload),
+      roleId: getRoleIdFromPayload(payload),
+      roleName: getRoleNameFromPayload(payload),
+    });
+
+    if (!key) return;
+
+    combinedApplicationApprovalSuppressionsRef.current.set(
+      key,
+      Date.now() + COMBINED_APPLICATION_APPROVAL_SUPPRESS_MS,
+    );
+  }, []);
+
+  const isCombinedApplicationApprovalSuppressed = useCallback((parsedMessage) => {
+    const key = getCombinedApplicationApprovalKey({
+      teamId: parsedMessage?.teamId,
+      roleId: parsedMessage?.roleId,
+      roleName: parsedMessage?.roleName,
+    });
+
+    if (!key) return false;
+
+    const suppressUntil = combinedApplicationApprovalSuppressionsRef.current.get(key);
+
+    if (!suppressUntil) return false;
+    if (suppressUntil <= Date.now()) {
+      combinedApplicationApprovalSuppressionsRef.current.delete(key);
+      return false;
+    }
+
+    return true;
   }, []);
 
   const upsertCurrentUserRemovalToast = useCallback((payload) => {
@@ -731,6 +838,27 @@ const MessageNotifications = () => {
       return;
     }
 
+    if (
+      parsedMessage?.type === 'role_application_filled' &&
+      (
+        (parsedMessage.applicantId != null && String(parsedMessage.applicantId) === String(user?.id)) ||
+        isCurrentUserName(parsedMessage.applicantName, user)
+      ) &&
+      isCombinedApplicationApprovalSuppressed(parsedMessage)
+    ) {
+      return;
+    }
+
+    if (
+      parsedMessage?.type === 'role_application_deferred_invite' &&
+      (
+        (parsedMessage.applicantId != null && String(parsedMessage.applicantId) === String(user?.id)) ||
+        isCurrentUserName(parsedMessage.applicantName, user)
+      )
+    ) {
+      return;
+    }
+
     if (isMemberRoleChangeForCurrentUser(parsedMessage, user)) {
       return;
     }
@@ -752,7 +880,7 @@ const MessageNotifications = () => {
       if ((message.team_id || message.teamId) && /^[\u{1F44B}\u{1F3AF}]/u.test(eventContent.trim())) return;
 
       const eventPreview =
-        getRoleEventTypePreview(message) ||
+        getRoleEventTypePreview(message, user) ||
         getEventPreview(eventContent, user) ||
         getFallbackRoleEventPreview(eventContent);
       const dedupeKey =
@@ -783,6 +911,7 @@ const MessageNotifications = () => {
     }
   }, [
     isTeamSuppressedForCurrentUserRemoval,
+    isCombinedApplicationApprovalSuppressed,
     upsertCurrentUserRemovalToast,
     user,
   ]);
@@ -880,8 +1009,14 @@ const MessageNotifications = () => {
 
     const config = NOTIFICATION_TOAST_TYPES[payload.type];
     if (!config) return;
+    const isRoleApplicationApproval =
+      payload.type === 'application_approved' && !!getRoleNameFromPayload(payload);
+    if (isRoleApplicationApproval) {
+      markCombinedApplicationApprovalSuppressed(payload);
+    }
     const isRoleInvite = (['invitation_received', 'invitation_cancelled', 'invitation_declined'].includes(payload.type) && !!payload.roleName)
-      || (payload.type === 'invitation_accepted' && !!payload.filledRoleName);
+      || (payload.type === 'invitation_accepted' && !!payload.filledRoleName)
+      || payload.type === 'role_application_deferred_invite';
     const dedupeKey =
       payload.type?.includes?.('member_removed')
         ? `member-removed:${teamId ?? ''}:${getRemovedMemberIdFromPayload(payload) ?? payload.title}`
@@ -893,8 +1028,12 @@ const MessageNotifications = () => {
         dedupeKey,
         isEvent: true,
         headerIconName: config.icon,
-        secondaryHeaderIconName: isRoleInvite ? 'UserSearch' : null,
-        headerLabel: isRoleInvite
+        secondaryHeaderIconName: isRoleInvite || isRoleApplicationApproval ? 'UserSearch' : null,
+        headerLabel: isRoleApplicationApproval
+          ? 'Team & Role Application Approved'
+          : payload.type === 'role_application_deferred_invite'
+            ? 'Role Offer Created'
+          : isRoleInvite
           ? payload.type === 'invitation_cancelled' ? 'Team & Role Invite Cancelled'
             : payload.type === 'invitation_accepted' ? 'Team & Role Invite Accepted'
             : payload.type === 'invitation_declined' ? 'Team & Role Invite Declined'
@@ -914,6 +1053,7 @@ const MessageNotifications = () => {
     ]);
   }, [
     isTeamSuppressedForCurrentUserRemoval,
+    markCombinedApplicationApprovalSuppressed,
     upsertCurrentUserRemovalToast,
     user,
   ]);
