@@ -836,6 +836,7 @@ const UserDetailsModal = ({
           inviteeUsername={user.username}
           inviteeAvatar={user.avatar_url || user.avatarUrl}
           inviteeBio={user.bio}
+          inviteeIsSynthetic={user.is_synthetic ?? user.isSynthetic}
           prefillTeamId={invitationPrefillTeamId}
           prefillRoleId={invitationPrefillRoleId}
           prefillTeamName={invitationPrefillTeamName}
