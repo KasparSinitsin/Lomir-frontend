@@ -269,6 +269,7 @@ const TeamInviteModal = ({
   const [vacantRoles, setVacantRoles] = useState([]);
   const [selectedRoleId, setSelectedRoleId] = useState(null);
   const [isRoleSectionExpanded, setIsRoleSectionExpanded] = useState(false);
+  const [isMessageSectionExpanded, setIsMessageSectionExpanded] = useState(false);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
   const [loadingRoles, setLoadingRoles] = useState(false);
@@ -1641,7 +1642,7 @@ const TeamInviteModal = ({
                           setIsRoleSectionExpanded(true);
                         }
                       }}
-                      className="flex items-start gap-4 p-4 rounded-xl bg-amber-100 text-left shadow ring-2 ring-amber-400 transition-all duration-200 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+                      className="flex items-start gap-4 p-4 rounded-xl bg-amber-100 text-left shadow shadow-md ring-2 ring-amber-400 transition-all duration-200 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
                     >
                       <div className="avatar placeholder">
                         <div className="bg-amber-500 text-white w-12 h-12 rounded-full relative flex items-center justify-center overflow-hidden">
@@ -1863,22 +1864,43 @@ const TeamInviteModal = ({
           {/* Optional message */}
           {orderedTeams.length > 0 && (
             <div>
-              <p className="text-xs text-base-content/60 mb-1 flex items-center">
-                <Send size={12} className="text-info mr-1" />
-                Add a message (optional):
-              </p>
-              <div className="relative">
-                <textarea
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  placeholder={`Hi ${getInviteeDisplayName()}, I'd like to invite you to join our team...`}
-                  className="textarea textarea-bordered w-full h-24 resize-none text-sm pb-6"
-                  maxLength={500}
-                />
-                <span className="absolute bottom-2 left-3 text-xs text-base-content/40 pointer-events-none">
-                  {message.length}/500 characters
+              <button
+                type="button"
+                className="flex w-full items-center justify-between text-xs text-base-content/60 mb-2 hover:text-base-content/80 transition-colors"
+                onClick={() => setIsMessageSectionExpanded((v) => !v)}
+                aria-expanded={isMessageSectionExpanded}
+              >
+                <span className="flex min-w-0 items-center">
+                  <Send size={12} className="text-info mr-1" />
+                  <span className="truncate">Add a message (optional){isMessageSectionExpanded ? ":" : ""}</span>
                 </span>
-              </div>
+                <span className="ml-2 flex min-w-0 items-center gap-1 text-base-content/40">
+                  {!isMessageSectionExpanded && message && (
+                    <span className="truncate max-w-[160px] whitespace-nowrap">
+                      {message}
+                    </span>
+                  )}
+                  {isMessageSectionExpanded ? (
+                    <ChevronUp size={14} className="shrink-0" />
+                  ) : (
+                    <ChevronRight size={14} className="shrink-0" />
+                  )}
+                </span>
+              </button>
+              {isMessageSectionExpanded && (
+                <div className="relative">
+                  <textarea
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    placeholder={`Hi ${getInviteeDisplayName()}, I'd like to invite you to join our team...`}
+                    className="textarea textarea-bordered w-full h-24 resize-none text-sm pb-6"
+                    maxLength={500}
+                  />
+                  <span className="absolute bottom-2 left-3 text-xs text-base-content/40 pointer-events-none">
+                    {message.length}/500 characters
+                  </span>
+                </div>
+              )}
             </div>
           )}
         </div>
