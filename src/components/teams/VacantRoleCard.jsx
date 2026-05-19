@@ -735,11 +735,11 @@ const VacantRoleCard = ({
   const avatarSizeClass = isMiniView ? "w-10 h-10" : "w-12 h-12";
   const avatarTextClass = isMiniView ? "text-sm" : "text-lg";
   const matchIconSize = isMiniView ? 32 : 40;
-  const wrapperPaddingClass = isMiniView ? "p-3 sm:p-4" : "p-4 sm:p-5";
+  const wrapperPaddingClass = isMiniView ? "p-3" : "p-4";
   const titleLeadingClass = isMiniView ? "leading-[110%]" : "leading-[120%]";
   const roleNameClass = isMiniView
-    ? "text-sm font-semibold"
-    : "text-base font-semibold";
+    ? "text-sm font-medium"
+    : "text-base font-medium";
   const roleBadges =
     role.badges ?? role.requiredBadges ?? role.required_badges ?? [];
   const badgeNames = Array.isArray(roleBadges)
@@ -1243,8 +1243,7 @@ const VacantRoleCard = ({
           status !== "open" ? "opacity-70" : ""
         } ${notificationHighlight ? "role-card-highlight" : ""}`}
       >
-        <div className="flex-shrink-0">
-          {isFilled && filledUser ? (
+        {isFilled && filledUser ? (
             <div className="avatar">
               <div className={`${avatarSizeClass} rounded-full relative overflow-hidden`}>
                 {filledUserAvatarUrl ? (
@@ -1299,29 +1298,14 @@ const VacantRoleCard = ({
               </div>
             </div>
           )}
-        </div>
 
         <div className={`flex-1 min-w-0 pt-[1px] ${isMiniView ? "space-y-1" : ""}`}>
-          <div className="flex items-center justify-between gap-2 min-w-0">
-            <div className="flex-1 min-w-0 overflow-hidden">
-              <Tooltip
-                content={role_name || "Vacant Role"}
-                wrapperClassName="block w-full min-w-0 overflow-hidden"
-              >
-                <div
-                  className={`block w-full min-w-0 truncate ${roleNameClass} ${titleLeadingClass} text-[var(--color-primary-focus)] transition-colors`}
-                >
-                  {role_name || "Vacant Role"}
-                </div>
-              </Tooltip>
-              {teamContext?.name && viewMode === "card" && (
-                <p className="text-xs text-base-content/50 mt-0.5 truncate">
-                  {teamContext.name}
-                </p>
-              )}
-            </div>
-
-            <div ref={menuTriggerRef} className="relative flex-shrink-0" data-dropdown-menu>
+          <div className="flex flex-col">
+            <div className="flex items-center justify-between">
+              <h3 className={`${roleNameClass} ${titleLeadingClass} truncate min-w-0`}>
+                {role_name || "Vacant Role"}
+              </h3>
+              <div ref={menuTriggerRef} className="shrink-0 ml-1" data-dropdown-menu>
               <RoleBadgePill
                 icon={badgeConfig.icon}
                 label={badgeConfig.label}
@@ -1344,9 +1328,8 @@ const VacantRoleCard = ({
                     : undefined
                 }
               />
-            </div>
-
-            {canOpenBadgeMenu && showMenu && menuPosition && createPortal(
+              </div>
+              {canOpenBadgeMenu && showMenu && menuPosition && createPortal(
               <>
                 <div
                   className="fixed inset-0"
@@ -1443,6 +1426,12 @@ const VacantRoleCard = ({
                 </div>
               </>,
               document.body
+            )}
+            </div>
+            {teamContext?.name && viewMode === "card" && (
+              <p className="text-xs text-base-content/50 mt-0.5 truncate">
+                {teamContext.name}
+              </p>
             )}
           </div>
 
