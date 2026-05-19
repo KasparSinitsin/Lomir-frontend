@@ -176,3 +176,26 @@ export const buildRoleApplicationFilledMessage = ({
     ? `${baseMessage} | ${formatIdNameToken(approverId, approverName || "Someone")}`
     : baseMessage;
 };
+
+export const buildRoleApplicationDeferredInviteMessage = ({
+  teamId,
+  teamName,
+  role,
+  applicant = null,
+  approver = null,
+  currentRole = null,
+}) => {
+  const roleId = role?.id ?? role?.roleId ?? role?.role_id ?? null;
+  const roleName = getRoleEventName(role);
+  const applicantId = getUserEventId(applicant);
+  const applicantName = getUserEventName(applicant) ?? "Someone";
+  const approverId = getUserEventId(approver);
+  const approverName = getUserEventName(approver) ?? "Someone";
+  const currentRoleId =
+    currentRole?.id ?? currentRole?.roleId ?? currentRole?.role_id ?? null;
+  const currentRoleName = currentRole
+    ? getRoleEventName(currentRole)
+    : "their current role";
+
+  return `📬 ROLE_APPLICATION_DEFERRED_INVITE: ${formatIdNameToken(teamId, teamName)} | ${formatIdNameToken(roleId, roleName)} | ${formatIdNameToken(applicantId, applicantName)} | ${formatIdNameToken(approverId, approverName)} | ${formatIdNameToken(currentRoleId, currentRoleName)}`;
+};

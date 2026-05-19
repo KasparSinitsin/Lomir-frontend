@@ -365,13 +365,19 @@ const MyTeams = () => {
   };
 
   // Invitation handlers
-  const handleInvitationAccept = async (invitationId, responseMessage = "", fillRole = false) => {
+  const handleInvitationAccept = async (
+    invitationId,
+    responseMessage = "",
+    fillRole = false,
+    options = {},
+  ) => {
     try {
       await teamService.respondToInvitation(
         invitationId,
         "accept",
         responseMessage,
         fillRole,
+        options,
       );
 
       // Refresh the data
@@ -1107,8 +1113,8 @@ const MyTeams = () => {
           isOpen={true}
           invitation={notifInvitationModal}
           onClose={() => setNotifInvitationModal(null)}
-          onAccept={async (invitationId, responseMessage, fillRole) => {
-            await handleInvitationAccept(invitationId, responseMessage, fillRole);
+          onAccept={async (invitationId, responseMessage, fillRole, options) => {
+            await handleInvitationAccept(invitationId, responseMessage, fillRole, options);
             setNotifInvitationModal(null);
           }}
           onDecline={async (invitationId, responseMessage) => {

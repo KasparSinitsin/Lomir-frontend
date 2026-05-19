@@ -20,7 +20,6 @@ import socketService from "../services/socketService";
 import useSocketEvents from "../hooks/useSocketEvents";
 import { userService } from "../services/userService";
 import { teamService } from "../services/teamService";
-import { reopenRolesFilledByMember } from "../services/teamMemberRoleReopenService";
 import ScreenAlert from "../components/common/ScreenAlert";
 import Button from "../components/common/Button";
 import Modal from "../components/common/Modal";
@@ -467,6 +466,7 @@ const NOTIFICATION_EVENT_MESSAGE_MARKERS = {
     "ROLE_APPLICATION_FILLED",
     "ROLE_INVITATION_FILLED",
   ],
+  role_application_deferred_invite: ["ROLE_APPLICATION_DEFERRED_INVITE"],
   role_reopened: ["ROLE_REOPENED"],
   role_reopened_admin: ["ROLE_REOPENED_ADMIN"],
   team_deleted: ["TEAM_DELETED"],
@@ -2423,13 +2423,6 @@ const Chat = () => {
 
   const executeLeaveTeam = async ({ teamId }) => {
     try {
-      await reopenRolesFilledByMember({
-        teamId,
-        teamName: activeConversation?.team?.name,
-        member: user,
-        memberId: user.id,
-      });
-
       // Call the existing leave team API
       await teamService.removeTeamMember(teamId, user.id);
 

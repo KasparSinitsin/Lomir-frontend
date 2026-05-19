@@ -1519,12 +1519,13 @@ const TeamCard = ({
   };
 
   const handleApplicationAction = async (applicationId, action, response, fillRole = false) => {
-    await teamService.handleTeamApplication(applicationId, action, response, fillRole);
+    const result = await teamService.handleTeamApplication(applicationId, action, response, fillRole);
     await fetchPendingApplications();
     if (onUpdate) {
       const updatedTeam = await teamService.getTeamById(teamData.id);
       onUpdate(updatedTeam.data);
     }
+    return result;
   };
 
   const handleVacantRoleStatusChange = async () => {

@@ -11,11 +11,6 @@ import {
 import RoleBadgeDropdown from "./RoleBadgeDropdown";
 import ScreenAlert from "../common/ScreenAlert";
 import { teamService } from "../../services/teamService";
-import {
-  fetchRolesFilledByMember,
-  getRolesFilledByMember,
-  reopenRolesFilledByMember,
-} from "../../services/teamMemberRoleReopenService";
 import { userService } from "../../services/userService";
 import { formatDisplayName } from "../../utils/nameFormatters";
 import CardMetaItem from "../common/CardMetaItem";
@@ -360,11 +355,6 @@ const TeamMembersSection = ({
                             throw new Error("Could not determine member ID");
                           }
 
-                          const rolesToReopen =
-                            Array.isArray(roles) && roles.length > 0
-                              ? getRolesFilledByMember(roles, resolvedMemberId)
-                              : await fetchRolesFilledByMember(team.id, resolvedMemberId);
-
                           if (member.role === "admin" && isAdmin && !isOwner) {
                             await teamService.updateMemberRole(
                               team.id,
@@ -374,16 +364,15 @@ const TeamMembersSection = ({
                             demotedForRemoval = true;
                           }
 
-                          await teamService.removeTeamMember(team.id, resolvedMemberId);
-
-                          const reopenedRoles = await reopenRolesFilledByMember({
-                            teamId: team.id,
-                            teamName: team.name,
-                            member,
-                            memberId: resolvedMemberId,
-                            roles: rolesToReopen,
-                            useProvidedRoles: true,
-                          });
+                          const result = await teamService.removeTeamMember(
+                            team.id,
+                            resolvedMemberId,
+                          );
+                          const reopenedRoles = Array.isArray(
+                            result?.data?.reopenedRoles,
+                          )
+                            ? result.data.reopenedRoles
+                            : [];
 
                           setNotification({
                             type: "success",

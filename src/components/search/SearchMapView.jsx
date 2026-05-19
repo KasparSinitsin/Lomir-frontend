@@ -2160,12 +2160,14 @@ const SearchMapView = ({
     invitationId,
     responseMessage = "",
     fillRole = false,
+    options = {},
   ) => {
     await teamService.respondToInvitation(
       invitationId,
       "accept",
       responseMessage,
       fillRole,
+      options,
     );
     await refreshUserStatusData();
     setSelectedInvitation(null);
