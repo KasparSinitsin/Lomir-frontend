@@ -1649,7 +1649,7 @@ const TeamInviteModal = ({
                           setIsRoleSectionExpanded(true);
                         }
                       }}
-                      className="flex items-start gap-4 p-4 rounded-xl bg-amber-100 text-left shadow shadow-md ring-2 ring-amber-400 transition-all duration-200 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+                      className="flex items-start gap-4 p-4 rounded-xl bg-amber-100 text-left shadow ring-2 ring-amber-400 transition-all duration-200 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
                     >
                       <button
                         type="button"
