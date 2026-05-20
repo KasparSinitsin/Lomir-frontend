@@ -517,7 +517,7 @@ const TeamInvitationDetailsModal = ({
             title="View team details"
           >
             <div className="avatar">
-              <div className="w-12 h-12 rounded-full relative overflow-hidden">
+              <div className="w-14 h-14 rounded-full relative overflow-hidden">
                 {getTeamAvatar() ? (
                   <img
                     src={getTeamAvatar()}
@@ -539,7 +539,7 @@ const TeamInvitationDetailsModal = ({
                   className="avatar-fallback bg-[var(--color-primary-focus)] text-primary-content flex items-center justify-center w-full h-full rounded-full absolute inset-0"
                   style={{ display: getTeamAvatar() ? "none" : "flex" }}
                 >
-                  <span className="text-lg font-medium">
+                  <span className="text-xl font-medium">
                     {getTeamInitials()}
                   </span>
                 </div>
@@ -557,7 +557,7 @@ const TeamInvitationDetailsModal = ({
               <h4 className="font-medium text-base-content hover:text-primary transition-colors leading-[120%] mb-[0.2em]">
                 {team.name || "Unknown Team"}
               </h4>
-              <div className="text-sm text-base-content/70 flex items-center flex-wrap gap-x-1.5 gap-y-px">
+              <div className="mt-0.5 flex max-h-[2.75em] flex-wrap items-center gap-x-1.5 gap-y-px overflow-hidden text-sm text-base-content/70">
                 <span className="flex items-center">
                   <Users size={14} className="mr-1 text-primary" />
                   <span>

@@ -220,7 +220,7 @@ const VacantRolesSection = ({
       <div className={className}>
         <div className="flex items-center mb-4">
           <UserSearch size={18} className="mr-2 text-primary flex-shrink-0" />
-          <h3 className="font-medium">Vacant Roles</h3>
+          <h3 className="font-medium">Team Roles</h3>
         </div>
         <div className="flex justify-center py-4">
           <span className="loading loading-spinner loading-sm text-primary"></span>
@@ -254,7 +254,7 @@ const VacantRolesSection = ({
         <div className="flex items-center">
           <UserSearch size={18} className="mr-2 text-primary flex-shrink-0" />
           <h3 className="font-medium">
-            Vacant Roles
+            Team Roles
             {openCount > 0 && (
               <span className="text-sm font-normal text-base-content/60 ml-1">
                 ({openCount} open)

@@ -46,6 +46,7 @@ import {
 import { teamService } from "../../services/teamService";
 import { useAuth } from "../../contexts/AuthContext";
 import { format } from "date-fns";
+import { formatDisplayName } from "../../utils/nameFormatters";
 
 const userPendingApplicationsCache = new Map();
 const userReceivedInvitationsCache = new Map();
@@ -701,8 +702,10 @@ const VacantRoleCard = ({
     filledUser && getDisplayName(filledUser) !== "Unknown"
       ? getDisplayName(filledUser)
       : null;
-  const filledByText = filledUserDisplayName
-    ? `Filled by ${filledUserDisplayName}`
+  const filledByText = filledUser
+    ? formatDisplayName(filledUser)
+    : filledUserDisplayName
+    ? filledUserDisplayName
     : "Filled";
   const badgeConfig = isFilled
     ? {
@@ -732,9 +735,9 @@ const VacantRoleCard = ({
     ? "bg-slate-400 text-white"
     : "bg-amber-500 text-white";
   const isMiniView = viewMode === "mini";
-  const avatarSizeClass = isMiniView ? "w-10 h-10" : "w-12 h-12";
-  const avatarTextClass = isMiniView ? "text-sm" : "text-lg";
-  const matchIconSize = isMiniView ? 32 : 40;
+  const avatarSizeClass = isMiniView ? "w-10 h-10" : "w-14 h-14";
+  const avatarTextClass = isMiniView ? "text-sm" : "text-xl";
+  const matchIconSize = isMiniView ? 32 : 44;
   const wrapperPaddingClass = isMiniView ? "p-3" : "p-4";
   const titleLeadingClass = isMiniView ? "leading-[110%]" : "leading-[120%]";
   const roleNameClass = isMiniView
@@ -754,11 +757,11 @@ const VacantRoleCard = ({
         .filter(Boolean)
     : [];
   const scoreSubtitleIconSize =
-    viewMode === "list" ? 10 : viewMode === "mini" ? 11 : 12;
+    viewMode === "list" ? 8 : viewMode === "mini" ? 9 : 10;
   const subtitleMetaIconSize =
-    viewMode === "list" ? 11 : viewMode === "mini" ? 11 : 12;
+    viewMode === "list" ? 9 : viewMode === "mini" ? 9 : 10;
   const teamLineIconSize =
-    viewMode === "list" ? 11 : viewMode === "mini" ? 12 : 14;
+    viewMode === "list" ? 9 : viewMode === "mini" ? 10 : 11;
   const formattedPostedDate = getFormattedPostedDate();
   const scoreSubtitleItem = matchTier ? (
     <Tooltip content={getMatchTooltip()}>
@@ -807,13 +810,13 @@ const VacantRoleCard = ({
       <span className="inline-flex min-w-0 items-center gap-0.5 leading-none">
         {is_remote ? (
           <>
-            <Globe size={12} className="flex-shrink-0" />
-            <span className="leading-[1.15]">{locationText}</span>
+            <Globe size={10} className="flex-shrink-0" />
+            <span className="leading-[1.05]">{locationText}</span>
           </>
         ) : (
           <>
-            <MapPin size={12} className="flex-shrink-0" />
-            <span className="leading-[1.15]">{locationText}</span>
+            <MapPin size={10} className="flex-shrink-0" />
+            <span className="leading-[1.05]">{locationText}</span>
           </>
         )}
       </span>
@@ -858,8 +861,7 @@ const VacantRoleCard = ({
       content={DEMO_ROLE_TOOLTIP}
       wrapperClassName="flex items-center gap-1 whitespace-nowrap text-base-content/50"
     >
-      <FlaskConical size={12} className="flex-shrink-0" />
-      <span>{viewMode === "mini" ? "Demo" : "Demo Role"}</span>
+      <FlaskConical size={10} className="flex-shrink-0" />
     </Tooltip>
   ) : null;
 
@@ -1019,7 +1021,7 @@ const VacantRoleCard = ({
               content={DEMO_ROLE_TOOLTIP}
               wrapperClassName="flex items-center whitespace-nowrap text-base-content/50"
             >
-              <FlaskConical size={11} className="flex-shrink-0" />
+              <FlaskConical size={9} className="flex-shrink-0" />
             </Tooltip>
           )}
         </span>
@@ -1053,7 +1055,7 @@ const VacantRoleCard = ({
                 <div className="text-xs text-base-content flex items-center gap-1 overflow-hidden">
                   <Tooltip content={`${roundedDistanceKm} km away from you`}>
                     <div className="flex items-center gap-1">
-                      <Ruler size={11} className="flex-shrink-0" />
+                      <Ruler size={9} className="flex-shrink-0" />
                       <span className="whitespace-nowrap">
                         {roundedDistanceKm} km
                       </span>
@@ -1070,9 +1072,9 @@ const VacantRoleCard = ({
                 >
                   <div className="flex min-w-0 w-full items-center gap-1 overflow-hidden">
                     {is_remote ? (
-                      <Globe size={11} className="flex-shrink-0" />
+                      <Globe size={9} className="flex-shrink-0" />
                     ) : (
-                      <MapPin size={11} className="flex-shrink-0" />
+                      <MapPin size={9} className="flex-shrink-0" />
                     )}
                     <span className="min-w-0 flex-1 truncate">
                       {locationText}
@@ -1089,7 +1091,7 @@ const VacantRoleCard = ({
                 content={tagNames.join(", ")}
                 wrapperClassName="flex items-center gap-1 min-w-0 overflow-hidden w-full"
               >
-                <Tag size={11} className="flex-shrink-0" />
+                <Tag size={9} className="flex-shrink-0" />
                 <span className="truncate">{tagsSummary}</span>
               </Tooltip>
             )}
@@ -1101,7 +1103,7 @@ const VacantRoleCard = ({
                 content={badgeNames.join(", ")}
                 wrapperClassName="flex items-center gap-1 min-w-0 overflow-hidden w-full"
               >
-                <Award size={11} className="flex-shrink-0" />
+                <Award size={9} className="flex-shrink-0" />
                 <span className="truncate">{badgesSummary}</span>
               </Tooltip>
             )}
@@ -1115,7 +1117,7 @@ const VacantRoleCard = ({
   if (usesSharedSearchCard) {
     const searchCardSubtitle = (
       <span
-        className={`flex text-base-content/70 leading-snug ${
+        className={`mt-0.5 flex max-h-[2.75em] overflow-hidden text-base-content/70 leading-snug ${
           isMiniView
             ? "items-center flex-wrap text-xs gap-x-1 gap-y-px w-full"
             : "items-center flex-wrap text-sm gap-x-1.5 gap-y-px"
@@ -1133,10 +1135,9 @@ const VacantRoleCard = ({
             wrapperClassName="flex items-center gap-1 text-base-content/50"
           >
             <FlaskConical
-              size={viewMode === "mini" ? 12 : 14}
+              size={viewMode === "mini" ? 10 : 11}
               className="flex-shrink-0"
             />
-            <span>{viewMode === "mini" ? "Demo" : "Demo Role"}</span>
           </Tooltip>
         )}
       </span>
@@ -1220,7 +1221,7 @@ const VacantRoleCard = ({
                 size={teamLineIconSize}
                 className="text-base-content mr-1 flex-shrink-0 mt-0.5"
               />
-              <span className="min-w-0 leading-[1.15] whitespace-normal break-words">
+              <span className="min-w-0 leading-[1.05] whitespace-normal break-words">
                 {resolvedTeamName}
               </span>
             </div>
@@ -1301,8 +1302,8 @@ const VacantRoleCard = ({
 
         <div className={`flex-1 min-w-0 pt-[1px] ${isMiniView ? "space-y-1" : ""}`}>
           <div className="flex flex-col">
-            <div className="flex items-center justify-between">
-              <h3 className={`${roleNameClass} ${titleLeadingClass} truncate min-w-0`}>
+            <div className="flex min-w-0 items-center gap-1">
+              <h3 className={`${roleNameClass} ${titleLeadingClass} min-w-0 flex-1 truncate`}>
                 {role_name || "Vacant Role"}
               </h3>
               <div ref={menuTriggerRef} className="shrink-0 ml-1" data-dropdown-menu>
@@ -1443,19 +1444,37 @@ const VacantRoleCard = ({
 
           {isMiniView ? (
             isFilled ? (
-              <div className="flex items-center gap-1 text-xs text-base-content/60">
-                <UserCheck size={12} className="shrink-0" />
-                <span className="truncate">{filledByText}</span>
-                {demoRoleMetaItem}
-              </div>
-            ) : locationText || (!is_remote && max_distance_km) || demoRoleMetaItem ? (
-              <div className="flex flex-wrap items-center gap-2 text-xs text-base-content/60">
+              <div className="mt-0.5 flex max-h-[2.1em] flex-wrap items-center gap-2 overflow-hidden text-xs text-base-content/60">
+                <span className="flex items-center gap-1 min-w-0">
+                  <UserCheck size={10} className="shrink-0" />
+                  <span className="truncate">{filledByText}</span>
+                </span>
                 {locationText && (
                   <span className="flex items-center gap-1 min-w-0">
                     {is_remote ? (
-                      <Globe size={12} className="shrink-0" />
+                      <Globe size={10} className="shrink-0" />
                     ) : (
-                      <MapPin size={12} className="shrink-0" />
+                      <MapPin size={10} className="shrink-0" />
+                    )}
+                    <span className="truncate">{locationText}</span>
+                  </span>
+                )}
+                {!is_remote && max_distance_km && (
+                  <span className="flex items-center gap-1 text-base-content/50">
+                    <CircleDot size={10} className="shrink-0" />
+                    <span>{max_distance_km} km</span>
+                  </span>
+                )}
+                {demoRoleMetaItem}
+              </div>
+            ) : locationText || (!is_remote && max_distance_km) || demoRoleMetaItem ? (
+              <div className="mt-0.5 flex max-h-[2.1em] flex-wrap items-center gap-2 overflow-hidden text-xs text-base-content/60">
+                {locationText && (
+                  <span className="flex items-center gap-1 min-w-0">
+                    {is_remote ? (
+                      <Globe size={10} className="shrink-0" />
+                    ) : (
+                      <MapPin size={10} className="shrink-0" />
                     )}
                     <span className="truncate">{locationText}</span>
                   </span>
@@ -1463,7 +1482,7 @@ const VacantRoleCard = ({
 
                 {!is_remote && max_distance_km && (
                   <span className="flex items-center gap-1 text-base-content/50">
-                    <CircleDot size={12} className="shrink-0" />
+                    <CircleDot size={10} className="shrink-0" />
                     <span>{max_distance_km} km</span>
                   </span>
                 )}
@@ -1473,6 +1492,16 @@ const VacantRoleCard = ({
           ) : isFilled ? (
             <CardMetaRow>
               <CardMetaItem icon={UserCheck}>{filledByText}</CardMetaItem>
+              {locationText && (
+                <CardMetaItem icon={is_remote ? Globe : MapPin}>
+                  {locationText}
+                </CardMetaItem>
+              )}
+              {!is_remote && max_distance_km && (
+                <CardMetaItem icon={CircleDot} tone="muted" nowrap>
+                  {max_distance_km} km
+                </CardMetaItem>
+              )}
               {demoRoleMetaItem}
             </CardMetaRow>
           ) : locationText || (!is_remote && max_distance_km) || demoRoleMetaItem ? (

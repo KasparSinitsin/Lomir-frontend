@@ -113,7 +113,7 @@ const PersonRequestCard = ({
           onClick={handleUserClick}
           title={clickable ? "View profile" : undefined}
         >
-          <div className="w-12 h-12 rounded-full relative overflow-hidden">
+          <div className="w-14 h-14 rounded-full relative overflow-hidden">
             {getAvatarUrl() ? (
               <img
                 src={getAvatarUrl()}
@@ -134,7 +134,7 @@ const PersonRequestCard = ({
                 display: getAvatarUrl() ? "none" : "flex",
               }}
             >
-              <span className="text-lg font-medium">
+              <span className="text-xl font-medium">
                 {getUserInitials(user)}
               </span>
             </div>
@@ -153,7 +153,7 @@ const PersonRequestCard = ({
           </h4>
 
           {(showUsername || showDemoProfile) && (
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+            <div className="flex max-h-[2.1em] flex-wrap items-center gap-x-2 gap-y-0.5 overflow-hidden">
               {showUsername && (
                 <p
                   className={`text-xs text-base-content/70 ${clickableTextStyles}`}
@@ -169,7 +169,6 @@ const PersonRequestCard = ({
                   wrapperClassName="flex items-center gap-0.5 text-base-content/50 text-xs"
                 >
                   <FlaskConical size={12} className="flex-shrink-0" />
-                  <span>Demo Profile</span>
                 </Tooltip>
               )}
             </div>

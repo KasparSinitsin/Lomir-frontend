@@ -26,6 +26,7 @@ import UserDetailsModal from "../users/UserDetailsModal";
 import TeamDetailsModal from "../teams/TeamDetailsModal";
 import TeamInvitesModal from "../teams/TeamInvitesModal";
 import TeamApplicationsModal from "../teams/TeamApplicationsModal";
+import VacantRoleDetailsModal from "./VacantRoleDetailsModal";
 import {
   DEMO_PROFILE_TOOLTIP,
   DEMO_ROLE_TOOLTIP,
@@ -281,6 +282,7 @@ const TeamInviteModal = ({
   // Team details modal state
   const [selectedTeamForDetails, setSelectedTeamForDetails] = useState(null);
   const [isTeamDetailsOpen, setIsTeamDetailsOpen] = useState(false);
+  const [selectedRoleForDetails, setSelectedRoleForDetails] = useState(null);
 
   // Store invitation/application/member data per team.
   // { teamId: { hasInviteForUser: bool, hasApplicationFromUser: bool, isExistingMember: bool, allInvitations: [], allApplications: [] } }
@@ -1003,6 +1005,15 @@ const TeamInviteModal = ({
     });
   };
 
+  const handleRoleDetailsClick = (role, event) => {
+    event?.stopPropagation();
+    setSelectedRoleForDetails(role);
+  };
+
+  const handleRoleDetailsClose = () => {
+    setSelectedRoleForDetails(null);
+  };
+
   const refreshSelectedTeamRequests = useCallback(async () => {
     if (!selectedTeamForModal?.id) return;
 
@@ -1290,7 +1301,7 @@ const TeamInviteModal = ({
         className={`flex items-start gap-4 p-4 rounded-xl shadow cursor-pointer transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${cardClasses}`}
       >
         <div className="avatar">
-          <div className="w-12 h-12 rounded-full relative overflow-hidden">
+          <div className="w-14 h-14 rounded-full relative overflow-hidden">
             {getTeamAvatarUrl(team) ? (
               <img
                 src={getTeamAvatarUrl(team)}
@@ -1310,7 +1321,7 @@ const TeamInviteModal = ({
                 display: getTeamAvatarUrl(team) ? "none" : "flex",
               }}
             >
-              <span className="text-lg">
+              <span className="text-xl">
                 {getTeamInitials(team.name)}
               </span>
             </div>
@@ -1325,8 +1336,8 @@ const TeamInviteModal = ({
 
         <div className="flex-1 min-w-0 pt-[1px]">
           <div className="flex flex-col">
-            <div className="flex items-center justify-between">
-              <h3 className="font-medium text-base truncate leading-[120%] min-w-0">
+            <div className="flex min-w-0 items-center gap-1">
+              <h3 className="min-w-0 flex-1 truncate font-medium text-base leading-[120%]">
                 {team.name}
               </h3>
               {statusBadge && (
@@ -1352,57 +1363,54 @@ const TeamInviteModal = ({
                 </div>
               )}
             </div>
-          <div className="flex flex-wrap gap-x-1.5 text-xs">
-              <div className="flex items-start gap-0.5 min-w-0">
-                <Users size={10} className="text-base-content/60 shrink-0 mt-[3px]" />
-                <span className="text-base-content/60 leading-tight break-words">
+          <div className="mt-0.5 flex max-h-[2.1em] flex-wrap items-center gap-x-2 gap-y-0 overflow-hidden text-xs">
+              <div className="flex min-w-0 max-w-[calc(100%-1.5rem)] flex-[0_1_auto] items-center gap-1 overflow-hidden">
+                <Users size={10} className="text-base-content/60 shrink-0" />
+                <span className="text-base-content/60 leading-[1.05] truncate">
                   {getMemberCount(team)}/{getMaxMembers(team)}
                 </span>
               </div>
               {(teamStatusData[team.id]?.openRoleCount ?? 0) > 0 && (
-                <div className="flex items-start gap-0.5 min-w-0">
-                  <UserSearch size={10} className="text-base-content/60 shrink-0 mt-[3px]" />
-                  <span className="text-base-content/60 leading-tight break-words">
+                <div className="flex min-w-0 max-w-[calc(100%-1.5rem)] flex-[0_1_auto] items-center gap-1 overflow-hidden">
+                  <UserSearch size={10} className="text-base-content/60 shrink-0" />
+                  <span className="text-base-content/60 leading-[1.05] truncate">
                     {teamStatusData[team.id].openRoleCount}
                   </span>
                 </div>
               )}
               {locationText && (
-                <div className="flex items-start gap-0.5 min-w-0">
+                <div className="flex min-w-0 max-w-[calc(100%-1.5rem)] flex-[0_1_auto] items-center gap-1 overflow-hidden">
                   {isRemote ? (
-                    <Globe size={10} className="text-base-content/60 shrink-0 mt-[3px]" />
+                    <Globe size={10} className="text-base-content/60 shrink-0" />
                   ) : (
-                    <MapPin size={10} className="text-base-content/60 shrink-0 mt-[3px]" />
+                    <MapPin size={10} className="text-base-content/60 shrink-0" />
                   )}
-                  <span className="text-base-content/60 leading-tight break-words">
+                  <span className="text-base-content/60 leading-[1.05] truncate">
                     {locationText}
+                  </span>
+                </div>
+              )}
+              {(statusBadge?.type === "existing-member-selected" ||
+                ((statusBadge?.type === "pending-invite" ||
+                  statusBadge?.type === "pending-application") &&
+                  teamStatusData[team.id]?.isExistingMember === true)) && (
+                <div className="flex min-w-0 max-w-[calc(100%-1.5rem)] flex-[0_1_auto] items-center gap-1 overflow-hidden">
+                  <Users size={10} className="text-base-content/60 shrink-0" />
+                  <span className="text-base-content/60 leading-[1.05] truncate">
+                    Member
                   </span>
                 </div>
               )}
               {showDemoTeam && (
                 <Tooltip
                   content={DEMO_TEAM_TOOLTIP}
-                  wrapperClassName="flex items-center gap-0.5 min-w-0 text-base-content/50"
+                  wrapperClassName="flex shrink-0 items-center gap-1 min-w-0 text-base-content/50"
                 >
                   <FlaskConical
                     size={10}
-                    className="text-base-content/50 shrink-0 mt-[1px]"
+                    className="text-base-content/50 shrink-0"
                   />
-                  <span className="text-base-content/50 leading-tight break-words">
-                    Demo
-                  </span>
                 </Tooltip>
-              )}
-              {(statusBadge?.type === "existing-member-selected" ||
-                ((statusBadge?.type === "pending-invite" ||
-                  statusBadge?.type === "pending-application") &&
-                  teamStatusData[team.id]?.isExistingMember === true)) && (
-                <div className="flex items-start gap-0.5 min-w-0">
-                  <Users size={10} className="text-base-content/60 shrink-0 mt-[3px]" />
-                  <span className="text-base-content/60 leading-tight break-words">
-                    Member
-                  </span>
-                </div>
               )}
             </div>
           </div>
@@ -1507,7 +1515,7 @@ const TeamInviteModal = ({
                 {getInviteeDisplayName()}
               </h4>
 
-              <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-0">
                 <p
                   className="text-sm text-base-content/70 cursor-pointer hover:text-primary transition-colors"
                   onClick={() => handleUserClick(inviteeId)}
@@ -1521,7 +1529,6 @@ const TeamInviteModal = ({
                     wrapperClassName="flex items-center gap-0.5 text-base-content/50 text-xs"
                   >
                     <FlaskConical size={12} className="flex-shrink-0" />
-                    <span>Demo Profile</span>
                   </Tooltip>
                 )}
               </div>
@@ -1644,9 +1651,21 @@ const TeamInviteModal = ({
                       }}
                       className="flex items-start gap-4 p-4 rounded-xl bg-amber-100 text-left shadow shadow-md ring-2 ring-amber-400 transition-all duration-200 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
                     >
-                      <div className="avatar placeholder">
-                        <div className="bg-amber-500 text-white w-12 h-12 rounded-full relative flex items-center justify-center overflow-hidden">
-                          <span className="text-lg">
+                      <button
+                        type="button"
+                        className="avatar placeholder cursor-pointer border-0 bg-transparent p-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded-full"
+                        aria-label={`Open details for ${
+                          selectedRole.roleName ??
+                          selectedRole.role_name ??
+                          "this role"
+                        }`}
+                        onClick={(event) =>
+                          handleRoleDetailsClick(selectedRole, event)
+                        }
+                        onKeyDown={(event) => event.stopPropagation()}
+                      >
+                        <div className="bg-amber-500 text-white w-14 h-14 rounded-full relative flex items-center justify-center overflow-hidden">
+                          <span className="text-xl">
                             {getRoleInitials(
                               selectedRole.roleName ??
                                 selectedRole.role_name ??
@@ -1660,16 +1679,23 @@ const TeamInviteModal = ({
                             />
                           )}
                         </div>
-                      </div>
+                      </button>
 
                       <div className="flex-1 min-w-0 pt-[1px]">
                         <div className="flex flex-col">
-                          <div className="flex items-center justify-between">
-                            <h3 className="font-medium text-base truncate leading-[120%] min-w-0">
+                          <div className="flex min-w-0 items-center gap-1">
+                            <button
+                              type="button"
+                              className="min-w-0 flex-1 border-0 bg-transparent p-0 text-left font-medium text-base text-base-content truncate leading-[120%] hover:text-primary focus-visible:outline-none focus-visible:text-primary"
+                              onClick={(event) =>
+                                handleRoleDetailsClick(selectedRole, event)
+                              }
+                              onKeyDown={(event) => event.stopPropagation()}
+                            >
                               {selectedRole.roleName ??
                                 selectedRole.role_name ??
                                 "Vacant Role"}
-                            </h3>
+                            </button>
                             <div className="shrink-0 ml-1">
                               <RoleBadgePill
                                 icon={Check}
@@ -1702,15 +1728,12 @@ const TeamInviteModal = ({
                             {isSyntheticRole(selectedRole) && (
                               <Tooltip
                                 content={DEMO_ROLE_TOOLTIP}
-                                wrapperClassName="flex items-center gap-0.5 min-w-0 text-base-content/50"
+                                wrapperClassName="flex items-center gap-1 min-w-0 text-base-content/50"
                               >
                                 <FlaskConical
                                   size={10}
-                                  className="text-base-content/50 shrink-0 mt-[1px]"
+                                  className="text-base-content/50 shrink-0"
                                 />
-                                <span className="text-base-content/50 leading-tight break-words">
-                                  Demo
-                                </span>
                               </Tooltip>
                             )}
                           </CardMetaRow>
@@ -1768,9 +1791,17 @@ const TeamInviteModal = ({
                               : "bg-amber-50 hover:bg-amber-100/70 hover:shadow-md"
                           }`}
                       >
-                        <div className="avatar placeholder">
-                          <div className="bg-amber-500 text-white w-12 h-12 rounded-full relative flex items-center justify-center overflow-hidden">
-                            <span className="text-lg">
+                        <button
+                          type="button"
+                          className="avatar placeholder cursor-pointer border-0 bg-transparent p-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded-full"
+                          aria-label={`Open details for ${roleName}`}
+                          onClick={(event) =>
+                            handleRoleDetailsClick(role, event)
+                          }
+                          onKeyDown={(event) => event.stopPropagation()}
+                        >
+                          <div className="bg-amber-500 text-white w-14 h-14 rounded-full relative flex items-center justify-center overflow-hidden">
+                            <span className="text-xl">
                               {getRoleInitials(roleName)}
                             </span>
                             {showDemoRole && (
@@ -1780,14 +1811,21 @@ const TeamInviteModal = ({
                               />
                             )}
                           </div>
-                        </div>
+                        </button>
 
                         <div className="flex-1 min-w-0 pt-[1px]">
                           <div className="flex flex-col">
-                            <div className="flex items-center justify-between">
-                              <h3 className="font-medium text-base truncate leading-[120%] min-w-0">
+                            <div className="flex min-w-0 items-center gap-1">
+                              <button
+                                type="button"
+                                className="min-w-0 flex-1 border-0 bg-transparent p-0 text-left font-medium text-base text-base-content truncate leading-[120%] hover:text-primary focus-visible:outline-none focus-visible:text-primary"
+                                onClick={(event) =>
+                                  handleRoleDetailsClick(role, event)
+                                }
+                                onKeyDown={(event) => event.stopPropagation()}
+                              >
                                 {roleName}
-                              </h3>
+                              </button>
                               <div className="shrink-0 ml-1">
                                 <RoleBadgePill
                                   icon={isSelected ? Check : UserSearch}
@@ -1816,15 +1854,12 @@ const TeamInviteModal = ({
                               {showDemoRole && (
                                 <Tooltip
                                   content={DEMO_ROLE_TOOLTIP}
-                                  wrapperClassName="flex items-center gap-0.5 min-w-0 text-base-content/50"
+                                  wrapperClassName="flex items-center gap-1 min-w-0 text-base-content/50"
                                 >
                                   <FlaskConical
                                     size={10}
-                                    className="text-base-content/50 shrink-0 mt-[1px]"
+                                    className="text-base-content/50 shrink-0"
                                   />
-                                  <span className="text-base-content/50 leading-tight break-words">
-                                    Demo
-                                  </span>
                                 </Tooltip>
                               )}
                             </CardMetaRow>
@@ -1920,6 +1955,16 @@ const TeamInviteModal = ({
         initialTeamData={selectedTeamForDetails}
         onClose={handleTeamDetailsClose}
       />
+
+      {selectedRoleForDetails && (
+        <VacantRoleDetailsModal
+          isOpen={Boolean(selectedRoleForDetails)}
+          onClose={handleRoleDetailsClose}
+          team={selectedTeam}
+          role={selectedRoleForDetails}
+          hideActions
+        />
+      )}
 
       {/* Team Invites Modal */}
       <TeamInvitesModal

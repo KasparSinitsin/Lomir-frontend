@@ -353,7 +353,7 @@ const UserCard = ({
       title={displayName()}
       subtitle={
         <span
-          className={`flex items-center flex-wrap leading-snug text-base-content/70 ${viewMode === "mini" ? "text-xs gap-x-1 gap-y-px w-full" : "text-sm gap-x-1.5 gap-y-px"}`}
+          className={`mt-0.5 flex max-h-[2.75em] items-center flex-wrap overflow-hidden leading-snug text-base-content/70 ${viewMode === "mini" ? "text-xs gap-x-1 gap-y-px w-full" : "text-sm gap-x-1.5 gap-y-px"}`}
         >
           {scoreSubtitleItem}
           {user.username && <span>@{user.username}</span>}

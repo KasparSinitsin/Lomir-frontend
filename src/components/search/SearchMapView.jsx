@@ -1346,7 +1346,6 @@ const EntityMetaLine = ({ point }) => {
           >
             <FlaskConical size={POPUP_SUBLINE_ICON_SIZE} strokeWidth={2.25} aria-hidden="true" />
           </Tooltip>
-          <span>Demo</span>
         </>
       )}
     </div>

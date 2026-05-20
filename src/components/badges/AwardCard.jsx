@@ -388,7 +388,7 @@ const AwardCard = ({
           </div>
 
           {/* ── Subline ── */}
-          <div className="flex items-center flex-wrap gap-x-3 gap-y-0.5 text-xs text-base-content/60 mt-1 min-w-0 leading-tight">
+          <div className="mt-1 flex max-h-[2.5em] min-w-0 flex-wrap items-center gap-x-3 gap-y-0.5 overflow-hidden text-xs leading-tight text-base-content/60">
             {/* Awarded by (team context only — awarder name, clickable) */}
             {hasAwardeeInfo && (
               <span className="flex items-center gap-1 min-w-0">

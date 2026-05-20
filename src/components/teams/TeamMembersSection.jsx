@@ -251,7 +251,7 @@ const TeamMembersSection = ({
               className="flex items-start bg-green-50 rounded-xl shadow p-4 gap-4 transition-all duration-200 hover:bg-green-100 hover:shadow-md"
             >
               <div className="avatar">
-                <div className="rounded-full w-12 h-12 relative overflow-hidden">
+                <div className="rounded-full w-14 h-14 relative overflow-hidden">
                   {memberAvatarUrl ? (
                     <img
                       src={memberAvatarUrl}
@@ -271,7 +271,7 @@ const TeamMembersSection = ({
                     className="avatar-fallback placeholder bg-[var(--color-primary-focus)] text-primary-content rounded-full w-full h-full absolute inset-0 flex items-center justify-center"
                     style={{ display: memberAvatarUrl ? "none" : "flex" }}
                   >
-                    <span className="text-lg">
+                    <span className="text-xl">
                       {anonymize ? "PP" : getMemberInitials(member)}
                     </span>
                   </div>
@@ -283,8 +283,9 @@ const TeamMembersSection = ({
 
               <div className="flex-1 min-w-0 pt-[1px]">
                 <div className="flex flex-col">
-                  <div className="flex items-center justify-between">
+                  <div className="flex min-w-0 items-center gap-1">
                     <Tooltip
+                      wrapperClassName="block min-w-0 flex-1"
                       content={
                         anonymize
                           ? "Private Profile"
@@ -312,14 +313,15 @@ const TeamMembersSection = ({
                     </Tooltip>
 
                     {/* Role Badge with Dropdown */}
-                    <RoleBadgeDropdown
-                      member={member}
-                      canManage={canManageThisMember}
-                      isOwner={isOwner}
-                      isTeamArchived={
-                        team?.archived_at || team?.status === "inactive"
-                      }
-                      onRoleChange={async (newRole) => {
+                    <div className="shrink-0 ml-1">
+                      <RoleBadgeDropdown
+                        member={member}
+                        canManage={canManageThisMember}
+                        isOwner={isOwner}
+                        isTeamArchived={
+                          team?.archived_at || team?.status === "inactive"
+                        }
+                        onRoleChange={async (newRole) => {
                         try {
                           await teamService.updateMemberRole(
                             team.id,
@@ -346,8 +348,8 @@ const TeamMembersSection = ({
                               "Failed to update role",
                           });
                         }
-                      }}
-                      onRemoveMember={async (resolvedMemberId = memberId) => {
+                        }}
+                        onRemoveMember={async (resolvedMemberId = memberId) => {
                         let demotedForRemoval = false;
 
                         try {
@@ -407,8 +409,9 @@ const TeamMembersSection = ({
                               "Failed to remove member",
                           });
                         }
-                      }}
-                    />
+                        }}
+                      />
+                    </div>
                   </div>
 
                   {shouldShowMemberMetaRow && (
@@ -417,16 +420,6 @@ const TeamMembersSection = ({
                         <CardMetaItem icon={MapPin}>
                           {[member.city, member.country].filter(Boolean).join(", ")}
                         </CardMetaItem>
-                      )}
-
-                      {showDemoAvatarOverlay && (
-                        <Tooltip
-                          content={DEMO_PROFILE_TOOLTIP}
-                          wrapperClassName="flex items-start gap-0.5 text-base-content/50"
-                        >
-                          <FlaskConical size={10} className="shrink-0 mt-[3px]" />
-                          <span className="leading-tight">Demo</span>
-                        </Tooltip>
                       )}
 
                       {!anonymize && member.distance_km != null && (
@@ -439,6 +432,15 @@ const TeamMembersSection = ({
                         <CardMetaItem icon={UserCheck} nowrap>
                           {filledRoleName}
                         </CardMetaItem>
+                      )}
+
+                      {showDemoAvatarOverlay && (
+                        <Tooltip
+                          content={DEMO_PROFILE_TOOLTIP}
+                          wrapperClassName="flex items-center gap-1 min-w-0 text-base-content/50"
+                        >
+                          <FlaskConical size={10} className="shrink-0" />
+                        </Tooltip>
                       )}
                     </CardMetaRow>
                   )}
