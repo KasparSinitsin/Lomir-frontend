@@ -884,7 +884,7 @@ const TeamInvitesModal = ({
                   {getDisplayName(invitation.invitee)}
                 </h4>
                 {(showInviteeUsername || showInviteeDemoProfile) && (
-                  <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                  <div className="flex max-h-[2.1em] flex-wrap items-center gap-x-2 gap-y-0.5 overflow-hidden">
                     {showInviteeUsername && (
                       <p className="text-xs text-base-content/70">
                         @{invitation.invitee.username}
@@ -896,7 +896,6 @@ const TeamInvitesModal = ({
                         wrapperClassName="flex items-center gap-0.5 text-base-content/50 text-xs"
                       >
                         <FlaskConical size={12} className="flex-shrink-0" />
-                        <span>Demo Profile</span>
                       </Tooltip>
                     )}
                   </div>

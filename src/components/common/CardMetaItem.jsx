@@ -6,16 +6,17 @@ const CardMetaItem = ({
   tone = "default",
   className = "",
   nowrap = false,
+  iconSize = 10,
 }) => {
   const toneClass =
     tone === "muted" ? "text-base-content/50" : "text-base-content/60";
 
   return (
-    <div className={`flex items-start gap-0.5 min-w-0 ${className}`}>
-      {Icon && <Icon size={10} className={`${toneClass} shrink-0 mt-[3px]`} />}
+    <div className={`flex min-w-0 max-w-[calc(100%-1.5rem)] flex-[0_1_auto] items-center gap-1 overflow-hidden ${className}`}>
+      {Icon && <Icon size={iconSize} className={`${toneClass} shrink-0`} />}
       <span
-        className={`${toneClass} leading-tight ${
-          nowrap ? "whitespace-nowrap" : "break-words"
+        className={`min-w-0 truncate ${toneClass} leading-[1.05] ${
+          nowrap ? "whitespace-nowrap" : ""
         }`}
       >
         {children}

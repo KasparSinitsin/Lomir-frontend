@@ -390,7 +390,7 @@ const TeamApplicationModal = ({
               title="View team details"
             >
               <div className="avatar">
-                <div className="w-12 h-12 rounded-full relative overflow-hidden">
+                <div className="w-14 h-14 rounded-full relative overflow-hidden">
                   {getTeamAvatar() ? (
                     <img
                       src={getTeamAvatar()}
@@ -411,7 +411,7 @@ const TeamApplicationModal = ({
                     className="avatar-fallback bg-[var(--color-primary-focus)] text-primary-content flex items-center justify-center w-full h-full rounded-full absolute inset-0"
                     style={{ display: getTeamAvatar() ? "none" : "flex" }}
                   >
-                    <span className="text-lg font-medium">
+                    <span className="text-xl font-medium">
                       {getTeamInitials()}
                     </span>
                   </div>
@@ -440,15 +440,12 @@ const TeamApplicationModal = ({
                   {showDemoTeam && (
                     <Tooltip
                       content={DEMO_TEAM_TOOLTIP}
-                      wrapperClassName="flex items-center gap-0.5 min-w-0 text-base-content/50"
+                      wrapperClassName="flex items-center gap-1 min-w-0 text-base-content/50"
                     >
                       <FlaskConical
                         size={10}
-                        className="text-base-content/50 shrink-0 mt-[1px]"
+                        className="text-base-content/50 shrink-0"
                       />
-                      <span className="text-base-content/50 leading-tight break-words">
-                        Demo Team
-                      </span>
                     </Tooltip>
                   )}
                 </CardMetaRow>
@@ -521,8 +518,8 @@ const TeamApplicationModal = ({
                     </div>
 
                     <div className="flex-1 min-w-0 pt-[1px]">
-                      <div className="flex items-center justify-between">
-                        <h3 className="font-medium text-sm truncate leading-[120%] min-w-0">
+                      <div className="flex min-w-0 items-center gap-1">
+                        <h3 className="min-w-0 flex-1 truncate font-medium text-sm leading-[120%]">
                           {selectedRole.roleName ??
                             selectedRole.role_name ??
                             "Vacant Role"}
@@ -560,15 +557,12 @@ const TeamApplicationModal = ({
                           {isSyntheticRole(selectedRole) && (
                             <Tooltip
                               content={DEMO_ROLE_TOOLTIP}
-                              wrapperClassName="flex items-center gap-0.5 min-w-0 text-base-content/50"
+                              wrapperClassName="flex items-center gap-1 min-w-0 text-base-content/50"
                             >
                               <FlaskConical
                                 size={10}
-                                className="text-base-content/50 shrink-0 mt-[1px]"
+                                className="text-base-content/50 shrink-0"
                               />
-                              <span className="text-base-content/50 leading-tight break-words">
-                                Demo
-                              </span>
                             </Tooltip>
                           )}
                         </CardMetaRow>
@@ -607,9 +601,9 @@ const TeamApplicationModal = ({
                           }`}
                       >
                         <div className="avatar">
-                          <div className="w-12 h-12 rounded-full relative overflow-hidden">
+                          <div className="w-14 h-14 rounded-full relative overflow-hidden">
                             <div className="avatar-fallback bg-amber-500 text-white flex items-center justify-center w-full h-full rounded-full absolute inset-0">
-                              <span className="text-lg">
+                              <span className="text-xl">
                                 {getRoleInitials(roleName)}
                               </span>
                             </div>
@@ -624,8 +618,8 @@ const TeamApplicationModal = ({
 
                         <div className="flex-1 min-w-0 pt-[1px]">
                           <div className="flex flex-col">
-                            <div className="flex items-center justify-between">
-                              <h3 className="font-medium text-base truncate leading-[120%] min-w-0">
+                            <div className="flex min-w-0 items-center gap-1">
+                              <h3 className="min-w-0 flex-1 truncate font-medium text-base leading-[120%]">
                                 {roleName}
                               </h3>
                               <div className="shrink-0 ml-1">
@@ -655,15 +649,12 @@ const TeamApplicationModal = ({
                                 {showDemoRole && (
                                   <Tooltip
                                     content={DEMO_ROLE_TOOLTIP}
-                                    wrapperClassName="flex items-center gap-0.5 min-w-0 text-base-content/50"
+                                    wrapperClassName="flex items-center gap-1 min-w-0 text-base-content/50"
                                   >
                                     <FlaskConical
                                       size={10}
-                                      className="text-base-content/50 shrink-0 mt-[1px]"
+                                      className="text-base-content/50 shrink-0"
                                     />
-                                    <span className="text-base-content/50 leading-tight break-words">
-                                      Demo
-                                    </span>
                                   </Tooltip>
                                 )}
                               </CardMetaRow>
@@ -672,15 +663,12 @@ const TeamApplicationModal = ({
                               <CardMetaRow>
                                 <Tooltip
                                   content={DEMO_ROLE_TOOLTIP}
-                                  wrapperClassName="flex items-center gap-0.5 min-w-0 text-base-content/50"
+                                  wrapperClassName="flex items-center gap-1 min-w-0 text-base-content/50"
                                 >
                                   <FlaskConical
                                     size={10}
-                                    className="text-base-content/50 shrink-0 mt-[1px]"
+                                    className="text-base-content/50 shrink-0"
                                   />
-                                  <span className="text-base-content/50 leading-tight break-words">
-                                    Demo
-                                  </span>
                                 </Tooltip>
                               </CardMetaRow>
                             )}

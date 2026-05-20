@@ -2058,12 +2058,6 @@ const TeamCard = ({
   const demoTooltip = showDemoRoleIndicator
     ? DEMO_ROLE_TOOLTIP
     : DEMO_TEAM_TOOLTIP;
-  const demoLabel =
-    viewMode === "list" || viewMode === "mini"
-      ? "Demo"
-      : showDemoRoleIndicator
-        ? "Demo Role"
-        : "Demo Team";
   const demoAvatarOverlay = showDemoIndicator ? (
     <DemoAvatarOverlay
       textClassName={
@@ -2125,7 +2119,7 @@ const TeamCard = ({
     const shouldReserveMyTeamsActionSlot = !isSearchResult;
     const memberCountListItem = shouldShowMemberCountInList ? (
       <span className="flex items-center gap-0.5">
-        <Users size={11} />
+        <Users size={9} />
         <span>{memberCount}/{maxMembers}</span>
       </span>
     ) : null;
@@ -2158,7 +2152,7 @@ const TeamCard = ({
               }
             >
               <Mail
-                size={11}
+                size={9}
                 className={hasInternalRoleInvitation ? "text-orange-500" : "text-pink-500"}
               />
               {getFormattedDate() && <span>{getFormattedDate()}</span>}
@@ -2171,7 +2165,7 @@ const TeamCard = ({
             wrapperClassName="min-w-0 max-w-full overflow-hidden"
           >
             <span className="flex min-w-0 max-w-full items-center gap-0.5 overflow-hidden">
-              <UserSearch size={12} className="flex-shrink-0 text-orange-500" />
+              <UserSearch size={10} className="flex-shrink-0 text-orange-500" />
               <span className="truncate">{teamInvitationRoleName}</span>
             </span>
           </Tooltip>
@@ -2195,7 +2189,7 @@ const TeamCard = ({
                 setIsApplicationModalOpen(true);
               }}
             >
-              <SendHorizontal size={11} className={(isRoleApplicationVariant || isPendingRoleApplicationForTeam) ? "text-orange-500" : "text-info"} />
+              <SendHorizontal size={9} className={(isRoleApplicationVariant || isPendingRoleApplicationForTeam) ? "text-orange-500" : "text-info"} />
               {getFormattedDate() && <span>{getFormattedDate()}</span>}
             </span>
           </Tooltip>
@@ -2206,7 +2200,7 @@ const TeamCard = ({
             wrapperClassName="min-w-0 max-w-full overflow-hidden"
           >
             <span className="flex min-w-0 max-w-full items-center gap-0.5 overflow-hidden">
-              <UserSearch size={12} className="flex-shrink-0 text-orange-500" />
+              <UserSearch size={10} className="flex-shrink-0 text-orange-500" />
               <span className="truncate">{teamApplicationRoleName}</span>
             </span>
           </Tooltip>
@@ -2214,7 +2208,7 @@ const TeamCard = ({
         {shouldShowOpenRoleCount && openRoleCount > 0 && (
           <Tooltip content={`${openRoleCount} open ${openRoleCount === 1 ? 'role' : 'roles'} posted in this team`}>
             <span className="flex items-center">
-              <UserSearch size={12} className="text-orange-500 mr-0.5" />
+              <UserSearch size={10} className="text-orange-500 mr-0.5" />
               <span>{openRoleCount}</span>
             </span>
           </Tooltip>
@@ -2228,7 +2222,7 @@ const TeamCard = ({
                 setIsModalOpen(true);
               }}
             >
-              <Users size={11} className="flex-shrink-0 text-primary" />
+              <Users size={9} className="flex-shrink-0 text-primary" />
               <span className="truncate">{teamData._teamName}</span>
             </span>
           </Tooltip>
@@ -2237,17 +2231,17 @@ const TeamCard = ({
           <>
             {userRole === "owner" && (
               <Tooltip content="You are the owner of this team">
-                <Crown size={11} className="text-[var(--color-role-owner-bg)]" />
+                <Crown size={9} className="text-[var(--color-role-owner-bg)]" />
               </Tooltip>
             )}
             {userRole === "admin" && (
               <Tooltip content="You are an admin of this team">
-                <ShieldCheck size={11} className="text-[var(--color-role-admin-bg)]" />
+                <ShieldCheck size={9} className="text-[var(--color-role-admin-bg)]" />
               </Tooltip>
             )}
             {userRole === "member" && !hideMemberRoleIcon && (
               <Tooltip content="You are a member of this team">
-                <User size={11} className="text-[var(--color-role-member-bg)]" />
+                <User size={9} className="text-[var(--color-role-member-bg)]" />
               </Tooltip>
             )}
           </>
@@ -2255,9 +2249,9 @@ const TeamCard = ({
         {shouldShowVisibilityIcon() && (
           <Tooltip content={teamData.is_public === true || teamData.isPublic === true ? "Public Team - visible for everyone" : "Private Team - only visible for Members"}>
             {teamData.is_public === true || teamData.isPublic === true ? (
-              <EyeIcon size={11} className="text-green-600" />
+              <EyeIcon size={9} className="text-green-600" />
             ) : (
-              <EyeClosed size={11} className="text-gray-500" />
+              <EyeClosed size={9} className="text-gray-500" />
             )}
           </Tooltip>
         )}
@@ -2266,7 +2260,7 @@ const TeamCard = ({
             content={demoTooltip}
             wrapperClassName="flex items-center whitespace-nowrap text-base-content/50"
           >
-            <FlaskConical size={11} className="flex-shrink-0" />
+            <FlaskConical size={9} className="flex-shrink-0" />
           </Tooltip>
         )}
       </span>
@@ -2297,7 +2291,7 @@ const TeamCard = ({
                 <div className="text-xs text-base-content flex items-center gap-1 overflow-hidden">
                   <Tooltip content={`${Math.round(distance)} km away from you`}>
                     <div className="flex items-center gap-1">
-                      <Ruler size={11} className="flex-shrink-0" />
+                      <Ruler size={9} className="flex-shrink-0" />
                       <span className="whitespace-nowrap">{Math.round(distance)} km</span>
                     </div>
                   </Tooltip>
@@ -2312,9 +2306,9 @@ const TeamCard = ({
                 >
                   <div className="flex min-w-0 w-full items-center gap-1 overflow-hidden">
                     {teamData.is_remote || teamData.isRemote ? (
-                      <Globe size={11} className="flex-shrink-0" />
+                      <Globe size={9} className="flex-shrink-0" />
                     ) : (
-                      <MapPin size={11} className="flex-shrink-0" />
+                      <MapPin size={9} className="flex-shrink-0" />
                     )}
                     <span className="min-w-0 flex-1 truncate">{locationText}</span>
                   </div>
@@ -2327,7 +2321,7 @@ const TeamCard = ({
           >
             {tagsSummary && (
               <Tooltip content={tagNames.join(", ")} wrapperClassName="flex items-center gap-1 min-w-0 overflow-hidden w-full">
-                <Tag size={11} className="flex-shrink-0" />
+                <Tag size={9} className="flex-shrink-0" />
                 <span className="truncate">{tagsSummary}</span>
               </Tooltip>
             )}
@@ -2337,7 +2331,7 @@ const TeamCard = ({
           >
             {badgesSummary && (
               <Tooltip content={badgeNames.join(", ")} wrapperClassName="flex items-center gap-1 min-w-0 overflow-hidden w-full">
-                <Award size={11} className="flex-shrink-0" />
+                <Award size={9} className="flex-shrink-0" />
                 <span className="truncate">{badgesSummary}</span>
               </Tooltip>
             )}
@@ -2534,7 +2528,7 @@ const TeamCard = ({
         title={cardTitle}
         subtitle={
           <span
-            className={`flex text-base-content/70 ${isRoleVariant ? `flex-col leading-snug ${viewMode === "mini" ? "text-xs gap-y-px w-full" : "text-sm gap-y-px"}` : `items-center flex-wrap leading-snug ${viewMode === "mini" ? "text-xs gap-x-1 gap-y-px w-full" : "text-sm gap-x-1.5 gap-y-px"}`}`}
+            className={`mt-0.5 flex max-h-[2.75em] overflow-hidden text-base-content/70 ${isRoleVariant ? `flex-col leading-snug ${viewMode === "mini" ? "text-xs gap-y-px w-full" : "text-sm gap-y-px"}` : `items-center flex-wrap leading-snug ${viewMode === "mini" ? "text-xs gap-x-1 gap-y-px w-full" : "text-sm gap-x-1.5 gap-y-px"}`}`}
           >
             {/* Score + date on the same row for role variants */}
             {isRoleVariant ? (
@@ -2610,17 +2604,17 @@ const TeamCard = ({
                 {viewMode === "card" ? (
                   <span className="flex items-center">
                     <UserSearch
-                      size={14}
+                      size={11}
                       className="text-orange-500"
                     />
                   </span>
                 ) : (
-                  <span className="flex items-start">
+                  <span className="flex items-center gap-1">
                     <UserSearch
                       size={viewMode === "mini" ? 12 : 14}
-                      className="text-orange-500 mr-0.5 flex-shrink-0 mt-0.5"
+                      className="text-orange-500 flex-shrink-0"
                     />
-                    <span className="leading-[1.15]">{teamInvitationRoleName}</span>
+                    <span className="leading-[1.05]">{teamInvitationRoleName}</span>
                   </span>
                 )}
               </Tooltip>
@@ -2655,17 +2649,17 @@ const TeamCard = ({
                 {viewMode === "card" ? (
                   <span className="flex items-center">
                     <UserSearch
-                      size={14}
+                      size={11}
                       className="text-orange-500"
                     />
                   </span>
                 ) : (
-                  <span className="flex items-start">
+                  <span className="flex items-center gap-1">
                     <UserSearch
                       size={viewMode === "mini" ? 12 : 14}
-                      className="text-orange-500 mr-0.5 flex-shrink-0 mt-0.5"
+                      className="text-orange-500 flex-shrink-0"
                     />
-                    <span className="leading-[1.15]">{teamApplicationRoleName}</span>
+                    <span className="leading-[1.05]">{teamApplicationRoleName}</span>
                   </span>
                 )}
               </Tooltip>
@@ -2683,13 +2677,13 @@ const TeamCard = ({
                     }}
                   >
                     <Users
-                      size={14}
+                      size={11}
                       className="text-primary"
                     />
                   </span>
                 ) : (
                   <span
-                    className="flex items-start cursor-pointer"
+                    className="flex items-center gap-1 cursor-pointer"
                     onClick={(e) => {
                       e.stopPropagation();
                       setIsModalOpen(true);
@@ -2697,9 +2691,9 @@ const TeamCard = ({
                   >
                     <Users
                       size={viewMode === "mini" ? 12 : 14}
-                      className="text-primary mr-0.5 flex-shrink-0 mt-0.5"
+                      className="text-primary flex-shrink-0"
                     />
-                    <span className="leading-[1.15]">{teamData._teamName}</span>
+                    <span className="leading-[1.05]">{teamData._teamName}</span>
                   </span>
                 )}
               </Tooltip>
@@ -2803,15 +2797,15 @@ const TeamCard = ({
                 teamData.country ||
                 teamData.is_remote ||
                 teamData.isRemote) && (
-                <span className="flex items-start">
+                <span className="flex items-center gap-1">
                   {teamData.is_remote || teamData.isRemote ? (
                     <>
-                      <Globe size={12} className="mr-0.5 flex-shrink-0 mt-0.5" />
+                      <Globe size={10} className="flex-shrink-0" />
                       <span>Remote</span>
                     </>
                   ) : (
                     <>
-                      <MapPin size={12} className="mr-0.5 flex-shrink-0 mt-0.5" />
+                      <MapPin size={10} className="flex-shrink-0" />
                       <span>
                         {[teamData.city, teamData.country]
                           .filter(Boolean)
@@ -2827,10 +2821,9 @@ const TeamCard = ({
                 wrapperClassName="flex items-center gap-1 text-base-content/50"
               >
                 <FlaskConical
-                  size={viewMode === "mini" ? 12 : 14}
+                  size={viewMode === "mini" ? 10 : 11}
                   className="flex-shrink-0"
                 />
-                <span>{demoLabel}</span>
               </Tooltip>
             )}
           </span>

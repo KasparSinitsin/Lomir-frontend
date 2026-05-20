@@ -2576,9 +2576,8 @@ const VacantRoleDetailsModal = ({
                       content={applicantTooltip}
                       wrapperClassName="block w-full"
                     >
-                      <button
-                        type="button"
-                        className={`flex items-start rounded-xl shadow p-4 gap-4 transition-all duration-200 hover:shadow-md cursor-pointer text-left w-full ${
+                      <div
+                        className={`flex items-start rounded-xl shadow p-4 gap-4 transition-all duration-200 hover:shadow-md cursor-pointer ${
                           applicantIsTeamMember
                             ? "bg-green-50 hover:bg-green-100"
                             : "bg-base-200 hover:bg-base-300"
@@ -2588,8 +2587,8 @@ const VacantRoleDetailsModal = ({
                           setApplicationsModalOpen(true);
                         }}
                       >
-                        <div className="avatar relative flex-shrink-0">
-                          <div className="w-12 h-12 rounded-full">
+                        <div className="avatar relative">
+                          <div className="w-14 h-14 rounded-full relative overflow-hidden">
                             {avatarUrl ? (
                               <img
                                 src={avatarUrl}
@@ -2604,10 +2603,10 @@ const VacantRoleDetailsModal = ({
                               />
                             ) : null}
                             <div
-                              className="avatar-fallback bg-[var(--color-primary-focus)] text-primary-content rounded-full w-full h-full flex items-center justify-center absolute inset-0"
+                              className="avatar-fallback placeholder bg-[var(--color-primary-focus)] text-primary-content rounded-full w-full h-full absolute inset-0 flex items-center justify-center"
                               style={{ display: avatarUrl ? "none" : "flex" }}
                             >
-                              <span className="text-lg">{initials}</span>
+                              <span className="text-xl">{initials}</span>
                             </div>
                           </div>
                           {ApplicantMatchIcon && (
@@ -2626,22 +2625,20 @@ const VacantRoleDetailsModal = ({
 
                         <div className="flex-1 min-w-0 pt-[1px]">
                           <div className="flex flex-col">
-                            <div className="flex items-center justify-between gap-2 min-w-0">
-                              <div className="flex-1 min-w-0 overflow-hidden">
-                                <p className="block w-full min-w-0 truncate font-medium text-base leading-[120%] text-base-content">
-                                  {displayName}
-                                </p>
-                              </div>
+                            <div className="flex min-w-0 items-center gap-1">
+                              <h3 className="min-w-0 flex-1 truncate font-medium text-base leading-[120%]">
+                                {displayName}
+                              </h3>
                             </div>
 
                             <CardMetaRow>
                               {applicantMatchTier && (
-                                <div className="flex items-start gap-0.5 min-w-0">
+                                <div className="flex items-center gap-1 min-w-0">
                                   <ApplicantMatchIcon
                                     size={10}
-                                    className={`${applicantMatchTier.text} shrink-0 mt-[3px]`}
+                                    className={`${applicantMatchTier.text} shrink-0`}
                                   />
-                                  <span className="text-base-content/60 leading-tight whitespace-nowrap">
+                                  <span className="text-base-content/60 leading-[1.05] whitespace-nowrap">
                                     {applicantMatchTier.pct}%
                                   </span>
                                 </div>
@@ -2654,11 +2651,11 @@ const VacantRoleDetailsModal = ({
                               {applicantIsTeamMember && (
                                 <Tooltip
                                   content="Member of this team"
-                                  wrapperClassName="flex items-start gap-0.5 min-w-0"
+                                  wrapperClassName="flex items-center gap-1 min-w-0"
                                 >
                                   <Users
                                     size={10}
-                                    className="text-success shrink-0 mt-[3px]"
+                                    className="text-success shrink-0"
                                   />
                                 </Tooltip>
                               )}
@@ -2668,7 +2665,7 @@ const VacantRoleDetailsModal = ({
                             </CardMetaRow>
                           </div>
                         </div>
-                      </button>
+                      </div>
                     </Tooltip>
                   );
                 })}
@@ -2790,9 +2787,8 @@ const VacantRoleDetailsModal = ({
                       content={inviteeTooltip}
                       wrapperClassName="block w-full"
                     >
-                      <button
-                        type="button"
-                        className={`flex items-start rounded-xl shadow p-4 gap-4 transition-all duration-200 hover:shadow-md cursor-pointer text-left w-full ${
+                      <div
+                        className={`flex items-start rounded-xl shadow p-4 gap-4 transition-all duration-200 hover:shadow-md cursor-pointer ${
                           inviteeIsTeamMember
                             ? "bg-green-50 hover:bg-green-100"
                             : "bg-base-200 hover:bg-base-300"
@@ -2802,8 +2798,8 @@ const VacantRoleDetailsModal = ({
                           setInvitationsModalOpen(true);
                         }}
                       >
-                        <div className="avatar relative flex-shrink-0">
-                          <div className="w-12 h-12 rounded-full">
+                        <div className="avatar relative">
+                          <div className="w-14 h-14 rounded-full relative overflow-hidden">
                             {avatarUrl ? (
                               <img
                                 src={avatarUrl}
@@ -2818,10 +2814,10 @@ const VacantRoleDetailsModal = ({
                               />
                             ) : null}
                             <div
-                              className="avatar-fallback bg-[var(--color-primary-focus)] text-primary-content rounded-full w-full h-full flex items-center justify-center absolute inset-0"
+                              className="avatar-fallback placeholder bg-[var(--color-primary-focus)] text-primary-content rounded-full w-full h-full absolute inset-0 flex items-center justify-center"
                               style={{ display: avatarUrl ? "none" : "flex" }}
                             >
-                              <span className="text-lg">{initials}</span>
+                              <span className="text-xl">{initials}</span>
                             </div>
                           </div>
                           {InviteeMatchIcon && (
@@ -2840,22 +2836,20 @@ const VacantRoleDetailsModal = ({
 
                         <div className="flex-1 min-w-0 pt-[1px]">
                           <div className="flex flex-col">
-                            <div className="flex items-center justify-between gap-2 min-w-0">
-                              <div className="flex-1 min-w-0 overflow-hidden">
-                                <p className="block w-full min-w-0 truncate font-medium text-base leading-[120%] text-base-content">
-                                  {displayName}
-                                </p>
-                              </div>
+                            <div className="flex min-w-0 items-center gap-1">
+                              <h3 className="min-w-0 flex-1 truncate font-medium text-base leading-[120%]">
+                                {displayName}
+                              </h3>
                             </div>
 
                             <CardMetaRow>
                               {inviteeMatchTier && (
-                                <div className="flex items-start gap-0.5 min-w-0">
+                                <div className="flex items-center gap-1 min-w-0">
                                   <InviteeMatchIcon
                                     size={10}
-                                    className={`${inviteeMatchTier.text} shrink-0 mt-[3px]`}
+                                    className={`${inviteeMatchTier.text} shrink-0`}
                                   />
-                                  <span className="text-base-content/60 leading-tight whitespace-nowrap">
+                                  <span className="text-base-content/60 leading-[1.05] whitespace-nowrap">
                                     {inviteeMatchTier.pct}%
                                   </span>
                                 </div>
@@ -2868,11 +2862,11 @@ const VacantRoleDetailsModal = ({
                               {inviteeIsTeamMember && (
                                 <Tooltip
                                   content="Member of this team"
-                                  wrapperClassName="flex items-start gap-0.5 min-w-0"
+                                  wrapperClassName="flex items-center gap-1 min-w-0"
                                 >
                                   <Users
                                     size={10}
-                                    className="text-success shrink-0 mt-[3px]"
+                                    className="text-success shrink-0"
                                   />
                                 </Tooltip>
                               )}
@@ -2882,7 +2876,7 @@ const VacantRoleDetailsModal = ({
                             </CardMetaRow>
                           </div>
                         </div>
-                      </button>
+                      </div>
                     </Tooltip>
                   );
                 })}
@@ -2967,13 +2961,12 @@ const VacantRoleDetailsModal = ({
                       content={memberTooltip}
                       wrapperClassName="block w-full"
                     >
-                      <button
-                        type="button"
-                        className="flex items-start bg-green-50 rounded-xl shadow p-4 gap-4 transition-all duration-200 hover:bg-green-100 hover:shadow-md cursor-pointer text-left w-full"
+                      <div
+                        className="flex items-start bg-green-50 rounded-xl shadow p-4 gap-4 transition-all duration-200 hover:bg-green-100 hover:shadow-md cursor-pointer"
                         onClick={() => handleTeamMemberClick(memberRow)}
                       >
-                        <div className="avatar relative flex-shrink-0">
-                          <div className="w-12 h-12 rounded-full relative overflow-hidden">
+                        <div className="avatar relative">
+                          <div className="w-14 h-14 rounded-full relative overflow-hidden">
                             {avatarUrl ? (
                               <img
                                 src={avatarUrl}
@@ -2988,10 +2981,10 @@ const VacantRoleDetailsModal = ({
                               />
                             ) : null}
                             <div
-                              className="avatar-fallback bg-[var(--color-primary-focus)] text-primary-content rounded-full w-full h-full flex items-center justify-center absolute inset-0"
+                              className="avatar-fallback placeholder bg-[var(--color-primary-focus)] text-primary-content rounded-full w-full h-full absolute inset-0 flex items-center justify-center"
                               style={{ display: avatarUrl ? "none" : "flex" }}
                             >
-                              <span className="text-lg">{initials}</span>
+                              <span className="text-xl">{initials}</span>
                             </div>
                             {showDemoAvatarOverlay && (
                               <DemoAvatarOverlay textClassName="text-[8px]" />
@@ -3013,22 +3006,20 @@ const VacantRoleDetailsModal = ({
 
                         <div className="flex-1 min-w-0 pt-[1px]">
                           <div className="flex flex-col">
-                            <div className="flex items-center justify-between gap-2 min-w-0">
-                              <div className="flex-1 min-w-0 overflow-hidden">
-                                <p className="block w-full min-w-0 truncate font-medium text-base leading-[120%] text-base-content">
-                                  {displayName}
-                                </p>
-                              </div>
+                            <div className="flex min-w-0 items-center gap-1">
+                              <h3 className="min-w-0 flex-1 truncate font-medium text-base leading-[120%]">
+                                {displayName}
+                              </h3>
                             </div>
 
                             <CardMetaRow>
                               {memberMatchTier && (
-                                <div className="flex items-start gap-0.5 min-w-0">
+                                <div className="flex items-center gap-1 min-w-0">
                                   <MemberMatchIcon
                                     size={10}
-                                    className={`${memberMatchTier.text} shrink-0 mt-[3px]`}
+                                    className={`${memberMatchTier.text} shrink-0`}
                                   />
-                                  <span className="text-base-content/60 leading-tight whitespace-nowrap">
+                                  <span className="text-base-content/60 leading-[1.05] whitespace-nowrap">
                                     {memberMatchTier.pct}%
                                   </span>
                                 </div>
@@ -3039,19 +3030,18 @@ const VacantRoleDetailsModal = ({
                               {showDemoAvatarOverlay && (
                                 <Tooltip
                                   content={DEMO_PROFILE_TOOLTIP}
-                                  wrapperClassName="flex items-start gap-0.5 text-base-content/50"
+                                  wrapperClassName="flex items-center gap-1 text-base-content/50"
                                 >
                                   <FlaskConical
                                     size={10}
-                                    className="shrink-0 mt-[3px]"
+                                    className="shrink-0"
                                   />
-                                  <span className="leading-tight">Demo</span>
                                 </Tooltip>
                               )}
                             </CardMetaRow>
                           </div>
                         </div>
-                      </button>
+                      </div>
                     </Tooltip>
                   );
                 })}
