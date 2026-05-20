@@ -916,85 +916,111 @@ const TeamInvitesModal = ({
               </div>
             )}
 
-            {/* Invited role card — shown when invitation targets a specific role */}
-            {(invitation.role || invitation.roleId || invitation.role_id) && (
+            {/* Invitation message — speech bubble (only when a message exists) */}
+            {invitation.message && (
               <div className="mb-3">
-                <p className="text-xs text-base-content/60 mb-2 flex items-center">
-                  <MailOpen size={12} className="text-info mr-1" />
-                  Invited for this role:
+                <p className="text-xs text-base-content/60 mb-1 flex items-center">
+                  <SendHorizontal size={12} className="text-info mr-1" />
+                  {`Invitation message sent to ${invitation.invitee?.first_name || invitation.invitee?.firstName || invitation.invitee?.username || "recipient"}:`}
                 </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <VacantRoleCard
-                    role={roleForCard}
-                    team={{ id: teamId, name: teamName }}
-                    matchScore={
-                      inviteeRoleMatch?.matchScore ??
-                      selfRoleMatch?.matchScore ??
-                      localInviteeRoleMatch?.matchScore ??
-                      invitation.role?.matchScore ??
-                      invitation.role?.match_score ??
-                      null
-                    }
-                    matchDetails={
-                      inviteeRoleMatch?.matchDetails ??
-                      selfRoleMatch?.matchDetails ??
-                      localInviteeRoleMatch?.matchDetails ??
-                      invitation.role?.matchDetails ??
-                      invitation.role?.match_details ??
-                      null
-                    }
-                    canManage={false}
-                    canManageStatus={false}
-                    isTeamMember={true}
-                    viewAsUserId={invitation.invitee?.id ?? invitation.invitee_id}
-                    viewAsUser={invitation.invitee}
-                    hideActions={true}
-                  />
+                <div className="w-fit max-w-full bg-base-200 rounded-lg rounded-bl-none p-3">
+                  <p className="text-sm text-base-content/90 leading-relaxed">
+                    {(() => {
+                      const roleName = invitation.current_filled_role_name ?? invitation.currentFilledRoleName;
+                      if (isInternalInvitation && roleName) {
+                        const suffix = ` ${roleName}.`;
+                        return invitation.message.endsWith(suffix)
+                          ? invitation.message.slice(0, -suffix.length)
+                          : invitation.message;
+                      }
+                      return invitation.message;
+                    })()}
+                  </p>
+                  {(invitation.role || invitation.roleId || invitation.role_id) && (
+                    <div className="mt-3 max-w-[300px]">
+                      <VacantRoleCard
+                        role={roleForCard}
+                        team={{ id: teamId, name: teamName }}
+                        matchScore={
+                          inviteeRoleMatch?.matchScore ??
+                          selfRoleMatch?.matchScore ??
+                          localInviteeRoleMatch?.matchScore ??
+                          invitation.role?.matchScore ??
+                          invitation.role?.match_score ??
+                          null
+                        }
+                        matchDetails={
+                          inviteeRoleMatch?.matchDetails ??
+                          selfRoleMatch?.matchDetails ??
+                          localInviteeRoleMatch?.matchDetails ??
+                          invitation.role?.matchDetails ??
+                          invitation.role?.match_details ??
+                          null
+                        }
+                        canManage={false}
+                        canManageStatus={false}
+                        isTeamMember={true}
+                        viewAsUserId={invitation.invitee?.id ?? invitation.invitee_id}
+                        viewAsUser={invitation.invitee}
+                        hideActions={true}
+                      />
+                    </div>
+                  )}
+                  {isInternalInvitation && (invitation.current_filled_role_id ?? invitation.currentFilledRoleId) && (
+                    <div className="mt-3 max-w-[300px]">
+                      <VacantRoleCard
+                        role={{
+                          id: invitation.current_filled_role_id ?? invitation.currentFilledRoleId,
+                          role_name: invitation.current_filled_role_name ?? invitation.currentFilledRoleName,
+                          roleName: invitation.current_filled_role_name ?? invitation.currentFilledRoleName,
+                          status: "filled",
+                          filled_by: invitation.invitee?.id ?? invitation.invitee_id,
+                          filled_by_user: invitation.invitee ?? null,
+                          is_synthetic: invitation.role_is_synthetic ?? false,
+                          isSynthetic: invitation.role_is_synthetic ?? false,
+                        }}
+                        team={{ id: teamId, name: teamName }}
+                        matchScore={null}
+                        canManage={false}
+                        canManageStatus={false}
+                        isTeamMember={true}
+                        hideActions={true}
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
             )}
 
-            {/* Invitation Message (if any) */}
-            {invitation.message && (
-              <div className="mb-3">
-                <p className="text-xs text-base-content/60 mb-0.5 flex items-center">
-                  <SendHorizontal size={12} className="text-info mr-1" />
-                  Invitation message:
-                </p>
-                <p className="text-sm text-base-content/90 leading-relaxed">
-                  {(() => {
-                    const roleName = invitation.current_filled_role_name ?? invitation.currentFilledRoleName;
-                    if (isInternalInvitation && roleName) {
-                      const suffix = ` ${roleName}.`;
-                      return invitation.message.endsWith(suffix)
-                        ? invitation.message.slice(0, -suffix.length)
-                        : invitation.message;
-                    }
-                    return invitation.message;
-                  })()}
-                </p>
-                {isInternalInvitation && (invitation.current_filled_role_id ?? invitation.currentFilledRoleId) && (
-                  <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <VacantRoleCard
-                      role={{
-                        id: invitation.current_filled_role_id ?? invitation.currentFilledRoleId,
-                        role_name: invitation.current_filled_role_name ?? invitation.currentFilledRoleName,
-                        roleName: invitation.current_filled_role_name ?? invitation.currentFilledRoleName,
-                        status: "filled",
-                        filled_by: invitation.invitee?.id ?? invitation.invitee_id,
-                        filled_by_user: invitation.invitee ?? null,
-                        is_synthetic: invitation.role_is_synthetic ?? false,
-                        isSynthetic: invitation.role_is_synthetic ?? false,
-                      }}
-                      team={{ id: teamId, name: teamName }}
-                      matchScore={null}
-                      canManage={false}
-                      canManageStatus={false}
-                      isTeamMember={true}
-                      hideActions={true}
-                    />
-                  </div>
-                )}
+            {/* Role card — shown bare (no bubble) when there's a role but no message */}
+            {!invitation.message && (invitation.role || invitation.roleId || invitation.role_id) && (
+              <div className="mb-3 max-w-[300px]">
+                <VacantRoleCard
+                  role={roleForCard}
+                  team={{ id: teamId, name: teamName }}
+                  matchScore={
+                    inviteeRoleMatch?.matchScore ??
+                    selfRoleMatch?.matchScore ??
+                    localInviteeRoleMatch?.matchScore ??
+                    invitation.role?.matchScore ??
+                    invitation.role?.match_score ??
+                    null
+                  }
+                  matchDetails={
+                    inviteeRoleMatch?.matchDetails ??
+                    selfRoleMatch?.matchDetails ??
+                    localInviteeRoleMatch?.matchDetails ??
+                    invitation.role?.matchDetails ??
+                    invitation.role?.match_details ??
+                    null
+                  }
+                  canManage={false}
+                  canManageStatus={false}
+                  isTeamMember={true}
+                  viewAsUserId={invitation.invitee?.id ?? invitation.invitee_id}
+                  viewAsUser={invitation.invitee}
+                  hideActions={true}
+                />
               </div>
             )}
 

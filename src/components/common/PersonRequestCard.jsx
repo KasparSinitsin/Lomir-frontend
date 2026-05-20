@@ -27,6 +27,7 @@ import DemoAvatarOverlay from "../users/DemoAvatarOverlay";
  * @param {Function} props.onUserClick - Callback when user avatar/name is clicked
  * @param {React.ReactNode} props.actions - Action buttons to render at the bottom
  * @param {React.ReactNode} props.extraContent - Additional content (e.g., response textarea, tags)
+ * @param {React.ReactNode} props.messageBubbleExtra - Extra content rendered inside the speech bubble, after the message text (e.g., a role card)
  * @param {React.ReactNode} props.footerLeft - Content for the left side of the footer (e.g., inviter info)
  * @param {boolean} props.clickable - Whether user elements are clickable (default: true)
  * @param {boolean} props.showLocation - Whether to show location info (default: true)
@@ -40,6 +41,7 @@ const PersonRequestCard = ({
   onUserClick,
   actions,
   extraContent,
+  messageBubbleExtra,
   footerLeft,
   clickable = true,
   showLocation = true,
@@ -204,14 +206,25 @@ const PersonRequestCard = ({
         </div>
       )}
 
-      {/* Message if provided */}
-      {message && (
+      {/* Message bubble */}
+      {(message || messageBubbleExtra) && (
         <div className="mb-5">
-          <p className="text-xs text-base-content/60 mb-1 flex items-center">
-            {messageIcon}
-            {messageLabel}
-          </p>
-          <p className="text-sm text-base-content/90">{message}</p>
+          {message && (
+            <p className="text-xs text-base-content/60 mb-1 flex items-center">
+              {messageIcon}
+              {messageLabel}
+            </p>
+          )}
+          <div className="w-fit max-w-full bg-base-200 rounded-lg rounded-bl-none p-3">
+            {message && (
+              <p className="text-sm text-base-content/90">{message}</p>
+            )}
+            {messageBubbleExtra && (
+              <div className={`max-w-[300px] ${message ? "mt-3" : ""}`}>
+                {messageBubbleExtra}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
