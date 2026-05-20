@@ -368,6 +368,8 @@ const VacantRoleDetailsModal = ({
     useState(null);
   const [viewerRoleStatusLoading, setViewerRoleStatusLoading] =
     useState(false);
+  const [filledRoleUserIds, setFilledRoleUserIds] = useState(new Set());
+  const [viewerTeamRoleLoading, setViewerTeamRoleLoading] = useState(false);
   const [isViewerApplicationDetailsOpen, setIsViewerApplicationDetailsOpen] =
     useState(false);
   const [isViewerInvitationDetailsOpen, setIsViewerInvitationDetailsOpen] =
@@ -468,6 +470,8 @@ const VacantRoleDetailsModal = ({
       setViewerRoleApplicationRecord(null);
       setViewerRoleInvitationRecord(null);
       setViewerRoleStatusLoading(false);
+      setFilledRoleUserIds(new Set());
+      setViewerTeamRoleLoading(false);
       setIsViewerApplicationDetailsOpen(false);
       setIsViewerInvitationDetailsOpen(false);
     }
@@ -694,6 +698,42 @@ const VacantRoleDetailsModal = ({
     team,
     teamId,
   ]);
+
+  useEffect(() => {
+    if (!isOpen || !isAuthenticated || !viewerIsTeamMember || !teamId || !currentUser?.id) {
+      setFilledRoleUserIds(new Set());
+      setViewerTeamRoleLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setViewerTeamRoleLoading(true);
+
+    const checkViewerHoldsRole = async () => {
+      try {
+        const response = await vacantRoleService.getVacantRoles(teamId, "filled");
+        if (cancelled) return;
+        const filledRoles = Array.isArray(response?.data) ? response.data : [];
+        const ids = new Set(
+          filledRoles
+            .map((r) => r.filledBy ?? r.filled_by ?? r.filledByUser?.id ?? r.filled_by_user?.id ?? null)
+            .filter((id) => id != null)
+            .map(String),
+        );
+        setFilledRoleUserIds(ids);
+      } catch {
+        setFilledRoleUserIds(new Set());
+      } finally {
+        if (!cancelled) setViewerTeamRoleLoading(false);
+      }
+    };
+
+    checkViewerHoldsRole();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, isAuthenticated, viewerIsTeamMember, teamId, currentUser?.id]);
 
   useEffect(() => {
     if (!isOpen || !isAuthenticated || !comparisonUserId) {
@@ -1795,9 +1835,21 @@ const VacantRoleDetailsModal = ({
   const effectiveViewerRoleApplication =
     viewerRoleApplicationRecord ?? currentUserRoleApplication;
   const effectiveViewerRoleInvitation = viewerRoleInvitationRecord;
+  const viewerHoldsTeamRole =
+    currentUser?.id != null && filledRoleUserIds.has(String(currentUser.id));
+  const availableRoleTeamMembers = roleTeamMembers.filter((memberRow) => {
+    const memberId = String(
+      memberRow.memberId ??
+        memberRow.member?.id ??
+        memberRow.member?.userId ??
+        memberRow.member?.user_id ??
+        "",
+    );
+    return !filledRoleUserIds.has(memberId);
+  });
   const visibleRoleTeamMembers = isTeamMembersExpanded
-    ? roleTeamMembers
-    : roleTeamMembers.slice(0, COLLAPSED_COUNT);
+    ? availableRoleTeamMembers
+    : availableRoleTeamMembers.slice(0, COLLAPSED_COUNT);
   const modalTitle = (
     <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex min-w-0 items-center gap-2">
@@ -2861,15 +2913,15 @@ const VacantRoleDetailsModal = ({
             <div className="flex justify-center py-3">
               <span className="loading loading-spinner loading-sm text-primary"></span>
             </div>
-          ) : roleTeamMembers.length > 0 ? (
+          ) : availableRoleTeamMembers.length > 0 ? (
             <div>
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center">
                   <Users size={18} className="mr-2 text-primary flex-shrink-0" />
-                  <h3 className="font-medium">Existing team members</h3>
+                  <h3 className="font-medium">Available team members</h3>
                 </div>
                 <span className="text-sm text-base-content/50">
-                  ({roleTeamMembers.length})
+                  ({availableRoleTeamMembers.length})
                 </span>
               </div>
 
@@ -3005,7 +3057,7 @@ const VacantRoleDetailsModal = ({
                 })}
               </div>
 
-              {roleTeamMembers.length > COLLAPSED_COUNT && (
+              {availableRoleTeamMembers.length > COLLAPSED_COUNT && (
                 <button
                   type="button"
                   className="flex items-center gap-1 mt-3 text-sm text-base-content/50 hover:text-base-content/80 transition-colors"
@@ -3100,7 +3152,9 @@ const VacantRoleDetailsModal = ({
 
                 {isAuthenticated &&
                   !viewerRoleStatusLoading &&
+                  !viewerTeamRoleLoading &&
                   viewerIsTeamMember &&
+                  !viewerHoldsTeamRole &&
                   isRoleOpen &&
                   !applicationsLoading && (
                   <div className="mt-6 border-t border-base-200 pt-4">
