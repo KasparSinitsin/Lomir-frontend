@@ -51,6 +51,7 @@ const Modal = ({
   closeOnBackdrop = true,
   closeOnEscape = true,
   showCloseButton = true,
+  headerActions = null,
   zIndexClass = "z-[50]",
   boxZIndexClass = "z-[51]",
   zIndexStyle = null,
@@ -138,7 +139,7 @@ const Modal = ({
       >
         {/* Header */}
         {(title || showCloseButton) && (
-          <div className="sticky top-0 z-20 flex items-start justify-between px-6 pt-6 pb-4 border-b border-base-200 bg-base-100">
+          <div className="sticky top-0 z-20 flex items-center justify-between px-6 pt-6 pb-4 border-b border-base-200 bg-base-100">
             <div className="flex-1 min-w-0">
               {typeof title === "string" ? (
                 <h2 className="text-lg font-semibold text-primary truncate">
@@ -148,6 +149,7 @@ const Modal = ({
                 title
               )}
             </div>
+            {headerActions}
             {showCloseButton && (
               <button
                 type="button"

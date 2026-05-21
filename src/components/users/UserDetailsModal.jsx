@@ -13,7 +13,7 @@ import { userService } from "../../services/userService";
 import Button from "../common/Button";
 import Alert from "../common/Alert";
 import { useAuth } from "../../contexts/AuthContext";
-import { Edit, MessageCircle, UserPlus, Award, Check, X, Ruler } from "lucide-react";
+import { Edit, MessageCircle, UserPlus, Award, Check, X, Ruler, User } from "lucide-react";
 import TeamInviteModal from "../teams/TeamInviteModal";
 import BadgeAwardModal from "../badges/BadgeAwardModal";
 import SupercategoryAwardsModal from "../badges/SupercategoryAwardsModal";
@@ -565,7 +565,8 @@ const UserDetailsModal = ({
   // Title node (TeamDetailsModal style)
   const modalTitle = (
     <div className="flex justify-between items-center w-full">
-      <h2 className="text-xl font-medium text-primary">
+      <h2 className="text-xl font-medium text-primary flex items-center gap-2">
+        {isEditing ? <Edit size={20} className="flex-shrink-0" /> : <User size={20} className="flex-shrink-0" />}
         {isEditing ? "Edit Profile" : "User Details"}
       </h2>
 

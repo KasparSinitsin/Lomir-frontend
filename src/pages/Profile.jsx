@@ -1026,7 +1026,10 @@ const Profile = () => {
             }}
             className="p-6 space-y-12"
           >
-            <h2 className="text-2xl font-bold">Edit Profile</h2>
+            <h2 className="text-2xl font-bold flex items-center gap-2">
+              <Edit size={22} className="flex-shrink-0" />
+              Edit Profile
+            </h2>
 
             {/* Profile Picture */}
             <section className="space-y-4">
