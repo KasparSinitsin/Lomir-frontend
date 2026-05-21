@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useLayoutEffect, useRef, useState } from "react";
 import {
   Calendar,
   MessageSquare,
@@ -219,6 +219,12 @@ const TeamInvitationDetailsModal = ({
   const [responseExpanded, setResponseExpanded] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState(null);
   const [isTeamDetailsOpen, setIsTeamDetailsOpen] = useState(false);
+  const teamNameContainerRef = useRef(null);
+  const teamNameProbeRef = useRef(null);
+  const teamDateRef = useRef(null);
+  const [teamDateIsNarrow, setTeamDateIsNarrow] = useState(false);
+  const teamDateIsNarrowRef = useRef(false);
+  teamDateIsNarrowRef.current = teamDateIsNarrow;
 
   // ============ Helpers ============
 
@@ -236,6 +242,31 @@ const TeamInvitationDetailsModal = ({
     isSynthetic:
       baseTeam?.isSynthetic ?? baseTeam?.is_synthetic ?? syntheticTeamFlag,
   };
+  const teamName = team.name || "Unknown Team";
+
+  useLayoutEffect(() => {
+    const container = teamNameContainerRef.current;
+    const probe = teamNameProbeRef.current;
+    if (!container || !probe) return;
+
+    const update = () => {
+      const dateEl = teamDateRef.current;
+      const reservedWidth =
+        teamDateIsNarrowRef.current && dateEl ? dateEl.offsetWidth + 16 : 0;
+
+      probe.textContent = teamName;
+      setTeamDateIsNarrow(
+        probe.scrollWidth > container.clientWidth - reservedWidth,
+      );
+    };
+
+    const resizeObserver = new ResizeObserver(update);
+    resizeObserver.observe(container);
+    if (teamDateRef.current) resizeObserver.observe(teamDateRef.current);
+    update();
+
+    return () => resizeObserver.disconnect();
+  }, [teamName]);
   const roleId =
     invitation?.role?.id ?? invitation?.roleId ?? invitation?.role_id ?? null;
   const teamId = team?.id ?? null;
@@ -573,22 +604,22 @@ const TeamInvitationDetailsModal = ({
             <span className="inline-flex min-w-0 items-center gap-1.5">
               <Users size={20} className="shrink-0 text-primary" />
               <span className="min-w-0 truncate">
-                {team.name || "Unknown Team"}
+                {teamName}
               </span>
             </span>
           </span>
         ) : (
-          team.name || "Unknown Team"
+          teamName
         )}
       </h2>
-      <p className="text-sm text-base-content/70 flex items-center">
+      <p className="text-sm text-base-content/70 flex items-start">
         <MailOpen
           size={14}
-          className={`mr-1.5 ${
+          className={`mr-1.5 mt-[0.15em] shrink-0 ${
             inviteeAlreadyTeamMember ? "text-orange-500" : "text-pink-500"
           }`}
         />
-        {headerSubtitle}
+        <span>{headerSubtitle}</span>
       </p>
     </div>
   );
@@ -728,14 +759,14 @@ const TeamInvitationDetailsModal = ({
         )}
 
         {/* Top row: Team info (left, clickable) + Date (right) */}
-        <div className="flex items-start justify-between gap-4 mb-5">
+        <div className="relative flex items-start justify-between gap-4 mb-5">
           {/* Team info (hover + onClick like in TeamInvitesModal) */}
           <div
-            className="flex items-start space-x-3 cursor-pointer hover:opacity-80 transition-opacity"
+            className="flex min-w-0 flex-1 items-start space-x-4 cursor-pointer hover:opacity-80 transition-opacity"
             onClick={handleTeamClick}
           >
             <Tooltip content="Click to view team details" wrapperClassName="avatar">
-              <div className="w-14 h-14 rounded-full relative overflow-hidden">
+              <div className="w-12 h-12 rounded-full relative overflow-hidden">
                 {getTeamAvatar() ? (
                   <img
                     src={getTeamAvatar()}
@@ -764,43 +795,64 @@ const TeamInvitationDetailsModal = ({
 
                 {isSyntheticTeam(team) && (
                   <DemoAvatarOverlay
-                    textClassName="text-[7px]"
-                    textTranslateClassName="-translate-y-[3px]"
+                    textClassName="text-[8px]"
+                    textTranslateClassName="-translate-y-[2px]"
                   />
                 )}
               </div>
             </Tooltip>
 
             <div className="flex-1 min-w-0">
-              <h4 className="font-medium text-base-content hover:text-primary transition-colors leading-[120%] mb-[0.2em]">
+              <h4
+                ref={teamNameContainerRef}
+                className="font-medium text-base-content leading-[120%] mb-[0.2em] truncate relative"
+              >
                 <Tooltip
                   content="Click to view team details"
-                  wrapperClassName="inline-flex max-w-full min-w-0 align-top"
+                  wrapperClassName="cursor-pointer hover:text-primary transition-colors"
                 >
-                  <span className="truncate">{team.name || "Unknown Team"}</span>
+                  <span>{teamName}</span>
                 </Tooltip>
+                <span
+                  ref={teamNameProbeRef}
+                  className="invisible absolute whitespace-nowrap pointer-events-none left-0 top-0 font-medium"
+                  aria-hidden="true"
+                >
+                  {teamName}
+                </span>
               </h4>
-              <div className="mt-0.5 flex max-h-[2.75em] flex-wrap items-center gap-x-1.5 gap-y-px overflow-hidden text-sm text-base-content/70">
+              <div
+                className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0 overflow-hidden text-xs"
+                style={{ maxHeight: "2.1em" }}
+              >
+                {teamDateIsNarrow && (
+                  <div className="flex shrink-0 items-center gap-1 text-base-content/60">
+                    <Calendar size={10} className="shrink-0" />
+                    <span className="leading-[1.05] whitespace-nowrap">
+                      {getInvitationDate()}
+                    </span>
+                  </div>
+                )}
                 <Tooltip
                   content="Team members"
-                  wrapperClassName="flex items-center gap-1 text-base-content/70 text-sm"
+                  wrapperClassName="flex shrink-0 items-center gap-1 text-base-content/70"
                 >
-                  <Users size={14} className="text-primary" />
-                  <span>
+                  <Users size={10} className="shrink-0 text-primary" />
+                  <span className="leading-[1.05] whitespace-nowrap">
                     {getMemberCount()}/{getMaxMembers()}
                   </span>
                 </Tooltip>
                 {teamLocationDetails.locationText && (
                   <Tooltip
                     content={teamLocationDetails.locationText}
-                    wrapperClassName="flex min-w-0 max-w-full items-center gap-1 overflow-hidden text-base-content/60 text-sm"
+                    wrapperClassName="flex min-w-0 max-w-[calc(100%-1.5rem)] flex-[0_1_auto] items-center gap-1 overflow-hidden"
                   >
                     {teamLocationDetails.isRemote ? (
-                      <Globe size={14} className="flex-shrink-0" />
+                      <Globe size={10} className="shrink-0 text-base-content/60" />
                     ) : (
-                      <MapPin size={14} className="flex-shrink-0" />
+                      <MapPin size={10} className="shrink-0 text-base-content/60" />
                     )}
-                    <span className="min-w-0 truncate">
+                    <span className="min-w-0 truncate text-base-content/60 leading-[1.05]">
                       {teamLocationDetails.locationText}
                     </span>
                   </Tooltip>
@@ -808,19 +860,18 @@ const TeamInvitationDetailsModal = ({
                 {inviteeAlreadyTeamMember && (
                   <Tooltip
                     content="You are already a member of this team"
-                    wrapperClassName="flex items-center gap-1 text-base-content/70 text-sm"
+                    wrapperClassName="flex min-w-0 overflow-hidden items-center gap-0.5 text-base-content/70"
                   >
-                    <User size={14} className="flex-shrink-0 text-success" />
-                    <span>You are a member</span>
+                    <User size={10} className="flex-shrink-0 text-success" />
+                    <span className="leading-[1.05] whitespace-nowrap">Team Member</span>
                   </Tooltip>
                 )}
                 {isSyntheticTeam(team) && (
                   <Tooltip
                     content={DEMO_TEAM_TOOLTIP}
-                    wrapperClassName="flex items-center gap-1 text-base-content/50 text-sm"
+                    wrapperClassName="flex shrink-0 items-center gap-0.5 text-base-content/50"
                   >
-                    <FlaskConical size={14} className="flex-shrink-0" />
-                    <span>Demo Team</span>
+                    <FlaskConical size={10} className="flex-shrink-0" />
                   </Tooltip>
                 )}
               </div>
@@ -828,7 +879,10 @@ const TeamInvitationDetailsModal = ({
           </div>
 
           {/* Date - top right */}
-          <div className="flex items-center text-xs text-base-content/60 whitespace-nowrap">
+          <div
+            ref={teamDateRef}
+            className={`flex items-center text-xs text-base-content/60 whitespace-nowrap flex-shrink-0${teamDateIsNarrow ? " absolute opacity-0 pointer-events-none" : ""}`}
+          >
             <Calendar size={12} className="mr-1" />
             <span>{getInvitationDate()}</span>
           </div>
