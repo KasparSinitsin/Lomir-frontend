@@ -1,7 +1,8 @@
 import React from "react";
-import { User } from "lucide-react";
+import { User, X } from "lucide-react";
 import Modal from "./Modal";
 import ScreenAlert from "./ScreenAlert";
+import Button from "./Button";
 
 /**
  * RequestListModal Component
@@ -68,7 +69,7 @@ const RequestListModal = ({
   // Custom header with count
   const customHeader = (
     <div>
-      <h2 className="text-xl font-medium text-primary leading-[120%] mb-[0.2em]">
+      <h2 className="text-xl font-medium text-primary leading-[100%] mb-[0.2em]">
         {subtitle ? `${title} ${subtitle}` : title}
       </h2>
       <p className="text-sm text-base-content/70 mt-1">
@@ -80,11 +81,11 @@ const RequestListModal = ({
   // Footer with summary
   const footer =
     itemCount > 0 ? (
-      <div className="flex justify-between items-center text-sm text-base-content/70">
-        <span>{footerText}</span>
-        <span>
-          Total: {itemCount} {pluralItemName}
-        </span>
+      <div className="flex flex-wrap justify-between items-center gap-y-1 text-sm text-base-content/70">
+        <span className="leading-[1.2]">{footerText}</span>
+        <Button variant="ghost" size="sm" onClick={onClose} icon={<X size={16} />} className="ml-auto w-full sm:w-auto">
+          Close
+        </Button>
       </div>
     ) : null;
 

@@ -4,6 +4,7 @@ import {
   MessageSquare,
   Users,
   Check,
+  CheckCheck,
   User,
   UserCheck,
   UserSearch,
@@ -580,7 +581,7 @@ const TeamInvitationDetailsModal = ({
   // Custom header
   const customHeader = (
     <div>
-      <h2 className="text-xl font-medium text-primary leading-[120%] mb-[0.2em]">
+      <h2 className="text-xl font-medium text-primary leading-[100%] mb-[0.2em]">
         {inviteeAlreadyTeamMember && hasRoleInvitation && invitationRoleName ? (
           <span className="flex min-w-0 items-center gap-1.5">
             <UserSearch size={20} className="shrink-0 text-primary" />
@@ -592,21 +593,16 @@ const TeamInvitationDetailsModal = ({
               <Users size={20} className="shrink-0 text-primary" />
               <span>Team</span>
             </span>
-            <span>and</span>
+            <span>{"&"}</span>
             <span className="inline-flex min-w-0 items-center gap-1.5">
               <UserSearch size={20} className="shrink-0 text-primary" />
               <span>Role Invitation</span>
             </span>
           </span>
         ) : !hasRoleInvitation ? (
-          <span className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5">
-            <span>Invitation to join</span>
-            <span className="inline-flex min-w-0 items-center gap-1.5">
-              <Users size={20} className="shrink-0 text-primary" />
-              <span className="min-w-0 truncate">
-                {teamName}
-              </span>
-            </span>
+          <span className="inline-flex min-w-0 items-center gap-1.5">
+            <Users size={20} className="shrink-0 text-primary" />
+            <span>Team Invitation</span>
           </span>
         ) : (
           teamName
@@ -637,101 +633,110 @@ const TeamInvitationDetailsModal = ({
 
       {/* Buttons — right-aligned and allowed to wrap on narrow screens */}
       <div className="ml-auto flex flex-wrap justify-end gap-2">
-          {isRoleUnavailable && (
-            <Tooltip
-              content={
-                inviteeAlreadyTeamMember
-                  ? (isRoleFilled ? "This role is already filled" : "This role is closed")
-                  : (isRoleFilled
-                      ? "This role is already filled — you can still join the team"
-                      : "This role is closed — you can still join the team")
-              }
-            >
-              <Button
-                variant="ghost"
-                size="sm"
-                disabled={true}
-                className="border border-base-content/30 text-base-content/40"
-                icon={<UserCheck size={16} />}
-              >
-                {inviteeAlreadyTeamMember ? "Accept Role" : "Accept & Fill Role"}
-              </Button>
-            </Tooltip>
-          )}
-          <Button
-            variant="errorOutline"
-            size="sm"
-            onClick={handleDecline}
-            disabled={isControlsDisabled}
-            icon={<X size={16} />}
-          >
-            {isDeclineLoading ? "Declining..." : "Decline"}
-          </Button>
           {hasRoleInvitation && inviteeAlreadyTeamMember ? (
-            // Internal role invite: user is already a member, just accept/fill the role
-            !isRoleUnavailable && (
-              canSwitchRole ? (
-                <Tooltip
-                  content={`Leave ${currentFilledRoleName} and fill this role instead.`}
-                >
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    onClick={handleSwitchRole}
-                    disabled={isControlsDisabled}
-                    icon={<ArrowRightLeft size={16} />}
-                  >
-                    {isSwitchRoleLoading ? "Switching..." : "Leave old role to fill new role"}
-                  </Button>
-                </Tooltip>
-              ) : (
+            // Internal role invite: user is already a member, just fill the role
+            isRoleUnavailable ? (
+              <Tooltip content={isRoleFilled ? "This role is already filled" : "This role is closed"}>
                 <Button
-                  variant="primary"
+                  variant="ghost"
+                  size="sm"
+                  disabled={true}
+                  className="border border-base-content/30 text-base-content/40"
+                  icon={<UserCheck size={16} />}
+                >
+                  Fill Role
+                </Button>
+              </Tooltip>
+            ) : canSwitchRole ? (
+              <Tooltip content={`Leave ${currentFilledRoleName} and fill this role instead.`}>
+                <Button
+                  variant="successOutline"
+                  size="sm"
+                  onClick={handleSwitchRole}
+                  disabled={isControlsDisabled}
+                  icon={<ArrowRightLeft size={16} />}
+                >
+                  {isSwitchRoleLoading ? "Switching..." : "Switch Role"}
+                </Button>
+              </Tooltip>
+            ) : (
+              <Tooltip content="Accept this role invitation">
+                <Button
+                  variant="successOutline"
                   size="sm"
                   onClick={handleAcceptWithRole}
                   disabled={isControlsDisabled}
                   icon={<Check size={16} />}
                 >
-                  {isAcceptRoleLoading ? "Accepting..." : "Accept Role"}
+                  {isAcceptRoleLoading ? "Accepting..." : "Fill Role"}
                 </Button>
-              )
+              </Tooltip>
             )
           ) : hasRoleInvitation ? (
             // External invite with a role: offer team-only or fill-role options
             <>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleAcceptTeamOnly}
-                disabled={isControlsDisabled}
-                icon={<UserPlus size={16} />}
-              >
-                {isAcceptTeamLoading ? "Joining..." : "Join Team Only"}
-              </Button>
-              {!isRoleUnavailable && (
+              {isRoleUnavailable ? (
+                <Tooltip content={isRoleFilled ? "This role is already filled — you can still join the team" : "This role is closed — you can still join the team"}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={true}
+                    className="border border-base-content/30 text-base-content/40"
+                    icon={<UserCheck size={16} />}
+                  >
+                    Fill Role + Join Team
+                  </Button>
+                </Tooltip>
+              ) : (
+                <Tooltip content="Join the team and fill the role">
+                  <Button
+                    variant="successOutline"
+                    size="sm"
+                    onClick={handleAcceptWithRole}
+                    disabled={isControlsDisabled}
+                    icon={<CheckCheck size={16} />}
+                  >
+                    {isAcceptRoleLoading ? "Joining..." : "Fill Role + Join Team"}
+                  </Button>
+                </Tooltip>
+              )}
+              <Tooltip content="Join the team without filling the role">
                 <Button
-                  variant="primary"
+                  variant="successOutline"
                   size="sm"
-                  onClick={handleAcceptWithRole}
+                  onClick={handleAcceptTeamOnly}
                   disabled={isControlsDisabled}
                   icon={<Check size={16} />}
                 >
-                  {isAcceptRoleLoading ? "Joining..." : "Accept & Fill Role"}
+                  {isAcceptTeamLoading ? "Joining..." : "Join Team"}
                 </Button>
-              )}
+              </Tooltip>
             </>
           ) : (
             // No role: simple accept
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={handleAcceptTeamOnly}
-              disabled={isControlsDisabled}
-              icon={<Check size={16} />}
-            >
-              {isAcceptTeamLoading ? "Joining..." : "Accept"}
-            </Button>
+            <Tooltip content="Accept this team invitation">
+              <Button
+                variant="successOutline"
+                size="sm"
+                onClick={handleAcceptTeamOnly}
+                disabled={isControlsDisabled}
+                icon={<Check size={16} />}
+              >
+                {isAcceptTeamLoading ? "Joining..." : "Join Team"}
+              </Button>
+            </Tooltip>
           )}
+          <Tooltip content="Decline this invitation">
+            <Button
+              variant="errorOutline"
+              size="sm"
+              onClick={handleDecline}
+              disabled={isControlsDisabled}
+              icon={<X size={16} />}
+            >
+              {isDeclineLoading ? "Declining..." : "Decline"}
+            </Button>
+          </Tooltip>
         </div>
     </div>
   );

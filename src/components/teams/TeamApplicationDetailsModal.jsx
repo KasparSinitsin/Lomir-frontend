@@ -339,33 +339,28 @@ const TeamApplicationDetailsModal = ({
   // Custom header
   const customHeader = (
     <div>
-      <h2 className="text-xl font-medium text-primary leading-[120%] mb-[0.2em]">
+      <h2 className="text-xl font-medium text-primary leading-[100%] mb-[0.2em]">
         {isInternalRoleApplication && roleName ? (
           <span className="flex min-w-0 items-center gap-1.5">
             <UserSearch size={20} className="shrink-0 text-primary" />
             <span className="min-w-0 truncate">{roleName}</span>
           </span>
         ) : hasRoleApplication ? (
-          <span className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5">
+          <span className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0 leading-[100%] mb-2">
             <span className="inline-flex min-w-0 items-center gap-1.5">
               <Users size={20} className="shrink-0 text-primary" />
               <span>Team</span>
             </span>
-            <span>and</span>
+            <span>{"&"}</span>
             <span className="inline-flex min-w-0 items-center gap-1.5">
               <UserSearch size={20} className="shrink-0 text-primary" />
               <span>Role Application</span>
             </span>
           </span>
         ) : !hasRoleApplication ? (
-          <span className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5">
-            <span>Your Application to join</span>
-            <span className="inline-flex min-w-0 items-center gap-1.5">
-              <Users size={20} className="shrink-0 text-primary" />
-              <span className="min-w-0 truncate">
-                {teamName}
-              </span>
-            </span>
+          <span className="inline-flex min-w-0 items-center gap-1.5">
+            <Users size={20} className="shrink-0 text-primary" />
+            <span>Team Application</span>
           </span>
         ) : (
           teamName

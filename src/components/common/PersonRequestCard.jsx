@@ -284,7 +284,7 @@ const PersonRequestCard = ({
       {extraContent}
 
       {/* Footer with optional left content and actions */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between mt-8 -mx-4 -mb-4 px-4 pb-4 pt-3 border-t border-base-200 bg-base-100/80 rounded-b-lg">
         {/* Left side (e.g., inviter info) */}
         {footerLeft || <div />}
 
