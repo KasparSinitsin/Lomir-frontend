@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Check, CheckCheck, UserCheck, X as Decline, User, Mail, MessageSquare, AlertTriangle, ChevronDown, ChevronUp, Pencil } from "lucide-react";
+import { Check, CheckCheck, UserCheck, X as Decline, User, Users, Mail, MessageSquare, AlertTriangle, ChevronDown, ChevronUp, Pencil } from "lucide-react";
 import RequestListModal from "../common/RequestListModal";
 import PersonRequestCard from "../common/PersonRequestCard";
 import Button from "../common/Button";
@@ -12,6 +12,7 @@ import { matchingService } from "../../services/matchingService";
 import { vacantRoleService } from "../../services/vacantRoleService";
 import { messageService } from "../../services/messageService";
 import { useAuth } from "../../contexts/AuthContext";
+import { useTeamModal } from "../../contexts/TeamModalContext";
 import { buildRoleApplicationFilledMessage } from "../../utils/roleEventMessages";
 
 const ROLE_CANDIDATE_FETCH_MIN_LIMIT = 20;
@@ -62,6 +63,7 @@ const TeamApplicationsModal = ({
 }) => {
   // ============ Auth ============
   const { user: currentUser } = useAuth();
+  const { openTeamModal } = useTeamModal();
 
   // ============ State ============
   const [loading, setLoading] = useState(false);
@@ -539,8 +541,18 @@ const TeamApplicationsModal = ({
     <RequestListModal
       isOpen={isOpen}
       onClose={handleClose}
-      title="Applications received for"
-      subtitle={teamName}
+      title={
+        <span className="leading-[100%]">
+          <Users size={20} className="inline-block align-middle mr-1.5 shrink-0 text-primary" />
+          <Tooltip content="View team" wrapperClassName="inline">
+            <span
+              className="font-semibold text-success cursor-pointer hover:text-success/70 transition-colors"
+              onClick={() => teamId && openTeamModal(teamId, teamName)}
+            >{teamName}</span>
+          </Tooltip>
+          <span>'s Applications</span>
+        </span>
+      }
       itemCount={applications.length}
       itemName="application"
       footerText="Review each application carefully before making decisions."

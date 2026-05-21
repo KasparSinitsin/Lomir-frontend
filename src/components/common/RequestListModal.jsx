@@ -1,5 +1,5 @@
 import React from "react";
-import { User, X } from "lucide-react";
+import { User, X, Mail } from "lucide-react";
 import Modal from "./Modal";
 import ScreenAlert from "./ScreenAlert";
 import Button from "./Button";
@@ -55,6 +55,9 @@ const RequestListModal = ({
   emptyTitle,
   emptyMessage,
 
+  // Header byline icon (defaults to pink Mail)
+  bylineIcon,
+
   // Content
   children,
 
@@ -70,9 +73,10 @@ const RequestListModal = ({
   const customHeader = (
     <div>
       <h2 className="text-xl font-medium text-primary leading-[100%] mb-[0.2em]">
-        {subtitle ? `${title} ${subtitle}` : title}
+        {typeof title === "string" && subtitle ? `${title} ${subtitle}` : title}
       </h2>
-      <p className="text-sm text-base-content/70 mt-1">
+      <p className="text-sm text-base-content/70 mt-1 flex items-center gap-1.5">
+        {bylineIcon ?? <Mail size={14} className="text-pink-500 shrink-0" />}
         {itemCount} pending {pluralItemName}
       </p>
     </div>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useLayoutEffect } from "react";
 import {
   User,
+  Users,
   MapPin,
   Calendar,
   SendHorizontal,
@@ -22,6 +23,7 @@ import { vacantRoleService } from "../../services/vacantRoleService";
 import teamService from "../../services/teamService";
 import { useAuth } from "../../contexts/AuthContext";
 import { useUserModal } from "../../contexts/UserModalContext";
+import { useTeamModal } from "../../contexts/TeamModalContext";
 import {
   DEMO_PROFILE_TOOLTIP,
   getUserInitials,
@@ -276,8 +278,8 @@ const TeamInvitesModal = ({
 
   // ============ Context ============
   const { user: currentUser } = useAuth();
-  // Get global user modal opener (for clicking on invitee avatar/name)
   const { openUserModal } = useUserModal();
+  const { openTeamModal } = useTeamModal();
 
   // ============ Scroll to highlighted invitation ============
   useEffect(() => {
@@ -752,10 +754,21 @@ const TeamInvitesModal = ({
     <RequestListModal
       isOpen={isOpen}
       onClose={onClose}
-      title="Invitations sent out to"
-      subtitle={teamName}
+      title={
+        <span className="leading-[100%]">
+          <Users size={20} className="inline-block align-middle mr-1.5 shrink-0 text-primary" />
+          <Tooltip content="View team" wrapperClassName="inline">
+            <span
+              className="font-semibold text-success cursor-pointer hover:text-success/70 transition-colors"
+              onClick={() => teamId && openTeamModal(teamId, teamName)}
+            >{teamName}</span>
+          </Tooltip>
+          <span>'s Invitations</span>
+        </span>
+      }
       itemCount={invitations.length}
       itemName="invitation"
+      bylineIcon={<SendHorizontal size={14} className="text-violet-500 shrink-0" />}
       footerText="You can cancel invitations that haven't been responded to."
       error={error}
       onErrorClose={() => setError(null)}
