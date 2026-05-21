@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Check, UserCheck, X as Decline, User, Mail, MessageSquare, AlertTriangle } from "lucide-react";
+import { Check, UserCheck, X as Decline, User, Mail, MessageSquare, AlertTriangle, ChevronDown, ChevronUp, Pencil } from "lucide-react";
 import RequestListModal from "../common/RequestListModal";
 import PersonRequestCard from "../common/PersonRequestCard";
 import Button from "../common/Button";
@@ -68,6 +68,7 @@ const TeamApplicationsModal = ({
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [responses, setResponses] = useState({});
+  const [responseExpanded, setResponseExpanded] = useState({});
   const [selectedUserId, setSelectedUserId] = useState(null);
   const [roleStatusOverrides, setRoleStatusOverrides] = useState({});
   const [statusUpdatingRoleId, setStatusUpdatingRoleId] = useState(null);
@@ -76,6 +77,7 @@ const TeamApplicationsModal = ({
   const [roleCandidateMatchMap, setRoleCandidateMatchMap] = useState({});
   const [selfRoleMatchMap, setSelfRoleMatchMap] = useState({});
   const [polledRoleStatusMap, setPolledRoleStatusMap] = useState({});
+  const [narrowMap, setNarrowMap] = useState({});
 
   // ============ Refs ============
   const highlightedRef = useRef(null);
@@ -531,6 +533,8 @@ const TeamApplicationsModal = ({
   }, [isOpen, teamId, applications]);
 
   // ============ Render ============
+  const anyNarrow = Object.values(narrowMap).some(Boolean);
+
   return (
     <RequestListModal
       isOpen={isOpen}
@@ -729,56 +733,70 @@ const TeamApplicationsModal = ({
             <PersonRequestCard
               user={application.applicant}
               date={getApplicationDate(application)}
+              onNarrowChange={(narrow) => setNarrowMap((prev) => {
+                if ((prev[String(application.id)] ?? false) === narrow) return prev;
+                return { ...prev, [String(application.id)]: narrow };
+              })}
+              forceNarrow={anyNarrow}
               message={application.message || "No message provided."}
-              messageLabel="Application message:"
+              messageLabel={`${application.applicant?.first_name || application.applicant?.firstName || application.applicant?.username || "Their"}'s application message:`}
               messageIcon={<Mail size={12} className="text-pink-500 mr-1" />}
               onUserClick={handleUserClick}
-              showLocation={false}
+              showLocation={true}
+              sublineExtra={
+                isInternalRoleApplication ? (
+                  <Tooltip
+                    content="Already a member of this team"
+                    wrapperClassName="flex min-w-0 overflow-hidden items-center gap-0.5 text-base-content/70"
+                  >
+                    <User size={10} className="flex-shrink-0 text-success" />
+                    <span className="leading-[1.05] whitespace-nowrap">Team Member</span>
+                  </Tooltip>
+                ) : null
+              }
+              messageBubbleExtra={
+                role ? (
+                  <VacantRoleCard
+                      role={role}
+                      team={{ id: teamId, name: teamName }}
+                      matchScore={
+                        applicantRoleMatch?.matchScore ??
+                        selfRoleMatch?.matchScore ??
+                        role.matchScore ??
+                        role.match_score ??
+                        null
+                      }
+                      matchDetails={
+                        applicantRoleMatch?.matchDetails ??
+                        selfRoleMatch?.matchDetails ??
+                        role.matchDetails ??
+                        role.match_details ??
+                        null
+                      }
+                      canManage={false}
+                      canManageStatus={canManageStatusForRole}
+                      onViewApplicationDetails={
+                        isSelfApplication
+                          ? () => setApplicationDetailsFor(application)
+                          : null
+                      }
+                      isTeamMember={true}
+                      onStatusChange={(currentRoleId, newStatus) =>
+                        handleRoleStatusChange(
+                          currentRoleId,
+                          newStatus,
+                          application.applicant ?? null,
+                        )
+                      }
+                      allowedStatusActions={["filled", "open"]}
+                      statusActionLoading={statusUpdatingRoleId === roleId}
+                      viewAsUserId={application.applicant?.id}
+                      viewAsUser={application.applicant}
+                    />
+                ) : null
+              }
               extraContent={
                 <>
-                  {/* Vacant role card — shown when application targets a specific role */}
-                  {role && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
-                      <VacantRoleCard
-                        role={role}
-                        team={{ id: teamId, name: teamName }}
-                        matchScore={
-                          applicantRoleMatch?.matchScore ??
-                          selfRoleMatch?.matchScore ??
-                          role.matchScore ??
-                          role.match_score ??
-                          null
-                        }
-                        matchDetails={
-                          applicantRoleMatch?.matchDetails ??
-                          selfRoleMatch?.matchDetails ??
-                          role.matchDetails ??
-                          role.match_details ??
-                          null
-                        }
-                        canManage={false}
-                        canManageStatus={canManageStatusForRole}
-                        onViewApplicationDetails={
-                          isSelfApplication
-                            ? () => setApplicationDetailsFor(application)
-                            : null
-                        }
-                        isTeamMember={true}
-                        onStatusChange={(currentRoleId, newStatus) =>
-                          handleRoleStatusChange(
-                            currentRoleId,
-                            newStatus,
-                            application.applicant ?? null,
-                          )
-                        }
-                        allowedStatusActions={["filled", "open"]}
-                        statusActionLoading={statusUpdatingRoleId === roleId}
-                        viewAsUserId={application.applicant?.id}
-                        viewAsUser={application.applicant}
-                      />
-                    </div>
-                  )}
-
                   {/* User Tags/Skills if available */}
                   {application.applicant?.tags &&
                     application.applicant.tags.length > 0 && (
@@ -807,19 +825,45 @@ const TeamApplicationsModal = ({
                   {/* Response Textarea */}
                   {!isSelfApplication && (
                     <div className="mb-5">
-                      <p className="text-xs text-base-content/60 mb-1 flex items-center">
-                        <MessageSquare size={12} className="text-primary mr-1" />
-                        Your response message (optional):
-                      </p>
-                      <textarea
-                        value={responses[application.id] || ""}
-                        onChange={(e) =>
-                          handleResponseChange(application.id, e.target.value)
+                      <div className="flex mb-1">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setResponseExpanded((prev) => ({
+                            ...prev,
+                            [application.id]: !prev[application.id],
+                          }))
                         }
-                        className="textarea textarea-bordered textarea-sm w-full h-20 resize-none text-sm"
-                        placeholder="Add a personal message to your decision..."
-                        disabled={loading}
-                      />
+                        className={`text-xs text-base-content/60 flex items-center text-left cursor-pointer hover:text-base-content/80 transition-colors ${responseExpanded[application.id] ? "w-full" : "ml-auto"}`}
+                      >
+                        {responseExpanded[application.id] || responses[application.id]
+                          ? <MessageSquare size={12} className="text-primary mr-1" />
+                          : <Pencil size={12} className="text-primary mr-1" />
+                        }
+                        {responseExpanded[application.id]
+                          ? "Your response message (optional):"
+                          : "Add a personal response message (optional)"
+                        }
+                        <span className="ml-auto pl-3 text-base-content/40">
+                          {responseExpanded[application.id] ? (
+                            <ChevronUp size={12} />
+                          ) : (
+                            <ChevronDown size={12} />
+                          )}
+                        </span>
+                      </button>
+                      </div>
+                      {responseExpanded[application.id] && (
+                        <textarea
+                          value={responses[application.id] || ""}
+                          onChange={(e) =>
+                            handleResponseChange(application.id, e.target.value)
+                          }
+                          className="textarea textarea-bordered textarea-sm w-full h-20 resize-none text-sm"
+                          placeholder="Add a personal message to your decision..."
+                          disabled={loading}
+                        />
+                      )}
                     </div>
                   )}
                 </>

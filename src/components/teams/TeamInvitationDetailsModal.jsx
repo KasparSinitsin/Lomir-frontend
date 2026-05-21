@@ -4,12 +4,16 @@ import {
   MessageSquare,
   Users,
   Check,
+  User,
   UserCheck,
   X,
   MailOpen,
   UserPlus,
   FlaskConical,
   ArrowRightLeft,
+  ChevronDown,
+  ChevronUp,
+  Pencil,
 } from "lucide-react";
 import Modal from "../common/Modal";
 import Button from "../common/Button";
@@ -67,6 +71,7 @@ const TeamInvitationDetailsModal = ({
   const [actionLoading, setActionLoading] = useState(null); // "acceptRole" | "switchRole" | "acceptTeam" | "decline" | null
   const [error, setError] = useState(null);
   const [responseMessage, setResponseMessage] = useState("");
+  const [responseExpanded, setResponseExpanded] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState(null);
   const [isTeamDetailsOpen, setIsTeamDetailsOpen] = useState(false);
 
@@ -514,9 +519,8 @@ const TeamInvitationDetailsModal = ({
           <div
             className="flex items-start space-x-3 cursor-pointer hover:opacity-80 transition-opacity"
             onClick={handleTeamClick}
-            title="View team details"
           >
-            <div className="avatar">
+            <Tooltip content="View team details" wrapperClassName="avatar">
               <div className="w-14 h-14 rounded-full relative overflow-hidden">
                 {getTeamAvatar() ? (
                   <img
@@ -551,19 +555,31 @@ const TeamInvitationDetailsModal = ({
                   />
                 )}
               </div>
-            </div>
+            </Tooltip>
 
             <div className="flex-1 min-w-0">
               <h4 className="font-medium text-base-content hover:text-primary transition-colors leading-[120%] mb-[0.2em]">
                 {team.name || "Unknown Team"}
               </h4>
               <div className="mt-0.5 flex max-h-[2.75em] flex-wrap items-center gap-x-1.5 gap-y-px overflow-hidden text-sm text-base-content/70">
-                <span className="flex items-center">
-                  <Users size={14} className="mr-1 text-primary" />
+                <Tooltip
+                  content="Team members"
+                  wrapperClassName="flex items-center gap-1 text-base-content/70 text-sm"
+                >
+                  <Users size={14} className="text-primary" />
                   <span>
                     {getMemberCount()}/{getMaxMembers()}
                   </span>
-                </span>
+                </Tooltip>
+                {isInternal && (
+                  <Tooltip
+                    content="You are already a member of this team"
+                    wrapperClassName="flex items-center gap-1 text-base-content/70 text-sm"
+                  >
+                    <User size={14} className="flex-shrink-0 text-success" />
+                    <span>You are a member</span>
+                  </Tooltip>
+                )}
                 {isSyntheticTeam(team) && (
                   <Tooltip
                     content={DEMO_TEAM_TOOLTIP}
@@ -591,74 +607,102 @@ const TeamInvitationDetailsModal = ({
           </p>
         )}
 
-        {/* Vacant role card — shown when invitation targets a specific role */}
-        {(hydratedRole || invitation?.role || invitation?.roleId || invitation?.role_id) && (
+        {/* Invitation message + role card in speech bubble (when message exists) */}
+        {invitation?.message && (
           <div className="mb-5">
-            <p className="text-xs text-base-content/60 mb-2 flex items-center">
+            <p className="text-xs text-base-content/60 mb-1 flex items-center">
               <MailOpen size={12} className="text-info mr-1" />
-              Invited for this role:
+              {`Invitation message from ${inviter?.first_name || inviter?.firstName || inviter?.username || "them"}:`}
             </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <VacantRoleCard
-                role={roleForCard}
-                team={team}
-                matchScore={roleMatchScore}
-                matchDetails={roleMatchDetails}
-                canManage={false}
-                isTeamMember={false}
-                hideActions={true}
-                notificationHighlight={notificationHighlight}
-              />
+            <div className="w-fit max-w-full bg-base-200 rounded-lg rounded-bl-none p-3">
+              <p className="text-sm text-base-content/90 leading-relaxed">
+                {(() => {
+                  if (isInternal && currentFilledRoleName && currentFilledRoleName !== "your current role") {
+                    const suffix = ` ${currentFilledRoleName}.`;
+                    return invitation.message.endsWith(suffix)
+                      ? invitation.message.slice(0, -suffix.length)
+                      : invitation.message;
+                  }
+                  return invitation.message;
+                })()}
+              </p>
+              {(hydratedRole || invitation?.role || invitation?.roleId || invitation?.role_id) && (
+                <div className="mt-3 max-w-[300px]">
+                  <VacantRoleCard
+                    role={roleForCard}
+                    team={team}
+                    matchScore={roleMatchScore}
+                    matchDetails={roleMatchDetails}
+                    canManage={false}
+                    isTeamMember={false}
+                    hideActions={true}
+                    notificationHighlight={notificationHighlight}
+                  />
+                </div>
+              )}
+              {isInternal && currentFilledRoleForCard && (
+                <div className="mt-3 max-w-[300px]">
+                  <VacantRoleCard
+                    role={currentFilledRoleForCard}
+                    team={team}
+                    matchScore={null}
+                    canManage={false}
+                    isTeamMember={true}
+                    hideActions={true}
+                  />
+                </div>
+              )}
             </div>
           </div>
         )}
 
-        {/* Invitation Message */}
-        {invitation?.message && (
-          <div className="mb-4">
-            <p className="text-xs text-base-content/60 mb-0.5 flex items-center">
-              <MailOpen size={12} className="text-info mr-1" />
-              Invitation message:
-            </p>
-            <p className="text-sm text-base-content/90 leading-relaxed">
-              {(() => {
-                if (isInternal && currentFilledRoleName && currentFilledRoleName !== "your current role") {
-                  const suffix = ` ${currentFilledRoleName}.`;
-                  return invitation.message.endsWith(suffix)
-                    ? invitation.message.slice(0, -suffix.length)
-                    : invitation.message;
-                }
-                return invitation.message;
-              })()}
-            </p>
-            {isInternal && currentFilledRoleForCard && (
-              <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <VacantRoleCard
-                  role={currentFilledRoleForCard}
-                  team={team}
-                  matchScore={null}
-                  canManage={false}
-                  isTeamMember={true}
-                  hideActions={true}
-                />
-              </div>
-            )}
+        {/* Role card bare — shown when invitation has no message */}
+        {!invitation?.message && (hydratedRole || invitation?.role || invitation?.roleId || invitation?.role_id) && (
+          <div className="mb-5 max-w-[300px]">
+            <VacantRoleCard
+              role={roleForCard}
+              team={team}
+              matchScore={roleMatchScore}
+              matchDetails={roleMatchDetails}
+              canManage={false}
+              isTeamMember={false}
+              hideActions={true}
+              notificationHighlight={notificationHighlight}
+            />
           </div>
         )}
 
-        {/* Response Textarea */}
+        {/* Response Textarea — collapsible */}
         <div className="mt-2">
-          <p className="text-xs text-base-content/60 mb-1 flex items-center">
-            <MessageSquare size={12} className="text-primary mr-1" />
-            Your response message (optional):
-          </p>
-          <textarea
-            value={responseMessage}
-            onChange={(e) => setResponseMessage(e.target.value)}
-            className="textarea textarea-bordered textarea-sm w-full h-20 resize-none text-sm"
-            placeholder="Add a personal message to your decision. Decline messages will be sent as DM to the inviter only. Acceptance messages will be sent to the team chat."
-            disabled={isControlsDisabled}
-          />
+          <div className="flex mb-1">
+            <button
+              type="button"
+              onClick={() => setResponseExpanded((prev) => !prev)}
+              className={`text-xs text-base-content/60 flex items-center text-left cursor-pointer hover:text-base-content/80 transition-colors ${responseExpanded ? "w-full" : "ml-auto"}`}
+              disabled={isControlsDisabled}
+            >
+              {responseExpanded || responseMessage
+                ? <MessageSquare size={12} className="text-primary mr-1" />
+                : <Pencil size={12} className="text-primary mr-1" />
+              }
+              {responseExpanded
+                ? "Your response message (optional):"
+                : "Add a personal response message (optional)"
+              }
+              <span className="ml-auto pl-3 text-base-content/40">
+                {responseExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+              </span>
+            </button>
+          </div>
+          {responseExpanded && (
+            <textarea
+              value={responseMessage}
+              onChange={(e) => setResponseMessage(e.target.value)}
+              className="textarea textarea-bordered textarea-sm w-full h-20 resize-none text-sm"
+              placeholder="Add a personal message to your decision. Decline messages will be sent as DM to the inviter only. Acceptance messages will be sent to the team chat."
+              disabled={isControlsDisabled}
+            />
+          )}
         </div>
       </Modal>
 
