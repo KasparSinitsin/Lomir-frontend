@@ -380,7 +380,7 @@ const TeamApplicationDetailsModal = ({
               : "text-violet-500"
           }`}
         />
-        <span>
+        <span className="leading-[1.2]">
           {isInternalRoleApplication
             ? "You applied to fill this role within your team"
             : hasRoleApplication
@@ -394,16 +394,17 @@ const TeamApplicationDetailsModal = ({
   // Footer with "Received by" (left) and buttons (right)
   // Owner display now matches the inviter display pattern in TeamInvitationDetailsModal
   const footer = (
-    <div className="flex items-center justify-between gap-3">
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
       {/* Received by (left) */}
       <InlineUserLink
         label="Received by"
         user={owner}
         onOpenUser={handleUserClick}
+        className="min-w-0 flex-[1_1_12rem] overflow-hidden"
       />
 
       {/* Buttons (right) */}
-      <div className="flex justify-end gap-2">
+      <div className="ml-auto flex flex-wrap justify-end gap-2">
         <Button
           variant="successOutline"
           size="sm"

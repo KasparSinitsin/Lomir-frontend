@@ -619,7 +619,7 @@ const TeamInvitationDetailsModal = ({
             inviteeAlreadyTeamMember ? "text-orange-500" : "text-pink-500"
           }`}
         />
-        <span>{headerSubtitle}</span>
+        <span className="leading-[1.2]">{headerSubtitle}</span>
       </p>
     </div>
   );
@@ -632,10 +632,11 @@ const TeamInvitationDetailsModal = ({
         label="Invite sent by"
         user={inviter}
         onOpenUser={handleUserClick}
+        className="min-w-0 flex-[1_1_12rem] overflow-hidden"
       />
 
-      {/* Buttons — right-aligned, never wrap internally */}
-      <div className="flex flex-nowrap gap-2 ml-auto">
+      {/* Buttons — right-aligned and allowed to wrap on narrow screens */}
+      <div className="ml-auto flex flex-wrap justify-end gap-2">
           {isRoleUnavailable && (
             <Tooltip
               content={
