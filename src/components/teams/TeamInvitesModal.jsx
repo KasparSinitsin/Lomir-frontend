@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useRef, useLayoutEffect } from "react";
 import {
   User,
+  Users,
   MapPin,
   Calendar,
   SendHorizontal,
   FlaskConical,
   Trash2,
   MailOpen,
+  XCircle,
 } from "lucide-react";
 import RequestListModal from "../common/RequestListModal";
 import Button from "../common/Button";
@@ -21,6 +23,7 @@ import { vacantRoleService } from "../../services/vacantRoleService";
 import teamService from "../../services/teamService";
 import { useAuth } from "../../contexts/AuthContext";
 import { useUserModal } from "../../contexts/UserModalContext";
+import { useTeamModal } from "../../contexts/TeamModalContext";
 import {
   DEMO_PROFILE_TOOLTIP,
   getUserInitials,
@@ -275,8 +278,8 @@ const TeamInvitesModal = ({
 
   // ============ Context ============
   const { user: currentUser } = useAuth();
-  // Get global user modal opener (for clicking on invitee avatar/name)
   const { openUserModal } = useUserModal();
+  const { openTeamModal } = useTeamModal();
 
   // ============ Scroll to highlighted invitation ============
   useEffect(() => {
@@ -733,6 +736,13 @@ const TeamInvitesModal = ({
       ? getDisplayName(pendingCancelInvitation.invitee)
       : "this user";
   const pendingCancelIsRole = pendingCancelType === "role";
+  const pendingCancelHasRole =
+    !pendingCancelIsRole &&
+    Boolean(
+      pendingCancelInvitation?.role?.id ??
+        pendingCancelInvitation?.roleId ??
+        pendingCancelInvitation?.role_id,
+    );
   const pendingCancelTitle = pendingCancelIsRole
     ? "Cancel Role Invitation"
     : "Cancel Team Invitation";
@@ -744,10 +754,21 @@ const TeamInvitesModal = ({
     <RequestListModal
       isOpen={isOpen}
       onClose={onClose}
-      title="Invitations sent out to"
-      subtitle={teamName}
+      title={
+        <span className="leading-[100%]">
+          <Users size={20} className="inline-block align-middle mr-1.5 shrink-0 text-primary" />
+          <Tooltip content="View team" wrapperClassName="inline">
+            <span
+              className="font-semibold text-success cursor-pointer hover:text-success/70 transition-colors"
+              onClick={() => teamId && openTeamModal(teamId, teamName)}
+            >{teamName}</span>
+          </Tooltip>
+          <span>'s Invitations</span>
+        </span>
+      }
       itemCount={invitations.length}
       itemName="invitation"
+      bylineIcon={<SendHorizontal size={14} className="text-violet-500 shrink-0" />}
       footerText="You can cancel invitations that haven't been responded to."
       error={error}
       onErrorClose={() => setError(null)}
@@ -791,6 +812,11 @@ const TeamInvitesModal = ({
             {pendingCancelIsRole
               ? `Cancel the role invitation for ${pendingInviteeName}?`
               : `Cancel the team invitation for ${pendingInviteeName}? They will no longer be able to respond to it.`}
+            {pendingCancelHasRole && (
+              <span className="block mt-2 text-warning text-xs">
+                This will also cancel the associated role invitation.
+              </span>
+            )}
           </p>
         </Modal>
       }
@@ -1108,39 +1134,48 @@ const TeamInvitesModal = ({
 
 
             {/* Bottom row: Inviter info (left) + Action Button (right) */}
-            <div className="flex items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-2 mt-8 -mx-4 -mb-4 px-4 pb-4 pt-3 border-t border-base-200 bg-base-100/80 rounded-b-lg">
               {/* Inviter info (left) - Using InlineUserLink */}
               {invitation.inviter ? (
-                <InvitedByLink user={invitation.inviter} />
+                <InvitedByLink
+                  user={invitation.inviter}
+                  className="min-w-0 flex-[1_1_12rem] overflow-hidden"
+                />
               ) : invitation.inviter_username ? (
-                <span className="text-xs text-base-content/50">
+                <span className="min-w-0 flex-[1_1_12rem] overflow-hidden truncate text-xs text-base-content/50">
                   Invited by {invitation.inviter_username}
                 </span>
               ) : (
-                <div />
+                <div className="min-w-0 flex-[1_1_12rem] overflow-hidden" />
               )}
 
               {/* Action Button (right) */}
-              <div className="flex flex-wrap justify-end gap-2">
+              <div className="ml-auto flex flex-wrap justify-end gap-2">
                 {hasRoleInvitation && (
-                  <Button
-                    variant="errorOutline"
-                    size="sm"
-                    onClick={() => handleCancelInvitation(invitation.id, "role")}
-                    disabled={loading}
-                  >
-                    {loading ? "Canceling..." : "Cancel Role Invitation"}
-                  </Button>
+                  <Tooltip content="Cancel role invitation only">
+                    <Button
+                      variant="errorOutline"
+                      size="sm"
+                      onClick={() => handleCancelInvitation(invitation.id, "role")}
+                      disabled={loading}
+                      icon={<XCircle size={14} />}
+                    >
+                      {loading ? "Canceling..." : "Cancel Role Invite"}
+                    </Button>
+                  </Tooltip>
                 )}
                 {(!hasRoleInvitation || !isInternalInvitation) && (
-                  <Button
-                    variant="errorOutline"
-                    size="sm"
-                    onClick={() => handleCancelInvitation(invitation.id, "team")}
-                    disabled={loading}
-                  >
-                    {loading ? "Canceling..." : "Cancel Team Invitation"}
-                  </Button>
+                  <Tooltip content={hasRoleInvitation ? "Cancel team & role invitation" : "Cancel team invitation"}>
+                    <Button
+                      variant="errorOutline"
+                      size="sm"
+                      onClick={() => handleCancelInvitation(invitation.id, "team")}
+                      disabled={loading}
+                      icon={<XCircle size={14} />}
+                    >
+                      {loading ? "Canceling..." : hasRoleInvitation ? "Cancel Role + Team Invite" : "Cancel Invite"}
+                    </Button>
+                  </Tooltip>
                 )}
               </div>
             </div>

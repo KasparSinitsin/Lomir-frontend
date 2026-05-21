@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Check, UserCheck, X as Decline, User, Mail, MessageSquare, AlertTriangle, ChevronDown, ChevronUp, Pencil } from "lucide-react";
+import { Check, CheckCheck, UserCheck, X as Decline, User, Users, Mail, MessageSquare, AlertTriangle, ChevronDown, ChevronUp, Pencil } from "lucide-react";
 import RequestListModal from "../common/RequestListModal";
 import PersonRequestCard from "../common/PersonRequestCard";
 import Button from "../common/Button";
@@ -12,6 +12,7 @@ import { matchingService } from "../../services/matchingService";
 import { vacantRoleService } from "../../services/vacantRoleService";
 import { messageService } from "../../services/messageService";
 import { useAuth } from "../../contexts/AuthContext";
+import { useTeamModal } from "../../contexts/TeamModalContext";
 import { buildRoleApplicationFilledMessage } from "../../utils/roleEventMessages";
 
 const ROLE_CANDIDATE_FETCH_MIN_LIMIT = 20;
@@ -62,6 +63,7 @@ const TeamApplicationsModal = ({
 }) => {
   // ============ Auth ============
   const { user: currentUser } = useAuth();
+  const { openTeamModal } = useTeamModal();
 
   // ============ State ============
   const [loading, setLoading] = useState(false);
@@ -539,8 +541,18 @@ const TeamApplicationsModal = ({
     <RequestListModal
       isOpen={isOpen}
       onClose={handleClose}
-      title="Applications received for"
-      subtitle={teamName}
+      title={
+        <span className="leading-[100%]">
+          <Users size={20} className="inline-block align-middle mr-1.5 shrink-0 text-primary" />
+          <Tooltip content="View team" wrapperClassName="inline">
+            <span
+              className="font-semibold text-success cursor-pointer hover:text-success/70 transition-colors"
+              onClick={() => teamId && openTeamModal(teamId, teamName)}
+            >{teamName}</span>
+          </Tooltip>
+          <span>'s Applications</span>
+        </span>
+      }
       itemCount={applications.length}
       itemName="application"
       footerText="Review each application carefully before making decisions."
@@ -876,37 +888,74 @@ const TeamApplicationsModal = ({
                   </div>
                 ) : (
                   <div className="flex flex-wrap justify-end gap-2">
-                    {isRoleUnavailable && (isExternalRoleApplication || isInternalRoleApplication) && (
-                      <Tooltip content={unavailableTooltip}>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          disabled={true}
-                          className="border border-base-content/30 text-base-content/40"
-                          icon={<UserCheck size={16} />}
-                        >
-                          {isInternalRoleApplication ? "Accept & Fill Role" : "Fill Role & Add to Team"}
-                        </Button>
-                      </Tooltip>
-                    )}
-                    <Button
-                      variant="errorOutline"
-                      size="sm"
-                      onClick={() =>
-                        handleApplicationAction(
-                          application.id,
-                          "decline",
-                          responses[application.id] || ""
-                        )
-                      }
-                      disabled={loading}
-                      icon={<Decline size={16} />}
-                    >
-                      Decline
-                    </Button>
                     {isExternalRoleApplication ? (
                       <>
-                        {!isRoleUnavailable && (
+                        {isRoleUnavailable ? (
+                          <Tooltip content={unavailableTooltip}>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              disabled={true}
+                              className="border border-base-content/30 text-base-content/40"
+                              icon={<UserCheck size={16} />}
+                            >
+                              Fill Role + Add to Team
+                            </Button>
+                          </Tooltip>
+                        ) : (
+                          <Tooltip content="Accept application, add to team and fill the role">
+                            <Button
+                              variant="successOutline"
+                              size="sm"
+                              onClick={() =>
+                                handleApplicationAction(
+                                  application.id,
+                                  "approve",
+                                  responses[application.id] || "",
+                                  true
+                                )
+                              }
+                              disabled={loading}
+                              icon={<CheckCheck size={16} />}
+                            >
+                              Fill Role + Add to Team
+                            </Button>
+                          </Tooltip>
+                        )}
+                        <Tooltip content="Accept application and add to team without filling the role">
+                          <Button
+                            variant="successOutline"
+                            size="sm"
+                            onClick={() =>
+                              handleApplicationAction(
+                                application.id,
+                                "approve",
+                                responses[application.id] || "",
+                                false
+                              )
+                            }
+                            disabled={loading}
+                            icon={<Check size={16} />}
+                          >
+                            Add to Team
+                          </Button>
+                        </Tooltip>
+                      </>
+                    ) : isInternalRoleApplication ? (
+                      isRoleUnavailable ? (
+                        <Tooltip content={unavailableTooltip}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            disabled={true}
+                            className="border border-base-content/30 text-base-content/40"
+                            icon={<UserCheck size={16} />}
+                          >
+                            Fill Role
+                          </Button>
+                        </Tooltip>
+                      ) : (
+                        <Tooltip content="Accept application and assign this team member to the role">
                           <Button
                             variant="successOutline"
                             size="sm"
@@ -921,9 +970,12 @@ const TeamApplicationsModal = ({
                             disabled={loading}
                             icon={<Check size={16} />}
                           >
-                            Fill Role & Add to Team
+                            Fill Role
                           </Button>
-                        )}
+                        </Tooltip>
+                      )
+                    ) : (
+                      <Tooltip content="Accept application and add to team">
                         <Button
                           variant="successOutline"
                           size="sm"
@@ -938,27 +990,27 @@ const TeamApplicationsModal = ({
                           disabled={loading}
                           icon={<Check size={16} />}
                         >
-                          Add to Team Only
+                          Add to Team
                         </Button>
-                      </>
-                    ) : isInternalRoleApplication && isRoleUnavailable ? null : (
+                      </Tooltip>
+                    )}
+                    <Tooltip content="Decline this application">
                       <Button
-                        variant="successOutline"
+                        variant="errorOutline"
                         size="sm"
                         onClick={() =>
                           handleApplicationAction(
                             application.id,
-                            "approve",
-                            responses[application.id] || "",
-                            isInternalRoleApplication
+                            "decline",
+                            responses[application.id] || ""
                           )
                         }
                         disabled={loading}
-                        icon={<Check size={16} />}
+                        icon={<Decline size={16} />}
                       >
-                        {isInternalRoleApplication ? "Accept & Fill Role" : "Accept & Add to Team"}
+                        Decline
                       </Button>
-                    )}
+                    </Tooltip>
                   </div>
                 )
               }
