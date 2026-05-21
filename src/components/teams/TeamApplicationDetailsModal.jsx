@@ -2,15 +2,16 @@ import React, { useState } from "react";
 import {
   Calendar,
   Users,
+  User,
   X,
   SendHorizontal,
   FlaskConical,
   Trash2,
 } from "lucide-react";
 import Modal from "../common/Modal";
+import Tooltip from "../common/Tooltip";
 import Button from "../common/Button";
 import ConfirmModal from "../common/ConfirmModal";
-import Tooltip from "../common/Tooltip";
 import TeamDetailsModal from "./TeamDetailsModal";
 import UserDetailsModal from "../users/UserDetailsModal";
 import InlineUserLink from "../users/InlineUserLink";
@@ -346,9 +347,8 @@ const TeamApplicationDetailsModal = ({
           <div
             className="flex items-start space-x-3 cursor-pointer hover:opacity-80 transition-opacity"
             onClick={handleTeamClick}
-            title="View team details"
           >
-            <div className="avatar">
+            <Tooltip content="View team details" wrapperClassName="avatar">
               <div className="w-14 h-14 rounded-full relative overflow-hidden">
                 {getTeamAvatar() ? (
                   <img
@@ -383,19 +383,31 @@ const TeamApplicationDetailsModal = ({
                   />
                 )}
               </div>
-            </div>
+            </Tooltip>
 
             <div className="flex-1 min-w-0">
               <h4 className="font-medium text-base-content hover:text-primary transition-colors leading-[120%] mb-[0.2em]">
                 {team.name || "Unknown Team"}
               </h4>
               <div className="mt-0.5 flex max-h-[2.75em] flex-wrap items-center gap-x-1.5 gap-y-px overflow-hidden text-sm text-base-content/70">
-                <span className="flex items-center">
-                  <Users size={14} className="mr-1 text-primary" />
+                <Tooltip
+                  content="Team members"
+                  wrapperClassName="flex items-center gap-1 text-base-content/70 text-sm"
+                >
+                  <Users size={14} className="text-primary" />
                   <span>
                     {getMemberCount()}/{getMaxMembers()}
                   </span>
-                </span>
+                </Tooltip>
+                {isInternalRoleApplication && (
+                  <Tooltip
+                    content="You are already a member of this team"
+                    wrapperClassName="flex items-center gap-1 text-base-content/70 text-sm"
+                  >
+                    <User size={14} className="flex-shrink-0 text-success" />
+                    <span>You are a member</span>
+                  </Tooltip>
+                )}
                 {isSyntheticTeam(team) && (
                   <Tooltip
                     content={DEMO_TEAM_TOOLTIP}
@@ -423,9 +435,37 @@ const TeamApplicationDetailsModal = ({
           </p>
         )}
 
-        {/* Vacant role card — shown when application targets a specific role */}
-        {(application?.role || application?.roleId) && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
+        {/* Application message + role card in speech bubble (when message exists) */}
+        {application?.message && (
+          <div className="mb-5">
+            <p className="text-xs text-base-content/60 mb-1 flex items-center">
+              <SendHorizontal size={12} className="text-info mr-1" />
+              Your application message:
+            </p>
+            <div className="w-fit max-w-full bg-base-200 rounded-lg rounded-bl-none p-3">
+              <p className="text-sm text-base-content/90 leading-relaxed">
+                {application.message}
+              </p>
+              {(application?.role || application?.roleId) && (
+                <div className="mt-3 max-w-[300px]">
+                  <VacantRoleCard
+                    role={roleForCard}
+                    team={team}
+                    matchScore={roleMatchScore}
+                    matchDetails={roleMatchDetails}
+                    canManage={false}
+                    isTeamMember={false}
+                    notificationHighlight={notificationHighlight}
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Role card bare — shown when no message but role exists */}
+        {!application?.message && (application?.role || application?.roleId) && (
+          <div className="mb-5 max-w-[300px]">
             <VacantRoleCard
               role={roleForCard}
               team={team}
@@ -438,22 +478,9 @@ const TeamApplicationDetailsModal = ({
           </div>
         )}
 
-        {/* Application Message */}
-        {application?.message && (
-          <div className="mb-4">
-            <p className="text-xs text-base-content/60 mb-0.5 flex items-center">
-              <SendHorizontal size={12} className="text-info mr-1" />
-              Your application message:
-            </p>
-            <p className="text-sm text-base-content/90 leading-relaxed">
-              {application.message}
-            </p>
-          </div>
-        )}
-
-        {/* No message fallback */}
-        {!application?.message && (
-          <div className="mb-4">
+        {/* No message fallback — only when no role either */}
+        {!application?.message && !(application?.role || application?.roleId) && (
+          <div className="mb-5">
             <p className="text-xs text-base-content/60 mb-0.5 flex items-center">
               <SendHorizontal size={12} className="text-info mr-1" />
               Your application message:

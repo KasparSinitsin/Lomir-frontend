@@ -77,6 +77,7 @@ const TeamApplicationsModal = ({
   const [roleCandidateMatchMap, setRoleCandidateMatchMap] = useState({});
   const [selfRoleMatchMap, setSelfRoleMatchMap] = useState({});
   const [polledRoleStatusMap, setPolledRoleStatusMap] = useState({});
+  const [narrowMap, setNarrowMap] = useState({});
 
   // ============ Refs ============
   const highlightedRef = useRef(null);
@@ -532,6 +533,8 @@ const TeamApplicationsModal = ({
   }, [isOpen, teamId, applications]);
 
   // ============ Render ============
+  const anyNarrow = Object.values(narrowMap).some(Boolean);
+
   return (
     <RequestListModal
       isOpen={isOpen}
@@ -730,11 +733,27 @@ const TeamApplicationsModal = ({
             <PersonRequestCard
               user={application.applicant}
               date={getApplicationDate(application)}
+              onNarrowChange={(narrow) => setNarrowMap((prev) => {
+                if ((prev[String(application.id)] ?? false) === narrow) return prev;
+                return { ...prev, [String(application.id)]: narrow };
+              })}
+              forceNarrow={anyNarrow}
               message={application.message || "No message provided."}
               messageLabel={`${application.applicant?.first_name || application.applicant?.firstName || application.applicant?.username || "Their"}'s application message:`}
               messageIcon={<Mail size={12} className="text-pink-500 mr-1" />}
               onUserClick={handleUserClick}
-              showLocation={false}
+              showLocation={true}
+              sublineExtra={
+                isInternalRoleApplication ? (
+                  <Tooltip
+                    content="Already a member of this team"
+                    wrapperClassName="flex min-w-0 overflow-hidden items-center gap-0.5 text-base-content/70"
+                  >
+                    <User size={10} className="flex-shrink-0 text-success" />
+                    <span className="leading-[1.05] whitespace-nowrap">Team Member</span>
+                  </Tooltip>
+                ) : null
+              }
               messageBubbleExtra={
                 role ? (
                   <VacantRoleCard

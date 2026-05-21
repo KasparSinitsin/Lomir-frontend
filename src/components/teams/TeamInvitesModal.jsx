@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useLayoutEffect } from "react";
 import {
   User,
   MapPin,
@@ -28,6 +28,7 @@ import {
   isSyntheticUser,
 } from "../../utils/userHelpers";
 import { calculateDistanceKm } from "../../utils/locationUtils";
+import { formatDisplayName } from "../../utils/nameFormatters";
 import { format } from "date-fns";
 
 const MATCH_WEIGHTS = {
@@ -188,6 +189,47 @@ const computeRoleUserMatch = ({
   };
 };
 
+const FitInviteeName = ({ invitee, onUserClick, onNarrowChange, getDateEl, forceNarrow = false }) => {
+  const containerRef = useRef(null);
+  const probeRef = useRef(null);
+  const fullName = getDisplayName(invitee);
+  const abbrevName = invitee ? formatDisplayName(invitee) : fullName;
+  const [displayedName, setDisplayedName] = useState(fullName);
+  const displayedNameRef = useRef(fullName);
+  displayedNameRef.current = displayedName;
+  const forceNarrowRef = useRef(forceNarrow);
+  forceNarrowRef.current = forceNarrow;
+
+  useLayoutEffect(() => {
+    if (fullName === abbrevName) { setDisplayedName(fullName); onNarrowChange?.(false); return; }
+    const container = containerRef.current;
+    const probe = probeRef.current;
+    if (!container || !probe) return;
+    const update = () => {
+      const isDateAbsolute = displayedNameRef.current !== fullName || forceNarrowRef.current;
+      const dateEl = getDateEl?.();
+      const dateReservedWidth = isDateAbsolute && dateEl ? dateEl.offsetWidth + 12 : 0; // 12 = gap-3
+      probe.textContent = fullName;
+      const fits = probe.scrollWidth <= container.clientWidth - dateReservedWidth;
+      setDisplayedName(fits ? fullName : abbrevName);
+      onNarrowChange?.(!fits);
+    };
+    const ro = new ResizeObserver(update);
+    ro.observe(container);
+    update();
+    return () => ro.disconnect();
+  }, [fullName, abbrevName]);
+
+  return (
+    <h4 ref={containerRef} className="font-medium text-base-content leading-[120%] mb-[0.2em] truncate relative">
+      <Tooltip content="View profile" wrapperClassName="cursor-pointer hover:text-primary transition-colors">
+        <span onClick={onUserClick}>{displayedName}</span>
+      </Tooltip>
+      <span ref={probeRef} className="invisible absolute whitespace-nowrap pointer-events-none left-0 top-0 font-medium" aria-hidden="true" />
+    </h4>
+  );
+};
+
 /**
  * TeamInvitesModal Component
  *
@@ -225,6 +267,8 @@ const TeamInvitesModal = ({
     useState(null);
   const [pendingCancelType, setPendingCancelType] = useState("team");
   const [hydratedRoleMap, setHydratedRoleMap] = useState({});
+  const [narrowMap, setNarrowMap] = useState({});
+  const dateElsRef = useRef({});
 
   // ============ Refs ============
   const highlightedRef = useRef(null);
@@ -680,6 +724,7 @@ const TeamInvitesModal = ({
   };
 
   // ============ Render ============
+  const anyNarrow = Object.values(narrowMap).some(Boolean);
   const pendingCancelInvitation = invitations.find(
     (invitation) => String(invitation.id) === String(pendingCancelInvitationId),
   );
@@ -819,7 +864,6 @@ const TeamInvitesModal = ({
           (getDisplayName(invitation.invitee) !== invitation.invitee?.username ||
             isSyntheticUser(invitation.invitee));
         const showInviteeDemoProfile = isSyntheticUser(invitation.invitee);
-
         return (
           <div
             key={invitation.id}
@@ -831,14 +875,16 @@ const TeamInvitesModal = ({
             }`}
           >
             {/* Top row: Avatar + Name/Username + Date */}
-            <div className="flex items-start gap-3 mb-3">
+            <div className="flex items-start gap-3 mb-3 relative">
               {/* Invitee Avatar - Clickable */}
-              <div
-                className="avatar cursor-pointer hover:opacity-80 transition-opacity flex-shrink-0"
-                onClick={() => handleInviteeClick(invitation.invitee?.id)}
-                title="View profile"
+              <Tooltip
+                content="View profile"
+                wrapperClassName="avatar cursor-pointer hover:opacity-80 transition-opacity flex-shrink-0"
               >
-                <div className="w-10 h-10 rounded-full relative overflow-hidden">
+                <div
+                  className="w-12 h-12 rounded-full relative overflow-hidden"
+                  onClick={() => handleInviteeClick(invitation.invitee?.id)}
+                >
                   {getAvatarUrl(invitation.invitee) ? (
                     <img
                       src={getAvatarUrl(invitation.invitee)}
@@ -863,47 +909,83 @@ const TeamInvitesModal = ({
                         : "flex",
                     }}
                   >
-                    <span className="text-sm font-medium">
+                    <span className="text-xl font-medium">
                       {getUserInitials(invitation.invitee)}
                     </span>
                   </div>
                   {isSyntheticUser(invitation.invitee) && (
-                    <DemoAvatarOverlay textClassName="text-[7px]" />
+                    <DemoAvatarOverlay textClassName="text-[8px]" />
                   )}
                 </div>
-              </div>
+              </Tooltip>
 
               {/* User Info */}
               <div className="flex-1 min-w-0">
                 {/* Name - Clickable */}
-                <h4
-                  className="font-medium text-base-content cursor-pointer hover:text-primary transition-colors leading-[120%] mb-[0.2em]"
-                  onClick={() => handleInviteeClick(invitation.invitee?.id)}
-                  title="View profile"
-                >
-                  {getDisplayName(invitation.invitee)}
-                </h4>
-                {(showInviteeUsername || showInviteeDemoProfile) && (
-                  <div className="flex max-h-[2.1em] flex-wrap items-center gap-x-2 gap-y-0.5 overflow-hidden">
-                    {showInviteeUsername && (
-                      <p className="text-xs text-base-content/70">
-                        @{invitation.invitee.username}
-                      </p>
+                <FitInviteeName
+                  invitee={invitation.invitee}
+                  onUserClick={() => handleInviteeClick(invitation.invitee?.id)}
+                  onNarrowChange={(narrow) => setNarrowMap((prev) => {
+                    if ((prev[String(invitation.id)] ?? false) === narrow) return prev;
+                    return { ...prev, [String(invitation.id)]: narrow };
+                  })}
+                  getDateEl={() => dateElsRef.current[String(invitation.id)]}
+                  forceNarrow={anyNarrow}
+                />
+                {(anyNarrow || showInviteeUsername || invitation.invitee?.city || invitation.invitee?.country || invitation.invitee?.postal_code || invitation.invitee?.location || isInternalInvitation || showInviteeDemoProfile) && (
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-0 overflow-hidden text-xs" style={{ maxHeight: "2.1em" }}>
+                    {anyNarrow ? (
+                      <div className="flex shrink-0 items-center gap-1 text-base-content/60">
+                        <Calendar size={10} className="shrink-0" />
+                        <span className="leading-[1.05] whitespace-nowrap">{getInvitationDate(invitation)}</span>
+                      </div>
+                    ) : showInviteeUsername && (
+                      <div className="min-w-0 flex-[0_1_auto] overflow-hidden">
+                        <Tooltip content="View profile" wrapperClassName="block truncate leading-[1.05] text-base-content/70 cursor-pointer hover:text-primary transition-colors">
+                          <span onClick={() => handleInviteeClick(invitation.invitee?.id)}>
+                            @{invitation.invitee.username}
+                          </span>
+                        </Tooltip>
+                      </div>
+                    )}
+                    {(invitation.invitee?.city || invitation.invitee?.country || invitation.invitee?.postal_code || invitation.invitee?.location) && (
+                      <div className="flex min-w-0 max-w-[calc(100%-1.5rem)] flex-[0_1_auto] items-center gap-1 overflow-hidden">
+                        <MapPin size={10} className="text-base-content/60 shrink-0" />
+                        <span className="min-w-0 truncate text-base-content/60 leading-[1.05]">
+                          {[invitation.invitee?.city, invitation.invitee?.country].filter(Boolean).join(", ") || invitation.invitee?.location || invitation.invitee?.postal_code}
+                        </span>
+                      </div>
+                    )}
+                    {isInternalInvitation && (
+                      <Tooltip
+                        content="Already a member of this team"
+                        wrapperClassName="flex min-w-0 overflow-hidden items-center gap-0.5 text-base-content/70"
+                      >
+                        <User size={10} className="flex-shrink-0 text-success" />
+                        <span className="leading-[1.05] whitespace-nowrap">Team Member</span>
+                      </Tooltip>
                     )}
                     {showInviteeDemoProfile && (
                       <Tooltip
                         content={DEMO_PROFILE_TOOLTIP}
-                        wrapperClassName="flex items-center gap-0.5 text-base-content/50 text-xs"
+                        wrapperClassName="flex shrink-0 items-center gap-0.5 text-base-content/50"
                       >
-                        <FlaskConical size={12} className="flex-shrink-0" />
+                        <FlaskConical size={10} className="flex-shrink-0" />
                       </Tooltip>
                     )}
                   </div>
                 )}
               </div>
 
-              {/* Date - top right */}
-              <div className="flex items-center text-xs text-base-content/60 whitespace-nowrap">
+              {/* Date - top right; absolute (out of flow) when narrow so subline gets full width,
+                  but still rendered so its width can be measured for stable name-fit calculation */}
+              <div
+                ref={(el) => {
+                  if (el) dateElsRef.current[String(invitation.id)] = el;
+                  else delete dateElsRef.current[String(invitation.id)];
+                }}
+                className={`flex items-center text-xs text-base-content/60 whitespace-nowrap${anyNarrow ? " absolute opacity-0 pointer-events-none" : ""}`}
+              >
                 <Calendar size={12} className="mr-1" />
                 <span>{getInvitationDate(invitation)}</span>
               </div>
@@ -1024,17 +1106,6 @@ const TeamInvitesModal = ({
               </div>
             )}
 
-            {/* Location (if available) */}
-            {(invitation.invitee?.location ||
-              invitation.invitee?.postal_code) && (
-              <div className="flex items-center text-xs text-base-content/60 mb-3">
-                <MapPin size={12} className="mr-1" />
-                <span>
-                  {invitation.invitee?.location ||
-                    invitation.invitee?.postal_code}
-                </span>
-              </div>
-            )}
 
             {/* Bottom row: Inviter info (left) + Action Button (right) */}
             <div className="flex items-center justify-between gap-3">
