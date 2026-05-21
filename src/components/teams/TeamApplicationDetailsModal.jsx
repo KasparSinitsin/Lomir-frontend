@@ -3,6 +3,7 @@ import {
   Calendar,
   Users,
   User,
+  UserSearch,
   X,
   SendHorizontal,
   FlaskConical,
@@ -256,6 +257,11 @@ const TeamApplicationDetailsModal = ({
 
   const isInternalRoleApplication =
     application?.isInternalRoleApplication ?? application?.is_internal_role_application ?? false;
+  const hasRoleApplication = !!(
+    application?.role ||
+    application?.roleId ||
+    application?.role_id
+  );
   const teamLocationDetails = getTeamLocationDetails();
   const roleName =
     application?.role?.roleName ?? application?.role?.role_name ?? null;
@@ -303,15 +309,51 @@ const TeamApplicationDetailsModal = ({
   const customHeader = (
     <div>
       <h2 className="text-xl font-medium text-primary leading-[120%] mb-[0.2em]">
-        {isInternalRoleApplication && roleName
-          ? `Role Application: ${roleName}`
-          : team.name || "Unknown Team"}
+        {isInternalRoleApplication && roleName ? (
+          <span className="flex min-w-0 items-center gap-1.5">
+            <UserSearch size={20} className="shrink-0 text-primary" />
+            <span className="min-w-0 truncate">{roleName}</span>
+          </span>
+        ) : hasRoleApplication ? (
+          <span className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5">
+            <span className="inline-flex min-w-0 items-center gap-1.5">
+              <Users size={20} className="shrink-0 text-primary" />
+              <span>Team</span>
+            </span>
+            <span>and</span>
+            <span className="inline-flex min-w-0 items-center gap-1.5">
+              <UserSearch size={20} className="shrink-0 text-primary" />
+              <span>Role Application</span>
+            </span>
+          </span>
+        ) : !hasRoleApplication ? (
+          <span className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5">
+            <span>Your Application to join</span>
+            <span className="inline-flex min-w-0 items-center gap-1.5">
+              <Users size={20} className="shrink-0 text-primary" />
+              <span className="min-w-0 truncate">
+                {team.name || "Unknown Team"}
+              </span>
+            </span>
+          </span>
+        ) : (
+          team.name || "Unknown Team"
+        )}
       </h2>
       <p className="text-sm text-base-content/70 flex items-center">
-        <SendHorizontal size={14} className="mr-1.5" />
+        <SendHorizontal
+          size={14}
+          className={`mr-1.5 ${
+            isInternalRoleApplication
+              ? "text-orange-500"
+              : "text-violet-500"
+          }`}
+        />
         {isInternalRoleApplication
-          ? "Role application within your team"
-          : "You applied"}
+          ? "You applied to fill this role within your team"
+          : hasRoleApplication
+            ? "You applied to join a new Team and fill a Role"
+          : "You applied to join"}
       </p>
     </div>
   );
@@ -501,7 +543,7 @@ const TeamApplicationDetailsModal = ({
               <p className="text-sm text-base-content/90 leading-relaxed">
                 {application.message}
               </p>
-              {(application?.role || application?.roleId) && (
+              {hasRoleApplication && (
                 <div className="mt-3 max-w-[300px]">
                   <VacantRoleCard
                     role={roleForCard}
@@ -519,7 +561,7 @@ const TeamApplicationDetailsModal = ({
         )}
 
         {/* Role card bare — shown when no message but role exists */}
-        {!application?.message && (application?.role || application?.roleId) && (
+        {!application?.message && hasRoleApplication && (
           <div className="mb-5 max-w-[300px]">
             <VacantRoleCard
               role={roleForCard}
@@ -534,7 +576,7 @@ const TeamApplicationDetailsModal = ({
         )}
 
         {/* No message fallback — only when no role either */}
-        {!application?.message && !(application?.role || application?.roleId) && (
+        {!application?.message && !hasRoleApplication && (
           <div className="mb-5">
             <p className="text-xs text-base-content/60 mb-0.5 flex items-center">
               <SendHorizontal size={12} className="text-info mr-1" />

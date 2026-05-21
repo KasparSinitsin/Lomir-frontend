@@ -6,6 +6,7 @@ import {
   Check,
   User,
   UserCheck,
+  UserSearch,
   X,
   MailOpen,
   UserPlus,
@@ -434,11 +435,14 @@ const TeamInvitationDetailsModal = ({
     isAcceptRoleLoading || isSwitchRoleLoading || isAcceptTeamLoading || isDeclineLoading;
   const isControlsDisabled = loading || isActionPending;
   const teamLocationDetails = getTeamLocationDetails();
+  const isCombinedRoleInvitation = hasRoleInvitation && !inviteeAlreadyTeamMember;
 
   const headerSubtitle = isInternal
-    ? "You've been invited to fill a role!"
+    ? "You've been invited to fill this role!"
     : inviteeAlreadyTeamMember && hasRoleInvitation
-      ? "You've been invited to fill a role!"
+      ? "You've been invited to fill this role!"
+      : isCombinedRoleInvitation
+      ? "You've been invited to join a new Team and fill a Role"
       : hasRoleInvitation
       ? "You are invited for a role!"
       : "You are invited!";
@@ -535,15 +539,55 @@ const TeamInvitationDetailsModal = ({
     inviteeAlreadyTeamMember &&
     !isRoleUnavailable &&
     Boolean(currentFilledRole?.id ?? invitation?.current_filled_role_id ?? invitation?.currentFilledRoleId);
+  const invitationRoleName =
+    roleForCard?.roleName ??
+    roleForCard?.role_name ??
+    invitation?.roleName ??
+    invitation?.role_name ??
+    null;
 
   // Custom header
   const customHeader = (
     <div>
       <h2 className="text-xl font-medium text-primary leading-[120%] mb-[0.2em]">
-        {team.name || "Unknown Team"}
+        {inviteeAlreadyTeamMember && hasRoleInvitation && invitationRoleName ? (
+          <span className="flex min-w-0 items-center gap-1.5">
+            <UserSearch size={20} className="shrink-0 text-primary" />
+            <span className="min-w-0 truncate">{invitationRoleName}</span>
+          </span>
+        ) : isCombinedRoleInvitation ? (
+          <span className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5">
+            <span className="inline-flex min-w-0 items-center gap-1.5">
+              <Users size={20} className="shrink-0 text-primary" />
+              <span>Team</span>
+            </span>
+            <span>and</span>
+            <span className="inline-flex min-w-0 items-center gap-1.5">
+              <UserSearch size={20} className="shrink-0 text-primary" />
+              <span>Role Invitation</span>
+            </span>
+          </span>
+        ) : !hasRoleInvitation ? (
+          <span className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5">
+            <span>Invitation to join</span>
+            <span className="inline-flex min-w-0 items-center gap-1.5">
+              <Users size={20} className="shrink-0 text-primary" />
+              <span className="min-w-0 truncate">
+                {team.name || "Unknown Team"}
+              </span>
+            </span>
+          </span>
+        ) : (
+          team.name || "Unknown Team"
+        )}
       </h2>
       <p className="text-sm text-base-content/70 flex items-center">
-        <MailOpen size={14} className={`mr-1.5 ${inviteeAlreadyTeamMember ? "text-orange-500" : ""}`} />
+        <MailOpen
+          size={14}
+          className={`mr-1.5 ${
+            inviteeAlreadyTeamMember ? "text-orange-500" : "text-pink-500"
+          }`}
+        />
         {headerSubtitle}
       </p>
     </div>
