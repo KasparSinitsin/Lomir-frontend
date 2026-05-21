@@ -131,6 +131,10 @@ const UserDetailsModal = ({
 
   // =====================================================
 
+  const fetchUserAwards = useCallback(
+    () => userService.getUserBadges(userId),
+    [userId],
+  );
   const {
     handleBadgeCategoryClick,
     handleBadgeClick,
@@ -139,7 +143,7 @@ const UserDetailsModal = ({
     badgeCategoryModalProps,
     tagAwardsModalProps,
     supercategoryModalProps,
-  } = useAwardModals(userId);
+  } = useAwardModals({ fetchTagAwards: fetchUserAwards, fetchBadgeAwards: fetchUserAwards });
 
   // Determine if this modal is showing the current user (more reliable than comparing fetched user)
   const ownProfile =

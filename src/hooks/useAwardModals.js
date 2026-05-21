@@ -1,15 +1,15 @@
 import { useState, useCallback } from "react";
-import { userService } from "../services/userService";
 
 /**
  * useAwardModals
  *
- * Shared hook that manages all award drill-down modal state and handlers
+ * Unified hook that manages all award drill-down modal state and handlers
  * for BadgeCategoryModal, TagAwardsModal, and SupercategoryAwardsModal.
  *
- * Previously duplicated in UserDetailsModal and Profile.jsx (~150 lines each).
- *
- * @param {string|number} userId - The user whose awards to fetch
+ * @param {Object} options
+ * @param {() => Promise} options.fetchTagAwards   - Fetches awards for tag/supercategory modals
+ * @param {() => Promise} options.fetchBadgeAwards - Fetches awards for badge category/pill modals
+ * @param {"user"|"team"} [options.entityType="user"]
  * @returns {Object} Modal state, handlers, closers, and props-spreaders
  */
 
@@ -72,7 +72,7 @@ const sameBadge = (a, b) => {
   return Boolean(aName && bName && aName === bName);
 };
 
-const useAwardModals = (userId) => {
+const useAwardModals = ({ fetchTagAwards, fetchBadgeAwards, entityType = "user" }) => {
   // ========= Badge Category Modal state =========
   const [badgeCategoryModal, setBadgeCategoryModal] = useState({
     isOpen: false,
@@ -121,8 +121,7 @@ const useAwardModals = (userId) => {
       setBadgeModalLoading(true);
 
       try {
-        const response = await userService.getUserBadges(userId);
-        const rows = unwrapRows(response);
+        const rows = unwrapRows(await fetchBadgeAwards());
 
         const categoryAwards = rows.filter((award) => {
           const c =
@@ -141,7 +140,7 @@ const useAwardModals = (userId) => {
         setBadgeModalLoading(false);
       }
     },
-    [userId],
+    [fetchBadgeAwards],
   );
 
   /** Click an individual badge pill → open BadgeCategoryModal focused on that badge */
@@ -160,8 +159,7 @@ const useAwardModals = (userId) => {
       setBadgeModalLoading(true);
 
       try {
-        const response = await userService.getUserBadges(userId);
-        const rows = unwrapRows(response);
+        const rows = unwrapRows(await fetchBadgeAwards());
 
         const badgeAwards = rows.filter((award) => {
           const awardBadgeName =
@@ -180,7 +178,7 @@ const useAwardModals = (userId) => {
         setBadgeModalLoading(false);
       }
     },
-    [userId],
+    [fetchBadgeAwards],
   );
 
   /** Click a credited tag pill → open TagAwardsModal */
@@ -189,14 +187,14 @@ const useAwardModals = (userId) => {
       setTagAwardsModal({
         isOpen: true,
         tagName: tag.name,
-        dominantBadgeCategory: tag.dominantBadgeCategory,
-        totalCredits: tag.badgeCredits,
+        dominantBadgeCategory:
+          tag.dominantBadgeCategory ?? tag.dominant_badge_category,
+        totalCredits: tag.badgeCredits ?? tag.badge_credits ?? 0,
       });
       setTagAwardsLoading(true);
 
       try {
-        const response = await userService.getUserBadges(userId);
-        const rows = unwrapRows(response);
+        const rows = unwrapRows(await fetchTagAwards());
 
         const filtered = rows.filter((award) => {
           const awardTagName = award.tagName ?? award.tag_name;
@@ -211,14 +209,14 @@ const useAwardModals = (userId) => {
         setTagAwardsLoading(false);
       }
     },
-    [userId],
+    [fetchTagAwards],
   );
 
   /** Click a supercategory icon → open SupercategoryAwardsModal */
   const handleSupercategoryClick = useCallback(
     async (supercategory, groupTags) => {
       const totalCredits = groupTags.reduce(
-        (sum, t) => sum + (t.badgeCredits || 0),
+        (sum, t) => sum + (t.badgeCredits ?? t.badge_credits ?? 0),
         0,
       );
 
@@ -231,8 +229,7 @@ const useAwardModals = (userId) => {
       setSupercategoryLoading(true);
 
       try {
-        const response = await userService.getUserBadges(userId);
-        const rows = unwrapRows(response);
+        const rows = unwrapRows(await fetchTagAwards());
 
         const tagNames = new Set(groupTags.map((t) => t.name));
 
@@ -249,7 +246,7 @@ const useAwardModals = (userId) => {
         setSupercategoryLoading(false);
       }
     },
-    [userId],
+    [fetchTagAwards],
   );
 
   // ========= Closers =========
@@ -399,6 +396,7 @@ const useAwardModals = (userId) => {
     totalCredits: tagAwardsModal.totalCredits,
     awards: tagAwards,
     loading: tagAwardsLoading,
+    entityType,
   };
 
   /** Spread onto <SupercategoryAwardsModal ... /> */
@@ -410,6 +408,7 @@ const useAwardModals = (userId) => {
     totalCredits: supercategoryModal.totalCredits,
     awards: supercategoryAwards,
     loading: supercategoryLoading,
+    entityType,
   };
 
   return {

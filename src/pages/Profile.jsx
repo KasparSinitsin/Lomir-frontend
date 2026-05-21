@@ -70,6 +70,10 @@ const Profile = () => {
   // Compute effective userId for the hook (Profile uses localUser or auth user)
   const profileUserId = localUser?.id ?? user?.id;
 
+  const fetchUserAwards = useCallback(
+    () => userService.getUserBadges(profileUserId),
+    [profileUserId],
+  );
   const {
     handleBadgeCategoryClick,
     handleBadgeClick,
@@ -79,7 +83,7 @@ const Profile = () => {
     tagAwardsModalProps,
     supercategoryModalProps,
     removeAwardFromBadgeModal,
-  } = useAwardModals(profileUserId);
+  } = useAwardModals({ fetchTagAwards: fetchUserAwards, fetchBadgeAwards: fetchUserAwards });
 
   const [avatarDeleteLoading, setAvatarDeleteLoading] = useState(false);
   const [isAvatarDeleteDialogOpen, setIsAvatarDeleteDialogOpen] =

@@ -54,7 +54,7 @@ import TagAwardsModal from "../badges/TagAwardsModal";
 import SupercategoryAwardsModal from "../badges/SupercategoryAwardsModal";
 import BadgesDisplaySection from "../badges/BadgesDisplaySection";
 import BadgeCategoryModal from "../badges/BadgeCategoryModal";
-import useTeamAwardModals from "../../hooks/useTeamAwardModals";
+import useAwardModals from "../../hooks/useAwardModals";
 import MatchScoreSection from "../common/MatchScoreSection";
 import {
   buildViewerTeamMatchProfile,
@@ -173,7 +173,14 @@ const TeamDetailsModal = ({
   const [teamBadgesTotalCredits, setTeamBadgesTotalCredits] = useState(0);
   const [currentUserBadgeNames, setCurrentUserBadgeNames] = useState(null); // Set<string>
 
-  // Team focus-area award modals (parallel to useAwardModals for users)
+  const fetchTeamTagAwards = useCallback(
+    () => teamService.getTeamBadgeAwards(effectiveTeamId),
+    [effectiveTeamId],
+  );
+  const fetchTeamBadgeAwards = useCallback(
+    () => teamService.getTeamMemberBadgeAwards(effectiveTeamId),
+    [effectiveTeamId],
+  );
   const {
     handleTagClick,
     handleSupercategoryClick,
@@ -182,7 +189,11 @@ const TeamDetailsModal = ({
     tagAwardsModalProps,
     supercategoryModalProps,
     badgeCategoryModalProps,
-  } = useTeamAwardModals(effectiveTeamId);
+  } = useAwardModals({
+    fetchTagAwards: fetchTeamTagAwards,
+    fetchBadgeAwards: fetchTeamBadgeAwards,
+    entityType: "team",
+  });
 
   const userHasEditedTagsRef = useRef(false);
   const [isLeaveDialogOpen, setIsLeaveDialogOpen] = useState(false);
