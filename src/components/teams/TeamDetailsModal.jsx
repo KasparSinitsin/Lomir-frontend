@@ -1413,53 +1413,50 @@ const TeamDetailsModal = ({
       : null;
 
   const modalTitle = (
-    <div className="flex justify-between items-center w-full">
-      <h2 className="text-xl font-medium text-primary flex items-center gap-2">
-        {isEditing ? <Edit size={20} className="flex-shrink-0" /> : <Users size={20} className="flex-shrink-0" />}
-        {isEditing ? "Edit Team" : "Team Details"}
-      </h2>
-      <div className="flex items-center space-x-2">
-        {!isEditing && (
-          <>
-            {canEditTeam && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  userHasEditedTagsRef.current = false; // fresh edit session
-                  setFormData((prev) => ({
-                    ...prev,
-                    selectedTags:
-                      (prev.selectedTags?.length ?? 0) > 0
-                        ? prev.selectedTags
-                        : normalizeTeamTagIds(team),
-                  }));
-                  setIsEditing(true);
-                }}
-                className="hover:bg-[#7ace82] hover:text-[#036b0c]"
-                icon={<Edit size={16} />}
-              >
-                Edit
-              </Button>
-            )}
-            {canDeleteTeam && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleDeleteTeam}
-                disabled={loading}
-                className="hover:bg-red-100 hover:text-red-700"
-                icon={<Trash2 size={16} />}
-                aria-label="Delete team"
-              >
-                Delete
-              </Button>
-            )}
-          </>
-        )}
-      </div>
-    </div>
+    <h2 className="text-xl font-medium text-primary flex items-center gap-2">
+      {isEditing ? <Edit size={20} className="flex-shrink-0" /> : <Users size={20} className="flex-shrink-0" />}
+      {isEditing ? "Edit Team" : "Team Details"}
+    </h2>
   );
+
+  const modalHeaderActions = !isEditing ? (
+    <div className="flex items-center gap-1">
+      {canEditTeam && (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => {
+            userHasEditedTagsRef.current = false;
+            setFormData((prev) => ({
+              ...prev,
+              selectedTags:
+                (prev.selectedTags?.length ?? 0) > 0
+                  ? prev.selectedTags
+                  : normalizeTeamTagIds(team),
+            }));
+            setIsEditing(true);
+          }}
+          className="hover:bg-[#7ace82] hover:text-[#036b0c]"
+          icon={<Edit size={16} />}
+        >
+          <span className="hidden sm:inline">Edit</span>
+        </Button>
+      )}
+      {canDeleteTeam && (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleDeleteTeam}
+          disabled={loading}
+          className="hover:bg-red-100 hover:text-red-700"
+          icon={<Trash2 size={16} />}
+          aria-label="Delete team"
+        >
+          <span className="hidden sm:inline">Delete</span>
+        </Button>
+      )}
+    </div>
+  ) : null;
 
   if (!isModalVisible) return null;
 
@@ -1470,6 +1467,7 @@ const TeamDetailsModal = ({
         isOpen={isModalVisible}
         onClose={handleClose}
         title={modalTitle}
+        headerActions={modalHeaderActions}
         position="center"
         size="default"
         maxHeight="max-h-[90vh]"

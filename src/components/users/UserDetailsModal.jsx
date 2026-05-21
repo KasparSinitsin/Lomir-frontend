@@ -562,70 +562,62 @@ const UserDetailsModal = ({
 
   // =================================================
 
-  // Title node (TeamDetailsModal style)
   const modalTitle = (
-    <div className="flex justify-between items-center w-full">
-      <h2 className="text-xl font-medium text-primary flex items-center gap-2">
-        {isEditing ? <Edit size={20} className="flex-shrink-0" /> : <User size={20} className="flex-shrink-0" />}
-        {isEditing ? "Edit Profile" : "User Details"}
-      </h2>
-
-      <div className="flex items-center space-x-2">
-        {!isEditing && !showDeletedUserPlaceholder && (
-          <>
-            {showEdit && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  window.open("/profile?mode=edit", "_blank", "noopener,noreferrer");
-                  onClose?.();
-                }}
-                className="hover:bg-[#7ace82] hover:text-[#036b0c]"
-                icon={<Edit size={16} />}
-              >
-                Edit
-              </Button>
-            )}
-
-            {showChatInvite && (
-              <>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleStartChat}
-                  className="flex items-center gap-1"
-                >
-                  <MessageCircle size={16} />
-                  <span className="hidden sm:inline">Chat</span>
-                </Button>
-
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleInviteToTeam}
-                  className="flex items-center gap-1"
-                >
-                  <UserPlus size={16} />
-                  <span className="hidden sm:inline">Invite</span>
-                </Button>
-
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setIsBadgeAwardModalOpen(true)}
-                  className="flex items-center gap-1"
-                >
-                  <Award size={16} />
-                  <span className="hidden sm:inline">Award</span>
-                </Button>
-              </>
-            )}
-          </>
-        )}
-      </div>
-    </div>
+    <h2 className="text-xl font-medium text-primary flex items-center gap-2">
+      {isEditing ? <Edit size={20} className="flex-shrink-0" /> : <User size={20} className="flex-shrink-0" />}
+      {isEditing ? "Edit Profile" : "User Details"}
+    </h2>
   );
+
+  const modalHeaderActions = !isEditing && !showDeletedUserPlaceholder ? (
+    <div className="flex items-center gap-1">
+      {showEdit && (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => {
+            window.open("/profile?mode=edit", "_blank", "noopener,noreferrer");
+            onClose?.();
+          }}
+          className="hover:bg-[#7ace82] hover:text-[#036b0c]"
+          icon={<Edit size={16} />}
+        >
+          <span className="hidden sm:inline">Edit</span>
+        </Button>
+      )}
+      {showChatInvite && (
+        <>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleStartChat}
+            className="flex items-center gap-1"
+          >
+            <MessageCircle size={16} />
+            <span className="hidden sm:inline">Chat</span>
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleInviteToTeam}
+            className="flex items-center gap-1"
+          >
+            <UserPlus size={16} />
+            <span className="hidden sm:inline">Invite</span>
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setIsBadgeAwardModalOpen(true)}
+            className="flex items-center gap-1"
+          >
+            <Award size={16} />
+            <span className="hidden sm:inline">Award</span>
+          </Button>
+        </>
+      )}
+    </div>
+  ) : null;
 
   return (
     <>
@@ -633,6 +625,7 @@ const UserDetailsModal = ({
         isOpen={isOpen}
         onClose={onClose}
         title={modalTitle}
+        headerActions={modalHeaderActions}
         position="center"
         size="default"
         maxHeight="max-h-[90vh]"
