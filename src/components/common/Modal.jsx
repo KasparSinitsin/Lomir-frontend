@@ -138,7 +138,7 @@ const Modal = ({
       >
         {/* Header */}
         {(title || showCloseButton) && (
-          <div className="sticky top-0 z-10 flex items-start justify-between p-6 border-b border-base-200 bg-base-100">
+          <div className="sticky top-0 z-20 flex items-start justify-between px-6 pt-6 pb-4 border-b border-base-200 bg-base-100">
             <div className="flex-1 min-w-0">
               {typeof title === "string" ? (
                 <h2 className="text-lg font-semibold text-primary truncate">
