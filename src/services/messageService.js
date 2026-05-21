@@ -1,5 +1,7 @@
 import api from "./api";
 
+let _pendingUnreadCount = null;
+
 export const messageService = {
   // Get all conversations for the current user
   getConversations: async () => {
@@ -13,14 +15,22 @@ export const messageService = {
   },
 
   // Get unread message count for current user
-  getUnreadCount: async () => {
-    try {
-      const response = await api.get("/api/messages/unread-count");
-      return response.data;
-    } catch (error) {
-      console.error("Error fetching unread count:", error);
-      throw error;
-    }
+  // Deduplicates concurrent calls: multiple callers within the same tick share one HTTP request.
+  getUnreadCount: () => {
+    if (_pendingUnreadCount) return _pendingUnreadCount;
+
+    _pendingUnreadCount = api
+      .get("/api/messages/unread-count")
+      .then((response) => response.data)
+      .catch((error) => {
+        console.error("Error fetching unread count:", error);
+        throw error;
+      })
+      .finally(() => {
+        _pendingUnreadCount = null;
+      });
+
+    return _pendingUnreadCount;
   },
 
   // Get a specific conversation by ID
