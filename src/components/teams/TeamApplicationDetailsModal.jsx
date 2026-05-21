@@ -6,6 +6,8 @@ import {
   X,
   SendHorizontal,
   FlaskConical,
+  MapPin,
+  Globe,
   Trash2,
 } from "lucide-react";
 import Modal from "../common/Modal";
@@ -37,6 +39,19 @@ const extractRoleMatchData = (roleLike) => {
       roleLike?.scoreBreakdown ??
       null,
   };
+};
+
+const normalizeBoolean = (value) => {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "number") return value === 1;
+
+  if (typeof value === "string") {
+    const normalizedValue = value.trim().toLowerCase();
+    if (["true", "1", "yes"].includes(normalizedValue)) return true;
+    if (["false", "0", "no"].includes(normalizedValue)) return false;
+  }
+
+  return null;
 };
 
 /**
@@ -166,6 +181,25 @@ const TeamApplicationDetailsModal = ({
     return max === null || max === undefined ? "∞" : max;
   };
 
+  const getTeamLocationDetails = () => {
+    const isRemote =
+      normalizeBoolean(team.isRemote ?? team.is_remote) === true;
+    const locationParts = [team.city, team.country].filter(Boolean);
+    const fallbackLocation =
+      typeof team.location === "string"
+        ? team.location
+        : team.postal_code ?? team.postalCode ?? null;
+
+    return {
+      isRemote,
+      locationText: isRemote
+        ? "Remote"
+        : locationParts.length > 0
+          ? locationParts.join(", ")
+          : fallbackLocation,
+    };
+  };
+
   const handleTeamClick = () => {
     if (team?.id) setIsTeamDetailsOpen(true);
   };
@@ -222,6 +256,7 @@ const TeamApplicationDetailsModal = ({
 
   const isInternalRoleApplication =
     application?.isInternalRoleApplication ?? application?.is_internal_role_application ?? false;
+  const teamLocationDetails = getTeamLocationDetails();
   const roleName =
     application?.role?.roleName ?? application?.role?.role_name ?? null;
   const syntheticRoleFlag =
@@ -348,7 +383,7 @@ const TeamApplicationDetailsModal = ({
             className="flex items-start space-x-3 cursor-pointer hover:opacity-80 transition-opacity"
             onClick={handleTeamClick}
           >
-            <Tooltip content="View team details" wrapperClassName="avatar">
+            <Tooltip content="Click to view team details" wrapperClassName="avatar">
               <div className="w-14 h-14 rounded-full relative overflow-hidden">
                 {getTeamAvatar() ? (
                   <img
@@ -387,7 +422,12 @@ const TeamApplicationDetailsModal = ({
 
             <div className="flex-1 min-w-0">
               <h4 className="font-medium text-base-content hover:text-primary transition-colors leading-[120%] mb-[0.2em]">
-                {team.name || "Unknown Team"}
+                <Tooltip
+                  content="Click to view team details"
+                  wrapperClassName="inline-flex max-w-full min-w-0 align-top"
+                >
+                  <span className="truncate">{team.name || "Unknown Team"}</span>
+                </Tooltip>
               </h4>
               <div className="mt-0.5 flex max-h-[2.75em] flex-wrap items-center gap-x-1.5 gap-y-px overflow-hidden text-sm text-base-content/70">
                 <Tooltip
@@ -399,6 +439,21 @@ const TeamApplicationDetailsModal = ({
                     {getMemberCount()}/{getMaxMembers()}
                   </span>
                 </Tooltip>
+                {teamLocationDetails.locationText && (
+                  <Tooltip
+                    content={teamLocationDetails.locationText}
+                    wrapperClassName="flex min-w-0 max-w-full items-center gap-1 overflow-hidden text-base-content/60 text-sm"
+                  >
+                    {teamLocationDetails.isRemote ? (
+                      <Globe size={14} className="flex-shrink-0" />
+                    ) : (
+                      <MapPin size={14} className="flex-shrink-0" />
+                    )}
+                    <span className="min-w-0 truncate">
+                      {teamLocationDetails.locationText}
+                    </span>
+                  </Tooltip>
+                )}
                 {isInternalRoleApplication && (
                   <Tooltip
                     content="You are already a member of this team"

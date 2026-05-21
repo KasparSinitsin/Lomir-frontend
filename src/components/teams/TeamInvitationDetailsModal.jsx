@@ -10,6 +10,8 @@ import {
   MailOpen,
   UserPlus,
   FlaskConical,
+  MapPin,
+  Globe,
   ArrowRightLeft,
   ChevronDown,
   ChevronUp,
@@ -41,6 +43,148 @@ const extractRoleMatchData = (roleLike) => {
       roleLike?.scoreBreakdown ??
       null,
   };
+};
+
+const normalizeBoolean = (value) => {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "number") return value === 1;
+
+  if (typeof value === "string") {
+    const normalizedValue = value.trim().toLowerCase();
+    if (["true", "1", "yes"].includes(normalizedValue)) return true;
+    if (["false", "0", "no"].includes(normalizedValue)) return false;
+  }
+
+  return null;
+};
+
+const idsMatch = (left, right) => {
+  if (left === null || left === undefined || right === null || right === undefined) {
+    return false;
+  }
+
+  return String(left) === String(right);
+};
+
+const isExistingMemberStatus = (value) => {
+  if (typeof value !== "string") return false;
+
+  const normalizedValue = value.trim().toLowerCase();
+  return (
+    normalizedValue === "member" ||
+    normalizedValue === "existing-member" ||
+    normalizedValue === "existing_member"
+  );
+};
+
+const getMemberUserId = (member) => {
+  const memberUser = member?.user || member;
+
+  return (
+    member?.userId ??
+    member?.user_id ??
+    member?.memberId ??
+    member?.member_id ??
+    memberUser?.userId ??
+    memberUser?.user_id ??
+    memberUser?.id ??
+    member?.id ??
+    null
+  );
+};
+
+const isInviteeExistingTeamMember = ({ invitation, team, currentUser }) => {
+  const inviteeId =
+    invitation?.invitee?.id ??
+    invitation?.inviteeId ??
+    invitation?.invitee_id ??
+    currentUser?.id ??
+    null;
+
+  if (!team || inviteeId === null || inviteeId === undefined) return false;
+
+  const directFlags = [
+    invitation?.isInternal,
+    invitation?.is_internal,
+    invitation?.isInviteeMember,
+    invitation?.is_invitee_member,
+    invitation?.inviteeIsMember,
+    invitation?.invitee_is_member,
+    invitation?.alreadyMember,
+    invitation?.already_member,
+    invitation?.isExistingMember,
+    invitation?.is_existing_member,
+    invitation?.existingMember,
+    invitation?.existing_member,
+    invitation?.currentUserIsMember,
+    invitation?.current_user_is_member,
+    team?.isInviteeMember,
+    team?.is_invitee_member,
+    team?.inviteeIsMember,
+    team?.invitee_is_member,
+    team?.alreadyMember,
+    team?.already_member,
+    team?.isExistingMember,
+    team?.is_existing_member,
+    team?.existingMember,
+    team?.existing_member,
+    team?.currentUserIsMember,
+    team?.current_user_is_member,
+  ];
+
+  if (directFlags.some((flag) => normalizeBoolean(flag) === true)) {
+    return true;
+  }
+
+  const membershipStatuses = [
+    invitation?.inviteeMembershipStatus,
+    invitation?.invitee_membership_status,
+    invitation?.membershipStatus,
+    invitation?.membership_status,
+    invitation?.inviteeStatus,
+    invitation?.invitee_status,
+    team?.inviteeMembershipStatus,
+    team?.invitee_membership_status,
+    team?.membershipStatus,
+    team?.membership_status,
+    team?.inviteeStatus,
+    team?.invitee_status,
+  ];
+
+  if (membershipStatuses.some(isExistingMemberStatus)) {
+    return true;
+  }
+
+  if (idsMatch(team?.owner_id ?? team?.ownerId, inviteeId)) {
+    return true;
+  }
+
+  const memberCollections = [
+    team?.members,
+    team?.teamMembers,
+    team?.team_members,
+  ].filter(Array.isArray);
+
+  if (
+    memberCollections.some((members) =>
+      members.some((member) => idsMatch(getMemberUserId(member), inviteeId)),
+    )
+  ) {
+    return true;
+  }
+
+  const memberIdLists = [
+    team?.memberIds,
+    team?.member_ids,
+    team?.memberUserIds,
+    team?.member_user_ids,
+    team?.teamMemberIds,
+    team?.team_member_ids,
+  ].filter(Array.isArray);
+
+  return memberIdLists.some((memberIds) =>
+    memberIds.some((memberId) => idsMatch(memberId, inviteeId)),
+  );
 };
 
 /**
@@ -187,6 +331,25 @@ const TeamInvitationDetailsModal = ({
     return max === null || max === undefined ? "∞" : max;
   };
 
+  const getTeamLocationDetails = () => {
+    const isRemote =
+      normalizeBoolean(team.isRemote ?? team.is_remote) === true;
+    const locationParts = [team.city, team.country].filter(Boolean);
+    const fallbackLocation =
+      typeof team.location === "string"
+        ? team.location
+        : team.postal_code ?? team.postalCode ?? null;
+
+    return {
+      isRemote,
+      locationText: isRemote
+        ? "Remote"
+        : locationParts.length > 0
+          ? locationParts.join(", ")
+          : fallbackLocation,
+    };
+  };
+
   const handleTeamClick = () => {
     if (team?.id) setIsTeamDetailsOpen(true);
   };
@@ -258,7 +421,11 @@ const TeamInvitationDetailsModal = ({
   // ============ Render ============
 
   const hasRoleInvitation = !!(invitation?.role_id ?? invitation?.roleId ?? invitation?.role?.id);
-  const isInternal = invitation?.isInternal ?? invitation?.is_internal ?? false;
+  const isInternal =
+    normalizeBoolean(invitation?.isInternal ?? invitation?.is_internal) === true;
+  const inviteeAlreadyTeamMember =
+    isInternal ||
+    isInviteeExistingTeamMember({ invitation, team, currentUser });
   const isAcceptRoleLoading = actionLoading === "acceptRole";
   const isSwitchRoleLoading = actionLoading === "switchRole";
   const isAcceptTeamLoading = actionLoading === "acceptTeam";
@@ -266,10 +433,13 @@ const TeamInvitationDetailsModal = ({
   const isActionPending =
     isAcceptRoleLoading || isSwitchRoleLoading || isAcceptTeamLoading || isDeclineLoading;
   const isControlsDisabled = loading || isActionPending;
+  const teamLocationDetails = getTeamLocationDetails();
 
   const headerSubtitle = isInternal
     ? "You've been invited to fill a role!"
-    : hasRoleInvitation
+    : inviteeAlreadyTeamMember && hasRoleInvitation
+      ? "You've been invited to fill a role!"
+      : hasRoleInvitation
       ? "You are invited for a role!"
       : "You are invited!";
   const syntheticRoleFlag =
@@ -362,7 +532,7 @@ const TeamInvitationDetailsModal = ({
     : null;
   const canSwitchRole =
     hasRoleInvitation &&
-    isInternal &&
+    inviteeAlreadyTeamMember &&
     !isRoleUnavailable &&
     Boolean(currentFilledRole?.id ?? invitation?.current_filled_role_id ?? invitation?.currentFilledRoleId);
 
@@ -373,7 +543,7 @@ const TeamInvitationDetailsModal = ({
         {team.name || "Unknown Team"}
       </h2>
       <p className="text-sm text-base-content/70 flex items-center">
-        <MailOpen size={14} className={`mr-1.5 ${isInternal ? "text-orange-500" : ""}`} />
+        <MailOpen size={14} className={`mr-1.5 ${inviteeAlreadyTeamMember ? "text-orange-500" : ""}`} />
         {headerSubtitle}
       </p>
     </div>
@@ -394,7 +564,7 @@ const TeamInvitationDetailsModal = ({
           {isRoleUnavailable && (
             <Tooltip
               content={
-                isInternal
+                inviteeAlreadyTeamMember
                   ? (isRoleFilled ? "This role is already filled" : "This role is closed")
                   : (isRoleFilled
                       ? "This role is already filled — you can still join the team"
@@ -408,7 +578,7 @@ const TeamInvitationDetailsModal = ({
                 className="border border-base-content/30 text-base-content/40"
                 icon={<UserCheck size={16} />}
               >
-                {isInternal ? "Accept Role" : "Accept & Fill Role"}
+                {inviteeAlreadyTeamMember ? "Accept Role" : "Accept & Fill Role"}
               </Button>
             </Tooltip>
           )}
@@ -421,7 +591,7 @@ const TeamInvitationDetailsModal = ({
           >
             {isDeclineLoading ? "Declining..." : "Decline"}
           </Button>
-          {hasRoleInvitation && isInternal ? (
+          {hasRoleInvitation && inviteeAlreadyTeamMember ? (
             // Internal role invite: user is already a member, just accept/fill the role
             !isRoleUnavailable && (
               canSwitchRole ? (
@@ -520,7 +690,7 @@ const TeamInvitationDetailsModal = ({
             className="flex items-start space-x-3 cursor-pointer hover:opacity-80 transition-opacity"
             onClick={handleTeamClick}
           >
-            <Tooltip content="View team details" wrapperClassName="avatar">
+            <Tooltip content="Click to view team details" wrapperClassName="avatar">
               <div className="w-14 h-14 rounded-full relative overflow-hidden">
                 {getTeamAvatar() ? (
                   <img
@@ -559,7 +729,12 @@ const TeamInvitationDetailsModal = ({
 
             <div className="flex-1 min-w-0">
               <h4 className="font-medium text-base-content hover:text-primary transition-colors leading-[120%] mb-[0.2em]">
-                {team.name || "Unknown Team"}
+                <Tooltip
+                  content="Click to view team details"
+                  wrapperClassName="inline-flex max-w-full min-w-0 align-top"
+                >
+                  <span className="truncate">{team.name || "Unknown Team"}</span>
+                </Tooltip>
               </h4>
               <div className="mt-0.5 flex max-h-[2.75em] flex-wrap items-center gap-x-1.5 gap-y-px overflow-hidden text-sm text-base-content/70">
                 <Tooltip
@@ -571,7 +746,22 @@ const TeamInvitationDetailsModal = ({
                     {getMemberCount()}/{getMaxMembers()}
                   </span>
                 </Tooltip>
-                {isInternal && (
+                {teamLocationDetails.locationText && (
+                  <Tooltip
+                    content={teamLocationDetails.locationText}
+                    wrapperClassName="flex min-w-0 max-w-full items-center gap-1 overflow-hidden text-base-content/60 text-sm"
+                  >
+                    {teamLocationDetails.isRemote ? (
+                      <Globe size={14} className="flex-shrink-0" />
+                    ) : (
+                      <MapPin size={14} className="flex-shrink-0" />
+                    )}
+                    <span className="min-w-0 truncate">
+                      {teamLocationDetails.locationText}
+                    </span>
+                  </Tooltip>
+                )}
+                {inviteeAlreadyTeamMember && (
                   <Tooltip
                     content="You are already a member of this team"
                     wrapperClassName="flex items-center gap-1 text-base-content/70 text-sm"
@@ -617,7 +807,7 @@ const TeamInvitationDetailsModal = ({
             <div className="w-fit max-w-full bg-base-200 rounded-lg rounded-bl-none p-3">
               <p className="text-sm text-base-content/90 leading-relaxed">
                 {(() => {
-                  if (isInternal && currentFilledRoleName && currentFilledRoleName !== "your current role") {
+                  if (inviteeAlreadyTeamMember && currentFilledRoleName && currentFilledRoleName !== "your current role") {
                     const suffix = ` ${currentFilledRoleName}.`;
                     return invitation.message.endsWith(suffix)
                       ? invitation.message.slice(0, -suffix.length)
@@ -634,13 +824,13 @@ const TeamInvitationDetailsModal = ({
                     matchScore={roleMatchScore}
                     matchDetails={roleMatchDetails}
                     canManage={false}
-                    isTeamMember={false}
+                    isTeamMember={inviteeAlreadyTeamMember}
                     hideActions={true}
                     notificationHighlight={notificationHighlight}
                   />
                 </div>
               )}
-              {isInternal && currentFilledRoleForCard && (
+              {inviteeAlreadyTeamMember && currentFilledRoleForCard && (
                 <div className="mt-3 max-w-[300px]">
                   <VacantRoleCard
                     role={currentFilledRoleForCard}
@@ -665,7 +855,7 @@ const TeamInvitationDetailsModal = ({
               matchScore={roleMatchScore}
               matchDetails={roleMatchDetails}
               canManage={false}
-              isTeamMember={false}
+              isTeamMember={inviteeAlreadyTeamMember}
               hideActions={true}
               notificationHighlight={notificationHighlight}
             />
