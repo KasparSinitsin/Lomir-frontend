@@ -4,6 +4,7 @@ import {
   Plus,
   AlertCircle,
   ChevronRight,
+  ChevronDown,
   ChevronUp,
   Trash2,
 } from "lucide-react";
@@ -57,12 +58,14 @@ const VacantRolesSection = ({
   // Matching scores: { [roleId]: { matchScore, matchDetails } }
   const [matchScores, setMatchScores] = useState({});
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isSectionCollapsed, setIsSectionCollapsed] = useState(true);
   const COLLAPSED_COUNT = 4;
   const shouldShowAllRoleStatuses = canManage || isTeamMember;
   const visibleRoles = roles.filter((role) => {
     if (shouldShowAllRoleStatuses) return true;
     return String(role?.status ?? "").toLowerCase() === "open";
   });
+  const isEmpty = visibleRoles.length === 0;
 
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -130,6 +133,11 @@ const VacantRolesSection = ({
 
     fetchMatchScores();
   }, [isAuthenticated, teamId, roles]);
+
+  // Auto-expand when roles exist so they're always visible
+  useEffect(() => {
+    if (!isEmpty) setIsSectionCollapsed(false);
+  }, [isEmpty]);
 
   // Handle status change
   const handleStatusChange = async (roleId, newStatus) => {
@@ -251,8 +259,13 @@ const VacantRolesSection = ({
     <div className={className}>
       {/* Section Header — mirrors TeamMembersSection pattern */}
       <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center">
-          <UserSearch size={18} className="mr-2 text-primary flex-shrink-0" />
+        <div
+          className={`flex items-center gap-1 ${isEmpty ? "cursor-pointer select-none" : ""}`}
+          onClick={isEmpty ? () => setIsSectionCollapsed((v) => !v) : undefined}
+          role={isEmpty ? "button" : undefined}
+          aria-expanded={isEmpty ? !isSectionCollapsed : undefined}
+        >
+          <UserSearch size={18} className="mr-1 text-primary flex-shrink-0" />
           <h3 className="font-medium">
             Team Roles
             {openCount > 0 && (
@@ -261,6 +274,11 @@ const VacantRolesSection = ({
               </span>
             )}
           </h3>
+          {isEmpty && (
+            isSectionCollapsed
+              ? <ChevronRight size={16} className="ml-1 text-base-content/40" />
+              : <ChevronDown size={16} className="ml-1 text-base-content/40" />
+          )}
         </div>
 
         {/* Add role button for owners/admins */}
@@ -277,6 +295,8 @@ const VacantRolesSection = ({
         )}
       </div>
 
+      {(!isEmpty || !isSectionCollapsed) && (
+        <>
       <ScreenAlert
         type={notification.type}
         message={notification.message}
@@ -339,6 +359,8 @@ const VacantRolesSection = ({
             </p>
           </div>
         )
+      )}
+        </>
       )}
 
       {/* Create / Edit Modal */}

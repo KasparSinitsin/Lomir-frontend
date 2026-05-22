@@ -962,6 +962,9 @@ const VacantRoleCard = ({
       viewAsUser={viewAsUser}
       onViewApplicationDetails={onViewApplicationDetails}
       hideActions={hideActions && !usesSharedSearchCard}
+      onEdit={onEdit ? (r) => { setIsDetailsOpen(false); onEdit(r); } : null}
+      onDelete={onDelete ? (id) => { setIsDetailsOpen(false); onDelete(id); } : null}
+      onStatusChange={onStatusChange ? (id, s) => { setIsDetailsOpen(false); onStatusChange(id, s); } : null}
     />
   );
   const demoAvatarOverlay = isSyntheticRole(role) ? (

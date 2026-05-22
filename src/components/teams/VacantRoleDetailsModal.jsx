@@ -4,6 +4,7 @@ import {
   Globe,
   UserSearch,
   UserCheck,
+  UserX,
   Tag,
   Award,
   Calendar,
@@ -16,6 +17,10 @@ import {
   ChevronUp,
   SendHorizontal,
   FlaskConical,
+  Edit,
+  Trash2,
+  XCircle,
+  CheckCircle,
 } from "lucide-react";
 import Modal from "../common/Modal";
 import {
@@ -330,6 +335,9 @@ const VacantRoleDetailsModal = ({
   viewAsUser = null,
   onViewApplicationDetails = null,
   hideActions = false,
+  onEdit = null,
+  onDelete = null,
+  onStatusChange = null,
 }) => {
   const { user: currentUser, isAuthenticated } = useAuth();
   const userModal = useUserModalSafe();
@@ -488,6 +496,7 @@ const VacantRoleDetailsModal = ({
   const status = displayRole?.status;
   const isRoleOpen = String(status ?? "").toLowerCase() === "open";
   const isFilledRole = String(status ?? "").toLowerCase() === "filled";
+  const isClosedRole = String(status ?? "").toLowerCase() === "closed";
   const resolvedFilledUser = resolveFilledRoleUser(displayRole, {
     viewAsUserId,
     viewAsUser,
@@ -1596,14 +1605,14 @@ const VacantRoleDetailsModal = ({
     }
   };
 
-  const modalStatusTitle = isFilledRole ? "Filled Role" : "Vacant Role";
+  const modalStatusTitle = isFilledRole ? "Filled Role" : isClosedRole ? "Closed Role" : "Vacant Role";
   const demoAvatarOverlay = isSyntheticRole(displayRole) ? (
     <DemoAvatarOverlay
       textClassName="text-[9px]"
       textTranslateClassName="-translate-y-[4px]"
     />
   ) : null;
-  const ModalStatusIcon = isFilledRole ? UserCheck : UserSearch;
+  const ModalStatusIcon = isFilledRole ? UserCheck : isClosedRole ? UserX : UserSearch;
   const summarySuffix = isComparisonSelf
     ? " with you"
     : comparisonShortName
@@ -1851,29 +1860,14 @@ const VacantRoleDetailsModal = ({
     ? availableRoleTeamMembers
     : availableRoleTeamMembers.slice(0, COLLAPSED_COUNT);
   const modalTitle = (
-    <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-      <div className="flex min-w-0 items-center gap-2">
-        <ModalStatusIcon
-          className={isFilledRole ? "text-success" : "text-orange-500"}
-          size={20}
-        />
-        <h2 className="text-base font-medium leading-snug sm:text-lg">
-          {modalStatusTitle}
-        </h2>
-      </div>
-      {!isFilledRole && canManage && !hideActions && (
-        <div className="flex items-center space-x-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => window.open(buildSearchUrl(), '_blank')}
-            className="flex items-center gap-1"
-          >
-            <UserSearch size={16} />
-            <span className="hidden sm:inline">Find matching people outside this team</span>
-          </Button>
-        </div>
-      )}
+    <div className="flex min-w-0 items-center gap-2">
+      <ModalStatusIcon
+        className={isFilledRole ? "text-success" : isClosedRole ? "text-gray-400" : "text-orange-500"}
+        size={20}
+      />
+      <h2 className="text-base font-medium leading-snug sm:text-lg whitespace-nowrap">
+        {modalStatusTitle}
+      </h2>
     </div>
   );
 
@@ -1889,6 +1883,73 @@ const VacantRoleDetailsModal = ({
       closeOnBackdrop={true}
       closeOnEscape={true}
       showCloseButton={true}
+      headerActions={
+        (canManage && !hideActions) || (!isFilledRole && !isClosedRole) ? (
+          <div className="flex items-center gap-1">
+            {canManage && !hideActions && (
+              <>
+                {onDelete && (
+                  <Tooltip content="Permanently delete this role">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => { onClose(); onDelete(roleId); }}
+                      className="hover:bg-red-100 hover:text-red-700"
+                      icon={<Trash2 size={16} />}
+                    />
+                  </Tooltip>
+                )}
+                {onEdit && (
+                  <Tooltip content="Edit this role's details">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => { onClose(); onEdit(displayRole); }}
+                      className="hover:bg-[#7ace82] hover:text-[#036b0c]"
+                      icon={<Edit size={16} />}
+                    />
+                  </Tooltip>
+                )}
+                {isRoleOpen && onStatusChange && (
+                  <Tooltip content="Close this role — stop accepting new applicants">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => { onClose(); onStatusChange(roleId, "closed"); }}
+                      className="hover:bg-yellow-100 hover:text-yellow-700"
+                      icon={<XCircle size={16} />}
+                    />
+                  </Tooltip>
+                )}
+                {!isRoleOpen && onStatusChange && (
+                  <Tooltip content="Reopen this role to accept new applicants">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => { onClose(); onStatusChange(roleId, "open"); }}
+                      className="hover:bg-green-100 hover:text-green-700"
+                      icon={<CheckCircle size={16} />}
+                    />
+                  </Tooltip>
+                )}
+              </>
+            )}
+            {!isFilledRole && !isClosedRole && (
+              <Tooltip content="Find matching people outside this team">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => window.open(buildSearchUrl(), "_blank")}
+                  className="flex items-center gap-1"
+                >
+                  <UserSearch size={16} />
+                  <span className="hidden sm:inline">Find Matches</span>
+                </Button>
+              </Tooltip>
+            )}
+          </div>
+        ) : null
+      }
     >
       <div className="space-y-6">
         {loadingRoleDetails && !hydratedRole && (

@@ -32,6 +32,8 @@ export const AuthProvider = ({ children }) => {
 
   // Load user data if token exists
   useEffect(() => {
+    let cancelled = false;
+
     const loadUser = async () => {
       if (token) {
         try {
@@ -40,6 +42,8 @@ export const AuthProvider = ({ children }) => {
               Authorization: `Bearer ${token}`,
             },
           });
+
+          if (cancelled) return;
 
           const userData = response.data.data.user;
           const enhancedUserData = normalizeAuthUser(userData, {
@@ -56,6 +60,7 @@ export const AuthProvider = ({ children }) => {
             console.error("Failed to connect socket on load:", socketError);
           }
         } catch (err) {
+          if (cancelled) return;
           console.error("Failed to load user:", err);
           // If token is invalid, clear it
           if (
@@ -68,14 +73,18 @@ export const AuthProvider = ({ children }) => {
           }
           setError("Authentication failed. Please login again.");
         } finally {
-          setLoading(false);
+          if (!cancelled) setLoading(false);
         }
       } else {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
 
     loadUser();
+
+    return () => {
+      cancelled = true;
+    };
   }, [token]);
 
   // Register a new user
