@@ -151,16 +151,17 @@ const UserProfileHeaderSection = ({
           )}
         </div>
         {matchTier && (
-          <div
-            className={`absolute -top-1 -left-1 w-6 h-6 rounded-full ring-2 ring-white flex items-center justify-center ${matchTier.bg}`}
-            title={`${matchTier.pct}% ${matchTier.label.toLowerCase()}`}
+          <Tooltip
+            content={`${matchTier.pct}% ${matchTier.label.toLowerCase()}`}
+            position="bottom"
+            wrapperClassName={`absolute -top-1 -left-1 w-6 h-6 rounded-full ring-2 ring-white flex items-center justify-center cursor-help ${matchTier.bg}`}
           >
             <matchTier.Icon
               size={12}
               className="text-white"
               strokeWidth={2.5}
             />
-          </div>
+          </Tooltip>
         )}
       </div>
 

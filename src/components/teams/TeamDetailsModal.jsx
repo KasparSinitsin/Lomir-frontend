@@ -1634,16 +1634,17 @@ const TeamDetailsModal = ({
                       )}
                     </div>
                     {teamMatchTier && (
-                      <div
-                        className={`absolute -top-1 -left-1 w-6 h-6 rounded-full ring-2 ring-white flex items-center justify-center ${teamMatchTier.bg}`}
-                        title={`${teamMatchTier.pct}% ${teamMatchTier.label.toLowerCase()}`}
+                      <Tooltip
+                        content={`${teamMatchTier.pct}% ${teamMatchTier.label.toLowerCase()}`}
+                        position="bottom"
+                        wrapperClassName={`absolute -top-1 -left-1 w-6 h-6 rounded-full ring-2 ring-white flex items-center justify-center cursor-help ${teamMatchTier.bg}`}
                       >
                         <teamMatchTier.Icon
                           size={12}
                           className="text-white"
                           strokeWidth={2.5}
                         />
-                      </div>
+                      </Tooltip>
                     )}
                   </div>
                   <div className="flex-1">
@@ -1680,9 +1681,9 @@ const TeamDetailsModal = ({
                           position="bottom"
                           wrapperClassName="flex items-center gap-1 text-base-content/70 cursor-help"
                         >
-                          <UserSearch size={14} className="flex-shrink-0" />
+                          <UserSearch size={14} className="text-orange-500 flex-shrink-0" />
                           <span>
-                            {teamRoles.filter((r) => r.status === "open").length} open
+                            {teamRoles.filter((r) => r.status === "open").length}
                           </span>
                         </Tooltip>
                       )}
@@ -1698,7 +1699,11 @@ const TeamDetailsModal = ({
                       {/* Public/Private status - only for members of NON-archived teams */}
                       {shouldShowVisibilityStatus() &&
                         !(team?.archived_at || team?.status === "inactive") && (
-                          <div className="flex items-center gap-1 text-base-content/70">
+                          <Tooltip
+                            content={isPublic ? "Public — visible to everyone" : "Private — only visible to members"}
+                            position="bottom"
+                            wrapperClassName="flex items-center gap-1 text-base-content/70 cursor-help"
+                          >
                             {isPublic ? (
                               <>
                                 <Eye
@@ -1716,7 +1721,7 @@ const TeamDetailsModal = ({
                                 {!teamDateIsNarrow && <span>Private</span>}
                               </>
                             )}
-                          </div>
+                          </Tooltip>
                         )}
 
                       {teamDateIsNarrow && getTeamCreatedDate() && (
