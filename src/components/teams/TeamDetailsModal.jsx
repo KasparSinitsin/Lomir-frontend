@@ -1719,7 +1719,7 @@ const TeamDetailsModal = ({
                       />
                     </h1>
                     {/* Members count and visibility */}
-                    <div className="flex items-center flex-wrap gap-x-3 gap-y-0.5 text-sm">
+                    <div className="flex items-center flex-wrap gap-x-3 gap-y-0.5 text-sm leading-[110%]">
                       <div className="flex items-center gap-1 text-base-content/70">
                         <Users size={14} className="text-primary flex-shrink-0" />
                         <span>
@@ -1758,7 +1758,7 @@ on ${format(new Date((effectivePendingInvitation.createdAt ?? effectivePendingIn
 on ${format(new Date((effectivePendingInvitation.createdAt ?? effectivePendingInvitation.created_at)), "MMM d, yyyy")}` : ""}`
                           }
                           position="bottom"
-                          wrapperClassName="flex items-center gap-0.5 cursor-help"
+                          wrapperClassName="flex items-center gap-1 cursor-help"
                         >
                           <Mail
                             size={14}
@@ -1776,7 +1776,7 @@ on ${format(new Date((effectivePendingInvitation.createdAt ?? effectivePendingIn
                         <Tooltip
                           content={`You applied to join this team and fill a role${(pendingCombinedApplication.createdAt ?? pendingCombinedApplication.created_at) ? `\non ${format(new Date((pendingCombinedApplication.createdAt ?? pendingCombinedApplication.created_at)), "MMM d, yyyy")}` : ""}`}
                           position="bottom"
-                          wrapperClassName="flex items-center gap-0.5 cursor-help"
+                          wrapperClassName="flex items-center gap-1 cursor-help"
                         >
                           <SendHorizontal size={14} className="flex-shrink-0 text-violet-500" />
                           {(pendingCombinedApplication.createdAt ?? pendingCombinedApplication.created_at) && (
@@ -1789,7 +1789,7 @@ on ${format(new Date((effectivePendingInvitation.createdAt ?? effectivePendingIn
                         <Tooltip
                           content={`You applied to fill a role in this team${(pendingInternalRoleApplication.createdAt ?? pendingInternalRoleApplication.created_at) ? `\non ${format(new Date((pendingInternalRoleApplication.createdAt ?? pendingInternalRoleApplication.created_at)), "MMM d, yyyy")}` : ""}`}
                           position="bottom"
-                          wrapperClassName="flex items-center gap-0.5 cursor-help"
+                          wrapperClassName="flex items-center gap-1 cursor-help"
                         >
                           <SendHorizontal size={14} className="flex-shrink-0 text-orange-500" />
                           {(pendingInternalRoleApplication.createdAt ?? pendingInternalRoleApplication.created_at) && (
@@ -1802,7 +1802,7 @@ on ${format(new Date((effectivePendingInvitation.createdAt ?? effectivePendingIn
                         <Tooltip
                           content={`You applied to join this team${(pendingTeamOnlyApplication.createdAt ?? pendingTeamOnlyApplication.created_at) ? `\non ${format(new Date((pendingTeamOnlyApplication.createdAt ?? pendingTeamOnlyApplication.created_at)), "MMM d, yyyy")}` : ""}`}
                           position="bottom"
-                          wrapperClassName="flex items-center gap-0.5 cursor-help"
+                          wrapperClassName="flex items-center gap-1 cursor-help"
                         >
                           <SendHorizontal size={14} className="flex-shrink-0 text-info" />
                           {(pendingTeamOnlyApplication.createdAt ?? pendingTeamOnlyApplication.created_at) && (
@@ -1847,24 +1847,28 @@ on ${format(new Date((effectivePendingInvitation.createdAt ?? effectivePendingIn
                           </Tooltip>
                         )}
 
-                      {teamDateIsNarrow && getTeamCreatedDate() && (
-                        <Tooltip
-                          content={`Created on ${getTeamCreatedDate().full}`}
-                          position="bottom"
-                          wrapperClassName="flex items-center text-sm text-base-content/60 flex-shrink-0 cursor-help"
-                        >
-                          <Calendar size={14} className="mr-1" />
-                          <span>{getTeamCreatedDate().narrow}</span>
-                        </Tooltip>
-                      )}
-                      {isSyntheticTeam(team) && (
-                        <Tooltip
-                          content={DEMO_TEAM_TOOLTIP}
-                          wrapperClassName="flex items-start text-base-content/50 text-sm"
-                        >
-                          <FlaskConical className={`h-3.5 w-auto flex-shrink-0 mt-px${teamDateIsNarrow ? "" : " mr-0.5"}`} />
-                          {!teamDateIsNarrow && <span className="leading-[1.15]">Demo Team</span>}
-                        </Tooltip>
+                      {((teamDateIsNarrow && getTeamCreatedDate()) || isSyntheticTeam(team)) && (
+                        <span className="flex items-center gap-3 flex-shrink-0">
+                          {teamDateIsNarrow && getTeamCreatedDate() && (
+                            <Tooltip
+                              content={`Created on ${getTeamCreatedDate().full}`}
+                              position="bottom"
+                              wrapperClassName="flex items-center text-base-content/70 flex-shrink-0 cursor-help"
+                            >
+                              <Calendar size={14} className="mr-1" />
+                              <span>{getTeamCreatedDate().narrow}</span>
+                            </Tooltip>
+                          )}
+                          {isSyntheticTeam(team) && (
+                            <Tooltip
+                              content={DEMO_TEAM_TOOLTIP}
+                              wrapperClassName="flex items-start text-base-content/50"
+                            >
+                              <FlaskConical size={14} className={`flex-shrink-0 mt-px${teamDateIsNarrow ? "" : " mr-0.5"}`} />
+                              {!teamDateIsNarrow && <span className="leading-[1.15]">Demo Team</span>}
+                            </Tooltip>
+                          )}
+                        </span>
                       )}
                     </div>
                   </div>
@@ -1876,7 +1880,7 @@ on ${format(new Date((effectivePendingInvitation.createdAt ?? effectivePendingIn
                       <Tooltip
                         content={`Created on ${getTeamCreatedDate().full}`}
                         position="bottom"
-                        wrapperClassName="flex items-center text-sm text-base-content/60 cursor-help"
+                        wrapperClassName="flex items-center text-base-content/70 cursor-help"
                       >
                         <Calendar size={14} className="mr-1" />
                         <span>{getTeamCreatedDate().short}</span>

@@ -178,12 +178,12 @@ const UserProfileHeaderSection = ({
             aria-hidden="true"
           />
         </h1>
-        <div className="flex items-center flex-wrap gap-x-3 gap-y-0.5 text-sm">
+        <div className="flex items-center flex-wrap gap-x-3 gap-y-0.5 text-sm leading-[110%]">
           <span className="text-base-content/70">@{user?.username}</span>
 
           {filledRoleName && (
             <span className="flex items-center gap-1 text-base-content/70">
-              <UserCheck size={12} className="flex-shrink-0" />
+              <UserCheck size={14} className="flex-shrink-0" />
               <span>
                 {filledRoleName}
                 {teamName && <span className="text-base-content/50"> in {teamName}</span>}
@@ -207,24 +207,28 @@ const UserProfileHeaderSection = ({
               )}
             </div>
           )}
-          {dateIsNarrow && getMemberSinceDate() && (
-            <Tooltip
-              content={`Joined Lomir on ${getMemberSinceDate().full}`}
-              position="bottom"
-              wrapperClassName="flex items-center text-sm text-base-content/60 flex-shrink-0 cursor-help"
-            >
-              <Calendar size={14} className="mr-1" />
-              <span>{getMemberSinceDate().short}</span>
-            </Tooltip>
-          )}
-          {isSyntheticUser(user) && (
-            <Tooltip
-              content={DEMO_PROFILE_TOOLTIP}
-              wrapperClassName="flex items-start text-base-content/50 text-sm"
-            >
-              <FlaskConical className={`h-3.5 w-auto flex-shrink-0 mt-px${dateIsNarrow ? "" : " mr-0.5"}`} />
-              {!dateIsNarrow && <span className="leading-[1.15]">Demo Profile</span>}
-            </Tooltip>
+          {((dateIsNarrow && getMemberSinceDate()) || isSyntheticUser(user)) && (
+            <span className="flex items-center gap-3 flex-shrink-0">
+              {dateIsNarrow && getMemberSinceDate() && (
+                <Tooltip
+                  content={`Joined Lomir on ${getMemberSinceDate().full}`}
+                  position="bottom"
+                  wrapperClassName="flex items-center text-base-content/70 flex-shrink-0 cursor-help"
+                >
+                  <Calendar size={14} className="mr-1" />
+                  <span>{getMemberSinceDate().short}</span>
+                </Tooltip>
+              )}
+              {isSyntheticUser(user) && (
+                <Tooltip
+                  content={DEMO_PROFILE_TOOLTIP}
+                  wrapperClassName="flex items-start text-base-content/50"
+                >
+                  <FlaskConical size={14} className={`flex-shrink-0 mt-px${dateIsNarrow ? "" : " mr-0.5"}`} />
+                  {!dateIsNarrow && <span className="leading-[1.15]">Demo Profile</span>}
+                </Tooltip>
+              )}
+            </span>
           )}
         </div>
       </div>
@@ -238,7 +242,7 @@ const UserProfileHeaderSection = ({
           <Tooltip
             content={`Joined Lomir on ${getMemberSinceDate().full}`}
             position="bottom"
-            wrapperClassName="flex items-center text-sm text-base-content/60 cursor-help"
+            wrapperClassName="flex items-center text-base-content/70 cursor-help"
           >
             <Calendar size={14} className="mr-1" />
             <span>{getMemberSinceDate().short}</span>

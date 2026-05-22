@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useLayoutEffect, useRef } from "react";
+import { format } from "date-fns";
 import {
   MapPin,
   Globe,
@@ -22,6 +23,7 @@ import {
   Trash2,
   XCircle,
   CheckCircle,
+  PenLine,
 } from "lucide-react";
 import Modal from "../common/Modal";
 import {
@@ -383,6 +385,12 @@ const VacantRoleDetailsModal = ({
     useState(false);
   const [isViewerInvitationDetailsOpen, setIsViewerInvitationDetailsOpen] =
     useState(false);
+  const [roleDateIsNarrow, setRoleDateIsNarrow] = useState(false);
+  const roleDateIsNarrowRef = useRef(false);
+  roleDateIsNarrowRef.current = roleDateIsNarrow;
+  const roleTitleContainerRef = useRef(null);
+  const roleTitleProbeRef = useRef(null);
+  const roleDateRef = useRef(null);
   const roleId = role?.id;
   const teamId = role?.teamId ?? role?.team_id ?? team?.id;
   const teamMembers = Array.isArray(team?.members) ? team.members : EMPTY_TEAM_MEMBERS;
@@ -1872,6 +1880,44 @@ const VacantRoleDetailsModal = ({
   const visibleRoleTeamMembers = isTeamMembersExpanded
     ? availableRoleTeamMembers
     : availableRoleTeamMembers.slice(0, COLLAPSED_COUNT);
+  const rolePostedDate = (() => {
+    const dateVal = isFilledRole ? filledAt : createdAt;
+    if (!dateVal) return null;
+    try {
+      return {
+        short: format(new Date(dateVal), "MM/yy"),
+        full: format(new Date(dateVal), "MMMM d, yyyy"),
+        label: isFilledRole ? "Filled on" : "Posted on",
+      };
+    } catch {
+      return null;
+    }
+  })();
+
+  useLayoutEffect(() => {
+    const container = roleTitleContainerRef.current;
+    const probe = roleTitleProbeRef.current;
+    if (!container || !probe) return;
+
+    const update = () => {
+      const containerWidth = container.clientWidth;
+      if (containerWidth === 0) return;
+      const dateEl = roleDateRef.current;
+      const reservedWidth =
+        roleDateIsNarrowRef.current && dateEl ? dateEl.offsetWidth + 16 : 0;
+      probe.textContent = roleName;
+      setRoleDateIsNarrow(probe.scrollWidth > containerWidth - reservedWidth);
+    };
+
+    const resizeObserver = new ResizeObserver(update);
+    resizeObserver.observe(container);
+    if (roleDateRef.current) resizeObserver.observe(roleDateRef.current);
+    update();
+
+    return () => resizeObserver.disconnect();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roleName, !!rolePostedDate]);
+
   const modalTitle = (
     <h2 className="text-xl font-medium text-primary flex items-start gap-2 whitespace-nowrap">
       <ModalStatusIcon
@@ -2035,89 +2081,114 @@ const VacantRoleDetailsModal = ({
           </div>
 
           <div className="flex-1 min-w-0">
-            <h1 className="text-2xl font-bold leading-[110%] mb-[0.2em]">{roleName}</h1>
-            <div className="flex items-center flex-wrap gap-x-3 gap-y-0.5 text-sm">
+            <h1 ref={roleTitleContainerRef} className="text-2xl font-bold leading-[110%] mb-[0.2em] relative">
+              {roleName}
+              <span
+                ref={roleTitleProbeRef}
+                className="invisible absolute whitespace-nowrap pointer-events-none left-0 top-0 font-bold"
+                aria-hidden="true"
+              />
+            </h1>
+            <div className="flex items-center flex-wrap gap-x-3 gap-y-0.5 text-sm leading-[110%]">
               {teamMemberCount != null && (
                 <div className="flex items-center gap-1 text-base-content/70">
                   <Users size={14} className="text-primary flex-shrink-0" />
-                  <span className="text-base-content/50">
-                    {teamMemberCount}/{teamMaxMembers ?? "∞"} members
-                  </span>
-                </div>
-              )}
-
-              {(isFilledRole ? filledAt : createdAt) && (
-                <div className="flex flex-wrap items-center gap-x-1 gap-y-0 text-xs text-base-content/50">
-                  <Calendar size={12} />
                   <span>
-                    {isFilledRole ? "Filled on" : "Posted"}{" "}
-                    {formatDate(isFilledRole ? filledAt : createdAt)}
+                    {teamMemberCount}/{teamMaxMembers ?? "∞"}
                   </span>
-                  {isFilledRole && filledRoleUser?.id ? (
-                    <span>
-                      {" "}by{" "}
-                      <Tooltip content={`Click to view ${filledRoleDisplayName || "this user"}'s profile`}>
-                        <button
-                          type="button"
-                          className="hover:text-primary transition-colors font-medium"
-                          onClick={handleFilledUserClick}
-                        >
-                          {filledRoleDisplayName}
-                        </button>
-                      </Tooltip>
-                    </span>
-                  ) : !isFilledRole && creatorName ? (
-                    <span>
-                      {" "}by{" "}
-                      {creatorUserId ? (
-                        <Tooltip content={`Click to view ${creatorName}'s profile`}>
-                          <button
-                            type="button"
-                            className="hover:text-primary transition-colors font-medium"
-                            onClick={handleCreatorUserClick}
-                          >
-                            {creatorName}
-                          </button>
-                        </Tooltip>
-                      ) : (
-                        <span>{creatorName}</span>
-                      )}
-                    </span>
-                  ) : null}
-                  {!isFilledRole && teamName ? (
-                    <span className="inline-flex min-w-0 max-w-full items-center gap-1">
-                      <Users size={12} className="flex-shrink-0" />
-                      {canOpenTeamModal ? (
-                        <Tooltip content={`Click to view ${teamName}`}>
-                          <button
-                            type="button"
-                            className="min-w-0 text-left font-medium whitespace-normal break-words transition-colors hover:text-primary"
-                            onClick={handleTeamClick}
-                          >
-                            {teamName}
-                          </button>
-                        </Tooltip>
-                      ) : (
-                        <span className="min-w-0 whitespace-normal break-words">
-                          {teamName}
-                        </span>
-                      )}
-                    </span>
-                  ) : null}
                 </div>
               )}
 
-              {isSyntheticRole(displayRole) && (
-                <Tooltip
-                  content={DEMO_ROLE_TOOLTIP}
-                  wrapperClassName="flex items-center gap-1 text-base-content/50 text-xs"
-                >
-                  <FlaskConical size={12} className="flex-shrink-0" />
-                  <span>Demo Role</span>
-                </Tooltip>
+              {(isFilledRole ? (filledRoleUser?.id && filledRoleDisplayName) : creatorName) && (
+                <span className="flex items-center gap-1 text-base-content/50 min-w-0">
+                  <PenLine size={14} className="flex-shrink-0" />
+                  <span className="flex-shrink-0">by</span>
+                  {isFilledRole && filledRoleUser?.id ? (
+                    <Tooltip content={`Click to view ${filledRoleDisplayName || "this user"}'s profile`}>
+                      <button
+                        type="button"
+                        className="truncate font-medium hover:text-primary transition-colors"
+                        onClick={handleFilledUserClick}
+                      >
+                        {filledRoleDisplayName}
+                      </button>
+                    </Tooltip>
+                  ) : creatorUserId ? (
+                    <Tooltip content={`Click to view ${creatorName}'s profile`}>
+                      <button
+                        type="button"
+                        className="truncate font-medium hover:text-primary transition-colors"
+                        onClick={handleCreatorUserClick}
+                      >
+                        {creatorName}
+                      </button>
+                    </Tooltip>
+                  ) : (
+                    <span className="truncate">{creatorName}</span>
+                  )}
+                </span>
+              )}
+
+              {!isFilledRole && teamName && (
+                <span className="flex min-w-0 items-center gap-1 text-base-content/50">
+                  <Users size={14} className="flex-shrink-0" />
+                  {canOpenTeamModal ? (
+                    <Tooltip content={`Click to view ${teamName}`}>
+                      <button
+                        type="button"
+                        className="truncate font-medium hover:text-primary transition-colors"
+                        onClick={handleTeamClick}
+                      >
+                        {teamName}
+                      </button>
+                    </Tooltip>
+                  ) : (
+                    <span className="truncate">{teamName}</span>
+                  )}
+                </span>
+              )}
+
+              {((roleDateIsNarrow && rolePostedDate) || isSyntheticRole(displayRole)) && (
+                <span className="flex items-center gap-3 flex-shrink-0">
+                  {roleDateIsNarrow && rolePostedDate && (
+                    <Tooltip
+                      content={`${rolePostedDate.label} ${rolePostedDate.full}`}
+                      position="bottom"
+                      wrapperClassName="flex items-center text-base-content/70 flex-shrink-0 cursor-help"
+                    >
+                      <Calendar size={14} className="mr-1" />
+                      <span>{rolePostedDate.short}</span>
+                    </Tooltip>
+                  )}
+                  {isSyntheticRole(displayRole) && (
+                    <Tooltip
+                      content={DEMO_ROLE_TOOLTIP}
+                      wrapperClassName="flex items-start text-base-content/50"
+                    >
+                      <FlaskConical size={14} className={`flex-shrink-0 mt-px${roleDateIsNarrow ? "" : " mr-0.5"}`} />
+                      {!roleDateIsNarrow && <span className="leading-[1.15]">Demo Role</span>}
+                    </Tooltip>
+                  )}
+                </span>
               )}
             </div>
           </div>
+
+          {rolePostedDate && (
+            <div
+              ref={roleDateRef}
+              className={`flex-shrink-0${roleDateIsNarrow ? " absolute opacity-0 pointer-events-none" : ""}`}
+            >
+              <Tooltip
+                content={`${rolePostedDate.label} ${rolePostedDate.full}`}
+                position="bottom"
+                wrapperClassName="flex items-center text-base-content/70 cursor-help"
+              >
+                <Calendar size={14} className="mr-1" />
+                <span>{rolePostedDate.short}</span>
+              </Tooltip>
+            </div>
+          )}
         </div>
 
         {bio && (
