@@ -12,8 +12,9 @@ import { messageService } from "../../services/messageService";
 import { userService } from "../../services/userService";
 import Button from "../common/Button";
 import Alert from "../common/Alert";
+import Tooltip from "../common/Tooltip";
 import { useAuth } from "../../contexts/AuthContext";
-import { Edit, MessageCircle, UserPlus, Award, Check, X, Ruler, User } from "lucide-react";
+import { Edit, MessageCircle, UserPlus, Award, Check, CheckCheck, X, Ruler, User } from "lucide-react";
 import TeamInviteModal from "../teams/TeamInviteModal";
 import BadgeAwardModal from "../badges/BadgeAwardModal";
 import SupercategoryAwardsModal from "../badges/SupercategoryAwardsModal";
@@ -541,7 +542,7 @@ const UserDetailsModal = ({
     return (
       <span
         className={`flex items-center gap-1.5 text-sm ${
-          isWithinRange ? "text-success" : "text-error/70"
+          isWithinRange ? "text-success" : "text-slate-500"
         }`}
       >
         <Ruler size={14} className="flex-shrink-0" />
@@ -572,48 +573,66 @@ const UserDetailsModal = ({
   const modalHeaderActions = !isEditing && !showDeletedUserPlaceholder ? (
     <div className="flex items-center gap-1">
       {showEdit && (
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => {
-            window.open("/profile?mode=edit", "_blank", "noopener,noreferrer");
-            onClose?.();
-          }}
-          className="hover:bg-[#7ace82] hover:text-[#036b0c]"
-          icon={<Edit size={16} />}
+        <Tooltip
+          content="Open your profile editor in a new tab and close these details."
+          position="bottom"
         >
-          <span className="hidden sm:inline">Edit</span>
-        </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              window.open("/profile?mode=edit", "_blank", "noopener,noreferrer");
+              onClose?.();
+            }}
+            className="hover:bg-[#7ace82] hover:text-[#036b0c]"
+            icon={<Edit size={16} />}
+            aria-label="Edit your profile"
+          >
+            <span className="hidden sm:inline">Edit</span>
+          </Button>
+        </Tooltip>
       )}
       {showChatInvite && (
         <>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleStartChat}
-            className="flex items-center gap-1"
+          <Tooltip content="Start a private chat with this person." position="bottom">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleStartChat}
+              className="flex items-center gap-1"
+              aria-label="Start chat"
+            >
+              <MessageCircle size={16} />
+              <span className="hidden sm:inline">Chat</span>
+            </Button>
+          </Tooltip>
+          <Tooltip content="Invite this person to one of your teams." position="bottom">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleInviteToTeam}
+              className="flex items-center gap-1"
+              aria-label="Invite to team"
+            >
+              <UserPlus size={16} />
+              <span className="hidden sm:inline">Invite</span>
+            </Button>
+          </Tooltip>
+          <Tooltip
+            content="Award this person a badge for their skills or contributions."
+            position="bottom"
           >
-            <MessageCircle size={16} />
-            <span className="hidden sm:inline">Chat</span>
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleInviteToTeam}
-            className="flex items-center gap-1"
-          >
-            <UserPlus size={16} />
-            <span className="hidden sm:inline">Invite</span>
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setIsBadgeAwardModalOpen(true)}
-            className="flex items-center gap-1"
-          >
-            <Award size={16} />
-            <span className="hidden sm:inline">Award</span>
-          </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsBadgeAwardModalOpen(true)}
+              className="flex items-center gap-1"
+              aria-label="Award badge"
+            >
+              <Award size={16} />
+              <span className="hidden sm:inline">Award</span>
+            </Button>
+          </Tooltip>
         </>
       )}
     </div>
@@ -633,6 +652,7 @@ const UserDetailsModal = ({
         closeOnBackdrop={true}
         closeOnEscape={true}
         showCloseButton={true}
+        closeButtonTooltip="Close user details and return to the previous view."
         zIndexClass={zIndexClass}
         boxZIndexClass={boxZIndexClass}
         zIndexStyle={zIndexStyle}
@@ -726,15 +746,16 @@ const UserDetailsModal = ({
                       return effectiveMatchIds.has(tagId);
                     }).length;
                 if (matchCount > 0) {
+                  const MatchIcon = matchCount === total ? CheckCheck : Check;
                   return (
                     <span className="flex items-center gap-1.5 text-sm text-success">
-                      <Check size={14} className="flex-shrink-0" />
+                      <MatchIcon size={14} className="flex-shrink-0" />
                       <span>{matchCount}/{total} in common</span>
                     </span>
                   );
                 }
                 return (
-                  <span className="flex items-center gap-1.5 text-sm text-error/70">
+                  <span className="flex items-center gap-1.5 text-sm text-slate-500">
                     <X size={14} className="flex-shrink-0" />
                     <span>None in common</span>
                   </span>
@@ -789,15 +810,16 @@ const UserDetailsModal = ({
                       return effectiveMatchNames.has(name);
                     }).length;
                 if (matchCount > 0) {
+                  const MatchIcon = matchCount === total ? CheckCheck : Check;
                   return (
                     <span className="flex items-center gap-1.5 text-sm text-success">
-                      <Check size={14} className="flex-shrink-0" />
+                      <MatchIcon size={14} className="flex-shrink-0" />
                       <span>{matchCount}/{total} in common</span>
                     </span>
                   );
                 }
                 return (
-                  <span className="flex items-center gap-1.5 text-sm text-error/70">
+                  <span className="flex items-center gap-1.5 text-sm text-slate-500">
                     <X size={14} className="flex-shrink-0" />
                     <span>None in common</span>
                   </span>

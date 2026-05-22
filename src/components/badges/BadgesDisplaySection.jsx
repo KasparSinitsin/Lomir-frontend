@@ -91,22 +91,45 @@ const BadgesDisplaySection = ({
   const pillCount = (badges || []).length;
 
   const titleSummary = totalCredits > 0 ? (
-    <span className="font-normal text-sm text-base-content/60 ml-1">
-      ({totalCredits} ct. across {pillCount} {pillCount === 1 ? 'area' : 'areas'})
+    <span className="min-w-0 text-sm font-normal text-base-content/60 sm:whitespace-nowrap">
+      ({totalCredits} ct. in {pillCount} {pillCount === 1 ? 'area' : 'areas'})
     </span>
   ) : null;
+
+  const sectionHeader = (
+    <div className="flex items-start gap-2 mb-3">
+      <Award size={18} className="mt-0.5 text-primary flex-shrink-0" />
+      <div className="min-w-0 flex-1">
+        <div className="sm:grid sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start sm:gap-3">
+          <div className="min-w-0 sm:flex sm:items-baseline sm:gap-1">
+            <h3 className="font-medium leading-5">{title}</h3>
+            {titleSummary && <span className="hidden sm:inline">{titleSummary}</span>}
+          </div>
+          {headerRight && (
+            <div className="hidden items-center justify-end gap-2 text-right sm:flex sm:whitespace-nowrap">
+              {headerRight}
+            </div>
+          )}
+        </div>
+        {(titleSummary || headerRight) && (
+          <div className="mt-0.5 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 sm:hidden">
+            {titleSummary ?? <span />}
+            {headerRight && (
+              <div className="flex items-center justify-end gap-2 text-right">
+                {headerRight}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
 
   if (!badges || badges.length === 0) {
     if (compact) return null;
     return (
       <div className={className}>
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center">
-            <Award size={18} className="mr-2 text-primary flex-shrink-0" />
-            <h3 className="font-medium">{title}{titleSummary}</h3>
-          </div>
-          {headerRight}
-        </div>
+        {sectionHeader}
         <p className="text-sm text-base-content/60">{emptyMessage}</p>
       </div>
     );
@@ -222,13 +245,7 @@ const BadgesDisplaySection = ({
   if (!groupByCategory) {
     return (
       <div className={className}>
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center">
-            <Award size={18} className="mr-2 text-primary flex-shrink-0" />
-            <h3 className="font-medium">{title}{titleSummary}</h3>
-          </div>
-          {headerRight}
-        </div>
+        {sectionHeader}
 
         <div
           ref={pillsRef}
@@ -261,13 +278,7 @@ const BadgesDisplaySection = ({
   // Grouped by category with icons
   return (
     <div className={className}>
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center">
-          <Award size={18} className="mr-2 text-primary flex-shrink-0" />
-          <h3 className="font-medium">{title}{titleSummary}</h3>
-        </div>
-        {headerRight}
-      </div>
+      {sectionHeader}
 
       {/* Category groups with icons */}
       <div

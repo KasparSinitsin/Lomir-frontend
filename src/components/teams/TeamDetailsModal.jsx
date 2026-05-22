@@ -31,6 +31,7 @@ import {
   SendHorizontal,
   Archive,
   Check,
+  CheckCheck,
   FlaskConical,
 } from "lucide-react";
 import VisibilityToggle from "../common/VisibilityToggle";
@@ -1422,38 +1423,49 @@ const TeamDetailsModal = ({
   const modalHeaderActions = !isEditing ? (
     <div className="flex items-center gap-1">
       {canEditTeam && (
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => {
-            userHasEditedTagsRef.current = false;
-            setFormData((prev) => ({
-              ...prev,
-              selectedTags:
-                (prev.selectedTags?.length ?? 0) > 0
-                  ? prev.selectedTags
-                  : normalizeTeamTagIds(team),
-            }));
-            setIsEditing(true);
-          }}
-          className="hover:bg-[#7ace82] hover:text-[#036b0c]"
-          icon={<Edit size={16} />}
+        <Tooltip
+          content="Edit this team's details, focus areas, location, and visibility."
+          position="bottom"
         >
-          <span className="hidden sm:inline">Edit</span>
-        </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              userHasEditedTagsRef.current = false;
+              setFormData((prev) => ({
+                ...prev,
+                selectedTags:
+                  (prev.selectedTags?.length ?? 0) > 0
+                    ? prev.selectedTags
+                    : normalizeTeamTagIds(team),
+              }));
+              setIsEditing(true);
+            }}
+            className="hover:bg-[#7ace82] hover:text-[#036b0c]"
+            icon={<Edit size={16} />}
+            aria-label="Edit team details"
+          >
+            <span className="hidden sm:inline">Edit</span>
+          </Button>
+        </Tooltip>
       )}
       {canDeleteTeam && (
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleDeleteTeam}
-          disabled={loading}
-          className="hover:bg-red-100 hover:text-red-700"
-          icon={<Trash2 size={16} />}
-          aria-label="Delete team"
+        <Tooltip
+          content="Delete this team permanently. You will be asked to confirm first."
+          position="bottom"
         >
-          <span className="hidden sm:inline">Delete</span>
-        </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleDeleteTeam}
+            disabled={loading}
+            className="hover:bg-red-100 hover:text-red-700"
+            icon={<Trash2 size={16} />}
+            aria-label="Delete team"
+          >
+            <span className="hidden sm:inline">Delete</span>
+          </Button>
+        </Tooltip>
       )}
     </div>
   ) : null;
@@ -1475,6 +1487,7 @@ const TeamDetailsModal = ({
         closeOnBackdrop={true}
         closeOnEscape={true}
         showCloseButton={true}
+        closeButtonTooltip="Close team details and return to the previous view."
         zIndexStyle={zIndexStyle}
         boxZIndexStyle={boxZIndexStyle}
       >
@@ -1656,15 +1669,16 @@ const TeamDetailsModal = ({
                           return currentUserTagIds.has(tagId);
                         }).length;
                         if (matchCount > 0) {
+                          const MatchIcon = matchCount === total ? CheckCheck : Check;
                           return (
                             <span className="flex items-center gap-1.5 text-sm text-success">
-                              <Check size={14} className="flex-shrink-0" />
+                              <MatchIcon size={14} className="flex-shrink-0" />
                               <span>{matchCount}/{total} in common</span>
                             </span>
                           );
                         }
                         return (
-                          <span className="flex items-center gap-1.5 text-sm text-error/70">
+                          <span className="flex items-center gap-1.5 text-sm text-slate-500">
                             <X size={14} className="flex-shrink-0" />
                             <span>None in common</span>
                           </span>
@@ -1692,15 +1706,16 @@ const TeamDetailsModal = ({
                           activeMatchNames.has((b.name ?? "").trim().toLowerCase())
                         ).length;
                         if (matchCount > 0) {
+                          const MatchIcon = matchCount === total ? CheckCheck : Check;
                           return (
                             <span className="flex items-center gap-1.5 text-sm text-success">
-                              <Check size={14} className="flex-shrink-0" />
+                              <MatchIcon size={14} className="flex-shrink-0" />
                               <span>{matchCount}/{total} in common</span>
                             </span>
                           );
                         }
                         return (
-                          <span className="flex items-center gap-1.5 text-sm text-error/70">
+                          <span className="flex items-center gap-1.5 text-sm text-slate-500">
                             <X size={14} className="flex-shrink-0" />
                             <span>None in common</span>
                           </span>

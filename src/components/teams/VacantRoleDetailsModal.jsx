@@ -12,6 +12,7 @@ import {
   Mail,
   CircleDot,
   Check,
+  CheckCheck,
   X,
   ChevronRight,
   ChevronUp,
@@ -1634,6 +1635,18 @@ const VacantRoleDetailsModal = ({
   const locationMismatchText = comparisonShortName
     ? `Outside ${comparisonPossessive} location range`
     : "Outside your location range";
+  const normalizePostalCode = (value) =>
+    value == null ? "" : String(value).trim().toLowerCase();
+  const rolePostalCode = normalizePostalCode(
+    normalizeLocationData(displayRole).postalCode,
+  );
+  const comparisonPostalCode = normalizePostalCode(
+    normalizeLocationData(comparisonUser).postalCode,
+  );
+  const postalCodesMatch =
+    rolePostalCode &&
+    comparisonPostalCode &&
+    rolePostalCode === comparisonPostalCode;
   const roleMatchTagIds = tags
     .map((tag) => Number(tag.tagId ?? tag.tag_id ?? tag.id))
     .filter(Number.isFinite);
@@ -2259,51 +2272,73 @@ const VacantRoleDetailsModal = ({
 
         {locationText && (
           <div>
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center">
-                {isRemote ? (
-                  <Globe size={18} className="mr-2 text-primary flex-shrink-0" />
-                ) : (
-                  <MapPin size={18} className="mr-2 text-primary flex-shrink-0" />
-                )}
-                <h3 className="font-medium">Location Preference</h3>
-              </div>
-              {isAuthenticated && (() => {
-                if (isRemote) {
-                  return (
-                    <span className="flex items-center gap-1.5 text-sm text-success">
-                      <Check size={14} className="flex-shrink-0" />
-                      <span>{locationMatchText}</span>
-                    </span>
-                  );
-                }
-                if (distanceKm !== null && withinRange !== null) {
-                  if (withinRange) {
-                    return (
+            <div className="flex items-start gap-2 mb-2">
+              {isRemote ? (
+                <Globe size={18} className="mt-0.5 text-primary flex-shrink-0" />
+              ) : (
+                <MapPin size={18} className="mt-0.5 text-primary flex-shrink-0" />
+              )}
+              <div className="min-w-0 flex-1 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
+                <h3 className="font-medium leading-5">
+                  <span className="sm:hidden">Location</span>
+                  <span className="hidden sm:inline">Location Preference</span>
+                </h3>
+                {isAuthenticated && (() => {
+                  let status = null;
+                  if (isRemote) {
+                    status = (
                       <span className="flex items-center gap-1.5 text-sm text-success">
-                        <Check size={14} className="flex-shrink-0" />
-                        <span>{locationMatchText}</span>
+                        <CheckCheck size={14} className="flex-shrink-0" />
+                        <span>No location boundaries</span>
                       </span>
                     );
-                  } else {
-                    return (
-                      <span className="flex items-center gap-1.5 text-sm text-error/70">
-                        <X size={14} className="flex-shrink-0" />
-                        <span>{locationMismatchText}</span>
-                      </span>
-                    );
+                  } else if (distanceKm !== null && withinRange !== null) {
+                    if (withinRange) {
+                      const LocationMatchIcon = postalCodesMatch
+                        ? CheckCheck
+                        : Check;
+                      status = (
+                        <span className="flex items-center gap-1.5 text-sm text-success">
+                          <LocationMatchIcon
+                            size={14}
+                            className="flex-shrink-0"
+                          />
+                          <span className="sm:hidden">Match</span>
+                          <span className="hidden sm:inline">
+                            {locationMatchText}
+                          </span>
+                        </span>
+                      );
+                    } else {
+                      status = (
+                        <span className="flex items-center gap-1.5 text-sm text-slate-500">
+                          <X size={14} className="flex-shrink-0" />
+                          <span>{locationMismatchText}</span>
+                        </span>
+                      );
+                    }
                   }
-                }
-                return null;
-              })()}
+
+                  if (!status) return null;
+
+                  return (
+                    <div className="flex items-center justify-end gap-2 text-right whitespace-nowrap">
+                      {status}
+                    </div>
+                  );
+                })()}
+              </div>
             </div>
 
-            <div className="flex items-center gap-2 text-sm text-base-content/70">
-              <span>{locationText}</span>
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-base-content/70">
+              <span className="min-w-0">{locationText}</span>
               {!isRemote && maxDistanceKm && (
-                <span className="flex items-center gap-1 text-base-content/50">
+                <span className="flex items-center gap-1 text-base-content/50 whitespace-nowrap">
                   <CircleDot size={14} />
-                  within {maxDistanceKm} km from Role Location
+                  <span className="sm:hidden">&lt; {maxDistanceKm} km</span>
+                  <span className="hidden sm:inline">
+                    within {maxDistanceKm} km from Role Location
+                  </span>
                 </span>
               )}
             </div>
@@ -2312,10 +2347,13 @@ const VacantRoleDetailsModal = ({
 
         {/* Desired Focus Areas */}
         <div>
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center">
-              <Tag size={18} className="mr-2 text-primary flex-shrink-0" />
-              <h3 className="font-medium">Desired Focus Areas</h3>
+          <div className="flex items-start justify-between gap-3 mb-2">
+            <div className="flex items-start gap-2 min-w-0">
+              <Tag size={18} className="mt-0.5 text-primary flex-shrink-0" />
+              <h3 className="font-medium leading-5">
+                <span className="sm:hidden">Focus Areas</span>
+                <span className="hidden sm:inline">Desired Focus Areas</span>
+              </h3>
             </div>
             {shouldShowComparisonSummary && tags.length > 0 && (() => {
               const matchCount = tags.filter((t) => {
@@ -2324,15 +2362,23 @@ const VacantRoleDetailsModal = ({
               }).length;
               const total = tags.length;
               if (matchCount > 0) {
+                const MatchIcon = matchCount === total ? CheckCheck : Check;
+                const compactLabel =
+                  matchCount === total
+                    ? "All in common"
+                    : `${matchCount}/${total} in common`;
                 return (
                   <span className="flex items-center gap-1.5 text-sm text-success">
-                    <Check size={14} className="flex-shrink-0" />
-                    <span>{matchCount}/{total} in common{summarySuffix}</span>
+                    <MatchIcon size={14} className="flex-shrink-0" />
+                    <span className="sm:hidden">{compactLabel}</span>
+                    <span className="hidden sm:inline">
+                      {matchCount}/{total} in common{summarySuffix}
+                    </span>
                   </span>
                 );
               }
               return (
-                <span className="flex items-center gap-1.5 text-sm text-error/70">
+                <span className="flex items-center gap-1.5 text-sm text-slate-500">
                   <X size={14} className="flex-shrink-0" />
                   <span>None in common{summarySuffix}</span>
                 </span>
@@ -2441,10 +2487,13 @@ const VacantRoleDetailsModal = ({
 
         {/* Desired Badges */}
         <div>
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center">
-              <Award size={18} className="mr-2 text-primary flex-shrink-0" />
-              <h3 className="font-medium">Desired Badges</h3>
+          <div className="flex items-start justify-between gap-3 mb-2">
+            <div className="flex items-start gap-2 min-w-0">
+              <Award size={18} className="mt-0.5 text-primary flex-shrink-0" />
+              <h3 className="font-medium leading-5">
+                <span className="sm:hidden">Badges</span>
+                <span className="hidden sm:inline">Desired Badges</span>
+              </h3>
             </div>
             {shouldShowComparisonSummary && badges.length > 0 && (() => {
               const matchCount = badges.filter((b) => {
@@ -2453,15 +2502,23 @@ const VacantRoleDetailsModal = ({
               }).length;
               const total = badges.length;
               if (matchCount > 0) {
+                const MatchIcon = matchCount === total ? CheckCheck : Check;
+                const compactLabel =
+                  matchCount === total
+                    ? "All in common"
+                    : `${matchCount}/${total} in common`;
                 return (
                   <span className="flex items-center gap-1.5 text-sm text-success">
-                    <Check size={14} className="flex-shrink-0" />
-                    <span>{matchCount}/{total} in common{summarySuffix}</span>
+                    <MatchIcon size={14} className="flex-shrink-0" />
+                    <span className="sm:hidden">{compactLabel}</span>
+                    <span className="hidden sm:inline">
+                      {matchCount}/{total} in common{summarySuffix}
+                    </span>
                   </span>
                 );
               }
               return (
-                <span className="flex items-center gap-1.5 text-sm text-error/70">
+                <span className="flex items-center gap-1.5 text-sm text-slate-500">
                   <X size={14} className="flex-shrink-0" />
                   <span>None in common{summarySuffix}</span>
                 </span>

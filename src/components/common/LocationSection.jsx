@@ -1,5 +1,5 @@
 import React from "react";
-import { MapPin, Globe, Ruler, Check } from "lucide-react";
+import { MapPin, Globe, Ruler, CheckCheck } from "lucide-react";
 import {
   normalizeLocationData,
   formatLocation,
@@ -54,7 +54,7 @@ const LocationSection = ({
   const isNearbyDistance = hasDistance && Number(distance) <= 1000;
   const distanceToneClass = isNearbyDistance
     ? "text-success"
-    : "text-base-content/70";
+    : "text-slate-500";
 
   // Choose the appropriate icon
   const IconComponent = isRemote ? Globe : MapPin;
@@ -100,7 +100,7 @@ const LocationSection = ({
     ? null
     : isRemote ? (
         <span className="flex items-center gap-1.5 text-sm text-success">
-          <Check size={14} className="flex-shrink-0" />
+          <CheckCheck size={14} className="flex-shrink-0" />
           <span>No location boundaries</span>
         </span>
       ) : hasDistance ? (

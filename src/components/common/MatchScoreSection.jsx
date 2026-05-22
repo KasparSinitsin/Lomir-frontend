@@ -227,9 +227,9 @@ const MatchScoreSection = ({
   return (
     <div className="rounded-xl p-4 bg-base-200/50 border border-base-300">
       {/* Headline */}
-      <div className="flex items-center gap-2 mb-3">
-        <Icon size={16} className={tier.text} />
-        <span className={`text-sm font-semibold ${tier.text}`}>{headline}</span>
+      <div className="flex items-start gap-2 mb-3">
+        <Icon size={16} className={`mt-0.5 flex-shrink-0 ${tier.text}`} />
+        <span className={`min-w-0 text-sm font-semibold ${tier.text}`}>{headline}</span>
       </div>
 
       {/* Per-dimension bars */}
