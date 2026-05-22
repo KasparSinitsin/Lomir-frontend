@@ -44,6 +44,7 @@ const VacantRolesSection = ({
   isEditing = false,
   className = "",
   onRolesLoaded = null,
+  suppressMatchScores = false,
 }) => {
   const { isAuthenticated } = useAuth();
 
@@ -108,6 +109,11 @@ const VacantRolesSection = ({
   // Runs after roles are loaded, only for non-managers (non-managers are the
   // users who'd want to know "how well do I match this role?")
   useEffect(() => {
+    if (suppressMatchScores) {
+      setMatchScores({});
+      return;
+    }
+
     const fetchMatchScores = async () => {
       if (!isAuthenticated || !teamId || roles.length === 0) {
         setMatchScores({});
@@ -132,7 +138,7 @@ const VacantRolesSection = ({
     };
 
     fetchMatchScores();
-  }, [isAuthenticated, teamId, roles]);
+  }, [suppressMatchScores, isAuthenticated, teamId, roles]);
 
   // Auto-expand when roles exist so they're always visible
   useEffect(() => {

@@ -21,9 +21,13 @@ const TeamApplicationButton = ({
   roleId = null,
   disabled = false,
   className = "w-full",
+  size = "md",
+  variant = "primary",
   onAfterSubmit,
   onSuccess,
   buttonLabel = "Apply to Join Team",
+  buttonIcon = null,
+  ariaLabel = null,
   onApplicationModalToggle,
 }) => {
   const [isApplicationModalOpen, setIsApplicationModalOpen] = useState(false);
@@ -98,10 +102,13 @@ const TeamApplicationButton = ({
   return (
     <>
       <Button
-        variant="primary"
+        variant={variant}
+        size={size}
         onClick={handleApplyToJoin}
         disabled={disabled || applicationLoading}
         className={className}
+        icon={buttonIcon}
+        aria-label={ariaLabel}
       >
         {buttonLabel}
       </Button>

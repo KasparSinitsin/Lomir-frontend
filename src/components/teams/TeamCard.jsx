@@ -1145,6 +1145,7 @@ const TeamCard = ({
     ? (roleTeamData ?? teamDetailsInitialTeamData ?? null)
     : (normalizedData.team ?? teamData ?? null);
   const shouldShowTeamModalMatchHighlights = showMatchHighlights || isRoleVariant;
+  const shouldHideMatchData = !shouldShowTeamModalMatchHighlights && !showMatchScore;
   const teamModalRawScore = showMatchScore
     ? getExplicitMatchScore(teamModalMatchSource)
     : null;
@@ -2420,6 +2421,7 @@ const TeamCard = ({
           }
           onViewApplicationDetails={() => setIsApplicationModalOpen(true)}
           showMatchHighlights={shouldShowTeamModalMatchHighlights}
+          hideMatchData={shouldHideMatchData}
           matchScore={teamModalRawScore ?? null}
           matchType={teamModalMatchType}
           matchDetails={teamModalMatchDetails}
@@ -2991,6 +2993,7 @@ const TeamCard = ({
         }
         onViewApplicationDetails={() => setIsApplicationModalOpen(true)}
         showMatchHighlights={shouldShowTeamModalMatchHighlights}
+        hideMatchData={shouldHideMatchData}
         roleMatchBadgeNames={roleMatchBadgeNames}
         matchScore={teamModalRawScore ?? null}
         matchType={teamModalMatchType}

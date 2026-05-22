@@ -1,11 +1,13 @@
 import React, {
   useState,
   useEffect,
+  useLayoutEffect,
   useCallback,
   useMemo,
   useRef,
 } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { format } from "date-fns";
 import TeamRoleManager from "./TeamRoleManager";
 import TeamEditForm from "./TeamEditForm";
 import { useAuth } from "../../contexts/AuthContext";
@@ -22,6 +24,7 @@ import {
   X,
   Edit,
   Users,
+  UserSearch,
   Trash2,
   Eye,
   EyeClosed,
@@ -30,6 +33,7 @@ import {
   Mail,
   SendHorizontal,
   Archive,
+  Calendar,
   Check,
   CheckCheck,
   FlaskConical,
@@ -206,7 +210,38 @@ const TeamDetailsModal = ({
     useState(false);
 
   const [teamImageError, setTeamImageError] = useState(false);
-  const showHighlightsForContext = !isFromSearch || showMatchHighlights;
+  const [teamDateIsNarrow, setTeamDateIsNarrow] = useState(false);
+  const teamDateIsNarrowRef = useRef(false);
+  teamDateIsNarrowRef.current = teamDateIsNarrow;
+  const teamTitleContainerRef = useRef(null);
+  const teamTitleProbeRef = useRef(null);
+  const teamDateRef = useRef(null);
+  const teamName = team?.name ?? "";
+
+  useLayoutEffect(() => {
+    const container = teamTitleContainerRef.current;
+    const probe = teamTitleProbeRef.current;
+    if (!container || !probe) return;
+
+    const update = () => {
+      const containerWidth = container.clientWidth;
+      if (containerWidth === 0) return;
+      const dateEl = teamDateRef.current;
+      const reservedWidth =
+        teamDateIsNarrowRef.current && dateEl ? dateEl.offsetWidth + 16 : 0;
+      probe.textContent = teamName;
+      setTeamDateIsNarrow(probe.scrollWidth > containerWidth - reservedWidth);
+    };
+
+    const resizeObserver = new ResizeObserver(update);
+    resizeObserver.observe(container);
+    if (teamDateRef.current) resizeObserver.observe(teamDateRef.current);
+    update();
+
+    return () => resizeObserver.disconnect();
+  }, [teamName, isEditing, isModalVisible]);
+
+  const showHighlightsForContext = !hideMatchData && (!isFromSearch || showMatchHighlights);
   const handledMembersRefreshKeyRef = useRef(0);
 
   const fetchTeamDetails = useCallback(
@@ -1184,14 +1219,62 @@ const TeamDetailsModal = ({
     );
   }, [team, user, isOwner, effectiveUserRole]);
 
+  const currentUserIsListedTeamMember = useMemo(
+    () =>
+      Boolean(
+        team?.members?.some((member) =>
+          idsMatch(getTeamMemberUserId(member), user?.id),
+        ),
+      ),
+    [team?.members, user?.id],
+  );
+
+  const isTeamArchived = Boolean(
+    team?.archived_at || team?.status === "inactive",
+  );
+  const effectivePendingApplication =
+    localPendingApplication ?? pendingApplication;
+  const hasActivePendingApplication = Boolean(
+    (hasPendingApplication || effectivePendingApplication) &&
+      !currentUserIsListedTeamMember,
+  );
+  const shouldShowHeaderApplyButton =
+    isAuthenticated &&
+    Boolean(team && effectiveTeamId) &&
+    !currentUserIsListedTeamMember &&
+    !isTeamArchived &&
+    !(hasPendingInvitation && pendingInvitation) &&
+    !hasActivePendingApplication;
+
+  const handleTeamApplicationSuccess = useCallback(
+    (applicationData, submitResponse) => {
+      const submittedApplication = submitResponse?.data ?? {};
+      setLocalPendingApplication({
+        id: submittedApplication.applicationId,
+        applicationId: submittedApplication.applicationId,
+        status: submittedApplication.status ?? "pending",
+        message: applicationData.message,
+        created_at: new Date().toISOString(),
+        team: team ?? { id: effectiveTeamId },
+        isInternalRoleApplication:
+          submittedApplication.isInternalRoleApplication ?? false,
+        is_internal_role_application:
+          submittedApplication.isInternalRoleApplication ?? false,
+      });
+      setNotification({
+        type: "success",
+        message: applicationData.isDraft
+          ? "Draft saved successfully"
+          : "Application sent successfully!",
+      });
+    },
+    [effectiveTeamId, team],
+  );
+
   const renderJoinButton = () => {
     if (!isAuthenticated) return null;
 
-    const isMember = team?.members?.some(
-      (m) => idsMatch(getTeamMemberUserId(m), user?.id),
-    );
-
-    const isTeamArchived = team?.archived_at || team?.status === "inactive";
+    const isMember = currentUserIsListedTeamMember;
 
     if (isTeamArchived && !isMember) {
       return null;
@@ -1213,11 +1296,7 @@ const TeamDetailsModal = ({
     }
 
     // Pending application CTA
-    const effectivePendingApplication =
-      localPendingApplication ?? pendingApplication;
-    const hasApp = Boolean(
-      (hasPendingApplication || effectivePendingApplication) && !isMember,
-    );
+    const hasApp = hasActivePendingApplication;
 
     if (hasApp) {
       return (
@@ -1277,27 +1356,7 @@ const TeamDetailsModal = ({
             disabled={loading}
             className="w-full"
             onAfterSubmit={fetchTeamDetails}
-            onSuccess={(applicationData, submitResponse) => {
-              const submittedApplication = submitResponse?.data ?? {};
-              setLocalPendingApplication({
-                id: submittedApplication.applicationId,
-                applicationId: submittedApplication.applicationId,
-                status: submittedApplication.status ?? "pending",
-                message: applicationData.message,
-                created_at: new Date().toISOString(),
-                team: team ?? { id: effectiveTeamId },
-                isInternalRoleApplication:
-                  submittedApplication.isInternalRoleApplication ?? false,
-                is_internal_role_application:
-                  submittedApplication.isInternalRoleApplication ?? false,
-              });
-              setNotification({
-                type: "success",
-                message: applicationData.isDraft
-                  ? "Draft saved successfully"
-                  : "Application sent successfully!",
-              });
-            }}
+            onSuccess={handleTeamApplicationSuccess}
           />
         )}
       </div>
@@ -1420,6 +1479,21 @@ const TeamDetailsModal = ({
     </h2>
   );
 
+  const getTeamCreatedDate = () => {
+    const createdAt = team?.created_at ?? team?.createdAt;
+    if (!createdAt) return null;
+
+    try {
+      return {
+        short: format(new Date(createdAt), "MMM yyyy"),
+        full: format(new Date(createdAt), "MMMM d, yyyy"),
+      };
+    } catch (error) {
+      console.error("Error formatting team creation date:", error);
+      return null;
+    }
+  };
+
   const modalHeaderActions = !isEditing ? (
     <div className="flex items-center gap-1">
       {canEditTeam && (
@@ -1465,6 +1539,23 @@ const TeamDetailsModal = ({
           >
             <span className="hidden sm:inline">Delete</span>
           </Button>
+        </Tooltip>
+      )}
+      {shouldShowHeaderApplyButton && (
+        <Tooltip content="Apply to join this team." position="bottom">
+          <TeamApplicationButton
+            team={team}
+            teamId={effectiveTeamId}
+            disabled={loading}
+            variant="ghost"
+            size="sm"
+            className="flex items-center gap-1"
+            buttonIcon={<SendHorizontal size={16} />}
+            buttonLabel={<span className="hidden sm:inline">Apply</span>}
+            ariaLabel="Apply to join team"
+            onAfterSubmit={fetchTeamDetails}
+            onSuccess={handleTeamApplicationSuccess}
+          />
         </Tooltip>
       )}
     </div>
@@ -1521,9 +1612,9 @@ const TeamDetailsModal = ({
             ) : (
               <div className="space-y-6">
                 {/* Team header with avatar */}
-                <div className="flex items-start space-x-4 mb-6">
+                <div className="relative flex items-start space-x-4 mb-6">
                   <div className="avatar placeholder relative">
-                    <div className="bg-[var(--color-primary-focus)] text-primary-content rounded-full w-16 h-16 relative flex items-center justify-center overflow-hidden">
+                    <div className="bg-[var(--color-primary-focus)] text-primary-content rounded-full w-20 h-20 relative flex items-center justify-center overflow-hidden">
                       {(team?.teamavatar_url || team?.teamavatarUrl) &&
                       !teamImageError ? (
                         <img
@@ -1533,7 +1624,7 @@ const TeamDetailsModal = ({
                           onError={() => setTeamImageError(true)}
                         />
                       ) : (
-                        <span className="text-xl">{getTeamInitials()}</span>
+                        <span className="text-2xl">{getTeamInitials()}</span>
                       )}
                       {isSyntheticTeam(team) && (
                         <DemoAvatarOverlay
@@ -1555,14 +1646,22 @@ const TeamDetailsModal = ({
                       </div>
                     )}
                   </div>
-                  <div>
-                    <h1 className="text-2xl font-bold leading-[120%] mb-[0.2em]">
-                      {team?.name}
+                  <div className="flex-1">
+                    <h1
+                      ref={teamTitleContainerRef}
+                      className="text-2xl font-bold leading-[110%] mb-[0.2em] relative"
+                    >
+                      {teamName}
+                      <span
+                        ref={teamTitleProbeRef}
+                        className="invisible absolute whitespace-nowrap pointer-events-none left-0 top-0 font-bold"
+                        aria-hidden="true"
+                      />
                     </h1>
                     {/* Members count and visibility */}
-                    <div className="flex items-center space-x-4 text-sm">
-                      <div className="flex items-center space-x-1">
-                        <Users size={18} className="text-primary" />
+                    <div className="flex items-center flex-wrap gap-x-3 gap-y-0.5 text-sm">
+                      <div className="flex items-center gap-1 text-base-content/70">
+                        <Users size={14} className="text-primary flex-shrink-0" />
                         <span>
                           {team.current_members_count ??
                             team.currentMembersCount ??
@@ -1575,10 +1674,23 @@ const TeamDetailsModal = ({
                         </span>
                       </div>
 
+                      {teamRoles.filter((r) => r.status === "open").length > 0 && (
+                        <Tooltip
+                          content="Vacant roles"
+                          position="bottom"
+                          wrapperClassName="flex items-center gap-1 text-base-content/70 cursor-help"
+                        >
+                          <UserSearch size={14} className="flex-shrink-0" />
+                          <span>
+                            {teamRoles.filter((r) => r.status === "open").length} open
+                          </span>
+                        </Tooltip>
+                      )}
+
                       {/* Archived status - ALWAYS show for archived teams */}
                       {(team?.archived_at || team?.status === "inactive") && (
-                        <div className="flex items-center text-base-content/70">
-                          <Archive size={16} className="mr-1" />
+                        <div className="flex items-center gap-1 text-base-content/70">
+                          <Archive size={14} className="flex-shrink-0" />
                           <span>Archived</span>
                         </div>
                       )}
@@ -1586,38 +1698,63 @@ const TeamDetailsModal = ({
                       {/* Public/Private status - only for members of NON-archived teams */}
                       {shouldShowVisibilityStatus() &&
                         !(team?.archived_at || team?.status === "inactive") && (
-                          <div className="flex items-center text-base-content/70">
+                          <div className="flex items-center gap-1 text-base-content/70">
                             {isPublic ? (
                               <>
                                 <Eye
-                                  size={16}
-                                  className="mr-1 text-green-600"
+                                  size={14}
+                                  className="text-green-600 flex-shrink-0"
                                 />
-                                <span>Public</span>
+                                {!teamDateIsNarrow && <span>Public</span>}
                               </>
                             ) : (
                               <>
                                 <EyeClosed
-                                  size={16}
-                                  className="mr-1 text-gray-500"
+                                  size={14}
+                                  className="text-gray-500 flex-shrink-0"
                                 />
-                                <span>Private</span>
+                                {!teamDateIsNarrow && <span>Private</span>}
                               </>
                             )}
                           </div>
                         )}
 
+                      {teamDateIsNarrow && getTeamCreatedDate() && (
+                        <Tooltip
+                          content={`Created on ${getTeamCreatedDate().full}`}
+                          position="bottom"
+                          wrapperClassName="flex items-center text-sm text-base-content/60 flex-shrink-0 cursor-help"
+                        >
+                          <Calendar size={14} className="mr-1" />
+                          <span>{getTeamCreatedDate().short}</span>
+                        </Tooltip>
+                      )}
                       {isSyntheticTeam(team) && (
                         <Tooltip
                           content={DEMO_TEAM_TOOLTIP}
-                          wrapperClassName="flex items-center gap-1 text-base-content/50 text-sm"
+                          wrapperClassName="flex items-start text-base-content/50 text-sm"
                         >
-                          <FlaskConical size={14} className="flex-shrink-0" />
-                          <span>Demo Team</span>
+                          <FlaskConical className={`h-3.5 w-auto flex-shrink-0 mt-px${teamDateIsNarrow ? "" : " mr-0.5"}`} />
+                          {!teamDateIsNarrow && <span className="leading-[1.15]">Demo Team</span>}
                         </Tooltip>
                       )}
                     </div>
                   </div>
+                  {getTeamCreatedDate() && (
+                    <div
+                      ref={teamDateRef}
+                      className={`flex-shrink-0${teamDateIsNarrow ? " absolute opacity-0 pointer-events-none" : ""}`}
+                    >
+                      <Tooltip
+                        content={`Created on ${getTeamCreatedDate().full}`}
+                        position="bottom"
+                        wrapperClassName="flex items-center text-sm text-base-content/60 cursor-help"
+                      >
+                        <Calendar size={14} className="mr-1" />
+                        <span>{getTeamCreatedDate().short}</span>
+                      </Tooltip>
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-8">
@@ -1746,6 +1883,7 @@ const TeamDetailsModal = ({
                     isTeamMember={isTeamMember}
                     isEditing={isEditing}
                     onRolesLoaded={setTeamRoles}
+                    suppressMatchScores={hideMatchData}
                   />
                 </div>
 

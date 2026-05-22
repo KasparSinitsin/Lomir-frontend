@@ -476,34 +476,18 @@ const TagsDisplaySection = ({
         <Tag size={18} className="mt-0.5 text-primary flex-shrink-0" />
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0 flex-1 sm:grid sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start sm:gap-3">
-              <div className="min-w-0 sm:flex sm:items-baseline sm:gap-1">
-                <h3 className="font-medium leading-5">{title}</h3>
+            <div className="min-w-0 flex-1 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
+              <div className="min-w-0 flex flex-wrap items-baseline gap-x-1 gap-y-0.5">
+                <h3 className="font-medium leading-5 whitespace-nowrap">{title}</h3>
                 {totalCredits > 0 && (
-                  <span className="hidden min-w-0 text-sm font-normal text-base-content/60 sm:inline sm:whitespace-nowrap">
+                  <span className="min-w-0 text-sm font-normal text-base-content/60 whitespace-nowrap">
                     ({totalCredits} ct. in {pillCount} {pillCount === 1 ? 'area' : 'areas'})
                   </span>
                 )}
               </div>
               {headerRight && (
-                <div className="hidden items-center justify-end gap-2 text-right sm:flex sm:whitespace-nowrap">
+                <div className="flex items-center justify-end gap-2 text-right whitespace-nowrap">
                   {headerRight}
-                </div>
-              )}
-              {(totalCredits > 0 || headerRight) && (
-                <div className="mt-0.5 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 sm:hidden">
-                  {totalCredits > 0 ? (
-                    <span className="min-w-0 text-sm font-normal text-base-content/60">
-                      ({totalCredits} ct. in {pillCount} {pillCount === 1 ? 'area' : 'areas'})
-                    </span>
-                  ) : (
-                    <span />
-                  )}
-                  {headerRight && (
-                    <div className="flex items-center justify-end gap-2 text-right">
-                      {headerRight}
-                    </div>
-                  )}
                 </div>
               )}
             </div>
