@@ -1873,15 +1873,13 @@ const VacantRoleDetailsModal = ({
     ? availableRoleTeamMembers
     : availableRoleTeamMembers.slice(0, COLLAPSED_COUNT);
   const modalTitle = (
-    <div className="flex min-w-0 items-center gap-2">
+    <h2 className="text-xl font-medium text-primary flex items-start gap-2 whitespace-nowrap">
       <ModalStatusIcon
-        className={isFilledRole ? "text-success" : isClosedRole ? "text-gray-400" : "text-orange-500"}
+        className="flex-shrink-0 mt-0.5"
         size={20}
       />
-      <h2 className="text-base font-medium leading-snug sm:text-lg whitespace-nowrap">
-        {modalStatusTitle}
-      </h2>
-    </div>
+      {modalStatusTitle}
+    </h2>
   );
 
   return (
@@ -1893,6 +1891,7 @@ const VacantRoleDetailsModal = ({
       position="center"
       size="default"
       maxHeight="max-h-[90vh]"
+      minHeight="min-h-[300px]"
       closeOnBackdrop={true}
       closeOnEscape={true}
       showCloseButton={true}
@@ -1901,17 +1900,6 @@ const VacantRoleDetailsModal = ({
           <div className="flex items-center gap-1">
             {canManage && !hideActions && (
               <>
-                {onDelete && (
-                  <Tooltip content="Permanently delete this role">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => { onClose(); onDelete(roleId); }}
-                      className="hover:bg-red-100 hover:text-red-700"
-                      icon={<Trash2 size={16} />}
-                    />
-                  </Tooltip>
-                )}
                 {onEdit && (
                   <Tooltip content="Edit this role's details">
                     <Button
@@ -1972,7 +1960,7 @@ const VacantRoleDetailsModal = ({
         )}
 
         {/* Header — avatar + role name + status */}
-        <div className="flex items-start space-x-4">
+        <div className="relative flex items-start space-x-4 mb-6">
           <div className="avatar relative">
             {isFilledRole ? (
               <Tooltip content={filledRoleUser?.id ? `Click to view ${filledRoleDisplayName || "this user"}'s profile` : undefined}>
@@ -2032,101 +2020,103 @@ const VacantRoleDetailsModal = ({
               </div>
             )}
             {isFilledRole && MatchTierIcon && (
-              <div
-                className={`absolute -top-1 -left-1 w-6 h-6 rounded-full ring-2 ring-white flex items-center justify-center ${matchTier.bg}`}
-                title={`${matchTier.pct}% ${matchTier.label.toLowerCase()}`}
+              <Tooltip
+                content={`${matchTier.pct}% ${matchTier.label.toLowerCase()}`}
+                position="bottom"
+                wrapperClassName={`absolute -top-1 -left-1 w-6 h-6 rounded-full ring-2 ring-white flex items-center justify-center cursor-help ${matchTier.bg}`}
               >
                 <MatchTierIcon
                   size={12}
                   className="text-white"
                   strokeWidth={2.5}
                 />
-              </div>
+              </Tooltip>
             )}
           </div>
 
           <div className="flex-1 min-w-0">
-            <h1 className="text-2xl font-bold leading-tight">{roleName}</h1>
-
-            {teamMemberCount != null && (
-              <div className="flex items-center gap-1 mt-1 text-sm text-base-content/70">
-                <Users size={14} className="text-primary flex-shrink-0" />
-                <span className="text-base-content/50">
-                  {teamMemberCount}/{teamMaxMembers ?? "∞"} members
-                </span>
-              </div>
-            )}
-
-            {(isFilledRole ? filledAt : createdAt) && (
-              <div className="mt-1 flex flex-wrap items-center gap-x-1 gap-y-1 text-xs text-base-content/50">
-                <Calendar size={12} />
-                <span>
-                  {isFilledRole ? "Filled on" : "Posted"}{" "}
-                  {formatDate(isFilledRole ? filledAt : createdAt)}
-                </span>
-                {isFilledRole && filledRoleUser?.id ? (
-                  <span>
-                    {" "}by{" "}
-                    <Tooltip content={`Click to view ${filledRoleDisplayName || "this user"}'s profile`}>
-                      <button
-                        type="button"
-                        className="hover:text-primary transition-colors font-medium"
-                        onClick={handleFilledUserClick}
-                      >
-                        {filledRoleDisplayName}
-                      </button>
-                    </Tooltip>
+            <h1 className="text-2xl font-bold leading-[110%] mb-[0.2em]">{roleName}</h1>
+            <div className="flex items-center flex-wrap gap-x-3 gap-y-0.5 text-sm">
+              {teamMemberCount != null && (
+                <div className="flex items-center gap-1 text-base-content/70">
+                  <Users size={14} className="text-primary flex-shrink-0" />
+                  <span className="text-base-content/50">
+                    {teamMemberCount}/{teamMaxMembers ?? "∞"} members
                   </span>
-                ) : !isFilledRole && creatorName ? (
+                </div>
+              )}
+
+              {(isFilledRole ? filledAt : createdAt) && (
+                <div className="flex flex-wrap items-center gap-x-1 gap-y-0 text-xs text-base-content/50">
+                  <Calendar size={12} />
                   <span>
-                    {" "}by{" "}
-                    {creatorUserId ? (
-                      <Tooltip content={`Click to view ${creatorName}'s profile`}>
+                    {isFilledRole ? "Filled on" : "Posted"}{" "}
+                    {formatDate(isFilledRole ? filledAt : createdAt)}
+                  </span>
+                  {isFilledRole && filledRoleUser?.id ? (
+                    <span>
+                      {" "}by{" "}
+                      <Tooltip content={`Click to view ${filledRoleDisplayName || "this user"}'s profile`}>
                         <button
                           type="button"
                           className="hover:text-primary transition-colors font-medium"
-                          onClick={handleCreatorUserClick}
+                          onClick={handleFilledUserClick}
                         >
-                          {creatorName}
+                          {filledRoleDisplayName}
                         </button>
                       </Tooltip>
-                    ) : (
-                      <span>{creatorName}</span>
-                    )}
-                  </span>
-                ) : null}
-                {!isFilledRole && teamName ? (
-                  <span className="ml-1 inline-flex min-w-0 max-w-full items-center gap-1">
-                    <Users size={12} className="flex-shrink-0" />
-                    {canOpenTeamModal ? (
-                      <Tooltip content={`Click to view ${teamName}`}>
-                        <button
-                          type="button"
-                          className="min-w-0 text-left font-medium whitespace-normal break-words transition-colors hover:text-primary"
-                          onClick={handleTeamClick}
-                        >
+                    </span>
+                  ) : !isFilledRole && creatorName ? (
+                    <span>
+                      {" "}by{" "}
+                      {creatorUserId ? (
+                        <Tooltip content={`Click to view ${creatorName}'s profile`}>
+                          <button
+                            type="button"
+                            className="hover:text-primary transition-colors font-medium"
+                            onClick={handleCreatorUserClick}
+                          >
+                            {creatorName}
+                          </button>
+                        </Tooltip>
+                      ) : (
+                        <span>{creatorName}</span>
+                      )}
+                    </span>
+                  ) : null}
+                  {!isFilledRole && teamName ? (
+                    <span className="inline-flex min-w-0 max-w-full items-center gap-1">
+                      <Users size={12} className="flex-shrink-0" />
+                      {canOpenTeamModal ? (
+                        <Tooltip content={`Click to view ${teamName}`}>
+                          <button
+                            type="button"
+                            className="min-w-0 text-left font-medium whitespace-normal break-words transition-colors hover:text-primary"
+                            onClick={handleTeamClick}
+                          >
+                            {teamName}
+                          </button>
+                        </Tooltip>
+                      ) : (
+                        <span className="min-w-0 whitespace-normal break-words">
                           {teamName}
-                        </button>
-                      </Tooltip>
-                    ) : (
-                      <span className="min-w-0 whitespace-normal break-words">
-                        {teamName}
-                      </span>
-                    )}
-                  </span>
-                ) : null}
-              </div>
-            )}
+                        </span>
+                      )}
+                    </span>
+                  ) : null}
+                </div>
+              )}
 
-            {isSyntheticRole(displayRole) && (
-              <Tooltip
-                content={DEMO_ROLE_TOOLTIP}
-                wrapperClassName="mt-1 flex items-center gap-1 text-base-content/50 text-xs"
-              >
-                <FlaskConical size={12} className="flex-shrink-0" />
-                <span>Demo Role</span>
-              </Tooltip>
-            )}
+              {isSyntheticRole(displayRole) && (
+                <Tooltip
+                  content={DEMO_ROLE_TOOLTIP}
+                  wrapperClassName="flex items-center gap-1 text-base-content/50 text-xs"
+                >
+                  <FlaskConical size={12} className="flex-shrink-0" />
+                  <span>Demo Role</span>
+                </Tooltip>
+              )}
+            </div>
           </div>
         </div>
 

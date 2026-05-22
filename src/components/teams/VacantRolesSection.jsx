@@ -377,6 +377,7 @@ const VacantRolesSection = ({
         team={team}
         existingRole={editingRole}
         onSuccess={handleModalSuccess}
+        onDelete={editingRole ? () => { handleModalClose(); handleDelete(editingRole.id); } : undefined}
       />
 
       <ConfirmModal

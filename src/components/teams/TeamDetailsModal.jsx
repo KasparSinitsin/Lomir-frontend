@@ -1523,24 +1523,6 @@ const TeamDetailsModal = ({
           </Button>
         </Tooltip>
       )}
-      {canDeleteTeam && (
-        <Tooltip
-          content="Delete this team permanently. You will be asked to confirm first."
-          position="bottom"
-        >
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleDeleteTeam}
-            disabled={loading}
-            className="hover:bg-red-100 hover:text-red-700"
-            icon={<Trash2 size={16} />}
-            aria-label="Delete team"
-          >
-            <span className="hidden sm:inline">Delete</span>
-          </Button>
-        </Tooltip>
-      )}
       {shouldShowHeaderApplyButton && (
         <Tooltip content="Apply to join this team." position="bottom">
           <TeamApplicationButton
@@ -1598,6 +1580,7 @@ const TeamDetailsModal = ({
                 setFormErrors={setFormErrors}
                 onSubmit={handleSubmit}
                 onCancel={() => setIsEditing(false)}
+                onDelete={canDeleteTeam ? handleDeleteTeam : undefined}
                 loading={loading}
                 isOwner={isOwner}
                 onAvatarDeleted={() => {
