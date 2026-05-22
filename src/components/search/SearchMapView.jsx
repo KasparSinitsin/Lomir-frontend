@@ -1132,6 +1132,10 @@ const normalizeMapPoint = (
     teamRoleApplication,
     hasTeamRoleApplication: Boolean(teamRoleApplication),
     teamRoleApplicationName: getRequestRoleName(teamRoleApplication),
+    isCombinedTeamApplication: Boolean(teamRoleApplication) && !(
+      teamRoleApplication?.isInternalRoleApplication ||
+      teamRoleApplication?.is_internal_role_application
+    ),
     isPublic: type === "team" ? getTeamIsPublic(item) : null,
     imageUrl: avatarData.imageUrl,
     initials: avatarData.initials,
@@ -1621,14 +1625,14 @@ const TeamMetaLine = ({
       )}
       {point.hasTeamRoleApplication && (
         <TeamMetaItem
-          tooltip={roleApplicationTooltip}
+          tooltip={point.isCombinedTeamApplication ? "You applied to join this team and fill a role" : roleApplicationTooltip}
           withTooltip={withTooltips}
           onClick={point.teamRoleApplication && onOpenApplication
             ? () => onOpenApplication(point.teamRoleApplication)
             : null}
           ariaLabel="Open role application details"
         >
-          <SendHorizontal size={10} className="text-orange-500" aria-hidden="true" />
+          <SendHorizontal size={10} className={point.isCombinedTeamApplication ? "text-violet-500" : "text-orange-500"} aria-hidden="true" />
         </TeamMetaItem>
       )}
       {showRoleRequestNames && roleNameItem(point.teamRoleApplicationName)}

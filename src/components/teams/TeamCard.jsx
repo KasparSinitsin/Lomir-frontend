@@ -658,6 +658,19 @@ const TeamCard = ({
     pendingApplicationForTeam?.roleId ||
     pendingApplicationForTeam?.role_id
   );
+  // Combined = external applicant applying to join the team AND fill a role in one go → violet
+  const isCombinedApplication =
+    effectiveVariant === "application" &&
+    Boolean(application?.role || application?.roleId || application?.role_id) &&
+    !isInternalRoleApplication;
+  const isPendingCombinedApplicationForTeam =
+    isPendingRoleApplicationForTeam &&
+    !(pendingApplicationForTeam?.isInternalRoleApplication ||
+      pendingApplicationForTeam?.is_internal_role_application);
+  const isPendingInternalRoleApplicationForTeam =
+    isPendingRoleApplicationForTeam &&
+    Boolean(pendingApplicationForTeam?.isInternalRoleApplication ||
+      pendingApplicationForTeam?.is_internal_role_application);
   const shouldShowMemberCountInSubtitle = effectiveVariant === "member";
   const shouldShowMemberCountInList = effectiveVariant === "member";
   const shouldMoveSearchResultRoleApplicationIndicator =
@@ -2174,13 +2187,15 @@ const TeamCard = ({
         {(effectiveVariant === "application" || isRoleApplicationVariant || pendingApplicationForTeam) && (
           <Tooltip
             content={
-              isPendingRoleApplicationForTeam
-                ? "You applied for a role within this team"
-                : `You applied${isRoleApplicationVariant ? " for this role" : " to join this team"}${
-                    getFormattedDate()
-                      ? `\non ${format(new Date(normalizedData.date), "MMM d, yyyy")}`
-                      : ""
-                  }`
+              isCombinedApplication || isPendingCombinedApplicationForTeam
+                ? `You applied to join this team and fill a role${getFormattedDate() ? `\non ${format(new Date(normalizedData.date), "MMM d, yyyy")}` : ""}`
+                : isPendingInternalRoleApplicationForTeam
+                  ? "You applied for a role within this team"
+                  : `You applied${isRoleApplicationVariant ? " for this role" : " to join this team"}${
+                      getFormattedDate()
+                        ? `\non ${format(new Date(normalizedData.date), "MMM d, yyyy")}`
+                        : ""
+                    }`
             }
           >
             <span
@@ -2190,7 +2205,11 @@ const TeamCard = ({
                 setIsApplicationModalOpen(true);
               }}
             >
-              <SendHorizontal size={9} className={(isRoleApplicationVariant || isPendingRoleApplicationForTeam) ? "text-orange-500" : "text-info"} />
+              <SendHorizontal size={9} className={
+                (isCombinedApplication || isPendingCombinedApplicationForTeam) ? "text-violet-500" :
+                (isRoleApplicationVariant || isPendingInternalRoleApplicationForTeam) ? "text-orange-500" :
+                "text-info"
+              } />
               {getFormattedDate() && <span>{getFormattedDate()}</span>}
             </span>
           </Tooltip>
@@ -2622,23 +2641,20 @@ const TeamCard = ({
               </Tooltip>
             )}
 
-            {/* Pending regular team-join application indicator */}
+            {/* Pending team application indicator (team-only = blue, combined = violet) */}
             {(effectiveVariant === "application" ||
               (pendingApplicationForTeam && !isPendingRoleApplicationForTeam)) && (
               <Tooltip
-                content={`You applied to join this team${
-                  getFormattedDate()
-                    ? `\non ${format(
-                        new Date(normalizedData.date),
-                        "MMM d, yyyy",
-                      )}`
-                    : ""
-                }`}
+                content={
+                  isCombinedApplication
+                    ? `You applied to join this team and fill a role${getFormattedDate() ? `\non ${format(new Date(normalizedData.date), "MMM d, yyyy")}` : ""}`
+                    : `You applied to join this team${getFormattedDate() ? `\non ${format(new Date(normalizedData.date), "MMM d, yyyy")}` : ""}`
+                }
               >
                 <span className="flex items-center">
                   <SendHorizontal
                     size={viewMode === "mini" ? 12 : 14}
-                    className="text-info"
+                    className={isCombinedApplication ? "text-violet-500" : "text-info"}
                   />
                   {getFormattedDate() && (
                     <span className="ml-0.5">{getFormattedDate()}</span>
@@ -2703,11 +2719,11 @@ const TeamCard = ({
 
             {shouldMoveSearchResultRoleApplicationIndicator &&
               isPendingRoleApplicationForTeam && (
-                <Tooltip content="You applied for a role within this team">
+                <Tooltip content={isPendingCombinedApplicationForTeam ? "You applied to join this team and fill a role" : "You applied for a role within this team"}>
                   <span className="flex items-center">
                     <SendHorizontal
                       size={viewMode === "mini" ? 12 : 14}
-                      className="text-orange-500"
+                      className={isPendingCombinedApplicationForTeam ? "text-violet-500" : "text-orange-500"}
                     />
                   </span>
                 </Tooltip>

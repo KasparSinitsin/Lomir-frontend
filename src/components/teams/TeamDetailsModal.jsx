@@ -206,6 +206,9 @@ const TeamDetailsModal = ({
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isInvitationModalOpen, setIsInvitationModalOpen] = useState(false);
   const [localPendingApplication, setLocalPendingApplication] = useState(null);
+  // All fetched pending applications for this team (user may have both a team + a role application)
+  const [fetchedPendingApplications, setFetchedPendingApplications] = useState([]);
+  const [fetchedPendingInvitation, setFetchedPendingInvitation] = useState(null);
   const [isApplicationDetailsOpen, setIsApplicationDetailsOpen] =
     useState(false);
 
@@ -467,8 +470,45 @@ const TeamDetailsModal = ({
 
   useEffect(() => {
     setLocalPendingApplication(null);
+    setFetchedPendingApplications([]);
+    setFetchedPendingInvitation(null);
     setIsApplicationDetailsOpen(false);
   }, [effectiveTeamId]);
+
+  // Fetch the user's pending application and invitation for this team when not
+  // supplied via props (e.g. when opened through TeamModalContext).
+  useEffect(() => {
+    if (!isAuthenticated || !effectiveTeamId || !isModalVisible) return;
+
+    const fetchUserStatus = async () => {
+      try {
+        const [appsRes, invsRes] = await Promise.allSettled([
+          teamService.getUserPendingApplications(),
+          teamService.getUserReceivedInvitations(),
+        ]);
+
+        if (appsRes.status === "fulfilled") {
+          const apps = appsRes.value?.data ?? appsRes.value ?? [];
+          const matches = apps.filter(
+            (a) => String(a.team?.id ?? a.teamId ?? a.team_id) === String(effectiveTeamId),
+          );
+          setFetchedPendingApplications(matches);
+        }
+
+        if (invsRes.status === "fulfilled") {
+          const invs = invsRes.value?.data ?? invsRes.value ?? [];
+          const match = invs.find(
+            (i) => String(i.team?.id ?? i.teamId ?? i.team_id) === String(effectiveTeamId),
+          );
+          setFetchedPendingInvitation(match ?? null);
+        }
+      } catch {
+        // Non-critical — silently ignore
+      }
+    };
+
+    fetchUserStatus();
+  }, [isAuthenticated, effectiveTeamId, isModalVisible]);
 
   useEffect(() => {
     if (isModalVisible && effectiveTeamId) {
@@ -669,6 +709,7 @@ const TeamDetailsModal = ({
   };
 
   const handleClose = useCallback(() => {
+    setIsEditing(false);
     setIsModalVisible(false);
     // Allow animation to complete before executing onClose
     setTimeout(() => {
@@ -1232,19 +1273,53 @@ const TeamDetailsModal = ({
   const isTeamArchived = Boolean(
     team?.archived_at || team?.status === "inactive",
   );
+  // Primary application used by CTA / details modal (prefer locally submitted or prop-supplied)
   const effectivePendingApplication =
-    localPendingApplication ?? pendingApplication;
+    localPendingApplication ?? pendingApplication ?? fetchedPendingApplications[0] ?? null;
+  const effectivePendingInvitation = pendingInvitation ?? fetchedPendingInvitation;
+  const effectiveHasPendingInvitation = hasPendingInvitation || Boolean(fetchedPendingInvitation);
   const hasActivePendingApplication = Boolean(
     (hasPendingApplication || effectivePendingApplication) &&
       !currentUserIsListedTeamMember,
   );
+  // Separate flags for subline icons (team-join vs role-fill)
+  const allPendingApplications = [
+    ...(localPendingApplication ? [localPendingApplication] : []),
+    ...(pendingApplication && !localPendingApplication ? [pendingApplication] : []),
+    ...fetchedPendingApplications,
+  ].filter(
+    (a, i, arr) => arr.findIndex((b) => String(b.id) === String(a.id)) === i,
+  );
+  // Classify each application:
+  //   combined  = external applicant with a role (team join + role fill in one)  → violet
+  //   role-only = existing member applying for a role                            → orange
+  //   team-only = no role attached                                               → blue/info
+  const pendingCombinedApplication = !currentUserIsListedTeamMember
+    ? allPendingApplications.find(
+        (a) => Boolean(a.role) && !(a.isInternalRoleApplication || a.is_internal_role_application),
+      )
+    : null;
+  const pendingInternalRoleApplication = !currentUserIsListedTeamMember
+    ? allPendingApplications.find(
+        (a) => Boolean(a.isInternalRoleApplication || a.is_internal_role_application),
+      )
+    : null;
+  const pendingTeamOnlyApplication = !currentUserIsListedTeamMember
+    ? allPendingApplications.find(
+        (a) => !a.role && !(a.isInternalRoleApplication || a.is_internal_role_application),
+      )
+    : null;
+  const hasPendingTeamApplication = Boolean(pendingTeamOnlyApplication);
+  const hasPendingRoleApplication = Boolean(pendingCombinedApplication || pendingInternalRoleApplication);
   const shouldShowHeaderApplyButton =
     isAuthenticated &&
     Boolean(team && effectiveTeamId) &&
     !currentUserIsListedTeamMember &&
     !isTeamArchived &&
-    !(hasPendingInvitation && pendingInvitation) &&
-    !hasActivePendingApplication;
+    !(effectiveHasPendingInvitation && effectivePendingInvitation) &&
+    !hasActivePendingApplication &&
+    !hasPendingTeamApplication &&
+    !hasPendingRoleApplication;
 
   const handleTeamApplicationSuccess = useCallback(
     (applicationData, submitResponse) => {
@@ -1280,7 +1355,7 @@ const TeamDetailsModal = ({
       return null;
     }
 
-    if (hasPendingInvitation && pendingInvitation) {
+    if (effectiveHasPendingInvitation && effectivePendingInvitation) {
       return (
         <div className="mt-6 border-t border-base-200 pt-4">
           <Button
@@ -1485,7 +1560,8 @@ const TeamDetailsModal = ({
 
     try {
       return {
-        short: format(new Date(createdAt), "MMM yyyy"),
+        short: format(new Date(createdAt), "MM/yy"),
+        narrow: format(new Date(createdAt), "MM/yy"),
         full: format(new Date(createdAt), "MMMM d, yyyy"),
       };
     } catch (error) {
@@ -1671,6 +1747,70 @@ const TeamDetailsModal = ({
                         </Tooltip>
                       )}
 
+                      {/* Pending invitation indicator */}
+                      {effectiveHasPendingInvitation && effectivePendingInvitation && (
+                        <Tooltip
+                          content={
+                            (effectivePendingInvitation.isInternal ?? effectivePendingInvitation.is_internal)
+                              ? `You were invited to fill a role in this team${(effectivePendingInvitation.createdAt ?? effectivePendingInvitation.created_at) ? `
+on ${format(new Date((effectivePendingInvitation.createdAt ?? effectivePendingInvitation.created_at)), "MMM d, yyyy")}` : ""}`
+                              : `You were invited to join this team${(effectivePendingInvitation.createdAt ?? effectivePendingInvitation.created_at) ? `
+on ${format(new Date((effectivePendingInvitation.createdAt ?? effectivePendingInvitation.created_at)), "MMM d, yyyy")}` : ""}`
+                          }
+                          position="bottom"
+                          wrapperClassName="flex items-center gap-0.5 cursor-help"
+                        >
+                          <Mail
+                            size={14}
+                            className={`flex-shrink-0 ${(effectivePendingInvitation.isInternal ?? effectivePendingInvitation.is_internal) ? "text-orange-500" : "text-pink-500"}`}
+                          />
+                          {(effectivePendingInvitation.createdAt ?? effectivePendingInvitation.created_at) && (
+                            <span className="text-base-content/50">{format(new Date((effectivePendingInvitation.createdAt ?? effectivePendingInvitation.created_at)), "MM/dd/yy")}</span>
+                          )}
+                        </Tooltip>
+                      )}
+
+                      {/* Pending application indicators */}
+                      {/* Combined team+role application → violet */}
+                      {pendingCombinedApplication && (
+                        <Tooltip
+                          content={`You applied to join this team and fill a role${(pendingCombinedApplication.createdAt ?? pendingCombinedApplication.created_at) ? `\non ${format(new Date((pendingCombinedApplication.createdAt ?? pendingCombinedApplication.created_at)), "MMM d, yyyy")}` : ""}`}
+                          position="bottom"
+                          wrapperClassName="flex items-center gap-0.5 cursor-help"
+                        >
+                          <SendHorizontal size={14} className="flex-shrink-0 text-violet-500" />
+                          {(pendingCombinedApplication.createdAt ?? pendingCombinedApplication.created_at) && (
+                            <span className="text-base-content/50">{format(new Date((pendingCombinedApplication.createdAt ?? pendingCombinedApplication.created_at)), "MM/dd/yy")}</span>
+                          )}
+                        </Tooltip>
+                      )}
+                      {/* Role-only application for existing members → orange */}
+                      {pendingInternalRoleApplication && (
+                        <Tooltip
+                          content={`You applied to fill a role in this team${(pendingInternalRoleApplication.createdAt ?? pendingInternalRoleApplication.created_at) ? `\non ${format(new Date((pendingInternalRoleApplication.createdAt ?? pendingInternalRoleApplication.created_at)), "MMM d, yyyy")}` : ""}`}
+                          position="bottom"
+                          wrapperClassName="flex items-center gap-0.5 cursor-help"
+                        >
+                          <SendHorizontal size={14} className="flex-shrink-0 text-orange-500" />
+                          {(pendingInternalRoleApplication.createdAt ?? pendingInternalRoleApplication.created_at) && (
+                            <span className="text-base-content/50">{format(new Date((pendingInternalRoleApplication.createdAt ?? pendingInternalRoleApplication.created_at)), "MM/dd/yy")}</span>
+                          )}
+                        </Tooltip>
+                      )}
+                      {/* Team-only application → blue */}
+                      {pendingTeamOnlyApplication && (
+                        <Tooltip
+                          content={`You applied to join this team${(pendingTeamOnlyApplication.createdAt ?? pendingTeamOnlyApplication.created_at) ? `\non ${format(new Date((pendingTeamOnlyApplication.createdAt ?? pendingTeamOnlyApplication.created_at)), "MMM d, yyyy")}` : ""}`}
+                          position="bottom"
+                          wrapperClassName="flex items-center gap-0.5 cursor-help"
+                        >
+                          <SendHorizontal size={14} className="flex-shrink-0 text-info" />
+                          {(pendingTeamOnlyApplication.createdAt ?? pendingTeamOnlyApplication.created_at) && (
+                            <span className="text-base-content/50">{format(new Date((pendingTeamOnlyApplication.createdAt ?? pendingTeamOnlyApplication.created_at)), "MM/dd/yy")}</span>
+                          )}
+                        </Tooltip>
+                      )}
+
                       {/* Archived status - ALWAYS show for archived teams */}
                       {(team?.archived_at || team?.status === "inactive") && (
                         <div className="flex items-center gap-1 text-base-content/70">
@@ -1714,7 +1854,7 @@ const TeamDetailsModal = ({
                           wrapperClassName="flex items-center text-sm text-base-content/60 flex-shrink-0 cursor-help"
                         >
                           <Calendar size={14} className="mr-1" />
-                          <span>{getTeamCreatedDate().short}</span>
+                          <span>{getTeamCreatedDate().narrow}</span>
                         </Tooltip>
                       )}
                       {isSyntheticTeam(team) && (
@@ -1949,24 +2089,27 @@ const TeamDetailsModal = ({
       />
 
       {/* Invitation Details Modal */}
-      {pendingInvitation && (
+      {effectivePendingInvitation && (
         <TeamInvitationDetailsModal
           isOpen={isInvitationModalOpen}
-          invitation={pendingInvitation}
+          invitation={effectivePendingInvitation}
           onClose={() => setIsInvitationModalOpen(false)}
           onAccept={handleInvitationAccept}
           onDecline={handleInvitationDecline}
         />
       )}
 
-      {(localPendingApplication || pendingApplication) && (
+      {effectivePendingApplication && (
         <TeamApplicationDetailsModal
           isOpen={isApplicationDetailsOpen}
-          application={localPendingApplication ?? pendingApplication}
+          application={effectivePendingApplication}
           onClose={() => setIsApplicationDetailsOpen(false)}
           onCancel={async (applicationId) => {
             await teamService.cancelApplication(applicationId);
             setLocalPendingApplication(null);
+            setFetchedPendingApplications((prev) =>
+              prev.filter((a) => String(a.id) !== String(applicationId)),
+            );
             setIsApplicationDetailsOpen(false);
             await fetchTeamDetails(true);
           }}
