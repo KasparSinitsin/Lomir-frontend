@@ -545,7 +545,7 @@ const CreateVacantRoleModal = ({
               <FormSectionDivider text="Desired Focus Areas" icon={Tag} />
 
               <div className="form-control">
-                <label className="label">
+                <label className="label whitespace-normal">
                   <span className="label-text">
                     What skills or focus areas should this person have?
                     (Optional)
@@ -566,7 +566,7 @@ const CreateVacantRoleModal = ({
               <FormSectionDivider text="Desired Badges" icon={Award} />
 
               <div className="form-control">
-                <label className="label">
+                <label className="label whitespace-normal">
                   <span className="label-text">
                     What qualities or badges should this person have? (Optional)
                   </span>
