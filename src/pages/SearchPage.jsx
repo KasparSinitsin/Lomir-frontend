@@ -41,6 +41,7 @@ import Alert from "../components/common/Alert";
 import { searchService, getApiErrorMessage } from "../services/searchService";
 import { tagService } from "../services/tagService";
 import { badgeService } from "../services/badgeService";
+import { teamService } from "../services/teamService";
 import {
   enrichTeamMatchData,
   enrichUserMatchData,
@@ -240,6 +241,47 @@ const SearchPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [hasSearched, setHasSearched] = useState(false);
+
+  // Fetched once and passed to every TeamCard so cards don't each re-fetch
+  // the viewer's global pending-application / pending-invitation lists.
+  const [viewerPendingApplications, setViewerPendingApplications] = useState(null);
+  const [viewerPendingInvitations, setViewerPendingInvitations] = useState(null);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setViewerPendingApplications(null);
+      setViewerPendingInvitations(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const [appsRes, invitesRes] = await Promise.allSettled([
+          teamService.getUserPendingApplications(),
+          teamService.getUserReceivedInvitations(),
+        ]);
+
+        if (cancelled) return;
+
+        if (appsRes.status === "fulfilled") {
+          setViewerPendingApplications(appsRes.value?.data || []);
+        }
+        if (invitesRes.status === "fulfilled") {
+          setViewerPendingInvitations(invitesRes.value?.data || []);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          console.error("Failed to load viewer pending requests:", err);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated]);
 
   // ===== SORTING STATE =====
   const [sortBy, setSortBy] = useState(() => {
@@ -2299,6 +2341,8 @@ const SearchPage = () => {
                           onUpdate={handleTeamUpdate}
                           isSearchResult={true}
                           viewerDistanceSource={viewerDistanceSource}
+                          viewerPendingApplications={viewerPendingApplications}
+                          viewerPendingInvitations={viewerPendingInvitations}
                           roleMatchBadgeNames={roleMatchBadgeNames}
                           showMatchHighlights={sortBy === "match"}
                           showMatchScore={sortBy === "match"}
@@ -2371,6 +2415,8 @@ const SearchPage = () => {
                           onUpdate={handleTeamUpdate}
                           isSearchResult={true}
                           viewerDistanceSource={viewerDistanceSource}
+                          viewerPendingApplications={viewerPendingApplications}
+                          viewerPendingInvitations={viewerPendingInvitations}
                           roleMatchBadgeNames={roleMatchBadgeNames}
                           showMatchHighlights={sortBy === "match"}
                           showMatchScore={sortBy === "match"}

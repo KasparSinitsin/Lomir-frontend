@@ -382,6 +382,13 @@ const TeamCard = ({
   highlightApplicationId = null,
   highlightInvitationId = null,
   onApplicationsModalClosed,
+
+  // Preloaded viewer-scoped lists (provided by parent to avoid N+1 fetches).
+  // If the prop is undefined (not provided by parent at all), the card falls
+  // back to fetching on its own. If the prop is null, parent is still loading
+  // and the card should wait — not fall back to fetching.
+  viewerPendingApplications,
+  viewerPendingInvitations,
 }) => {
   const isInternalRoleApplication =
     application?.isInternalRoleApplication ??
@@ -758,6 +765,14 @@ const TeamCard = ({
         return;
       }
 
+      // Use role from list response (getUserTeams) if present — avoids an
+      // extra request per card.
+      const preloadedRole = teamData.userRole ?? teamData.user_role ?? null;
+      if (preloadedRole) {
+        setUserRole(preloadedRole);
+        return;
+      }
+
       try {
         const response = await teamService.getUserRoleInTeam(
           teamData.id,
@@ -787,6 +802,8 @@ const TeamCard = ({
     teamData?.id,
     teamData?.owner_id,
     teamData?.ownerId,
+    teamData?.userRole,
+    teamData?.user_role,
     effectiveVariant,
   ]);
 
@@ -1013,6 +1030,19 @@ const TeamCard = ({
         return;
       }
 
+      // If parent is managing the viewer's pending applications, never fetch.
+      // While the parent's list is still loading (null), wait. Once it's an
+      // array, scan it locally.
+      if (viewerPendingApplications !== undefined) {
+        if (Array.isArray(viewerPendingApplications)) {
+          const found = viewerPendingApplications.find(
+            (app) => app.team?.id === teamData.id || app.team_id === teamData.id,
+          );
+          setPendingApplicationForTeam(found || null);
+        }
+        return;
+      }
+
       try {
         const response = await teamService.getUserPendingApplications();
         const pendingApplications = response.data || [];
@@ -1029,12 +1059,23 @@ const TeamCard = ({
     };
 
     checkPendingApplication();
-  }, [isSearchResult, isAuthenticated, teamData?.id]);
+  }, [isSearchResult, isAuthenticated, teamData?.id, viewerPendingApplications]);
 
   // Check if user has a pending invitation for this team (for search results)
   useEffect(() => {
     const checkPendingInvitation = async () => {
       if (!isSearchResult || !isAuthenticated || !teamData?.id) return;
+
+      // If parent is managing the viewer's pending invitations, never fetch.
+      if (viewerPendingInvitations !== undefined) {
+        if (Array.isArray(viewerPendingInvitations)) {
+          const found = viewerPendingInvitations.find(
+            (inv) => inv.team?.id === teamData.id || inv.team_id === teamData.id,
+          );
+          setPendingInvitationForTeam(found || null);
+        }
+        return;
+      }
 
       try {
         // IMPORTANT: use whatever your actual service method is called
@@ -1054,7 +1095,7 @@ const TeamCard = ({
     };
 
     checkPendingInvitation();
-  }, [isSearchResult, isAuthenticated, teamData?.id]);
+  }, [isSearchResult, isAuthenticated, teamData?.id, viewerPendingInvitations]);
 
   // useEffect(() => {
   //   if (effectiveVariant !== "member") return;
