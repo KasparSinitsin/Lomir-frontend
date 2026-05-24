@@ -1,7 +1,6 @@
 import React, { lazy, Suspense, useState, useEffect } from "react";
 import {
   Send,
-  Save,
   Users,
   SendHorizontal,
   UserSearch,
@@ -60,7 +59,6 @@ const TeamApplicationModal = ({
   const [message, setMessage] = useState("");
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
-  const [isDraft, setIsDraft] = useState(false);
   const [isTeamDetailsOpen, setIsTeamDetailsOpen] = useState(false);
   const [hydratedTeam, setHydratedTeam] = useState(null);
 
@@ -255,8 +253,8 @@ const TeamApplicationModal = ({
     if (displayTeam?.id) setIsTeamDetailsOpen(true);
   };
 
-  const handleSubmit = async (saveAsDraft = false) => {
-    if (!message.trim() && !saveAsDraft) {
+  const handleSubmit = async () => {
+    if (!message.trim()) {
       setError("Please write a message to the team owner");
       return;
     }
@@ -265,23 +263,18 @@ const TeamApplicationModal = ({
       setError(null);
       await onSubmit({
         message: message.trim(),
-        isDraft: saveAsDraft,
+        isDraft: false,
         roleId: selectedRoleId || null,
       });
 
-      if (saveAsDraft) {
-        setSuccess("Draft saved successfully");
-        setIsDraft(true);
-      } else {
-        setSuccess(
-          isInternal
-            ? "Role application sent to the team owner and admins!"
-            : "Application sent successfully!"
-        );
-        setTimeout(() => {
-          handleClose();
-        }, 1500);
-      }
+      setSuccess(
+        isInternal
+          ? "Role application sent to the team owner and admins!"
+          : "Application sent successfully!"
+      );
+      setTimeout(() => {
+        handleClose();
+      }, 1500);
     } catch (err) {
       setError(err.message || "Failed to process application");
     }
@@ -291,7 +284,6 @@ const TeamApplicationModal = ({
     setMessage("");
     setError(null);
     setSuccess(null);
-    setIsDraft(false);
     setSelectedRoleId(null);
     setDetailsRole(null);
     setIsRoleSectionExpanded(false);
@@ -308,7 +300,7 @@ const TeamApplicationModal = ({
         <SendHorizontal className="text-primary" size={24} />
       )}
       <div>
-        <h2 className="text-xl font-medium text-primary">
+        <h2 className="text-xl font-medium text-primary leading-[110%]">
           {isInternal ? "Apply to fill this role within your team" : "Apply to join this Team"}
         </h2>
       </div>
@@ -316,25 +308,22 @@ const TeamApplicationModal = ({
   );
 
   const footer = (
-    <div className="flex justify-end gap-3">
+    <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end sm:gap-3">
       <Button
-        variant="ghost"
-        onClick={() => handleSubmit(true)}
-        disabled={loading} // draft can be saved even if empty, if you want it strict: loading || !message.trim()
-        icon={<Save size={16} />}
+        variant="errorOutline"
+        onClick={handleClose}
+        disabled={loading}
+        className="w-full justify-center whitespace-normal text-center sm:w-auto"
       >
-        Save Draft
-      </Button>
-
-      <Button variant="errorOutline" onClick={handleClose} disabled={loading}>
         Cancel
       </Button>
 
       <Button
         variant="successOutline"
-        onClick={() => handleSubmit(false)}
+        onClick={handleSubmit}
         disabled={loading || !message.trim() || (isInternal && !selectedRoleId)}
         icon={<Send size={16} />}
+        className="h-auto min-h-12 w-full justify-center whitespace-normal text-center leading-tight sm:w-auto sm:min-h-0"
       >
         {loading ? "Sending..." : isInternal ? "Apply to fill this role within your team" : "Send Application"}
       </Button>
@@ -714,9 +703,6 @@ const TeamApplicationModal = ({
 
               <span className="absolute bottom-2 left-3 text-sm text-base-content/40 pointer-events-none">
                 {message.length}/500 characters
-                {isDraft && (
-                  <span className="ml-2 text-warning">• Draft saved</span>
-                )}
               </span>
             </div>
           </div>

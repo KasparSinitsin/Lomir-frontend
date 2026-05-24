@@ -5,6 +5,7 @@ import {
   ModalLayerProvider,
   MODAL_Z_STEP,
 } from "../../contexts/ModalLayerContext";
+import Tooltip from "./Tooltip";
 
 /**
  * Modal Component
@@ -32,6 +33,7 @@ import {
  * @param {boolean} closeOnBackdrop - Close when clicking backdrop
  * @param {boolean} closeOnEscape - Close when pressing ESC
  * @param {boolean} showCloseButton - Show X button in header
+ * @param {string|ReactNode} closeButtonTooltip - Optional tooltip for the close button
  * @param {string} zIndexClass - Tailwind z-index class for backdrop (fallback)
  * @param {string} boxZIndexClass - Tailwind z-index class for modal box (fallback)
  * @param {Object} zIndexStyle - Inline style for backdrop z-index (highest priority)
@@ -51,6 +53,7 @@ const Modal = ({
   closeOnBackdrop = true,
   closeOnEscape = true,
   showCloseButton = true,
+  closeButtonTooltip = null,
   headerActions = null,
   zIndexClass = "z-[50]",
   boxZIndexClass = "z-[51]",
@@ -120,6 +123,16 @@ const Modal = ({
 
   // Z-index for child modals (this modal's z + step)
   const childLayerZIndex = (effectiveZIndex ?? 50) + MODAL_Z_STEP;
+  const closeButton = (
+    <button
+      type="button"
+      className="btn btn-sm btn-ghost ml-2"
+      onClick={onClose}
+      aria-label="Close modal"
+    >
+      ✕
+    </button>
+  );
 
   return createPortal(
     <div
@@ -151,14 +164,13 @@ const Modal = ({
             </div>
             {headerActions}
             {showCloseButton && (
-              <button
-                type="button"
-                className="btn btn-sm btn-ghost ml-2"
-                onClick={onClose}
-                aria-label="Close modal"
-              >
-                ✕
-              </button>
+              closeButtonTooltip ? (
+                <Tooltip content={closeButtonTooltip} position="bottom">
+                  {closeButton}
+                </Tooltip>
+              ) : (
+                closeButton
+              )
             )}
           </div>
         )}

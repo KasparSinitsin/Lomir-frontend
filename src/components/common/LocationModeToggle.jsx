@@ -29,49 +29,50 @@ const LocationModeToggle = ({
         <span className="label-text">{label}</span>
       </label>
 
-      <div className="input input-bordered w-full h-auto px-4 py-3 flex flex-col items-start gap-0">
-        <div className="flex items-center justify-between w-full">
-          <div className="flex items-center min-w-0">
-            {isLocationTeam ? (
-              <MapPin
-                className="text-primary mr-3 flex-shrink-0 opacity-90"
-                size={22}
-              />
-            ) : (
-              <Globe
-                className="text-base-content mr-3 flex-shrink-0 opacity-60"
-                size={22}
-              />
-            )}
-
-            <span className="text-base-content font-normal truncate">
-              {isLocationTeam ? locationLabel : remoteLabel}
-            </span>
-          </div>
-
-          {/* Toggle on the right */}
-          <label className="relative inline-flex items-center cursor-pointer">
-            <input
-              type="checkbox"
-              className="toggle toggle-primary"
-              name={name}
-              checked={isLocationTeam}
-              onChange={(e) => {
-                // checked=true means "team with location"
-                // so isRemote should become false
-                // We delegate the mapping to parent in onChange.
-                onChange?.(e);
-              }}
-              disabled={disabled}
+      {/* Toggle row — kept inside the input-styled box (single row, no wrapping issues) */}
+      <div className="input input-bordered w-full px-4 py-3 flex items-center justify-between">
+        <div className="flex items-center min-w-0">
+          {isLocationTeam ? (
+            <MapPin
+              className="text-primary mr-3 flex-shrink-0 opacity-90"
+              size={22}
             />
-            <span className="sr-only">Toggle location mode</span>
-          </label>
+          ) : (
+            <Globe
+              className="text-base-content mr-3 flex-shrink-0 opacity-60"
+              size={22}
+            />
+          )}
+
+          <span className="text-base-content font-normal truncate">
+            {isLocationTeam ? locationLabel : remoteLabel}
+          </span>
         </div>
 
-        <p className="form-helper-text">
-          {isLocationTeam ? locationHelper : remoteHelper}
-        </p>
+        {/* Toggle on the right */}
+        <label className="relative inline-flex items-center cursor-pointer">
+          <input
+            type="checkbox"
+            className="toggle toggle-primary"
+            name={name}
+            checked={isLocationTeam}
+            onChange={(e) => {
+              // checked=true means "team with location"
+              // so isRemote should become false
+              // We delegate the mapping to parent in onChange.
+              onChange?.(e);
+            }}
+            disabled={disabled}
+          />
+          <span className="sr-only">Toggle location mode</span>
+        </label>
       </div>
+
+      {/* Helper text lives OUTSIDE the .input container so DaisyUI's
+          white-space:nowrap / overflow:hidden can't clip it */}
+      <p className="form-helper-text mt-1 px-1">
+        {isLocationTeam ? locationHelper : remoteHelper}
+      </p>
     </div>
   );
 };

@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useEffect, useMemo } from "react";
 import Button from "../common/Button";
+import Tooltip from "../common/Tooltip";
 import ConfirmModal from "../common/ConfirmModal";
 import VisibilityToggle from "../common/VisibilityToggle";
 import LocationModeToggle from "../common/LocationModeToggle";
@@ -11,7 +12,7 @@ import LocationInput from "../common/LocationInput";
 import TagInput from "../tags/TagInput";
 import { UI_TEXT } from "../../constants/uiText";
 import { useLocationAutoFill } from "../../hooks/useLocationAutoFill";
-import { Camera, Users, Settings, Tag, Trash2 } from "lucide-react";
+import { Camera, Users, Settings, Tag, Trash2, X, Save } from "lucide-react";
 
 const PRESET_OPTIONS = [2, 3, 4, 5, 6, 8, 10, 12, 15, 20];
 const UNLIMITED_VALUE = null;
@@ -42,6 +43,7 @@ const TeamEditForm = ({
   setFormErrors,
   onSubmit,
   onCancel,
+  onDelete,
   loading = false,
   isOwner = false,
   onAvatarDeleted,
@@ -567,24 +569,40 @@ const TeamEditForm = ({
         </div>
       </section>
 
-      {/* More whitespace above the last divider (as in Create Team) */}
-      <div className="pt-5">
-        <div className="divider my-6"></div>
-      </div>
-
       {/* Form Actions */}
-      <div className="flex justify-end space-x-2">
-        <Button
-          type="button"
-          variant="ghost"
-          onClick={onCancel}
-          disabled={loading}
-        >
-          Cancel
-        </Button>
-        <Button type="submit" variant="primary" disabled={loading}>
-          {loading ? "Saving..." : "Save Changes"}
-        </Button>
+      <div className="-mx-6 -mb-6 mt-6 px-6 py-6 border-t border-base-200 bg-base-100/80">
+        <div className="flex items-center justify-between">
+          {onDelete ? (
+            <Tooltip content="Permanently delete this team and all its data. You will be asked to confirm." position="top">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={onDelete}
+                disabled={loading}
+                icon={<Trash2 size={16} />}
+                className="hover:bg-red-600 hover:text-white"
+              >
+                Delete
+              </Button>
+            </Tooltip>
+          ) : <div />}
+          <div className="flex items-center space-x-2">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={onCancel}
+              disabled={loading}
+              icon={<X size={16} />}
+            >
+              Cancel
+            </Button>
+            <Tooltip content="Save Team Changes" position="top">
+              <Button type="submit" variant="primary" disabled={loading} icon={<Save size={16} />}>
+                {loading ? "Saving..." : "Save"}
+              </Button>
+            </Tooltip>
+          </div>
+        </div>
       </div>
       </form>
 

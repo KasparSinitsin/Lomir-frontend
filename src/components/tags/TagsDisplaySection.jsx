@@ -472,30 +472,36 @@ const TagsDisplaySection = ({
   return (
     <div className={className}>
       {/* Title row */}
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center">
-          <Tag size={18} className="mr-2 text-primary flex-shrink-0" />
-          <h3 className="font-medium">
-            {title}
-            {totalCredits > 0 && (
-              <span className="font-normal text-sm text-base-content/60 ml-1">
-                ({totalCredits} ct. across {pillCount} {pillCount === 1 ? 'area' : 'areas'})
-              </span>
+      <div className="flex items-start gap-2 mb-3">
+        <Tag size={18} className="mt-0.5 text-primary flex-shrink-0" />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
+              <div className="min-w-0 flex flex-wrap items-baseline gap-x-1 gap-y-0.5">
+                <h3 className="font-medium leading-5 whitespace-nowrap">{title}</h3>
+                {totalCredits > 0 && (
+                  <span className="min-w-0 text-sm font-normal text-base-content/60 whitespace-nowrap">
+                    ({totalCredits} ct. in {pillCount} {pillCount === 1 ? 'area' : 'areas'})
+                  </span>
+                )}
+              </div>
+              {headerRight && (
+                <div className="flex items-center justify-end gap-2 text-right whitespace-nowrap">
+                  {headerRight}
+                </div>
+              )}
+            </div>
+            {canEdit && onSave && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="hover:bg-violet-200 hover:text-violet-700"
+                onClick={() => setIsEditing(true)}
+              >
+                Edit
+              </Button>
             )}
-          </h3>
-        </div>
-        <div className="flex items-center gap-2">
-          {headerRight}
-          {canEdit && onSave && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="hover:bg-violet-200 hover:text-violet-700"
-              onClick={() => setIsEditing(true)}
-            >
-              Edit
-            </Button>
-          )}
+          </div>
         </div>
       </div>
 

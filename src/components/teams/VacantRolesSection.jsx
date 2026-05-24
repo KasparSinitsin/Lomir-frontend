@@ -18,6 +18,18 @@ import { matchingService } from "../../services/matchingService";
 import { useAuth } from "../../contexts/AuthContext";
 
 const getRoleStatus = (role) => String(role?.status ?? "").toLowerCase();
+const getRoleStatusPriority = (role) => {
+  switch (getRoleStatus(role)) {
+    case "open":
+      return 0;
+    case "filled":
+      return 1;
+    case "closed":
+      return 2;
+    default:
+      return 3;
+  }
+};
 
 /**
  * VacantRolesSection Component
@@ -44,6 +56,7 @@ const VacantRolesSection = ({
   isEditing = false,
   className = "",
   onRolesLoaded = null,
+  suppressMatchScores = false,
 }) => {
   const { isAuthenticated } = useAuth();
 
@@ -108,6 +121,11 @@ const VacantRolesSection = ({
   // Runs after roles are loaded, only for non-managers (non-managers are the
   // users who'd want to know "how well do I match this role?")
   useEffect(() => {
+    if (suppressMatchScores) {
+      setMatchScores({});
+      return;
+    }
+
     const fetchMatchScores = async () => {
       if (!isAuthenticated || !teamId || roles.length === 0) {
         setMatchScores({});
@@ -132,7 +150,7 @@ const VacantRolesSection = ({
     };
 
     fetchMatchScores();
-  }, [isAuthenticated, teamId, roles]);
+  }, [suppressMatchScores, isAuthenticated, teamId, roles]);
 
   // Auto-expand when roles exist so they're always visible
   useEffect(() => {
@@ -243,12 +261,9 @@ const VacantRolesSection = ({
   // Count open roles for the title
   const openCount = roles.filter((r) => r.status === "open").length;
   const sortedVisibleRoles = [...visibleRoles].sort((a, b) => {
-    const aIsClosed = getRoleStatus(a) === "closed";
-    const bIsClosed = getRoleStatus(b) === "closed";
+    const statusPriority = getRoleStatusPriority(a) - getRoleStatusPriority(b);
 
-    if (aIsClosed !== bIsClosed) {
-      return aIsClosed ? 1 : -1;
-    }
+    if (statusPriority !== 0) return statusPriority;
 
     const scoreA = matchScores[a.id]?.matchScore ?? -1;
     const scoreB = matchScores[b.id]?.matchScore ?? -1;
@@ -371,6 +386,7 @@ const VacantRolesSection = ({
         team={team}
         existingRole={editingRole}
         onSuccess={handleModalSuccess}
+        onDelete={editingRole ? () => { handleModalClose(); handleDelete(editingRole.id); } : undefined}
       />
 
       <ConfirmModal

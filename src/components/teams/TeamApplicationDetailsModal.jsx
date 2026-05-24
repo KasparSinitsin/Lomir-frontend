@@ -339,7 +339,7 @@ const TeamApplicationDetailsModal = ({
   // Custom header
   const customHeader = (
     <div>
-      <h2 className="text-xl font-medium text-primary leading-[100%] mb-[0.2em]">
+      <h2 className="text-xl font-medium text-primary leading-[110%] mb-[0.2em]">
         {isInternalRoleApplication && roleName ? (
           <span className="flex min-w-0 items-center gap-1.5">
             <UserSearch size={20} className="shrink-0 text-primary" />

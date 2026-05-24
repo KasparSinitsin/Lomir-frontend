@@ -601,6 +601,11 @@ const TeamInviteModal = ({
     return inviteeName || inviteeUsername || "Unknown User";
   };
 
+  // Get first given name for the modal title (e.g. "Alice Stephanie Beurer" → "Alice")
+  const getInviteeAbbreviatedName = () => {
+    return (inviteeFirstName || "").split(" ")[0] || inviteeName || inviteeUsername || "Unknown User";
+  };
+
   // Get username
   const getUsername = () => {
     return inviteeUsername || "unknown";
@@ -1225,11 +1230,11 @@ const TeamInviteModal = ({
   // ============ Render ============
 
   const customHeader = (
-    <div className="flex items-center gap-3">
-      <UserPlus className="text-primary" size={24} />
+    <div className="flex items-start gap-3">
+      <UserPlus className="text-primary mt-0.5" size={24} />
       <div>
-        <h2 className="text-xl font-medium text-primary">
-          Invite {getInviteeDisplayName()} to a Team
+        <h2 className="text-xl font-medium text-primary leading-[110%]">
+          Invite {getInviteeAbbreviatedName()} to a Team
         </h2>
         {/* <p className="text-sm text-base-content/70">
           Invite {getInviteeDisplayName()} to join your team
@@ -1466,63 +1471,66 @@ const TeamInviteModal = ({
         <div className="space-y-5">
           {/* Invitee info */}
           <div className="flex items-start space-x-3 mb-3">
-            <div
-              className="avatar cursor-pointer hover:opacity-80 transition-opacity"
-              onClick={() => handleUserClick(inviteeId)}
-              title="View profile"
-            >
-              <div className="w-12 h-12 rounded-full relative overflow-hidden">
-                {inviteeAvatar ? (
-                  <img
-                    src={inviteeAvatar}
-                    alt={getUsername()}
-                    className="object-cover w-full h-full rounded-full"
-                    onError={(e) => {
-                      e.target.style.display = "none";
-                      const fallback =
-                        e.target.parentElement.querySelector(
-                          ".avatar-fallback"
-                        );
-                      if (fallback) fallback.style.display = "flex";
+            <Tooltip content="View profile" position="bottom" wrapperClassName="block">
+              <div
+                className="avatar cursor-pointer hover:opacity-80 transition-opacity"
+                onClick={() => handleUserClick(inviteeId)}
+              >
+                <div className="w-12 h-12 rounded-full relative overflow-hidden">
+                  {inviteeAvatar ? (
+                    <img
+                      src={inviteeAvatar}
+                      alt={getUsername()}
+                      className="object-cover w-full h-full rounded-full"
+                      onError={(e) => {
+                        e.target.style.display = "none";
+                        const fallback =
+                          e.target.parentElement.querySelector(
+                            ".avatar-fallback"
+                          );
+                        if (fallback) fallback.style.display = "flex";
+                      }}
+                    />
+                  ) : null}
+                  <div
+                    className="avatar-fallback bg-[var(--color-primary-focus)] text-primary-content flex items-center justify-center w-full h-full rounded-full absolute inset-0"
+                    style={{
+                      display: inviteeAvatar ? "none" : "flex",
                     }}
-                  />
-                ) : null}
-                <div
-                  className="avatar-fallback bg-[var(--color-primary-focus)] text-primary-content flex items-center justify-center w-full h-full rounded-full absolute inset-0"
-                  style={{
-                    display: inviteeAvatar ? "none" : "flex",
-                  }}
-                >
-                  <span className="text-lg font-medium">
-                    {getUserInitials(inviteeUser)}
-                  </span>
+                  >
+                    <span className="text-lg font-medium">
+                      {getUserInitials(inviteeUser)}
+                    </span>
+                  </div>
+                  {showInviteeDemoProfile && (
+                    <DemoAvatarOverlay
+                      textClassName="text-[8px]"
+                      textTranslateClassName="-translate-y-[3px]"
+                    />
+                  )}
                 </div>
-                {showInviteeDemoProfile && (
-                  <DemoAvatarOverlay
-                    textClassName="text-[8px]"
-                    textTranslateClassName="-translate-y-[3px]"
-                  />
-                )}
               </div>
-            </div>
+            </Tooltip>
 
             <div className="flex-1 min-w-0">
-              <h4
-                className="font-medium text-base-content cursor-pointer hover:text-primary transition-colors leading-[120%] mb-[0.2em]"
-                onClick={() => handleUserClick(inviteeId)}
-                title="View profile"
-              >
-                {getInviteeDisplayName()}
-              </h4>
+              <Tooltip content="View profile" position="bottom" wrapperClassName="block">
+                <h4
+                  className="font-medium text-base-content cursor-pointer hover:text-primary transition-colors leading-[120%] mb-[0.2em]"
+                  onClick={() => handleUserClick(inviteeId)}
+                >
+                  {getInviteeDisplayName()}
+                </h4>
+              </Tooltip>
 
               <div className="flex flex-wrap items-center gap-x-2 gap-y-0">
-                <p
-                  className="text-sm text-base-content/70 cursor-pointer hover:text-primary transition-colors"
-                  onClick={() => handleUserClick(inviteeId)}
-                  title="View profile"
-                >
-                  @{getUsername()}
-                </p>
+                <Tooltip content="View profile" position="bottom" wrapperClassName="inline-flex">
+                  <p
+                    className="text-sm text-base-content/70 cursor-pointer hover:text-primary transition-colors"
+                    onClick={() => handleUserClick(inviteeId)}
+                  >
+                    @{getUsername()}
+                  </p>
+                </Tooltip>
                 {showInviteeDemoProfile && (
                   <Tooltip
                     content={DEMO_PROFILE_TOOLTIP}
@@ -1543,7 +1551,7 @@ const TeamInviteModal = ({
           )}
 
           {/* Team selection */}
-          <div>
+          <div className="bg-base-200/30 rounded-lg border border-base-300 p-4">
             <button
               type="button"
               className="flex w-full items-center justify-between text-xs text-base-content/60 mb-2 hover:text-base-content/80 transition-colors"
@@ -1597,7 +1605,7 @@ const TeamInviteModal = ({
 
           {/* Vacant role selection */}
           {shouldShowRolePicker && (
-            <div className="pt-2">
+            <div className="bg-base-200/30 rounded-lg border border-base-300 p-4">
               <button
                 type="button"
                 className="flex w-full items-center justify-between text-xs text-base-content/60 mb-2 hover:text-base-content/80 transition-colors"

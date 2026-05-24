@@ -196,6 +196,7 @@ const VacantRoleCard = ({
   teamContext = null,
   activeFilters = { showLocation: true, showTags: true, showBadges: true },
   showSearchResultTypeOverlay = false,
+  showMatchScore = true,
   notificationHighlight = false,
 }) => {
   const [showMenu, setShowMenu] = useState(false);
@@ -601,9 +602,12 @@ const VacantRoleCard = ({
     setIsDetailsOpen(true);
   };
 
-  const hasMatchScore = matchScore !== null && matchScore !== undefined;
-  const pct = hasMatchScore ? Math.round(matchScore * 100) : 0;
-  const matchTier = hasMatchScore ? getMatchTier(matchScore) : null;
+  const visibleMatchScore = showMatchScore ? matchScore : null;
+  const visibleMatchDetails = showMatchScore ? matchDetails : null;
+  const hasMatchScore =
+    visibleMatchScore !== null && visibleMatchScore !== undefined;
+  const pct = hasMatchScore ? Math.round(visibleMatchScore * 100) : 0;
+  const matchTier = hasMatchScore ? getMatchTier(visibleMatchScore) : null;
 
   const getMatchColor = () => {
     if (pct >= MATCH_TIER_GREAT) {
@@ -632,15 +636,20 @@ const VacantRoleCard = ({
   const matchColor = hasMatchScore ? getMatchColor() : null;
 
   const getMatchTooltip = () => {
-    if (!matchDetails) return `${pct}% match`;
+    if (!visibleMatchDetails) return `${pct}% match`;
     const tagPct = Math.round(
-      (matchDetails.tagScore ?? matchDetails.tag_score ?? 0) * 100,
+      (visibleMatchDetails.tagScore ?? visibleMatchDetails.tag_score ?? 0) *
+        100,
     );
     const badgePct = Math.round(
-      (matchDetails.badgeScore ?? matchDetails.badge_score ?? 0) * 100,
+      (visibleMatchDetails.badgeScore ??
+        visibleMatchDetails.badge_score ??
+        0) * 100,
     );
     const distPct = Math.round(
-      (matchDetails.distanceScore ?? matchDetails.distance_score ?? 0) * 100,
+      (visibleMatchDetails.distanceScore ??
+        visibleMatchDetails.distance_score ??
+        0) * 100,
     );
     return `${pct}% match — Tags ${tagPct}% · Badges ${badgePct}% · Location ${distPct}%`;
   };
@@ -954,8 +963,9 @@ const VacantRoleCard = ({
       onClose={() => setIsDetailsOpen(false)}
       team={resolvedTeam}
       role={role}
-      matchScore={matchScore}
-      matchDetails={matchDetails}
+      matchScore={visibleMatchScore}
+      matchDetails={visibleMatchDetails}
+      showMatchScore={showMatchScore}
       canManage={canManage}
       isTeamMember={viewerIsTeamMember}
       viewAsUserId={viewAsUserId}
