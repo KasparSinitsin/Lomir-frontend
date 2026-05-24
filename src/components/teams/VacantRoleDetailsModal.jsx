@@ -72,6 +72,7 @@ import {
   normalizeLocationData,
   formatLocation,
 } from "../../utils/locationUtils";
+import { formatDisplayName } from "../../utils/nameFormatters";
 import { resolveFilledRoleUser } from "../../utils/vacantRoleUtils";
 import { useUserModalSafe } from "../../contexts/UserModalContext";
 import { useTeamModalSafe } from "../../contexts/TeamModalContext";
@@ -349,6 +350,7 @@ const VacantRoleDetailsModal = ({
 
   const [userTagMap, setUserTagMap] = useState(new Map()); // tagId → { badgeCredits }
   const [userBadgeMap, setUserBadgeMap] = useState(new Map()); // lowercase name → { totalCredits }
+  const [teamImageError, setTeamImageError] = useState(false);
   const [hydratedRole, setHydratedRole] = useState(null);
   const [loadingRoleDetails, setLoadingRoleDetails] = useState(false);
   const [comparisonUserProfile, setComparisonUserProfile] = useState(null);
@@ -461,6 +463,7 @@ const VacantRoleDetailsModal = ({
 
   useEffect(() => {
     if (!isOpen) {
+      setTeamImageError(false);
       setHydratedRole(null);
       setLoadingRoleDetails(false);
       setComparisonUserProfile(null);
@@ -1452,6 +1455,14 @@ const VacantRoleDetailsModal = ({
     displayRole.teamAvatarUrl ??
     displayRole.team_avatar_url ??
     null;
+  // Also check the team prop (passed from VacantRoleCard / search results)
+  const resolvedTeamAvatarUrl =
+    teamAvatarUrl ??
+    team?.teamavatar_url ??
+    team?.teamavatarUrl ??
+    team?.avatar_url ??
+    team?.avatarUrl ??
+    null;
   const teamIsRemote =
     team?.isRemote ??
     team?.is_remote ??
@@ -1516,6 +1527,13 @@ const VacantRoleDetailsModal = ({
     creatorFirstName && creatorLastName
       ? `${creatorFirstName} ${creatorLastName}`
       : creatorUsername || null;
+  const creatorDisplayName = creatorName
+    ? formatDisplayName({
+        firstName: creatorFirstName,
+        lastName: creatorLastName,
+        username: creatorUsername,
+      })
+    : null;
   const canOpenTeamModal = Boolean(teamId && teamModal?.openTeamModal);
   const comparisonUser = comparisonUserProfile || comparisonUserSeed || null;
   const comparisonFirstName =
@@ -1540,6 +1558,9 @@ const VacantRoleDetailsModal = ({
     filledRoleUser && getDisplayName(filledRoleUser) !== "Unknown"
       ? getDisplayName(filledRoleUser)
       : null;
+  const filledRoleCompactDisplayName = filledRoleUser
+    ? formatDisplayName(filledRoleUser)
+    : filledRoleDisplayName;
   const filledRoleAvatarUrl =
     filledRoleUser?.avatarUrl ?? filledRoleUser?.avatar_url ?? null;
   const filledAt =
@@ -1880,6 +1901,61 @@ const VacantRoleDetailsModal = ({
   const visibleRoleTeamMembers = isTeamMembersExpanded
     ? availableRoleTeamMembers
     : availableRoleTeamMembers.slice(0, COLLAPSED_COUNT);
+  const viewerRoleApplicationDate = (() => {
+    const dateVal =
+      effectiveViewerRoleApplication?.createdAt ??
+      effectiveViewerRoleApplication?.created_at ??
+      effectiveViewerRoleApplication?.appliedAt ??
+      effectiveViewerRoleApplication?.applied_at ??
+      effectiveViewerRoleApplication?.submittedAt ??
+      effectiveViewerRoleApplication?.submitted_at;
+    if (!dateVal) return null;
+
+    const date = new Date(dateVal);
+    if (Number.isNaN(date.getTime())) return null;
+
+    const isInternalRoleApplication = Boolean(
+      effectiveViewerRoleApplication?.isInternalRoleApplication ??
+        effectiveViewerRoleApplication?.is_internal_role_application,
+    );
+
+    return {
+      short: format(date, "MM/dd/yy"),
+      full: format(date, "MMM d, yyyy"),
+      label: isInternalRoleApplication
+        ? "You applied to fill this role"
+        : "You applied to join this team and fill this role",
+      iconClassName: isInternalRoleApplication ? "text-orange-500" : "text-violet-500",
+    };
+  })();
+  const viewerRoleInvitationDate = (() => {
+    const dateVal =
+      effectiveViewerRoleInvitation?.createdAt ??
+      effectiveViewerRoleInvitation?.created_at ??
+      effectiveViewerRoleInvitation?.invitedAt ??
+      effectiveViewerRoleInvitation?.invited_at ??
+      effectiveViewerRoleInvitation?.sentAt ??
+      effectiveViewerRoleInvitation?.sent_at ??
+      effectiveViewerRoleInvitation?.date;
+    if (!dateVal) return null;
+
+    const date = new Date(dateVal);
+    if (Number.isNaN(date.getTime())) return null;
+
+    const isInternalInvitation = Boolean(
+      effectiveViewerRoleInvitation?.isInternal ??
+        effectiveViewerRoleInvitation?.is_internal,
+    );
+
+    return {
+      short: format(date, "MM/dd/yy"),
+      full: format(date, "MMM d, yyyy"),
+      label: isInternalInvitation
+        ? "You were invited to fill this role"
+        : "You were invited to join this team and fill this role",
+      iconClassName: isInternalInvitation ? "text-orange-500" : "text-pink-500",
+    };
+  })();
   const rolePostedDate = (() => {
     const dateVal = isFilledRole ? filledAt : createdAt;
     if (!dateVal) return null;
@@ -1927,6 +2003,11 @@ const VacantRoleDetailsModal = ({
       {modalStatusTitle}
     </h2>
   );
+  const canShowRoleManagementActions = canManage && !hideActions;
+  const canFindRoleMatches =
+    canShowRoleManagementActions && !isFilledRole && !isClosedRole;
+  const hasRoleHeaderActions =
+    canShowRoleManagementActions && (onEdit || onStatusChange || canFindRoleMatches);
 
   return (
     <>
@@ -1942,46 +2023,42 @@ const VacantRoleDetailsModal = ({
       closeOnEscape={true}
       showCloseButton={true}
       headerActions={
-        (canManage && !hideActions) || (!isFilledRole && !isClosedRole) ? (
+        hasRoleHeaderActions ? (
           <div className="flex items-center gap-1">
-            {canManage && !hideActions && (
-              <>
-                {onEdit && (
-                  <Tooltip content="Edit this role's details">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => { onClose(); onEdit(displayRole); }}
-                      className="hover:bg-[#7ace82] hover:text-[#036b0c]"
-                      icon={<Edit size={16} />}
-                    />
-                  </Tooltip>
-                )}
-                {isRoleOpen && onStatusChange && (
-                  <Tooltip content="Close this role — stop accepting new applicants">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => { onClose(); onStatusChange(roleId, "closed"); }}
-                      className="hover:bg-yellow-100 hover:text-yellow-700"
-                      icon={<XCircle size={16} />}
-                    />
-                  </Tooltip>
-                )}
-                {!isRoleOpen && onStatusChange && (
-                  <Tooltip content="Reopen this role to accept new applicants">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => { onClose(); onStatusChange(roleId, "open"); }}
-                      className="hover:bg-green-100 hover:text-green-700"
-                      icon={<CheckCircle size={16} />}
-                    />
-                  </Tooltip>
-                )}
-              </>
+            {onEdit && (
+              <Tooltip content="Edit this role's details">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => { onClose(); onEdit(displayRole); }}
+                  className="hover:bg-[#7ace82] hover:text-[#036b0c]"
+                  icon={<Edit size={16} />}
+                />
+              </Tooltip>
             )}
-            {!isFilledRole && !isClosedRole && (
+            {isRoleOpen && onStatusChange && (
+              <Tooltip content="Close this role — stop accepting new applicants">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => { onClose(); onStatusChange(roleId, "closed"); }}
+                  className="hover:bg-yellow-100 hover:text-yellow-700"
+                  icon={<XCircle size={16} />}
+                />
+              </Tooltip>
+            )}
+            {!isRoleOpen && onStatusChange && (
+              <Tooltip content="Reopen this role to accept new applicants">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => { onClose(); onStatusChange(roleId, "open"); }}
+                  className="hover:bg-green-100 hover:text-green-700"
+                  icon={<CheckCircle size={16} />}
+                />
+              </Tooltip>
+            )}
+            {canFindRoleMatches && (
               <Tooltip content="Find matching people outside this team">
                 <Button
                   variant="ghost"
@@ -2043,7 +2120,19 @@ const VacantRoleDetailsModal = ({
                 {demoAvatarOverlay}
               </div>
               </Tooltip>
+            ) : resolvedTeamAvatarUrl && !teamImageError ? (
+              /* Non-filled role with team avatar — mirrors TeamDetailsModal pattern */
+              <div className="bg-[var(--color-primary-focus)] text-primary-content rounded-full w-20 h-20 relative flex items-center justify-center overflow-hidden">
+                <img
+                  src={resolvedTeamAvatarUrl}
+                  alt={teamName || "Team"}
+                  className="rounded-full object-cover w-full h-full"
+                  onError={() => setTeamImageError(true)}
+                />
+                {demoAvatarOverlay}
+              </div>
             ) : effectivePct !== null ? (
+              /* Fallback: no team avatar but match score — show score circle */
               <div
                 className={`${matchTier?.bg ?? "bg-slate-400"} text-white rounded-full w-20 h-20 relative flex items-center justify-center overflow-hidden`}
               >
@@ -2065,7 +2154,7 @@ const VacantRoleDetailsModal = ({
                 {demoAvatarOverlay}
               </div>
             )}
-            {isFilledRole && MatchTierIcon && (
+            {MatchTierIcon && (
               <Tooltip
                 content={`${matchTier.pct}% ${matchTier.label.toLowerCase()}`}
                 position="bottom"
@@ -2100,61 +2189,123 @@ const VacantRoleDetailsModal = ({
               )}
 
               {(isFilledRole ? (filledRoleUser?.id && filledRoleDisplayName) : creatorName) && (
-                <span className="flex items-center gap-1 text-base-content/50 min-w-0">
+                <span className="flex min-w-0 max-w-[12rem] items-center gap-1 text-base-content/50 sm:max-w-[16rem]">
                   <PenLine size={14} className="flex-shrink-0" />
                   <span className="flex-shrink-0">by</span>
                   {isFilledRole && filledRoleUser?.id ? (
-                    <Tooltip content={`Click to view ${filledRoleDisplayName || "this user"}'s profile`}>
+                    <Tooltip
+                      content={`Filled by ${filledRoleDisplayName || "this user"}. Click to view their profile`}
+                      wrapperClassName="inline-flex min-w-0 max-w-full items-center"
+                    >
                       <button
                         type="button"
-                        className="truncate font-medium hover:text-primary transition-colors"
+                        className="min-w-0 max-w-full truncate font-medium hover:text-primary transition-colors"
                         onClick={handleFilledUserClick}
                       >
-                        {filledRoleDisplayName}
+                        {filledRoleCompactDisplayName}
                       </button>
                     </Tooltip>
                   ) : creatorUserId ? (
-                    <Tooltip content={`Click to view ${creatorName}'s profile`}>
+                    <Tooltip
+                      content={`Created by ${creatorName}. Click to view their profile`}
+                      wrapperClassName="inline-flex min-w-0 max-w-full items-center"
+                    >
                       <button
                         type="button"
-                        className="truncate font-medium hover:text-primary transition-colors"
+                        className="min-w-0 max-w-full truncate font-medium hover:text-primary transition-colors"
                         onClick={handleCreatorUserClick}
                       >
-                        {creatorName}
+                        {creatorDisplayName}
                       </button>
                     </Tooltip>
                   ) : (
-                    <span className="truncate">{creatorName}</span>
+                    <span className="min-w-0 max-w-full truncate">{creatorDisplayName}</span>
                   )}
                 </span>
               )}
 
-              {!isFilledRole && teamName && (
-                <span className="flex min-w-0 items-center gap-1 text-base-content/50">
+              {teamName && (
+                <span className="flex min-w-0 max-w-[calc(100%-2rem)] items-center gap-1 text-base-content/50">
                   <Users size={14} className="flex-shrink-0" />
                   {canOpenTeamModal ? (
-                    <Tooltip content={`Click to view ${teamName}`}>
+                    <Tooltip
+                      content={`Click to view ${teamName}`}
+                      wrapperClassName="inline-flex min-w-0 max-w-full items-center"
+                    >
                       <button
                         type="button"
-                        className="truncate font-medium hover:text-primary transition-colors"
+                        className="min-w-0 max-w-full truncate font-medium hover:text-primary transition-colors"
                         onClick={handleTeamClick}
                       >
                         {teamName}
                       </button>
                     </Tooltip>
                   ) : (
-                    <span className="truncate">{teamName}</span>
+                    <span className="min-w-0 max-w-full truncate">{teamName}</span>
                   )}
                 </span>
               )}
 
-              {((roleDateIsNarrow && rolePostedDate) || isSyntheticRole(displayRole)) && (
+              {viewerRoleApplicationDate && (
+                <Tooltip
+                  content={`${viewerRoleApplicationDate.label}\non ${viewerRoleApplicationDate.full}`}
+                  position="bottom"
+                  wrapperClassName="inline-flex"
+                >
+                  <button
+                    type="button"
+                    className="group flex items-center gap-1 cursor-pointer rounded-sm transition-colors hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                    aria-label={`${viewerRoleApplicationDate.label} on ${viewerRoleApplicationDate.full}. Open application details`}
+                    onClick={() => {
+                      if (onViewApplicationDetails) {
+                        onViewApplicationDetails();
+                        return;
+                      }
+
+                      setIsViewerApplicationDetailsOpen(true);
+                    }}
+                  >
+                    <SendHorizontal
+                      size={14}
+                      className={`flex-shrink-0 ${viewerRoleApplicationDate.iconClassName}`}
+                    />
+                    <span className="text-base-content/50 transition-colors group-hover:text-primary group-focus-visible:text-primary">
+                      {viewerRoleApplicationDate.short}
+                    </span>
+                  </button>
+                </Tooltip>
+              )}
+
+              {viewerRoleInvitationDate && (
+                <Tooltip
+                  content={`${viewerRoleInvitationDate.label}\non ${viewerRoleInvitationDate.full}`}
+                  position="bottom"
+                  wrapperClassName="inline-flex"
+                >
+                  <button
+                    type="button"
+                    className="group flex items-center gap-1 cursor-pointer rounded-sm transition-colors hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                    aria-label={`${viewerRoleInvitationDate.label} on ${viewerRoleInvitationDate.full}. Open invitation details`}
+                    onClick={() => setIsViewerInvitationDetailsOpen(true)}
+                  >
+                    <Mail
+                      size={14}
+                      className={`flex-shrink-0 ${viewerRoleInvitationDate.iconClassName}`}
+                    />
+                    <span className="text-base-content/50 transition-colors group-hover:text-primary group-focus-visible:text-primary">
+                      {viewerRoleInvitationDate.short}
+                    </span>
+                  </button>
+                </Tooltip>
+              )}
+
+              {(rolePostedDate || isSyntheticRole(displayRole)) && (
                 <span className="flex items-center gap-3 flex-shrink-0">
-                  {roleDateIsNarrow && rolePostedDate && (
+                  {rolePostedDate && (
                     <Tooltip
                       content={`${rolePostedDate.label} ${rolePostedDate.full}`}
                       position="bottom"
-                      wrapperClassName="flex items-center text-base-content/70 flex-shrink-0 cursor-help"
+                      wrapperClassName={`items-center text-base-content/70 flex-shrink-0 cursor-help ${roleDateIsNarrow ? "flex" : "flex sm:hidden"}`}
                     >
                       <Calendar size={14} className="mr-1" />
                       <span>{rolePostedDate.short}</span>
@@ -2163,10 +2314,10 @@ const VacantRoleDetailsModal = ({
                   {isSyntheticRole(displayRole) && (
                     <Tooltip
                       content={DEMO_ROLE_TOOLTIP}
-                      wrapperClassName="flex items-start text-base-content/50"
+                      wrapperClassName="flex items-start text-base-content/50 whitespace-nowrap"
                     >
-                      <FlaskConical size={14} className={`flex-shrink-0 mt-px${roleDateIsNarrow ? "" : " mr-0.5"}`} />
-                      {!roleDateIsNarrow && <span className="leading-[1.15]">Demo Role</span>}
+                      <FlaskConical size={14} className={`flex-shrink-0 mt-px${roleDateIsNarrow ? "" : " sm:mr-0.5"}`} />
+                      {!roleDateIsNarrow && <span className="hidden sm:inline leading-[1.15]">Demo Role</span>}
                     </Tooltip>
                   )}
                 </span>
@@ -2177,7 +2328,7 @@ const VacantRoleDetailsModal = ({
           {rolePostedDate && (
             <div
               ref={roleDateRef}
-              className={`flex-shrink-0${roleDateIsNarrow ? " absolute opacity-0 pointer-events-none" : ""}`}
+              className={`flex-shrink-0${roleDateIsNarrow ? " absolute opacity-0 pointer-events-none" : " hidden sm:block"}`}
             >
               <Tooltip
                 content={`${rolePostedDate.label} ${rolePostedDate.full}`}
@@ -2226,6 +2377,20 @@ const VacantRoleDetailsModal = ({
                 effectiveMatchDetails?.distance_score ??
                 0) * 100,
             );
+            const compactComparisonName =
+              comparisonUser && comparisonShortName
+                ? formatDisplayName(comparisonUser)
+                : comparisonShortName;
+            const compactComparisonPossessive =
+              isComparisonSelf
+                ? "your"
+                : toPossessive(compactComparisonName);
+            const matchSummaryText = isFilledRole
+              ? `${pct}% matching score for ${filledRoleCompactDisplayName || "this member"} with this role`
+              : `${pct}% match with ${compactComparisonPossessive} profile`;
+            const fullMatchSummaryText = isFilledRole
+              ? `${pct}% matching score for ${filledRoleDisplayName || "this member"} with this role`
+              : `${pct}% match with ${comparisonPossessive} profile`;
 
             const tierColor = {
               bg: "bg-base-200/50",
@@ -2237,15 +2402,18 @@ const VacantRoleDetailsModal = ({
               <div
                 className={`rounded-xl p-4 ${tierColor.bg} border ${tierColor.border}`}
               >
-                <div className="flex items-center gap-2 mb-3">
+                <div className="flex min-w-0 items-start gap-2 mb-3">
                   {MatchTierIcon ? (
-                    <MatchTierIcon size={16} className={tierColor.text} />
+                    <MatchTierIcon size={16} className={`${tierColor.text} mt-px flex-shrink-0`} />
                   ) : null}
-                  <span className={`text-sm font-semibold ${tierColor.text}`}>
-                    {isFilledRole
-                      ? `${pct}% matching score for ${filledRoleDisplayName || "this member"} with this role`
-                      : `${pct}% match with ${comparisonPossessive} profile`}
-                  </span>
+                  <Tooltip
+                    content={fullMatchSummaryText}
+                    wrapperClassName="min-w-0"
+                  >
+                    <span className={`block min-w-0 overflow-hidden text-sm font-semibold leading-[115%] [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] ${tierColor.text}`}>
+                      {matchSummaryText}
+                    </span>
+                  </Tooltip>
                 </div>
 
                 <div className="space-y-2">

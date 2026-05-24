@@ -18,6 +18,18 @@ import { matchingService } from "../../services/matchingService";
 import { useAuth } from "../../contexts/AuthContext";
 
 const getRoleStatus = (role) => String(role?.status ?? "").toLowerCase();
+const getRoleStatusPriority = (role) => {
+  switch (getRoleStatus(role)) {
+    case "open":
+      return 0;
+    case "filled":
+      return 1;
+    case "closed":
+      return 2;
+    default:
+      return 3;
+  }
+};
 
 /**
  * VacantRolesSection Component
@@ -249,12 +261,9 @@ const VacantRolesSection = ({
   // Count open roles for the title
   const openCount = roles.filter((r) => r.status === "open").length;
   const sortedVisibleRoles = [...visibleRoles].sort((a, b) => {
-    const aIsClosed = getRoleStatus(a) === "closed";
-    const bIsClosed = getRoleStatus(b) === "closed";
+    const statusPriority = getRoleStatusPriority(a) - getRoleStatusPriority(b);
 
-    if (aIsClosed !== bIsClosed) {
-      return aIsClosed ? 1 : -1;
-    }
+    if (statusPriority !== 0) return statusPriority;
 
     const scoreA = matchScores[a.id]?.matchScore ?? -1;
     const scoreB = matchScores[b.id]?.matchScore ?? -1;
