@@ -211,6 +211,8 @@ const TeamDetailsModal = ({
   const [fetchedPendingInvitation, setFetchedPendingInvitation] = useState(null);
   const [isApplicationDetailsOpen, setIsApplicationDetailsOpen] =
     useState(false);
+  const [selectedPendingApplication, setSelectedPendingApplication] =
+    useState(null);
 
   const [teamImageError, setTeamImageError] = useState(false);
   const [teamDateIsNarrow, setTeamDateIsNarrow] = useState(false);
@@ -246,6 +248,9 @@ const TeamDetailsModal = ({
 
   const showHighlightsForContext = !hideMatchData && (!isFromSearch || showMatchHighlights);
   const handledMembersRefreshKeyRef = useRef(0);
+  // Tracks which teamId we last fetched application/invitation status for.
+  // Prevents double-firing in React StrictMode (dev) where effects run twice.
+  const statusFetchedForRef = useRef(null);
 
   const fetchTeamDetails = useCallback(
     async (forceRefresh = false) => {
@@ -473,12 +478,18 @@ const TeamDetailsModal = ({
     setFetchedPendingApplications([]);
     setFetchedPendingInvitation(null);
     setIsApplicationDetailsOpen(false);
+    setSelectedPendingApplication(null);
   }, [effectiveTeamId]);
 
   // Fetch the user's pending application and invitation for this team when not
   // supplied via props (e.g. when opened through TeamModalContext).
+  // The ref guard prevents double-firing: React StrictMode (dev) remounts effects
+  // synchronously, but refs survive the remount, so the second invocation is skipped.
   useEffect(() => {
     if (!isAuthenticated || !effectiveTeamId || !isModalVisible) return;
+    if (statusFetchedForRef.current === effectiveTeamId) return; // already fetched this open-session
+
+    statusFetchedForRef.current = effectiveTeamId;
 
     const fetchUserStatus = async () => {
       try {
@@ -562,7 +573,9 @@ const TeamDetailsModal = ({
             .map((t) => Number(t.tagId ?? t.tag_id ?? t.id))
             .filter(Number.isFinite),
         );
+        // Set both state vars from one request — avoids a second identical API call
         setUserTagIds(ids);
+        setCurrentUserTagIds(ids);
       } catch (err) {
         console.warn("Could not fetch user tags for matching highlights:", err);
       }
@@ -576,6 +589,8 @@ const TeamDetailsModal = ({
     if (!isModalVisible) {
       setNotification({ type: null, message: null });
       setFormErrors({});
+      // Reset the status-fetch guard so the next open re-fetches fresh data
+      statusFetchedForRef.current = null;
     }
   }, [isModalVisible]);
 
@@ -782,30 +797,6 @@ const TeamDetailsModal = ({
       return { ...prev, selectedTags: ids };
     });
   }, [isEditing, team]); // formData.selectedTags intentionally excluded
-
-  // Fetch current user's tag IDs for overlap highlighting on team focus areas
-  useEffect(() => {
-    if (!isModalVisible || !isAuthenticated || !user?.id) return;
-
-    const fetchCurrentUserTags = async () => {
-      try {
-        const tagsRes = await userService.getUserTags(user.id);
-        const tagData = Array.isArray(tagsRes?.data)
-          ? tagsRes.data
-          : tagsRes?.data?.data || [];
-        const ids = new Set(
-          tagData
-            .map((t) => Number(t.tagId ?? t.tag_id ?? t.id))
-            .filter(Number.isFinite),
-        );
-        setCurrentUserTagIds(ids);
-      } catch (err) {
-        console.warn("Could not fetch user tags for matching highlights:", err);
-      }
-    };
-
-    fetchCurrentUserTags();
-  }, [isModalVisible, isAuthenticated, user?.id]);
 
   // Fetch aggregated member badges when modal opens
   useEffect(() => {
@@ -1276,6 +1267,8 @@ const TeamDetailsModal = ({
   // Primary application used by CTA / details modal (prefer locally submitted or prop-supplied)
   const effectivePendingApplication =
     localPendingApplication ?? pendingApplication ?? fetchedPendingApplications[0] ?? null;
+  const applicationDetailsRecord =
+    selectedPendingApplication ?? effectivePendingApplication;
   const effectivePendingInvitation = pendingInvitation ?? fetchedPendingInvitation;
   const effectiveHasPendingInvitation = hasPendingInvitation || Boolean(fetchedPendingInvitation);
   const hasActivePendingApplication = Boolean(
@@ -1311,6 +1304,16 @@ const TeamDetailsModal = ({
     : null;
   const hasPendingTeamApplication = Boolean(pendingTeamOnlyApplication);
   const hasPendingRoleApplication = Boolean(pendingCombinedApplication || pendingInternalRoleApplication);
+  const openApplicationDetails = (application = null) => {
+    const applicationToOpen = application ?? effectivePendingApplication;
+    if (applicationToOpen) {
+      setSelectedPendingApplication(application);
+      setIsApplicationDetailsOpen(true);
+      return;
+    }
+
+    onViewApplicationDetails?.();
+  };
   const shouldShowHeaderApplyButton =
     isAuthenticated &&
     Boolean(team && effectiveTeamId) &&
@@ -1378,14 +1381,7 @@ const TeamDetailsModal = ({
         <div className="mt-6 border-t border-base-200 pt-4">
           <Button
             variant="primary"
-            onClick={() => {
-              if (effectivePendingApplication) {
-                setIsApplicationDetailsOpen(true);
-                return;
-              }
-
-              onViewApplicationDetails?.();
-            }}
+            onClick={() => openApplicationDetails()}
             className="w-full"
             icon={<SendHorizontal size={16} />}
           >
@@ -1758,15 +1754,21 @@ on ${format(new Date((effectivePendingInvitation.createdAt ?? effectivePendingIn
 on ${format(new Date((effectivePendingInvitation.createdAt ?? effectivePendingInvitation.created_at)), "MMM d, yyyy")}` : ""}`
                           }
                           position="bottom"
-                          wrapperClassName="flex items-center gap-1 cursor-help"
+                          wrapperClassName="inline-flex"
                         >
-                          <Mail
-                            size={14}
-                            className={`flex-shrink-0 ${(effectivePendingInvitation.isInternal ?? effectivePendingInvitation.is_internal) ? "text-orange-500" : "text-pink-500"}`}
-                          />
-                          {(effectivePendingInvitation.createdAt ?? effectivePendingInvitation.created_at) && (
-                            <span className="text-base-content/50">{format(new Date((effectivePendingInvitation.createdAt ?? effectivePendingInvitation.created_at)), "MM/dd/yy")}</span>
-                          )}
+                          <button
+                            type="button"
+                            className="group flex items-center gap-1 cursor-pointer rounded-sm transition-colors hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                            onClick={() => setIsInvitationModalOpen(true)}
+                          >
+                            <Mail
+                              size={14}
+                              className={`flex-shrink-0 ${(effectivePendingInvitation.isInternal ?? effectivePendingInvitation.is_internal) ? "text-orange-500" : "text-pink-500"}`}
+                            />
+                            {(effectivePendingInvitation.createdAt ?? effectivePendingInvitation.created_at) && (
+                              <span className="text-base-content/50 transition-colors group-hover:text-primary group-focus-visible:text-primary">{format(new Date((effectivePendingInvitation.createdAt ?? effectivePendingInvitation.created_at)), "MM/dd/yy")}</span>
+                            )}
+                          </button>
                         </Tooltip>
                       )}
 
@@ -1776,12 +1778,18 @@ on ${format(new Date((effectivePendingInvitation.createdAt ?? effectivePendingIn
                         <Tooltip
                           content={`You applied to join this team and fill a role${(pendingCombinedApplication.createdAt ?? pendingCombinedApplication.created_at) ? `\non ${format(new Date((pendingCombinedApplication.createdAt ?? pendingCombinedApplication.created_at)), "MMM d, yyyy")}` : ""}`}
                           position="bottom"
-                          wrapperClassName="flex items-center gap-1 cursor-help"
+                          wrapperClassName="inline-flex"
                         >
-                          <SendHorizontal size={14} className="flex-shrink-0 text-violet-500" />
-                          {(pendingCombinedApplication.createdAt ?? pendingCombinedApplication.created_at) && (
-                            <span className="text-base-content/50">{format(new Date((pendingCombinedApplication.createdAt ?? pendingCombinedApplication.created_at)), "MM/dd/yy")}</span>
-                          )}
+                          <button
+                            type="button"
+                            className="group flex items-center gap-1 cursor-pointer rounded-sm transition-colors hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                            onClick={() => openApplicationDetails(pendingCombinedApplication)}
+                          >
+                            <SendHorizontal size={14} className="flex-shrink-0 text-violet-500" />
+                            {(pendingCombinedApplication.createdAt ?? pendingCombinedApplication.created_at) && (
+                              <span className="text-base-content/50 transition-colors group-hover:text-primary group-focus-visible:text-primary">{format(new Date((pendingCombinedApplication.createdAt ?? pendingCombinedApplication.created_at)), "MM/dd/yy")}</span>
+                            )}
+                          </button>
                         </Tooltip>
                       )}
                       {/* Role-only application for existing members → orange */}
@@ -1789,12 +1797,18 @@ on ${format(new Date((effectivePendingInvitation.createdAt ?? effectivePendingIn
                         <Tooltip
                           content={`You applied to fill a role in this team${(pendingInternalRoleApplication.createdAt ?? pendingInternalRoleApplication.created_at) ? `\non ${format(new Date((pendingInternalRoleApplication.createdAt ?? pendingInternalRoleApplication.created_at)), "MMM d, yyyy")}` : ""}`}
                           position="bottom"
-                          wrapperClassName="flex items-center gap-1 cursor-help"
+                          wrapperClassName="inline-flex"
                         >
-                          <SendHorizontal size={14} className="flex-shrink-0 text-orange-500" />
-                          {(pendingInternalRoleApplication.createdAt ?? pendingInternalRoleApplication.created_at) && (
-                            <span className="text-base-content/50">{format(new Date((pendingInternalRoleApplication.createdAt ?? pendingInternalRoleApplication.created_at)), "MM/dd/yy")}</span>
-                          )}
+                          <button
+                            type="button"
+                            className="group flex items-center gap-1 cursor-pointer rounded-sm transition-colors hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                            onClick={() => openApplicationDetails(pendingInternalRoleApplication)}
+                          >
+                            <SendHorizontal size={14} className="flex-shrink-0 text-orange-500" />
+                            {(pendingInternalRoleApplication.createdAt ?? pendingInternalRoleApplication.created_at) && (
+                              <span className="text-base-content/50 transition-colors group-hover:text-primary group-focus-visible:text-primary">{format(new Date((pendingInternalRoleApplication.createdAt ?? pendingInternalRoleApplication.created_at)), "MM/dd/yy")}</span>
+                            )}
+                          </button>
                         </Tooltip>
                       )}
                       {/* Team-only application → blue */}
@@ -1802,12 +1816,18 @@ on ${format(new Date((effectivePendingInvitation.createdAt ?? effectivePendingIn
                         <Tooltip
                           content={`You applied to join this team${(pendingTeamOnlyApplication.createdAt ?? pendingTeamOnlyApplication.created_at) ? `\non ${format(new Date((pendingTeamOnlyApplication.createdAt ?? pendingTeamOnlyApplication.created_at)), "MMM d, yyyy")}` : ""}`}
                           position="bottom"
-                          wrapperClassName="flex items-center gap-1 cursor-help"
+                          wrapperClassName="inline-flex"
                         >
-                          <SendHorizontal size={14} className="flex-shrink-0 text-info" />
-                          {(pendingTeamOnlyApplication.createdAt ?? pendingTeamOnlyApplication.created_at) && (
-                            <span className="text-base-content/50">{format(new Date((pendingTeamOnlyApplication.createdAt ?? pendingTeamOnlyApplication.created_at)), "MM/dd/yy")}</span>
-                          )}
+                          <button
+                            type="button"
+                            className="group flex items-center gap-1 cursor-pointer rounded-sm transition-colors hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                            onClick={() => openApplicationDetails(pendingTeamOnlyApplication)}
+                          >
+                            <SendHorizontal size={14} className="flex-shrink-0 text-info" />
+                            {(pendingTeamOnlyApplication.createdAt ?? pendingTeamOnlyApplication.created_at) && (
+                              <span className="text-base-content/50 transition-colors group-hover:text-primary group-focus-visible:text-primary">{format(new Date((pendingTeamOnlyApplication.createdAt ?? pendingTeamOnlyApplication.created_at)), "MM/dd/yy")}</span>
+                            )}
+                          </button>
                         </Tooltip>
                       )}
 
@@ -2103,14 +2123,18 @@ on ${format(new Date((effectivePendingInvitation.createdAt ?? effectivePendingIn
         />
       )}
 
-      {effectivePendingApplication && (
+      {applicationDetailsRecord && (
         <TeamApplicationDetailsModal
           isOpen={isApplicationDetailsOpen}
-          application={effectivePendingApplication}
-          onClose={() => setIsApplicationDetailsOpen(false)}
+          application={applicationDetailsRecord}
+          onClose={() => {
+            setIsApplicationDetailsOpen(false);
+            setSelectedPendingApplication(null);
+          }}
           onCancel={async (applicationId) => {
             await teamService.cancelApplication(applicationId);
             setLocalPendingApplication(null);
+            setSelectedPendingApplication(null);
             setFetchedPendingApplications((prev) =>
               prev.filter((a) => String(a.id) !== String(applicationId)),
             );
