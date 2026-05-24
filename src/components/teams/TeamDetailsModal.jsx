@@ -1544,7 +1544,7 @@ const TeamDetailsModal = ({
       : null;
 
   const modalTitle = (
-    <h2 className="text-xl font-medium text-primary flex items-center gap-2">
+    <h2 className="text-xl font-medium text-primary leading-[110%] flex items-center gap-2">
       {isEditing ? <Edit size={20} className="flex-shrink-0" /> : <Users size={20} className="flex-shrink-0" />}
       {isEditing ? "Edit Team" : "Team Details"}
     </h2>

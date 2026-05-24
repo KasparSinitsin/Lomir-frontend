@@ -564,7 +564,7 @@ const UserDetailsModal = ({
   // =================================================
 
   const modalTitle = (
-    <h2 className="text-xl font-medium text-primary flex items-center gap-2">
+    <h2 className="text-xl font-medium text-primary leading-[110%] flex items-center gap-2">
       {isEditing ? <Edit size={20} className="flex-shrink-0" /> : <User size={20} className="flex-shrink-0" />}
       {isEditing ? "Edit Profile" : "User Details"}
     </h2>
@@ -898,6 +898,8 @@ const UserDetailsModal = ({
           awardeeLastName={user.last_name || user.lastName}
           awardeeUsername={user.username}
           awardeeAvatar={user.avatar_url || user.avatarUrl}
+          awardeeBio={user.bio}
+          awardeeIsDemo={!!(user.is_synthetic ?? user.isSynthetic)}
           onAwardComplete={() => {
             // Refresh user details to show updated badges
             fetchUserDetails();

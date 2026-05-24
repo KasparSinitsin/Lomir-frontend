@@ -4,7 +4,6 @@ import {
   Eye,
   EyeClosed,
   Calendar,
-  UserCheck,
   FlaskConical,
 } from "lucide-react";
 import {
@@ -29,8 +28,6 @@ const UserProfileHeaderSection = ({
   memberSince = null,
   matchScore = null,
   className = "",
-  filledRoleName = null,
-  teamName = null,
 }) => {
   const [imageError, setImageError] = useState(false);
   const [dateIsNarrow, setDateIsNarrow] = useState(false);
@@ -180,16 +177,6 @@ const UserProfileHeaderSection = ({
         </h1>
         <div className="flex items-center flex-wrap gap-x-3 gap-y-0.5 text-sm leading-[110%]">
           <span className="text-base-content/70">@{user?.username}</span>
-
-          {filledRoleName && (
-            <span className="flex items-center gap-1 text-base-content/70">
-              <UserCheck size={14} className="flex-shrink-0" />
-              <span>
-                {filledRoleName}
-                {teamName && <span className="text-base-content/50"> in {teamName}</span>}
-              </span>
-            </span>
-          )}
 
           {/* Visibility Indicator - Only show for own profile */}
           {shouldShowVisibilityIndicator() && (

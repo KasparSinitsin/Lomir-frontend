@@ -333,6 +333,7 @@ const VacantRoleDetailsModal = ({
   role,
   matchScore = null,
   matchDetails = null,
+  showMatchScore = true,
   canManage = false,
   isTeamMember = false,
   viewAsUserId = null,
@@ -350,7 +351,6 @@ const VacantRoleDetailsModal = ({
 
   const [userTagMap, setUserTagMap] = useState(new Map()); // tagId → { badgeCredits }
   const [userBadgeMap, setUserBadgeMap] = useState(new Map()); // lowercase name → { totalCredits }
-  const [teamImageError, setTeamImageError] = useState(false);
   const [hydratedRole, setHydratedRole] = useState(null);
   const [loadingRoleDetails, setLoadingRoleDetails] = useState(false);
   const [comparisonUserProfile, setComparisonUserProfile] = useState(null);
@@ -463,7 +463,6 @@ const VacantRoleDetailsModal = ({
 
   useEffect(() => {
     if (!isOpen) {
-      setTeamImageError(false);
       setHydratedRole(null);
       setLoadingRoleDetails(false);
       setComparisonUserProfile(null);
@@ -509,6 +508,7 @@ const VacantRoleDetailsModal = ({
   const isRoleOpen = String(status ?? "").toLowerCase() === "open";
   const isFilledRole = String(status ?? "").toLowerCase() === "filled";
   const isClosedRole = String(status ?? "").toLowerCase() === "closed";
+  const shouldShowRoleMatchScore = showMatchScore || isFilledRole;
   const resolvedFilledUser = resolveFilledRoleUser(displayRole, {
     viewAsUserId,
     viewAsUser,
@@ -757,8 +757,14 @@ const VacantRoleDetailsModal = ({
   }, [isOpen, isAuthenticated, viewerIsTeamMember, teamId, currentUser?.id]);
 
   useEffect(() => {
-    if (!isOpen || !isAuthenticated || !comparisonUserId) {
+    if (
+      !isOpen ||
+      !isAuthenticated ||
+      !comparisonUserId ||
+      !shouldShowRoleMatchScore
+    ) {
       setComparisonUserProfile(null);
+      setLoadingComparisonData(false);
       setComparisonDataLoaded(false);
       setUserTagMap(new Map());
       setUserBadgeMap(new Map());
@@ -841,7 +847,13 @@ const VacantRoleDetailsModal = ({
     };
 
     fetchComparisonData();
-  }, [isOpen, isAuthenticated, comparisonUserId, comparisonUserSeedJson]);
+  }, [
+    isOpen,
+    isAuthenticated,
+    comparisonUserId,
+    comparisonUserSeedJson,
+    shouldShowRoleMatchScore,
+  ]);
 
   useEffect(() => {
     if (!isOpen || !canManage || !teamId) {
@@ -1455,14 +1467,6 @@ const VacantRoleDetailsModal = ({
     displayRole.teamAvatarUrl ??
     displayRole.team_avatar_url ??
     null;
-  // Also check the team prop (passed from VacantRoleCard / search results)
-  const resolvedTeamAvatarUrl =
-    teamAvatarUrl ??
-    team?.teamavatar_url ??
-    team?.teamavatarUrl ??
-    team?.avatar_url ??
-    team?.avatarUrl ??
-    null;
   const teamIsRemote =
     team?.isRemote ??
     team?.is_remote ??
@@ -1529,8 +1533,8 @@ const VacantRoleDetailsModal = ({
       : creatorUsername || null;
   const creatorDisplayName = creatorName
     ? formatDisplayName({
-        firstName: creatorFirstName,
-        lastName: creatorLastName,
+        first_name: creatorFirstName,
+        last_name: creatorLastName,
         username: creatorUsername,
       })
     : null;
@@ -1569,18 +1573,25 @@ const VacantRoleDetailsModal = ({
     updatedAt ??
     createdAt;
   const serverRoleMatchScore =
-    matchScore ??
-    displayRole.matchScore ??
-    displayRole.match_score ??
-    null;
+    shouldShowRoleMatchScore
+      ? matchScore ??
+        displayRole.matchScore ??
+        displayRole.match_score ??
+        null
+      : null;
   const serverRoleMatchDetails =
-    matchDetails ??
-    displayRole.matchDetails ??
-    displayRole.match_details ??
-    displayRole.scoreBreakdown ??
-    null;
+    shouldShowRoleMatchScore
+      ? matchDetails ??
+        displayRole.matchDetails ??
+        displayRole.match_details ??
+        displayRole.scoreBreakdown ??
+        null
+      : null;
   const computedRoleMatch =
-    comparisonDataLoaded && comparisonUserId && comparisonUser
+    shouldShowRoleMatchScore &&
+    comparisonDataLoaded &&
+    comparisonUserId &&
+    comparisonUser
       ? computeRoleUserMatch({
           role: displayRole,
           tags,
@@ -1657,7 +1668,10 @@ const VacantRoleDetailsModal = ({
     effectiveMatchDetails?.is_within_range ??
     null;
   const shouldShowComparisonSummary =
-    isAuthenticated && comparisonUserId && comparisonDataLoaded;
+    shouldShowRoleMatchScore &&
+    isAuthenticated &&
+    comparisonUserId &&
+    comparisonDataLoaded;
   const locationMatchText = comparisonShortName
     ? `Matches ${comparisonPossessive} location`
     : "Matches your location";
@@ -1957,13 +1971,13 @@ const VacantRoleDetailsModal = ({
     };
   })();
   const rolePostedDate = (() => {
-    const dateVal = isFilledRole ? filledAt : createdAt;
-    if (!dateVal) return null;
+    if (!createdAt) return null;
     try {
+      const date = new Date(createdAt);
       return {
-        short: format(new Date(dateVal), "MM/yy"),
-        full: format(new Date(dateVal), "MMMM d, yyyy"),
-        label: isFilledRole ? "Filled on" : "Posted on",
+        short: format(date, "MM/yy"),
+        full: format(date, "MMMM d, yyyy"),
+        label: "Posted on",
       };
     } catch {
       return null;
@@ -1995,7 +2009,7 @@ const VacantRoleDetailsModal = ({
   }, [roleName, !!rolePostedDate]);
 
   const modalTitle = (
-    <h2 className="text-xl font-medium text-primary flex items-start gap-2 whitespace-nowrap">
+    <h2 className="text-xl font-medium text-primary leading-[110%] flex items-start gap-2 whitespace-nowrap">
       <ModalStatusIcon
         className="flex-shrink-0 mt-0.5"
         size={20}
@@ -2120,19 +2134,7 @@ const VacantRoleDetailsModal = ({
                 {demoAvatarOverlay}
               </div>
               </Tooltip>
-            ) : resolvedTeamAvatarUrl && !teamImageError ? (
-              /* Non-filled role with team avatar — mirrors TeamDetailsModal pattern */
-              <div className="bg-[var(--color-primary-focus)] text-primary-content rounded-full w-20 h-20 relative flex items-center justify-center overflow-hidden">
-                <img
-                  src={resolvedTeamAvatarUrl}
-                  alt={teamName || "Team"}
-                  className="rounded-full object-cover w-full h-full"
-                  onError={() => setTeamImageError(true)}
-                />
-                {demoAvatarOverlay}
-              </div>
             ) : effectivePct !== null ? (
-              /* Fallback: no team avatar but match score — show score circle */
               <div
                 className={`${matchTier?.bg ?? "bg-slate-400"} text-white rounded-full w-20 h-20 relative flex items-center justify-center overflow-hidden`}
               >
@@ -2188,24 +2190,10 @@ const VacantRoleDetailsModal = ({
                 </div>
               )}
 
-              {(isFilledRole ? (filledRoleUser?.id && filledRoleDisplayName) : creatorName) && (
+              {creatorName && (
                 <span className="flex min-w-0 max-w-[12rem] items-center gap-1 text-base-content/50 sm:max-w-[16rem]">
                   <PenLine size={14} className="flex-shrink-0" />
-                  <span className="flex-shrink-0">by</span>
-                  {isFilledRole && filledRoleUser?.id ? (
-                    <Tooltip
-                      content={`Filled by ${filledRoleDisplayName || "this user"}. Click to view their profile`}
-                      wrapperClassName="inline-flex min-w-0 max-w-full items-center"
-                    >
-                      <button
-                        type="button"
-                        className="min-w-0 max-w-full truncate font-medium hover:text-primary transition-colors"
-                        onClick={handleFilledUserClick}
-                      >
-                        {filledRoleCompactDisplayName}
-                      </button>
-                    </Tooltip>
-                  ) : creatorUserId ? (
+                  {creatorUserId ? (
                     <Tooltip
                       content={`Created by ${creatorName}. Click to view their profile`}
                       wrapperClassName="inline-flex min-w-0 max-w-full items-center"
@@ -2220,6 +2208,30 @@ const VacantRoleDetailsModal = ({
                     </Tooltip>
                   ) : (
                     <span className="min-w-0 max-w-full truncate">{creatorDisplayName}</span>
+                  )}
+                </span>
+              )}
+
+              {isFilledRole && filledRoleDisplayName && (
+                <span className="flex min-w-0 max-w-[12rem] items-center gap-1 text-base-content/50 sm:max-w-[16rem]">
+                  <UserCheck size={14} className="flex-shrink-0 text-success" />
+                  {filledRoleUser?.id ? (
+                    <Tooltip
+                      content={`Filled by ${filledRoleDisplayName}. Click to view their profile`}
+                      wrapperClassName="inline-flex min-w-0 max-w-full items-center"
+                    >
+                      <button
+                        type="button"
+                        className="min-w-0 max-w-full truncate font-medium hover:text-primary transition-colors"
+                        onClick={handleFilledUserClick}
+                      >
+                        {filledRoleCompactDisplayName}
+                      </button>
+                    </Tooltip>
+                  ) : (
+                    <span className="min-w-0 max-w-full truncate">
+                      {filledRoleCompactDisplayName}
+                    </span>
                   )}
                 </span>
               )}
@@ -2512,7 +2524,7 @@ const VacantRoleDetailsModal = ({
                   <span className="sm:hidden">Location</span>
                   <span className="hidden sm:inline">Location Preference</span>
                 </h3>
-                {isAuthenticated && (() => {
+                {shouldShowComparisonSummary && (() => {
                   let status = null;
                   if (isRemote) {
                     status = (
@@ -2666,7 +2678,8 @@ const VacantRoleDetailsModal = ({
                             tag.tagId ?? tag.tag_id ?? tag.id,
                           );
                           const userTag = userTagMap.get(tagId);
-                          const isMatch = !!userTag;
+                          const isMatch =
+                            shouldShowComparisonSummary && !!userTag;
                           const credits = userTag?.badgeCredits || 0;
 
                           return (
@@ -2782,7 +2795,8 @@ const VacantRoleDetailsModal = ({
                           .trim()
                           .toLowerCase();
                         const userBadge = userBadgeMap.get(badgeKey);
-                        const isMatch = !!userBadge;
+                        const isMatch =
+                          shouldShowComparisonSummary && !!userBadge;
                         const credits = userBadge?.totalCredits || 0;
                         const pastel =
                           CATEGORY_CARD_PASTELS[category] || `${badgeColor}15`;

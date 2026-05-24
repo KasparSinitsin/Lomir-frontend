@@ -323,7 +323,7 @@ const CreateVacantRoleModal = ({
   })();
 
   const customHeader = (
-    <h2 className="text-xl font-medium text-primary flex items-center gap-2">
+    <h2 className="text-xl font-medium text-primary leading-[110%] flex items-center gap-2">
       {isEditMode
         ? <SquarePen className="flex-shrink-0" size={20} />
         : <UserSearch className="flex-shrink-0" size={20} />}

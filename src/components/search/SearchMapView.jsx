@@ -3057,15 +3057,20 @@ const SearchMapView = ({
               selectedRolePointForModal.item.team_avatar_url,
           }}
           matchScore={
-            selectedRolePointForModal.item.bestMatchScore ??
-            selectedRolePointForModal.item.best_match_score ??
-            null
+            showMatchScore
+              ? selectedRolePointForModal.item.bestMatchScore ??
+                selectedRolePointForModal.item.best_match_score ??
+                null
+              : null
           }
           matchDetails={
-            selectedRolePointForModal.item.matchDetails ??
-            selectedRolePointForModal.item.match_details ??
-            null
+            showMatchScore
+              ? selectedRolePointForModal.item.matchDetails ??
+                selectedRolePointForModal.item.match_details ??
+                null
+              : null
           }
+          showMatchScore={showMatchScore}
           isTeamMember={selectedRolePointForModal.isViewerTeamMember}
         />
       )}

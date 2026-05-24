@@ -341,7 +341,7 @@ const CreateTeamModal = ({ isOpen, onClose, onTeamCreated }) => {
   };
 
   const modalTitle = (
-    <h2 className="text-xl font-medium text-primary">Create New Team</h2>
+    <h2 className="text-xl font-medium text-primary leading-[110%]">Create New Team</h2>
   );
 
   return (

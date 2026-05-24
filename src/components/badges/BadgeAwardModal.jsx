@@ -14,6 +14,7 @@ import {
   X,
   Heart,
   Layers,
+  FlaskConical,
   // Badge icons
   MessageCircle,
 } from "lucide-react";
@@ -30,10 +31,15 @@ import {
 import Modal from "../common/Modal";
 import Button from "../common/Button";
 import Alert from "../common/Alert";
+import Tooltip from "../common/Tooltip";
+import DemoAvatarOverlay from "../users/DemoAvatarOverlay";
 import { badgeService } from "../../services/badgeService";
 import { userService } from "../../services/userService";
 import { tagService } from "../../services/tagService";
-import { getUserInitials } from "../../utils/userHelpers";
+import {
+  getUserInitials,
+  DEMO_PROFILE_TOOLTIP,
+} from "../../utils/userHelpers";
 
 /**
  * BadgeAwardModal Component
@@ -50,6 +56,9 @@ import { getUserInitials } from "../../utils/userHelpers";
  * @param {string} awardeeLastName - Last name of the awardee
  * @param {string} awardeeUsername - Username of the awardee
  * @param {string} awardeeAvatar - Avatar URL of the awardee
+ * @param {string} awardeeBio - Bio of the awardee
+ * @param {boolean} awardeeIsDemo - Whether the awardee is a demo/synthetic profile
+ * @param {Function} onUserClick - Optional callback to navigate to the awardee's profile
  * @param {Function} onAwardComplete - Callback after successful award (to refresh badges)
  */
 
@@ -83,6 +92,9 @@ const BadgeAwardModal = ({
   awardeeLastName,
   awardeeUsername,
   awardeeAvatar,
+  awardeeBio,
+  awardeeIsDemo,
+  onUserClick,
   onAwardComplete,
 }) => {
   const [badges, setBadges] = useState([]);
@@ -127,6 +139,11 @@ const BadgeAwardModal = ({
   // Get first name for placeholders
   const getFirstName = () => {
     return awardeeFirstName || awardeeUsername || "this user";
+  };
+
+  // Get first given name for the modal title (e.g. "Alice Stephanie Beurer" → "Alice")
+  const getAbbreviatedName = () => {
+    return (awardeeFirstName || "").split(" ")[0] || awardeeUsername || "User";
   };
 
   // Fetch all badges on open
@@ -396,35 +413,11 @@ const BadgeAwardModal = ({
   // ============ Render ============
 
   const customHeader = (
-    <div className="flex items-center gap-3">
-      <Award className="text-primary" size={24} />
-      <div className="flex items-center gap-2">
-        <h2 className="text-xl font-medium text-primary">Award a Badge to</h2>
-        {awardeeAvatar ? (
-          <img
-            src={awardeeAvatar}
-            alt={getDisplayName()}
-            className="w-7 h-7 rounded-full object-cover inline-block"
-            onError={(e) => {
-              e.target.style.display = "none";
-              const fallback = e.target.nextElementSibling;
-              if (fallback) fallback.style.display = "flex";
-            }}
-          />
-        ) : null}
-        <div
-          className="w-7 h-7 rounded-full bg-[var(--color-primary-focus)] text-primary-content flex items-center justify-center font-medium text-xs"
-          style={{ display: awardeeAvatar ? "none" : "flex" }}
-        >
-          {getUserInitials({
-            first_name: awardeeFirstName,
-            last_name: awardeeLastName,
-            username: awardeeUsername,
-          })}
-        </div>
-
-        <h2 className="text-xl font-medium text-primary">
-          {awardeeFirstName} {awardeeLastName}
+    <div className="flex items-start gap-3">
+      <Award className="text-primary mt-0.5" size={24} />
+      <div>
+        <h2 className="text-xl font-medium text-primary leading-[110%]">
+          Award a Badge to {getAbbreviatedName()}
         </h2>
       </div>
     </div>
@@ -471,6 +464,120 @@ const BadgeAwardModal = ({
 
         {/* Error message */}
         {error && <Alert type="error">{error}</Alert>}
+
+        {/* Awardee info */}
+        {!success && (
+          <div className="flex items-start space-x-3 mb-3">
+            {onUserClick ? (
+              <Tooltip content="View profile" position="bottom" wrapperClassName="block">
+                <div
+                  className="avatar cursor-pointer hover:opacity-80 transition-opacity"
+                  onClick={() => onUserClick(awardeeId)}
+                >
+                  <div className="w-12 h-12 rounded-full relative overflow-hidden">
+                    {awardeeAvatar ? (
+                      <img
+                        src={awardeeAvatar}
+                        alt={awardeeUsername}
+                        className="object-cover w-full h-full rounded-full"
+                        onError={(e) => {
+                          e.target.style.display = "none";
+                          const fallback = e.target.parentElement.querySelector(".avatar-fallback");
+                          if (fallback) fallback.style.display = "flex";
+                        }}
+                      />
+                    ) : null}
+                    <div
+                      className="avatar-fallback bg-[var(--color-primary-focus)] text-primary-content flex items-center justify-center w-full h-full rounded-full absolute inset-0"
+                      style={{ display: awardeeAvatar ? "none" : "flex" }}
+                    >
+                      <span className="text-lg font-medium">
+                        {getUserInitials({ first_name: awardeeFirstName, last_name: awardeeLastName, username: awardeeUsername })}
+                      </span>
+                    </div>
+                    {awardeeIsDemo && (
+                      <DemoAvatarOverlay textClassName="text-[8px]" textTranslateClassName="-translate-y-[3px]" />
+                    )}
+                  </div>
+                </div>
+              </Tooltip>
+            ) : (
+              <div className="avatar">
+                <div className="w-12 h-12 rounded-full relative overflow-hidden">
+                  {awardeeAvatar ? (
+                    <img
+                      src={awardeeAvatar}
+                      alt={awardeeUsername}
+                      className="object-cover w-full h-full rounded-full"
+                      onError={(e) => {
+                        e.target.style.display = "none";
+                        const fallback = e.target.parentElement.querySelector(".avatar-fallback");
+                        if (fallback) fallback.style.display = "flex";
+                      }}
+                    />
+                  ) : null}
+                  <div
+                    className="avatar-fallback bg-[var(--color-primary-focus)] text-primary-content flex items-center justify-center w-full h-full rounded-full absolute inset-0"
+                    style={{ display: awardeeAvatar ? "none" : "flex" }}
+                  >
+                    <span className="text-lg font-medium">
+                      {getUserInitials({ first_name: awardeeFirstName, last_name: awardeeLastName, username: awardeeUsername })}
+                    </span>
+                  </div>
+                  {awardeeIsDemo && (
+                    <DemoAvatarOverlay textClassName="text-[8px]" textTranslateClassName="-translate-y-[3px]" />
+                  )}
+                </div>
+              </div>
+            )}
+
+            <div className="flex-1 min-w-0">
+              {onUserClick ? (
+                <Tooltip content="View profile" position="bottom" wrapperClassName="block">
+                  <h4
+                    className="font-medium text-base-content cursor-pointer hover:text-primary transition-colors leading-[120%] mb-[0.2em]"
+                    onClick={() => onUserClick(awardeeId)}
+                  >
+                    {getDisplayName()}
+                  </h4>
+                </Tooltip>
+              ) : (
+                <h4 className="font-medium text-base-content leading-[120%] mb-[0.2em]">
+                  {getDisplayName()}
+                </h4>
+              )}
+
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-0">
+                {onUserClick ? (
+                  <Tooltip content="View profile" position="bottom" wrapperClassName="inline-flex">
+                    <p
+                      className="text-sm text-base-content/70 cursor-pointer hover:text-primary transition-colors"
+                      onClick={() => onUserClick(awardeeId)}
+                    >
+                      @{awardeeUsername}
+                    </p>
+                  </Tooltip>
+                ) : (
+                  <p className="text-sm text-base-content/70">@{awardeeUsername}</p>
+                )}
+                {awardeeIsDemo && (
+                  <Tooltip
+                    content={DEMO_PROFILE_TOOLTIP}
+                    wrapperClassName="flex items-center gap-0.5 text-base-content/50 text-xs"
+                  >
+                    <FlaskConical size={12} className="flex-shrink-0" />
+                  </Tooltip>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {awardeeBio && !success && (
+          <div className="text-sm text-base-content/80 mb-5">
+            <p className="line-clamp-2">{awardeeBio}</p>
+          </div>
+        )}
 
         {/* Badge selection */}
         {!success && (
@@ -813,8 +920,8 @@ const BadgeAwardModal = ({
         {/* Focus area / tag selector */}
         {selectedBadge && !success && (
           <div className="bg-base-200/30 rounded-lg border border-base-300 p-4">
-            <p className="text-xs text-base-content/60 mb-2 flex items-center">
-              <Tag size={12} className="text-primary mr-1" />
+            <p className="text-xs text-base-content/60 mb-2 flex items-start">
+              <Tag size={12} className="text-primary mr-1 flex-shrink-0 mt-0.5" />
               Link your award to one of {getFirstName()}'s Focus Areas
               (optional):
             </p>

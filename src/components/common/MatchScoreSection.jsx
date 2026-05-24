@@ -154,7 +154,9 @@ const MatchScoreSection = ({
   if (normalizedMatchType === "role_match" && formattedRoleLabel) {
     headline = `${tier.pct}% matching score of ${comparisonLabel || "this person"} with ${formattedRoleLabel}`;
   } else if (normalizedMatchType === "role_match") {
-    headline = `${tier.pct}% role match${comparisonSuffix}`;
+    headline = comparisonLabel
+      ? `${tier.pct}% match of your profile with ${comparisonLabel}`
+      : `${tier.pct}% match of your profile`;
   } else {
     headline =
       summaryParts.length > 0

@@ -2321,6 +2321,7 @@ const SearchPage = () => {
                             item.matchDetails ?? item.match_details ?? null
                           }
                           hideActions
+                          showMatchScore={sortBy === "match"}
                           showSearchResultTypeOverlay={searchType === "all"}
                           viewMode={resultView === "list" ? "list" : resultView}
                           activeFilters={{
@@ -2392,6 +2393,7 @@ const SearchPage = () => {
                             item.matchDetails ?? item.match_details ?? null
                           }
                           hideActions
+                          showMatchScore={sortBy === "match"}
                           showSearchResultTypeOverlay={searchType === "all"}
                           viewMode={resultView === "list" ? "list" : resultView}
                           activeFilters={{
@@ -2442,6 +2444,7 @@ const SearchPage = () => {
                       matchScore={role.bestMatchScore ?? role.best_match_score ?? null}
                       matchDetails={role.matchDetails ?? role.match_details ?? null}
                       hideActions
+                      showMatchScore={sortBy === "match"}
                       viewMode="list"
                       activeFilters={{
                         showLocation: shouldShowLocationContext,
@@ -2472,6 +2475,7 @@ const SearchPage = () => {
                       matchScore={role.bestMatchScore ?? role.best_match_score ?? null}
                       matchDetails={role.matchDetails ?? role.match_details ?? null}
                       hideActions
+                      showMatchScore={sortBy === "match"}
                       viewMode={resultView}
                       activeFilters={{
                         showLocation: shouldShowLocationContext,
