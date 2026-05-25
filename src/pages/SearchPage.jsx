@@ -41,7 +41,6 @@ import Alert from "../components/common/Alert";
 import { searchService, getApiErrorMessage } from "../services/searchService";
 import { tagService } from "../services/tagService";
 import { badgeService } from "../services/badgeService";
-import { teamService } from "../services/teamService";
 import {
   enrichTeamMatchData,
   enrichUserMatchData,
@@ -49,6 +48,8 @@ import {
   getResultMatchScore,
 } from "../utils/teamMatchUtils";
 import useViewerMatchProfile from "../hooks/useViewerMatchProfile";
+import useViewerPendingRequests from "../hooks/useViewerPendingRequests";
+import useViewerTeamMemberships from "../hooks/useViewerTeamMemberships";
 import {
   buildSearchRequestCriteria,
   DISTANCE_SUBMENU_TYPE,
@@ -249,117 +250,18 @@ const SearchPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [hasSearched, setHasSearched] = useState(false);
-
-  // Fetched once and passed to every TeamCard so cards don't each re-fetch
-  // the viewer's global pending-application / pending-invitation lists.
-  const [viewerPendingApplications, setViewerPendingApplications] = useState(null);
-  const [viewerPendingInvitations, setViewerPendingInvitations] = useState(null);
-  const [viewerTeamRoles, setViewerTeamRoles] = useState({});
-
-  useEffect(() => {
-    if (!isAuthenticated) {
-      setViewerPendingApplications(null);
-      setViewerPendingInvitations(null);
-      return;
-    }
-
-    let cancelled = false;
-
-    (async () => {
-      try {
-        const [appsRes, invitesRes] = await Promise.allSettled([
-          teamService.getUserPendingApplications(),
-          teamService.getUserReceivedInvitations(),
-        ]);
-
-        if (cancelled) return;
-
-        if (appsRes.status === "fulfilled") {
-          setViewerPendingApplications(appsRes.value?.data || []);
-        }
-        if (invitesRes.status === "fulfilled") {
-          setViewerPendingInvitations(invitesRes.value?.data || []);
-        }
-      } catch (err) {
-        if (!cancelled) {
-          console.error("Failed to load viewer pending requests:", err);
-        }
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [isAuthenticated]);
-
-  useEffect(() => {
-    if (!isAuthenticated || !user?.id) {
-      setViewerTeamRoles({});
-      return;
-    }
-
-    let cancelled = false;
-
-    const fetchViewerTeamRoles = async () => {
-      const nextRoles = {};
-      const limit = 100;
-      let page = 1;
-      let totalPages = 1;
-
-      while (page <= totalPages) {
-        const response = await teamService.getUserTeams(user.id, {
-          page,
-          limit,
-        });
-        const teams = Array.isArray(response?.data) ? response.data : [];
-
-        teams.forEach((team) => {
-          const teamId = getSearchTeamId(team);
-          if (teamId == null) return;
-
-          const role = normalizeViewerTeamRole(
-            team.userRole ?? team.user_role,
-          );
-          if (role) {
-            nextRoles[String(teamId)] = role;
-          }
-        });
-
-        const pagination = response?.pagination ?? {};
-        const nextTotalPages = Number(
-          pagination.totalPages ?? pagination.total_pages ?? 1,
-        );
-        totalPages =
-          Number.isFinite(nextTotalPages) && nextTotalPages > 0
-            ? nextTotalPages
-            : 1;
-
-        const hasNextPage = Boolean(
-          pagination.hasNextPage ??
-            pagination.has_next_page ??
-            page < totalPages,
-        );
-
-        if (!hasNextPage) break;
-        page += 1;
-      }
-
-      if (!cancelled) {
-        setViewerTeamRoles(nextRoles);
-      }
-    };
-
-    fetchViewerTeamRoles().catch((err) => {
-      if (!cancelled) {
-        console.error("Failed to load viewer team roles:", err);
-        setViewerTeamRoles({});
-      }
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [isAuthenticated, user?.id]);
+  const viewerPendingRequestsQuery = useViewerPendingRequests(user?.id, {
+    enabled: isAuthenticated,
+  });
+  const { teamRoles: viewerTeamRoles } = useViewerTeamMemberships(user?.id, {
+    enabled: isAuthenticated,
+  });
+  const viewerPendingApplications = isAuthenticated
+    ? viewerPendingRequestsQuery.data?.applications ?? null
+    : undefined;
+  const viewerPendingInvitations = isAuthenticated
+    ? viewerPendingRequestsQuery.data?.invitations ?? null
+    : undefined;
 
   // ===== SORTING STATE =====
   const [sortBy, setSortBy] = useState(() => {

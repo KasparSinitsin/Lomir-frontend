@@ -37,6 +37,8 @@ import { useUserModalSafe } from "../../contexts/UserModalContext";
 import { useAuth } from "../../contexts/AuthContext";
 import { teamService } from "../../services/teamService";
 import { userService } from "../../services/userService";
+import useViewerPendingRequests from "../../hooks/useViewerPendingRequests";
+import useViewerTeamMemberships from "../../hooks/useViewerTeamMemberships";
 import { getResultMatchScore } from "../../utils/teamMatchUtils";
 import { getMatchTier } from "../../utils/matchScoreUtils";
 import {
@@ -1951,10 +1953,17 @@ const SearchMapView = ({
   const authUserId = authContext?.user?.id ?? null;
   const [selectedRolePoint, setSelectedRolePoint] = useState(null);
   const [activeStatusTooltipPointId, setActiveStatusTooltipPointId] = useState(null);
-  const [fetchedTeamRoles, setFetchedTeamRoles] = useState({});
-  const [fetchedApplications, setFetchedApplications] = useState([]);
-  const [fetchedInvitations, setFetchedInvitations] = useState([]);
-  const [fetchedUserTeamIds, setFetchedUserTeamIds] = useState(() => new Set());
+  const {
+    data: viewerPendingRequests,
+    refetch: refetchViewerPendingRequests,
+  } = useViewerPendingRequests(authUserId, { enabled: Boolean(authUserId) });
+  const {
+    teamIdSet: fetchedUserTeamIds,
+    teamRoles: fetchedTeamRoles,
+    refetch: refetchViewerTeamMemberships,
+  } = useViewerTeamMemberships(authUserId, { enabled: Boolean(authUserId) });
+  const fetchedApplications = viewerPendingRequests?.applications ?? [];
+  const fetchedInvitations = viewerPendingRequests?.invitations ?? [];
   const [selectedInvitation, setSelectedInvitation] = useState(null);
   const [selectedApplication, setSelectedApplication] = useState(null);
   const [mapInstance, setMapInstance] = useState(null);
@@ -1979,134 +1988,12 @@ const SearchMapView = ({
     };
   }, []);
 
-  const fetchUserRequestData = useCallback(async () => {
-    if (!authUserId) {
-      return { applications: [], invitations: [] };
-    }
-
-    const [appsResponse, invResponse] = await Promise.all([
-      teamService.getUserPendingApplications(),
-      teamService.getUserReceivedInvitations(),
-    ]);
-
-    return {
-      applications: Array.isArray(appsResponse?.data) ? appsResponse.data : [],
-      invitations: Array.isArray(invResponse?.data) ? invResponse.data : [],
-    };
-  }, [authUserId]);
-
-  const fetchUserTeamMemberships = useCallback(async () => {
-    if (!authUserId) {
-      return { teamIds: new Set(), teamRoles: {} };
-    }
-
-    const teamIds = new Set();
-    const teamRoles = {};
-    const limit = 100;
-    let page = 1;
-    let totalPages = 1;
-
-    while (page <= totalPages) {
-      const response = await teamService.getUserTeams(authUserId, { page, limit });
-      const teams = Array.isArray(response?.data) ? response.data : [];
-
-      teams.forEach((team) => {
-        const teamId = firstPresent(team?.id, team?.teamId, team?.team_id);
-        if (teamId == null) return;
-
-        const teamKey = String(teamId);
-        teamIds.add(teamKey);
-        teamRoles[teamKey] = getTeamViewerRole(team, { id: authUserId });
-      });
-
-      const pagination = response?.pagination ?? {};
-      const nextTotalPages = Number(
-        pagination.totalPages ?? pagination.total_pages ?? 1,
-      );
-      totalPages =
-        Number.isFinite(nextTotalPages) && nextTotalPages > 0
-          ? nextTotalPages
-          : 1;
-
-      const hasNextPage = Boolean(
-        pagination.hasNextPage ??
-          pagination.has_next_page ??
-          page < totalPages,
-      );
-
-      if (!hasNextPage) break;
-      page += 1;
-    }
-
-    return { teamIds, teamRoles };
-  }, [authUserId]);
-
-  useEffect(() => {
-    if (!authUserId) {
-      setFetchedApplications([]);
-      setFetchedInvitations([]);
-      return;
-    }
-
-    let isActive = true;
-
-    const fetchUserRoleData = async () => {
-      try {
-        const { applications, invitations } = await fetchUserRequestData();
-        if (!isActive) return;
-        setFetchedApplications(applications);
-        setFetchedInvitations(invitations);
-      } catch {
-        // silent fail — icon simply won't show if fetch fails
-      }
-    };
-
-    fetchUserRoleData();
-
-    return () => { isActive = false; };
-  }, [authUserId, fetchUserRequestData]);
-
-  useEffect(() => {
-    if (!authUserId) {
-      setFetchedUserTeamIds(new Set());
-      return;
-    }
-
-    let isActive = true;
-
-    const loadUserTeamMemberships = async () => {
-      try {
-        const { teamIds, teamRoles } = await fetchUserTeamMemberships();
-        if (isActive) {
-          setFetchedUserTeamIds(teamIds);
-          setFetchedTeamRoles(teamRoles);
-        }
-      } catch {
-        if (isActive) {
-          setFetchedUserTeamIds(new Set());
-          setFetchedTeamRoles({});
-        }
-      }
-    };
-
-    loadUserTeamMemberships();
-
-    return () => {
-      isActive = false;
-    };
-  }, [authUserId, fetchUserTeamMemberships]);
-
   const refreshUserStatusData = useCallback(async () => {
-    const [{ applications, invitations }, { teamIds, teamRoles }] = await Promise.all([
-      fetchUserRequestData(),
-      fetchUserTeamMemberships(),
+    await Promise.all([
+      refetchViewerPendingRequests(),
+      refetchViewerTeamMemberships(),
     ]);
-
-    setFetchedApplications(applications);
-    setFetchedInvitations(invitations);
-    setFetchedUserTeamIds(teamIds);
-    setFetchedTeamRoles(teamRoles);
-  }, [fetchUserRequestData, fetchUserTeamMemberships]);
+  }, [refetchViewerPendingRequests, refetchViewerTeamMemberships]);
 
   const openInvitationDetails = useCallback((invitation) => {
     if (!invitation) return;
