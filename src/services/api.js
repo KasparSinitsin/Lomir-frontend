@@ -63,4 +63,27 @@ api.interceptors.response.use(
   }
 );
 
+/**
+ * Thin wrapper that collapses the repetitive
+ *   try { (await api.X(...)).data } catch (e) { console.error(...); throw e }
+ * pattern used across service modules. Use this for the standard "fetch and
+ * unwrap response.data" case. For catch handlers that need additional logic
+ * (custom error wrapping, conditional logging, etc.), keep an explicit
+ * try/catch instead.
+ *
+ * @param {string} label - Short action description for the error log
+ *   (e.g. "fetching user details for ID 42"). Prefixed with "Error " on log.
+ * @param {() => Promise} requestFn - Function returning an axios Promise.
+ * @returns {Promise<*>} Resolves with response.data.
+ */
+export const call = async (label, requestFn) => {
+  try {
+    const response = await requestFn();
+    return response.data;
+  } catch (error) {
+    console.error(`Error ${label}:`, error);
+    throw error;
+  }
+};
+
 export default api;

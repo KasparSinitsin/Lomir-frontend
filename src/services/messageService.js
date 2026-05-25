@@ -1,129 +1,79 @@
-import api from "./api";
+import api, { call } from "./api";
 
 let _pendingUnreadCount = null;
 
 export const messageService = {
-  // Get all conversations for the current user
-  getConversations: async () => {
-    try {
-      const response = await api.get("/api/messages/conversations");
-      return response.data;
-    } catch (error) {
-      console.error("Error fetching conversations:", error);
-      throw error;
-    }
-  },
+  getConversations: () =>
+    call("fetching conversations", () =>
+      api.get("/api/messages/conversations"),
+    ),
 
-  // Get unread message count for current user
-  // Deduplicates concurrent calls: multiple callers within the same tick share one HTTP request.
+  // Deduplicates concurrent calls: multiple callers within the same tick
+  // share one HTTP request.
   getUnreadCount: () => {
     if (_pendingUnreadCount) return _pendingUnreadCount;
 
-    _pendingUnreadCount = api
-      .get("/api/messages/unread-count")
-      .then((response) => response.data)
-      .catch((error) => {
-        console.error("Error fetching unread count:", error);
-        throw error;
-      })
-      .finally(() => {
-        _pendingUnreadCount = null;
-      });
+    _pendingUnreadCount = call("fetching unread count", () =>
+      api.get("/api/messages/unread-count"),
+    ).finally(() => {
+      _pendingUnreadCount = null;
+    });
 
     return _pendingUnreadCount;
   },
 
-  // Get a specific conversation by ID
-  getConversationById: async (conversationId, type = "direct") => {
-    try {
-      const response = await api.get(
-        `/api/messages/conversations/${conversationId}?type=${type}`
-      );
-      return response.data;
-    } catch (error) {
-      console.error(`Error fetching conversation ${conversationId}:`, error);
-      throw error;
-    }
+  getConversationById: (conversationId, type = "direct") =>
+    call(`fetching conversation ${conversationId}`, () =>
+      api.get(`/api/messages/conversations/${conversationId}?type=${type}`),
+    ),
+
+  getMessages: (conversationId, type = "direct", { before, limit } = {}) => {
+    const params = new URLSearchParams({ type });
+    if (before) params.append("before", before);
+    if (limit) params.append("limit", limit);
+    return call(
+      `fetching messages for conversation ${conversationId}`,
+      () =>
+        api.get(
+          `/api/messages/conversations/${conversationId}/messages?${params.toString()}`,
+        ),
+    );
   },
 
-  // Get messages for a specific conversation
-  getMessages: async (conversationId, type = "direct", { before, limit } = {}) => {
-    try {
-      const params = new URLSearchParams({ type });
-      if (before) params.append("before", before);
-      if (limit) params.append("limit", limit);
-      const response = await api.get(
-        `/api/messages/conversations/${conversationId}/messages?${params.toString()}`
-      );
-      return response.data;
-    } catch (error) {
-      console.error(
-        `Error fetching messages for conversation ${conversationId}:`,
-        error
-      );
-      throw error;
-    }
-  },
+  sendMessage: (conversationId, content, type = "direct") =>
+    call(`sending message in conversation ${conversationId}`, () =>
+      api.post(`/api/messages/conversations/${conversationId}/messages`, {
+        content,
+        type,
+      }),
+    ),
 
-  // Send a message in a conversation
-  sendMessage: async (conversationId, content, type = "direct") => {
-    try {
-      const response = await api.post(
-        `/api/messages/conversations/${conversationId}/messages`,
-        {
-          content,
-          type,
-        }
-      );
-      return response.data;
-    } catch (error) {
-      console.error(
-        `Error sending message in conversation ${conversationId}:`,
-        error
-      );
-      throw error;
-    }
-  },
-
-  // Start a new conversation with a user
+  // Keeps explicit try/catch — logs the response body in addition to the
+  // standard error log because conversation start failures are hard to debug
+  // without the server's reason.
   startConversation: async (recipientId, initialMessage = "") => {
     try {
       const response = await api.post("/api/messages/conversations", {
-        recipientId: parseInt(recipientId), // Ensure it's a number
+        recipientId: parseInt(recipientId),
         initialMessage: initialMessage.trim(),
       });
-
       return response.data;
     } catch (error) {
       console.error("Error starting conversation:", error);
-      console.error("Error response:", error.response?.data); // More detailed error
+      console.error("Error response:", error.response?.data);
       throw error;
     }
   },
 
-  // Soft-delete a message
-  deleteMessage: async (messageId) => {
-    try {
-      const response = await api.delete(`/api/messages/${messageId}`);
-      return response.data;
-    } catch (error) {
-      console.error(`Error deleting message ${messageId}:`, error);
-      throw error;
-    }
-  },
+  deleteMessage: (messageId) =>
+    call(`deleting message ${messageId}`, () =>
+      api.delete(`/api/messages/${messageId}`),
+    ),
 
-  // Edit a message
-  updateMessage: async (messageId, content) => {
-    try {
-      const response = await api.patch(`/api/messages/${messageId}`, {
-        content: content.trim(),
-      });
-      return response.data;
-    } catch (error) {
-      console.error(`Error updating message ${messageId}:`, error);
-      throw error;
-    }
-  },
+  updateMessage: (messageId, content) =>
+    call(`updating message ${messageId}`, () =>
+      api.patch(`/api/messages/${messageId}`, { content: content.trim() }),
+    ),
 };
 
 export default messageService;

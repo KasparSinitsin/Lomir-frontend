@@ -1,4 +1,4 @@
-import api from "./api";
+import api, { call } from "./api";
 
 const TAG_CACHE_TTL_MS = 10 * 60 * 1000;
 
@@ -81,28 +81,18 @@ export const tagService = {
 
   // Create a new tag
   createTag: async (tagData) => {
-    try {
-      const response = await api.post("/api/tags/create", tagData);
-      clearTagCaches();
-      return response.data;
-    } catch (error) {
-      console.error("Error creating tag:", error);
-      throw error;
-    }
+    const data = await call("creating tag", () =>
+      api.post("/api/tags/create", tagData),
+    );
+    clearTagCaches();
+    return data;
   },
 
   // Search tags
-  searchTags: async (query) => {
-    try {
-      const response = await api.get("/api/tags/search", {
-        params: { query },
-      });
-      return response.data;
-    } catch (error) {
-      console.error("Error searching tags:", error);
-      throw error;
-    }
-  },
+  searchTags: (query) =>
+    call("searching tags", () =>
+      api.get("/api/tags/search", { params: { query } }),
+    ),
   // NEW METHODS FOR AUTOCOMPLETE
 
   /**
