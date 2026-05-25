@@ -217,6 +217,44 @@ const isCurrentUserRemovalPayload = (payload, userId) => {
   return /\byou\b/.test(text) && /removed from/.test(text);
 };
 
+const extractTeamDetailsPayload = (response) =>
+  response?.data && typeof response.data === "object" ? response.data : response;
+
+const mergeTeamDetailsIntoConversationData = (conversationData, teamPayload) => {
+  if (!conversationData || !teamPayload) return conversationData;
+
+  const currentTeam = conversationData.team || {};
+
+  return {
+    ...conversationData,
+    team: {
+      ...currentTeam,
+      avatarUrl:
+        currentTeam.avatarUrl ||
+        currentTeam.teamavatarUrl ||
+        currentTeam.teamavatar_url ||
+        teamPayload.avatarUrl ||
+        teamPayload.teamavatarUrl ||
+        teamPayload.teamavatar_url,
+      isSynthetic:
+        currentTeam.isSynthetic ??
+        currentTeam.is_synthetic ??
+        teamPayload.isSynthetic ??
+        teamPayload.is_synthetic ??
+        undefined,
+      is_synthetic:
+        currentTeam.is_synthetic ??
+        currentTeam.isSynthetic ??
+        teamPayload.is_synthetic ??
+        teamPayload.isSynthetic ??
+        undefined,
+      members: Array.isArray(teamPayload.members)
+        ? teamPayload.members
+        : currentTeam.members,
+    },
+  };
+};
+
 const getConversationUpdatedAt = (conversation) => {
   const timestamp =
     conversation?.updatedAt ??
@@ -698,6 +736,8 @@ const Chat = () => {
   const messagesRef = useRef([]);
   const chatSearchLoadingKeysRef = useRef(new Set());
   const pendingChatSearchTargetRef = useRef(null);
+  const teamDetailsCacheRef = useRef(new Map());
+  const teamDetailsRequestsRef = useRef(new Map());
   const [loadingMessages, setLoadingMessages] = useState(false);
 
   // ---- Message de-duplication (focus: ownership/system duplicates) ----
@@ -777,6 +817,36 @@ const Chat = () => {
   const canSendInActiveConversation =
     Boolean(activeConversation) && isCurrentUserActiveTeamMember;
 
+  const fetchTeamDetails = useCallback(async (teamId, { force = false } = {}) => {
+    if (!teamId) return null;
+
+    const cacheKey = String(teamId);
+
+    if (!force && teamDetailsCacheRef.current.has(cacheKey)) {
+      return teamDetailsCacheRef.current.get(cacheKey);
+    }
+
+    if (!force && teamDetailsRequestsRef.current.has(cacheKey)) {
+      return teamDetailsRequestsRef.current.get(cacheKey);
+    }
+
+    const request = teamService
+      .getTeamById(teamId)
+      .then((response) => {
+        const teamPayload = extractTeamDetailsPayload(response);
+        teamDetailsCacheRef.current.set(cacheKey, teamPayload);
+        teamDetailsRequestsRef.current.delete(cacheKey);
+        return teamPayload;
+      })
+      .catch((error) => {
+        teamDetailsRequestsRef.current.delete(cacheKey);
+        throw error;
+      });
+
+    teamDetailsRequestsRef.current.set(cacheKey, request);
+    return request;
+  }, []);
+
   const revokeTeamChatAccess = useCallback(
     (teamId, message = "You no longer have access to this team chat.") => {
       if (!teamId) return;
@@ -818,11 +888,7 @@ const Chat = () => {
     async (teamId) => {
       if (!teamId || !user?.id) return true;
 
-      const response = await teamService.getTeamById(teamId);
-      const teamPayload =
-        response?.data && typeof response.data === "object"
-          ? response.data
-          : response;
+      const teamPayload = await fetchTeamDetails(teamId, { force: true });
 
       if (!Array.isArray(teamPayload?.members)) {
         return true;
@@ -853,7 +919,39 @@ const Chat = () => {
 
       return true;
     },
-    [revokeTeamChatAccess, user?.id],
+    [fetchTeamDetails, revokeTeamChatAccess, user?.id],
+  );
+
+  const hydrateTeamConversationDetails = useCallback(
+    async (conversationDetails, teamId) => {
+      if (!conversationDetails?.data || !teamId) return false;
+
+      try {
+        const teamPayload = await fetchTeamDetails(teamId);
+
+        setIsTeamArchived(
+          Boolean(teamPayload?.archived_at || teamPayload?.status === "inactive"),
+        );
+
+        if (Array.isArray(teamPayload?.members)) {
+          if (!isUserTeamMember(teamPayload.members, user?.id)) {
+            revokeTeamChatAccess(teamId);
+            setLoadingMessages(false);
+            return true;
+          }
+
+          conversationDetails.data = mergeTeamDetailsIntoConversationData(
+            conversationDetails.data,
+            teamPayload,
+          );
+        }
+      } catch (teamError) {
+        console.error("Error fetching team member details:", teamError);
+      }
+
+      return false;
+    },
+    [fetchTeamDetails, revokeTeamChatAccess, user?.id],
   );
 
   const mentionParticipants = useMemo(() => {
@@ -1362,68 +1460,12 @@ const Chat = () => {
             type,
           );
 
-          // If it's a team conversation, fetch detailed team member information
           if (type === "team" && conversationDetails?.data) {
-            try {
-              const teamDetails = await teamService.getTeamById(conversationId);
-
-              // ✅ Check if team is archived
-              if (
-                teamDetails.data?.archived_at ||
-                teamDetails.data?.status === "inactive"
-              ) {
-                setIsTeamArchived(true);
-              } else {
-                setIsTeamArchived(false);
-              }
-
-              if (teamDetails?.data?.members) {
-                if (!isUserTeamMember(teamDetails.data.members, user?.id)) {
-                  setError("You no longer have access to this team chat.");
-                  setConversations((prev) =>
-                    prev.filter(
-                      (conversation) =>
-                        !(
-                          conversation.type === "team" &&
-                          String(conversation.id) === String(conversationId)
-                        ),
-                    ),
-                  );
-                  setActiveConversation(null);
-                  setMessages([]);
-                  setLoadingMessages(false);
-                  setShowChatView(false);
-                  navigate("/chat", { replace: true });
-                  return;
-                }
-
-                conversationDetails.data.team = {
-                  ...conversationDetails.data.team,
-                  avatarUrl:
-                    conversationDetails.data.team.avatarUrl ||
-                    conversationDetails.data.team.teamavatarUrl ||
-                    conversationDetails.data.team.teamavatar_url ||
-                    teamDetails.data.avatarUrl ||
-                    teamDetails.data.teamavatarUrl ||
-                    teamDetails.data.teamavatar_url,
-                  isSynthetic:
-                    conversationDetails.data.team.isSynthetic ??
-                    conversationDetails.data.team.is_synthetic ??
-                    teamDetails.data.isSynthetic ??
-                    teamDetails.data.is_synthetic ??
-                    undefined,
-                  is_synthetic:
-                    conversationDetails.data.team.is_synthetic ??
-                    conversationDetails.data.team.isSynthetic ??
-                    teamDetails.data.is_synthetic ??
-                    teamDetails.data.isSynthetic ??
-                    undefined,
-                  members: teamDetails.data.members,
-                };
-              }
-            } catch (teamError) {
-              console.error("Error fetching team member details:", teamError);
-            }
+            const accessRevoked = await hydrateTeamConversationDetails(
+              conversationDetails,
+              conversationId,
+            );
+            if (accessRevoked) return;
           }
 
           setActiveConversation(conversationDetails.data);
@@ -1477,64 +1519,11 @@ const Chat = () => {
           }
 
           if (type === "team" && conversationDetails?.data) {
-            try {
-              const teamDetails = await teamService.getTeamById(conversationId);
-
-              // ✅ Check if team is archived (also in fallback path)
-              if (
-                teamDetails.data?.archived_at ||
-                teamDetails.data?.status === "inactive"
-              ) {
-                setIsTeamArchived(true);
-              } else {
-                setIsTeamArchived(false);
-              }
-
-              if (teamDetails?.data?.members) {
-                if (!isUserTeamMember(teamDetails.data.members, user?.id)) {
-                  setError("You no longer have access to this team chat.");
-                  setConversations((prev) =>
-                    prev.filter(
-                      (conversation) =>
-                        !(
-                          conversation.type === "team" &&
-                          String(conversation.id) === String(conversationId)
-                        ),
-                    ),
-                  );
-                  setActiveConversation(null);
-                  setMessages([]);
-                  setLoadingMessages(false);
-                  setShowChatView(false);
-                  navigate("/chat", { replace: true });
-                  return;
-                }
-
-                conversationDetails.data.team = {
-                  ...conversationDetails.data.team,
-                  avatarUrl:
-                    conversationDetails.data.team.avatarUrl ||
-                    conversationDetails.data.team.teamavatarUrl ||
-                    conversationDetails.data.team.teamavatar_url ||
-                    teamDetails.data.avatarUrl ||
-                    teamDetails.data.teamavatarUrl ||
-                    teamDetails.data.teamavatar_url,
-                  isSynthetic:
-                    conversationDetails.data.team.isSynthetic ??
-                    conversationDetails.data.team.is_synthetic ??
-                    teamDetails.data.isSynthetic ??
-                    teamDetails.data.is_synthetic ??
-                    undefined,
-                  is_synthetic:
-                    conversationDetails.data.team.is_synthetic ??
-                    conversationDetails.data.team.isSynthetic ??
-                    teamDetails.data.is_synthetic ??
-                    teamDetails.data.isSynthetic ??
-                    undefined,
-                  members: teamDetails.data.members,
-                };
-              }
-            } catch (error) {}
+            const accessRevoked = await hydrateTeamConversationDetails(
+              conversationDetails,
+              conversationId,
+            );
+            if (accessRevoked) return;
           }
 
           if (type === "direct") {
@@ -1765,6 +1754,7 @@ const Chat = () => {
   }, [
     isAuthenticated,
     conversationId,
+    hydrateTeamConversationDetails,
     searchParams,
     setSearchParams,
     navigate,
@@ -2199,14 +2189,8 @@ const Chat = () => {
         return;
       }
 
-      teamService
-        .getTeamById(data.teamId)
-        .then((response) => {
-          const teamPayload =
-            response?.data && typeof response.data === "object"
-              ? response.data
-              : response;
-
+      fetchTeamDetails(data.teamId, { force: true })
+        .then((teamPayload) => {
           if (!Array.isArray(teamPayload?.members)) {
             return;
           }
@@ -2375,6 +2359,7 @@ const Chat = () => {
   }, [
     conversationId,
     handleKickedFromTeam,
+    fetchTeamDetails,
     isAuthenticated,
     navigate,
     refreshActiveTeamMembership,
