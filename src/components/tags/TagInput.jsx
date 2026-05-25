@@ -9,6 +9,11 @@ import { createPortal } from "react-dom";
 import { useCombobox } from "downshift";
 import { X, Tag as TagIcon, TrendingUp, Sparkles } from "lucide-react";
 import { tagService } from "../../services/tagService";
+import {
+  flattenStructuredTags,
+  usePopularTags,
+  useStructuredTags,
+} from "../../hooks/useTagQueries";
 import { UI_TEXT } from "../../constants/uiText";
 import { debounce } from "lodash";
 
@@ -54,6 +59,16 @@ const TagInput = ({
     zIndex: 10000,
   });
   const [menuPlacement, setMenuPlacement] = useState("bottom"); // "top" | "bottom"
+  const {
+    data: structuredTags = [],
+    error: structuredTagsError,
+  } = useStructuredTags();
+  const {
+    data: fetchedPopularTags = [],
+    error: popularTagsError,
+  } = usePopularTags(5, null, {
+    enabled: showPopularTags,
+  });
 
   const getTagId = (t) => {
     if (t == null) return null;
@@ -100,34 +115,27 @@ const TagInput = ({
   }, []);
 
   useEffect(() => {
-    let alive = true;
+    const flat = flattenStructuredTags(structuredTags);
+    updateTagMap(flat);
+  }, [structuredTags, updateTagMap]);
 
-    const fetchInitial = async () => {
-      try {
-        if (showPopularTags) {
-          const tags = await tagService.getPopularTags(5);
-          if (!alive) return;
-          setPopularTags(tags || []);
-          updateTagMap(tags || []);
-        }
+  useEffect(() => {
+    const tags = showPopularTags ? fetchedPopularTags || [] : [];
+    setPopularTags(tags);
+    updateTagMap(tags);
+  }, [fetchedPopularTags, showPopularTags, updateTagMap]);
 
-        const allTags = await tagService.getStructuredTags();
-        if (!alive) return;
+  useEffect(() => {
+    if (structuredTagsError) {
+      console.error("Error fetching tags:", structuredTagsError);
+    }
+  }, [structuredTagsError]);
 
-        const flat = (allTags || [])
-          .flatMap((supercat) => supercat.categories || [])
-          .flatMap((cat) => cat.tags || []);
-        updateTagMap(flat);
-      } catch (err) {
-        console.error("Error fetching tags:", err);
-      }
-    };
-
-    fetchInitial();
-    return () => {
-      alive = false;
-    };
-  }, [showPopularTags, updateTagMap]);
+  useEffect(() => {
+    if (popularTagsError) {
+      console.error("Error fetching popular tags:", popularTagsError);
+    }
+  }, [popularTagsError]);
 
   const debouncedSearch = useCallback(
     debounce(async (query) => {

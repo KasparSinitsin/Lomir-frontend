@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import FormSectionDivider from "../components/common/FormSectionDivider";
 import { useAuth } from "../contexts/AuthContext";
@@ -27,8 +28,14 @@ import {
 } from "lucide-react";
 import useAwardModals from "../hooks/useAwardModals";
 import { CATEGORY_COLORS } from "../constants/badgeConstants";
-import { tagService } from "../services/tagService";
 import { userService } from "../services/userService";
+import { useStructuredTags } from "../hooks/useTagQueries";
+import {
+  useUserProfile,
+  useUserTags,
+  userProfileQueryKey,
+  userTagsQueryKey,
+} from "../hooks/useUserQueries";
 import TagInput from "../components/tags/TagInput";
 import BadgesDisplaySection from "../components/badges/BadgesDisplaySection";
 import SupercategoryAwardsModal from "../components/badges/SupercategoryAwardsModal";
@@ -52,6 +59,7 @@ import { format } from "date-fns";
 
 const Profile = () => {
   const { user, updateUser, logout } = useAuth();
+  const queryClient = useQueryClient();
   const [localUser, setLocalUser] = useState(null);
   const [registrationMessage, setRegistrationMessage] = useState("");
   const [tags, setTags] = useState([]);
@@ -66,6 +74,20 @@ const Profile = () => {
   const [imageError, setImageError] = useState(false);
   const navigate = useNavigate();
   const { openUserModal } = useUserModal();
+  const { data: structuredTags = [], error: structuredTagsError } =
+    useStructuredTags();
+  const {
+    data: fetchedProfileUser,
+    error: profileUserError,
+  } = useUserProfile(user?.id, {
+    enabled: Boolean(user?.id),
+  });
+  const { data: fetchedUserTags = [], error: userTagsError } = useUserTags(
+    user?.id,
+    {
+      enabled: Boolean(user?.id),
+    },
+  );
 
   // Compute effective userId for the hook (Profile uses localUser or auth user)
   const profileUserId = localUser?.id ?? user?.id;
@@ -169,66 +191,15 @@ const Profile = () => {
     return false;
   };
 
-  // Fetch user details as a callback that doesn't re-create on each render
-  const fetchUserDetails = useCallback(async () => {
-    if (!user || !user.id || initialDataLoaded) return;
-
-    try {
-      setLoading(true);
-      const response = await userService.getUserById(user.id);
-
-      if (response && response.data) {
-        const apiUserData = response.data;
-
-        // Avoid updating the user context here - that's causing the loop
-        // Instead, just use the API data to update the form
-
-        // Update form data directly from API response
-        setFormData({
-          firstName: apiUserData.firstName || "",
-          lastName: apiUserData.lastName || "",
-          username: apiUserData.username || "",
-          email: apiUserData.email || apiUserData.email || "",
-          bio: apiUserData.bio || "",
-          postalCode: apiUserData.postalCode || "",
-          city: apiUserData.city || "",
-          country: apiUserData.country || "",
-          isPublic:
-            apiUserData.isPublic !== undefined ? apiUserData.isPublic : true,
-          profileImage: null,
-        });
-
-        // Set image preview if available
-        if (apiUserData.avatarUrl) {
-          setImagePreview(apiUserData.avatarUrl);
-        }
-
-        // Store API user locally (includes badges totals as `badges`)
-        setLocalUser(apiUserData);
-
-        // Mark initial data as loaded
-        setInitialDataLoaded(true);
-      }
-    } catch (error) {
-      console.error("Error fetching user details:", error);
-      setError("Failed to load user data. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  }, [user, initialDataLoaded]); // Only depend on user and initialDataLoaded
-
   useEffect(() => {
     const message = localStorage.getItem("registrationMessage");
     if (message) {
       setRegistrationMessage(message);
       localStorage.removeItem("registrationMessage");
     }
+  }, []);
 
-    // Fetch user details only if we haven't loaded initial data yet
-    if (user && !initialDataLoaded) {
-      fetchUserDetails();
-    }
-
+  useEffect(() => {
     // Initialize form data from context if available and we haven't loaded from API yet
     if (user && !initialDataLoaded) {
       setFormData({
@@ -250,34 +221,64 @@ const Profile = () => {
         setImagePreview(user.avatarUrl);
       }
     }
+  }, [user, initialDataLoaded]);
 
-    const fetchTags = async () => {
-      try {
-        const structuredTags = await tagService.getStructuredTags();
-        setTags(structuredTags);
-      } catch (error) {
-        console.error("Error fetching tags:", error);
+  useEffect(() => {
+    if (!fetchedProfileUser) return;
+
+    if (!initialDataLoaded || !isEditing) {
+      setFormData({
+        firstName: fetchedProfileUser.firstName || "",
+        lastName: fetchedProfileUser.lastName || "",
+        username: fetchedProfileUser.username || "",
+        email: fetchedProfileUser.email || "",
+        bio: fetchedProfileUser.bio || "",
+        postalCode: fetchedProfileUser.postalCode || "",
+        city: fetchedProfileUser.city || "",
+        country: fetchedProfileUser.country || "",
+        isPublic:
+          fetchedProfileUser.isPublic !== undefined
+            ? fetchedProfileUser.isPublic
+            : true,
+        profileImage: null,
+      });
+
+      if (fetchedProfileUser.avatarUrl) {
+        setImagePreview(fetchedProfileUser.avatarUrl);
       }
-    };
+    }
 
-    const fetchUserTags = async () => {
-      if (user) {
-        try {
-          const userTagsResponse = await userService.getUserTags(user.id);
-          const tagData = userTagsResponse.data || [];
-          setSelectedTags(tagData.map((tag) => tag.id));
-          setUserTagObjects(tagData);
-        } catch (error) {
-          console.error("Error fetching user tags:", error);
-        }
-      }
-    };
+    setLocalUser(fetchedProfileUser);
+    setInitialDataLoaded(true);
+  }, [fetchedProfileUser, initialDataLoaded, isEditing]);
 
-    // Badges are loaded via userService.getUserById(user.id) (totals -> user.badges)
+  useEffect(() => {
+    setTags(structuredTags);
+  }, [structuredTags]);
 
-    fetchTags();
-    fetchUserTags();
-  }, [user, initialDataLoaded, fetchUserDetails]); // Add initialDataLoaded and fetchUserDetails to dependencies
+  useEffect(() => {
+    setSelectedTags(fetchedUserTags.map((tag) => tag.id));
+    setUserTagObjects(fetchedUserTags);
+  }, [fetchedUserTags]);
+
+  useEffect(() => {
+    if (structuredTagsError) {
+      console.error("Error fetching tags:", structuredTagsError);
+    }
+  }, [structuredTagsError]);
+
+  useEffect(() => {
+    if (userTagsError) {
+      console.error("Error fetching user tags:", userTagsError);
+    }
+  }, [userTagsError]);
+
+  useEffect(() => {
+    if (profileUserError) {
+      console.error("Error fetching user details:", profileUserError);
+      setError("Failed to load user data. Please try again.");
+    }
+  }, [profileUserError]);
 
   // Reset image error state when user changes
   useEffect(() => {
@@ -757,6 +758,9 @@ const Profile = () => {
 
       // Update Profile's state with the new tags
       setSelectedTags(newTags);
+      queryClient.invalidateQueries({
+        queryKey: userTagsQueryKey(user.id),
+      });
 
       setSuccess("Tags updated successfully");
     } catch (error) {
@@ -857,6 +861,9 @@ const Profile = () => {
         // Update tags along with profile
         try {
           await userService.updateUserTags(user.id, selectedTags);
+          queryClient.invalidateQueries({
+            queryKey: userTagsQueryKey(user.id),
+          });
         } catch (tagError) {
           console.error("Error updating tags:", tagError);
           // Don't fail the whole operation if tags fail
@@ -893,6 +900,10 @@ const Profile = () => {
 
         // Force a local state update
         setLocalUser(updatedUser);
+        queryClient.setQueryData(userProfileQueryKey(user.id), updatedUser);
+        queryClient.invalidateQueries({
+          queryKey: userProfileQueryKey(user.id),
+        });
 
         // Reset form data with updated values
         setFormData((prev) => ({

@@ -50,6 +50,7 @@ import {
 import useViewerMatchProfile from "../hooks/useViewerMatchProfile";
 import useViewerPendingRequests from "../hooks/useViewerPendingRequests";
 import useViewerTeamMemberships from "../hooks/useViewerTeamMemberships";
+import { useStructuredTags } from "../hooks/useTagQueries";
 import {
   buildSearchRequestCriteria,
   DISTANCE_SUBMENU_TYPE,
@@ -227,6 +228,7 @@ const sortByProximity = (items, sortDir) =>
 const SearchPage = () => {
   const location = useLocation();
   const { user, isAuthenticated } = useAuth();
+  const { data: structuredTags = [] } = useStructuredTags();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState({
@@ -262,6 +264,20 @@ const SearchPage = () => {
   const viewerPendingInvitations = isAuthenticated
     ? viewerPendingRequestsQuery.data?.invitations ?? null
     : undefined;
+  const structuredTagLookup = useMemo(() => {
+    const lookup = {};
+    structuredTags.forEach((supercat) => {
+      supercat.categories?.forEach((cat) => {
+        cat.tags?.forEach((tag) => {
+          lookup[Number(tag.id)] = {
+            ...tag,
+            supercategory: supercat.name,
+          };
+        });
+      });
+    });
+    return lookup;
+  }, [structuredTags]);
 
   // ===== SORTING STATE =====
   const [sortBy, setSortBy] = useState(() => {
@@ -1134,37 +1150,26 @@ const SearchPage = () => {
       setSortDir("asc");
     }
 
-    const tagsParam = urlParams.get("tags");
-    if (tagsParam) {
-      const ids = tagsParam.split(",").map(Number).filter(Boolean);
-      if (ids.length > 0) {
-        // Resolve tag names from structured tag tree (IDs already set via lazy init)
-        tagService
-          .getStructuredTags()
-          .then((structure) => {
-            const lookup = {};
-            structure.forEach((supercat) => {
-              supercat.categories?.forEach((cat) => {
-                cat.tags?.forEach((tag) => {
-                  lookup[Number(tag.id)] = {
-                    ...tag,
-                    supercategory: supercat.name,
-                  };
-                });
-              });
-            });
-            const map = {};
-            ids.forEach((id) => {
-              if (lookup[id]) map[id] = lookup[id];
-            });
-            setFilterTagMap(map);
-          })
-          .catch(() => {});
-      }
-    }
     // Badge IDs already set via lazy init; names resolved by the allBadges effect
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    const urlParams = new URLSearchParams(location.search);
+    const tagsParam = urlParams.get("tags");
+    if (!tagsParam) return;
+
+    const ids = tagsParam.split(",").map(Number).filter(Boolean);
+    if (ids.length === 0 || Object.keys(structuredTagLookup).length === 0) {
+      return;
+    }
+
+    const map = {};
+    ids.forEach((id) => {
+      if (structuredTagLookup[id]) map[id] = structuredTagLookup[id];
+    });
+    setFilterTagMap(map);
+  }, [location.search, structuredTagLookup]);
 
   useEffect(() => {
     if (!showSortDropdown) {
