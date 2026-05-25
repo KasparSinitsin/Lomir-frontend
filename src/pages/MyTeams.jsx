@@ -187,7 +187,14 @@ const MyTeams = () => {
     if (!type || type.includes("invitation") || type.includes("invite")) {
       fetchPendingInvitations();
     }
-  }, [fetchPendingApplications, fetchPendingInvitations]);
+
+    // Also refresh the team list so each card's badge counts
+    // (pendingApplicationsCount / pendingSentInvitationsCount) stay live
+    // without per-card refetches.
+    if (user?.id) {
+      fetchUserTeams(currentPage, resultsPerPage);
+    }
+  }, [fetchPendingApplications, fetchPendingInvitations, fetchUserTeams, user?.id, currentPage, resultsPerPage]);
 
   useSocketEvents(
     user?.id

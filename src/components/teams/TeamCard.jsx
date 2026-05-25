@@ -846,13 +846,58 @@ const TeamCard = ({
     }
   }, [effectiveVariant, teamData?.id, canManageInvitations]);
 
+  // Counts may be preloaded by the parent's list response (getUserTeams).
+  // When present, we defer the full list fetch until the user actually opens
+  // the corresponding modal.
+  const preloadedApplicationCount =
+    teamData?.pendingApplicationsCount ??
+    teamData?.pending_applications_count;
+  const preloadedSentInvitationCount =
+    teamData?.pendingSentInvitationsCount ??
+    teamData?.pending_sent_invitations_count;
+  const hasPreloadedApplicationCount = Number.isFinite(
+    preloadedApplicationCount,
+  );
+  const hasPreloadedSentInvitationCount = Number.isFinite(
+    preloadedSentInvitationCount,
+  );
+
+  // Once the full list is loaded (after a modal open), state.length is the
+  // source of truth. Otherwise fall back to the count from teamData.
+  const displayedApplicationCount = pendingApplicationsLoaded
+    ? pendingApplications.length
+    : hasPreloadedApplicationCount
+      ? preloadedApplicationCount
+      : 0;
+  const displayedSentInvitationCount = pendingInvitationsLoaded
+    ? pendingSentInvitations.length
+    : hasPreloadedSentInvitationCount
+      ? preloadedSentInvitationCount
+      : 0;
+
+  // Eagerly fetch only when the parent didn't provide a count (older backend).
   useEffect(() => {
+    if (hasPreloadedApplicationCount) return;
     fetchPendingApplications();
-  }, [fetchPendingApplications]);
+  }, [fetchPendingApplications, hasPreloadedApplicationCount]);
 
   useEffect(() => {
+    if (hasPreloadedSentInvitationCount) return;
     fetchSentInvitations();
-  }, [fetchSentInvitations]);
+  }, [fetchSentInvitations, hasPreloadedSentInvitationCount]);
+
+  // Lazy-fetch the full list the first time the relevant modal opens.
+  useEffect(() => {
+    if (isApplicationsModalOpen && !pendingApplicationsLoaded) {
+      fetchPendingApplications();
+    }
+  }, [isApplicationsModalOpen, pendingApplicationsLoaded, fetchPendingApplications]);
+
+  useEffect(() => {
+    if (isInvitesModalOpen && !pendingInvitationsLoaded) {
+      fetchSentInvitations();
+    }
+  }, [isInvitesModalOpen, pendingInvitationsLoaded, fetchSentInvitations]);
 
   const handleTeamRequestEvent = useCallback((payload = {}) => {
     const payloadTeamId = payload.teamId ?? payload.team_id ?? null;
@@ -871,14 +916,24 @@ const TeamCard = ({
       type.includes("invitation") ||
       type.includes("invite");
 
-    if (shouldRefreshApplications) {
+    // Only refresh the per-card list when we already loaded it (i.e. the
+    // modal was opened at least once). Otherwise badge counts update from
+    // the parent's getUserTeams refetch and the list is re-fetched the next
+    // time the modal opens.
+    if (shouldRefreshApplications && pendingApplicationsLoaded) {
       fetchPendingApplications();
     }
 
-    if (shouldRefreshInvitations) {
+    if (shouldRefreshInvitations && pendingInvitationsLoaded) {
       fetchSentInvitations();
     }
-  }, [fetchPendingApplications, fetchSentInvitations, teamData?.id]);
+  }, [
+    fetchPendingApplications,
+    fetchSentInvitations,
+    teamData?.id,
+    pendingApplicationsLoaded,
+    pendingInvitationsLoaded,
+  ]);
 
   useSocketEvents(
     effectiveVariant === "member" && teamData?.id && canManageInvitations
@@ -1927,7 +1982,7 @@ const TeamCard = ({
             {canManageInvitations && (
               <NotificationBadge
                 variant="application"
-                count={pendingApplications.length}
+                count={displayedApplicationCount}
                 onClick={(e) => {
                   e.stopPropagation();
                   setIsApplicationsModalOpen(true);
@@ -1939,7 +1994,7 @@ const TeamCard = ({
             {canManageInvitations && (
               <NotificationBadge
                 variant="invitation"
-                count={pendingSentInvitations.length}
+                count={displayedSentInvitationCount}
                 onClick={(e) => {
                   e.stopPropagation();
                   setIsInvitesModalOpen(true);
@@ -2456,7 +2511,7 @@ const TeamCard = ({
                 <>
                   <NotificationBadge
                     variant="application"
-                    count={pendingApplications.length}
+                    count={displayedApplicationCount}
                     onClick={(e) => {
                       e.stopPropagation();
                       setIsApplicationsModalOpen(true);
@@ -2464,7 +2519,7 @@ const TeamCard = ({
                   />
                   <NotificationBadge
                     variant="invitation"
-                    count={pendingSentInvitations.length}
+                    count={displayedSentInvitationCount}
                     onClick={(e) => {
                       e.stopPropagation();
                       setIsInvitesModalOpen(true);
