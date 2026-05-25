@@ -899,83 +899,106 @@ const TeamCard = ({
 
   useEffect(() => {
     const fetchCompleteTeamData = async () => {
-      if (
-        teamData &&
-        teamData.id &&
-        (effectiveVariant === "member" ||
-          effectiveVariant === "invitation" ||
-          effectiveVariant === "application")
-      ) {
-        try {
-          const shouldFetchMemberBadges =
-            !hasDisplayableBadges(teamData.badges);
+      if (!teamData?.id) return;
+      const isHydratableVariant =
+        effectiveVariant === "member" ||
+        effectiveVariant === "invitation" ||
+        effectiveVariant === "application";
+      if (!isHydratableVariant) return;
 
-          const [response, memberBadges] = await Promise.all([
-            teamService.getTeamById(teamData.id),
-            shouldFetchMemberBadges
-              ? (() => {
-                  const cached = teamMemberBadgesCache.get(teamData.id);
-                  if (cached) return Promise.resolve(cached);
+      // Skip getTeamById when the parent already provided the tags array.
+      // The list response from getUserTeams + search responses both include
+      // it (empty array means "no tags", which is valid data — no fetch
+      // needed). We still fetch team member badges if those are missing
+      // (separate concern with its own module-level cache).
+      const parentProvidedTags = Array.isArray(teamData.tags);
+      const shouldFetchTeamById = !parentProvidedTags;
+      const shouldFetchMemberBadges = !hasDisplayableBadges(teamData.badges);
 
-                  return teamService
-                    .getTeamMemberBadges(teamData.id)
-                    .then((badgesResponse) => {
-                      const badges = extractBadgeRows(badgesResponse);
-                      teamMemberBadgesCache.set(teamData.id, badges);
-                      return badges;
-                    })
-                    .catch((badgeError) => {
-                      console.warn(
-                        "Could not fetch team member badges for card display:",
-                        badgeError,
-                      );
-                      return [];
-                    });
-                })()
-              : Promise.resolve(
-                  hasDisplayableBadges(teamData.badges) ? teamData.badges : [],
-                ),
-          ]);
-          const fullTeam = response?.data?.data ?? response?.data;
+      if (!shouldFetchTeamById && !shouldFetchMemberBadges) return;
 
-          if (fullTeam) {
-            setTeamData((prev) => {
-              const preservedDistanceKm = resolveDistanceKm({
-                preferredDistance: prev?.distance_km ?? prev?.distanceKm,
-                fallbackDistance: fullTeam.distance_km ?? fullTeam.distanceKm,
-                viewerEntity: viewerDistanceSource ?? user,
-                targetEntity: fullTeam,
-              });
-              const resolvedBadges =
-                memberBadges.length > 0
-                  ? memberBadges
-                  : hasDisplayableBadges(fullTeam.badges)
-                    ? fullTeam.badges
-                    : prev?.badges;
+      try {
+        const teamByIdPromise = shouldFetchTeamById
+          ? teamService.getTeamById(teamData.id)
+          : Promise.resolve(null);
 
-              return {
-                ...prev,
-                ...fullTeam,
-                is_public:
-                  fullTeam.is_public === true || fullTeam.is_public === "true",
-                tags: Array.isArray(fullTeam.tags) ? fullTeam.tags : prev.tags,
-                badges: resolvedBadges,
-                distance_km: preservedDistanceKm,
-                distanceKm: preservedDistanceKm,
-              };
-            });
+        const memberBadgesPromise = shouldFetchMemberBadges
+          ? (() => {
+              const cached = teamMemberBadgesCache.get(teamData.id);
+              if (cached) return Promise.resolve(cached);
 
-            // Compute role from members list
-            if (user?.id && Array.isArray(fullTeam.members)) {
-              const me = fullTeam.members.find(
-                (m) => (m.user_id ?? m.userId) === user.id,
-              );
-              setUserRole(me?.role ?? null);
-            }
+              return teamService
+                .getTeamMemberBadges(teamData.id)
+                .then((badgesResponse) => {
+                  const badges = extractBadgeRows(badgesResponse);
+                  teamMemberBadgesCache.set(teamData.id, badges);
+                  return badges;
+                })
+                .catch((badgeError) => {
+                  console.warn(
+                    "Could not fetch team member badges for card display:",
+                    badgeError,
+                  );
+                  return [];
+                });
+            })()
+          : Promise.resolve(
+              hasDisplayableBadges(teamData.badges) ? teamData.badges : [],
+            );
+
+        const [response, memberBadges] = await Promise.all([
+          teamByIdPromise,
+          memberBadgesPromise,
+        ]);
+
+        const fullTeam = response?.data?.data ?? response?.data ?? null;
+
+        setTeamData((prev) => {
+          const baseTeam = fullTeam ?? prev;
+          const preservedDistanceKm = resolveDistanceKm({
+            preferredDistance: prev?.distance_km ?? prev?.distanceKm,
+            fallbackDistance: baseTeam.distance_km ?? baseTeam.distanceKm,
+            viewerEntity: viewerDistanceSource ?? user,
+            targetEntity: baseTeam,
+          });
+          const resolvedBadges =
+            memberBadges.length > 0
+              ? memberBadges
+              : hasDisplayableBadges(baseTeam.badges)
+                ? baseTeam.badges
+                : prev?.badges;
+
+          if (!fullTeam) {
+            // Only refreshed badges / distance — keep everything else.
+            return {
+              ...prev,
+              badges: resolvedBadges,
+              distance_km: preservedDistanceKm,
+              distanceKm: preservedDistanceKm,
+            };
           }
-        } catch (error) {
-          console.error("Error fetching complete team data:", error);
+
+          return {
+            ...prev,
+            ...fullTeam,
+            is_public:
+              fullTeam.is_public === true || fullTeam.is_public === "true",
+            tags: Array.isArray(fullTeam.tags) ? fullTeam.tags : prev.tags,
+            badges: resolvedBadges,
+            distance_km: preservedDistanceKm,
+            distanceKm: preservedDistanceKm,
+          };
+        });
+
+        // Compute role from members list (only possible if we fetched it)
+        if (fullTeam && user?.id && Array.isArray(fullTeam.members)) {
+          const me = fullTeam.members.find(
+            (m) => (m.user_id ?? m.userId) === user.id,
+          );
+          setUserRole(me?.role ?? null);
         }
+      } catch (error) {
+        console.error("Error fetching complete team data:", error);
       }
     };
 
