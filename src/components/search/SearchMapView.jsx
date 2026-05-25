@@ -1995,10 +1995,13 @@ const SearchMapView = ({
     };
   }, [authUserId]);
 
-  const fetchUserTeamIds = useCallback(async () => {
-    if (!authUserId) return new Set();
+  const fetchUserTeamMemberships = useCallback(async () => {
+    if (!authUserId) {
+      return { teamIds: new Set(), teamRoles: {} };
+    }
 
     const teamIds = new Set();
+    const teamRoles = {};
     const limit = 100;
     let page = 1;
     let totalPages = 1;
@@ -2009,7 +2012,11 @@ const SearchMapView = ({
 
       teams.forEach((team) => {
         const teamId = firstPresent(team?.id, team?.teamId, team?.team_id);
-        if (teamId != null) teamIds.add(String(teamId));
+        if (teamId == null) return;
+
+        const teamKey = String(teamId);
+        teamIds.add(teamKey);
+        teamRoles[teamKey] = getTeamViewerRole(team, { id: authUserId });
       });
 
       const pagination = response?.pagination ?? {};
@@ -2031,7 +2038,7 @@ const SearchMapView = ({
       page += 1;
     }
 
-    return teamIds;
+    return { teamIds, teamRoles };
   }, [authUserId]);
 
   useEffect(() => {
@@ -2067,87 +2074,39 @@ const SearchMapView = ({
 
     let isActive = true;
 
-    const loadUserTeamIds = async () => {
+    const loadUserTeamMemberships = async () => {
       try {
-        const teamIds = await fetchUserTeamIds();
+        const { teamIds, teamRoles } = await fetchUserTeamMemberships();
         if (isActive) {
           setFetchedUserTeamIds(teamIds);
+          setFetchedTeamRoles(teamRoles);
         }
       } catch {
         if (isActive) {
           setFetchedUserTeamIds(new Set());
+          setFetchedTeamRoles({});
         }
       }
     };
 
-    loadUserTeamIds();
+    loadUserTeamMemberships();
 
     return () => {
       isActive = false;
     };
-  }, [authUserId, fetchUserTeamIds]);
-
-  useEffect(() => {
-    if (!authUserId) return;
-
-    const seenTeamIds = new Set();
-
-    const teamItemsNeedingRole = items.filter((item) => {
-      if (getMapPointType(item) !== "team") return false;
-      const teamId = getTeamItemId(item);
-      if (teamId === null) return false;
-      const teamKey = String(teamId);
-      if (seenTeamIds.has(teamKey)) return false;
-      seenTeamIds.add(teamKey);
-      if (Object.prototype.hasOwnProperty.call(fetchedTeamRoles, teamKey)) return false;
-      return !getTeamViewerRole(item, { id: authUserId });
-    });
-
-    if (teamItemsNeedingRole.length === 0) return;
-
-    let isActive = true;
-
-    const fetchTeamRoles = async () => {
-      const entries = await Promise.all(
-        teamItemsNeedingRole.map(async (teamItem) => {
-          const teamId = getTeamItemId(teamItem);
-          const response = await teamService.getUserRoleInTeam(teamId, authUserId);
-          const payload = response?.data ?? response;
-          const data = payload?.data ?? payload;
-
-          return [String(teamId), normalizeRoleValue(data?.role ?? payload?.role)];
-        }),
-      );
-
-      if (!isActive) return;
-
-      setFetchedTeamRoles((previousRoles) => {
-        const nextRoles = { ...previousRoles };
-        entries.forEach(([teamId, role]) => {
-          nextRoles[teamId] = role;
-        });
-        return nextRoles;
-      });
-    };
-
-    fetchTeamRoles();
-
-    return () => {
-      isActive = false;
-    };
-  }, [authUserId, fetchedTeamRoles, items]);
+  }, [authUserId, fetchUserTeamMemberships]);
 
   const refreshUserStatusData = useCallback(async () => {
-    const [{ applications, invitations }, teamIds] = await Promise.all([
+    const [{ applications, invitations }, { teamIds, teamRoles }] = await Promise.all([
       fetchUserRequestData(),
-      fetchUserTeamIds(),
+      fetchUserTeamMemberships(),
     ]);
 
     setFetchedApplications(applications);
     setFetchedInvitations(invitations);
     setFetchedUserTeamIds(teamIds);
-    setFetchedTeamRoles({});
-  }, [fetchUserRequestData, fetchUserTeamIds]);
+    setFetchedTeamRoles(teamRoles);
+  }, [fetchUserRequestData, fetchUserTeamMemberships]);
 
   const openInvitationDetails = useCallback((invitation) => {
     if (!invitation) return;

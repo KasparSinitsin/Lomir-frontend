@@ -130,6 +130,14 @@ const getSearchItemDisplayName = (item) => {
   return getUserDisplayName(item);
 };
 
+const normalizeViewerTeamRole = (value) => {
+  const role = String(value ?? "").trim().toLowerCase();
+  return ["owner", "admin", "member"].includes(role) ? role : null;
+};
+
+const getSearchTeamId = (team) =>
+  team?.id ?? team?.teamId ?? team?.team_id ?? null;
+
 const getSearchItemActivityTime = (item) => {
   if (!item) return 0;
 
@@ -246,6 +254,7 @@ const SearchPage = () => {
   // the viewer's global pending-application / pending-invitation lists.
   const [viewerPendingApplications, setViewerPendingApplications] = useState(null);
   const [viewerPendingInvitations, setViewerPendingInvitations] = useState(null);
+  const [viewerTeamRoles, setViewerTeamRoles] = useState({});
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -282,6 +291,75 @@ const SearchPage = () => {
       cancelled = true;
     };
   }, [isAuthenticated]);
+
+  useEffect(() => {
+    if (!isAuthenticated || !user?.id) {
+      setViewerTeamRoles({});
+      return;
+    }
+
+    let cancelled = false;
+
+    const fetchViewerTeamRoles = async () => {
+      const nextRoles = {};
+      const limit = 100;
+      let page = 1;
+      let totalPages = 1;
+
+      while (page <= totalPages) {
+        const response = await teamService.getUserTeams(user.id, {
+          page,
+          limit,
+        });
+        const teams = Array.isArray(response?.data) ? response.data : [];
+
+        teams.forEach((team) => {
+          const teamId = getSearchTeamId(team);
+          if (teamId == null) return;
+
+          const role = normalizeViewerTeamRole(
+            team.userRole ?? team.user_role,
+          );
+          if (role) {
+            nextRoles[String(teamId)] = role;
+          }
+        });
+
+        const pagination = response?.pagination ?? {};
+        const nextTotalPages = Number(
+          pagination.totalPages ?? pagination.total_pages ?? 1,
+        );
+        totalPages =
+          Number.isFinite(nextTotalPages) && nextTotalPages > 0
+            ? nextTotalPages
+            : 1;
+
+        const hasNextPage = Boolean(
+          pagination.hasNextPage ??
+            pagination.has_next_page ??
+            page < totalPages,
+        );
+
+        if (!hasNextPage) break;
+        page += 1;
+      }
+
+      if (!cancelled) {
+        setViewerTeamRoles(nextRoles);
+      }
+    };
+
+    fetchViewerTeamRoles().catch((err) => {
+      if (!cancelled) {
+        console.error("Failed to load viewer team roles:", err);
+        setViewerTeamRoles({});
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated, user?.id]);
 
   // ===== SORTING STATE =====
   const [sortBy, setSortBy] = useState(() => {
@@ -871,6 +949,33 @@ const SearchPage = () => {
       ? sortByProximity(filteredResults.roles, sortDir)
       : filteredResults.roles;
 
+  const withViewerTeamRole = useCallback(
+    (team) => {
+      const teamId = getSearchTeamId(team);
+      const role =
+        teamId != null
+          ? viewerTeamRoles[String(teamId)] ??
+            normalizeViewerTeamRole(
+              team?.userRole ??
+                team?.user_role ??
+                team?.currentUserRole ??
+                team?.current_user_role,
+            )
+          : null;
+
+      if (!role) return team;
+
+      return {
+        ...team,
+        userRole: role,
+        user_role: role,
+        currentUserRole: role,
+        current_user_role: role,
+      };
+    },
+    [viewerTeamRoles],
+  );
+
   const displayedTeams = mergedDisplayItems
     ? []
     : searchType === "users"
@@ -893,6 +998,9 @@ const SearchPage = () => {
               _resultType: "user",
             })),
           ];
+  const visibleMapItemsWithViewerRoles = visibleMapItems.map((item) =>
+    item?._resultType === "team" ? withViewerTeamRole(item) : item,
+  );
 
   const hasActiveFilters =
     filterTagIds.length > 0 ||
@@ -2313,7 +2421,7 @@ const SearchPage = () => {
 
               {resultView === "map" && (
                 <SearchMapView
-                  items={visibleMapItems}
+                  items={visibleMapItemsWithViewerRoles}
                   searchType={searchType}
                   roleMatchTagIds={roleMatchTagIds}
                   roleMatchBadgeNames={roleMatchBadgeNames}
@@ -2337,7 +2445,7 @@ const SearchPage = () => {
                       item._resultType === "team" ? (
                         <TeamCard
                           key={`team-${item.id}`}
-                          team={item}
+                          team={withViewerTeamRole(item)}
                           onUpdate={handleTeamUpdate}
                           isSearchResult={true}
                           viewerDistanceSource={viewerDistanceSource}
@@ -2411,7 +2519,7 @@ const SearchPage = () => {
                       item._resultType === "team" ? (
                         <TeamCard
                           key={`team-${item.id}`}
-                          team={item}
+                          team={withViewerTeamRole(item)}
                           onUpdate={handleTeamUpdate}
                           isSearchResult={true}
                           viewerDistanceSource={viewerDistanceSource}
