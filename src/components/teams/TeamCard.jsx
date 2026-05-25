@@ -389,6 +389,11 @@ const TeamCard = ({
   // and the card should wait — not fall back to fetching.
   viewerPendingApplications,
   viewerPendingInvitations,
+
+  // Pre-fetched member badges for this team (bulk-fetched by the parent).
+  // Same `!== undefined` sentinel: undefined = parent doesn't manage, null =
+  // parent is loading, array = use directly (skip per-card fetch).
+  teamMemberBadges,
 }) => {
   const isInternalRoleApplication =
     application?.isInternalRoleApplication ??
@@ -848,13 +853,22 @@ const TeamCard = ({
 
   // Counts may be preloaded by the parent's list response (getUserTeams).
   // When present, we defer the full list fetch until the user actually opens
-  // the corresponding modal.
-  const preloadedApplicationCount =
+  // the corresponding modal. Note: postgres returns COUNT(*) as bigint which
+  // the pg driver serializes as a string unless cast, so coerce defensively.
+  const rawPreloadedApplicationCount =
     teamData?.pendingApplicationsCount ??
     teamData?.pending_applications_count;
-  const preloadedSentInvitationCount =
+  const rawPreloadedSentInvitationCount =
     teamData?.pendingSentInvitationsCount ??
     teamData?.pending_sent_invitations_count;
+  const preloadedApplicationCount =
+    rawPreloadedApplicationCount != null
+      ? Number(rawPreloadedApplicationCount)
+      : undefined;
+  const preloadedSentInvitationCount =
+    rawPreloadedSentInvitationCount != null
+      ? Number(rawPreloadedSentInvitationCount)
+      : undefined;
   const hasPreloadedApplicationCount = Number.isFinite(
     preloadedApplicationCount,
   );
@@ -964,11 +978,13 @@ const TeamCard = ({
       // Skip getTeamById when the parent already provided the tags array.
       // The list response from getUserTeams + search responses both include
       // it (empty array means "no tags", which is valid data — no fetch
-      // needed). We still fetch team member badges if those are missing
-      // (separate concern with its own module-level cache).
+      // needed). Skip team member badges when the parent is managing them
+      // via the teamMemberBadges prop (bulk-fetched by MyTeams).
       const parentProvidedTags = Array.isArray(teamData.tags);
+      const parentManagesMemberBadges = teamMemberBadges !== undefined;
       const shouldFetchTeamById = !parentProvidedTags;
-      const shouldFetchMemberBadges = !hasDisplayableBadges(teamData.badges);
+      const shouldFetchMemberBadges =
+        !parentManagesMemberBadges && !hasDisplayableBadges(teamData.badges);
 
       if (!shouldFetchTeamById && !shouldFetchMemberBadges) return;
 
@@ -1059,6 +1075,19 @@ const TeamCard = ({
 
     fetchCompleteTeamData();
   }, [teamData?.id, effectiveVariant, user, viewerDistanceSource]);
+
+  // Sync parent-managed member badges into teamData. When the parent provides
+  // an array (bulk fetch resolved), we use it directly. While the parent is
+  // still loading (prop === null), we leave teamData.badges alone so the card
+  // doesn't flicker between "no badges" and "with badges" mid-load.
+  useEffect(() => {
+    if (Array.isArray(teamMemberBadges)) {
+      setTeamData((prev) => ({
+        ...prev,
+        badges: teamMemberBadges,
+      }));
+    }
+  }, [teamMemberBadges]);
 
   useEffect(() => {
     if (!teamData?.id) return;

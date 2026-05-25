@@ -246,6 +246,26 @@ export const teamService = {
   },
 
   /**
+   * Bulk variant of getTeamMemberBadges for multiple teams in a single
+   * request. Returns { data: { [teamId]: [...badges] }, meta: { ... } }.
+   */
+  getMemberBadgesForTeams: async (teamIds) => {
+    try {
+      const ids = Array.isArray(teamIds) ? teamIds.filter(Boolean) : [];
+      if (ids.length === 0) {
+        return { success: true, data: {}, meta: { totalCreditsByTeam: {} } };
+      }
+      const response = await api.get(
+        `/api/teams/member-badges?teamIds=${ids.join(",")}`,
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching bulk team member badges:", error);
+      throw error;
+    }
+  },
+
+  /**
    * Fetches ALL badge awards for team members (not filtered by focus areas).
    * Used by badge category and badge pill drill-down modals.
    * Same row shape as getTeamBadgeAwards but without focus-area filtering.

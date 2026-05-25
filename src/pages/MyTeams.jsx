@@ -100,6 +100,50 @@ const MyTeams = () => {
   const [autoOpenApplicationsTeamId, setAutoOpenApplicationsTeamId] =
     useState(null);
 
+  // Bulk-fetched member badges keyed by team id. null = "still loading" so
+  // child cards wait instead of falling back to their own per-card fetch.
+  const [teamMemberBadgesById, setTeamMemberBadgesById] = useState(null);
+
+  const teamIdsKey = useMemo(
+    () =>
+      teams
+        .map((t) => t?.id)
+        .filter((id) => id != null)
+        .join(","),
+    [teams],
+  );
+
+  useEffect(() => {
+    if (!teamIdsKey) {
+      setTeamMemberBadgesById({});
+      return;
+    }
+
+    const ids = teamIdsKey.split(",").map((id) => parseInt(id, 10));
+    let cancelled = false;
+    setTeamMemberBadgesById(null);
+
+    teamService
+      .getMemberBadgesForTeams(ids)
+      .then((response) => {
+        if (!cancelled) {
+          setTeamMemberBadgesById(response?.data || {});
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          console.error("Failed to fetch bulk team member badges:", err);
+          // Surface as empty map so cards stop waiting and just show no badges
+          // rather than perpetually loading.
+          setTeamMemberBadgesById({});
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [teamIdsKey]);
+
   // Fetch user's teams with pagination
   const fetchUserTeams = useCallback(
     async (page = 1, limit = 10) => {
@@ -986,6 +1030,11 @@ const MyTeams = () => {
                         is_public:
                           team.is_public === true || team.isPublic === true,
                       }}
+                      teamMemberBadges={
+                        teamMemberBadgesById === null
+                          ? null
+                          : teamMemberBadgesById[team.id] || []
+                      }
                       onUpdate={handleTeamUpdate}
                       onDelete={handleTeamDelete}
                       onLeave={handleTeamLeave}
@@ -1045,6 +1094,11 @@ const MyTeams = () => {
                         is_public:
                           team.is_public === true || team.isPublic === true,
                       }}
+                      teamMemberBadges={
+                        teamMemberBadgesById === null
+                          ? null
+                          : teamMemberBadgesById[team.id] || []
+                      }
                       onUpdate={handleTeamUpdate}
                       onDelete={handleTeamDelete}
                       onLeave={handleTeamLeave}
