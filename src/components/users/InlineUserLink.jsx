@@ -8,18 +8,10 @@ import {
   getDisplayName,
   isDeletedUser,
 } from "../../utils/deletedUser";
+import { extractProfilePayload } from "../../utils/payloadExtractors";
 import UserAvatar from "./UserAvatar";
 
 const inlineUserProfileCache = new Map();
-
-const extractProfilePayload = (response) => {
-  const payload = response?.data ?? response;
-
-  if (!payload) return null;
-  if (payload?.success !== undefined) return payload?.data ?? null;
-
-  return payload?.data?.data ?? payload?.data ?? payload;
-};
 
 const getCachedInlineUserProfile = async (userId) => {
   const cacheKey = String(userId);

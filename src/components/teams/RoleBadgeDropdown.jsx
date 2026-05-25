@@ -177,8 +177,6 @@ const RoleBadgeDropdown = ({
       <Dropdown
         trigger={triggerBadge}
         position="bottom-right"
-        openOnHover={true}
-        hoverDelay={150}
         dropdownClassName="min-w-48"
       >
         {/* Promote to Admin - shown for members (NOT for archived teams) */}

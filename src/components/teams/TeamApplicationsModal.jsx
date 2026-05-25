@@ -14,27 +14,10 @@ import { messageService } from "../../services/messageService";
 import { useAuth } from "../../contexts/AuthContext";
 import { useTeamModal } from "../../contexts/TeamModalContext";
 import { buildRoleApplicationFilledMessage } from "../../utils/roleEventMessages";
+import { extractCandidateMatchData } from "../../utils/matchHelpers";
 
 const ROLE_CANDIDATE_FETCH_MIN_LIMIT = 20;
 const SELF_ROLE_MATCH_FETCH_LIMIT = 1000;
-
-const extractCandidateMatchData = (candidateLike) => {
-  const rawScore =
-    candidateLike?.matchScore ??
-    candidateLike?.match_score ??
-    candidateLike?.bestMatchScore ??
-    candidateLike?.best_match_score ??
-    null;
-  const numericScore = Number(rawScore);
-
-  return {
-    matchScore: Number.isFinite(numericScore) ? numericScore : null,
-    matchDetails:
-      candidateLike?.matchDetails ??
-      candidateLike?.match_details ??
-      null,
-  };
-};
 
 /**
  * TeamApplicationsModal Component

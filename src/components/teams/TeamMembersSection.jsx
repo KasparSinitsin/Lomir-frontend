@@ -18,17 +18,9 @@ import CardMetaRow from "../common/CardMetaRow";
 import Tooltip from "../common/Tooltip";
 import DemoAvatarOverlay from "../users/DemoAvatarOverlay";
 import { DEMO_PROFILE_TOOLTIP, isSyntheticUser } from "../../utils/userHelpers";
+import { extractProfilePayload } from "../../utils/payloadExtractors";
 
 const memberSyntheticStatusCache = new Map();
-
-const extractProfilePayload = (response) => {
-  const payload = response?.data ?? response;
-
-  if (!payload) return null;
-  if (payload?.success !== undefined) return payload?.data ?? null;
-
-  return payload?.data?.data ?? payload?.data ?? payload;
-};
 
 const getCachedMemberSyntheticStatus = async (memberId) => {
   const cacheKey = String(memberId);
