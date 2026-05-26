@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useLayoutEffect, useRef } from "react";
+import { useQueries, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import {
   MapPin,
@@ -52,7 +53,17 @@ import TeamApplicationsModal from "./TeamApplicationsModal";
 import TeamInvitationDetailsModal from "./TeamInvitationDetailsModal";
 import TeamInvitesModal from "./TeamInvitesModal";
 import { useAuth } from "../../contexts/AuthContext";
-import { userService } from "../../services/userService";
+import {
+  fetchUserBadges,
+  fetchUserProfile,
+  fetchUserTags,
+  userBadgesQueryKey,
+  useUserBadges,
+  useUserProfile,
+  useUserTags,
+  userProfileQueryKey,
+  userTagsQueryKey,
+} from "../../hooks/useUserQueries";
 import { matchingService } from "../../services/matchingService";
 import { teamService } from "../../services/teamService";
 import { vacantRoleService } from "../../services/vacantRoleService";
@@ -72,10 +83,6 @@ import {
   formatLocation,
 } from "../../utils/locationUtils";
 import {
-  extractListPayload,
-  extractProfilePayload,
-} from "../../utils/payloadExtractors";
-import {
   buildBadgeLookup,
   buildTagLookup,
   computeRoleUserMatch,
@@ -88,6 +95,11 @@ import { useChildModalZIndex } from "../../contexts/ModalLayerContext";
 
 const COLLAPSED_COUNT = 4;
 const EMPTY_TEAM_MEMBERS = [];
+const roleMemberMatchDataQueryKey = (memberId) => [
+  "users",
+  memberId ?? null,
+  "roleMemberMatchData",
+];
 
 const toPossessive = (value) =>
   !value ? "your" : value.endsWith("s") ? `${value}'` : `${value}'s`;
@@ -220,6 +232,7 @@ const VacantRoleDetailsModal = ({
   onStatusChange = null,
 }) => {
   const { user: currentUser, isAuthenticated } = useAuth();
+  const queryClient = useQueryClient();
   const userModal = useUserModalSafe();
   const teamModal = useTeamModalSafe();
   const childTeamModalZIndex = useChildModalZIndex();
@@ -309,7 +322,6 @@ const VacantRoleDetailsModal = ({
       ),
     ],
   );
-
   useEffect(() => {
     const fetchFullRole = async () => {
       if (!isOpen || !roleId || !teamId) return;
@@ -395,6 +407,154 @@ const VacantRoleDetailsModal = ({
     ? resolvedFilledUser ?? viewAsUser ?? null
     : viewAsUser ?? currentUser ?? null;
   const comparisonUserSeedJson = JSON.stringify(comparisonUserSeed ?? null);
+  const shouldFetchComparisonData = Boolean(
+    isOpen &&
+      isAuthenticated &&
+      comparisonUserId &&
+      shouldShowRoleMatchScore,
+  );
+  const comparisonUserProfileQuery = useUserProfile(comparisonUserId, {
+    enabled: shouldFetchComparisonData,
+  });
+  const comparisonUserTagsQuery = useUserTags(comparisonUserId, {
+    enabled: shouldFetchComparisonData,
+  });
+  const comparisonUserBadgesQuery = useUserBadges(comparisonUserId, {
+    enabled: shouldFetchComparisonData,
+  });
+  const roleMemberEntries = useMemo(
+    () => [
+      ...new Map(
+        teamMembers
+          .map((member) => {
+            const memberId = member?.userId ?? member?.user_id ?? null;
+            return memberId != null ? [String(memberId), member] : null;
+          })
+          .filter(Boolean),
+      ).entries(),
+    ],
+    [teamMembers],
+  );
+  const roleMatchTags = useMemo(
+    () =>
+      displayRole?.tags?.length > 0
+        ? displayRole.tags
+        : displayRole?.desiredTags || [],
+    [displayRole],
+  );
+  const roleMatchBadges = useMemo(
+    () =>
+      displayRole?.badges?.length > 0
+        ? displayRole.badges
+        : displayRole?.desiredBadges || [],
+    [displayRole],
+  );
+  const shouldFetchRoleMemberMatches = Boolean(
+    isOpen &&
+      displayRole &&
+      canViewTeamMemberMatches &&
+      isRoleOpen &&
+      roleMemberEntries.length > 0,
+  );
+  const roleMemberMatchQueries = useQueries({
+    queries: roleMemberEntries.map(([memberId, member]) => ({
+      queryKey: roleMemberMatchDataQueryKey(memberId),
+      queryFn: async () => {
+        const [profile, tags, badges] = await Promise.all([
+          queryClient.fetchQuery({
+            queryKey: userProfileQueryKey(memberId),
+            queryFn: () => fetchUserProfile(memberId),
+            staleTime: 30_000,
+          }),
+          queryClient.fetchQuery({
+            queryKey: userTagsQueryKey(memberId),
+            queryFn: () => fetchUserTags(memberId),
+            staleTime: 30_000,
+          }),
+          queryClient.fetchQuery({
+            queryKey: userBadgesQueryKey(memberId),
+            queryFn: () => fetchUserBadges(memberId),
+            staleTime: 30_000,
+          }),
+        ]);
+
+        return {
+          memberId,
+          member: {
+            ...(member || {}),
+            ...(profile || {}),
+          },
+          teamRole: member?.role ?? null,
+          userTagMap: buildTagLookup(tags),
+          userBadgeMap: buildBadgeLookup(badges),
+        };
+      },
+      enabled: shouldFetchRoleMemberMatches,
+      staleTime: 30_000,
+    })),
+  });
+  const roleMemberMatchQuerySignature = roleMemberMatchQueries
+    .map(
+      (query) =>
+        `${query.status}:${query.dataUpdatedAt ?? 0}:${query.errorUpdatedAt ?? 0}`,
+    )
+    .join("|");
+  const applicantProfileIds = useMemo(() => {
+    if (!isOpen || !canManage || !isRoleOpen) return [];
+
+    return [
+      ...new Set(
+        roleApplications
+          .map((application) => {
+            const applicant = application?.applicant || {};
+            return applicant.id ?? application.applicant_id ?? null;
+          })
+          .filter((id) => id != null)
+          .map(String),
+      ),
+    ];
+  }, [canManage, isOpen, isRoleOpen, roleApplications]);
+  const inviteeProfileIds = useMemo(() => {
+    if (!isOpen || !canManage || !isRoleOpen) return [];
+
+    return [
+      ...new Set(
+        roleInvitations
+          .map((invitation) => {
+            const invitee = invitation?.invitee || {};
+            return invitee.id ?? invitation.invitee_id ?? null;
+          })
+          .filter((id) => id != null)
+          .map(String),
+      ),
+    ];
+  }, [canManage, isOpen, isRoleOpen, roleInvitations]);
+  const applicantProfileQueries = useQueries({
+    queries: applicantProfileIds.map((applicantId) => ({
+      queryKey: userProfileQueryKey(applicantId),
+      queryFn: () => fetchUserProfile(applicantId),
+      staleTime: 30_000,
+    })),
+  });
+  const inviteeProfileQueries = useQueries({
+    queries: inviteeProfileIds.map((inviteeId) => ({
+      queryKey: userProfileQueryKey(inviteeId),
+      queryFn: () => fetchUserProfile(inviteeId),
+      staleTime: 30_000,
+    })),
+  });
+  const applicantProfileQuerySignature = applicantProfileQueries
+    .map(
+      (query) =>
+        `${query.status}:${query.dataUpdatedAt ?? 0}:${query.errorUpdatedAt ?? 0}`,
+    )
+    .join("|");
+  const inviteeProfileQuerySignature = inviteeProfileQueries
+    .map(
+      (query) =>
+        `${query.status}:${query.dataUpdatedAt ?? 0}:${query.errorUpdatedAt ?? 0}`,
+    )
+    .join("|");
   const roleNameForStatusMatch =
     displayRole?.roleName ??
     displayRole?.role_name ??
@@ -632,12 +792,7 @@ const VacantRoleDetailsModal = ({
   }, [isOpen, isAuthenticated, viewerIsTeamMember, teamId, currentUser?.id]);
 
   useEffect(() => {
-    if (
-      !isOpen ||
-      !isAuthenticated ||
-      !comparisonUserId ||
-      !shouldShowRoleMatchScore
-    ) {
+    if (!shouldFetchComparisonData) {
       setComparisonUserProfile(null);
       setLoadingComparisonData(false);
       setComparisonDataLoaded(false);
@@ -646,88 +801,59 @@ const VacantRoleDetailsModal = ({
       return;
     }
 
-    const fetchComparisonData = async () => {
-      const fallbackComparisonUser = comparisonUserSeedJson
-        ? JSON.parse(comparisonUserSeedJson)
-        : null;
+    const fallbackComparisonUser = comparisonUserSeedJson
+      ? JSON.parse(comparisonUserSeedJson)
+      : null;
+    const queries = [
+      comparisonUserProfileQuery,
+      comparisonUserTagsQuery,
+      comparisonUserBadgesQuery,
+    ];
+    const hasPendingQuery = queries.some(
+      (query) => query.isLoading || query.isFetching,
+    );
 
-      try {
-        setLoadingComparisonData(true);
-        setComparisonDataLoaded(false);
+    setLoadingComparisonData(hasPendingQuery);
 
-        const [profileRes, tagsRes, badgesRes] = await Promise.allSettled([
-          userService.getUserById(comparisonUserId),
-          userService.getUserTags(comparisonUserId),
-          userService.getUserBadges(comparisonUserId),
-        ]);
+    if (hasPendingQuery) {
+      setComparisonDataLoaded(false);
+      return;
+    }
 
-        if (profileRes.status === "fulfilled") {
-          const profileData =
-            profileRes.value?.data?.data ?? profileRes.value?.data ?? null;
-          setComparisonUserProfile({
-            ...(fallbackComparisonUser || {}),
-            ...(profileData || {}),
-          });
-        } else {
-          setComparisonUserProfile(fallbackComparisonUser);
-        }
+    if (queries.some((query) => query.isError)) {
+      console.warn("Could not fetch user data for matching highlights:", {
+        profileError: comparisonUserProfileQuery.error ?? null,
+        tagsError: comparisonUserTagsQuery.error ?? null,
+        badgesError: comparisonUserBadgesQuery.error ?? null,
+      });
+    }
 
-        const tagData =
-          tagsRes.status === "fulfilled"
-            ? Array.isArray(tagsRes.value)
-              ? tagsRes.value
-              : Array.isArray(tagsRes.value?.data)
-                ? tagsRes.value.data
-                : tagsRes.value?.data?.data || []
-            : [];
-        const tMap = new Map();
-        for (const tag of tagData) {
-          tMap.set(Number(tag.id), {
-            badgeCredits: Number(tag.badge_credits ?? tag.badgeCredits ?? 0),
-          });
-        }
-        setUserTagMap(tMap);
-
-        const badgeData =
-          badgesRes.status === "fulfilled"
-            ? Array.isArray(badgesRes.value)
-              ? badgesRes.value
-              : Array.isArray(badgesRes.value?.data)
-                ? badgesRes.value.data
-                : badgesRes.value?.data?.data || []
-            : [];
-        const bMap = new Map();
-        for (const badge of badgeData) {
-          const name = (badge.badgeName ?? badge.badge_name ?? badge.name ?? "")
-            .trim()
-            .toLowerCase();
-          const credits = Number(
-            badge.totalCredits ?? badge.total_credits ?? badge.credits ?? 0,
-          );
-          const existing = bMap.get(name);
-          bMap.set(name, {
-            totalCredits: (existing?.totalCredits || 0) + credits,
-          });
-        }
-        setUserBadgeMap(bMap);
-      } catch (err) {
-        console.warn("Could not fetch user data for matching highlights:", err);
-        setComparisonUserProfile(fallbackComparisonUser);
-        setUserTagMap(new Map());
-        setUserBadgeMap(new Map());
-      } finally {
-        setLoadingComparisonData(false);
-        setComparisonDataLoaded(true);
-      }
-    };
-
-    fetchComparisonData();
+    setComparisonUserProfile({
+      ...(fallbackComparisonUser || {}),
+      ...(comparisonUserProfileQuery.data || {}),
+    });
+    setUserTagMap(buildTagLookup(comparisonUserTagsQuery.data ?? []));
+    setUserBadgeMap(buildBadgeLookup(comparisonUserBadgesQuery.data ?? []));
+    setLoadingComparisonData(false);
+    setComparisonDataLoaded(true);
   }, [
-    isOpen,
-    isAuthenticated,
-    comparisonUserId,
+    comparisonUserBadgesQuery.data,
+    comparisonUserBadgesQuery.error,
+    comparisonUserBadgesQuery.isError,
+    comparisonUserBadgesQuery.isFetching,
+    comparisonUserBadgesQuery.isLoading,
+    comparisonUserProfileQuery.data,
+    comparisonUserProfileQuery.error,
+    comparisonUserProfileQuery.isError,
+    comparisonUserProfileQuery.isFetching,
+    comparisonUserProfileQuery.isLoading,
+    comparisonUserTagsQuery.data,
+    comparisonUserTagsQuery.error,
+    comparisonUserTagsQuery.isError,
+    comparisonUserTagsQuery.isFetching,
+    comparisonUserTagsQuery.isLoading,
     comparisonUserSeedJson,
-    shouldShowRoleMatchScore,
+    shouldFetchComparisonData,
   ]);
 
   useEffect(() => {
@@ -892,268 +1018,134 @@ const VacantRoleDetailsModal = ({
   }, [isOpen, canManage, isRoleOpen, roleApplications, roleInvitations, roleId]);
 
   useEffect(() => {
-    if (!isOpen || !canManage || !isRoleOpen || roleApplications.length === 0) {
+    if (applicantProfileIds.length === 0) {
       setApplicantProfileMap({});
       return;
     }
 
-    let cancelled = false;
+    if (
+      applicantProfileQueries.some(
+        (query) => query.isLoading || query.isFetching,
+      )
+    ) {
+      return;
+    }
 
-    const fetchApplicantProfiles = async () => {
-      const applicantIds = [
-        ...new Set(
-          roleApplications
-            .map((application) => {
-              const applicant = application?.applicant || {};
-              return applicant.id ?? application.applicant_id ?? null;
-            })
-            .filter((id) => id != null),
-        ),
-      ];
+    const nextProfileMap = {};
 
-      if (applicantIds.length === 0) {
-        setApplicantProfileMap({});
+    applicantProfileIds.forEach((applicantId, index) => {
+      const query = applicantProfileQueries[index];
+
+      if (query?.isError) {
+        console.warn("Could not fetch applicant profile details:", query.error);
         return;
       }
 
-      try {
-        const results = await Promise.allSettled(
-          applicantIds.map((id) => userService.getUserById(id)),
-        );
+      if (!query?.data) return;
 
-        if (cancelled) return;
+      nextProfileMap[String(applicantId)] = query.data;
+    });
 
-        const nextProfileMap = {};
-
-        results.forEach((result, index) => {
-          if (result.status !== "fulfilled") return;
-
-          const payload = result.value?.data ?? result.value;
-          const profile =
-            payload?.success !== undefined
-              ? payload?.data
-              : (payload?.data?.data ?? payload?.data ?? payload);
-
-          if (!profile) return;
-
-          nextProfileMap[String(applicantIds[index])] = profile;
-        });
-
-        setApplicantProfileMap(nextProfileMap);
-      } catch (err) {
-        console.warn("Could not fetch applicant profile details:", err);
-        if (!cancelled) {
-          setApplicantProfileMap({});
-        }
-      }
-    };
-
-    fetchApplicantProfiles();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [isOpen, canManage, isRoleOpen, roleApplications]);
+    setApplicantProfileMap(nextProfileMap);
+  }, [applicantProfileIds, applicantProfileQuerySignature]);
 
   useEffect(() => {
-    if (!isOpen || !canManage || !isRoleOpen || roleInvitations.length === 0) {
+    if (inviteeProfileIds.length === 0) {
       setInviteeProfileMap({});
       return;
     }
 
-    let cancelled = false;
+    if (
+      inviteeProfileQueries.some(
+        (query) => query.isLoading || query.isFetching,
+      )
+    ) {
+      return;
+    }
 
-    const fetchInviteeProfiles = async () => {
-      const inviteeIds = [
-        ...new Set(
-          roleInvitations
-            .map((invitation) => {
-              const invitee = invitation?.invitee || {};
-              return invitee.id ?? invitation.invitee_id ?? null;
-            })
-            .filter((id) => id != null),
-        ),
-      ];
+    const nextProfileMap = {};
 
-      if (inviteeIds.length === 0) {
-        setInviteeProfileMap({});
+    inviteeProfileIds.forEach((inviteeId, index) => {
+      const query = inviteeProfileQueries[index];
+
+      if (query?.isError) {
+        console.warn("Could not fetch invitee profile details:", query.error);
         return;
       }
 
-      try {
-        const results = await Promise.allSettled(
-          inviteeIds.map((id) => userService.getUserById(id)),
-        );
+      if (!query?.data) return;
 
-        if (cancelled) return;
+      nextProfileMap[String(inviteeId)] = query.data;
+    });
 
-        const nextProfileMap = {};
-
-        results.forEach((result, index) => {
-          if (result.status !== "fulfilled") return;
-
-          const payload = result.value?.data ?? result.value;
-          const profile =
-            payload?.success !== undefined
-              ? payload?.data
-              : (payload?.data?.data ?? payload?.data ?? payload);
-
-          if (!profile) return;
-
-          nextProfileMap[String(inviteeIds[index])] = profile;
-        });
-
-        setInviteeProfileMap(nextProfileMap);
-      } catch (err) {
-        console.warn("Could not fetch invitee profile details:", err);
-        if (!cancelled) {
-          setInviteeProfileMap({});
-        }
-      }
-    };
-
-    fetchInviteeProfiles();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [isOpen, canManage, isRoleOpen, roleInvitations]);
+    setInviteeProfileMap(nextProfileMap);
+  }, [inviteeProfileIds, inviteeProfileQuerySignature]);
 
   useEffect(() => {
-    if (
-      !isOpen ||
-      !displayRole ||
-      !canViewTeamMemberMatches ||
-      !isRoleOpen ||
-      teamMemberIdsKey === "[]"
-    ) {
+    if (!shouldFetchRoleMemberMatches) {
       setRoleTeamMembers((prev) => (prev.length === 0 ? prev : []));
       setTeamMembersLoading(false);
       return;
     }
 
-    let cancelled = false;
+    const hasPendingQuery = roleMemberMatchQueries.some(
+      (query) => query.isLoading || query.isFetching,
+    );
 
-    const fetchTeamMemberMatches = async () => {
-      const roleTags =
-        displayRole?.tags?.length > 0
-          ? displayRole.tags
-          : displayRole?.desiredTags || [];
-      const roleBadges =
-        displayRole?.badges?.length > 0
-          ? displayRole.badges
-          : displayRole?.desiredBadges || [];
-      const uniqueMembers = [
-        ...new Map(
-          teamMembers
-            .map((member) => {
-              const memberId = member?.userId ?? member?.user_id ?? null;
-              return memberId != null ? [String(memberId), member] : null;
-            })
-            .filter(Boolean),
-        ).entries(),
-      ];
+    setTeamMembersLoading(hasPendingQuery);
+    if (hasPendingQuery) return;
 
-      if (uniqueMembers.length === 0) {
-        setRoleTeamMembers([]);
-        setTeamMembersLoading(false);
-        return;
-      }
+    const nextRows = roleMemberMatchQueries
+      .map((query) => {
+        if (query.isError) {
+          console.warn("Could not fetch team member match data for role:", query.error);
+          return null;
+        }
+        if (!query.data) return null;
 
-      try {
-        setTeamMembersLoading(true);
+        const memberMatch = computeRoleUserMatch({
+          role: displayRole,
+          tags: roleMatchTags,
+          badges: roleMatchBadges,
+          user: query.data.member,
+          userTagMap: query.data.userTagMap,
+          userBadgeMap: query.data.userBadgeMap,
+        });
 
-        const results = await Promise.allSettled(
-          uniqueMembers.map(async ([memberKey, member]) => {
-            const memberId = memberKey;
-            const [profileRes, tagsRes, badgesRes] = await Promise.allSettled([
-              userService.getUserById(memberId),
-              userService.getUserTags(memberId),
-              userService.getUserBadges(memberId),
-            ]);
+        return {
+          memberId: query.data.memberId,
+          member: query.data.member,
+          teamRole: query.data.teamRole,
+          matchScore: memberMatch?.matchScore ?? null,
+          matchDetails: memberMatch?.matchDetails ?? null,
+        };
+      })
+      .filter(Boolean)
+      .sort((a, b) => {
+        const scoreA = Number(a?.matchScore);
+        const scoreB = Number(b?.matchScore);
+        const hasScoreA = Number.isFinite(scoreA);
+        const hasScoreB = Number.isFinite(scoreB);
 
-            const profile =
-              profileRes.status === "fulfilled"
-                ? extractProfilePayload(profileRes.value)
-                : null;
-            const memberProfile = {
-              ...(member || {}),
-              ...(profile || {}),
-            };
-            const memberTagMap =
-              tagsRes.status === "fulfilled"
-                ? buildTagLookup(extractListPayload(tagsRes.value))
-                : new Map();
-            const memberBadgeMap =
-              badgesRes.status === "fulfilled"
-                ? buildBadgeLookup(extractListPayload(badgesRes.value))
-                : new Map();
-            const memberMatch = computeRoleUserMatch({
-              role: displayRole,
-              tags: roleTags,
-              badges: roleBadges,
-              user: memberProfile,
-              userTagMap: memberTagMap,
-              userBadgeMap: memberBadgeMap,
-            });
+        if (hasScoreA && hasScoreB && scoreA !== scoreB) {
+          return scoreB - scoreA;
+        }
+        if (hasScoreA && !hasScoreB) return -1;
+        if (!hasScoreA && hasScoreB) return 1;
 
-            return {
-              memberId,
-              member: memberProfile,
-              teamRole: member?.role ?? null,
-              matchScore: memberMatch?.matchScore ?? null,
-              matchDetails: memberMatch?.matchDetails ?? null,
-            };
-          }),
+        return getDisplayName(a?.member ?? {}).localeCompare(
+          getDisplayName(b?.member ?? {}),
         );
+      });
 
-        if (cancelled) return;
-
-        const nextRows = results
-          .filter((result) => result.status === "fulfilled")
-          .map((result) => result.value)
-          .sort((a, b) => {
-            const scoreA = Number(a?.matchScore);
-            const scoreB = Number(b?.matchScore);
-            const hasScoreA = Number.isFinite(scoreA);
-            const hasScoreB = Number.isFinite(scoreB);
-
-            if (hasScoreA && hasScoreB && scoreA !== scoreB) {
-              return scoreB - scoreA;
-            }
-            if (hasScoreA && !hasScoreB) return -1;
-            if (!hasScoreA && hasScoreB) return 1;
-
-            return getDisplayName(a?.member ?? {}).localeCompare(
-              getDisplayName(b?.member ?? {}),
-            );
-          });
-
-        setRoleTeamMembers(nextRows);
-      } catch (error) {
-        console.warn("Could not fetch team member matches for role:", error);
-        if (!cancelled) {
-          setRoleTeamMembers([]);
-        }
-      } finally {
-        if (!cancelled) {
-          setTeamMembersLoading(false);
-        }
-      }
-    };
-
-    fetchTeamMemberMatches();
-
-    return () => {
-      cancelled = true;
-    };
+    setRoleTeamMembers(nextRows);
+    setTeamMembersLoading(false);
   }, [
-    isOpen,
     displayRole,
-    canViewTeamMemberMatches,
-    isRoleOpen,
-    teamMembers,
-    teamMemberIdsKey,
+    roleMatchBadges,
+    roleMatchTags,
+    roleMemberMatchQuerySignature,
+    shouldFetchRoleMemberMatches,
   ]);
 
   const handleApplicationAction = async (applicationId, action, response = "", fillRole = false) => {
