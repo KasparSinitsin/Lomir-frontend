@@ -34,8 +34,8 @@ import Alert from "../common/Alert";
 import Tooltip from "../common/Tooltip";
 import DemoAvatarOverlay from "../users/DemoAvatarOverlay";
 import { badgeService } from "../../services/badgeService";
-import { userService } from "../../services/userService";
 import { tagService } from "../../services/tagService";
+import { useUserTags } from "../../hooks/useUserQueries";
 import {
   getUserInitials,
   DEMO_PROFILE_TOOLTIP,
@@ -120,13 +120,19 @@ const BadgeAwardModal = ({
 
   // Tag picker state
   const [awardeeTags, setAwardeeTags] = useState([]);
-  const [tagsLoading, setTagsLoading] = useState(false);
   const [tagSearchQuery, setTagSearchQuery] = useState("");
   const [tagSearchResults, setTagSearchResults] = useState([]);
   const [tagSearching, setTagSearching] = useState(false);
   const [showTagSearch, setShowTagSearch] = useState(false);
   const tagSearchRef = useRef(null);
   const tagSearchTimerRef = useRef(null);
+  const {
+    data: fetchedAwardeeTags = [],
+    error: awardeeTagsError,
+    isLoading: tagsLoading,
+  } = useUserTags(awardeeId, {
+    enabled: Boolean(isOpen && awardeeId),
+  });
 
   // Get display name
   const getDisplayName = () => {
@@ -189,26 +195,16 @@ const BadgeAwardModal = ({
     fetchSharedTeams();
   }, [isOpen, awardeeId]);
 
-  // Fetch awardee's tags when modal opens
   useEffect(() => {
-    const fetchAwardeeTags = async () => {
-      if (!isOpen || !awardeeId) return;
+    setAwardeeTags(fetchedAwardeeTags);
+  }, [fetchedAwardeeTags]);
 
-      try {
-        setTagsLoading(true);
-        const response = await userService.getUserTags(awardeeId);
-        const tags = response?.data || [];
-        setAwardeeTags(tags);
-      } catch (err) {
-        console.error("Error fetching awardee tags:", err);
-        setAwardeeTags([]);
-      } finally {
-        setTagsLoading(false);
-      }
-    };
+  useEffect(() => {
+    if (!awardeeTagsError) return;
 
-    fetchAwardeeTags();
-  }, [isOpen, awardeeId]);
+    console.error("Error fetching awardee tags:", awardeeTagsError);
+    setAwardeeTags([]);
+  }, [awardeeTagsError]);
 
   // Reset form on close
   useEffect(() => {
@@ -392,7 +388,11 @@ const BadgeAwardModal = ({
 
       // Notify parent to refresh badge data
       if (onAwardComplete) {
-        onAwardComplete();
+        try {
+          await onAwardComplete();
+        } catch (refreshError) {
+          console.warn("Badge awarded, but refreshing badge data failed:", refreshError);
+        }
       }
 
       // Close after a brief delay

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { UI_TEXT } from "../../constants/uiText";
 import Modal from "../common/Modal";
 import UserBioSection from "./UserBioSection";
@@ -14,6 +15,8 @@ import {
   useUserBadges,
   useUserProfile,
   useUserTags,
+  userBadgesQueryKey,
+  userProfileQueryKey,
 } from "../../hooks/useUserQueries";
 import Button from "../common/Button";
 import Alert from "../common/Alert";
@@ -96,6 +99,7 @@ const UserDetailsModal = ({
   invitationPrefillRoleName = null,
 }) => {
   const { user: currentUser, isAuthenticated } = useAuth();
+  const queryClient = useQueryClient();
   const normalizedRoleMatchTagIds = useMemo(
     () => normalizeNumericSet(roleMatchTagIds),
     [roleMatchTagIds],
@@ -901,8 +905,13 @@ const UserDetailsModal = ({
           awardeeBio={user.bio}
           awardeeIsDemo={!!(user.is_synthetic ?? user.isSynthetic)}
           onAwardComplete={() => {
-            // Refresh user details to show updated badges
-            fetchUserDetails();
+            queryClient.invalidateQueries({
+              queryKey: userProfileQueryKey(user.id),
+            });
+            queryClient.invalidateQueries({
+              queryKey: userBadgesQueryKey(user.id),
+            });
+            viewedUserProfileQuery.refetch();
           }}
         />
       )}
