@@ -86,11 +86,19 @@ const InlineUserLink = ({
   // Normalize user ID from various possible field names
   const userId = user?.id || user?.user_id || user?.userId;
   const isFormerUser = isDeletedUser(user);
-  const hasInlineAvatar = Boolean(user?.avatar_url || user?.avatarUrl);
-  const hasInlineSyntheticFlag =
-    user?.is_synthetic != null || user?.isSynthetic != null;
+  // Only hydrate when the parent didn't pass enough to render a name —
+  // missing avatar / synthetic flag alone aren't worth a network round trip,
+  // since UserAvatar falls back to initials and the synthetic indicator is
+  // only meaningful for demo users.
+  const hasDisplayableName = Boolean(
+    user?.username ||
+      user?.first_name ||
+      user?.firstName ||
+      user?.last_name ||
+      user?.lastName,
+  );
   const needsInlineHydration =
-    !isFormerUser && Boolean(userId) && (!hasInlineAvatar || !hasInlineSyntheticFlag);
+    !isFormerUser && Boolean(userId) && !hasDisplayableName;
   const { data: resolvedInlineProfile = null } = useUserProfile(userId, {
     enabled: needsInlineHydration,
   });
