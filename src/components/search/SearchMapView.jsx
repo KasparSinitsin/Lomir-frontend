@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useQueries } from "@tanstack/react-query";
 import { createPortal } from "react-dom";
 import {
   AttributionControl,
@@ -36,9 +37,12 @@ import { useTeamModalSafe } from "../../contexts/TeamModalContext";
 import { useUserModalSafe } from "../../contexts/UserModalContext";
 import { useAuth } from "../../contexts/AuthContext";
 import { teamService } from "../../services/teamService";
-import { userService } from "../../services/userService";
 import useViewerPendingRequests from "../../hooks/useViewerPendingRequests";
 import useViewerTeamMemberships from "../../hooks/useViewerTeamMemberships";
+import {
+  fetchUserProfile,
+  userProfileQueryKey,
+} from "../../hooks/useUserQueries";
 import { getResultMatchScore } from "../../utils/teamMatchUtils";
 import { getMatchTier } from "../../utils/matchScoreUtils";
 import {
@@ -531,19 +535,6 @@ const getCityCoordinateFallback = (item) =>
   getCanonicalDemoLocation(item) ??
   CITY_COORDINATE_FALLBACKS[normalizeLocationKey(getItemCity(item))] ??
   null;
-
-const unwrapUserDetailsResponse = (response) => {
-  const payload = response?.data ?? response;
-  return firstObject(
-    payload?.data?.user,
-    payload?.data?.profile,
-    payload?.data?.data,
-    payload?.data,
-    payload?.user,
-    payload?.profile,
-    payload,
-  ) ?? null;
-};
 
 const mergeUserLocationDetails = (item, userDetails) => {
   if (!item || !userDetails) return item;
@@ -1978,15 +1969,6 @@ const SearchMapView = ({
   const [userLocationDetailsById, setUserLocationDetailsById] = useState({});
   const popupRef = useRef(null);
   const markerTooltipRef = useRef(null);
-  const userLocationFetchesRef = useRef(new Set());
-  const isMountedRef = useRef(false);
-
-  useEffect(() => {
-    isMountedRef.current = true;
-    return () => {
-      isMountedRef.current = false;
-    };
-  }, []);
 
   const refreshUserStatusData = useCallback(async () => {
     await Promise.all([
@@ -2094,7 +2076,6 @@ const SearchMapView = ({
       const userId = String(point.rawId);
       if (seenIds.has(userId)) return;
       if (Object.prototype.hasOwnProperty.call(userLocationDetailsById, userId)) return;
-      if (userLocationFetchesRef.current.has(userId)) return;
 
       seenIds.add(userId);
       ids.push(userId);
@@ -2102,43 +2083,48 @@ const SearchMapView = ({
 
     return ids;
   }, [normalizedPoints, userLocationDetailsById]);
+  const userLocationDetailQueries = useQueries({
+    queries: userIdsNeedingLocationDetails.map((userId) => ({
+      queryKey: userProfileQueryKey(userId),
+      queryFn: () => fetchUserProfile(userId),
+      staleTime: 30_000,
+    })),
+  });
+  const userLocationDetailQuerySignature = userLocationDetailQueries
+    .map(
+      (query) =>
+        `${query.status}:${query.dataUpdatedAt ?? 0}:${query.errorUpdatedAt ?? 0}`,
+    )
+    .join("|");
 
   useEffect(() => {
     if (userIdsNeedingLocationDetails.length === 0) return;
 
-    userIdsNeedingLocationDetails.forEach((userId) => {
-      userLocationFetchesRef.current.add(userId);
-    });
+    const entries = userIdsNeedingLocationDetails
+      .map((userId, index) => {
+        const query = userLocationDetailQueries[index];
+        if (query?.isSuccess) return [userId, query.data ?? null];
+        if (query?.isError) return [userId, null];
+        return null;
+      })
+      .filter(Boolean);
 
-    const fetchUserLocationDetails = async () => {
-      const entries = await Promise.all(
-        userIdsNeedingLocationDetails.map(async (userId) => {
-          try {
-            const response = await userService.getUserById(userId);
-            return [userId, unwrapUserDetailsResponse(response)];
-          } catch {
-            return [userId, null];
-          }
-        }),
-      );
+    if (entries.length === 0) return;
 
-      userIdsNeedingLocationDetails.forEach((userId) => {
-        userLocationFetchesRef.current.delete(userId);
-      });
-
-      if (!isMountedRef.current) return;
-
-      setUserLocationDetailsById((previousDetails) => {
-        const nextDetails = { ...previousDetails };
-        entries.forEach(([userId, details]) => {
+    setUserLocationDetailsById((previousDetails) => {
+      const nextDetails = { ...previousDetails };
+      entries.forEach(([userId, details]) => {
+        if (!Object.prototype.hasOwnProperty.call(nextDetails, userId)) {
           nextDetails[userId] = details;
-        });
-        return nextDetails;
+        }
       });
-    };
-
-    fetchUserLocationDetails();
-  }, [userIdsNeedingLocationDetails]);
+      return nextDetails;
+    });
+  }, [
+    userIdsNeedingLocationDetails,
+    userLocationDetailQueries,
+    userLocationDetailQuerySignature,
+  ]);
 
   const markerPoints = useMemo(
     () => normalizedPoints.filter((point) => point.hasCoordinates),
