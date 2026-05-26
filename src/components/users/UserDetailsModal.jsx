@@ -10,6 +10,11 @@ import TagAwardsModal from "../badges/TagAwardsModal";
 import UserProfileHeaderSection from "./UserProfileHeaderSection";
 import { messageService } from "../../services/messageService";
 import { userService } from "../../services/userService";
+import {
+  useUserBadges,
+  useUserProfile,
+  useUserTags,
+} from "../../hooks/useUserQueries";
 import Button from "../common/Button";
 import Alert from "../common/Alert";
 import Tooltip from "../common/Tooltip";
@@ -155,135 +160,130 @@ const UserDetailsModal = ({
   const isNumericUserId = /^\d+$/.test(String(userId ?? "").trim());
   const visibleUserBadges = Array.isArray(user?.badges) ? user.badges : [];
   const hiddenAwardIds = user?.hidden_award_ids ?? user?.hiddenAwardIds ?? [];
+  const viewedUserProfileQuery = useUserProfile(userId, {
+    enabled: Boolean(isOpen && userId),
+  });
+  const viewedUserTagsQuery = useUserTags(userId, {
+    enabled: Boolean(isOpen && userId),
+  });
+  const shouldFetchCurrentUserMatchData =
+    Boolean(
+      isOpen &&
+        isAuthenticated &&
+        currentUser?.id &&
+        Number(currentUser.id) !== Number(userId) &&
+        (showMatchHighlights || hasRoleMatchTagIds || hasRoleMatchBadgeNames),
+    ) &&
+    !hasRoleMatchTagIds &&
+    !hasRoleMatchBadgeNames;
+  const currentUserTagsQuery = useUserTags(currentUser?.id, {
+    enabled: shouldFetchCurrentUserMatchData,
+  });
+  const currentUserBadgesQuery = useUserBadges(currentUser?.id, {
+    enabled: shouldFetchCurrentUserMatchData,
+  });
+  const currentUserProfileQuery = useUserProfile(currentUser?.id, {
+    enabled: Boolean(
+      isOpen && isAuthenticated && currentUser?.id && showMatchHighlights,
+    ),
+  });
 
-  const fetchUserDetails = useCallback(async () => {
-    try {
-      setLoading(true);
+  useEffect(() => {
+    setLoading(viewedUserProfileQuery.isLoading);
+  }, [viewedUserProfileQuery.isLoading]);
+
+  useEffect(() => {
+    if (!isOpen || !userId) return;
+    if (!viewedUserProfileQuery.data) return;
+
+    const userData = viewedUserProfileQuery.data;
+    const preservedDistanceKm =
+      distanceKm ??
+      user?.distanceKm ??
+      user?.distance_km ??
+      userData?.distanceKm ??
+      userData?.distance_km ??
+      null;
+
+    setError(null);
+    setShowDeletedUserPlaceholder(false);
+    setUser({
+      ...userData,
+      distance_km: preservedDistanceKm,
+      distanceKm: preservedDistanceKm,
+    });
+
+    setFormData({
+      firstName: userData?.first_name || userData?.firstName || "",
+      lastName: userData?.last_name || userData?.lastName || "",
+      bio: userData?.bio || "",
+      postalCode: userData?.postal_code || userData?.postalCode || "",
+      selectedTags: [],
+      tagExperienceLevels: {},
+      tagInterestLevels: {},
+    });
+  }, [
+    distanceKm,
+    isOpen,
+    user?.distanceKm,
+    user?.distance_km,
+    userId,
+    viewedUserProfileQuery.data,
+  ]);
+
+  useEffect(() => {
+    if (!isOpen || !userId) return;
+    setUserTags(viewedUserTagsQuery.data ?? []);
+  }, [isOpen, userId, viewedUserTagsQuery.data]);
+
+  useEffect(() => {
+    if (!viewedUserProfileQuery.error) return;
+
+    console.error("Error fetching user details:", viewedUserProfileQuery.error);
+    if (viewedUserProfileQuery.error.response?.status === 404 && isNumericUserId) {
+      setUser(null);
+      setUserTags([]);
       setError(null);
-      setShowDeletedUserPlaceholder(false);
-
-      const response = await userService.getUserById(userId);
-
-      // Robust unwrap: axios response + API wrapper { success, data }
-      const payload = response?.data ?? response;
-      const userData =
-        payload?.success !== undefined
-          ? payload?.data
-          : (payload?.data?.data ?? payload?.data ?? payload);
-
-      const preservedDistanceKm =
-        distanceKm ??
-        user?.distanceKm ??
-        user?.distance_km ??
-        userData?.distanceKm ??
-        userData?.distance_km ??
-        null;
-
-      setUser({
-        ...userData,
-        distance_km: preservedDistanceKm,
-        distanceKm: preservedDistanceKm,
-      });
-
-      // Fetch full tag objects (with badge_credits)
-      try {
-        const tagsResponse = await userService.getUserTags(userId);
-        setUserTags(tagsResponse?.data || []);
-      } catch (tagErr) {
-        console.error("Error fetching user tags:", tagErr);
-        setUserTags([]);
-      }
-
-      setFormData({
-        firstName: userData?.first_name || userData?.firstName || "",
-        lastName: userData?.last_name || userData?.lastName || "",
-        bio: userData?.bio || "",
-        postalCode: userData?.postal_code || userData?.postalCode || "",
-        selectedTags: [],
-        tagExperienceLevels: {},
-        tagInterestLevels: {},
-      });
-    } catch (err) {
-      console.error("Error fetching user details:", err);
-      if (err.response?.status === 404 && isNumericUserId) {
-        setUser(null);
-        setUserTags([]);
-        setError(null);
-        setShowDeletedUserPlaceholder(true);
-        return;
-      }
-      setShowDeletedUserPlaceholder(false);
-      setError("Failed to load user details. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  }, [distanceKm, isNumericUserId, user?.distanceKm, user?.distance_km, userId]);
-
-  useEffect(() => {
-    if (isOpen && userId) {
-      fetchUserDetails();
-    }
-  }, [isOpen, userId, fetchUserDetails]);
-
-  // Fetch CURRENT user's tags/badges for overlap highlighting (not the viewed user's)
-  useEffect(() => {
-    if (
-      !showMatchHighlights &&
-      !hasRoleMatchTagIds &&
-      !hasRoleMatchBadgeNames
-    ) {
+      setShowDeletedUserPlaceholder(true);
       return;
     }
-    if (!isOpen || !isAuthenticated || !currentUser?.id) return;
-    // Don't highlight own profile
-    if (Number(currentUser.id) === Number(userId)) return;
-    // Skip when role context provides the matching data
-    if (hasRoleMatchTagIds || hasRoleMatchBadgeNames) return;
 
-    const fetchCurrentUserData = async () => {
-      try {
-        const tagsRes = await userService.getUserTags(currentUser.id);
-        const tagData = Array.isArray(tagsRes?.data)
-          ? tagsRes.data
-          : tagsRes?.data?.data || [];
-        const tagIds = new Set(
-          tagData
-            .map((t) => Number(t.tagId ?? t.tag_id ?? t.id))
-            .filter(Number.isFinite),
-        );
-        setCurrentUserTagIds(tagIds);
+    setShowDeletedUserPlaceholder(false);
+    setError("Failed to load user details. Please try again.");
+  }, [isNumericUserId, viewedUserProfileQuery.error]);
 
-        const badgesRes = await userService.getUserBadges(currentUser.id);
-        const badgeData = Array.isArray(badgesRes?.data)
-          ? badgesRes.data
-          : badgesRes?.data?.data || [];
-        const badgeNames = new Set(
-          badgeData
-            .map((b) =>
-              (b.badgeName ?? b.badge_name ?? b.name ?? "")
-                .trim()
-                .toLowerCase(),
-            )
-            .filter(Boolean),
-        );
-        setCurrentUserBadgeNames(badgeNames);
-      } catch (err) {
-        console.warn(
-          "Could not fetch current user data for matching highlights:",
-          err,
-        );
-      }
-    };
+  useEffect(() => {
+    if (!viewedUserTagsQuery.error) return;
 
-    fetchCurrentUserData();
+    console.error("Error fetching user tags:", viewedUserTagsQuery.error);
+    setUserTags([]);
+  }, [viewedUserTagsQuery.error]);
+
+  // Resolve CURRENT user's tags/badges for overlap highlighting (not the viewed user's)
+  useEffect(() => {
+    if (!shouldFetchCurrentUserMatchData) return;
+
+    const tagIds = new Set(
+      (currentUserTagsQuery.data ?? [])
+        .map((t) => Number(t.tagId ?? t.tag_id ?? t.id))
+        .filter(Number.isFinite),
+    );
+    setCurrentUserTagIds(tagIds);
+
+    const badgeNames = new Set(
+      (currentUserBadgesQuery.data ?? [])
+        .map((b) =>
+          (b.badgeName ?? b.badge_name ?? b.name ?? "")
+            .trim()
+            .toLowerCase(),
+        )
+        .filter(Boolean),
+    );
+    setCurrentUserBadgeNames(badgeNames);
   }, [
-    currentUser?.id,
-    hasRoleMatchBadgeNames,
-    hasRoleMatchTagIds,
-    isAuthenticated,
-    isOpen,
-    showMatchHighlights,
-    userId,
+    currentUserBadgesQuery.data,
+    currentUserTagsQuery.data,
+    shouldFetchCurrentUserMatchData,
   ]);
 
   useEffect(() => {
@@ -292,34 +292,34 @@ const UserDetailsModal = ({
       return;
     }
 
-    let cancelled = false;
+    setDistanceViewerUser(currentUserProfileQuery.data ?? currentUser);
+  }, [
+    currentUser,
+    currentUser?.id,
+    currentUserProfileQuery.data,
+    isAuthenticated,
+    isOpen,
+    showMatchHighlights,
+  ]);
 
-    const fetchDistanceViewerUser = async () => {
-      try {
-        const response = await userService.getUserById(currentUser.id);
-        const payload = response?.data ?? response;
-        const viewerData =
-          payload?.success !== undefined
-            ? payload?.data
-            : (payload?.data?.data ?? payload?.data ?? payload);
+  useEffect(() => {
+    if (!currentUserTagsQuery.error && !currentUserBadgesQuery.error) return;
 
-        if (!cancelled) {
-          setDistanceViewerUser(viewerData ?? currentUser);
-        }
-      } catch (err) {
-        console.warn("Could not fetch current user details for distance fallback:", err);
-        if (!cancelled) {
-          setDistanceViewerUser(currentUser);
-        }
-      }
-    };
+    console.warn("Could not fetch current user data for matching highlights:", {
+      tagsError: currentUserTagsQuery.error ?? null,
+      badgesError: currentUserBadgesQuery.error ?? null,
+    });
+  }, [currentUserBadgesQuery.error, currentUserTagsQuery.error]);
 
-    fetchDistanceViewerUser();
+  useEffect(() => {
+    if (!currentUserProfileQuery.error) return;
 
-    return () => {
-      cancelled = true;
-    };
-  }, [currentUser, currentUser?.id, isAuthenticated, isOpen, showMatchHighlights]);
+    console.warn(
+      "Could not fetch current user details for distance fallback:",
+      currentUserProfileQuery.error,
+    );
+    setDistanceViewerUser(currentUser);
+  }, [currentUser, currentUserProfileQuery.error]);
 
   useEffect(() => {
     setIsEditing(mode === "edit");

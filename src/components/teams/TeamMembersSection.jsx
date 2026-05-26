@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from "react";
+import React, { useMemo, useState } from "react";
+import { useQueries } from "@tanstack/react-query";
 import {
   Users,
   MapPin,
@@ -11,40 +12,16 @@ import {
 import RoleBadgeDropdown from "./RoleBadgeDropdown";
 import ScreenAlert from "../common/ScreenAlert";
 import { teamService } from "../../services/teamService";
-import { userService } from "../../services/userService";
+import {
+  fetchUserProfile,
+  userProfileQueryKey,
+} from "../../hooks/useUserQueries";
 import { formatDisplayName } from "../../utils/nameFormatters";
 import CardMetaItem from "../common/CardMetaItem";
 import CardMetaRow from "../common/CardMetaRow";
 import Tooltip from "../common/Tooltip";
 import DemoAvatarOverlay from "../users/DemoAvatarOverlay";
 import { DEMO_PROFILE_TOOLTIP, isSyntheticUser } from "../../utils/userHelpers";
-import { extractProfilePayload } from "../../utils/payloadExtractors";
-
-const memberSyntheticStatusCache = new Map();
-
-const getCachedMemberSyntheticStatus = async (memberId) => {
-  const cacheKey = String(memberId);
-
-  if (memberSyntheticStatusCache.has(cacheKey)) {
-    return memberSyntheticStatusCache.get(cacheKey);
-  }
-
-  const request = (async () => {
-    const response = await userService.getUserById(memberId);
-    return isSyntheticUser(extractProfilePayload(response));
-  })();
-
-  memberSyntheticStatusCache.set(cacheKey, request);
-
-  try {
-    const result = await request;
-    memberSyntheticStatusCache.set(cacheKey, Promise.resolve(result));
-    return result;
-  } catch (error) {
-    memberSyntheticStatusCache.delete(cacheKey);
-    throw error;
-  }
-};
 
 const getTeamMemberId = (member) =>
   member?.userId ??
@@ -78,8 +55,62 @@ const TeamMembersSection = ({
     message: null,
   });
   const [isExpanded, setIsExpanded] = useState(false);
-  const [syntheticMemberStatusMap, setSyntheticMemberStatusMap] = useState({});
   const COLLAPSED_COUNT = 4;
+  const members = useMemo(
+    () => (Array.isArray(team?.members) ? team.members : []),
+    [team?.members],
+  );
+  const memberSyntheticQueryIds = useMemo(() => {
+    const seenIds = new Set();
+    const ids = [];
+
+    members.forEach((member) => {
+      const memberId = getTeamMemberId(member);
+      if (memberId == null) return;
+
+      const hasInlineSyntheticFlag =
+        member?.is_synthetic != null || member?.isSynthetic != null;
+      if (hasInlineSyntheticFlag) return;
+
+      const key = String(memberId);
+      if (seenIds.has(key)) return;
+
+      seenIds.add(key);
+      ids.push(memberId);
+    });
+
+    return ids;
+  }, [members]);
+  const memberSyntheticQueries = useQueries({
+    queries: memberSyntheticQueryIds.map((memberId) => ({
+      queryKey: userProfileQueryKey(memberId),
+      queryFn: () => fetchUserProfile(memberId),
+      staleTime: 30_000,
+    })),
+  });
+  const syntheticMemberStatusMap = useMemo(() => {
+    const statuses = {};
+
+    members.forEach((member) => {
+      const memberId = getTeamMemberId(member);
+      if (memberId == null) return;
+
+      const hasInlineSyntheticFlag =
+        member?.is_synthetic != null || member?.isSynthetic != null;
+      if (hasInlineSyntheticFlag) {
+        statuses[String(memberId)] = isSyntheticUser(member);
+      }
+    });
+
+    memberSyntheticQueryIds.forEach((memberId, index) => {
+      const profile = memberSyntheticQueries[index]?.data;
+      if (!profile) return;
+
+      statuses[String(memberId)] = isSyntheticUser(profile);
+    });
+
+    return statuses;
+  }, [memberSyntheticQueries, memberSyntheticQueryIds, members]);
 
   // Helper function to get member initials (2 letters: "NK" for Nam Khoa)
   const getMemberInitials = (member) => {
@@ -97,71 +128,6 @@ const TeamMembersSection = ({
     }
     return "?";
   };
-
-  useEffect(() => {
-    const members = Array.isArray(team?.members) ? team.members : [];
-    const nextKnownStatuses = {};
-    const memberIdsToFetch = [];
-
-    members.forEach((member) => {
-      const memberId = getTeamMemberId(member);
-      if (memberId == null) return;
-
-      const cacheKey = String(memberId);
-      const hasInlineSyntheticFlag =
-        member?.is_synthetic != null || member?.isSynthetic != null;
-
-      if (hasInlineSyntheticFlag) {
-        const isDemoMember = isSyntheticUser(member);
-        nextKnownStatuses[cacheKey] = isDemoMember;
-        memberSyntheticStatusCache.set(cacheKey, Promise.resolve(isDemoMember));
-        return;
-      }
-
-      memberIdsToFetch.push(memberId);
-    });
-
-    if (Object.keys(nextKnownStatuses).length > 0) {
-      setSyntheticMemberStatusMap((prev) => ({
-        ...prev,
-        ...nextKnownStatuses,
-      }));
-    }
-
-    if (memberIdsToFetch.length === 0) {
-      return undefined;
-    }
-
-    let cancelled = false;
-
-    Promise.allSettled(
-      [...new Set(memberIdsToFetch)].map(async (memberId) => ({
-        memberId,
-        isSynthetic: await getCachedMemberSyntheticStatus(memberId),
-      })),
-    ).then((results) => {
-      if (cancelled) return;
-
-      const fetchedStatuses = {};
-
-      results.forEach((result) => {
-        if (result.status !== "fulfilled") return;
-
-        fetchedStatuses[String(result.value.memberId)] = result.value.isSynthetic;
-      });
-
-      if (Object.keys(fetchedStatuses).length > 0) {
-        setSyntheticMemberStatusMap((prev) => ({
-          ...prev,
-          ...fetchedStatuses,
-        }));
-      }
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [team?.members]);
 
   // Early return if no members
   if (!team?.members || team.members.length === 0) {

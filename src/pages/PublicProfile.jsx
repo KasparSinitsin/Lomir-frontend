@@ -7,17 +7,7 @@ import Alert from "../components/common/Alert";
 import BadgesDisplaySection from "../components/badges/BadgesDisplaySection";
 import UserAvatar from "../components/users/UserAvatar";
 import DeletedUserProfilePlaceholder from "../components/users/DeletedUserProfilePlaceholder";
-import { userService } from "../services/userService";
-
-const unwrapUserPayload = (response) => {
-  const payload = response?.data ?? response;
-
-  if (payload?.success !== undefined) {
-    return payload?.data ?? null;
-  }
-
-  return payload?.data?.data ?? payload?.data ?? payload ?? null;
-};
+import { useUserProfile } from "../hooks/useUserQueries";
 
 const getUserDisplayName = (user) => {
   const firstName = user?.firstName || user?.first_name || "";
@@ -30,65 +20,52 @@ const getUserDisplayName = (user) => {
 const PublicProfile = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [user, setUser] = useState(null);
   const [showDeletedUserPlaceholder, setShowDeletedUserPlaceholder] =
     useState(false);
 
   const isNumericUserId = /^\d+$/.test(String(id ?? "").trim());
+  const userProfileQuery = useUserProfile(id, {
+    enabled: Boolean(id),
+  });
+  const loading = Boolean(id) && userProfileQuery.isLoading;
 
   useEffect(() => {
-    let isCancelled = false;
-
-    const fetchUser = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        setShowDeletedUserPlaceholder(false);
-
-        const response = await userService.getUserById(id);
-        const userData = unwrapUserPayload(response);
-
-        if (isCancelled) return;
-
-        setUser(userData);
-      } catch (err) {
-        if (isCancelled) return;
-
-        console.error("Error fetching public profile:", err);
-
-        if (err.response?.status === 404 && isNumericUserId) {
-          setUser(null);
-          setError(null);
-          setShowDeletedUserPlaceholder(true);
-          return;
-        }
-
-        setUser(null);
-        setShowDeletedUserPlaceholder(false);
-        setError("Failed to load this profile. Please try again.");
-      } finally {
-        if (!isCancelled) {
-          setLoading(false);
-        }
-      }
-    };
-
     if (!id) {
-      setLoading(false);
+      setUser(null);
+      setShowDeletedUserPlaceholder(false);
       setError("No profile ID was provided.");
-      return () => {
-        isCancelled = true;
-      };
+      return;
     }
 
-    fetchUser();
+    setError(null);
+  }, [id]);
 
-    return () => {
-      isCancelled = true;
-    };
-  }, [id, isNumericUserId]);
+  useEffect(() => {
+    if (!userProfileQuery.data) return;
+
+    setUser(userProfileQuery.data);
+    setError(null);
+    setShowDeletedUserPlaceholder(false);
+  }, [userProfileQuery.data]);
+
+  useEffect(() => {
+    if (!userProfileQuery.error) return;
+
+    console.error("Error fetching public profile:", userProfileQuery.error);
+
+    if (userProfileQuery.error.response?.status === 404 && isNumericUserId) {
+      setUser(null);
+      setError(null);
+      setShowDeletedUserPlaceholder(true);
+      return;
+    }
+
+    setUser(null);
+    setShowDeletedUserPlaceholder(false);
+    setError("Failed to load this profile. Please try again.");
+  }, [isNumericUserId, userProfileQuery.error]);
 
   const displayName = useMemo(() => getUserDisplayName(user), [user]);
   const username = user?.username ? `@${user.username}` : null;

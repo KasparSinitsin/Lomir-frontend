@@ -1,41 +1,14 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { FlaskConical } from "lucide-react";
 import { useUserModalSafe } from "../../contexts/UserModalContext";
-import { userService } from "../../services/userService";
+import { useUserProfile } from "../../hooks/useUserQueries";
 import Tooltip from "../common/Tooltip";
 import { DEMO_PROFILE_TOOLTIP } from "../../utils/userHelpers";
 import {
   getDisplayName,
   isDeletedUser,
 } from "../../utils/deletedUser";
-import { extractProfilePayload } from "../../utils/payloadExtractors";
 import UserAvatar from "./UserAvatar";
-
-const inlineUserProfileCache = new Map();
-
-const getCachedInlineUserProfile = async (userId) => {
-  const cacheKey = String(userId);
-
-  if (inlineUserProfileCache.has(cacheKey)) {
-    return inlineUserProfileCache.get(cacheKey);
-  }
-
-  const request = (async () => {
-    const response = await userService.getUserById(userId);
-    return extractProfilePayload(response);
-  })();
-
-  inlineUserProfileCache.set(cacheKey, request);
-
-  try {
-    const result = await request;
-    inlineUserProfileCache.set(cacheKey, Promise.resolve(result));
-    return result;
-  } catch (error) {
-    inlineUserProfileCache.delete(cacheKey);
-    throw error;
-  }
-};
 
 const mergeInlineUserData = (user, profile) => {
   if (!profile) return user;
@@ -109,7 +82,6 @@ const InlineUserLink = ({
 }) => {
   // Try to get global modal context (returns null if not available)
   const userModalContext = useUserModalSafe();
-  const [resolvedInlineProfile, setResolvedInlineProfile] = useState(null);
 
   // Normalize user ID from various possible field names
   const userId = user?.id || user?.user_id || user?.userId;
@@ -119,31 +91,9 @@ const InlineUserLink = ({
     user?.is_synthetic != null || user?.isSynthetic != null;
   const needsInlineHydration =
     !isFormerUser && Boolean(userId) && (!hasInlineAvatar || !hasInlineSyntheticFlag);
-
-  useEffect(() => {
-    if (!needsInlineHydration) {
-      setResolvedInlineProfile(null);
-      return;
-    }
-
-    let cancelled = false;
-
-    getCachedInlineUserProfile(userId)
-      .then((profile) => {
-        if (!cancelled) {
-          setResolvedInlineProfile(profile);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setResolvedInlineProfile(null);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [needsInlineHydration, userId]);
+  const { data: resolvedInlineProfile = null } = useUserProfile(userId, {
+    enabled: needsInlineHydration,
+  });
 
   if (!user) return null;
 
