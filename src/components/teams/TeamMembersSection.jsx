@@ -1,5 +1,4 @@
 import React, { useMemo, useState } from "react";
-import { useQueries } from "@tanstack/react-query";
 import {
   Users,
   MapPin,
@@ -12,10 +11,6 @@ import {
 import RoleBadgeDropdown from "./RoleBadgeDropdown";
 import ScreenAlert from "../common/ScreenAlert";
 import { teamService } from "../../services/teamService";
-import {
-  fetchUserProfile,
-  userProfileQueryKey,
-} from "../../hooks/useUserQueries";
 import { formatDisplayName } from "../../utils/nameFormatters";
 import CardMetaItem from "../common/CardMetaItem";
 import CardMetaRow from "../common/CardMetaRow";
@@ -60,34 +55,10 @@ const TeamMembersSection = ({
     () => (Array.isArray(team?.members) ? team.members : []),
     [team?.members],
   );
-  const memberSyntheticQueryIds = useMemo(() => {
-    const seenIds = new Set();
-    const ids = [];
-
-    members.forEach((member) => {
-      const memberId = getTeamMemberId(member);
-      if (memberId == null) return;
-
-      const hasInlineSyntheticFlag =
-        member?.is_synthetic != null || member?.isSynthetic != null;
-      if (hasInlineSyntheticFlag) return;
-
-      const key = String(memberId);
-      if (seenIds.has(key)) return;
-
-      seenIds.add(key);
-      ids.push(memberId);
-    });
-
-    return ids;
-  }, [members]);
-  const memberSyntheticQueries = useQueries({
-    queries: memberSyntheticQueryIds.map((memberId) => ({
-      queryKey: userProfileQueryKey(memberId),
-      queryFn: () => fetchUserProfile(memberId),
-      staleTime: 30_000,
-    })),
-  });
+  // Only show the synthetic indicator when the parent embeds is_synthetic
+  // in the member object. Fetching profiles per member just to discover this
+  // flag was an N+1 (one round trip per member); the indicator is only
+  // meaningful for demo users, so gracefully degrade when the data is absent.
   const syntheticMemberStatusMap = useMemo(() => {
     const statuses = {};
 
@@ -102,15 +73,8 @@ const TeamMembersSection = ({
       }
     });
 
-    memberSyntheticQueryIds.forEach((memberId, index) => {
-      const profile = memberSyntheticQueries[index]?.data;
-      if (!profile) return;
-
-      statuses[String(memberId)] = isSyntheticUser(profile);
-    });
-
     return statuses;
-  }, [memberSyntheticQueries, memberSyntheticQueryIds, members]);
+  }, [members]);
 
   // Helper function to get member initials (2 letters: "NK" for Nam Khoa)
   const getMemberInitials = (member) => {
