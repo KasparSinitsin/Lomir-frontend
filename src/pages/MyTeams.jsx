@@ -28,6 +28,7 @@ import { enrichTeamMatchData } from "../utils/teamMatchUtils";
 import useClientPagination from "../hooks/useClientPagination";
 import useMyTeamsSort from "../hooks/useMyTeamsSort";
 import useViewerMatchProfile from "../hooks/useViewerMatchProfile";
+import useViewerPendingRequests from "../hooks/useViewerPendingRequests";
 
 import {
   RESULTS_PER_PAGE_OPTIONS,
@@ -42,13 +43,24 @@ const MY_TEAMS_LIST_BADGES_WIDTH_CLASSNAME = "sm:w-32";
 
 const MyTeams = () => {
   const [teams, setTeams] = useState([]);
-  const [pendingApplications, setPendingApplications] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [loadingApplications, setLoadingApplications] = useState(true);
-  const [pendingInvitations, setPendingInvitations] = useState([]);
-  const [loadingInvitations, setLoadingInvitations] = useState(true);
   const [error, setError] = useState(null);
   const { user } = useAuth();
+  const {
+    data: viewerPending,
+    isLoading: viewerPendingLoading,
+    refetch: refetchViewerPending,
+  } = useViewerPendingRequests(user?.id, { enabled: Boolean(user?.id) });
+  const pendingApplications = useMemo(
+    () => viewerPending?.applications ?? [],
+    [viewerPending],
+  );
+  const pendingInvitations = useMemo(
+    () => viewerPending?.invitations ?? [],
+    [viewerPending],
+  );
+  const loadingApplications = viewerPendingLoading;
+  const loadingInvitations = viewerPendingLoading;
   const { viewerMatchProfile, viewerDistanceSource } = useViewerMatchProfile({
     userId: user?.id,
   });
@@ -179,66 +191,15 @@ const MyTeams = () => {
     [user?.id],
   );
 
-  // Fetch pending applications
-  const fetchPendingApplications = useCallback(async () => {
-    if (!user?.id) return;
-
-    try {
-      setLoadingApplications(true);
-      const response = await teamService.getUserPendingApplications();
-
-      if (response.success) {
-        setPendingApplications(response.data || []);
-      }
-    } catch (err) {
-      console.error("Error fetching pending applications:", err);
-    } finally {
-      setLoadingApplications(false);
-    }
-  }, [user?.id]);
-
-  // Fetch pending invitations
-  const fetchPendingInvitations = useCallback(async () => {
-    if (!user?.id) return;
-
-    try {
-      setLoadingInvitations(true);
-      const response = await teamService.getUserReceivedInvitations();
-
-      if (response.success) {
-        setPendingInvitations(response.data || []);
-      }
-    } catch (err) {
-      console.error("Error fetching pending invitations:", err);
-    } finally {
-      setLoadingInvitations(false);
-    }
-  }, [user?.id]);
-
-  // Initial data fetch
-  useEffect(() => {
-    fetchPendingApplications();
-    fetchPendingInvitations();
-  }, [fetchPendingApplications, fetchPendingInvitations]);
-
-  const handleRequestNotification = useCallback((payload = {}) => {
-    const type = String(payload.type ?? payload.notificationType ?? "").toLowerCase();
-
-    if (!type || type.includes("application")) {
-      fetchPendingApplications();
-    }
-
-    if (!type || type.includes("invitation") || type.includes("invite")) {
-      fetchPendingInvitations();
-    }
-
+  const handleRequestNotification = useCallback(() => {
+    refetchViewerPending();
     // Also refresh the team list so each card's badge counts
     // (pendingApplicationsCount / pendingSentInvitationsCount) stay live
     // without per-card refetches.
     if (user?.id) {
       fetchUserTeams(currentPage, resultsPerPage);
     }
-  }, [fetchPendingApplications, fetchPendingInvitations, fetchUserTeams, user?.id, currentPage, resultsPerPage]);
+  }, [refetchViewerPending, fetchUserTeams, user?.id, currentPage, resultsPerPage]);
 
   useSocketEvents(
     user?.id
@@ -404,7 +365,7 @@ const MyTeams = () => {
   const handleApplicationCancel = async (applicationId) => {
     try {
       await teamService.cancelApplication(applicationId);
-      fetchPendingApplications();
+      refetchViewerPending();
     } catch (error) {
       console.error("Error canceling application:", error);
     }
@@ -432,7 +393,7 @@ const MyTeams = () => {
       );
 
       // Refresh the data
-      fetchPendingInvitations();
+      refetchViewerPending();
       fetchUserTeams(currentPage, resultsPerPage);
     } catch (error) {
       console.error("Error accepting invitation:", error);
@@ -451,7 +412,7 @@ const MyTeams = () => {
       );
 
       // Refresh the data
-      fetchPendingInvitations();
+      refetchViewerPending();
     } catch (error) {
       console.error("Error declining invitation:", error);
     }

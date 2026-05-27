@@ -43,12 +43,16 @@ import UserDetailsModal from "../users/UserDetailsModal";
 import DemoAvatarOverlay from "../users/DemoAvatarOverlay";
 import TagsDisplaySection from "../tags/TagsDisplaySection";
 import { UI_TEXT } from "../../constants/uiText";
+import { useQueryClient } from "@tanstack/react-query";
 import { useStructuredTags } from "../../hooks/useTagQueries";
 import {
   useUserBadges,
   useUserProfile,
   useUserTags,
 } from "../../hooks/useUserQueries";
+import useViewerPendingRequests, {
+  viewerPendingRequestsQueryKey,
+} from "../../hooks/useViewerPendingRequests";
 import RoleBadgeDropdown from "./RoleBadgeDropdown";
 import TeamApplicationButton from "./TeamApplicationButton";
 import TeamApplicationDetailsModal from "./TeamApplicationDetailsModal";
@@ -211,9 +215,6 @@ const TeamDetailsModal = ({
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isInvitationModalOpen, setIsInvitationModalOpen] = useState(false);
   const [localPendingApplication, setLocalPendingApplication] = useState(null);
-  // All fetched pending applications for this team (user may have both a team + a role application)
-  const [fetchedPendingApplications, setFetchedPendingApplications] = useState([]);
-  const [fetchedPendingInvitation, setFetchedPendingInvitation] = useState(null);
   const [isApplicationDetailsOpen, setIsApplicationDetailsOpen] =
     useState(false);
   const [selectedPendingApplication, setSelectedPendingApplication] =
@@ -265,10 +266,30 @@ const TeamDetailsModal = ({
   const currentUserProfileQuery = useUserProfile(user?.id, {
     enabled: Boolean(isModalVisible && isAuthenticated && user?.id),
   });
+  const queryClient = useQueryClient();
+  const { data: viewerPendingData } = useViewerPendingRequests(user?.id, {
+    enabled: Boolean(isModalVisible && isAuthenticated && user?.id),
+  });
+  const fetchedPendingApplications = useMemo(() => {
+    const apps = viewerPendingData?.applications ?? [];
+    if (!effectiveTeamId) return [];
+    return apps.filter(
+      (a) =>
+        String(a.team?.id ?? a.teamId ?? a.team_id) === String(effectiveTeamId),
+    );
+  }, [viewerPendingData, effectiveTeamId]);
+  const fetchedPendingInvitation = useMemo(() => {
+    const invs = viewerPendingData?.invitations ?? [];
+    if (!effectiveTeamId) return null;
+    return (
+      invs.find(
+        (i) =>
+          String(i.team?.id ?? i.teamId ?? i.team_id) ===
+          String(effectiveTeamId),
+      ) ?? null
+    );
+  }, [viewerPendingData, effectiveTeamId]);
   const handledMembersRefreshKeyRef = useRef(0);
-  // Tracks which teamId we last fetched application/invitation status for.
-  // Prevents double-firing in React StrictMode (dev) where effects run twice.
-  const statusFetchedForRef = useRef(null);
 
   const fetchTeamDetails = useCallback(
     async (forceRefresh = false) => {
@@ -493,51 +514,9 @@ const TeamDetailsModal = ({
 
   useEffect(() => {
     setLocalPendingApplication(null);
-    setFetchedPendingApplications([]);
-    setFetchedPendingInvitation(null);
     setIsApplicationDetailsOpen(false);
     setSelectedPendingApplication(null);
   }, [effectiveTeamId]);
-
-  // Fetch the user's pending application and invitation for this team when not
-  // supplied via props (e.g. when opened through TeamModalContext).
-  // The ref guard prevents double-firing: React StrictMode (dev) remounts effects
-  // synchronously, but refs survive the remount, so the second invocation is skipped.
-  useEffect(() => {
-    if (!isAuthenticated || !effectiveTeamId || !isModalVisible) return;
-    if (statusFetchedForRef.current === effectiveTeamId) return; // already fetched this open-session
-
-    statusFetchedForRef.current = effectiveTeamId;
-
-    const fetchUserStatus = async () => {
-      try {
-        const [appsRes, invsRes] = await Promise.allSettled([
-          teamService.getUserPendingApplications(),
-          teamService.getUserReceivedInvitations(),
-        ]);
-
-        if (appsRes.status === "fulfilled") {
-          const apps = appsRes.value?.data ?? appsRes.value ?? [];
-          const matches = apps.filter(
-            (a) => String(a.team?.id ?? a.teamId ?? a.team_id) === String(effectiveTeamId),
-          );
-          setFetchedPendingApplications(matches);
-        }
-
-        if (invsRes.status === "fulfilled") {
-          const invs = invsRes.value?.data ?? invsRes.value ?? [];
-          const match = invs.find(
-            (i) => String(i.team?.id ?? i.teamId ?? i.team_id) === String(effectiveTeamId),
-          );
-          setFetchedPendingInvitation(match ?? null);
-        }
-      } catch {
-        // Non-critical — silently ignore
-      }
-    };
-
-    fetchUserStatus();
-  }, [isAuthenticated, effectiveTeamId, isModalVisible]);
 
   useEffect(() => {
     if (isModalVisible && effectiveTeamId) {
@@ -604,8 +583,6 @@ const TeamDetailsModal = ({
     if (!isModalVisible) {
       setNotification({ type: null, message: null });
       setFormErrors({});
-      // Reset the status-fetch guard so the next open re-fetches fresh data
-      statusFetchedForRef.current = null;
     }
   }, [isModalVisible]);
 
@@ -2137,8 +2114,19 @@ on ${format(new Date((effectivePendingInvitation.createdAt ?? effectivePendingIn
             await teamService.cancelApplication(applicationId);
             setLocalPendingApplication(null);
             setSelectedPendingApplication(null);
-            setFetchedPendingApplications((prev) =>
-              prev.filter((a) => String(a.id) !== String(applicationId)),
+            // Optimistically drop the cancelled application from the viewer
+            // pending requests cache so the modal reflects it immediately.
+            queryClient.setQueryData(
+              viewerPendingRequestsQueryKey(user?.id),
+              (prev) => {
+                if (!prev) return prev;
+                return {
+                  ...prev,
+                  applications: (prev.applications ?? []).filter(
+                    (a) => String(a.id) !== String(applicationId),
+                  ),
+                };
+              },
             );
             setIsApplicationDetailsOpen(false);
             await fetchTeamDetails(true);
