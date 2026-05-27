@@ -14,9 +14,7 @@ import { messageService } from "../../services/messageService";
 import { useAuth } from "../../contexts/AuthContext";
 import { useTeamModal } from "../../contexts/TeamModalContext";
 import { buildRoleApplicationFilledMessage } from "../../utils/roleEventMessages";
-import { extractCandidateMatchData } from "../../utils/matchHelpers";
 
-const ROLE_CANDIDATE_FETCH_MIN_LIMIT = 20;
 const SELF_ROLE_MATCH_FETCH_LIMIT = 1000;
 
 /**
@@ -59,7 +57,6 @@ const TeamApplicationsModal = ({
   const [statusUpdatingRoleId, setStatusUpdatingRoleId] = useState(null);
   const [showCloseGuard, setShowCloseGuard] = useState(false);
   const [applicationDetailsFor, setApplicationDetailsFor] = useState(null);
-  const [roleCandidateMatchMap, setRoleCandidateMatchMap] = useState({});
   const [selfRoleMatchMap, setSelfRoleMatchMap] = useState({});
   const [polledRoleStatusMap, setPolledRoleStatusMap] = useState({});
   const [narrowMap, setNarrowMap] = useState({});
@@ -375,94 +372,6 @@ const TeamApplicationsModal = ({
     };
   }, [isOpen, teamId, currentUser?.id, applications]);
 
-  useEffect(() => {
-    if (!isOpen || applications.length === 0) {
-      setRoleCandidateMatchMap({});
-      return;
-    }
-
-    const applicantsByRole = applications.reduce((acc, application) => {
-      const roleId =
-        application?.role?.id ??
-        application?.roleId ??
-        application?.role_id ??
-        null;
-      const applicantId =
-        application?.applicant?.id ??
-        application?.applicant_id ??
-        null;
-
-      if (roleId == null || applicantId == null) {
-        return acc;
-      }
-
-      const roleKey = String(roleId);
-      if (!acc.has(roleKey)) {
-        acc.set(roleKey, new Set());
-      }
-      acc.get(roleKey).add(String(applicantId));
-      return acc;
-    }, new Map());
-
-    if (applicantsByRole.size === 0) {
-      setRoleCandidateMatchMap({});
-      return;
-    }
-
-    let cancelled = false;
-
-    const fetchCandidateMatches = async () => {
-      const roleEntries = [...applicantsByRole.entries()];
-
-      try {
-        const results = await Promise.allSettled(
-          roleEntries.map(([roleId, applicantIds]) =>
-            matchingService.getMatchingCandidates(roleId, {
-              limit: Math.max(applicantIds.size, ROLE_CANDIDATE_FETCH_MIN_LIMIT),
-            }),
-          ),
-        );
-
-        if (cancelled) return;
-
-        const nextMatchMap = {};
-
-        results.forEach((result, index) => {
-          if (result.status !== "fulfilled") return;
-
-          const [roleId] = roleEntries[index];
-          const roleMatches = {};
-
-          (result.value?.data || []).forEach((candidate) => {
-            const candidateId =
-              candidate?.id ??
-              candidate?.userId ??
-              candidate?.user_id ??
-              null;
-            if (candidateId == null) return;
-
-            roleMatches[String(candidateId)] = extractCandidateMatchData(candidate);
-          });
-
-          nextMatchMap[String(roleId)] = roleMatches;
-        });
-
-        setRoleCandidateMatchMap(nextMatchMap);
-      } catch (error) {
-        if (!cancelled) {
-          console.warn("Could not fetch application role match scores:", error);
-          setRoleCandidateMatchMap({});
-        }
-      }
-    };
-
-    fetchCandidateMatches();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [isOpen, applications]);
-
   // Poll role status every 20s so VacantRoleCard reflects changes made by others
   useEffect(() => {
     if (!isOpen || !teamId) return;
@@ -654,10 +563,6 @@ const TeamApplicationsModal = ({
                     syntheticRoleFlag,
                 }
               : null;
-        const applicantRoleMatch =
-          roleId != null && applicantId != null
-            ? roleCandidateMatchMap[String(roleId)]?.[String(applicantId)] ?? null
-            : null;
         const isSelfApplication =
           currentUser?.id === (application.applicant?.id ?? application.applicant_id);
         const isInternalRoleApplication = Boolean(
@@ -755,17 +660,15 @@ const TeamApplicationsModal = ({
                       role={role}
                       team={{ id: teamId, name: teamName }}
                       matchScore={
-                        applicantRoleMatch?.matchScore ??
                         selfRoleMatch?.matchScore ??
-                        role.matchScore ??
                         role.match_score ??
+                        role.matchScore ??
                         null
                       }
                       matchDetails={
-                        applicantRoleMatch?.matchDetails ??
                         selfRoleMatch?.matchDetails ??
-                        role.matchDetails ??
                         role.match_details ??
+                        role.matchDetails ??
                         null
                       }
                       canManage={false}
