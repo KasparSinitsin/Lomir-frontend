@@ -39,45 +39,15 @@ import {
 import { teamService } from "../../services/teamService";
 import { vacantRoleService } from "../../services/vacantRoleService";
 import useSocketEvents from "../../hooks/useSocketEvents";
+import {
+  isExistingMemberStatus,
+  normalizeBoolean,
+  normalizeNumericId,
+  numericIdsMatch,
+} from "../../utils/teamRequestUtils";
 
-const normalizeId = (value) => {
-  if (value === null || value === undefined || value === "") return null;
-
-  const numericValue = Number(value);
-  return Number.isFinite(numericValue) ? numericValue : null;
-};
-
-const idsMatch = (left, right) => {
-  const normalizedLeft = normalizeId(left);
-  const normalizedRight = normalizeId(right);
-
-  if (normalizedLeft === null || normalizedRight === null) return false;
-  return normalizedLeft === normalizedRight;
-};
-
-const normalizeBoolean = (value) => {
-  if (typeof value === "boolean") return value;
-  if (typeof value === "number") return value === 1;
-
-  if (typeof value === "string") {
-    const normalizedValue = value.trim().toLowerCase();
-    if (["true", "1", "yes"].includes(normalizedValue)) return true;
-    if (["false", "0", "no"].includes(normalizedValue)) return false;
-  }
-
-  return null;
-};
-
-const isExistingMemberStatus = (value) => {
-  if (typeof value !== "string") return false;
-
-  const normalizedValue = value.trim().toLowerCase();
-  return (
-    normalizedValue === "member" ||
-    normalizedValue === "existing-member" ||
-    normalizedValue === "existing_member"
-  );
-};
+const normalizeId = normalizeNumericId;
+const idsMatch = numericIdsMatch;
 
 const isInviteeExistingTeamMember = (team, inviteeId) => {
   if (!team || inviteeId === null || inviteeId === undefined) return false;

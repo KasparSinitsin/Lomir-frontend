@@ -27,33 +27,10 @@ import {
 import Alert from "../common/Alert";
 import { format } from "date-fns";
 import { useHydratedRole } from "../../hooks/useHydratedRole";
-
-const extractRoleMatchData = (roleLike) => {
-  const rawScore = roleLike?.matchScore ?? roleLike?.match_score ?? null;
-  const numericScore = Number(rawScore);
-
-  return {
-    matchScore: Number.isFinite(numericScore) ? numericScore : null,
-    matchDetails:
-      roleLike?.matchDetails ??
-      roleLike?.match_details ??
-      roleLike?.scoreBreakdown ??
-      null,
-  };
-};
-
-const normalizeBoolean = (value) => {
-  if (typeof value === "boolean") return value;
-  if (typeof value === "number") return value === 1;
-
-  if (typeof value === "string") {
-    const normalizedValue = value.trim().toLowerCase();
-    if (["true", "1", "yes"].includes(normalizedValue)) return true;
-    if (["false", "0", "no"].includes(normalizedValue)) return false;
-  }
-
-  return null;
-};
+import {
+  extractRoleMatchData,
+  normalizeBoolean,
+} from "../../utils/teamRequestUtils";
 
 /**
  * TeamApplicationDetailsModal Component

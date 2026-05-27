@@ -32,68 +32,13 @@ import { useHydratedRole } from "../../hooks/useHydratedRole";
 import DemoAvatarOverlay from "../users/DemoAvatarOverlay";
 import { DEMO_TEAM_TOOLTIP, isSyntheticTeam } from "../../utils/userHelpers";
 import { useAuth } from "../../contexts/AuthContext";
-
-const extractRoleMatchData = (roleLike) => {
-  const rawScore = roleLike?.matchScore ?? roleLike?.match_score ?? null;
-  const numericScore = Number(rawScore);
-
-  return {
-    matchScore: Number.isFinite(numericScore) ? numericScore : null,
-    matchDetails:
-      roleLike?.matchDetails ??
-      roleLike?.match_details ??
-      roleLike?.scoreBreakdown ??
-      null,
-  };
-};
-
-const normalizeBoolean = (value) => {
-  if (typeof value === "boolean") return value;
-  if (typeof value === "number") return value === 1;
-
-  if (typeof value === "string") {
-    const normalizedValue = value.trim().toLowerCase();
-    if (["true", "1", "yes"].includes(normalizedValue)) return true;
-    if (["false", "0", "no"].includes(normalizedValue)) return false;
-  }
-
-  return null;
-};
-
-const idsMatch = (left, right) => {
-  if (left === null || left === undefined || right === null || right === undefined) {
-    return false;
-  }
-
-  return String(left) === String(right);
-};
-
-const isExistingMemberStatus = (value) => {
-  if (typeof value !== "string") return false;
-
-  const normalizedValue = value.trim().toLowerCase();
-  return (
-    normalizedValue === "member" ||
-    normalizedValue === "existing-member" ||
-    normalizedValue === "existing_member"
-  );
-};
-
-const getMemberUserId = (member) => {
-  const memberUser = member?.user || member;
-
-  return (
-    member?.userId ??
-    member?.user_id ??
-    member?.memberId ??
-    member?.member_id ??
-    memberUser?.userId ??
-    memberUser?.user_id ??
-    memberUser?.id ??
-    member?.id ??
-    null
-  );
-};
+import {
+  extractRoleMatchData,
+  getMemberUserId,
+  idsMatch,
+  isExistingMemberStatus,
+  normalizeBoolean,
+} from "../../utils/teamRequestUtils";
 
 const isInviteeExistingTeamMember = ({ invitation, team, currentUser }) => {
   const inviteeId =
