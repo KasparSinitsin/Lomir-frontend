@@ -227,7 +227,7 @@ const sortByProximity = (items, sortDir) =>
 
 const SearchPage = () => {
   const location = useLocation();
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, loading: authLoading } = useAuth();
   const { data: structuredTags = [] } = useStructuredTags();
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -1041,6 +1041,10 @@ const SearchPage = () => {
   const showIncludeOwnTeamsFilter = isAuthenticated && searchType !== "users";
 
   useEffect(() => {
+    // Wait until auth resolves so we don't double-fetch with stale
+    // isAuthenticated baked into fetchData.
+    if (authLoading) return;
+
     const run = async () => {
       try {
         setLoading(true);
@@ -1111,6 +1115,7 @@ const SearchPage = () => {
 
     run();
   }, [
+    authLoading,
     fetchData,
     currentPage,
     resultsPerPage,
