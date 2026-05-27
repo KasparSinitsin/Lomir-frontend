@@ -35,6 +35,7 @@ import Tooltip from "../common/Tooltip";
 import DemoAvatarOverlay from "../users/DemoAvatarOverlay";
 import { badgeService } from "../../services/badgeService";
 import { tagService } from "../../services/tagService";
+import { useBadges, useSharedTeamsForAward } from "../../hooks/useBadgeQueries";
 import { useUserTags } from "../../hooks/useUserQueries";
 import {
   getUserInitials,
@@ -97,8 +98,6 @@ const BadgeAwardModal = ({
   onUserClick,
   onAwardComplete,
 }) => {
-  const [badges, setBadges] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
@@ -114,10 +113,6 @@ const BadgeAwardModal = ({
   const [selectedTag, setSelectedTag] = useState(null);
   const [reason, setReason] = useState("");
 
-  // Shared teams state
-  const [sharedTeams, setSharedTeams] = useState([]);
-  const [teamsLoading, setTeamsLoading] = useState(false);
-
   // Tag picker state
   const [awardeeTags, setAwardeeTags] = useState([]);
   const [tagSearchQuery, setTagSearchQuery] = useState("");
@@ -126,6 +121,20 @@ const BadgeAwardModal = ({
   const [showTagSearch, setShowTagSearch] = useState(false);
   const tagSearchRef = useRef(null);
   const tagSearchTimerRef = useRef(null);
+  const {
+    data: badges = [],
+    error: badgesError,
+    isLoading: loading,
+  } = useBadges({
+    enabled: Boolean(isOpen),
+  });
+  const {
+    data: sharedTeams = [],
+    error: sharedTeamsError,
+    isLoading: teamsLoading,
+  } = useSharedTeamsForAward(awardeeId, {
+    enabled: Boolean(isOpen && awardeeId),
+  });
   const {
     data: fetchedAwardeeTags = [],
     error: awardeeTagsError,
@@ -152,52 +161,22 @@ const BadgeAwardModal = ({
     return (awardeeFirstName || "").split(" ")[0] || awardeeUsername || "User";
   };
 
-  // Fetch all badges on open
-  useEffect(() => {
-    const fetchBadges = async () => {
-      if (!isOpen) return;
-
-      try {
-        setLoading(true);
-        setError(null);
-
-        const response = await badgeService.getAllBadges();
-        const badgeData = response?.data || [];
-        setBadges(badgeData);
-      } catch (err) {
-        console.error("Error fetching badges:", err);
-        setError("Failed to load badges. Please try again.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchBadges();
-  }, [isOpen]);
-
-  // Fetch shared teams when modal opens
-  useEffect(() => {
-    const fetchSharedTeams = async () => {
-      if (!isOpen || !awardeeId) return;
-
-      try {
-        setTeamsLoading(true);
-        const response = await badgeService.getSharedTeams(awardeeId);
-        setSharedTeams(response?.data || []);
-      } catch (err) {
-        console.error("Error fetching shared teams:", err);
-        setSharedTeams([]);
-      } finally {
-        setTeamsLoading(false);
-      }
-    };
-
-    fetchSharedTeams();
-  }, [isOpen, awardeeId]);
-
   useEffect(() => {
     setAwardeeTags(fetchedAwardeeTags);
   }, [fetchedAwardeeTags]);
+
+  useEffect(() => {
+    if (!badgesError) return;
+
+    console.error("Error fetching badges:", badgesError);
+    setError("Failed to load badges. Please try again.");
+  }, [badgesError]);
+
+  useEffect(() => {
+    if (!sharedTeamsError) return;
+
+    console.error("Error fetching shared teams:", sharedTeamsError);
+  }, [sharedTeamsError]);
 
   useEffect(() => {
     if (!awardeeTagsError) return;

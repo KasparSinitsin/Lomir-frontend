@@ -911,7 +911,6 @@ const UserDetailsModal = ({
             queryClient.invalidateQueries({
               queryKey: userBadgesQueryKey(user.id),
             });
-            viewedUserProfileQuery.refetch();
           }}
         />
       )}
