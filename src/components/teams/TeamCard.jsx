@@ -31,6 +31,7 @@ import { teamService } from "../../services/teamService";
 import { vacantRoleService } from "../../services/vacantRoleService";
 import { userService } from "../../services/userService";
 import useSocketEvents from "../../hooks/useSocketEvents";
+import useTeamRequestLists from "../../hooks/useTeamRequestLists";
 import { useAuth } from "../../contexts/AuthContext";
 import Alert from "../common/Alert";
 import ConfirmModal from "../common/ConfirmModal";
@@ -526,12 +527,8 @@ const TeamCard = ({
   const [userRole, setUserRole] = useState(null);
   const [teamData, setTeamData] = useState(normalizedData.team);
   const { user, isAuthenticated } = useAuth();
-  const [pendingApplications, setPendingApplications] = useState([]);
   const [isApplicationsModalOpen, setIsApplicationsModalOpen] = useState(false);
-  const [pendingSentInvitations, setPendingSentInvitations] = useState([]);
   const [isInvitesModalOpen, setIsInvitesModalOpen] = useState(false);
-  const [pendingApplicationsLoaded, setPendingApplicationsLoaded] = useState(false);
-  const [pendingInvitationsLoaded, setPendingInvitationsLoaded] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState(null);
   const [responses, setResponses] = useState({});
   const [isInvitationDetailsModalOpen, setIsInvitationDetailsModalOpen] =
@@ -693,45 +690,6 @@ const TeamCard = ({
     effectiveVariant,
   ]);
 
-  // Fetch pending applications (for team owners and admins)
-  const fetchPendingApplications = useCallback(async () => {
-    if (canManageInvitations && teamData?.id && effectiveVariant === "member") {
-      try {
-        const response = await teamService.getTeamApplications(teamData.id);
-        setPendingApplications(response.data || []);
-        setPendingApplicationsLoaded(true);
-      } catch (error) {
-        console.error("Error fetching applications:", error);
-        setPendingApplications([]);
-        setPendingApplicationsLoaded(true);
-      }
-    }
-  }, [canManageInvitations, teamData?.id, effectiveVariant]);
-
-  // Fetch sent invitations (for team owners and admins)
-  const fetchSentInvitations = useCallback(async () => {
-    if (canManageInvitations && teamData?.id && effectiveVariant === "member") {
-      try {
-        const response = await teamService.getTeamSentInvitations(teamData.id);
-        setPendingSentInvitations(response.data || []);
-        setPendingInvitationsLoaded(true);
-      } catch (error) {
-        console.error("Error fetching sent invitations:", error);
-        setPendingSentInvitations([]);
-        setPendingInvitationsLoaded(true);
-      }
-    }
-  }, [canManageInvitations, teamData?.id, effectiveVariant]);
-
-  useEffect(() => {
-    if (effectiveVariant !== "member" || !teamData?.id || !canManageInvitations) {
-      setPendingApplications([]);
-      setPendingSentInvitations([]);
-      setPendingApplicationsLoaded(false);
-      setPendingInvitationsLoaded(false);
-    }
-  }, [effectiveVariant, teamData?.id, canManageInvitations]);
-
   // Counts may be preloaded by the parent's list response (getUserTeams).
   // When present, we defer the full list fetch until the user actually opens
   // the corresponding modal. Note: postgres returns COUNT(*) as bigint which
@@ -756,6 +714,52 @@ const TeamCard = ({
   const hasPreloadedSentInvitationCount = Number.isFinite(
     preloadedSentInvitationCount,
   );
+  const canFetchTeamRequests =
+    canManageInvitations && Boolean(teamData?.id) && effectiveVariant === "member";
+  const shouldFetchApplications =
+    canFetchTeamRequests &&
+    (!hasPreloadedApplicationCount || isApplicationsModalOpen);
+  const shouldFetchInvitations =
+    canFetchTeamRequests &&
+    (!hasPreloadedSentInvitationCount || isInvitesModalOpen);
+  const {
+    applications: pendingApplications,
+    invitations: pendingSentInvitations,
+    applicationsLoaded: rawPendingApplicationsLoaded,
+    invitationsLoaded: rawPendingInvitationsLoaded,
+    refetchApplications,
+    refetchInvitations,
+  } = useTeamRequestLists(teamData?.id, {
+    enabled: canFetchTeamRequests,
+    applicationsEnabled: shouldFetchApplications,
+    invitationsEnabled: shouldFetchInvitations,
+  });
+  const pendingApplicationsLoaded =
+    canFetchTeamRequests && rawPendingApplicationsLoaded;
+  const pendingInvitationsLoaded =
+    canFetchTeamRequests && rawPendingInvitationsLoaded;
+
+  const fetchPendingApplications = useCallback(async () => {
+    if (!canFetchTeamRequests) return [];
+
+    const result = await refetchApplications();
+    if (result.error) {
+      console.error("Error fetching applications:", result.error);
+      return [];
+    }
+    return result.data ?? [];
+  }, [canFetchTeamRequests, refetchApplications]);
+
+  const fetchSentInvitations = useCallback(async () => {
+    if (!canFetchTeamRequests) return [];
+
+    const result = await refetchInvitations();
+    if (result.error) {
+      console.error("Error fetching sent invitations:", result.error);
+      return [];
+    }
+    return result.data ?? [];
+  }, [canFetchTeamRequests, refetchInvitations]);
 
   // Once the full list is loaded (after a modal open), state.length is the
   // source of truth. Otherwise fall back to the count from teamData.
@@ -769,30 +773,6 @@ const TeamCard = ({
     : hasPreloadedSentInvitationCount
       ? preloadedSentInvitationCount
       : 0;
-
-  // Eagerly fetch only when the parent didn't provide a count (older backend).
-  useEffect(() => {
-    if (hasPreloadedApplicationCount) return;
-    fetchPendingApplications();
-  }, [fetchPendingApplications, hasPreloadedApplicationCount]);
-
-  useEffect(() => {
-    if (hasPreloadedSentInvitationCount) return;
-    fetchSentInvitations();
-  }, [fetchSentInvitations, hasPreloadedSentInvitationCount]);
-
-  // Lazy-fetch the full list the first time the relevant modal opens.
-  useEffect(() => {
-    if (isApplicationsModalOpen && !pendingApplicationsLoaded) {
-      fetchPendingApplications();
-    }
-  }, [isApplicationsModalOpen, pendingApplicationsLoaded, fetchPendingApplications]);
-
-  useEffect(() => {
-    if (isInvitesModalOpen && !pendingInvitationsLoaded) {
-      fetchSentInvitations();
-    }
-  }, [isInvitesModalOpen, pendingInvitationsLoaded, fetchSentInvitations]);
 
   const handleTeamRequestEvent = useCallback((payload = {}) => {
     const payloadTeamId = payload.teamId ?? payload.team_id ?? null;
