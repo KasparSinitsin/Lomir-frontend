@@ -134,6 +134,7 @@ const TeamDetailsModal = ({
   membersRefreshKey = 0,
   zIndexStyle = null,
   boxZIndexStyle = null,
+  teamMemberBadges,
 }) => {
   const navigate = useNavigate();
   const { id: urlTeamId } = useParams();
@@ -790,9 +791,25 @@ const TeamDetailsModal = ({
     });
   }, [isEditing, team]); // formData.selectedTags intentionally excluded
 
-  // Fetch aggregated member badges when modal opens
+  // Fetch aggregated member badges when modal opens. If the parent provides
+  // teamMemberBadges, it owns this data: undefined = legacy self-fetch,
+  // null = parent loading, array = parent data ready.
   useEffect(() => {
     if (!isModalVisible || !effectiveTeamId) return;
+
+    if (teamMemberBadges !== undefined) {
+      if (Array.isArray(teamMemberBadges)) {
+        setTeamBadges(teamMemberBadges);
+        setTeamBadgesTotalCredits(
+          teamMemberBadges.reduce(
+            (sum, badge) =>
+              sum + Number(badge?.totalCredits ?? badge?.total_credits ?? 0),
+            0,
+          ),
+        );
+      }
+      return;
+    }
 
     const fetchTeamBadges = async () => {
       try {
@@ -807,7 +824,7 @@ const TeamDetailsModal = ({
     };
 
     fetchTeamBadges();
-  }, [isModalVisible, effectiveTeamId]);
+  }, [isModalVisible, effectiveTeamId, teamMemberBadges]);
 
   // Resolve current user's badge names for match highlighting
   useEffect(() => {

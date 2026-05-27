@@ -64,10 +64,10 @@ import {
   userProfileQueryKey,
   userTagsQueryKey,
 } from "../../hooks/useUserQueries";
-import { matchingService } from "../../services/matchingService";
 import { teamService } from "../../services/teamService";
 import { vacantRoleService } from "../../services/vacantRoleService";
 import { messageService } from "../../services/messageService";
+import useViewerPendingRequests from "../../hooks/useViewerPendingRequests";
 import { buildRoleInvitationAcceptedMessage } from "../../utils/roleEventMessages";
 import { getMatchTier } from "../../utils/matchScoreUtils";
 import {
@@ -250,13 +250,10 @@ const VacantRoleDetailsModal = ({
   const [applicationsLoading, setApplicationsLoading] = useState(false);
   const [applicationsModalOpen, setApplicationsModalOpen] = useState(false);
   const [highlightApplicantId, setHighlightApplicantId] = useState(null);
-  const [roleCandidateMatchMap, setRoleCandidateMatchMap] = useState({});
-  const [applicantProfileMap, setApplicantProfileMap] = useState({});
   const [roleInvitations, setRoleInvitations] = useState([]);
   const [invitationsLoading, setInvitationsLoading] = useState(false);
   const [invitationsModalOpen, setInvitationsModalOpen] = useState(false);
   const [highlightInviteeId, setHighlightInviteeId] = useState(null);
-  const [inviteeProfileMap, setInviteeProfileMap] = useState({});
   const [roleTeamMembers, setRoleTeamMembers] = useState([]);
   const [teamMembersLoading, setTeamMembersLoading] = useState(false);
   const [isApplicationsExpanded, setIsApplicationsExpanded] = useState(false);
@@ -361,13 +358,10 @@ const VacantRoleDetailsModal = ({
       setAllApplications([]);
       setApplicationsModalOpen(false);
       setHighlightApplicantId(null);
-      setRoleCandidateMatchMap({});
-      setApplicantProfileMap({});
       setRoleInvitations([]);
       setInvitationsLoading(false);
       setInvitationsModalOpen(false);
       setHighlightInviteeId(null);
-      setInviteeProfileMap({});
       setRoleTeamMembers([]);
       setTeamMembersLoading(false);
       setIsApplicationsExpanded(false);
@@ -422,6 +416,14 @@ const VacantRoleDetailsModal = ({
   const comparisonUserBadgesQuery = useUserBadges(comparisonUserId, {
     enabled: shouldFetchComparisonData,
   });
+  const {
+    data: viewerPendingData,
+    isLoading: viewerPendingLoading,
+    isFetching: viewerPendingFetching,
+    error: viewerPendingError,
+  } = useViewerPendingRequests(currentUser?.id, {
+    enabled: Boolean(isOpen && isAuthenticated && currentUser?.id),
+  });
   const roleMemberEntries = useMemo(
     () => [
       ...new Map(
@@ -454,6 +456,7 @@ const VacantRoleDetailsModal = ({
       displayRole &&
       canViewTeamMemberMatches &&
       isRoleOpen &&
+      isTeamMembersExpanded &&
       roleMemberEntries.length > 0,
   );
   const roleMemberMatchQueries = useQueries({
@@ -499,62 +502,6 @@ const VacantRoleDetailsModal = ({
         `${query.status}:${query.dataUpdatedAt ?? 0}:${query.errorUpdatedAt ?? 0}`,
     )
     .join("|");
-  const applicantProfileIds = useMemo(() => {
-    if (!isOpen || !canManage || !isRoleOpen) return [];
-
-    return [
-      ...new Set(
-        roleApplications
-          .map((application) => {
-            const applicant = application?.applicant || {};
-            return applicant.id ?? application.applicant_id ?? null;
-          })
-          .filter((id) => id != null)
-          .map(String),
-      ),
-    ];
-  }, [canManage, isOpen, isRoleOpen, roleApplications]);
-  const inviteeProfileIds = useMemo(() => {
-    if (!isOpen || !canManage || !isRoleOpen) return [];
-
-    return [
-      ...new Set(
-        roleInvitations
-          .map((invitation) => {
-            const invitee = invitation?.invitee || {};
-            return invitee.id ?? invitation.invitee_id ?? null;
-          })
-          .filter((id) => id != null)
-          .map(String),
-      ),
-    ];
-  }, [canManage, isOpen, isRoleOpen, roleInvitations]);
-  const applicantProfileQueries = useQueries({
-    queries: applicantProfileIds.map((applicantId) => ({
-      queryKey: userProfileQueryKey(applicantId),
-      queryFn: () => fetchUserProfile(applicantId),
-      staleTime: 30_000,
-    })),
-  });
-  const inviteeProfileQueries = useQueries({
-    queries: inviteeProfileIds.map((inviteeId) => ({
-      queryKey: userProfileQueryKey(inviteeId),
-      queryFn: () => fetchUserProfile(inviteeId),
-      staleTime: 30_000,
-    })),
-  });
-  const applicantProfileQuerySignature = applicantProfileQueries
-    .map(
-      (query) =>
-        `${query.status}:${query.dataUpdatedAt ?? 0}:${query.errorUpdatedAt ?? 0}`,
-    )
-    .join("|");
-  const inviteeProfileQuerySignature = inviteeProfileQueries
-    .map(
-      (query) =>
-        `${query.status}:${query.dataUpdatedAt ?? 0}:${query.errorUpdatedAt ?? 0}`,
-    )
-    .join("|");
   const roleNameForStatusMatch =
     displayRole?.roleName ??
     displayRole?.role_name ??
@@ -569,8 +516,6 @@ const VacantRoleDetailsModal = ({
       setViewerRoleStatusLoading(false);
       return;
     }
-
-    let cancelled = false;
 
     const fallbackTeam = {
       ...team,
@@ -667,87 +612,75 @@ const VacantRoleDetailsModal = ({
 
     setViewerRoleApplicationRecord(seededApplication);
     setViewerRoleInvitationRecord(seededInvitation);
-    setViewerRoleStatusLoading(true);
 
-    const fetchViewerRoleStatus = async () => {
-      const [applicationsResult, invitationsResult] = await Promise.allSettled([
-        teamService.getUserPendingApplications(),
-        teamService.getUserReceivedInvitations(),
-      ]);
+    if (viewerPendingLoading || viewerPendingFetching) {
+      setViewerRoleStatusLoading(true);
+      return;
+    }
 
-      if (cancelled) return;
-
-      let nextApplication = seededApplication;
-      let nextInvitation = seededInvitation;
-
-      if (applicationsResult.status === "fulfilled") {
-        const pendingApplications = Array.isArray(applicationsResult.value?.data)
-          ? applicationsResult.value.data
-          : [];
-        const foundApplication =
-          pendingApplications.find((application) =>
-            matchesRoleRecord(application, {
-              roleId,
-              teamId,
-              roleName: roleNameForStatusMatch,
-            }),
-          ) ?? null;
-
-        nextApplication = foundApplication
-          ? buildRoleStatusRecord(
-              foundApplication,
-              fallbackTeam,
-              fallbackRole,
-              { isInternalRoleApplication: viewerIsTeamMember },
-            )
-          : null;
-      }
-
-      if (invitationsResult.status === "fulfilled") {
-        const receivedInvitations = Array.isArray(invitationsResult.value?.data)
-          ? invitationsResult.value.data
-          : [];
-        const foundInvitation =
-          receivedInvitations.find((invitation) =>
-            matchesRoleRecord(invitation, {
-              roleId,
-              teamId,
-              roleName: roleNameForStatusMatch,
-            }),
-          ) ?? null;
-
-        nextInvitation = foundInvitation
-          ? buildRoleStatusRecord(
-              foundInvitation,
-              fallbackTeam,
-              fallbackRole,
-              { isInternal: viewerIsTeamMember },
-            )
-          : null;
-      }
-
-      setViewerRoleApplicationRecord(nextApplication);
-      setViewerRoleInvitationRecord(nextInvitation);
+    if (viewerPendingError) {
+      console.warn("Could not fetch viewer role status:", viewerPendingError);
       setViewerRoleStatusLoading(false);
-    };
+      return;
+    }
 
-    fetchViewerRoleStatus().catch((error) => {
-      console.warn("Could not fetch viewer role status:", error);
-      if (!cancelled) {
-        setViewerRoleApplicationRecord(seededApplication);
-        setViewerRoleInvitationRecord(seededInvitation);
-        setViewerRoleStatusLoading(false);
-      }
-    });
+    let nextApplication = seededApplication;
+    let nextInvitation = seededInvitation;
 
-    return () => {
-      cancelled = true;
-    };
+    const pendingApplications = Array.isArray(viewerPendingData?.applications)
+      ? viewerPendingData.applications
+      : [];
+    const foundApplication =
+      pendingApplications.find((application) =>
+        matchesRoleRecord(application, {
+          roleId,
+          teamId,
+          roleName: roleNameForStatusMatch,
+        }),
+      ) ?? null;
+
+    nextApplication = foundApplication
+      ? buildRoleStatusRecord(
+          foundApplication,
+          fallbackTeam,
+          fallbackRole,
+          { isInternalRoleApplication: viewerIsTeamMember },
+        )
+      : null;
+
+    const receivedInvitations = Array.isArray(viewerPendingData?.invitations)
+      ? viewerPendingData.invitations
+      : [];
+    const foundInvitation =
+      receivedInvitations.find((invitation) =>
+        matchesRoleRecord(invitation, {
+          roleId,
+          teamId,
+          roleName: roleNameForStatusMatch,
+        }),
+      ) ?? null;
+
+    nextInvitation = foundInvitation
+      ? buildRoleStatusRecord(
+          foundInvitation,
+          fallbackTeam,
+          fallbackRole,
+          { isInternal: viewerIsTeamMember },
+        )
+      : null;
+
+    setViewerRoleApplicationRecord(nextApplication);
+    setViewerRoleInvitationRecord(nextInvitation);
+    setViewerRoleStatusLoading(false);
   }, [
     displayRole,
     isAuthenticated,
     isOpen,
     viewerIsTeamMember,
+    viewerPendingData,
+    viewerPendingError,
+    viewerPendingFetching,
+    viewerPendingLoading,
     role,
     roleId,
     roleNameForStatusMatch,
@@ -948,138 +881,6 @@ const VacantRoleDetailsModal = ({
       cancelled = true;
     };
   }, [isOpen, canManage, teamId, roleId, status]);
-
-  useEffect(() => {
-    const roleCandidateIds = [
-      ...new Set(
-        [
-          ...roleApplications.map(
-            (application) => application?.applicant?.id ?? application?.applicant_id ?? null,
-          ),
-          ...roleInvitations.map(
-            (invitation) => invitation?.invitee?.id ?? invitation?.invitee_id ?? null,
-          ),
-        ]
-          .filter((id) => id != null)
-          .map(String),
-      ),
-    ];
-
-    if (!isOpen || !canManage || !roleId || !isRoleOpen || roleCandidateIds.length === 0) {
-      setRoleCandidateMatchMap({});
-      return;
-    }
-
-    let cancelled = false;
-
-    const fetchRoleCandidateMatches = async () => {
-      try {
-        const response = await matchingService.getMatchingCandidates(roleId, {
-          limit: Math.max(roleCandidateIds.length, 20),
-        });
-        if (cancelled) return;
-
-        const candidates = response?.data || [];
-        const nextMatchMap = {};
-
-        candidates.forEach((candidate) => {
-          const candidateId = candidate?.id ?? candidate?.userId ?? candidate?.user_id;
-          if (candidateId == null) return;
-
-          nextMatchMap[String(candidateId)] = {
-            ...candidate,
-            matchScore:
-              candidate?.matchScore ??
-              candidate?.match_score ??
-              candidate?.bestMatchScore ??
-              candidate?.best_match_score ??
-              null,
-            matchDetails:
-              candidate?.matchDetails ??
-              candidate?.match_details ??
-              null,
-          };
-        });
-
-        setRoleCandidateMatchMap(nextMatchMap);
-      } catch (err) {
-        console.warn("Could not fetch candidate match scores for role:", err);
-        if (!cancelled) {
-          setRoleCandidateMatchMap({});
-        }
-      }
-    };
-
-    fetchRoleCandidateMatches();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [isOpen, canManage, isRoleOpen, roleApplications, roleInvitations, roleId]);
-
-  useEffect(() => {
-    if (applicantProfileIds.length === 0) {
-      setApplicantProfileMap({});
-      return;
-    }
-
-    if (
-      applicantProfileQueries.some(
-        (query) => query.isLoading || query.isFetching,
-      )
-    ) {
-      return;
-    }
-
-    const nextProfileMap = {};
-
-    applicantProfileIds.forEach((applicantId, index) => {
-      const query = applicantProfileQueries[index];
-
-      if (query?.isError) {
-        console.warn("Could not fetch applicant profile details:", query.error);
-        return;
-      }
-
-      if (!query?.data) return;
-
-      nextProfileMap[String(applicantId)] = query.data;
-    });
-
-    setApplicantProfileMap(nextProfileMap);
-  }, [applicantProfileIds, applicantProfileQuerySignature]);
-
-  useEffect(() => {
-    if (inviteeProfileIds.length === 0) {
-      setInviteeProfileMap({});
-      return;
-    }
-
-    if (
-      inviteeProfileQueries.some(
-        (query) => query.isLoading || query.isFetching,
-      )
-    ) {
-      return;
-    }
-
-    const nextProfileMap = {};
-
-    inviteeProfileIds.forEach((inviteeId, index) => {
-      const query = inviteeProfileQueries[index];
-
-      if (query?.isError) {
-        console.warn("Could not fetch invitee profile details:", query.error);
-        return;
-      }
-
-      if (!query?.data) return;
-
-      nextProfileMap[String(inviteeId)] = query.data;
-    });
-
-    setInviteeProfileMap(nextProfileMap);
-  }, [inviteeProfileIds, inviteeProfileQuerySignature]);
 
   useEffect(() => {
     if (!shouldFetchRoleMemberMatches) {
@@ -1683,7 +1484,7 @@ const VacantRoleDetailsModal = ({
     if (userId == null) return null;
 
     const key = String(userId);
-    return teamMemberScoreMap[key] ?? roleCandidateMatchMap[key] ?? null;
+    return teamMemberScoreMap[key] ?? null;
   };
   const isCurrentTeamMember = (userId) =>
     userId != null && currentTeamMemberIds.has(String(userId));
@@ -2734,14 +2535,9 @@ const VacantRoleDetailsModal = ({
                     application.applicant_id ??
                     null;
                   const applicantMatch = getRoleCandidateMatch(applicantId);
-                  const applicantProfileDetails =
-                    applicantId != null
-                      ? applicantProfileMap[String(applicantId)] ?? null
-                      : null;
                   const applicantProfile = {
                     ...(applicant || {}),
                     ...(applicantMatch || {}),
-                    ...(applicantProfileDetails || {}),
                   };
                   const firstName =
                     applicantProfile.firstName ??
@@ -2945,14 +2741,9 @@ const VacantRoleDetailsModal = ({
                     invitation.invitee_id ??
                     null;
                   const inviteeMatch = getRoleCandidateMatch(inviteeId);
-                  const inviteeProfileDetails =
-                    inviteeId != null
-                      ? inviteeProfileMap[String(inviteeId)] ?? null
-                      : null;
                   const inviteeProfile = {
                     ...(invitee || {}),
                     ...(inviteeMatch || {}),
-                    ...(inviteeProfileDetails || {}),
                   };
                   const firstName =
                     inviteeProfile.firstName ??
@@ -3130,7 +2921,33 @@ const VacantRoleDetailsModal = ({
           ) : null
         )}
 
-        {canViewTeamMemberMatches && isRoleOpen && (
+        {canViewTeamMemberMatches &&
+          isRoleOpen &&
+          roleMemberEntries.length > 0 &&
+          !isTeamMembersExpanded && (
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center">
+                  <Users size={18} className="mr-2 text-primary flex-shrink-0" />
+                  <h3 className="font-medium">Available team members</h3>
+                </div>
+                <span className="text-sm text-base-content/50">
+                  ({roleMemberEntries.length})
+                </span>
+              </div>
+
+              <button
+                type="button"
+                className="flex items-center gap-1 text-sm text-base-content/50 hover:text-base-content/80 transition-colors"
+                onClick={() => setIsTeamMembersExpanded(true)}
+              >
+                <ChevronRight size={14} />
+                Show matches
+              </button>
+            </div>
+          )}
+
+        {canViewTeamMemberMatches && isRoleOpen && isTeamMembersExpanded && (
           teamMembersLoading ? (
             <div className="flex justify-center py-3">
               <span className="loading loading-spinner loading-sm text-primary"></span>

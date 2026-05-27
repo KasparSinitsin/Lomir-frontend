@@ -2488,6 +2488,7 @@ const TeamCard = ({
           matchScore={teamModalRawScore ?? null}
           matchType={teamModalMatchType}
           matchDetails={teamModalMatchDetails}
+          teamMemberBadges={teamMemberBadges}
         />
 
         {/* Applications Modal (for team owners and admins) */}
@@ -3058,6 +3059,7 @@ const TeamCard = ({
         matchScore={teamModalRawScore ?? null}
         matchType={teamModalMatchType}
         matchDetails={teamModalMatchDetails}
+        teamMemberBadges={teamMemberBadges}
       />
 
       {/* Applications Modal (for team owners and admins) */}
