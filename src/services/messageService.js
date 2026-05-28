@@ -2,6 +2,34 @@ import api, { call } from "./api";
 
 let _pendingUnreadCount = null;
 
+const normalizeUnreadCountPayload = (payload) => {
+  const data = payload?.data ?? payload ?? {};
+  const rawFirstUnread = data.firstUnread ?? data.first_unread ?? null;
+  const firstUnread = rawFirstUnread
+    ? {
+        ...rawFirstUnread,
+        conversationId:
+          rawFirstUnread.conversationId ?? rawFirstUnread.conversation_id,
+        conversation_id:
+          rawFirstUnread.conversation_id ?? rawFirstUnread.conversationId,
+      }
+    : null;
+
+  return {
+    ...payload,
+    data: {
+      ...data,
+      count: data.count ?? 0,
+      firstUnread,
+      first_unread: firstUnread,
+      teamCount: data.teamCount ?? data.team_count ?? 0,
+      team_count: data.team_count ?? data.teamCount ?? 0,
+      senderCount: data.senderCount ?? data.sender_count ?? 0,
+      sender_count: data.sender_count ?? data.senderCount ?? 0,
+    },
+  };
+};
+
 export const messageService = {
   getConversations: () =>
     call("fetching conversations", () =>
@@ -14,8 +42,10 @@ export const messageService = {
     if (_pendingUnreadCount) return _pendingUnreadCount;
 
     _pendingUnreadCount = call("fetching unread count", () =>
-      api.get("/api/messages/unread-count"),
-    ).finally(() => {
+      api.get("/api/messages/unread-count", {
+        skipResponseCaseTransform: true,
+      }),
+    ).then(normalizeUnreadCountPayload).finally(() => {
       _pendingUnreadCount = null;
     });
 

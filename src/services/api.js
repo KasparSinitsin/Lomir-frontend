@@ -20,6 +20,7 @@ api.interceptors.request.use(
     }
 
     if (
+      config.skipRequestCaseTransform !== true &&
       config.data &&
       typeof config.data === "object" &&
       !(config.data instanceof FormData)
@@ -35,7 +36,7 @@ api.interceptors.request.use(
 // Add response interceptor to convert response data to camelCase
 api.interceptors.response.use(
   (response) => {
-    if (response.data) {
+    if (response.config?.skipResponseCaseTransform !== true && response.data) {
       response.data = snakeToCamel(response.data);
     }
     return response;
