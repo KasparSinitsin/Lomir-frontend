@@ -79,6 +79,7 @@ const InlineUserLink = ({
   avatarSize = "w-4 h-4",
   className = "",
   showAvatar = true,
+  displayName,
 }) => {
   // Try to get global modal context (returns null if not available)
   const userModalContext = useUserModalSafe();
@@ -108,7 +109,7 @@ const InlineUserLink = ({
   // Determine if we can handle clicks
   const canClick = !isFormerUser && userId && (userModalContext || onOpenUser);
   const inlineUser = mergeInlineUserData(user, resolvedInlineProfile);
-  const name = getDisplayName(inlineUser) || "Unknown";
+  const name = displayName ?? (getDisplayName(inlineUser) || "Unknown");
   const showDemoIndicator = !isFormerUser && Boolean(inlineUser?.is_synthetic || inlineUser?.isSynthetic);
 
   const handleClick = (e) => {

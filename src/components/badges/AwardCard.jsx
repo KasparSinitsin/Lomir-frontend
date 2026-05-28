@@ -29,6 +29,8 @@ import {
   getDisplayName as getDeletedUserDisplayName,
   isDeletedUser,
 } from "../../utils/deletedUser";
+import { formatDisplayName } from "../../utils/nameFormatters";
+import { getDisplayName } from "../../utils/userHelpers";
 
 /**
  * AwardCard
@@ -167,6 +169,8 @@ const AwardCard = ({
     award?.awardedByUsername || award?.awarded_by_username;
   const awardedByAvatarUrl =
     award?.awardedByAvatarUrl || award?.awarded_by_avatar_url;
+  const awardedByIsSynthetic =
+    award?.awardedByIsSynthetic ?? award?.awarded_by_is_synthetic ?? false;
 
   const awardedByUser = {
     id: awardedByUserId,
@@ -174,6 +178,7 @@ const AwardCard = ({
     last_name: awardedByLastName,
     username: awardedByUsername,
     avatar_url: awardedByAvatarUrl,
+    is_synthetic: awardedByIsSynthetic,
   };
 
   // --- Awarded TO / Awardee (title row — team context) ---
@@ -187,6 +192,8 @@ const AwardCard = ({
     award?.awardedToUsername || award?.awarded_to_username || null;
   const awardedToAvatarUrl =
     award?.awardedToAvatarUrl || award?.awarded_to_avatar_url || null;
+  const awardedToIsSynthetic =
+    award?.awardedToIsSynthetic ?? award?.awarded_to_is_synthetic ?? false;
 
   const hasAwardeeInfo = Boolean(awardedToUserId);
 
@@ -606,20 +613,57 @@ const AwardCard = ({
       <div className="flex items-end justify-between mt-auto pt-3 gap-2">
         {hasAwardeeInfo ? (
           <InlineUserLink
-            label="Awarded to"
+            label={
+              <>
+                <span className="hidden sm:inline">Awarded </span>to
+              </>
+            }
             user={{
               id: awardedToUserId,
               first_name: awardedToFirstName,
               last_name: awardedToLastName,
               username: awardedToUsername,
               avatar_url: awardedToAvatarUrl,
+              is_synthetic: awardedToIsSynthetic,
             }}
+            displayName={
+              <>
+                <span className="hidden sm:inline">
+                  {getDisplayName({
+                    first_name: awardedToFirstName,
+                    last_name: awardedToLastName,
+                    username: awardedToUsername,
+                  })}
+                </span>
+                <span className="sm:hidden">
+                  {formatDisplayName({
+                    first_name: awardedToFirstName,
+                    last_name: awardedToLastName,
+                    username: awardedToUsername,
+                  })}
+                </span>
+              </>
+            }
             onOpenUser={openUser}
           />
         ) : (
           <InlineUserLink
-            label="Awarded by"
+            label={
+              <>
+                <span className="hidden sm:inline">Awarded </span>by
+              </>
+            }
             user={awardedByUser}
+            displayName={
+              <>
+                <span className="hidden sm:inline">
+                  {getDisplayName(awardedByUser)}
+                </span>
+                <span className="sm:hidden">
+                  {formatDisplayName(awardedByUser)}
+                </span>
+              </>
+            }
             onOpenUser={openUser}
           />
         )}
@@ -627,11 +671,18 @@ const AwardCard = ({
         <div className="flex flex-col items-end gap-1">
           <div className="flex items-center gap-1 text-xs text-base-content/60 leading-tight">
             <Calendar size={12} className="flex-shrink-0" />
-            <span>
-              {awardedAt
-                ? format(new Date(awardedAt), "MMM d, yyyy")
-                : "Unknown"}
-            </span>
+            {awardedAt ? (
+              <>
+                <span className="hidden sm:inline">
+                  {format(new Date(awardedAt), "MMM d, yyyy")}
+                </span>
+                <span className="sm:hidden">
+                  {format(new Date(awardedAt), "MM/dd/yy")}
+                </span>
+              </>
+            ) : (
+              <span>Unknown</span>
+            )}
           </div>
         </div>
       </div>
