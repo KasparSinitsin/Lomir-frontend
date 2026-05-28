@@ -40,10 +40,19 @@ const FIELD_ALIASES = [
   ["lastMessageImageUrl", "last_message_image_url"],
   ["latestMessageImageUrl", "latest_message_image_url"],
   ["fileName", "file_name"],
+  ["fileSize", "file_size"],
   ["fileUrl", "file_url"],
+  ["fileExpiresAt", "file_expires_at"],
+  ["fileDeletedAt", "file_deleted_at"],
   ["imageUrl", "image_url"],
   ["replyTo", "reply_to"],
+  ["replyToId", "reply_to_id"],
   ["unreadCount", "unread_count"],
+  ["readByUsers", "read_by_users"],
+  ["readCount", "read_count"],
+  ["recipientCount", "recipient_count"],
+  ["editedAt", "edited_at"],
+  ["isEdited", "is_edited"],
   ["membershipStatus", "membership_status"],
   ["memberStatus", "member_status"],
   ["roleName", "role_name"],
@@ -97,11 +106,20 @@ const normalizeChatMessage = (message) => {
   if (!message || typeof message !== "object") return message;
   const normalized = addCaseAliases(message);
   const sender = normalizeChatUser(normalized.sender);
+  const readByUsers = Array.isArray(normalized.readByUsers)
+    ? normalized.readByUsers.map(normalizeChatUser)
+    : normalized.readByUsers;
   const replyTo = normalizeChatMessage(normalized.replyTo);
 
   return {
     ...normalized,
     ...(sender !== undefined ? { sender } : {}),
+    ...(readByUsers !== undefined
+      ? {
+          readByUsers,
+          read_by_users: readByUsers,
+        }
+      : {}),
     ...(replyTo !== undefined
       ? {
           replyTo,
@@ -196,6 +214,37 @@ const normalizeConversationPayload = (payload) => {
   };
 };
 
+const normalizeMessagesPayload = (payload) => {
+  const rawMessages = Array.isArray(payload)
+    ? payload
+    : Array.isArray(payload?.data)
+      ? payload.data
+      : Array.isArray(payload?.data?.messages)
+        ? payload.data.messages
+        : Array.isArray(payload?.messages)
+          ? payload.messages
+          : [];
+  const messages = rawMessages.map(normalizeChatMessage);
+  const hasMore =
+    payload?.hasMore ??
+    payload?.has_more ??
+    payload?.data?.hasMore ??
+    payload?.data?.has_more ??
+    false;
+
+  if (Array.isArray(payload)) {
+    return { data: messages, hasMore };
+  }
+
+  return {
+    ...payload,
+    data: messages,
+    hasMore,
+    has_more: payload?.has_more ?? hasMore,
+    ...(Array.isArray(payload?.messages) ? { messages } : {}),
+  };
+};
+
 const normalizeUnreadCountPayload = (payload) => {
   const data = payload?.data ?? payload ?? {};
   const rawFirstUnread = data.firstUnread ?? data.first_unread ?? null;
@@ -264,8 +313,11 @@ export const messageService = {
       () =>
         api.get(
           `/api/messages/conversations/${conversationId}/messages?${params.toString()}`,
+          {
+            skipResponseCaseTransform: true,
+          },
         ),
-    );
+    ).then(normalizeMessagesPayload);
   },
 
   sendMessage: (conversationId, content, type = "direct") =>
