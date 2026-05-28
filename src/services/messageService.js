@@ -186,6 +186,16 @@ const normalizeConversationListPayload = (payload) => {
   };
 };
 
+const normalizeConversationPayload = (payload) => {
+  const rawConversation = payload?.data ?? payload ?? null;
+  const conversation = normalizeConversation(rawConversation);
+
+  return {
+    ...payload,
+    data: conversation,
+  };
+};
+
 const normalizeUnreadCountPayload = (payload) => {
   const data = payload?.data ?? payload ?? {};
   const rawFirstUnread = data.firstUnread ?? data.first_unread ?? null;
@@ -240,8 +250,10 @@ export const messageService = {
 
   getConversationById: (conversationId, type = "direct") =>
     call(`fetching conversation ${conversationId}`, () =>
-      api.get(`/api/messages/conversations/${conversationId}?type=${type}`),
-    ),
+      api.get(`/api/messages/conversations/${conversationId}?type=${type}`, {
+        skipResponseCaseTransform: true,
+      }),
+    ).then(normalizeConversationPayload),
 
   getMessages: (conversationId, type = "direct", { before, limit } = {}) => {
     const params = new URLSearchParams({ type });
