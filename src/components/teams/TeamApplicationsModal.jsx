@@ -17,7 +17,10 @@ import usePolledRequestRoles from "../../hooks/usePolledRequestRoles";
 import useSelfRoleMatchMap from "../../hooks/useSelfRoleMatchMap";
 import {
   buildApplicationRoleForCard,
+  getRequestDateValue,
+  getRequestUserId,
   getRequestRoleId,
+  isRequestForUser,
 } from "../../utils/teamRequestUtils";
 
 /**
@@ -276,16 +279,6 @@ const TeamApplicationsModal = ({
     }
   };
 
-  // ============ Helper Functions ============
-  const getApplicationDate = (application) => {
-    return (
-      application?.created_at ||
-      application?.createdAt ||
-      application?.date ||
-      application?.applied_at
-    );
-  };
-
   // ============ Effects ============
   useEffect(() => {
     if (!isOpen || (!highlightApplicationId && !highlightUserId)) return;
@@ -387,8 +380,7 @@ const TeamApplicationsModal = ({
       }
     >
       {applications.map((application) => {
-        const applicantId =
-          application?.applicant?.id ?? application?.applicant_id ?? null;
+        const applicantId = getRequestUserId(application, "applicant");
         const roleId = getRequestRoleId(application);
         const roleOverride = roleId ? roleStatusOverrides[roleId] : null;
         const polledRole = roleId ? polledRoleStatusMap[String(roleId)] : null;
@@ -397,8 +389,11 @@ const TeamApplicationsModal = ({
           polledRole,
           roleOverride,
         );
-        const isSelfApplication =
-          currentUser?.id === (application.applicant?.id ?? application.applicant_id);
+        const isSelfApplication = isRequestForUser(
+          application,
+          "applicant",
+          currentUser?.id,
+        );
         const isInternalRoleApplication = Boolean(
           application?.isInternalRoleApplication ??
             application?.is_internal_role_application ??
@@ -466,7 +461,7 @@ const TeamApplicationsModal = ({
           >
             <PersonRequestCard
               user={application.applicant}
-              date={getApplicationDate(application)}
+              date={getRequestDateValue(application)}
               onNarrowChange={(narrow) => setNarrowMap((prev) => {
                 if ((prev[String(application.id)] ?? false) === narrow) return prev;
                 return { ...prev, [String(application.id)]: narrow };

@@ -1,3 +1,5 @@
+import { format } from "date-fns";
+
 export const normalizeNumericId = (value) => {
   if (value === null || value === undefined || value === "") return null;
 
@@ -80,6 +82,41 @@ export const getRequestRoleId = (request) =>
 
 export const hasRequestRole = (request) =>
   Boolean(request?.role || request?.roleId || request?.role_id);
+
+export const getRequestUserId = (request, userKey) =>
+  request?.[userKey]?.id ??
+  request?.[`${userKey}Id`] ??
+  request?.[`${userKey}_id`] ??
+  null;
+
+export const isRequestForUser = (request, userKey, userId) =>
+  idsMatch(getRequestUserId(request, userKey), userId);
+
+export const getRequestDateValue = (request) =>
+  request?.created_at ??
+  request?.createdAt ??
+  request?.date ??
+  request?.applied_at ??
+  request?.appliedAt ??
+  request?.sent_at ??
+  request?.sentAt ??
+  request?.invited_at ??
+  request?.invitedAt ??
+  request?.submitted_at ??
+  request?.submittedAt ??
+  null;
+
+export const formatRequestDate = (request, fallback = "Unknown date") => {
+  const date = getRequestDateValue(request);
+  if (!date) return fallback;
+
+  try {
+    return format(new Date(date), "MMM d, yyyy");
+  } catch (error) {
+    console.error("Error formatting request date:", error);
+    return fallback;
+  }
+};
 
 export const getRequestRoleSyntheticFlag = (request) =>
   request?.role?.is_synthetic ??

@@ -30,11 +30,13 @@ import {
   isSyntheticUser,
 } from "../../utils/userHelpers";
 import { formatDisplayName } from "../../utils/nameFormatters";
-import { format } from "date-fns";
 import {
   buildInvitationRoleForCard,
   extractRoleMatchData,
+  formatRequestDate,
+  getRequestUserId,
   getRequestRoleId,
+  isRequestForUser,
 } from "../../utils/teamRequestUtils";
 
 const FitInviteeName = ({ invitee, onUserClick, onNarrowChange, getDateEl, forceNarrow = false }) => {
@@ -215,24 +217,6 @@ const TeamInvitesModal = ({
     return user?.avatar_url || user?.avatarUrl || null;
   };
 
-  // Format invitation date
-  const getInvitationDate = (invitation) => {
-    const date =
-      invitation?.created_at ||
-      invitation?.createdAt ||
-      invitation?.date ||
-      invitation?.sent_at;
-
-    if (!date) return "Unknown date";
-
-    try {
-      return format(new Date(date), "MMM d, yyyy");
-    } catch (error) {
-      console.error("Error formatting date:", error);
-      return "Unknown date";
-    }
-  };
-
   // ============ Render ============
   const anyNarrow = Object.values(narrowMap).some(Boolean);
   const pendingCancelInvitation = invitations.find(
@@ -330,13 +314,15 @@ const TeamInvitesModal = ({
     >
       {invitations.map((invitation) => {
         // Get invitee ID for highlighting comparison
-        const inviteeId =
-          invitation?.invitee?.id ?? invitation?.invitee_id ?? null;
+        const inviteeId = getRequestUserId(invitation, "invitee");
         const roleId = getRequestRoleId(invitation);
         const polledRole = roleId ? hydratedRoleMap[String(roleId)] : null;
         const roleForCard = buildInvitationRoleForCard(invitation, polledRole);
-        const isSelfInvitation =
-          currentUser?.id === (invitation.invitee?.id ?? invitation.invitee_id);
+        const isSelfInvitation = isRequestForUser(
+          invitation,
+          "invitee",
+          currentUser?.id,
+        );
         const inviteeRoleMatch =
           roleId != null && invitation?.role
             ? extractRoleMatchData(invitation.role)
@@ -435,7 +421,7 @@ const TeamInvitesModal = ({
                     {anyNarrow ? (
                       <div className="flex shrink-0 items-center gap-1 text-base-content/60">
                         <Calendar size={10} className="shrink-0" />
-                        <span className="leading-[1.05] whitespace-nowrap">{getInvitationDate(invitation)}</span>
+                        <span className="leading-[1.05] whitespace-nowrap">{formatRequestDate(invitation)}</span>
                       </div>
                     ) : showInviteeUsername && (
                       <div className="min-w-0 flex-[0_1_auto] overflow-hidden">
@@ -485,7 +471,7 @@ const TeamInvitesModal = ({
                 className={`flex items-center text-xs text-base-content/60 whitespace-nowrap${anyNarrow ? " absolute opacity-0 pointer-events-none" : ""}`}
               >
                 <Calendar size={12} className="mr-1" />
-                <span>{getInvitationDate(invitation)}</span>
+                <span>{formatRequestDate(invitation)}</span>
               </div>
             </div>
 
@@ -534,7 +520,7 @@ const TeamInvitesModal = ({
                         canManage={false}
                         canManageStatus={false}
                         isTeamMember={true}
-                        viewAsUserId={invitation.invitee?.id ?? invitation.invitee_id}
+                        viewAsUserId={getRequestUserId(invitation, "invitee")}
                         viewAsUser={invitation.invitee}
                         hideActions={true}
                       />
@@ -548,7 +534,7 @@ const TeamInvitesModal = ({
                           role_name: invitation.current_filled_role_name ?? invitation.currentFilledRoleName,
                           roleName: invitation.current_filled_role_name ?? invitation.currentFilledRoleName,
                           status: "filled",
-                          filled_by: invitation.invitee?.id ?? invitation.invitee_id,
+                          filled_by: getRequestUserId(invitation, "invitee"),
                           filled_by_user: invitation.invitee ?? null,
                           is_synthetic: invitation.role_is_synthetic ?? false,
                           isSynthetic: invitation.role_is_synthetic ?? false,
@@ -585,7 +571,7 @@ const TeamInvitesModal = ({
                   canManage={false}
                   canManageStatus={false}
                   isTeamMember={true}
-                  viewAsUserId={invitation.invitee?.id ?? invitation.invitee_id}
+                  viewAsUserId={getRequestUserId(invitation, "invitee")}
                   viewAsUser={invitation.invitee}
                   hideActions={true}
                 />

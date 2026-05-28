@@ -1,14 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { matchingService } from "../services/matchingService";
-import { getRequestRoleId } from "../utils/teamRequestUtils";
+import {
+  getRequestRoleId,
+  isRequestForUser,
+} from "../utils/teamRequestUtils";
 
 const SELF_ROLE_MATCH_FETCH_LIMIT = 1000;
-
-const getRequestUserId = (request, userKey) =>
-  request?.[userKey]?.id ??
-  request?.[`${userKey}Id`] ??
-  request?.[`${userKey}_id`] ??
-  null;
 
 const useSelfRoleMatchMap = (
   requests,
@@ -26,14 +23,7 @@ const useSelfRoleMatchMap = (
     () => [
       ...new Set(
         (requests ?? [])
-          .filter((request) => {
-            const requestUserId = getRequestUserId(request, userKey);
-            return (
-              requestUserId != null &&
-              currentUserId != null &&
-              String(requestUserId) === String(currentUserId)
-            );
-          })
+          .filter((request) => isRequestForUser(request, userKey, currentUserId))
           .map(getRequestRoleId)
           .filter((roleId) => roleId != null)
           .map(String),
