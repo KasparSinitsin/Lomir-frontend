@@ -18,11 +18,11 @@ import InlineUserLink, { InvitedByLink } from "../users/InlineUserLink";
 import DemoAvatarOverlay from "../users/DemoAvatarOverlay";
 import VacantRoleCard from "./VacantRoleCard";
 import { matchingService } from "../../services/matchingService";
-import { vacantRoleService } from "../../services/vacantRoleService";
 import teamService from "../../services/teamService";
 import { useAuth } from "../../contexts/AuthContext";
 import { useUserModal } from "../../contexts/UserModalContext";
 import { useTeamModal } from "../../contexts/TeamModalContext";
+import usePolledRequestRoles from "../../hooks/usePolledRequestRoles";
 import {
   DEMO_PROFILE_TOOLTIP,
   getUserInitials,
@@ -114,7 +114,6 @@ const TeamInvitesModal = ({
   const [pendingCancelInvitationId, setPendingCancelInvitationId] =
     useState(null);
   const [pendingCancelType, setPendingCancelType] = useState("team");
-  const [hydratedRoleMap, setHydratedRoleMap] = useState({});
   const [narrowMap, setNarrowMap] = useState({});
   const dateElsRef = useRef({});
 
@@ -125,6 +124,10 @@ const TeamInvitesModal = ({
   const { user: currentUser } = useAuth();
   const { openUserModal } = useUserModal();
   const { openTeamModal } = useTeamModal();
+  const hydratedRoleMap = usePolledRequestRoles(invitations, {
+    isOpen,
+    teamId,
+  });
 
   // ============ Scroll to highlighted invitation ============
   useEffect(() => {
@@ -216,60 +219,6 @@ const TeamInvitesModal = ({
       cancelled = true;
     };
   }, [isOpen, teamId, currentUser?.id, invitations]);
-
-  // Poll role status every 20s so VacantRoleCard reflects changes made by others
-  useEffect(() => {
-    if (!isOpen || !teamId) return;
-
-    const roleIds = [
-      ...new Set(
-        invitations
-          .map(
-            (inv) =>
-              inv?.role?.id ?? inv?.roleId ?? inv?.role_id ?? null,
-          )
-          .filter(Boolean)
-          .map(String),
-      ),
-    ];
-
-    if (roleIds.length === 0) return;
-
-    let isCancelled = false;
-
-    const pollRoles = async () => {
-      try {
-        const results = await Promise.allSettled(
-          roleIds.map((id) =>
-            vacantRoleService.getVacantRoleById(teamId, id),
-          ),
-        );
-        if (isCancelled) return;
-        const nextMap = {};
-        results.forEach((result, i) => {
-          if (result.status === "fulfilled") {
-            const payload = result.value?.data ?? result.value;
-            const roleData =
-              payload?.success !== undefined
-                ? payload?.data ?? null
-                : payload?.data?.data ?? payload?.data ?? payload;
-            if (roleData) nextMap[roleIds[i]] = roleData;
-          }
-        });
-        setHydratedRoleMap((prev) => ({ ...prev, ...nextMap }));
-      } catch {
-        // silent — keep showing last known state
-      }
-    };
-
-    pollRoles();
-    const intervalId = setInterval(pollRoles, 20_000);
-
-    return () => {
-      isCancelled = true;
-      clearInterval(intervalId);
-    };
-  }, [isOpen, teamId, invitations]);
 
   // ============ Handlers ============
 

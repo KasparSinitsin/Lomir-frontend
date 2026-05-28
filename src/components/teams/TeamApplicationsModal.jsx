@@ -9,11 +9,12 @@ import UserDetailsModal from "../users/UserDetailsModal";
 import VacantRoleCard from "./VacantRoleCard";
 import TeamApplicationDetailsModal from "./TeamApplicationDetailsModal";
 import { matchingService } from "../../services/matchingService";
-import { vacantRoleService } from "../../services/vacantRoleService";
 import { messageService } from "../../services/messageService";
+import { vacantRoleService } from "../../services/vacantRoleService";
 import { useAuth } from "../../contexts/AuthContext";
 import { useTeamModal } from "../../contexts/TeamModalContext";
 import { buildRoleApplicationFilledMessage } from "../../utils/roleEventMessages";
+import usePolledRequestRoles from "../../hooks/usePolledRequestRoles";
 import {
   buildApplicationRoleForCard,
   getRequestRoleId,
@@ -62,8 +63,11 @@ const TeamApplicationsModal = ({
   const [showCloseGuard, setShowCloseGuard] = useState(false);
   const [applicationDetailsFor, setApplicationDetailsFor] = useState(null);
   const [selfRoleMatchMap, setSelfRoleMatchMap] = useState({});
-  const [polledRoleStatusMap, setPolledRoleStatusMap] = useState({});
   const [narrowMap, setNarrowMap] = useState({});
+  const polledRoleStatusMap = usePolledRequestRoles(applications, {
+    isOpen,
+    teamId,
+  });
 
   // ============ Refs ============
   const highlightedRef = useRef(null);
@@ -375,60 +379,6 @@ const TeamApplicationsModal = ({
       cancelled = true;
     };
   }, [isOpen, teamId, currentUser?.id, applications]);
-
-  // Poll role status every 20s so VacantRoleCard reflects changes made by others
-  useEffect(() => {
-    if (!isOpen || !teamId) return;
-
-    const roleIds = [
-      ...new Set(
-        applications
-          .map(
-            (app) =>
-              app?.role?.id ?? app?.roleId ?? app?.role_id ?? null,
-          )
-          .filter(Boolean)
-          .map(String),
-      ),
-    ];
-
-    if (roleIds.length === 0) return;
-
-    let isCancelled = false;
-
-    const pollRoles = async () => {
-      try {
-        const results = await Promise.allSettled(
-          roleIds.map((id) =>
-            vacantRoleService.getVacantRoleById(teamId, id),
-          ),
-        );
-        if (isCancelled) return;
-        const nextMap = {};
-        results.forEach((result, i) => {
-          if (result.status === "fulfilled") {
-            const payload = result.value?.data ?? result.value;
-            const roleData =
-              payload?.success !== undefined
-                ? payload?.data ?? null
-                : payload?.data?.data ?? payload?.data ?? payload;
-            if (roleData) nextMap[roleIds[i]] = roleData;
-          }
-        });
-        setPolledRoleStatusMap((prev) => ({ ...prev, ...nextMap }));
-      } catch {
-        // silent — keep showing last known state
-      }
-    };
-
-    pollRoles();
-    const intervalId = setInterval(pollRoles, 20_000);
-
-    return () => {
-      isCancelled = true;
-      clearInterval(intervalId);
-    };
-  }, [isOpen, teamId, applications]);
 
   // ============ Render ============
   const anyNarrow = Object.values(narrowMap).some(Boolean);
