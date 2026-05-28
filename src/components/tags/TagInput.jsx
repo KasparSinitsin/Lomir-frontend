@@ -23,6 +23,7 @@ const EDGE_MARGIN = 8; // keep within viewport edges
 const GAP = 16;
 const MIN_MENU_HEIGHT = 140;
 const MAX_MENU_HEIGHT = 360;
+const EMPTY_QUERY_ARRAY = [];
 
 const TagInput = ({
   selectedTags = [],
@@ -60,11 +61,11 @@ const TagInput = ({
   });
   const [menuPlacement, setMenuPlacement] = useState("bottom"); // "top" | "bottom"
   const {
-    data: structuredTags = [],
+    data: structuredTags = EMPTY_QUERY_ARRAY,
     error: structuredTagsError,
   } = useStructuredTags();
   const {
-    data: fetchedPopularTags = [],
+    data: fetchedPopularTags = EMPTY_QUERY_ARRAY,
     error: popularTagsError,
   } = usePopularTags(5, null, {
     enabled: showPopularTags,
@@ -97,6 +98,8 @@ const TagInput = ({
   );
 
   const updateTagMap = useCallback((tags) => {
+    if (!tags?.length) return;
+
     setTagMap((prev) => {
       const next = new Map(prev);
       (tags || []).forEach((t) => {

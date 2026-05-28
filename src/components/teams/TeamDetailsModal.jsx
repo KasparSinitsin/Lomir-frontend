@@ -110,6 +110,8 @@ const normalizeTeamTagIds = (team) => {
   return Array.from(new Set(ids));
 };
 
+const EMPTY_QUERY_ARRAY = [];
+
 const TeamDetailsModal = ({
   isOpen = true,
   teamId: propTeamId,
@@ -254,10 +256,12 @@ const TeamDetailsModal = ({
   }, [teamName, isEditing, isModalVisible]);
 
   const showHighlightsForContext = !hideMatchData && (!isFromSearch || showMatchHighlights);
-  const { data: structuredTags = [], error: structuredTagsError } =
-    useStructuredTags({
-      enabled: isModalVisible,
-    });
+  const {
+    data: structuredTags = EMPTY_QUERY_ARRAY,
+    error: structuredTagsError,
+  } = useStructuredTags({
+    enabled: isModalVisible,
+  });
   const currentUserTagsQuery = useUserTags(user?.id, {
     enabled: Boolean(isModalVisible && isAuthenticated && user?.id),
   });

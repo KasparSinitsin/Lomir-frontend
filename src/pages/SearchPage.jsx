@@ -82,6 +82,7 @@ const SORTING_OPTION_VALUES = new Set([
   "match",
   "locationPriority",
 ]);
+const EMPTY_QUERY_ARRAY = [];
 
 const getFilterableDistanceKm = (item) => {
   const matchDetails = item?.matchDetails ?? item?.match_details ?? null;
@@ -228,7 +229,7 @@ const sortByProximity = (items, sortDir) =>
 const SearchPage = () => {
   const location = useLocation();
   const { user, isAuthenticated, loading: authLoading } = useAuth();
-  const { data: structuredTags = [] } = useStructuredTags();
+  const { data: structuredTags = EMPTY_QUERY_ARRAY } = useStructuredTags();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState({

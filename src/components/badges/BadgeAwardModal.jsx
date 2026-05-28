@@ -85,6 +85,8 @@ const CONTEXT_OPTIONS = [
   },
 ];
 
+const EMPTY_QUERY_ARRAY = [];
+
 const BadgeAwardModal = ({
   isOpen,
   onClose,
@@ -122,21 +124,21 @@ const BadgeAwardModal = ({
   const tagSearchRef = useRef(null);
   const tagSearchTimerRef = useRef(null);
   const {
-    data: badges = [],
+    data: badges = EMPTY_QUERY_ARRAY,
     error: badgesError,
     isLoading: loading,
   } = useBadges({
     enabled: Boolean(isOpen),
   });
   const {
-    data: sharedTeams = [],
+    data: sharedTeams = EMPTY_QUERY_ARRAY,
     error: sharedTeamsError,
     isLoading: teamsLoading,
   } = useSharedTeamsForAward(awardeeId, {
     enabled: Boolean(isOpen && awardeeId),
   });
   const {
-    data: fetchedAwardeeTags = [],
+    data: fetchedAwardeeTags = EMPTY_QUERY_ARRAY,
     error: awardeeTagsError,
     isLoading: tagsLoading,
   } = useUserTags(awardeeId, {

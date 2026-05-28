@@ -57,6 +57,8 @@ import ConfirmModal from "../components/common/ConfirmModal";
 import LocationInput from "../components/common/LocationInput";
 import { format } from "date-fns";
 
+const EMPTY_QUERY_ARRAY = [];
+
 const Profile = () => {
   const { user, updateUser, logout } = useAuth();
   const queryClient = useQueryClient();
@@ -82,12 +84,10 @@ const Profile = () => {
   } = useUserProfile(user?.id, {
     enabled: Boolean(user?.id),
   });
-  const { data: fetchedUserTags = [], error: userTagsError } = useUserTags(
-    user?.id,
-    {
+  const { data: fetchedUserTags = EMPTY_QUERY_ARRAY, error: userTagsError } =
+    useUserTags(user?.id, {
       enabled: Boolean(user?.id),
-    },
-  );
+    });
 
   // Compute effective userId for the hook (Profile uses localUser or auth user)
   const profileUserId = localUser?.id ?? user?.id;
