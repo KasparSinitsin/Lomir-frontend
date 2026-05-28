@@ -126,19 +126,27 @@ export const notificationService = {
 
   // Mark a single notification as read
   markAsRead: async (notificationId) => {
-    const response = await api.put(`/api/notifications/${notificationId}/read`);
+    const response = await api.put(
+      `/api/notifications/${notificationId}/read`,
+      undefined,
+      { skipResponseCaseTransform: true },
+    );
     return response.data;
   },
 
   // Mark all notifications as read
   markAllAsRead: async () => {
-    const response = await api.put("/api/notifications/read-all");
+    const response = await api.put("/api/notifications/read-all", undefined, {
+      skipResponseCaseTransform: true,
+    });
     return response.data;
   },
 
   // Delete a notification
   deleteNotification: async (notificationId) => {
-    const response = await api.delete(`/api/notifications/${notificationId}`);
+    const response = await api.delete(`/api/notifications/${notificationId}`, {
+      skipResponseCaseTransform: true,
+    });
     return response.data;
   },
 };
