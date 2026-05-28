@@ -6,35 +6,23 @@ import Button from "../common/Button";
 import Modal from "../common/Modal";
 import Tooltip from "../common/Tooltip";
 import UserDetailsModal from "../users/UserDetailsModal";
-import VacantRoleCard from "./VacantRoleCard";
+import RequestRoleCard from "./RequestRoleCard";
 import TeamApplicationDetailsModal from "./TeamApplicationDetailsModal";
-import { matchingService } from "../../services/matchingService";
-import { vacantRoleService } from "../../services/vacantRoleService";
 import { messageService } from "../../services/messageService";
+import { vacantRoleService } from "../../services/vacantRoleService";
 import { useAuth } from "../../contexts/AuthContext";
 import { useTeamModal } from "../../contexts/TeamModalContext";
 import { buildRoleApplicationFilledMessage } from "../../utils/roleEventMessages";
-
-const ROLE_CANDIDATE_FETCH_MIN_LIMIT = 20;
-const SELF_ROLE_MATCH_FETCH_LIMIT = 1000;
-
-const extractCandidateMatchData = (candidateLike) => {
-  const rawScore =
-    candidateLike?.matchScore ??
-    candidateLike?.match_score ??
-    candidateLike?.bestMatchScore ??
-    candidateLike?.best_match_score ??
-    null;
-  const numericScore = Number(rawScore);
-
-  return {
-    matchScore: Number.isFinite(numericScore) ? numericScore : null,
-    matchDetails:
-      candidateLike?.matchDetails ??
-      candidateLike?.match_details ??
-      null,
-  };
-};
+import usePolledRequestRoles from "../../hooks/usePolledRequestRoles";
+import useSelfRoleMatchMap from "../../hooks/useSelfRoleMatchMap";
+import {
+  buildApplicationRoleForCard,
+  getRequestDateValue,
+  getRequestUserLabel,
+  getRequestUserId,
+  getRequestRoleId,
+  isRequestForUser,
+} from "../../utils/teamRequestUtils";
 
 /**
  * TeamApplicationsModal Component
@@ -76,10 +64,18 @@ const TeamApplicationsModal = ({
   const [statusUpdatingRoleId, setStatusUpdatingRoleId] = useState(null);
   const [showCloseGuard, setShowCloseGuard] = useState(false);
   const [applicationDetailsFor, setApplicationDetailsFor] = useState(null);
-  const [roleCandidateMatchMap, setRoleCandidateMatchMap] = useState({});
-  const [selfRoleMatchMap, setSelfRoleMatchMap] = useState({});
-  const [polledRoleStatusMap, setPolledRoleStatusMap] = useState({});
   const [narrowMap, setNarrowMap] = useState({});
+  const polledRoleStatusMap = usePolledRequestRoles(applications, {
+    isOpen,
+    teamId,
+  });
+  const selfRoleMatchMap = useSelfRoleMatchMap(applications, {
+    isOpen,
+    teamId,
+    currentUserId: currentUser?.id,
+    userKey: "applicant",
+    warningLabel: "application",
+  });
 
   // ============ Refs ============
   const highlightedRef = useRef(null);
@@ -284,16 +280,6 @@ const TeamApplicationsModal = ({
     }
   };
 
-  // ============ Helper Functions ============
-  const getApplicationDate = (application) => {
-    return (
-      application?.created_at ||
-      application?.createdAt ||
-      application?.date ||
-      application?.applied_at
-    );
-  };
-
   // ============ Effects ============
   useEffect(() => {
     if (!isOpen || (!highlightApplicationId && !highlightUserId)) return;
@@ -320,219 +306,6 @@ const TeamApplicationsModal = ({
       setRoleStatusOverrides({});
     }
   }, [isOpen]);
-
-  useEffect(() => {
-    const selfRoleIds = [
-      ...new Set(
-        applications
-          .filter((application) => {
-            const applicantId =
-              application?.applicant?.id ??
-              application?.applicant_id ??
-              null;
-            return applicantId != null && String(applicantId) === String(currentUser?.id);
-          })
-          .map((application) =>
-            application?.role?.id ??
-            application?.roleId ??
-            application?.role_id ??
-            null,
-          )
-          .filter((roleId) => roleId != null)
-          .map(String),
-      ),
-    ];
-
-    if (!isOpen || !teamId || !currentUser?.id || selfRoleIds.length === 0) {
-      setSelfRoleMatchMap({});
-      return;
-    }
-
-    let cancelled = false;
-
-    const fetchSelfRoleMatches = async () => {
-      try {
-        const response = await matchingService.getMatchingRolesForTeam(teamId, {
-          limit: SELF_ROLE_MATCH_FETCH_LIMIT,
-        });
-
-        if (cancelled) return;
-
-        const nextMatchMap = {};
-
-        (response?.data || []).forEach((role) => {
-          const roleId = role?.id;
-          if (roleId == null || !selfRoleIds.includes(String(roleId))) return;
-
-          nextMatchMap[String(roleId)] = {
-            matchScore:
-              role?.matchScore ??
-              role?.match_score ??
-              null,
-            matchDetails:
-              role?.matchDetails ??
-              role?.match_details ??
-              null,
-          };
-        });
-
-        setSelfRoleMatchMap(nextMatchMap);
-      } catch (error) {
-        if (!cancelled) {
-          console.warn("Could not fetch self-application role match scores:", error);
-          setSelfRoleMatchMap({});
-        }
-      }
-    };
-
-    fetchSelfRoleMatches();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [isOpen, teamId, currentUser?.id, applications]);
-
-  useEffect(() => {
-    if (!isOpen || applications.length === 0) {
-      setRoleCandidateMatchMap({});
-      return;
-    }
-
-    const applicantsByRole = applications.reduce((acc, application) => {
-      const roleId =
-        application?.role?.id ??
-        application?.roleId ??
-        application?.role_id ??
-        null;
-      const applicantId =
-        application?.applicant?.id ??
-        application?.applicant_id ??
-        null;
-
-      if (roleId == null || applicantId == null) {
-        return acc;
-      }
-
-      const roleKey = String(roleId);
-      if (!acc.has(roleKey)) {
-        acc.set(roleKey, new Set());
-      }
-      acc.get(roleKey).add(String(applicantId));
-      return acc;
-    }, new Map());
-
-    if (applicantsByRole.size === 0) {
-      setRoleCandidateMatchMap({});
-      return;
-    }
-
-    let cancelled = false;
-
-    const fetchCandidateMatches = async () => {
-      const roleEntries = [...applicantsByRole.entries()];
-
-      try {
-        const results = await Promise.allSettled(
-          roleEntries.map(([roleId, applicantIds]) =>
-            matchingService.getMatchingCandidates(roleId, {
-              limit: Math.max(applicantIds.size, ROLE_CANDIDATE_FETCH_MIN_LIMIT),
-            }),
-          ),
-        );
-
-        if (cancelled) return;
-
-        const nextMatchMap = {};
-
-        results.forEach((result, index) => {
-          if (result.status !== "fulfilled") return;
-
-          const [roleId] = roleEntries[index];
-          const roleMatches = {};
-
-          (result.value?.data || []).forEach((candidate) => {
-            const candidateId =
-              candidate?.id ??
-              candidate?.userId ??
-              candidate?.user_id ??
-              null;
-            if (candidateId == null) return;
-
-            roleMatches[String(candidateId)] = extractCandidateMatchData(candidate);
-          });
-
-          nextMatchMap[String(roleId)] = roleMatches;
-        });
-
-        setRoleCandidateMatchMap(nextMatchMap);
-      } catch (error) {
-        if (!cancelled) {
-          console.warn("Could not fetch application role match scores:", error);
-          setRoleCandidateMatchMap({});
-        }
-      }
-    };
-
-    fetchCandidateMatches();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [isOpen, applications]);
-
-  // Poll role status every 20s so VacantRoleCard reflects changes made by others
-  useEffect(() => {
-    if (!isOpen || !teamId) return;
-
-    const roleIds = [
-      ...new Set(
-        applications
-          .map(
-            (app) =>
-              app?.role?.id ?? app?.roleId ?? app?.role_id ?? null,
-          )
-          .filter(Boolean)
-          .map(String),
-      ),
-    ];
-
-    if (roleIds.length === 0) return;
-
-    let isCancelled = false;
-
-    const pollRoles = async () => {
-      try {
-        const results = await Promise.allSettled(
-          roleIds.map((id) =>
-            vacantRoleService.getVacantRoleById(teamId, id),
-          ),
-        );
-        if (isCancelled) return;
-        const nextMap = {};
-        results.forEach((result, i) => {
-          if (result.status === "fulfilled") {
-            const payload = result.value?.data ?? result.value;
-            const roleData =
-              payload?.success !== undefined
-                ? payload?.data ?? null
-                : payload?.data?.data ?? payload?.data ?? payload;
-            if (roleData) nextMap[roleIds[i]] = roleData;
-          }
-        });
-        setPolledRoleStatusMap((prev) => ({ ...prev, ...nextMap }));
-      } catch {
-        // silent — keep showing last known state
-      }
-    };
-
-    pollRoles();
-    const intervalId = setInterval(pollRoles, 20_000);
-
-    return () => {
-      isCancelled = true;
-      clearInterval(intervalId);
-    };
-  }, [isOpen, teamId, applications]);
 
   // ============ Render ============
   const anyNarrow = Object.values(narrowMap).some(Boolean);
@@ -608,75 +381,20 @@ const TeamApplicationsModal = ({
       }
     >
       {applications.map((application) => {
-        const applicantId =
-          application?.applicant?.id ?? application?.applicant_id ?? null;
-        const roleId =
-          application?.role?.id ??
-          application?.roleId ??
-          application?.role_id ??
-          null;
-        const syntheticRoleFlag =
-          application?.role?.is_synthetic ??
-          application?.role?.isSynthetic ??
-          application?.role_is_synthetic ??
-          application?.roleIsSynthetic ??
-          application?.is_synthetic ??
-          application?.isSynthetic;
+        const applicantId = getRequestUserId(application, "applicant");
+        const roleId = getRequestRoleId(application);
         const roleOverride = roleId ? roleStatusOverrides[roleId] : null;
         const polledRole = roleId ? polledRoleStatusMap[String(roleId)] : null;
-        const role =
-          application?.role && roleId
-            ? {
-                ...application.role,
-                ...(polledRole ?? {}),
-                is_synthetic:
-                  application.role.is_synthetic ??
-                  application.role.isSynthetic ??
-                  syntheticRoleFlag,
-                isSynthetic:
-                  application.role.isSynthetic ??
-                  application.role.is_synthetic ??
-                  syntheticRoleFlag,
-                status:
-                  roleOverride?.status ??
-                  polledRole?.status ??
-                  application.role.status ??
-                  "open",
-                filledBy:
-                  roleOverride?.filledBy ??
-                  polledRole?.filledBy ??
-                  polledRole?.filled_by ??
-                  application.role.filledBy ??
-                  application.role.filled_by ??
-                  null,
-                filledByUser:
-                  roleOverride?.filledByUser ??
-                  polledRole?.filledByUser ??
-                  polledRole?.filled_by_user ??
-                  application.role.filledByUser ??
-                  application.role.filled_by_user ??
-                  null,
-              }
-            : application?.role
-              ? {
-                  ...application.role,
-                  ...(polledRole ?? {}),
-                  is_synthetic:
-                    application.role.is_synthetic ??
-                    application.role.isSynthetic ??
-                    syntheticRoleFlag,
-                  isSynthetic:
-                    application.role.isSynthetic ??
-                    application.role.is_synthetic ??
-                    syntheticRoleFlag,
-                }
-              : null;
-        const applicantRoleMatch =
-          roleId != null && applicantId != null
-            ? roleCandidateMatchMap[String(roleId)]?.[String(applicantId)] ?? null
-            : null;
-        const isSelfApplication =
-          currentUser?.id === (application.applicant?.id ?? application.applicant_id);
+        const role = buildApplicationRoleForCard(
+          application,
+          polledRole,
+          roleOverride,
+        );
+        const isSelfApplication = isRequestForUser(
+          application,
+          "applicant",
+          currentUser?.id,
+        );
         const isInternalRoleApplication = Boolean(
           application?.isInternalRoleApplication ??
             application?.is_internal_role_application ??
@@ -744,14 +462,14 @@ const TeamApplicationsModal = ({
           >
             <PersonRequestCard
               user={application.applicant}
-              date={getApplicationDate(application)}
+              date={getRequestDateValue(application)}
               onNarrowChange={(narrow) => setNarrowMap((prev) => {
                 if ((prev[String(application.id)] ?? false) === narrow) return prev;
                 return { ...prev, [String(application.id)]: narrow };
               })}
               forceNarrow={anyNarrow}
               message={application.message || "No message provided."}
-              messageLabel={`${application.applicant?.first_name || application.applicant?.firstName || application.applicant?.username || "Their"}'s application message:`}
+              messageLabel={`${getRequestUserLabel(application, "applicant")}'s application message:`}
               messageIcon={<Mail size={12} className="text-pink-500 mr-1" />}
               onUserClick={handleUserClick}
               showLocation={true}
@@ -768,31 +486,17 @@ const TeamApplicationsModal = ({
               }
               messageBubbleExtra={
                 role ? (
-                  <VacantRoleCard
+                  <RequestRoleCard
                       role={role}
-                      team={{ id: teamId, name: teamName }}
-                      matchScore={
-                        applicantRoleMatch?.matchScore ??
-                        selfRoleMatch?.matchScore ??
-                        role.matchScore ??
-                        role.match_score ??
-                        null
-                      }
-                      matchDetails={
-                        applicantRoleMatch?.matchDetails ??
-                        selfRoleMatch?.matchDetails ??
-                        role.matchDetails ??
-                        role.match_details ??
-                        null
-                      }
-                      canManage={false}
+                      teamId={teamId}
+                      teamName={teamName}
+                      primaryMatch={selfRoleMatch}
                       canManageStatus={canManageStatusForRole}
                       onViewApplicationDetails={
                         isSelfApplication
                           ? () => setApplicationDetailsFor(application)
                           : null
                       }
-                      isTeamMember={true}
                       onStatusChange={(currentRoleId, newStatus) =>
                         handleRoleStatusChange(
                           currentRoleId,

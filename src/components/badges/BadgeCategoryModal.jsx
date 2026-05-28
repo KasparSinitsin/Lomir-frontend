@@ -121,20 +121,35 @@ const BadgeCategoryModal = ({
   ).size;
 
   const titleNode = (
-    <div className="min-w-0">
-      {/* Line 1: icon + title */}
-      <div className="flex items-center gap-2 min-w-0">
-        <span className="flex-shrink-0">
-          {getCategoryIcon(category, color, 20)}
-        </span>
-
-        <span className="text-xl font-medium truncate" style={{ color }}>
-          {focusedBadgeName
-            ? category || "Badge Category"
-            : `Earned badges for ${category || "this category"}`}
-        </span>
-      </div>
-    </div>
+    <h2
+      className="text-xl font-medium leading-[110%] mb-[0.2em]"
+      style={{ color }}
+    >
+      <span className="leading-[100%]">
+        {focusedBadgeName ? (
+          <>
+            <span className="inline-block align-middle mr-1.5 shrink-0">
+              {getCategoryIcon(category, color, 20)}
+            </span>
+            <span className="font-semibold">
+              {category || "Badge Category"}
+            </span>
+          </>
+        ) : (
+          <>
+            <span>Earned badges for </span>
+            <span className="block md:inline">
+              <span className="inline-block align-middle mr-1.5 shrink-0">
+                {getCategoryIcon(category, color, 20)}
+              </span>
+              <span className="font-semibold">
+                {category || "this category"}
+              </span>
+            </span>
+          </>
+        )}
+      </span>
+    </h2>
   );
 
   return (

@@ -28,6 +28,7 @@ import { enrichTeamMatchData } from "../utils/teamMatchUtils";
 import useClientPagination from "../hooks/useClientPagination";
 import useMyTeamsSort from "../hooks/useMyTeamsSort";
 import useViewerMatchProfile from "../hooks/useViewerMatchProfile";
+import useViewerPendingRequests from "../hooks/useViewerPendingRequests";
 
 import {
   RESULTS_PER_PAGE_OPTIONS,
@@ -42,13 +43,24 @@ const MY_TEAMS_LIST_BADGES_WIDTH_CLASSNAME = "sm:w-32";
 
 const MyTeams = () => {
   const [teams, setTeams] = useState([]);
-  const [pendingApplications, setPendingApplications] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [loadingApplications, setLoadingApplications] = useState(true);
-  const [pendingInvitations, setPendingInvitations] = useState([]);
-  const [loadingInvitations, setLoadingInvitations] = useState(true);
   const [error, setError] = useState(null);
   const { user } = useAuth();
+  const {
+    data: viewerPending,
+    isLoading: viewerPendingLoading,
+    refetch: refetchViewerPending,
+  } = useViewerPendingRequests(user?.id, { enabled: Boolean(user?.id) });
+  const pendingApplications = useMemo(
+    () => viewerPending?.applications ?? [],
+    [viewerPending],
+  );
+  const pendingInvitations = useMemo(
+    () => viewerPending?.invitations ?? [],
+    [viewerPending],
+  );
+  const loadingApplications = viewerPendingLoading;
+  const loadingInvitations = viewerPendingLoading;
   const { viewerMatchProfile, viewerDistanceSource } = useViewerMatchProfile({
     userId: user?.id,
   });
@@ -100,6 +112,50 @@ const MyTeams = () => {
   const [autoOpenApplicationsTeamId, setAutoOpenApplicationsTeamId] =
     useState(null);
 
+  // Bulk-fetched member badges keyed by team id. null = "still loading" so
+  // child cards wait instead of falling back to their own per-card fetch.
+  const [teamMemberBadgesById, setTeamMemberBadgesById] = useState(null);
+
+  const teamIdsKey = useMemo(
+    () =>
+      teams
+        .map((t) => t?.id)
+        .filter((id) => id != null)
+        .join(","),
+    [teams],
+  );
+
+  useEffect(() => {
+    if (!teamIdsKey) {
+      setTeamMemberBadgesById({});
+      return;
+    }
+
+    const ids = teamIdsKey.split(",").map((id) => parseInt(id, 10));
+    let cancelled = false;
+    setTeamMemberBadgesById(null);
+
+    teamService
+      .getMemberBadgesForTeams(ids)
+      .then((response) => {
+        if (!cancelled) {
+          setTeamMemberBadgesById(response?.data || {});
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          console.error("Failed to fetch bulk team member badges:", err);
+          // Surface as empty map so cards stop waiting and just show no badges
+          // rather than perpetually loading.
+          setTeamMemberBadgesById({});
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [teamIdsKey]);
+
   // Fetch user's teams with pagination
   const fetchUserTeams = useCallback(
     async (page = 1, limit = 10) => {
@@ -135,59 +191,15 @@ const MyTeams = () => {
     [user?.id],
   );
 
-  // Fetch pending applications
-  const fetchPendingApplications = useCallback(async () => {
-    if (!user?.id) return;
-
-    try {
-      setLoadingApplications(true);
-      const response = await teamService.getUserPendingApplications();
-
-      if (response.success) {
-        setPendingApplications(response.data || []);
-      }
-    } catch (err) {
-      console.error("Error fetching pending applications:", err);
-    } finally {
-      setLoadingApplications(false);
+  const handleRequestNotification = useCallback(() => {
+    refetchViewerPending();
+    // Also refresh the team list so each card's badge counts
+    // (pendingApplicationsCount / pendingSentInvitationsCount) stay live
+    // without per-card refetches.
+    if (user?.id) {
+      fetchUserTeams(currentPage, resultsPerPage);
     }
-  }, [user?.id]);
-
-  // Fetch pending invitations
-  const fetchPendingInvitations = useCallback(async () => {
-    if (!user?.id) return;
-
-    try {
-      setLoadingInvitations(true);
-      const response = await teamService.getUserReceivedInvitations();
-
-      if (response.success) {
-        setPendingInvitations(response.data || []);
-      }
-    } catch (err) {
-      console.error("Error fetching pending invitations:", err);
-    } finally {
-      setLoadingInvitations(false);
-    }
-  }, [user?.id]);
-
-  // Initial data fetch
-  useEffect(() => {
-    fetchPendingApplications();
-    fetchPendingInvitations();
-  }, [fetchPendingApplications, fetchPendingInvitations]);
-
-  const handleRequestNotification = useCallback((payload = {}) => {
-    const type = String(payload.type ?? payload.notificationType ?? "").toLowerCase();
-
-    if (!type || type.includes("application")) {
-      fetchPendingApplications();
-    }
-
-    if (!type || type.includes("invitation") || type.includes("invite")) {
-      fetchPendingInvitations();
-    }
-  }, [fetchPendingApplications, fetchPendingInvitations]);
+  }, [refetchViewerPending, fetchUserTeams, user?.id, currentPage, resultsPerPage]);
 
   useSocketEvents(
     user?.id
@@ -353,7 +365,7 @@ const MyTeams = () => {
   const handleApplicationCancel = async (applicationId) => {
     try {
       await teamService.cancelApplication(applicationId);
-      fetchPendingApplications();
+      refetchViewerPending();
     } catch (error) {
       console.error("Error canceling application:", error);
     }
@@ -381,7 +393,7 @@ const MyTeams = () => {
       );
 
       // Refresh the data
-      fetchPendingInvitations();
+      refetchViewerPending();
       fetchUserTeams(currentPage, resultsPerPage);
     } catch (error) {
       console.error("Error accepting invitation:", error);
@@ -400,7 +412,7 @@ const MyTeams = () => {
       );
 
       // Refresh the data
-      fetchPendingInvitations();
+      refetchViewerPending();
     } catch (error) {
       console.error("Error declining invitation:", error);
     }
@@ -979,6 +991,11 @@ const MyTeams = () => {
                         is_public:
                           team.is_public === true || team.isPublic === true,
                       }}
+                      teamMemberBadges={
+                        teamMemberBadgesById === null
+                          ? null
+                          : teamMemberBadgesById[team.id] || []
+                      }
                       onUpdate={handleTeamUpdate}
                       onDelete={handleTeamDelete}
                       onLeave={handleTeamLeave}
@@ -1038,6 +1055,11 @@ const MyTeams = () => {
                         is_public:
                           team.is_public === true || team.isPublic === true,
                       }}
+                      teamMemberBadges={
+                        teamMemberBadgesById === null
+                          ? null
+                          : teamMemberBadgesById[team.id] || []
+                      }
                       onUpdate={handleTeamUpdate}
                       onDelete={handleTeamDelete}
                       onLeave={handleTeamLeave}

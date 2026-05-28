@@ -32,6 +32,9 @@ export const getUserInitials = (user) => {
   return "?";
 };
 
+export const getUserAvatarUrl = (user) =>
+  user?.avatar_url || user?.avatarUrl || null;
+
 /**
  * Get team initials for avatar fallback
  * Returns up to 3 letters from the first 3 words of the team name

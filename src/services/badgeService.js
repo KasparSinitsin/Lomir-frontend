@@ -1,4 +1,4 @@
-import api from "./api";
+import api, { call } from "./api";
 
 /**
  * Badge Service
@@ -10,15 +10,8 @@ export const badgeService = {
    * Fetches all available badges (grouped by category on the backend).
    * @returns {Promise<object>} { success: true, data: [...badges] }
    */
-  getAllBadges: async () => {
-    try {
-      const response = await api.get("/api/badges");
-      return response.data;
-    } catch (error) {
-      console.error("Error fetching all badges:", error);
-      throw error;
-    }
-  },
+  getAllBadges: () =>
+    call("fetching all badges", () => api.get("/api/badges")),
 
   /**
    * Award a badge to a user.
@@ -33,15 +26,8 @@ export const badgeService = {
    * @param {number} [awardData.tagId] - Optional tag ID (links award to a focus area)
    * @returns {Promise<object>} { success: true, data: {...award, hidden: true} }
    */
-  awardBadge: async (awardData) => {
-    try {
-      const response = await api.post("/api/badges/award", awardData);
-      return response.data;
-    } catch (error) {
-      console.error("Error awarding badge:", error);
-      throw error;
-    }
-  },
+  awardBadge: (awardData) =>
+    call("awarding badge", () => api.post("/api/badges/award", awardData)),
 
   /**
    * Get teams shared between the authenticated user and a target user.
@@ -49,15 +35,10 @@ export const badgeService = {
    * @param {number} userId - Target user ID
    * @returns {Promise<object>} { success: true, data: [...teams] }
    */
-  getSharedTeams: async (userId) => {
-    try {
-      const response = await api.get(`/api/badges/shared-teams/${userId}`);
-      return response.data;
-    } catch (error) {
-      console.error("Error fetching shared teams:", error);
-      throw error;
-    }
-  },
+  getSharedTeams: (userId) =>
+    call("fetching shared teams", () =>
+      api.get(`/api/badges/shared-teams/${userId}`),
+    ),
 };
 
 export default badgeService;

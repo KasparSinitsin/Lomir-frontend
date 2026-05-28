@@ -5,6 +5,7 @@ import {
   Crown,
   FileText,
   LogOut,
+  Pencil,
   Reply,
   Send,
   Shield,
@@ -26,6 +27,7 @@ const EVENT_PREVIEW_ICONS = {
   Crown,
   FileText,
   LogOut,
+  Pencil,
   Shield,
   User,
   UserCheck,
@@ -278,12 +280,14 @@ const MessageInput = ({
                   )}
                 </div>
               </div>
-            ) : replyEventPreview && ReplyEventIcon ? (
+            ) : replyEventPreview ? (
               <p
                 className="flex min-w-0 items-center gap-1 text-xs font-medium truncate"
                 style={{ color: replyEventPreview.color }}
               >
-                <ReplyEventIcon size={13} className="shrink-0" />
+                {ReplyEventIcon && (
+                  <ReplyEventIcon size={13} className="shrink-0" />
+                )}
                 <span className="truncate">{replyEventPreview.text}</span>
               </p>
             ) : (

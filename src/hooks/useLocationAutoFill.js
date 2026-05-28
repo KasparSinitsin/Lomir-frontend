@@ -39,7 +39,7 @@ export const useLocationAutoFill = ({
   // Use the existing location lookup hook
   // Pass country if available, otherwise let it auto-detect
   const { location, loading, error } = useLocation(
-    isRemote ? null : postalCode,
+    !isEditing || isRemote ? null : postalCode,
     country || null,
   );
 

@@ -31,10 +31,12 @@ import LocationDistanceTagsRow from "../common/LocationDistanceTagsRow";
 import SearchResultTypeOverlay from "../common/SearchResultTypeOverlay";
 import Tooltip from "../common/Tooltip";
 import {
+  DEMO_PROFILE_TOOLTIP,
   DEMO_ROLE_TOOLTIP,
   getDisplayName,
   getUserInitials,
   isSyntheticRole,
+  isSyntheticUser,
 } from "../../utils/userHelpers";
 import DemoAvatarOverlay from "../users/DemoAvatarOverlay";
 import { resolveFilledRoleUser } from "../../utils/vacantRoleUtils";
@@ -865,9 +867,10 @@ const VacantRoleCard = ({
       </span>
     </Tooltip>
   ) : null;
-  const demoRoleMetaItem = isSyntheticRole(role) ? (
+  const hasDemoRoleMeta = isSyntheticRole(role) || isSyntheticUser(filledUser);
+  const demoRoleMetaItem = hasDemoRoleMeta ? (
     <Tooltip
-      content={DEMO_ROLE_TOOLTIP}
+      content={isSyntheticRole(role) ? DEMO_ROLE_TOOLTIP : DEMO_PROFILE_TOOLTIP}
       wrapperClassName="flex items-center gap-1 whitespace-nowrap text-base-content/50"
     >
       <FlaskConical size={10} className="flex-shrink-0" />
@@ -1001,6 +1004,12 @@ const VacantRoleCard = ({
       textTranslateClassName="-translate-y-[3px]"
     />
   ) : null;
+  const compactFilledUserDemoAvatarOverlay = isSyntheticUser(filledUser) ? (
+    <DemoAvatarOverlay
+      textClassName={isMiniView ? "text-[6px]" : "text-[7px]"}
+      textTranslateClassName="-translate-y-[3px]"
+    />
+  ) : null;
 
   if (viewMode === "list") {
     const roundedDistanceKm = showDistance ? Math.round(rawDistanceKm) : null;
@@ -1022,21 +1031,14 @@ const VacantRoleCard = ({
       teamSubtitleItem ||
       roleInvitationSubtitleItem ||
       roleApplicationSubtitleItem ||
-      isSyntheticRole(role) ? (
+      hasDemoRoleMeta ? (
         <span className="flex min-w-0 flex-nowrap items-center gap-1 overflow-hidden whitespace-nowrap text-base-content/60">
           {scoreSubtitleItem}
           {postedDateSubtitleItem}
           {roleInvitationSubtitleItem}
           {roleApplicationSubtitleItem}
           {teamSubtitleItem}
-          {isSyntheticRole(role) && (
-            <Tooltip
-              content={DEMO_ROLE_TOOLTIP}
-              wrapperClassName="flex items-center whitespace-nowrap text-base-content/50"
-            >
-              <FlaskConical size={9} className="flex-shrink-0" />
-            </Tooltip>
-          )}
+          {demoRoleMetaItem}
         </span>
       ) : null;
 
@@ -1281,7 +1283,7 @@ const VacantRoleCard = ({
                     {getUserInitials(filledUser)}
                   </span>
                 </div>
-                {compactDemoAvatarOverlay}
+                {compactFilledUserDemoAvatarOverlay ?? compactDemoAvatarOverlay}
                 {miniMatchOverlay}
               </div>
             </div>

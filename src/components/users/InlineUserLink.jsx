@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { FlaskConical } from "lucide-react";
 import { useUserModalSafe } from "../../contexts/UserModalContext";
-import { userService } from "../../services/userService";
+import { useUserProfile } from "../../hooks/useUserQueries";
 import Tooltip from "../common/Tooltip";
 import { DEMO_PROFILE_TOOLTIP } from "../../utils/userHelpers";
 import {
@@ -9,41 +9,6 @@ import {
   isDeletedUser,
 } from "../../utils/deletedUser";
 import UserAvatar from "./UserAvatar";
-
-const inlineUserProfileCache = new Map();
-
-const extractProfilePayload = (response) => {
-  const payload = response?.data ?? response;
-
-  if (!payload) return null;
-  if (payload?.success !== undefined) return payload?.data ?? null;
-
-  return payload?.data?.data ?? payload?.data ?? payload;
-};
-
-const getCachedInlineUserProfile = async (userId) => {
-  const cacheKey = String(userId);
-
-  if (inlineUserProfileCache.has(cacheKey)) {
-    return inlineUserProfileCache.get(cacheKey);
-  }
-
-  const request = (async () => {
-    const response = await userService.getUserById(userId);
-    return extractProfilePayload(response);
-  })();
-
-  inlineUserProfileCache.set(cacheKey, request);
-
-  try {
-    const result = await request;
-    inlineUserProfileCache.set(cacheKey, Promise.resolve(result));
-    return result;
-  } catch (error) {
-    inlineUserProfileCache.delete(cacheKey);
-    throw error;
-  }
-};
 
 const mergeInlineUserData = (user, profile) => {
   if (!profile) return user;
@@ -114,51 +79,37 @@ const InlineUserLink = ({
   avatarSize = "w-4 h-4",
   className = "",
   showAvatar = true,
+  displayName,
 }) => {
   // Try to get global modal context (returns null if not available)
   const userModalContext = useUserModalSafe();
-  const [resolvedInlineProfile, setResolvedInlineProfile] = useState(null);
 
   // Normalize user ID from various possible field names
   const userId = user?.id || user?.user_id || user?.userId;
   const isFormerUser = isDeletedUser(user);
-  const hasInlineAvatar = Boolean(user?.avatar_url || user?.avatarUrl);
-  const hasInlineSyntheticFlag =
-    user?.is_synthetic != null || user?.isSynthetic != null;
+  // Only hydrate when the parent didn't pass enough to render a name —
+  // missing avatar / synthetic flag alone aren't worth a network round trip,
+  // since UserAvatar falls back to initials and the synthetic indicator is
+  // only meaningful for demo users.
+  const hasDisplayableName = Boolean(
+    user?.username ||
+      user?.first_name ||
+      user?.firstName ||
+      user?.last_name ||
+      user?.lastName,
+  );
   const needsInlineHydration =
-    !isFormerUser && Boolean(userId) && (!hasInlineAvatar || !hasInlineSyntheticFlag);
-
-  useEffect(() => {
-    if (!needsInlineHydration) {
-      setResolvedInlineProfile(null);
-      return;
-    }
-
-    let cancelled = false;
-
-    getCachedInlineUserProfile(userId)
-      .then((profile) => {
-        if (!cancelled) {
-          setResolvedInlineProfile(profile);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setResolvedInlineProfile(null);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [needsInlineHydration, userId]);
+    !isFormerUser && Boolean(userId) && !hasDisplayableName;
+  const { data: resolvedInlineProfile = null } = useUserProfile(userId, {
+    enabled: needsInlineHydration,
+  });
 
   if (!user) return null;
 
   // Determine if we can handle clicks
   const canClick = !isFormerUser && userId && (userModalContext || onOpenUser);
   const inlineUser = mergeInlineUserData(user, resolvedInlineProfile);
-  const name = getDisplayName(inlineUser) || "Unknown";
+  const name = displayName ?? (getDisplayName(inlineUser) || "Unknown");
   const showDemoIndicator = !isFormerUser && Boolean(inlineUser?.is_synthetic || inlineUser?.isSynthetic);
 
   const handleClick = (e) => {

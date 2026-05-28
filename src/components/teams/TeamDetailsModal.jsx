@@ -43,7 +43,16 @@ import UserDetailsModal from "../users/UserDetailsModal";
 import DemoAvatarOverlay from "../users/DemoAvatarOverlay";
 import TagsDisplaySection from "../tags/TagsDisplaySection";
 import { UI_TEXT } from "../../constants/uiText";
-import { tagService } from "../../services/tagService";
+import { useQueryClient } from "@tanstack/react-query";
+import { useStructuredTags } from "../../hooks/useTagQueries";
+import {
+  useUserBadges,
+  useUserProfile,
+  useUserTags,
+} from "../../hooks/useUserQueries";
+import useViewerPendingRequests, {
+  viewerPendingRequestsQueryKey,
+} from "../../hooks/useViewerPendingRequests";
 import RoleBadgeDropdown from "./RoleBadgeDropdown";
 import TeamApplicationButton from "./TeamApplicationButton";
 import TeamApplicationDetailsModal from "./TeamApplicationDetailsModal";
@@ -101,6 +110,8 @@ const normalizeTeamTagIds = (team) => {
   return Array.from(new Set(ids));
 };
 
+const EMPTY_QUERY_ARRAY = [];
+
 const TeamDetailsModal = ({
   isOpen = true,
   teamId: propTeamId,
@@ -125,6 +136,7 @@ const TeamDetailsModal = ({
   membersRefreshKey = 0,
   zIndexStyle = null,
   boxZIndexStyle = null,
+  teamMemberBadges,
 }) => {
   const navigate = useNavigate();
   const { id: urlTeamId } = useParams();
@@ -206,9 +218,6 @@ const TeamDetailsModal = ({
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isInvitationModalOpen, setIsInvitationModalOpen] = useState(false);
   const [localPendingApplication, setLocalPendingApplication] = useState(null);
-  // All fetched pending applications for this team (user may have both a team + a role application)
-  const [fetchedPendingApplications, setFetchedPendingApplications] = useState([]);
-  const [fetchedPendingInvitation, setFetchedPendingInvitation] = useState(null);
   const [isApplicationDetailsOpen, setIsApplicationDetailsOpen] =
     useState(false);
   const [selectedPendingApplication, setSelectedPendingApplication] =
@@ -247,10 +256,45 @@ const TeamDetailsModal = ({
   }, [teamName, isEditing, isModalVisible]);
 
   const showHighlightsForContext = !hideMatchData && (!isFromSearch || showMatchHighlights);
+  const {
+    data: structuredTags = EMPTY_QUERY_ARRAY,
+    error: structuredTagsError,
+  } = useStructuredTags({
+    enabled: isModalVisible,
+  });
+  const currentUserTagsQuery = useUserTags(user?.id, {
+    enabled: Boolean(isModalVisible && isAuthenticated && user?.id),
+  });
+  const currentUserBadgesQuery = useUserBadges(user?.id, {
+    enabled: Boolean(isModalVisible && isAuthenticated && user?.id),
+  });
+  const currentUserProfileQuery = useUserProfile(user?.id, {
+    enabled: Boolean(isModalVisible && isAuthenticated && user?.id),
+  });
+  const queryClient = useQueryClient();
+  const { data: viewerPendingData } = useViewerPendingRequests(user?.id, {
+    enabled: Boolean(isModalVisible && isAuthenticated && user?.id),
+  });
+  const fetchedPendingApplications = useMemo(() => {
+    const apps = viewerPendingData?.applications ?? [];
+    if (!effectiveTeamId) return [];
+    return apps.filter(
+      (a) =>
+        String(a.team?.id ?? a.teamId ?? a.team_id) === String(effectiveTeamId),
+    );
+  }, [viewerPendingData, effectiveTeamId]);
+  const fetchedPendingInvitation = useMemo(() => {
+    const invs = viewerPendingData?.invitations ?? [];
+    if (!effectiveTeamId) return null;
+    return (
+      invs.find(
+        (i) =>
+          String(i.team?.id ?? i.teamId ?? i.team_id) ===
+          String(effectiveTeamId),
+      ) ?? null
+    );
+  }, [viewerPendingData, effectiveTeamId]);
   const handledMembersRefreshKeyRef = useRef(0);
-  // Tracks which teamId we last fetched application/invitation status for.
-  // Prevents double-firing in React StrictMode (dev) where effects run twice.
-  const statusFetchedForRef = useRef(null);
 
   const fetchTeamDetails = useCallback(
     async (forceRefresh = false) => {
@@ -475,51 +519,9 @@ const TeamDetailsModal = ({
 
   useEffect(() => {
     setLocalPendingApplication(null);
-    setFetchedPendingApplications([]);
-    setFetchedPendingInvitation(null);
     setIsApplicationDetailsOpen(false);
     setSelectedPendingApplication(null);
   }, [effectiveTeamId]);
-
-  // Fetch the user's pending application and invitation for this team when not
-  // supplied via props (e.g. when opened through TeamModalContext).
-  // The ref guard prevents double-firing: React StrictMode (dev) remounts effects
-  // synchronously, but refs survive the remount, so the second invocation is skipped.
-  useEffect(() => {
-    if (!isAuthenticated || !effectiveTeamId || !isModalVisible) return;
-    if (statusFetchedForRef.current === effectiveTeamId) return; // already fetched this open-session
-
-    statusFetchedForRef.current = effectiveTeamId;
-
-    const fetchUserStatus = async () => {
-      try {
-        const [appsRes, invsRes] = await Promise.allSettled([
-          teamService.getUserPendingApplications(),
-          teamService.getUserReceivedInvitations(),
-        ]);
-
-        if (appsRes.status === "fulfilled") {
-          const apps = appsRes.value?.data ?? appsRes.value ?? [];
-          const matches = apps.filter(
-            (a) => String(a.team?.id ?? a.teamId ?? a.team_id) === String(effectiveTeamId),
-          );
-          setFetchedPendingApplications(matches);
-        }
-
-        if (invsRes.status === "fulfilled") {
-          const invs = invsRes.value?.data ?? invsRes.value ?? [];
-          const match = invs.find(
-            (i) => String(i.team?.id ?? i.teamId ?? i.team_id) === String(effectiveTeamId),
-          );
-          setFetchedPendingInvitation(match ?? null);
-        }
-      } catch {
-        // Non-critical — silently ignore
-      }
-    };
-
-    fetchUserStatus();
-  }, [isAuthenticated, effectiveTeamId, isModalVisible]);
 
   useEffect(() => {
     if (isModalVisible && effectiveTeamId) {
@@ -562,35 +564,30 @@ const TeamDetailsModal = ({
   useEffect(() => {
     if (!isModalVisible || !isAuthenticated || !user?.id) return;
 
-    const fetchUserTags = async () => {
-      try {
-        const tagsRes = await userService.getUserTags(user.id);
-        const tagData = Array.isArray(tagsRes?.data)
-          ? tagsRes.data
-          : tagsRes?.data?.data || [];
-        const ids = new Set(
-          tagData
-            .map((t) => Number(t.tagId ?? t.tag_id ?? t.id))
-            .filter(Number.isFinite),
-        );
-        // Set both state vars from one request — avoids a second identical API call
-        setUserTagIds(ids);
-        setCurrentUserTagIds(ids);
-      } catch (err) {
-        console.warn("Could not fetch user tags for matching highlights:", err);
-      }
-    };
+    const ids = new Set(
+      (currentUserTagsQuery.data ?? [])
+        .map((t) => Number(t.tagId ?? t.tag_id ?? t.id))
+        .filter(Number.isFinite),
+    );
+    // Set both state vars from one query result.
+    setUserTagIds(ids);
+    setCurrentUserTagIds(ids);
+  }, [currentUserTagsQuery.data, isAuthenticated, isModalVisible, user?.id]);
 
-    fetchUserTags();
-  }, [isModalVisible, isAuthenticated, user?.id]);
+  useEffect(() => {
+    if (!currentUserTagsQuery.error) return;
+
+    console.warn(
+      "Could not fetch user tags for matching highlights:",
+      currentUserTagsQuery.error,
+    );
+  }, [currentUserTagsQuery.error]);
 
   useEffect(() => {
     // Reset state when modal closes
     if (!isModalVisible) {
       setNotification({ type: null, message: null });
       setFormErrors({});
-      // Reset the status-fetch guard so the next open re-fetches fresh data
-      statusFetchedForRef.current = null;
     }
   }, [isModalVisible]);
 
@@ -798,9 +795,25 @@ const TeamDetailsModal = ({
     });
   }, [isEditing, team]); // formData.selectedTags intentionally excluded
 
-  // Fetch aggregated member badges when modal opens
+  // Fetch aggregated member badges when modal opens. If the parent provides
+  // teamMemberBadges, it owns this data: undefined = legacy self-fetch,
+  // null = parent loading, array = parent data ready.
   useEffect(() => {
     if (!isModalVisible || !effectiveTeamId) return;
+
+    if (teamMemberBadges !== undefined) {
+      if (Array.isArray(teamMemberBadges)) {
+        setTeamBadges(teamMemberBadges);
+        setTeamBadgesTotalCredits(
+          teamMemberBadges.reduce(
+            (sum, badge) =>
+              sum + Number(badge?.totalCredits ?? badge?.total_credits ?? 0),
+            0,
+          ),
+        );
+      }
+      return;
+    }
 
     const fetchTeamBadges = async () => {
       try {
@@ -815,31 +828,37 @@ const TeamDetailsModal = ({
     };
 
     fetchTeamBadges();
-  }, [isModalVisible, effectiveTeamId]);
+  }, [isModalVisible, effectiveTeamId, teamMemberBadges]);
 
-  // Fetch current user's badge names for match highlighting
+  // Resolve current user's badge names for match highlighting
   useEffect(() => {
     if (!isModalVisible || !isAuthenticated || !user?.id) {
       return;
     }
 
-    const fetchCurrentUserBadges = async () => {
-      try {
-        const response = await userService.getUserBadges(user.id);
-        const rows = Array.isArray(response?.data) ? response.data : [];
-        const names = new Set(
-          rows
-            .map((r) => (r.badgeName ?? r.badge_name ?? r.name ?? "").trim().toLowerCase())
-            .filter(Boolean),
-        );
-        setCurrentUserBadgeNames(names);
-      } catch (err) {
-        console.warn("Could not fetch user badges for matching highlights:", err);
-      }
-    };
+    const names = new Set(
+      (currentUserBadgesQuery.data ?? [])
+        .map((r) =>
+          (r.badgeName ?? r.badge_name ?? r.name ?? "").trim().toLowerCase(),
+        )
+        .filter(Boolean),
+    );
+    setCurrentUserBadgeNames(names);
+  }, [
+    currentUserBadgesQuery.data,
+    isAuthenticated,
+    isModalVisible,
+    user?.id,
+  ]);
 
-    fetchCurrentUserBadges();
-  }, [isModalVisible, isAuthenticated, user?.id]);
+  useEffect(() => {
+    if (!currentUserBadgesQuery.error) return;
+
+    console.warn(
+      "Could not fetch user badges for matching highlights:",
+      currentUserBadgesQuery.error,
+    );
+  }, [currentUserBadgesQuery.error]);
 
   useEffect(() => {
     if (!isModalVisible || !isAuthenticated || !user?.id) {
@@ -847,36 +866,20 @@ const TeamDetailsModal = ({
       return;
     }
 
-    let cancelled = false;
+    setDistanceViewerUser(currentUserProfileQuery.data ?? user);
+  }, [currentUserProfileQuery.data, isAuthenticated, isModalVisible, user]);
 
-    const fetchDistanceViewerUser = async () => {
-      try {
-        const response = await userService.getUserById(user.id);
-        const payload = response?.data ?? response;
-        const viewerData =
-          payload?.success !== undefined
-            ? payload?.data
-            : (payload?.data?.data ?? payload?.data ?? payload);
+  useEffect(() => {
+    if (!currentUserProfileQuery.error) return;
 
-        if (!cancelled) {
-          setDistanceViewerUser(viewerData ?? user);
-        }
-      } catch (err) {
-        console.warn("Could not fetch current user details for distance fallback:", err);
-        if (!cancelled) {
-          setDistanceViewerUser(user);
-        }
-      }
-    };
+    console.warn(
+      "Could not fetch current user details for distance fallback:",
+      currentUserProfileQuery.error,
+    );
+    setDistanceViewerUser(user);
+  }, [currentUserProfileQuery.error, user]);
 
-    fetchDistanceViewerUser();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [isAuthenticated, isModalVisible, user]);
-
-  // Fetch structured tags when modal opens (needed for display AND edit mode)
+  // Resolve structured tags when modal opens (needed for display AND edit mode)
   useEffect(() => {
     // Only run when the modal is actually visible
     if (!isModalVisible) return;
@@ -884,17 +887,14 @@ const TeamDetailsModal = ({
     // If we already have tags, no need to fetch again
     if (allTags.length > 0) return;
 
-    const fetchTags = async () => {
-      try {
-        const structuredTags = await tagService.getStructuredTags();
-        setAllTags(structuredTags);
-      } catch (error) {
-        console.error("Error fetching tags:", error);
-      }
-    };
+    setAllTags(structuredTags);
+  }, [isModalVisible, allTags.length, structuredTags]);
 
-    fetchTags();
-  }, [isModalVisible, allTags.length]);
+  useEffect(() => {
+    if (structuredTagsError) {
+      console.error("Error fetching tags:", structuredTagsError);
+    }
+  }, [structuredTagsError]);
 
   // Handle team tags update
   const handleTeamTagsUpdate = async (newTagIds) => {
@@ -2135,8 +2135,19 @@ on ${format(new Date((effectivePendingInvitation.createdAt ?? effectivePendingIn
             await teamService.cancelApplication(applicationId);
             setLocalPendingApplication(null);
             setSelectedPendingApplication(null);
-            setFetchedPendingApplications((prev) =>
-              prev.filter((a) => String(a.id) !== String(applicationId)),
+            // Optimistically drop the cancelled application from the viewer
+            // pending requests cache so the modal reflects it immediately.
+            queryClient.setQueryData(
+              viewerPendingRequestsQueryKey(user?.id),
+              (prev) => {
+                if (!prev) return prev;
+                return {
+                  ...prev,
+                  applications: (prev.applications ?? []).filter(
+                    (a) => String(a.id) !== String(applicationId),
+                  ),
+                };
+              },
             );
             setIsApplicationDetailsOpen(false);
             await fetchTeamDetails(true);

@@ -28,11 +28,9 @@ import {
   isSyntheticRole,
   isSyntheticTeam,
 } from "../../utils/userHelpers";
+import { idsMatch } from "../../utils/teamRequestUtils";
 
 const VacantRoleDetailsModal = lazy(() => import("./VacantRoleDetailsModal"));
-
-const idsMatch = (left, right) =>
-  left != null && right != null && String(left) === String(right);
 
 /**
  * TeamApplicationModal Component

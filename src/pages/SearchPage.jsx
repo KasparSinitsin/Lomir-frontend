@@ -48,6 +48,9 @@ import {
   getResultMatchScore,
 } from "../utils/teamMatchUtils";
 import useViewerMatchProfile from "../hooks/useViewerMatchProfile";
+import useViewerPendingRequests from "../hooks/useViewerPendingRequests";
+import useViewerTeamMemberships from "../hooks/useViewerTeamMemberships";
+import { useStructuredTags } from "../hooks/useTagQueries";
 import {
   buildSearchRequestCriteria,
   DISTANCE_SUBMENU_TYPE,
@@ -79,6 +82,7 @@ const SORTING_OPTION_VALUES = new Set([
   "match",
   "locationPriority",
 ]);
+const EMPTY_QUERY_ARRAY = [];
 
 const getFilterableDistanceKm = (item) => {
   const matchDetails = item?.matchDetails ?? item?.match_details ?? null;
@@ -128,6 +132,14 @@ const getSearchItemDisplayName = (item) => {
 
   return getUserDisplayName(item);
 };
+
+const normalizeViewerTeamRole = (value) => {
+  const role = String(value ?? "").trim().toLowerCase();
+  return ["owner", "admin", "member"].includes(role) ? role : null;
+};
+
+const getSearchTeamId = (team) =>
+  team?.id ?? team?.teamId ?? team?.team_id ?? null;
 
 const getSearchItemActivityTime = (item) => {
   if (!item) return 0;
@@ -216,7 +228,8 @@ const sortByProximity = (items, sortDir) =>
 
 const SearchPage = () => {
   const location = useLocation();
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, loading: authLoading } = useAuth();
+  const { data: structuredTags = EMPTY_QUERY_ARRAY } = useStructuredTags();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState({
@@ -240,6 +253,32 @@ const SearchPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [hasSearched, setHasSearched] = useState(false);
+  const viewerPendingRequestsQuery = useViewerPendingRequests(user?.id, {
+    enabled: isAuthenticated,
+  });
+  const { teamRoles: viewerTeamRoles } = useViewerTeamMemberships(user?.id, {
+    enabled: isAuthenticated,
+  });
+  const viewerPendingApplications = isAuthenticated
+    ? viewerPendingRequestsQuery.data?.applications ?? null
+    : undefined;
+  const viewerPendingInvitations = isAuthenticated
+    ? viewerPendingRequestsQuery.data?.invitations ?? null
+    : undefined;
+  const structuredTagLookup = useMemo(() => {
+    const lookup = {};
+    structuredTags.forEach((supercat) => {
+      supercat.categories?.forEach((cat) => {
+        cat.tags?.forEach((tag) => {
+          lookup[Number(tag.id)] = {
+            ...tag,
+            supercategory: supercat.name,
+          };
+        });
+      });
+    });
+    return lookup;
+  }, [structuredTags]);
 
   // ===== SORTING STATE =====
   const [sortBy, setSortBy] = useState(() => {
@@ -829,6 +868,33 @@ const SearchPage = () => {
       ? sortByProximity(filteredResults.roles, sortDir)
       : filteredResults.roles;
 
+  const withViewerTeamRole = useCallback(
+    (team) => {
+      const teamId = getSearchTeamId(team);
+      const role =
+        teamId != null
+          ? viewerTeamRoles[String(teamId)] ??
+            normalizeViewerTeamRole(
+              team?.userRole ??
+                team?.user_role ??
+                team?.currentUserRole ??
+                team?.current_user_role,
+            )
+          : null;
+
+      if (!role) return team;
+
+      return {
+        ...team,
+        userRole: role,
+        user_role: role,
+        currentUserRole: role,
+        current_user_role: role,
+      };
+    },
+    [viewerTeamRoles],
+  );
+
   const displayedTeams = mergedDisplayItems
     ? []
     : searchType === "users"
@@ -851,6 +917,9 @@ const SearchPage = () => {
               _resultType: "user",
             })),
           ];
+  const visibleMapItemsWithViewerRoles = visibleMapItems.map((item) =>
+    item?._resultType === "team" ? withViewerTeamRole(item) : item,
+  );
 
   const hasActiveFilters =
     filterTagIds.length > 0 ||
@@ -973,6 +1042,10 @@ const SearchPage = () => {
   const showIncludeOwnTeamsFilter = isAuthenticated && searchType !== "users";
 
   useEffect(() => {
+    // Wait until auth resolves so we don't double-fetch with stale
+    // isAuthenticated baked into fetchData.
+    if (authLoading) return;
+
     const run = async () => {
       try {
         setLoading(true);
@@ -1043,6 +1116,7 @@ const SearchPage = () => {
 
     run();
   }, [
+    authLoading,
     fetchData,
     currentPage,
     resultsPerPage,
@@ -1082,37 +1156,26 @@ const SearchPage = () => {
       setSortDir("asc");
     }
 
-    const tagsParam = urlParams.get("tags");
-    if (tagsParam) {
-      const ids = tagsParam.split(",").map(Number).filter(Boolean);
-      if (ids.length > 0) {
-        // Resolve tag names from structured tag tree (IDs already set via lazy init)
-        tagService
-          .getStructuredTags()
-          .then((structure) => {
-            const lookup = {};
-            structure.forEach((supercat) => {
-              supercat.categories?.forEach((cat) => {
-                cat.tags?.forEach((tag) => {
-                  lookup[Number(tag.id)] = {
-                    ...tag,
-                    supercategory: supercat.name,
-                  };
-                });
-              });
-            });
-            const map = {};
-            ids.forEach((id) => {
-              if (lookup[id]) map[id] = lookup[id];
-            });
-            setFilterTagMap(map);
-          })
-          .catch(() => {});
-      }
-    }
     // Badge IDs already set via lazy init; names resolved by the allBadges effect
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    const urlParams = new URLSearchParams(location.search);
+    const tagsParam = urlParams.get("tags");
+    if (!tagsParam) return;
+
+    const ids = tagsParam.split(",").map(Number).filter(Boolean);
+    if (ids.length === 0 || Object.keys(structuredTagLookup).length === 0) {
+      return;
+    }
+
+    const map = {};
+    ids.forEach((id) => {
+      if (structuredTagLookup[id]) map[id] = structuredTagLookup[id];
+    });
+    setFilterTagMap(map);
+  }, [location.search, structuredTagLookup]);
 
   useEffect(() => {
     if (!showSortDropdown) {
@@ -2271,7 +2334,7 @@ const SearchPage = () => {
 
               {resultView === "map" && (
                 <SearchMapView
-                  items={visibleMapItems}
+                  items={visibleMapItemsWithViewerRoles}
                   searchType={searchType}
                   roleMatchTagIds={roleMatchTagIds}
                   roleMatchBadgeNames={roleMatchBadgeNames}
@@ -2295,10 +2358,12 @@ const SearchPage = () => {
                       item._resultType === "team" ? (
                         <TeamCard
                           key={`team-${item.id}`}
-                          team={item}
+                          team={withViewerTeamRole(item)}
                           onUpdate={handleTeamUpdate}
                           isSearchResult={true}
                           viewerDistanceSource={viewerDistanceSource}
+                          viewerPendingApplications={viewerPendingApplications}
+                          viewerPendingInvitations={viewerPendingInvitations}
                           roleMatchBadgeNames={roleMatchBadgeNames}
                           showMatchHighlights={sortBy === "match"}
                           showMatchScore={sortBy === "match"}
@@ -2367,10 +2432,12 @@ const SearchPage = () => {
                       item._resultType === "team" ? (
                         <TeamCard
                           key={`team-${item.id}`}
-                          team={item}
+                          team={withViewerTeamRole(item)}
                           onUpdate={handleTeamUpdate}
                           isSearchResult={true}
                           viewerDistanceSource={viewerDistanceSource}
+                          viewerPendingApplications={viewerPendingApplications}
+                          viewerPendingInvitations={viewerPendingInvitations}
                           roleMatchBadgeNames={roleMatchBadgeNames}
                           showMatchHighlights={sortBy === "match"}
                           showMatchScore={sortBy === "match"}
