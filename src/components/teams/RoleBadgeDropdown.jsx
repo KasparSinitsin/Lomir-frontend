@@ -47,6 +47,13 @@ const RoleBadgeDropdown = ({
 
   const roleInfo = getRoleInfo(member.role);
   const RoleIcon = roleInfo.icon;
+  const memberId =
+    member.user_id ??
+    member.userId ??
+    member.member_id ??
+    member.memberId ??
+    member.user?.id ??
+    member.id;
 
   const getMemberName = () => {
     const first = member.first_name || member.firstName;
@@ -122,7 +129,7 @@ const RoleBadgeDropdown = ({
       if (pendingAction.type === "role") {
         await onRoleChange(pendingAction.newRole);
       } else if (pendingAction.type === "remove") {
-        await onRemoveMember(member.user_id || member.userId);
+        await onRemoveMember(memberId);
       }
 
       setPendingAction(null);
@@ -170,8 +177,6 @@ const RoleBadgeDropdown = ({
       <Dropdown
         trigger={triggerBadge}
         position="bottom-right"
-        openOnHover={true}
-        hoverDelay={150}
         dropdownClassName="min-w-48"
       >
         {/* Promote to Admin - shown for members (NOT for archived teams) */}

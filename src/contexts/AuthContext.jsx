@@ -6,16 +6,23 @@ import { setUserTimezone } from "../utils/dateHelpers";
 const AuthContext = createContext(null);
 
 const normalizeHiddenBadgeIds = (source = {}) => {
-  if (Array.isArray(source.hidden_badge_ids)) return source.hidden_badge_ids;
   if (Array.isArray(source.hiddenBadgeIds)) return source.hiddenBadgeIds;
   return [];
 };
 
 const normalizeHiddenAwardIds = (source = {}) => {
-  if (Array.isArray(source.hidden_award_ids)) return source.hidden_award_ids;
   if (Array.isArray(source.hiddenAwardIds)) return source.hiddenAwardIds;
   return [];
 };
+
+const normalizeAuthUser = (userData, { defaultIsPublic = false } = {}) => ({
+  ...userData,
+  isPublic:
+    userData?.isPublic !== undefined ? userData.isPublic : defaultIsPublic,
+  hideBadges: userData?.hideBadges !== undefined ? userData.hideBadges : false,
+  hiddenBadgeIds: normalizeHiddenBadgeIds(userData),
+  hiddenAwardIds: normalizeHiddenAwardIds(userData),
+});
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -25,6 +32,8 @@ export const AuthProvider = ({ children }) => {
 
   // Load user data if token exists
   useEffect(() => {
+    let cancelled = false;
+
     const loadUser = async () => {
       if (token) {
         try {
@@ -34,53 +43,12 @@ export const AuthProvider = ({ children }) => {
             },
           });
 
-          // Ensure we have both snake_case and camelCase versions of properties
+          if (cancelled) return;
+
           const userData = response.data.data.user;
-          const enhancedUserData = {
-            ...userData,
-            // Add camelCase versions if missing
-            firstName: userData.first_name || userData.firstName,
-            lastName: userData.last_name || userData.lastName,
-            postalCode: userData.postal_code || userData.postalCode,
-            avatarUrl: userData.avatar_url || userData.avatarUrl,
-            isPublic:
-              userData.is_public !== undefined
-                ? userData.is_public
-                : userData.isPublic !== undefined
-                  ? userData.isPublic
-                  : true,
-            hideBadges:
-              userData.hide_badges !== undefined
-                ? userData.hide_badges
-                : userData.hideBadges !== undefined
-                  ? userData.hideBadges
-                  : false,
-            hiddenBadgeIds:
-              normalizeHiddenBadgeIds(userData),
-            hiddenAwardIds:
-              normalizeHiddenAwardIds(userData),
-            // Add snake_case versions if missing
-            first_name: userData.first_name || userData.firstName,
-            last_name: userData.last_name || userData.lastName,
-            postal_code: userData.postal_code || userData.postalCode,
-            avatar_url: userData.avatar_url || userData.avatarUrl,
-            is_public:
-              userData.is_public !== undefined
-                ? userData.is_public
-                : userData.isPublic !== undefined
-                ? userData.isPublic
-                : true,
-            hide_badges:
-              userData.hide_badges !== undefined
-                ? userData.hide_badges
-                : userData.hideBadges !== undefined
-                  ? userData.hideBadges
-                  : false,
-            hidden_badge_ids:
-              normalizeHiddenBadgeIds(userData),
-            hidden_award_ids:
-              normalizeHiddenAwardIds(userData),
-          };
+          const enhancedUserData = normalizeAuthUser(userData, {
+            defaultIsPublic: true,
+          });
           setUser(enhancedUserData);
           setUserTimezone(enhancedUserData);
           setError(null);
@@ -92,6 +60,7 @@ export const AuthProvider = ({ children }) => {
             console.error("Failed to connect socket on load:", socketError);
           }
         } catch (err) {
+          if (cancelled) return;
           console.error("Failed to load user:", err);
           // If token is invalid, clear it
           if (
@@ -104,14 +73,18 @@ export const AuthProvider = ({ children }) => {
           }
           setError("Authentication failed. Please login again.");
         } finally {
-          setLoading(false);
+          if (!cancelled) setLoading(false);
         }
       } else {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
 
     loadUser();
+
+    return () => {
+      cancelled = true;
+    };
   }, [token]);
 
   // Register a new user
@@ -133,49 +106,7 @@ export const AuthProvider = ({ children }) => {
       // If no verification required (shouldn't happen with new flow, but just in case)
       const { token, user } = response.data.data;
 
-      const enhancedUser = {
-        ...user,
-        firstName: user.first_name || user.firstName,
-        lastName: user.last_name || user.lastName,
-        postalCode: user.postal_code || user.postalCode,
-        avatarUrl: user.avatar_url || user.avatarUrl,
-        isPublic:
-          user.is_public !== undefined
-            ? user.is_public
-            : user.isPublic !== undefined
-              ? user.isPublic
-              : false,
-        hideBadges:
-          user.hide_badges !== undefined
-            ? user.hide_badges
-            : user.hideBadges !== undefined
-              ? user.hideBadges
-              : false,
-        hiddenBadgeIds:
-          normalizeHiddenBadgeIds(user),
-        hiddenAwardIds:
-          normalizeHiddenAwardIds(user),
-        first_name: user.first_name || user.firstName,
-        last_name: user.last_name || user.lastName,
-        postal_code: user.postal_code || user.postalCode,
-        avatar_url: user.avatar_url || user.avatarUrl,
-        is_public:
-          user.is_public !== undefined
-            ? user.is_public
-            : user.isPublic !== undefined
-              ? user.isPublic
-              : false,
-        hide_badges:
-          user.hide_badges !== undefined
-            ? user.hide_badges
-            : user.hideBadges !== undefined
-              ? user.hideBadges
-              : false,
-        hidden_badge_ids:
-          normalizeHiddenBadgeIds(user),
-        hidden_award_ids:
-          normalizeHiddenAwardIds(user),
-      };
+      const enhancedUser = normalizeAuthUser(user);
 
       localStorage.setItem("token", token);
       setToken(token);
@@ -214,52 +145,7 @@ export const AuthProvider = ({ children }) => {
       const response = await api.post("/api/auth/login", credentials);
       const { token, user } = response.data.data;
 
-      // Enhance user data with both snake_case and camelCase
-      const enhancedUser = {
-        ...user,
-        // Add camelCase versions
-        firstName: user.first_name || user.firstName,
-        lastName: user.last_name || user.lastName,
-        postalCode: user.postal_code || user.postalCode,
-        avatarUrl: user.avatar_url || user.avatarUrl,
-        isPublic:
-          user.is_public !== undefined
-            ? user.is_public
-            : user.isPublic !== undefined
-              ? user.isPublic
-              : false,
-        hideBadges:
-          user.hide_badges !== undefined
-            ? user.hide_badges
-            : user.hideBadges !== undefined
-              ? user.hideBadges
-              : false,
-        hiddenBadgeIds:
-          normalizeHiddenBadgeIds(user),
-        hiddenAwardIds:
-          normalizeHiddenAwardIds(user),
-        // Add snake_case versions
-        first_name: user.first_name || user.firstName,
-        last_name: user.last_name || user.lastName,
-        postal_code: user.postal_code || user.postalCode,
-        avatar_url: user.avatar_url || user.avatarUrl,
-        is_public:
-          user.is_public !== undefined
-            ? user.is_public
-            : user.isPublic !== undefined
-              ? user.isPublic
-              : false,
-        hide_badges:
-          user.hide_badges !== undefined
-            ? user.hide_badges
-            : user.hideBadges !== undefined
-              ? user.hideBadges
-              : false,
-        hidden_badge_ids:
-          normalizeHiddenBadgeIds(user),
-        hidden_award_ids:
-          normalizeHiddenAwardIds(user),
-      };
+      const enhancedUser = normalizeAuthUser(user);
 
       localStorage.setItem("token", token);
       setToken(token);
@@ -293,116 +179,12 @@ export const AuthProvider = ({ children }) => {
 
   // Update user data
   const updateUser = (userData) => {
-    // Create a new object that preserves existing properties and adds new ones
     setUser((prevUser) => {
-      if (!prevUser) return userData;
+      const definedUpdates = Object.fromEntries(
+        Object.entries(userData || {}).filter(([, value]) => value !== undefined),
+      );
+      const newUser = normalizeAuthUser({ ...(prevUser || {}), ...definedUpdates });
 
-      // Start with a copy of the previous user data
-      const newUser = { ...prevUser };
-
-      // Add all new properties
-      Object.keys(userData).forEach((key) => {
-        if (userData[key] !== undefined) {
-          newUser[key] = userData[key];
-        }
-      });
-
-      // Specifically handle visibility properties to ensure both versions exist
-      if (userData.is_public !== undefined) {
-        newUser.is_public = userData.is_public;
-        newUser.isPublic = userData.is_public;
-      } else if (userData.isPublic !== undefined) {
-        newUser.isPublic = userData.isPublic;
-        newUser.is_public = userData.isPublic;
-      }
-
-      if (userData.hide_badges !== undefined) {
-        newUser.hide_badges = userData.hide_badges;
-        newUser.hideBadges = userData.hide_badges;
-      } else if (userData.hideBadges !== undefined) {
-        newUser.hideBadges = userData.hideBadges;
-        newUser.hide_badges = userData.hideBadges;
-      }
-
-      if (userData.hidden_badge_ids !== undefined) {
-        newUser.hidden_badge_ids = Array.isArray(userData.hidden_badge_ids)
-          ? userData.hidden_badge_ids
-          : [];
-        newUser.hiddenBadgeIds = Array.isArray(userData.hidden_badge_ids)
-          ? userData.hidden_badge_ids
-          : [];
-      } else if (userData.hiddenBadgeIds !== undefined) {
-        newUser.hiddenBadgeIds = Array.isArray(userData.hiddenBadgeIds)
-          ? userData.hiddenBadgeIds
-          : [];
-        newUser.hidden_badge_ids = Array.isArray(userData.hiddenBadgeIds)
-          ? userData.hiddenBadgeIds
-          : [];
-      }
-
-      if (userData.hidden_award_ids !== undefined) {
-        newUser.hidden_award_ids = Array.isArray(userData.hidden_award_ids)
-          ? userData.hidden_award_ids
-          : [];
-        newUser.hiddenAwardIds = Array.isArray(userData.hidden_award_ids)
-          ? userData.hidden_award_ids
-          : [];
-      } else if (userData.hiddenAwardIds !== undefined) {
-        newUser.hiddenAwardIds = Array.isArray(userData.hiddenAwardIds)
-          ? userData.hiddenAwardIds
-          : [];
-        newUser.hidden_award_ids = Array.isArray(userData.hiddenAwardIds)
-          ? userData.hiddenAwardIds
-          : [];
-      }
-
-      if (userData.is_synthetic !== undefined) {
-        newUser.is_synthetic = userData.is_synthetic;
-        newUser.isSynthetic = userData.is_synthetic;
-      } else if (userData.isSynthetic !== undefined) {
-        newUser.isSynthetic = userData.isSynthetic;
-        newUser.is_synthetic = userData.isSynthetic;
-      }
-
-      // Ensure we don't override with undefined values
-      if (newUser.is_public === undefined && newUser.isPublic === undefined) {
-        // Keep the existing values if both are undefined
-        newUser.is_public = prevUser.is_public;
-        newUser.isPublic = prevUser.isPublic;
-      }
-
-      // Handle other property pairs to ensure both snake_case and camelCase exist
-      if (userData.first_name !== undefined) {
-        newUser.first_name = userData.first_name;
-        newUser.firstName = userData.first_name;
-      } else if (userData.firstName !== undefined) {
-        newUser.firstName = userData.firstName;
-        newUser.first_name = userData.firstName;
-      }
-
-      if (userData.last_name !== undefined) {
-        newUser.last_name = userData.last_name;
-        newUser.lastName = userData.last_name;
-      } else if (userData.lastName !== undefined) {
-        newUser.lastName = userData.lastName;
-        newUser.last_name = userData.lastName;
-      }
-
-      if (userData.postal_code !== undefined) {
-        newUser.postal_code = userData.postal_code;
-        newUser.postalCode = userData.postal_code;
-      } else if (userData.postalCode !== undefined) {
-        newUser.postalCode = userData.postalCode;
-        newUser.postal_code = userData.postalCode;
-      }
-
-      if (userData.avatar_url !== undefined) {
-        newUser.avatar_url = userData.avatar_url;
-        newUser.avatarUrl = userData.avatar_url;
-      } else if (userData.avatarUrl !== undefined) {
-        newUser.avatarUrl = userData.avatarUrl;
-        newUser.avatar_url = userData.avatarUrl;
-      }
       setUserTimezone(newUser);
       return newUser;
     });

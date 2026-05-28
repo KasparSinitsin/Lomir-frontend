@@ -1,42 +1,28 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Check, X as Decline, User, Mail, MessageSquare, AlertTriangle } from "lucide-react";
+import { Check, CheckCheck, UserCheck, X as Decline, User, Users, Mail, MessageSquare, AlertTriangle, ChevronDown, ChevronUp, Pencil } from "lucide-react";
 import RequestListModal from "../common/RequestListModal";
 import PersonRequestCard from "../common/PersonRequestCard";
 import Button from "../common/Button";
 import Modal from "../common/Modal";
+import Tooltip from "../common/Tooltip";
 import UserDetailsModal from "../users/UserDetailsModal";
-import VacantRoleCard from "./VacantRoleCard";
+import RequestRoleCard from "./RequestRoleCard";
 import TeamApplicationDetailsModal from "./TeamApplicationDetailsModal";
-import { matchingService } from "../../services/matchingService";
-import { vacantRoleService } from "../../services/vacantRoleService";
 import { messageService } from "../../services/messageService";
+import { vacantRoleService } from "../../services/vacantRoleService";
 import { useAuth } from "../../contexts/AuthContext";
+import { useTeamModal } from "../../contexts/TeamModalContext";
+import { buildRoleApplicationFilledMessage } from "../../utils/roleEventMessages";
+import usePolledRequestRoles from "../../hooks/usePolledRequestRoles";
+import useSelfRoleMatchMap from "../../hooks/useSelfRoleMatchMap";
 import {
-  buildRoleFilledMessage,
-  buildRoleReopenedMessage,
-} from "../../utils/roleEventMessages";
-import { resolveFilledRoleUser } from "../../utils/vacantRoleUtils";
-
-const ROLE_CANDIDATE_FETCH_MIN_LIMIT = 20;
-const SELF_ROLE_MATCH_FETCH_LIMIT = 1000;
-
-const extractCandidateMatchData = (candidateLike) => {
-  const rawScore =
-    candidateLike?.matchScore ??
-    candidateLike?.match_score ??
-    candidateLike?.bestMatchScore ??
-    candidateLike?.best_match_score ??
-    null;
-  const numericScore = Number(rawScore);
-
-  return {
-    matchScore: Number.isFinite(numericScore) ? numericScore : null,
-    matchDetails:
-      candidateLike?.matchDetails ??
-      candidateLike?.match_details ??
-      null,
-  };
-};
+  buildApplicationRoleForCard,
+  getRequestDateValue,
+  getRequestUserLabel,
+  getRequestUserId,
+  getRequestRoleId,
+  isRequestForUser,
+} from "../../utils/teamRequestUtils";
 
 /**
  * TeamApplicationsModal Component
@@ -49,6 +35,7 @@ const extractCandidateMatchData = (candidateLike) => {
  * @param {Array} applications - Array of pending application objects
  * @param {Function} onApplicationAction - Callback to handle approve/decline
  * @param {string} teamName - Name of the team (for display)
+ * @param {string|number|null} highlightApplicationId - Application ID to scroll to + highlight (optional)
  * @param {string|number|null} highlightUserId - User ID to scroll to + highlight (optional)
  */
 const TeamApplicationsModal = ({
@@ -59,23 +46,36 @@ const TeamApplicationsModal = ({
   onApplicationAction,
   onRoleStatusChanged,
   teamName,
+  highlightApplicationId = null,
   highlightUserId = null,
 }) => {
   // ============ Auth ============
   const { user: currentUser } = useAuth();
+  const { openTeamModal } = useTeamModal();
 
   // ============ State ============
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [responses, setResponses] = useState({});
+  const [responseExpanded, setResponseExpanded] = useState({});
   const [selectedUserId, setSelectedUserId] = useState(null);
   const [roleStatusOverrides, setRoleStatusOverrides] = useState({});
   const [statusUpdatingRoleId, setStatusUpdatingRoleId] = useState(null);
   const [showCloseGuard, setShowCloseGuard] = useState(false);
   const [applicationDetailsFor, setApplicationDetailsFor] = useState(null);
-  const [roleCandidateMatchMap, setRoleCandidateMatchMap] = useState({});
-  const [selfRoleMatchMap, setSelfRoleMatchMap] = useState({});
+  const [narrowMap, setNarrowMap] = useState({});
+  const polledRoleStatusMap = usePolledRequestRoles(applications, {
+    isOpen,
+    teamId,
+  });
+  const selfRoleMatchMap = useSelfRoleMatchMap(applications, {
+    isOpen,
+    teamId,
+    currentUserId: currentUser?.id,
+    userKey: "applicant",
+    warningLabel: "application",
+  });
 
   // ============ Refs ============
   const highlightedRef = useRef(null);
@@ -91,7 +91,8 @@ const TeamApplicationsModal = ({
   const handleApplicationAction = async (
     applicationId,
     action,
-    response = ""
+    response = "",
+    fillRoleOverride = null
   ) => {
     try {
       setLoading(true);
@@ -100,29 +101,44 @@ const TeamApplicationsModal = ({
       // Determine if the admin toggled "Mark role as filled" for this application's role
       let fillRole = false;
       const application = applications.find((app) => app.id === applicationId);
+      const isInternalRoleApplication = Boolean(
+        application?.isInternalRoleApplication ??
+          application?.is_internal_role_application ??
+          false,
+      );
       if (action === "approve") {
         const appRoleId = application?.role?.id ?? null;
-        if (appRoleId && roleStatusOverrides[appRoleId]?.status === "filled") {
+        if (fillRoleOverride !== null && fillRoleOverride !== undefined) {
+          fillRole = Boolean(fillRoleOverride);
+        } else if (
+          appRoleId &&
+          (isInternalRoleApplication ||
+            roleStatusOverrides[appRoleId]?.status === "filled")
+        ) {
           fillRole = true;
         }
       }
 
-      await onApplicationAction(applicationId, action, response, fillRole);
+      const actionResult = await onApplicationAction(applicationId, action, response, fillRole);
+      const actionData = actionResult?.data ?? actionResult ?? {};
+      const roleFilled = Boolean(actionData.roleFilled);
+      const roleInvitationCreated = Boolean(actionData.roleInvitationCreated);
 
-      if (action === "approve" && fillRole && teamId && application?.role) {
+      if (action === "approve" && fillRole && roleFilled && teamId && application?.role) {
         try {
           await messageService.sendMessage(
             teamId,
-            buildRoleFilledMessage({
+            buildRoleApplicationFilledMessage({
               teamId,
               teamName,
               role: application.role,
-              filledUser: application.applicant ?? null,
+              applicant: application.applicant ?? null,
+              approver: currentUser ?? null,
             }),
             "team",
           );
         } catch (messageError) {
-          console.warn("Role filled, but chat event could not be sent:", messageError);
+          console.warn("Role application filled, but chat event could not be sent:", messageError);
         }
       }
 
@@ -138,7 +154,17 @@ const TeamApplicationsModal = ({
         }
       }
 
-      if (action === "approve" && fillRole) {
+      if (action === "approve" && roleInvitationCreated) {
+        const roleName =
+          application?.role?.roleName ??
+          application?.role?.role_name ??
+          "the role";
+        const currentRoleName =
+          actionData.deferredByCurrentRoleName ?? "their current role";
+        setSuccess(
+          `Application approved! ${roleName} is now a role offer the member can accept once they leave ${currentRoleName}.`,
+        );
+      } else if (action === "approve" && fillRole && roleFilled) {
         const roleName =
           application?.role?.roleName ??
           application?.role?.role_name ??
@@ -209,29 +235,6 @@ const TeamApplicationsModal = ({
 
         await vacantRoleService.updateVacantRoleStatus(teamId, roleId, "open", null);
 
-        if (originalRole) {
-          try {
-            await messageService.sendMessage(
-              teamId,
-              buildRoleReopenedMessage({
-                teamId,
-                teamName,
-                role: originalRole,
-                filledUser: resolveFilledRoleUser(originalRole, {
-                  viewAsUserId: currentUser?.id,
-                  viewAsUser: currentUser,
-                }),
-              }),
-              "team",
-            );
-          } catch (messageError) {
-            console.warn(
-              "Role reopened, but chat event could not be sent:",
-              messageError,
-            );
-          }
-        }
-
         // Clear any local override to reflect the server state
         setRoleStatusOverrides((prev) => {
           const next = { ...prev };
@@ -277,30 +280,25 @@ const TeamApplicationsModal = ({
     }
   };
 
-  // ============ Helper Functions ============
-  const getApplicationDate = (application) => {
-    return (
-      application?.created_at ||
-      application?.createdAt ||
-      application?.date ||
-      application?.applied_at
-    );
-  };
-
   // ============ Effects ============
   useEffect(() => {
-    if (isOpen && highlightUserId && highlightedRef.current) {
-      // Small delay to ensure modal is rendered
-      const t = setTimeout(() => {
+    if (!isOpen || (!highlightApplicationId && !highlightUserId)) return;
+
+    let frameId = null;
+    const t = setTimeout(() => {
+      frameId = window.requestAnimationFrame(() => {
         highlightedRef.current?.scrollIntoView({
           behavior: "smooth",
           block: "center",
         });
-      }, 100);
+      });
+    }, 150);
 
-      return () => clearTimeout(t);
-    }
-  }, [isOpen, highlightUserId]);
+    return () => {
+      clearTimeout(t);
+      if (frameId != null) window.cancelAnimationFrame(frameId);
+    };
+  }, [applications.length, highlightApplicationId, highlightUserId, isOpen]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -309,172 +307,25 @@ const TeamApplicationsModal = ({
     }
   }, [isOpen]);
 
-  useEffect(() => {
-    const selfRoleIds = [
-      ...new Set(
-        applications
-          .filter((application) => {
-            const applicantId =
-              application?.applicant?.id ??
-              application?.applicant_id ??
-              null;
-            return applicantId != null && String(applicantId) === String(currentUser?.id);
-          })
-          .map((application) =>
-            application?.role?.id ??
-            application?.roleId ??
-            application?.role_id ??
-            null,
-          )
-          .filter((roleId) => roleId != null)
-          .map(String),
-      ),
-    ];
-
-    if (!isOpen || !teamId || !currentUser?.id || selfRoleIds.length === 0) {
-      setSelfRoleMatchMap({});
-      return;
-    }
-
-    let cancelled = false;
-
-    const fetchSelfRoleMatches = async () => {
-      try {
-        const response = await matchingService.getMatchingRolesForTeam(teamId, {
-          limit: SELF_ROLE_MATCH_FETCH_LIMIT,
-        });
-
-        if (cancelled) return;
-
-        const nextMatchMap = {};
-
-        (response?.data || []).forEach((role) => {
-          const roleId = role?.id;
-          if (roleId == null || !selfRoleIds.includes(String(roleId))) return;
-
-          nextMatchMap[String(roleId)] = {
-            matchScore:
-              role?.matchScore ??
-              role?.match_score ??
-              null,
-            matchDetails:
-              role?.matchDetails ??
-              role?.match_details ??
-              null,
-          };
-        });
-
-        setSelfRoleMatchMap(nextMatchMap);
-      } catch (error) {
-        if (!cancelled) {
-          console.warn("Could not fetch self-application role match scores:", error);
-          setSelfRoleMatchMap({});
-        }
-      }
-    };
-
-    fetchSelfRoleMatches();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [isOpen, teamId, currentUser?.id, applications]);
-
-  useEffect(() => {
-    if (!isOpen || applications.length === 0) {
-      setRoleCandidateMatchMap({});
-      return;
-    }
-
-    const applicantsByRole = applications.reduce((acc, application) => {
-      const roleId =
-        application?.role?.id ??
-        application?.roleId ??
-        application?.role_id ??
-        null;
-      const applicantId =
-        application?.applicant?.id ??
-        application?.applicant_id ??
-        null;
-
-      if (roleId == null || applicantId == null) {
-        return acc;
-      }
-
-      const roleKey = String(roleId);
-      if (!acc.has(roleKey)) {
-        acc.set(roleKey, new Set());
-      }
-      acc.get(roleKey).add(String(applicantId));
-      return acc;
-    }, new Map());
-
-    if (applicantsByRole.size === 0) {
-      setRoleCandidateMatchMap({});
-      return;
-    }
-
-    let cancelled = false;
-
-    const fetchCandidateMatches = async () => {
-      const roleEntries = [...applicantsByRole.entries()];
-
-      try {
-        const results = await Promise.allSettled(
-          roleEntries.map(([roleId, applicantIds]) =>
-            matchingService.getMatchingCandidates(roleId, {
-              limit: Math.max(applicantIds.size, ROLE_CANDIDATE_FETCH_MIN_LIMIT),
-            }),
-          ),
-        );
-
-        if (cancelled) return;
-
-        const nextMatchMap = {};
-
-        results.forEach((result, index) => {
-          if (result.status !== "fulfilled") return;
-
-          const [roleId] = roleEntries[index];
-          const roleMatches = {};
-
-          (result.value?.data || []).forEach((candidate) => {
-            const candidateId =
-              candidate?.id ??
-              candidate?.userId ??
-              candidate?.user_id ??
-              null;
-            if (candidateId == null) return;
-
-            roleMatches[String(candidateId)] = extractCandidateMatchData(candidate);
-          });
-
-          nextMatchMap[String(roleId)] = roleMatches;
-        });
-
-        setRoleCandidateMatchMap(nextMatchMap);
-      } catch (error) {
-        if (!cancelled) {
-          console.warn("Could not fetch application role match scores:", error);
-          setRoleCandidateMatchMap({});
-        }
-      }
-    };
-
-    fetchCandidateMatches();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [isOpen, applications]);
-
   // ============ Render ============
+  const anyNarrow = Object.values(narrowMap).some(Boolean);
+
   return (
     <RequestListModal
       isOpen={isOpen}
       onClose={handleClose}
-      title="Applications received for"
-      subtitle={teamName}
+      title={
+        <span className="leading-[100%]">
+          <Users size={20} className="inline-block align-middle mr-1.5 shrink-0 text-primary" />
+          <Tooltip content="View team" wrapperClassName="inline">
+            <span
+              className="font-semibold text-success cursor-pointer hover:text-success/70 transition-colors"
+              onClick={() => teamId && openTeamModal(teamId, teamName)}
+            >{teamName}</span>
+          </Tooltip>
+          <span>'s Applications</span>
+        </span>
+      }
       itemCount={applications.length}
       itemName="application"
       footerText="Review each application carefully before making decisions."
@@ -530,67 +381,28 @@ const TeamApplicationsModal = ({
       }
     >
       {applications.map((application) => {
-        const applicantId =
-          application?.applicant?.id ?? application?.applicant_id ?? null;
-        const roleId =
-          application?.role?.id ??
-          application?.roleId ??
-          application?.role_id ??
-          null;
-        const syntheticRoleFlag =
-          application?.role?.is_synthetic ??
-          application?.role?.isSynthetic ??
-          application?.role_is_synthetic ??
-          application?.roleIsSynthetic ??
-          application?.is_synthetic ??
-          application?.isSynthetic;
+        const applicantId = getRequestUserId(application, "applicant");
+        const roleId = getRequestRoleId(application);
         const roleOverride = roleId ? roleStatusOverrides[roleId] : null;
-        const role =
-          application?.role && roleId
-            ? {
-                ...application.role,
-                is_synthetic:
-                  application.role.is_synthetic ??
-                  application.role.isSynthetic ??
-                  syntheticRoleFlag,
-                isSynthetic:
-                  application.role.isSynthetic ??
-                  application.role.is_synthetic ??
-                  syntheticRoleFlag,
-                status:
-                  roleOverride?.status ??
-                  application.role.status ??
-                  "open",
-                filledBy:
-                  roleOverride?.filledBy ??
-                  application.role.filledBy ??
-                  application.role.filled_by ??
-                  null,
-                filledByUser:
-                  roleOverride?.filledByUser ??
-                  application.role.filledByUser ??
-                  application.role.filled_by_user ??
-                  null,
-              }
-            : application?.role
-              ? {
-                  ...application.role,
-                  is_synthetic:
-                    application.role.is_synthetic ??
-                    application.role.isSynthetic ??
-                    syntheticRoleFlag,
-                  isSynthetic:
-                    application.role.isSynthetic ??
-                    application.role.is_synthetic ??
-                    syntheticRoleFlag,
-                }
-              : null;
-        const applicantRoleMatch =
-          roleId != null && applicantId != null
-            ? roleCandidateMatchMap[String(roleId)]?.[String(applicantId)] ?? null
-            : null;
-        const isSelfApplication =
-          currentUser?.id === (application.applicant?.id ?? application.applicant_id);
+        const polledRole = roleId ? polledRoleStatusMap[String(roleId)] : null;
+        const role = buildApplicationRoleForCard(
+          application,
+          polledRole,
+          roleOverride,
+        );
+        const isSelfApplication = isRequestForUser(
+          application,
+          "applicant",
+          currentUser?.id,
+        );
+        const isInternalRoleApplication = Boolean(
+          application?.isInternalRoleApplication ??
+            application?.is_internal_role_application ??
+            false,
+        );
+        const hasRoleApplication = roleId != null;
+        const isExternalRoleApplication =
+          hasRoleApplication && !isInternalRoleApplication;
         const selfRoleMatch =
           roleId != null && isSelfApplication
             ? selfRoleMatchMap[String(roleId)] ?? null
@@ -598,9 +410,45 @@ const TeamApplicationsModal = ({
 
         // Normalize types to avoid "1" vs 1 mismatches
         const isHighlighted =
-          highlightUserId != null &&
-          applicantId != null &&
-          String(applicantId) === String(highlightUserId);
+          (highlightApplicationId != null &&
+            String(application.id) === String(highlightApplicationId)) ||
+          (highlightUserId != null &&
+            applicantId != null &&
+            String(applicantId) === String(highlightUserId));
+
+        // Role availability guards
+        const serverRoleStatus =
+          polledRole?.status ?? application.role?.status ?? "open";
+        const isServerFilled = serverRoleStatus === "filled";
+        const isServerClosed = serverRoleStatus === "closed";
+        const isRoleUnavailable = isServerFilled || isServerClosed;
+
+        const applicationTeamOwnerId =
+          application.ownerId ?? application.owner_id ?? null;
+        const isCurrentUserOwner =
+          applicationTeamOwnerId != null &&
+          currentUser?.id != null &&
+          String(currentUser.id) === String(applicationTeamOwnerId);
+
+        const filledByUserId =
+          application.role?.filledBy ?? application.role?.filled_by ?? null;
+        const isCurrentUserFilledBy =
+          filledByUserId != null &&
+          currentUser?.id != null &&
+          String(currentUser.id) === String(filledByUserId);
+
+        // Restrict the status toggle on the role card for unavailable roles:
+        // filled → only owner or the person filling it; closed → only owner
+        const canManageStatusForRole =
+          !isSelfApplication &&
+          (!isServerFilled || isCurrentUserOwner || isCurrentUserFilledBy) &&
+          (!isServerClosed || isCurrentUserOwner);
+
+        const unavailableTooltip = isInternalRoleApplication
+          ? (isServerFilled ? "This role is already filled" : "This role is closed")
+          : (isServerFilled
+              ? "This role is already filled — you can still add this person to the team"
+              : "This role is closed — you can still add this person to the team");
 
         return (
           <div
@@ -608,63 +456,63 @@ const TeamApplicationsModal = ({
             ref={isHighlighted ? highlightedRef : null}
             className={`transition-all duration-300 ${
               isHighlighted
-                ? "ring-2 ring-primary/30 rounded-xl bg-primary/5"
+                ? "ring-2 ring-green-500/70 ring-offset-2 rounded-xl bg-green-50"
                 : ""
             } ${isSelfApplication ? "opacity-60" : ""}`}
           >
             <PersonRequestCard
               user={application.applicant}
-              date={getApplicationDate(application)}
+              date={getRequestDateValue(application)}
+              onNarrowChange={(narrow) => setNarrowMap((prev) => {
+                if ((prev[String(application.id)] ?? false) === narrow) return prev;
+                return { ...prev, [String(application.id)]: narrow };
+              })}
+              forceNarrow={anyNarrow}
               message={application.message || "No message provided."}
-              messageLabel="Application message:"
+              messageLabel={`${getRequestUserLabel(application, "applicant")}'s application message:`}
               messageIcon={<Mail size={12} className="text-pink-500 mr-1" />}
               onUserClick={handleUserClick}
-              showLocation={false}
+              showLocation={true}
+              sublineExtra={
+                isInternalRoleApplication ? (
+                  <Tooltip
+                    content="Already a member of this team"
+                    wrapperClassName="flex min-w-0 overflow-hidden items-center gap-0.5 text-base-content/70"
+                  >
+                    <User size={10} className="flex-shrink-0 text-success" />
+                    <span className="leading-[1.05] whitespace-nowrap">Team Member</span>
+                  </Tooltip>
+                ) : null
+              }
+              messageBubbleExtra={
+                role ? (
+                  <RequestRoleCard
+                      role={role}
+                      teamId={teamId}
+                      teamName={teamName}
+                      primaryMatch={selfRoleMatch}
+                      canManageStatus={canManageStatusForRole}
+                      onViewApplicationDetails={
+                        isSelfApplication
+                          ? () => setApplicationDetailsFor(application)
+                          : null
+                      }
+                      onStatusChange={(currentRoleId, newStatus) =>
+                        handleRoleStatusChange(
+                          currentRoleId,
+                          newStatus,
+                          application.applicant ?? null,
+                        )
+                      }
+                      allowedStatusActions={["filled", "open"]}
+                      statusActionLoading={statusUpdatingRoleId === roleId}
+                      viewAsUserId={application.applicant?.id}
+                      viewAsUser={application.applicant}
+                    />
+                ) : null
+              }
               extraContent={
                 <>
-                  {/* Vacant role card — shown when application targets a specific role */}
-                  {role && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
-                      <VacantRoleCard
-                        role={role}
-                        team={{ id: teamId, name: teamName }}
-                        matchScore={
-                          applicantRoleMatch?.matchScore ??
-                          selfRoleMatch?.matchScore ??
-                          role.matchScore ??
-                          role.match_score ??
-                          null
-                        }
-                        matchDetails={
-                          applicantRoleMatch?.matchDetails ??
-                          selfRoleMatch?.matchDetails ??
-                          role.matchDetails ??
-                          role.match_details ??
-                          null
-                        }
-                        canManage={false}
-                        canManageStatus={!isSelfApplication}
-                        onViewApplicationDetails={
-                          isSelfApplication
-                            ? () => setApplicationDetailsFor(application)
-                            : null
-                        }
-                        isTeamMember={true}
-                        onStatusChange={(currentRoleId, newStatus) =>
-                          handleRoleStatusChange(
-                            currentRoleId,
-                            newStatus,
-                            application.applicant ?? null,
-                          )
-                        }
-                        allowedStatusActions={["filled", "open"]}
-                        statusActionLoading={statusUpdatingRoleId === roleId}
-                        viewAsUserId={application.applicant?.id}
-                        viewAsUser={application.applicant}
-                      />
-                    </div>
-                  )}
-
                   {/* User Tags/Skills if available */}
                   {application.applicant?.tags &&
                     application.applicant.tags.length > 0 && (
@@ -693,19 +541,45 @@ const TeamApplicationsModal = ({
                   {/* Response Textarea */}
                   {!isSelfApplication && (
                     <div className="mb-5">
-                      <p className="text-xs text-base-content/60 mb-1 flex items-center">
-                        <MessageSquare size={12} className="text-primary mr-1" />
-                        Your response message (optional):
-                      </p>
-                      <textarea
-                        value={responses[application.id] || ""}
-                        onChange={(e) =>
-                          handleResponseChange(application.id, e.target.value)
+                      <div className="flex mb-1">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setResponseExpanded((prev) => ({
+                            ...prev,
+                            [application.id]: !prev[application.id],
+                          }))
                         }
-                        className="textarea textarea-bordered textarea-sm w-full h-20 resize-none text-sm"
-                        placeholder="Add a personal message to your decision..."
-                        disabled={loading}
-                      />
+                        className={`text-xs text-base-content/60 flex items-center text-left cursor-pointer hover:text-base-content/80 transition-colors ${responseExpanded[application.id] ? "w-full" : "ml-auto"}`}
+                      >
+                        {responseExpanded[application.id] || responses[application.id]
+                          ? <MessageSquare size={12} className="text-primary mr-1" />
+                          : <Pencil size={12} className="text-primary mr-1" />
+                        }
+                        {responseExpanded[application.id]
+                          ? "Your response message (optional):"
+                          : "Add a personal response message (optional)"
+                        }
+                        <span className="ml-auto pl-3 text-base-content/40">
+                          {responseExpanded[application.id] ? (
+                            <ChevronUp size={12} />
+                          ) : (
+                            <ChevronDown size={12} />
+                          )}
+                        </span>
+                      </button>
+                      </div>
+                      {responseExpanded[application.id] && (
+                        <textarea
+                          value={responses[application.id] || ""}
+                          onChange={(e) =>
+                            handleResponseChange(application.id, e.target.value)
+                          }
+                          className="textarea textarea-bordered textarea-sm w-full h-20 resize-none text-sm"
+                          placeholder="Add a personal message to your decision..."
+                          disabled={loading}
+                        />
+                      )}
                     </div>
                   )}
                 </>
@@ -717,37 +591,130 @@ const TeamApplicationsModal = ({
                     <span>Another owner or admin must review your application.</span>
                   </div>
                 ) : (
-                  <div className="flex justify-end space-x-2">
-                    <Button
-                      variant="errorOutline"
-                      size="sm"
-                      onClick={() =>
-                        handleApplicationAction(
-                          application.id,
-                          "decline",
-                          responses[application.id] || ""
-                        )
-                      }
-                      disabled={loading}
-                      icon={<Decline size={16} />}
-                    >
-                      Decline
-                    </Button>
-                    <Button
-                      variant="successOutline"
-                      size="sm"
-                      onClick={() =>
-                        handleApplicationAction(
-                          application.id,
-                          "approve",
-                          responses[application.id] || ""
-                        )
-                      }
-                      disabled={loading}
-                      icon={<Check size={16} />}
-                    >
-                      Accept & Add to Team
-                    </Button>
+                  <div className="flex flex-wrap justify-end gap-2">
+                    {isExternalRoleApplication ? (
+                      <>
+                        {isRoleUnavailable ? (
+                          <Tooltip content={unavailableTooltip}>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              disabled={true}
+                              className="border border-base-content/30 text-base-content/40"
+                              icon={<UserCheck size={16} />}
+                            >
+                              Fill Role + Add to Team
+                            </Button>
+                          </Tooltip>
+                        ) : (
+                          <Tooltip content="Accept application, add to team and fill the role">
+                            <Button
+                              variant="successOutline"
+                              size="sm"
+                              onClick={() =>
+                                handleApplicationAction(
+                                  application.id,
+                                  "approve",
+                                  responses[application.id] || "",
+                                  true
+                                )
+                              }
+                              disabled={loading}
+                              icon={<CheckCheck size={16} />}
+                            >
+                              Fill Role + Add to Team
+                            </Button>
+                          </Tooltip>
+                        )}
+                        <Tooltip content="Accept application and add to team without filling the role">
+                          <Button
+                            variant="successOutline"
+                            size="sm"
+                            onClick={() =>
+                              handleApplicationAction(
+                                application.id,
+                                "approve",
+                                responses[application.id] || "",
+                                false
+                              )
+                            }
+                            disabled={loading}
+                            icon={<Check size={16} />}
+                          >
+                            Add to Team
+                          </Button>
+                        </Tooltip>
+                      </>
+                    ) : isInternalRoleApplication ? (
+                      isRoleUnavailable ? (
+                        <Tooltip content={unavailableTooltip}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            disabled={true}
+                            className="border border-base-content/30 text-base-content/40"
+                            icon={<UserCheck size={16} />}
+                          >
+                            Fill Role
+                          </Button>
+                        </Tooltip>
+                      ) : (
+                        <Tooltip content="Accept application and assign this team member to the role">
+                          <Button
+                            variant="successOutline"
+                            size="sm"
+                            onClick={() =>
+                              handleApplicationAction(
+                                application.id,
+                                "approve",
+                                responses[application.id] || "",
+                                true
+                              )
+                            }
+                            disabled={loading}
+                            icon={<Check size={16} />}
+                          >
+                            Fill Role
+                          </Button>
+                        </Tooltip>
+                      )
+                    ) : (
+                      <Tooltip content="Accept application and add to team">
+                        <Button
+                          variant="successOutline"
+                          size="sm"
+                          onClick={() =>
+                            handleApplicationAction(
+                              application.id,
+                              "approve",
+                              responses[application.id] || "",
+                              false
+                            )
+                          }
+                          disabled={loading}
+                          icon={<Check size={16} />}
+                        >
+                          Add to Team
+                        </Button>
+                      </Tooltip>
+                    )}
+                    <Tooltip content="Decline this application">
+                      <Button
+                        variant="errorOutline"
+                        size="sm"
+                        onClick={() =>
+                          handleApplicationAction(
+                            application.id,
+                            "decline",
+                            responses[application.id] || ""
+                          )
+                        }
+                        disabled={loading}
+                        icon={<Decline size={16} />}
+                      >
+                        Decline
+                      </Button>
+                    </Tooltip>
                   </div>
                 )
               }

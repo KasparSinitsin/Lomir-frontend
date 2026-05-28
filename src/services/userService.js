@@ -1,39 +1,55 @@
-import api from "./api"; // Import the configured Axios instance
+import api, { call } from "./api";
+import { snakeToCamel } from "../utils/formatters";
 
-// Define the user service object
+// Preserves both snake_case and camelCase keys so callers that read either
+// casing keep working — many user-facing components defensively read both.
+const normalizeUserPayload = (payload) => {
+  const rawUser = payload?.data ?? payload ?? null;
+  if (!rawUser || typeof rawUser !== "object" || Array.isArray(rawUser)) {
+    return payload;
+  }
+
+  const normalized = { ...rawUser, ...snakeToCamel(rawUser) };
+
+  if (Array.isArray(rawUser.badges)) {
+    normalized.badges = rawUser.badges.map((badge) =>
+      badge && typeof badge === "object"
+        ? { ...badge, ...snakeToCamel(badge) }
+        : badge,
+    );
+  }
+
+  return payload?.data !== undefined
+    ? { ...payload, data: normalized }
+    : normalized;
+};
+
 export const userService = {
   /**
    * Fetches user details by their ID.
    * @param {string|number} userId - The ID of the user to fetch.
    * @returns {Promise<object>} A promise resolving to the user data.
    */
-  getUserById: async (userId) => {
-    try {
-      // Make GET request to the user endpoint
-      const response = await api.get(`/api/users/${userId}`);
-
-      // Return the data from the response (already converted to camelCase by interceptor)
-      return response.data;
-    } catch (error) {
-      // Log and re-throw errors for handling by the calling component
-      console.error(`Error fetching user details for ID ${userId}:`, error);
-      throw error;
-    }
-  },
+  getUserById: (userId) =>
+    call(`fetching user details for ID ${userId}`, () =>
+      api.get(`/api/users/${userId}`, {
+        skipResponseCaseTransform: true,
+      }),
+    ).then(normalizeUserPayload),
 
   searchUsers: (query) =>
     api.get(`/api/users?search=${encodeURIComponent(query)}`),
 
   /**
-   * Updates user details. Includes a temporary mock fallback for development.
-   * @param {string|number} userId - The ID of the user to update.
-   * @param {object} userData - An object containing the user data fields to update (in camelCase).
-   * @returns {Promise<object>} A promise resolving to the backend response (or mock response).
+   * Updates user details. Keeps the verbose error block because we want the
+   * request payload in the log when the backend rejects an update.
+   * @param {string|number} userId
+   * @param {object} userData - Fields to update (camelCase).
+   * @returns {Promise<object>}
    */
   updateUser: async (userId, userData) => {
     try {
       const response = await api.put(`/api/users/${userId}`, userData);
-
       return response.data;
     } catch (error) {
       console.error("Error updating user:", error);
@@ -47,176 +63,108 @@ export const userService = {
     }
   },
 
-  // --- User Tags Functions ---
-  getUserTags: async (userId) => {
-    try {
-      const response = await api.get(`/api/users/${userId}/tags`);
-      return response.data; // Assumes backend returns { success: true, data: [...] }
-    } catch (error) {
-      console.error(`Error fetching user tags for ID ${userId}:`, error);
-      throw error;
-    }
-  },
+  // --- User Tags ---
+  getUserTags: (userId) =>
+    call(`fetching user tags for ID ${userId}`, () =>
+      api.get(`/api/users/${userId}/tags`),
+    ),
 
-  updateUserTags: async (userId, tagIds) => {
-    // tagIds is likely an array of numbers/strings
-    try {
-      // Backend expects payload like { tags: [{ tag_id: 1 }, { tag_id: 3 }] }
-      // The request interceptor handles converting the outer object keys to snake_case,
-      // but ensure the payload structure matches the backend controller's expectation.
-      // If backend expects snake_case { tag_id: ... }, send { tagId: ... } from here.
-      const payload = {
-        tags: tagIds.map((id) => ({ tagId: id })), // Send camelCase `tagId` here
-      };
-      const response = await api.put(`/api/users/${userId}/tags`, payload);
-      return response.data;
-    } catch (error) {
-      console.error(`Error updating user tags for ID ${userId}:`, error);
-      throw error;
-    }
-  },
+  updateUserTags: (userId, tagIds) =>
+    call(`updating user tags for ID ${userId}`, () =>
+      api.put(`/api/users/${userId}/tags`, {
+        // Backend expects { tags: [{ tag_id: ... }] }; send camelCase tagId
+        // here and rely on the request interceptor to convert to snake_case.
+        tags: tagIds.map((id) => ({ tagId: id })),
+      }),
+    ),
 
   /**
    * Fetches badges for a specific user.
-   * @param {string|number} userId - The ID of the user whose badges to fetch.
-   * @returns {Promise<object>} A promise resolving to the user's badges.
+   * @param {string|number} userId
+   * @returns {Promise<object>}
    */
-  getUserBadges: async (userId) => {
-    try {
-      const response = await api.get(`/api/users/${userId}/badges`);
-      return response.data;
-    } catch (error) {
-      console.error(`Error fetching badges for user ${userId}:`, error);
-      throw error;
-    }
-  },
+  getUserBadges: (userId) =>
+    call(`fetching badges for user ${userId}`, () =>
+      api.get(`/api/users/${userId}/badges`),
+    ),
 
   /**
    * Hide or unhide one awarded badge event on the current user's profile.
-   * @param {string|number} userId - The profile owner.
-   * @param {string|number} awardId - The awarded badge event ID to update.
-   * @param {boolean} hidden - Whether the badge should be hidden.
-   * @returns {Promise<object>} A promise resolving to the updated visibility payload.
+   * @param {string|number} userId
+   * @param {string|number} awardId
+   * @param {boolean} hidden
+   * @returns {Promise<object>}
    */
-  updateUserBadgeVisibility: async (userId, awardId, hidden = true) => {
-    try {
-      const response = await api.patch(
-        `/api/users/${userId}/badges/awards/${awardId}/visibility`,
-        { hidden },
-      );
-      return response.data;
-    } catch (error) {
-      console.error(
-        `Error updating badge award ${awardId} visibility for user ${userId}:`,
-        error,
-      );
-      throw error;
-    }
-  },
+  updateUserBadgeVisibility: (userId, awardId, hidden = true) =>
+    call(
+      `updating badge award ${awardId} visibility for user ${userId}`,
+      () =>
+        api.patch(
+          `/api/users/${userId}/badges/awards/${awardId}/visibility`,
+          { hidden },
+        ),
+    ),
 
   /**
    * Delete one awarded badge event from the current user's profile.
-   * @param {string|number} userId - The profile owner.
-   * @param {string|number} awardId - The awarded badge event ID.
-   * @returns {Promise<object>} A promise resolving to the deletion result.
+   * @param {string|number} userId
+   * @param {string|number} awardId
+   * @returns {Promise<object>}
    */
-  deleteUserBadgeAward: async (userId, awardId) => {
-    try {
-      const response = await api.delete(`/api/badges/awards/${awardId}`);
-      return response.data;
-    } catch (error) {
-      console.error(
-        `Error deleting badge award ${awardId} for user ${userId}:`,
-        error,
-      );
-      throw error;
-    }
-  },
+  deleteUserBadgeAward: (userId, awardId) =>
+    call(`deleting badge award ${awardId} for user ${userId}`, () =>
+      api.delete(`/api/badges/awards/${awardId}`),
+    ),
 
   /**
    * Fetches a preview of everything affected by deleting the current user's account.
-   * @param {string|number} userId - The ID of the user to preview deletion for.
-   * @param {string} password - The user's current password.
-   * @returns {Promise<object>} A promise resolving to the deletion preview data.
+   * @param {string|number} userId
+   * @param {string} password
+   * @returns {Promise<object>}
    */
-  deletionPreview: async (userId, password) => {
-    try {
-      const response = await api.post(
+  deletionPreview: (userId, password) =>
+    call(`fetching deletion preview for user ${userId}`, () =>
+      api.post(
         `/api/users/${userId}/deletion-preview`,
         { password },
         { skipAuthRedirect: true },
-      );
-      return response.data;
-    } catch (error) {
-      console.error(`Error fetching deletion preview for user ${userId}:`, error);
-      throw error;
-    }
-  },
+      ),
+    ),
 
   /**
    * Deletes the current user's profile and all associated data.
-   * @param {string|number} userId - The ID of the user to delete.
-   * @param {string} password - The user's current password.
-   * @param {Array<object>} ownershipOverrides - Optional ownership transfer overrides.
-   * @returns {Promise<object>} A promise resolving to the deletion result.
+   * @param {string|number} userId
+   * @param {string} password
+   * @param {Array<object>} ownershipOverrides
+   * @returns {Promise<object>}
    */
-  deleteUser: async (userId, password, ownershipOverrides = []) => {
-    try {
-      const response = await api.delete(`/api/users/${userId}`, {
-        data: {
-          password,
-          ownershipOverrides,
-        },
+  deleteUser: (userId, password, ownershipOverrides = []) =>
+    call(`deleting user ${userId}`, () =>
+      api.delete(`/api/users/${userId}`, {
+        data: { password, ownershipOverrides },
         skipAuthRedirect: true,
-      });
-      return response.data;
-    } catch (error) {
-      console.error(`Error deleting user ${userId}:`, error);
-      throw error;
-    }
-  },
+      }),
+    ),
 
   /**
    * Deletes the user's avatar image and removes it from the profile.
-   * @param {string|number} userId - The ID of the user whose avatar to delete.
-   * @returns {Promise<object>} A promise resolving to the deletion result.
+   * @param {string|number} userId
+   * @returns {Promise<object>}
    */
-  deleteUserAvatar: async (userId) => {
-    try {
-      const response = await api.delete(`/api/users/${userId}/avatar`);
-      return response.data;
-    } catch (error) {
-      console.error(`Error deleting avatar for user ${userId}:`, error);
-      throw error;
-    }
-  },
+  deleteUserAvatar: (userId) =>
+    call(`deleting avatar for user ${userId}`, () =>
+      api.delete(`/api/users/${userId}/avatar`),
+    ),
 
-  changePassword: async (currentPassword, newPassword) => {
-    try {
-      const response = await api.put("/api/auth/change-password", {
-        currentPassword,
-        newPassword,
-      });
-      return response.data;
-    } catch (error) {
-      console.error("Error changing password:", error);
-      throw error;
-    }
-  },
+  changePassword: (currentPassword, newPassword) =>
+    call("changing password", () =>
+      api.put("/api/auth/change-password", { currentPassword, newPassword }),
+    ),
 
-  changeEmail: async (newEmail, currentPassword) => {
-    try {
-      const response = await api.put("/api/auth/change-email", {
-        newEmail,
-        currentPassword,
-      });
-      return response.data;
-    } catch (error) {
-      console.error("Error changing email:", error);
-      throw error;
-    }
-  },
+  changeEmail: (newEmail, currentPassword) =>
+    call("changing email", () =>
+      api.put("/api/auth/change-email", { newEmail, currentPassword }),
+    ),
 };
 
-// Export the service object as the default export
 export default userService;

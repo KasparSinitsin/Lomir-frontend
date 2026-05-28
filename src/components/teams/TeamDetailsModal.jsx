@@ -1,11 +1,13 @@
 import React, {
   useState,
   useEffect,
+  useLayoutEffect,
   useCallback,
   useMemo,
   useRef,
 } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { format } from "date-fns";
 import TeamRoleManager from "./TeamRoleManager";
 import TeamEditForm from "./TeamEditForm";
 import { useAuth } from "../../contexts/AuthContext";
@@ -22,6 +24,7 @@ import {
   X,
   Edit,
   Users,
+  UserSearch,
   Trash2,
   Eye,
   EyeClosed,
@@ -30,7 +33,9 @@ import {
   Mail,
   SendHorizontal,
   Archive,
+  Calendar,
   Check,
+  CheckCheck,
   FlaskConical,
 } from "lucide-react";
 import VisibilityToggle from "../common/VisibilityToggle";
@@ -38,9 +43,19 @@ import UserDetailsModal from "../users/UserDetailsModal";
 import DemoAvatarOverlay from "../users/DemoAvatarOverlay";
 import TagsDisplaySection from "../tags/TagsDisplaySection";
 import { UI_TEXT } from "../../constants/uiText";
-import { tagService } from "../../services/tagService";
+import { useQueryClient } from "@tanstack/react-query";
+import { useStructuredTags } from "../../hooks/useTagQueries";
+import {
+  useUserBadges,
+  useUserProfile,
+  useUserTags,
+} from "../../hooks/useUserQueries";
+import useViewerPendingRequests, {
+  viewerPendingRequestsQueryKey,
+} from "../../hooks/useViewerPendingRequests";
 import RoleBadgeDropdown from "./RoleBadgeDropdown";
 import TeamApplicationButton from "./TeamApplicationButton";
+import TeamApplicationDetailsModal from "./TeamApplicationDetailsModal";
 import TeamInvitationDetailsModal from "./TeamInvitationDetailsModal";
 import TeamMembersSection from "./TeamMembersSection";
 import TeamFocusAreaSection from "./TeamFocusAreaSection";
@@ -53,7 +68,7 @@ import TagAwardsModal from "../badges/TagAwardsModal";
 import SupercategoryAwardsModal from "../badges/SupercategoryAwardsModal";
 import BadgesDisplaySection from "../badges/BadgesDisplaySection";
 import BadgeCategoryModal from "../badges/BadgeCategoryModal";
-import useTeamAwardModals from "../../hooks/useTeamAwardModals";
+import useAwardModals from "../../hooks/useAwardModals";
 import MatchScoreSection from "../common/MatchScoreSection";
 import {
   buildViewerTeamMatchProfile,
@@ -65,6 +80,16 @@ import {
   locationsHaveDifferentKnownParts,
 } from "../../utils/locationUtils";
 import { DEMO_TEAM_TOOLTIP, isSyntheticTeam } from "../../utils/userHelpers";
+
+const getTeamMemberUserId = (member) =>
+  member?.user_id ??
+  member?.userId ??
+  member?.user?.id ??
+  member?.id ??
+  null;
+
+const idsMatch = (left, right) =>
+  left != null && right != null && String(left) === String(right);
 
 const normalizeTeamTagIds = (team) => {
   const raw = team?.tags ?? team?.tags_json ?? team?.selectedTags ?? [];
@@ -84,6 +109,8 @@ const normalizeTeamTagIds = (team) => {
 
   return Array.from(new Set(ids));
 };
+
+const EMPTY_QUERY_ARRAY = [];
 
 const TeamDetailsModal = ({
   isOpen = true,
@@ -109,6 +136,7 @@ const TeamDetailsModal = ({
   membersRefreshKey = 0,
   zIndexStyle = null,
   boxZIndexStyle = null,
+  teamMemberBadges,
 }) => {
   const navigate = useNavigate();
   const { id: urlTeamId } = useParams();
@@ -162,7 +190,14 @@ const TeamDetailsModal = ({
   const [teamBadgesTotalCredits, setTeamBadgesTotalCredits] = useState(0);
   const [currentUserBadgeNames, setCurrentUserBadgeNames] = useState(null); // Set<string>
 
-  // Team focus-area award modals (parallel to useAwardModals for users)
+  const fetchTeamTagAwards = useCallback(
+    () => teamService.getTeamBadgeAwards(effectiveTeamId),
+    [effectiveTeamId],
+  );
+  const fetchTeamBadgeAwards = useCallback(
+    () => teamService.getTeamMemberBadgeAwards(effectiveTeamId),
+    [effectiveTeamId],
+  );
   const {
     handleTagClick,
     handleSupercategoryClick,
@@ -171,16 +206,94 @@ const TeamDetailsModal = ({
     tagAwardsModalProps,
     supercategoryModalProps,
     badgeCategoryModalProps,
-  } = useTeamAwardModals(effectiveTeamId);
+  } = useAwardModals({
+    fetchTagAwards: fetchTeamTagAwards,
+    fetchBadgeAwards: fetchTeamBadgeAwards,
+    entityType: "team",
+  });
 
   const userHasEditedTagsRef = useRef(false);
   const [isLeaveDialogOpen, setIsLeaveDialogOpen] = useState(false);
   const [leaveLoading, setLeaveLoading] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isInvitationModalOpen, setIsInvitationModalOpen] = useState(false);
+  const [localPendingApplication, setLocalPendingApplication] = useState(null);
+  const [isApplicationDetailsOpen, setIsApplicationDetailsOpen] =
+    useState(false);
+  const [selectedPendingApplication, setSelectedPendingApplication] =
+    useState(null);
 
   const [teamImageError, setTeamImageError] = useState(false);
-  const showHighlightsForContext = !isFromSearch || showMatchHighlights;
+  const [teamDateIsNarrow, setTeamDateIsNarrow] = useState(false);
+  const teamDateIsNarrowRef = useRef(false);
+  teamDateIsNarrowRef.current = teamDateIsNarrow;
+  const teamTitleContainerRef = useRef(null);
+  const teamTitleProbeRef = useRef(null);
+  const teamDateRef = useRef(null);
+  const teamName = team?.name ?? "";
+
+  useLayoutEffect(() => {
+    const container = teamTitleContainerRef.current;
+    const probe = teamTitleProbeRef.current;
+    if (!container || !probe) return;
+
+    const update = () => {
+      const containerWidth = container.clientWidth;
+      if (containerWidth === 0) return;
+      const dateEl = teamDateRef.current;
+      const reservedWidth =
+        teamDateIsNarrowRef.current && dateEl ? dateEl.offsetWidth + 16 : 0;
+      probe.textContent = teamName;
+      setTeamDateIsNarrow(probe.scrollWidth > containerWidth - reservedWidth);
+    };
+
+    const resizeObserver = new ResizeObserver(update);
+    resizeObserver.observe(container);
+    if (teamDateRef.current) resizeObserver.observe(teamDateRef.current);
+    update();
+
+    return () => resizeObserver.disconnect();
+  }, [teamName, isEditing, isModalVisible]);
+
+  const showHighlightsForContext = !hideMatchData && (!isFromSearch || showMatchHighlights);
+  const {
+    data: structuredTags = EMPTY_QUERY_ARRAY,
+    error: structuredTagsError,
+  } = useStructuredTags({
+    enabled: isModalVisible,
+  });
+  const currentUserTagsQuery = useUserTags(user?.id, {
+    enabled: Boolean(isModalVisible && isAuthenticated && user?.id),
+  });
+  const currentUserBadgesQuery = useUserBadges(user?.id, {
+    enabled: Boolean(isModalVisible && isAuthenticated && user?.id),
+  });
+  const currentUserProfileQuery = useUserProfile(user?.id, {
+    enabled: Boolean(isModalVisible && isAuthenticated && user?.id),
+  });
+  const queryClient = useQueryClient();
+  const { data: viewerPendingData } = useViewerPendingRequests(user?.id, {
+    enabled: Boolean(isModalVisible && isAuthenticated && user?.id),
+  });
+  const fetchedPendingApplications = useMemo(() => {
+    const apps = viewerPendingData?.applications ?? [];
+    if (!effectiveTeamId) return [];
+    return apps.filter(
+      (a) =>
+        String(a.team?.id ?? a.teamId ?? a.team_id) === String(effectiveTeamId),
+    );
+  }, [viewerPendingData, effectiveTeamId]);
+  const fetchedPendingInvitation = useMemo(() => {
+    const invs = viewerPendingData?.invitations ?? [];
+    if (!effectiveTeamId) return null;
+    return (
+      invs.find(
+        (i) =>
+          String(i.team?.id ?? i.teamId ?? i.team_id) ===
+          String(effectiveTeamId),
+      ) ?? null
+    );
+  }, [viewerPendingData, effectiveTeamId]);
   const handledMembersRefreshKeyRef = useRef(0);
 
   const fetchTeamDetails = useCallback(
@@ -243,7 +356,7 @@ const TeamDetailsModal = ({
         if (isNaN(ownerId) && user && teamData.members) {
           const isCurrentUserOwner = teamData.members.some(
             (member) =>
-              (member.user_id === user.id || member.userId === user.id) &&
+              idsMatch(getTeamMemberUserId(member), user.id) &&
               (member.role === "owner" || member.role === "Owner"),
           );
 
@@ -306,7 +419,7 @@ const TeamDetailsModal = ({
           (isUserAuthenticated &&
             teamData.members?.some(
               (member) =>
-                (member.user_id === user.id || member.userId === user.id) &&
+                idsMatch(getTeamMemberUserId(member), user.id) &&
                 (member.role === "owner" || member.role === "Owner"),
             )) ||
           false;
@@ -319,7 +432,7 @@ const TeamDetailsModal = ({
         // Determine user's role from members list
         if (isUserAuthenticated && teamData.members) {
           const currentUserMember = teamData.members.find(
-            (member) => member.user_id === user.id || member.userId === user.id,
+            (member) => idsMatch(getTeamMemberUserId(member), user.id),
           );
           if (currentUserMember) {
             setInternalUserRole(currentUserMember.role);
@@ -405,6 +518,12 @@ const TeamDetailsModal = ({
   }, [isOpen]);
 
   useEffect(() => {
+    setLocalPendingApplication(null);
+    setIsApplicationDetailsOpen(false);
+    setSelectedPendingApplication(null);
+  }, [effectiveTeamId]);
+
+  useEffect(() => {
     if (isModalVisible && effectiveTeamId) {
       // If we have initial data but haven't fetched full details yet,
       // fetch complete data silently in background
@@ -445,25 +564,24 @@ const TeamDetailsModal = ({
   useEffect(() => {
     if (!isModalVisible || !isAuthenticated || !user?.id) return;
 
-    const fetchUserTags = async () => {
-      try {
-        const tagsRes = await userService.getUserTags(user.id);
-        const tagData = Array.isArray(tagsRes?.data)
-          ? tagsRes.data
-          : tagsRes?.data?.data || [];
-        const ids = new Set(
-          tagData
-            .map((t) => Number(t.tagId ?? t.tag_id ?? t.id))
-            .filter(Number.isFinite),
-        );
-        setUserTagIds(ids);
-      } catch (err) {
-        console.warn("Could not fetch user tags for matching highlights:", err);
-      }
-    };
+    const ids = new Set(
+      (currentUserTagsQuery.data ?? [])
+        .map((t) => Number(t.tagId ?? t.tag_id ?? t.id))
+        .filter(Number.isFinite),
+    );
+    // Set both state vars from one query result.
+    setUserTagIds(ids);
+    setCurrentUserTagIds(ids);
+  }, [currentUserTagsQuery.data, isAuthenticated, isModalVisible, user?.id]);
 
-    fetchUserTags();
-  }, [isModalVisible, isAuthenticated, user?.id]);
+  useEffect(() => {
+    if (!currentUserTagsQuery.error) return;
+
+    console.warn(
+      "Could not fetch user tags for matching highlights:",
+      currentUserTagsQuery.error,
+    );
+  }, [currentUserTagsQuery.error]);
 
   useEffect(() => {
     // Reset state when modal closes
@@ -548,7 +666,7 @@ const TeamDetailsModal = ({
     // Show for team members
     if (team && team.members && Array.isArray(team.members)) {
       return team.members.some(
-        (member) => member.user_id === user.id || member.userId === user.id,
+        (member) => idsMatch(getTeamMemberUserId(member), user.id),
       );
     }
 
@@ -603,6 +721,7 @@ const TeamDetailsModal = ({
   };
 
   const handleClose = useCallback(() => {
+    setIsEditing(false);
     setIsModalVisible(false);
     // Allow animation to complete before executing onClose
     setTimeout(() => {
@@ -676,33 +795,25 @@ const TeamDetailsModal = ({
     });
   }, [isEditing, team]); // formData.selectedTags intentionally excluded
 
-  // Fetch current user's tag IDs for overlap highlighting on team focus areas
-  useEffect(() => {
-    if (!isModalVisible || !isAuthenticated || !user?.id) return;
-
-    const fetchCurrentUserTags = async () => {
-      try {
-        const tagsRes = await userService.getUserTags(user.id);
-        const tagData = Array.isArray(tagsRes?.data)
-          ? tagsRes.data
-          : tagsRes?.data?.data || [];
-        const ids = new Set(
-          tagData
-            .map((t) => Number(t.tagId ?? t.tag_id ?? t.id))
-            .filter(Number.isFinite),
-        );
-        setCurrentUserTagIds(ids);
-      } catch (err) {
-        console.warn("Could not fetch user tags for matching highlights:", err);
-      }
-    };
-
-    fetchCurrentUserTags();
-  }, [isModalVisible, isAuthenticated, user?.id]);
-
-  // Fetch aggregated member badges when modal opens
+  // Fetch aggregated member badges when modal opens. If the parent provides
+  // teamMemberBadges, it owns this data: undefined = legacy self-fetch,
+  // null = parent loading, array = parent data ready.
   useEffect(() => {
     if (!isModalVisible || !effectiveTeamId) return;
+
+    if (teamMemberBadges !== undefined) {
+      if (Array.isArray(teamMemberBadges)) {
+        setTeamBadges(teamMemberBadges);
+        setTeamBadgesTotalCredits(
+          teamMemberBadges.reduce(
+            (sum, badge) =>
+              sum + Number(badge?.totalCredits ?? badge?.total_credits ?? 0),
+            0,
+          ),
+        );
+      }
+      return;
+    }
 
     const fetchTeamBadges = async () => {
       try {
@@ -717,31 +828,37 @@ const TeamDetailsModal = ({
     };
 
     fetchTeamBadges();
-  }, [isModalVisible, effectiveTeamId]);
+  }, [isModalVisible, effectiveTeamId, teamMemberBadges]);
 
-  // Fetch current user's badge names for match highlighting
+  // Resolve current user's badge names for match highlighting
   useEffect(() => {
     if (!isModalVisible || !isAuthenticated || !user?.id) {
       return;
     }
 
-    const fetchCurrentUserBadges = async () => {
-      try {
-        const response = await userService.getUserBadges(user.id);
-        const rows = Array.isArray(response?.data) ? response.data : [];
-        const names = new Set(
-          rows
-            .map((r) => (r.badgeName ?? r.badge_name ?? r.name ?? "").trim().toLowerCase())
-            .filter(Boolean),
-        );
-        setCurrentUserBadgeNames(names);
-      } catch (err) {
-        console.warn("Could not fetch user badges for matching highlights:", err);
-      }
-    };
+    const names = new Set(
+      (currentUserBadgesQuery.data ?? [])
+        .map((r) =>
+          (r.badgeName ?? r.badge_name ?? r.name ?? "").trim().toLowerCase(),
+        )
+        .filter(Boolean),
+    );
+    setCurrentUserBadgeNames(names);
+  }, [
+    currentUserBadgesQuery.data,
+    isAuthenticated,
+    isModalVisible,
+    user?.id,
+  ]);
 
-    fetchCurrentUserBadges();
-  }, [isModalVisible, isAuthenticated, user?.id]);
+  useEffect(() => {
+    if (!currentUserBadgesQuery.error) return;
+
+    console.warn(
+      "Could not fetch user badges for matching highlights:",
+      currentUserBadgesQuery.error,
+    );
+  }, [currentUserBadgesQuery.error]);
 
   useEffect(() => {
     if (!isModalVisible || !isAuthenticated || !user?.id) {
@@ -749,36 +866,20 @@ const TeamDetailsModal = ({
       return;
     }
 
-    let cancelled = false;
+    setDistanceViewerUser(currentUserProfileQuery.data ?? user);
+  }, [currentUserProfileQuery.data, isAuthenticated, isModalVisible, user]);
 
-    const fetchDistanceViewerUser = async () => {
-      try {
-        const response = await userService.getUserById(user.id);
-        const payload = response?.data ?? response;
-        const viewerData =
-          payload?.success !== undefined
-            ? payload?.data
-            : (payload?.data?.data ?? payload?.data ?? payload);
+  useEffect(() => {
+    if (!currentUserProfileQuery.error) return;
 
-        if (!cancelled) {
-          setDistanceViewerUser(viewerData ?? user);
-        }
-      } catch (err) {
-        console.warn("Could not fetch current user details for distance fallback:", err);
-        if (!cancelled) {
-          setDistanceViewerUser(user);
-        }
-      }
-    };
+    console.warn(
+      "Could not fetch current user details for distance fallback:",
+      currentUserProfileQuery.error,
+    );
+    setDistanceViewerUser(user);
+  }, [currentUserProfileQuery.error, user]);
 
-    fetchDistanceViewerUser();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [isAuthenticated, isModalVisible, user]);
-
-  // Fetch structured tags when modal opens (needed for display AND edit mode)
+  // Resolve structured tags when modal opens (needed for display AND edit mode)
   useEffect(() => {
     // Only run when the modal is actually visible
     if (!isModalVisible) return;
@@ -786,17 +887,14 @@ const TeamDetailsModal = ({
     // If we already have tags, no need to fetch again
     if (allTags.length > 0) return;
 
-    const fetchTags = async () => {
-      try {
-        const structuredTags = await tagService.getStructuredTags();
-        setAllTags(structuredTags);
-      } catch (error) {
-        console.error("Error fetching tags:", error);
-      }
-    };
+    setAllTags(structuredTags);
+  }, [isModalVisible, allTags.length, structuredTags]);
 
-    fetchTags();
-  }, [isModalVisible, allTags.length]);
+  useEffect(() => {
+    if (structuredTagsError) {
+      console.error("Error fetching tags:", structuredTagsError);
+    }
+  }, [structuredTagsError]);
 
   // Handle team tags update
   const handleTeamTagsUpdate = async (newTagIds) => {
@@ -827,10 +925,17 @@ const TeamDetailsModal = ({
 
     setLeaveLoading(true);
     try {
-      await teamService.removeTeamMember(team.id, user.id);
+      const result = await teamService.removeTeamMember(team.id, user.id);
+      const reopenedRoles = Array.isArray(result?.data?.reopenedRoles)
+        ? result.data.reopenedRoles
+        : [];
+
       setNotification({
         type: "success",
-        message: "You have left the team successfully.",
+        message:
+          reopenedRoles.length > 0
+            ? `You have left the team. ${reopenedRoles.length} filled ${reopenedRoles.length === 1 ? "role was" : "roles were"} reopened.`
+            : "You have left the team successfully.",
       });
       setIsLeaveDialogOpen(false);
 
@@ -854,13 +959,19 @@ const TeamDetailsModal = ({
   };
 
   // Invitation response handlers
-  const handleInvitationAccept = async (invitationId, responseMessage = "", fillRole = false) => {
+  const handleInvitationAccept = async (
+    invitationId,
+    responseMessage = "",
+    fillRole = false,
+    options = {},
+  ) => {
     try {
       await teamService.respondToInvitation(
         invitationId,
         "accept",
         responseMessage,
         fillRole,
+        options,
       );
       setNotification({
         type: "success",
@@ -877,7 +988,7 @@ const TeamDetailsModal = ({
       console.error("Error accepting invitation:", error);
       setNotification({
         type: "error",
-        message: "Failed to accept invitation. Please try again.",
+        message: error.message || "Failed to accept invitation. Please try again.",
       });
     }
   };
@@ -915,7 +1026,7 @@ const TeamDetailsModal = ({
     if (!user?.id || !team?.members) return false;
 
     const currentMember = team.members.find(
-      (m) => m.user_id === user.id || m.userId === user.id,
+      (m) => idsMatch(getTeamMemberUserId(m), user.id),
     );
 
     if (!currentMember) return false;
@@ -1134,26 +1245,120 @@ const TeamDetailsModal = ({
   const isTeamMember = useMemo(() => {
     if (!team || !user) return false;
     return (
-      team.members?.some((member) => member.user_id === user.id) ||
+      team.members?.some((member) => idsMatch(getTeamMemberUserId(member), user.id)) ||
       isOwner || // Make sure this matches your variable name
-      userRole
+      Boolean(effectiveUserRole)
     );
-  }, [team, user, isOwner, userRole]);
+  }, [team, user, isOwner, effectiveUserRole]);
+
+  const currentUserIsListedTeamMember = useMemo(
+    () =>
+      Boolean(
+        team?.members?.some((member) =>
+          idsMatch(getTeamMemberUserId(member), user?.id),
+        ),
+      ),
+    [team?.members, user?.id],
+  );
+
+  const isTeamArchived = Boolean(
+    team?.archived_at || team?.status === "inactive",
+  );
+  // Primary application used by CTA / details modal (prefer locally submitted or prop-supplied)
+  const effectivePendingApplication =
+    localPendingApplication ?? pendingApplication ?? fetchedPendingApplications[0] ?? null;
+  const applicationDetailsRecord =
+    selectedPendingApplication ?? effectivePendingApplication;
+  const effectivePendingInvitation = pendingInvitation ?? fetchedPendingInvitation;
+  const effectiveHasPendingInvitation = hasPendingInvitation || Boolean(fetchedPendingInvitation);
+  const hasActivePendingApplication = Boolean(
+    (hasPendingApplication || effectivePendingApplication) &&
+      !currentUserIsListedTeamMember,
+  );
+  // Separate flags for subline icons (team-join vs role-fill)
+  const allPendingApplications = [
+    ...(localPendingApplication ? [localPendingApplication] : []),
+    ...(pendingApplication && !localPendingApplication ? [pendingApplication] : []),
+    ...fetchedPendingApplications,
+  ].filter(
+    (a, i, arr) => arr.findIndex((b) => String(b.id) === String(a.id)) === i,
+  );
+  // Classify each application:
+  //   combined  = external applicant with a role (team join + role fill in one)  → violet
+  //   role-only = existing member applying for a role                            → orange
+  //   team-only = no role attached                                               → blue/info
+  const pendingCombinedApplication = !currentUserIsListedTeamMember
+    ? allPendingApplications.find(
+        (a) => Boolean(a.role) && !(a.isInternalRoleApplication || a.is_internal_role_application),
+      )
+    : null;
+  const pendingInternalRoleApplication = !currentUserIsListedTeamMember
+    ? allPendingApplications.find(
+        (a) => Boolean(a.isInternalRoleApplication || a.is_internal_role_application),
+      )
+    : null;
+  const pendingTeamOnlyApplication = !currentUserIsListedTeamMember
+    ? allPendingApplications.find(
+        (a) => !a.role && !(a.isInternalRoleApplication || a.is_internal_role_application),
+      )
+    : null;
+  const hasPendingTeamApplication = Boolean(pendingTeamOnlyApplication);
+  const hasPendingRoleApplication = Boolean(pendingCombinedApplication || pendingInternalRoleApplication);
+  const openApplicationDetails = (application = null) => {
+    const applicationToOpen = application ?? effectivePendingApplication;
+    if (applicationToOpen) {
+      setSelectedPendingApplication(application);
+      setIsApplicationDetailsOpen(true);
+      return;
+    }
+
+    onViewApplicationDetails?.();
+  };
+  const shouldShowHeaderApplyButton =
+    isAuthenticated &&
+    Boolean(team && effectiveTeamId) &&
+    !currentUserIsListedTeamMember &&
+    !isTeamArchived &&
+    !(effectiveHasPendingInvitation && effectivePendingInvitation) &&
+    !hasActivePendingApplication &&
+    !hasPendingTeamApplication &&
+    !hasPendingRoleApplication;
+
+  const handleTeamApplicationSuccess = useCallback(
+    (applicationData, submitResponse) => {
+      const submittedApplication = submitResponse?.data ?? {};
+      setLocalPendingApplication({
+        id: submittedApplication.applicationId,
+        applicationId: submittedApplication.applicationId,
+        status: submittedApplication.status ?? "pending",
+        message: applicationData.message,
+        created_at: new Date().toISOString(),
+        team: team ?? { id: effectiveTeamId },
+        isInternalRoleApplication:
+          submittedApplication.isInternalRoleApplication ?? false,
+        is_internal_role_application:
+          submittedApplication.isInternalRoleApplication ?? false,
+      });
+      setNotification({
+        type: "success",
+        message: applicationData.isDraft
+          ? "Draft saved successfully"
+          : "Application sent successfully!",
+      });
+    },
+    [effectiveTeamId, team],
+  );
 
   const renderJoinButton = () => {
     if (!isAuthenticated) return null;
 
-    const isMember = team?.members?.some(
-      (m) => m.user_id === user?.id || m.userId === user?.id,
-    );
-
-    const isTeamArchived = team?.archived_at || team?.status === "inactive";
+    const isMember = currentUserIsListedTeamMember;
 
     if (isTeamArchived && !isMember) {
       return null;
     }
 
-    if (hasPendingInvitation && pendingInvitation) {
+    if (effectiveHasPendingInvitation && effectivePendingInvitation) {
       return (
         <div className="mt-6 border-t border-base-200 pt-4">
           <Button
@@ -1169,14 +1374,14 @@ const TeamDetailsModal = ({
     }
 
     // Pending application CTA
-    const hasApp = Boolean((hasPendingApplication || pendingApplication) && !isMember);
+    const hasApp = hasActivePendingApplication;
 
     if (hasApp) {
       return (
         <div className="mt-6 border-t border-base-200 pt-4">
           <Button
             variant="primary"
-            onClick={() => onViewApplicationDetails?.()}
+            onClick={() => openApplicationDetails()}
             className="w-full"
             icon={<SendHorizontal size={16} />}
           >
@@ -1222,14 +1427,7 @@ const TeamDetailsModal = ({
             disabled={loading}
             className="w-full"
             onAfterSubmit={fetchTeamDetails}
-            onSuccess={(applicationData) => {
-              setNotification({
-                type: "success",
-                message: applicationData.isDraft
-                  ? "Draft saved successfully"
-                  : "Application sent successfully!",
-              });
-            }}
+            onSuccess={handleTeamApplicationSuccess}
           />
         )}
       </div>
@@ -1346,52 +1544,76 @@ const TeamDetailsModal = ({
       : null;
 
   const modalTitle = (
-    <div className="flex justify-between items-center w-full">
-      <h2 className="text-xl font-medium text-primary">
-        {isEditing ? "Edit Team" : "Team Details"}
-      </h2>
-      <div className="flex items-center space-x-2">
-        {!isEditing && (
-          <>
-            {canEditTeam && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  userHasEditedTagsRef.current = false; // fresh edit session
-                  setFormData((prev) => ({
-                    ...prev,
-                    selectedTags:
-                      (prev.selectedTags?.length ?? 0) > 0
-                        ? prev.selectedTags
-                        : normalizeTeamTagIds(team),
-                  }));
-                  setIsEditing(true);
-                }}
-                className="hover:bg-[#7ace82] hover:text-[#036b0c]"
-                icon={<Edit size={16} />}
-              >
-                Edit
-              </Button>
-            )}
-            {canDeleteTeam && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleDeleteTeam}
-                disabled={loading}
-                className="hover:bg-red-100 hover:text-red-700"
-                icon={<Trash2 size={16} />}
-                aria-label="Delete team"
-              >
-                Delete
-              </Button>
-            )}
-          </>
-        )}
-      </div>
-    </div>
+    <h2 className="text-xl font-medium text-primary leading-[110%] flex items-center gap-2">
+      {isEditing ? <Edit size={20} className="flex-shrink-0" /> : <Users size={20} className="flex-shrink-0" />}
+      {isEditing ? "Edit Team" : "Team Details"}
+    </h2>
   );
+
+  const getTeamCreatedDate = () => {
+    const createdAt = team?.created_at ?? team?.createdAt;
+    if (!createdAt) return null;
+
+    try {
+      return {
+        short: format(new Date(createdAt), "MM/yy"),
+        narrow: format(new Date(createdAt), "MM/yy"),
+        full: format(new Date(createdAt), "MMMM d, yyyy"),
+      };
+    } catch (error) {
+      console.error("Error formatting team creation date:", error);
+      return null;
+    }
+  };
+
+  const modalHeaderActions = !isEditing ? (
+    <div className="flex items-center gap-1">
+      {canEditTeam && (
+        <Tooltip
+          content="Edit this team's details, focus areas, location, and visibility."
+          position="bottom"
+        >
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              userHasEditedTagsRef.current = false;
+              setFormData((prev) => ({
+                ...prev,
+                selectedTags:
+                  (prev.selectedTags?.length ?? 0) > 0
+                    ? prev.selectedTags
+                    : normalizeTeamTagIds(team),
+              }));
+              setIsEditing(true);
+            }}
+            className="hover:bg-[#7ace82] hover:text-[#036b0c]"
+            icon={<Edit size={16} />}
+            aria-label="Edit team details"
+          >
+            <span className="hidden sm:inline">Edit</span>
+          </Button>
+        </Tooltip>
+      )}
+      {shouldShowHeaderApplyButton && (
+        <Tooltip content="Apply to join this team." position="bottom">
+          <TeamApplicationButton
+            team={team}
+            teamId={effectiveTeamId}
+            disabled={loading}
+            variant="ghost"
+            size="sm"
+            className="flex items-center gap-1"
+            buttonIcon={<SendHorizontal size={16} />}
+            buttonLabel={<span className="hidden sm:inline">Apply</span>}
+            ariaLabel="Apply to join team"
+            onAfterSubmit={fetchTeamDetails}
+            onSuccess={handleTeamApplicationSuccess}
+          />
+        </Tooltip>
+      )}
+    </div>
+  ) : null;
 
   if (!isModalVisible) return null;
 
@@ -1402,6 +1624,7 @@ const TeamDetailsModal = ({
         isOpen={isModalVisible}
         onClose={handleClose}
         title={modalTitle}
+        headerActions={modalHeaderActions}
         position="center"
         size="default"
         maxHeight="max-h-[90vh]"
@@ -1409,6 +1632,7 @@ const TeamDetailsModal = ({
         closeOnBackdrop={true}
         closeOnEscape={true}
         showCloseButton={true}
+        closeButtonTooltip="Close team details and return to the previous view."
         zIndexStyle={zIndexStyle}
         boxZIndexStyle={boxZIndexStyle}
       >
@@ -1428,6 +1652,7 @@ const TeamDetailsModal = ({
                 setFormErrors={setFormErrors}
                 onSubmit={handleSubmit}
                 onCancel={() => setIsEditing(false)}
+                onDelete={canDeleteTeam ? handleDeleteTeam : undefined}
                 loading={loading}
                 isOwner={isOwner}
                 onAvatarDeleted={() => {
@@ -1442,9 +1667,9 @@ const TeamDetailsModal = ({
             ) : (
               <div className="space-y-6">
                 {/* Team header with avatar */}
-                <div className="flex items-start space-x-4 mb-6">
+                <div className="relative flex items-start space-x-4 mb-6">
                   <div className="avatar placeholder relative">
-                    <div className="bg-[var(--color-primary-focus)] text-primary-content rounded-full w-16 h-16 relative flex items-center justify-center overflow-hidden">
+                    <div className="bg-[var(--color-primary-focus)] text-primary-content rounded-full w-20 h-20 relative flex items-center justify-center overflow-hidden">
                       {(team?.teamavatar_url || team?.teamavatarUrl) &&
                       !teamImageError ? (
                         <img
@@ -1454,7 +1679,7 @@ const TeamDetailsModal = ({
                           onError={() => setTeamImageError(true)}
                         />
                       ) : (
-                        <span className="text-xl">{getTeamInitials()}</span>
+                        <span className="text-2xl">{getTeamInitials()}</span>
                       )}
                       {isSyntheticTeam(team) && (
                         <DemoAvatarOverlay
@@ -1464,26 +1689,35 @@ const TeamDetailsModal = ({
                       )}
                     </div>
                     {teamMatchTier && (
-                      <div
-                        className={`absolute -top-1 -left-1 w-6 h-6 rounded-full ring-2 ring-white flex items-center justify-center ${teamMatchTier.bg}`}
-                        title={`${teamMatchTier.pct}% ${teamMatchTier.label.toLowerCase()}`}
+                      <Tooltip
+                        content={`${teamMatchTier.pct}% ${teamMatchTier.label.toLowerCase()}`}
+                        position="bottom"
+                        wrapperClassName={`absolute -top-1 -left-1 w-6 h-6 rounded-full ring-2 ring-white flex items-center justify-center cursor-help ${teamMatchTier.bg}`}
                       >
                         <teamMatchTier.Icon
                           size={12}
                           className="text-white"
                           strokeWidth={2.5}
                         />
-                      </div>
+                      </Tooltip>
                     )}
                   </div>
-                  <div>
-                    <h1 className="text-2xl font-bold leading-[120%] mb-[0.2em]">
-                      {team?.name}
+                  <div className="flex-1">
+                    <h1
+                      ref={teamTitleContainerRef}
+                      className="text-2xl font-bold leading-[110%] mb-[0.2em] relative"
+                    >
+                      {teamName}
+                      <span
+                        ref={teamTitleProbeRef}
+                        className="invisible absolute whitespace-nowrap pointer-events-none left-0 top-0 font-bold"
+                        aria-hidden="true"
+                      />
                     </h1>
                     {/* Members count and visibility */}
-                    <div className="flex items-center space-x-4 text-sm">
-                      <div className="flex items-center space-x-1">
-                        <Users size={18} className="text-primary" />
+                    <div className="flex items-center flex-wrap gap-x-3 gap-y-0.5 text-sm leading-[110%]">
+                      <div className="flex items-center gap-1 text-base-content/70">
+                        <Users size={14} className="text-primary flex-shrink-0" />
                         <span>
                           {team.current_members_count ??
                             team.currentMembersCount ??
@@ -1496,10 +1730,111 @@ const TeamDetailsModal = ({
                         </span>
                       </div>
 
+                      {teamRoles.filter((r) => r.status === "open").length > 0 && (
+                        <Tooltip
+                          content="Vacant roles"
+                          position="bottom"
+                          wrapperClassName="flex items-center gap-1 text-base-content/70 cursor-help"
+                        >
+                          <UserSearch size={14} className="text-orange-500 flex-shrink-0" />
+                          <span>
+                            {teamRoles.filter((r) => r.status === "open").length}
+                          </span>
+                        </Tooltip>
+                      )}
+
+                      {/* Pending invitation indicator */}
+                      {effectiveHasPendingInvitation && effectivePendingInvitation && (
+                        <Tooltip
+                          content={
+                            (effectivePendingInvitation.isInternal ?? effectivePendingInvitation.is_internal)
+                              ? `You were invited to fill a role in this team${(effectivePendingInvitation.createdAt ?? effectivePendingInvitation.created_at) ? `
+on ${format(new Date((effectivePendingInvitation.createdAt ?? effectivePendingInvitation.created_at)), "MMM d, yyyy")}` : ""}`
+                              : `You were invited to join this team${(effectivePendingInvitation.createdAt ?? effectivePendingInvitation.created_at) ? `
+on ${format(new Date((effectivePendingInvitation.createdAt ?? effectivePendingInvitation.created_at)), "MMM d, yyyy")}` : ""}`
+                          }
+                          position="bottom"
+                          wrapperClassName="inline-flex"
+                        >
+                          <button
+                            type="button"
+                            className="group flex items-center gap-1 cursor-pointer rounded-sm transition-colors hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                            onClick={() => setIsInvitationModalOpen(true)}
+                          >
+                            <Mail
+                              size={14}
+                              className={`flex-shrink-0 ${(effectivePendingInvitation.isInternal ?? effectivePendingInvitation.is_internal) ? "text-orange-500" : "text-pink-500"}`}
+                            />
+                            {(effectivePendingInvitation.createdAt ?? effectivePendingInvitation.created_at) && (
+                              <span className="text-base-content/50 transition-colors group-hover:text-primary group-focus-visible:text-primary">{format(new Date((effectivePendingInvitation.createdAt ?? effectivePendingInvitation.created_at)), "MM/dd/yy")}</span>
+                            )}
+                          </button>
+                        </Tooltip>
+                      )}
+
+                      {/* Pending application indicators */}
+                      {/* Combined team+role application → violet */}
+                      {pendingCombinedApplication && (
+                        <Tooltip
+                          content={`You applied to join this team and fill a role${(pendingCombinedApplication.createdAt ?? pendingCombinedApplication.created_at) ? `\non ${format(new Date((pendingCombinedApplication.createdAt ?? pendingCombinedApplication.created_at)), "MMM d, yyyy")}` : ""}`}
+                          position="bottom"
+                          wrapperClassName="inline-flex"
+                        >
+                          <button
+                            type="button"
+                            className="group flex items-center gap-1 cursor-pointer rounded-sm transition-colors hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                            onClick={() => openApplicationDetails(pendingCombinedApplication)}
+                          >
+                            <SendHorizontal size={14} className="flex-shrink-0 text-violet-500" />
+                            {(pendingCombinedApplication.createdAt ?? pendingCombinedApplication.created_at) && (
+                              <span className="text-base-content/50 transition-colors group-hover:text-primary group-focus-visible:text-primary">{format(new Date((pendingCombinedApplication.createdAt ?? pendingCombinedApplication.created_at)), "MM/dd/yy")}</span>
+                            )}
+                          </button>
+                        </Tooltip>
+                      )}
+                      {/* Role-only application for existing members → orange */}
+                      {pendingInternalRoleApplication && (
+                        <Tooltip
+                          content={`You applied to fill a role in this team${(pendingInternalRoleApplication.createdAt ?? pendingInternalRoleApplication.created_at) ? `\non ${format(new Date((pendingInternalRoleApplication.createdAt ?? pendingInternalRoleApplication.created_at)), "MMM d, yyyy")}` : ""}`}
+                          position="bottom"
+                          wrapperClassName="inline-flex"
+                        >
+                          <button
+                            type="button"
+                            className="group flex items-center gap-1 cursor-pointer rounded-sm transition-colors hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                            onClick={() => openApplicationDetails(pendingInternalRoleApplication)}
+                          >
+                            <SendHorizontal size={14} className="flex-shrink-0 text-orange-500" />
+                            {(pendingInternalRoleApplication.createdAt ?? pendingInternalRoleApplication.created_at) && (
+                              <span className="text-base-content/50 transition-colors group-hover:text-primary group-focus-visible:text-primary">{format(new Date((pendingInternalRoleApplication.createdAt ?? pendingInternalRoleApplication.created_at)), "MM/dd/yy")}</span>
+                            )}
+                          </button>
+                        </Tooltip>
+                      )}
+                      {/* Team-only application → blue */}
+                      {pendingTeamOnlyApplication && (
+                        <Tooltip
+                          content={`You applied to join this team${(pendingTeamOnlyApplication.createdAt ?? pendingTeamOnlyApplication.created_at) ? `\non ${format(new Date((pendingTeamOnlyApplication.createdAt ?? pendingTeamOnlyApplication.created_at)), "MMM d, yyyy")}` : ""}`}
+                          position="bottom"
+                          wrapperClassName="inline-flex"
+                        >
+                          <button
+                            type="button"
+                            className="group flex items-center gap-1 cursor-pointer rounded-sm transition-colors hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                            onClick={() => openApplicationDetails(pendingTeamOnlyApplication)}
+                          >
+                            <SendHorizontal size={14} className="flex-shrink-0 text-info" />
+                            {(pendingTeamOnlyApplication.createdAt ?? pendingTeamOnlyApplication.created_at) && (
+                              <span className="text-base-content/50 transition-colors group-hover:text-primary group-focus-visible:text-primary">{format(new Date((pendingTeamOnlyApplication.createdAt ?? pendingTeamOnlyApplication.created_at)), "MM/dd/yy")}</span>
+                            )}
+                          </button>
+                        </Tooltip>
+                      )}
+
                       {/* Archived status - ALWAYS show for archived teams */}
                       {(team?.archived_at || team?.status === "inactive") && (
-                        <div className="flex items-center text-base-content/70">
-                          <Archive size={16} className="mr-1" />
+                        <div className="flex items-center gap-1 text-base-content/70">
+                          <Archive size={14} className="flex-shrink-0" />
                           <span>Archived</span>
                         </div>
                       )}
@@ -1507,38 +1842,71 @@ const TeamDetailsModal = ({
                       {/* Public/Private status - only for members of NON-archived teams */}
                       {shouldShowVisibilityStatus() &&
                         !(team?.archived_at || team?.status === "inactive") && (
-                          <div className="flex items-center text-base-content/70">
+                          <Tooltip
+                            content={isPublic ? "Public — visible to everyone" : "Private — only visible to members"}
+                            position="bottom"
+                            wrapperClassName="flex items-center gap-1 text-base-content/70 cursor-help"
+                          >
                             {isPublic ? (
                               <>
                                 <Eye
-                                  size={16}
-                                  className="mr-1 text-green-600"
+                                  size={14}
+                                  className="text-green-600 flex-shrink-0"
                                 />
-                                <span>Public</span>
+                                {!teamDateIsNarrow && <span>Public</span>}
                               </>
                             ) : (
                               <>
                                 <EyeClosed
-                                  size={16}
-                                  className="mr-1 text-gray-500"
+                                  size={14}
+                                  className="text-gray-500 flex-shrink-0"
                                 />
-                                <span>Private</span>
+                                {!teamDateIsNarrow && <span>Private</span>}
                               </>
                             )}
-                          </div>
+                          </Tooltip>
                         )}
 
-                      {isSyntheticTeam(team) && (
-                        <Tooltip
-                          content={DEMO_TEAM_TOOLTIP}
-                          wrapperClassName="flex items-center gap-1 text-base-content/50 text-sm"
-                        >
-                          <FlaskConical size={14} className="flex-shrink-0" />
-                          <span>Demo Team</span>
-                        </Tooltip>
+                      {((teamDateIsNarrow && getTeamCreatedDate()) || isSyntheticTeam(team)) && (
+                        <span className="flex items-center gap-3 flex-shrink-0">
+                          {teamDateIsNarrow && getTeamCreatedDate() && (
+                            <Tooltip
+                              content={`Created on ${getTeamCreatedDate().full}`}
+                              position="bottom"
+                              wrapperClassName="flex items-center text-base-content/70 flex-shrink-0 cursor-help"
+                            >
+                              <Calendar size={14} className="mr-1" />
+                              <span>{getTeamCreatedDate().narrow}</span>
+                            </Tooltip>
+                          )}
+                          {isSyntheticTeam(team) && (
+                            <Tooltip
+                              content={DEMO_TEAM_TOOLTIP}
+                              wrapperClassName="flex items-start text-base-content/50"
+                            >
+                              <FlaskConical size={14} className={`flex-shrink-0 mt-px${teamDateIsNarrow ? "" : " mr-0.5"}`} />
+                              {!teamDateIsNarrow && <span className="leading-[1.15]">Demo Team</span>}
+                            </Tooltip>
+                          )}
+                        </span>
                       )}
                     </div>
                   </div>
+                  {getTeamCreatedDate() && (
+                    <div
+                      ref={teamDateRef}
+                      className={`flex-shrink-0${teamDateIsNarrow ? " absolute opacity-0 pointer-events-none" : ""}`}
+                    >
+                      <Tooltip
+                        content={`Created on ${getTeamCreatedDate().full}`}
+                        position="bottom"
+                        wrapperClassName="flex items-center text-base-content/70 cursor-help"
+                      >
+                        <Calendar size={14} className="mr-1" />
+                        <span>{getTeamCreatedDate().short}</span>
+                      </Tooltip>
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-8">
@@ -1590,15 +1958,16 @@ const TeamDetailsModal = ({
                           return currentUserTagIds.has(tagId);
                         }).length;
                         if (matchCount > 0) {
+                          const MatchIcon = matchCount === total ? CheckCheck : Check;
                           return (
                             <span className="flex items-center gap-1.5 text-sm text-success">
-                              <Check size={14} className="flex-shrink-0" />
+                              <MatchIcon size={14} className="flex-shrink-0" />
                               <span>{matchCount}/{total} in common</span>
                             </span>
                           );
                         }
                         return (
-                          <span className="flex items-center gap-1.5 text-sm text-error/70">
+                          <span className="flex items-center gap-1.5 text-sm text-slate-500">
                             <X size={14} className="flex-shrink-0" />
                             <span>None in common</span>
                           </span>
@@ -1626,15 +1995,16 @@ const TeamDetailsModal = ({
                           activeMatchNames.has((b.name ?? "").trim().toLowerCase())
                         ).length;
                         if (matchCount > 0) {
+                          const MatchIcon = matchCount === total ? CheckCheck : Check;
                           return (
                             <span className="flex items-center gap-1.5 text-sm text-success">
-                              <Check size={14} className="flex-shrink-0" />
+                              <MatchIcon size={14} className="flex-shrink-0" />
                               <span>{matchCount}/{total} in common</span>
                             </span>
                           );
                         }
                         return (
-                          <span className="flex items-center gap-1.5 text-sm text-error/70">
+                          <span className="flex items-center gap-1.5 text-sm text-slate-500">
                             <X size={14} className="flex-shrink-0" />
                             <span>None in common</span>
                           </span>
@@ -1661,10 +2031,11 @@ const TeamDetailsModal = ({
                   <VacantRolesSection
                     team={team}
                     teamId={effectiveTeamId}
-                    canManage={isOwner || internalUserRole === "admin"}
+                    canManage={isOwner || effectiveUserRole === "admin"}
                     isTeamMember={isTeamMember}
                     isEditing={isEditing}
                     onRolesLoaded={setTeamRoles}
+                    suppressMatchScores={hideMatchData}
                   />
                 </div>
 
@@ -1742,13 +2113,45 @@ const TeamDetailsModal = ({
       />
 
       {/* Invitation Details Modal */}
-      {pendingInvitation && (
+      {effectivePendingInvitation && (
         <TeamInvitationDetailsModal
           isOpen={isInvitationModalOpen}
-          invitation={pendingInvitation}
+          invitation={effectivePendingInvitation}
           onClose={() => setIsInvitationModalOpen(false)}
           onAccept={handleInvitationAccept}
           onDecline={handleInvitationDecline}
+        />
+      )}
+
+      {applicationDetailsRecord && (
+        <TeamApplicationDetailsModal
+          isOpen={isApplicationDetailsOpen}
+          application={applicationDetailsRecord}
+          onClose={() => {
+            setIsApplicationDetailsOpen(false);
+            setSelectedPendingApplication(null);
+          }}
+          onCancel={async (applicationId) => {
+            await teamService.cancelApplication(applicationId);
+            setLocalPendingApplication(null);
+            setSelectedPendingApplication(null);
+            // Optimistically drop the cancelled application from the viewer
+            // pending requests cache so the modal reflects it immediately.
+            queryClient.setQueryData(
+              viewerPendingRequestsQueryKey(user?.id),
+              (prev) => {
+                if (!prev) return prev;
+                return {
+                  ...prev,
+                  applications: (prev.applications ?? []).filter(
+                    (a) => String(a.id) !== String(applicationId),
+                  ),
+                };
+              },
+            );
+            setIsApplicationDetailsOpen(false);
+            await fetchTeamDetails(true);
+          }}
         />
       )}
     </>

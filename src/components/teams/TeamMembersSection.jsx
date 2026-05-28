@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   Users,
   MapPin,
@@ -11,7 +11,6 @@ import {
 import RoleBadgeDropdown from "./RoleBadgeDropdown";
 import ScreenAlert from "../common/ScreenAlert";
 import { teamService } from "../../services/teamService";
-import { userService } from "../../services/userService";
 import { formatDisplayName } from "../../utils/nameFormatters";
 import CardMetaItem from "../common/CardMetaItem";
 import CardMetaRow from "../common/CardMetaRow";
@@ -19,40 +18,14 @@ import Tooltip from "../common/Tooltip";
 import DemoAvatarOverlay from "../users/DemoAvatarOverlay";
 import { DEMO_PROFILE_TOOLTIP, isSyntheticUser } from "../../utils/userHelpers";
 
-const memberSyntheticStatusCache = new Map();
-
-const extractProfilePayload = (response) => {
-  const payload = response?.data ?? response;
-
-  if (!payload) return null;
-  if (payload?.success !== undefined) return payload?.data ?? null;
-
-  return payload?.data?.data ?? payload?.data ?? payload;
-};
-
-const getCachedMemberSyntheticStatus = async (memberId) => {
-  const cacheKey = String(memberId);
-
-  if (memberSyntheticStatusCache.has(cacheKey)) {
-    return memberSyntheticStatusCache.get(cacheKey);
-  }
-
-  const request = (async () => {
-    const response = await userService.getUserById(memberId);
-    return isSyntheticUser(extractProfilePayload(response));
-  })();
-
-  memberSyntheticStatusCache.set(cacheKey, request);
-
-  try {
-    const result = await request;
-    memberSyntheticStatusCache.set(cacheKey, Promise.resolve(result));
-    return result;
-  } catch (error) {
-    memberSyntheticStatusCache.delete(cacheKey);
-    throw error;
-  }
-};
+const getTeamMemberId = (member) =>
+  member?.userId ??
+  member?.user_id ??
+  member?.memberId ??
+  member?.member_id ??
+  member?.user?.id ??
+  member?.id ??
+  null;
 
 /**
  * TeamMembersSection Component
@@ -77,8 +50,31 @@ const TeamMembersSection = ({
     message: null,
   });
   const [isExpanded, setIsExpanded] = useState(false);
-  const [syntheticMemberStatusMap, setSyntheticMemberStatusMap] = useState({});
   const COLLAPSED_COUNT = 4;
+  const members = useMemo(
+    () => (Array.isArray(team?.members) ? team.members : []),
+    [team?.members],
+  );
+  // Only show the synthetic indicator when the parent embeds is_synthetic
+  // in the member object. Fetching profiles per member just to discover this
+  // flag was an N+1 (one round trip per member); the indicator is only
+  // meaningful for demo users, so gracefully degrade when the data is absent.
+  const syntheticMemberStatusMap = useMemo(() => {
+    const statuses = {};
+
+    members.forEach((member) => {
+      const memberId = getTeamMemberId(member);
+      if (memberId == null) return;
+
+      const hasInlineSyntheticFlag =
+        member?.is_synthetic != null || member?.isSynthetic != null;
+      if (hasInlineSyntheticFlag) {
+        statuses[String(memberId)] = isSyntheticUser(member);
+      }
+    });
+
+    return statuses;
+  }, [members]);
 
   // Helper function to get member initials (2 letters: "NK" for Nam Khoa)
   const getMemberInitials = (member) => {
@@ -96,71 +92,6 @@ const TeamMembersSection = ({
     }
     return "?";
   };
-
-  useEffect(() => {
-    const members = Array.isArray(team?.members) ? team.members : [];
-    const nextKnownStatuses = {};
-    const memberIdsToFetch = [];
-
-    members.forEach((member) => {
-      const memberId = member?.userId ?? member?.user_id ?? null;
-      if (memberId == null) return;
-
-      const cacheKey = String(memberId);
-      const hasInlineSyntheticFlag =
-        member?.is_synthetic != null || member?.isSynthetic != null;
-
-      if (hasInlineSyntheticFlag) {
-        const isDemoMember = isSyntheticUser(member);
-        nextKnownStatuses[cacheKey] = isDemoMember;
-        memberSyntheticStatusCache.set(cacheKey, Promise.resolve(isDemoMember));
-        return;
-      }
-
-      memberIdsToFetch.push(memberId);
-    });
-
-    if (Object.keys(nextKnownStatuses).length > 0) {
-      setSyntheticMemberStatusMap((prev) => ({
-        ...prev,
-        ...nextKnownStatuses,
-      }));
-    }
-
-    if (memberIdsToFetch.length === 0) {
-      return undefined;
-    }
-
-    let cancelled = false;
-
-    Promise.allSettled(
-      [...new Set(memberIdsToFetch)].map(async (memberId) => ({
-        memberId,
-        isSynthetic: await getCachedMemberSyntheticStatus(memberId),
-      })),
-    ).then((results) => {
-      if (cancelled) return;
-
-      const fetchedStatuses = {};
-
-      results.forEach((result) => {
-        if (result.status !== "fulfilled") return;
-
-        fetchedStatuses[String(result.value.memberId)] = result.value.isSynthetic;
-      });
-
-      if (Object.keys(fetchedStatuses).length > 0) {
-        setSyntheticMemberStatusMap((prev) => ({
-          ...prev,
-          ...fetchedStatuses,
-        }));
-      }
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [team?.members]);
 
   // Early return if no members
   if (!team?.members || team.members.length === 0) {
@@ -190,13 +121,14 @@ const TeamMembersSection = ({
       <div
         className="grid grid-cols-1 sm:grid-cols-2 gap-4"
         key={team.members
-          .map((m) => `${m.user_id || m.userId}-${m.role}`)
+          .map((m) => `${getTeamMemberId(m)}-${m.role}`)
           .join(",")}
       >
         {(isExpanded ? team.members : team.members.slice(0, COLLAPSED_COUNT)).map((member) => {
           // Check which property is available (userId or user_id)
-          const memberId = member.userId || member.user_id;
-          const isCurrentUser = memberId === user?.id;
+          const memberId = getTeamMemberId(member);
+          const isCurrentUser =
+            memberId != null && String(memberId) === String(user?.id);
 
           // Determine if this member should be anonymized
           const anonymize = shouldAnonymizeMember(member);
@@ -225,7 +157,10 @@ const TeamMembersSection = ({
 
           // Role management logic - Owners and admins can manage roles
           const currentUserMember = team.members?.find(
-            (m) => m.user_id === user?.id || m.userId === user?.id,
+            (m) => {
+              const rowMemberId = getTeamMemberId(m);
+              return rowMemberId != null && String(rowMemberId) === String(user?.id);
+            },
           );
           const isAdmin = currentUserMember?.role === "admin";
 
@@ -238,7 +173,7 @@ const TeamMembersSection = ({
               className="flex items-start bg-green-50 rounded-xl shadow p-4 gap-4 transition-all duration-200 hover:bg-green-100 hover:shadow-md"
             >
               <div className="avatar">
-                <div className="rounded-full w-12 h-12 relative overflow-hidden">
+                <div className="rounded-full w-14 h-14 relative overflow-hidden">
                   {memberAvatarUrl ? (
                     <img
                       src={memberAvatarUrl}
@@ -258,7 +193,7 @@ const TeamMembersSection = ({
                     className="avatar-fallback placeholder bg-[var(--color-primary-focus)] text-primary-content rounded-full w-full h-full absolute inset-0 flex items-center justify-center"
                     style={{ display: memberAvatarUrl ? "none" : "flex" }}
                   >
-                    <span className="text-lg">
+                    <span className="text-xl">
                       {anonymize ? "PP" : getMemberInitials(member)}
                     </span>
                   </div>
@@ -270,8 +205,9 @@ const TeamMembersSection = ({
 
               <div className="flex-1 min-w-0 pt-[1px]">
                 <div className="flex flex-col">
-                  <div className="flex items-center justify-between">
+                  <div className="flex min-w-0 items-center gap-1">
                     <Tooltip
+                      wrapperClassName="block min-w-0 flex-1"
                       content={
                         anonymize
                           ? "Private Profile"
@@ -299,14 +235,15 @@ const TeamMembersSection = ({
                     </Tooltip>
 
                     {/* Role Badge with Dropdown */}
-                    <RoleBadgeDropdown
-                      member={member}
-                      canManage={canManageThisMember}
-                      isOwner={isOwner}
-                      isTeamArchived={
-                        team?.archived_at || team?.status === "inactive"
-                      }
-                      onRoleChange={async (newRole) => {
+                    <div className="shrink-0 ml-1">
+                      <RoleBadgeDropdown
+                        member={member}
+                        canManage={canManageThisMember}
+                        isOwner={isOwner}
+                        isTeamArchived={
+                          team?.archived_at || team?.status === "inactive"
+                        }
+                        onRoleChange={async (newRole) => {
                         try {
                           await teamService.updateMemberRole(
                             team.id,
@@ -333,18 +270,60 @@ const TeamMembersSection = ({
                               "Failed to update role",
                           });
                         }
-                      }}
-                      onRemoveMember={async () => {
+                        }}
+                        onRemoveMember={async (resolvedMemberId = memberId) => {
+                        let demotedForRemoval = false;
+
                         try {
-                          await teamService.removeTeamMember(team.id, memberId);
+                          if (resolvedMemberId == null) {
+                            throw new Error("Could not determine member ID");
+                          }
+
+                          if (member.role === "admin" && isAdmin && !isOwner) {
+                            await teamService.updateMemberRole(
+                              team.id,
+                              resolvedMemberId,
+                              "member",
+                            );
+                            demotedForRemoval = true;
+                          }
+
+                          const result = await teamService.removeTeamMember(
+                            team.id,
+                            resolvedMemberId,
+                          );
+                          const reopenedRoles = Array.isArray(
+                            result?.data?.reopenedRoles,
+                          )
+                            ? result.data.reopenedRoles
+                            : [];
+
                           setNotification({
                             type: "success",
-                            message: `${formatDisplayName(member)} has been removed from the team.`,
+                            message:
+                              reopenedRoles.length > 0
+                                ? `${formatDisplayName(member)} has been removed from the team. ${reopenedRoles.length} filled ${reopenedRoles.length === 1 ? "role was" : "roles were"} reopened.`
+                                : `${formatDisplayName(member)} has been removed from the team.`,
                           });
                           if (onMemberRemoved) {
                             await onMemberRemoved();
                           }
                         } catch (error) {
+                          if (demotedForRemoval) {
+                            try {
+                              await teamService.updateMemberRole(
+                                team.id,
+                                resolvedMemberId,
+                                "admin",
+                              );
+                            } catch (restoreError) {
+                              console.error(
+                                "Failed to restore admin role after removal failed:",
+                                restoreError,
+                              );
+                            }
+                          }
+
                           setNotification({
                             type: "error",
                             message:
@@ -352,8 +331,9 @@ const TeamMembersSection = ({
                               "Failed to remove member",
                           });
                         }
-                      }}
-                    />
+                        }}
+                      />
+                    </div>
                   </div>
 
                   {shouldShowMemberMetaRow && (
@@ -362,16 +342,6 @@ const TeamMembersSection = ({
                         <CardMetaItem icon={MapPin}>
                           {[member.city, member.country].filter(Boolean).join(", ")}
                         </CardMetaItem>
-                      )}
-
-                      {showDemoAvatarOverlay && (
-                        <Tooltip
-                          content={DEMO_PROFILE_TOOLTIP}
-                          wrapperClassName="flex items-start gap-0.5 text-base-content/50"
-                        >
-                          <FlaskConical size={10} className="shrink-0 mt-[3px]" />
-                          <span className="leading-tight">Demo</span>
-                        </Tooltip>
                       )}
 
                       {!anonymize && member.distance_km != null && (
@@ -384,6 +354,15 @@ const TeamMembersSection = ({
                         <CardMetaItem icon={UserCheck} nowrap>
                           {filledRoleName}
                         </CardMetaItem>
+                      )}
+
+                      {showDemoAvatarOverlay && (
+                        <Tooltip
+                          content={DEMO_PROFILE_TOOLTIP}
+                          wrapperClassName="flex items-center gap-1 min-w-0 text-base-content/50"
+                        >
+                          <FlaskConical size={10} className="shrink-0" />
+                        </Tooltip>
                       )}
                     </CardMetaRow>
                   )}

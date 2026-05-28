@@ -1,35 +1,79 @@
-import api from "./api";
+import api, { call } from "./api";
+
+const TAG_CACHE_TTL_MS = 10 * 60 * 1000;
+
+let structuredTagsCache = null;
+let structuredTagsCacheExpiresAt = 0;
+let structuredTagsRequest = null;
+const popularTagsCache = new Map();
+
+const cloneTagData = (data) => {
+  if (typeof structuredClone === "function") {
+    return structuredClone(data);
+  }
+
+  return JSON.parse(JSON.stringify(data));
+};
+
+const isCacheFresh = (expiresAt) => expiresAt > Date.now();
+
+const getPopularTagsCacheKey = (limit, supercategory) =>
+  JSON.stringify([limit, supercategory || null]);
+
+const clearTagCaches = () => {
+  structuredTagsCache = null;
+  structuredTagsCacheExpiresAt = 0;
+  structuredTagsRequest = null;
+  popularTagsCache.clear();
+};
 
 export const tagService = {
   // Fetch structured tags
   getStructuredTags: async () => {
     try {
-      const response = await api.get("/api/tags/structured");
+      if (structuredTagsCache && isCacheFresh(structuredTagsCacheExpiresAt)) {
+        return cloneTagData(structuredTagsCache);
+      }
 
-      const processedData = (response.data || []).map((supercat) => ({
-        ...supercat,
+      if (structuredTagsRequest) {
+        const cachedData = await structuredTagsRequest;
+        return cloneTagData(cachedData);
+      }
 
-        // IMPORTANT: supercat.id is a STRING (e.g. "Business & Entrepreneurship") — keep it
-        id: supercat?.id,
-        name: supercat?.name,
+      structuredTagsRequest = api.get("/api/tags/structured").then((response) => {
+        const processedData = (response.data || []).map((supercat) => ({
+          ...supercat,
 
-        categories: (supercat?.categories || []).map((cat) => ({
-          ...cat,
+          // IMPORTANT: supercat.id is a STRING (e.g. "Business & Entrepreneurship") — keep it
+          id: supercat?.id,
+          name: supercat?.name,
 
-          // IMPORTANT: cat.id may also be a STRING — keep it
-          id: cat?.id,
-          name: cat?.name,
+          categories: (supercat?.categories || []).map((cat) => ({
+            ...cat,
 
-          // Leaf tags are the selectable focus areas → ensure tag.id is numeric
-          tags: (cat?.tags || []).map((tag) => ({
-            ...tag,
-            id: Number(tag?.id),
+            // IMPORTANT: cat.id may also be a STRING — keep it
+            id: cat?.id,
+            name: cat?.name,
+
+            // Leaf tags are the selectable focus areas → ensure tag.id is numeric
+            tags: (cat?.tags || []).map((tag) => ({
+              ...tag,
+              id: Number(tag?.id),
+            })),
           })),
-        })),
-      }));
+        }));
 
-      return processedData;
+        structuredTagsCache = processedData;
+        structuredTagsCacheExpiresAt = Date.now() + TAG_CACHE_TTL_MS;
+        structuredTagsRequest = null;
+
+        return processedData;
+      });
+
+      const processedData = await structuredTagsRequest;
+      return cloneTagData(processedData);
     } catch (error) {
+      structuredTagsRequest = null;
       console.error("Error fetching structured tags:", error);
       throw error;
     }
@@ -37,27 +81,18 @@ export const tagService = {
 
   // Create a new tag
   createTag: async (tagData) => {
-    try {
-      const response = await api.post("/api/tags/create", tagData);
-      return response.data;
-    } catch (error) {
-      console.error("Error creating tag:", error);
-      throw error;
-    }
+    const data = await call("creating tag", () =>
+      api.post("/api/tags/create", tagData),
+    );
+    clearTagCaches();
+    return data;
   },
 
   // Search tags
-  searchTags: async (query) => {
-    try {
-      const response = await api.get("/api/tags/search", {
-        params: { query },
-      });
-      return response.data;
-    } catch (error) {
-      console.error("Error searching tags:", error);
-      throw error;
-    }
-  },
+  searchTags: (query) =>
+    call("searching tags", () =>
+      api.get("/api/tags/search", { params: { query } }),
+    ),
   // NEW METHODS FOR AUTOCOMPLETE
 
   /**
@@ -65,12 +100,26 @@ export const tagService = {
    */
   getPopularTags: async (limit = 10, supercategory = null) => {
     try {
+      const cacheKey = getPopularTagsCacheKey(limit, supercategory);
+      const cachedEntry = popularTagsCache.get(cacheKey);
+
+      if (cachedEntry && isCacheFresh(cachedEntry.expiresAt)) {
+        return cloneTagData(cachedEntry.data);
+      }
+
       const params = { limit };
       if (supercategory) {
         params.supercategory = supercategory;
       }
       const response = await api.get("/api/tags/popular", { params });
-      return response.data.data || [];
+      const popularTags = response.data.data || [];
+
+      popularTagsCache.set(cacheKey, {
+        data: popularTags,
+        expiresAt: Date.now() + TAG_CACHE_TTL_MS,
+      });
+
+      return cloneTagData(popularTags);
     } catch (error) {
       console.error("Error fetching popular tags:", error);
       return [];

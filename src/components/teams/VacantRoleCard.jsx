@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   Award,
   Calendar,
@@ -30,10 +31,12 @@ import LocationDistanceTagsRow from "../common/LocationDistanceTagsRow";
 import SearchResultTypeOverlay from "../common/SearchResultTypeOverlay";
 import Tooltip from "../common/Tooltip";
 import {
+  DEMO_PROFILE_TOOLTIP,
   DEMO_ROLE_TOOLTIP,
   getDisplayName,
   getUserInitials,
   isSyntheticRole,
+  isSyntheticUser,
 } from "../../utils/userHelpers";
 import DemoAvatarOverlay from "../users/DemoAvatarOverlay";
 import { resolveFilledRoleUser } from "../../utils/vacantRoleUtils";
@@ -45,6 +48,7 @@ import {
 import { teamService } from "../../services/teamService";
 import { useAuth } from "../../contexts/AuthContext";
 import { format } from "date-fns";
+import { formatDisplayName } from "../../utils/nameFormatters";
 
 const userPendingApplicationsCache = new Map();
 const userReceivedInvitationsCache = new Map();
@@ -182,7 +186,7 @@ const VacantRoleCard = ({
   onEdit,
   onDelete,
   onStatusChange,
-  allowedStatusActions = ["filled", "closed", "open"],
+  allowedStatusActions = ["closed", "open"],
   statusActionLoading = false,
   matchScore = null,
   matchDetails = null,
@@ -194,8 +198,12 @@ const VacantRoleCard = ({
   teamContext = null,
   activeFilters = { showLocation: true, showTags: true, showBadges: true },
   showSearchResultTypeOverlay = false,
+  showMatchScore = true,
+  notificationHighlight = false,
 }) => {
   const [showMenu, setShowMenu] = useState(false);
+  const [menuPosition, setMenuPosition] = useState(null);
+  const menuTriggerRef = useRef(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [pendingApplicationForRole, setPendingApplicationForRole] =
     useState(null);
@@ -596,9 +604,12 @@ const VacantRoleCard = ({
     setIsDetailsOpen(true);
   };
 
-  const hasMatchScore = matchScore !== null && matchScore !== undefined;
-  const pct = hasMatchScore ? Math.round(matchScore * 100) : 0;
-  const matchTier = hasMatchScore ? getMatchTier(matchScore) : null;
+  const visibleMatchScore = showMatchScore ? matchScore : null;
+  const visibleMatchDetails = showMatchScore ? matchDetails : null;
+  const hasMatchScore =
+    visibleMatchScore !== null && visibleMatchScore !== undefined;
+  const pct = hasMatchScore ? Math.round(visibleMatchScore * 100) : 0;
+  const matchTier = hasMatchScore ? getMatchTier(visibleMatchScore) : null;
 
   const getMatchColor = () => {
     if (pct >= MATCH_TIER_GREAT) {
@@ -627,15 +638,20 @@ const VacantRoleCard = ({
   const matchColor = hasMatchScore ? getMatchColor() : null;
 
   const getMatchTooltip = () => {
-    if (!matchDetails) return `${pct}% match`;
+    if (!visibleMatchDetails) return `${pct}% match`;
     const tagPct = Math.round(
-      (matchDetails.tagScore ?? matchDetails.tag_score ?? 0) * 100,
+      (visibleMatchDetails.tagScore ?? visibleMatchDetails.tag_score ?? 0) *
+        100,
     );
     const badgePct = Math.round(
-      (matchDetails.badgeScore ?? matchDetails.badge_score ?? 0) * 100,
+      (visibleMatchDetails.badgeScore ??
+        visibleMatchDetails.badge_score ??
+        0) * 100,
     );
     const distPct = Math.round(
-      (matchDetails.distanceScore ?? matchDetails.distance_score ?? 0) * 100,
+      (visibleMatchDetails.distanceScore ??
+        visibleMatchDetails.distance_score ??
+        0) * 100,
     );
     return `${pct}% match — Tags ${tagPct}% · Badges ${badgePct}% · Location ${distPct}%`;
   };
@@ -669,7 +685,8 @@ const VacantRoleCard = ({
   const canMarkFilled =
     canUpdateStatus &&
     status === "open" &&
-    statusActions.includes("filled");
+    statusActions.includes("filled") &&
+    Boolean(viewAsUser);
   const canCloseRole =
     canUpdateStatus &&
     status === "open" &&
@@ -686,6 +703,7 @@ const VacantRoleCard = ({
     canReopenRole;
   const canOpenBadgeMenu = hasBadgeActions && !statusActionLoading;
   const isFilled = status === "filled";
+  const isClosed = status === "closed";
   const filledUser = isFilled
     ? resolveFilledRoleUser(role, { viewAsUserId, viewAsUser })
     : null;
@@ -695,14 +713,22 @@ const VacantRoleCard = ({
     filledUser && getDisplayName(filledUser) !== "Unknown"
       ? getDisplayName(filledUser)
       : null;
-  const filledByText = filledUserDisplayName
-    ? `Filled by ${filledUserDisplayName}`
+  const filledByText = filledUser
+    ? formatDisplayName(filledUser)
+    : filledUserDisplayName
+    ? filledUserDisplayName
     : "Filled";
   const badgeConfig = isFilled
     ? {
         icon: UserCheck,
         label: "Filled",
         badgeColorClass: "badge-role-filled",
+      }
+    : isClosed
+    ? {
+        icon: XCircle,
+        label: "Closed",
+        badgeColorClass: "badge-role-closed",
       }
     : {
         icon: UserSearch,
@@ -711,19 +737,23 @@ const VacantRoleCard = ({
       };
   const cardColorClass = isFilled
     ? "bg-green-50 hover:bg-green-100"
+    : isClosed
+    ? "bg-gray-50 hover:bg-gray-100"
     : "bg-amber-50 hover:bg-amber-100/70";
   const initialsAvatarClass = isFilled
     ? "bg-[var(--color-primary-focus)] text-white"
+    : isClosed
+    ? "bg-slate-400 text-white"
     : "bg-amber-500 text-white";
   const isMiniView = viewMode === "mini";
-  const avatarSizeClass = isMiniView ? "w-10 h-10" : "w-12 h-12";
-  const avatarTextClass = isMiniView ? "text-sm" : "text-lg";
-  const matchIconSize = isMiniView ? 32 : 40;
-  const wrapperPaddingClass = isMiniView ? "p-3 sm:p-4" : "p-4 sm:p-5";
+  const avatarSizeClass = isMiniView ? "w-10 h-10" : "w-14 h-14";
+  const avatarTextClass = isMiniView ? "text-sm" : "text-xl";
+  const matchIconSize = isMiniView ? 32 : 44;
+  const wrapperPaddingClass = isMiniView ? "p-3" : "p-4";
   const titleLeadingClass = isMiniView ? "leading-[110%]" : "leading-[120%]";
   const roleNameClass = isMiniView
-    ? "text-sm font-semibold"
-    : "text-base font-semibold";
+    ? "text-sm font-medium"
+    : "text-base font-medium";
   const roleBadges =
     role.badges ?? role.requiredBadges ?? role.required_badges ?? [];
   const badgeNames = Array.isArray(roleBadges)
@@ -738,11 +768,11 @@ const VacantRoleCard = ({
         .filter(Boolean)
     : [];
   const scoreSubtitleIconSize =
-    viewMode === "list" ? 10 : viewMode === "mini" ? 11 : 12;
+    viewMode === "list" ? 8 : viewMode === "mini" ? 9 : 10;
   const subtitleMetaIconSize =
-    viewMode === "list" ? 11 : viewMode === "mini" ? 11 : 12;
+    viewMode === "list" ? 9 : viewMode === "mini" ? 9 : 10;
   const teamLineIconSize =
-    viewMode === "list" ? 11 : viewMode === "mini" ? 12 : 14;
+    viewMode === "list" ? 9 : viewMode === "mini" ? 10 : 11;
   const formattedPostedDate = getFormattedPostedDate();
   const scoreSubtitleItem = matchTier ? (
     <Tooltip content={getMatchTooltip()}>
@@ -791,13 +821,13 @@ const VacantRoleCard = ({
       <span className="inline-flex min-w-0 items-center gap-0.5 leading-none">
         {is_remote ? (
           <>
-            <Globe size={12} className="flex-shrink-0" />
-            <span className="leading-[1.15]">{locationText}</span>
+            <Globe size={10} className="flex-shrink-0" />
+            <span className="leading-[1.05]">{locationText}</span>
           </>
         ) : (
           <>
-            <MapPin size={12} className="flex-shrink-0" />
-            <span className="leading-[1.15]">{locationText}</span>
+            <MapPin size={10} className="flex-shrink-0" />
+            <span className="leading-[1.05]">{locationText}</span>
           </>
         )}
       </span>
@@ -837,13 +867,13 @@ const VacantRoleCard = ({
       </span>
     </Tooltip>
   ) : null;
-  const demoRoleMetaItem = isSyntheticRole(role) ? (
+  const hasDemoRoleMeta = isSyntheticRole(role) || isSyntheticUser(filledUser);
+  const demoRoleMetaItem = hasDemoRoleMeta ? (
     <Tooltip
-      content={DEMO_ROLE_TOOLTIP}
+      content={isSyntheticRole(role) ? DEMO_ROLE_TOOLTIP : DEMO_PROFILE_TOOLTIP}
       wrapperClassName="flex items-center gap-1 whitespace-nowrap text-base-content/50"
     >
-      <FlaskConical size={12} className="flex-shrink-0" />
-      <span>{viewMode === "mini" ? "Demo" : "Demo Role"}</span>
+      <FlaskConical size={10} className="flex-shrink-0" />
     </Tooltip>
   ) : null;
 
@@ -914,9 +944,9 @@ const VacantRoleCard = ({
 
   const resolvedTeam =
     team ??
-    ((role.teamId ?? role.team_id)
+    ((role.teamId ?? role.team_id ?? teamContext?.id)
       ? {
-          id: role.teamId ?? role.team_id,
+          id: role.teamId ?? role.team_id ?? teamContext?.id,
           name:
             role.teamName ??
             role.team_name ??
@@ -936,14 +966,18 @@ const VacantRoleCard = ({
       onClose={() => setIsDetailsOpen(false)}
       team={resolvedTeam}
       role={role}
-      matchScore={matchScore}
-      matchDetails={matchDetails}
+      matchScore={visibleMatchScore}
+      matchDetails={visibleMatchDetails}
+      showMatchScore={showMatchScore}
       canManage={canManage}
       isTeamMember={viewerIsTeamMember}
       viewAsUserId={viewAsUserId}
       viewAsUser={viewAsUser}
       onViewApplicationDetails={onViewApplicationDetails}
       hideActions={hideActions && !usesSharedSearchCard}
+      onEdit={onEdit ? (r) => { setIsDetailsOpen(false); onEdit(r); } : null}
+      onDelete={onDelete ? (id) => { setIsDetailsOpen(false); onDelete(id); } : null}
+      onStatusChange={onStatusChange ? (id, s) => { setIsDetailsOpen(false); onStatusChange(id, s); } : null}
     />
   );
   const demoAvatarOverlay = isSyntheticRole(role) ? (
@@ -970,6 +1004,12 @@ const VacantRoleCard = ({
       textTranslateClassName="-translate-y-[3px]"
     />
   ) : null;
+  const compactFilledUserDemoAvatarOverlay = isSyntheticUser(filledUser) ? (
+    <DemoAvatarOverlay
+      textClassName={isMiniView ? "text-[6px]" : "text-[7px]"}
+      textTranslateClassName="-translate-y-[3px]"
+    />
+  ) : null;
 
   if (viewMode === "list") {
     const roundedDistanceKm = showDistance ? Math.round(rawDistanceKm) : null;
@@ -991,21 +1031,14 @@ const VacantRoleCard = ({
       teamSubtitleItem ||
       roleInvitationSubtitleItem ||
       roleApplicationSubtitleItem ||
-      isSyntheticRole(role) ? (
+      hasDemoRoleMeta ? (
         <span className="flex min-w-0 flex-nowrap items-center gap-1 overflow-hidden whitespace-nowrap text-base-content/60">
           {scoreSubtitleItem}
           {postedDateSubtitleItem}
           {roleInvitationSubtitleItem}
           {roleApplicationSubtitleItem}
           {teamSubtitleItem}
-          {isSyntheticRole(role) && (
-            <Tooltip
-              content={DEMO_ROLE_TOOLTIP}
-              wrapperClassName="flex items-center whitespace-nowrap text-base-content/50"
-            >
-              <FlaskConical size={11} className="flex-shrink-0" />
-            </Tooltip>
-          )}
+          {demoRoleMetaItem}
         </span>
       ) : null;
 
@@ -1037,7 +1070,7 @@ const VacantRoleCard = ({
                 <div className="text-xs text-base-content flex items-center gap-1 overflow-hidden">
                   <Tooltip content={`${roundedDistanceKm} km away from you`}>
                     <div className="flex items-center gap-1">
-                      <Ruler size={11} className="flex-shrink-0" />
+                      <Ruler size={9} className="flex-shrink-0" />
                       <span className="whitespace-nowrap">
                         {roundedDistanceKm} km
                       </span>
@@ -1054,9 +1087,9 @@ const VacantRoleCard = ({
                 >
                   <div className="flex min-w-0 w-full items-center gap-1 overflow-hidden">
                     {is_remote ? (
-                      <Globe size={11} className="flex-shrink-0" />
+                      <Globe size={9} className="flex-shrink-0" />
                     ) : (
-                      <MapPin size={11} className="flex-shrink-0" />
+                      <MapPin size={9} className="flex-shrink-0" />
                     )}
                     <span className="min-w-0 flex-1 truncate">
                       {locationText}
@@ -1073,7 +1106,7 @@ const VacantRoleCard = ({
                 content={tagNames.join(", ")}
                 wrapperClassName="flex items-center gap-1 min-w-0 overflow-hidden w-full"
               >
-                <Tag size={11} className="flex-shrink-0" />
+                <Tag size={9} className="flex-shrink-0" />
                 <span className="truncate">{tagsSummary}</span>
               </Tooltip>
             )}
@@ -1085,7 +1118,7 @@ const VacantRoleCard = ({
                 content={badgeNames.join(", ")}
                 wrapperClassName="flex items-center gap-1 min-w-0 overflow-hidden w-full"
               >
-                <Award size={11} className="flex-shrink-0" />
+                <Award size={9} className="flex-shrink-0" />
                 <span className="truncate">{badgesSummary}</span>
               </Tooltip>
             )}
@@ -1099,7 +1132,7 @@ const VacantRoleCard = ({
   if (usesSharedSearchCard) {
     const searchCardSubtitle = (
       <span
-        className={`flex text-base-content/70 leading-snug ${
+        className={`mt-0.5 flex max-h-[2.75em] overflow-hidden text-base-content/70 leading-snug ${
           isMiniView
             ? "items-center flex-wrap text-xs gap-x-1 gap-y-px w-full"
             : "items-center flex-wrap text-sm gap-x-1.5 gap-y-px"
@@ -1117,10 +1150,9 @@ const VacantRoleCard = ({
             wrapperClassName="flex items-center gap-1 text-base-content/50"
           >
             <FlaskConical
-              size={viewMode === "mini" ? 12 : 14}
+              size={viewMode === "mini" ? 10 : 11}
               className="flex-shrink-0"
             />
-            <span>{viewMode === "mini" ? "Demo" : "Demo Role"}</span>
           </Tooltip>
         )}
       </span>
@@ -1204,7 +1236,7 @@ const VacantRoleCard = ({
                 size={teamLineIconSize}
                 className="text-base-content mr-1 flex-shrink-0 mt-0.5"
               />
-              <span className="min-w-0 leading-[1.15] whitespace-normal break-words">
+              <span className="min-w-0 leading-[1.05] whitespace-normal break-words">
                 {resolvedTeamName}
               </span>
             </div>
@@ -1225,10 +1257,9 @@ const VacantRoleCard = ({
         onClick={handleCardClick}
         className={`flex items-start rounded-xl shadow gap-4 transition-all duration-200 hover:shadow-md cursor-pointer ${wrapperPaddingClass} ${cardColorClass} ${
           status !== "open" ? "opacity-70" : ""
-        }`}
+        } ${notificationHighlight ? "role-card-highlight" : ""}`}
       >
-        <div className="flex-shrink-0">
-          {isFilled && filledUser ? (
+        {isFilled && filledUser ? (
             <div className="avatar">
               <div className={`${avatarSizeClass} rounded-full relative overflow-hidden`}>
                 {filledUserAvatarUrl ? (
@@ -1252,7 +1283,7 @@ const VacantRoleCard = ({
                     {getUserInitials(filledUser)}
                   </span>
                 </div>
-                {compactDemoAvatarOverlay}
+                {compactFilledUserDemoAvatarOverlay ?? compactDemoAvatarOverlay}
                 {miniMatchOverlay}
               </div>
             </div>
@@ -1283,29 +1314,14 @@ const VacantRoleCard = ({
               </div>
             </div>
           )}
-        </div>
 
         <div className={`flex-1 min-w-0 pt-[1px] ${isMiniView ? "space-y-1" : ""}`}>
-          <div className="flex items-center justify-between gap-2 min-w-0">
-            <div className="flex-1 min-w-0 overflow-hidden">
-              <Tooltip
-                content={role_name || "Vacant Role"}
-                wrapperClassName="block w-full min-w-0 overflow-hidden"
-              >
-                <div
-                  className={`block w-full min-w-0 truncate ${roleNameClass} ${titleLeadingClass} text-[var(--color-primary-focus)] transition-colors`}
-                >
-                  {role_name || "Vacant Role"}
-                </div>
-              </Tooltip>
-              {teamContext?.name && viewMode === "card" && (
-                <p className="text-xs text-base-content/50 mt-0.5 truncate">
-                  {teamContext.name}
-                </p>
-              )}
-            </div>
-
-            <div className="relative flex-shrink-0" data-dropdown-menu>
+          <div className="flex flex-col">
+            <div className="flex min-w-0 items-center gap-1">
+              <h3 className={`${roleNameClass} ${titleLeadingClass} min-w-0 flex-1 truncate`}>
+                {role_name || "Vacant Role"}
+              </h3>
+              <div ref={menuTriggerRef} className="shrink-0 ml-1" data-dropdown-menu>
               <RoleBadgePill
                 icon={badgeConfig.icon}
                 label={badgeConfig.label}
@@ -1316,101 +1332,123 @@ const VacantRoleCard = ({
                   canOpenBadgeMenu
                     ? (e) => {
                         e.stopPropagation();
+                        if (!showMenu && menuTriggerRef.current) {
+                          const rect = menuTriggerRef.current.getBoundingClientRect();
+                          setMenuPosition({
+                            top: rect.bottom + 4,
+                            right: window.innerWidth - rect.right,
+                          });
+                        }
                         setShowMenu(!showMenu);
                       }
                     : undefined
                 }
               />
-
-              {canOpenBadgeMenu && showMenu && (
-                <>
-                  <div
-                    className="fixed inset-0 z-[9]"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setShowMenu(false);
-                    }}
-                  />
-                  <div className="absolute right-0 top-8 z-20 bg-base-100 border border-base-300 rounded-lg shadow-lg py-1 min-w-[200px]">
-                    {canEditRole && (
-                      <button
-                        className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-base-200 text-left"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setShowMenu(false);
-                          onEdit(role);
-                        }}
-                      >
-                        <Edit size={14} />
-                        Edit Role
-                      </button>
-                    )}
-                    {canMarkFilled && (
-                      <button
-                        className="flex items-start gap-2 w-full px-3 py-2 text-sm hover:bg-base-200 text-left"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setShowMenu(false);
-                          onStatusChange(role.id, "filled");
-                        }}
-                      >
-                        <CheckCircle
-                          size={14}
-                          className="text-success flex-shrink-0 mt-[2px]"
-                        />
-                        {viewAsUser
-                          ? `Mark role as filled with ${
-                              viewAsUser.firstName ??
-                              viewAsUser.first_name ??
-                              viewAsUser.username ??
-                              "this applicant"
-                            }`
-                          : "Mark Filled"}
-                      </button>
-                    )}
-                    {canCloseRole && (
-                      <button
-                        className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-base-200 text-left"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setShowMenu(false);
-                          onStatusChange(role.id, "closed");
-                        }}
-                      >
-                        <XCircle size={14} className="text-warning" />
-                        Close Role
-                      </button>
-                    )}
-                    {canReopenRole && (
-                      <button
-                        className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-base-200 text-left"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setShowMenu(false);
-                          onStatusChange(role.id, "open");
-                        }}
-                      >
-                        <CheckCircle size={14} className="text-primary" />
-                        Reopen Role
-                      </button>
-                    )}
-                    {canDeleteRole && (
-                      <button
-                        className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-base-200 text-left text-error"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setShowMenu(false);
-                          onDelete(role.id);
-                        }}
-                      >
-                        <Trash2 size={14} />
-                        Delete Role
-                      </button>
-                    )}
-                  </div>
-                </>
-              )}
+              </div>
+              {canOpenBadgeMenu && showMenu && menuPosition && createPortal(
+              <>
+                <div
+                  className="fixed inset-0"
+                  style={{ zIndex: 9998 }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowMenu(false);
+                  }}
+                />
+                <div
+                  style={{
+                    position: "fixed",
+                    top: menuPosition.top,
+                    right: menuPosition.right,
+                    zIndex: 9999,
+                  }}
+                  className="bg-base-100 border border-base-300 rounded-lg shadow-lg py-1 min-w-[200px]"
+                >
+                  {canEditRole && (
+                    <button
+                      className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-base-200 text-left"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowMenu(false);
+                        onEdit(role);
+                      }}
+                    >
+                      <Edit size={14} />
+                      Edit Role
+                    </button>
+                  )}
+                  {canMarkFilled && (
+                    <button
+                      className="flex items-start gap-2 w-full px-3 py-2 text-sm hover:bg-base-200 text-left"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowMenu(false);
+                        onStatusChange(role.id, "filled");
+                      }}
+                    >
+                      <CheckCircle
+                        size={14}
+                        className="text-success flex-shrink-0 mt-[2px]"
+                      />
+                      {viewAsUser
+                        ? `Mark role as filled with ${
+                            viewAsUser.firstName ??
+                            viewAsUser.first_name ??
+                            viewAsUser.username ??
+                            "this applicant"
+                          }`
+                        : "Mark Filled"}
+                    </button>
+                  )}
+                  {canCloseRole && (
+                    <button
+                      className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-base-200 text-left"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowMenu(false);
+                        onStatusChange(role.id, "closed");
+                      }}
+                    >
+                      <XCircle size={14} className="text-warning" />
+                      Close Role
+                    </button>
+                  )}
+                  {canReopenRole && (
+                    <button
+                      className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-base-200 text-left"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowMenu(false);
+                        onStatusChange(role.id, "open");
+                      }}
+                    >
+                      <CheckCircle size={14} className="text-primary" />
+                      Reopen Role
+                    </button>
+                  )}
+                  {canDeleteRole && (
+                    <button
+                      className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-base-200 text-left text-error"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowMenu(false);
+                        onDelete(role.id);
+                      }}
+                    >
+                      <Trash2 size={14} />
+                      Delete Role
+                    </button>
+                  )}
+                </div>
+              </>,
+              document.body
+            )}
             </div>
+            {teamContext?.name && viewMode === "card" && (
+              <p className="text-xs text-base-content/50 mt-0.5 truncate">
+                {teamContext.name}
+              </p>
+            )}
           </div>
 
           {isMiniView && scoreSubtitleItem && (
@@ -1421,19 +1459,37 @@ const VacantRoleCard = ({
 
           {isMiniView ? (
             isFilled ? (
-              <div className="flex items-center gap-1 text-xs text-base-content/60">
-                <UserCheck size={12} className="shrink-0" />
-                <span className="truncate">{filledByText}</span>
-                {demoRoleMetaItem}
-              </div>
-            ) : locationText || (!is_remote && max_distance_km) || demoRoleMetaItem ? (
-              <div className="flex flex-wrap items-center gap-2 text-xs text-base-content/60">
+              <div className="mt-0.5 flex max-h-[2.1em] flex-wrap items-center gap-2 overflow-hidden text-xs text-base-content/60">
+                <span className="flex items-center gap-1 min-w-0">
+                  <UserCheck size={10} className="shrink-0" />
+                  <span className="truncate">{filledByText}</span>
+                </span>
                 {locationText && (
                   <span className="flex items-center gap-1 min-w-0">
                     {is_remote ? (
-                      <Globe size={12} className="shrink-0" />
+                      <Globe size={10} className="shrink-0" />
                     ) : (
-                      <MapPin size={12} className="shrink-0" />
+                      <MapPin size={10} className="shrink-0" />
+                    )}
+                    <span className="truncate">{locationText}</span>
+                  </span>
+                )}
+                {!is_remote && max_distance_km && (
+                  <span className="flex items-center gap-1 text-base-content/50">
+                    <CircleDot size={10} className="shrink-0" />
+                    <span>{max_distance_km} km</span>
+                  </span>
+                )}
+                {demoRoleMetaItem}
+              </div>
+            ) : locationText || (!is_remote && max_distance_km) || demoRoleMetaItem ? (
+              <div className="mt-0.5 flex max-h-[2.1em] flex-wrap items-center gap-2 overflow-hidden text-xs text-base-content/60">
+                {locationText && (
+                  <span className="flex items-center gap-1 min-w-0">
+                    {is_remote ? (
+                      <Globe size={10} className="shrink-0" />
+                    ) : (
+                      <MapPin size={10} className="shrink-0" />
                     )}
                     <span className="truncate">{locationText}</span>
                   </span>
@@ -1441,7 +1497,7 @@ const VacantRoleCard = ({
 
                 {!is_remote && max_distance_km && (
                   <span className="flex items-center gap-1 text-base-content/50">
-                    <CircleDot size={12} className="shrink-0" />
+                    <CircleDot size={10} className="shrink-0" />
                     <span>{max_distance_km} km</span>
                   </span>
                 )}
@@ -1451,6 +1507,16 @@ const VacantRoleCard = ({
           ) : isFilled ? (
             <CardMetaRow>
               <CardMetaItem icon={UserCheck}>{filledByText}</CardMetaItem>
+              {locationText && (
+                <CardMetaItem icon={is_remote ? Globe : MapPin}>
+                  {locationText}
+                </CardMetaItem>
+              )}
+              {!is_remote && max_distance_km && (
+                <CardMetaItem icon={CircleDot} tone="muted" nowrap>
+                  {max_distance_km} km
+                </CardMetaItem>
+              )}
               {demoRoleMetaItem}
             </CardMetaRow>
           ) : locationText || (!is_remote && max_distance_km) || demoRoleMetaItem ? (

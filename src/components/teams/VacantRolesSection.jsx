@@ -4,6 +4,7 @@ import {
   Plus,
   AlertCircle,
   ChevronRight,
+  ChevronDown,
   ChevronUp,
   Trash2,
 } from "lucide-react";
@@ -14,13 +15,21 @@ import ConfirmModal from "../common/ConfirmModal";
 import ScreenAlert from "../common/ScreenAlert";
 import { vacantRoleService } from "../../services/vacantRoleService";
 import { matchingService } from "../../services/matchingService";
-import { messageService } from "../../services/messageService";
 import { useAuth } from "../../contexts/AuthContext";
-import {
-  buildRoleFilledMessage,
-  buildRoleReopenedMessage,
-} from "../../utils/roleEventMessages";
-import { resolveFilledRoleUser } from "../../utils/vacantRoleUtils";
+
+const getRoleStatus = (role) => String(role?.status ?? "").toLowerCase();
+const getRoleStatusPriority = (role) => {
+  switch (getRoleStatus(role)) {
+    case "open":
+      return 0;
+    case "filled":
+      return 1;
+    case "closed":
+      return 2;
+    default:
+      return 3;
+  }
+};
 
 /**
  * VacantRolesSection Component
@@ -47,8 +56,9 @@ const VacantRolesSection = ({
   isEditing = false,
   className = "",
   onRolesLoaded = null,
+  suppressMatchScores = false,
 }) => {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated } = useAuth();
 
   const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -61,18 +71,14 @@ const VacantRolesSection = ({
   // Matching scores: { [roleId]: { matchScore, matchDetails } }
   const [matchScores, setMatchScores] = useState({});
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isSectionCollapsed, setIsSectionCollapsed] = useState(true);
   const COLLAPSED_COUNT = 4;
-  const shouldShowFilledRoles = canManage || isTeamMember;
+  const shouldShowAllRoleStatuses = canManage || isTeamMember;
   const visibleRoles = roles.filter((role) => {
-    if (canManage) return true;
-
-    const normalizedStatus = String(role?.status ?? "").toLowerCase();
-    if (isTeamMember) {
-      return normalizedStatus === "open" || normalizedStatus === "filled";
-    }
-
-    return normalizedStatus === "open";
+    if (shouldShowAllRoleStatuses) return true;
+    return String(role?.status ?? "").toLowerCase() === "open";
   });
+  const isEmpty = visibleRoles.length === 0;
 
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -90,9 +96,8 @@ const VacantRolesSection = ({
     try {
       setLoading(true);
       setError(null);
-      // Managers see all statuses, team members see open + filled,
-      // and outsiders still see only open roles.
-      const statusFilter = shouldShowFilledRoles ? "all" : "open";
+      // Managers and team members see all statuses; outsiders see only open roles.
+      const statusFilter = shouldShowAllRoleStatuses ? "all" : "open";
       const response = await vacantRoleService.getVacantRoles(
         teamId,
         statusFilter,
@@ -106,7 +111,7 @@ const VacantRolesSection = ({
     } finally {
       setLoading(false);
     }
-  }, [teamId, shouldShowFilledRoles]);
+  }, [teamId, shouldShowAllRoleStatuses, onRolesLoaded]);
 
   useEffect(() => {
     fetchRoles();
@@ -116,6 +121,11 @@ const VacantRolesSection = ({
   // Runs after roles are loaded, only for non-managers (non-managers are the
   // users who'd want to know "how well do I match this role?")
   useEffect(() => {
+    if (suppressMatchScores) {
+      setMatchScores({});
+      return;
+    }
+
     const fetchMatchScores = async () => {
       if (!isAuthenticated || !teamId || roles.length === 0) {
         setMatchScores({});
@@ -140,64 +150,21 @@ const VacantRolesSection = ({
     };
 
     fetchMatchScores();
-  }, [isAuthenticated, teamId, roles]);
+  }, [suppressMatchScores, isAuthenticated, teamId, roles]);
+
+  // Auto-expand when roles exist so they're always visible
+  useEffect(() => {
+    if (!isEmpty) setIsSectionCollapsed(false);
+  }, [isEmpty]);
 
   // Handle status change
   const handleStatusChange = async (roleId, newStatus) => {
     try {
-      const roleBeforeChange = roles.find(
-        (role) => String(role?.id) === String(roleId),
-      );
-      const updateResponse = await vacantRoleService.updateVacantRoleStatus(
+      await vacantRoleService.updateVacantRoleStatus(
         teamId,
         roleId,
         newStatus,
       );
-      const updatedRole =
-        updateResponse?.data?.data ??
-        updateResponse?.data ??
-        updateResponse?.role ??
-        updateResponse;
-      const eventRole =
-        updatedRole && typeof updatedRole === "object"
-          ? { ...roleBeforeChange, ...updatedRole }
-          : roleBeforeChange;
-
-      if (newStatus === "open" && roleBeforeChange) {
-        try {
-          await messageService.sendMessage(
-            teamId,
-            buildRoleReopenedMessage({
-              teamId,
-              teamName: team?.name,
-              role: roleBeforeChange,
-              filledUser: resolveFilledRoleUser(roleBeforeChange, {
-                viewAsUserId: user?.id,
-                viewAsUser: user,
-              }),
-            }),
-            "team",
-          );
-        } catch (messageError) {
-          console.warn("Role reopened, but chat event could not be sent:", messageError);
-        }
-      }
-
-      if (newStatus === "filled" && roleBeforeChange) {
-        try {
-          await messageService.sendMessage(
-            teamId,
-            buildRoleFilledMessage({
-              teamId,
-              teamName: team?.name,
-              role: eventRole,
-            }),
-            "team",
-          );
-        } catch (messageError) {
-          console.warn("Role filled, but chat event could not be sent:", messageError);
-        }
-      }
 
       setNotification({
         type: "success",
@@ -279,7 +246,7 @@ const VacantRolesSection = ({
       <div className={className}>
         <div className="flex items-center mb-4">
           <UserSearch size={18} className="mr-2 text-primary flex-shrink-0" />
-          <h3 className="font-medium">Vacant Roles</h3>
+          <h3 className="font-medium">Team Roles</h3>
         </div>
         <div className="flex justify-center py-4">
           <span className="loading loading-spinner loading-sm text-primary"></span>
@@ -293,21 +260,40 @@ const VacantRolesSection = ({
 
   // Count open roles for the title
   const openCount = roles.filter((r) => r.status === "open").length;
+  const sortedVisibleRoles = [...visibleRoles].sort((a, b) => {
+    const statusPriority = getRoleStatusPriority(a) - getRoleStatusPriority(b);
+
+    if (statusPriority !== 0) return statusPriority;
+
+    const scoreA = matchScores[a.id]?.matchScore ?? -1;
+    const scoreB = matchScores[b.id]?.matchScore ?? -1;
+    return scoreB - scoreA;
+  });
 
   return (
     <div className={className}>
       {/* Section Header — mirrors TeamMembersSection pattern */}
       <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center">
-          <UserSearch size={18} className="mr-2 text-primary flex-shrink-0" />
+        <div
+          className={`flex items-center gap-1 ${isEmpty ? "cursor-pointer select-none" : ""}`}
+          onClick={isEmpty ? () => setIsSectionCollapsed((v) => !v) : undefined}
+          role={isEmpty ? "button" : undefined}
+          aria-expanded={isEmpty ? !isSectionCollapsed : undefined}
+        >
+          <UserSearch size={18} className="mr-1 text-primary flex-shrink-0" />
           <h3 className="font-medium">
-            Vacant Roles
+            Team Roles
             {openCount > 0 && (
               <span className="text-sm font-normal text-base-content/60 ml-1">
                 ({openCount} open)
               </span>
             )}
           </h3>
+          {isEmpty && (
+            isSectionCollapsed
+              ? <ChevronRight size={16} className="ml-1 text-base-content/40" />
+              : <ChevronDown size={16} className="ml-1 text-base-content/40" />
+          )}
         </div>
 
         {/* Add role button for owners/admins */}
@@ -324,6 +310,8 @@ const VacantRolesSection = ({
         )}
       </div>
 
+      {(!isEmpty || !isSectionCollapsed) && (
+        <>
       <ScreenAlert
         type={notification.type}
         message={notification.message}
@@ -342,12 +330,7 @@ const VacantRolesSection = ({
       {visibleRoles.length > 0 ? (
         <>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {[...visibleRoles]
-              .sort((a, b) => {
-                const scoreA = matchScores[a.id]?.matchScore ?? -1;
-                const scoreB = matchScores[b.id]?.matchScore ?? -1;
-                return scoreB - scoreA;
-              })
+            {sortedVisibleRoles
               .slice(0, isExpanded ? undefined : COLLAPSED_COUNT)
               .map((role) => (
                 <VacantRoleCard
@@ -392,14 +375,18 @@ const VacantRolesSection = ({
           </div>
         )
       )}
+        </>
+      )}
 
       {/* Create / Edit Modal */}
       <CreateVacantRoleModal
         isOpen={isModalOpen}
         onClose={handleModalClose}
         teamId={teamId}
+        team={team}
         existingRole={editingRole}
         onSuccess={handleModalSuccess}
+        onDelete={editingRole ? () => { handleModalClose(); handleDelete(editingRole.id); } : undefined}
       />
 
       <ConfirmModal

@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect } from "react";
+import { useAuth } from "../../contexts/AuthContext";
 import Modal from "../common/Modal";
 import Button from "../common/Button";
 import Alert from "../common/Alert";
@@ -17,12 +18,16 @@ import {
 } from "../../constants/badgeConstants";
 import {
   UserSearch,
+  SquarePen,
   MapPin,
   Tag,
   Award,
   Ruler,
   ChevronDown,
   ChevronUp,
+  Trash2,
+  X,
+  Save,
 } from "lucide-react";
 import api from "../../services/api";
 
@@ -36,6 +41,7 @@ import api from "../../services/api";
  * @param {boolean} isOpen
  * @param {Function} onClose
  * @param {number} teamId
+ * @param {Object|null} team - Team object (used for chat event message on creation)
  * @param {Object|null} existingRole - If provided, modal is in edit mode
  * @param {Function} onSuccess - Called after successful create/update
  */
@@ -43,9 +49,12 @@ const CreateVacantRoleModal = ({
   isOpen,
   onClose,
   teamId,
+  team = null,
   existingRole = null,
   onSuccess,
+  onDelete,
 }) => {
+  const { user: currentUser } = useAuth();
   const SUCCESS_CLOSE_DELAY_MS = 3000;
   const isEditMode = !!existingRole;
 
@@ -284,11 +293,7 @@ const CreateVacantRoleModal = ({
       };
 
       if (isEditMode) {
-        await vacantRoleService.updateVacantRole(
-          teamId,
-          existingRole.id,
-          payload
-        );
+        await vacantRoleService.updateVacantRole(teamId, existingRole.id, payload);
       } else {
         await vacantRoleService.createVacantRole(teamId, payload);
       }
@@ -310,28 +315,48 @@ const CreateVacantRoleModal = ({
   };
 
   // Custom header
+  const editModalTitle = (() => {
+    const status = String(existingRole?.status ?? "").toLowerCase();
+    if (status === "filled") return "Edit Filled Role";
+    if (status === "closed") return "Edit Closed Role";
+    return "Edit Vacant Role";
+  })();
+
   const customHeader = (
-    <div className="flex items-center gap-2">
-      <UserSearch className="text-orange-500" size={22} />
-      <h2 className="text-lg font-medium">
-        {isEditMode ? "Edit Vacant Role" : "Add Vacant Role"}
-      </h2>
-    </div>
+    <h2 className="text-xl font-medium text-primary leading-[110%] flex items-center gap-2">
+      {isEditMode
+        ? <SquarePen className="flex-shrink-0" size={20} />
+        : <UserSearch className="flex-shrink-0" size={20} />}
+      {isEditMode ? editModalTitle : "Add Vacant Role"}
+    </h2>
   );
 
   // Footer
   const footer = !submitSuccess ? (
-    <div className="flex justify-end gap-3">
-      <Button variant="ghost" onClick={onClose} disabled={loading}>
-        Cancel
-      </Button>
-      <Button variant="primary" onClick={handleSubmit} disabled={loading}>
-        {loading
-          ? "Saving..."
-          : isEditMode
-            ? "Save Changes"
-            : "Create Role"}
-      </Button>
+    <div className="flex items-center justify-between">
+      {isEditMode && onDelete ? (
+        <Tooltip content="Permanently delete this role. You will be asked to confirm." position="top">
+          <Button
+            variant="ghost"
+            onClick={onDelete}
+            disabled={loading}
+            icon={<Trash2 size={16} />}
+            className="hover:bg-red-600 hover:text-white"
+          >
+            Delete
+          </Button>
+        </Tooltip>
+      ) : <div />}
+      <div className="flex items-center gap-3">
+        <Button variant="ghost" onClick={onClose} disabled={loading} icon={<X size={16} />}>
+          Cancel
+        </Button>
+        <Tooltip content="Save Role Changes" position="top">
+          <Button variant="primary" onClick={handleSubmit} disabled={loading} icon={<Save size={16} />}>
+            {loading ? "Saving..." : "Save"}
+          </Button>
+        </Tooltip>
+      </div>
     </div>
   ) : undefined;
 
@@ -520,7 +545,7 @@ const CreateVacantRoleModal = ({
               <FormSectionDivider text="Desired Focus Areas" icon={Tag} />
 
               <div className="form-control">
-                <label className="label">
+                <label className="label whitespace-normal">
                   <span className="label-text">
                     What skills or focus areas should this person have?
                     (Optional)
@@ -541,7 +566,7 @@ const CreateVacantRoleModal = ({
               <FormSectionDivider text="Desired Badges" icon={Award} />
 
               <div className="form-control">
-                <label className="label">
+                <label className="label whitespace-normal">
                   <span className="label-text">
                     What qualities or badges should this person have? (Optional)
                   </span>

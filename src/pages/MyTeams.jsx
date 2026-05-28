@@ -7,6 +7,7 @@ import TeamCard from "../components/teams/TeamCard";
 import Section from "../components/layout/Section";
 import Pagination from "../components/common/Pagination";
 import { teamService } from "../services/teamService";
+import useSocketEvents from "../hooks/useSocketEvents";
 import { useAuth } from "../contexts/AuthContext";
 import {
   Plus,
@@ -21,10 +22,13 @@ import {
   Users,
 } from "lucide-react";
 import CreateTeamModal from "../components/teams/CreateTeamModal";
+import TeamApplicationDetailsModal from "../components/teams/TeamApplicationDetailsModal";
+import TeamInvitationDetailsModal from "../components/teams/TeamInvitationDetailsModal";
 import { enrichTeamMatchData } from "../utils/teamMatchUtils";
 import useClientPagination from "../hooks/useClientPagination";
 import useMyTeamsSort from "../hooks/useMyTeamsSort";
 import useViewerMatchProfile from "../hooks/useViewerMatchProfile";
+import useViewerPendingRequests from "../hooks/useViewerPendingRequests";
 
 import {
   RESULTS_PER_PAGE_OPTIONS,
@@ -39,13 +43,24 @@ const MY_TEAMS_LIST_BADGES_WIDTH_CLASSNAME = "sm:w-32";
 
 const MyTeams = () => {
   const [teams, setTeams] = useState([]);
-  const [pendingApplications, setPendingApplications] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [loadingApplications, setLoadingApplications] = useState(true);
-  const [pendingInvitations, setPendingInvitations] = useState([]);
-  const [loadingInvitations, setLoadingInvitations] = useState(true);
   const [error, setError] = useState(null);
   const { user } = useAuth();
+  const {
+    data: viewerPending,
+    isLoading: viewerPendingLoading,
+    refetch: refetchViewerPending,
+  } = useViewerPendingRequests(user?.id, { enabled: Boolean(user?.id) });
+  const pendingApplications = useMemo(
+    () => viewerPending?.applications ?? [],
+    [viewerPending],
+  );
+  const pendingInvitations = useMemo(
+    () => viewerPending?.invitations ?? [],
+    [viewerPending],
+  );
+  const loadingApplications = viewerPendingLoading;
+  const loadingInvitations = viewerPendingLoading;
   const { viewerMatchProfile, viewerDistanceSource } = useViewerMatchProfile({
     userId: user?.id,
   });
@@ -71,9 +86,19 @@ const MyTeams = () => {
   // URL params for highlighting
   const [searchParams, setSearchParams] = useSearchParams();
   const highlightId = searchParams.get("highlight");
+  const highlightApplicationId = searchParams.get("highlightApplication");
+  const highlightApplicantId = searchParams.get("highlightApplicant") || highlightId;
+  const highlightInvitationId = searchParams.get("highlightInvitation");
   const openTeamId = searchParams.get("team");
   const shouldOpenApplications =
     searchParams.get("openApplications") === "true";
+  // Notification click-through: auto-open the specific application/invitation modal
+  const openApplicationIdParam = searchParams.get("openApplication");
+  const openInvitationIdParam = searchParams.get("openInvitation");
+
+  // State for notification-triggered detail modals
+  const [notifApplicationModal, setNotifApplicationModal] = useState(null); // the application object
+  const [notifInvitationModal, setNotifInvitationModal] = useState(null); // the invitation object
 
   // Ref for scrolling to highlighted invitation
   const highlightedInvitationRef = useRef(null);
@@ -86,6 +111,50 @@ const MyTeams = () => {
   // State to track which team should auto-open its applications modal
   const [autoOpenApplicationsTeamId, setAutoOpenApplicationsTeamId] =
     useState(null);
+
+  // Bulk-fetched member badges keyed by team id. null = "still loading" so
+  // child cards wait instead of falling back to their own per-card fetch.
+  const [teamMemberBadgesById, setTeamMemberBadgesById] = useState(null);
+
+  const teamIdsKey = useMemo(
+    () =>
+      teams
+        .map((t) => t?.id)
+        .filter((id) => id != null)
+        .join(","),
+    [teams],
+  );
+
+  useEffect(() => {
+    if (!teamIdsKey) {
+      setTeamMemberBadgesById({});
+      return;
+    }
+
+    const ids = teamIdsKey.split(",").map((id) => parseInt(id, 10));
+    let cancelled = false;
+    setTeamMemberBadgesById(null);
+
+    teamService
+      .getMemberBadgesForTeams(ids)
+      .then((response) => {
+        if (!cancelled) {
+          setTeamMemberBadgesById(response?.data || {});
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          console.error("Failed to fetch bulk team member badges:", err);
+          // Surface as empty map so cards stop waiting and just show no badges
+          // rather than perpetually loading.
+          setTeamMemberBadgesById({});
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [teamIdsKey]);
 
   // Fetch user's teams with pagination
   const fetchUserTeams = useCallback(
@@ -122,47 +191,26 @@ const MyTeams = () => {
     [user?.id],
   );
 
-  // Fetch pending applications
-  const fetchPendingApplications = useCallback(async () => {
-    if (!user?.id) return;
-
-    try {
-      setLoadingApplications(true);
-      const response = await teamService.getUserPendingApplications();
-
-      if (response.success) {
-        setPendingApplications(response.data || []);
-      }
-    } catch (err) {
-      console.error("Error fetching pending applications:", err);
-    } finally {
-      setLoadingApplications(false);
+  const handleRequestNotification = useCallback(() => {
+    refetchViewerPending();
+    // Also refresh the team list so each card's badge counts
+    // (pendingApplicationsCount / pendingSentInvitationsCount) stay live
+    // without per-card refetches.
+    if (user?.id) {
+      fetchUserTeams(currentPage, resultsPerPage);
     }
-  }, [user?.id]);
+  }, [refetchViewerPending, fetchUserTeams, user?.id, currentPage, resultsPerPage]);
 
-  // Fetch pending invitations
-  const fetchPendingInvitations = useCallback(async () => {
-    if (!user?.id) return;
-
-    try {
-      setLoadingInvitations(true);
-      const response = await teamService.getUserPendingInvitations();
-
-      if (response.success) {
-        setPendingInvitations(response.data || []);
-      }
-    } catch (err) {
-      console.error("Error fetching pending invitations:", err);
-    } finally {
-      setLoadingInvitations(false);
-    }
-  }, [user?.id]);
-
-  // Initial data fetch
-  useEffect(() => {
-    fetchPendingApplications();
-    fetchPendingInvitations();
-  }, [fetchPendingApplications, fetchPendingInvitations]);
+  useSocketEvents(
+    user?.id
+      ? {
+          "notification:new": handleRequestNotification,
+          "notification:updated": handleRequestNotification,
+          "notification:deleted": handleRequestNotification,
+        }
+      : null,
+    [handleRequestNotification, user?.id],
+  );
 
   // Fetch teams when page or limit changes
   useEffect(() => {
@@ -204,7 +252,7 @@ const MyTeams = () => {
     }
 
     // Clear URL params after 5 seconds (so refresh doesn't keep highlighting)
-    if (highlightId || openTeamId) {
+    if (highlightId || highlightApplicationId || highlightInvitationId || openTeamId) {
       const timer = setTimeout(() => {
         setSearchParams({});
       }, 5000);
@@ -221,7 +269,48 @@ const MyTeams = () => {
         clearTimeout(openApplicationsTimer);
       }
     };
-  }, [highlightId, openTeamId, shouldOpenApplications, setSearchParams]);
+  }, [
+    highlightApplicationId,
+    highlightId,
+    highlightInvitationId,
+    openTeamId,
+    shouldOpenApplications,
+    setSearchParams,
+  ]);
+
+  // Auto-open application/invitation modal when navigated via notification
+  useEffect(() => {
+    if (openApplicationIdParam && !loadingApplications) {
+      const found = pendingApplications.find(
+        (a) => String(a.id) === openApplicationIdParam,
+      );
+      if (found) {
+        setNotifApplicationModal(found);
+        // Clear the param so a refresh doesn't re-open
+        setSearchParams((prev) => {
+          const next = new URLSearchParams(prev);
+          next.delete("openApplication");
+          return next;
+        });
+      }
+    }
+  }, [openApplicationIdParam, pendingApplications, loadingApplications, setSearchParams]);
+
+  useEffect(() => {
+    if (openInvitationIdParam && !loadingInvitations) {
+      const found = pendingInvitations.find(
+        (i) => String(i.id) === openInvitationIdParam,
+      );
+      if (found) {
+        setNotifInvitationModal(found);
+        setSearchParams((prev) => {
+          const next = new URLSearchParams(prev);
+          next.delete("openInvitation");
+          return next;
+        });
+      }
+    }
+  }, [openInvitationIdParam, pendingInvitations, loadingInvitations, setSearchParams]);
 
   // Handler for page changes
   const handlePageChange = (newPage) => {
@@ -276,7 +365,7 @@ const MyTeams = () => {
   const handleApplicationCancel = async (applicationId) => {
     try {
       await teamService.cancelApplication(applicationId);
-      fetchPendingApplications();
+      refetchViewerPending();
     } catch (error) {
       console.error("Error canceling application:", error);
     }
@@ -288,17 +377,23 @@ const MyTeams = () => {
   };
 
   // Invitation handlers
-  const handleInvitationAccept = async (invitationId, responseMessage = "", fillRole = false) => {
+  const handleInvitationAccept = async (
+    invitationId,
+    responseMessage = "",
+    fillRole = false,
+    options = {},
+  ) => {
     try {
       await teamService.respondToInvitation(
         invitationId,
         "accept",
         responseMessage,
         fillRole,
+        options,
       );
 
       // Refresh the data
-      fetchPendingInvitations();
+      refetchViewerPending();
       fetchUserTeams(currentPage, resultsPerPage);
     } catch (error) {
       console.error("Error accepting invitation:", error);
@@ -317,7 +412,7 @@ const MyTeams = () => {
       );
 
       // Refresh the data
-      fetchPendingInvitations();
+      refetchViewerPending();
     } catch (error) {
       console.error("Error declining invitation:", error);
     }
@@ -896,6 +991,11 @@ const MyTeams = () => {
                         is_public:
                           team.is_public === true || team.isPublic === true,
                       }}
+                      teamMemberBadges={
+                        teamMemberBadgesById === null
+                          ? null
+                          : teamMemberBadgesById[team.id] || []
+                      }
                       onUpdate={handleTeamUpdate}
                       onDelete={handleTeamDelete}
                       onLeave={handleTeamLeave}
@@ -916,9 +1016,15 @@ const MyTeams = () => {
                       }
                       highlightApplicantId={
                         team.id === autoOpenApplicationsTeamId
-                          ? highlightId
+                          ? highlightApplicantId
                           : null
                       }
+                      highlightApplicationId={
+                        team.id === autoOpenApplicationsTeamId
+                          ? highlightApplicationId
+                          : null
+                      }
+                      highlightInvitationId={highlightInvitationId}
                       onApplicationsModalClosed={() =>
                         setAutoOpenApplicationsTeamId(null)
                       }
@@ -949,6 +1055,11 @@ const MyTeams = () => {
                         is_public:
                           team.is_public === true || team.isPublic === true,
                       }}
+                      teamMemberBadges={
+                        teamMemberBadgesById === null
+                          ? null
+                          : teamMemberBadgesById[team.id] || []
+                      }
                       onUpdate={handleTeamUpdate}
                       onDelete={handleTeamDelete}
                       onLeave={handleTeamLeave}
@@ -960,9 +1071,15 @@ const MyTeams = () => {
                       }
                       highlightApplicantId={
                         team.id === autoOpenApplicationsTeamId
-                          ? highlightId
+                          ? highlightApplicantId
                           : null
                       }
+                      highlightApplicationId={
+                        team.id === autoOpenApplicationsTeamId
+                          ? highlightApplicationId
+                          : null
+                      }
+                      highlightInvitationId={highlightInvitationId}
                       onApplicationsModalClosed={() =>
                         setAutoOpenApplicationsTeamId(null)
                       }
@@ -997,6 +1114,38 @@ const MyTeams = () => {
         onTeamCreated={handleTeamCreated}
       />
 
+      {/* Notification click-through: application details modal */}
+      {notifApplicationModal && (
+        <TeamApplicationDetailsModal
+          isOpen={true}
+          application={notifApplicationModal}
+          onClose={() => setNotifApplicationModal(null)}
+          onCancel={async (applicationId) => {
+            await handleApplicationCancel(applicationId);
+            setNotifApplicationModal(null);
+          }}
+          onSendReminder={handleSendReminder}
+          notificationHighlight={true}
+        />
+      )}
+
+      {/* Notification click-through: invitation details modal */}
+      {notifInvitationModal && (
+        <TeamInvitationDetailsModal
+          isOpen={true}
+          invitation={notifInvitationModal}
+          onClose={() => setNotifInvitationModal(null)}
+          onAccept={async (invitationId, responseMessage, fillRole, options) => {
+            await handleInvitationAccept(invitationId, responseMessage, fillRole, options);
+            setNotifInvitationModal(null);
+          }}
+          onDecline={async (invitationId, responseMessage) => {
+            await handleInvitationDecline(invitationId, responseMessage);
+            setNotifInvitationModal(null);
+          }}
+          notificationHighlight={true}
+        />
+      )}
 
     </PageContainer>
   );

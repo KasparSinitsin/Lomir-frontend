@@ -20,6 +20,7 @@ api.interceptors.request.use(
     }
 
     if (
+      config.skipRequestCaseTransform !== true &&
       config.data &&
       typeof config.data === "object" &&
       !(config.data instanceof FormData)
@@ -35,20 +36,22 @@ api.interceptors.request.use(
 // Add response interceptor to convert response data to camelCase
 api.interceptors.response.use(
   (response) => {
-    if (response.data) {
+    if (response.config?.skipResponseCaseTransform !== true && response.data) {
       response.data = snakeToCamel(response.data);
     }
     return response;
   },
   (error) => {
     if (error.response) {
-      console.error("API Error:", error.response.data);
       const skipAuthRedirect = error.config?.skipAuthRedirect === true;
+      const skipErrorLog = error.config?.skipErrorLog === true;
 
-      if (
-        !skipAuthRedirect &&
-        (error.response.status === 401 || error.response.status === 403)
-      ) {
+      if (!skipErrorLog) {
+        console.error("API Error:", error.response.data);
+      }
+
+      // 401 = invalid/expired token → log out. 403 = forbidden resource → stay logged in.
+      if (!skipAuthRedirect && error.response.status === 401) {
         localStorage.removeItem("token");
         window.location.href = "/login";
       }
@@ -60,5 +63,28 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+/**
+ * Thin wrapper that collapses the repetitive
+ *   try { (await api.X(...)).data } catch (e) { console.error(...); throw e }
+ * pattern used across service modules. Use this for the standard "fetch and
+ * unwrap response.data" case. For catch handlers that need additional logic
+ * (custom error wrapping, conditional logging, etc.), keep an explicit
+ * try/catch instead.
+ *
+ * @param {string} label - Short action description for the error log
+ *   (e.g. "fetching user details for ID 42"). Prefixed with "Error " on log.
+ * @param {() => Promise} requestFn - Function returning an axios Promise.
+ * @returns {Promise<*>} Resolves with response.data.
+ */
+export const call = async (label, requestFn) => {
+  try {
+    const response = await requestFn();
+    return response.data;
+  } catch (error) {
+    console.error(`Error ${label}:`, error);
+    throw error;
+  }
+};
 
 export default api;

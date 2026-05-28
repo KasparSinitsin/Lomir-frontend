@@ -1,14 +1,16 @@
-import React from "react";
+import React, { useRef, useLayoutEffect, useState, useEffect } from "react";
 import { Calendar, MapPin, FlaskConical } from "lucide-react";
 import { format } from "date-fns";
-import LocationDisplay from "./LocationDisplay";
 import Tooltip from "./Tooltip";
 import {
   DEMO_PROFILE_TOOLTIP,
+  getDisplayName as getUserDisplayName,
+  getUserAvatarUrl,
   getUserInitials,
   isSyntheticUser,
 } from "../../utils/userHelpers";
 import DemoAvatarOverlay from "../users/DemoAvatarOverlay";
+import { formatDisplayName } from "../../utils/nameFormatters";
 
 /**
  * PersonRequestCard Component
@@ -27,6 +29,8 @@ import DemoAvatarOverlay from "../users/DemoAvatarOverlay";
  * @param {Function} props.onUserClick - Callback when user avatar/name is clicked
  * @param {React.ReactNode} props.actions - Action buttons to render at the bottom
  * @param {React.ReactNode} props.extraContent - Additional content (e.g., response textarea, tags)
+ * @param {React.ReactNode} props.messageBubbleExtra - Extra content rendered inside the speech bubble, after the message text (e.g., a role card)
+ * @param {React.ReactNode} props.sublineExtra - Extra content rendered in the subline row, before the demo badge (e.g., a "Team member" badge)
  * @param {React.ReactNode} props.footerLeft - Content for the left side of the footer (e.g., inviter info)
  * @param {boolean} props.clickable - Whether user elements are clickable (default: true)
  * @param {boolean} props.showLocation - Whether to show location info (default: true)
@@ -40,28 +44,20 @@ const PersonRequestCard = ({
   onUserClick,
   actions,
   extraContent,
+  messageBubbleExtra,
+  sublineExtra,
   footerLeft,
   clickable = true,
   showLocation = true,
+  onNarrowChange,
+  forceNarrow = false,
 }) => {
   // ============ Helper Functions ============
 
-  // Get avatar URL - handles both snake_case and camelCase
-  const getAvatarUrl = () => {
-    if (!user) return null;
-    return user.avatar_url || user.avatarUrl || null;
-  };
-
   // Get display name
   const getDisplayName = () => {
-    if (!user) return "Unknown User";
-
-    const firstName = user.first_name || user.firstName || "";
-    const lastName = user.last_name || user.lastName || "";
-    const fullName = `${firstName} ${lastName}`.trim();
-
-    if (fullName.length > 0) return fullName;
-    return user.username || "Unknown User";
+    const displayName = getUserDisplayName(user);
+    return displayName === "Unknown" ? "Unknown User" : displayName;
   };
 
   // Format date
@@ -100,23 +96,62 @@ const PersonRequestCard = ({
     user?.username &&
     (getDisplayName() !== user.username || isSyntheticUser(user));
   const showDemoProfile = isSyntheticUser(user);
+  const avatarUrl = getUserAvatarUrl(user);
+
+  // ============ Adaptive name (full → abbreviated → CSS truncate) ============
+  const nameContainerRef = useRef(null);
+  const probeRef = useRef(null);
+  const dateRef = useRef(null);
+  const fullName = getDisplayName();
+  const abbrevName = user ? formatDisplayName(user) : fullName;
+  const [displayedName, setDisplayedName] = useState(fullName);
+  const displayedNameRef = useRef(fullName);
+  displayedNameRef.current = displayedName;
+  const forceNarrowRef = useRef(forceNarrow);
+  forceNarrowRef.current = forceNarrow;
+
+  useLayoutEffect(() => {
+    if (fullName === abbrevName) { setDisplayedName(fullName); return; }
+    const container = nameContainerRef.current;
+    const probe = probeRef.current;
+    if (!container || !probe) return;
+    const update = () => {
+      // Date is absolute (out of flow) when either this card or any sibling card is narrow.
+      // Subtract its width + gap back so the measurement is always against the same
+      // effective width, preventing oscillation.
+      const isDateAbsolute = displayedNameRef.current !== fullName || forceNarrowRef.current;
+      const dateEl = dateRef.current;
+      const dateReservedWidth = isDateAbsolute && dateEl ? dateEl.offsetWidth + 16 : 0; // 16 = space-x-4 gap
+      probe.textContent = fullName;
+      setDisplayedName(probe.scrollWidth <= container.clientWidth - dateReservedWidth ? fullName : abbrevName);
+    };
+    const ro = new ResizeObserver(update);
+    ro.observe(container);
+    update();
+    return () => ro.disconnect();
+  }, [fullName, abbrevName]);
+
+  const isNarrow = displayedName !== fullName;
+  const dateIsNarrow = isNarrow || forceNarrow;
+
+  // Report narrow state to parent for cross-card sync
+  useEffect(() => { onNarrowChange?.(isNarrow); }, [isNarrow]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ============ Render ============
 
   return (
     <div className="bg-base-200/30 rounded-lg border border-base-300 p-4">
       {/* User Info Header */}
-      <div className="flex items-start space-x-4 mb-4">
+      <div className="flex items-start space-x-4 mb-4 relative">
         {/* Avatar */}
-        <div
-          className={`avatar ${clickableStyles}`}
-          onClick={handleUserClick}
-          title={clickable ? "View profile" : undefined}
+        <Tooltip
+          content={clickable ? "View profile" : undefined}
+          wrapperClassName={`avatar ${clickableStyles}`}
         >
-          <div className="w-12 h-12 rounded-full relative overflow-hidden">
-            {getAvatarUrl() ? (
+          <div className="w-12 h-12 rounded-full relative overflow-hidden" onClick={handleUserClick}>
+            {avatarUrl ? (
               <img
-                src={getAvatarUrl()}
+                src={avatarUrl}
                 alt={user?.username || "User"}
                 className="object-cover w-full h-full rounded-full"
                 onError={(e) => {
@@ -131,68 +166,77 @@ const PersonRequestCard = ({
             <div
               className="avatar-fallback bg-[var(--color-primary-focus)] text-primary-content flex items-center justify-center w-full h-full rounded-full absolute inset-0"
               style={{
-                display: getAvatarUrl() ? "none" : "flex",
+                display: avatarUrl ? "none" : "flex",
               }}
             >
-              <span className="text-lg font-medium">
+              <span className="text-xl font-medium">
                 {getUserInitials(user)}
               </span>
             </div>
             {isSyntheticUser(user) && <DemoAvatarOverlay textClassName="text-[8px]" />}
           </div>
-        </div>
+        </Tooltip>
 
         {/* Name and Details */}
         <div className="flex-1 min-w-0">
-          <h4
-            className={`font-medium text-base-content leading-[120%] mb-[0.2em] ${clickableTextStyles}`}
-            onClick={handleUserClick}
-            title={clickable ? "View profile" : undefined}
-          >
-            {getDisplayName()}
+          <h4 ref={nameContainerRef} className="font-medium text-base-content leading-[120%] mb-[0.2em] truncate relative">
+            {clickable ? (
+              <Tooltip content="View profile" wrapperClassName="cursor-pointer hover:text-primary transition-colors">
+                <span onClick={handleUserClick}>{displayedName}</span>
+              </Tooltip>
+            ) : (
+              displayedName
+            )}
+            <span ref={probeRef} className="invisible absolute whitespace-nowrap pointer-events-none left-0 top-0 font-medium" aria-hidden="true" />
           </h4>
 
-          {(showUsername || showDemoProfile) && (
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-              {showUsername && (
-                <p
-                  className={`text-xs text-base-content/70 ${clickableTextStyles}`}
-                  onClick={handleUserClick}
-                  title={clickable ? "View profile" : undefined}
-                >
-                  @{user.username}
-                </p>
+          {(dateIsNarrow || showUsername || (showLocation && (user?.city || user?.country || getPostalCode())) || sublineExtra || showDemoProfile) && (
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-0 overflow-hidden text-xs" style={{ maxHeight: "2.1em" }}>
+              {dateIsNarrow ? (
+                <div className="flex shrink-0 items-center gap-1 text-base-content/60">
+                  <Calendar size={10} className="shrink-0" />
+                  <span className="leading-[1.05] whitespace-nowrap">{formatDate()}</span>
+                </div>
+              ) : showUsername && (
+                clickable ? (
+                  <div className="min-w-0 flex-[0_1_auto] overflow-hidden">
+                    <Tooltip content="View profile" wrapperClassName="block truncate leading-[1.05] text-base-content/70 cursor-pointer hover:text-primary transition-colors">
+                      <span onClick={handleUserClick}>@{user.username}</span>
+                    </Tooltip>
+                  </div>
+                ) : (
+                  <div className="min-w-0 flex-[0_1_auto] overflow-hidden">
+                    <span className="block truncate leading-[1.05] text-base-content/70">@{user.username}</span>
+                  </div>
+                )
               )}
+              {showLocation && (user?.city || user?.country || getPostalCode()) && (
+                <div className="flex min-w-0 max-w-[calc(100%-1.5rem)] flex-[0_1_auto] items-center gap-1 overflow-hidden">
+                  <MapPin size={10} className="text-base-content/60 shrink-0" />
+                  <span className="min-w-0 truncate text-base-content/60 leading-[1.05]">
+                    {[user?.city, user?.country].filter(Boolean).join(", ") || getPostalCode()}
+                  </span>
+                </div>
+              )}
+              {sublineExtra}
               {showDemoProfile && (
                 <Tooltip
                   content={DEMO_PROFILE_TOOLTIP}
-                  wrapperClassName="flex items-center gap-0.5 text-base-content/50 text-xs"
+                  wrapperClassName="flex shrink-0 items-center gap-0.5 text-base-content/50"
                 >
-                  <FlaskConical size={12} className="flex-shrink-0" />
-                  <span>Demo Profile</span>
+                  <FlaskConical size={10} className="flex-shrink-0" />
                 </Tooltip>
               )}
             </div>
           )}
-
-          {/* Location if available and showLocation is true */}
-          {showLocation && getPostalCode() && (
-            <div className="flex items-center text-sm text-base-content/60 mt-1">
-              <MapPin size={14} className="mr-1" />
-              <LocationDisplay
-                postalCode={getPostalCode()}
-                city={user?.city}
-                state={user?.state}
-                country={user?.country}
-                showIcon={false}
-                displayType="short"
-              />
-            </div>
-          )}
         </div>
 
-        {/* Date - top right */}
-        <div className="flex items-center text-xs text-base-content/60 flex-shrink-0">
+        {/* Date - top right; absolute (out of flow) when narrow so subline gets full width,
+            but still rendered so its width can be measured for stable name-fit calculation */}
+        <div
+          ref={dateRef}
+          className={`flex items-center text-xs text-base-content/60 flex-shrink-0${dateIsNarrow ? " absolute opacity-0 pointer-events-none" : ""}`}
+        >
           <Calendar size={12} className="mr-1" />
           <span>{formatDate()}</span>
         </div>
@@ -205,14 +249,25 @@ const PersonRequestCard = ({
         </div>
       )}
 
-      {/* Message if provided */}
-      {message && (
+      {/* Message bubble */}
+      {(message || messageBubbleExtra) && (
         <div className="mb-5">
-          <p className="text-xs text-base-content/60 mb-1 flex items-center">
-            {messageIcon}
-            {messageLabel}
-          </p>
-          <p className="text-sm text-base-content/90">{message}</p>
+          {message && (
+            <p className="text-xs text-base-content/60 mb-1 flex items-center">
+              {messageIcon}
+              {messageLabel}
+            </p>
+          )}
+          <div className="w-fit max-w-full bg-base-200 rounded-lg rounded-bl-none p-3">
+            {message && (
+              <p className="text-sm text-base-content/90">{message}</p>
+            )}
+            {messageBubbleExtra && (
+              <div className={`max-w-[300px] ${message ? "mt-3" : ""}`}>
+                {messageBubbleExtra}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -220,12 +275,12 @@ const PersonRequestCard = ({
       {extraContent}
 
       {/* Footer with optional left content and actions */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 mt-8 -mx-4 -mb-4 px-4 pb-4 pt-3 border-t border-base-200 bg-base-100/80 rounded-b-lg">
         {/* Left side (e.g., inviter info) */}
-        {footerLeft || <div />}
+        {footerLeft}
 
         {/* Right side - action buttons */}
-        {actions}
+        {actions && <div className="ml-auto">{actions}</div>}
       </div>
     </div>
   );

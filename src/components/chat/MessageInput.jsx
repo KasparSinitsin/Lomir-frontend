@@ -5,6 +5,7 @@ import {
   Crown,
   FileText,
   LogOut,
+  Pencil,
   Reply,
   Send,
   Shield,
@@ -26,6 +27,7 @@ const EVENT_PREVIEW_ICONS = {
   Crown,
   FileText,
   LogOut,
+  Pencil,
   Shield,
   User,
   UserCheck,
@@ -43,6 +45,25 @@ const tokenizeMentions = (text, mentionMap) => {
     result = result.split(`@${name}`).join(`@[${name}](${userId})`);
   }
   return result;
+};
+
+const MENTION_RE = /@\[([^\]]+)\]\([^)]+\)/g;
+const renderReplyText = (text) => {
+  const parts = [];
+  let last = 0;
+  let m;
+  MENTION_RE.lastIndex = 0;
+  while ((m = MENTION_RE.exec(text)) !== null) {
+    if (m.index > last) parts.push(text.slice(last, m.index));
+    parts.push(
+      <span key={m.index} className="font-medium text-primary">
+        @{m[1]}
+      </span>
+    );
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) parts.push(text.slice(last));
+  return parts;
 };
 
 const MessageInput = ({
@@ -77,6 +98,19 @@ const MessageInput = ({
       : { status: "none" };
 
   useEffect(() => {
+    if (disabled) {
+      if (typingTimerRef.current) {
+        clearTimeout(typingTimerRef.current);
+      }
+      if (isTypingRef.current) {
+        const urlParams = new URLSearchParams(window.location.search);
+        const type = urlParams.get("type") || "direct";
+        onTyping(false, type);
+        isTypingRef.current = false;
+      }
+      return undefined;
+    }
+
     const urlParams = new URLSearchParams(window.location.search);
     const type = urlParams.get("type") || "direct";
 
@@ -104,7 +138,7 @@ const MessageInput = ({
         clearTimeout(typingTimerRef.current);
       }
     };
-  }, [message, onTyping]);
+  }, [disabled, message, onTyping]);
 
   const detectMention = (value, cursorPos) => {
     const beforeCursor = value.slice(0, cursorPos);
@@ -154,6 +188,7 @@ const MessageInput = ({
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (disabled) return;
     if (!message.trim()) return;
 
     const urlParams = new URLSearchParams(window.location.search);
@@ -174,16 +209,19 @@ const MessageInput = ({
   };
 
   const handleEmojiSelect = (emoji) => {
+    if (disabled) return;
     setMessage((prev) => prev + emoji);
   };
 
   const handleImageSelect = async (file, previewUrl) => {
+    if (disabled) return;
     if (onSendImage) {
       await onSendImage(file, previewUrl);
     }
   };
 
   const handleFileSelect = async (file) => {
+    if (disabled) return;
     if (onSendFile) {
       await onSendFile(file);
     }
@@ -219,7 +257,7 @@ const MessageInput = ({
                 <div className="min-w-0 flex-1">
                   {replyingTo.content && (
                     <p className="text-xs text-base-content/60 truncate">
-                      {replyingTo.content.slice(0, 100)}
+                      {renderReplyText(replyingTo.content.slice(0, 100))}
                     </p>
                   )}
                   {replyExpirationStatus.status !== "none" &&
@@ -242,17 +280,21 @@ const MessageInput = ({
                   )}
                 </div>
               </div>
-            ) : replyEventPreview && ReplyEventIcon ? (
+            ) : replyEventPreview ? (
               <p
                 className="flex min-w-0 items-center gap-1 text-xs font-medium truncate"
                 style={{ color: replyEventPreview.color }}
               >
-                <ReplyEventIcon size={13} className="shrink-0" />
+                {ReplyEventIcon && (
+                  <ReplyEventIcon size={13} className="shrink-0" />
+                )}
                 <span className="truncate">{replyEventPreview.text}</span>
               </p>
             ) : (
               <p className="text-xs text-base-content/60 truncate">
-                {replyingTo.content?.slice(0, 100) || "Image / File"}
+                {replyingTo.content
+                  ? renderReplyText(replyingTo.content.slice(0, 100))
+                  : "Image / File"}
               </p>
             )}
           </div>

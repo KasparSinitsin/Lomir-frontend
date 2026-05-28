@@ -30,6 +30,8 @@ import TeamInvitationDetailsModal from "./TeamInvitationDetailsModal";
 import { teamService } from "../../services/teamService";
 import { vacantRoleService } from "../../services/vacantRoleService";
 import { userService } from "../../services/userService";
+import useSocketEvents from "../../hooks/useSocketEvents";
+import useTeamRequestLists from "../../hooks/useTeamRequestLists";
 import { useAuth } from "../../contexts/AuthContext";
 import Alert from "../common/Alert";
 import ConfirmModal from "../common/ConfirmModal";
@@ -42,6 +44,16 @@ import { getMatchTier } from "../../utils/matchScoreUtils";
 import { getResultMatchScore } from "../../utils/teamMatchUtils";
 import { calculateDistanceKm } from "../../utils/locationUtils";
 import {
+  extractListPayload,
+  extractProfilePayload,
+} from "../../utils/payloadExtractors";
+import {
+  buildBadgeLookup,
+  buildTagLookup,
+  computeRoleUserMatch,
+  extractCandidateMatchData,
+} from "../../utils/matchHelpers";
+import {
   DEMO_ROLE_TOOLTIP,
   DEMO_TEAM_TOOLTIP,
   isSyntheticRole,
@@ -51,149 +63,13 @@ import DemoAvatarOverlay from "../users/DemoAvatarOverlay";
 
 const teamMemberBadgesCache = new Map();
 const viewerRoleProfileCache = new Map();
-const MATCH_WEIGHTS = {
-  tags: 0.4,
-  badges: 0.3,
-  distance: 0.3,
-};
-const LOCATION_GRACE_KM = 20;
-const LOCATION_GRACE_SCORE = 0.25;
+const EMPTY_ARRAY = [];
 
 const extractBadgeRows = (payload) => {
   if (Array.isArray(payload)) return payload;
   if (Array.isArray(payload?.data)) return payload.data;
   if (Array.isArray(payload?.data?.data)) return payload.data.data;
   return [];
-};
-
-const extractProfilePayload = (response) => {
-  const payload = response?.data ?? response;
-
-  if (!payload) return null;
-  if (payload?.success !== undefined) return payload?.data ?? null;
-
-  return payload?.data?.data ?? payload?.data ?? payload;
-};
-
-const extractListPayload = (response) => {
-  if (Array.isArray(response)) return response;
-  if (Array.isArray(response?.data)) return response.data;
-  if (Array.isArray(response?.data?.data)) return response.data.data;
-  return [];
-};
-
-const buildTagLookup = (tagData) => {
-  const nextMap = new Map();
-
-  for (const tag of tagData) {
-    nextMap.set(Number(tag.id), {
-      badgeCredits: Number(tag.badge_credits ?? tag.badgeCredits ?? 0),
-    });
-  }
-
-  return nextMap;
-};
-
-const buildBadgeLookup = (badgeData) => {
-  const nextMap = new Map();
-
-  for (const badge of badgeData) {
-    const name = (badge.badgeName ?? badge.badge_name ?? badge.name ?? "")
-      .trim()
-      .toLowerCase();
-    const credits = Number(
-      badge.totalCredits ?? badge.total_credits ?? badge.credits ?? 0,
-    );
-    const existing = nextMap.get(name);
-
-    nextMap.set(name, {
-      totalCredits: (existing?.totalCredits || 0) + credits,
-    });
-  }
-
-  return nextMap;
-};
-
-const roundMatchValue = (value) => Math.round(value * 100) / 100;
-
-const computeRoleUserMatch = ({
-  role,
-  tags,
-  badges,
-  user,
-  userTagMap,
-  userBadgeMap,
-}) => {
-  if (!role || !user) return null;
-
-  const requiredTagIds = tags
-    .map((tag) => Number(tag.tagId ?? tag.tag_id ?? tag.id))
-    .filter(Number.isFinite);
-  const requiredBadgeKeys = badges
-    .map((badge) =>
-      (badge.name ?? badge.badgeName ?? badge.badge_name ?? "")
-        .trim()
-        .toLowerCase(),
-    )
-    .filter(Boolean);
-
-  const matchingTags = requiredTagIds.filter((id) => userTagMap.has(id)).length;
-  const matchingBadges = requiredBadgeKeys.filter((key) => userBadgeMap.has(key)).length;
-
-  const tagScore =
-    requiredTagIds.length > 0 ? matchingTags / requiredTagIds.length : 0.5;
-  const badgeScore =
-    requiredBadgeKeys.length > 0
-      ? matchingBadges / requiredBadgeKeys.length
-      : 0.5;
-
-  const isRemote = role.isRemote ?? role.is_remote;
-  const maxDistanceKm = Number(role.maxDistanceKm ?? role.max_distance_km) || 50;
-
-  let distanceScore = 0.5;
-  let distanceKm = null;
-  let isWithinRange = null;
-
-  if (isRemote) {
-    distanceScore = 1;
-    isWithinRange = true;
-  } else {
-    distanceKm = calculateDistanceKm(user, role);
-
-    if (distanceKm !== null) {
-      if (distanceKm <= maxDistanceKm) {
-        distanceScore = 1;
-        isWithinRange = true;
-      } else if (distanceKm <= maxDistanceKm + LOCATION_GRACE_KM) {
-        distanceScore = LOCATION_GRACE_SCORE;
-        isWithinRange = false;
-      } else {
-        distanceScore = 0;
-        isWithinRange = false;
-      }
-    }
-  }
-
-  const matchScore =
-    MATCH_WEIGHTS.tags * tagScore +
-    MATCH_WEIGHTS.badges * badgeScore +
-    MATCH_WEIGHTS.distance * distanceScore;
-
-  return {
-    matchScore: roundMatchValue(matchScore),
-    matchDetails: {
-      tagScore: roundMatchValue(tagScore),
-      badgeScore: roundMatchValue(badgeScore),
-      distanceScore: roundMatchValue(distanceScore),
-      matchingTags,
-      totalRequiredTags: requiredTagIds.length,
-      matchingBadges,
-      totalRequiredBadges: requiredBadgeKeys.length,
-      distanceKm: distanceKm !== null ? Math.round(distanceKm) : null,
-      maxDistanceKm,
-      isWithinRange,
-    },
-  };
 };
 
 const getViewerRoleProfile = async (userId, fallbackUser = null) => {
@@ -254,6 +130,9 @@ const getExplicitMatchScore = (item) => {
 
   return Number.isFinite(score) ? score : null;
 };
+
+const hasRoleMatchDetails = (item) =>
+  item?.matchDetails != null || item?.match_details != null;
 
 const hasDisplayableBadges = (rawBadges) => {
   if (typeof rawBadges === "string") {
@@ -378,7 +257,21 @@ const TeamCard = ({
 
   autoOpenApplications = false,
   highlightApplicantId = null,
+  highlightApplicationId = null,
+  highlightInvitationId = null,
   onApplicationsModalClosed,
+
+  // Preloaded viewer-scoped lists (provided by parent to avoid N+1 fetches).
+  // If the prop is undefined (not provided by parent at all), the card falls
+  // back to fetching on its own. If the prop is null, parent is still loading
+  // and the card should wait — not fall back to fetching.
+  viewerPendingApplications,
+  viewerPendingInvitations,
+
+  // Pre-fetched member badges for this team (bulk-fetched by the parent).
+  // Same `!== undefined` sentinel: undefined = parent doesn't manage, null =
+  // parent is loading, array = use directly (skip per-card fetch).
+  teamMemberBadges,
 }) => {
   const isInternalRoleApplication =
     application?.isInternalRoleApplication ??
@@ -496,8 +389,12 @@ const TeamCard = ({
   const flatRoleBio = roleSource?.bio ?? roleSource?.roleBio ?? null;
   const flatRoleCity = roleSource?.city ?? null;
   const flatRoleCountry = roleSource?.country ?? null;
-  const flatRoleTags = roleSource?.tags ?? [];
-  const flatRoleBadges = roleSource?.badges ?? [];
+  const flatRoleTags = roleSource?.tags ?? EMPTY_ARRAY;
+  const flatRoleBadges = roleSource?.badges ?? EMPTY_ARRAY;
+  const roleHasPreloadedRequirements =
+    (Array.isArray(nestedRoleData?.tags) &&
+      Array.isArray(nestedRoleData?.badges)) ||
+    (Array.isArray(roleSource?.tags) && Array.isArray(roleSource?.badges));
   const flatRoleIsRemote =
     roleSource?.isRemote ?? roleSource?.is_remote ?? undefined;
   const syntheticRoleFlag = isRoleApplicationVariant
@@ -630,12 +527,8 @@ const TeamCard = ({
   const [userRole, setUserRole] = useState(null);
   const [teamData, setTeamData] = useState(normalizedData.team);
   const { user, isAuthenticated } = useAuth();
-  const [pendingApplications, setPendingApplications] = useState([]);
   const [isApplicationsModalOpen, setIsApplicationsModalOpen] = useState(false);
-  const [pendingSentInvitations, setPendingSentInvitations] = useState([]);
   const [isInvitesModalOpen, setIsInvitesModalOpen] = useState(false);
-  const [pendingApplicationsLoaded, setPendingApplicationsLoaded] = useState(false);
-  const [pendingInvitationsLoaded, setPendingInvitationsLoaded] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState(null);
   const [responses, setResponses] = useState({});
   const [isInvitationDetailsModalOpen, setIsInvitationDetailsModalOpen] =
@@ -655,6 +548,19 @@ const TeamCard = ({
     pendingApplicationForTeam?.roleId ||
     pendingApplicationForTeam?.role_id
   );
+  // Combined = external applicant applying to join the team AND fill a role in one go → violet
+  const isCombinedApplication =
+    effectiveVariant === "application" &&
+    Boolean(application?.role || application?.roleId || application?.role_id) &&
+    !isInternalRoleApplication;
+  const isPendingCombinedApplicationForTeam =
+    isPendingRoleApplicationForTeam &&
+    !(pendingApplicationForTeam?.isInternalRoleApplication ||
+      pendingApplicationForTeam?.is_internal_role_application);
+  const isPendingInternalRoleApplicationForTeam =
+    isPendingRoleApplicationForTeam &&
+    Boolean(pendingApplicationForTeam?.isInternalRoleApplication ||
+      pendingApplicationForTeam?.is_internal_role_application);
   const shouldShowMemberCountInSubtitle = effectiveVariant === "member";
   const shouldShowMemberCountInList = effectiveVariant === "member";
   const shouldMoveSearchResultRoleApplicationIndicator =
@@ -742,6 +648,14 @@ const TeamCard = ({
         return;
       }
 
+      // Use role from list response (getUserTeams) if present — avoids an
+      // extra request per card.
+      const preloadedRole = teamData.userRole ?? teamData.user_role ?? null;
+      if (preloadedRole) {
+        setUserRole(preloadedRole);
+        return;
+      }
+
       try {
         const response = await teamService.getUserRoleInTeam(
           teamData.id,
@@ -771,140 +685,270 @@ const TeamCard = ({
     teamData?.id,
     teamData?.owner_id,
     teamData?.ownerId,
+    teamData?.userRole,
+    teamData?.user_role,
     effectiveVariant,
   ]);
 
-  // Fetch pending applications (for team owners and admins)
+  // Counts may be preloaded by the parent's list response (getUserTeams).
+  // When present, we defer the full list fetch until the user actually opens
+  // the corresponding modal. Note: postgres returns COUNT(*) as bigint which
+  // the pg driver serializes as a string unless cast, so coerce defensively.
+  const rawPreloadedApplicationCount =
+    teamData?.pendingApplicationsCount ??
+    teamData?.pending_applications_count;
+  const rawPreloadedSentInvitationCount =
+    teamData?.pendingSentInvitationsCount ??
+    teamData?.pending_sent_invitations_count;
+  const preloadedApplicationCount =
+    rawPreloadedApplicationCount != null
+      ? Number(rawPreloadedApplicationCount)
+      : undefined;
+  const preloadedSentInvitationCount =
+    rawPreloadedSentInvitationCount != null
+      ? Number(rawPreloadedSentInvitationCount)
+      : undefined;
+  const hasPreloadedApplicationCount = Number.isFinite(
+    preloadedApplicationCount,
+  );
+  const hasPreloadedSentInvitationCount = Number.isFinite(
+    preloadedSentInvitationCount,
+  );
+  const canFetchTeamRequests =
+    canManageInvitations && Boolean(teamData?.id) && effectiveVariant === "member";
+  const shouldFetchApplications =
+    canFetchTeamRequests &&
+    (!hasPreloadedApplicationCount || isApplicationsModalOpen);
+  const shouldFetchInvitations =
+    canFetchTeamRequests &&
+    (!hasPreloadedSentInvitationCount || isInvitesModalOpen);
+  const {
+    applications: pendingApplications,
+    invitations: pendingSentInvitations,
+    applicationsLoaded: rawPendingApplicationsLoaded,
+    invitationsLoaded: rawPendingInvitationsLoaded,
+    refetchApplications,
+    refetchInvitations,
+  } = useTeamRequestLists(teamData?.id, {
+    enabled: canFetchTeamRequests,
+    applicationsEnabled: shouldFetchApplications,
+    invitationsEnabled: shouldFetchInvitations,
+  });
+  const pendingApplicationsLoaded =
+    canFetchTeamRequests && rawPendingApplicationsLoaded;
+  const pendingInvitationsLoaded =
+    canFetchTeamRequests && rawPendingInvitationsLoaded;
+
   const fetchPendingApplications = useCallback(async () => {
-    if (canManageInvitations && teamData?.id && effectiveVariant === "member") {
-      try {
-        const response = await teamService.getTeamApplications(teamData.id);
-        setPendingApplications(response.data || []);
-        setPendingApplicationsLoaded(true);
-      } catch (error) {
-        console.error("Error fetching applications:", error);
-        setPendingApplications([]);
-        setPendingApplicationsLoaded(true);
-      }
-    }
-  }, [canManageInvitations, teamData?.id, effectiveVariant]);
+    if (!canFetchTeamRequests) return [];
 
-  // Fetch sent invitations (for team owners and admins)
+    const result = await refetchApplications();
+    if (result.error) {
+      console.error("Error fetching applications:", result.error);
+      return [];
+    }
+    return result.data ?? [];
+  }, [canFetchTeamRequests, refetchApplications]);
+
   const fetchSentInvitations = useCallback(async () => {
-    if (canManageInvitations && teamData?.id && effectiveVariant === "member") {
-      try {
-        const response = await teamService.getTeamSentInvitations(teamData.id);
-        setPendingSentInvitations(response.data || []);
-        setPendingInvitationsLoaded(true);
-      } catch (error) {
-        console.error("Error fetching sent invitations:", error);
-        setPendingSentInvitations([]);
-        setPendingInvitationsLoaded(true);
-      }
+    if (!canFetchTeamRequests) return [];
+
+    const result = await refetchInvitations();
+    if (result.error) {
+      console.error("Error fetching sent invitations:", result.error);
+      return [];
     }
-  }, [canManageInvitations, teamData?.id, effectiveVariant]);
+    return result.data ?? [];
+  }, [canFetchTeamRequests, refetchInvitations]);
 
-  useEffect(() => {
-    if (effectiveVariant !== "member" || !teamData?.id || !canManageInvitations) {
-      setPendingApplications([]);
-      setPendingSentInvitations([]);
-      setPendingApplicationsLoaded(false);
-      setPendingInvitationsLoaded(false);
+  // Once the full list is loaded (after a modal open), state.length is the
+  // source of truth. Otherwise fall back to the count from teamData.
+  const displayedApplicationCount = pendingApplicationsLoaded
+    ? pendingApplications.length
+    : hasPreloadedApplicationCount
+      ? preloadedApplicationCount
+      : 0;
+  const displayedSentInvitationCount = pendingInvitationsLoaded
+    ? pendingSentInvitations.length
+    : hasPreloadedSentInvitationCount
+      ? preloadedSentInvitationCount
+      : 0;
+
+  const handleTeamRequestEvent = useCallback((payload = {}) => {
+    const payloadTeamId = payload.teamId ?? payload.team_id ?? null;
+    if (payloadTeamId != null && String(payloadTeamId) !== String(teamData.id)) {
+      return;
     }
-  }, [effectiveVariant, teamData?.id, canManageInvitations]);
 
-  useEffect(() => {
-    fetchPendingApplications();
-  }, [fetchPendingApplications]);
+    const type = String(payload.type ?? payload.notificationType ?? "").toLowerCase();
+    const shouldRefreshApplications =
+      !type ||
+      type.includes("application") ||
+      type === "member_joined" ||
+      type === "role_filled";
+    const shouldRefreshInvitations =
+      !type ||
+      type.includes("invitation") ||
+      type.includes("invite");
 
-  useEffect(() => {
-    fetchSentInvitations();
-  }, [fetchSentInvitations]);
+    // Only refresh the per-card list when we already loaded it (i.e. the
+    // modal was opened at least once). Otherwise badge counts update from
+    // the parent's getUserTeams refetch and the list is re-fetched the next
+    // time the modal opens.
+    if (shouldRefreshApplications && pendingApplicationsLoaded) {
+      fetchPendingApplications();
+    }
+
+    if (shouldRefreshInvitations && pendingInvitationsLoaded) {
+      fetchSentInvitations();
+    }
+  }, [
+    fetchPendingApplications,
+    fetchSentInvitations,
+    teamData?.id,
+    pendingApplicationsLoaded,
+    pendingInvitationsLoaded,
+  ]);
+
+  useSocketEvents(
+    effectiveVariant === "member" && teamData?.id && canManageInvitations
+      ? {
+          "notification:new": handleTeamRequestEvent,
+          "notification:updated": handleTeamRequestEvent,
+          "notification:deleted": handleTeamRequestEvent,
+        }
+      : null,
+    [
+      canManageInvitations,
+      effectiveVariant,
+      fetchPendingApplications,
+      fetchSentInvitations,
+      teamData?.id,
+    ],
+  );
 
   useEffect(() => {
     const fetchCompleteTeamData = async () => {
-      if (
-        teamData &&
-        teamData.id &&
-        (effectiveVariant === "member" ||
-          effectiveVariant === "invitation" ||
-          effectiveVariant === "application")
-      ) {
-        try {
-          const shouldFetchMemberBadges =
-            !hasDisplayableBadges(teamData.badges);
+      if (!teamData?.id) return;
+      const isHydratableVariant =
+        effectiveVariant === "member" ||
+        effectiveVariant === "invitation" ||
+        effectiveVariant === "application";
+      if (!isHydratableVariant) return;
 
-          const [response, memberBadges] = await Promise.all([
-            teamService.getTeamById(teamData.id),
-            shouldFetchMemberBadges
-              ? (() => {
-                  const cached = teamMemberBadgesCache.get(teamData.id);
-                  if (cached) return Promise.resolve(cached);
+      // Skip getTeamById when the parent already provided the tags array.
+      // The list response from getUserTeams + search responses both include
+      // it (empty array means "no tags", which is valid data — no fetch
+      // needed). Skip team member badges when the parent is managing them
+      // via the teamMemberBadges prop (bulk-fetched by MyTeams).
+      const parentProvidedTags = Array.isArray(teamData.tags);
+      const parentManagesMemberBadges = teamMemberBadges !== undefined;
+      const shouldFetchTeamById = !parentProvidedTags;
+      const shouldFetchMemberBadges =
+        !parentManagesMemberBadges && !hasDisplayableBadges(teamData.badges);
 
-                  return teamService
-                    .getTeamMemberBadges(teamData.id)
-                    .then((badgesResponse) => {
-                      const badges = extractBadgeRows(badgesResponse);
-                      teamMemberBadgesCache.set(teamData.id, badges);
-                      return badges;
-                    })
-                    .catch((badgeError) => {
-                      console.warn(
-                        "Could not fetch team member badges for card display:",
-                        badgeError,
-                      );
-                      return [];
-                    });
-                })()
-              : Promise.resolve(
-                  hasDisplayableBadges(teamData.badges) ? teamData.badges : [],
-                ),
-          ]);
-          const fullTeam = response?.data?.data ?? response?.data;
+      if (!shouldFetchTeamById && !shouldFetchMemberBadges) return;
 
-          if (fullTeam) {
-            setTeamData((prev) => {
-              const preservedDistanceKm = resolveDistanceKm({
-                preferredDistance: prev?.distance_km ?? prev?.distanceKm,
-                fallbackDistance: fullTeam.distance_km ?? fullTeam.distanceKm,
-                viewerEntity: viewerDistanceSource ?? user,
-                targetEntity: fullTeam,
-              });
-              const resolvedBadges =
-                memberBadges.length > 0
-                  ? memberBadges
-                  : hasDisplayableBadges(fullTeam.badges)
-                    ? fullTeam.badges
-                    : prev?.badges;
+      try {
+        const teamByIdPromise = shouldFetchTeamById
+          ? teamService.getTeamById(teamData.id)
+          : Promise.resolve(null);
 
-              return {
-                ...prev,
-                ...fullTeam,
-                is_public:
-                  fullTeam.is_public === true || fullTeam.is_public === "true",
-                tags: Array.isArray(fullTeam.tags) ? fullTeam.tags : prev.tags,
-                badges: resolvedBadges,
-                distance_km: preservedDistanceKm,
-                distanceKm: preservedDistanceKm,
-              };
-            });
+        const memberBadgesPromise = shouldFetchMemberBadges
+          ? (() => {
+              const cached = teamMemberBadgesCache.get(teamData.id);
+              if (cached) return Promise.resolve(cached);
 
-            // Compute role from members list
-            if (user?.id && Array.isArray(fullTeam.members)) {
-              const me = fullTeam.members.find(
-                (m) => (m.user_id ?? m.userId) === user.id,
-              );
-              setUserRole(me?.role ?? null);
-            }
+              return teamService
+                .getTeamMemberBadges(teamData.id)
+                .then((badgesResponse) => {
+                  const badges = extractBadgeRows(badgesResponse);
+                  teamMemberBadgesCache.set(teamData.id, badges);
+                  return badges;
+                })
+                .catch((badgeError) => {
+                  console.warn(
+                    "Could not fetch team member badges for card display:",
+                    badgeError,
+                  );
+                  return [];
+                });
+            })()
+          : Promise.resolve(
+              hasDisplayableBadges(teamData.badges) ? teamData.badges : [],
+            );
+
+        const [response, memberBadges] = await Promise.all([
+          teamByIdPromise,
+          memberBadgesPromise,
+        ]);
+
+        const fullTeam = response?.data?.data ?? response?.data ?? null;
+
+        setTeamData((prev) => {
+          const baseTeam = fullTeam ?? prev;
+          const preservedDistanceKm = resolveDistanceKm({
+            preferredDistance: prev?.distance_km ?? prev?.distanceKm,
+            fallbackDistance: baseTeam.distance_km ?? baseTeam.distanceKm,
+            viewerEntity: viewerDistanceSource ?? user,
+            targetEntity: baseTeam,
+          });
+          const resolvedBadges =
+            memberBadges.length > 0
+              ? memberBadges
+              : hasDisplayableBadges(baseTeam.badges)
+                ? baseTeam.badges
+                : prev?.badges;
+
+          if (!fullTeam) {
+            // Only refreshed badges / distance — keep everything else.
+            return {
+              ...prev,
+              badges: resolvedBadges,
+              distance_km: preservedDistanceKm,
+              distanceKm: preservedDistanceKm,
+            };
           }
-        } catch (error) {
-          console.error("Error fetching complete team data:", error);
+
+          return {
+            ...prev,
+            ...fullTeam,
+            is_public:
+              fullTeam.is_public === true || fullTeam.is_public === "true",
+            tags: Array.isArray(fullTeam.tags) ? fullTeam.tags : prev.tags,
+            badges: resolvedBadges,
+            distance_km: preservedDistanceKm,
+            distanceKm: preservedDistanceKm,
+          };
+        });
+
+        // Compute role from members list (only possible if we fetched it)
+        if (fullTeam && user?.id && Array.isArray(fullTeam.members)) {
+          const me = fullTeam.members.find(
+            (m) => (m.user_id ?? m.userId) === user.id,
+          );
+          setUserRole(me?.role ?? null);
         }
+      } catch (error) {
+        console.error("Error fetching complete team data:", error);
       }
     };
 
     fetchCompleteTeamData();
   }, [teamData?.id, effectiveVariant, user, viewerDistanceSource]);
+
+  // Sync parent-managed member badges into teamData. When the parent provides
+  // an array (bulk fetch resolved), we use it directly. While the parent is
+  // still loading (prop === null), we leave teamData.badges alone so the card
+  // doesn't flicker between "no badges" and "with badges" mid-load.
+  useEffect(() => {
+    if (Array.isArray(teamMemberBadges)) {
+      setTeamData((prev) => ({
+        ...prev,
+        badges: teamMemberBadges,
+      }));
+    }
+  }, [teamMemberBadges]);
 
   useEffect(() => {
     if (!teamData?.id) return;
@@ -954,6 +998,19 @@ const TeamCard = ({
         return;
       }
 
+      // If parent is managing the viewer's pending applications, never fetch.
+      // While the parent's list is still loading (null), wait. Once it's an
+      // array, scan it locally.
+      if (viewerPendingApplications !== undefined) {
+        if (Array.isArray(viewerPendingApplications)) {
+          const found = viewerPendingApplications.find(
+            (app) => app.team?.id === teamData.id || app.team_id === teamData.id,
+          );
+          setPendingApplicationForTeam(found || null);
+        }
+        return;
+      }
+
       try {
         const response = await teamService.getUserPendingApplications();
         const pendingApplications = response.data || [];
@@ -970,12 +1027,23 @@ const TeamCard = ({
     };
 
     checkPendingApplication();
-  }, [isSearchResult, isAuthenticated, teamData?.id]);
+  }, [isSearchResult, isAuthenticated, teamData?.id, viewerPendingApplications]);
 
   // Check if user has a pending invitation for this team (for search results)
   useEffect(() => {
     const checkPendingInvitation = async () => {
       if (!isSearchResult || !isAuthenticated || !teamData?.id) return;
+
+      // If parent is managing the viewer's pending invitations, never fetch.
+      if (viewerPendingInvitations !== undefined) {
+        if (Array.isArray(viewerPendingInvitations)) {
+          const found = viewerPendingInvitations.find(
+            (inv) => inv.team?.id === teamData.id || inv.team_id === teamData.id,
+          );
+          setPendingInvitationForTeam(found || null);
+        }
+        return;
+      }
 
       try {
         // IMPORTANT: use whatever your actual service method is called
@@ -995,7 +1063,7 @@ const TeamCard = ({
     };
 
     checkPendingInvitation();
-  }, [isSearchResult, isAuthenticated, teamData?.id]);
+  }, [isSearchResult, isAuthenticated, teamData?.id, viewerPendingInvitations]);
 
   // useEffect(() => {
   //   if (effectiveVariant !== "member") return;
@@ -1043,21 +1111,28 @@ const TeamCard = ({
 
     const fetchRoleMatchData = async () => {
       try {
-        const [viewerProfileRes, detailsRes] = await Promise.allSettled([
-          getViewerRoleProfile(user.id, user),
-          vacantRoleService.getVacantRoleById(roleTeamId, roleDataId),
-        ]);
-
-        if (viewerProfileRes.status !== "fulfilled") {
-          throw viewerProfileRes.reason;
+        const preloadedMatchData = extractCandidateMatchData(roleData);
+        if (
+          preloadedMatchData.matchScore != null &&
+          hasRoleMatchDetails(roleData)
+        ) {
+          if (!isCancelled) {
+            setRoleMatchData(preloadedMatchData);
+          }
+          return;
         }
 
-        const viewerProfile = viewerProfileRes.value;
-        const hydratedRole =
-          detailsRes.status === "fulfilled"
-            ? extractProfilePayload(detailsRes.value)
-            : null;
-        const effectiveRole = hydratedRole ?? roleData ?? null;
+        const viewerProfile = await getViewerRoleProfile(user.id, user);
+        let effectiveRole = roleData ?? null;
+
+        if (!roleHasPreloadedRequirements) {
+          const detailsRes = await vacantRoleService.getVacantRoleById(
+            roleTeamId,
+            roleDataId,
+          );
+          effectiveRole = extractProfilePayload(detailsRes) ?? effectiveRole;
+        }
+
         const nextMatchData = effectiveRole
           ? computeRoleUserMatch({
               role: effectiveRole,
@@ -1082,7 +1157,15 @@ const TeamCard = ({
     return () => {
       isCancelled = true;
     };
-  }, [isRoleVariant, showMatchScore, roleDataId, roleTeamId, user?.id]);
+  }, [
+    isRoleVariant,
+    showMatchScore,
+    roleData,
+    roleDataId,
+    roleHasPreloadedRequirements,
+    roleTeamId,
+    user?.id,
+  ]);
 
   // ================= GUARD CLAUSE – AFTER ALL HOOKS =================
 
@@ -1099,6 +1182,7 @@ const TeamCard = ({
     ? (roleTeamData ?? teamDetailsInitialTeamData ?? null)
     : (normalizedData.team ?? teamData ?? null);
   const shouldShowTeamModalMatchHighlights = showMatchHighlights || isRoleVariant;
+  const shouldHideMatchData = !shouldShowTeamModalMatchHighlights && !showMatchScore;
   const teamModalRawScore = showMatchScore
     ? getExplicitMatchScore(teamModalMatchSource)
     : null;
@@ -1473,12 +1557,13 @@ const TeamCard = ({
   };
 
   const handleApplicationAction = async (applicationId, action, response, fillRole = false) => {
-    await teamService.handleTeamApplication(applicationId, action, response, fillRole);
+    const result = await teamService.handleTeamApplication(applicationId, action, response, fillRole);
     await fetchPendingApplications();
     if (onUpdate) {
       const updatedTeam = await teamService.getTeamById(teamData.id);
       onUpdate(updatedTeam.data);
     }
+    return result;
   };
 
   const handleVacantRoleStatusChange = async () => {
@@ -1528,6 +1613,16 @@ const TeamCard = ({
       await fetchSentInvitations();
     } catch (error) {
       console.error("Error canceling invitation:", error);
+      throw error;
+    }
+  };
+
+  const handleCancelRoleInvitation = async (invitationId) => {
+    try {
+      await teamService.cancelRoleInvitation(invitationId);
+      await fetchSentInvitations();
+    } catch (error) {
+      console.error("Error canceling role invitation:", error);
       throw error;
     }
   };
@@ -1792,7 +1887,7 @@ const TeamCard = ({
             {canManageInvitations && (
               <NotificationBadge
                 variant="application"
-                count={pendingApplications.length}
+                count={displayedApplicationCount}
                 onClick={(e) => {
                   e.stopPropagation();
                   setIsApplicationsModalOpen(true);
@@ -1804,7 +1899,7 @@ const TeamCard = ({
             {canManageInvitations && (
               <NotificationBadge
                 variant="invitation"
-                count={pendingSentInvitations.length}
+                count={displayedSentInvitationCount}
                 onClick={(e) => {
                   e.stopPropagation();
                   setIsInvitesModalOpen(true);
@@ -2001,12 +2096,6 @@ const TeamCard = ({
   const demoTooltip = showDemoRoleIndicator
     ? DEMO_ROLE_TOOLTIP
     : DEMO_TEAM_TOOLTIP;
-  const demoLabel =
-    viewMode === "list" || viewMode === "mini"
-      ? "Demo"
-      : showDemoRoleIndicator
-        ? "Demo Role"
-        : "Demo Team";
   const demoAvatarOverlay = showDemoIndicator ? (
     <DemoAvatarOverlay
       textClassName={
@@ -2068,7 +2157,7 @@ const TeamCard = ({
     const shouldReserveMyTeamsActionSlot = !isSearchResult;
     const memberCountListItem = shouldShowMemberCountInList ? (
       <span className="flex items-center gap-0.5">
-        <Users size={11} />
+        <Users size={9} />
         <span>{memberCount}/{maxMembers}</span>
       </span>
     ) : null;
@@ -2101,7 +2190,7 @@ const TeamCard = ({
               }
             >
               <Mail
-                size={11}
+                size={9}
                 className={hasInternalRoleInvitation ? "text-orange-500" : "text-pink-500"}
               />
               {getFormattedDate() && <span>{getFormattedDate()}</span>}
@@ -2114,7 +2203,7 @@ const TeamCard = ({
             wrapperClassName="min-w-0 max-w-full overflow-hidden"
           >
             <span className="flex min-w-0 max-w-full items-center gap-0.5 overflow-hidden">
-              <UserSearch size={12} className="flex-shrink-0 text-orange-500" />
+              <UserSearch size={10} className="flex-shrink-0 text-orange-500" />
               <span className="truncate">{teamInvitationRoleName}</span>
             </span>
           </Tooltip>
@@ -2122,13 +2211,15 @@ const TeamCard = ({
         {(effectiveVariant === "application" || isRoleApplicationVariant || pendingApplicationForTeam) && (
           <Tooltip
             content={
-              isPendingRoleApplicationForTeam
-                ? "You applied for a role within this team"
-                : `You applied${isRoleApplicationVariant ? " for this role" : " to join this team"}${
-                    getFormattedDate()
-                      ? `\non ${format(new Date(normalizedData.date), "MMM d, yyyy")}`
-                      : ""
-                  }`
+              isCombinedApplication || isPendingCombinedApplicationForTeam
+                ? `You applied to join this team and fill a role${getFormattedDate() ? `\non ${format(new Date(normalizedData.date), "MMM d, yyyy")}` : ""}`
+                : isPendingInternalRoleApplicationForTeam
+                  ? "You applied for a role within this team"
+                  : `You applied${isRoleApplicationVariant ? " for this role" : " to join this team"}${
+                      getFormattedDate()
+                        ? `\non ${format(new Date(normalizedData.date), "MMM d, yyyy")}`
+                        : ""
+                    }`
             }
           >
             <span
@@ -2138,7 +2229,11 @@ const TeamCard = ({
                 setIsApplicationModalOpen(true);
               }}
             >
-              <SendHorizontal size={11} className={(isRoleApplicationVariant || isPendingRoleApplicationForTeam) ? "text-orange-500" : "text-info"} />
+              <SendHorizontal size={9} className={
+                (isCombinedApplication || isPendingCombinedApplicationForTeam) ? "text-violet-500" :
+                (isRoleApplicationVariant || isPendingInternalRoleApplicationForTeam) ? "text-orange-500" :
+                "text-info"
+              } />
               {getFormattedDate() && <span>{getFormattedDate()}</span>}
             </span>
           </Tooltip>
@@ -2149,7 +2244,7 @@ const TeamCard = ({
             wrapperClassName="min-w-0 max-w-full overflow-hidden"
           >
             <span className="flex min-w-0 max-w-full items-center gap-0.5 overflow-hidden">
-              <UserSearch size={12} className="flex-shrink-0 text-orange-500" />
+              <UserSearch size={10} className="flex-shrink-0 text-orange-500" />
               <span className="truncate">{teamApplicationRoleName}</span>
             </span>
           </Tooltip>
@@ -2157,7 +2252,7 @@ const TeamCard = ({
         {shouldShowOpenRoleCount && openRoleCount > 0 && (
           <Tooltip content={`${openRoleCount} open ${openRoleCount === 1 ? 'role' : 'roles'} posted in this team`}>
             <span className="flex items-center">
-              <UserSearch size={12} className="text-orange-500 mr-0.5" />
+              <UserSearch size={10} className="text-orange-500 mr-0.5" />
               <span>{openRoleCount}</span>
             </span>
           </Tooltip>
@@ -2171,7 +2266,7 @@ const TeamCard = ({
                 setIsModalOpen(true);
               }}
             >
-              <Users size={11} className="flex-shrink-0 text-primary" />
+              <Users size={9} className="flex-shrink-0 text-primary" />
               <span className="truncate">{teamData._teamName}</span>
             </span>
           </Tooltip>
@@ -2180,17 +2275,17 @@ const TeamCard = ({
           <>
             {userRole === "owner" && (
               <Tooltip content="You are the owner of this team">
-                <Crown size={11} className="text-[var(--color-role-owner-bg)]" />
+                <Crown size={9} className="text-[var(--color-role-owner-bg)]" />
               </Tooltip>
             )}
             {userRole === "admin" && (
               <Tooltip content="You are an admin of this team">
-                <ShieldCheck size={11} className="text-[var(--color-role-admin-bg)]" />
+                <ShieldCheck size={9} className="text-[var(--color-role-admin-bg)]" />
               </Tooltip>
             )}
             {userRole === "member" && !hideMemberRoleIcon && (
               <Tooltip content="You are a member of this team">
-                <User size={11} className="text-[var(--color-role-member-bg)]" />
+                <User size={9} className="text-[var(--color-role-member-bg)]" />
               </Tooltip>
             )}
           </>
@@ -2198,9 +2293,9 @@ const TeamCard = ({
         {shouldShowVisibilityIcon() && (
           <Tooltip content={teamData.is_public === true || teamData.isPublic === true ? "Public Team - visible for everyone" : "Private Team - only visible for Members"}>
             {teamData.is_public === true || teamData.isPublic === true ? (
-              <EyeIcon size={11} className="text-green-600" />
+              <EyeIcon size={9} className="text-green-600" />
             ) : (
-              <EyeClosed size={11} className="text-gray-500" />
+              <EyeClosed size={9} className="text-gray-500" />
             )}
           </Tooltip>
         )}
@@ -2209,7 +2304,7 @@ const TeamCard = ({
             content={demoTooltip}
             wrapperClassName="flex items-center whitespace-nowrap text-base-content/50"
           >
-            <FlaskConical size={11} className="flex-shrink-0" />
+            <FlaskConical size={9} className="flex-shrink-0" />
           </Tooltip>
         )}
       </span>
@@ -2240,7 +2335,7 @@ const TeamCard = ({
                 <div className="text-xs text-base-content flex items-center gap-1 overflow-hidden">
                   <Tooltip content={`${Math.round(distance)} km away from you`}>
                     <div className="flex items-center gap-1">
-                      <Ruler size={11} className="flex-shrink-0" />
+                      <Ruler size={9} className="flex-shrink-0" />
                       <span className="whitespace-nowrap">{Math.round(distance)} km</span>
                     </div>
                   </Tooltip>
@@ -2255,9 +2350,9 @@ const TeamCard = ({
                 >
                   <div className="flex min-w-0 w-full items-center gap-1 overflow-hidden">
                     {teamData.is_remote || teamData.isRemote ? (
-                      <Globe size={11} className="flex-shrink-0" />
+                      <Globe size={9} className="flex-shrink-0" />
                     ) : (
-                      <MapPin size={11} className="flex-shrink-0" />
+                      <MapPin size={9} className="flex-shrink-0" />
                     )}
                     <span className="min-w-0 flex-1 truncate">{locationText}</span>
                   </div>
@@ -2270,7 +2365,7 @@ const TeamCard = ({
           >
             {tagsSummary && (
               <Tooltip content={tagNames.join(", ")} wrapperClassName="flex items-center gap-1 min-w-0 overflow-hidden w-full">
-                <Tag size={11} className="flex-shrink-0" />
+                <Tag size={9} className="flex-shrink-0" />
                 <span className="truncate">{tagsSummary}</span>
               </Tooltip>
             )}
@@ -2280,7 +2375,7 @@ const TeamCard = ({
           >
             {badgesSummary && (
               <Tooltip content={badgeNames.join(", ")} wrapperClassName="flex items-center gap-1 min-w-0 overflow-hidden w-full">
-                <Award size={11} className="flex-shrink-0" />
+                <Award size={9} className="flex-shrink-0" />
                 <span className="truncate">{badgesSummary}</span>
               </Tooltip>
             )}
@@ -2321,7 +2416,7 @@ const TeamCard = ({
                 <>
                   <NotificationBadge
                     variant="application"
-                    count={pendingApplications.length}
+                    count={displayedApplicationCount}
                     onClick={(e) => {
                       e.stopPropagation();
                       setIsApplicationsModalOpen(true);
@@ -2329,7 +2424,7 @@ const TeamCard = ({
                   />
                   <NotificationBadge
                     variant="invitation"
-                    count={pendingSentInvitations.length}
+                    count={displayedSentInvitationCount}
                     onClick={(e) => {
                       e.stopPropagation();
                       setIsInvitesModalOpen(true);
@@ -2369,9 +2464,11 @@ const TeamCard = ({
           }
           onViewApplicationDetails={() => setIsApplicationModalOpen(true)}
           showMatchHighlights={shouldShowTeamModalMatchHighlights}
+          hideMatchData={shouldHideMatchData}
           matchScore={teamModalRawScore ?? null}
           matchType={teamModalMatchType}
           matchDetails={teamModalMatchDetails}
+          teamMemberBadges={teamMemberBadges}
         />
 
         {/* Applications Modal (for team owners and admins) */}
@@ -2389,6 +2486,7 @@ const TeamCard = ({
             onApplicationAction={handleApplicationAction}
             onRoleStatusChanged={handleVacantRoleStatusChange}
             teamName={teamData.name}
+            highlightApplicationId={highlightApplicationId}
             highlightUserId={highlightApplicantId}
           />
         )}
@@ -2404,7 +2502,9 @@ const TeamCard = ({
             teamId={teamData.id}
             invitations={pendingSentInvitations}
             onCancelInvitation={handleCancelInvitation}
+            onCancelRoleInvitation={handleCancelRoleInvitation}
             teamName={teamData.name}
+            highlightInvitationId={highlightInvitationId}
           />
         )}
 
@@ -2474,7 +2574,7 @@ const TeamCard = ({
         title={cardTitle}
         subtitle={
           <span
-            className={`flex text-base-content/70 ${isRoleVariant ? `flex-col leading-snug ${viewMode === "mini" ? "text-xs gap-y-px w-full" : "text-sm gap-y-px"}` : `items-center flex-wrap leading-snug ${viewMode === "mini" ? "text-xs gap-x-1 gap-y-px w-full" : "text-sm gap-x-1.5 gap-y-px"}`}`}
+            className={`mt-0.5 flex max-h-[2.75em] overflow-hidden text-base-content/70 ${isRoleVariant ? `flex-col leading-snug ${viewMode === "mini" ? "text-xs gap-y-px w-full" : "text-sm gap-y-px"}` : `items-center flex-wrap leading-snug ${viewMode === "mini" ? "text-xs gap-x-1 gap-y-px w-full" : "text-sm gap-x-1.5 gap-y-px"}`}`}
           >
             {/* Score + date on the same row for role variants */}
             {isRoleVariant ? (
@@ -2550,39 +2650,36 @@ const TeamCard = ({
                 {viewMode === "card" ? (
                   <span className="flex items-center">
                     <UserSearch
-                      size={14}
+                      size={11}
                       className="text-orange-500"
                     />
                   </span>
                 ) : (
-                  <span className="flex items-start">
+                  <span className="flex items-center gap-1">
                     <UserSearch
                       size={viewMode === "mini" ? 12 : 14}
-                      className="text-orange-500 mr-0.5 flex-shrink-0 mt-0.5"
+                      className="text-orange-500 flex-shrink-0"
                     />
-                    <span className="leading-[1.15]">{teamInvitationRoleName}</span>
+                    <span className="leading-[1.05]">{teamInvitationRoleName}</span>
                   </span>
                 )}
               </Tooltip>
             )}
 
-            {/* Pending regular team-join application indicator */}
+            {/* Pending team application indicator (team-only = blue, combined = violet) */}
             {(effectiveVariant === "application" ||
               (pendingApplicationForTeam && !isPendingRoleApplicationForTeam)) && (
               <Tooltip
-                content={`You applied to join this team${
-                  getFormattedDate()
-                    ? `\non ${format(
-                        new Date(normalizedData.date),
-                        "MMM d, yyyy",
-                      )}`
-                    : ""
-                }`}
+                content={
+                  isCombinedApplication
+                    ? `You applied to join this team and fill a role${getFormattedDate() ? `\non ${format(new Date(normalizedData.date), "MMM d, yyyy")}` : ""}`
+                    : `You applied to join this team${getFormattedDate() ? `\non ${format(new Date(normalizedData.date), "MMM d, yyyy")}` : ""}`
+                }
               >
                 <span className="flex items-center">
                   <SendHorizontal
                     size={viewMode === "mini" ? 12 : 14}
-                    className="text-info"
+                    className={isCombinedApplication ? "text-violet-500" : "text-info"}
                   />
                   {getFormattedDate() && (
                     <span className="ml-0.5">{getFormattedDate()}</span>
@@ -2595,17 +2692,17 @@ const TeamCard = ({
                 {viewMode === "card" ? (
                   <span className="flex items-center">
                     <UserSearch
-                      size={14}
+                      size={11}
                       className="text-orange-500"
                     />
                   </span>
                 ) : (
-                  <span className="flex items-start">
+                  <span className="flex items-center gap-1">
                     <UserSearch
                       size={viewMode === "mini" ? 12 : 14}
-                      className="text-orange-500 mr-0.5 flex-shrink-0 mt-0.5"
+                      className="text-orange-500 flex-shrink-0"
                     />
-                    <span className="leading-[1.15]">{teamApplicationRoleName}</span>
+                    <span className="leading-[1.05]">{teamApplicationRoleName}</span>
                   </span>
                 )}
               </Tooltip>
@@ -2623,13 +2720,13 @@ const TeamCard = ({
                     }}
                   >
                     <Users
-                      size={14}
+                      size={11}
                       className="text-primary"
                     />
                   </span>
                 ) : (
                   <span
-                    className="flex items-start cursor-pointer"
+                    className="flex items-center gap-1 cursor-pointer"
                     onClick={(e) => {
                       e.stopPropagation();
                       setIsModalOpen(true);
@@ -2637,9 +2734,9 @@ const TeamCard = ({
                   >
                     <Users
                       size={viewMode === "mini" ? 12 : 14}
-                      className="text-primary mr-0.5 flex-shrink-0 mt-0.5"
+                      className="text-primary flex-shrink-0"
                     />
-                    <span className="leading-[1.15]">{teamData._teamName}</span>
+                    <span className="leading-[1.05]">{teamData._teamName}</span>
                   </span>
                 )}
               </Tooltip>
@@ -2647,11 +2744,11 @@ const TeamCard = ({
 
             {shouldMoveSearchResultRoleApplicationIndicator &&
               isPendingRoleApplicationForTeam && (
-                <Tooltip content="You applied for a role within this team">
+                <Tooltip content={isPendingCombinedApplicationForTeam ? "You applied to join this team and fill a role" : "You applied for a role within this team"}>
                   <span className="flex items-center">
                     <SendHorizontal
                       size={viewMode === "mini" ? 12 : 14}
-                      className="text-orange-500"
+                      className={isPendingCombinedApplicationForTeam ? "text-violet-500" : "text-orange-500"}
                     />
                   </span>
                 </Tooltip>
@@ -2743,15 +2840,15 @@ const TeamCard = ({
                 teamData.country ||
                 teamData.is_remote ||
                 teamData.isRemote) && (
-                <span className="flex items-start">
+                <span className="flex items-center gap-1">
                   {teamData.is_remote || teamData.isRemote ? (
                     <>
-                      <Globe size={12} className="mr-0.5 flex-shrink-0 mt-0.5" />
+                      <Globe size={10} className="flex-shrink-0" />
                       <span>Remote</span>
                     </>
                   ) : (
                     <>
-                      <MapPin size={12} className="mr-0.5 flex-shrink-0 mt-0.5" />
+                      <MapPin size={10} className="flex-shrink-0" />
                       <span>
                         {[teamData.city, teamData.country]
                           .filter(Boolean)
@@ -2767,10 +2864,9 @@ const TeamCard = ({
                 wrapperClassName="flex items-center gap-1 text-base-content/50"
               >
                 <FlaskConical
-                  size={viewMode === "mini" ? 12 : 14}
+                  size={viewMode === "mini" ? 10 : 11}
                   className="flex-shrink-0"
                 />
-                <span>{demoLabel}</span>
               </Tooltip>
             )}
           </span>
@@ -2938,10 +3034,12 @@ const TeamCard = ({
         }
         onViewApplicationDetails={() => setIsApplicationModalOpen(true)}
         showMatchHighlights={shouldShowTeamModalMatchHighlights}
+        hideMatchData={shouldHideMatchData}
         roleMatchBadgeNames={roleMatchBadgeNames}
         matchScore={teamModalRawScore ?? null}
         matchType={teamModalMatchType}
         matchDetails={teamModalMatchDetails}
+        teamMemberBadges={teamMemberBadges}
       />
 
       {/* Applications Modal (for team owners and admins) */}
@@ -2959,6 +3057,7 @@ const TeamCard = ({
           onApplicationAction={handleApplicationAction}
           onRoleStatusChanged={handleVacantRoleStatusChange}
           teamName={teamData.name}
+          highlightApplicationId={highlightApplicationId}
           highlightUserId={highlightApplicantId}
         />
       )}
@@ -2975,7 +3074,9 @@ const TeamCard = ({
           teamId={teamData.id}
           invitations={pendingSentInvitations}
           onCancelInvitation={handleCancelInvitation}
+          onCancelRoleInvitation={handleCancelRoleInvitation}
           teamName={teamData.name}
+          highlightInvitationId={highlightInvitationId}
         />
       )}
 

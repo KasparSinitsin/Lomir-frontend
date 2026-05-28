@@ -14,6 +14,7 @@ const teamText = (teamName) => (teamName ? ` for "${teamName}"` : "");
 const inTeamText = (teamName) => (teamName ? ` in "${teamName}"` : "");
 
 const possessive = (name) => (name === "You" ? "Your" : `${name}'s`);
+const sentenceObject = (name) => (name === "You" ? "you" : name);
 
 const getActorLabel = (userId, userName, currentUser) => {
   const currentUserName = currentUser ? getDisplayName(currentUser) : null;
@@ -213,12 +214,19 @@ export const getEventPreview = (lastMessage, currentUser = null) => {
         parsedMessage.applicantName,
         currentUser,
       );
+      const approverName = getActorLabel(
+        parsedMessage.approverId,
+        parsedMessage.approverName,
+        currentUser,
+      );
 
       return {
         text: `${possessive(applicantName || "Applicant")} application was approved${teamText(parsedMessage.teamName)}`,
         icon: "UserPlus",
         bannerClass: "event-banner--success",
         color: EVENT_PREVIEW_TEXT_COLORS["event-banner--success"],
+        senderName: approverName || parsedMessage.approverName || null,
+        senderPrefix: "by ",
       };
     }
 
@@ -237,6 +245,164 @@ export const getEventPreview = (lastMessage, currentUser = null) => {
       };
     }
 
+    case "role_application_filled": {
+      const applicantName = getActorLabel(
+        parsedMessage.applicantId,
+        parsedMessage.applicantName,
+        currentUser,
+      );
+      const approverName = getActorLabel(
+        parsedMessage.approverId,
+        parsedMessage.approverName,
+        currentUser,
+      );
+
+      return {
+        text: approverName
+          ? `The role ${parsedMessage.roleName} has been filled by ${sentenceObject(applicantName) || "Someone"}, approved by ${sentenceObject(approverName)}.`
+          : `The role ${parsedMessage.roleName} has been filled by ${sentenceObject(applicantName) || "Someone"}.`,
+        icon: "UserCheck",
+        bannerClass: null,
+        color: EVENT_PREVIEW_TEXT_COLORS.role,
+        senderName: approverName || parsedMessage.approverName || null,
+        senderPrefix: "by ",
+      };
+    }
+
+    case "role_application_deferred_invite": {
+      const applicantName = getActorLabel(
+        parsedMessage.applicantId,
+        parsedMessage.applicantName,
+        currentUser,
+      );
+
+      return {
+        text: `${possessive(applicantName || "Applicant")} application for ${parsedMessage.roleName} was approved as a role offer`,
+        icon: "UserSearch",
+        bannerClass: null,
+        color: EVENT_PREVIEW_TEXT_COLORS.role,
+        senderName: parsedMessage.approverName || null,
+        senderPrefix: "by ",
+      };
+    }
+
+    case "role_invitation_filled": {
+      const inviteeName = getActorLabel(
+        parsedMessage.inviteeId,
+        parsedMessage.inviteeName,
+        currentUser,
+      );
+      const hasKnownInvitee =
+        inviteeName && inviteeName.trim().toLowerCase() !== "someone";
+
+      return {
+        text: hasKnownInvitee
+          ? inviteeName === "You"
+            ? `You accepted an invitation to fill ${parsedMessage.roleName} and are now filling that role`
+            : `${inviteeName} accepted an invitation to fill ${parsedMessage.roleName} and is now filling that role`
+          : `An invitation to fill ${parsedMessage.roleName} was accepted and the role is now filled`,
+        icon: "UserCheck",
+        bannerClass: null,
+        color: EVENT_PREVIEW_TEXT_COLORS.role,
+      };
+    }
+
+    case "role_invitation_accepted": {
+      const inviteeName = getActorLabel(
+        parsedMessage.inviteeId,
+        parsedMessage.inviteeName,
+        currentUser,
+      );
+      const inviterName = getActorLabel(
+        parsedMessage.inviterId,
+        parsedMessage.inviterName,
+        currentUser,
+      );
+      const hasKnownInviter =
+        inviterName && inviterName.trim().toLowerCase() !== "someone";
+
+      if (parsedMessage.fillRole) {
+        return {
+          text: inviteeName === "You"
+            ? `You accepted ${hasKnownInviter ? `${inviterName}'s` : "an"} invitation to fill ${parsedMessage.roleName} and are now filling that role`
+            : `${inviteeName || "Someone"} accepted ${hasKnownInviter ? `${inviterName}'s` : "an"} invitation to fill ${parsedMessage.roleName}`,
+          icon: "UserCheck",
+          bannerClass: null,
+          color: EVENT_PREVIEW_TEXT_COLORS.role,
+        };
+      }
+      return {
+        text: inviteeName === "You"
+          ? `You accepted ${hasKnownInviter ? `${inviterName}'s` : "an"} invitation for ${parsedMessage.roleName}`
+          : `${inviteeName || "Someone"} accepted ${hasKnownInviter ? `${inviterName}'s` : "an"} invitation for ${parsedMessage.roleName}`,
+        icon: "UserCheck",
+        bannerClass: null,
+        color: EVENT_PREVIEW_TEXT_COLORS.role,
+      };
+    }
+
+    case "role_invitation_assigned_legacy":
+      return {
+        text: `${parsedMessage.inviteeName || "Someone"} accepted an invitation for ${parsedMessage.roleName || "a role"}`,
+        icon: "UserCheck",
+        bannerClass: null,
+        color: EVENT_PREVIEW_TEXT_COLORS.role,
+      };
+
+    case "role_closed": {
+      const roleName = parsedMessage.roleName || "Vacant Role";
+      return {
+        text: `Role closed: ${roleName}`,
+        icon: "CircleX",
+        bannerClass: "event-banner--neutral",
+        color: EVENT_PREVIEW_TEXT_COLORS["event-banner--neutral"],
+        senderPrefix: "by ",
+      };
+    }
+
+    case "role_updated": {
+      const roleName = parsedMessage.roleName || "Vacant Role";
+      return {
+        text: `Role edited: ${roleName}`,
+        icon: "Pencil",
+        bannerClass: null,
+        color: EVENT_PREVIEW_TEXT_COLORS.role,
+        senderPrefix: "by ",
+      };
+    }
+
+    case "role_deleted": {
+      const roleName = parsedMessage.roleName || "Vacant Role";
+      return {
+        text: `Role deleted: ${roleName}`,
+        icon: "UserMinus",
+        bannerClass: "event-banner--neutral",
+        color: EVENT_PREVIEW_TEXT_COLORS["event-banner--neutral"],
+        senderPrefix: "by ",
+      };
+    }
+
+    case "role_created": {
+      const roleName = parsedMessage.roleName || "Vacant Role";
+      return {
+        text: `New role ${roleName} created.`,
+        icon: "UserSearch",
+        bannerClass: null,
+        color: EVENT_PREVIEW_TEXT_COLORS.role,
+        senderPrefix: "by ",
+      };
+    }
+
+    case "role_reopened_admin": {
+      return {
+        text: `Role reopened: ${parsedMessage.roleName || "Vacant Role"}`,
+        icon: "UserSearch",
+        bannerClass: null,
+        color: EVENT_PREVIEW_TEXT_COLORS.role,
+        senderPrefix: "by ",
+      };
+    }
+
     case "role_reopened": {
       const userName = getActorLabel(
         parsedMessage.userId,
@@ -245,34 +411,41 @@ export const getEventPreview = (lastMessage, currentUser = null) => {
       );
 
       return {
-        text:
-          userName === "You"
-            ? `${parsedMessage.roleName} is open again`
-            : `A former team member has left the role ${parsedMessage.roleName}`,
+        text: userName
+          ? userName === "You"
+            ? `You left the role ${parsedMessage.roleName || "Vacant Role"}. It is open again.`
+            : `${userName} left the role ${parsedMessage.roleName || "Vacant Role"}. It is open again.`
+          : `Role reopened: ${parsedMessage.roleName || "Vacant Role"}`,
         icon: "UserSearch",
         bannerClass: null,
         color: EVENT_PREVIEW_TEXT_COLORS.role,
+        senderPrefix: userName ? null : "by ",
       };
     }
 
     case "role_filled": {
-      const userName = getActorLabel(
+      const filledUserName = getActorLabel(
         parsedMessage.userId,
         parsedMessage.userName,
         currentUser,
       );
-      const hasKnownFilledUser =
-        userName && userName.trim().toLowerCase() !== "someone";
+      const filledByName = getActorLabel(
+        parsedMessage.filledById,
+        parsedMessage.filledByName,
+        currentUser,
+      );
 
       return {
-        text: hasKnownFilledUser
-          ? userName === "You"
-            ? `You filled ${parsedMessage.roleName}`
-            : `${userName} filled ${parsedMessage.roleName}`
-          : `${parsedMessage.roleName} was marked as filled`,
+        text: filledUserName && filledByName
+          ? `The role ${parsedMessage.roleName} has been filled by ${sentenceObject(filledUserName)}, approved by ${sentenceObject(filledByName)}.`
+          : filledUserName
+            ? `The role ${parsedMessage.roleName} has been filled by ${sentenceObject(filledUserName)}.`
+            : `The role ${parsedMessage.roleName} has been marked filled.`,
         icon: "UserCheck",
         bannerClass: null,
         color: EVENT_PREVIEW_TEXT_COLORS.role,
+        senderName: filledByName || parsedMessage.filledByName || null,
+        senderPrefix: "by ",
       };
     }
 

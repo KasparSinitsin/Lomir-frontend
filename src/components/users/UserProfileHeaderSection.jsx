@@ -1,10 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useLayoutEffect } from "react";
 import Tooltip from "../common/Tooltip";
 import {
   Eye,
   EyeClosed,
   Calendar,
-  UserCheck,
   FlaskConical,
 } from "lucide-react";
 import {
@@ -29,10 +28,14 @@ const UserProfileHeaderSection = ({
   memberSince = null,
   matchScore = null,
   className = "",
-  filledRoleName = null,
-  teamName = null,
 }) => {
   const [imageError, setImageError] = useState(false);
+  const [dateIsNarrow, setDateIsNarrow] = useState(false);
+  const dateIsNarrowRef = useRef(false);
+  dateIsNarrowRef.current = dateIsNarrow;
+  const titleContainerRef = useRef(null);
+  const titleProbeRef = useRef(null);
+  const dateRef = useRef(null);
   const showMatchBadge = matchScore != null;
   const matchTier = showMatchBadge ? getMatchTier(matchScore) : null;
   // Helper function to get the avatar image URL or return null for fallback
@@ -77,7 +80,7 @@ const UserProfileHeaderSection = ({
     try {
       return {
         short: format(new Date(memberSince), "MMM yyyy"),
-        full: format(new Date(memberSince), "MMMM yyyy"),
+        full: format(new Date(memberSince), "MMMM d, yyyy"),
       };
     } catch (error) {
       console.error("Error formatting member since date:", error);
@@ -95,8 +98,33 @@ const UserProfileHeaderSection = ({
     return user?.username;
   };
 
+  const displayName = getDisplayName();
+
+  useLayoutEffect(() => {
+    const container = titleContainerRef.current;
+    const probe = titleProbeRef.current;
+    if (!container || !probe) return;
+
+    const update = () => {
+      const containerWidth = container.clientWidth;
+      if (containerWidth === 0) return;
+      const dateEl = dateRef.current;
+      const reservedWidth =
+        dateIsNarrowRef.current && dateEl ? dateEl.offsetWidth + 16 : 0;
+      probe.textContent = displayName;
+      setDateIsNarrow(probe.scrollWidth > containerWidth - reservedWidth);
+    };
+
+    const resizeObserver = new ResizeObserver(update);
+    resizeObserver.observe(container);
+    if (dateRef.current) resizeObserver.observe(dateRef.current);
+    update();
+
+    return () => resizeObserver.disconnect();
+  }, [displayName]);
+
   return (
-    <div className={`flex items-start space-x-4 ${className}`}>
+    <div className={`relative flex items-start space-x-4 ${className}`}>
       {/* Avatar */}
       <div className="avatar relative">
         <div className="w-20 h-20 rounded-full relative overflow-hidden">
@@ -120,61 +148,74 @@ const UserProfileHeaderSection = ({
           )}
         </div>
         {matchTier && (
-          <div
-            className={`absolute -top-1 -left-1 w-6 h-6 rounded-full ring-2 ring-white flex items-center justify-center ${matchTier.bg}`}
-            title={`${matchTier.pct}% ${matchTier.label.toLowerCase()}`}
+          <Tooltip
+            content={`${matchTier.pct}% ${matchTier.label.toLowerCase()}`}
+            position="bottom"
+            wrapperClassName={`absolute -top-1 -left-1 w-6 h-6 rounded-full ring-2 ring-white flex items-center justify-center cursor-help ${matchTier.bg}`}
           >
             <matchTier.Icon
               size={12}
               className="text-white"
               strokeWidth={2.5}
             />
-          </div>
+          </Tooltip>
         )}
       </div>
 
       {/* User Info */}
       <div className="flex-1">
-        <h1 className="text-2xl font-bold leading-[120%] mb-[0.2em]">
-          {getDisplayName()}
+        <h1
+          ref={titleContainerRef}
+          className="text-2xl font-bold leading-[110%] mb-[0.2em] relative"
+        >
+          {displayName}
+          <span
+            ref={titleProbeRef}
+            className="invisible absolute whitespace-nowrap pointer-events-none left-0 top-0 font-bold"
+            aria-hidden="true"
+          />
         </h1>
-        <div className="flex items-center flex-wrap gap-x-3 gap-y-0.5 text-sm">
+        <div className="flex items-center flex-wrap gap-x-3 gap-y-0.5 text-sm leading-[110%]">
           <span className="text-base-content/70">@{user?.username}</span>
-
-          {filledRoleName && (
-            <span className="flex items-center gap-1 text-base-content/70">
-              <UserCheck size={12} className="flex-shrink-0" />
-              <span>
-                {filledRoleName}
-                {teamName && <span className="text-base-content/50"> in {teamName}</span>}
-              </span>
-            </span>
-          )}
 
           {/* Visibility Indicator - Only show for own profile */}
           {shouldShowVisibilityIndicator() && (
             <div className="flex items-center text-base-content/70">
               {isUserProfilePublic() ? (
                 <>
-                  <Eye size={16} className="mr-1 text-green-600" />
-                  <span>Public</span>
+                  <Eye size={14} className={`text-green-600${dateIsNarrow ? "" : " mr-1"}`} />
+                  {!dateIsNarrow && <span>Public</span>}
                 </>
               ) : (
                 <>
-                  <EyeClosed size={16} className="mr-1 text-gray-500" />
-                  <span>Private</span>
+                  <EyeClosed size={14} className={`text-gray-500${dateIsNarrow ? "" : " mr-1"}`} />
+                  {!dateIsNarrow && <span>Private</span>}
                 </>
               )}
             </div>
           )}
-          {isSyntheticUser(user) && (
-            <Tooltip
-              content={DEMO_PROFILE_TOOLTIP}
-              wrapperClassName="flex items-start text-base-content/50 text-sm"
-            >
-              <FlaskConical className="h-3.5 w-auto mr-0.5 flex-shrink-0 mt-px" />
-              <span className="leading-[1.15]">Demo Profile</span>
-            </Tooltip>
+          {((dateIsNarrow && getMemberSinceDate()) || isSyntheticUser(user)) && (
+            <span className="flex items-center gap-3 flex-shrink-0">
+              {dateIsNarrow && getMemberSinceDate() && (
+                <Tooltip
+                  content={`Joined Lomir on ${getMemberSinceDate().full}`}
+                  position="bottom"
+                  wrapperClassName="flex items-center text-base-content/70 flex-shrink-0 cursor-help"
+                >
+                  <Calendar size={14} className="mr-1" />
+                  <span>{getMemberSinceDate().short}</span>
+                </Tooltip>
+              )}
+              {isSyntheticUser(user) && (
+                <Tooltip
+                  content={DEMO_PROFILE_TOOLTIP}
+                  wrapperClassName="flex items-start text-base-content/50"
+                >
+                  <FlaskConical size={14} className={`flex-shrink-0 mt-px${dateIsNarrow ? "" : " mr-0.5"}`} />
+                  {!dateIsNarrow && <span className="leading-[1.15]">Demo Profile</span>}
+                </Tooltip>
+              )}
+            </span>
           )}
         </div>
       </div>
@@ -182,11 +223,17 @@ const UserProfileHeaderSection = ({
       {/* Member Since - top right */}
       {getMemberSinceDate() && (
         <div
-          className="flex items-center text-xs text-base-content/60 flex-shrink-0 tooltip tooltip-bottom tooltip-lomir cursor-help"
-          data-tip={`Joined Lomir in ${getMemberSinceDate().full}`}
+          ref={dateRef}
+          className={`flex-shrink-0${dateIsNarrow ? " absolute opacity-0 pointer-events-none" : ""}`}
         >
-          <Calendar size={12} className="mr-1" />
-          <span>{getMemberSinceDate().short}</span>
+          <Tooltip
+            content={`Joined Lomir on ${getMemberSinceDate().full}`}
+            position="bottom"
+            wrapperClassName="flex items-center text-base-content/70 cursor-help"
+          >
+            <Calendar size={14} className="mr-1" />
+            <span>{getMemberSinceDate().short}</span>
+          </Tooltip>
         </div>
       )}
     </div>

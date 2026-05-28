@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { UI_TEXT } from "../../constants/uiText";
 import Modal from "../common/Modal";
 import UserBioSection from "./UserBioSection";
@@ -10,10 +11,18 @@ import TagAwardsModal from "../badges/TagAwardsModal";
 import UserProfileHeaderSection from "./UserProfileHeaderSection";
 import { messageService } from "../../services/messageService";
 import { userService } from "../../services/userService";
+import {
+  useUserBadges,
+  useUserProfile,
+  useUserTags,
+  userBadgesQueryKey,
+  userProfileQueryKey,
+} from "../../hooks/useUserQueries";
 import Button from "../common/Button";
 import Alert from "../common/Alert";
+import Tooltip from "../common/Tooltip";
 import { useAuth } from "../../contexts/AuthContext";
-import { Edit, MessageCircle, UserPlus, Award, Check, X, Ruler } from "lucide-react";
+import { Edit, MessageCircle, UserPlus, Award, Check, CheckCheck, X, Ruler, User } from "lucide-react";
 import TeamInviteModal from "../teams/TeamInviteModal";
 import BadgeAwardModal from "../badges/BadgeAwardModal";
 import SupercategoryAwardsModal from "../badges/SupercategoryAwardsModal";
@@ -90,6 +99,7 @@ const UserDetailsModal = ({
   invitationPrefillRoleName = null,
 }) => {
   const { user: currentUser, isAuthenticated } = useAuth();
+  const queryClient = useQueryClient();
   const normalizedRoleMatchTagIds = useMemo(
     () => normalizeNumericSet(roleMatchTagIds),
     [roleMatchTagIds],
@@ -131,6 +141,10 @@ const UserDetailsModal = ({
 
   // =====================================================
 
+  const fetchUserAwards = useCallback(
+    () => userService.getUserBadges(userId),
+    [userId],
+  );
   const {
     handleBadgeCategoryClick,
     handleBadgeClick,
@@ -139,7 +153,7 @@ const UserDetailsModal = ({
     badgeCategoryModalProps,
     tagAwardsModalProps,
     supercategoryModalProps,
-  } = useAwardModals(userId);
+  } = useAwardModals({ fetchTagAwards: fetchUserAwards, fetchBadgeAwards: fetchUserAwards });
 
   // Determine if this modal is showing the current user (more reliable than comparing fetched user)
   const ownProfile =
@@ -150,135 +164,130 @@ const UserDetailsModal = ({
   const isNumericUserId = /^\d+$/.test(String(userId ?? "").trim());
   const visibleUserBadges = Array.isArray(user?.badges) ? user.badges : [];
   const hiddenAwardIds = user?.hidden_award_ids ?? user?.hiddenAwardIds ?? [];
+  const viewedUserProfileQuery = useUserProfile(userId, {
+    enabled: Boolean(isOpen && userId),
+  });
+  const viewedUserTagsQuery = useUserTags(userId, {
+    enabled: Boolean(isOpen && userId),
+  });
+  const shouldFetchCurrentUserMatchData =
+    Boolean(
+      isOpen &&
+        isAuthenticated &&
+        currentUser?.id &&
+        Number(currentUser.id) !== Number(userId) &&
+        (showMatchHighlights || hasRoleMatchTagIds || hasRoleMatchBadgeNames),
+    ) &&
+    !hasRoleMatchTagIds &&
+    !hasRoleMatchBadgeNames;
+  const currentUserTagsQuery = useUserTags(currentUser?.id, {
+    enabled: shouldFetchCurrentUserMatchData,
+  });
+  const currentUserBadgesQuery = useUserBadges(currentUser?.id, {
+    enabled: shouldFetchCurrentUserMatchData,
+  });
+  const currentUserProfileQuery = useUserProfile(currentUser?.id, {
+    enabled: Boolean(
+      isOpen && isAuthenticated && currentUser?.id && showMatchHighlights,
+    ),
+  });
 
-  const fetchUserDetails = useCallback(async () => {
-    try {
-      setLoading(true);
+  useEffect(() => {
+    setLoading(viewedUserProfileQuery.isLoading);
+  }, [viewedUserProfileQuery.isLoading]);
+
+  useEffect(() => {
+    if (!isOpen || !userId) return;
+    if (!viewedUserProfileQuery.data) return;
+
+    const userData = viewedUserProfileQuery.data;
+    const preservedDistanceKm =
+      distanceKm ??
+      user?.distanceKm ??
+      user?.distance_km ??
+      userData?.distanceKm ??
+      userData?.distance_km ??
+      null;
+
+    setError(null);
+    setShowDeletedUserPlaceholder(false);
+    setUser({
+      ...userData,
+      distance_km: preservedDistanceKm,
+      distanceKm: preservedDistanceKm,
+    });
+
+    setFormData({
+      firstName: userData?.first_name || userData?.firstName || "",
+      lastName: userData?.last_name || userData?.lastName || "",
+      bio: userData?.bio || "",
+      postalCode: userData?.postal_code || userData?.postalCode || "",
+      selectedTags: [],
+      tagExperienceLevels: {},
+      tagInterestLevels: {},
+    });
+  }, [
+    distanceKm,
+    isOpen,
+    user?.distanceKm,
+    user?.distance_km,
+    userId,
+    viewedUserProfileQuery.data,
+  ]);
+
+  useEffect(() => {
+    if (!isOpen || !userId) return;
+    setUserTags(viewedUserTagsQuery.data ?? []);
+  }, [isOpen, userId, viewedUserTagsQuery.data]);
+
+  useEffect(() => {
+    if (!viewedUserProfileQuery.error) return;
+
+    console.error("Error fetching user details:", viewedUserProfileQuery.error);
+    if (viewedUserProfileQuery.error.response?.status === 404 && isNumericUserId) {
+      setUser(null);
+      setUserTags([]);
       setError(null);
-      setShowDeletedUserPlaceholder(false);
-
-      const response = await userService.getUserById(userId);
-
-      // Robust unwrap: axios response + API wrapper { success, data }
-      const payload = response?.data ?? response;
-      const userData =
-        payload?.success !== undefined
-          ? payload?.data
-          : (payload?.data?.data ?? payload?.data ?? payload);
-
-      const preservedDistanceKm =
-        distanceKm ??
-        user?.distanceKm ??
-        user?.distance_km ??
-        userData?.distanceKm ??
-        userData?.distance_km ??
-        null;
-
-      setUser({
-        ...userData,
-        distance_km: preservedDistanceKm,
-        distanceKm: preservedDistanceKm,
-      });
-
-      // Fetch full tag objects (with badge_credits)
-      try {
-        const tagsResponse = await userService.getUserTags(userId);
-        setUserTags(tagsResponse?.data || []);
-      } catch (tagErr) {
-        console.error("Error fetching user tags:", tagErr);
-        setUserTags([]);
-      }
-
-      setFormData({
-        firstName: userData?.first_name || userData?.firstName || "",
-        lastName: userData?.last_name || userData?.lastName || "",
-        bio: userData?.bio || "",
-        postalCode: userData?.postal_code || userData?.postalCode || "",
-        selectedTags: [],
-        tagExperienceLevels: {},
-        tagInterestLevels: {},
-      });
-    } catch (err) {
-      console.error("Error fetching user details:", err);
-      if (err.response?.status === 404 && isNumericUserId) {
-        setUser(null);
-        setUserTags([]);
-        setError(null);
-        setShowDeletedUserPlaceholder(true);
-        return;
-      }
-      setShowDeletedUserPlaceholder(false);
-      setError("Failed to load user details. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  }, [distanceKm, isNumericUserId, user?.distanceKm, user?.distance_km, userId]);
-
-  useEffect(() => {
-    if (isOpen && userId) {
-      fetchUserDetails();
-    }
-  }, [isOpen, userId, fetchUserDetails]);
-
-  // Fetch CURRENT user's tags/badges for overlap highlighting (not the viewed user's)
-  useEffect(() => {
-    if (
-      !showMatchHighlights &&
-      !hasRoleMatchTagIds &&
-      !hasRoleMatchBadgeNames
-    ) {
+      setShowDeletedUserPlaceholder(true);
       return;
     }
-    if (!isOpen || !isAuthenticated || !currentUser?.id) return;
-    // Don't highlight own profile
-    if (Number(currentUser.id) === Number(userId)) return;
-    // Skip when role context provides the matching data
-    if (hasRoleMatchTagIds || hasRoleMatchBadgeNames) return;
 
-    const fetchCurrentUserData = async () => {
-      try {
-        const tagsRes = await userService.getUserTags(currentUser.id);
-        const tagData = Array.isArray(tagsRes?.data)
-          ? tagsRes.data
-          : tagsRes?.data?.data || [];
-        const tagIds = new Set(
-          tagData
-            .map((t) => Number(t.tagId ?? t.tag_id ?? t.id))
-            .filter(Number.isFinite),
-        );
-        setCurrentUserTagIds(tagIds);
+    setShowDeletedUserPlaceholder(false);
+    setError("Failed to load user details. Please try again.");
+  }, [isNumericUserId, viewedUserProfileQuery.error]);
 
-        const badgesRes = await userService.getUserBadges(currentUser.id);
-        const badgeData = Array.isArray(badgesRes?.data)
-          ? badgesRes.data
-          : badgesRes?.data?.data || [];
-        const badgeNames = new Set(
-          badgeData
-            .map((b) =>
-              (b.badgeName ?? b.badge_name ?? b.name ?? "")
-                .trim()
-                .toLowerCase(),
-            )
-            .filter(Boolean),
-        );
-        setCurrentUserBadgeNames(badgeNames);
-      } catch (err) {
-        console.warn(
-          "Could not fetch current user data for matching highlights:",
-          err,
-        );
-      }
-    };
+  useEffect(() => {
+    if (!viewedUserTagsQuery.error) return;
 
-    fetchCurrentUserData();
+    console.error("Error fetching user tags:", viewedUserTagsQuery.error);
+    setUserTags([]);
+  }, [viewedUserTagsQuery.error]);
+
+  // Resolve CURRENT user's tags/badges for overlap highlighting (not the viewed user's)
+  useEffect(() => {
+    if (!shouldFetchCurrentUserMatchData) return;
+
+    const tagIds = new Set(
+      (currentUserTagsQuery.data ?? [])
+        .map((t) => Number(t.tagId ?? t.tag_id ?? t.id))
+        .filter(Number.isFinite),
+    );
+    setCurrentUserTagIds(tagIds);
+
+    const badgeNames = new Set(
+      (currentUserBadgesQuery.data ?? [])
+        .map((b) =>
+          (b.badgeName ?? b.badge_name ?? b.name ?? "")
+            .trim()
+            .toLowerCase(),
+        )
+        .filter(Boolean),
+    );
+    setCurrentUserBadgeNames(badgeNames);
   }, [
-    currentUser?.id,
-    hasRoleMatchBadgeNames,
-    hasRoleMatchTagIds,
-    isAuthenticated,
-    isOpen,
-    showMatchHighlights,
-    userId,
+    currentUserBadgesQuery.data,
+    currentUserTagsQuery.data,
+    shouldFetchCurrentUserMatchData,
   ]);
 
   useEffect(() => {
@@ -287,34 +296,34 @@ const UserDetailsModal = ({
       return;
     }
 
-    let cancelled = false;
+    setDistanceViewerUser(currentUserProfileQuery.data ?? currentUser);
+  }, [
+    currentUser,
+    currentUser?.id,
+    currentUserProfileQuery.data,
+    isAuthenticated,
+    isOpen,
+    showMatchHighlights,
+  ]);
 
-    const fetchDistanceViewerUser = async () => {
-      try {
-        const response = await userService.getUserById(currentUser.id);
-        const payload = response?.data ?? response;
-        const viewerData =
-          payload?.success !== undefined
-            ? payload?.data
-            : (payload?.data?.data ?? payload?.data ?? payload);
+  useEffect(() => {
+    if (!currentUserTagsQuery.error && !currentUserBadgesQuery.error) return;
 
-        if (!cancelled) {
-          setDistanceViewerUser(viewerData ?? currentUser);
-        }
-      } catch (err) {
-        console.warn("Could not fetch current user details for distance fallback:", err);
-        if (!cancelled) {
-          setDistanceViewerUser(currentUser);
-        }
-      }
-    };
+    console.warn("Could not fetch current user data for matching highlights:", {
+      tagsError: currentUserTagsQuery.error ?? null,
+      badgesError: currentUserBadgesQuery.error ?? null,
+    });
+  }, [currentUserBadgesQuery.error, currentUserTagsQuery.error]);
 
-    fetchDistanceViewerUser();
+  useEffect(() => {
+    if (!currentUserProfileQuery.error) return;
 
-    return () => {
-      cancelled = true;
-    };
-  }, [currentUser, currentUser?.id, isAuthenticated, isOpen, showMatchHighlights]);
+    console.warn(
+      "Could not fetch current user details for distance fallback:",
+      currentUserProfileQuery.error,
+    );
+    setDistanceViewerUser(currentUser);
+  }, [currentUser, currentUserProfileQuery.error]);
 
   useEffect(() => {
     setIsEditing(mode === "edit");
@@ -537,7 +546,7 @@ const UserDetailsModal = ({
     return (
       <span
         className={`flex items-center gap-1.5 text-sm ${
-          isWithinRange ? "text-success" : "text-error/70"
+          isWithinRange ? "text-success" : "text-slate-500"
         }`}
       >
         <Ruler size={14} className="flex-shrink-0" />
@@ -558,69 +567,80 @@ const UserDetailsModal = ({
 
   // =================================================
 
-  // Title node (TeamDetailsModal style)
   const modalTitle = (
-    <div className="flex justify-between items-center w-full">
-      <h2 className="text-xl font-medium text-primary">
-        {isEditing ? "Edit Profile" : "User Details"}
-      </h2>
-
-      <div className="flex items-center space-x-2">
-        {!isEditing && !showDeletedUserPlaceholder && (
-          <>
-            {showEdit && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  window.open("/profile?mode=edit", "_blank", "noopener,noreferrer");
-                  onClose?.();
-                }}
-                className="hover:bg-[#7ace82] hover:text-[#036b0c]"
-                icon={<Edit size={16} />}
-              >
-                Edit
-              </Button>
-            )}
-
-            {showChatInvite && (
-              <>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleStartChat}
-                  className="flex items-center gap-1"
-                >
-                  <MessageCircle size={16} />
-                  <span className="hidden sm:inline">Chat</span>
-                </Button>
-
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleInviteToTeam}
-                  className="flex items-center gap-1"
-                >
-                  <UserPlus size={16} />
-                  <span className="hidden sm:inline">Invite</span>
-                </Button>
-
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setIsBadgeAwardModalOpen(true)}
-                  className="flex items-center gap-1"
-                >
-                  <Award size={16} />
-                  <span className="hidden sm:inline">Award</span>
-                </Button>
-              </>
-            )}
-          </>
-        )}
-      </div>
-    </div>
+    <h2 className="text-xl font-medium text-primary leading-[110%] flex items-center gap-2">
+      {isEditing ? <Edit size={20} className="flex-shrink-0" /> : <User size={20} className="flex-shrink-0" />}
+      {isEditing ? "Edit Profile" : "User Details"}
+    </h2>
   );
+
+  const modalHeaderActions = !isEditing && !showDeletedUserPlaceholder ? (
+    <div className="flex items-center gap-1">
+      {showEdit && (
+        <Tooltip
+          content="Open your profile editor in a new tab and close these details."
+          position="bottom"
+        >
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              window.open("/profile?mode=edit", "_blank", "noopener,noreferrer");
+              onClose?.();
+            }}
+            className="hover:bg-[#7ace82] hover:text-[#036b0c]"
+            icon={<Edit size={16} />}
+            aria-label="Edit your profile"
+          >
+            <span className="hidden sm:inline">Edit</span>
+          </Button>
+        </Tooltip>
+      )}
+      {showChatInvite && (
+        <>
+          <Tooltip content="Start a private chat with this person." position="bottom">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleStartChat}
+              className="flex items-center gap-1"
+              aria-label="Start chat"
+            >
+              <MessageCircle size={16} />
+              <span className="hidden sm:inline">Chat</span>
+            </Button>
+          </Tooltip>
+          <Tooltip content="Invite this person to one of your teams." position="bottom">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleInviteToTeam}
+              className="flex items-center gap-1"
+              aria-label="Invite to team"
+            >
+              <UserPlus size={16} />
+              <span className="hidden sm:inline">Invite</span>
+            </Button>
+          </Tooltip>
+          <Tooltip
+            content="Award this person a badge for their skills or contributions."
+            position="bottom"
+          >
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsBadgeAwardModalOpen(true)}
+              className="flex items-center gap-1"
+              aria-label="Award badge"
+            >
+              <Award size={16} />
+              <span className="hidden sm:inline">Award</span>
+            </Button>
+          </Tooltip>
+        </>
+      )}
+    </div>
+  ) : null;
 
   return (
     <>
@@ -628,6 +648,7 @@ const UserDetailsModal = ({
         isOpen={isOpen}
         onClose={onClose}
         title={modalTitle}
+        headerActions={modalHeaderActions}
         position="center"
         size="default"
         maxHeight="max-h-[90vh]"
@@ -635,6 +656,7 @@ const UserDetailsModal = ({
         closeOnBackdrop={true}
         closeOnEscape={true}
         showCloseButton={true}
+        closeButtonTooltip="Close user details and return to the previous view."
         zIndexClass={zIndexClass}
         boxZIndexClass={boxZIndexClass}
         zIndexStyle={zIndexStyle}
@@ -728,15 +750,16 @@ const UserDetailsModal = ({
                       return effectiveMatchIds.has(tagId);
                     }).length;
                 if (matchCount > 0) {
+                  const MatchIcon = matchCount === total ? CheckCheck : Check;
                   return (
                     <span className="flex items-center gap-1.5 text-sm text-success">
-                      <Check size={14} className="flex-shrink-0" />
+                      <MatchIcon size={14} className="flex-shrink-0" />
                       <span>{matchCount}/{total} in common</span>
                     </span>
                   );
                 }
                 return (
-                  <span className="flex items-center gap-1.5 text-sm text-error/70">
+                  <span className="flex items-center gap-1.5 text-sm text-slate-500">
                     <X size={14} className="flex-shrink-0" />
                     <span>None in common</span>
                   </span>
@@ -791,15 +814,16 @@ const UserDetailsModal = ({
                       return effectiveMatchNames.has(name);
                     }).length;
                 if (matchCount > 0) {
+                  const MatchIcon = matchCount === total ? CheckCheck : Check;
                   return (
                     <span className="flex items-center gap-1.5 text-sm text-success">
-                      <Check size={14} className="flex-shrink-0" />
+                      <MatchIcon size={14} className="flex-shrink-0" />
                       <span>{matchCount}/{total} in common</span>
                     </span>
                   );
                 }
                 return (
-                  <span className="flex items-center gap-1.5 text-sm text-error/70">
+                  <span className="flex items-center gap-1.5 text-sm text-slate-500">
                     <X size={14} className="flex-shrink-0" />
                     <span>None in common</span>
                   </span>
@@ -836,6 +860,7 @@ const UserDetailsModal = ({
           inviteeUsername={user.username}
           inviteeAvatar={user.avatar_url || user.avatarUrl}
           inviteeBio={user.bio}
+          inviteeIsSynthetic={user.is_synthetic ?? user.isSynthetic}
           prefillTeamId={invitationPrefillTeamId}
           prefillRoleId={invitationPrefillRoleId}
           prefillTeamName={invitationPrefillTeamName}
@@ -877,9 +902,15 @@ const UserDetailsModal = ({
           awardeeLastName={user.last_name || user.lastName}
           awardeeUsername={user.username}
           awardeeAvatar={user.avatar_url || user.avatarUrl}
+          awardeeBio={user.bio}
+          awardeeIsDemo={!!(user.is_synthetic ?? user.isSynthetic)}
           onAwardComplete={() => {
-            // Refresh user details to show updated badges
-            fetchUserDetails();
+            queryClient.invalidateQueries({
+              queryKey: userProfileQueryKey(user.id),
+            });
+            queryClient.invalidateQueries({
+              queryKey: userBadgesQueryKey(user.id),
+            });
           }}
         />
       )}

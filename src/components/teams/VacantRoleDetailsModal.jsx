@@ -1,9 +1,12 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useLayoutEffect, useRef } from "react";
+import { useQueries, useQueryClient } from "@tanstack/react-query";
+import { format } from "date-fns";
 import {
   MapPin,
   Globe,
   UserSearch,
   UserCheck,
+  UserX,
   Tag,
   Award,
   Calendar,
@@ -11,11 +14,17 @@ import {
   Mail,
   CircleDot,
   Check,
+  CheckCheck,
   X,
   ChevronRight,
   ChevronUp,
   SendHorizontal,
   FlaskConical,
+  Edit,
+  Trash2,
+  XCircle,
+  CheckCircle,
+  PenLine,
 } from "lucide-react";
 import Modal from "../common/Modal";
 import {
@@ -44,10 +53,22 @@ import TeamApplicationsModal from "./TeamApplicationsModal";
 import TeamInvitationDetailsModal from "./TeamInvitationDetailsModal";
 import TeamInvitesModal from "./TeamInvitesModal";
 import { useAuth } from "../../contexts/AuthContext";
-import { userService } from "../../services/userService";
-import { matchingService } from "../../services/matchingService";
+import {
+  fetchUserBadges,
+  fetchUserProfile,
+  fetchUserTags,
+  userBadgesQueryKey,
+  useUserBadges,
+  useUserProfile,
+  useUserTags,
+  userProfileQueryKey,
+  userTagsQueryKey,
+} from "../../hooks/useUserQueries";
 import { teamService } from "../../services/teamService";
 import { vacantRoleService } from "../../services/vacantRoleService";
+import { messageService } from "../../services/messageService";
+import useViewerPendingRequests from "../../hooks/useViewerPendingRequests";
+import { buildRoleInvitationAcceptedMessage } from "../../utils/roleEventMessages";
 import { getMatchTier } from "../../utils/matchScoreUtils";
 import {
   DEMO_PROFILE_TOOLTIP,
@@ -58,153 +79,30 @@ import {
   isSyntheticUser,
 } from "../../utils/userHelpers";
 import {
-  calculateDistanceKm,
   normalizeLocationData,
   formatLocation,
 } from "../../utils/locationUtils";
+import {
+  buildBadgeLookup,
+  buildTagLookup,
+  computeRoleUserMatch,
+} from "../../utils/matchHelpers";
+import { formatDisplayName } from "../../utils/nameFormatters";
 import { resolveFilledRoleUser } from "../../utils/vacantRoleUtils";
 import { useUserModalSafe } from "../../contexts/UserModalContext";
 import { useTeamModalSafe } from "../../contexts/TeamModalContext";
 import { useChildModalZIndex } from "../../contexts/ModalLayerContext";
 
-const MATCH_WEIGHTS = {
-  tags: 0.4,
-  badges: 0.3,
-  distance: 0.3,
-};
-
-const LOCATION_GRACE_KM = 20;
-const LOCATION_GRACE_SCORE = 0.25;
 const COLLAPSED_COUNT = 4;
 const EMPTY_TEAM_MEMBERS = [];
+const roleMemberMatchDataQueryKey = (memberId) => [
+  "users",
+  memberId ?? null,
+  "roleMemberMatchData",
+];
 
-const roundMatchValue = (value) => Math.round(value * 100) / 100;
 const toPossessive = (value) =>
   !value ? "your" : value.endsWith("s") ? `${value}'` : `${value}'s`;
-
-const computeRoleUserMatch = ({
-  role,
-  tags,
-  badges,
-  user,
-  userTagMap,
-  userBadgeMap,
-}) => {
-  if (!role || !user) return null;
-
-  const requiredTagIds = tags
-    .map((tag) => Number(tag.tagId ?? tag.tag_id ?? tag.id))
-    .filter(Number.isFinite);
-  const requiredBadgeKeys = badges
-    .map((badge) => (badge.name ?? badge.badgeName ?? badge.badge_name ?? "").trim().toLowerCase())
-    .filter(Boolean);
-
-  const matchingTags = requiredTagIds.filter((id) => userTagMap.has(id)).length;
-  const matchingBadges = requiredBadgeKeys.filter((key) => userBadgeMap.has(key)).length;
-
-  const tagScore =
-    requiredTagIds.length > 0 ? matchingTags / requiredTagIds.length : 0.5;
-  const badgeScore =
-    requiredBadgeKeys.length > 0
-      ? matchingBadges / requiredBadgeKeys.length
-      : 0.5;
-
-  const isRemote = role.isRemote ?? role.is_remote;
-  const maxDistanceKm = Number(role.maxDistanceKm ?? role.max_distance_km) || 50;
-
-  let distanceScore = 0.5;
-  let distanceKm = null;
-  let isWithinRange = null;
-
-  if (isRemote) {
-    distanceScore = 1;
-    isWithinRange = true;
-  } else {
-    distanceKm = calculateDistanceKm(user, role);
-
-    if (distanceKm !== null) {
-      if (distanceKm <= maxDistanceKm) {
-        distanceScore = 1;
-        isWithinRange = true;
-      } else if (distanceKm <= maxDistanceKm + LOCATION_GRACE_KM) {
-        distanceScore = LOCATION_GRACE_SCORE;
-        isWithinRange = false;
-      } else {
-        distanceScore = 0;
-        isWithinRange = false;
-      }
-    }
-  }
-
-  const matchScore =
-    MATCH_WEIGHTS.tags * tagScore +
-    MATCH_WEIGHTS.badges * badgeScore +
-    MATCH_WEIGHTS.distance * distanceScore;
-
-  return {
-    matchScore: roundMatchValue(matchScore),
-    matchDetails: {
-      tagScore: roundMatchValue(tagScore),
-      badgeScore: roundMatchValue(badgeScore),
-      distanceScore: roundMatchValue(distanceScore),
-      matchingTags,
-      totalRequiredTags: requiredTagIds.length,
-      matchingBadges,
-      totalRequiredBadges: requiredBadgeKeys.length,
-      distanceKm: distanceKm !== null ? Math.round(distanceKm) : null,
-      maxDistanceKm,
-      isWithinRange,
-    },
-  };
-};
-
-const extractProfilePayload = (response) => {
-  const payload = response?.data ?? response;
-
-  if (!payload) return null;
-  if (payload?.success !== undefined) return payload?.data ?? null;
-
-  return payload?.data?.data ?? payload?.data ?? payload;
-};
-
-const extractListPayload = (response) => {
-  if (Array.isArray(response)) return response;
-  if (Array.isArray(response?.data)) return response.data;
-  if (Array.isArray(response?.data?.data)) return response.data.data;
-  return [];
-};
-
-const buildTagLookup = (tagData) => {
-  const nextMap = new Map();
-
-  for (const tag of tagData) {
-    nextMap.set(Number(tag.id), {
-      badgeCredits: Number(tag.badge_credits ?? tag.badgeCredits ?? 0),
-    });
-  }
-
-  return nextMap;
-};
-
-const buildBadgeLookup = (badgeData) => {
-  const nextMap = new Map();
-
-  for (const badge of badgeData) {
-    const name = (badge.badgeName ?? badge.badge_name ?? badge.name ?? "")
-      .trim()
-      .toLowerCase();
-    const credits = Number(
-      badge.totalCredits ?? badge.total_credits ?? badge.credits ?? 0,
-    );
-    const existing = nextMap.get(name);
-
-    nextMap.set(name, {
-      totalCredits: (existing?.totalCredits || 0) + credits,
-    });
-  }
-
-  return nextMap;
-};
 
 const getRoleRecordId = (record) =>
   record?.role?.id ?? record?.roleId ?? record?.role_id ?? null;
@@ -322,14 +220,19 @@ const VacantRoleDetailsModal = ({
   role,
   matchScore = null,
   matchDetails = null,
+  showMatchScore = true,
   canManage = false,
   isTeamMember = false,
   viewAsUserId = null,
   viewAsUser = null,
   onViewApplicationDetails = null,
   hideActions = false,
+  onEdit = null,
+  onDelete = null,
+  onStatusChange = null,
 }) => {
   const { user: currentUser, isAuthenticated } = useAuth();
+  const queryClient = useQueryClient();
   const userModal = useUserModalSafe();
   const teamModal = useTeamModalSafe();
   const childTeamModalZIndex = useChildModalZIndex();
@@ -347,13 +250,10 @@ const VacantRoleDetailsModal = ({
   const [applicationsLoading, setApplicationsLoading] = useState(false);
   const [applicationsModalOpen, setApplicationsModalOpen] = useState(false);
   const [highlightApplicantId, setHighlightApplicantId] = useState(null);
-  const [roleCandidateMatchMap, setRoleCandidateMatchMap] = useState({});
-  const [applicantProfileMap, setApplicantProfileMap] = useState({});
   const [roleInvitations, setRoleInvitations] = useState([]);
   const [invitationsLoading, setInvitationsLoading] = useState(false);
   const [invitationsModalOpen, setInvitationsModalOpen] = useState(false);
   const [highlightInviteeId, setHighlightInviteeId] = useState(null);
-  const [inviteeProfileMap, setInviteeProfileMap] = useState({});
   const [roleTeamMembers, setRoleTeamMembers] = useState([]);
   const [teamMembersLoading, setTeamMembersLoading] = useState(false);
   const [isApplicationsExpanded, setIsApplicationsExpanded] = useState(false);
@@ -366,10 +266,18 @@ const VacantRoleDetailsModal = ({
     useState(null);
   const [viewerRoleStatusLoading, setViewerRoleStatusLoading] =
     useState(false);
+  const [filledRoleUserIds, setFilledRoleUserIds] = useState(new Set());
+  const [viewerTeamRoleLoading, setViewerTeamRoleLoading] = useState(false);
   const [isViewerApplicationDetailsOpen, setIsViewerApplicationDetailsOpen] =
     useState(false);
   const [isViewerInvitationDetailsOpen, setIsViewerInvitationDetailsOpen] =
     useState(false);
+  const [roleDateIsNarrow, setRoleDateIsNarrow] = useState(false);
+  const roleDateIsNarrowRef = useRef(false);
+  roleDateIsNarrowRef.current = roleDateIsNarrow;
+  const roleTitleContainerRef = useRef(null);
+  const roleTitleProbeRef = useRef(null);
+  const roleDateRef = useRef(null);
   const roleId = role?.id;
   const teamId = role?.teamId ?? role?.team_id ?? team?.id;
   const teamMembers = Array.isArray(team?.members) ? team.members : EMPTY_TEAM_MEMBERS;
@@ -378,6 +286,11 @@ const VacantRoleDetailsModal = ({
       .map((member) => member?.userId ?? member?.user_id ?? null)
       .filter((id) => id != null)
       .map(String),
+  );
+  const viewerIsTeamMember = Boolean(
+    isTeamMember ||
+      canManage ||
+      (currentUser?.id != null && currentTeamMemberIds.has(String(currentUser.id))),
   );
   const teamMemberScoreMap = useMemo(() => {
     const map = {};
@@ -395,7 +308,7 @@ const VacantRoleDetailsModal = ({
 
     return map;
   }, [roleTeamMembers]);
-  const canViewTeamMemberMatches = canManage || isTeamMember;
+  const canViewTeamMemberMatches = canManage || viewerIsTeamMember;
   const teamMemberIdsKey = JSON.stringify(
     [
       ...new Set(
@@ -406,7 +319,6 @@ const VacantRoleDetailsModal = ({
       ),
     ],
   );
-
   useEffect(() => {
     const fetchFullRole = async () => {
       if (!isOpen || !roleId || !teamId) return;
@@ -446,13 +358,10 @@ const VacantRoleDetailsModal = ({
       setAllApplications([]);
       setApplicationsModalOpen(false);
       setHighlightApplicantId(null);
-      setRoleCandidateMatchMap({});
-      setApplicantProfileMap({});
       setRoleInvitations([]);
       setInvitationsLoading(false);
       setInvitationsModalOpen(false);
       setHighlightInviteeId(null);
-      setInviteeProfileMap({});
       setRoleTeamMembers([]);
       setTeamMembersLoading(false);
       setIsApplicationsExpanded(false);
@@ -461,6 +370,8 @@ const VacantRoleDetailsModal = ({
       setViewerRoleApplicationRecord(null);
       setViewerRoleInvitationRecord(null);
       setViewerRoleStatusLoading(false);
+      setFilledRoleUserIds(new Set());
+      setViewerTeamRoleLoading(false);
       setIsViewerApplicationDetailsOpen(false);
       setIsViewerInvitationDetailsOpen(false);
     }
@@ -477,6 +388,8 @@ const VacantRoleDetailsModal = ({
   const status = displayRole?.status;
   const isRoleOpen = String(status ?? "").toLowerCase() === "open";
   const isFilledRole = String(status ?? "").toLowerCase() === "filled";
+  const isClosedRole = String(status ?? "").toLowerCase() === "closed";
+  const shouldShowRoleMatchScore = showMatchScore || isFilledRole;
   const resolvedFilledUser = resolveFilledRoleUser(displayRole, {
     viewAsUserId,
     viewAsUser,
@@ -488,6 +401,107 @@ const VacantRoleDetailsModal = ({
     ? resolvedFilledUser ?? viewAsUser ?? null
     : viewAsUser ?? currentUser ?? null;
   const comparisonUserSeedJson = JSON.stringify(comparisonUserSeed ?? null);
+  const shouldFetchComparisonData = Boolean(
+    isOpen &&
+      isAuthenticated &&
+      comparisonUserId &&
+      shouldShowRoleMatchScore,
+  );
+  const comparisonUserProfileQuery = useUserProfile(comparisonUserId, {
+    enabled: shouldFetchComparisonData,
+  });
+  const comparisonUserTagsQuery = useUserTags(comparisonUserId, {
+    enabled: shouldFetchComparisonData,
+  });
+  const comparisonUserBadgesQuery = useUserBadges(comparisonUserId, {
+    enabled: shouldFetchComparisonData,
+  });
+  const {
+    data: viewerPendingData,
+    isLoading: viewerPendingLoading,
+    isFetching: viewerPendingFetching,
+    error: viewerPendingError,
+  } = useViewerPendingRequests(currentUser?.id, {
+    enabled: Boolean(isOpen && isAuthenticated && currentUser?.id),
+  });
+  const roleMemberEntries = useMemo(
+    () => [
+      ...new Map(
+        teamMembers
+          .map((member) => {
+            const memberId = member?.userId ?? member?.user_id ?? null;
+            return memberId != null ? [String(memberId), member] : null;
+          })
+          .filter(Boolean),
+      ).entries(),
+    ],
+    [teamMembers],
+  );
+  const roleMatchTags = useMemo(
+    () =>
+      displayRole?.tags?.length > 0
+        ? displayRole.tags
+        : displayRole?.desiredTags || [],
+    [displayRole],
+  );
+  const roleMatchBadges = useMemo(
+    () =>
+      displayRole?.badges?.length > 0
+        ? displayRole.badges
+        : displayRole?.desiredBadges || [],
+    [displayRole],
+  );
+  const shouldFetchRoleMemberMatches = Boolean(
+    isOpen &&
+      displayRole &&
+      canViewTeamMemberMatches &&
+      isRoleOpen &&
+      isTeamMembersExpanded &&
+      roleMemberEntries.length > 0,
+  );
+  const roleMemberMatchQueries = useQueries({
+    queries: roleMemberEntries.map(([memberId, member]) => ({
+      queryKey: roleMemberMatchDataQueryKey(memberId),
+      queryFn: async () => {
+        const [profile, tags, badges] = await Promise.all([
+          queryClient.fetchQuery({
+            queryKey: userProfileQueryKey(memberId),
+            queryFn: () => fetchUserProfile(memberId),
+            staleTime: 30_000,
+          }),
+          queryClient.fetchQuery({
+            queryKey: userTagsQueryKey(memberId),
+            queryFn: () => fetchUserTags(memberId),
+            staleTime: 30_000,
+          }),
+          queryClient.fetchQuery({
+            queryKey: userBadgesQueryKey(memberId),
+            queryFn: () => fetchUserBadges(memberId),
+            staleTime: 30_000,
+          }),
+        ]);
+
+        return {
+          memberId,
+          member: {
+            ...(member || {}),
+            ...(profile || {}),
+          },
+          teamRole: member?.role ?? null,
+          userTagMap: buildTagLookup(tags),
+          userBadgeMap: buildBadgeLookup(badges),
+        };
+      },
+      enabled: shouldFetchRoleMemberMatches,
+      staleTime: 30_000,
+    })),
+  });
+  const roleMemberMatchQuerySignature = roleMemberMatchQueries
+    .map(
+      (query) =>
+        `${query.status}:${query.dataUpdatedAt ?? 0}:${query.errorUpdatedAt ?? 0}`,
+    )
+    .join("|");
   const roleNameForStatusMatch =
     displayRole?.roleName ??
     displayRole?.role_name ??
@@ -502,8 +516,6 @@ const VacantRoleDetailsModal = ({
       setViewerRoleStatusLoading(false);
       return;
     }
-
-    let cancelled = false;
 
     const fallbackTeam = {
       ...team,
@@ -562,7 +574,7 @@ const VacantRoleDetailsModal = ({
             null,
           fallbackTeam,
           fallbackRole,
-          { isInternalRoleApplication: isTeamMember },
+          { isInternalRoleApplication: viewerIsTeamMember },
         )
       : null;
     const seededInvitation = hasActiveInvitationStatus(
@@ -594,93 +606,81 @@ const VacantRoleDetailsModal = ({
             null,
           fallbackTeam,
           fallbackRole,
-          { isInternal: isTeamMember },
+          { isInternal: viewerIsTeamMember },
         )
       : null;
 
     setViewerRoleApplicationRecord(seededApplication);
     setViewerRoleInvitationRecord(seededInvitation);
-    setViewerRoleStatusLoading(true);
 
-    const fetchViewerRoleStatus = async () => {
-      const [applicationsResult, invitationsResult] = await Promise.allSettled([
-        teamService.getUserPendingApplications(),
-        teamService.getUserReceivedInvitations(),
-      ]);
+    if (viewerPendingLoading || viewerPendingFetching) {
+      setViewerRoleStatusLoading(true);
+      return;
+    }
 
-      if (cancelled) return;
-
-      let nextApplication = seededApplication;
-      let nextInvitation = seededInvitation;
-
-      if (applicationsResult.status === "fulfilled") {
-        const pendingApplications = Array.isArray(applicationsResult.value?.data)
-          ? applicationsResult.value.data
-          : [];
-        const foundApplication =
-          pendingApplications.find((application) =>
-            matchesRoleRecord(application, {
-              roleId,
-              teamId,
-              roleName: roleNameForStatusMatch,
-            }),
-          ) ?? null;
-
-        nextApplication = foundApplication
-          ? buildRoleStatusRecord(
-              foundApplication,
-              fallbackTeam,
-              fallbackRole,
-              { isInternalRoleApplication: isTeamMember },
-            )
-          : null;
-      }
-
-      if (invitationsResult.status === "fulfilled") {
-        const receivedInvitations = Array.isArray(invitationsResult.value?.data)
-          ? invitationsResult.value.data
-          : [];
-        const foundInvitation =
-          receivedInvitations.find((invitation) =>
-            matchesRoleRecord(invitation, {
-              roleId,
-              teamId,
-              roleName: roleNameForStatusMatch,
-            }),
-          ) ?? null;
-
-        nextInvitation = foundInvitation
-          ? buildRoleStatusRecord(
-              foundInvitation,
-              fallbackTeam,
-              fallbackRole,
-              { isInternal: isTeamMember },
-            )
-          : null;
-      }
-
-      setViewerRoleApplicationRecord(nextApplication);
-      setViewerRoleInvitationRecord(nextInvitation);
+    if (viewerPendingError) {
+      console.warn("Could not fetch viewer role status:", viewerPendingError);
       setViewerRoleStatusLoading(false);
-    };
+      return;
+    }
 
-    fetchViewerRoleStatus().catch((error) => {
-      console.warn("Could not fetch viewer role status:", error);
-      if (!cancelled) {
-        setViewerRoleApplicationRecord(seededApplication);
-        setViewerRoleInvitationRecord(seededInvitation);
-        setViewerRoleStatusLoading(false);
-      }
-    });
+    let nextApplication = seededApplication;
+    let nextInvitation = seededInvitation;
 
-    return () => {
-      cancelled = true;
-    };
+    const pendingApplications = Array.isArray(viewerPendingData?.applications)
+      ? viewerPendingData.applications
+      : [];
+    const foundApplication =
+      pendingApplications.find((application) =>
+        matchesRoleRecord(application, {
+          roleId,
+          teamId,
+          roleName: roleNameForStatusMatch,
+        }),
+      ) ?? null;
+
+    nextApplication = foundApplication
+      ? buildRoleStatusRecord(
+          foundApplication,
+          fallbackTeam,
+          fallbackRole,
+          { isInternalRoleApplication: viewerIsTeamMember },
+        )
+      : null;
+
+    const receivedInvitations = Array.isArray(viewerPendingData?.invitations)
+      ? viewerPendingData.invitations
+      : [];
+    const foundInvitation =
+      receivedInvitations.find((invitation) =>
+        matchesRoleRecord(invitation, {
+          roleId,
+          teamId,
+          roleName: roleNameForStatusMatch,
+        }),
+      ) ?? null;
+
+    nextInvitation = foundInvitation
+      ? buildRoleStatusRecord(
+          foundInvitation,
+          fallbackTeam,
+          fallbackRole,
+          { isInternal: viewerIsTeamMember },
+        )
+      : null;
+
+    setViewerRoleApplicationRecord(nextApplication);
+    setViewerRoleInvitationRecord(nextInvitation);
+    setViewerRoleStatusLoading(false);
   }, [
     displayRole,
     isAuthenticated,
     isOpen,
-    isTeamMember,
+    viewerIsTeamMember,
+    viewerPendingData,
+    viewerPendingError,
+    viewerPendingFetching,
+    viewerPendingLoading,
     role,
     roleId,
     roleNameForStatusMatch,
@@ -689,91 +689,105 @@ const VacantRoleDetailsModal = ({
   ]);
 
   useEffect(() => {
-    if (!isOpen || !isAuthenticated || !comparisonUserId) {
+    if (!isOpen || !isAuthenticated || !viewerIsTeamMember || !teamId || !currentUser?.id) {
+      setFilledRoleUserIds(new Set());
+      setViewerTeamRoleLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setViewerTeamRoleLoading(true);
+
+    const checkViewerHoldsRole = async () => {
+      try {
+        const response = await vacantRoleService.getVacantRoles(teamId, "filled");
+        if (cancelled) return;
+        const filledRoles = Array.isArray(response?.data) ? response.data : [];
+        const ids = new Set(
+          filledRoles
+            .map((r) => r.filledBy ?? r.filled_by ?? r.filledByUser?.id ?? r.filled_by_user?.id ?? null)
+            .filter((id) => id != null)
+            .map(String),
+        );
+        setFilledRoleUserIds(ids);
+      } catch {
+        setFilledRoleUserIds(new Set());
+      } finally {
+        if (!cancelled) setViewerTeamRoleLoading(false);
+      }
+    };
+
+    checkViewerHoldsRole();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, isAuthenticated, viewerIsTeamMember, teamId, currentUser?.id]);
+
+  useEffect(() => {
+    if (!shouldFetchComparisonData) {
       setComparisonUserProfile(null);
+      setLoadingComparisonData(false);
       setComparisonDataLoaded(false);
       setUserTagMap(new Map());
       setUserBadgeMap(new Map());
       return;
     }
 
-    const fetchComparisonData = async () => {
-      const fallbackComparisonUser = comparisonUserSeedJson
-        ? JSON.parse(comparisonUserSeedJson)
-        : null;
+    const fallbackComparisonUser = comparisonUserSeedJson
+      ? JSON.parse(comparisonUserSeedJson)
+      : null;
+    const queries = [
+      comparisonUserProfileQuery,
+      comparisonUserTagsQuery,
+      comparisonUserBadgesQuery,
+    ];
+    const hasPendingQuery = queries.some(
+      (query) => query.isLoading || query.isFetching,
+    );
 
-      try {
-        setLoadingComparisonData(true);
-        setComparisonDataLoaded(false);
+    setLoadingComparisonData(hasPendingQuery);
 
-        const [profileRes, tagsRes, badgesRes] = await Promise.allSettled([
-          userService.getUserById(comparisonUserId),
-          userService.getUserTags(comparisonUserId),
-          userService.getUserBadges(comparisonUserId),
-        ]);
+    if (hasPendingQuery) {
+      setComparisonDataLoaded(false);
+      return;
+    }
 
-        if (profileRes.status === "fulfilled") {
-          const profileData =
-            profileRes.value?.data?.data ?? profileRes.value?.data ?? null;
-          setComparisonUserProfile({
-            ...(fallbackComparisonUser || {}),
-            ...(profileData || {}),
-          });
-        } else {
-          setComparisonUserProfile(fallbackComparisonUser);
-        }
+    if (queries.some((query) => query.isError)) {
+      console.warn("Could not fetch user data for matching highlights:", {
+        profileError: comparisonUserProfileQuery.error ?? null,
+        tagsError: comparisonUserTagsQuery.error ?? null,
+        badgesError: comparisonUserBadgesQuery.error ?? null,
+      });
+    }
 
-        const tagData =
-          tagsRes.status === "fulfilled"
-            ? Array.isArray(tagsRes.value)
-              ? tagsRes.value
-              : Array.isArray(tagsRes.value?.data)
-                ? tagsRes.value.data
-                : tagsRes.value?.data?.data || []
-            : [];
-        const tMap = new Map();
-        for (const tag of tagData) {
-          tMap.set(Number(tag.id), {
-            badgeCredits: Number(tag.badge_credits ?? tag.badgeCredits ?? 0),
-          });
-        }
-        setUserTagMap(tMap);
-
-        const badgeData =
-          badgesRes.status === "fulfilled"
-            ? Array.isArray(badgesRes.value)
-              ? badgesRes.value
-              : Array.isArray(badgesRes.value?.data)
-                ? badgesRes.value.data
-                : badgesRes.value?.data?.data || []
-            : [];
-        const bMap = new Map();
-        for (const badge of badgeData) {
-          const name = (badge.badgeName ?? badge.badge_name ?? badge.name ?? "")
-            .trim()
-            .toLowerCase();
-          const credits = Number(
-            badge.totalCredits ?? badge.total_credits ?? badge.credits ?? 0,
-          );
-          const existing = bMap.get(name);
-          bMap.set(name, {
-            totalCredits: (existing?.totalCredits || 0) + credits,
-          });
-        }
-        setUserBadgeMap(bMap);
-      } catch (err) {
-        console.warn("Could not fetch user data for matching highlights:", err);
-        setComparisonUserProfile(fallbackComparisonUser);
-        setUserTagMap(new Map());
-        setUserBadgeMap(new Map());
-      } finally {
-        setLoadingComparisonData(false);
-        setComparisonDataLoaded(true);
-      }
-    };
-
-    fetchComparisonData();
-  }, [isOpen, isAuthenticated, comparisonUserId, comparisonUserSeedJson]);
+    setComparisonUserProfile({
+      ...(fallbackComparisonUser || {}),
+      ...(comparisonUserProfileQuery.data || {}),
+    });
+    setUserTagMap(buildTagLookup(comparisonUserTagsQuery.data ?? []));
+    setUserBadgeMap(buildBadgeLookup(comparisonUserBadgesQuery.data ?? []));
+    setLoadingComparisonData(false);
+    setComparisonDataLoaded(true);
+  }, [
+    comparisonUserBadgesQuery.data,
+    comparisonUserBadgesQuery.error,
+    comparisonUserBadgesQuery.isError,
+    comparisonUserBadgesQuery.isFetching,
+    comparisonUserBadgesQuery.isLoading,
+    comparisonUserProfileQuery.data,
+    comparisonUserProfileQuery.error,
+    comparisonUserProfileQuery.isError,
+    comparisonUserProfileQuery.isFetching,
+    comparisonUserProfileQuery.isLoading,
+    comparisonUserTagsQuery.data,
+    comparisonUserTagsQuery.error,
+    comparisonUserTagsQuery.isError,
+    comparisonUserTagsQuery.isFetching,
+    comparisonUserTagsQuery.isLoading,
+    comparisonUserSeedJson,
+    shouldFetchComparisonData,
+  ]);
 
   useEffect(() => {
     if (!isOpen || !canManage || !teamId) {
@@ -869,340 +883,74 @@ const VacantRoleDetailsModal = ({
   }, [isOpen, canManage, teamId, roleId, status]);
 
   useEffect(() => {
-    const roleCandidateIds = [
-      ...new Set(
-        [
-          ...roleApplications.map(
-            (application) => application?.applicant?.id ?? application?.applicant_id ?? null,
-          ),
-          ...roleInvitations.map(
-            (invitation) => invitation?.invitee?.id ?? invitation?.invitee_id ?? null,
-          ),
-        ]
-          .filter((id) => id != null)
-          .map(String),
-      ),
-    ];
-
-    if (!isOpen || !canManage || !roleId || !isRoleOpen || roleCandidateIds.length === 0) {
-      setRoleCandidateMatchMap({});
-      return;
-    }
-
-    let cancelled = false;
-
-    const fetchRoleCandidateMatches = async () => {
-      try {
-        const response = await matchingService.getMatchingCandidates(roleId, {
-          limit: Math.max(roleCandidateIds.length, 20),
-        });
-        if (cancelled) return;
-
-        const candidates = response?.data || [];
-        const nextMatchMap = {};
-
-        candidates.forEach((candidate) => {
-          const candidateId = candidate?.id ?? candidate?.userId ?? candidate?.user_id;
-          if (candidateId == null) return;
-
-          nextMatchMap[String(candidateId)] = {
-            ...candidate,
-            matchScore:
-              candidate?.matchScore ??
-              candidate?.match_score ??
-              candidate?.bestMatchScore ??
-              candidate?.best_match_score ??
-              null,
-            matchDetails:
-              candidate?.matchDetails ??
-              candidate?.match_details ??
-              null,
-          };
-        });
-
-        setRoleCandidateMatchMap(nextMatchMap);
-      } catch (err) {
-        console.warn("Could not fetch candidate match scores for role:", err);
-        if (!cancelled) {
-          setRoleCandidateMatchMap({});
-        }
-      }
-    };
-
-    fetchRoleCandidateMatches();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [isOpen, canManage, isRoleOpen, roleApplications, roleInvitations, roleId]);
-
-  useEffect(() => {
-    if (!isOpen || !canManage || !isRoleOpen || roleApplications.length === 0) {
-      setApplicantProfileMap({});
-      return;
-    }
-
-    let cancelled = false;
-
-    const fetchApplicantProfiles = async () => {
-      const applicantIds = [
-        ...new Set(
-          roleApplications
-            .map((application) => {
-              const applicant = application?.applicant || {};
-              return applicant.id ?? application.applicant_id ?? null;
-            })
-            .filter((id) => id != null),
-        ),
-      ];
-
-      if (applicantIds.length === 0) {
-        setApplicantProfileMap({});
-        return;
-      }
-
-      try {
-        const results = await Promise.allSettled(
-          applicantIds.map((id) => userService.getUserById(id)),
-        );
-
-        if (cancelled) return;
-
-        const nextProfileMap = {};
-
-        results.forEach((result, index) => {
-          if (result.status !== "fulfilled") return;
-
-          const payload = result.value?.data ?? result.value;
-          const profile =
-            payload?.success !== undefined
-              ? payload?.data
-              : (payload?.data?.data ?? payload?.data ?? payload);
-
-          if (!profile) return;
-
-          nextProfileMap[String(applicantIds[index])] = profile;
-        });
-
-        setApplicantProfileMap(nextProfileMap);
-      } catch (err) {
-        console.warn("Could not fetch applicant profile details:", err);
-        if (!cancelled) {
-          setApplicantProfileMap({});
-        }
-      }
-    };
-
-    fetchApplicantProfiles();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [isOpen, canManage, isRoleOpen, roleApplications]);
-
-  useEffect(() => {
-    if (!isOpen || !canManage || !isRoleOpen || roleInvitations.length === 0) {
-      setInviteeProfileMap({});
-      return;
-    }
-
-    let cancelled = false;
-
-    const fetchInviteeProfiles = async () => {
-      const inviteeIds = [
-        ...new Set(
-          roleInvitations
-            .map((invitation) => {
-              const invitee = invitation?.invitee || {};
-              return invitee.id ?? invitation.invitee_id ?? null;
-            })
-            .filter((id) => id != null),
-        ),
-      ];
-
-      if (inviteeIds.length === 0) {
-        setInviteeProfileMap({});
-        return;
-      }
-
-      try {
-        const results = await Promise.allSettled(
-          inviteeIds.map((id) => userService.getUserById(id)),
-        );
-
-        if (cancelled) return;
-
-        const nextProfileMap = {};
-
-        results.forEach((result, index) => {
-          if (result.status !== "fulfilled") return;
-
-          const payload = result.value?.data ?? result.value;
-          const profile =
-            payload?.success !== undefined
-              ? payload?.data
-              : (payload?.data?.data ?? payload?.data ?? payload);
-
-          if (!profile) return;
-
-          nextProfileMap[String(inviteeIds[index])] = profile;
-        });
-
-        setInviteeProfileMap(nextProfileMap);
-      } catch (err) {
-        console.warn("Could not fetch invitee profile details:", err);
-        if (!cancelled) {
-          setInviteeProfileMap({});
-        }
-      }
-    };
-
-    fetchInviteeProfiles();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [isOpen, canManage, isRoleOpen, roleInvitations]);
-
-  useEffect(() => {
-    if (
-      !isOpen ||
-      !displayRole ||
-      !canViewTeamMemberMatches ||
-      !isRoleOpen ||
-      teamMemberIdsKey === "[]"
-    ) {
+    if (!shouldFetchRoleMemberMatches) {
       setRoleTeamMembers((prev) => (prev.length === 0 ? prev : []));
       setTeamMembersLoading(false);
       return;
     }
 
-    let cancelled = false;
+    const hasPendingQuery = roleMemberMatchQueries.some(
+      (query) => query.isLoading || query.isFetching,
+    );
 
-    const fetchTeamMemberMatches = async () => {
-      const roleTags =
-        displayRole?.tags?.length > 0
-          ? displayRole.tags
-          : displayRole?.desiredTags || [];
-      const roleBadges =
-        displayRole?.badges?.length > 0
-          ? displayRole.badges
-          : displayRole?.desiredBadges || [];
-      const uniqueMembers = [
-        ...new Map(
-          teamMembers
-            .map((member) => {
-              const memberId = member?.userId ?? member?.user_id ?? null;
-              return memberId != null ? [String(memberId), member] : null;
-            })
-            .filter(Boolean),
-        ).entries(),
-      ];
+    setTeamMembersLoading(hasPendingQuery);
+    if (hasPendingQuery) return;
 
-      if (uniqueMembers.length === 0) {
-        setRoleTeamMembers([]);
-        setTeamMembersLoading(false);
-        return;
-      }
+    const nextRows = roleMemberMatchQueries
+      .map((query) => {
+        if (query.isError) {
+          console.warn("Could not fetch team member match data for role:", query.error);
+          return null;
+        }
+        if (!query.data) return null;
 
-      try {
-        setTeamMembersLoading(true);
+        const memberMatch = computeRoleUserMatch({
+          role: displayRole,
+          tags: roleMatchTags,
+          badges: roleMatchBadges,
+          user: query.data.member,
+          userTagMap: query.data.userTagMap,
+          userBadgeMap: query.data.userBadgeMap,
+        });
 
-        const results = await Promise.allSettled(
-          uniqueMembers.map(async ([memberKey, member]) => {
-            const memberId = memberKey;
-            const [profileRes, tagsRes, badgesRes] = await Promise.allSettled([
-              userService.getUserById(memberId),
-              userService.getUserTags(memberId),
-              userService.getUserBadges(memberId),
-            ]);
+        return {
+          memberId: query.data.memberId,
+          member: query.data.member,
+          teamRole: query.data.teamRole,
+          matchScore: memberMatch?.matchScore ?? null,
+          matchDetails: memberMatch?.matchDetails ?? null,
+        };
+      })
+      .filter(Boolean)
+      .sort((a, b) => {
+        const scoreA = Number(a?.matchScore);
+        const scoreB = Number(b?.matchScore);
+        const hasScoreA = Number.isFinite(scoreA);
+        const hasScoreB = Number.isFinite(scoreB);
 
-            const profile =
-              profileRes.status === "fulfilled"
-                ? extractProfilePayload(profileRes.value)
-                : null;
-            const memberProfile = {
-              ...(member || {}),
-              ...(profile || {}),
-            };
-            const memberTagMap =
-              tagsRes.status === "fulfilled"
-                ? buildTagLookup(extractListPayload(tagsRes.value))
-                : new Map();
-            const memberBadgeMap =
-              badgesRes.status === "fulfilled"
-                ? buildBadgeLookup(extractListPayload(badgesRes.value))
-                : new Map();
-            const memberMatch = computeRoleUserMatch({
-              role: displayRole,
-              tags: roleTags,
-              badges: roleBadges,
-              user: memberProfile,
-              userTagMap: memberTagMap,
-              userBadgeMap: memberBadgeMap,
-            });
+        if (hasScoreA && hasScoreB && scoreA !== scoreB) {
+          return scoreB - scoreA;
+        }
+        if (hasScoreA && !hasScoreB) return -1;
+        if (!hasScoreA && hasScoreB) return 1;
 
-            return {
-              memberId,
-              member: memberProfile,
-              teamRole: member?.role ?? null,
-              matchScore: memberMatch?.matchScore ?? null,
-              matchDetails: memberMatch?.matchDetails ?? null,
-            };
-          }),
+        return getDisplayName(a?.member ?? {}).localeCompare(
+          getDisplayName(b?.member ?? {}),
         );
+      });
 
-        if (cancelled) return;
-
-        const nextRows = results
-          .filter((result) => result.status === "fulfilled")
-          .map((result) => result.value)
-          .sort((a, b) => {
-            const scoreA = Number(a?.matchScore);
-            const scoreB = Number(b?.matchScore);
-            const hasScoreA = Number.isFinite(scoreA);
-            const hasScoreB = Number.isFinite(scoreB);
-
-            if (hasScoreA && hasScoreB && scoreA !== scoreB) {
-              return scoreB - scoreA;
-            }
-            if (hasScoreA && !hasScoreB) return -1;
-            if (!hasScoreA && hasScoreB) return 1;
-
-            return getDisplayName(a?.member ?? {}).localeCompare(
-              getDisplayName(b?.member ?? {}),
-            );
-          });
-
-        setRoleTeamMembers(nextRows);
-      } catch (error) {
-        console.warn("Could not fetch team member matches for role:", error);
-        if (!cancelled) {
-          setRoleTeamMembers([]);
-        }
-      } finally {
-        if (!cancelled) {
-          setTeamMembersLoading(false);
-        }
-      }
-    };
-
-    fetchTeamMemberMatches();
-
-    return () => {
-      cancelled = true;
-    };
+    setRoleTeamMembers(nextRows);
+    setTeamMembersLoading(false);
   }, [
-    isOpen,
     displayRole,
-    canViewTeamMemberMatches,
-    isRoleOpen,
-    teamMembers,
-    teamMemberIdsKey,
+    roleMatchBadges,
+    roleMatchTags,
+    roleMemberMatchQuerySignature,
+    shouldFetchRoleMemberMatches,
   ]);
 
   const handleApplicationAction = async (applicationId, action, response = "", fillRole = false) => {
-    await teamService.handleTeamApplication(applicationId, action, response, fillRole);
+    const result = await teamService.handleTeamApplication(applicationId, action, response, fillRole);
     try {
       const refreshed = await teamService.getTeamApplications(teamId);
       const apps = refreshed.data || [];
@@ -1217,10 +965,34 @@ const VacantRoleDetailsModal = ({
     } catch (e) {
       console.warn("Could not refresh applications:", e);
     }
+    return result;
   };
 
   const handleCancelInvitation = async (invitationId) => {
     await teamService.cancelInvitation(invitationId);
+    setRoleInvitations((prev) => prev.filter((invitation) => invitation.id !== invitationId));
+
+    try {
+      const refreshed = await teamService.getTeamSentInvitations(teamId);
+      const invitations = refreshed.data || [];
+      const currentRoleId = roleId;
+      setRoleInvitations(
+        invitations.filter((invitation) => {
+          const invitationRoleId =
+            invitation.role?.id ?? invitation.roleId ?? invitation.role_id ?? null;
+          return (
+            invitationRoleId != null &&
+            String(invitationRoleId) === String(currentRoleId)
+          );
+        }),
+      );
+    } catch (e) {
+      console.warn("Could not refresh invitations:", e);
+    }
+  };
+
+  const handleCancelRoleInvitation = async (invitationId) => {
+    await teamService.cancelRoleInvitation(invitationId);
     setRoleInvitations((prev) => prev.filter((invitation) => invitation.id !== invitationId));
 
     try {
@@ -1252,13 +1024,36 @@ const VacantRoleDetailsModal = ({
     invitationId,
     responseMessage = "",
     fillRole = false,
+    options = {},
   ) => {
-    await teamService.respondToInvitation(
+    const roleForMessage = viewerRoleInvitationRecord?.role ?? displayRole;
+    const response = await teamService.respondToInvitation(
       invitationId,
       "accept",
       responseMessage,
       fillRole,
+      options,
     );
+
+    if (teamId && !response?.data?.roleSwitched) {
+      try {
+        await messageService.sendMessage(
+          teamId,
+          buildRoleInvitationAcceptedMessage({
+            teamId,
+            teamName,
+            role: roleForMessage,
+            invitee: currentUser,
+            inviter: viewerRoleInvitationRecord?.inviter ?? null,
+            fillRole,
+          }),
+          "team",
+        );
+      } catch (messageError) {
+        console.warn("Invitation accepted, but chat event could not be sent:", messageError);
+      }
+    }
+
     setViewerRoleInvitationRecord(null);
     setIsViewerInvitationDetailsOpen(false);
   };
@@ -1275,6 +1070,37 @@ const VacantRoleDetailsModal = ({
     setViewerRoleInvitationRecord(null);
     setIsViewerInvitationDetailsOpen(false);
   };
+
+  const layoutRoleName =
+    displayRole?.roleName ?? displayRole?.role_name ?? "Vacant Role";
+  const layoutRolePostedDate =
+    displayRole?.createdAt ?? displayRole?.created_at ?? null;
+
+  useLayoutEffect(() => {
+    if (!displayRole) return;
+
+    const container = roleTitleContainerRef.current;
+    const probe = roleTitleProbeRef.current;
+    if (!container || !probe) return;
+
+    const update = () => {
+      const containerWidth = container.clientWidth;
+      if (containerWidth === 0) return;
+      const dateEl = roleDateRef.current;
+      const reservedWidth =
+        roleDateIsNarrowRef.current && dateEl ? dateEl.offsetWidth + 16 : 0;
+      probe.textContent = layoutRoleName;
+      setRoleDateIsNarrow(probe.scrollWidth > containerWidth - reservedWidth);
+    };
+
+    const resizeObserver = new ResizeObserver(update);
+    resizeObserver.observe(container);
+    if (roleDateRef.current) resizeObserver.observe(roleDateRef.current);
+    update();
+
+    return () => resizeObserver.disconnect();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [displayRole, layoutRoleName, !!layoutRolePostedDate]);
 
   if (!displayRole) return null;
 
@@ -1308,10 +1134,30 @@ const VacantRoleDetailsModal = ({
     team?.name ??
     team?.team_name ??
     null;
+  const roleTeam = displayRole.team ?? {};
   const teamMemberCount =
-    displayRole.teamMemberCount ?? displayRole.team_member_count;
+    displayRole.teamMemberCount ??
+    displayRole.team_member_count ??
+    displayRole.current_members_count ??
+    displayRole.currentMembersCount ??
+    displayRole.member_count ??
+    displayRole.memberCount ??
+    displayRole.members_count ??
+    displayRole.membersCount ??
+    roleTeam.current_members_count ??
+    roleTeam.currentMembersCount ??
+    roleTeam.member_count ??
+    roleTeam.memberCount ??
+    roleTeam.members_count ??
+    roleTeam.membersCount ??
+    (Array.isArray(roleTeam.members) ? roleTeam.members.length : undefined);
   const teamMaxMembers =
-    displayRole.teamMaxMembers ?? displayRole.team_max_members;
+    displayRole.teamMaxMembers ??
+    displayRole.team_max_members ??
+    displayRole.max_members ??
+    displayRole.maxMembers ??
+    roleTeam.max_members ??
+    roleTeam.maxMembers;
   const teamDescription =
     displayRole.teamDescription ?? displayRole.team_description ?? "";
   const teamAvatarUrl =
@@ -1320,6 +1166,27 @@ const VacantRoleDetailsModal = ({
     displayRole.teamAvatarUrl ??
     displayRole.team_avatar_url ??
     null;
+  const teamIsRemote =
+    team?.isRemote ??
+    team?.is_remote ??
+    displayRole.teamIsRemote ??
+    displayRole.team_is_remote ??
+    roleTeam.isRemote ??
+    roleTeam.is_remote;
+  const teamCity =
+    team?.city ?? displayRole.teamCity ?? displayRole.team_city ?? roleTeam.city;
+  const teamCountry =
+    team?.country ??
+    displayRole.teamCountry ??
+    displayRole.team_country ??
+    roleTeam.country;
+  const teamIsSynthetic =
+    team?.is_synthetic ??
+    team?.isSynthetic ??
+    displayRole.teamIsSynthetic ??
+    displayRole.team_is_synthetic ??
+    roleTeam.is_synthetic ??
+    roleTeam.isSynthetic;
   const applicationTeam = {
     ...team,
     id: team?.id ?? teamId,
@@ -1330,8 +1197,14 @@ const VacantRoleDetailsModal = ({
       team?.currentMembersCount ??
       team?.member_count ??
       team?.memberCount ??
+      team?.members_count ??
+      team?.membersCount ??
       teamMemberCount,
     max_members: team?.max_members ?? team?.maxMembers ?? teamMaxMembers,
+    is_remote: teamIsRemote,
+    city: teamCity,
+    country: teamCountry,
+    is_synthetic: teamIsSynthetic,
     teamavatar_url:
       team?.teamavatar_url ??
       team?.teamavatarUrl ??
@@ -1357,6 +1230,13 @@ const VacantRoleDetailsModal = ({
     creatorFirstName && creatorLastName
       ? `${creatorFirstName} ${creatorLastName}`
       : creatorUsername || null;
+  const creatorDisplayName = creatorName
+    ? formatDisplayName({
+        first_name: creatorFirstName,
+        last_name: creatorLastName,
+        username: creatorUsername,
+      })
+    : null;
   const canOpenTeamModal = Boolean(teamId && teamModal?.openTeamModal);
   const comparisonUser = comparisonUserProfile || comparisonUserSeed || null;
   const comparisonFirstName =
@@ -1381,6 +1261,9 @@ const VacantRoleDetailsModal = ({
     filledRoleUser && getDisplayName(filledRoleUser) !== "Unknown"
       ? getDisplayName(filledRoleUser)
       : null;
+  const filledRoleCompactDisplayName = filledRoleUser
+    ? formatDisplayName(filledRoleUser)
+    : filledRoleDisplayName;
   const filledRoleAvatarUrl =
     filledRoleUser?.avatarUrl ?? filledRoleUser?.avatar_url ?? null;
   const filledAt =
@@ -1389,18 +1272,25 @@ const VacantRoleDetailsModal = ({
     updatedAt ??
     createdAt;
   const serverRoleMatchScore =
-    matchScore ??
-    displayRole.matchScore ??
-    displayRole.match_score ??
-    null;
+    shouldShowRoleMatchScore
+      ? matchScore ??
+        displayRole.matchScore ??
+        displayRole.match_score ??
+        null
+      : null;
   const serverRoleMatchDetails =
-    matchDetails ??
-    displayRole.matchDetails ??
-    displayRole.match_details ??
-    displayRole.scoreBreakdown ??
-    null;
+    shouldShowRoleMatchScore
+      ? matchDetails ??
+        displayRole.matchDetails ??
+        displayRole.match_details ??
+        displayRole.scoreBreakdown ??
+        null
+      : null;
   const computedRoleMatch =
-    comparisonDataLoaded && comparisonUserId && comparisonUser
+    shouldShowRoleMatchScore &&
+    comparisonDataLoaded &&
+    comparisonUserId &&
+    comparisonUser
       ? computeRoleUserMatch({
           role: displayRole,
           tags,
@@ -1455,14 +1345,14 @@ const VacantRoleDetailsModal = ({
     }
   };
 
-  const modalStatusTitle = isFilledRole ? "Filled Role" : "Vacant Role";
+  const modalStatusTitle = isFilledRole ? "Filled Role" : isClosedRole ? "Closed Role" : "Vacant Role";
   const demoAvatarOverlay = isSyntheticRole(displayRole) ? (
     <DemoAvatarOverlay
       textClassName="text-[9px]"
       textTranslateClassName="-translate-y-[4px]"
     />
   ) : null;
-  const ModalStatusIcon = isFilledRole ? UserCheck : UserSearch;
+  const ModalStatusIcon = isFilledRole ? UserCheck : isClosedRole ? UserX : UserSearch;
   const summarySuffix = isComparisonSelf
     ? " with you"
     : comparisonShortName
@@ -1477,13 +1367,28 @@ const VacantRoleDetailsModal = ({
     effectiveMatchDetails?.is_within_range ??
     null;
   const shouldShowComparisonSummary =
-    isAuthenticated && comparisonUserId && comparisonDataLoaded;
+    shouldShowRoleMatchScore &&
+    isAuthenticated &&
+    comparisonUserId &&
+    comparisonDataLoaded;
   const locationMatchText = comparisonShortName
     ? `Matches ${comparisonPossessive} location`
     : "Matches your location";
   const locationMismatchText = comparisonShortName
     ? `Outside ${comparisonPossessive} location range`
     : "Outside your location range";
+  const normalizePostalCode = (value) =>
+    value == null ? "" : String(value).trim().toLowerCase();
+  const rolePostalCode = normalizePostalCode(
+    normalizeLocationData(displayRole).postalCode,
+  );
+  const comparisonPostalCode = normalizePostalCode(
+    normalizeLocationData(comparisonUser).postalCode,
+  );
+  const postalCodesMatch =
+    rolePostalCode &&
+    comparisonPostalCode &&
+    rolePostalCode === comparisonPostalCode;
   const roleMatchTagIds = tags
     .map((tag) => Number(tag.tagId ?? tag.tag_id ?? tag.id))
     .filter(Number.isFinite);
@@ -1610,7 +1515,7 @@ const VacantRoleDetailsModal = ({
     if (userId == null) return null;
 
     const key = String(userId);
-    return teamMemberScoreMap[key] ?? roleCandidateMatchMap[key] ?? null;
+    return teamMemberScoreMap[key] ?? null;
   };
   const isCurrentTeamMember = (userId) =>
     userId != null && currentTeamMemberIds.has(String(userId));
@@ -1694,35 +1599,104 @@ const VacantRoleDetailsModal = ({
   const effectiveViewerRoleApplication =
     viewerRoleApplicationRecord ?? currentUserRoleApplication;
   const effectiveViewerRoleInvitation = viewerRoleInvitationRecord;
+  const viewerHoldsTeamRole =
+    currentUser?.id != null && filledRoleUserIds.has(String(currentUser.id));
+  const availableRoleTeamMembers = roleTeamMembers.filter((memberRow) => {
+    const memberId = String(
+      memberRow.memberId ??
+        memberRow.member?.id ??
+        memberRow.member?.userId ??
+        memberRow.member?.user_id ??
+        "",
+    );
+    return !filledRoleUserIds.has(memberId);
+  });
   const visibleRoleTeamMembers = isTeamMembersExpanded
-    ? roleTeamMembers
-    : roleTeamMembers.slice(0, COLLAPSED_COUNT);
+    ? availableRoleTeamMembers
+    : availableRoleTeamMembers.slice(0, COLLAPSED_COUNT);
+  const viewerRoleApplicationDate = (() => {
+    const dateVal =
+      effectiveViewerRoleApplication?.createdAt ??
+      effectiveViewerRoleApplication?.created_at ??
+      effectiveViewerRoleApplication?.appliedAt ??
+      effectiveViewerRoleApplication?.applied_at ??
+      effectiveViewerRoleApplication?.submittedAt ??
+      effectiveViewerRoleApplication?.submitted_at;
+    if (!dateVal) return null;
+
+    const date = new Date(dateVal);
+    if (Number.isNaN(date.getTime())) return null;
+
+    const isInternalRoleApplication = Boolean(
+      effectiveViewerRoleApplication?.isInternalRoleApplication ??
+        effectiveViewerRoleApplication?.is_internal_role_application,
+    );
+
+    return {
+      short: format(date, "MM/dd/yy"),
+      full: format(date, "MMM d, yyyy"),
+      label: isInternalRoleApplication
+        ? "You applied to fill this role"
+        : "You applied to join this team and fill this role",
+      iconClassName: isInternalRoleApplication ? "text-orange-500" : "text-violet-500",
+    };
+  })();
+  const viewerRoleInvitationDate = (() => {
+    const dateVal =
+      effectiveViewerRoleInvitation?.createdAt ??
+      effectiveViewerRoleInvitation?.created_at ??
+      effectiveViewerRoleInvitation?.invitedAt ??
+      effectiveViewerRoleInvitation?.invited_at ??
+      effectiveViewerRoleInvitation?.sentAt ??
+      effectiveViewerRoleInvitation?.sent_at ??
+      effectiveViewerRoleInvitation?.date;
+    if (!dateVal) return null;
+
+    const date = new Date(dateVal);
+    if (Number.isNaN(date.getTime())) return null;
+
+    const isInternalInvitation = Boolean(
+      effectiveViewerRoleInvitation?.isInternal ??
+        effectiveViewerRoleInvitation?.is_internal,
+    );
+
+    return {
+      short: format(date, "MM/dd/yy"),
+      full: format(date, "MMM d, yyyy"),
+      label: isInternalInvitation
+        ? "You were invited to fill this role"
+        : "You were invited to join this team and fill this role",
+      iconClassName: isInternalInvitation ? "text-orange-500" : "text-pink-500",
+    };
+  })();
+  const rolePostedDate = (() => {
+    if (!createdAt) return null;
+    try {
+      const date = new Date(createdAt);
+      return {
+        short: format(date, "MM/yy"),
+        full: format(date, "MMMM d, yyyy"),
+        label: "Posted on",
+      };
+    } catch {
+      return null;
+    }
+  })();
+
   const modalTitle = (
-    <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-      <div className="flex min-w-0 items-center gap-2">
-        <ModalStatusIcon
-          className={isFilledRole ? "text-success" : "text-orange-500"}
-          size={20}
-        />
-        <h2 className="text-base font-medium leading-snug sm:text-lg">
-          {modalStatusTitle}
-        </h2>
-      </div>
-      {!isFilledRole && isTeamMember && (tags.length > 0 || badges.length > 0) && !hideActions && (
-        <div className="flex items-center space-x-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => window.open(buildSearchUrl(), '_blank')}
-            className="flex items-center gap-1"
-          >
-            <UserSearch size={16} />
-            <span className="hidden sm:inline">Find matching people outside this team</span>
-          </Button>
-        </div>
-      )}
-    </div>
+    <h2 className="text-xl font-medium text-primary leading-[110%] flex items-start gap-2 whitespace-nowrap">
+      <ModalStatusIcon
+        className="flex-shrink-0 mt-0.5"
+        size={20}
+      />
+      {modalStatusTitle}
+    </h2>
   );
+  const canShowRoleManagementActions = canManage && !hideActions;
+  const canFindRoleMatches =
+    canShowRoleManagementActions && !isFilledRole && !isClosedRole;
+  const hasRoleHeaderActions =
+    canShowRoleManagementActions && (onEdit || onStatusChange || canFindRoleMatches);
 
   return (
     <>
@@ -1733,9 +1707,62 @@ const VacantRoleDetailsModal = ({
       position="center"
       size="default"
       maxHeight="max-h-[90vh]"
+      minHeight="min-h-[300px]"
       closeOnBackdrop={true}
       closeOnEscape={true}
       showCloseButton={true}
+      headerActions={
+        hasRoleHeaderActions ? (
+          <div className="flex items-center gap-1">
+            {onEdit && (
+              <Tooltip content="Edit this role's details">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => { onClose(); onEdit(displayRole); }}
+                  className="hover:bg-[#7ace82] hover:text-[#036b0c]"
+                  icon={<Edit size={16} />}
+                />
+              </Tooltip>
+            )}
+            {isRoleOpen && onStatusChange && (
+              <Tooltip content="Close this role — stop accepting new applicants">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => { onClose(); onStatusChange(roleId, "closed"); }}
+                  className="hover:bg-yellow-100 hover:text-yellow-700"
+                  icon={<XCircle size={16} />}
+                />
+              </Tooltip>
+            )}
+            {!isRoleOpen && onStatusChange && (
+              <Tooltip content="Reopen this role to accept new applicants">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => { onClose(); onStatusChange(roleId, "open"); }}
+                  className="hover:bg-green-100 hover:text-green-700"
+                  icon={<CheckCircle size={16} />}
+                />
+              </Tooltip>
+            )}
+            {canFindRoleMatches && (
+              <Tooltip content="Find matching people outside this team">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => window.open(buildSearchUrl(), "_blank")}
+                  className="flex items-center gap-1"
+                >
+                  <UserSearch size={16} />
+                  <span className="hidden sm:inline">Find Matches</span>
+                </Button>
+              </Tooltip>
+            )}
+          </div>
+        ) : null
+      }
     >
       <div className="space-y-6">
         {loadingRoleDetails && !hydratedRole && (
@@ -1745,7 +1772,7 @@ const VacantRoleDetailsModal = ({
         )}
 
         {/* Header — avatar + role name + status */}
-        <div className="flex items-start space-x-4">
+        <div className="relative flex items-start space-x-4 mb-6">
           <div className="avatar relative">
             {isFilledRole ? (
               <Tooltip content={filledRoleUser?.id ? `Click to view ${filledRoleDisplayName || "this user"}'s profile` : undefined}>
@@ -1804,103 +1831,202 @@ const VacantRoleDetailsModal = ({
                 {demoAvatarOverlay}
               </div>
             )}
-            {isFilledRole && MatchTierIcon && (
-              <div
-                className={`absolute -top-1 -left-1 w-6 h-6 rounded-full ring-2 ring-white flex items-center justify-center ${matchTier.bg}`}
-                title={`${matchTier.pct}% ${matchTier.label.toLowerCase()}`}
+            {MatchTierIcon && (
+              <Tooltip
+                content={`${matchTier.pct}% ${matchTier.label.toLowerCase()}`}
+                position="bottom"
+                wrapperClassName={`absolute -top-1 -left-1 w-6 h-6 rounded-full ring-2 ring-white flex items-center justify-center cursor-help ${matchTier.bg}`}
               >
                 <MatchTierIcon
                   size={12}
                   className="text-white"
                   strokeWidth={2.5}
                 />
-              </div>
+              </Tooltip>
             )}
           </div>
 
           <div className="flex-1 min-w-0">
-            <h1 className="text-2xl font-bold leading-tight">{roleName}</h1>
-
-            {teamMemberCount != null && (
-              <div className="flex items-center gap-1 mt-1 text-sm text-base-content/70">
-                <Users size={14} className="text-primary flex-shrink-0" />
-                <span className="text-base-content/50">
-                  {teamMemberCount}/{teamMaxMembers ?? "∞"} members
-                </span>
-              </div>
-            )}
-
-            {(isFilledRole ? filledAt : createdAt) && (
-              <div className="mt-1 flex flex-wrap items-center gap-x-1 gap-y-1 text-xs text-base-content/50">
-                <Calendar size={12} />
-                <span>
-                  {isFilledRole ? "Filled on" : "Posted"}{" "}
-                  {formatDate(isFilledRole ? filledAt : createdAt)}
-                </span>
-                {isFilledRole && filledRoleUser?.id ? (
+            <h1 ref={roleTitleContainerRef} className="text-2xl font-bold leading-[110%] mb-[0.2em] relative">
+              {roleName}
+              <span
+                ref={roleTitleProbeRef}
+                className="invisible absolute whitespace-nowrap pointer-events-none left-0 top-0 font-bold"
+                aria-hidden="true"
+              />
+            </h1>
+            <div className="flex items-center flex-wrap gap-x-3 gap-y-0.5 text-sm leading-[110%]">
+              {teamMemberCount != null && (
+                <div className="flex items-center gap-1 text-base-content/70">
+                  <Users size={14} className="text-primary flex-shrink-0" />
                   <span>
-                    {" "}by{" "}
-                    <Tooltip content={`Click to view ${filledRoleDisplayName || "this user"}'s profile`}>
+                    {teamMemberCount}/{teamMaxMembers ?? "∞"}
+                  </span>
+                </div>
+              )}
+
+              {creatorName && (
+                <span className="flex min-w-0 max-w-[12rem] items-center gap-1 text-base-content/50 sm:max-w-[16rem]">
+                  <PenLine size={14} className="flex-shrink-0" />
+                  {creatorUserId ? (
+                    <Tooltip
+                      content={`Created by ${creatorName}. Click to view their profile`}
+                      wrapperClassName="inline-flex min-w-0 max-w-full items-center"
+                    >
                       <button
                         type="button"
-                        className="hover:text-primary transition-colors font-medium"
-                        onClick={handleFilledUserClick}
+                        className="min-w-0 max-w-full truncate font-medium hover:text-primary transition-colors"
+                        onClick={handleCreatorUserClick}
                       >
-                        {filledRoleDisplayName}
+                        {creatorDisplayName}
                       </button>
                     </Tooltip>
-                  </span>
-                ) : !isFilledRole && creatorName ? (
-                  <span>
-                    {" "}by{" "}
-                    {creatorUserId ? (
-                      <Tooltip content={`Click to view ${creatorName}'s profile`}>
-                        <button
-                          type="button"
-                          className="hover:text-primary transition-colors font-medium"
-                          onClick={handleCreatorUserClick}
-                        >
-                          {creatorName}
-                        </button>
-                      </Tooltip>
-                    ) : (
-                      <span>{creatorName}</span>
-                    )}
-                  </span>
-                ) : null}
-                {!isFilledRole && teamName ? (
-                  <span className="ml-1 inline-flex min-w-0 max-w-full items-center gap-1">
-                    <Users size={12} className="flex-shrink-0" />
-                    {canOpenTeamModal ? (
-                      <Tooltip content={`Click to view ${teamName}`}>
-                        <button
-                          type="button"
-                          className="min-w-0 text-left font-medium whitespace-normal break-words transition-colors hover:text-primary"
-                          onClick={handleTeamClick}
-                        >
-                          {teamName}
-                        </button>
-                      </Tooltip>
-                    ) : (
-                      <span className="min-w-0 whitespace-normal break-words">
-                        {teamName}
-                      </span>
-                    )}
-                  </span>
-                ) : null}
-              </div>
-            )}
+                  ) : (
+                    <span className="min-w-0 max-w-full truncate">{creatorDisplayName}</span>
+                  )}
+                </span>
+              )}
 
-            {isSyntheticRole(displayRole) && (
-              <Tooltip
-                content={DEMO_ROLE_TOOLTIP}
-                wrapperClassName="mt-1 flex items-center gap-1 text-base-content/50 text-xs"
-              >
-                <FlaskConical size={12} className="flex-shrink-0" />
-                <span>Demo Role</span>
-              </Tooltip>
-            )}
+              {isFilledRole && filledRoleDisplayName && (
+                <span className="flex min-w-0 max-w-[12rem] items-center gap-1 text-base-content/50 sm:max-w-[16rem]">
+                  <UserCheck size={14} className="flex-shrink-0 text-success" />
+                  {filledRoleUser?.id ? (
+                    <Tooltip
+                      content={`Filled by ${filledRoleDisplayName}. Click to view their profile`}
+                      wrapperClassName="inline-flex min-w-0 max-w-full items-center"
+                    >
+                      <button
+                        type="button"
+                        className="min-w-0 max-w-full truncate font-medium hover:text-primary transition-colors"
+                        onClick={handleFilledUserClick}
+                      >
+                        {filledRoleCompactDisplayName}
+                      </button>
+                    </Tooltip>
+                  ) : (
+                    <span className="min-w-0 max-w-full truncate">
+                      {filledRoleCompactDisplayName}
+                    </span>
+                  )}
+                </span>
+              )}
+
+              {teamName && (
+                <span className="flex min-w-0 max-w-[calc(100%-2rem)] items-center gap-1 text-base-content/50">
+                  <Users size={14} className="flex-shrink-0" />
+                  {canOpenTeamModal ? (
+                    <Tooltip
+                      content={`Click to view ${teamName}`}
+                      wrapperClassName="inline-flex min-w-0 max-w-full items-center"
+                    >
+                      <button
+                        type="button"
+                        className="min-w-0 max-w-full truncate font-medium hover:text-primary transition-colors"
+                        onClick={handleTeamClick}
+                      >
+                        {teamName}
+                      </button>
+                    </Tooltip>
+                  ) : (
+                    <span className="min-w-0 max-w-full truncate">{teamName}</span>
+                  )}
+                </span>
+              )}
+
+              {viewerRoleApplicationDate && (
+                <Tooltip
+                  content={`${viewerRoleApplicationDate.label}\non ${viewerRoleApplicationDate.full}`}
+                  position="bottom"
+                  wrapperClassName="inline-flex"
+                >
+                  <button
+                    type="button"
+                    className="group flex items-center gap-1 cursor-pointer rounded-sm transition-colors hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                    aria-label={`${viewerRoleApplicationDate.label} on ${viewerRoleApplicationDate.full}. Open application details`}
+                    onClick={() => {
+                      if (onViewApplicationDetails) {
+                        onViewApplicationDetails();
+                        return;
+                      }
+
+                      setIsViewerApplicationDetailsOpen(true);
+                    }}
+                  >
+                    <SendHorizontal
+                      size={14}
+                      className={`flex-shrink-0 ${viewerRoleApplicationDate.iconClassName}`}
+                    />
+                    <span className="text-base-content/50 transition-colors group-hover:text-primary group-focus-visible:text-primary">
+                      {viewerRoleApplicationDate.short}
+                    </span>
+                  </button>
+                </Tooltip>
+              )}
+
+              {viewerRoleInvitationDate && (
+                <Tooltip
+                  content={`${viewerRoleInvitationDate.label}\non ${viewerRoleInvitationDate.full}`}
+                  position="bottom"
+                  wrapperClassName="inline-flex"
+                >
+                  <button
+                    type="button"
+                    className="group flex items-center gap-1 cursor-pointer rounded-sm transition-colors hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                    aria-label={`${viewerRoleInvitationDate.label} on ${viewerRoleInvitationDate.full}. Open invitation details`}
+                    onClick={() => setIsViewerInvitationDetailsOpen(true)}
+                  >
+                    <Mail
+                      size={14}
+                      className={`flex-shrink-0 ${viewerRoleInvitationDate.iconClassName}`}
+                    />
+                    <span className="text-base-content/50 transition-colors group-hover:text-primary group-focus-visible:text-primary">
+                      {viewerRoleInvitationDate.short}
+                    </span>
+                  </button>
+                </Tooltip>
+              )}
+
+              {(rolePostedDate || isSyntheticRole(displayRole)) && (
+                <span className="flex items-center gap-3 flex-shrink-0">
+                  {rolePostedDate && (
+                    <Tooltip
+                      content={`${rolePostedDate.label} ${rolePostedDate.full}`}
+                      position="bottom"
+                      wrapperClassName={`items-center text-base-content/70 flex-shrink-0 cursor-help ${roleDateIsNarrow ? "flex" : "flex sm:hidden"}`}
+                    >
+                      <Calendar size={14} className="mr-1" />
+                      <span>{rolePostedDate.short}</span>
+                    </Tooltip>
+                  )}
+                  {isSyntheticRole(displayRole) && (
+                    <Tooltip
+                      content={DEMO_ROLE_TOOLTIP}
+                      wrapperClassName="flex items-start text-base-content/50 whitespace-nowrap"
+                    >
+                      <FlaskConical size={14} className={`flex-shrink-0 mt-px${roleDateIsNarrow ? "" : " sm:mr-0.5"}`} />
+                      {!roleDateIsNarrow && <span className="hidden sm:inline leading-[1.15]">Demo Role</span>}
+                    </Tooltip>
+                  )}
+                </span>
+              )}
+            </div>
           </div>
+
+          {rolePostedDate && (
+            <div
+              ref={roleDateRef}
+              className={`flex-shrink-0${roleDateIsNarrow ? " absolute opacity-0 pointer-events-none" : " hidden sm:block"}`}
+            >
+              <Tooltip
+                content={`${rolePostedDate.label} ${rolePostedDate.full}`}
+                position="bottom"
+                wrapperClassName="flex items-center text-base-content/70 cursor-help"
+              >
+                <Calendar size={14} className="mr-1" />
+                <span>{rolePostedDate.short}</span>
+              </Tooltip>
+            </div>
+          )}
         </div>
 
         {bio && (
@@ -1938,6 +2064,20 @@ const VacantRoleDetailsModal = ({
                 effectiveMatchDetails?.distance_score ??
                 0) * 100,
             );
+            const compactComparisonName =
+              comparisonUser && comparisonShortName
+                ? formatDisplayName(comparisonUser)
+                : comparisonShortName;
+            const compactComparisonPossessive =
+              isComparisonSelf
+                ? "your"
+                : toPossessive(compactComparisonName);
+            const matchSummaryText = isFilledRole
+              ? `${pct}% matching score for ${filledRoleCompactDisplayName || "this member"} with this role`
+              : `${pct}% match with ${compactComparisonPossessive} profile`;
+            const fullMatchSummaryText = isFilledRole
+              ? `${pct}% matching score for ${filledRoleDisplayName || "this member"} with this role`
+              : `${pct}% match with ${comparisonPossessive} profile`;
 
             const tierColor = {
               bg: "bg-base-200/50",
@@ -1949,15 +2089,18 @@ const VacantRoleDetailsModal = ({
               <div
                 className={`rounded-xl p-4 ${tierColor.bg} border ${tierColor.border}`}
               >
-                <div className="flex items-center gap-2 mb-3">
+                <div className="flex min-w-0 items-start gap-2 mb-3">
                   {MatchTierIcon ? (
-                    <MatchTierIcon size={16} className={tierColor.text} />
+                    <MatchTierIcon size={16} className={`${tierColor.text} mt-px flex-shrink-0`} />
                   ) : null}
-                  <span className={`text-sm font-semibold ${tierColor.text}`}>
-                    {isFilledRole
-                      ? `${pct}% matching score for ${filledRoleDisplayName || "this member"} with this role`
-                      : `${pct}% match with ${comparisonPossessive} profile`}
-                  </span>
+                  <Tooltip
+                    content={fullMatchSummaryText}
+                    wrapperClassName="min-w-0"
+                  >
+                    <span className={`block min-w-0 overflow-hidden text-sm font-semibold leading-[115%] [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] ${tierColor.text}`}>
+                      {matchSummaryText}
+                    </span>
+                  </Tooltip>
                 </div>
 
                 <div className="space-y-2">
@@ -2045,51 +2188,73 @@ const VacantRoleDetailsModal = ({
 
         {locationText && (
           <div>
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center">
-                {isRemote ? (
-                  <Globe size={18} className="mr-2 text-primary flex-shrink-0" />
-                ) : (
-                  <MapPin size={18} className="mr-2 text-primary flex-shrink-0" />
-                )}
-                <h3 className="font-medium">Location Preference</h3>
-              </div>
-              {isAuthenticated && (() => {
-                if (isRemote) {
-                  return (
-                    <span className="flex items-center gap-1.5 text-sm text-success">
-                      <Check size={14} className="flex-shrink-0" />
-                      <span>{locationMatchText}</span>
-                    </span>
-                  );
-                }
-                if (distanceKm !== null && withinRange !== null) {
-                  if (withinRange) {
-                    return (
+            <div className="flex items-start gap-2 mb-2">
+              {isRemote ? (
+                <Globe size={18} className="mt-0.5 text-primary flex-shrink-0" />
+              ) : (
+                <MapPin size={18} className="mt-0.5 text-primary flex-shrink-0" />
+              )}
+              <div className="min-w-0 flex-1 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
+                <h3 className="font-medium leading-5">
+                  <span className="sm:hidden">Location</span>
+                  <span className="hidden sm:inline">Location Preference</span>
+                </h3>
+                {shouldShowComparisonSummary && (() => {
+                  let status = null;
+                  if (isRemote) {
+                    status = (
                       <span className="flex items-center gap-1.5 text-sm text-success">
-                        <Check size={14} className="flex-shrink-0" />
-                        <span>{locationMatchText}</span>
+                        <CheckCheck size={14} className="flex-shrink-0" />
+                        <span>No location boundaries</span>
                       </span>
                     );
-                  } else {
-                    return (
-                      <span className="flex items-center gap-1.5 text-sm text-error/70">
-                        <X size={14} className="flex-shrink-0" />
-                        <span>{locationMismatchText}</span>
-                      </span>
-                    );
+                  } else if (distanceKm !== null && withinRange !== null) {
+                    if (withinRange) {
+                      const LocationMatchIcon = postalCodesMatch
+                        ? CheckCheck
+                        : Check;
+                      status = (
+                        <span className="flex items-center gap-1.5 text-sm text-success">
+                          <LocationMatchIcon
+                            size={14}
+                            className="flex-shrink-0"
+                          />
+                          <span className="sm:hidden">Match</span>
+                          <span className="hidden sm:inline">
+                            {locationMatchText}
+                          </span>
+                        </span>
+                      );
+                    } else {
+                      status = (
+                        <span className="flex items-center gap-1.5 text-sm text-slate-500">
+                          <X size={14} className="flex-shrink-0" />
+                          <span>{locationMismatchText}</span>
+                        </span>
+                      );
+                    }
                   }
-                }
-                return null;
-              })()}
+
+                  if (!status) return null;
+
+                  return (
+                    <div className="flex items-center justify-end gap-2 text-right whitespace-nowrap">
+                      {status}
+                    </div>
+                  );
+                })()}
+              </div>
             </div>
 
-            <div className="flex items-center gap-2 text-sm text-base-content/70">
-              <span>{locationText}</span>
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-base-content/70">
+              <span className="min-w-0">{locationText}</span>
               {!isRemote && maxDistanceKm && (
-                <span className="flex items-center gap-1 text-base-content/50">
+                <span className="flex items-center gap-1 text-base-content/50 whitespace-nowrap">
                   <CircleDot size={14} />
-                  within {maxDistanceKm} km from Role Location
+                  <span className="sm:hidden">&lt; {maxDistanceKm} km</span>
+                  <span className="hidden sm:inline">
+                    within {maxDistanceKm} km from Role Location
+                  </span>
                 </span>
               )}
             </div>
@@ -2098,10 +2263,13 @@ const VacantRoleDetailsModal = ({
 
         {/* Desired Focus Areas */}
         <div>
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center">
-              <Tag size={18} className="mr-2 text-primary flex-shrink-0" />
-              <h3 className="font-medium">Desired Focus Areas</h3>
+          <div className="flex items-start justify-between gap-3 mb-2">
+            <div className="flex items-start gap-2 min-w-0">
+              <Tag size={18} className="mt-0.5 text-primary flex-shrink-0" />
+              <h3 className="font-medium leading-5">
+                <span className="sm:hidden">Focus Areas</span>
+                <span className="hidden sm:inline">Desired Focus Areas</span>
+              </h3>
             </div>
             {shouldShowComparisonSummary && tags.length > 0 && (() => {
               const matchCount = tags.filter((t) => {
@@ -2110,15 +2278,23 @@ const VacantRoleDetailsModal = ({
               }).length;
               const total = tags.length;
               if (matchCount > 0) {
+                const MatchIcon = matchCount === total ? CheckCheck : Check;
+                const compactLabel =
+                  matchCount === total
+                    ? "All in common"
+                    : `${matchCount}/${total} in common`;
                 return (
                   <span className="flex items-center gap-1.5 text-sm text-success">
-                    <Check size={14} className="flex-shrink-0" />
-                    <span>{matchCount}/{total} in common{summarySuffix}</span>
+                    <MatchIcon size={14} className="flex-shrink-0" />
+                    <span className="sm:hidden">{compactLabel}</span>
+                    <span className="hidden sm:inline">
+                      {matchCount}/{total} in common{summarySuffix}
+                    </span>
                   </span>
                 );
               }
               return (
-                <span className="flex items-center gap-1.5 text-sm text-error/70">
+                <span className="flex items-center gap-1.5 text-sm text-slate-500">
                   <X size={14} className="flex-shrink-0" />
                   <span>None in common{summarySuffix}</span>
                 </span>
@@ -2177,7 +2353,8 @@ const VacantRoleDetailsModal = ({
                             tag.tagId ?? tag.tag_id ?? tag.id,
                           );
                           const userTag = userTagMap.get(tagId);
-                          const isMatch = !!userTag;
+                          const isMatch =
+                            shouldShowComparisonSummary && !!userTag;
                           const credits = userTag?.badgeCredits || 0;
 
                           return (
@@ -2227,10 +2404,13 @@ const VacantRoleDetailsModal = ({
 
         {/* Desired Badges */}
         <div>
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center">
-              <Award size={18} className="mr-2 text-primary flex-shrink-0" />
-              <h3 className="font-medium">Desired Badges</h3>
+          <div className="flex items-start justify-between gap-3 mb-2">
+            <div className="flex items-start gap-2 min-w-0">
+              <Award size={18} className="mt-0.5 text-primary flex-shrink-0" />
+              <h3 className="font-medium leading-5">
+                <span className="sm:hidden">Badges</span>
+                <span className="hidden sm:inline">Desired Badges</span>
+              </h3>
             </div>
             {shouldShowComparisonSummary && badges.length > 0 && (() => {
               const matchCount = badges.filter((b) => {
@@ -2239,15 +2419,23 @@ const VacantRoleDetailsModal = ({
               }).length;
               const total = badges.length;
               if (matchCount > 0) {
+                const MatchIcon = matchCount === total ? CheckCheck : Check;
+                const compactLabel =
+                  matchCount === total
+                    ? "All in common"
+                    : `${matchCount}/${total} in common`;
                 return (
                   <span className="flex items-center gap-1.5 text-sm text-success">
-                    <Check size={14} className="flex-shrink-0" />
-                    <span>{matchCount}/{total} in common{summarySuffix}</span>
+                    <MatchIcon size={14} className="flex-shrink-0" />
+                    <span className="sm:hidden">{compactLabel}</span>
+                    <span className="hidden sm:inline">
+                      {matchCount}/{total} in common{summarySuffix}
+                    </span>
                   </span>
                 );
               }
               return (
-                <span className="flex items-center gap-1.5 text-sm text-error/70">
+                <span className="flex items-center gap-1.5 text-sm text-slate-500">
                   <X size={14} className="flex-shrink-0" />
                   <span>None in common{summarySuffix}</span>
                 </span>
@@ -2282,7 +2470,8 @@ const VacantRoleDetailsModal = ({
                           .trim()
                           .toLowerCase();
                         const userBadge = userBadgeMap.get(badgeKey);
-                        const isMatch = !!userBadge;
+                        const isMatch =
+                          shouldShowComparisonSummary && !!userBadge;
                         const credits = userBadge?.totalCredits || 0;
                         const pastel =
                           CATEGORY_CARD_PASTELS[category] || `${badgeColor}15`;
@@ -2353,14 +2542,9 @@ const VacantRoleDetailsModal = ({
                     application.applicant_id ??
                     null;
                   const applicantMatch = getRoleCandidateMatch(applicantId);
-                  const applicantProfileDetails =
-                    applicantId != null
-                      ? applicantProfileMap[String(applicantId)] ?? null
-                      : null;
                   const applicantProfile = {
                     ...(applicant || {}),
                     ...(applicantMatch || {}),
-                    ...(applicantProfileDetails || {}),
                   };
                   const firstName =
                     applicantProfile.firstName ??
@@ -2423,20 +2607,19 @@ const VacantRoleDetailsModal = ({
                       content={applicantTooltip}
                       wrapperClassName="block w-full"
                     >
-                      <button
-                        type="button"
-                        className={`flex items-start rounded-xl shadow p-4 gap-4 transition-all duration-200 hover:shadow-md cursor-pointer text-left w-full ${
+                      <div
+                        className={`flex items-start rounded-xl shadow p-4 gap-4 transition-all duration-200 hover:shadow-md cursor-pointer ${
                           applicantIsTeamMember
                             ? "bg-green-50 hover:bg-green-100"
-                            : "bg-white hover:bg-base-100"
+                            : "bg-base-200 hover:bg-base-300"
                         }`}
                         onClick={() => {
                           setHighlightApplicantId(applicantId);
                           setApplicationsModalOpen(true);
                         }}
                       >
-                        <div className="avatar relative flex-shrink-0">
-                          <div className="w-12 h-12 rounded-full">
+                        <div className="avatar relative">
+                          <div className="w-14 h-14 rounded-full relative overflow-hidden">
                             {avatarUrl ? (
                               <img
                                 src={avatarUrl}
@@ -2451,10 +2634,10 @@ const VacantRoleDetailsModal = ({
                               />
                             ) : null}
                             <div
-                              className="avatar-fallback bg-[var(--color-primary-focus)] text-primary-content rounded-full w-full h-full flex items-center justify-center absolute inset-0"
+                              className="avatar-fallback placeholder bg-[var(--color-primary-focus)] text-primary-content rounded-full w-full h-full absolute inset-0 flex items-center justify-center"
                               style={{ display: avatarUrl ? "none" : "flex" }}
                             >
-                              <span className="text-lg">{initials}</span>
+                              <span className="text-xl">{initials}</span>
                             </div>
                           </div>
                           {ApplicantMatchIcon && (
@@ -2473,22 +2656,20 @@ const VacantRoleDetailsModal = ({
 
                         <div className="flex-1 min-w-0 pt-[1px]">
                           <div className="flex flex-col">
-                            <div className="flex items-center justify-between gap-2 min-w-0">
-                              <div className="flex-1 min-w-0 overflow-hidden">
-                                <p className="block w-full min-w-0 truncate font-medium text-base leading-[120%] text-base-content">
-                                  {displayName}
-                                </p>
-                              </div>
+                            <div className="flex min-w-0 items-center gap-1">
+                              <h3 className="min-w-0 flex-1 truncate font-medium text-base leading-[120%]">
+                                {displayName}
+                              </h3>
                             </div>
 
                             <CardMetaRow>
                               {applicantMatchTier && (
-                                <div className="flex items-start gap-0.5 min-w-0">
+                                <div className="flex items-center gap-1 min-w-0">
                                   <ApplicantMatchIcon
                                     size={10}
-                                    className={`${applicantMatchTier.text} shrink-0 mt-[3px]`}
+                                    className={`${applicantMatchTier.text} shrink-0`}
                                   />
-                                  <span className="text-base-content/60 leading-tight whitespace-nowrap">
+                                  <span className="text-base-content/60 leading-[1.05] whitespace-nowrap">
                                     {applicantMatchTier.pct}%
                                   </span>
                                 </div>
@@ -2501,11 +2682,11 @@ const VacantRoleDetailsModal = ({
                               {applicantIsTeamMember && (
                                 <Tooltip
                                   content="Member of this team"
-                                  wrapperClassName="flex items-start gap-0.5 min-w-0"
+                                  wrapperClassName="flex items-center gap-1 min-w-0"
                                 >
                                   <Users
                                     size={10}
-                                    className="text-success shrink-0 mt-[3px]"
+                                    className="text-success shrink-0"
                                   />
                                 </Tooltip>
                               )}
@@ -2515,7 +2696,7 @@ const VacantRoleDetailsModal = ({
                             </CardMetaRow>
                           </div>
                         </div>
-                      </button>
+                      </div>
                     </Tooltip>
                   );
                 })}
@@ -2567,14 +2748,9 @@ const VacantRoleDetailsModal = ({
                     invitation.invitee_id ??
                     null;
                   const inviteeMatch = getRoleCandidateMatch(inviteeId);
-                  const inviteeProfileDetails =
-                    inviteeId != null
-                      ? inviteeProfileMap[String(inviteeId)] ?? null
-                      : null;
                   const inviteeProfile = {
                     ...(invitee || {}),
                     ...(inviteeMatch || {}),
-                    ...(inviteeProfileDetails || {}),
                   };
                   const firstName =
                     inviteeProfile.firstName ??
@@ -2637,20 +2813,19 @@ const VacantRoleDetailsModal = ({
                       content={inviteeTooltip}
                       wrapperClassName="block w-full"
                     >
-                      <button
-                        type="button"
-                        className={`flex items-start rounded-xl shadow p-4 gap-4 transition-all duration-200 hover:shadow-md cursor-pointer text-left w-full ${
+                      <div
+                        className={`flex items-start rounded-xl shadow p-4 gap-4 transition-all duration-200 hover:shadow-md cursor-pointer ${
                           inviteeIsTeamMember
                             ? "bg-green-50 hover:bg-green-100"
-                            : "bg-white hover:bg-base-100"
+                            : "bg-base-200 hover:bg-base-300"
                         }`}
                         onClick={() => {
                           setHighlightInviteeId(inviteeId);
                           setInvitationsModalOpen(true);
                         }}
                       >
-                        <div className="avatar relative flex-shrink-0">
-                          <div className="w-12 h-12 rounded-full">
+                        <div className="avatar relative">
+                          <div className="w-14 h-14 rounded-full relative overflow-hidden">
                             {avatarUrl ? (
                               <img
                                 src={avatarUrl}
@@ -2665,10 +2840,10 @@ const VacantRoleDetailsModal = ({
                               />
                             ) : null}
                             <div
-                              className="avatar-fallback bg-[var(--color-primary-focus)] text-primary-content rounded-full w-full h-full flex items-center justify-center absolute inset-0"
+                              className="avatar-fallback placeholder bg-[var(--color-primary-focus)] text-primary-content rounded-full w-full h-full absolute inset-0 flex items-center justify-center"
                               style={{ display: avatarUrl ? "none" : "flex" }}
                             >
-                              <span className="text-lg">{initials}</span>
+                              <span className="text-xl">{initials}</span>
                             </div>
                           </div>
                           {InviteeMatchIcon && (
@@ -2687,22 +2862,20 @@ const VacantRoleDetailsModal = ({
 
                         <div className="flex-1 min-w-0 pt-[1px]">
                           <div className="flex flex-col">
-                            <div className="flex items-center justify-between gap-2 min-w-0">
-                              <div className="flex-1 min-w-0 overflow-hidden">
-                                <p className="block w-full min-w-0 truncate font-medium text-base leading-[120%] text-base-content">
-                                  {displayName}
-                                </p>
-                              </div>
+                            <div className="flex min-w-0 items-center gap-1">
+                              <h3 className="min-w-0 flex-1 truncate font-medium text-base leading-[120%]">
+                                {displayName}
+                              </h3>
                             </div>
 
                             <CardMetaRow>
                               {inviteeMatchTier && (
-                                <div className="flex items-start gap-0.5 min-w-0">
+                                <div className="flex items-center gap-1 min-w-0">
                                   <InviteeMatchIcon
                                     size={10}
-                                    className={`${inviteeMatchTier.text} shrink-0 mt-[3px]`}
+                                    className={`${inviteeMatchTier.text} shrink-0`}
                                   />
-                                  <span className="text-base-content/60 leading-tight whitespace-nowrap">
+                                  <span className="text-base-content/60 leading-[1.05] whitespace-nowrap">
                                     {inviteeMatchTier.pct}%
                                   </span>
                                 </div>
@@ -2715,11 +2888,11 @@ const VacantRoleDetailsModal = ({
                               {inviteeIsTeamMember && (
                                 <Tooltip
                                   content="Member of this team"
-                                  wrapperClassName="flex items-start gap-0.5 min-w-0"
+                                  wrapperClassName="flex items-center gap-1 min-w-0"
                                 >
                                   <Users
                                     size={10}
-                                    className="text-success shrink-0 mt-[3px]"
+                                    className="text-success shrink-0"
                                   />
                                 </Tooltip>
                               )}
@@ -2729,7 +2902,7 @@ const VacantRoleDetailsModal = ({
                             </CardMetaRow>
                           </div>
                         </div>
-                      </button>
+                      </div>
                     </Tooltip>
                   );
                 })}
@@ -2755,20 +2928,46 @@ const VacantRoleDetailsModal = ({
           ) : null
         )}
 
-        {canViewTeamMemberMatches && isRoleOpen && (
-          teamMembersLoading ? (
-            <div className="flex justify-center py-3">
-              <span className="loading loading-spinner loading-sm text-primary"></span>
-            </div>
-          ) : roleTeamMembers.length > 0 ? (
+        {canViewTeamMemberMatches &&
+          isRoleOpen &&
+          roleMemberEntries.length > 0 &&
+          !isTeamMembersExpanded && (
             <div>
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center">
                   <Users size={18} className="mr-2 text-primary flex-shrink-0" />
-                  <h3 className="font-medium">Existing team members</h3>
+                  <h3 className="font-medium">Available team members</h3>
                 </div>
                 <span className="text-sm text-base-content/50">
-                  ({roleTeamMembers.length})
+                  ({roleMemberEntries.length})
+                </span>
+              </div>
+
+              <button
+                type="button"
+                className="flex items-center gap-1 text-sm text-base-content/50 hover:text-base-content/80 transition-colors"
+                onClick={() => setIsTeamMembersExpanded(true)}
+              >
+                <ChevronRight size={14} />
+                Show matches
+              </button>
+            </div>
+          )}
+
+        {canViewTeamMemberMatches && isRoleOpen && isTeamMembersExpanded && (
+          teamMembersLoading ? (
+            <div className="flex justify-center py-3">
+              <span className="loading loading-spinner loading-sm text-primary"></span>
+            </div>
+          ) : availableRoleTeamMembers.length > 0 ? (
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center">
+                  <Users size={18} className="mr-2 text-primary flex-shrink-0" />
+                  <h3 className="font-medium">Available team members</h3>
+                </div>
+                <span className="text-sm text-base-content/50">
+                  ({availableRoleTeamMembers.length})
                 </span>
               </div>
 
@@ -2814,13 +3013,12 @@ const VacantRoleDetailsModal = ({
                       content={memberTooltip}
                       wrapperClassName="block w-full"
                     >
-                      <button
-                        type="button"
-                        className="flex items-start bg-green-50 rounded-xl shadow p-4 gap-4 transition-all duration-200 hover:bg-green-100 hover:shadow-md cursor-pointer text-left w-full"
+                      <div
+                        className="flex items-start bg-green-50 rounded-xl shadow p-4 gap-4 transition-all duration-200 hover:bg-green-100 hover:shadow-md cursor-pointer"
                         onClick={() => handleTeamMemberClick(memberRow)}
                       >
-                        <div className="avatar relative flex-shrink-0">
-                          <div className="w-12 h-12 rounded-full relative overflow-hidden">
+                        <div className="avatar relative">
+                          <div className="w-14 h-14 rounded-full relative overflow-hidden">
                             {avatarUrl ? (
                               <img
                                 src={avatarUrl}
@@ -2835,10 +3033,10 @@ const VacantRoleDetailsModal = ({
                               />
                             ) : null}
                             <div
-                              className="avatar-fallback bg-[var(--color-primary-focus)] text-primary-content rounded-full w-full h-full flex items-center justify-center absolute inset-0"
+                              className="avatar-fallback placeholder bg-[var(--color-primary-focus)] text-primary-content rounded-full w-full h-full absolute inset-0 flex items-center justify-center"
                               style={{ display: avatarUrl ? "none" : "flex" }}
                             >
-                              <span className="text-lg">{initials}</span>
+                              <span className="text-xl">{initials}</span>
                             </div>
                             {showDemoAvatarOverlay && (
                               <DemoAvatarOverlay textClassName="text-[8px]" />
@@ -2860,22 +3058,20 @@ const VacantRoleDetailsModal = ({
 
                         <div className="flex-1 min-w-0 pt-[1px]">
                           <div className="flex flex-col">
-                            <div className="flex items-center justify-between gap-2 min-w-0">
-                              <div className="flex-1 min-w-0 overflow-hidden">
-                                <p className="block w-full min-w-0 truncate font-medium text-base leading-[120%] text-base-content">
-                                  {displayName}
-                                </p>
-                              </div>
+                            <div className="flex min-w-0 items-center gap-1">
+                              <h3 className="min-w-0 flex-1 truncate font-medium text-base leading-[120%]">
+                                {displayName}
+                              </h3>
                             </div>
 
                             <CardMetaRow>
                               {memberMatchTier && (
-                                <div className="flex items-start gap-0.5 min-w-0">
+                                <div className="flex items-center gap-1 min-w-0">
                                   <MemberMatchIcon
                                     size={10}
-                                    className={`${memberMatchTier.text} shrink-0 mt-[3px]`}
+                                    className={`${memberMatchTier.text} shrink-0`}
                                   />
-                                  <span className="text-base-content/60 leading-tight whitespace-nowrap">
+                                  <span className="text-base-content/60 leading-[1.05] whitespace-nowrap">
                                     {memberMatchTier.pct}%
                                   </span>
                                 </div>
@@ -2886,25 +3082,24 @@ const VacantRoleDetailsModal = ({
                               {showDemoAvatarOverlay && (
                                 <Tooltip
                                   content={DEMO_PROFILE_TOOLTIP}
-                                  wrapperClassName="flex items-start gap-0.5 text-base-content/50"
+                                  wrapperClassName="flex items-center gap-1 text-base-content/50"
                                 >
                                   <FlaskConical
                                     size={10}
-                                    className="shrink-0 mt-[3px]"
+                                    className="shrink-0"
                                   />
-                                  <span className="leading-tight">Demo</span>
                                 </Tooltip>
                               )}
                             </CardMetaRow>
                           </div>
                         </div>
-                      </button>
+                      </div>
                     </Tooltip>
                   );
                 })}
               </div>
 
-              {roleTeamMembers.length > COLLAPSED_COUNT && (
+              {availableRoleTeamMembers.length > COLLAPSED_COUNT && (
                 <button
                   type="button"
                   className="flex items-center gap-1 mt-3 text-sm text-base-content/50 hover:text-base-content/80 transition-colors"
@@ -2961,7 +3156,7 @@ const VacantRoleDetailsModal = ({
               <>
                 {isAuthenticated &&
                   !viewerRoleStatusLoading &&
-                  !isTeamMember &&
+                  !viewerIsTeamMember &&
                   isRoleOpen && (
                   <div className="mt-6 border-t border-base-200 pt-4">
                     <TeamApplicationButton
@@ -2969,14 +3164,39 @@ const VacantRoleDetailsModal = ({
                       teamId={teamId}
                       roleId={roleId}
                       className="w-full"
-                      buttonLabel="Apply to join Team and to fill this Role"
+                      buttonLabel="Apply to join team and to fill this role"
+                      onSuccess={(applicationData, submitResponse) => {
+                        const submittedApplication = submitResponse?.data ?? {};
+                        setViewerRoleApplicationRecord(
+                          buildRoleStatusRecord(
+                            {
+                              id: submittedApplication.applicationId,
+                              applicationId: submittedApplication.applicationId,
+                              status: submittedApplication.status ?? "pending",
+                              message: applicationData.message,
+                              created_at: new Date().toISOString(),
+                              roleId,
+                              role_id: roleId,
+                              teamId,
+                              team_id: teamId,
+                              isInternalRoleApplication: false,
+                              is_internal_role_application: false,
+                            },
+                            applicationTeam,
+                            displayRole,
+                            { isInternalRoleApplication: false },
+                          ),
+                        );
+                      }}
                     />
                   </div>
                 )}
 
                 {isAuthenticated &&
                   !viewerRoleStatusLoading &&
-                  isTeamMember &&
+                  !viewerTeamRoleLoading &&
+                  viewerIsTeamMember &&
+                  !viewerHoldsTeamRole &&
                   isRoleOpen &&
                   !applicationsLoading && (
                   <div className="mt-6 border-t border-base-200 pt-4">
@@ -2986,7 +3206,7 @@ const VacantRoleDetailsModal = ({
                       onClick={() => setIsInternalApplicationOpen(true)}
                       icon={<UserSearch size={16} />}
                     >
-                      Apply to fill this Role within your Team
+                      Apply to fill this role within your team
                     </Button>
                   </div>
                 )}
@@ -3031,6 +3251,7 @@ const VacantRoleDetailsModal = ({
         teamId={teamId}
         invitations={roleInvitations}
         onCancelInvitation={handleCancelInvitation}
+        onCancelRoleInvitation={handleCancelRoleInvitation}
         teamName={teamName}
         highlightUserId={highlightInviteeId}
       />
@@ -3049,16 +3270,37 @@ const VacantRoleDetailsModal = ({
     <TeamApplicationModal
       isOpen={isInternalApplicationOpen}
       onClose={() => setIsInternalApplicationOpen(false)}
-      team={team}
+      team={applicationTeam}
       teamId={teamId}
       initialRoleId={roleId}
       isInternal={true}
       onSubmit={async (applicationData) => {
         try {
-          await teamService.applyToJoinTeam(teamId, {
+          const submitResponse = await teamService.applyToJoinTeam(teamId, {
             ...applicationData,
             roleId: applicationData.roleId ?? roleId,
           });
+          const submittedApplication = submitResponse?.data ?? {};
+          setViewerRoleApplicationRecord(
+            buildRoleStatusRecord(
+              {
+                id: submittedApplication.applicationId,
+                applicationId: submittedApplication.applicationId,
+                status: submittedApplication.status ?? "pending",
+                message: applicationData.message,
+                created_at: new Date().toISOString(),
+                roleId,
+                role_id: roleId,
+                teamId,
+                team_id: teamId,
+                isInternalRoleApplication: true,
+                is_internal_role_application: true,
+              },
+              applicationTeam,
+              displayRole,
+              { isInternalRoleApplication: true },
+            ),
+          );
         } catch (error) {
           throw new Error(
             error.response?.data?.message || "Failed to submit role application"

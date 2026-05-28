@@ -1,16 +1,20 @@
-import React, { useState } from "react";
+import React, { useLayoutEffect, useRef, useState } from "react";
 import {
   Calendar,
   Users,
+  User,
+  UserSearch,
   X,
   SendHorizontal,
   FlaskConical,
+  MapPin,
+  Globe,
   Trash2,
 } from "lucide-react";
 import Modal from "../common/Modal";
+import Tooltip from "../common/Tooltip";
 import Button from "../common/Button";
 import ConfirmModal from "../common/ConfirmModal";
-import Tooltip from "../common/Tooltip";
 import TeamDetailsModal from "./TeamDetailsModal";
 import UserDetailsModal from "../users/UserDetailsModal";
 import InlineUserLink from "../users/InlineUserLink";
@@ -23,20 +27,10 @@ import {
 import Alert from "../common/Alert";
 import { format } from "date-fns";
 import { useHydratedRole } from "../../hooks/useHydratedRole";
-
-const extractRoleMatchData = (roleLike) => {
-  const rawScore = roleLike?.matchScore ?? roleLike?.match_score ?? null;
-  const numericScore = Number(rawScore);
-
-  return {
-    matchScore: Number.isFinite(numericScore) ? numericScore : null,
-    matchDetails:
-      roleLike?.matchDetails ??
-      roleLike?.match_details ??
-      roleLike?.scoreBreakdown ??
-      null,
-  };
-};
+import {
+  extractRoleMatchData,
+  normalizeBoolean,
+} from "../../utils/teamRequestUtils";
 
 /**
  * TeamApplicationDetailsModal Component
@@ -50,6 +44,7 @@ const TeamApplicationDetailsModal = ({
   onClose,
   onCancel,
   onSendReminder,
+  notificationHighlight = false,
 }) => {
   // ============ State ============
   const loading = false;
@@ -58,6 +53,12 @@ const TeamApplicationDetailsModal = ({
   const [isTeamDetailsOpen, setIsTeamDetailsOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState(null);
   const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
+  const teamNameContainerRef = useRef(null);
+  const teamNameProbeRef = useRef(null);
+  const teamDateRef = useRef(null);
+  const [teamDateIsNarrow, setTeamDateIsNarrow] = useState(false);
+  const teamDateIsNarrowRef = useRef(false);
+  teamDateIsNarrowRef.current = teamDateIsNarrow;
 
   // ============ Helpers ============
 
@@ -75,6 +76,31 @@ const TeamApplicationDetailsModal = ({
     isSynthetic:
       baseTeam?.isSynthetic ?? baseTeam?.is_synthetic ?? syntheticTeamFlag,
   };
+  const teamName = team.name || "Unknown Team";
+
+  useLayoutEffect(() => {
+    const container = teamNameContainerRef.current;
+    const probe = teamNameProbeRef.current;
+    if (!container || !probe) return;
+
+    const update = () => {
+      const dateEl = teamDateRef.current;
+      const reservedWidth =
+        teamDateIsNarrowRef.current && dateEl ? dateEl.offsetWidth + 16 : 0;
+
+      probe.textContent = teamName;
+      setTeamDateIsNarrow(
+        probe.scrollWidth > container.clientWidth - reservedWidth,
+      );
+    };
+
+    const resizeObserver = new ResizeObserver(update);
+    resizeObserver.observe(container);
+    if (teamDateRef.current) resizeObserver.observe(teamDateRef.current);
+    update();
+
+    return () => resizeObserver.disconnect();
+  }, [teamName]);
   const roleId = application?.role?.id ?? application?.roleId ?? null;
   const teamId = team?.id ?? null;
   const {
@@ -164,6 +190,25 @@ const TeamApplicationDetailsModal = ({
     return max === null || max === undefined ? "∞" : max;
   };
 
+  const getTeamLocationDetails = () => {
+    const isRemote =
+      normalizeBoolean(team.isRemote ?? team.is_remote) === true;
+    const locationParts = [team.city, team.country].filter(Boolean);
+    const fallbackLocation =
+      typeof team.location === "string"
+        ? team.location
+        : team.postal_code ?? team.postalCode ?? null;
+
+    return {
+      isRemote,
+      locationText: isRemote
+        ? "Remote"
+        : locationParts.length > 0
+          ? locationParts.join(", ")
+          : fallbackLocation,
+    };
+  };
+
   const handleTeamClick = () => {
     if (team?.id) setIsTeamDetailsOpen(true);
   };
@@ -220,6 +265,12 @@ const TeamApplicationDetailsModal = ({
 
   const isInternalRoleApplication =
     application?.isInternalRoleApplication ?? application?.is_internal_role_application ?? false;
+  const hasRoleApplication = !!(
+    application?.role ||
+    application?.roleId ||
+    application?.role_id
+  );
+  const teamLocationDetails = getTeamLocationDetails();
   const roleName =
     application?.role?.roleName ?? application?.role?.role_name ?? null;
   const syntheticRoleFlag =
@@ -265,16 +316,49 @@ const TeamApplicationDetailsModal = ({
   // Custom header
   const customHeader = (
     <div>
-      <h2 className="text-xl font-medium text-primary leading-[120%] mb-[0.2em]">
-        {isInternalRoleApplication && roleName
-          ? `Role Application: ${roleName}`
-          : team.name || "Unknown Team"}
+      <h2 className="text-xl font-medium text-primary leading-[110%] mb-[0.2em]">
+        {isInternalRoleApplication && roleName ? (
+          <span className="flex min-w-0 items-center gap-1.5">
+            <UserSearch size={20} className="shrink-0 text-primary" />
+            <span className="min-w-0 truncate">{roleName}</span>
+          </span>
+        ) : hasRoleApplication ? (
+          <span className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0 leading-[100%] mb-2">
+            <span className="inline-flex min-w-0 items-center gap-1.5">
+              <Users size={20} className="shrink-0 text-primary" />
+              <span>Team</span>
+            </span>
+            <span>{"&"}</span>
+            <span className="inline-flex min-w-0 items-center gap-1.5">
+              <UserSearch size={20} className="shrink-0 text-primary" />
+              <span>Role Application</span>
+            </span>
+          </span>
+        ) : !hasRoleApplication ? (
+          <span className="inline-flex min-w-0 items-center gap-1.5">
+            <Users size={20} className="shrink-0 text-primary" />
+            <span>Team Application</span>
+          </span>
+        ) : (
+          teamName
+        )}
       </h2>
-      <p className="text-sm text-base-content/70 flex items-center">
-        <SendHorizontal size={14} className="mr-1.5" />
-        {isInternalRoleApplication
-          ? "Role application within your team"
-          : "You applied"}
+      <p className="text-sm text-base-content/70 flex items-start">
+        <SendHorizontal
+          size={14}
+          className={`mr-1.5 mt-[0.15em] shrink-0 ${
+            isInternalRoleApplication
+              ? "text-orange-500"
+              : "text-violet-500"
+          }`}
+        />
+        <span className="leading-[1.2]">
+          {isInternalRoleApplication
+            ? "You applied to fill this role within your team"
+            : hasRoleApplication
+              ? "You applied to join a new Team and fill a Role"
+            : "You applied to join"}
+        </span>
       </p>
     </div>
   );
@@ -282,16 +366,17 @@ const TeamApplicationDetailsModal = ({
   // Footer with "Received by" (left) and buttons (right)
   // Owner display now matches the inviter display pattern in TeamInvitationDetailsModal
   const footer = (
-    <div className="flex items-center justify-between gap-3">
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
       {/* Received by (left) */}
       <InlineUserLink
         label="Received by"
         user={owner}
         onOpenUser={handleUserClick}
+        className="min-w-0 flex-[1_1_12rem] overflow-hidden"
       />
 
       {/* Buttons (right) */}
-      <div className="flex justify-end gap-2">
+      <div className="ml-auto flex flex-wrap justify-end gap-2">
         <Button
           variant="successOutline"
           size="sm"
@@ -340,14 +425,13 @@ const TeamApplicationDetailsModal = ({
         )}
 
         {/* Top row: Team info (left, clickable) + Date (right) */}
-        <div className="flex items-start justify-between gap-4 mb-5">
+        <div className="relative flex items-start justify-between gap-4 mb-5">
           {/* Team info */}
           <div
-            className="flex items-start space-x-3 cursor-pointer hover:opacity-80 transition-opacity"
+            className="flex min-w-0 flex-1 items-start space-x-4 cursor-pointer hover:opacity-80 transition-opacity"
             onClick={handleTeamClick}
-            title="View team details"
           >
-            <div className="avatar">
+            <Tooltip content="Click to view team details" wrapperClassName="avatar">
               <div className="w-12 h-12 rounded-full relative overflow-hidden">
                 {getTeamAvatar() ? (
                   <img
@@ -370,38 +454,90 @@ const TeamApplicationDetailsModal = ({
                   className="avatar-fallback bg-[var(--color-primary-focus)] text-primary-content flex items-center justify-center w-full h-full rounded-full absolute inset-0"
                   style={{ display: getTeamAvatar() ? "none" : "flex" }}
                 >
-                  <span className="text-lg font-medium">
+                  <span className="text-xl font-medium">
                     {getTeamInitials()}
                   </span>
                 </div>
 
                 {isSyntheticTeam(team) && (
                   <DemoAvatarOverlay
-                    textClassName="text-[7px]"
-                    textTranslateClassName="-translate-y-[3px]"
+                    textClassName="text-[8px]"
+                    textTranslateClassName="-translate-y-[2px]"
                   />
                 )}
               </div>
-            </div>
+            </Tooltip>
 
             <div className="flex-1 min-w-0">
-              <h4 className="font-medium text-base-content hover:text-primary transition-colors leading-[120%] mb-[0.2em]">
-                {team.name || "Unknown Team"}
+              <h4
+                ref={teamNameContainerRef}
+                className="font-medium text-base-content leading-[120%] mb-[0.2em] truncate relative"
+              >
+                <Tooltip
+                  content="Click to view team details"
+                  wrapperClassName="cursor-pointer hover:text-primary transition-colors"
+                >
+                  <span>{teamName}</span>
+                </Tooltip>
+                <span
+                  ref={teamNameProbeRef}
+                  className="invisible absolute whitespace-nowrap pointer-events-none left-0 top-0 font-medium"
+                  aria-hidden="true"
+                >
+                  {teamName}
+                </span>
               </h4>
-              <div className="text-sm text-base-content/70 flex items-center flex-wrap gap-x-1.5 gap-y-px">
-                <span className="flex items-center">
-                  <Users size={14} className="mr-1 text-primary" />
-                  <span>
+              <div
+                className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0 overflow-hidden text-xs"
+                style={{ maxHeight: "2.1em" }}
+              >
+                {teamDateIsNarrow && (
+                  <div className="flex shrink-0 items-center gap-1 text-base-content/60">
+                    <Calendar size={10} className="shrink-0" />
+                    <span className="leading-[1.05] whitespace-nowrap">
+                      {getApplicationDate()}
+                    </span>
+                  </div>
+                )}
+                <Tooltip
+                  content="Team members"
+                  wrapperClassName="flex shrink-0 items-center gap-1 text-base-content/70"
+                >
+                  <Users size={10} className="shrink-0 text-primary" />
+                  <span className="leading-[1.05] whitespace-nowrap">
                     {getMemberCount()}/{getMaxMembers()}
                   </span>
-                </span>
+                </Tooltip>
+                {teamLocationDetails.locationText && (
+                  <Tooltip
+                    content={teamLocationDetails.locationText}
+                    wrapperClassName="flex min-w-0 max-w-[calc(100%-1.5rem)] flex-[0_1_auto] items-center gap-1 overflow-hidden"
+                  >
+                    {teamLocationDetails.isRemote ? (
+                      <Globe size={10} className="shrink-0 text-base-content/60" />
+                    ) : (
+                      <MapPin size={10} className="shrink-0 text-base-content/60" />
+                    )}
+                    <span className="min-w-0 truncate text-base-content/60 leading-[1.05]">
+                      {teamLocationDetails.locationText}
+                    </span>
+                  </Tooltip>
+                )}
+                {isInternalRoleApplication && (
+                  <Tooltip
+                    content="You are already a member of this team"
+                    wrapperClassName="flex min-w-0 overflow-hidden items-center gap-0.5 text-base-content/70"
+                  >
+                    <User size={10} className="flex-shrink-0 text-success" />
+                    <span className="leading-[1.05] whitespace-nowrap">Team Member</span>
+                  </Tooltip>
+                )}
                 {isSyntheticTeam(team) && (
                   <Tooltip
                     content={DEMO_TEAM_TOOLTIP}
-                    wrapperClassName="flex items-center gap-1 text-base-content/50 text-sm"
+                    wrapperClassName="flex shrink-0 items-center gap-0.5 text-base-content/50"
                   >
-                    <FlaskConical size={14} className="flex-shrink-0" />
-                    <span>Demo Team</span>
+                    <FlaskConical size={10} className="flex-shrink-0" />
                   </Tooltip>
                 )}
               </div>
@@ -409,7 +545,10 @@ const TeamApplicationDetailsModal = ({
           </div>
 
           {/* Date - top right */}
-          <div className="flex items-center text-xs text-base-content/60 whitespace-nowrap">
+          <div
+            ref={teamDateRef}
+            className={`flex items-center text-xs text-base-content/60 whitespace-nowrap flex-shrink-0${teamDateIsNarrow ? " absolute opacity-0 pointer-events-none" : ""}`}
+          >
             <Calendar size={12} className="mr-1" />
             <span>{getApplicationDate()}</span>
           </div>
@@ -422,9 +561,37 @@ const TeamApplicationDetailsModal = ({
           </p>
         )}
 
-        {/* Vacant role card — shown when application targets a specific role */}
-        {(application?.role || application?.roleId) && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
+        {/* Application message + role card in speech bubble (when message exists) */}
+        {application?.message && (
+          <div className="mb-5">
+            <p className="text-xs text-base-content/60 mb-1 flex items-center">
+              <SendHorizontal size={12} className="text-info mr-1" />
+              Your application message:
+            </p>
+            <div className="w-fit max-w-full bg-base-200 rounded-lg rounded-bl-none p-3">
+              <p className="text-sm text-base-content/90 leading-relaxed">
+                {application.message}
+              </p>
+              {hasRoleApplication && (
+                <div className="mt-3 max-w-[300px]">
+                  <VacantRoleCard
+                    role={roleForCard}
+                    team={team}
+                    matchScore={roleMatchScore}
+                    matchDetails={roleMatchDetails}
+                    canManage={false}
+                    isTeamMember={false}
+                    notificationHighlight={notificationHighlight}
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Role card bare — shown when no message but role exists */}
+        {!application?.message && hasRoleApplication && (
+          <div className="mb-5 max-w-[300px]">
             <VacantRoleCard
               role={roleForCard}
               team={team}
@@ -432,26 +599,14 @@ const TeamApplicationDetailsModal = ({
               matchDetails={roleMatchDetails}
               canManage={false}
               isTeamMember={false}
+              notificationHighlight={notificationHighlight}
             />
           </div>
         )}
 
-        {/* Application Message */}
-        {application?.message && (
-          <div className="mb-4">
-            <p className="text-xs text-base-content/60 mb-0.5 flex items-center">
-              <SendHorizontal size={12} className="text-info mr-1" />
-              Your application message:
-            </p>
-            <p className="text-sm text-base-content/90 leading-relaxed">
-              {application.message}
-            </p>
-          </div>
-        )}
-
-        {/* No message fallback */}
-        {!application?.message && (
-          <div className="mb-4">
+        {/* No message fallback — only when no role either */}
+        {!application?.message && !hasRoleApplication && (
+          <div className="mb-5">
             <p className="text-xs text-base-content/60 mb-0.5 flex items-center">
               <SendHorizontal size={12} className="text-info mr-1" />
               Your application message:

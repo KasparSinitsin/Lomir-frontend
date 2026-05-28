@@ -1,5 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
-import { teamService } from "../services/teamService";
+import { useCallback, useMemo, useState } from "react";
 
 const parseSortableTimestamp = (value) => {
   if (!value) return null;
@@ -94,7 +93,37 @@ const getRequestTimestamp = (item) => {
 const useMyTeamsSort = ({ teams = [], onSortChange } = {}) => {
   const [sortBy, setSortBy] = useState("newest");
   const [sortDir, setSortDir] = useState("desc");
-  const [teamNotificationMetrics, setTeamNotificationMetrics] = useState({});
+
+  // Derived from the team list. The backend's getUserTeams now returns the
+  // pending application/invitation counts and the latest request timestamp
+  // per team, so we no longer need per-team fetches here.
+  const teamNotificationMetrics = useMemo(() => {
+    const result = {};
+    for (const team of teams || []) {
+      if (!team?.id) continue;
+      const applicationsCount = Number(
+        team.pendingApplicationsCount ??
+          team.pending_applications_count ??
+          0,
+      );
+      const invitationsCount = Number(
+        team.pendingSentInvitationsCount ??
+          team.pending_sent_invitations_count ??
+          0,
+      );
+      const latestTimestamp = parseSortableTimestamp(
+        team.latestRequestTimestamp ?? team.latest_request_timestamp,
+      );
+
+      result[team.id] = {
+        latestTimestamp,
+        totalRequestCount:
+          (Number.isFinite(applicationsCount) ? applicationsCount : 0) +
+          (Number.isFinite(invitationsCount) ? invitationsCount : 0),
+      };
+    }
+    return result;
+  }, [teams]);
 
   const handleSortChange = useCallback(
     (nextSortBy) => {
@@ -121,71 +150,6 @@ const useMyTeamsSort = ({ teams = [], onSortChange } = {}) => {
     },
     [onSortChange, sortBy],
   );
-
-  useEffect(() => {
-    if (!["newest", "requests"].includes(sortBy) || teams.length === 0) {
-      return;
-    }
-
-    let isCancelled = false;
-
-    const fetchTeamNotificationTimestamps = async () => {
-      const entries = await Promise.all(
-        teams.filter(Boolean).map(async (team) => {
-          if (!team?.id) return null;
-
-          const [applicationsResponse, invitationsResponse] = await Promise.all(
-            [
-              teamService
-                .getTeamApplications(team.id, { skipAuthRedirect: true })
-                .catch(() => ({ data: [] })),
-              teamService
-                .getTeamSentInvitations(team.id, { skipAuthRedirect: true })
-                .catch(() => ({ data: [] })),
-            ],
-          );
-
-          const applications = applicationsResponse?.data || [];
-          const invitations = invitationsResponse?.data || [];
-
-          const latestApplicationTimestamp = applications.reduce(
-            (max, application) => Math.max(max, getRequestTimestamp(application)),
-            0,
-          );
-          const latestInvitationTimestamp = invitations.reduce(
-            (max, invitation) => Math.max(max, getRequestTimestamp(invitation)),
-            0,
-          );
-          const totalRequestCount = applications.length + invitations.length;
-
-          return [
-            team.id,
-            {
-              latestTimestamp:
-                Math.max(
-                  latestApplicationTimestamp,
-                  latestInvitationTimestamp,
-                ) || null,
-              totalRequestCount,
-            },
-          ];
-        }),
-      );
-
-      if (isCancelled) return;
-
-      setTeamNotificationMetrics((prev) => ({
-        ...prev,
-        ...Object.fromEntries(entries.filter(Boolean)),
-      }));
-    };
-
-    fetchTeamNotificationTimestamps();
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [sortBy, teams]);
 
   const sortPendingItems = useCallback(
     (items = []) => {

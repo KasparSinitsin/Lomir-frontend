@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useQueries } from "@tanstack/react-query";
 import { createPortal } from "react-dom";
 import {
   AttributionControl,
@@ -36,7 +37,12 @@ import { useTeamModalSafe } from "../../contexts/TeamModalContext";
 import { useUserModalSafe } from "../../contexts/UserModalContext";
 import { useAuth } from "../../contexts/AuthContext";
 import { teamService } from "../../services/teamService";
-import { userService } from "../../services/userService";
+import useViewerPendingRequests from "../../hooks/useViewerPendingRequests";
+import useViewerTeamMemberships from "../../hooks/useViewerTeamMemberships";
+import {
+  fetchUserProfile,
+  userProfileQueryKey,
+} from "../../hooks/useUserQueries";
 import { getResultMatchScore } from "../../utils/teamMatchUtils";
 import { getMatchTier } from "../../utils/matchScoreUtils";
 import {
@@ -529,19 +535,6 @@ const getCityCoordinateFallback = (item) =>
   getCanonicalDemoLocation(item) ??
   CITY_COORDINATE_FALLBACKS[normalizeLocationKey(getItemCity(item))] ??
   null;
-
-const unwrapUserDetailsResponse = (response) => {
-  const payload = response?.data ?? response;
-  return firstObject(
-    payload?.data?.user,
-    payload?.data?.profile,
-    payload?.data?.data,
-    payload?.data,
-    payload?.user,
-    payload?.profile,
-    payload,
-  ) ?? null;
-};
 
 const mergeUserLocationDetails = (item, userDetails) => {
   if (!item || !userDetails) return item;
@@ -1132,6 +1125,10 @@ const normalizeMapPoint = (
     teamRoleApplication,
     hasTeamRoleApplication: Boolean(teamRoleApplication),
     teamRoleApplicationName: getRequestRoleName(teamRoleApplication),
+    isCombinedTeamApplication: Boolean(teamRoleApplication) && !(
+      teamRoleApplication?.isInternalRoleApplication ||
+      teamRoleApplication?.is_internal_role_application
+    ),
     isPublic: type === "team" ? getTeamIsPublic(item) : null,
     imageUrl: avatarData.imageUrl,
     initials: avatarData.initials,
@@ -1346,7 +1343,6 @@ const EntityMetaLine = ({ point }) => {
           >
             <FlaskConical size={POPUP_SUBLINE_ICON_SIZE} strokeWidth={2.25} aria-hidden="true" />
           </Tooltip>
-          <span>Demo</span>
         </>
       )}
     </div>
@@ -1622,14 +1618,14 @@ const TeamMetaLine = ({
       )}
       {point.hasTeamRoleApplication && (
         <TeamMetaItem
-          tooltip={roleApplicationTooltip}
+          tooltip={point.isCombinedTeamApplication ? "You applied to join this team and fill a role" : roleApplicationTooltip}
           withTooltip={withTooltips}
           onClick={point.teamRoleApplication && onOpenApplication
             ? () => onOpenApplication(point.teamRoleApplication)
             : null}
           ariaLabel="Open role application details"
         >
-          <SendHorizontal size={10} className="text-orange-500" aria-hidden="true" />
+          <SendHorizontal size={10} className={point.isCombinedTeamApplication ? "text-violet-500" : "text-orange-500"} aria-hidden="true" />
         </TeamMetaItem>
       )}
       {showRoleRequestNames && roleNameItem(point.teamRoleApplicationName)}
@@ -1948,10 +1944,17 @@ const SearchMapView = ({
   const authUserId = authContext?.user?.id ?? null;
   const [selectedRolePoint, setSelectedRolePoint] = useState(null);
   const [activeStatusTooltipPointId, setActiveStatusTooltipPointId] = useState(null);
-  const [fetchedTeamRoles, setFetchedTeamRoles] = useState({});
-  const [fetchedApplications, setFetchedApplications] = useState([]);
-  const [fetchedInvitations, setFetchedInvitations] = useState([]);
-  const [fetchedUserTeamIds, setFetchedUserTeamIds] = useState(() => new Set());
+  const {
+    data: viewerPendingRequests,
+    refetch: refetchViewerPendingRequests,
+  } = useViewerPendingRequests(authUserId, { enabled: Boolean(authUserId) });
+  const {
+    teamIdSet: fetchedUserTeamIds,
+    teamRoles: fetchedTeamRoles,
+    refetch: refetchViewerTeamMemberships,
+  } = useViewerTeamMemberships(authUserId, { enabled: Boolean(authUserId) });
+  const fetchedApplications = viewerPendingRequests?.applications ?? [];
+  const fetchedInvitations = viewerPendingRequests?.invitations ?? [];
   const [selectedInvitation, setSelectedInvitation] = useState(null);
   const [selectedApplication, setSelectedApplication] = useState(null);
   const [mapInstance, setMapInstance] = useState(null);
@@ -1966,185 +1969,13 @@ const SearchMapView = ({
   const [userLocationDetailsById, setUserLocationDetailsById] = useState({});
   const popupRef = useRef(null);
   const markerTooltipRef = useRef(null);
-  const userLocationFetchesRef = useRef(new Set());
-  const isMountedRef = useRef(false);
-
-  useEffect(() => {
-    isMountedRef.current = true;
-    return () => {
-      isMountedRef.current = false;
-    };
-  }, []);
-
-  const fetchUserRequestData = useCallback(async () => {
-    if (!authUserId) {
-      return { applications: [], invitations: [] };
-    }
-
-    const [appsResponse, invResponse] = await Promise.all([
-      teamService.getUserPendingApplications(),
-      teamService.getUserReceivedInvitations(),
-    ]);
-
-    return {
-      applications: Array.isArray(appsResponse?.data) ? appsResponse.data : [],
-      invitations: Array.isArray(invResponse?.data) ? invResponse.data : [],
-    };
-  }, [authUserId]);
-
-  const fetchUserTeamIds = useCallback(async () => {
-    if (!authUserId) return new Set();
-
-    const teamIds = new Set();
-    const limit = 100;
-    let page = 1;
-    let totalPages = 1;
-
-    while (page <= totalPages) {
-      const response = await teamService.getUserTeams(authUserId, { page, limit });
-      const teams = Array.isArray(response?.data) ? response.data : [];
-
-      teams.forEach((team) => {
-        const teamId = firstPresent(team?.id, team?.teamId, team?.team_id);
-        if (teamId != null) teamIds.add(String(teamId));
-      });
-
-      const pagination = response?.pagination ?? {};
-      const nextTotalPages = Number(
-        pagination.totalPages ?? pagination.total_pages ?? 1,
-      );
-      totalPages =
-        Number.isFinite(nextTotalPages) && nextTotalPages > 0
-          ? nextTotalPages
-          : 1;
-
-      const hasNextPage = Boolean(
-        pagination.hasNextPage ??
-          pagination.has_next_page ??
-          page < totalPages,
-      );
-
-      if (!hasNextPage) break;
-      page += 1;
-    }
-
-    return teamIds;
-  }, [authUserId]);
-
-  useEffect(() => {
-    if (!authUserId) {
-      setFetchedApplications([]);
-      setFetchedInvitations([]);
-      return;
-    }
-
-    let isActive = true;
-
-    const fetchUserRoleData = async () => {
-      try {
-        const { applications, invitations } = await fetchUserRequestData();
-        if (!isActive) return;
-        setFetchedApplications(applications);
-        setFetchedInvitations(invitations);
-      } catch {
-        // silent fail — icon simply won't show if fetch fails
-      }
-    };
-
-    fetchUserRoleData();
-
-    return () => { isActive = false; };
-  }, [authUserId, fetchUserRequestData]);
-
-  useEffect(() => {
-    if (!authUserId) {
-      setFetchedUserTeamIds(new Set());
-      return;
-    }
-
-    let isActive = true;
-
-    const loadUserTeamIds = async () => {
-      try {
-        const teamIds = await fetchUserTeamIds();
-        if (isActive) {
-          setFetchedUserTeamIds(teamIds);
-        }
-      } catch {
-        if (isActive) {
-          setFetchedUserTeamIds(new Set());
-        }
-      }
-    };
-
-    loadUserTeamIds();
-
-    return () => {
-      isActive = false;
-    };
-  }, [authUserId, fetchUserTeamIds]);
-
-  useEffect(() => {
-    if (!authUserId) return;
-
-    const seenTeamIds = new Set();
-
-    const teamItemsNeedingRole = items.filter((item) => {
-      if (getMapPointType(item) !== "team") return false;
-      const teamId = getTeamItemId(item);
-      if (teamId === null) return false;
-      const teamKey = String(teamId);
-      if (seenTeamIds.has(teamKey)) return false;
-      seenTeamIds.add(teamKey);
-      if (Object.prototype.hasOwnProperty.call(fetchedTeamRoles, teamKey)) return false;
-      return !getTeamViewerRole(item, { id: authUserId });
-    });
-
-    if (teamItemsNeedingRole.length === 0) return;
-
-    let isActive = true;
-
-    const fetchTeamRoles = async () => {
-      const entries = await Promise.all(
-        teamItemsNeedingRole.map(async (teamItem) => {
-          const teamId = getTeamItemId(teamItem);
-          const response = await teamService.getUserRoleInTeam(teamId, authUserId);
-          const payload = response?.data ?? response;
-          const data = payload?.data ?? payload;
-
-          return [String(teamId), normalizeRoleValue(data?.role ?? payload?.role)];
-        }),
-      );
-
-      if (!isActive) return;
-
-      setFetchedTeamRoles((previousRoles) => {
-        const nextRoles = { ...previousRoles };
-        entries.forEach(([teamId, role]) => {
-          nextRoles[teamId] = role;
-        });
-        return nextRoles;
-      });
-    };
-
-    fetchTeamRoles();
-
-    return () => {
-      isActive = false;
-    };
-  }, [authUserId, fetchedTeamRoles, items]);
 
   const refreshUserStatusData = useCallback(async () => {
-    const [{ applications, invitations }, teamIds] = await Promise.all([
-      fetchUserRequestData(),
-      fetchUserTeamIds(),
+    await Promise.all([
+      refetchViewerPendingRequests(),
+      refetchViewerTeamMemberships(),
     ]);
-
-    setFetchedApplications(applications);
-    setFetchedInvitations(invitations);
-    setFetchedUserTeamIds(teamIds);
-    setFetchedTeamRoles({});
-  }, [fetchUserRequestData, fetchUserTeamIds]);
+  }, [refetchViewerPendingRequests, refetchViewerTeamMemberships]);
 
   const openInvitationDetails = useCallback((invitation) => {
     if (!invitation) return;
@@ -2160,12 +1991,14 @@ const SearchMapView = ({
     invitationId,
     responseMessage = "",
     fillRole = false,
+    options = {},
   ) => {
     await teamService.respondToInvitation(
       invitationId,
       "accept",
       responseMessage,
       fillRole,
+      options,
     );
     await refreshUserStatusData();
     setSelectedInvitation(null);
@@ -2243,7 +2076,6 @@ const SearchMapView = ({
       const userId = String(point.rawId);
       if (seenIds.has(userId)) return;
       if (Object.prototype.hasOwnProperty.call(userLocationDetailsById, userId)) return;
-      if (userLocationFetchesRef.current.has(userId)) return;
 
       seenIds.add(userId);
       ids.push(userId);
@@ -2251,43 +2083,48 @@ const SearchMapView = ({
 
     return ids;
   }, [normalizedPoints, userLocationDetailsById]);
+  const userLocationDetailQueries = useQueries({
+    queries: userIdsNeedingLocationDetails.map((userId) => ({
+      queryKey: userProfileQueryKey(userId),
+      queryFn: () => fetchUserProfile(userId),
+      staleTime: 30_000,
+    })),
+  });
+  const userLocationDetailQuerySignature = userLocationDetailQueries
+    .map(
+      (query) =>
+        `${query.status}:${query.dataUpdatedAt ?? 0}:${query.errorUpdatedAt ?? 0}`,
+    )
+    .join("|");
 
   useEffect(() => {
     if (userIdsNeedingLocationDetails.length === 0) return;
 
-    userIdsNeedingLocationDetails.forEach((userId) => {
-      userLocationFetchesRef.current.add(userId);
-    });
+    const entries = userIdsNeedingLocationDetails
+      .map((userId, index) => {
+        const query = userLocationDetailQueries[index];
+        if (query?.isSuccess) return [userId, query.data ?? null];
+        if (query?.isError) return [userId, null];
+        return null;
+      })
+      .filter(Boolean);
 
-    const fetchUserLocationDetails = async () => {
-      const entries = await Promise.all(
-        userIdsNeedingLocationDetails.map(async (userId) => {
-          try {
-            const response = await userService.getUserById(userId);
-            return [userId, unwrapUserDetailsResponse(response)];
-          } catch {
-            return [userId, null];
-          }
-        }),
-      );
+    if (entries.length === 0) return;
 
-      userIdsNeedingLocationDetails.forEach((userId) => {
-        userLocationFetchesRef.current.delete(userId);
-      });
-
-      if (!isMountedRef.current) return;
-
-      setUserLocationDetailsById((previousDetails) => {
-        const nextDetails = { ...previousDetails };
-        entries.forEach(([userId, details]) => {
+    setUserLocationDetailsById((previousDetails) => {
+      const nextDetails = { ...previousDetails };
+      entries.forEach(([userId, details]) => {
+        if (!Object.prototype.hasOwnProperty.call(nextDetails, userId)) {
           nextDetails[userId] = details;
-        });
-        return nextDetails;
+        }
       });
-    };
-
-    fetchUserLocationDetails();
-  }, [userIdsNeedingLocationDetails]);
+      return nextDetails;
+    });
+  }, [
+    userIdsNeedingLocationDetails,
+    userLocationDetailQueries,
+    userLocationDetailQuerySignature,
+  ]);
 
   const markerPoints = useMemo(
     () => normalizedPoints.filter((point) => point.hasCoordinates),
@@ -3052,15 +2889,20 @@ const SearchMapView = ({
               selectedRolePointForModal.item.team_avatar_url,
           }}
           matchScore={
-            selectedRolePointForModal.item.bestMatchScore ??
-            selectedRolePointForModal.item.best_match_score ??
-            null
+            showMatchScore
+              ? selectedRolePointForModal.item.bestMatchScore ??
+                selectedRolePointForModal.item.best_match_score ??
+                null
+              : null
           }
           matchDetails={
-            selectedRolePointForModal.item.matchDetails ??
-            selectedRolePointForModal.item.match_details ??
-            null
+            showMatchScore
+              ? selectedRolePointForModal.item.matchDetails ??
+                selectedRolePointForModal.item.match_details ??
+                null
+              : null
           }
+          showMatchScore={showMatchScore}
           isTeamMember={selectedRolePointForModal.isViewerTeamMember}
         />
       )}

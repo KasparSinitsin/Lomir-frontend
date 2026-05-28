@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import {
   Users,
   Send,
@@ -10,56 +10,44 @@ import {
   UserSearch,
   MapPin,
   Globe,
+  FlaskConical,
+  ChevronRight,
+  ChevronUp,
 } from "lucide-react";
 import Modal from "../common/Modal";
 import Button from "../common/Button";
 import ScreenAlert from "../common/ScreenAlert";
+import CardMetaItem from "../common/CardMetaItem";
+import CardMetaRow from "../common/CardMetaRow";
+import RoleBadgePill from "../common/RoleBadgePill";
+import Tooltip from "../common/Tooltip";
+import DemoAvatarOverlay from "../users/DemoAvatarOverlay";
 import UserDetailsModal from "../users/UserDetailsModal";
 import TeamDetailsModal from "../teams/TeamDetailsModal";
 import TeamInvitesModal from "../teams/TeamInvitesModal";
 import TeamApplicationsModal from "../teams/TeamApplicationsModal";
-import { getUserInitials } from "../../utils/userHelpers";
+import VacantRoleDetailsModal from "./VacantRoleDetailsModal";
+import {
+  DEMO_PROFILE_TOOLTIP,
+  DEMO_ROLE_TOOLTIP,
+  DEMO_TEAM_TOOLTIP,
+  getUserInitials,
+  isSyntheticUser,
+  isSyntheticRole,
+  isSyntheticTeam,
+} from "../../utils/userHelpers";
 import { teamService } from "../../services/teamService";
 import { vacantRoleService } from "../../services/vacantRoleService";
+import useSocketEvents from "../../hooks/useSocketEvents";
+import {
+  isExistingMemberStatus,
+  normalizeBoolean,
+  normalizeNumericId,
+  numericIdsMatch,
+} from "../../utils/teamRequestUtils";
 
-const normalizeId = (value) => {
-  if (value === null || value === undefined || value === "") return null;
-
-  const numericValue = Number(value);
-  return Number.isFinite(numericValue) ? numericValue : null;
-};
-
-const idsMatch = (left, right) => {
-  const normalizedLeft = normalizeId(left);
-  const normalizedRight = normalizeId(right);
-
-  if (normalizedLeft === null || normalizedRight === null) return false;
-  return normalizedLeft === normalizedRight;
-};
-
-const normalizeBoolean = (value) => {
-  if (typeof value === "boolean") return value;
-  if (typeof value === "number") return value === 1;
-
-  if (typeof value === "string") {
-    const normalizedValue = value.trim().toLowerCase();
-    if (["true", "1", "yes"].includes(normalizedValue)) return true;
-    if (["false", "0", "no"].includes(normalizedValue)) return false;
-  }
-
-  return null;
-};
-
-const isExistingMemberStatus = (value) => {
-  if (typeof value !== "string") return false;
-
-  const normalizedValue = value.trim().toLowerCase();
-  return (
-    normalizedValue === "member" ||
-    normalizedValue === "existing-member" ||
-    normalizedValue === "existing_member"
-  );
-};
+const normalizeId = normalizeNumericId;
+const idsMatch = numericIdsMatch;
 
 const isInviteeExistingTeamMember = (team, inviteeId) => {
   if (!team || inviteeId === null || inviteeId === undefined) return false;
@@ -135,6 +123,67 @@ const isInviteeExistingTeamMember = (team, inviteeId) => {
   );
 };
 
+const getRoleFilledById = (role) =>
+  role?.filledByUser?.id ??
+  role?.filled_by_user?.id ??
+  role?.filledByUserId ??
+  role?.filled_by_user_id ??
+  role?.filledBy ??
+  role?.filled_by ??
+  null;
+
+const isRoleFilledByInvitee = (role, inviteeId) => {
+  if (!role || inviteeId === null || inviteeId === undefined) return false;
+
+  const filledById = getRoleFilledById(role);
+  return filledById !== null && filledById !== undefined && idsMatch(filledById, inviteeId);
+};
+
+const hasInviteeFilledRole = (team, inviteeId) => {
+  if (!team || inviteeId === null || inviteeId === undefined) return false;
+
+  const directFlags = [
+    team?.inviteeHasFilledRole,
+    team?.invitee_has_filled_role,
+    team?.hasInviteeFilledRole,
+    team?.has_invitee_filled_role,
+    team?.inviteeHasRole,
+    team?.invitee_has_role,
+  ];
+
+  if (directFlags.some((flag) => normalizeBoolean(flag) === true)) {
+    return true;
+  }
+
+  const roleCollections = [
+    team?.roles,
+    team?.teamRoles,
+    team?.team_roles,
+    team?.vacantRoles,
+    team?.vacant_roles,
+  ].filter(Array.isArray);
+
+  return roleCollections.some((roles) =>
+    roles.some((role) => isRoleFilledByInvitee(role, inviteeId)),
+  );
+};
+
+const isInviteModalDemoTeam = (team) => {
+  if (!team) return false;
+
+  return (
+    isSyntheticTeam(team) ||
+    [
+      team?.team_is_synthetic,
+      team?.teamIsSynthetic,
+      team?.is_demo,
+      team?.isDemo,
+      team?.team_is_demo,
+      team?.teamIsDemo,
+    ].some((flag) => normalizeBoolean(flag) === true)
+  );
+};
+
 const unwrapTeamPayload = (payload) => {
   if (!payload || typeof payload !== "object") return null;
 
@@ -161,6 +210,7 @@ const unwrapTeamPayload = (payload) => {
  * @param {string} inviteeUsername - Username of the invitee
  * @param {string} inviteeAvatar - Avatar URL of the invitee
  * @param {string} inviteeBio - Bio/description of the invitee
+ * @param {boolean|string|number} inviteeIsSynthetic - Whether the invitee is demo data
  * @param {string|number|null} prefillTeamId - Team ID to preselect when available
  * @param {string|number|null} prefillRoleId - Vacant role ID to preselect when available
  * @param {string|null} prefillTeamName - Team name for prefill context
@@ -176,6 +226,7 @@ const TeamInviteModal = ({
   inviteeUsername,
   inviteeAvatar,
   inviteeBio,
+  inviteeIsSynthetic = false,
   prefillTeamId = null,
   prefillRoleId = null,
   prefillTeamName = null,
@@ -185,8 +236,11 @@ const TeamInviteModal = ({
   const normalizedPrefillRoleId = normalizeId(prefillRoleId);
   const [teams, setTeams] = useState([]);
   const [selectedTeamId, setSelectedTeamId] = useState(null);
+  const [isTeamSectionExpanded, setIsTeamSectionExpanded] = useState(true);
   const [vacantRoles, setVacantRoles] = useState([]);
   const [selectedRoleId, setSelectedRoleId] = useState(null);
+  const [isRoleSectionExpanded, setIsRoleSectionExpanded] = useState(false);
+  const [isMessageSectionExpanded, setIsMessageSectionExpanded] = useState(false);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
   const [loadingRoles, setLoadingRoles] = useState(false);
@@ -198,6 +252,7 @@ const TeamInviteModal = ({
   // Team details modal state
   const [selectedTeamForDetails, setSelectedTeamForDetails] = useState(null);
   const [isTeamDetailsOpen, setIsTeamDetailsOpen] = useState(false);
+  const [selectedRoleForDetails, setSelectedRoleForDetails] = useState(null);
 
   // Store invitation/application/member data per team.
   // { teamId: { hasInviteForUser: bool, hasApplicationFromUser: bool, isExistingMember: bool, allInvitations: [], allApplications: [] } }
@@ -224,45 +279,8 @@ const TeamInviteModal = ({
           inviteeId
         );
         const availableTeams = teamsResponse.data || [];
-        const prefilledTeamWasExcluded =
-          normalizedPrefillTeamId != null &&
-          !availableTeams.some((team) => idsMatch(team.id, normalizedPrefillTeamId));
-        let teamsData = availableTeams;
 
-        if (prefilledTeamWasExcluded) {
-          try {
-            const prefilledTeamResponse = await teamService.getTeamById(
-              normalizedPrefillTeamId,
-            );
-            const fetchedPrefilledTeam = unwrapTeamPayload(prefilledTeamResponse);
-
-            if (fetchedPrefilledTeam?.id != null) {
-              teamsData = [fetchedPrefilledTeam, ...availableTeams];
-            } else {
-              teamsData = [
-                {
-                  id: normalizedPrefillTeamId,
-                  name: prefillTeamName || "Prefilled Team",
-                },
-                ...availableTeams,
-              ];
-            }
-          } catch (prefilledTeamError) {
-            console.warn(
-              `Could not fetch prefilled team ${normalizedPrefillTeamId}:`,
-              prefilledTeamError,
-            );
-            teamsData = [
-              {
-                id: normalizedPrefillTeamId,
-                name: prefillTeamName || "Prefilled Team",
-              },
-              ...availableTeams,
-            ];
-          }
-        }
-
-        const uniqueTeams = teamsData.filter((team, index, allTeams) => {
+        const uniqueTeams = availableTeams.filter((team, index, allTeams) => {
           const normalizedTeamId = normalizeId(team?.id);
           if (normalizedTeamId == null) return false;
 
@@ -308,16 +326,50 @@ const TeamInviteModal = ({
               const isExistingMember =
                 team.isInviteeMember === true ||
                 team.is_invitee_member === true ||
-                (prefilledTeamWasExcluded &&
-                  idsMatch(team.id, normalizedPrefillTeamId)) ||
                 isInviteeExistingTeamMember(team, inviteeId);
+
+              let openRoleCount = 0;
+              let hasFilledRoleForInvitee = hasInviteeFilledRole(team, inviteeId);
+              let isDemoTeam = isInviteModalDemoTeam(team);
+
+              if (!isDemoTeam) {
+                try {
+                  const teamDetailsResponse = await teamService.getTeamById(team.id);
+                  const teamDetails = unwrapTeamPayload(teamDetailsResponse);
+                  isDemoTeam = isInviteModalDemoTeam(teamDetails);
+                } catch {
+                  isDemoTeam = false;
+                }
+              }
+
+              try {
+                const rolesResponse = await vacantRoleService.getVacantRoles(team.id, "all");
+                const allRoles = rolesResponse.data || [];
+                openRoleCount = allRoles.filter((role) => {
+                  const status = String(role?.status ?? "open").toLowerCase();
+                  return status === "open";
+                }).length;
+                hasFilledRoleForInvitee =
+                  hasFilledRoleForInvitee ||
+                  allRoles.some((role) => isRoleFilledByInvitee(role, inviteeId));
+              } catch {
+                try {
+                  const rolesResponse = await vacantRoleService.getVacantRoles(team.id, "open");
+                  openRoleCount = (rolesResponse.data || []).length;
+                } catch {
+                  openRoleCount = 0;
+                }
+              }
 
               statusData[team.id] = {
                 hasInviteForUser,
                 hasApplicationFromUser,
                 isExistingMember,
+                hasFilledRoleForInvitee,
+                isDemoTeam,
                 allInvitations,
                 allApplications,
+                openRoleCount,
               };
             } catch (err) {
               console.warn(`Could not fetch status for team ${team.id}:`, err);
@@ -325,8 +377,11 @@ const TeamInviteModal = ({
                 hasInviteForUser: false,
                 hasApplicationFromUser: false,
                 isExistingMember: false,
+                hasFilledRoleForInvitee: false,
+                isDemoTeam: isInviteModalDemoTeam(team),
                 allInvitations: [],
                 allApplications: [],
+                openRoleCount: 0,
               };
             }
           })
@@ -348,8 +403,10 @@ const TeamInviteModal = ({
   useEffect(() => {
     if (isOpen) {
       setSelectedTeamId(normalizedPrefillTeamId);
+      setIsTeamSectionExpanded(true);
       setVacantRoles([]);
       setSelectedRoleId(normalizedPrefillRoleId);
+      setIsRoleSectionExpanded(Boolean(normalizedPrefillRoleId));
       setMessage("");
       setLoadingRoles(false);
       setError(null);
@@ -379,6 +436,7 @@ const TeamInviteModal = ({
         return (
           !status.hasInviteForUser &&
           !status.hasApplicationFromUser &&
+          status.hasFilledRoleForInvitee !== true &&
           (hasOpenSlot || isExistingMember)
         );
       };
@@ -405,11 +463,16 @@ const TeamInviteModal = ({
     if (!isOpen || !selectedTeamId) {
       setVacantRoles([]);
       setSelectedRoleId(null);
+      setIsRoleSectionExpanded(false);
       setLoadingRoles(false);
       return;
     }
 
     let cancelled = false;
+    setIsRoleSectionExpanded(
+      idsMatch(selectedTeamId, normalizedPrefillTeamId) &&
+        normalizedPrefillRoleId != null,
+    );
 
     const fetchVacantRoles = async () => {
       try {
@@ -444,10 +507,18 @@ const TeamInviteModal = ({
     return () => {
       cancelled = true;
     };
-  }, [isOpen, selectedTeamId]);
+  }, [
+    isOpen,
+    selectedTeamId,
+    normalizedPrefillTeamId,
+    normalizedPrefillRoleId,
+  ]);
 
   useEffect(() => {
     if (!isOpen || !selectedTeamId || loadingRoles) return;
+
+    const currentSelectedTeam = teams.find((team) => idsMatch(team.id, selectedTeamId));
+    const teamRequiresRole = teamStatusData[currentSelectedTeam?.id]?.isExistingMember === true;
 
     setSelectedRoleId((currentSelectedRoleId) => {
       const selectedRoleStillExists = vacantRoles.find((role) =>
@@ -455,6 +526,10 @@ const TeamInviteModal = ({
       );
       if (selectedRoleStillExists) {
         return normalizeId(selectedRoleStillExists.id);
+      }
+
+      if (teamRequiresRole && vacantRoles.length === 1) {
+        return normalizeId(vacantRoles[0].id);
       }
 
       if (
@@ -477,6 +552,8 @@ const TeamInviteModal = ({
     loadingRoles,
     normalizedPrefillTeamId,
     normalizedPrefillRoleId,
+    teams,
+    teamStatusData,
   ]);
 
   // ============ Helper Functions ============
@@ -494,6 +571,11 @@ const TeamInviteModal = ({
     return inviteeName || inviteeUsername || "Unknown User";
   };
 
+  // Get first given name for the modal title (e.g. "Alice Stephanie Beurer" → "Alice")
+  const getInviteeAbbreviatedName = () => {
+    return (inviteeFirstName || "").split(" ")[0] || inviteeName || inviteeUsername || "Unknown User";
+  };
+
   // Get username
   const getUsername = () => {
     return inviteeUsername || "unknown";
@@ -505,6 +587,8 @@ const TeamInviteModal = ({
       first_name: inviteeFirstName,
       last_name: inviteeLastName,
       username: inviteeUsername || inviteeName,
+      is_synthetic: inviteeIsSynthetic,
+      isSynthetic: inviteeIsSynthetic,
     };
   };
 
@@ -574,6 +658,18 @@ const TeamInviteModal = ({
     return parts.length > 0 ? parts.join(", ") : null;
   };
 
+  const getTeamLocationDetails = (team) => {
+    const isRemote = team.isRemote ?? team.is_remote;
+    const locationParts = [team.city, team.country].filter(Boolean);
+    const locationText = isRemote
+      ? "Remote"
+      : locationParts.length > 0
+        ? locationParts.join(", ")
+        : null;
+
+    return { isRemote, locationText };
+  };
+
   // Get the status badge for a team
   const getTeamStatusBadge = (teamId, team) => {
     const isSelected = idsMatch(selectedTeamId, teamId);
@@ -604,15 +700,28 @@ const TeamInviteModal = ({
     }
 
     if (isExistingMember) {
+      if (isSelected) {
+        return {
+          type: "existing-member-selected",
+          label: "Invite to Role",
+          icon: Check,
+          clickable: true,
+          customStyle: {
+            backgroundColor: "rgb(20, 83, 45)",
+            border: "none",
+            color: "#ffffff",
+          },
+        };
+      }
       return {
         type: "existing-member",
         label: "Member",
         icon: Users,
         clickable: true,
         customStyle: {
-          backgroundColor: "rgba(107, 114, 128, 0.15)",
-          borderColor: "rgba(107, 114, 128, 0.3)",
-          color: "rgba(31, 41, 55, 0.9)",
+          backgroundColor: "rgba(0, 146, 19, 0.08)",
+          border: "none",
+          color: "rgb(20, 83, 45)",
         },
       };
     }
@@ -621,7 +730,7 @@ const TeamInviteModal = ({
       if (isSelected) {
         return {
           type: "selected",
-          label: "Invite",
+          label: "Invite to Team",
           icon: Check,
           customStyle: {
             backgroundColor: "var(--color-primary-focus)",
@@ -649,23 +758,39 @@ const TeamInviteModal = ({
     return (
       !status.hasInviteForUser &&
       !status.hasApplicationFromUser &&
+      status.hasFilledRoleForInvitee !== true &&
       (hasCapacity(team) || status.isExistingMember === true)
     );
   };
 
   const orderedTeams = useMemo(() => {
-    if (normalizedPrefillTeamId == null) return teams;
+    const filtered = teams.filter((team) => {
+      const userRole = team.user_role ?? team.userRole;
+      if (userRole && !['owner', 'admin'].includes(userRole)) return false;
 
-    const prefilledTeam = teams.find((team) =>
+      const status = teamStatusData[team.id];
+      if (status?.isExistingMember === true && status?.hasFilledRoleForInvitee === true) {
+        return false;
+      }
+
+      if (status?.isExistingMember === true && (status?.openRoleCount ?? 0) === 0) {
+        return false;
+      }
+      return true;
+    });
+
+    if (normalizedPrefillTeamId == null) return filtered;
+
+    const prefilledTeam = filtered.find((team) =>
       idsMatch(team.id, normalizedPrefillTeamId),
     );
-    if (!prefilledTeam) return teams;
+    if (!prefilledTeam) return filtered;
 
     return [
       prefilledTeam,
-      ...teams.filter((team) => !idsMatch(team.id, normalizedPrefillTeamId)),
+      ...filtered.filter((team) => !idsMatch(team.id, normalizedPrefillTeamId)),
     ];
-  }, [teams, normalizedPrefillTeamId]);
+  }, [teams, teamStatusData, normalizedPrefillTeamId]);
 
   const selectedTeam = useMemo(
     () =>
@@ -675,6 +800,49 @@ const TeamInviteModal = ({
   const selectedTeamStatus =
     (selectedTeam && teamStatusData[selectedTeam.id]) || {};
   const selectedTeamRequiresRole = selectedTeamStatus.isExistingMember === true;
+  const shouldShowRolePicker =
+    !!selectedTeamId &&
+    (loadingRoles ||
+      vacantRoles.length > 0 ||
+      selectedTeamRequiresRole ||
+      isRoleSectionExpanded);
+  const roleAvailabilityLabel =
+    vacantRoles.length === 1
+      ? "1 open role available"
+      : `${vacantRoles.length} open roles available`;
+  const otherAvailableTeamCount = selectedTeam
+    ? orderedTeams.filter((team) => !idsMatch(team.id, selectedTeam.id)).length
+    : orderedTeams.length;
+  const otherAvailableTeamLabel =
+    otherAvailableTeamCount === 1
+      ? "1 other team available"
+      : `${otherAvailableTeamCount} other teams available`;
+  const selectedRole =
+    vacantRoles.find((role) => idsMatch(role.id, selectedRoleId)) ?? null;
+  const isRoleSelectionRequired =
+    selectedTeamRequiresRole && selectedRoleId === null;
+
+  useEffect(() => {
+    if (isOpen && isRoleSelectionRequired) {
+      setIsRoleSectionExpanded(true);
+    }
+  }, [isOpen, isRoleSelectionRequired]);
+
+  useEffect(() => {
+    if (isOpen && selectedRoleId !== null) {
+      setIsTeamSectionExpanded(false);
+    }
+  }, [isOpen, selectedRoleId]);
+
+  useEffect(() => {
+    if (!isOpen || loadingRoles || !selectedTeamId) return;
+    if (vacantRoles.length > 0) {
+      setIsTeamSectionExpanded(false);
+      setIsRoleSectionExpanded(true);
+    } else {
+      setIsTeamSectionExpanded(false);
+    }
+  }, [isOpen, selectedTeamId, vacantRoles, loadingRoles]);
 
   const prefillContextNote = useMemo(() => {
     if (!idsMatch(selectedTeamId, normalizedPrefillTeamId)) return null;
@@ -763,11 +931,13 @@ const TeamInviteModal = ({
     } else if (
       statusBadge.type === "available" ||
       statusBadge.type === "selected" ||
-      statusBadge.type === "existing-member"
+      statusBadge.type === "existing-member" ||
+      statusBadge.type === "existing-member-selected"
     ) {
       if (isTeamSelectable(teamId, team)) {
         const nextTeamId = idsMatch(selectedTeamId, teamId) ? null : teamId;
         setSelectedTeamId(nextTeamId);
+        setIsTeamSectionExpanded(true);
         setSelectedRoleId(null);
         setVacantRoles([]);
         setError(null);
@@ -800,10 +970,100 @@ const TeamInviteModal = ({
   };
 
   const handleRoleCardClick = (roleId) => {
-    setSelectedRoleId((currentRoleId) =>
-      idsMatch(currentRoleId, roleId) ? null : roleId,
-    );
+    setSelectedRoleId((currentRoleId) => {
+      const nextRoleId = idsMatch(currentRoleId, roleId) ? null : roleId;
+      if (nextRoleId !== null) {
+        setIsTeamSectionExpanded(false);
+        setIsRoleSectionExpanded(false);
+      }
+      return nextRoleId;
+    });
   };
+
+  const handleRoleDetailsClick = (role, event) => {
+    event?.stopPropagation();
+    setSelectedRoleForDetails(role);
+  };
+
+  const handleRoleDetailsClose = () => {
+    setSelectedRoleForDetails(null);
+  };
+
+  const refreshSelectedTeamRequests = useCallback(async () => {
+    if (!selectedTeamForModal?.id) return;
+
+    const teamId = selectedTeamForModal.id;
+    const [invitationsResult, applicationsResult] = await Promise.allSettled([
+      teamService.getTeamSentInvitations(teamId),
+      teamService.getTeamApplications(teamId),
+    ]);
+
+    const allInvitations =
+      invitationsResult.status === "fulfilled"
+        ? invitationsResult.value?.data || []
+        : selectedTeamInvitations;
+    const allApplications =
+      applicationsResult.status === "fulfilled"
+        ? applicationsResult.value?.data || []
+        : selectedTeamApplications;
+
+    setSelectedTeamInvitations(allInvitations);
+    setSelectedTeamApplications(allApplications);
+    setTeamStatusData((prev) => ({
+      ...prev,
+      [teamId]: {
+        ...prev[teamId],
+        allInvitations,
+        allApplications,
+        hasInviteForUser: allInvitations.some(
+          (inv) =>
+            (inv.invitee?.id === inviteeId || inv.invitee_id === inviteeId) &&
+            inv.status === "pending",
+        ),
+        hasApplicationFromUser: allApplications.some(
+          (app) =>
+            (app.applicant?.id === inviteeId || app.applicant_id === inviteeId) &&
+            app.status === "pending",
+        ),
+      },
+    }));
+  }, [
+    inviteeId,
+    selectedTeamApplications,
+    selectedTeamForModal?.id,
+    selectedTeamInvitations,
+  ]);
+
+  const handleTeamRequestEvent = useCallback((payload = {}) => {
+    const payloadTeamId = payload.teamId ?? payload.team_id ?? null;
+    if (
+      payloadTeamId != null &&
+      String(payloadTeamId) !== String(selectedTeamForModal.id)
+    ) {
+      return;
+    }
+
+    const type = String(payload.type ?? payload.notificationType ?? "").toLowerCase();
+    if (
+      !type ||
+      type.includes("invitation") ||
+      type.includes("invite") ||
+      type.includes("application")
+    ) {
+      refreshSelectedTeamRequests();
+    }
+  }, [refreshSelectedTeamRequests, selectedTeamForModal?.id]);
+
+  useSocketEvents(
+    isOpen && selectedTeamForModal?.id
+      ? {
+          "notification:new": handleTeamRequestEvent,
+          "notification:updated": handleTeamRequestEvent,
+          "notification:deleted": handleTeamRequestEvent,
+        }
+      : null,
+    [isOpen, refreshSelectedTeamRequests, selectedTeamForModal?.id],
+  );
 
   // Handle cancel invitation (called from TeamInvitesModal)
   const handleCancelInvitation = async (invitationId) => {
@@ -839,6 +1099,50 @@ const TeamInviteModal = ({
     }
   };
 
+  const handleCancelRoleInvitation = async (invitationId) => {
+    try {
+      const result = await teamService.cancelRoleInvitation(invitationId);
+
+      if (selectedTeamForModal) {
+        const teamId = selectedTeamForModal.id;
+        const canceledInvitation =
+          result?.data?.canceledInvitation ?? result?.canceledInvitation ?? false;
+        const updatedInvitations = canceledInvitation
+          ? selectedTeamInvitations.filter((inv) => inv.id !== invitationId)
+          : selectedTeamInvitations.map((inv) =>
+              inv.id === invitationId
+                ? {
+                    ...inv,
+                    role: null,
+                    roleId: null,
+                    role_id: null,
+                    roleName: null,
+                    role_name: null,
+                  }
+                : inv,
+            );
+
+        setSelectedTeamInvitations(updatedInvitations);
+        setTeamStatusData((prev) => ({
+          ...prev,
+          [teamId]: {
+            ...prev[teamId],
+            allInvitations: updatedInvitations,
+            hasInviteForUser: updatedInvitations.some(
+              (inv) =>
+                (inv.invitee?.id === inviteeId ||
+                  inv.invitee_id === inviteeId) &&
+                inv.status === "pending"
+            ),
+          },
+        }));
+      }
+    } catch (err) {
+      console.error("Error canceling role invitation:", err);
+      throw err;
+    }
+  };
+
   // Handle application action (called from TeamApplicationsModal)
   const handleApplicationAction = async (
     applicationId,
@@ -847,7 +1151,7 @@ const TeamInviteModal = ({
     fillRole = false
   ) => {
     try {
-      await teamService.handleTeamApplication(applicationId, action, response, fillRole);
+      const result = await teamService.handleTeamApplication(applicationId, action, response, fillRole);
 
       // Update local state - remove the processed application
       if (selectedTeamForModal) {
@@ -872,6 +1176,7 @@ const TeamInviteModal = ({
           },
         }));
       }
+      return result;
     } catch (err) {
       console.error(`Error ${action}ing application:`, err);
       throw err;
@@ -895,11 +1200,11 @@ const TeamInviteModal = ({
   // ============ Render ============
 
   const customHeader = (
-    <div className="flex items-center gap-3">
-      <UserPlus className="text-primary" size={24} />
+    <div className="flex items-start gap-3">
+      <UserPlus className="text-primary mt-0.5" size={24} />
       <div>
-        <h2 className="text-xl font-medium text-primary">
-          Invite {getInviteeDisplayName()} to a Team
+        <h2 className="text-xl font-medium text-primary leading-[110%]">
+          Invite {getInviteeAbbreviatedName()} to a Team
         </h2>
         {/* <p className="text-sm text-base-content/70">
           Invite {getInviteeDisplayName()} to join your team
@@ -913,6 +1218,181 @@ const TeamInviteModal = ({
     !sending &&
     !success &&
     (!selectedTeamRequiresRole || selectedRoleId !== null);
+  const inviteeUser = getInviteeUserObject();
+  const showInviteeDemoProfile = isSyntheticUser(inviteeUser);
+  const handleRoleSectionToggle = () => {
+    setIsRoleSectionExpanded((isExpanded) => {
+      if (isExpanded && isRoleSelectionRequired) {
+        return true;
+      }
+
+      return !isExpanded;
+    });
+  };
+  const handleTeamSectionToggle = () => {
+    setIsTeamSectionExpanded((isExpanded) => !isExpanded);
+  };
+
+  const renderTeamSelectionCard = (
+    team,
+    { isCollapsedSummary = false } = {},
+  ) => {
+    const statusBadge = getTeamStatusBadge(team.id, team);
+    const BadgeIcon = statusBadge?.icon;
+    const showDemoTeam =
+      isInviteModalDemoTeam(team) ||
+      teamStatusData[team.id]?.isDemoTeam === true;
+    const isMember = teamStatusData[team.id]?.isExistingMember === true;
+    const { isRemote, locationText } = getTeamLocationDetails(team);
+    const cardClasses = idsMatch(selectedTeamId, team.id)
+      ? "bg-green-100 ring-2 ring-primary shadow-md"
+      : isMember
+        ? "bg-green-50 hover:bg-green-100 hover:shadow-md"
+        : "bg-base-200 hover:bg-base-300 hover:shadow-md";
+
+    const activateCard = () => {
+      if (isCollapsedSummary) {
+        setIsTeamSectionExpanded(true);
+        return;
+      }
+
+      handleCardClick(team);
+    };
+
+    return (
+      <div
+        key={team.id}
+        role={isCollapsedSummary ? "button" : undefined}
+        tabIndex={isCollapsedSummary ? 0 : undefined}
+        onClick={activateCard}
+        onKeyDown={(event) => {
+          if (!isCollapsedSummary) return;
+
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            setIsTeamSectionExpanded(true);
+          }
+        }}
+        className={`flex items-start gap-4 p-4 rounded-xl shadow cursor-pointer transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${cardClasses}`}
+      >
+        <div className="avatar">
+          <div className="w-14 h-14 rounded-full relative overflow-hidden">
+            {getTeamAvatarUrl(team) ? (
+              <img
+                src={getTeamAvatarUrl(team)}
+                alt={team.name}
+                className="object-cover w-full h-full rounded-full"
+                onError={(e) => {
+                  e.target.style.display = "none";
+                  const fallback =
+                    e.target.parentElement.querySelector(".avatar-fallback");
+                  if (fallback) fallback.style.display = "flex";
+                }}
+              />
+            ) : null}
+            <div
+              className="avatar-fallback bg-[var(--color-primary-focus)] text-primary-content flex items-center justify-center w-full h-full rounded-full absolute inset-0"
+              style={{
+                display: getTeamAvatarUrl(team) ? "none" : "flex",
+              }}
+            >
+              <span className="text-xl">
+                {getTeamInitials(team.name)}
+              </span>
+            </div>
+            {showDemoTeam && (
+              <DemoAvatarOverlay
+                textClassName="text-[7px]"
+                textTranslateClassName="-translate-y-[3px]"
+              />
+            )}
+          </div>
+        </div>
+
+        <div className="flex-1 min-w-0 pt-[1px]">
+          <div className="flex flex-col">
+            <div className="flex min-w-0 items-center gap-1">
+              <h3 className="min-w-0 flex-1 truncate font-medium text-base leading-[120%]">
+                {team.name}
+              </h3>
+              {statusBadge && (
+                <div
+                  className="shrink-0 ml-1"
+                  onClick={(event) => {
+                    if (isCollapsedSummary) {
+                      event.stopPropagation();
+                      setIsTeamSectionExpanded(true);
+                      return;
+                    }
+
+                    handleBadgeClick(event, team.id, team, statusBadge);
+                  }}
+                >
+                  <RoleBadgePill
+                    icon={BadgeIcon}
+                    label={statusBadge.label}
+                    badgeColorClass={statusBadge.badgeClass || ""}
+                    interactive={statusBadge.clickable}
+                    style={statusBadge.customStyle}
+                  />
+                </div>
+              )}
+            </div>
+          <div className="mt-0.5 flex max-h-[2.1em] flex-wrap items-center gap-x-2 gap-y-0 overflow-hidden text-xs">
+              <div className="flex min-w-0 max-w-[calc(100%-1.5rem)] flex-[0_1_auto] items-center gap-1 overflow-hidden">
+                <Users size={10} className="text-base-content/60 shrink-0" />
+                <span className="text-base-content/60 leading-[1.05] truncate">
+                  {getMemberCount(team)}/{getMaxMembers(team)}
+                </span>
+              </div>
+              {(teamStatusData[team.id]?.openRoleCount ?? 0) > 0 && (
+                <div className="flex min-w-0 max-w-[calc(100%-1.5rem)] flex-[0_1_auto] items-center gap-1 overflow-hidden">
+                  <UserSearch size={10} className="text-base-content/60 shrink-0" />
+                  <span className="text-base-content/60 leading-[1.05] truncate">
+                    {teamStatusData[team.id].openRoleCount}
+                  </span>
+                </div>
+              )}
+              {locationText && (
+                <div className="flex min-w-0 max-w-[calc(100%-1.5rem)] flex-[0_1_auto] items-center gap-1 overflow-hidden">
+                  {isRemote ? (
+                    <Globe size={10} className="text-base-content/60 shrink-0" />
+                  ) : (
+                    <MapPin size={10} className="text-base-content/60 shrink-0" />
+                  )}
+                  <span className="text-base-content/60 leading-[1.05] truncate">
+                    {locationText}
+                  </span>
+                </div>
+              )}
+              {(statusBadge?.type === "existing-member-selected" ||
+                ((statusBadge?.type === "pending-invite" ||
+                  statusBadge?.type === "pending-application") &&
+                  teamStatusData[team.id]?.isExistingMember === true)) && (
+                <div className="flex min-w-0 max-w-[calc(100%-1.5rem)] flex-[0_1_auto] items-center gap-1 overflow-hidden">
+                  <Users size={10} className="text-base-content/60 shrink-0" />
+                  <span className="text-base-content/60 leading-[1.05] truncate">
+                    Member
+                  </span>
+                </div>
+              )}
+              {showDemoTeam && (
+                <Tooltip
+                  content={DEMO_TEAM_TOOLTIP}
+                  wrapperClassName="flex shrink-0 items-center gap-1 min-w-0 text-base-content/50"
+                >
+                  <FlaskConical
+                    size={10}
+                    className="text-base-content/50 shrink-0"
+                  />
+                </Tooltip>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   const footer = (
     <div className="flex justify-end gap-3">
@@ -961,56 +1441,75 @@ const TeamInviteModal = ({
         <div className="space-y-5">
           {/* Invitee info */}
           <div className="flex items-start space-x-3 mb-3">
-            <div
-              className="avatar cursor-pointer hover:opacity-80 transition-opacity"
-              onClick={() => handleUserClick(inviteeId)}
-              title="View profile"
-            >
-              <div className="w-12 h-12 rounded-full relative">
-                {inviteeAvatar ? (
-                  <img
-                    src={inviteeAvatar}
-                    alt={getUsername()}
-                    className="object-cover w-full h-full rounded-full"
-                    onError={(e) => {
-                      e.target.style.display = "none";
-                      const fallback =
-                        e.target.parentElement.querySelector(
-                          ".avatar-fallback"
-                        );
-                      if (fallback) fallback.style.display = "flex";
+            <Tooltip content="View profile" position="bottom" wrapperClassName="block">
+              <div
+                className="avatar cursor-pointer hover:opacity-80 transition-opacity"
+                onClick={() => handleUserClick(inviteeId)}
+              >
+                <div className="w-12 h-12 rounded-full relative overflow-hidden">
+                  {inviteeAvatar ? (
+                    <img
+                      src={inviteeAvatar}
+                      alt={getUsername()}
+                      className="object-cover w-full h-full rounded-full"
+                      onError={(e) => {
+                        e.target.style.display = "none";
+                        const fallback =
+                          e.target.parentElement.querySelector(
+                            ".avatar-fallback"
+                          );
+                        if (fallback) fallback.style.display = "flex";
+                      }}
+                    />
+                  ) : null}
+                  <div
+                    className="avatar-fallback bg-[var(--color-primary-focus)] text-primary-content flex items-center justify-center w-full h-full rounded-full absolute inset-0"
+                    style={{
+                      display: inviteeAvatar ? "none" : "flex",
                     }}
-                  />
-                ) : null}
-                <div
-                  className="avatar-fallback bg-[var(--color-primary-focus)] text-primary-content flex items-center justify-center w-full h-full rounded-full absolute inset-0"
-                  style={{
-                    display: inviteeAvatar ? "none" : "flex",
-                  }}
-                >
-                  <span className="text-lg font-medium">
-                    {getUserInitials(getInviteeUserObject())}
-                  </span>
+                  >
+                    <span className="text-lg font-medium">
+                      {getUserInitials(inviteeUser)}
+                    </span>
+                  </div>
+                  {showInviteeDemoProfile && (
+                    <DemoAvatarOverlay
+                      textClassName="text-[8px]"
+                      textTranslateClassName="-translate-y-[3px]"
+                    />
+                  )}
                 </div>
               </div>
-            </div>
+            </Tooltip>
 
             <div className="flex-1 min-w-0">
-              <h4
-                className="font-medium text-base-content cursor-pointer hover:text-primary transition-colors leading-[120%] mb-[0.2em]"
-                onClick={() => handleUserClick(inviteeId)}
-                title="View profile"
-              >
-                {getInviteeDisplayName()}
-              </h4>
+              <Tooltip content="View profile" position="bottom" wrapperClassName="block">
+                <h4
+                  className="font-medium text-base-content cursor-pointer hover:text-primary transition-colors leading-[120%] mb-[0.2em]"
+                  onClick={() => handleUserClick(inviteeId)}
+                >
+                  {getInviteeDisplayName()}
+                </h4>
+              </Tooltip>
 
-              <p
-                className="text-sm text-base-content/70 cursor-pointer hover:text-primary transition-colors"
-                onClick={() => handleUserClick(inviteeId)}
-                title="View profile"
-              >
-                @{getUsername()}
-              </p>
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-0">
+                <Tooltip content="View profile" position="bottom" wrapperClassName="inline-flex">
+                  <p
+                    className="text-sm text-base-content/70 cursor-pointer hover:text-primary transition-colors"
+                    onClick={() => handleUserClick(inviteeId)}
+                  >
+                    @{getUsername()}
+                  </p>
+                </Tooltip>
+                {showInviteeDemoProfile && (
+                  <Tooltip
+                    content={DEMO_PROFILE_TOOLTIP}
+                    wrapperClassName="flex items-center gap-0.5 text-base-content/50 text-xs"
+                  >
+                    <FlaskConical size={12} className="flex-shrink-0" />
+                  </Tooltip>
+                )}
+              </div>
             </div>
           </div>
 
@@ -1022,11 +1521,30 @@ const TeamInviteModal = ({
           )}
 
           {/* Team selection */}
-          <div>
-            <p className="text-xs text-base-content/60 mb-2 flex items-center">
-              <Users size={12} className="text-primary mr-1" />
-              Select a team to invite them to:
-            </p>
+          <div className="bg-base-200/30 rounded-lg border border-base-300 p-4">
+            <button
+              type="button"
+              className="flex w-full items-center justify-between text-xs text-base-content/60 mb-2 hover:text-base-content/80 transition-colors"
+              onClick={handleTeamSectionToggle}
+              aria-expanded={isTeamSectionExpanded}
+            >
+              <span className="flex min-w-0 items-center">
+                <Users size={12} className="text-primary mr-1" />
+                <span className="truncate">Select a team to invite them to:</span>
+              </span>
+              <span className="ml-2 flex min-w-0 items-center gap-1 text-base-content/40">
+                {!isTeamSectionExpanded && selectedTeam && (
+                  <span className="truncate whitespace-nowrap">
+                    {otherAvailableTeamLabel}
+                  </span>
+                )}
+                {isTeamSectionExpanded ? (
+                  <ChevronUp size={14} className="shrink-0" />
+                ) : (
+                  <ChevronRight size={14} className="shrink-0" />
+                )}
+              </span>
+            </button>
 
             {loading ? (
               <div className="flex justify-center py-6">
@@ -1042,102 +1560,53 @@ const TeamInviteModal = ({
                   Create a team or become an admin to send invitations.
                 </p>
               </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-64 overflow-y-auto">
-                {orderedTeams.map((team) => {
-                  const statusBadge = getTeamStatusBadge(team.id, team);
-                  const BadgeIcon = statusBadge?.icon;
-
-                  return (
-                    <div
-                      key={team.id}
-                      onClick={() => handleCardClick(team)}
-                      className={`relative flex items-center gap-3 p-3 rounded-xl shadow cursor-pointer transition-all duration-200 
-                        ${
-                          idsMatch(selectedTeamId, team.id)
-                            ? "bg-green-100 ring-2 ring-primary shadow-md"
-                            : "bg-green-50 hover:bg-green-100 hover:shadow-md"
-                        }`}
-                    >
-                      {/* Status badge */}
-                      {statusBadge && (
-                        <div
-                          className="absolute top-2 right-2"
-                          onClick={(e) =>
-                            handleBadgeClick(e, team.id, team, statusBadge)
-                          }
-                        >
-                          <span
-                            className={`badge badge-sm gap-1 ${
-                              statusBadge.badgeClass || ""
-                            } ${
-                              statusBadge.clickable
-                                ? "cursor-pointer hover:shadow-md transition-all duration-200"
-                                : ""
-                            }`}
-                            style={statusBadge.customStyle || {}}
-                          >
-                            <BadgeIcon className="w-3 h-3" />
-                            {statusBadge.label}
-                          </span>
-                        </div>
-                      )}
-
-                      {/* Team avatar */}
-                      <div className="avatar flex-shrink-0">
-                        <div className="w-10 h-10 rounded-full relative">
-                          {getTeamAvatarUrl(team) ? (
-                            <img
-                              src={getTeamAvatarUrl(team)}
-                              alt={team.name}
-                              className="object-cover w-full h-full rounded-full"
-                              onError={(e) => {
-                                e.target.style.display = "none";
-                                const fallback =
-                                  e.target.parentElement.querySelector(
-                                    ".avatar-fallback"
-                                  );
-                                if (fallback) fallback.style.display = "flex";
-                              }}
-                            />
-                          ) : null}
-                          <div
-                            className="avatar-fallback bg-[var(--color-primary-focus)] text-primary-content flex items-center justify-center w-full h-full rounded-full absolute inset-0"
-                            style={{
-                              display: getTeamAvatarUrl(team) ? "none" : "flex",
-                            }}
-                          >
-                            <span className="text-sm font-medium">
-                              {getTeamInitials(team.name)}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Team info */}
-                      <div className="flex-1 min-w-0 pr-2">
-                        <p className="font-medium truncate leading-tight pr-16">
-                          {team.name}
-                        </p>
-                        <p className="text-xs text-base-content/70">
-                          <Users size={12} className="inline mr-1" />
-                          {getMemberCount(team)}/{getMaxMembers(team)} members
-                        </p>
-                      </div>
-                    </div>
-                  );
+            ) : isTeamSectionExpanded ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-h-64 overflow-y-auto p-1">
+                {orderedTeams.map((team) => renderTeamSelectionCard(team))}
+              </div>
+            ) : selectedTeam ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-1">
+                {renderTeamSelectionCard(selectedTeam, {
+                  isCollapsedSummary: true,
                 })}
               </div>
-            )}
+            ) : null}
           </div>
 
           {/* Vacant role selection */}
-          {selectedTeamId && (
-            <div>
-              <p className="text-xs text-base-content/60 mb-2 flex items-center">
-                <UserSearch size={12} className="text-orange-500 mr-1" />
-                Select a role you want to fill in this team:
-              </p>
+          {shouldShowRolePicker && (
+            <div className="bg-base-200/30 rounded-lg border border-base-300 p-4">
+              <button
+                type="button"
+                className="flex w-full items-center justify-between text-xs text-base-content/60 mb-2 hover:text-base-content/80 transition-colors"
+                onClick={handleRoleSectionToggle}
+                aria-expanded={isRoleSectionExpanded}
+                aria-disabled={isRoleSelectionRequired && isRoleSectionExpanded}
+                title={
+                  isRoleSelectionRequired && isRoleSectionExpanded
+                    ? "Select a role before collapsing this section"
+                    : undefined
+                }
+              >
+                <span className="flex min-w-0 items-center">
+                  <UserSearch size={12} className="text-orange-500 mr-1" />
+                  <span className="truncate">
+                    Select a role you want to fill in this team:
+                  </span>
+                </span>
+                <span className="ml-2 flex items-center gap-1 text-base-content/40">
+                  {!isRoleSectionExpanded && vacantRoles.length > 0 && (
+                    <span className="whitespace-nowrap">
+                      {roleAvailabilityLabel}
+                    </span>
+                  )}
+                  {isRoleSectionExpanded ? (
+                    <ChevronUp size={14} />
+                  ) : (
+                    <ChevronRight size={14} />
+                  )}
+                </span>
+              </button>
 
               {prefillContextNote && (
                 <p className="text-xs text-base-content/40 mb-2">
@@ -1145,7 +1614,114 @@ const TeamInviteModal = ({
                 </p>
               )}
 
-              {loadingRoles ? (
+              {!isRoleSectionExpanded ? (
+                selectedRole ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-1">
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => setIsRoleSectionExpanded(true)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          setIsRoleSectionExpanded(true);
+                        }
+                      }}
+                      className="flex items-start gap-4 p-4 rounded-xl bg-amber-100 text-left shadow ring-2 ring-amber-400 transition-all duration-200 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+                    >
+                      <button
+                        type="button"
+                        className="avatar placeholder cursor-pointer border-0 bg-transparent p-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded-full"
+                        aria-label={`Open details for ${
+                          selectedRole.roleName ??
+                          selectedRole.role_name ??
+                          "this role"
+                        }`}
+                        onClick={(event) =>
+                          handleRoleDetailsClick(selectedRole, event)
+                        }
+                        onKeyDown={(event) => event.stopPropagation()}
+                      >
+                        <div className="bg-amber-500 text-white w-14 h-14 rounded-full relative flex items-center justify-center overflow-hidden">
+                          <span className="text-xl">
+                            {getRoleInitials(
+                              selectedRole.roleName ??
+                                selectedRole.role_name ??
+                                "Vacant Role",
+                            )}
+                          </span>
+                          {isSyntheticRole(selectedRole) && (
+                            <DemoAvatarOverlay
+                              textClassName="text-[7px]"
+                              textTranslateClassName="-translate-y-[3px]"
+                            />
+                          )}
+                        </div>
+                      </button>
+
+                      <div className="flex-1 min-w-0 pt-[1px]">
+                        <div className="flex flex-col">
+                          <div className="flex min-w-0 items-center gap-1">
+                            <button
+                              type="button"
+                              className="min-w-0 flex-1 border-0 bg-transparent p-0 text-left font-medium text-base text-base-content truncate leading-[120%] hover:text-primary focus-visible:outline-none focus-visible:text-primary"
+                              onClick={(event) =>
+                                handleRoleDetailsClick(selectedRole, event)
+                              }
+                              onKeyDown={(event) => event.stopPropagation()}
+                            >
+                              {selectedRole.roleName ??
+                                selectedRole.role_name ??
+                                "Vacant Role"}
+                            </button>
+                            <div className="shrink-0 ml-1">
+                              <RoleBadgePill
+                                icon={Check}
+                                label="Selected"
+                                badgeColorClass="bg-amber-800 text-white"
+                                interactive
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  handleRoleCardClick(selectedRole.id);
+                                }}
+                              />
+                            </div>
+                          </div>
+
+                        {(getRoleLocation(selectedRole) ||
+                          isSyntheticRole(selectedRole)) && (
+                          <CardMetaRow>
+                            {getRoleLocation(selectedRole) && (
+                              <CardMetaItem
+                                icon={
+                                  (selectedRole.isRemote ??
+                                    selectedRole.is_remote)
+                                    ? Globe
+                                    : MapPin
+                                }
+                              >
+                                {getRoleLocation(selectedRole)}
+                              </CardMetaItem>
+                            )}
+                            {isSyntheticRole(selectedRole) && (
+                              <Tooltip
+                                content={DEMO_ROLE_TOOLTIP}
+                                wrapperClassName="flex items-center gap-1 min-w-0 text-base-content/50"
+                              >
+                                <FlaskConical
+                                  size={10}
+                                  className="text-base-content/50 shrink-0"
+                                />
+                              </Tooltip>
+                            )}
+                          </CardMetaRow>
+                        )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : null
+              ) : loadingRoles ? (
                 <div className="flex justify-center py-6">
                   <div className="loading loading-spinner loading-md text-primary"></div>
                 </div>
@@ -1165,71 +1741,108 @@ const TeamInviteModal = ({
                   </p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-64 overflow-y-auto">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-h-64 overflow-y-auto p-1">
                   {vacantRoles.map((role) => {
                     const roleName =
                       role.roleName ?? role.role_name ?? "Vacant Role";
                     const isSelected = idsMatch(selectedRoleId, role.id);
                     const locationText = getRoleLocation(role);
                     const isRemote = role.isRemote ?? role.is_remote;
+                    const showDemoRole = isSyntheticRole(role);
 
                     return (
                       <div
+                        role="button"
+                        tabIndex={0}
                         key={role.id}
                         onClick={() => handleRoleCardClick(role.id)}
-                        className={`relative flex items-center gap-3 p-3 rounded-xl shadow cursor-pointer transition-all duration-200
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault();
+                            handleRoleCardClick(role.id);
+                          }
+                        }}
+                        className={`flex items-start gap-4 p-4 rounded-xl text-left shadow cursor-pointer transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400
                           ${
                             isSelected
                               ? "bg-amber-100 ring-2 ring-amber-400 shadow-md"
-                              : "bg-amber-50 hover:bg-amber-100 hover:shadow-md"
+                              : "bg-amber-50 hover:bg-amber-100/70 hover:shadow-md"
                           }`}
                       >
-                        <div className="absolute top-2 right-2">
-                          <span
-                            className={`badge badge-sm gap-1 ${
-                              isSelected ? "" : "badge-role-member"
-                            }`}
-                            style={
-                              isSelected
-                                ? {
-                                    backgroundColor:
-                                      "var(--color-warning, #F59E0B)",
-                                    color: "#ffffff",
-                                  }
-                                : {}
-                            }
-                          >
-                            {isSelected ? (
-                              <Check className="w-3 h-3" />
-                            ) : (
-                              <UserSearch className="w-3 h-3" />
-                            )}
-                            {isSelected ? "Selected" : "Select"}
-                          </span>
-                        </div>
-
-                        <div className="avatar placeholder flex-shrink-0">
-                          <div className="bg-amber-200 text-amber-800 rounded-full w-10 h-10 flex items-center justify-center">
-                            <span className="text-sm font-medium">
+                        <button
+                          type="button"
+                          className="avatar placeholder cursor-pointer border-0 bg-transparent p-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded-full"
+                          aria-label={`Open details for ${roleName}`}
+                          onClick={(event) =>
+                            handleRoleDetailsClick(role, event)
+                          }
+                          onKeyDown={(event) => event.stopPropagation()}
+                        >
+                          <div className="bg-amber-500 text-white w-14 h-14 rounded-full relative flex items-center justify-center overflow-hidden">
+                            <span className="text-xl">
                               {getRoleInitials(roleName)}
                             </span>
+                            {showDemoRole && (
+                              <DemoAvatarOverlay
+                                textClassName="text-[7px]"
+                                textTranslateClassName="-translate-y-[3px]"
+                              />
+                            )}
                           </div>
-                        </div>
+                        </button>
 
-                        <div className="flex-1 min-w-0 pr-16">
-                          <h4 className="font-medium text-sm text-base-content leading-tight truncate">
-                            {roleName}
-                          </h4>
-                          {locationText && (
-                            <p className="text-xs text-base-content/60 flex items-center mt-0.5">
-                              {isRemote ? (
-                                <Globe size={10} className="mr-1 flex-shrink-0" />
-                              ) : (
-                                <MapPin size={10} className="mr-1 flex-shrink-0" />
+                        <div className="flex-1 min-w-0 pt-[1px]">
+                          <div className="flex flex-col">
+                            <div className="flex min-w-0 items-center gap-1">
+                              <button
+                                type="button"
+                                className="min-w-0 flex-1 border-0 bg-transparent p-0 text-left font-medium text-base text-base-content truncate leading-[120%] hover:text-primary focus-visible:outline-none focus-visible:text-primary"
+                                onClick={(event) =>
+                                  handleRoleDetailsClick(role, event)
+                                }
+                                onKeyDown={(event) => event.stopPropagation()}
+                              >
+                                {roleName}
+                              </button>
+                              <div className="shrink-0 ml-1">
+                                <RoleBadgePill
+                                  icon={isSelected ? Check : UserSearch}
+                                  label={isSelected ? "Selected" : "Select"}
+                                  badgeColorClass={
+                                    isSelected
+                                      ? "bg-amber-800 text-white"
+                                      : "badge-role-vacant"
+                                  }
+                                  interactive
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    handleRoleCardClick(role.id);
+                                  }}
+                                />
+                              </div>
+                            </div>
+
+                          {(locationText || showDemoRole) && (
+                            <CardMetaRow>
+                              {locationText && (
+                                <CardMetaItem icon={isRemote ? Globe : MapPin}>
+                                  {locationText}
+                                </CardMetaItem>
                               )}
-                              <span className="truncate">{locationText}</span>
-                            </p>
+                              {showDemoRole && (
+                                <Tooltip
+                                  content={DEMO_ROLE_TOOLTIP}
+                                  wrapperClassName="flex items-center gap-1 min-w-0 text-base-content/50"
+                                >
+                                  <FlaskConical
+                                    size={10}
+                                    className="text-base-content/50 shrink-0"
+                                  />
+                                </Tooltip>
+                              )}
+                            </CardMetaRow>
                           )}
+                          </div>
                         </div>
                       </div>
                     );
@@ -1238,6 +1851,7 @@ const TeamInviteModal = ({
               )}
 
               {!loadingRoles &&
+                isRoleSectionExpanded &&
                 vacantRoles.length > 0 &&
                 selectedRoleId === null &&
                 selectedTeamRequiresRole && (
@@ -1248,6 +1862,7 @@ const TeamInviteModal = ({
                 )}
 
               {!loadingRoles &&
+                isRoleSectionExpanded &&
                 vacantRoles.length > 0 &&
                 selectedRoleId === null &&
                 !selectedTeamRequiresRole && (
@@ -1262,22 +1877,43 @@ const TeamInviteModal = ({
           {/* Optional message */}
           {orderedTeams.length > 0 && (
             <div>
-              <p className="text-xs text-base-content/60 mb-1 flex items-center">
-                <Send size={12} className="text-info mr-1" />
-                Add a message (optional):
-              </p>
-              <div className="relative">
-                <textarea
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  placeholder={`Hi ${getInviteeDisplayName()}, I'd like to invite you to join our team...`}
-                  className="textarea textarea-bordered w-full h-24 resize-none text-sm pb-6"
-                  maxLength={500}
-                />
-                <span className="absolute bottom-2 left-3 text-xs text-base-content/40 pointer-events-none">
-                  {message.length}/500 characters
+              <button
+                type="button"
+                className="flex w-full items-center justify-between text-xs text-base-content/60 mb-2 hover:text-base-content/80 transition-colors"
+                onClick={() => setIsMessageSectionExpanded((v) => !v)}
+                aria-expanded={isMessageSectionExpanded}
+              >
+                <span className="flex min-w-0 items-center">
+                  <Send size={12} className="text-info mr-1" />
+                  <span className="truncate">Add a message (optional){isMessageSectionExpanded ? ":" : ""}</span>
                 </span>
-              </div>
+                <span className="ml-2 flex min-w-0 items-center gap-1 text-base-content/40">
+                  {!isMessageSectionExpanded && message && (
+                    <span className="truncate max-w-[160px] whitespace-nowrap">
+                      {message}
+                    </span>
+                  )}
+                  {isMessageSectionExpanded ? (
+                    <ChevronUp size={14} className="shrink-0" />
+                  ) : (
+                    <ChevronRight size={14} className="shrink-0" />
+                  )}
+                </span>
+              </button>
+              {isMessageSectionExpanded && (
+                <div className="relative">
+                  <textarea
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    placeholder={`Hi ${getInviteeDisplayName()}, I'd like to invite you to join our team...`}
+                    className="textarea textarea-bordered w-full h-24 resize-none text-sm pb-6"
+                    maxLength={500}
+                  />
+                  <span className="absolute bottom-2 left-3 text-xs text-base-content/40 pointer-events-none">
+                    {message.length}/500 characters
+                  </span>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -1298,6 +1934,16 @@ const TeamInviteModal = ({
         onClose={handleTeamDetailsClose}
       />
 
+      {selectedRoleForDetails && (
+        <VacantRoleDetailsModal
+          isOpen={Boolean(selectedRoleForDetails)}
+          onClose={handleRoleDetailsClose}
+          team={selectedTeam}
+          role={selectedRoleForDetails}
+          hideActions
+        />
+      )}
+
       {/* Team Invites Modal */}
       <TeamInvitesModal
         isOpen={isInvitesModalOpen}
@@ -1305,7 +1951,9 @@ const TeamInviteModal = ({
         teamId={selectedTeamForModal?.id}
         invitations={selectedTeamInvitations}
         onCancelInvitation={handleCancelInvitation}
+        onCancelRoleInvitation={handleCancelRoleInvitation}
         teamName={selectedTeamForModal?.name}
+        highlightInvitationId={selectedTeamInvitations?.[0]?.id ?? null}
         highlightUserId={inviteeId}
       />
 
@@ -1317,6 +1965,7 @@ const TeamInviteModal = ({
         applications={selectedTeamApplications}
         onApplicationAction={handleApplicationAction}
         teamName={selectedTeamForModal?.name}
+        highlightApplicationId={selectedTeamApplications?.[0]?.id ?? null}
         highlightUserId={inviteeId}
       />
     </>

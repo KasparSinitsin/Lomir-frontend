@@ -21,9 +21,13 @@ const TeamApplicationButton = ({
   roleId = null,
   disabled = false,
   className = "w-full",
+  size = "md",
+  variant = "primary",
   onAfterSubmit,
   onSuccess,
   buttonLabel = "Apply to Join Team",
+  buttonIcon = null,
+  ariaLabel = null,
   onApplicationModalToggle,
 }) => {
   const [isApplicationModalOpen, setIsApplicationModalOpen] = useState(false);
@@ -54,9 +58,11 @@ const TeamApplicationButton = ({
         // Use roleId from the modal's selection (user may have changed it)
         const selectedRoleId = applicationData.roleId ?? roleId;
 
+        let submitResponse = null;
+
         if (selectedRoleId) {
           try {
-            await teamService.applyToJoinTeam(effectiveTeamId, {
+            submitResponse = await teamService.applyToJoinTeam(effectiveTeamId, {
               ...applicationData,
               roleId: selectedRoleId,
             });
@@ -67,14 +73,14 @@ const TeamApplicationButton = ({
 
             // Some backend environments still only support generic team
             // applications. Fall back to the existing team-only payload.
-            await teamService.applyToJoinTeam(effectiveTeamId, applicationData);
+            submitResponse = await teamService.applyToJoinTeam(effectiveTeamId, applicationData);
           }
         } else {
-          await teamService.applyToJoinTeam(effectiveTeamId, applicationData);
+          submitResponse = await teamService.applyToJoinTeam(effectiveTeamId, applicationData);
         }
 
+        onSuccess?.(applicationData, submitResponse);
         await onAfterSubmit?.();
-        onSuccess?.(applicationData);
 
         if (!applicationData.isDraft) {
           closeApplicationModal();
@@ -96,10 +102,13 @@ const TeamApplicationButton = ({
   return (
     <>
       <Button
-        variant="primary"
+        variant={variant}
+        size={size}
         onClick={handleApplyToJoin}
         disabled={disabled || applicationLoading}
         className={className}
+        icon={buttonIcon}
+        aria-label={ariaLabel}
       >
         {buttonLabel}
       </Button>

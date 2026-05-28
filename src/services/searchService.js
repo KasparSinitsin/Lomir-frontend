@@ -17,15 +17,7 @@ export const getApiErrorMessage = (error) => {
   return "Something went wrong";
 };
 
-const normalizePublicFlag = (item) =>
-  item?.is_public === true ||
-  item?.is_public === 1 ||
-  item?.is_public === "true" ||
-  item?.is_public === "1" ||
-  item?.isPublic === true ||
-  item?.isPublic === 1 ||
-  item?.isPublic === "true" ||
-  item?.isPublic === "1";
+const normalizePublicFlag = (item) => item?.isPublic === true;
 
 /**
  * Normalize team data to ensure consistent property names
@@ -138,22 +130,6 @@ export const searchService = {
     const response = await api.get("/api/search/global", { params });
 
     return normalizeSearchResponse(response.data);
-  },
-
-  async getRecommended(userId, isAuthenticated = false) {
-    const response = await api.get("/api/search/recommended", {
-      params: {
-        userId,
-        authenticated: isAuthenticated,
-      },
-    });
-
-    if (response.data?.data?.teams) {
-      response.data.data.teams =
-        response.data.data.teams.map(normalizeTeamData);
-    }
-
-    return response.data;
   },
 
   async getAllUsersAndTeams(criteria = {}) {

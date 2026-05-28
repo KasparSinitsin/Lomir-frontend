@@ -233,7 +233,7 @@ const ImageUploader = ({
         </label>
       )}
 
-      <div className="flex items-center gap-6">
+      <div className="flex flex-col items-center text-center gap-4 sm:flex-row sm:items-center sm:text-left sm:gap-6">
         {/* Drop Zone / Preview */}
         <div
           role="button"
@@ -337,7 +337,7 @@ const ImageUploader = ({
         </div>
 
         {/* Right Side: Instructions & Remove Button */}
-        <div className="flex-1 space-y-2">
+        <div className="flex-1 space-y-2 flex flex-col items-center sm:items-stretch">
           {/* Upload Instructions */}
           <div className="text-sm text-base-content/70">
             {isDragging ? (

@@ -1,190 +1,35 @@
 import React, { useState, useEffect, useRef } from "react";
 import {
   User,
-  MapPin,
-  Calendar,
+  Users,
   SendHorizontal,
-  FlaskConical,
   Trash2,
+  XCircle,
 } from "lucide-react";
 import RequestListModal from "../common/RequestListModal";
+import PersonRequestCard from "../common/PersonRequestCard";
 import Button from "../common/Button";
 import Modal from "../common/Modal";
 import Tooltip from "../common/Tooltip";
-import InlineUserLink, { InvitedByLink } from "../users/InlineUserLink";
-import DemoAvatarOverlay from "../users/DemoAvatarOverlay";
-import VacantRoleCard from "./VacantRoleCard";
-import { matchingService } from "../../services/matchingService";
-import { userService } from "../../services/userService";
-import { vacantRoleService } from "../../services/vacantRoleService";
+import { InvitedByLink } from "../users/InlineUserLink";
+import RequestRoleCard from "./RequestRoleCard";
+import teamService from "../../services/teamService";
 import { useAuth } from "../../contexts/AuthContext";
 import { useUserModal } from "../../contexts/UserModalContext";
+import { useTeamModal } from "../../contexts/TeamModalContext";
+import usePolledRequestRoles from "../../hooks/usePolledRequestRoles";
+import useSelfRoleMatchMap from "../../hooks/useSelfRoleMatchMap";
+import { getDisplayName } from "../../utils/userHelpers";
 import {
-  DEMO_PROFILE_TOOLTIP,
-  getUserInitials,
-  getDisplayName,
-  isSyntheticUser,
-} from "../../utils/userHelpers";
-import { calculateDistanceKm } from "../../utils/locationUtils";
-import { format } from "date-fns";
-
-const MATCH_WEIGHTS = {
-  tags: 0.4,
-  badges: 0.3,
-  distance: 0.3,
-};
-const ROLE_CANDIDATE_FETCH_MIN_LIMIT = 20;
-const SELF_ROLE_MATCH_FETCH_LIMIT = 1000;
-const LOCATION_GRACE_KM = 20;
-const LOCATION_GRACE_SCORE = 0.25;
-
-const roundMatchValue = (value) => Math.round(value * 100) / 100;
-
-const extractCandidateMatchData = (candidateLike) => {
-  const rawScore =
-    candidateLike?.matchScore ??
-    candidateLike?.match_score ??
-    candidateLike?.bestMatchScore ??
-    candidateLike?.best_match_score ??
-    null;
-  const numericScore = Number(rawScore);
-
-  return {
-    matchScore: Number.isFinite(numericScore) ? numericScore : null,
-    matchDetails:
-      candidateLike?.matchDetails ??
-      candidateLike?.match_details ??
-      null,
-  };
-};
-
-const extractProfilePayload = (response) => {
-  const payload = response?.data ?? response;
-
-  if (!payload) return null;
-  if (payload?.success !== undefined) return payload?.data ?? null;
-
-  return payload?.data?.data ?? payload?.data ?? payload;
-};
-
-const extractListPayload = (response) => {
-  if (Array.isArray(response)) return response;
-  if (Array.isArray(response?.data)) return response.data;
-  if (Array.isArray(response?.data?.data)) return response.data.data;
-  return [];
-};
-
-const buildTagLookup = (tagData) => {
-  const nextMap = new Map();
-
-  for (const tag of tagData) {
-    nextMap.set(Number(tag.id), {
-      badgeCredits: Number(tag.badge_credits ?? tag.badgeCredits ?? 0),
-    });
-  }
-
-  return nextMap;
-};
-
-const buildBadgeLookup = (badgeData) => {
-  const nextMap = new Map();
-
-  for (const badge of badgeData) {
-    const name = (badge.badgeName ?? badge.badge_name ?? badge.name ?? "")
-      .trim()
-      .toLowerCase();
-    const credits = Number(
-      badge.totalCredits ?? badge.total_credits ?? badge.credits ?? 0,
-    );
-    const existing = nextMap.get(name);
-
-    nextMap.set(name, {
-      totalCredits: (existing?.totalCredits || 0) + credits,
-    });
-  }
-
-  return nextMap;
-};
-
-const computeRoleUserMatch = ({
-  role,
-  tags,
-  badges,
-  user,
-  userTagMap,
-  userBadgeMap,
-}) => {
-  if (!role || !user) return null;
-
-  const requiredTagIds = tags
-    .map((tag) => Number(tag.tagId ?? tag.tag_id ?? tag.id))
-    .filter(Number.isFinite);
-  const requiredBadgeKeys = badges
-    .map((badge) =>
-      (badge.name ?? badge.badgeName ?? badge.badge_name ?? "")
-        .trim()
-        .toLowerCase(),
-    )
-    .filter(Boolean);
-
-  const matchingTags = requiredTagIds.filter((id) => userTagMap.has(id)).length;
-  const matchingBadges = requiredBadgeKeys.filter((key) => userBadgeMap.has(key)).length;
-
-  const tagScore =
-    requiredTagIds.length > 0 ? matchingTags / requiredTagIds.length : 0.5;
-  const badgeScore =
-    requiredBadgeKeys.length > 0
-      ? matchingBadges / requiredBadgeKeys.length
-      : 0.5;
-
-  const isRemote = role.isRemote ?? role.is_remote;
-  const maxDistanceKm = Number(role.maxDistanceKm ?? role.max_distance_km) || 50;
-
-  let distanceScore = 0.5;
-  let distanceKm = null;
-  let isWithinRange = null;
-
-  if (isRemote) {
-    distanceScore = 1;
-    isWithinRange = true;
-  } else {
-    distanceKm = calculateDistanceKm(user, role);
-
-    if (distanceKm !== null) {
-      if (distanceKm <= maxDistanceKm) {
-        distanceScore = 1;
-        isWithinRange = true;
-      } else if (distanceKm <= maxDistanceKm + LOCATION_GRACE_KM) {
-        distanceScore = LOCATION_GRACE_SCORE;
-        isWithinRange = false;
-      } else {
-        distanceScore = 0;
-        isWithinRange = false;
-      }
-    }
-  }
-
-  const matchScore =
-    MATCH_WEIGHTS.tags * tagScore +
-    MATCH_WEIGHTS.badges * badgeScore +
-    MATCH_WEIGHTS.distance * distanceScore;
-
-  return {
-    matchScore: roundMatchValue(matchScore),
-    matchDetails: {
-      tagScore: roundMatchValue(tagScore),
-      badgeScore: roundMatchValue(badgeScore),
-      distanceScore: roundMatchValue(distanceScore),
-      matchingTags,
-      totalRequiredTags: requiredTagIds.length,
-      matchingBadges,
-      totalRequiredBadges: requiredBadgeKeys.length,
-      distanceKm: distanceKm !== null ? Math.round(distanceKm) : null,
-      maxDistanceKm,
-      isWithinRange,
-    },
-  };
-};
+  buildCurrentFilledRoleForCard,
+  buildInvitationRoleForCard,
+  extractRoleMatchData,
+  getRequestDateValue,
+  getRequestUserLabel,
+  getRequestUserId,
+  getRequestRoleId,
+  isRequestForUser,
+} from "../../utils/teamRequestUtils";
 
 /**
  * TeamInvitesModal Component
@@ -198,6 +43,7 @@ const computeRoleUserMatch = ({
  * @param {Array} invitations - Array of pending invitation objects
  * @param {Function} onCancelInvitation - Callback to cancel an invitation
  * @param {string} teamName - Name of the team (for display)
+ * @param {string|number|null} highlightInvitationId - Invitation ID to scroll to + highlight (optional)
  * @param {string|number|null} highlightUserId - User ID to scroll to + highlight (optional)
  */
 const TeamInvitesModal = ({
@@ -206,343 +52,71 @@ const TeamInvitesModal = ({
   teamId = null,
   invitations = [],
   onCancelInvitation,
+  onCancelRoleInvitation,
   teamName,
+  highlightInvitationId = null,
   highlightUserId = null,
 }) => {
   // ============ State ============
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
-  const [roleCandidateMatchMap, setRoleCandidateMatchMap] = useState({});
-  const [selfRoleMatchMap, setSelfRoleMatchMap] = useState({});
-  const [localInviteeRoleMatchMap, setLocalInviteeRoleMatchMap] = useState({});
   const [pendingCancelInvitationId, setPendingCancelInvitationId] =
     useState(null);
+  const [pendingCancelType, setPendingCancelType] = useState("team");
+  const [narrowMap, setNarrowMap] = useState({});
 
   // ============ Refs ============
   const highlightedRef = useRef(null);
 
   // ============ Context ============
   const { user: currentUser } = useAuth();
-  // Get global user modal opener (for clicking on invitee avatar/name)
   const { openUserModal } = useUserModal();
+  const { openTeamModal } = useTeamModal();
+  const hydratedRoleMap = usePolledRequestRoles(invitations, {
+    isOpen,
+    teamId,
+  });
+  const selfRoleMatchMap = useSelfRoleMatchMap(invitations, {
+    isOpen,
+    teamId,
+    currentUserId: currentUser?.id,
+    userKey: "invitee",
+    warningLabel: "invitation",
+  });
 
   // ============ Scroll to highlighted invitation ============
   useEffect(() => {
-    if (isOpen && highlightUserId && highlightedRef.current) {
-      // Small delay to ensure modal is rendered
-      const t = setTimeout(() => {
+    if (!isOpen || (!highlightInvitationId && !highlightUserId)) return;
+
+    let frameId = null;
+    const t = setTimeout(() => {
+      frameId = window.requestAnimationFrame(() => {
         highlightedRef.current?.scrollIntoView({
           behavior: "smooth",
           block: "center",
         });
-      }, 100);
-
-      return () => clearTimeout(t);
-    }
-  }, [isOpen, highlightUserId]);
-
-  useEffect(() => {
-    const selfRoleIds = [
-      ...new Set(
-        invitations
-          .filter((invitation) => {
-            const inviteeId =
-              invitation?.invitee?.id ??
-              invitation?.invitee_id ??
-              null;
-            return inviteeId != null && String(inviteeId) === String(currentUser?.id);
-          })
-          .map((invitation) =>
-            invitation?.role?.id ??
-            invitation?.roleId ??
-            invitation?.role_id ??
-            null,
-          )
-          .filter((roleId) => roleId != null)
-          .map(String),
-      ),
-    ];
-
-    if (!isOpen || !teamId || !currentUser?.id || selfRoleIds.length === 0) {
-      setSelfRoleMatchMap({});
-      return;
-    }
-
-    let cancelled = false;
-
-    const fetchSelfRoleMatches = async () => {
-      try {
-        const response = await matchingService.getMatchingRolesForTeam(teamId, {
-          limit: SELF_ROLE_MATCH_FETCH_LIMIT,
-        });
-
-        if (cancelled) return;
-
-        const nextMatchMap = {};
-
-        (response?.data || []).forEach((role) => {
-          const roleId = role?.id;
-          if (roleId == null || !selfRoleIds.includes(String(roleId))) return;
-
-          nextMatchMap[String(roleId)] = {
-            matchScore:
-              role?.matchScore ??
-              role?.match_score ??
-              null,
-            matchDetails:
-              role?.matchDetails ??
-              role?.match_details ??
-              null,
-          };
-        });
-
-        setSelfRoleMatchMap(nextMatchMap);
-      } catch (error) {
-        if (!cancelled) {
-          console.warn("Could not fetch self-invitation role match scores:", error);
-          setSelfRoleMatchMap({});
-        }
-      }
-    };
-
-    fetchSelfRoleMatches();
+      });
+    }, 150);
 
     return () => {
-      cancelled = true;
+      clearTimeout(t);
+      if (frameId != null) window.cancelAnimationFrame(frameId);
     };
-  }, [isOpen, teamId, currentUser?.id, invitations]);
-
-  useEffect(() => {
-    const roleInviteePairs = invitations
-      .map((invitation) => ({
-        roleId:
-          invitation?.role?.id ??
-          invitation?.roleId ??
-          invitation?.role_id ??
-          null,
-        inviteeId:
-          invitation?.invitee?.id ??
-          invitation?.invitee_id ??
-          null,
-        fallbackRole: invitation?.role ?? null,
-      }))
-      .filter(
-        (pair) => pair.roleId != null && pair.inviteeId != null,
-      );
-
-    if (!isOpen || !teamId || roleInviteePairs.length === 0) {
-      setLocalInviteeRoleMatchMap({});
-      return;
-    }
-
-    let cancelled = false;
-
-    const fetchLocalInviteeMatches = async () => {
-      const uniqueRoleIds = [...new Set(roleInviteePairs.map((pair) => String(pair.roleId)))];
-      const uniqueInviteeIds = [
-        ...new Set(roleInviteePairs.map((pair) => String(pair.inviteeId))),
-      ];
-      const fallbackRoleMap = roleInviteePairs.reduce((acc, pair) => {
-        if (!acc[pair.roleId] && pair.fallbackRole) {
-          acc[pair.roleId] = pair.fallbackRole;
-        }
-        return acc;
-      }, {});
-
-      try {
-        const [roleResults, inviteeResults] = await Promise.all([
-          Promise.allSettled(
-            uniqueRoleIds.map((roleId) =>
-              vacantRoleService.getVacantRoleById(teamId, roleId),
-            ),
-          ),
-          Promise.allSettled(
-            uniqueInviteeIds.map(async (inviteeId) => {
-              const [profileRes, tagsRes, badgesRes] = await Promise.allSettled([
-                userService.getUserById(inviteeId),
-                userService.getUserTags(inviteeId),
-                userService.getUserBadges(inviteeId),
-              ]);
-
-              return {
-                inviteeId,
-                profile:
-                  profileRes.status === "fulfilled"
-                    ? extractProfilePayload(profileRes.value)
-                    : null,
-                userTagMap:
-                  tagsRes.status === "fulfilled"
-                    ? buildTagLookup(extractListPayload(tagsRes.value))
-                    : new Map(),
-                userBadgeMap:
-                  badgesRes.status === "fulfilled"
-                    ? buildBadgeLookup(extractListPayload(badgesRes.value))
-                    : new Map(),
-              };
-            }),
-          ),
-        ]);
-
-        if (cancelled) return;
-
-        const roleMap = {};
-        uniqueRoleIds.forEach((roleId, index) => {
-          const result = roleResults[index];
-          roleMap[roleId] =
-            result?.status === "fulfilled"
-              ? extractProfilePayload(result.value) ?? fallbackRoleMap[roleId] ?? null
-              : fallbackRoleMap[roleId] ?? null;
-        });
-
-        const inviteeMap = {};
-        uniqueInviteeIds.forEach((inviteeId, index) => {
-          const result = inviteeResults[index];
-          inviteeMap[inviteeId] =
-            result?.status === "fulfilled"
-              ? result.value
-              : null;
-        });
-
-        const nextMatchMap = {};
-
-        roleInviteePairs.forEach(({ roleId, inviteeId }) => {
-          const role = roleMap[String(roleId)];
-          const inviteeData = inviteeMap[String(inviteeId)];
-
-          if (!role || !inviteeData?.profile) return;
-
-          const localMatch = computeRoleUserMatch({
-            role,
-            tags: role.tags ?? role.desiredTags ?? [],
-            badges: role.badges ?? role.desiredBadges ?? [],
-            user: inviteeData.profile,
-            userTagMap: inviteeData.userTagMap,
-            userBadgeMap: inviteeData.userBadgeMap,
-          });
-
-          if (!localMatch) return;
-
-          if (!nextMatchMap[String(roleId)]) {
-            nextMatchMap[String(roleId)] = {};
-          }
-          nextMatchMap[String(roleId)][String(inviteeId)] = localMatch;
-        });
-
-        setLocalInviteeRoleMatchMap(nextMatchMap);
-      } catch (error) {
-        if (!cancelled) {
-          console.warn("Could not compute local invitation role match scores:", error);
-          setLocalInviteeRoleMatchMap({});
-        }
-      }
-    };
-
-    fetchLocalInviteeMatches();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [isOpen, teamId, invitations]);
-
-  useEffect(() => {
-    if (!isOpen || invitations.length === 0) {
-      setRoleCandidateMatchMap({});
-      return;
-    }
-
-    const inviteesByRole = invitations.reduce((acc, invitation) => {
-      const roleId =
-        invitation?.role?.id ??
-        invitation?.roleId ??
-        invitation?.role_id ??
-        null;
-      const inviteeId =
-        invitation?.invitee?.id ??
-        invitation?.invitee_id ??
-        null;
-
-      if (roleId == null || inviteeId == null) {
-        return acc;
-      }
-
-      const roleKey = String(roleId);
-      if (!acc.has(roleKey)) {
-        acc.set(roleKey, new Set());
-      }
-      acc.get(roleKey).add(String(inviteeId));
-      return acc;
-    }, new Map());
-
-    if (inviteesByRole.size === 0) {
-      setRoleCandidateMatchMap({});
-      return;
-    }
-
-    let cancelled = false;
-
-    const fetchCandidateMatches = async () => {
-      const roleEntries = [...inviteesByRole.entries()];
-
-      try {
-        const results = await Promise.allSettled(
-          roleEntries.map(([roleId, inviteeIds]) =>
-            matchingService.getMatchingCandidates(roleId, {
-              limit: Math.max(inviteeIds.size, ROLE_CANDIDATE_FETCH_MIN_LIMIT),
-            }),
-          ),
-        );
-
-        if (cancelled) return;
-
-        const nextMatchMap = {};
-
-        results.forEach((result, index) => {
-          if (result.status !== "fulfilled") return;
-
-          const [roleId] = roleEntries[index];
-          const roleMatches = {};
-
-          (result.value?.data || []).forEach((candidate) => {
-            const candidateId =
-              candidate?.id ??
-              candidate?.userId ??
-              candidate?.user_id ??
-              null;
-            if (candidateId == null) return;
-
-            roleMatches[String(candidateId)] = extractCandidateMatchData(candidate);
-          });
-
-          nextMatchMap[String(roleId)] = roleMatches;
-        });
-
-        setRoleCandidateMatchMap(nextMatchMap);
-      } catch (error) {
-        if (!cancelled) {
-          console.warn("Could not fetch invitation role match scores:", error);
-          setRoleCandidateMatchMap({});
-        }
-      }
-    };
-
-    fetchCandidateMatches();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [isOpen, invitations]);
+  }, [highlightInvitationId, highlightUserId, invitations.length, isOpen]);
 
   // ============ Handlers ============
 
-  const handleCancelInvitation = (invitationId) => {
+  const handleCancelInvitation = (invitationId, type = "team") => {
     if (!invitationId) return;
+    setPendingCancelType(type);
     setPendingCancelInvitationId(invitationId);
   };
 
   const closeCancelInvitationModal = () => {
     if (loading) return;
     setPendingCancelInvitationId(null);
+    setPendingCancelType("team");
   };
 
   const confirmCancelInvitation = async () => {
@@ -552,10 +126,23 @@ const TeamInvitesModal = ({
       setLoading(true);
       setError(null);
 
-      await onCancelInvitation(pendingCancelInvitationId);
+      if (pendingCancelType === "role") {
+        if (onCancelRoleInvitation) {
+          await onCancelRoleInvitation(pendingCancelInvitationId);
+        } else {
+          await teamService.cancelRoleInvitation(pendingCancelInvitationId);
+        }
+      } else {
+        await onCancelInvitation(pendingCancelInvitationId);
+      }
 
-      setSuccess("Invitation canceled successfully!");
+      setSuccess(
+        pendingCancelType === "role"
+          ? "Role invitation canceled successfully!"
+          : "Team invitation canceled successfully!",
+      );
       setPendingCancelInvitationId(null);
+      setPendingCancelType("team");
 
       // Clear success after 3 seconds
       setTimeout(() => setSuccess(null), 3000);
@@ -575,30 +162,8 @@ const TeamInvitesModal = ({
 
   // ============ Helpers ============
 
-  // Helper to get avatar URL
-  const getAvatarUrl = (user) => {
-    return user?.avatar_url || user?.avatarUrl || null;
-  };
-
-  // Format invitation date
-  const getInvitationDate = (invitation) => {
-    const date =
-      invitation?.created_at ||
-      invitation?.createdAt ||
-      invitation?.date ||
-      invitation?.sent_at;
-
-    if (!date) return "Unknown date";
-
-    try {
-      return format(new Date(date), "MMM d, yyyy");
-    } catch (error) {
-      console.error("Error formatting date:", error);
-      return "Unknown date";
-    }
-  };
-
   // ============ Render ============
+  const anyNarrow = Object.values(narrowMap).some(Boolean);
   const pendingCancelInvitation = invitations.find(
     (invitation) => String(invitation.id) === String(pendingCancelInvitationId),
   );
@@ -606,15 +171,40 @@ const TeamInvitesModal = ({
     pendingCancelInvitation?.invitee
       ? getDisplayName(pendingCancelInvitation.invitee)
       : "this user";
+  const pendingCancelIsRole = pendingCancelType === "role";
+  const pendingCancelHasRole =
+    !pendingCancelIsRole &&
+    Boolean(
+      pendingCancelInvitation?.role?.id ??
+        pendingCancelInvitation?.roleId ??
+        pendingCancelInvitation?.role_id,
+    );
+  const pendingCancelTitle = pendingCancelIsRole
+    ? "Cancel Role Invitation"
+    : "Cancel Team Invitation";
+  const pendingCancelButtonLabel = pendingCancelIsRole
+    ? "Cancel Role Invitation"
+    : "Cancel Team Invitation";
 
   return (
     <RequestListModal
       isOpen={isOpen}
       onClose={onClose}
-      title="Invitations sent out to"
-      subtitle={teamName}
+      title={
+        <span className="leading-[100%]">
+          <Users size={20} className="inline-block align-middle mr-1.5 shrink-0 text-primary" />
+          <Tooltip content="View team" wrapperClassName="inline">
+            <span
+              className="font-semibold text-success cursor-pointer hover:text-success/70 transition-colors"
+              onClick={() => teamId && openTeamModal(teamId, teamName)}
+            >{teamName}</span>
+          </Tooltip>
+          <span>'s Invitations</span>
+        </span>
+      }
       itemCount={invitations.length}
       itemName="invitation"
+      bylineIcon={<SendHorizontal size={14} className="text-violet-500 shrink-0" />}
       footerText="You can cancel invitations that haven't been responded to."
       error={error}
       onErrorClose={() => setError(null)}
@@ -627,7 +217,7 @@ const TeamInvitesModal = ({
         <Modal
           isOpen={Boolean(pendingCancelInvitationId)}
           onClose={closeCancelInvitationModal}
-          title="Cancel Invitation"
+          title={pendingCancelTitle}
           position="center"
           size="small"
           bodyClassName="p-4"
@@ -649,258 +239,206 @@ const TeamInvitesModal = ({
                 disabled={loading}
                 icon={<Trash2 size={16} />}
               >
-                {loading ? "Canceling..." : "Cancel Invitation"}
+                {loading ? "Canceling..." : pendingCancelButtonLabel}
               </Button>
             </div>
           }
         >
           <p className="text-sm text-base-content/80">
-            Cancel the invitation for {pendingInviteeName}? They will no longer
-            be able to respond to it.
+            {pendingCancelIsRole
+              ? `Cancel the role invitation for ${pendingInviteeName}?`
+              : `Cancel the team invitation for ${pendingInviteeName}? They will no longer be able to respond to it.`}
+            {pendingCancelHasRole && (
+              <span className="block mt-2 text-warning text-xs">
+                This will also cancel the associated role invitation.
+              </span>
+            )}
           </p>
         </Modal>
       }
     >
       {invitations.map((invitation) => {
         // Get invitee ID for highlighting comparison
-        const inviteeId =
-          invitation?.invitee?.id ?? invitation?.invitee_id ?? null;
-        const roleId =
-          invitation?.role?.id ??
-          invitation?.roleId ??
-          invitation?.role_id ??
-          null;
-        const syntheticRoleFlag =
-          invitation?.role?.is_synthetic ??
-          invitation?.role?.isSynthetic ??
-          invitation?.role_is_synthetic ??
-          invitation?.roleIsSynthetic ??
-          invitation?.is_synthetic ??
-          invitation?.isSynthetic;
-        const roleForCard = invitation?.role
-          ? {
-              ...invitation.role,
-              is_synthetic:
-                invitation.role.is_synthetic ??
-                invitation.role.isSynthetic ??
-                syntheticRoleFlag,
-              isSynthetic:
-                invitation.role.isSynthetic ??
-                invitation.role.is_synthetic ??
-                syntheticRoleFlag,
-            }
-          : {
-              id: invitation?.roleId ?? invitation?.role_id,
-              roleName: invitation?.roleName ?? invitation?.role_name,
-              role_name: invitation?.role_name ?? invitation?.roleName,
-              is_synthetic: syntheticRoleFlag,
-              isSynthetic: syntheticRoleFlag,
-            };
-        const isSelfInvitation =
-          currentUser?.id === (invitation.invitee?.id ?? invitation.invitee_id);
+        const inviteeId = getRequestUserId(invitation, "invitee");
+        const roleId = getRequestRoleId(invitation);
+        const polledRole = roleId ? hydratedRoleMap[String(roleId)] : null;
+        const roleForCard = buildInvitationRoleForCard(invitation, polledRole);
+        const currentFilledRoleForCard = buildCurrentFilledRoleForCard(
+          invitation,
+          invitation.invitee ?? null,
+        );
+        const isSelfInvitation = isRequestForUser(
+          invitation,
+          "invitee",
+          currentUser?.id,
+        );
         const inviteeRoleMatch =
-          roleId != null && inviteeId != null
-            ? roleCandidateMatchMap[String(roleId)]?.[String(inviteeId)] ?? null
+          roleId != null && invitation?.role
+            ? extractRoleMatchData(invitation.role)
             : null;
         const selfRoleMatch =
           roleId != null && isSelfInvitation
             ? selfRoleMatchMap[String(roleId)] ?? null
             : null;
-        const localInviteeRoleMatch =
-          roleId != null && inviteeId != null
-            ? localInviteeRoleMatchMap[String(roleId)]?.[String(inviteeId)] ?? null
-            : null;
+        const hasRoleInvitation = roleId != null;
+        const isInternalInvitation = Boolean(
+          invitation?.isInternal ?? invitation?.is_internal ?? false,
+        );
+
+        // Strip the " <roleName>." suffix the backend appends to internal invitation messages
+        const displayedMessage = invitation.message
+          ? (() => {
+              const roleName =
+                invitation.current_filled_role_name ??
+                invitation.currentFilledRoleName;
+              if (isInternalInvitation && roleName) {
+                const suffix = ` ${roleName}.`;
+                return invitation.message.endsWith(suffix)
+                  ? invitation.message.slice(0, -suffix.length)
+                  : invitation.message;
+              }
+              return invitation.message;
+            })()
+          : null;
 
         // Normalize types to avoid "1" vs 1 mismatches
         const isHighlighted =
-          highlightUserId != null &&
-          inviteeId != null &&
-          String(inviteeId) === String(highlightUserId);
-        const showInviteeUsername =
-          invitation.invitee?.username &&
-          (getDisplayName(invitation.invitee) !== invitation.invitee?.username ||
-            isSyntheticUser(invitation.invitee));
-        const showInviteeDemoProfile = isSyntheticUser(invitation.invitee);
+          (highlightInvitationId != null &&
+            String(invitation.id) === String(highlightInvitationId)) ||
+          (highlightUserId != null &&
+            inviteeId != null &&
+            String(inviteeId) === String(highlightUserId));
+
+        const inviteeRoleCard = hasRoleInvitation ? (
+          <RequestRoleCard
+            role={roleForCard}
+            teamId={teamId}
+            teamName={teamName}
+            primaryMatch={inviteeRoleMatch}
+            secondaryMatch={selfRoleMatch}
+            canManageStatus={false}
+            viewAsUserId={inviteeId}
+            viewAsUser={invitation.invitee}
+            hideActions={true}
+          />
+        ) : null;
+        const currentFilledRoleCard =
+          isInternalInvitation && currentFilledRoleForCard ? (
+            <RequestRoleCard
+              role={currentFilledRoleForCard}
+              teamId={teamId}
+              teamName={teamName}
+              canManageStatus={false}
+              hideActions={true}
+            />
+          ) : null;
 
         return (
           <div
             key={invitation.id}
             ref={isHighlighted ? highlightedRef : null}
-            className={`bg-base-200/30 rounded-lg border border-base-300 p-4 transition-all duration-300 ${
+            className={`transition-all duration-300 ${
               isHighlighted
-                ? "ring-2 ring-primary ring-offset-2 bg-primary/5"
+                ? "ring-2 ring-green-500/70 ring-offset-2 rounded-xl bg-green-50"
                 : ""
             }`}
           >
-            {/* Top row: Avatar + Name/Username + Date */}
-            <div className="flex items-start gap-3 mb-3">
-              {/* Invitee Avatar - Clickable */}
-              <div
-                className="avatar cursor-pointer hover:opacity-80 transition-opacity flex-shrink-0"
-                onClick={() => handleInviteeClick(invitation.invitee?.id)}
-                title="View profile"
-              >
-                <div className="w-10 h-10 rounded-full relative overflow-hidden">
-                  {getAvatarUrl(invitation.invitee) ? (
-                    <img
-                      src={getAvatarUrl(invitation.invitee)}
-                      alt={getDisplayName(invitation.invitee)}
-                      className="object-cover w-full h-full rounded-full"
-                      onError={(e) => {
-                        e.target.style.display = "none";
-                        const fallback =
-                          e.target.parentElement.querySelector(
-                            ".avatar-fallback"
-                          );
-                        if (fallback) fallback.style.display = "flex";
-                      }}
-                    />
-                  ) : null}
-                  {/* Fallback initials */}
-                  <div
-                    className="avatar-fallback bg-[var(--color-primary-focus)] text-primary-content flex items-center justify-center w-full h-full rounded-full absolute inset-0"
-                    style={{
-                      display: getAvatarUrl(invitation.invitee)
-                        ? "none"
-                        : "flex",
-                    }}
+            <PersonRequestCard
+              user={invitation.invitee}
+              date={getRequestDateValue(invitation)}
+              onNarrowChange={(narrow) =>
+                setNarrowMap((prev) => {
+                  if ((prev[String(invitation.id)] ?? false) === narrow) return prev;
+                  return { ...prev, [String(invitation.id)]: narrow };
+                })
+              }
+              forceNarrow={anyNarrow}
+              message={displayedMessage || undefined}
+              messageLabel={`Invitation message sent to ${getRequestUserLabel(invitation, "invitee", "recipient")}:`}
+              messageIcon={<SendHorizontal size={12} className="text-info mr-1" />}
+              onUserClick={handleInviteeClick}
+              showLocation={true}
+              sublineExtra={
+                isInternalInvitation ? (
+                  <Tooltip
+                    content="Already a member of this team"
+                    wrapperClassName="flex min-w-0 overflow-hidden items-center gap-0.5 text-base-content/70"
                   >
-                    <span className="text-sm font-medium">
-                      {getUserInitials(invitation.invitee)}
-                    </span>
-                  </div>
-                  {isSyntheticUser(invitation.invitee) && (
-                    <DemoAvatarOverlay textClassName="text-[7px]" />
+                    <User size={10} className="flex-shrink-0 text-success" />
+                    <span className="leading-[1.05] whitespace-nowrap">Team Member</span>
+                  </Tooltip>
+                ) : null
+              }
+              messageBubbleExtra={
+                displayedMessage ? (
+                  <>
+                    {inviteeRoleCard}
+                    {currentFilledRoleCard && (
+                      <div className={inviteeRoleCard ? "mt-3" : ""}>
+                        {currentFilledRoleCard}
+                      </div>
+                    )}
+                  </>
+                ) : null
+              }
+              extraContent={
+                !displayedMessage && inviteeRoleCard ? (
+                  <div className="mb-3 max-w-[300px]">{inviteeRoleCard}</div>
+                ) : null
+              }
+              footerLeft={
+                invitation.inviter ? (
+                  <InvitedByLink
+                    user={invitation.inviter}
+                    className="min-w-0 flex-[1_1_12rem] overflow-hidden"
+                  />
+                ) : invitation.inviter_username ? (
+                  <span className="min-w-0 flex-[1_1_12rem] overflow-hidden truncate text-xs text-base-content/50">
+                    Invited by {invitation.inviter_username}
+                  </span>
+                ) : null
+              }
+              actions={
+                <div className="ml-auto flex flex-wrap justify-end gap-2">
+                  {hasRoleInvitation && (
+                    <Tooltip content="Cancel role invitation only">
+                      <Button
+                        variant="errorOutline"
+                        size="sm"
+                        onClick={() => handleCancelInvitation(invitation.id, "role")}
+                        disabled={loading}
+                        icon={<XCircle size={14} />}
+                      >
+                        {loading ? "Canceling..." : "Cancel Role Invite"}
+                      </Button>
+                    </Tooltip>
+                  )}
+                  {(!hasRoleInvitation || !isInternalInvitation) && (
+                    <Tooltip
+                      content={
+                        hasRoleInvitation
+                          ? "Cancel team & role invitation"
+                          : "Cancel team invitation"
+                      }
+                    >
+                      <Button
+                        variant="errorOutline"
+                        size="sm"
+                        onClick={() => handleCancelInvitation(invitation.id, "team")}
+                        disabled={loading}
+                        icon={<XCircle size={14} />}
+                      >
+                        {loading
+                          ? "Canceling..."
+                          : hasRoleInvitation
+                            ? "Cancel Role + Team Invite"
+                            : "Cancel Invite"}
+                      </Button>
+                    </Tooltip>
                   )}
                 </div>
-              </div>
-
-              {/* User Info */}
-              <div className="flex-1 min-w-0">
-                {/* Name - Clickable */}
-                <h4
-                  className="font-medium text-base-content cursor-pointer hover:text-primary transition-colors leading-[120%] mb-[0.2em]"
-                  onClick={() => handleInviteeClick(invitation.invitee?.id)}
-                  title="View profile"
-                >
-                  {getDisplayName(invitation.invitee)}
-                </h4>
-                {(showInviteeUsername || showInviteeDemoProfile) && (
-                  <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                    {showInviteeUsername && (
-                      <p className="text-xs text-base-content/70">
-                        @{invitation.invitee.username}
-                      </p>
-                    )}
-                    {showInviteeDemoProfile && (
-                      <Tooltip
-                        content={DEMO_PROFILE_TOOLTIP}
-                        wrapperClassName="flex items-center gap-0.5 text-base-content/50 text-xs"
-                      >
-                        <FlaskConical size={12} className="flex-shrink-0" />
-                        <span>Demo Profile</span>
-                      </Tooltip>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* Date - top right */}
-              <div className="flex items-center text-xs text-base-content/60 whitespace-nowrap">
-                <Calendar size={12} className="mr-1" />
-                <span>{getInvitationDate(invitation)}</span>
-              </div>
-            </div>
-
-            {/* Invitee Bio (if available) */}
-            {invitation.invitee?.bio && (
-              <div className="mb-3 text-sm text-base-content/80">
-                <p className="line-clamp-2">{invitation.invitee.bio}</p>
-              </div>
-            )}
-
-            {/* Invitation Message (if any) */}
-            {invitation.message && (
-              <div className="mb-3">
-                <p className="text-xs text-base-content/60 mb-0.5 flex items-center">
-                  <SendHorizontal size={12} className="text-info mr-1" />
-                  Invitation message:
-                </p>
-                <p className="text-sm text-base-content/90 leading-relaxed">
-                  {invitation.message}
-                </p>
-              </div>
-            )}
-
-            {/* Vacant role card — shown when invitation targets a specific role */}
-            {(invitation.role || invitation.roleId || invitation.role_id) && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-3">
-                <VacantRoleCard
-                  role={roleForCard}
-                  team={{ id: teamId, name: teamName }}
-                  matchScore={
-                    inviteeRoleMatch?.matchScore ??
-                    selfRoleMatch?.matchScore ??
-                    localInviteeRoleMatch?.matchScore ??
-                    invitation.role?.matchScore ??
-                    invitation.role?.match_score ??
-                    null
-                  }
-                  matchDetails={
-                    inviteeRoleMatch?.matchDetails ??
-                    selfRoleMatch?.matchDetails ??
-                    localInviteeRoleMatch?.matchDetails ??
-                    invitation.role?.matchDetails ??
-                    invitation.role?.match_details ??
-                    null
-                  }
-                  canManage={false}
-                  canManageStatus={false}
-                  isTeamMember={true}
-                  viewAsUserId={invitation.invitee?.id ?? invitation.invitee_id}
-                  viewAsUser={invitation.invitee}
-                  hideActions={true}
-                />
-              </div>
-            )}
-
-            {/* Location (if available) */}
-            {(invitation.invitee?.location ||
-              invitation.invitee?.postal_code) && (
-              <div className="flex items-center text-xs text-base-content/60 mb-3">
-                <MapPin size={12} className="mr-1" />
-                <span>
-                  {invitation.invitee?.location ||
-                    invitation.invitee?.postal_code}
-                </span>
-              </div>
-            )}
-
-            {/* Bottom row: Inviter info (left) + Action Button (right) */}
-            <div className="flex items-center justify-between gap-3">
-              {/* Inviter info (left) - Using InlineUserLink */}
-              {invitation.inviter ? (
-                <InvitedByLink user={invitation.inviter} />
-              ) : invitation.inviter_username ? (
-                <span className="text-xs text-base-content/50">
-                  Invited by {invitation.inviter_username}
-                </span>
-              ) : (
-                <div />
-              )}
-
-              {/* Action Button (right) */}
-              <div className="flex justify-end">
-                <Button
-                  variant="errorOutline"
-                  size="sm"
-                  onClick={() => handleCancelInvitation(invitation.id)}
-                  disabled={loading}
-                >
-                  {loading ? "Canceling..." : "Cancel Invitation"}
-                </Button>
-              </div>
-            </div>
+              }
+            />
           </div>
         );
       })}
