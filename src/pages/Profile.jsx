@@ -1191,7 +1191,12 @@ const Profile = () => {
               <div className="form-control w-full">
                 <label className="label">
                   <span className="label-text">
-                    Select focus areas matching your interests and skills
+                    <span className="sm:hidden">
+                      Pick your interests and skills
+                    </span>
+                    <span className="hidden sm:inline">
+                      Select focus areas matching your interests and skills
+                    </span>
                   </span>
                 </label>
 

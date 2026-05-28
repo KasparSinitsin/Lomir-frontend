@@ -1,4 +1,28 @@
 import api, { call } from "./api";
+import { snakeToCamel } from "../utils/formatters";
+
+// Preserves both snake_case and camelCase keys so callers that read either
+// casing keep working — many user-facing components defensively read both.
+const normalizeUserPayload = (payload) => {
+  const rawUser = payload?.data ?? payload ?? null;
+  if (!rawUser || typeof rawUser !== "object" || Array.isArray(rawUser)) {
+    return payload;
+  }
+
+  const normalized = { ...rawUser, ...snakeToCamel(rawUser) };
+
+  if (Array.isArray(rawUser.badges)) {
+    normalized.badges = rawUser.badges.map((badge) =>
+      badge && typeof badge === "object"
+        ? { ...badge, ...snakeToCamel(badge) }
+        : badge,
+    );
+  }
+
+  return payload?.data !== undefined
+    ? { ...payload, data: normalized }
+    : normalized;
+};
 
 export const userService = {
   /**
@@ -8,8 +32,10 @@ export const userService = {
    */
   getUserById: (userId) =>
     call(`fetching user details for ID ${userId}`, () =>
-      api.get(`/api/users/${userId}`),
-    ),
+      api.get(`/api/users/${userId}`, {
+        skipResponseCaseTransform: true,
+      }),
+    ).then(normalizeUserPayload),
 
   searchUsers: (query) =>
     api.get(`/api/users?search=${encodeURIComponent(query)}`),

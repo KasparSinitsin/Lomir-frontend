@@ -498,81 +498,90 @@ const TagInput = ({
       )}
 
       {typeof document !== "undefined" &&
-        shouldShowDropdown &&
         createPortal(
           <ul
             {...getMenuProps({
               ref: dropdownRef,
             })}
-            style={menuStyle}
-            className="menu bg-base-100 border border-base-300 rounded-box p-2 shadow-xl overflow-y-auto"
+            style={shouldShowDropdown ? menuStyle : { display: "none" }}
+            className={
+              shouldShowDropdown
+                ? "menu bg-base-100 border border-base-300 rounded-box p-2 shadow-xl overflow-y-auto"
+                : ""
+            }
           >
-            <li className="menu-title flex items-center gap-2 px-3 py-2">
-              {React.createElement(currentSuggestions.icon, {
-                size: 16,
-                className:
-                  currentSuggestions.type === "popular"
-                    ? "text-warning"
-                    : currentSuggestions.type === "related"
-                      ? "text-secondary"
-                      : "text-primary",
-              })}
-              <span className="font-semibold">{getSuggestionTitle()}</span>
+            {shouldShowDropdown && (
+              <>
+                <li className="menu-title flex items-center gap-2 px-3 py-2">
+                  {React.createElement(currentSuggestions.icon, {
+                    size: 16,
+                    className:
+                      currentSuggestions.type === "popular"
+                        ? "text-warning"
+                        : currentSuggestions.type === "related"
+                          ? "text-secondary"
+                          : "text-primary",
+                  })}
+                  <span className="font-semibold">{getSuggestionTitle()}</span>
 
-              {loading && (
-                <span className="ml-auto text-xs opacity-70 flex items-center gap-2">
-                  <span className="loading loading-spinner loading-xs"></span>
-                  Loading…
-                </span>
-              )}
-            </li>
-
-            {currentSuggestions.tags.map((tag, index) => {
-              const alreadyAdded = selectedTagIdSet.has(getTagId(tag));
-              return (
-                <li key={tag.id} {...getItemProps({ item: tag, index })}>
-                  <button
-                    type="button"
-                    onMouseDown={(e) => e.preventDefault()}
-                    disabled={alreadyAdded}
-                    title={
-                      alreadyAdded ? UI_TEXT.focusAreas.alreadyAdded : undefined
-                    }
-                    className={`flex items-center justify-between w-full ${
-                      alreadyAdded
-                        ? "opacity-40 cursor-not-allowed"
-                        : highlightedIndex === index
-                          ? "active"
-                          : ""
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <TagIcon size={14} />
-                      <span className="font-medium">{tag.name}</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-xs">
-                      {alreadyAdded ? (
-                        <span className="badge badge-sm badge-ghost opacity-60">
-                          added
-                        </span>
-                      ) : (
-                        <>
-                          <span className="badge badge-sm badge-ghost">
-                            {tag.category}
-                          </span>
-                          {tag.usage_count !== undefined &&
-                            tag.usage_count > 0 && (
-                              <span className="badge badge-sm badge-primary">
-                                {tag.usage_count}
-                              </span>
-                            )}
-                        </>
-                      )}
-                    </div>
-                  </button>
+                  {loading && (
+                    <span className="ml-auto text-xs opacity-70 flex items-center gap-2">
+                      <span className="loading loading-spinner loading-xs"></span>
+                      Loading…
+                    </span>
+                  )}
                 </li>
-              );
-            })}
+
+                {currentSuggestions.tags.map((tag, index) => {
+                  const alreadyAdded = selectedTagIdSet.has(getTagId(tag));
+                  return (
+                    <li key={tag.id} {...getItemProps({ item: tag, index })}>
+                      <button
+                        type="button"
+                        onMouseDown={(e) => e.preventDefault()}
+                        disabled={alreadyAdded}
+                        title={
+                          alreadyAdded
+                            ? UI_TEXT.focusAreas.alreadyAdded
+                            : undefined
+                        }
+                        className={`flex items-center justify-between w-full ${
+                          alreadyAdded
+                            ? "opacity-40 cursor-not-allowed"
+                            : highlightedIndex === index
+                              ? "active"
+                              : ""
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <TagIcon size={14} />
+                          <span className="font-medium">{tag.name}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs">
+                          {alreadyAdded ? (
+                            <span className="badge badge-sm badge-ghost opacity-60">
+                              added
+                            </span>
+                          ) : (
+                            <>
+                              <span className="badge badge-sm badge-ghost">
+                                {tag.category}
+                              </span>
+                              {tag.usage_count !== undefined &&
+                                tag.usage_count > 0 && (
+                                  <span className="badge badge-sm badge-primary">
+                                    {tag.usage_count}
+                                  </span>
+                                )}
+                            </>
+                          )}
+                        </div>
+                      </button>
+                    </li>
+                  );
+                })}
+              </>
+            )}
           </ul>,
           document.body,
         )}
