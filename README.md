@@ -49,6 +49,7 @@ Contact the project owner for a demo login, or register a new account with a val
 | Styling | Tailwind CSS 3 + DaisyUI 5 |
 | Routing | React Router 7 |
 | HTTP Client | Axios |
+| Server State | TanStack React Query 5 |
 | Real-time | Socket.IO Client |
 | Maps | Leaflet + React Leaflet |
 | Icons | Lucide React, React Icons |
@@ -167,7 +168,9 @@ Lomir-frontend/
 │   │   ├── TeamModalContext.jsx    # Global team detail modal state
 │   │   └── ModalLayerContext.jsx   # Modal z-index stacking
 │   ├── services/
-│   │   ├── api.js                  # Axios instance with interceptors (camelCase ↔ snake_case)
+│   │   ├── api.js                  # Axios instance with default camelCase ↔ snake_case interceptors;
+│   │   │                           #   call sites can opt out via skipRequestCaseTransform /
+│   │   │                           #   skipResponseCaseTransform for explicit per-call data contracts
 │   │   ├── authService.js
 │   │   ├── userService.js          # Includes deletionPreview + deleteUser
 │   │   ├── teamService.js
@@ -181,10 +184,23 @@ Lomir-frontend/
 │   │   ├── socketService.js        # Socket.IO client wrapper
 │   │   └── geocodingService.js
 │   ├── hooks/
+│   │   ├── useUserQueries.js       # React Query hooks for user profile/tags/badges (useUserProfile, useUserTags, useUserBadges) + unwrap helpers
+│   │   ├── useTagQueries.js        # React Query hooks for structured tags
+│   │   ├── useBadgeQueries.js      # React Query hooks for badge catalog and shared-teams lookups
+│   │   ├── useViewerMatchProfile.js # Viewer's tags/badges/location for client-side scoring
+│   │   ├── useViewerPendingRequests.js # Shared cache of viewer's pending invitations + applications, consumed by MyTeams and modals
+│   │   ├── useViewerTeamMemberships.js # Viewer's team memberships for "already in team" gates
+│   │   ├── useTeamRequestLists.js  # Shared list state for TeamApplicationsModal / TeamInvitesModal
+│   │   ├── usePolledRequestRoles.js # Bulk-poll vacant role status every 20s via /vacant-roles?ids=
+│   │   ├── useSelfRoleMatchMap.js  # Viewer's match scores against a set of roles
 │   │   ├── useHydratedRole.js      # Fetch full role details + match score for modals; polls role status every 20 s
 │   │   ├── useLocationAutoFill.js  # Geocoding-based city/country auto-fill from postal code
+│   │   ├── useLocation.js          # Reverse-geocode current device location
+│   │   ├── useMyTeamsSort.js       # Sort state for MyTeams page
+│   │   ├── useClientPagination.js  # Client-side pagination state for lists
+│   │   ├── useSocketEvents.js      # Subscribe to a set of Socket.IO events with React-safe cleanup
 │   │   ├── useAwardModals.js       # Badge award modal state management
-│   │   └── useViewerMatchProfile.js # Viewer's tags/badges/location for client-side scoring
+│   │   └── useTheme.js             # Theme toggle state
 │   ├── utils/
 │   │   ├── deletedUser.js          # "Former Lomir User" display utilities + FormerUserAvatar
 │   │   ├── userHelpers.js          # Initials, display names, isSynthetic* helpers, demo tooltips
