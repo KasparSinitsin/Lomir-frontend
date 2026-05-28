@@ -8,19 +8,17 @@ import Tooltip from "../common/Tooltip";
 import UserDetailsModal from "../users/UserDetailsModal";
 import VacantRoleCard from "./VacantRoleCard";
 import TeamApplicationDetailsModal from "./TeamApplicationDetailsModal";
-import { matchingService } from "../../services/matchingService";
 import { messageService } from "../../services/messageService";
 import { vacantRoleService } from "../../services/vacantRoleService";
 import { useAuth } from "../../contexts/AuthContext";
 import { useTeamModal } from "../../contexts/TeamModalContext";
 import { buildRoleApplicationFilledMessage } from "../../utils/roleEventMessages";
 import usePolledRequestRoles from "../../hooks/usePolledRequestRoles";
+import useSelfRoleMatchMap from "../../hooks/useSelfRoleMatchMap";
 import {
   buildApplicationRoleForCard,
   getRequestRoleId,
 } from "../../utils/teamRequestUtils";
-
-const SELF_ROLE_MATCH_FETCH_LIMIT = 1000;
 
 /**
  * TeamApplicationsModal Component
@@ -62,11 +60,17 @@ const TeamApplicationsModal = ({
   const [statusUpdatingRoleId, setStatusUpdatingRoleId] = useState(null);
   const [showCloseGuard, setShowCloseGuard] = useState(false);
   const [applicationDetailsFor, setApplicationDetailsFor] = useState(null);
-  const [selfRoleMatchMap, setSelfRoleMatchMap] = useState({});
   const [narrowMap, setNarrowMap] = useState({});
   const polledRoleStatusMap = usePolledRequestRoles(applications, {
     isOpen,
     teamId,
+  });
+  const selfRoleMatchMap = useSelfRoleMatchMap(applications, {
+    isOpen,
+    teamId,
+    currentUserId: currentUser?.id,
+    userKey: "applicant",
+    warningLabel: "application",
   });
 
   // ============ Refs ============
@@ -308,77 +312,6 @@ const TeamApplicationsModal = ({
       setRoleStatusOverrides({});
     }
   }, [isOpen]);
-
-  useEffect(() => {
-    const selfRoleIds = [
-      ...new Set(
-        applications
-          .filter((application) => {
-            const applicantId =
-              application?.applicant?.id ??
-              application?.applicant_id ??
-              null;
-            return applicantId != null && String(applicantId) === String(currentUser?.id);
-          })
-          .map((application) =>
-            application?.role?.id ??
-            application?.roleId ??
-            application?.role_id ??
-            null,
-          )
-          .filter((roleId) => roleId != null)
-          .map(String),
-      ),
-    ];
-
-    if (!isOpen || !teamId || !currentUser?.id || selfRoleIds.length === 0) {
-      setSelfRoleMatchMap({});
-      return;
-    }
-
-    let cancelled = false;
-
-    const fetchSelfRoleMatches = async () => {
-      try {
-        const response = await matchingService.getMatchingRolesForTeam(teamId, {
-          limit: SELF_ROLE_MATCH_FETCH_LIMIT,
-        });
-
-        if (cancelled) return;
-
-        const nextMatchMap = {};
-
-        (response?.data || []).forEach((role) => {
-          const roleId = role?.id;
-          if (roleId == null || !selfRoleIds.includes(String(roleId))) return;
-
-          nextMatchMap[String(roleId)] = {
-            matchScore:
-              role?.matchScore ??
-              role?.match_score ??
-              null,
-            matchDetails:
-              role?.matchDetails ??
-              role?.match_details ??
-              null,
-          };
-        });
-
-        setSelfRoleMatchMap(nextMatchMap);
-      } catch (error) {
-        if (!cancelled) {
-          console.warn("Could not fetch self-application role match scores:", error);
-          setSelfRoleMatchMap({});
-        }
-      }
-    };
-
-    fetchSelfRoleMatches();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [isOpen, teamId, currentUser?.id, applications]);
 
   // ============ Render ============
   const anyNarrow = Object.values(narrowMap).some(Boolean);

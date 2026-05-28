@@ -17,12 +17,12 @@ import Tooltip from "../common/Tooltip";
 import InlineUserLink, { InvitedByLink } from "../users/InlineUserLink";
 import DemoAvatarOverlay from "../users/DemoAvatarOverlay";
 import VacantRoleCard from "./VacantRoleCard";
-import { matchingService } from "../../services/matchingService";
 import teamService from "../../services/teamService";
 import { useAuth } from "../../contexts/AuthContext";
 import { useUserModal } from "../../contexts/UserModalContext";
 import { useTeamModal } from "../../contexts/TeamModalContext";
 import usePolledRequestRoles from "../../hooks/usePolledRequestRoles";
+import useSelfRoleMatchMap from "../../hooks/useSelfRoleMatchMap";
 import {
   DEMO_PROFILE_TOOLTIP,
   getUserInitials,
@@ -36,8 +36,6 @@ import {
   extractRoleMatchData,
   getRequestRoleId,
 } from "../../utils/teamRequestUtils";
-
-const SELF_ROLE_MATCH_FETCH_LIMIT = 1000;
 
 const FitInviteeName = ({ invitee, onUserClick, onNarrowChange, getDateEl, forceNarrow = false }) => {
   const containerRef = useRef(null);
@@ -110,7 +108,6 @@ const TeamInvitesModal = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
-  const [selfRoleMatchMap, setSelfRoleMatchMap] = useState({});
   const [pendingCancelInvitationId, setPendingCancelInvitationId] =
     useState(null);
   const [pendingCancelType, setPendingCancelType] = useState("team");
@@ -127,6 +124,13 @@ const TeamInvitesModal = ({
   const hydratedRoleMap = usePolledRequestRoles(invitations, {
     isOpen,
     teamId,
+  });
+  const selfRoleMatchMap = useSelfRoleMatchMap(invitations, {
+    isOpen,
+    teamId,
+    currentUserId: currentUser?.id,
+    userKey: "invitee",
+    warningLabel: "invitation",
   });
 
   // ============ Scroll to highlighted invitation ============
@@ -148,77 +152,6 @@ const TeamInvitesModal = ({
       if (frameId != null) window.cancelAnimationFrame(frameId);
     };
   }, [highlightInvitationId, highlightUserId, invitations.length, isOpen]);
-
-  useEffect(() => {
-    const selfRoleIds = [
-      ...new Set(
-        invitations
-          .filter((invitation) => {
-            const inviteeId =
-              invitation?.invitee?.id ??
-              invitation?.invitee_id ??
-              null;
-            return inviteeId != null && String(inviteeId) === String(currentUser?.id);
-          })
-          .map((invitation) =>
-            invitation?.role?.id ??
-            invitation?.roleId ??
-            invitation?.role_id ??
-            null,
-          )
-          .filter((roleId) => roleId != null)
-          .map(String),
-      ),
-    ];
-
-    if (!isOpen || !teamId || !currentUser?.id || selfRoleIds.length === 0) {
-      setSelfRoleMatchMap({});
-      return;
-    }
-
-    let cancelled = false;
-
-    const fetchSelfRoleMatches = async () => {
-      try {
-        const response = await matchingService.getMatchingRolesForTeam(teamId, {
-          limit: SELF_ROLE_MATCH_FETCH_LIMIT,
-        });
-
-        if (cancelled) return;
-
-        const nextMatchMap = {};
-
-        (response?.data || []).forEach((role) => {
-          const roleId = role?.id;
-          if (roleId == null || !selfRoleIds.includes(String(roleId))) return;
-
-          nextMatchMap[String(roleId)] = {
-            matchScore:
-              role?.matchScore ??
-              role?.match_score ??
-              null,
-            matchDetails:
-              role?.matchDetails ??
-              role?.match_details ??
-              null,
-          };
-        });
-
-        setSelfRoleMatchMap(nextMatchMap);
-      } catch (error) {
-        if (!cancelled) {
-          console.warn("Could not fetch self-invitation role match scores:", error);
-          setSelfRoleMatchMap({});
-        }
-      }
-    };
-
-    fetchSelfRoleMatches();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [isOpen, teamId, currentUser?.id, invitations]);
 
   // ============ Handlers ============
 

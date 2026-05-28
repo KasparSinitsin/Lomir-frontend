@@ -1071,6 +1071,37 @@ const VacantRoleDetailsModal = ({
     setIsViewerInvitationDetailsOpen(false);
   };
 
+  const layoutRoleName =
+    displayRole?.roleName ?? displayRole?.role_name ?? "Vacant Role";
+  const layoutRolePostedDate =
+    displayRole?.createdAt ?? displayRole?.created_at ?? null;
+
+  useLayoutEffect(() => {
+    if (!displayRole) return;
+
+    const container = roleTitleContainerRef.current;
+    const probe = roleTitleProbeRef.current;
+    if (!container || !probe) return;
+
+    const update = () => {
+      const containerWidth = container.clientWidth;
+      if (containerWidth === 0) return;
+      const dateEl = roleDateRef.current;
+      const reservedWidth =
+        roleDateIsNarrowRef.current && dateEl ? dateEl.offsetWidth + 16 : 0;
+      probe.textContent = layoutRoleName;
+      setRoleDateIsNarrow(probe.scrollWidth > containerWidth - reservedWidth);
+    };
+
+    const resizeObserver = new ResizeObserver(update);
+    resizeObserver.observe(container);
+    if (roleDateRef.current) resizeObserver.observe(roleDateRef.current);
+    update();
+
+    return () => resizeObserver.disconnect();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [displayRole, layoutRoleName, !!layoutRolePostedDate]);
+
   if (!displayRole) return null;
 
   // Normalize camelCase/snake_case
@@ -1651,30 +1682,6 @@ const VacantRoleDetailsModal = ({
       return null;
     }
   })();
-
-  useLayoutEffect(() => {
-    const container = roleTitleContainerRef.current;
-    const probe = roleTitleProbeRef.current;
-    if (!container || !probe) return;
-
-    const update = () => {
-      const containerWidth = container.clientWidth;
-      if (containerWidth === 0) return;
-      const dateEl = roleDateRef.current;
-      const reservedWidth =
-        roleDateIsNarrowRef.current && dateEl ? dateEl.offsetWidth + 16 : 0;
-      probe.textContent = roleName;
-      setRoleDateIsNarrow(probe.scrollWidth > containerWidth - reservedWidth);
-    };
-
-    const resizeObserver = new ResizeObserver(update);
-    resizeObserver.observe(container);
-    if (roleDateRef.current) resizeObserver.observe(roleDateRef.current);
-    update();
-
-    return () => resizeObserver.disconnect();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [roleName, !!rolePostedDate]);
 
   const modalTitle = (
     <h2 className="text-xl font-medium text-primary leading-[110%] flex items-start gap-2 whitespace-nowrap">
