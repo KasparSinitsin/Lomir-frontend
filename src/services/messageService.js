@@ -381,7 +381,9 @@ export const messageService = {
 
   deleteMessage: (messageId) =>
     call(`deleting message ${messageId}`, () =>
-      api.delete(`/api/messages/${messageId}`),
+      api.delete(`/api/messages/${messageId}`, {
+        skipResponseCaseTransform: true,
+      }),
     ),
 
   updateMessage: (messageId, content) =>
