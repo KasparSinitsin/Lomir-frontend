@@ -360,11 +360,18 @@ export const messageService = {
   // without the server's reason.
   startConversation: async (recipientId, initialMessage = "") => {
     try {
-      const response = await api.post("/api/messages/conversations", {
-        recipientId: parseInt(recipientId),
-        initialMessage: initialMessage.trim(),
-      });
-      return response.data;
+      const response = await api.post(
+        "/api/messages/conversations",
+        {
+          recipient_id: parseInt(recipientId, 10),
+          initial_message: initialMessage.trim(),
+        },
+        {
+          skipRequestCaseTransform: true,
+          skipResponseCaseTransform: true,
+        },
+      );
+      return normalizeConversationPayload(response.data).data;
     } catch (error) {
       console.error("Error starting conversation:", error);
       console.error("Error response:", error.response?.data);
