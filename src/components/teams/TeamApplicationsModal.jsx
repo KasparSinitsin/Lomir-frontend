@@ -14,6 +14,10 @@ import { messageService } from "../../services/messageService";
 import { useAuth } from "../../contexts/AuthContext";
 import { useTeamModal } from "../../contexts/TeamModalContext";
 import { buildRoleApplicationFilledMessage } from "../../utils/roleEventMessages";
+import {
+  buildApplicationRoleForCard,
+  getRequestRoleId,
+} from "../../utils/teamRequestUtils";
 
 const SELF_ROLE_MATCH_FETCH_LIMIT = 1000;
 
@@ -502,67 +506,14 @@ const TeamApplicationsModal = ({
       {applications.map((application) => {
         const applicantId =
           application?.applicant?.id ?? application?.applicant_id ?? null;
-        const roleId =
-          application?.role?.id ??
-          application?.roleId ??
-          application?.role_id ??
-          null;
-        const syntheticRoleFlag =
-          application?.role?.is_synthetic ??
-          application?.role?.isSynthetic ??
-          application?.role_is_synthetic ??
-          application?.roleIsSynthetic ??
-          application?.is_synthetic ??
-          application?.isSynthetic;
+        const roleId = getRequestRoleId(application);
         const roleOverride = roleId ? roleStatusOverrides[roleId] : null;
         const polledRole = roleId ? polledRoleStatusMap[String(roleId)] : null;
-        const role =
-          application?.role && roleId
-            ? {
-                ...application.role,
-                ...(polledRole ?? {}),
-                is_synthetic:
-                  application.role.is_synthetic ??
-                  application.role.isSynthetic ??
-                  syntheticRoleFlag,
-                isSynthetic:
-                  application.role.isSynthetic ??
-                  application.role.is_synthetic ??
-                  syntheticRoleFlag,
-                status:
-                  roleOverride?.status ??
-                  polledRole?.status ??
-                  application.role.status ??
-                  "open",
-                filledBy:
-                  roleOverride?.filledBy ??
-                  polledRole?.filledBy ??
-                  polledRole?.filled_by ??
-                  application.role.filledBy ??
-                  application.role.filled_by ??
-                  null,
-                filledByUser:
-                  roleOverride?.filledByUser ??
-                  polledRole?.filledByUser ??
-                  polledRole?.filled_by_user ??
-                  application.role.filledByUser ??
-                  application.role.filled_by_user ??
-                  null,
-              }
-            : application?.role
-              ? {
-                  ...application.role,
-                  ...(polledRole ?? {}),
-                  is_synthetic:
-                    application.role.is_synthetic ??
-                    application.role.isSynthetic ??
-                    syntheticRoleFlag,
-                  isSynthetic:
-                    application.role.isSynthetic ??
-                    application.role.is_synthetic ??
-                    syntheticRoleFlag,
-                }
-              : null;
+        const role = buildApplicationRoleForCard(
+          application,
+          polledRole,
+          roleOverride,
+        );
         const isSelfApplication =
           currentUser?.id === (application.applicant?.id ?? application.applicant_id);
         const isInternalRoleApplication = Boolean(

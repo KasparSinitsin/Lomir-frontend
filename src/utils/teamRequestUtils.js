@@ -74,3 +74,103 @@ export const extractRoleMatchData = (roleLike) => {
       null,
   };
 };
+
+export const getRequestRoleId = (request) =>
+  request?.role?.id ?? request?.roleId ?? request?.role_id ?? null;
+
+export const hasRequestRole = (request) =>
+  Boolean(request?.role || request?.roleId || request?.role_id);
+
+export const getRequestRoleSyntheticFlag = (request) =>
+  request?.role?.is_synthetic ??
+  request?.role?.isSynthetic ??
+  request?.role_is_synthetic ??
+  request?.roleIsSynthetic ??
+  request?.is_synthetic ??
+  request?.isSynthetic;
+
+export const buildInvitationRoleForCard = (invitation, polledRole = null) => {
+  const syntheticRoleFlag = getRequestRoleSyntheticFlag(invitation);
+
+  if (invitation?.role) {
+    return {
+      ...invitation.role,
+      ...(polledRole ?? {}),
+      is_synthetic:
+        invitation.role.is_synthetic ??
+        invitation.role.isSynthetic ??
+        syntheticRoleFlag,
+      isSynthetic:
+        invitation.role.isSynthetic ??
+        invitation.role.is_synthetic ??
+        syntheticRoleFlag,
+    };
+  }
+
+  return {
+    id: invitation?.roleId ?? invitation?.role_id,
+    roleName: invitation?.roleName ?? invitation?.role_name,
+    role_name: invitation?.role_name ?? invitation?.roleName,
+    is_synthetic: syntheticRoleFlag,
+    isSynthetic: syntheticRoleFlag,
+    ...(polledRole ?? {}),
+  };
+};
+
+export const buildApplicationRoleForCard = (
+  application,
+  polledRole = null,
+  roleOverride = null,
+) => {
+  const syntheticRoleFlag = getRequestRoleSyntheticFlag(application);
+  const roleId = getRequestRoleId(application);
+
+  if (application?.role && roleId) {
+    return {
+      ...application.role,
+      ...(polledRole ?? {}),
+      is_synthetic:
+        application.role.is_synthetic ??
+        application.role.isSynthetic ??
+        syntheticRoleFlag,
+      isSynthetic:
+        application.role.isSynthetic ??
+        application.role.is_synthetic ??
+        syntheticRoleFlag,
+      status:
+        roleOverride?.status ??
+        polledRole?.status ??
+        application.role.status ??
+        "open",
+      filledBy:
+        roleOverride?.filledBy ??
+        polledRole?.filledBy ??
+        polledRole?.filled_by ??
+        application.role.filledBy ??
+        application.role.filled_by ??
+        null,
+      filledByUser:
+        roleOverride?.filledByUser ??
+        polledRole?.filledByUser ??
+        polledRole?.filled_by_user ??
+        application.role.filledByUser ??
+        application.role.filled_by_user ??
+        null,
+    };
+  }
+
+  return application?.role
+    ? {
+        ...application.role,
+        ...(polledRole ?? {}),
+        is_synthetic:
+          application.role.is_synthetic ??
+          application.role.isSynthetic ??
+          syntheticRoleFlag,
+        isSynthetic:
+          application.role.isSynthetic ??
+          application.role.is_synthetic ??
+          syntheticRoleFlag,
+      }
+    : null;
+};

@@ -31,6 +31,11 @@ import {
 } from "../../utils/userHelpers";
 import { formatDisplayName } from "../../utils/nameFormatters";
 import { format } from "date-fns";
+import {
+  buildInvitationRoleForCard,
+  extractRoleMatchData,
+  getRequestRoleId,
+} from "../../utils/teamRequestUtils";
 
 const SELF_ROLE_MATCH_FETCH_LIMIT = 1000;
 
@@ -445,54 +450,14 @@ const TeamInvitesModal = ({
         // Get invitee ID for highlighting comparison
         const inviteeId =
           invitation?.invitee?.id ?? invitation?.invitee_id ?? null;
-        const roleId =
-          invitation?.role?.id ??
-          invitation?.roleId ??
-          invitation?.role_id ??
-          null;
-        const syntheticRoleFlag =
-          invitation?.role?.is_synthetic ??
-          invitation?.role?.isSynthetic ??
-          invitation?.role_is_synthetic ??
-          invitation?.roleIsSynthetic ??
-          invitation?.is_synthetic ??
-          invitation?.isSynthetic;
+        const roleId = getRequestRoleId(invitation);
         const polledRole = roleId ? hydratedRoleMap[String(roleId)] : null;
-        const roleForCard = invitation?.role
-          ? {
-              ...invitation.role,
-              ...(polledRole ?? {}),
-              is_synthetic:
-                invitation.role.is_synthetic ??
-                invitation.role.isSynthetic ??
-                syntheticRoleFlag,
-              isSynthetic:
-                invitation.role.isSynthetic ??
-                invitation.role.is_synthetic ??
-                syntheticRoleFlag,
-            }
-          : {
-              id: invitation?.roleId ?? invitation?.role_id,
-              roleName: invitation?.roleName ?? invitation?.role_name,
-              role_name: invitation?.role_name ?? invitation?.roleName,
-              is_synthetic: syntheticRoleFlag,
-              isSynthetic: syntheticRoleFlag,
-              ...(polledRole ?? {}),
-            };
+        const roleForCard = buildInvitationRoleForCard(invitation, polledRole);
         const isSelfInvitation =
           currentUser?.id === (invitation.invitee?.id ?? invitation.invitee_id);
         const inviteeRoleMatch =
           roleId != null && invitation?.role
-            ? {
-                matchScore:
-                  invitation.role.match_score ??
-                  invitation.role.matchScore ??
-                  null,
-                matchDetails:
-                  invitation.role.match_details ??
-                  invitation.role.matchDetails ??
-                  null,
-              }
+            ? extractRoleMatchData(invitation.role)
             : null;
         const selfRoleMatch =
           roleId != null && isSelfInvitation
