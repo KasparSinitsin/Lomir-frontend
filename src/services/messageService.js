@@ -2,6 +2,190 @@ import api, { call } from "./api";
 
 let _pendingUnreadCount = null;
 
+const FIELD_ALIASES = [
+  ["createdAt", "created_at"],
+  ["updatedAt", "updated_at"],
+  ["deletedAt", "deleted_at"],
+  ["readAt", "read_at"],
+  ["sentAt", "sent_at"],
+  ["conversationId", "conversation_id"],
+  ["partnerId", "partner_id"],
+  ["partnerUser", "partner_user"],
+  ["teamId", "team_id"],
+  ["teamName", "team_name"],
+  ["userId", "user_id"],
+  ["senderId", "sender_id"],
+  ["senderFirstName", "sender_first_name"],
+  ["senderLastName", "sender_last_name"],
+  ["senderUsername", "sender_username"],
+  ["senderAvatarUrl", "sender_avatar_url"],
+  ["receiverId", "receiver_id"],
+  ["recipientId", "recipient_id"],
+  ["firstName", "first_name"],
+  ["lastName", "last_name"],
+  ["avatarUrl", "avatar_url"],
+  ["teamavatarUrl", "teamavatar_url"],
+  ["isSynthetic", "is_synthetic"],
+  ["isPublic", "is_public"],
+  ["lastMessage", "last_message"],
+  ["latestMessage", "latest_message"],
+  ["recentMessage", "recent_message"],
+  ["lastMessageContent", "last_message_content"],
+  ["latestMessageContent", "latest_message_content"],
+  ["lastMessageFileName", "last_message_file_name"],
+  ["lastMessageFilename", "last_message_filename"],
+  ["latestMessageFileName", "latest_message_file_name"],
+  ["lastMessageFileUrl", "last_message_file_url"],
+  ["latestMessageFileUrl", "latest_message_file_url"],
+  ["lastMessageImageUrl", "last_message_image_url"],
+  ["latestMessageImageUrl", "latest_message_image_url"],
+  ["fileName", "file_name"],
+  ["fileUrl", "file_url"],
+  ["imageUrl", "image_url"],
+  ["replyTo", "reply_to"],
+  ["unreadCount", "unread_count"],
+  ["membershipStatus", "membership_status"],
+  ["memberStatus", "member_status"],
+  ["roleName", "role_name"],
+  ["removedAt", "removed_at"],
+  ["leftAt", "left_at"],
+];
+
+const addCaseAliases = (value, aliases = FIELD_ALIASES) => {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return value;
+  }
+
+  const next = { ...value };
+  aliases.forEach(([camelKey, snakeKey]) => {
+    if (next[camelKey] === undefined && next[snakeKey] !== undefined) {
+      next[camelKey] = next[snakeKey];
+    }
+    if (next[snakeKey] === undefined && next[camelKey] !== undefined) {
+      next[snakeKey] = next[camelKey];
+    }
+  });
+  return next;
+};
+
+const normalizeChatUser = (user) => addCaseAliases(user);
+
+const normalizeChatMember = (member) => {
+  if (!member || typeof member !== "object") return member;
+  const normalized = addCaseAliases(member);
+  const user = normalizeChatUser(normalized.user);
+  return {
+    ...normalized,
+    ...(user !== undefined ? { user } : {}),
+  };
+};
+
+const normalizeChatTeam = (team) => {
+  if (!team || typeof team !== "object") return team;
+  const normalized = addCaseAliases(team);
+  const members = Array.isArray(normalized.members)
+    ? normalized.members.map(normalizeChatMember)
+    : normalized.members;
+
+  return {
+    ...normalized,
+    ...(members !== undefined ? { members } : {}),
+  };
+};
+
+const normalizeChatMessage = (message) => {
+  if (!message || typeof message !== "object") return message;
+  const normalized = addCaseAliases(message);
+  const sender = normalizeChatUser(normalized.sender);
+  const replyTo = normalizeChatMessage(normalized.replyTo);
+
+  return {
+    ...normalized,
+    ...(sender !== undefined ? { sender } : {}),
+    ...(replyTo !== undefined
+      ? {
+          replyTo,
+          reply_to: replyTo,
+        }
+      : {}),
+  };
+};
+
+const normalizeConversation = (conversation) => {
+  if (!conversation || typeof conversation !== "object") return conversation;
+
+  const normalized = addCaseAliases(conversation);
+  const partner = normalizeChatUser(normalized.partner);
+  const partnerUser = normalizeChatUser(normalized.partnerUser);
+  const team = normalizeChatTeam(normalized.team);
+  const members = Array.isArray(normalized.members)
+    ? normalized.members.map(normalizeChatMember)
+    : normalized.members;
+  const lastMessage = normalizeChatMessage(normalized.lastMessage);
+  const latestMessage = normalizeChatMessage(normalized.latestMessage);
+  const recentMessage = normalizeChatMessage(normalized.recentMessage);
+
+  return {
+    ...normalized,
+    ...(partner !== undefined
+      ? {
+          partner,
+        }
+      : {}),
+    ...(partnerUser !== undefined
+      ? {
+          partnerUser,
+          partner_user: partnerUser,
+        }
+      : {}),
+    ...(team !== undefined ? { team } : {}),
+    ...(members !== undefined ? { members } : {}),
+    ...(lastMessage !== undefined
+      ? {
+          lastMessage,
+          last_message: lastMessage,
+        }
+      : {}),
+    ...(latestMessage !== undefined
+      ? {
+          latestMessage,
+          latest_message: latestMessage,
+        }
+      : {}),
+    ...(recentMessage !== undefined
+      ? {
+          recentMessage,
+          recent_message: recentMessage,
+        }
+      : {}),
+  };
+};
+
+const normalizeConversationListPayload = (payload) => {
+  const rawConversations = Array.isArray(payload)
+    ? payload
+    : Array.isArray(payload?.data)
+      ? payload.data
+      : Array.isArray(payload?.data?.conversations)
+        ? payload.data.conversations
+        : Array.isArray(payload?.conversations)
+          ? payload.conversations
+          : [];
+  const conversations = rawConversations.map(normalizeConversation);
+
+  if (Array.isArray(payload)) {
+    return { data: conversations };
+  }
+
+  return {
+    ...payload,
+    data: conversations,
+    ...(Array.isArray(payload?.conversations)
+      ? { conversations }
+      : {}),
+  };
+};
+
 const normalizeUnreadCountPayload = (payload) => {
   const data = payload?.data ?? payload ?? {};
   const rawFirstUnread = data.firstUnread ?? data.first_unread ?? null;
@@ -33,8 +217,10 @@ const normalizeUnreadCountPayload = (payload) => {
 export const messageService = {
   getConversations: () =>
     call("fetching conversations", () =>
-      api.get("/api/messages/conversations"),
-    ),
+      api.get("/api/messages/conversations", {
+        skipResponseCaseTransform: true,
+      }),
+    ).then(normalizeConversationListPayload),
 
   // Deduplicates concurrent calls: multiple callers within the same tick
   // share one HTTP request.

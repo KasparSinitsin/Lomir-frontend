@@ -1951,6 +1951,10 @@ const MessageDisplay = ({
           firstName: member.first_name || member.firstName,
           lastName: member.last_name || member.lastName,
           avatarUrl: member.avatar_url || member.avatarUrl,
+          isSynthetic:
+            member.isSynthetic ?? member.is_synthetic ?? undefined,
+          is_synthetic:
+            member.is_synthetic ?? member.isSynthetic ?? undefined,
           isCurrentMember: true,
           isDeletedUser: false,
           },
