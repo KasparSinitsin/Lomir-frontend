@@ -4,6 +4,8 @@ import { format } from "date-fns";
 import Tooltip from "./Tooltip";
 import {
   DEMO_PROFILE_TOOLTIP,
+  getDisplayName as getUserDisplayName,
+  getUserAvatarUrl,
   getUserInitials,
   isSyntheticUser,
 } from "../../utils/userHelpers";
@@ -52,22 +54,10 @@ const PersonRequestCard = ({
 }) => {
   // ============ Helper Functions ============
 
-  // Get avatar URL - handles both snake_case and camelCase
-  const getAvatarUrl = () => {
-    if (!user) return null;
-    return user.avatar_url || user.avatarUrl || null;
-  };
-
   // Get display name
   const getDisplayName = () => {
-    if (!user) return "Unknown User";
-
-    const firstName = user.first_name || user.firstName || "";
-    const lastName = user.last_name || user.lastName || "";
-    const fullName = `${firstName} ${lastName}`.trim();
-
-    if (fullName.length > 0) return fullName;
-    return user.username || "Unknown User";
+    const displayName = getUserDisplayName(user);
+    return displayName === "Unknown" ? "Unknown User" : displayName;
   };
 
   // Format date
@@ -106,6 +96,7 @@ const PersonRequestCard = ({
     user?.username &&
     (getDisplayName() !== user.username || isSyntheticUser(user));
   const showDemoProfile = isSyntheticUser(user);
+  const avatarUrl = getUserAvatarUrl(user);
 
   // ============ Adaptive name (full → abbreviated → CSS truncate) ============
   const nameContainerRef = useRef(null);
@@ -158,9 +149,9 @@ const PersonRequestCard = ({
           wrapperClassName={`avatar ${clickableStyles}`}
         >
           <div className="w-12 h-12 rounded-full relative overflow-hidden" onClick={handleUserClick}>
-            {getAvatarUrl() ? (
+            {avatarUrl ? (
               <img
-                src={getAvatarUrl()}
+                src={avatarUrl}
                 alt={user?.username || "User"}
                 className="object-cover w-full h-full rounded-full"
                 onError={(e) => {
@@ -175,7 +166,7 @@ const PersonRequestCard = ({
             <div
               className="avatar-fallback bg-[var(--color-primary-focus)] text-primary-content flex items-center justify-center w-full h-full rounded-full absolute inset-0"
               style={{
-                display: getAvatarUrl() ? "none" : "flex",
+                display: avatarUrl ? "none" : "flex",
               }}
             >
               <span className="text-xl font-medium">

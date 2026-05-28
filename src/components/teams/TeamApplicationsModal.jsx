@@ -18,6 +18,7 @@ import useSelfRoleMatchMap from "../../hooks/useSelfRoleMatchMap";
 import {
   buildApplicationRoleForCard,
   getRequestDateValue,
+  getRequestUserLabel,
   getRequestUserId,
   getRequestRoleId,
   isRequestForUser,
@@ -468,7 +469,7 @@ const TeamApplicationsModal = ({
               })}
               forceNarrow={anyNarrow}
               message={application.message || "No message provided."}
-              messageLabel={`${application.applicant?.first_name || application.applicant?.firstName || application.applicant?.username || "Their"}'s application message:`}
+              messageLabel={`${getRequestUserLabel(application, "applicant")}'s application message:`}
               messageIcon={<Mail size={12} className="text-pink-500 mr-1" />}
               onUserClick={handleUserClick}
               showLocation={true}

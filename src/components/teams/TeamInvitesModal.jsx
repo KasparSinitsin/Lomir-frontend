@@ -26,14 +26,17 @@ import useSelfRoleMatchMap from "../../hooks/useSelfRoleMatchMap";
 import {
   DEMO_PROFILE_TOOLTIP,
   getUserInitials,
+  getUserAvatarUrl,
   getDisplayName,
   isSyntheticUser,
 } from "../../utils/userHelpers";
 import { formatDisplayName } from "../../utils/nameFormatters";
 import {
+  buildCurrentFilledRoleForCard,
   buildInvitationRoleForCard,
   extractRoleMatchData,
   formatRequestDate,
+  getRequestUserLabel,
   getRequestUserId,
   getRequestRoleId,
   isRequestForUser,
@@ -212,11 +215,6 @@ const TeamInvitesModal = ({
 
   // ============ Helpers ============
 
-  // Helper to get avatar URL
-  const getAvatarUrl = (user) => {
-    return user?.avatar_url || user?.avatarUrl || null;
-  };
-
   // ============ Render ============
   const anyNarrow = Object.values(narrowMap).some(Boolean);
   const pendingCancelInvitation = invitations.find(
@@ -318,6 +316,10 @@ const TeamInvitesModal = ({
         const roleId = getRequestRoleId(invitation);
         const polledRole = roleId ? hydratedRoleMap[String(roleId)] : null;
         const roleForCard = buildInvitationRoleForCard(invitation, polledRole);
+        const currentFilledRoleForCard = buildCurrentFilledRoleForCard(
+          invitation,
+          invitation.invitee ?? null,
+        );
         const isSelfInvitation = isRequestForUser(
           invitation,
           "invitee",
@@ -348,6 +350,7 @@ const TeamInvitesModal = ({
           (getDisplayName(invitation.invitee) !== invitation.invitee?.username ||
             isSyntheticUser(invitation.invitee));
         const showInviteeDemoProfile = isSyntheticUser(invitation.invitee);
+        const inviteeAvatarUrl = getUserAvatarUrl(invitation.invitee);
         return (
           <div
             key={invitation.id}
@@ -369,9 +372,9 @@ const TeamInvitesModal = ({
                   className="w-12 h-12 rounded-full relative overflow-hidden"
                   onClick={() => handleInviteeClick(invitation.invitee?.id)}
                 >
-                  {getAvatarUrl(invitation.invitee) ? (
+                  {inviteeAvatarUrl ? (
                     <img
-                      src={getAvatarUrl(invitation.invitee)}
+                      src={inviteeAvatarUrl}
                       alt={getDisplayName(invitation.invitee)}
                       className="object-cover w-full h-full rounded-full"
                       onError={(e) => {
@@ -388,7 +391,7 @@ const TeamInvitesModal = ({
                   <div
                     className="avatar-fallback bg-[var(--color-primary-focus)] text-primary-content flex items-center justify-center w-full h-full rounded-full absolute inset-0"
                     style={{
-                      display: getAvatarUrl(invitation.invitee)
+                      display: inviteeAvatarUrl
                         ? "none"
                         : "flex",
                     }}
@@ -487,7 +490,7 @@ const TeamInvitesModal = ({
               <div className="mb-3">
                 <p className="text-xs text-base-content/60 mb-1 flex items-center">
                   <SendHorizontal size={12} className="text-info mr-1" />
-                  {`Invitation message sent to ${invitation.invitee?.first_name || invitation.invitee?.firstName || invitation.invitee?.username || "recipient"}:`}
+                  {`Invitation message sent to ${getRequestUserLabel(invitation, "invitee", "recipient")}:`}
                 </p>
                 <div className="w-fit max-w-full bg-base-200 rounded-lg rounded-bl-none p-3">
                   <p className="text-sm text-base-content/90 leading-relaxed">
@@ -517,19 +520,10 @@ const TeamInvitesModal = ({
                       />
                     </div>
                   )}
-                  {isInternalInvitation && (invitation.current_filled_role_id ?? invitation.currentFilledRoleId) && (
+                  {isInternalInvitation && currentFilledRoleForCard && (
                     <div className="mt-3 max-w-[300px]">
                       <RequestRoleCard
-                        role={{
-                          id: invitation.current_filled_role_id ?? invitation.currentFilledRoleId,
-                          role_name: invitation.current_filled_role_name ?? invitation.currentFilledRoleName,
-                          roleName: invitation.current_filled_role_name ?? invitation.currentFilledRoleName,
-                          status: "filled",
-                          filled_by: getRequestUserId(invitation, "invitee"),
-                          filled_by_user: invitation.invitee ?? null,
-                          is_synthetic: invitation.role_is_synthetic ?? false,
-                          isSynthetic: invitation.role_is_synthetic ?? false,
-                        }}
+                        role={currentFilledRoleForCard}
                         teamId={teamId}
                         teamName={teamName}
                         canManageStatus={false}

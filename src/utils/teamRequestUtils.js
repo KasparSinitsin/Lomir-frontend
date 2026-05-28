@@ -89,6 +89,15 @@ export const getRequestUserId = (request, userKey) =>
   request?.[`${userKey}_id`] ??
   null;
 
+export const getRequestUser = (request, userKey) =>
+  request?.[userKey] ?? null;
+
+export const getRequestUserLabel = (request, userKey, fallback = "Their") => {
+  const user = getRequestUser(request, userKey);
+
+  return user?.first_name ?? user?.firstName ?? user?.username ?? fallback;
+};
+
 export const isRequestForUser = (request, userKey, userId) =>
   idsMatch(getRequestUserId(request, userKey), userId);
 
@@ -151,6 +160,130 @@ export const buildInvitationRoleForCard = (invitation, polledRole = null) => {
     is_synthetic: syntheticRoleFlag,
     isSynthetic: syntheticRoleFlag,
     ...(polledRole ?? {}),
+  };
+};
+
+const firstPresent = (...values) =>
+  values.find((value) => value !== undefined && value !== null);
+
+export const buildCurrentFilledRoleForCard = (
+  invitation,
+  filledUser = null,
+) => {
+  const currentRole =
+    invitation?.currentFilledRole ??
+    invitation?.current_filled_role ??
+    null;
+  const currentRoleLocation =
+    currentRole?.roleLocation ??
+    currentRole?.role_location ??
+    invitation?.currentFilledRoleLocation ??
+    invitation?.current_filled_role_location ??
+    null;
+  const filledUserId = getRequestUserId(invitation, "invitee");
+  const currentRoleSyntheticFlag = firstPresent(
+    currentRole?.isSynthetic,
+    currentRole?.is_synthetic,
+    invitation?.currentFilledRoleIsSynthetic,
+    invitation?.current_filled_role_is_synthetic,
+    invitation?.role_is_synthetic,
+  );
+  const currentRoleId = firstPresent(
+    currentRole?.id,
+    invitation?.current_filled_role_id,
+    invitation?.currentFilledRoleId,
+  );
+
+  if (currentRoleId == null) return null;
+
+  return {
+    ...(currentRole ?? {}),
+    id: currentRoleId,
+    role_name: firstPresent(
+      currentRole?.role_name,
+      currentRole?.roleName,
+      invitation?.current_filled_role_name,
+      invitation?.currentFilledRoleName,
+    ),
+    roleName: firstPresent(
+      currentRole?.roleName,
+      currentRole?.role_name,
+      invitation?.currentFilledRoleName,
+      invitation?.current_filled_role_name,
+    ),
+    status: currentRole?.status ?? "filled",
+    filled_by: firstPresent(currentRole?.filled_by, currentRole?.filledBy, filledUserId),
+    filledBy: firstPresent(currentRole?.filledBy, currentRole?.filled_by, filledUserId),
+    filled_by_user:
+      currentRole?.filled_by_user ??
+      currentRole?.filledByUser ??
+      filledUser ??
+      null,
+    filledByUser:
+      currentRole?.filledByUser ??
+      currentRole?.filled_by_user ??
+      filledUser ??
+      null,
+    is_synthetic: currentRoleSyntheticFlag,
+    isSynthetic: currentRoleSyntheticFlag,
+    is_remote: firstPresent(
+      currentRole?.is_remote,
+      currentRole?.isRemote,
+      invitation?.current_filled_role_is_remote,
+      invitation?.currentFilledRoleIsRemote,
+    ),
+    isRemote: firstPresent(
+      currentRole?.isRemote,
+      currentRole?.is_remote,
+      invitation?.currentFilledRoleIsRemote,
+      invitation?.current_filled_role_is_remote,
+    ),
+    city: firstPresent(
+      currentRole?.city,
+      currentRoleLocation?.city,
+      invitation?.current_filled_role_city,
+      invitation?.currentFilledRoleCity,
+    ),
+    state: firstPresent(
+      currentRole?.state,
+      currentRoleLocation?.state,
+      invitation?.current_filled_role_state,
+      invitation?.currentFilledRoleState,
+    ),
+    country: firstPresent(
+      currentRole?.country,
+      currentRoleLocation?.country,
+      invitation?.current_filled_role_country,
+      invitation?.currentFilledRoleCountry,
+    ),
+    postal_code: firstPresent(
+      currentRole?.postal_code,
+      currentRole?.postalCode,
+      currentRoleLocation?.postal_code,
+      currentRoleLocation?.postalCode,
+      invitation?.current_filled_role_postal_code,
+      invitation?.currentFilledRolePostalCode,
+    ),
+    postalCode: firstPresent(
+      currentRole?.postalCode,
+      currentRole?.postal_code,
+      currentRoleLocation?.postalCode,
+      currentRoleLocation?.postal_code,
+      invitation?.currentFilledRolePostalCode,
+      invitation?.current_filled_role_postal_code,
+    ),
+    max_distance_km: firstPresent(
+      currentRole?.max_distance_km,
+      currentRole?.maxDistanceKm,
+      invitation?.current_filled_role_max_distance_km,
+      invitation?.currentFilledRoleMaxDistanceKm,
+    ),
+    maxDistanceKm: firstPresent(
+      currentRole?.maxDistanceKm,
+      currentRole?.max_distance_km,
+      invitation?.currentFilledRoleMaxDistanceKm,
+      invitation?.current_filled_role_max_distance_km,
+    ),
   };
 };
 
