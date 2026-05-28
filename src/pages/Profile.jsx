@@ -74,7 +74,7 @@ const Profile = () => {
   const [imageError, setImageError] = useState(false);
   const navigate = useNavigate();
   const { openUserModal } = useUserModal();
-  const { data: structuredTags = [], error: structuredTagsError } =
+  const { data: structuredTags, error: structuredTagsError } =
     useStructuredTags();
   const {
     data: fetchedProfileUser,
@@ -253,7 +253,7 @@ const Profile = () => {
   }, [fetchedProfileUser, initialDataLoaded, isEditing]);
 
   useEffect(() => {
-    setTags(structuredTags);
+    if (structuredTags) setTags(structuredTags);
   }, [structuredTags]);
 
   useEffect(() => {

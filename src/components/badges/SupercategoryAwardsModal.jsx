@@ -102,17 +102,23 @@ const SupercategoryAwardsModal = ({
   const totalTagCount = tags.length;
 
   const titleNode = (
-    <div className="min-w-0">
-      <div className="flex items-center gap-2 min-w-0">
-        {getSupercategoryIcon(supercategory, 20)}
-        <span
-          className="text-xl font-medium truncate"
-          style={{ color: FOCUS_GREEN }}
-        >
-          Earned badges in the focus area of {supercategory}
+    <h2
+      className="text-xl font-medium leading-[110%] mb-[0.2em]"
+      style={{ color: FOCUS_GREEN }}
+    >
+      <span className="leading-[100%]">
+        <span className="hidden md:inline">
+          Earned badges in the focus area of{" "}
         </span>
-      </div>
-    </div>
+        <span className="md:hidden">Earned Badges in </span>
+        <span className="block md:inline">
+          <span className="inline-block align-middle mr-1.5 shrink-0">
+            {getSupercategoryIcon(supercategory, 20)}
+          </span>
+          <span className="font-semibold">{supercategory}</span>
+        </span>
+      </span>
+    </h2>
   );
 
   return (
