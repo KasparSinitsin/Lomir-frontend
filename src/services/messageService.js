@@ -245,6 +245,18 @@ const normalizeMessagesPayload = (payload) => {
   };
 };
 
+const normalizeMessagePayload = (payload) => {
+  const rawMessage = payload?.data ?? payload ?? null;
+  const message = normalizeChatMessage(rawMessage);
+
+  return payload?.data !== undefined
+    ? {
+        ...payload,
+        data: message,
+      }
+    : message;
+};
+
 const normalizeUnreadCountPayload = (payload) => {
   const data = payload?.data ?? payload ?? {};
   const rawFirstUnread = data.firstUnread ?? data.first_unread ?? null;
@@ -320,13 +332,28 @@ export const messageService = {
     ).then(normalizeMessagesPayload);
   },
 
-  sendMessage: (conversationId, content, type = "direct") =>
-    call(`sending message in conversation ${conversationId}`, () =>
-      api.post(`/api/messages/conversations/${conversationId}/messages`, {
-        content,
-        type,
-      }),
-    ),
+  sendMessage: (conversationId, content, type = "direct", options = {}) => {
+    const payload = {
+      content,
+      type,
+    };
+
+    if (options.imageUrl !== undefined) payload.image_url = options.imageUrl;
+    if (options.fileUrl !== undefined) payload.file_url = options.fileUrl;
+    if (options.fileName !== undefined) payload.file_name = options.fileName;
+    if (options.replyToId !== undefined) payload.reply_to_id = options.replyToId;
+
+    return call(`sending message in conversation ${conversationId}`, () =>
+      api.post(
+        `/api/messages/conversations/${conversationId}/messages`,
+        payload,
+        {
+          skipRequestCaseTransform: true,
+          skipResponseCaseTransform: true,
+        },
+      ),
+    ).then(normalizeMessagePayload);
+  },
 
   // Keeps explicit try/catch — logs the response body in addition to the
   // standard error log because conversation start failures are hard to debug
