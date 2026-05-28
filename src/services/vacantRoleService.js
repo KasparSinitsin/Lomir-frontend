@@ -32,6 +32,22 @@ export const vacantRoleService = {
   },
 
   /**
+   * Bulk-fetch vacant roles by IDs in one call. Bypasses the status filter
+   * so callers can detect transitions to filled/closed.
+   * @param {number} teamId
+   * @param {Array<number|string>} roleIds
+   */
+  async getVacantRolesByIds(teamId, roleIds) {
+    const ids = (roleIds ?? []).filter((id) => id != null && id !== "").join(",");
+    if (!ids) return { success: true, data: [] };
+
+    const response = await api.get(`/api/teams/${teamId}/vacant-roles`, {
+      params: { ids },
+    });
+    return response.data;
+  },
+
+  /**
    * Create a new vacant role
    * @param {number} teamId
    * @param {object} roleData - { role_name, bio, postal_code, city, country,

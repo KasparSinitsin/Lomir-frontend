@@ -2,12 +2,10 @@ import { useEffect, useMemo, useState } from "react";
 import { vacantRoleService } from "../services/vacantRoleService";
 import { getRequestRoleId } from "../utils/teamRequestUtils";
 
-const unwrapRolePayload = (value) => {
+const unwrapListPayload = (value) => {
   const payload = value?.data ?? value;
-
-  return payload?.success !== undefined
-    ? payload?.data ?? null
-    : payload?.data?.data ?? payload?.data ?? payload;
+  const inner = payload?.data ?? payload;
+  return Array.isArray(inner) ? inner : [];
 };
 
 const usePolledRequestRoles = (
@@ -39,17 +37,16 @@ const usePolledRequestRoles = (
 
     const pollRoles = async () => {
       try {
-        const results = await Promise.allSettled(
-          roleIds.map((id) => vacantRoleService.getVacantRoleById(teamId, id)),
+        const response = await vacantRoleService.getVacantRolesByIds(
+          teamId,
+          roleIds,
         );
         if (isCancelled) return;
 
+        const roles = unwrapListPayload(response);
         const nextMap = {};
-        results.forEach((result, i) => {
-          if (result.status === "fulfilled") {
-            const roleData = unwrapRolePayload(result.value);
-            if (roleData) nextMap[roleIds[i]] = roleData;
-          }
+        roles.forEach((role) => {
+          if (role?.id != null) nextMap[String(role.id)] = role;
         });
         setRoleMap((prev) => ({ ...prev, ...nextMap }));
       } catch {
