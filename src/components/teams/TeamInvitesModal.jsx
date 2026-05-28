@@ -1,21 +1,17 @@
-import React, { useState, useEffect, useRef, useLayoutEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   User,
   Users,
-  MapPin,
-  Calendar,
   SendHorizontal,
-  FlaskConical,
   Trash2,
-  MailOpen,
   XCircle,
 } from "lucide-react";
 import RequestListModal from "../common/RequestListModal";
+import PersonRequestCard from "../common/PersonRequestCard";
 import Button from "../common/Button";
 import Modal from "../common/Modal";
 import Tooltip from "../common/Tooltip";
-import InlineUserLink, { InvitedByLink } from "../users/InlineUserLink";
-import DemoAvatarOverlay from "../users/DemoAvatarOverlay";
+import { InvitedByLink } from "../users/InlineUserLink";
 import RequestRoleCard from "./RequestRoleCard";
 import teamService from "../../services/teamService";
 import { useAuth } from "../../contexts/AuthContext";
@@ -23,65 +19,17 @@ import { useUserModal } from "../../contexts/UserModalContext";
 import { useTeamModal } from "../../contexts/TeamModalContext";
 import usePolledRequestRoles from "../../hooks/usePolledRequestRoles";
 import useSelfRoleMatchMap from "../../hooks/useSelfRoleMatchMap";
-import {
-  DEMO_PROFILE_TOOLTIP,
-  getUserInitials,
-  getUserAvatarUrl,
-  getDisplayName,
-  isSyntheticUser,
-} from "../../utils/userHelpers";
-import { formatDisplayName } from "../../utils/nameFormatters";
+import { getDisplayName } from "../../utils/userHelpers";
 import {
   buildCurrentFilledRoleForCard,
   buildInvitationRoleForCard,
   extractRoleMatchData,
-  formatRequestDate,
+  getRequestDateValue,
   getRequestUserLabel,
   getRequestUserId,
   getRequestRoleId,
   isRequestForUser,
 } from "../../utils/teamRequestUtils";
-
-const FitInviteeName = ({ invitee, onUserClick, onNarrowChange, getDateEl, forceNarrow = false }) => {
-  const containerRef = useRef(null);
-  const probeRef = useRef(null);
-  const fullName = getDisplayName(invitee);
-  const abbrevName = invitee ? formatDisplayName(invitee) : fullName;
-  const [displayedName, setDisplayedName] = useState(fullName);
-  const displayedNameRef = useRef(fullName);
-  displayedNameRef.current = displayedName;
-  const forceNarrowRef = useRef(forceNarrow);
-  forceNarrowRef.current = forceNarrow;
-
-  useLayoutEffect(() => {
-    if (fullName === abbrevName) { setDisplayedName(fullName); onNarrowChange?.(false); return; }
-    const container = containerRef.current;
-    const probe = probeRef.current;
-    if (!container || !probe) return;
-    const update = () => {
-      const isDateAbsolute = displayedNameRef.current !== fullName || forceNarrowRef.current;
-      const dateEl = getDateEl?.();
-      const dateReservedWidth = isDateAbsolute && dateEl ? dateEl.offsetWidth + 12 : 0; // 12 = gap-3
-      probe.textContent = fullName;
-      const fits = probe.scrollWidth <= container.clientWidth - dateReservedWidth;
-      setDisplayedName(fits ? fullName : abbrevName);
-      onNarrowChange?.(!fits);
-    };
-    const ro = new ResizeObserver(update);
-    ro.observe(container);
-    update();
-    return () => ro.disconnect();
-  }, [fullName, abbrevName]);
-
-  return (
-    <h4 ref={containerRef} className="font-medium text-base-content leading-[120%] mb-[0.2em] truncate relative">
-      <Tooltip content="View profile" wrapperClassName="cursor-pointer hover:text-primary transition-colors">
-        <span onClick={onUserClick}>{displayedName}</span>
-      </Tooltip>
-      <span ref={probeRef} className="invisible absolute whitespace-nowrap pointer-events-none left-0 top-0 font-medium" aria-hidden="true" />
-    </h4>
-  );
-};
 
 /**
  * TeamInvitesModal Component
@@ -117,7 +65,6 @@ const TeamInvitesModal = ({
     useState(null);
   const [pendingCancelType, setPendingCancelType] = useState("team");
   const [narrowMap, setNarrowMap] = useState({});
-  const dateElsRef = useRef({});
 
   // ============ Refs ============
   const highlightedRef = useRef(null);
@@ -338,6 +285,22 @@ const TeamInvitesModal = ({
           invitation?.isInternal ?? invitation?.is_internal ?? false,
         );
 
+        // Strip the " <roleName>." suffix the backend appends to internal invitation messages
+        const displayedMessage = invitation.message
+          ? (() => {
+              const roleName =
+                invitation.current_filled_role_name ??
+                invitation.currentFilledRoleName;
+              if (isInternalInvitation && roleName) {
+                const suffix = ` ${roleName}.`;
+                return invitation.message.endsWith(suffix)
+                  ? invitation.message.slice(0, -suffix.length)
+                  : invitation.message;
+              }
+              return invitation.message;
+            })()
+          : null;
+
         // Normalize types to avoid "1" vs 1 mismatches
         const isHighlighted =
           (highlightInvitationId != null &&
@@ -345,260 +308,137 @@ const TeamInvitesModal = ({
           (highlightUserId != null &&
             inviteeId != null &&
             String(inviteeId) === String(highlightUserId));
-        const showInviteeUsername =
-          invitation.invitee?.username &&
-          (getDisplayName(invitation.invitee) !== invitation.invitee?.username ||
-            isSyntheticUser(invitation.invitee));
-        const showInviteeDemoProfile = isSyntheticUser(invitation.invitee);
-        const inviteeAvatarUrl = getUserAvatarUrl(invitation.invitee);
+
+        const inviteeRoleCard = hasRoleInvitation ? (
+          <RequestRoleCard
+            role={roleForCard}
+            teamId={teamId}
+            teamName={teamName}
+            primaryMatch={inviteeRoleMatch}
+            secondaryMatch={selfRoleMatch}
+            canManageStatus={false}
+            viewAsUserId={inviteeId}
+            viewAsUser={invitation.invitee}
+            hideActions={true}
+          />
+        ) : null;
+        const currentFilledRoleCard =
+          isInternalInvitation && currentFilledRoleForCard ? (
+            <RequestRoleCard
+              role={currentFilledRoleForCard}
+              teamId={teamId}
+              teamName={teamName}
+              canManageStatus={false}
+              hideActions={true}
+            />
+          ) : null;
+
         return (
           <div
             key={invitation.id}
             ref={isHighlighted ? highlightedRef : null}
-            className={`bg-base-200/30 rounded-lg border border-base-300 p-4 transition-all duration-300 ${
+            className={`transition-all duration-300 ${
               isHighlighted
-                ? "ring-2 ring-green-500/70 ring-offset-2 border-green-400 bg-green-50"
+                ? "ring-2 ring-green-500/70 ring-offset-2 rounded-xl bg-green-50"
                 : ""
             }`}
           >
-            {/* Top row: Avatar + Name/Username + Date */}
-            <div className="flex items-start gap-3 mb-3 relative">
-              {/* Invitee Avatar - Clickable */}
-              <Tooltip
-                content="View profile"
-                wrapperClassName="avatar cursor-pointer hover:opacity-80 transition-opacity flex-shrink-0"
-              >
-                <div
-                  className="w-12 h-12 rounded-full relative overflow-hidden"
-                  onClick={() => handleInviteeClick(invitation.invitee?.id)}
-                >
-                  {inviteeAvatarUrl ? (
-                    <img
-                      src={inviteeAvatarUrl}
-                      alt={getDisplayName(invitation.invitee)}
-                      className="object-cover w-full h-full rounded-full"
-                      onError={(e) => {
-                        e.target.style.display = "none";
-                        const fallback =
-                          e.target.parentElement.querySelector(
-                            ".avatar-fallback"
-                          );
-                        if (fallback) fallback.style.display = "flex";
-                      }}
-                    />
-                  ) : null}
-                  {/* Fallback initials */}
-                  <div
-                    className="avatar-fallback bg-[var(--color-primary-focus)] text-primary-content flex items-center justify-center w-full h-full rounded-full absolute inset-0"
-                    style={{
-                      display: inviteeAvatarUrl
-                        ? "none"
-                        : "flex",
-                    }}
+            <PersonRequestCard
+              user={invitation.invitee}
+              date={getRequestDateValue(invitation)}
+              onNarrowChange={(narrow) =>
+                setNarrowMap((prev) => {
+                  if ((prev[String(invitation.id)] ?? false) === narrow) return prev;
+                  return { ...prev, [String(invitation.id)]: narrow };
+                })
+              }
+              forceNarrow={anyNarrow}
+              message={displayedMessage || undefined}
+              messageLabel={`Invitation message sent to ${getRequestUserLabel(invitation, "invitee", "recipient")}:`}
+              messageIcon={<SendHorizontal size={12} className="text-info mr-1" />}
+              onUserClick={handleInviteeClick}
+              showLocation={true}
+              sublineExtra={
+                isInternalInvitation ? (
+                  <Tooltip
+                    content="Already a member of this team"
+                    wrapperClassName="flex min-w-0 overflow-hidden items-center gap-0.5 text-base-content/70"
                   >
-                    <span className="text-xl font-medium">
-                      {getUserInitials(invitation.invitee)}
-                    </span>
-                  </div>
-                  {isSyntheticUser(invitation.invitee) && (
-                    <DemoAvatarOverlay textClassName="text-[8px]" />
+                    <User size={10} className="flex-shrink-0 text-success" />
+                    <span className="leading-[1.05] whitespace-nowrap">Team Member</span>
+                  </Tooltip>
+                ) : null
+              }
+              messageBubbleExtra={
+                displayedMessage ? (
+                  <>
+                    {inviteeRoleCard}
+                    {currentFilledRoleCard && (
+                      <div className={inviteeRoleCard ? "mt-3" : ""}>
+                        {currentFilledRoleCard}
+                      </div>
+                    )}
+                  </>
+                ) : null
+              }
+              extraContent={
+                !displayedMessage && inviteeRoleCard ? (
+                  <div className="mb-3 max-w-[300px]">{inviteeRoleCard}</div>
+                ) : null
+              }
+              footerLeft={
+                invitation.inviter ? (
+                  <InvitedByLink
+                    user={invitation.inviter}
+                    className="min-w-0 flex-[1_1_12rem] overflow-hidden"
+                  />
+                ) : invitation.inviter_username ? (
+                  <span className="min-w-0 flex-[1_1_12rem] overflow-hidden truncate text-xs text-base-content/50">
+                    Invited by {invitation.inviter_username}
+                  </span>
+                ) : null
+              }
+              actions={
+                <div className="ml-auto flex flex-wrap justify-end gap-2">
+                  {hasRoleInvitation && (
+                    <Tooltip content="Cancel role invitation only">
+                      <Button
+                        variant="errorOutline"
+                        size="sm"
+                        onClick={() => handleCancelInvitation(invitation.id, "role")}
+                        disabled={loading}
+                        icon={<XCircle size={14} />}
+                      >
+                        {loading ? "Canceling..." : "Cancel Role Invite"}
+                      </Button>
+                    </Tooltip>
                   )}
-                </div>
-              </Tooltip>
-
-              {/* User Info */}
-              <div className="flex-1 min-w-0">
-                {/* Name - Clickable */}
-                <FitInviteeName
-                  invitee={invitation.invitee}
-                  onUserClick={() => handleInviteeClick(invitation.invitee?.id)}
-                  onNarrowChange={(narrow) => setNarrowMap((prev) => {
-                    if ((prev[String(invitation.id)] ?? false) === narrow) return prev;
-                    return { ...prev, [String(invitation.id)]: narrow };
-                  })}
-                  getDateEl={() => dateElsRef.current[String(invitation.id)]}
-                  forceNarrow={anyNarrow}
-                />
-                {(anyNarrow || showInviteeUsername || invitation.invitee?.city || invitation.invitee?.country || invitation.invitee?.postal_code || invitation.invitee?.location || isInternalInvitation || showInviteeDemoProfile) && (
-                  <div className="flex flex-wrap items-center gap-x-2 gap-y-0 overflow-hidden text-xs" style={{ maxHeight: "2.1em" }}>
-                    {anyNarrow ? (
-                      <div className="flex shrink-0 items-center gap-1 text-base-content/60">
-                        <Calendar size={10} className="shrink-0" />
-                        <span className="leading-[1.05] whitespace-nowrap">{formatRequestDate(invitation)}</span>
-                      </div>
-                    ) : showInviteeUsername && (
-                      <div className="min-w-0 flex-[0_1_auto] overflow-hidden">
-                        <Tooltip content="View profile" wrapperClassName="block truncate leading-[1.05] text-base-content/70 cursor-pointer hover:text-primary transition-colors">
-                          <span onClick={() => handleInviteeClick(invitation.invitee?.id)}>
-                            @{invitation.invitee.username}
-                          </span>
-                        </Tooltip>
-                      </div>
-                    )}
-                    {(invitation.invitee?.city || invitation.invitee?.country || invitation.invitee?.postal_code || invitation.invitee?.location) && (
-                      <div className="flex min-w-0 max-w-[calc(100%-1.5rem)] flex-[0_1_auto] items-center gap-1 overflow-hidden">
-                        <MapPin size={10} className="text-base-content/60 shrink-0" />
-                        <span className="min-w-0 truncate text-base-content/60 leading-[1.05]">
-                          {[invitation.invitee?.city, invitation.invitee?.country].filter(Boolean).join(", ") || invitation.invitee?.location || invitation.invitee?.postal_code}
-                        </span>
-                      </div>
-                    )}
-                    {isInternalInvitation && (
-                      <Tooltip
-                        content="Already a member of this team"
-                        wrapperClassName="flex min-w-0 overflow-hidden items-center gap-0.5 text-base-content/70"
-                      >
-                        <User size={10} className="flex-shrink-0 text-success" />
-                        <span className="leading-[1.05] whitespace-nowrap">Team Member</span>
-                      </Tooltip>
-                    )}
-                    {showInviteeDemoProfile && (
-                      <Tooltip
-                        content={DEMO_PROFILE_TOOLTIP}
-                        wrapperClassName="flex shrink-0 items-center gap-0.5 text-base-content/50"
-                      >
-                        <FlaskConical size={10} className="flex-shrink-0" />
-                      </Tooltip>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* Date - top right; absolute (out of flow) when narrow so subline gets full width,
-                  but still rendered so its width can be measured for stable name-fit calculation */}
-              <div
-                ref={(el) => {
-                  if (el) dateElsRef.current[String(invitation.id)] = el;
-                  else delete dateElsRef.current[String(invitation.id)];
-                }}
-                className={`flex items-center text-xs text-base-content/60 whitespace-nowrap${anyNarrow ? " absolute opacity-0 pointer-events-none" : ""}`}
-              >
-                <Calendar size={12} className="mr-1" />
-                <span>{formatRequestDate(invitation)}</span>
-              </div>
-            </div>
-
-            {/* Invitee Bio (if available) */}
-            {invitation.invitee?.bio && (
-              <div className="mb-3 text-sm text-base-content/80">
-                <p className="line-clamp-2">{invitation.invitee.bio}</p>
-              </div>
-            )}
-
-            {/* Invitation message — speech bubble (only when a message exists) */}
-            {invitation.message && (
-              <div className="mb-3">
-                <p className="text-xs text-base-content/60 mb-1 flex items-center">
-                  <SendHorizontal size={12} className="text-info mr-1" />
-                  {`Invitation message sent to ${getRequestUserLabel(invitation, "invitee", "recipient")}:`}
-                </p>
-                <div className="w-fit max-w-full bg-base-200 rounded-lg rounded-bl-none p-3">
-                  <p className="text-sm text-base-content/90 leading-relaxed">
-                    {(() => {
-                      const roleName = invitation.current_filled_role_name ?? invitation.currentFilledRoleName;
-                      if (isInternalInvitation && roleName) {
-                        const suffix = ` ${roleName}.`;
-                        return invitation.message.endsWith(suffix)
-                          ? invitation.message.slice(0, -suffix.length)
-                          : invitation.message;
+                  {(!hasRoleInvitation || !isInternalInvitation) && (
+                    <Tooltip
+                      content={
+                        hasRoleInvitation
+                          ? "Cancel team & role invitation"
+                          : "Cancel team invitation"
                       }
-                      return invitation.message;
-                    })()}
-                  </p>
-                  {(invitation.role || invitation.roleId || invitation.role_id) && (
-                    <div className="mt-3 max-w-[300px]">
-                      <RequestRoleCard
-                        role={roleForCard}
-                        teamId={teamId}
-                        teamName={teamName}
-                        primaryMatch={inviteeRoleMatch}
-                        secondaryMatch={selfRoleMatch}
-                        canManageStatus={false}
-                        viewAsUserId={getRequestUserId(invitation, "invitee")}
-                        viewAsUser={invitation.invitee}
-                        hideActions={true}
-                      />
-                    </div>
-                  )}
-                  {isInternalInvitation && currentFilledRoleForCard && (
-                    <div className="mt-3 max-w-[300px]">
-                      <RequestRoleCard
-                        role={currentFilledRoleForCard}
-                        teamId={teamId}
-                        teamName={teamName}
-                        canManageStatus={false}
-                        hideActions={true}
-                      />
-                    </div>
+                    >
+                      <Button
+                        variant="errorOutline"
+                        size="sm"
+                        onClick={() => handleCancelInvitation(invitation.id, "team")}
+                        disabled={loading}
+                        icon={<XCircle size={14} />}
+                      >
+                        {loading
+                          ? "Canceling..."
+                          : hasRoleInvitation
+                            ? "Cancel Role + Team Invite"
+                            : "Cancel Invite"}
+                      </Button>
+                    </Tooltip>
                   )}
                 </div>
-              </div>
-            )}
-
-            {/* Role card — shown bare (no bubble) when there's a role but no message */}
-            {!invitation.message && (invitation.role || invitation.roleId || invitation.role_id) && (
-              <div className="mb-3 max-w-[300px]">
-                <RequestRoleCard
-                  role={roleForCard}
-                  teamId={teamId}
-                  teamName={teamName}
-                  primaryMatch={inviteeRoleMatch}
-                  secondaryMatch={selfRoleMatch}
-                  canManageStatus={false}
-                  viewAsUserId={getRequestUserId(invitation, "invitee")}
-                  viewAsUser={invitation.invitee}
-                  hideActions={true}
-                />
-              </div>
-            )}
-
-
-            {/* Bottom row: Inviter info (left) + Action Button (right) */}
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-2 mt-8 -mx-4 -mb-4 px-4 pb-4 pt-3 border-t border-base-200 bg-base-100/80 rounded-b-lg">
-              {/* Inviter info (left) - Using InlineUserLink */}
-              {invitation.inviter ? (
-                <InvitedByLink
-                  user={invitation.inviter}
-                  className="min-w-0 flex-[1_1_12rem] overflow-hidden"
-                />
-              ) : invitation.inviter_username ? (
-                <span className="min-w-0 flex-[1_1_12rem] overflow-hidden truncate text-xs text-base-content/50">
-                  Invited by {invitation.inviter_username}
-                </span>
-              ) : (
-                <div className="min-w-0 flex-[1_1_12rem] overflow-hidden" />
-              )}
-
-              {/* Action Button (right) */}
-              <div className="ml-auto flex flex-wrap justify-end gap-2">
-                {hasRoleInvitation && (
-                  <Tooltip content="Cancel role invitation only">
-                    <Button
-                      variant="errorOutline"
-                      size="sm"
-                      onClick={() => handleCancelInvitation(invitation.id, "role")}
-                      disabled={loading}
-                      icon={<XCircle size={14} />}
-                    >
-                      {loading ? "Canceling..." : "Cancel Role Invite"}
-                    </Button>
-                  </Tooltip>
-                )}
-                {(!hasRoleInvitation || !isInternalInvitation) && (
-                  <Tooltip content={hasRoleInvitation ? "Cancel team & role invitation" : "Cancel team invitation"}>
-                    <Button
-                      variant="errorOutline"
-                      size="sm"
-                      onClick={() => handleCancelInvitation(invitation.id, "team")}
-                      disabled={loading}
-                      icon={<XCircle size={14} />}
-                    >
-                      {loading ? "Canceling..." : hasRoleInvitation ? "Cancel Role + Team Invite" : "Cancel Invite"}
-                    </Button>
-                  </Tooltip>
-                )}
-              </div>
-            </div>
+              }
+            />
           </div>
         );
       })}
