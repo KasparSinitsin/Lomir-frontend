@@ -386,8 +386,15 @@ export const messageService = {
 
   updateMessage: (messageId, content) =>
     call(`updating message ${messageId}`, () =>
-      api.patch(`/api/messages/${messageId}`, { content: content.trim() }),
-    ),
+      api.patch(
+        `/api/messages/${messageId}`,
+        { content: content.trim() },
+        {
+          skipRequestCaseTransform: true,
+          skipResponseCaseTransform: true,
+        },
+      ),
+    ).then(normalizeMessagePayload),
 };
 
 export default messageService;
