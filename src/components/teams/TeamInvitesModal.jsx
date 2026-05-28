@@ -16,7 +16,7 @@ import Modal from "../common/Modal";
 import Tooltip from "../common/Tooltip";
 import InlineUserLink, { InvitedByLink } from "../users/InlineUserLink";
 import DemoAvatarOverlay from "../users/DemoAvatarOverlay";
-import VacantRoleCard from "./VacantRoleCard";
+import RequestRoleCard from "./RequestRoleCard";
 import teamService from "../../services/teamService";
 import { useAuth } from "../../contexts/AuthContext";
 import { useUserModal } from "../../contexts/UserModalContext";
@@ -504,22 +504,13 @@ const TeamInvitesModal = ({
                   </p>
                   {(invitation.role || invitation.roleId || invitation.role_id) && (
                     <div className="mt-3 max-w-[300px]">
-                      <VacantRoleCard
+                      <RequestRoleCard
                         role={roleForCard}
-                        team={{ id: teamId, name: teamName }}
-                        matchScore={
-                          inviteeRoleMatch?.matchScore ??
-                          selfRoleMatch?.matchScore ??
-                          null
-                        }
-                        matchDetails={
-                          inviteeRoleMatch?.matchDetails ??
-                          selfRoleMatch?.matchDetails ??
-                          null
-                        }
-                        canManage={false}
+                        teamId={teamId}
+                        teamName={teamName}
+                        primaryMatch={inviteeRoleMatch}
+                        secondaryMatch={selfRoleMatch}
                         canManageStatus={false}
-                        isTeamMember={true}
                         viewAsUserId={getRequestUserId(invitation, "invitee")}
                         viewAsUser={invitation.invitee}
                         hideActions={true}
@@ -528,7 +519,7 @@ const TeamInvitesModal = ({
                   )}
                   {isInternalInvitation && (invitation.current_filled_role_id ?? invitation.currentFilledRoleId) && (
                     <div className="mt-3 max-w-[300px]">
-                      <VacantRoleCard
+                      <RequestRoleCard
                         role={{
                           id: invitation.current_filled_role_id ?? invitation.currentFilledRoleId,
                           role_name: invitation.current_filled_role_name ?? invitation.currentFilledRoleName,
@@ -539,11 +530,9 @@ const TeamInvitesModal = ({
                           is_synthetic: invitation.role_is_synthetic ?? false,
                           isSynthetic: invitation.role_is_synthetic ?? false,
                         }}
-                        team={{ id: teamId, name: teamName }}
-                        matchScore={null}
-                        canManage={false}
+                        teamId={teamId}
+                        teamName={teamName}
                         canManageStatus={false}
-                        isTeamMember={true}
                         hideActions={true}
                       />
                     </div>
@@ -555,22 +544,13 @@ const TeamInvitesModal = ({
             {/* Role card — shown bare (no bubble) when there's a role but no message */}
             {!invitation.message && (invitation.role || invitation.roleId || invitation.role_id) && (
               <div className="mb-3 max-w-[300px]">
-                <VacantRoleCard
+                <RequestRoleCard
                   role={roleForCard}
-                  team={{ id: teamId, name: teamName }}
-                  matchScore={
-                    inviteeRoleMatch?.matchScore ??
-                    selfRoleMatch?.matchScore ??
-                    null
-                  }
-                  matchDetails={
-                    inviteeRoleMatch?.matchDetails ??
-                    selfRoleMatch?.matchDetails ??
-                    null
-                  }
-                  canManage={false}
+                  teamId={teamId}
+                  teamName={teamName}
+                  primaryMatch={inviteeRoleMatch}
+                  secondaryMatch={selfRoleMatch}
                   canManageStatus={false}
-                  isTeamMember={true}
                   viewAsUserId={getRequestUserId(invitation, "invitee")}
                   viewAsUser={invitation.invitee}
                   hideActions={true}

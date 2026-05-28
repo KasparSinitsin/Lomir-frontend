@@ -6,7 +6,7 @@ import Button from "../common/Button";
 import Modal from "../common/Modal";
 import Tooltip from "../common/Tooltip";
 import UserDetailsModal from "../users/UserDetailsModal";
-import VacantRoleCard from "./VacantRoleCard";
+import RequestRoleCard from "./RequestRoleCard";
 import TeamApplicationDetailsModal from "./TeamApplicationDetailsModal";
 import { messageService } from "../../services/messageService";
 import { vacantRoleService } from "../../services/vacantRoleService";
@@ -485,29 +485,17 @@ const TeamApplicationsModal = ({
               }
               messageBubbleExtra={
                 role ? (
-                  <VacantRoleCard
+                  <RequestRoleCard
                       role={role}
-                      team={{ id: teamId, name: teamName }}
-                      matchScore={
-                        selfRoleMatch?.matchScore ??
-                        role.match_score ??
-                        role.matchScore ??
-                        null
-                      }
-                      matchDetails={
-                        selfRoleMatch?.matchDetails ??
-                        role.match_details ??
-                        role.matchDetails ??
-                        null
-                      }
-                      canManage={false}
+                      teamId={teamId}
+                      teamName={teamName}
+                      primaryMatch={selfRoleMatch}
                       canManageStatus={canManageStatusForRole}
                       onViewApplicationDetails={
                         isSelfApplication
                           ? () => setApplicationDetailsFor(application)
                           : null
                       }
-                      isTeamMember={true}
                       onStatusChange={(currentRoleId, newStatus) =>
                         handleRoleStatusChange(
                           currentRoleId,
