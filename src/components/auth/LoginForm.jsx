@@ -67,9 +67,12 @@ const LoginForm = () => {
   return (
     <div className="max-w-md mx-auto w-full">
       <Card>
-        <h2 className="text-2xl font-bold text-center text-primary mb-6">
+        <h2 className="card-title text-2xl font-bold text-center justify-center mt-6 mb-4 text-success">
           Login
         </h2>
+        <p className="text-center text-base-content/70 mb-6">
+          Welcome back to Lomir
+        </p>
 
         {errors.form && (
           <div className="alert alert-error mb-6">

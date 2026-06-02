@@ -1192,7 +1192,7 @@ const VacantRoleCard = ({
           titleClassName={
             viewMode === "mini" ? "text-base mb-0.5 leading-[110%]" : ""
           }
-          marginClassName={viewMode === "mini" ? "mb-2" : ""}
+          marginClassName="mb-0"
           imageOverlay={
             searchResultTypeOverlay ??
             (matchTier ? renderMatchOverlay({ size: 20, iconSize: 10 }) : null)
