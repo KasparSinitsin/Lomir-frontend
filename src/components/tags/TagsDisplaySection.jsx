@@ -322,7 +322,7 @@ const TagsDisplaySection = ({
       <Tooltip key={tag.key} content={tooltipText}>
         <span
           ref={isHighlighted ? highlightTagRef : undefined}
-          className={`badge badge-outline p-3 bg-white/60 inline-flex items-center gap-1 ${isClickable ? "cursor-pointer hover:shadow-md transition-shadow" : ""} ${
+          className={`badge badge-outline py-1 px-3 bg-white/60 leading-tight h-auto inline-flex items-start gap-1 ${isClickable ? "cursor-pointer hover:shadow-md transition-shadow" : ""} ${
             isHighlighted ? "animate-badge-highlight" : ""
           }`}
           style={{
@@ -347,13 +347,15 @@ const TagsDisplaySection = ({
           {isUserMatch && (
             <Check
               size={12}
-              className="flex-shrink-0"
+              className="flex-shrink-0 mt-[3px]"
               style={{ color: FOCUS_GREEN }}
             />
           )}
           {tag.name}
           {hasBadgeCredits && (
-            <span className="ml-1 opacity-70">| {tag.badgeCredits}ct.</span>
+            <span className="opacity-70 self-stretch border-l border-current pl-1 flex items-start">
+              {tag.badgeCredits}ct.
+            </span>
           )}
         </span>
       </Tooltip>

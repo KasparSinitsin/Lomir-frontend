@@ -80,7 +80,7 @@ const BadgeCategoryCard = ({
             return (
               <span
                 key={badge.id ?? badge.badge_id ?? badge.name}
-                className={`badge badge-outline p-3 bg-white/60 ${
+                className={`badge badge-outline py-1 px-3 bg-white/60 leading-tight h-auto ${
                   onBadgeClick
                     ? "cursor-pointer hover:opacity-90 transition-opacity"
                     : ""

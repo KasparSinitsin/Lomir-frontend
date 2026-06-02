@@ -477,9 +477,9 @@ const TagInput = ({
               return (
                 <span
                   key={tagId}
-                  className="badge badge-primary badge-lg gap-2"
+                  className="badge badge-primary badge-lg gap-2 leading-none items-start h-auto py-1.5"
                 >
-                  <TagIcon size={14} />
+                  <TagIcon size={14} className="shrink-0 mt-px" />
                   {tag?.name ?? `Focus Area ${tagId}`}
                   <button
                     type="button"
