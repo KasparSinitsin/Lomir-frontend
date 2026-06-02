@@ -923,7 +923,7 @@ const BadgeAwardModal = ({
                         className="flex-shrink-0"
                       />
                       <span
-                        className="badge badge-outline p-3 bg-white/60 inline-flex items-center gap-1.5 text-sm font-medium"
+                        className="badge badge-outline py-1 px-3 bg-white/60 inline-flex items-center gap-1.5 text-sm font-medium leading-tight h-auto"
                         style={{ borderColor: badgeColor, color: badgeColor }}
                       >
                         {selectedTag.name}
