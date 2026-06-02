@@ -33,7 +33,7 @@ const Alert = ({
     <div
       className={`alert ${alertClasses[type]} !text-white w-fit transition-opacity duration-1000 ${fading ? "opacity-0" : "opacity-100"} ${className}`}
     >
-      <div className="flex items-center gap-2">
+      <div className="flex items-start gap-2">
         {type === "info" && (
           <svg
             xmlns="http://www.w3.org/2000/svg"
