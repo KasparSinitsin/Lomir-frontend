@@ -142,7 +142,9 @@ export const AuthProvider = ({ children }) => {
   const login = async (credentials) => {
     try {
       setLoading(true);
-      const response = await api.post("/api/auth/login", credentials);
+      const response = await api.post("/api/auth/login", credentials, {
+        skipAuthRedirect: true,
+      });
       const { token, user } = response.data.data;
 
       const enhancedUser = normalizeAuthUser(user);

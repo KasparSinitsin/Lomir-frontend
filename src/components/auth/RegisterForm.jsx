@@ -444,7 +444,7 @@ const RegisterForm = () => {
     <div className="w-full">
       <Card className="w-full">
         <div className="card-body">
-          <h2 className="card-title text-2xl font-bold text-center justify-center mb-2">
+          <h2 className="card-title text-2xl font-bold text-center justify-center mb-4 text-success">
             Create Account
           </h2>
           <p className="text-center text-base-content/70 mb-6">

@@ -1,7 +1,9 @@
 import LoginForm from "../components/auth/LoginForm";
 
-const Login = () => {
-  return <LoginForm />;
-};
+const Login = () => (
+  <div className="content-container">
+    <LoginForm />
+  </div>
+);
 
 export default Login;
