@@ -112,23 +112,25 @@ const ResetPassword = () => {
   // No token state
   if (!token && status !== "error") {
     return (
-      <div className="max-w-md mx-auto mt-12">
-        <Card className="w-full">
-          <div className="card-body text-center py-10 px-8">
-            <XCircle size={56} className="mx-auto mb-4 text-error" />
-            <h2 className="card-title text-2xl font-bold justify-center mb-3">
-              Invalid Link
-            </h2>
-            <p className="text-base-content/70 mb-8">
-              No reset token found. Please request a new password reset link.
-            </p>
-            <Link to="/forgot-password" className="w-full">
-              <Button variant="primary" fullWidth>
-                Request New Link
-              </Button>
-            </Link>
-          </div>
-        </Card>
+      <div className="content-container">
+        <div className="max-w-md mx-auto w-full">
+          <Card>
+            <div className="card-body text-center py-10 px-8">
+              <XCircle size={56} className="mx-auto mb-4 text-error" />
+              <h2 className="card-title text-2xl font-bold justify-center mb-3">
+                Invalid Link
+              </h2>
+              <p className="text-base-content/70 mb-8">
+                No reset token found. Please request a new password reset link.
+              </p>
+              <Link to="/forgot-password" className="w-full">
+                <Button variant="primary" fullWidth>
+                  Request New Link
+                </Button>
+              </Link>
+            </div>
+          </Card>
+        </div>
       </div>
     );
   }
@@ -136,24 +138,26 @@ const ResetPassword = () => {
   // Success state
   if (status === "success") {
     return (
-      <div className="max-w-md mx-auto mt-12">
-        <Card className="w-full">
-          <div className="card-body text-center py-10 px-8">
-            <CheckCircle size={56} className="mx-auto mb-4 text-success" />
+      <div className="content-container">
+        <div className="max-w-md mx-auto w-full">
+          <Card>
+            <div className="card-body text-center py-10 px-8">
+              <CheckCircle size={56} className="mx-auto mb-4 text-success" />
 
-            <h2 className="card-title text-2xl font-bold justify-center mb-3">
-              Password Reset!
-            </h2>
+              <h2 className="card-title text-2xl font-bold justify-center mb-3">
+                Password Reset!
+              </h2>
 
-            <p className="text-base-content/70 mb-8">{message}</p>
+              <p className="text-base-content/70 mb-8">{message}</p>
 
-            <Link to="/login" className="w-full">
-              <Button variant="primary" fullWidth>
-                Log in with new password
-              </Button>
-            </Link>
-          </div>
-        </Card>
+              <Link to="/login" className="w-full">
+                <Button variant="primary" fullWidth>
+                  Log in with new password
+                </Button>
+              </Link>
+            </div>
+          </Card>
+        </div>
       </div>
     );
   }
@@ -161,139 +165,143 @@ const ResetPassword = () => {
   // Error state (invalid/expired token)
   if (status === "error") {
     return (
-      <div className="max-w-md mx-auto mt-12">
-        <Card className="w-full">
-          <div className="card-body text-center py-10 px-8">
-            <XCircle size={56} className="mx-auto mb-4 text-error" />
+      <div className="content-container">
+        <div className="max-w-md mx-auto w-full">
+          <Card>
+            <div className="card-body text-center py-10 px-8">
+              <XCircle size={56} className="mx-auto mb-4 text-error" />
 
-            <h2 className="card-title text-2xl font-bold justify-center mb-3">
-              Reset Failed
-            </h2>
+              <h2 className="card-title text-2xl font-bold justify-center mb-3">
+                Reset Failed
+              </h2>
 
-            <p className="text-base-content/70 mb-8">{message}</p>
+              <p className="text-base-content/70 mb-8">{message}</p>
 
-            <div className="space-y-3">
-              <Link to="/forgot-password" className="w-full block">
-                <Button variant="primary" fullWidth>
-                  Request New Reset Link
-                </Button>
-              </Link>
-              <Link to="/login" className="w-full block">
-                <Button variant="ghost" fullWidth>
-                  Back to Login
-                </Button>
-              </Link>
+              <div className="space-y-3">
+                <Link to="/forgot-password" className="w-full block">
+                  <Button variant="primary" fullWidth>
+                    Request New Reset Link
+                  </Button>
+                </Link>
+                <Link to="/login" className="w-full block">
+                  <Button variant="ghost" fullWidth>
+                    Back to Login
+                  </Button>
+                </Link>
+              </div>
             </div>
-          </div>
-        </Card>
+          </Card>
+        </div>
       </div>
     );
   }
 
   // Form state
   return (
-    <div className="max-w-md mx-auto w-full">
-      <Card>
-        <div className="card-body">
-          <div className="text-center mb-6">
-            <KeyRound size={48} className="mx-auto mb-4 text-primary" />
-            <h2 className="text-2xl font-bold text-primary">
-              Create New Password
-            </h2>
-            <p className="text-base-content/70 mt-2">
-              Enter your new password below.
-            </p>
-          </div>
-
-          <form onSubmit={handleSubmit}>
-            <FormGroup
-              label="New Password"
-              htmlFor="password"
-              error={errors.password}
-              required
-            >
-              <div className="relative">
-                <input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  name="password"
-                  placeholder="••••••••"
-                  className={`input input-bordered w-full pr-10 ${
-                    errors.password ? "input-error" : ""
-                  }`}
-                  value={formData.password}
-                  onChange={handleChange}
-                  disabled={status === "submitting"}
-                />
-                <button
-                  type="button"
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-base-content/50 hover:text-base-content"
-                  onClick={() => setShowPassword(!showPassword)}
-                >
-                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                </button>
-              </div>
-            </FormGroup>
-
-            <FormGroup
-              label="Confirm New Password"
-              htmlFor="confirmPassword"
-              error={errors.confirmPassword}
-              required
-            >
-              <div className="relative">
-                <input
-                  id="confirmPassword"
-                  type={showConfirmPassword ? "text" : "password"}
-                  name="confirmPassword"
-                  placeholder="••••••••"
-                  className={`input input-bordered w-full pr-10 ${
-                    errors.confirmPassword ? "input-error" : ""
-                  }`}
-                  value={formData.confirmPassword}
-                  onChange={handleChange}
-                  disabled={status === "submitting"}
-                />
-                <button
-                  type="button"
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-base-content/50 hover:text-base-content"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                >
-                  {showConfirmPassword ? (
-                    <EyeOff size={20} />
-                  ) : (
-                    <Eye size={20} />
-                  )}
-                </button>
-              </div>
-            </FormGroup>
-
-            <div className="mt-6">
-              <Button
-                type="submit"
-                variant="primary"
-                fullWidth
-                disabled={status === "submitting"}
-              >
-                {status === "submitting" ? (
-                  <>
-                    <Loader2 size={20} className="animate-spin mr-2" />
-                    Resetting...
-                  </>
-                ) : (
-                  "Reset Password"
-                )}
-              </Button>
+    <div className="content-container">
+      <div className="max-w-md mx-auto w-full">
+        <Card>
+          <div className="card-body">
+            <div className="text-center mb-6">
+              <KeyRound size={48} className="mx-auto mb-4 text-primary" />
+              <h2 className="text-2xl font-bold text-primary">
+                Create New Password
+              </h2>
+              <p className="text-base-content/70 mt-2">
+                Enter your new password below.
+              </p>
             </div>
-          </form>
 
-          <div className="text-center mt-6">
-            <Link to="/login" className="link link-primary text-sm">
-              Back to Login
-            </Link>
+            <form onSubmit={handleSubmit}>
+              <FormGroup
+                label="New Password"
+                htmlFor="password"
+                error={errors.password}
+                required
+              >
+                <div className="relative">
+                  <input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    name="password"
+                    placeholder="••••••••"
+                    className={`input input-bordered w-full pr-10 ${
+                      errors.password ? "input-error" : ""
+                    }`}
+                    value={formData.password}
+                    onChange={handleChange}
+                    disabled={status === "submitting"}
+                  />
+                  <button
+                    type="button"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-base-content/50 hover:text-base-content"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                  </button>
+                </div>
+              </FormGroup>
+
+              <FormGroup
+                label="Confirm New Password"
+                htmlFor="confirmPassword"
+                error={errors.confirmPassword}
+                required
+              >
+                <div className="relative">
+                  <input
+                    id="confirmPassword"
+                    type={showConfirmPassword ? "text" : "password"}
+                    name="confirmPassword"
+                    placeholder="••••••••"
+                    className={`input input-bordered w-full pr-10 ${
+                      errors.confirmPassword ? "input-error" : ""
+                    }`}
+                    value={formData.confirmPassword}
+                    onChange={handleChange}
+                    disabled={status === "submitting"}
+                  />
+                  <button
+                    type="button"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-base-content/50 hover:text-base-content"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  >
+                    {showConfirmPassword ? (
+                      <EyeOff size={20} />
+                    ) : (
+                      <Eye size={20} />
+                    )}
+                  </button>
+                </div>
+              </FormGroup>
+
+              <div className="mt-6">
+                <Button
+                  type="submit"
+                  variant="primary"
+                  fullWidth
+                  disabled={status === "submitting"}
+                >
+                  {status === "submitting" ? (
+                    <>
+                      <Loader2 size={20} className="animate-spin mr-2" />
+                      Resetting...
+                    </>
+                  ) : (
+                    "Reset Password"
+                  )}
+                </Button>
+              </div>
+            </form>
+
+            <div className="text-center mt-6">
+              <Link to="/login" className="link link-primary text-sm">
+                Back to Login
+              </Link>
+            </div>
           </div>
-        </div>
-      </Card>
+        </Card>
+      </div>
     </div>
   );
 };

@@ -81,12 +81,17 @@ const RegisterForm = () => {
   const validateForm = () => {
     const newErrors = {};
 
-    if (!formData.username) newErrors.username = "Username is required";
+    if (!formData.username) {
+      newErrors.username = ["Please enter a username."];
+    } else {
+      const usernameErrors = getUsernameValidationErrors(formData.username);
+      if (usernameErrors.length > 0) newErrors.username = usernameErrors;
+    }
 
     if (!formData.email) {
       newErrors.email = "Email is required";
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = "Email is invalid";
+      newErrors.email = "Please enter a valid email address (e.g. your@email.com).";
     }
 
     if (!formData.password) {
@@ -122,6 +127,61 @@ const RegisterForm = () => {
       const remainingErrors = { ...prev };
       delete remainingErrors[fieldName];
       return remainingErrors;
+    });
+  };
+
+  const getUsernameValidationErrors = (username) => {
+    const usernameErrors = [];
+
+    if (username.length < 3) {
+      usernameErrors.push("Username must be at least 3 characters.");
+    }
+
+    if (username.length > 30) {
+      usernameErrors.push("Username must be no longer than 30 characters.");
+    }
+
+    if (!/^[a-zA-Z0-9]*$/.test(username)) {
+      usernameErrors.push(
+        "Username can only contain letters and numbers — no spaces or special characters.",
+      );
+    }
+
+    return usernameErrors;
+  };
+
+  const handleEmailBlur = () => {
+    if (!formData.email) return;
+
+    setErrors((prev) => {
+      const nextErrors = { ...prev };
+
+      if (!/\S+@\S+\.\S+/.test(formData.email)) {
+        nextErrors.email =
+          "Please enter a valid email address (e.g. your@email.com).";
+      } else {
+        delete nextErrors.email;
+      }
+
+      return nextErrors;
+    });
+  };
+
+  const handleUsernameBlur = () => {
+    if (!formData.username) return;
+
+    const usernameErrors = getUsernameValidationErrors(formData.username);
+
+    setErrors((prev) => {
+      const nextErrors = { ...prev };
+
+      if (usernameErrors.length > 0) {
+        nextErrors.username = usernameErrors;
+      } else {
+        delete nextErrors.username;
+      }
+
+      return nextErrors;
     });
   };
 
@@ -311,6 +371,12 @@ const RegisterForm = () => {
     }
   };
 
+  const usernameErrorMessages = Array.isArray(errors.username)
+    ? errors.username
+    : errors.username
+      ? [errors.username]
+      : [];
+
   const passwordErrorMessages = Array.isArray(errors.password)
     ? errors.password
     : errors.password
@@ -378,7 +444,7 @@ const RegisterForm = () => {
     <div className="w-full">
       <Card className="w-full">
         <div className="card-body">
-          <h2 className="card-title text-2xl font-bold text-center justify-center mb-2">
+          <h2 className="card-title text-2xl font-bold text-center justify-center mb-4 text-success">
             Create Account
           </h2>
           <p className="text-center text-base-content/70 mb-6">
@@ -407,18 +473,27 @@ const RegisterForm = () => {
                     type="text"
                     placeholder="Choose a username"
                     className={`input input-bordered w-full ${
-                      errors.username ? "input-error" : ""
+                      usernameErrorMessages.length > 0 ? "input-error" : ""
                     }`}
                     value={formData.username}
                     onChange={handleChange}
+                    onFocus={() => clearFieldError("username")}
+                    onBlur={handleUsernameBlur}
                     name="username"
                   />
-                  {errors.username && (
-                    <label className="label">
-                      <span className="label-text-alt text-error">
-                        {errors.username}
-                      </span>
-                    </label>
+                  {usernameErrorMessages.length === 0 && (
+                    <p className="form-helper-text mt-2 px-1">
+                      3–30 characters, letters and numbers only (no spaces).
+                    </p>
+                  )}
+                  {usernameErrorMessages.length > 0 && (
+                    <div className="mt-2 px-1 flex flex-col gap-0.5">
+                      {usernameErrorMessages.map((err) => (
+                        <p key={err} className="text-xs text-error">
+                          {err}
+                        </p>
+                      ))}
+                    </div>
                   )}
                 </div>
 
@@ -436,14 +511,14 @@ const RegisterForm = () => {
                     }`}
                     value={formData.email}
                     onChange={handleChange}
+                    onFocus={() => clearFieldError("email")}
+                    onBlur={handleEmailBlur}
                     name="email"
                   />
                   {errors.email && (
-                    <label className="label">
-                      <span className="label-text-alt text-error">
-                        {errors.email}
-                      </span>
-                    </label>
+                    <p className="text-xs text-error mt-2 px-1">
+                      {errors.email}
+                    </p>
                   )}
                 </div>
               </div>
@@ -490,16 +565,13 @@ const RegisterForm = () => {
                     </p>
                   )}
                   {passwordErrorMessages.length > 0 && (
-                    <label className="label mt-2 flex flex-col items-start gap-0.5">
+                    <div className="mt-2 px-1 flex flex-col gap-0.5">
                       {passwordErrorMessages.map((passwordError) => (
-                        <span
-                          key={passwordError}
-                          className="label-text-alt text-error"
-                        >
+                        <p key={passwordError} className="text-xs text-error">
                           {passwordError}
-                        </span>
+                        </p>
                       ))}
-                    </label>
+                    </div>
                   )}
                 </div>
 
@@ -540,11 +612,9 @@ const RegisterForm = () => {
                     </button>
                   </div>
                   {errors.confirmPassword && (
-                    <label className="label">
-                      <span className="label-text-alt text-error">
-                        {errors.confirmPassword}
-                      </span>
-                    </label>
+                    <p className="text-xs text-error mt-2 px-1">
+                      {errors.confirmPassword}
+                    </p>
                   )}
                 </div>
               </div>

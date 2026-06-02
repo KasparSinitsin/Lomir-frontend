@@ -2895,7 +2895,7 @@ const TeamCard = ({
         titleClassName={
           viewMode === "mini" ? "text-base mb-0.5 leading-[110%]" : ""
         }
-        marginClassName={viewMode === "mini" ? "mb-2" : ""}
+        marginClassName="mb-0"
         imageOverlay={avatarOverlay}
         imageInnerOverlay={demoAvatarOverlay}
       >
