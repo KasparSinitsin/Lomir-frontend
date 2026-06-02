@@ -7,8 +7,9 @@ import React, {
 } from "react";
 import { createPortal } from "react-dom";
 import { useCombobox } from "downshift";
-import { X, Tag as TagIcon, TrendingUp, Sparkles } from "lucide-react";
+import { X, Tag as TagIcon, TrendingUp, Sparkles, Layers, Check } from "lucide-react";
 import { tagService } from "../../services/tagService";
+import { SUPERCATEGORY_ICONS } from "../../utils/badgeIconUtils";
 import {
   flattenStructuredTags,
   usePopularTags,
@@ -296,7 +297,7 @@ const TagInput = ({
     else placement = spaceBelow >= spaceAbove ? "bottom" : "top";
 
     const available = placement === "bottom" ? spaceBelow : spaceAbove;
-    const maxHeight = Math.max(80, Math.min(available, MAX_MENU_HEIGHT));
+    const maxHeight = Math.max(80, available);
 
     const width = rect.width;
     const left = Math.min(
@@ -506,15 +507,16 @@ const TagInput = ({
             style={shouldShowDropdown ? menuStyle : { display: "none" }}
             className={
               shouldShowDropdown
-                ? "menu bg-base-100 border border-base-300 rounded-box p-2 shadow-xl overflow-y-auto"
+                ? "menu flex-nowrap bg-base-100 border border-base-300 rounded-box p-2 shadow-xl overflow-y-auto"
                 : ""
             }
           >
             {shouldShowDropdown && (
               <>
-                <li className="menu-title flex items-center gap-2 px-3 py-2">
+                <li className="menu-title flex items-center gap-0.5 px-3 pt-1 pb-3">
                   {React.createElement(currentSuggestions.icon, {
                     size: 16,
+                    strokeWidth: 2.5,
                     className:
                       currentSuggestions.type === "popular"
                         ? "text-warning"
@@ -522,7 +524,7 @@ const TagInput = ({
                           ? "text-secondary"
                           : "text-primary",
                   })}
-                  <span className="font-semibold">{getSuggestionTitle()}</span>
+                  <span className="font-semibold text-primary-focus">{getSuggestionTitle()}</span>
 
                   {loading && (
                     <span className="ml-auto text-xs opacity-70 flex items-center gap-2">
@@ -532,54 +534,74 @@ const TagInput = ({
                   )}
                 </li>
 
-                {currentSuggestions.tags.map((tag, index) => {
-                  const alreadyAdded = selectedTagIdSet.has(getTagId(tag));
-                  return (
-                    <li key={tag.id} {...getItemProps({ item: tag, index })}>
-                      <button
-                        type="button"
-                        onMouseDown={(e) => e.preventDefault()}
-                        disabled={alreadyAdded}
-                        title={
-                          alreadyAdded
-                            ? UI_TEXT.focusAreas.alreadyAdded
-                            : undefined
-                        }
-                        className={`flex items-center justify-between w-full ${
-                          alreadyAdded
-                            ? "opacity-40 cursor-not-allowed"
-                            : highlightedIndex === index
-                              ? "active"
-                              : ""
-                        }`}
-                      >
-                        <div className="flex items-center gap-2">
-                          <TagIcon size={14} />
-                          <span className="font-medium">{tag.name}</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-xs">
-                          {alreadyAdded ? (
-                            <span className="badge badge-sm badge-ghost opacity-60">
-                              added
-                            </span>
-                          ) : (
-                            <>
-                              <span className="badge badge-sm badge-ghost">
-                                {tag.category}
-                              </span>
-                              {tag.usage_count !== undefined &&
-                                tag.usage_count > 0 && (
-                                  <span className="badge badge-sm badge-primary">
+                {(() => {
+                  const superGroups = new Map();
+                  currentSuggestions.tags.forEach((tag) => {
+                    const superKey = tag.supercategory || "Other";
+                    const catKey = tag.category || "Other";
+                    if (!superGroups.has(superKey)) superGroups.set(superKey, new Map());
+                    const catMap = superGroups.get(superKey);
+                    if (!catMap.has(catKey)) catMap.set(catKey, []);
+                    catMap.get(catKey).push(tag);
+                  });
+
+                  let globalIndex = 0;
+                  return Array.from(superGroups.entries()).flatMap(([supercategory, catMap], superIdx) => {
+                    const CategoryIcon = SUPERCATEGORY_ICONS[supercategory] || Layers;
+                    return Array.from(catMap.entries()).flatMap(([category, tags], catIdx) =>
+                      tags.map((tag, tagIdx) => {
+                        const index = globalIndex++;
+                        const alreadyAdded = selectedTagIdSet.has(getTagId(tag));
+                        const isFirstInCategory = tagIdx === 0;
+                        const isLastInCategory = tagIdx === tags.length - 1;
+                        const isNewSupercategory = superIdx > 0 && catIdx === 0 && tagIdx === 0;
+                        const paddingClass = isNewSupercategory ? "pt-2 pb-1.5" : "py-1.5";
+                        const groupClass = [
+                          "bg-[rgba(0,146,19,0.05)]",
+                          isFirstInCategory && isLastInCategory ? "rounded-lg" :
+                            isFirstInCategory ? "rounded-t-lg" :
+                            isLastInCategory ? "rounded-b-lg" : "",
+                          isLastInCategory ? "mb-1.5" : "",
+                        ].join(" ");
+                        return (
+                          <li key={tag.id} {...getItemProps({ item: tag, index })} className={groupClass}>
+                            <button
+                              type="button"
+                              onMouseDown={(e) => e.preventDefault()}
+                              disabled={alreadyAdded}
+                              title={alreadyAdded ? UI_TEXT.focusAreas.alreadyAdded : undefined}
+                              className={`flex flex-row-reverse flex-wrap items-start w-full leading-none gap-x-2 gap-y-2 ${paddingClass} ${
+                                alreadyAdded
+                                  ? "opacity-40 cursor-not-allowed"
+                                  : highlightedIndex === index
+                                    ? "active"
+                                    : ""
+                              }`}
+                            >
+                              <div className="flex-none flex items-center gap-0.5">
+                                {!alreadyAdded && tag.usage_count !== undefined && tag.usage_count > 0 && (
+                                  <span className="badge badge-sm badge-primary shrink-0">
                                     {tag.usage_count}
                                   </span>
                                 )}
-                            </>
-                          )}
-                        </div>
-                      </button>
-                    </li>
-                  );
-                })}
+                                {isFirstInCategory && (
+                                  <span className="flex items-center gap-1 text-xs leading-none text-primary-focus whitespace-nowrap">
+                                    <CategoryIcon size={10} className="shrink-0" />
+                                    <span>{category}</span>
+                                  </span>
+                                )}
+                              </div>
+                              <div className="[flex:1_0_auto] max-w-full flex items-start gap-2 min-w-0">
+                                <span className="font-medium">{tag.name}</span>
+                                {alreadyAdded && <Check size={12} className="opacity-60 shrink-0 mt-px" />}
+                              </div>
+                            </button>
+                          </li>
+                        );
+                      })
+                    );
+                  });
+                })()}
               </>
             )}
           </ul>,
