@@ -10,7 +10,7 @@ import VisibilityToggle from "../components/common/VisibilityToggle";
 import Modal from "../components/common/Modal";
 import { userService } from "../services/userService";
 import { teamService } from "../services/teamService";
-import { AlertTriangle, Eye, KeyRound, Shield, Trash2, Users } from "lucide-react";
+import { AlertTriangle, Eye, EyeOff, KeyRound, Shield, Trash2, Users } from "lucide-react";
 
 const DELETE_STEP_PASSWORD = "password";
 const DELETE_STEP_SUMMARY = "summary";
@@ -284,6 +284,10 @@ const Settings = () => {
   const [passwordErrors, setPasswordErrors] = useState({});
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [showPasswordForm, setShowPasswordForm] = useState(false);
+  const [showCurrentPasswordForEmail, setShowCurrentPasswordForEmail] = useState(false);
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const validatePassword = () => {
     const errs = {};
@@ -692,6 +696,7 @@ const Settings = () => {
                   onClick={() => {
                     setShowEmailForm(!showEmailForm);
                     setEmailErrors({});
+                    setShowCurrentPasswordForEmail(false);
                   }}
                 >
                   {showEmailForm ? "Cancel" : "Change"}
@@ -727,18 +732,30 @@ const Settings = () => {
                       Confirm with Current Password
                     </span>
                   </label>
-                  <input
-                    type="password"
-                    className={inputClass(emailErrors.currentPasswordForEmail)}
-                    value={emailData.currentPasswordForEmail}
-                    onChange={(e) =>
-                      setEmailData({
-                        ...emailData,
-                        currentPasswordForEmail: e.target.value,
-                      })
-                    }
-                    placeholder="••••••••"
-                  />
+                  <div className="relative">
+                    <input
+                      type={showCurrentPasswordForEmail ? "text" : "password"}
+                      className={`${inputClass(emailErrors.currentPasswordForEmail)} pr-12`}
+                      value={emailData.currentPasswordForEmail}
+                      onChange={(e) =>
+                        setEmailData({
+                          ...emailData,
+                          currentPasswordForEmail: e.target.value,
+                        })
+                      }
+                      placeholder="••••••••"
+                    />
+                    <button
+                      type="button"
+                      className="absolute inset-y-0 right-0 flex items-center px-3 text-base-content/60 transition-colors hover:text-base-content"
+                      onClick={() => setShowCurrentPasswordForEmail((prev) => !prev)}
+                      onMouseDown={(e) => e.preventDefault()}
+                      aria-label={showCurrentPasswordForEmail ? "Hide password" : "Show password"}
+                      aria-pressed={showCurrentPasswordForEmail}
+                    >
+                      {showCurrentPasswordForEmail ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
                   <FieldError msg={emailErrors.currentPasswordForEmail} />
                 </div>
 
@@ -774,6 +791,9 @@ const Settings = () => {
                   onClick={() => {
                     setShowPasswordForm(!showPasswordForm);
                     setPasswordErrors({});
+                    setShowCurrentPassword(false);
+                    setShowNewPassword(false);
+                    setShowConfirmPassword(false);
                   }}
                 >
                   {showPasswordForm ? "Cancel" : "Change"}
@@ -791,18 +811,30 @@ const Settings = () => {
                   <label className="label">
                     <span className="label-text">Current Password</span>
                   </label>
-                  <input
-                    type="password"
-                    className={inputClass(passwordErrors.currentPassword)}
-                    value={passwordData.currentPassword}
-                    onChange={(e) =>
-                      setPasswordData({
-                        ...passwordData,
-                        currentPassword: e.target.value,
-                      })
-                    }
-                    placeholder="••••••••"
-                  />
+                  <div className="relative">
+                    <input
+                      type={showCurrentPassword ? "text" : "password"}
+                      className={`${inputClass(passwordErrors.currentPassword)} pr-12`}
+                      value={passwordData.currentPassword}
+                      onChange={(e) =>
+                        setPasswordData({
+                          ...passwordData,
+                          currentPassword: e.target.value,
+                        })
+                      }
+                      placeholder="••••••••"
+                    />
+                    <button
+                      type="button"
+                      className="absolute inset-y-0 right-0 flex items-center px-3 text-base-content/60 transition-colors hover:text-base-content"
+                      onClick={() => setShowCurrentPassword((prev) => !prev)}
+                      onMouseDown={(e) => e.preventDefault()}
+                      aria-label={showCurrentPassword ? "Hide password" : "Show password"}
+                      aria-pressed={showCurrentPassword}
+                    >
+                      {showCurrentPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
                   <FieldError msg={passwordErrors.currentPassword} />
                 </div>
 
@@ -810,18 +842,30 @@ const Settings = () => {
                   <label className="label">
                     <span className="label-text">New Password</span>
                   </label>
-                  <input
-                    type="password"
-                    className={inputClass(passwordErrors.newPassword)}
-                    value={passwordData.newPassword}
-                    onChange={(e) =>
-                      setPasswordData({
-                        ...passwordData,
-                        newPassword: e.target.value,
-                      })
-                    }
-                    placeholder="••••••••"
-                  />
+                  <div className="relative">
+                    <input
+                      type={showNewPassword ? "text" : "password"}
+                      className={`${inputClass(passwordErrors.newPassword)} pr-12`}
+                      value={passwordData.newPassword}
+                      onChange={(e) =>
+                        setPasswordData({
+                          ...passwordData,
+                          newPassword: e.target.value,
+                        })
+                      }
+                      placeholder="••••••••"
+                    />
+                    <button
+                      type="button"
+                      className="absolute inset-y-0 right-0 flex items-center px-3 text-base-content/60 transition-colors hover:text-base-content"
+                      onClick={() => setShowNewPassword((prev) => !prev)}
+                      onMouseDown={(e) => e.preventDefault()}
+                      aria-label={showNewPassword ? "Hide password" : "Show password"}
+                      aria-pressed={showNewPassword}
+                    >
+                      {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
                   <FieldError msg={passwordErrors.newPassword} />
                 </div>
 
@@ -829,18 +873,30 @@ const Settings = () => {
                   <label className="label">
                     <span className="label-text">Confirm New Password</span>
                   </label>
-                  <input
-                    type="password"
-                    className={inputClass(passwordErrors.confirmPassword)}
-                    value={passwordData.confirmPassword}
-                    onChange={(e) =>
-                      setPasswordData({
-                        ...passwordData,
-                        confirmPassword: e.target.value,
-                      })
-                    }
-                    placeholder="••••••••"
-                  />
+                  <div className="relative">
+                    <input
+                      type={showConfirmPassword ? "text" : "password"}
+                      className={`${inputClass(passwordErrors.confirmPassword)} pr-12`}
+                      value={passwordData.confirmPassword}
+                      onChange={(e) =>
+                        setPasswordData({
+                          ...passwordData,
+                          confirmPassword: e.target.value,
+                        })
+                      }
+                      placeholder="••••••••"
+                    />
+                    <button
+                      type="button"
+                      className="absolute inset-y-0 right-0 flex items-center px-3 text-base-content/60 transition-colors hover:text-base-content"
+                      onClick={() => setShowConfirmPassword((prev) => !prev)}
+                      onMouseDown={(e) => e.preventDefault()}
+                      aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+                      aria-pressed={showConfirmPassword}
+                    >
+                      {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
                   <FieldError msg={passwordErrors.confirmPassword} />
                 </div>
 
@@ -866,25 +922,20 @@ const Settings = () => {
           <section className="space-y-4">
             <FormSectionDivider text="Danger Zone" icon={Trash2} />
 
-            <div className="form-control w-full">
-              <label className="label">
-                <span className="label-text">Delete Account</span>
-              </label>
-              <div className="flex items-center justify-between">
-                <p className="form-helper-text">
-                  Permanently delete your profile, messages, teams, and all
-                  associated data. This cannot be undone.
-                </p>
-                <Button
-                  variant="errorOutline"
-                  size="sm"
-                  onClick={openDeleteModal}
-                  icon={<Trash2 size={16} />}
-                  className="flex-shrink-0 ml-4"
-                >
-                  Delete Account
-                </Button>
-              </div>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <p className="form-helper-text">
+                Permanently delete your profile, messages, teams, and all
+                associated data. This cannot be undone.
+              </p>
+              <Button
+                variant="errorOutline"
+                size="sm"
+                onClick={openDeleteModal}
+                icon={<Trash2 size={16} />}
+                className="flex-shrink-0 mx-auto sm:mx-0 sm:ml-4"
+              >
+                Delete Account
+              </Button>
             </div>
           </section>
         </div>
