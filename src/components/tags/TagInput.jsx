@@ -59,6 +59,7 @@ const TagInput = ({
     width: 0,
     maxHeight: 240,
     zIndex: 10000,
+    arrowTop: 0,
   });
   const [menuPlacement, setMenuPlacement] = useState("bottom"); // "top" | "bottom"
   const {
@@ -299,7 +300,7 @@ const TagInput = ({
     const available = placement === "bottom" ? spaceBelow : spaceAbove;
     const maxHeight = Math.max(80, available);
 
-    const width = rect.width;
+    const width = Math.min(rect.width, 500);
     const left = Math.min(
       Math.max(EDGE_MARGIN, rect.left),
       Math.max(EDGE_MARGIN, viewportW - width - EDGE_MARGIN),
@@ -325,6 +326,7 @@ const TagInput = ({
       width: base.width,
       maxHeight: base.maxHeight,
       zIndex: 10000,
+      arrowTop: base.placement === "bottom" ? base.top - 11 : base.top, // refined for "top" placement below
     });
   }, [computeBasePosition]);
 
@@ -344,9 +346,11 @@ const TagInput = ({
 
     const desiredTop = rect.top - GAP - actualHeight;
 
+    const correctedTop = Math.max(EDGE_MARGIN, desiredTop);
     setMenuStyle((prev) => ({
       ...prev,
-      top: Math.max(EDGE_MARGIN, desiredTop),
+      top: correctedTop,
+      arrowTop: correctedTop + actualHeight - 1,
     }));
   }, [shouldShowDropdown, menuPlacement, menuStyle.maxHeight]);
 
@@ -500,14 +504,39 @@ const TagInput = ({
 
       {typeof document !== "undefined" &&
         createPortal(
-          <ul
+          <>
+            {shouldShowDropdown && (
+              <div
+                style={{
+                  position: "fixed",
+                  top: `${menuStyle.arrowTop}px`,
+                  left: `${menuStyle.left + 32}px`,
+                  transform: menuPlacement === "bottom"
+                    ? "translateX(-50%) rotate(180deg)"
+                    : "translateX(-50%)",
+                  width: "48px",
+                  height: "12px",
+                  backgroundColor: "#ffffff",
+                  zIndex: 10001,
+                  pointerEvents: "none",
+                  WebkitMaskImage: `url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0.500009 1C3.5 1 3.00001 7 6.00001 7C9 7 8.5 1 11.5 1C12 1 12 0.5 12 0H0C0 0.5 0 1 0.500009 1Z' fill='white'/%3E%3C/svg%3E")`,
+                  maskImage: `url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0.500009 1C3.5 1 3.00001 7 6.00001 7C9 7 8.5 1 11.5 1C12 1 12 0.5 12 0H0C0 0.5 0 1 0.500009 1Z' fill='white'/%3E%3C/svg%3E")`,
+                  WebkitMaskRepeat: "no-repeat",
+                  maskRepeat: "no-repeat",
+                  WebkitMaskSize: "contain",
+                  maskSize: "contain",
+                  filter: "drop-shadow(0 2px 6px rgba(4, 80, 20, 0.12))",
+                }}
+              />
+            )}
+            <ul
             {...getMenuProps({
               ref: dropdownRef,
             })}
             style={shouldShowDropdown ? menuStyle : { display: "none" }}
             className={
               shouldShowDropdown
-                ? "menu flex-nowrap bg-base-100 border border-base-300 rounded-box p-2 shadow-xl overflow-y-auto"
+                ? "menu flex-nowrap bg-base-100 rounded-box p-2 shadow-xl overflow-y-auto"
                 : ""
             }
           >
@@ -604,7 +633,8 @@ const TagInput = ({
                 })()}
               </>
             )}
-          </ul>,
+          </ul>
+          </>,
           document.body,
         )}
     </div>
