@@ -970,7 +970,7 @@ const Settings = () => {
             </form>
           ) : (
             <div className="space-y-4">
-              <Alert type="warning" className="w-full">
+              <Alert type="warning" className="w-full mb-2">
                 Please review this carefully. Deleting your account is
                 irreversible.
               </Alert>
@@ -1159,11 +1159,7 @@ const Settings = () => {
                 </Card>
               )}
 
-              <Card
-                hoverable={false}
-                marginClassName="mb-0"
-                contentClassName="space-y-4"
-              >
+              <div className="space-y-4">
                 <div className="flex items-center gap-2 text-primary">
                   <Trash2 size={18} />
                   <h3 className="text-base font-semibold">Summary</h3>
@@ -1184,7 +1180,7 @@ const Settings = () => {
                     {directMessagesCount === 1 ? "" : "s"} will be deleted
                   </p>
                 </div>
-              </Card>
+              </div>
 
               <div className="flex justify-end gap-3 pt-2">
                 <Button
