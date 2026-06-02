@@ -922,25 +922,20 @@ const Settings = () => {
           <section className="space-y-4">
             <FormSectionDivider text="Danger Zone" icon={Trash2} />
 
-            <div className="form-control w-full">
-              <label className="label">
-                <span className="label-text">Delete Account</span>
-              </label>
-              <div className="flex items-center justify-between">
-                <p className="form-helper-text">
-                  Permanently delete your profile, messages, teams, and all
-                  associated data. This cannot be undone.
-                </p>
-                <Button
-                  variant="errorOutline"
-                  size="sm"
-                  onClick={openDeleteModal}
-                  icon={<Trash2 size={16} />}
-                  className="flex-shrink-0 ml-4"
-                >
-                  Delete Account
-                </Button>
-              </div>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <p className="form-helper-text">
+                Permanently delete your profile, messages, teams, and all
+                associated data. This cannot be undone.
+              </p>
+              <Button
+                variant="errorOutline"
+                size="sm"
+                onClick={openDeleteModal}
+                icon={<Trash2 size={16} />}
+                className="flex-shrink-0 mx-auto sm:mx-0 sm:ml-4"
+              >
+                Delete Account
+              </Button>
             </div>
           </section>
         </div>
