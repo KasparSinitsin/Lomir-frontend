@@ -140,11 +140,13 @@ const LoginForm = () => {
             </div>
           </FormGroup>
 
+          {/* Forgot password link — hidden for now, re-enable when email delivery is stable
           <div className="text-right mt-1">
             <Link to="/forgot-password" className="link link-primary text-sm">
               Forgot password?
             </Link>
           </div>
+          */}
 
           <div className="mt-6">
             <Button

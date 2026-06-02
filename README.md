@@ -307,6 +307,12 @@ The chat page supports both direct (1-to-1) and team group conversations.
 
 ---
 
+## Deferred Features
+
+- **Forgot password flow** — The full reset flow is implemented (`ForgotPassword.jsx`, `ResetPassword.jsx`, `/api/auth/forgot-password`, `/api/auth/reset-password`) but the "Forgot password?" link on the login form is currently hidden. Re-enable it in `src/components/auth/LoginForm.jsx` once email delivery is confirmed stable.
+
+---
+
 ## Related
 
 - **Backend repo:** [Lomir-backend](https://github.com/KasparSinitsin/Lomir-backend)
