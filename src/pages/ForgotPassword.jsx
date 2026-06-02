@@ -56,8 +56,9 @@ const ForgotPassword = () => {
   // Success state
   if (status === "success") {
     return (
-      <div className="max-w-md mx-auto mt-12">
-        <Card className="w-full">
+      <div className="content-container">
+        <div className="max-w-md mx-auto w-full">
+        <Card>
           <div className="card-body text-center py-10 px-8">
             <CheckCircle size={56} className="mx-auto mb-4 text-success" />
 
@@ -93,12 +94,14 @@ const ForgotPassword = () => {
             </div>
           </div>
         </Card>
+        </div>
       </div>
     );
   }
 
   // Form state
   return (
+    <div className="content-container">
     <div className="max-w-md mx-auto w-full">
       <Card>
         <div className="card-body">
@@ -162,6 +165,7 @@ const ForgotPassword = () => {
           </div>
         </div>
       </Card>
+    </div>
     </div>
   );
 };
