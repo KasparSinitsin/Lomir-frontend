@@ -18,6 +18,7 @@ import SearchMapView from "../components/search/SearchMapView";
 import Pagination from "../components/common/Pagination";
 import BooleanSearchInput from "../components/BooleanSearchInput";
 import Tooltip from "../components/common/Tooltip";
+import ResultViewToggle from "../components/common/ResultViewToggle";
 import {
   User,
   UserSearch,
@@ -2274,8 +2275,8 @@ const SearchPage = () => {
         <div>
           {hasVisibleResults && (
             <section className="mb-8">
-              <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1 mb-4">
-                <h2 className="flex flex-wrap items-baseline gap-x-2 text-sm leading-[1.15] font-semibold">
+              <div className="flex flex-wrap items-start sm:items-center justify-between gap-x-4 gap-y-1 mb-4">
+                <h2 className="flex flex-wrap items-center gap-x-2 text-sm leading-[1.15] font-semibold">
                   <span className="whitespace-nowrap">
                     {searchType === "all" && "All"}
                     {searchType === "teams" && "Teams"}
@@ -2295,51 +2296,11 @@ const SearchPage = () => {
                   </span>
                 </h2>
 
-                <div className="flex flex-wrap items-center justify-end text-sm leading-[1.15] font-normal text-base-content/60 gap-1">
-                  <button
-                    type="button"
-                    aria-pressed={resultView === "card"}
-                    onClick={() => setResultView("card")}
-                    className={`pl-0 pr-2 rounded hover:text-base-content transition-colors ${
-                      resultView === "card" ? "font-bold text-base-content" : ""
-                    }`}
-                  >
-                    Card
-                  </button>
-                  <span className="text-base-content/30">|</span>
-                  <button
-                    type="button"
-                    aria-pressed={resultView === "mini"}
-                    onClick={() => setResultView("mini")}
-                    className={`px-2 rounded hover:text-base-content transition-colors ${
-                      resultView === "mini" ? "font-bold text-base-content" : ""
-                    }`}
-                  >
-                    Mini Card
-                  </button>
-                  <span className="text-base-content/30">|</span>
-                  <button
-                    type="button"
-                    aria-pressed={resultView === "list"}
-                    onClick={() => setResultView("list")}
-                    className={`px-2 rounded hover:text-base-content transition-colors ${
-                      resultView === "list" ? "font-bold text-base-content" : ""
-                    }`}
-                  >
-                    List
-                  </button>
-                  <span className="text-base-content/30">|</span>
-                  <button
-                    type="button"
-                    aria-pressed={resultView === "map"}
-                    onClick={() => setResultView("map")}
-                    className={`px-2 rounded hover:text-base-content transition-colors ${
-                      resultView === "map" ? "font-bold text-base-content" : ""
-                    }`}
-                  >
-                    Map
-                  </button>
-                </div>
+                <ResultViewToggle
+                  value={resultView}
+                  onChange={setResultView}
+                  modes={["card", "mini", "list", "map"]}
+                />
               </div>
 
               {resultView === "map" && (
