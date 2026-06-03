@@ -143,7 +143,8 @@ export const getActiveCriteriaPills = ({
   if (maxDistance !== null) {
     pills.push({
       key: "maxDistance",
-      label: `Within ${maxDistance} km`,
+      label: `< ${maxDistance} km`,
+      removeLabel: `Within ${maxDistance} km`,
     });
   }
 

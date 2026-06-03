@@ -1774,7 +1774,7 @@ const SearchPage = () => {
   const renderFilterOptionsToggle = () => (
     <Tooltip
       content={
-        showFilterOptions ? "Hide filter controls" : "Show filter controls"
+        showFilterOptions ? "Click to hide filters" : "Show filter controls"
       }
       wrapperClassName="inline-flex items-center shrink-0"
     >
@@ -1792,8 +1792,8 @@ const SearchPage = () => {
         }
       >
         <Filter className="w-3.5 h-3.5 shrink-0" />
-        <span className="hidden sm:inline">{showFilterOptions ? "Hide Filters" : "Show Filters ..."}</span>
-        <span className="sm:hidden">{showFilterOptions ? "Hide Filters" : "Filters ..."}</span>
+        <span className="hidden sm:inline">{showFilterOptions ? "Hide Filters:" : "Show Filters ..."}</span>
+        <span className="sm:hidden">{showFilterOptions ? "Hide Filters:" : "Filters ..."}</span>
       </button>
     </Tooltip>
   );

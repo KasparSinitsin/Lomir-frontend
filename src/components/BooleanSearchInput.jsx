@@ -6,7 +6,25 @@ import {
   useLayoutEffect,
 } from "react";
 import { createPortal } from "react-dom";
-import { Tag, Award, UserSearch, Users, X, Layers } from "lucide-react";
+import {
+  Tag,
+  Award,
+  UserSearch,
+  Users,
+  X,
+  Layers,
+  ArrowDownAZ,
+  ArrowUpZA,
+  Clock,
+  FlaskConical,
+  Globe,
+  MapPin,
+  Ruler,
+  Sparkles,
+  Target,
+  UserMinus,
+  UserPlus,
+} from "lucide-react";
 import SearchHelp from "./SearchHelp";
 import {
   getBadgeIcon,
@@ -27,6 +45,43 @@ const hexToRgba = (hex, alpha) => {
 };
 
 const MIN_QUERY_HINT = "Enter at least 2 characters";
+
+const getCriteriaPillIcon = (pill) => {
+  if (pill.key === "maxDistance") return Ruler;
+  if (pill.key === "openRolesOnly") return UserSearch;
+  if (pill.key === "includeOwnTeams") return Users;
+  if (pill.key === "includeDemoData") return FlaskConical;
+
+  if (pill.key !== "sort") return null;
+
+  switch (pill.label) {
+    case "Best Match":
+      return Target;
+    case "Name Z-A":
+      return ArrowUpZA;
+    case "Name A-Z":
+      return ArrowDownAZ;
+    case "Active":
+    case "Inactive":
+      return Clock;
+    case "Newest":
+    case "Oldest":
+      return Sparkles;
+    case "Most Spots":
+      return UserPlus;
+    case "Almost Full":
+      return UserMinus;
+    case "Most Open Roles":
+    case "Least Open Roles":
+      return UserSearch;
+    case "Remote First":
+      return Globe;
+    case "Nearest First":
+      return MapPin;
+    default:
+      return null;
+  }
+};
 
 /**
  * Enhanced Search Input with Boolean Search Support
@@ -400,91 +455,157 @@ const BooleanSearchInput = ({
   const infoIconClassName = alignHelperToTopPillRow
     ? "absolute right-2 top-2 flex items-center pointer-events-auto"
     : "absolute inset-y-0 right-2 flex items-center pointer-events-auto";
+  const pillBaseClassName =
+    "inline-grid grid-cols-[0.625rem_minmax(0,auto)_0.625rem] items-start gap-1 rounded-lg px-2.5 py-[0.1875rem] text-xs font-medium leading-[1.1] transition-opacity hover:opacity-80";
+  const pillIconClassName = "flex h-[1.1em] w-2.5 items-center justify-center";
+  const pillSvgClassName = "h-2.5 w-2.5";
+  const pillLabelClassName = "min-w-0 text-left leading-[1.1]";
+  const pillCloseClassName = "flex h-[1.1em] w-2.5 items-center justify-center";
+  const pillTooltipClassName =
+    "tooltip tooltip-top tooltip-lomir inline-flex z-10 hover:z-[80] focus-within:z-[80]";
 
   const renderBadgePill = (pill) => {
     const color = CATEGORY_COLORS[pill.category] || DEFAULT_COLOR;
+    const tooltipText = `Remove ${pill.label}`;
     return (
-      <button
+      <span
         key={pill.key}
-        type="button"
-        onClick={() => onRemoveBadgePill?.(pill.id)}
-        className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium transition-opacity hover:opacity-80"
-        style={{ backgroundColor: color, color: "white" }}
-        title={`Remove ${pill.label}`}
+        className={pillTooltipClassName}
+        data-tip={tooltipText}
       >
-        <span className="shrink-0">{getBadgeIcon(pill.label, "white", 10)}</span>
-        <span>{pill.label}</span>
-        <X size={10} />
-      </button>
+        <button
+          type="button"
+          onClick={() => onRemoveBadgePill?.(pill.id)}
+          className={pillBaseClassName}
+          style={{ backgroundColor: color, color: "white" }}
+          aria-label={tooltipText}
+        >
+          <span className={pillIconClassName}>{getBadgeIcon(pill.label, "white", 10, 3)}</span>
+          <span className={pillLabelClassName}>{pill.label}</span>
+          <span className={pillCloseClassName}>
+            <X size={10} strokeWidth={3} className={pillSvgClassName} />
+          </span>
+        </button>
+      </span>
     );
   };
 
-  const renderFocusAreaPill = (pill) => (
-    <button
-      key={pill.key}
-      type="button"
-      onClick={() => onRemoveFocusAreaPill?.(pill.id)}
-      className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium transition-opacity hover:opacity-80"
-      style={{ backgroundColor: FOCUS_GREEN, color: "white" }}
-      title={`Remove ${pill.label}`}
-    >
-      <Tag size={10} className="shrink-0" />
-      <span>{pill.label}</span>
-      <X size={10} />
-    </button>
-  );
+  const renderFocusAreaPill = (pill) => {
+    const tooltipText = `Remove ${pill.label}`;
+    return (
+      <span
+        key={pill.key}
+        className={pillTooltipClassName}
+        data-tip={tooltipText}
+      >
+        <button
+          type="button"
+          onClick={() => onRemoveFocusAreaPill?.(pill.id)}
+          className={pillBaseClassName}
+          style={{ backgroundColor: FOCUS_GREEN, color: "white" }}
+          aria-label={tooltipText}
+        >
+          <span className={pillIconClassName}>
+            <Tag size={10} strokeWidth={3} className={pillSvgClassName} />
+          </span>
+          <span className={pillLabelClassName}>{pill.label}</span>
+          <span className={pillCloseClassName}>
+            <X size={10} strokeWidth={3} className={pillSvgClassName} />
+          </span>
+        </button>
+      </span>
+    );
+  };
 
   const renderCriteriaPill = (pill) => {
     const pillLabelNode = pill.shortLabel ? (
       <>
-        <span className="hidden sm:inline">{pill.label}</span>
-        <span className="sm:hidden">{pill.shortLabel}</span>
+        <span className={`hidden sm:inline ${pillLabelClassName}`}>{pill.label}</span>
+        <span className={`sm:hidden ${pillLabelClassName}`}>{pill.shortLabel}</span>
       </>
     ) : (
-      <span>{pill.label}</span>
+      <span className={pillLabelClassName}>{pill.label}</span>
     );
 
     if (pill.type === "role") {
+      const tooltipText = `Remove ${pill.removeLabel ?? pill.label}`;
       return (
-        <button
+        <span
           key={pill.key}
-          type="button"
-          onClick={() => onRemoveActivePill?.(pill.key)}
-          className="inline-flex items-center gap-1 rounded-full border border-amber-400 bg-amber-50 px-2 py-0.5 text-xs font-bold text-amber-700 transition-colors hover:border-amber-500 hover:bg-amber-100"
-          title={`Remove ${pill.label}`}
+          className={pillTooltipClassName}
+          data-tip={tooltipText}
         >
-          <UserSearch size={12} className="flex-shrink-0" />
-          {pillLabelNode}
-          <span aria-hidden="true">×</span>
-        </button>
+          <button
+            type="button"
+            onClick={() => onRemoveActivePill?.(pill.key)}
+            className={`${pillBaseClassName} border border-amber-400 bg-amber-50 text-amber-700 transition-colors hover:border-amber-500 hover:bg-amber-100 hover:opacity-100`}
+            aria-label={tooltipText}
+          >
+            <span className={pillIconClassName}>
+              <UserSearch size={12} className={pillSvgClassName} />
+            </span>
+            {pillLabelNode}
+            <span className={pillCloseClassName} aria-hidden="true">
+              <X size={10} strokeWidth={2.5} className={pillSvgClassName} />
+            </span>
+          </button>
+        </span>
       );
     }
     if (pill.type === "excludeTeam") {
+      const tooltipText = `Remove ${pill.removeLabel ?? pill.label}`;
       return (
-        <button
+        <span
           key={pill.key}
-          type="button"
-          onClick={() => onRemoveActivePill?.(pill.key)}
-          className="inline-flex items-center gap-1 rounded-full border border-slate-400 bg-slate-50 px-2 py-0.5 text-xs font-bold text-slate-600 transition-colors hover:border-slate-500 hover:bg-slate-100"
-          title={`Remove ${pill.label}`}
+          className={pillTooltipClassName}
+          data-tip={tooltipText}
         >
-          <Users size={12} className="flex-shrink-0" />
-          {pillLabelNode}
-          <span aria-hidden="true">×</span>
-        </button>
+          <button
+            type="button"
+            onClick={() => onRemoveActivePill?.(pill.key)}
+            className={`${pillBaseClassName} border border-slate-400 bg-slate-50 text-slate-600 transition-colors hover:border-slate-500 hover:bg-slate-100 hover:opacity-100`}
+            aria-label={tooltipText}
+          >
+            <span className={pillIconClassName}>
+              <Users size={12} className={pillSvgClassName} />
+            </span>
+            {pillLabelNode}
+            <span className={pillCloseClassName} aria-hidden="true">
+              <X size={10} strokeWidth={2.5} className={pillSvgClassName} />
+            </span>
+          </button>
+        </span>
       );
     }
+    const CriteriaIcon = getCriteriaPillIcon(pill);
+    const tooltipText = `Remove ${pill.removeLabel ?? pill.label}`;
     return (
-      <button
+      <span
         key={pill.key}
-        type="button"
-        onClick={() => onRemoveActivePill?.(pill.key)}
-        className="inline-flex items-center gap-1 rounded-full border border-[var(--color-primary)] bg-[#f0fdf4] px-2 py-0.5 text-xs font-bold text-[var(--color-primary)] transition-colors hover:border-[var(--color-primary-focus)] hover:bg-[#dcfce7] hover:text-[var(--color-primary-focus)]"
-        title={`Remove ${pill.label}`}
+        className={pillTooltipClassName}
+        data-tip={tooltipText}
       >
-        {pillLabelNode}
-        <span aria-hidden="true">x</span>
-      </button>
+        <button
+          type="button"
+          onClick={() => onRemoveActivePill?.(pill.key)}
+          className={`${pillBaseClassName} border border-[var(--color-primary)] bg-[#f0fdf4] text-[var(--color-primary)] transition-colors hover:border-[var(--color-primary-focus)] hover:bg-[#dcfce7] hover:text-[var(--color-primary-focus)] hover:opacity-100`}
+          aria-label={tooltipText}
+        >
+          <span className={pillIconClassName} aria-hidden="true">
+            {CriteriaIcon ? (
+              <CriteriaIcon
+                size={12}
+                strokeWidth={2.5}
+                className={pillSvgClassName}
+              />
+            ) : null}
+          </span>
+          {pillLabelNode}
+          <span className={pillCloseClassName} aria-hidden="true">
+            <X size={10} strokeWidth={2.5} className={pillSvgClassName} />
+          </span>
+        </button>
+      </span>
     );
   };
 
