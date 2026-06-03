@@ -986,6 +986,13 @@ body {
   opacity: 1 !important;
 }
 
+@media (min-width: 640px) {
+  .tooltip.tooltip-lomir.search-type-tooltip[data-tip]::before,
+  .tooltip.tooltip-lomir.search-type-tooltip::after {
+    display: none !important;
+  }
+}
+
 /* ===== Profile dropdown menu ===== */
 .profile-dropdown {
   background-color: #ffffff !important;

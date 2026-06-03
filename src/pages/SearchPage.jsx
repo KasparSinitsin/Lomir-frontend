@@ -1988,7 +1988,7 @@ const SearchPage = () => {
       variant="muted"
     >
       <div className="w-full max-w-4xl mx-auto mb-8">
-        <div className="flex justify-center space-x-2 pt-2 mb-2">
+        <div className="relative z-20 flex justify-center space-x-2 pt-2 mb-2">
           <div className="btn-group">
             <button
               type="button"
@@ -1997,6 +1997,7 @@ const SearchPage = () => {
                   ? "btn-primary"
                   : "btn-ghost hover:bg-base-200"
               }`}
+              aria-pressed={searchType === "all"}
               onClick={() => handleToggleChange("all")}
             >
               All
@@ -2004,41 +2005,50 @@ const SearchPage = () => {
 
             <button
               type="button"
-              className={`btn btn-sm ${
+              className={`btn btn-sm tooltip tooltip-top tooltip-lomir search-type-tooltip ${
                 searchType === "teams"
                   ? "btn-primary"
                   : "btn-ghost hover:bg-base-200"
               }`}
+              data-tip="Teams"
+              aria-label="Teams"
+              aria-pressed={searchType === "teams"}
               onClick={() => handleToggleChange("teams")}
             >
-              <Users2 className="w-4 h-4 mr-1" />
-              Teams
+              <Users2 className="w-4 h-4 sm:mr-1" aria-hidden="true" />
+              <span className="sr-only sm:not-sr-only">Teams</span>
             </button>
 
             <button
               type="button"
-              className={`btn btn-sm ${
+              className={`btn btn-sm tooltip tooltip-top tooltip-lomir search-type-tooltip ${
                 searchType === "users"
                   ? "btn-primary"
                   : "btn-ghost hover:bg-base-200"
               }`}
+              data-tip="People"
+              aria-label="People"
+              aria-pressed={searchType === "users"}
               onClick={() => handleToggleChange("users")}
             >
-              <User className="w-4 h-4 mr-1" />
-              People
+              <User className="w-4 h-4 sm:mr-1" aria-hidden="true" />
+              <span className="sr-only sm:not-sr-only">People</span>
             </button>
 
             <button
               type="button"
-              className={`btn btn-sm ${
+              className={`btn btn-sm tooltip tooltip-top tooltip-lomir search-type-tooltip ${
                 searchType === "roles"
                   ? "btn-primary"
                   : "btn-ghost hover:bg-base-200"
               }`}
+              data-tip="Open Roles"
+              aria-label="Open Roles"
+              aria-pressed={searchType === "roles"}
               onClick={() => handleToggleChange("roles")}
             >
-              <UserSearch className="w-4 h-4 mr-1" />
-              Open Roles
+              <UserSearch className="w-4 h-4 sm:mr-1" aria-hidden="true" />
+              <span className="sr-only sm:not-sr-only">Open Roles</span>
             </button>
           </div>
         </div>

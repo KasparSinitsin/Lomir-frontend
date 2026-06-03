@@ -731,8 +731,9 @@ const BooleanSearchInput = ({
 
           <button
             type="submit"
-            className="btn btn-primary"
+            className="btn btn-primary h-[38px] min-h-0 px-3 sm:px-4 shrink-0"
             disabled={query.trim().length < 2}
+            aria-label="Search"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -740,6 +741,7 @@ const BooleanSearchInput = ({
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
+              aria-hidden="true"
             >
               <path
                 strokeLinecap="round"
@@ -748,7 +750,7 @@ const BooleanSearchInput = ({
                 d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
               />
             </svg>
-            Search
+            <span className="sr-only sm:not-sr-only">Search</span>
           </button>
         </div>
 
