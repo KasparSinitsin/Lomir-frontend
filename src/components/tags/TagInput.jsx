@@ -319,14 +319,16 @@ const TagInput = ({
     if (!base) return;
 
     setMenuPlacement(base.placement);
+    const left = base.left;
     setMenuStyle({
       position: "fixed",
       top: base.top,
-      left: base.left,
-      width: base.width,
+      left,
+      width: "max-content",
+      maxWidth: `min(500px, calc(100vw - ${left}px - ${EDGE_MARGIN}px))`,
       maxHeight: base.maxHeight,
       zIndex: 10000,
-      arrowTop: base.placement === "bottom" ? base.top - 11 : base.top, // refined for "top" placement below
+      arrowTop: base.placement === "bottom" ? base.top - 11 : base.top,
     });
   }, [computeBasePosition]);
 
@@ -542,25 +544,26 @@ const TagInput = ({
           >
             {shouldShowDropdown && (
               <>
-                <li className="menu-title flex items-center gap-0.5 px-3 pt-1 pb-3">
-                  {React.createElement(currentSuggestions.icon, {
-                    size: 16,
-                    strokeWidth: 2.5,
-                    className:
-                      currentSuggestions.type === "popular"
-                        ? "text-warning"
-                        : currentSuggestions.type === "related"
-                          ? "text-secondary"
-                          : "text-primary",
-                  })}
-                  <span className="font-semibold text-primary-focus">{getSuggestionTitle()}</span>
-
-                  {loading && (
-                    <span className="ml-auto text-xs opacity-70 flex items-center gap-2">
-                      <span className="loading loading-spinner loading-xs"></span>
-                      Loading…
-                    </span>
-                  )}
+                <li className="menu-title px-3 pt-1 pb-3">
+                  <span className="flex items-center justify-center gap-1.5">
+                    {React.createElement(currentSuggestions.icon, {
+                      size: 16,
+                      strokeWidth: 2.5,
+                      className:
+                        currentSuggestions.type === "popular"
+                          ? "text-warning"
+                          : currentSuggestions.type === "related"
+                            ? "text-secondary"
+                            : "text-primary",
+                    })}
+                    <span className="font-semibold text-primary-focus">{getSuggestionTitle()}</span>
+                    {loading && (
+                      <span className="text-xs opacity-70 flex items-center gap-1">
+                        <span className="loading loading-spinner loading-xs"></span>
+                        Loading…
+                      </span>
+                    )}
+                  </span>
                 </li>
 
                 {(() => {

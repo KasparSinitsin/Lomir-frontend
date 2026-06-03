@@ -5,16 +5,26 @@ import {
   useEffect,
   useLayoutEffect,
 } from "react";
-import { Tag, Award, UserSearch, Users } from "lucide-react";
+import { createPortal } from "react-dom";
+import { Tag, Award, UserSearch, Users, X, Layers } from "lucide-react";
 import SearchHelp from "./SearchHelp";
 import {
+  getBadgeIcon,
+  getCategoryIcon,
+  SUPERCATEGORY_ICONS,
+} from "../utils/badgeIconUtils";
+import {
   CATEGORY_COLORS,
-  CATEGORY_CARD_PASTELS,
-  FOCUS_GREEN_DARK,
-  TAG_SECTION_BG,
   DEFAULT_COLOR,
-  DEFAULT_CARD_PASTEL,
+  FOCUS_GREEN,
 } from "../constants/badgeConstants";
+
+const hexToRgba = (hex, alpha) => {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+};
 
 const MIN_QUERY_HINT = "Enter at least 2 characters";
 
@@ -52,13 +62,117 @@ const BooleanSearchInput = ({
   );
   const [suggestions, setSuggestions] = useState({ tags: [], badges: [] });
   const [showDropdown, setShowDropdown] = useState(false);
+  const [hoveredItemKey, setHoveredItemKey] = useState(null);
 
   const inputRef = useRef(null);
+  const fieldRef = useRef(null);
   const queryMeasureRef = useRef(null);
   const placeholderMeasureRef = useRef(null);
   const hintMeasureRef = useRef(null);
   const dropdownRef = useRef(null);
   const suggestionsTimerRef = useRef(null);
+
+  const [menuStyle, setMenuStyle] = useState({
+    position: "fixed",
+    top: 0,
+    left: "50%",
+    transform: "translateX(-50%)",
+    width: "max-content",
+    maxWidth: 500,
+    maxHeight: 240,
+    zIndex: 10000,
+    arrowTop: 0,
+    arrowLeft: 0,
+  });
+  const [menuPlacement, setMenuPlacement] = useState("bottom");
+
+  const DROPDOWN_EDGE_MARGIN = 8;
+  const DROPDOWN_GAP = 16;
+  const DROPDOWN_MIN_HEIGHT = 140;
+  const DROPDOWN_MAX_HEIGHT = 360;
+
+  // content-container has padding: 1rem (16px) each side
+  const CONTENT_CONTAINER_PADDING = 16;
+
+  const computeDropdownPosition = useCallback(() => {
+    const el = fieldRef.current;
+    if (!el) return null;
+    const rect = el.getBoundingClientRect();
+    const viewportH = window.innerHeight;
+    const viewportW = window.innerWidth;
+
+    const containerEl = document.querySelector(".content-container");
+    const containerRect = containerEl?.getBoundingClientRect();
+    const containerW = containerRect?.width ?? viewportW;
+    const containerCenterX = containerRect
+      ? containerRect.left + containerRect.width / 2
+      : viewportW / 2;
+
+    const spaceBelow = viewportH - (rect.bottom + DROPDOWN_GAP) - DROPDOWN_EDGE_MARGIN;
+    const spaceAbove = rect.top - DROPDOWN_GAP - DROPDOWN_EDGE_MARGIN;
+    let placement = spaceBelow >= spaceAbove ? "bottom" : "top";
+    if (spaceBelow >= DROPDOWN_MIN_HEIGHT && spaceAbove < DROPDOWN_MIN_HEIGHT) placement = "bottom";
+    if (spaceAbove >= DROPDOWN_MIN_HEIGHT && spaceBelow < DROPDOWN_MIN_HEIGHT) placement = "top";
+    const available = placement === "bottom" ? spaceBelow : spaceAbove;
+    const maxHeight = Math.min(DROPDOWN_MAX_HEIGHT, Math.max(80, available));
+    const left = Math.max(DROPDOWN_EDGE_MARGIN, rect.left);
+    const top = placement === "bottom" ? rect.bottom + DROPDOWN_GAP : rect.top - DROPDOWN_GAP - maxHeight;
+    const inputCenterX = rect.left + rect.width / 2;
+    return { placement, top, left, maxHeight, viewportW, inputCenterX, containerW, containerCenterX };
+  }, []);
+
+  const updateDropdownPosition = useCallback(() => {
+    const base = computeDropdownPosition();
+    if (!base) return;
+    setMenuPlacement(base.placement);
+    const maxDropdownWidth = Math.min(500, base.containerW - CONTENT_CONTAINER_PADDING * 2);
+    setMenuStyle({
+      position: "fixed",
+      top: base.top,
+      left: base.containerCenterX,
+      transform: "translateX(-50%)",
+      width: "max-content",
+      maxWidth: maxDropdownWidth,
+      maxHeight: base.maxHeight,
+      zIndex: 10000,
+      arrowTop: base.placement === "bottom" ? base.top - 11 : base.top,
+      arrowLeft: base.inputCenterX,
+    });
+  }, [computeDropdownPosition]);
+
+  const refineDropdownTop = useCallback(() => {
+    if (!showDropdown || menuPlacement !== "top") return;
+    const el = fieldRef.current;
+    const menuEl = dropdownRef.current;
+    if (!el || !menuEl) return;
+    const rect = el.getBoundingClientRect();
+    const actualHeight = Math.min(menuEl.scrollHeight, menuStyle.maxHeight);
+    const correctedTop = Math.max(DROPDOWN_EDGE_MARGIN, rect.top - DROPDOWN_GAP - actualHeight);
+    setMenuStyle((prev) => ({
+      ...prev,
+      top: correctedTop,
+      arrowTop: correctedTop + actualHeight - 1,
+    }));
+  }, [showDropdown, menuPlacement, menuStyle.maxHeight]);
+
+  useLayoutEffect(() => {
+    if (!showDropdown) return;
+    updateDropdownPosition();
+    const id = requestAnimationFrame(() => refineDropdownTop());
+    return () => cancelAnimationFrame(id);
+  }, [showDropdown, updateDropdownPosition, refineDropdownTop, suggestions.tags.length, suggestions.badges.length]);
+
+  useEffect(() => {
+    if (!showDropdown) return;
+    let raf = 0;
+    const tick = () => {
+      updateDropdownPosition();
+      refineDropdownTop();
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [showDropdown, updateDropdownPosition, refineDropdownTop]);
 
   const [measuredTextWidths, setMeasuredTextWidths] = useState({
     query: 0,
@@ -185,8 +299,8 @@ const BooleanSearchInput = ({
   useEffect(() => {
     const handleClickOutside = (e) => {
       const inDropdown = dropdownRef.current?.contains(e.target);
-      const inInput = inputRef.current?.contains(e.target);
-      if (!inDropdown && !inInput) {
+      const inField = fieldRef.current?.contains(e.target);
+      if (!inDropdown && !inField) {
         setShowDropdown(false);
       }
     };
@@ -287,50 +401,36 @@ const BooleanSearchInput = ({
     ? "absolute right-2 top-2 flex items-center pointer-events-auto"
     : "absolute inset-y-0 right-2 flex items-center pointer-events-auto";
 
-  const renderBadgePill = (pill) => (
-    <button
-      key={pill.key}
-      type="button"
-      onClick={() => onRemoveBadgePill?.(pill.id)}
-      style={{
-        borderColor: CATEGORY_COLORS[pill.category] || DEFAULT_COLOR,
-        color: CATEGORY_COLORS[pill.category] || DEFAULT_COLOR,
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.backgroundColor =
-          CATEGORY_CARD_PASTELS[pill.category] || DEFAULT_CARD_PASTEL;
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.backgroundColor = "white";
-      }}
-      className="inline-flex items-center gap-1 rounded-full border bg-white px-2 py-0.5 text-xs font-bold transition-colors"
-      title={`Remove ${pill.label}`}
-    >
-      <span>{pill.label}</span>
-      <span aria-hidden="true">×</span>
-    </button>
-  );
+  const renderBadgePill = (pill) => {
+    const color = CATEGORY_COLORS[pill.category] || DEFAULT_COLOR;
+    return (
+      <button
+        key={pill.key}
+        type="button"
+        onClick={() => onRemoveBadgePill?.(pill.id)}
+        className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium transition-opacity hover:opacity-80"
+        style={{ backgroundColor: color, color: "white" }}
+        title={`Remove ${pill.label}`}
+      >
+        <span className="shrink-0">{getBadgeIcon(pill.label, "white", 10)}</span>
+        <span>{pill.label}</span>
+        <X size={10} />
+      </button>
+    );
+  };
 
   const renderFocusAreaPill = (pill) => (
     <button
       key={pill.key}
       type="button"
       onClick={() => onRemoveFocusAreaPill?.(pill.id)}
-      style={{
-        borderColor: FOCUS_GREEN_DARK,
-        color: FOCUS_GREEN_DARK,
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.backgroundColor = TAG_SECTION_BG;
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.backgroundColor = "white";
-      }}
-      className="inline-flex items-center gap-1 rounded-full border bg-white px-2 py-0.5 text-xs font-bold transition-colors"
+      className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium transition-opacity hover:opacity-80"
+      style={{ backgroundColor: FOCUS_GREEN, color: "white" }}
       title={`Remove ${pill.label}`}
     >
+      <Tag size={10} className="shrink-0" />
       <span>{pill.label}</span>
-      <span aria-hidden="true">×</span>
+      <X size={10} />
     </button>
   );
 
@@ -396,7 +496,7 @@ const BooleanSearchInput = ({
       <form onSubmit={handleSubmit} className={formClassName}>
         <div className="flex max-w-full items-center gap-2">
           <div className={fieldSlotClassName}>
-            <div className={fieldClassName} style={fieldStyle}>
+            <div ref={fieldRef} className={fieldClassName} style={fieldStyle}>
               {showStackedPills && (
                 <div className="mb-1 flex flex-wrap gap-2">
                   {badgePills.length > 0 && (
@@ -476,80 +576,157 @@ const BooleanSearchInput = ({
               <SearchHelp anchorRef={inputRef} />
             </div>
 
-            {showDropdown && hasSuggestions && (
-              <div
-                ref={dropdownRef}
-                className="absolute left-0 top-full z-[10000] mt-1 w-full overflow-y-auto rounded-lg border border-base-300 bg-white shadow-lg"
-                style={{ maxHeight: "16rem" }}
-              >
-                {suggestions.tags.length > 0 && (
-                  <div>
-                    <div className="flex items-center gap-1 px-3 py-1 text-xs text-base-content/50">
-                      <Tag className="h-3 w-3" />
-                      Focus Areas
-                    </div>
-                    {suggestions.tags.map((tag) => (
-                      <button
-                        key={tag.id}
-                        type="button"
-                        onMouseDown={(e) => {
-                          e.preventDefault();
-                          handleSelectTag(tag);
-                        }}
-                        className="flex w-full items-center justify-between px-3 py-1.5 text-sm transition-colors hover:bg-[#F0FDF4]"
-                      >
-                        <span>{tag.name}</span>
-                        {tag.supercategory && (
-                          <span className="ml-2 shrink-0 text-xs text-base-content/40">
-                            {tag.supercategory}
-                          </span>
-                        )}
-                      </button>
-                    ))}
-                  </div>
+            {typeof document !== "undefined" && createPortal(
+              <>
+                {showDropdown && hasSuggestions && (
+                  <div
+                    style={{
+                      position: "fixed",
+                      top: `${menuStyle.arrowTop}px`,
+                      left: `${menuStyle.arrowLeft ?? 0}px`,
+                      transform: menuPlacement === "bottom" ? "translateX(-50%) rotate(180deg)" : "translateX(-50%)",
+                      width: "48px",
+                      height: "12px",
+                      backgroundColor: "#ffffff",
+                      zIndex: 10001,
+                      pointerEvents: "none",
+                    WebkitMaskImage: `url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0.500009 1C3.5 1 3.00001 7 6.00001 7C9 7 8.5 1 11.5 1C12 1 12 0.5 12 0H0C0 0.5 0 1 0.500009 1Z' fill='white'/%3E%3C/svg%3E")`,
+                    maskImage: `url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0.500009 1C3.5 1 3.00001 7 6.00001 7C9 7 8.5 1 11.5 1C12 1 12 0.5 12 0H0C0 0.5 0 1 0.500009 1Z' fill='white'/%3E%3C/svg%3E")`,
+                    WebkitMaskRepeat: "no-repeat",
+                    maskRepeat: "no-repeat",
+                    WebkitMaskSize: "contain",
+                    maskSize: "contain",
+                    filter: "drop-shadow(0 2px 6px rgba(4, 80, 20, 0.12))",
+                  }}
+                  />
                 )}
+                <ul
+                  ref={dropdownRef}
+                  style={showDropdown && hasSuggestions ? menuStyle : { display: "none" }}
+                  className={showDropdown && hasSuggestions ? "menu flex-nowrap bg-base-100 rounded-box p-2 shadow-xl overflow-y-auto" : ""}
+                >
+                  {showDropdown && hasSuggestions && (
+                  <>{/* Focus Areas section */}
+                  {suggestions.tags.length > 0 && (
+                    <>
+                      <li className="menu-title px-3 pt-1 pb-3">
+                        <span className="flex items-center justify-center gap-1.5">
+                          <Tag size={16} strokeWidth={2.5} className="text-primary" />
+                          <span className="font-semibold text-primary-focus">Focus Areas</span>
+                        </span>
+                      </li>
+                      {(() => {
+                        const superGroups = new Map();
+                        suggestions.tags.forEach((tag) => {
+                          const key = tag.supercategory || "Other";
+                          if (!superGroups.has(key)) superGroups.set(key, []);
+                          superGroups.get(key).push(tag);
+                        });
+                        return Array.from(superGroups.entries()).flatMap(
+                          ([supercategory, tags]) => {
+                            const SuperIcon = SUPERCATEGORY_ICONS[supercategory] || Layers;
+                            const bgColor = hexToRgba(FOCUS_GREEN, 0.07);
+                            return tags.map((tag, i) => {
+                              const isFirst = i === 0;
+                              const isLast = i === tags.length - 1;
+                              const groupClass = [
+                                isFirst && isLast ? "rounded-lg" : isFirst ? "rounded-t-lg" : isLast ? "rounded-b-lg" : "",
+                                isLast ? "mb-1.5" : "",
+                              ].filter(Boolean).join(" ");
+                              return (
+                                <li key={tag.id} className={groupClass} style={{ backgroundColor: bgColor }}>
+                                  <button
+                                    type="button"
+                                    onMouseDown={(e) => { e.preventDefault(); handleSelectTag(tag); }}
+                                    onMouseEnter={() => setHoveredItemKey(`tag-${tag.id}`)}
+                                    onMouseLeave={() => setHoveredItemKey(null)}
+                                    style={hoveredItemKey === `tag-${tag.id}` ? { backgroundColor: hexToRgba(FOCUS_GREEN, 0.15) } : undefined}
+                                    className="flex flex-row-reverse flex-wrap items-start w-full leading-none gap-x-2 gap-y-2 py-1.5"
+                                  >
+                                    <div className="flex-none flex items-center gap-0.5">
+                                      {isFirst && (
+                                        <span className="flex items-center gap-1 text-xs leading-none whitespace-nowrap" style={{ color: FOCUS_GREEN }}>
+                                          <SuperIcon size={10} className="shrink-0" />
+                                          <span>{supercategory}</span>
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className="[flex:1_0_auto] max-w-full flex items-center gap-2 min-w-0">
+                                      <Tag size={14} className="shrink-0" style={{ color: FOCUS_GREEN }} />
+                                      <span className="font-medium">{tag.name}</span>
+                                    </div>
+                                  </button>
+                                </li>
+                              );
+                            });
+                          }
+                        );
+                      })()}
+                    </>
+                  )}
 
-                {suggestions.badges.length > 0 && (
-                  <div>
-                    <div className="flex items-center gap-1 px-3 py-1 text-xs text-base-content/50">
-                      <Award className="h-3 w-3" />
-                      Badges
-                    </div>
-                    {suggestions.badges.map((badge) => (
-                      <button
-                        key={badge.id}
-                        type="button"
-                        onMouseDown={(e) => {
-                          e.preventDefault();
-                          handleSelectBadge(badge);
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.backgroundColor =
-                            CATEGORY_CARD_PASTELS[badge.category] ||
-                            DEFAULT_CARD_PASTEL;
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.backgroundColor = "";
-                        }}
-                        className="flex w-full items-center justify-between px-3 py-1.5 text-sm transition-colors"
-                      >
-                        <span>{badge.name}</span>
-                        {badge.category && (
-                          <span
-                            className="ml-2 shrink-0 text-xs"
-                            style={{
-                              color:
-                                CATEGORY_COLORS[badge.category] || DEFAULT_COLOR,
-                            }}
-                          >
-                            {badge.category}
-                          </span>
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
+                  {/* Badges section */}
+                  {suggestions.badges.length > 0 && (
+                    <>
+                      <li className="menu-title px-3 pt-1 pb-3">
+                        <span className="flex items-center justify-center gap-1.5">
+                          <Award size={16} strokeWidth={2.5} className="text-primary" />
+                          <span className="font-semibold text-primary-focus">Badges</span>
+                        </span>
+                      </li>
+                      {(() => {
+                        const catGroups = new Map();
+                        suggestions.badges.forEach((badge) => {
+                          const cat = badge.category || "Other";
+                          if (!catGroups.has(cat)) catGroups.set(cat, []);
+                          catGroups.get(cat).push(badge);
+                        });
+                        return Array.from(catGroups.entries()).flatMap(
+                          ([category, badges]) => {
+                            const color = CATEGORY_COLORS[category] || DEFAULT_COLOR;
+                            const bgColor = hexToRgba(color, 0.07);
+                            return badges.map((badge, i) => {
+                              const isFirst = i === 0;
+                              const isLast = i === badges.length - 1;
+                              const groupClass = [
+                                isFirst && isLast ? "rounded-lg" : isFirst ? "rounded-t-lg" : isLast ? "rounded-b-lg" : "",
+                                isLast ? "mb-1.5" : "",
+                              ].filter(Boolean).join(" ");
+                              return (
+                                <li key={badge.id} className={groupClass} style={{ backgroundColor: bgColor }}>
+                                  <button
+                                    type="button"
+                                    onMouseDown={(e) => { e.preventDefault(); handleSelectBadge(badge); }}
+                                    onMouseEnter={() => setHoveredItemKey(`badge-${badge.id}`)}
+                                    onMouseLeave={() => setHoveredItemKey(null)}
+                                    style={hoveredItemKey === `badge-${badge.id}` ? { backgroundColor: hexToRgba(color, 0.15) } : undefined}
+                                    className="flex flex-row-reverse flex-wrap items-start w-full leading-none gap-x-2 gap-y-2 py-1.5"
+                                  >
+                                    <div className="flex-none flex items-center gap-0.5">
+                                      {isFirst && (
+                                        <span className="flex items-center gap-1 text-xs leading-none whitespace-nowrap" style={{ color }}>
+                                          {getCategoryIcon(category, color, 10)}
+                                          <span>{category}</span>
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className="[flex:1_0_auto] max-w-full flex items-center gap-2 min-w-0">
+                                      <span className="shrink-0">{getBadgeIcon(badge.name, color, 14)}</span>
+                                      <span className="font-medium">{badge.name}</span>
+                                    </div>
+                                  </button>
+                                </li>
+                              );
+                            });
+                          }
+                        );
+                      })()}
+                    </>
+                  )}
+                  </>)}
+                </ul>
+              </>,
+              document.body
             )}
           </div>
 
