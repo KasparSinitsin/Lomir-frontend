@@ -254,6 +254,7 @@ const SearchPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [hasSearched, setHasSearched] = useState(false);
+  const [searchInputResetSignal, setSearchInputResetSignal] = useState(0);
   const viewerPendingRequestsQuery = useViewerPendingRequests(user?.id, {
     enabled: isAuthenticated,
   });
@@ -1377,7 +1378,12 @@ const SearchPage = () => {
     setOpenSubmenuKey(null);
   };
 
-  const handleResetSortFilters = () => {
+  const handleResetSearchInput = () => {
+    setSearchInputResetSignal((value) => value + 1);
+    setSearchQuery("");
+    setHasSearched(false);
+    setError(null);
+    setSearchType("all");
     setSortBy("name");
     setSortDir("asc");
     setMaxDistance(null);
@@ -1386,9 +1392,40 @@ const SearchPage = () => {
     setOpenRolesOnly(false);
     setIncludeOwnTeams(true);
     setIncludeDemoData(true);
+    setFilterTagIds([]);
+    setFilterTagMap({});
+    setFilterBadgeIds([]);
+    setFilterBadgeMap({});
+    setMatchRoleId(null);
+    setMatchRoleName(null);
+    setMatchRoleMaxDistanceKm(null);
+    setExcludeTeamId(null);
+    setExcludeTeamName(null);
     setOpenSubmenuKey(null);
     setShowFilterOptions(false);
     setCurrentPage(1);
+
+    const newParams = new URLSearchParams(window.location.search);
+    [
+      "type",
+      "sort",
+      "proximity",
+      "tags",
+      "badges",
+      "roleId",
+      "roleName",
+      "roleMaxDistanceKm",
+      "excludeTeamId",
+      "excludeTeamName",
+    ].forEach((param) => newParams.delete(param));
+    const nextSearch = newParams.toString();
+    window.history.replaceState(
+      {},
+      "",
+      nextSearch
+        ? `${window.location.pathname}?${nextSearch}`
+        : window.location.pathname,
+    );
   };
 
   const handleSortChange = (newSortBy) => {
@@ -1713,6 +1750,12 @@ const SearchPage = () => {
     !includeDemoData ||
     (sortBy === "capacity" && capacityMode !== "spots") ||
     (customDistanceInput && customDistanceInput.trim() !== "");
+  const hasSearchInputContent =
+    searchQuery.trim() ||
+    activeCriteriaPills.length > 0 ||
+    focusAreaPills.length > 0 ||
+    badgePills.length > 0 ||
+    searchType !== "all";
 
   const isFilterOptionsActive =
     showFilterOptions ||
@@ -2056,7 +2099,7 @@ const SearchPage = () => {
 
         <div
           ref={sortFilterRef}
-          className="mx-auto w-full max-w-full px-2 sm:px-0"
+          className="mx-auto w-full max-w-full"
         >
           <div className="mx-auto w-full max-w-full sm:w-fit">
             <div className="flex w-full max-w-full items-center gap-2">
@@ -2070,7 +2113,7 @@ const SearchPage = () => {
                 <button
                   type="button"
                   onClick={handleSortDropdownToggle}
-                  className="shrink-0 rounded-lg p-2 transition-colors"
+                  className="shrink-0 rounded-lg p-0.5 sm:p-1 transition-colors"
                   aria-label={
                     showSortDropdown
                       ? "Hide Filtering & Sorting Options"
@@ -2078,7 +2121,7 @@ const SearchPage = () => {
                   }
                 >
                   <SlidersHorizontal
-                    className="w-5 h-5"
+                    className="w-4 h-4 sm:w-5 sm:h-5"
                     color={sortIconColor}
                   />
                 </button>
@@ -2095,6 +2138,13 @@ const SearchPage = () => {
                         ? "Matching results to your profile — type to narrow"
                         : "Try: hiking AND photography, or hiking NOT photography"
                   }
+                  compactPlaceholder={
+                    matchRoleId
+                      ? "Type to narrow results..."
+                      : sortBy === "match"
+                        ? "Type to narrow results..."
+                        : "Try: hiking AND photo"
+                  }
                   activePills={activeCriteriaPills}
                   onRemoveActivePill={handleActivePillRemove}
                   focusAreaPills={focusAreaPills}
@@ -2104,23 +2154,22 @@ const SearchPage = () => {
                   onSelectTagSuggestion={handleAddTagFilter}
                   onSelectBadgeSuggestion={handleAddBadgeFilter}
                   onSearchSuggestions={handleSearchSuggestions}
+                  resetSignal={searchInputResetSignal}
                   leftAdornment={
-                    isSortModified ? (
-                      <div className="transition-all duration-200 opacity-100 scale-100">
-                        <Tooltip content="Reset sorting and filters">
-                          <button
-                            type="button"
-                            onClick={handleResetSortFilters}
-                            className="shrink-0 rounded-lg p-0.5 transition-colors"
-                            aria-label="Reset sorting and filters"
-                          >
-                            <RotateCcw
-                              className="w-3.5 h-3.5"
-                              color="var(--color-primary-focus)"
-                            />
-                          </button>
-                        </Tooltip>
-                      </div>
+                    hasSearchInputContent ? (
+                      <Tooltip content="Clear search input">
+                        <button
+                          type="button"
+                          onClick={handleResetSearchInput}
+                          className="shrink-0 rounded-lg p-0.5 transition-colors hover:bg-base-200"
+                          aria-label="Clear search input"
+                        >
+                          <RotateCcw
+                            className="w-3.5 h-3.5"
+                            color="var(--color-primary-focus)"
+                          />
+                        </button>
+                      </Tooltip>
                     ) : null
                   }
                   className="min-w-0 w-full sm:w-auto sm:max-w-full"
@@ -2129,7 +2178,7 @@ const SearchPage = () => {
             </div>
 
             {showSortDropdown && (
-              <div className="mt-2 py-1 pl-11">
+              <div className="mt-2 py-1 pl-7 sm:pl-9">
                 <div className="space-y-[6px]">
                   <div className="flex flex-row flex-wrap items-start gap-x-3 gap-y-[6px]">
                     <div

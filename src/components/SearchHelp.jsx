@@ -1,6 +1,7 @@
 import React, { useState, useRef } from "react";
 import { Info } from "lucide-react";
 import { createPortal } from "react-dom";
+import Tooltip from "./common/Tooltip";
 
 /**
  * SearchHelp (Inline)
@@ -13,6 +14,11 @@ const SearchHelp = ({ className = "", anchorRef }) => {
   const [isOpen, setIsOpen] = useState(false);
   const triggerRef = useRef(null);
   const [popupStyle, setPopupStyle] = useState({});
+  const [arrowStyle, setArrowStyle] = useState({});
+
+  const POPUP_WIDTH = 320;
+  const GAP = 8;
+  const ARROW_H = 12;
 
   const examples = [
     { query: "react AND node", description: 'Must contain both "react" AND "node"' },
@@ -27,20 +33,28 @@ const SearchHelp = ({ className = "", anchorRef }) => {
     <>
       {/* Inline trigger inside the input */}
       <div className={`relative ${className}`}>
-        {/* DaisyUI tooltip with Lomir theme */}
-        <div className="tooltip tooltip-left tooltip-lomir" data-tip="Search tips">
+        <Tooltip content="Search tips" position="top">
           <button
             ref={triggerRef}
             type="button"
             onClick={() => {
               const anchorEl = anchorRef?.current;
-              if (!anchorEl) return;
+              const triggerEl = triggerRef.current;
+              if (!anchorEl || !triggerEl) return;
 
-              const rect = anchorEl.getBoundingClientRect();
+              const barRect = anchorEl.getBoundingClientRect();
+              const triggerRect = triggerEl.getBoundingClientRect();
 
-              setPopupStyle({
-                top: rect.bottom + 16, // 1rem gap
-                left: rect.right, // align to the input's right edge
+              const popupLeft = Math.max(
+                8,
+                Math.min(barRect.right - POPUP_WIDTH, window.innerWidth - POPUP_WIDTH - 8),
+              );
+              const popupTop = barRect.bottom + GAP;
+
+              setPopupStyle({ top: popupTop, left: popupLeft });
+              setArrowStyle({
+                top: barRect.bottom + GAP - ARROW_H,
+                left: triggerRect.left + triggerRect.width / 2,
               });
 
               setIsOpen(true);
@@ -50,7 +64,7 @@ const SearchHelp = ({ className = "", anchorRef }) => {
           >
             <Info className="h-4 w-4" />
           </button>
-        </div>
+        </Tooltip>
       </div>
 
       {/* Portal popup on top of everything */}
@@ -65,9 +79,31 @@ const SearchHelp = ({ className = "", anchorRef }) => {
               aria-label="Close search tips"
             />
 
+            {/* Arrow pointing up toward the "i" icon */}
+            <div
+              style={{
+                position: "fixed",
+                top: `${arrowStyle.top}px`,
+                left: `${arrowStyle.left}px`,
+                transform: "translateX(-50%) rotate(180deg)",
+                width: "48px",
+                height: `${ARROW_H}px`,
+                backgroundColor: "#ffffff",
+                zIndex: 10000,
+                pointerEvents: "none",
+                WebkitMaskImage: `url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0.500009 1C3.5 1 3.00001 7 6.00001 7C9 7 8.5 1 11.5 1C12 1 12 0.5 12 0H0C0 0.5 0 1 0.500009 1Z' fill='white'/%3E%3C/svg%3E")`,
+                maskImage: `url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0.500009 1C3.5 1 3.00001 7 6.00001 7C9 7 8.5 1 11.5 1C12 1 12 0.5 12 0H0C0 0.5 0 1 0.500009 1Z' fill='white'/%3E%3C/svg%3E")`,
+                WebkitMaskRepeat: "no-repeat",
+                maskRepeat: "no-repeat",
+                WebkitMaskSize: "contain",
+                maskSize: "contain",
+                filter: "drop-shadow(0 2px 6px rgba(4, 80, 20, 0.12))",
+              }}
+            />
+
             {/* Popup box */}
             <div
-              className="fixed w-80 p-4 bg-base-100 rounded-lg shadow-lg border border-base-300 -translate-x-full"
+              className="fixed w-80 p-4 bg-base-100 rounded-lg shadow-lg border border-base-300"
               style={popupStyle}
             >
               <div className="flex justify-between items-center mb-3">

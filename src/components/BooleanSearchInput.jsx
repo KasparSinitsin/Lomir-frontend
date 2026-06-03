@@ -26,6 +26,7 @@ import {
   UserPlus,
 } from "lucide-react";
 import SearchHelp from "./SearchHelp";
+import Tooltip from "./common/Tooltip";
 import {
   getBadgeIcon,
   getCategoryIcon,
@@ -35,6 +36,7 @@ import {
   CATEGORY_COLORS,
   DEFAULT_COLOR,
   FOCUS_GREEN,
+  FOCUS_GREEN_DARK,
 } from "../constants/badgeConstants";
 
 const hexToRgba = (hex, alpha) => {
@@ -45,6 +47,29 @@ const hexToRgba = (hex, alpha) => {
 };
 
 const MIN_QUERY_HINT = "Enter at least 2 characters";
+const BOOLEAN_OPERATOR_SPLIT_PATTERN = /\b(?:AND|OR|NOT)\b/i;
+
+const cleanSuggestionSegment = (value) =>
+  value
+    .replace(/[()]/g, " ")
+    .replace(/^[\s"'-]+|[\s"')]+$/g, "")
+    .trim();
+
+const getSuggestionQuery = (value, cursorIndex = value.length) => {
+  const beforeCursor = value.slice(0, cursorIndex);
+  const segmentAtCursor = cleanSuggestionSegment(
+    beforeCursor.split(BOOLEAN_OPERATOR_SPLIT_PATTERN).pop() || "",
+  );
+
+  if (segmentAtCursor) return segmentAtCursor;
+
+  const fallbackSegments = value
+    .split(BOOLEAN_OPERATOR_SPLIT_PATTERN)
+    .map(cleanSuggestionSegment)
+    .filter(Boolean);
+
+  return fallbackSegments[fallbackSegments.length - 1] || "";
+};
 
 const getCriteriaPillIcon = (pill) => {
   if (pill.key === "maxDistance") return Ruler;
@@ -97,6 +122,7 @@ const BooleanSearchInput = ({
   onSearch,
   initialQuery = "",
   placeholder = "Search teams and users...",
+  compactPlaceholder = null,
   className = "",
   activePills = [],
   onRemoveActivePill,
@@ -108,6 +134,7 @@ const BooleanSearchInput = ({
   onSelectTagSuggestion,
   onSelectBadgeSuggestion,
   leftAdornment = null,
+  resetSignal = 0,
 }) => {
   const [query, setQuery] = useState(initialQuery);
   const [hasBooleanOperators, setHasBooleanOperators] = useState(false);
@@ -237,12 +264,12 @@ const BooleanSearchInput = ({
 
   const showMinQueryHint = query.trim().length > 0 && query.trim().length < 2;
   const hasLeftAdornment = Boolean(leftAdornment);
-  const leftAdornmentWidthPx = hasLeftAdornment ? 24 : 0;
+  const leftAdornmentWidthPx = hasLeftAdornment ? 28 : 0;
   const minimumInputWidthPx = query.trim().length > 0 ? 132 : 180;
   const inputTextWidthPx = Math.max(
     minimumInputWidthPx,
     query.trim().length > 0
-      ? measuredTextWidths.query + 8
+      ? measuredTextWidths.query + 32
       : measuredTextWidths.placeholder + 12,
   ) + leftAdornmentWidthPx;
 
@@ -260,7 +287,7 @@ const BooleanSearchInput = ({
 
   const baseHelperWidthPx =
     24 +
-    (hasBooleanOperators ? 72 : 0) +
+    (hasBooleanOperators ? (isCompactLayout ? 20 : 72) : 0) +
     (showMinQueryHint ? measuredTextWidths.hint + 8 : 0);
   const fieldInsetsPx = baseHelperWidthPx + 28;
   const fieldInsetsWithInlinePillsPx =
@@ -309,9 +336,14 @@ const BooleanSearchInput = ({
   }, []);
 
   useEffect(() => {
+    if (suggestionsTimerRef.current) {
+      clearTimeout(suggestionsTimerRef.current);
+    }
     setQuery(initialQuery);
     setHasBooleanOperators(checkBooleanOperators(initialQuery));
-  }, [initialQuery, checkBooleanOperators]);
+    setSuggestions({ tags: [], badges: [] });
+    setShowDropdown(false);
+  }, [initialQuery, resetSignal, checkBooleanOperators]);
 
   useEffect(() => {
     const mediaQuery = window.matchMedia("(max-width: 639px)");
@@ -365,14 +397,17 @@ const BooleanSearchInput = ({
 
   const handleChange = (e) => {
     const value = e.target.value;
+    const cursorIndex = e.target.selectionStart ?? value.length;
     setQuery(value);
     setHasBooleanOperators(checkBooleanOperators(value));
 
     if (suggestionsTimerRef.current) clearTimeout(suggestionsTimerRef.current);
 
-    if (value.trim().length >= 2 && onSearchSuggestions) {
+    const suggestionQuery = getSuggestionQuery(value, cursorIndex);
+
+    if (suggestionQuery.length >= 2 && onSearchSuggestions) {
       suggestionsTimerRef.current = setTimeout(async () => {
-        const result = await onSearchSuggestions(value.trim());
+        const result = await onSearchSuggestions(suggestionQuery);
         const newSuggestions = result || { tags: [], badges: [] };
         setSuggestions(newSuggestions);
         const hasAny =
@@ -381,6 +416,30 @@ const BooleanSearchInput = ({
           0;
         setShowDropdown(hasAny);
       }, 300);
+    } else {
+      setSuggestions({ tags: [], badges: [] });
+      setShowDropdown(false);
+    }
+  };
+
+  const handleSuggestionRefresh = () => {
+    const value = inputRef.current?.value ?? query;
+    const cursorIndex = inputRef.current?.selectionStart ?? value.length;
+    const suggestionQuery = getSuggestionQuery(value, cursorIndex);
+
+    if (suggestionsTimerRef.current) clearTimeout(suggestionsTimerRef.current);
+
+    if (suggestionQuery.length >= 2 && onSearchSuggestions) {
+      suggestionsTimerRef.current = setTimeout(async () => {
+        const result = await onSearchSuggestions(suggestionQuery);
+        const newSuggestions = result || { tags: [], badges: [] };
+        setSuggestions(newSuggestions);
+        const hasAny =
+          (newSuggestions.tags?.length || 0) +
+            (newSuggestions.badges?.length || 0) >
+          0;
+        setShowDropdown(hasAny);
+      }, 150);
     } else {
       setSuggestions({ tags: [], badges: [] });
       setShowDropdown(false);
@@ -396,25 +455,68 @@ const BooleanSearchInput = ({
   };
 
   const handleKeyDown = (e) => {
-    if (e.key === "Enter") {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
       handleSubmit(e);
     } else if (e.key === "Escape") {
       setShowDropdown(false);
     }
   };
 
+  const resizeTextarea = useCallback(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, []);
+
+  useEffect(() => { resizeTextarea(); }, [query, resizeTextarea]);
+
+  useEffect(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    let prevWidth = el.offsetWidth;
+    const observer = new ResizeObserver((entries) => {
+      const newWidth = entries[0].contentRect.width;
+      if (newWidth !== prevWidth) {
+        prevWidth = newWidth;
+        resizeTextarea();
+      }
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [resizeTextarea]);
+
   const handleSelectTag = (tag) => {
     onSelectTagSuggestion?.(tag);
-    setQuery("");
-    setSuggestions({ tags: [], badges: [] });
-    setShowDropdown(false);
+    const nextSuggestions = {
+      tags: suggestions.tags.filter((item) => Number(item.id) !== Number(tag.id)),
+      badges: suggestions.badges,
+    };
+    setSuggestions(nextSuggestions);
+    setShowDropdown(
+      (nextSuggestions.tags?.length || 0) +
+        (nextSuggestions.badges?.length || 0) >
+        0,
+    );
+    requestAnimationFrame(() => inputRef.current?.focus());
   };
 
   const handleSelectBadge = (badge) => {
     onSelectBadgeSuggestion?.(badge);
-    setQuery("");
-    setSuggestions({ tags: [], badges: [] });
-    setShowDropdown(false);
+    const nextSuggestions = {
+      tags: suggestions.tags,
+      badges: suggestions.badges.filter(
+        (item) => Number(item.id) !== Number(badge.id),
+      ),
+    };
+    setSuggestions(nextSuggestions);
+    setShowDropdown(
+      (nextSuggestions.tags?.length || 0) +
+        (nextSuggestions.badges?.length || 0) >
+        0,
+    );
+    requestAnimationFrame(() => inputRef.current?.focus());
   };
 
   const rootClassName = isCompactLayout
@@ -451,10 +553,10 @@ const BooleanSearchInput = ({
   const alignHelperToTopPillRow = showStackedPills;
   const helperControlsClassName = alignHelperToTopPillRow
     ? "absolute right-8 top-2 flex items-center gap-1 pointer-events-auto"
-    : "absolute right-8 top-1/2 -translate-y-1/2 flex items-center gap-1 pointer-events-auto";
+    : "absolute right-8 top-2 flex items-center gap-1 pointer-events-auto";
   const infoIconClassName = alignHelperToTopPillRow
     ? "absolute right-2 top-2 flex items-center pointer-events-auto"
-    : "absolute inset-y-0 right-2 flex items-center pointer-events-auto";
+    : "absolute right-2 top-2 flex items-center pointer-events-auto";
   const pillBaseClassName =
     "inline-grid grid-cols-[0.625rem_minmax(0,auto)_0.625rem] items-start gap-1 rounded-lg px-2.5 py-[0.1875rem] text-xs font-medium leading-[1.1] transition-opacity hover:opacity-80";
   const pillIconClassName = "flex h-[1.1em] w-2.5 items-center justify-center";
@@ -462,7 +564,7 @@ const BooleanSearchInput = ({
   const pillLabelClassName = "min-w-0 text-left leading-[1.1]";
   const pillCloseClassName = "flex h-[1.1em] w-2.5 items-center justify-center";
   const pillTooltipClassName =
-    "tooltip tooltip-top tooltip-lomir inline-flex z-10 hover:z-[80] focus-within:z-[80]";
+    "tooltip tooltip-top tooltip-lomir inline-flex z-10 hover:z-[500] focus-within:z-[500]";
 
   const renderBadgePill = (pill) => {
     const color = CATEGORY_COLORS[pill.category] || DEFAULT_COLOR;
@@ -643,20 +745,21 @@ const BooleanSearchInput = ({
                   <div className="shrink-0">{leftAdornment}</div>
                 )}
 
-                <input
+                <textarea
                   ref={inputRef}
-                  type="text"
                   value={query}
                   onChange={handleChange}
+                  onFocus={handleSuggestionRefresh}
+                  onClick={handleSuggestionRefresh}
                   onKeyDown={handleKeyDown}
-                  placeholder={placeholder}
-                  className="min-w-0 flex-1 bg-transparent text-sm focus:outline-none"
+                  placeholder={isCompactLayout && compactPlaceholder ? compactPlaceholder : placeholder}
+                  className="min-w-0 flex-1 bg-transparent text-sm focus:outline-none leading-snug px-0 py-0"
                   style={{
                     overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
+                    resize: "none",
                   }}
                   minLength={2}
+                  rows={1}
                 />
               </div>
             </div>
@@ -687,14 +790,16 @@ const BooleanSearchInput = ({
                 </>
               )}
               {hasBooleanOperators && (
-                <span className="inline-flex items-center rounded-full bg-primary px-2 py-0.5 text-xs font-bold text-white">
-                  Advanced
-                </span>
+                <Tooltip content="Advanced Search active" position="top">
+                  <span className={`inline-flex items-center justify-center rounded-full text-xs font-bold text-white ${isCompactLayout ? "w-5 h-5" : "px-2 py-0.5"}`} style={{ backgroundColor: FOCUS_GREEN_DARK }}>
+                    <span className="-translate-y-px">{isCompactLayout ? "A" : "Advanced"}</span>
+                  </span>
+                </Tooltip>
               )}
             </div>
 
             <div className={infoIconClassName}>
-              <SearchHelp anchorRef={inputRef} />
+              <SearchHelp anchorRef={fieldRef} />
             </div>
 
             {typeof document !== "undefined" && createPortal(
@@ -852,7 +957,7 @@ const BooleanSearchInput = ({
 
           <button
             type="submit"
-            className="btn btn-primary h-[38px] min-h-0 px-3 sm:px-4 shrink-0"
+            className="btn btn-primary h-[32px] sm:h-[38px] min-h-0 px-2 sm:px-4 shrink-0"
             disabled={query.trim().length < 2}
             aria-label="Search"
           >
