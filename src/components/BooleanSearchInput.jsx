@@ -148,6 +148,7 @@ const BooleanSearchInput = ({
 
   const inputRef = useRef(null);
   const fieldRef = useRef(null);
+  const searchHelpRef = useRef(null);
   const queryMeasureRef = useRef(null);
   const placeholderMeasureRef = useRef(null);
   const hintMeasureRef = useRef(null);
@@ -286,12 +287,13 @@ const BooleanSearchInput = ({
     totalPillCount > 0 ? pillsWidthPx + pillsGapPx + 8 : 0;
 
   const baseHelperWidthPx =
-    24 +
-    (hasBooleanOperators ? (isCompactLayout ? 20 : 72) : 0) +
     (showMinQueryHint ? measuredTextWidths.hint + 8 : 0);
-  const fieldInsetsPx = baseHelperWidthPx + 28;
+  const indicatorInRowPx = hasBooleanOperators
+    ? (isCompactLayout ? 20 : 72)
+    : 20;
+  const fieldInsetsPx = baseHelperWidthPx + 32 + indicatorInRowPx;
   const fieldInsetsWithInlinePillsPx =
-    baseHelperWidthPx + inlinePillsWidthPx + 28;
+    baseHelperWidthPx + inlinePillsWidthPx + 28 + indicatorInRowPx;
   const estimatedFieldMaxWidthPx = Math.max(
     320,
     Math.min(viewportWidth - 16, 896) - 128,
@@ -307,8 +309,8 @@ const BooleanSearchInput = ({
   const helperWidthPx =
     baseHelperWidthPx + (showInlinePills ? inlinePillsWidthPx : 0);
   const fieldRightPaddingPx = showStackedPills
-    ? 48
-    : Math.max(48, helperWidthPx + 16);
+    ? 12
+    : Math.max(12, helperWidthPx + 8);
   const fieldWidthPx = Math.min(
     estimatedFieldMaxWidthPx,
     Math.max(
@@ -466,7 +468,11 @@ const BooleanSearchInput = ({
   const resizeTextarea = useCallback(() => {
     const el = inputRef.current;
     if (!el) return;
-    el.style.height = "auto";
+    if (!el.value) {
+      el.style.height = "";
+      return;
+    }
+    el.style.height = "0";
     el.style.height = `${el.scrollHeight}px`;
   }, []);
 
@@ -550,13 +556,7 @@ const BooleanSearchInput = ({
         maxWidth: "100%",
         paddingRight: `${fieldRightPaddingPx}px`,
       };
-  const alignHelperToTopPillRow = showStackedPills;
-  const helperControlsClassName = alignHelperToTopPillRow
-    ? "absolute right-8 top-2 flex items-center gap-1 pointer-events-auto"
-    : "absolute right-8 top-2 flex items-center gap-1 pointer-events-auto";
-  const infoIconClassName = alignHelperToTopPillRow
-    ? "absolute right-2 top-2 flex items-center pointer-events-auto"
-    : "absolute right-2 top-2 flex items-center pointer-events-auto";
+  const helperControlsClassName = "absolute right-2 top-2 flex items-center gap-1 pointer-events-auto";
   const pillBaseClassName =
     "inline-grid grid-cols-[0.625rem_minmax(0,auto)_0.625rem] items-start gap-1 rounded-lg px-2.5 py-[0.1875rem] text-xs font-medium leading-[1.1] transition-opacity hover:opacity-80";
   const pillIconClassName = "flex h-[1.1em] w-2.5 items-center justify-center";
@@ -721,7 +721,7 @@ const BooleanSearchInput = ({
           <div className={fieldSlotClassName}>
             <div ref={fieldRef} className={fieldClassName} style={fieldStyle}>
               {showStackedPills && (
-                <div className="mb-1 flex flex-wrap gap-2">
+                <div className="mb-2.5 flex flex-wrap gap-2">
                   {badgePills.length > 0 && (
                     <div className="flex flex-wrap gap-1">
                       {badgePills.map(renderBadgePill)}
@@ -761,6 +761,23 @@ const BooleanSearchInput = ({
                   minLength={2}
                   rows={1}
                 />
+
+                <div className="shrink-0 flex items-center">
+                  {hasBooleanOperators && (
+                    <Tooltip content="Search tips" position="top">
+                      <button
+                        type="button"
+                        onClick={(e) => searchHelpRef.current?.open(e.currentTarget)}
+                        className={`inline-flex items-center justify-center rounded-full text-xs font-bold text-white transition-opacity hover:opacity-80 ${isCompactLayout ? "w-5 h-5" : "px-2 py-0.5"}`}
+                        style={{ backgroundColor: FOCUS_GREEN_DARK }}
+                        aria-label="Search tips (Advanced Search active)"
+                      >
+                        <span className="-translate-y-px">{isCompactLayout ? "A" : "Advanced"}</span>
+                      </button>
+                    </Tooltip>
+                  )}
+                  <SearchHelp ref={searchHelpRef} anchorRef={fieldRef} hideButton={hasBooleanOperators} />
+                </div>
               </div>
             </div>
 
@@ -789,17 +806,6 @@ const BooleanSearchInput = ({
                   )}
                 </>
               )}
-              {hasBooleanOperators && (
-                <Tooltip content="Advanced Search active" position="top">
-                  <span className={`inline-flex items-center justify-center rounded-full text-xs font-bold text-white ${isCompactLayout ? "w-5 h-5" : "px-2 py-0.5"}`} style={{ backgroundColor: FOCUS_GREEN_DARK }}>
-                    <span className="-translate-y-px">{isCompactLayout ? "A" : "Advanced"}</span>
-                  </span>
-                </Tooltip>
-              )}
-            </div>
-
-            <div className={infoIconClassName}>
-              <SearchHelp anchorRef={fieldRef} />
             </div>
 
             {typeof document !== "undefined" && createPortal(

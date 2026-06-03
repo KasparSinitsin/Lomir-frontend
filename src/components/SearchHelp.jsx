@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, forwardRef, useImperativeHandle } from "react";
 import { Info } from "lucide-react";
 import { createPortal } from "react-dom";
 import Tooltip from "./common/Tooltip";
@@ -10,7 +10,7 @@ import Tooltip from "./common/Tooltip";
  * - Click icon to toggle popup
  * - Popup uses a portal so it always appears on top of everything
  */
-const SearchHelp = ({ className = "", anchorRef }) => {
+const SearchHelp = forwardRef(({ className = "", anchorRef, hideButton = false }, ref) => {
   const [isOpen, setIsOpen] = useState(false);
   const triggerRef = useRef(null);
   const [popupStyle, setPopupStyle] = useState({});
@@ -19,6 +19,25 @@ const SearchHelp = ({ className = "", anchorRef }) => {
   const POPUP_WIDTH = 320;
   const GAP = 8;
   const ARROW_H = 12;
+
+  const openFromEl = (triggerEl) => {
+    const anchorEl = anchorRef?.current;
+    if (!anchorEl || !triggerEl) return;
+    const barRect = anchorEl.getBoundingClientRect();
+    const triggerRect = triggerEl.getBoundingClientRect();
+    const popupLeft = Math.max(
+      8,
+      Math.min(barRect.right - POPUP_WIDTH, window.innerWidth - POPUP_WIDTH - 8),
+    );
+    setPopupStyle({ top: barRect.bottom + GAP, left: popupLeft });
+    setArrowStyle({
+      top: barRect.bottom + GAP - ARROW_H,
+      left: triggerRect.left + triggerRect.width / 2,
+    });
+    setIsOpen(true);
+  };
+
+  useImperativeHandle(ref, () => ({ open: openFromEl }));
 
   const examples = [
     { query: "react AND node", description: 'Must contain both "react" AND "node"' },
@@ -32,40 +51,21 @@ const SearchHelp = ({ className = "", anchorRef }) => {
   return (
     <>
       {/* Inline trigger inside the input */}
-      <div className={`relative ${className}`}>
-        <Tooltip content="Search tips" position="top">
-          <button
-            ref={triggerRef}
-            type="button"
-            onClick={() => {
-              const anchorEl = anchorRef?.current;
-              const triggerEl = triggerRef.current;
-              if (!anchorEl || !triggerEl) return;
-
-              const barRect = anchorEl.getBoundingClientRect();
-              const triggerRect = triggerEl.getBoundingClientRect();
-
-              const popupLeft = Math.max(
-                8,
-                Math.min(barRect.right - POPUP_WIDTH, window.innerWidth - POPUP_WIDTH - 8),
-              );
-              const popupTop = barRect.bottom + GAP;
-
-              setPopupStyle({ top: popupTop, left: popupLeft });
-              setArrowStyle({
-                top: barRect.bottom + GAP - ARROW_H,
-                left: triggerRect.left + triggerRect.width / 2,
-              });
-
-              setIsOpen(true);
-            }}
-            className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-transparent p-0 text-[var(--color-primary-focus)] transition-colors hover:text-[var(--color-primary)] focus:outline-none"
-            aria-label="Search tips"
-          >
-            <Info className="h-4 w-4" />
-          </button>
-        </Tooltip>
-      </div>
+      {!hideButton && (
+        <div className={`relative ${className}`}>
+          <Tooltip content="Search tips" position="top">
+            <button
+              ref={triggerRef}
+              type="button"
+              onClick={(e) => openFromEl(e.currentTarget)}
+              className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-transparent p-0 text-[var(--color-primary-focus)] transition-colors hover:text-[var(--color-primary)] focus:outline-none"
+              aria-label="Search tips"
+            >
+              <Info className="h-4 w-4" />
+            </button>
+          </Tooltip>
+        </div>
+      )}
 
       {/* Portal popup on top of everything */}
       {isOpen &&
@@ -148,6 +148,6 @@ const SearchHelp = ({ className = "", anchorRef }) => {
         )}
     </>
   );
-};
+});
 
 export default SearchHelp;
