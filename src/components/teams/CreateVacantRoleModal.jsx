@@ -574,7 +574,8 @@ const CreateVacantRoleModal = ({
 
                 {/* Selected badges summary */}
                 {formData.selectedBadgeIds.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 mb-3">
+                  <div className="mt-2 p-3 bg-base-100 rounded-lg mb-3">
+                  <div className="flex flex-wrap gap-2">
                     {formData.selectedBadgeIds.map((badgeId) => {
                       const badge = allBadges.find((b) => b.id === badgeId);
                       if (!badge) return null;
@@ -583,15 +584,29 @@ const CreateVacantRoleModal = ({
                       return (
                         <span
                           key={badgeId}
-                          className="badge badge-outline p-2 cursor-pointer hover:opacity-70"
-                          style={{ borderColor: color, color }}
-                          onClick={() => handleBadgeToggle(badgeId)}
-                          title="Click to remove"
+                          className="badge badge-lg gap-2 leading-none items-start h-auto py-1.5"
+                          style={{
+                            backgroundColor: color,
+                            borderColor: color,
+                            color: "white",
+                          }}
                         >
-                          {badge.name} ×
+                          <span className="shrink-0 mt-px">
+                            {getBadgeIcon(badge.name, "white", 14)}
+                          </span>
+                          {badge.name}
+                          <button
+                            type="button"
+                            onClick={() => handleBadgeToggle(badgeId)}
+                            className="hover:text-error transition-colors"
+                            aria-label={`Remove ${badge.name}`}
+                          >
+                            <X size={14} />
+                          </button>
                         </span>
                       );
                     })}
+                  </div>
                   </div>
                 )}
 
