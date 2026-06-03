@@ -604,8 +604,7 @@ const BooleanSearchInput = ({
   const pillTooltipClassName =
     "tooltip tooltip-top tooltip-lomir inline-flex z-10 hover:z-[500] focus-within:z-[500]";
 
-  const renderBadgePill = (pill) => {
-    const color = CATEGORY_COLORS[pill.category] || DEFAULT_COLOR;
+  const renderColoredFilterPill = ({ pill, color, icon, onRemove }) => {
     const tooltipText = `Remove ${pill.label}`;
     return (
       <span
@@ -615,12 +614,12 @@ const BooleanSearchInput = ({
       >
         <button
           type="button"
-          onClick={() => onRemoveBadgePill?.(pill.id)}
+          onClick={() => onRemove?.(pill.id)}
           className={pillBaseClassName}
           style={{ backgroundColor: color, color: "white" }}
           aria-label={tooltipText}
         >
-          <span className={pillIconClassName}>{getBadgeIcon(pill.label, "white", 10, 3)}</span>
+          <span className={pillIconClassName}>{icon}</span>
           <span className={pillLabelClassName}>{pill.label}</span>
           <span className={pillCloseClassName}>
             <X size={10} strokeWidth={3} className={pillSvgClassName} />
@@ -630,31 +629,21 @@ const BooleanSearchInput = ({
     );
   };
 
+  const renderBadgePill = (pill) =>
+    renderColoredFilterPill({
+      pill,
+      color: CATEGORY_COLORS[pill.category] || DEFAULT_COLOR,
+      icon: getBadgeIcon(pill.label, "white", 10, 3),
+      onRemove: onRemoveBadgePill,
+    });
+
   const renderFocusAreaPill = (pill) => {
-    const tooltipText = `Remove ${pill.label}`;
-    return (
-      <span
-        key={pill.key}
-        className={pillTooltipClassName}
-        data-tip={tooltipText}
-      >
-        <button
-          type="button"
-          onClick={() => onRemoveFocusAreaPill?.(pill.id)}
-          className={pillBaseClassName}
-          style={{ backgroundColor: FOCUS_GREEN, color: "white" }}
-          aria-label={tooltipText}
-        >
-          <span className={pillIconClassName}>
-            <Tag size={10} strokeWidth={3} className={pillSvgClassName} />
-          </span>
-          <span className={pillLabelClassName}>{pill.label}</span>
-          <span className={pillCloseClassName}>
-            <X size={10} strokeWidth={3} className={pillSvgClassName} />
-          </span>
-        </button>
-      </span>
-    );
+    return renderColoredFilterPill({
+      pill,
+      color: FOCUS_GREEN,
+      icon: <Tag size={10} strokeWidth={3} className={pillSvgClassName} />,
+      onRemove: onRemoveFocusAreaPill,
+    });
   };
 
   const renderCriteriaPill = (pill) => {

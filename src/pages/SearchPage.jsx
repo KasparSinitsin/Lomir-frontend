@@ -65,6 +65,7 @@ import {
   RESULTS_PER_PAGE_OPTIONS,
   DEFAULT_RESULTS_PER_PAGE,
 } from "../constants/pagination";
+import { CATEGORY_ORDER } from "../constants/badgeConstants";
 import {
   calculateDistanceKm,
   locationsHaveDifferentKnownParts,
@@ -84,6 +85,11 @@ const SORTING_OPTION_VALUES = new Set([
   "locationPriority",
 ]);
 const EMPTY_QUERY_ARRAY = [];
+
+const getBadgeCategoryOrder = (category) => {
+  const index = CATEGORY_ORDER.indexOf(category || "Other");
+  return index === -1 ? CATEGORY_ORDER.length : index;
+};
 
 const getFilterableDistanceKm = (item) => {
   const matchDetails = item?.matchDetails ?? item?.match_details ?? null;
@@ -1022,12 +1028,19 @@ const SearchPage = () => {
     label: filterTagMap[id]?.name || `Tag ${id}`,
   }));
 
-  const badgePills = filterBadgeIds.map((id) => ({
-    key: `badge-${id}`,
-    id,
-    label: filterBadgeMap[id]?.name || `Badge ${id}`,
-    category: filterBadgeMap[id]?.category || "",
-  }));
+  const badgePills = filterBadgeIds
+    .map((id) => ({
+      key: `badge-${id}`,
+      id,
+      label: filterBadgeMap[id]?.name || `Badge ${id}`,
+      category: filterBadgeMap[id]?.category || "",
+    }))
+    .sort((a, b) => {
+      const categoryDiff =
+        getBadgeCategoryOrder(a.category) - getBadgeCategoryOrder(b.category);
+      if (categoryDiff !== 0) return categoryDiff;
+      return a.label.localeCompare(b.label);
+    });
   const activeCriteriaPills = getActiveCriteriaPills({
     sortBy,
     sortDir,
@@ -2027,7 +2040,12 @@ const SearchPage = () => {
   };
   return (
     <PageContainer
-      title="Search teams, people or open roles"
+      title={
+        <>
+          <span className="inline-block">Find teams, people</span>{" "}
+          <span className="inline-block">or open roles</span>
+        </>
+      }
       titleAlignment="center"
       variant="muted"
     >
