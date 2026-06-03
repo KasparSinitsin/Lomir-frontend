@@ -306,6 +306,8 @@ const BooleanSearchInput = ({
   const fieldInsetsPx = sideControlsWidthPx + 32;
   const fieldInsetsWithInlinePillsPx =
     Math.max(baseHelperWidthPx + inlinePillsWidthPx, indicatorInRowPx) + 28;
+  const desktopQueryWithPillsMinWidthPx =
+    !isCompactLayout && query.length > 0 && totalPillCount > 0 ? 400 : 0;
   const estimatedFieldMaxWidthPx = Math.max(
     320,
     Math.min(viewportWidth - 16, 896) - 128,
@@ -314,6 +316,8 @@ const BooleanSearchInput = ({
     inputTextWidthPx + fieldInsetsWithInlinePillsPx;
   const canInlinePills =
     totalPillCount > 0 &&
+    query.trim().length === 0 &&
+    !hasVisibleLeftAdornment &&
     !hasBooleanOperators &&
     !isCompactLayout &&
     desiredSingleRowWidthPx <= estimatedFieldMaxWidthPx;
@@ -335,6 +339,7 @@ const BooleanSearchInput = ({
       inputTextWidthPx +
         (showInlinePills ? fieldInsetsWithInlinePillsPx : fieldInsetsPx),
       showStackedPills ? stackedPillsWidthPx + fieldInsetsPx : 0,
+      desktopQueryWithPillsMinWidthPx,
     ),
   );
 
@@ -579,7 +584,10 @@ const BooleanSearchInput = ({
   const trailingControlsStyle = {
     bottom: isCompactLayout && hasBooleanOperators ? "0.625rem" : "0.5625rem",
     ...(isCompactLayout && hasVisibleLeftAdornment
-      ? { right: hasBooleanOperators ? "0.625rem" : "1.875rem" }
+      ? {
+          right:
+            hasBooleanOperators || showStackedPills ? "0.625rem" : "1.875rem",
+        }
       : trailingControlsOffsetPx > 0
         ? { right: "1.875rem" }
         : {}),

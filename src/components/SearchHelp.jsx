@@ -1,4 +1,10 @@
-import React, { useState, useRef, forwardRef, useImperativeHandle } from "react";
+import React, {
+  useState,
+  useRef,
+  useLayoutEffect,
+  forwardRef,
+  useImperativeHandle,
+} from "react";
 import { Info } from "lucide-react";
 import { createPortal } from "react-dom";
 import Tooltip from "./common/Tooltip";
@@ -13,23 +19,26 @@ import Tooltip from "./common/Tooltip";
 const SearchHelp = forwardRef(({ className = "", anchorRef, hideButton = false }, ref) => {
   const [isOpen, setIsOpen] = useState(false);
   const triggerRef = useRef(null);
+  const activeTriggerRef = useRef(null);
+  const popupRef = useRef(null);
   const [popupStyle, setPopupStyle] = useState({});
   const [arrowStyle, setArrowStyle] = useState({});
 
-  const POPUP_WIDTH = 320;
+  const POPUP_MAX_WIDTH = 320;
   const GAP = 8;
   const ARROW_H = 12;
   const ARROW_W = 48;
   const VIEWPORT_MARGIN = 8;
   const TRIGGER_SIDE_OFFSET = 40;
+  const ARROW_X_OFFSET = -14;
 
-  const openFromEl = (triggerEl) => {
+  const positionPopup = (triggerEl, measuredWidth = POPUP_MAX_WIDTH) => {
     const anchorEl = anchorRef?.current;
     if (!anchorEl || !triggerEl) return;
     const barRect = anchorEl.getBoundingClientRect();
     const triggerRect = triggerEl.getBoundingClientRect();
     const popupWidth = Math.min(
-      POPUP_WIDTH,
+      measuredWidth,
       window.innerWidth - VIEWPORT_MARGIN * 2,
     );
     const triggerCenter = triggerRect.left + triggerRect.width / 2;
@@ -40,15 +49,33 @@ const SearchHelp = forwardRef(({ className = "", anchorRef, hideButton = false }
       Math.min(preferredLeft, viewportMaxLeft),
     );
 
-    setPopupStyle({ top: barRect.bottom + GAP, left: popupLeft, width: popupWidth });
+    setPopupStyle({
+      top: barRect.bottom + GAP,
+      left: popupLeft,
+      maxWidth: popupWidth,
+      width: "max-content",
+    });
     setArrowStyle({
       top: barRect.bottom + GAP - ARROW_H,
-      left: triggerCenter,
+      left: triggerCenter + ARROW_X_OFFSET,
     });
+  };
+
+  const openFromEl = (triggerEl) => {
+    activeTriggerRef.current = triggerEl;
+    positionPopup(triggerEl);
     setIsOpen(true);
   };
 
   useImperativeHandle(ref, () => ({ open: openFromEl }));
+
+  useLayoutEffect(() => {
+    if (!isOpen || !popupRef.current || !activeTriggerRef.current) return;
+    positionPopup(
+      activeTriggerRef.current,
+      popupRef.current.getBoundingClientRect().width,
+    );
+  }, [isOpen]);
 
   const examples = [
     { query: "react AND node", description: 'Must contain both "react" AND "node"' },
@@ -114,7 +141,8 @@ const SearchHelp = forwardRef(({ className = "", anchorRef, hideButton = false }
 
             {/* Popup box */}
             <div
-              className="fixed z-[1] w-80 p-4 bg-base-100 rounded-lg shadow-lg"
+              ref={popupRef}
+              className="fixed z-[1] p-4 bg-base-100 rounded-lg shadow-lg"
               style={popupStyle}
             >
               <div className="flex justify-between items-center mb-3">
@@ -138,7 +166,10 @@ const SearchHelp = forwardRef(({ className = "", anchorRef, hideButton = false }
               <div className="space-y-2">
                 {examples.map((example, index) => (
                   <div key={index} className="text-sm">
-                    <code className="bg-base-200 px-1.5 py-0.5 rounded font-mono text-xs">
+                    <code
+                      className="px-1.5 py-0.5 rounded font-mono text-xs"
+                      style={{ backgroundColor: "rgba(0, 146, 19, 0.05)" }}
+                    >
                       {example.query}
                     </code>
                     <p className="text-base-content/60 text-xs mt-0.5">
@@ -150,7 +181,9 @@ const SearchHelp = forwardRef(({ className = "", anchorRef, hideButton = false }
 
               <div className="mt-3 pt-3 border-t border-base-300">
                 <p className="text-xs text-base-content/50">
-                  Operators are case-insensitive (AND, and, And all work)
+                  Operators are case-insensitive
+                  <br />
+                  (AND, and, And all work)
                 </p>
               </div>
             </div>
