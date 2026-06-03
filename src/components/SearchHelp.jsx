@@ -19,20 +19,31 @@ const SearchHelp = forwardRef(({ className = "", anchorRef, hideButton = false }
   const POPUP_WIDTH = 320;
   const GAP = 8;
   const ARROW_H = 12;
+  const ARROW_W = 48;
+  const VIEWPORT_MARGIN = 8;
+  const TRIGGER_SIDE_OFFSET = 40;
 
   const openFromEl = (triggerEl) => {
     const anchorEl = anchorRef?.current;
     if (!anchorEl || !triggerEl) return;
     const barRect = anchorEl.getBoundingClientRect();
     const triggerRect = triggerEl.getBoundingClientRect();
-    const popupLeft = Math.max(
-      8,
-      Math.min(barRect.right - POPUP_WIDTH, window.innerWidth - POPUP_WIDTH - 8),
+    const popupWidth = Math.min(
+      POPUP_WIDTH,
+      window.innerWidth - VIEWPORT_MARGIN * 2,
     );
-    setPopupStyle({ top: barRect.bottom + GAP, left: popupLeft });
+    const triggerCenter = triggerRect.left + triggerRect.width / 2;
+    const viewportMaxLeft = window.innerWidth - popupWidth - VIEWPORT_MARGIN;
+    const preferredLeft = triggerCenter - popupWidth + TRIGGER_SIDE_OFFSET;
+    const popupLeft = Math.max(
+      VIEWPORT_MARGIN,
+      Math.min(preferredLeft, viewportMaxLeft),
+    );
+
+    setPopupStyle({ top: barRect.bottom + GAP, left: popupLeft, width: popupWidth });
     setArrowStyle({
       top: barRect.bottom + GAP - ARROW_H,
-      left: triggerRect.left + triggerRect.width / 2,
+      left: triggerCenter,
     });
     setIsOpen(true);
   };
@@ -52,16 +63,16 @@ const SearchHelp = forwardRef(({ className = "", anchorRef, hideButton = false }
     <>
       {/* Inline trigger inside the input */}
       {!hideButton && (
-        <div className={`relative ${className}`}>
+        <div className={`relative flex h-[1.125rem] items-center ${className}`}>
           <Tooltip content="Search tips" position="top">
             <button
               ref={triggerRef}
               type="button"
               onClick={(e) => openFromEl(e.currentTarget)}
-              className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-transparent p-0 text-[var(--color-primary-focus)] transition-colors hover:text-[var(--color-primary)] focus:outline-none"
+              className="inline-flex h-[1.125rem] w-[1.125rem] items-center justify-center rounded-full bg-transparent p-0 text-[var(--color-primary-focus)] transition-colors hover:text-[var(--color-primary)] focus:outline-none"
               aria-label="Search tips"
             >
-              <Info className="h-4 w-4" />
+              <Info className="h-3.5 w-3.5" />
             </button>
           </Tooltip>
         </div>
@@ -74,22 +85,22 @@ const SearchHelp = forwardRef(({ className = "", anchorRef, hideButton = false }
             {/* Backdrop: click to close */}
             <button
               type="button"
-              className="absolute inset-0 cursor-default"
+              className="absolute inset-0 z-0 cursor-default"
               onClick={() => setIsOpen(false)}
               aria-label="Close search tips"
             />
 
-            {/* Arrow pointing up toward the "i" icon */}
+            {/* Arrow pointing up toward the visible search tips trigger */}
             <div
               style={{
                 position: "fixed",
                 top: `${arrowStyle.top}px`,
                 left: `${arrowStyle.left}px`,
                 transform: "translateX(-50%) rotate(180deg)",
-                width: "48px",
+                width: `${ARROW_W}px`,
                 height: `${ARROW_H}px`,
                 backgroundColor: "#ffffff",
-                zIndex: 10000,
+                zIndex: 2,
                 pointerEvents: "none",
                 WebkitMaskImage: `url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0.500009 1C3.5 1 3.00001 7 6.00001 7C9 7 8.5 1 11.5 1C12 1 12 0.5 12 0H0C0 0.5 0 1 0.500009 1Z' fill='white'/%3E%3C/svg%3E")`,
                 maskImage: `url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0.500009 1C3.5 1 3.00001 7 6.00001 7C9 7 8.5 1 11.5 1C12 1 12 0.5 12 0H0C0 0.5 0 1 0.500009 1Z' fill='white'/%3E%3C/svg%3E")`,
@@ -103,7 +114,7 @@ const SearchHelp = forwardRef(({ className = "", anchorRef, hideButton = false }
 
             {/* Popup box */}
             <div
-              className="fixed w-80 p-4 bg-base-100 rounded-lg shadow-lg border border-base-300"
+              className="fixed z-[1] w-80 p-4 bg-base-100 rounded-lg shadow-lg"
               style={popupStyle}
             >
               <div className="flex justify-between items-center mb-3">

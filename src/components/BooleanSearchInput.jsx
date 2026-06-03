@@ -265,18 +265,26 @@ const BooleanSearchInput = ({
 
   const showMinQueryHint = query.trim().length > 0 && query.trim().length < 2;
   const hasLeftAdornment = Boolean(leftAdornment);
-  const leftAdornmentWidthPx = hasLeftAdornment ? 28 : 0;
   const minimumInputWidthPx = query.trim().length > 0 ? 132 : 180;
   const inputTextWidthPx = Math.max(
     minimumInputWidthPx,
     query.trim().length > 0
       ? measuredTextWidths.query + 32
       : measuredTextWidths.placeholder + 12,
-  ) + leftAdornmentWidthPx;
+  );
 
   // Combined pill width calculations across all three groups
   const allPills = [...badgePills, ...focusAreaPills, ...activePills];
   const totalPillCount = allPills.length;
+  const hasVisibleLeftAdornment =
+    hasLeftAdornment &&
+    (query.trim().length > 0 ||
+      initialQuery.trim().length > 0 ||
+      totalPillCount > 0);
+  const showResetInTrailingControls =
+    hasVisibleLeftAdornment && hasBooleanOperators;
+  const topAdornmentWidthPx =
+    hasVisibleLeftAdornment && !showResetInTrailingControls ? 22 : 0;
   const pillsWidthPx = allPills.reduce(
     (sum, pill) => sum + pill.label.length * 8 + 28,
     0,
@@ -287,13 +295,17 @@ const BooleanSearchInput = ({
     totalPillCount > 0 ? pillsWidthPx + pillsGapPx + 8 : 0;
 
   const baseHelperWidthPx =
-    (showMinQueryHint ? measuredTextWidths.hint + 8 : 0);
-  const indicatorInRowPx = hasBooleanOperators
-    ? (isCompactLayout ? 20 : 72)
+    (showMinQueryHint ? measuredTextWidths.hint + 8 : 0) +
+    topAdornmentWidthPx;
+  const trailingIndicatorWidthPx = hasBooleanOperators
+    ? (isCompactLayout ? 20 : 42)
     : 20;
-  const fieldInsetsPx = baseHelperWidthPx + 32 + indicatorInRowPx;
+  const indicatorInRowPx =
+    trailingIndicatorWidthPx + (showResetInTrailingControls ? 26 : 0);
+  const sideControlsWidthPx = Math.max(baseHelperWidthPx, indicatorInRowPx);
+  const fieldInsetsPx = sideControlsWidthPx + 32;
   const fieldInsetsWithInlinePillsPx =
-    baseHelperWidthPx + inlinePillsWidthPx + 28 + indicatorInRowPx;
+    Math.max(baseHelperWidthPx + inlinePillsWidthPx, indicatorInRowPx) + 28;
   const estimatedFieldMaxWidthPx = Math.max(
     320,
     Math.min(viewportWidth - 16, 896) - 128,
@@ -302,15 +314,21 @@ const BooleanSearchInput = ({
     inputTextWidthPx + fieldInsetsWithInlinePillsPx;
   const canInlinePills =
     totalPillCount > 0 &&
+    !hasBooleanOperators &&
     !isCompactLayout &&
     desiredSingleRowWidthPx <= estimatedFieldMaxWidthPx;
   const showInlinePills = canInlinePills;
   const showStackedPills = totalPillCount > 0 && !showInlinePills;
   const helperWidthPx =
     baseHelperWidthPx + (showInlinePills ? inlinePillsWidthPx : 0);
-  const fieldRightPaddingPx = showStackedPills
-    ? 12
-    : Math.max(12, helperWidthPx + 8);
+  const trailingControlsOffsetPx =
+    hasVisibleLeftAdornment && !showStackedPills && !isCompactLayout && !hasBooleanOperators
+      ? 30
+      : 0;
+  const fieldRightPaddingPx = Math.max(helperWidthPx, 12) + 8;
+  const textRowRightPaddingPx = isCompactLayout
+    ? 0
+    : indicatorInRowPx + trailingControlsOffsetPx + 8;
   const fieldWidthPx = Math.min(
     estimatedFieldMaxWidthPx,
     Math.max(
@@ -557,8 +575,20 @@ const BooleanSearchInput = ({
         paddingRight: `${fieldRightPaddingPx}px`,
       };
   const helperControlsClassName = "absolute right-2 top-2 flex items-center gap-1 pointer-events-auto";
+  const trailingControlsClassName = "absolute right-2 flex items-center gap-1 pointer-events-auto";
+  const trailingControlsStyle = {
+    bottom: isCompactLayout && hasBooleanOperators ? "0.625rem" : "0.5625rem",
+    ...(isCompactLayout && hasVisibleLeftAdornment
+      ? { right: hasBooleanOperators ? "0.625rem" : "1.875rem" }
+      : trailingControlsOffsetPx > 0
+        ? { right: "1.875rem" }
+        : {}),
+  };
   const pillBaseClassName =
     "inline-grid grid-cols-[0.625rem_minmax(0,auto)_0.625rem] items-start gap-1 rounded-lg px-2.5 py-[0.1875rem] text-xs font-medium leading-[1.1] transition-opacity hover:opacity-80";
+  const advancedIndicatorClassName = isCompactLayout
+    ? "inline-flex h-3.5 w-3.5 items-center justify-center rounded-full p-0 text-[0.625rem] font-medium leading-none text-white transition-opacity hover:opacity-80"
+    : "inline-flex h-[1.125rem] items-center justify-center rounded-lg px-2 py-0 text-xs font-medium leading-[1.1] text-white transition-opacity hover:opacity-80";
   const pillIconClassName = "flex h-[1.1em] w-2.5 items-center justify-center";
   const pillSvgClassName = "h-2.5 w-2.5";
   const pillLabelClassName = "min-w-0 text-left leading-[1.1]";
@@ -740,11 +770,7 @@ const BooleanSearchInput = ({
                 </div>
               )}
 
-              <div className="flex min-w-0 items-center gap-2">
-                {hasLeftAdornment && (
-                  <div className="shrink-0">{leftAdornment}</div>
-                )}
-
+              <div className="flex min-w-0 items-end gap-2">
                 <textarea
                   ref={inputRef}
                   value={query}
@@ -753,31 +779,36 @@ const BooleanSearchInput = ({
                   onClick={handleSuggestionRefresh}
                   onKeyDown={handleKeyDown}
                   placeholder={isCompactLayout && compactPlaceholder ? compactPlaceholder : placeholder}
-                  className="min-w-0 flex-1 bg-transparent text-sm focus:outline-none leading-snug px-0 py-0"
+                  className="min-w-0 flex-1 bg-transparent text-sm leading-[1.25] focus:outline-none px-0 py-0"
                   style={{
                     overflow: "hidden",
+                    paddingRight: `${textRowRightPaddingPx}px`,
                     resize: "none",
                   }}
                   minLength={2}
                   rows={1}
                 />
 
-                <div className="shrink-0 flex items-center">
-                  {hasBooleanOperators && (
-                    <Tooltip content="Search tips" position="top">
-                      <button
-                        type="button"
-                        onClick={(e) => searchHelpRef.current?.open(e.currentTarget)}
-                        className={`inline-flex items-center justify-center rounded-full text-xs font-bold text-white transition-opacity hover:opacity-80 ${isCompactLayout ? "w-5 h-5" : "px-2 py-0.5"}`}
-                        style={{ backgroundColor: FOCUS_GREEN_DARK }}
-                        aria-label="Search tips (Advanced Search active)"
-                      >
-                        <span className="-translate-y-px">{isCompactLayout ? "A" : "Advanced"}</span>
-                      </button>
-                    </Tooltip>
-                  )}
-                  <SearchHelp ref={searchHelpRef} anchorRef={fieldRef} hideButton={hasBooleanOperators} />
-                </div>
+              </div>
+              <div
+                className={trailingControlsClassName}
+                style={trailingControlsStyle}
+              >
+                {showResetInTrailingControls && leftAdornment}
+                {hasBooleanOperators && (
+                  <Tooltip content="Search tips" position="top">
+                    <button
+                      type="button"
+                      onClick={(e) => searchHelpRef.current?.open(e.currentTarget)}
+                      className={advancedIndicatorClassName}
+                      style={{ backgroundColor: FOCUS_GREEN_DARK }}
+                      aria-label="Search tips (Advanced Search active)"
+                    >
+                      <span className={isCompactLayout ? "leading-none" : pillLabelClassName}>{isCompactLayout ? "A" : "Advanced"}</span>
+                    </button>
+                  </Tooltip>
+                )}
+                <SearchHelp ref={searchHelpRef} anchorRef={fieldRef} hideButton={hasBooleanOperators} />
               </div>
             </div>
 
@@ -806,6 +837,7 @@ const BooleanSearchInput = ({
                   )}
                 </>
               )}
+              {hasVisibleLeftAdornment && !showResetInTrailingControls && leftAdornment}
             </div>
 
             {typeof document !== "undefined" && createPortal(
