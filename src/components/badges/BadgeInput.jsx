@@ -304,7 +304,7 @@ const BadgeInput = ({
               {showDropdown && (
                 <>
                   <li className="menu-title px-3 pt-1 pb-3">
-                    <span className="flex items-center justify-center gap-1.5">
+                    <span className="flex items-center justify-start gap-1.5">
                       <Award size={16} strokeWidth={2.5} className="text-primary" />
                       <span className="font-semibold text-primary-focus">
                         {inputValue.trim() ? "Search Results" : "All Badges"}

@@ -610,7 +610,7 @@ const BooleanSearchInput = ({
                   {suggestions.tags.length > 0 && (
                     <>
                       <li className="menu-title px-3 pt-1 pb-3">
-                        <span className="flex items-center justify-center gap-1.5">
+                        <span className="flex items-center justify-start gap-1.5">
                           <Tag size={16} strokeWidth={2.5} className="text-primary" />
                           <span className="font-semibold text-primary-focus">Focus Areas</span>
                         </span>
@@ -652,7 +652,6 @@ const BooleanSearchInput = ({
                                       )}
                                     </div>
                                     <div className="[flex:1_0_auto] max-w-full flex items-center gap-2 min-w-0">
-                                      <Tag size={14} className="shrink-0" style={{ color: FOCUS_GREEN }} />
                                       <span className="font-medium">{tag.name}</span>
                                     </div>
                                   </button>
@@ -668,8 +667,8 @@ const BooleanSearchInput = ({
                   {/* Badges section */}
                   {suggestions.badges.length > 0 && (
                     <>
-                      <li className="menu-title px-3 pt-1 pb-3">
-                        <span className="flex items-center justify-center gap-1.5">
+                      <li className="menu-title px-3 pt-3 pb-3">
+                        <span className="flex items-center justify-start gap-1.5">
                           <Award size={16} strokeWidth={2.5} className="text-primary" />
                           <span className="font-semibold text-primary-focus">Badges</span>
                         </span>
