@@ -141,11 +141,13 @@ const BadgeInput = ({
     const base = computeBasePosition();
     if (!base) return;
     setMenuPlacement(base.placement);
+    const left = base.left;
     setMenuStyle({
       position: "fixed",
       top: base.top,
-      left: base.left,
-      width: base.width,
+      left,
+      width: "max-content",
+      maxWidth: `min(500px, calc(100vw - ${left}px - ${EDGE_MARGIN}px))`,
       maxHeight: base.maxHeight,
       zIndex: 10000,
       arrowTop: base.placement === "bottom" ? base.top - 11 : base.top,
@@ -301,20 +303,16 @@ const BadgeInput = ({
             >
               {showDropdown && (
                 <>
-                  <li className="menu-title flex items-center gap-0.5 px-3 pt-1 pb-3">
-                    <Award
-                      size={16}
-                      strokeWidth={2.5}
-                      className="text-primary"
-                    />
-                    <span className="font-semibold text-primary-focus">
-                      {inputValue.trim() ? "Search Results" : "All Badges"}
-                    </span>
-                    {filteredBadges.length === 0 && (
-                      <span className="ml-auto text-xs opacity-70">
-                        No results
+                  <li className="menu-title px-3 pt-1 pb-3">
+                    <span className="flex items-center justify-start gap-1.5">
+                      <Award size={16} strokeWidth={2.5} className="text-primary" />
+                      <span className="font-semibold text-primary-focus">
+                        {inputValue.trim() ? "Search Results" : "All Badges"}
                       </span>
-                    )}
+                      {filteredBadges.length === 0 && (
+                        <span className="text-xs opacity-70">No results</span>
+                      )}
+                    </span>
                   </li>
 
                   {Array.from(groupedBadges.entries()).flatMap(
