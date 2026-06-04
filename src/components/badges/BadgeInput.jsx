@@ -150,7 +150,7 @@ const BadgeInput = ({
       maxWidth: `min(500px, calc(100vw - ${left}px - ${EDGE_MARGIN}px))`,
       maxHeight: base.maxHeight,
       zIndex: 10000,
-      arrowTop: base.placement === "bottom" ? base.top - 11 : base.top,
+      arrowTop: base.placement === "bottom" ? base.top - 19 : base.top,
     });
   }, [computeBasePosition]);
 
@@ -277,13 +277,13 @@ const BadgeInput = ({
                     menuPlacement === "bottom"
                       ? "translateX(-50%) rotate(180deg)"
                       : "translateX(-50%)",
-                  width: "48px",
-                  height: "12px",
+                  width: "10px",
+                  height: "20px",
                   backgroundColor: "#ffffff",
                   zIndex: 10001,
                   pointerEvents: "none",
-                  WebkitMaskImage: `url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0.500009 1C3.5 1 3.00001 7 6.00001 7C9 7 8.5 1 11.5 1C12 1 12 0.5 12 0H0C0 0.5 0 1 0.500009 1Z' fill='white'/%3E%3C/svg%3E")`,
-                  maskImage: `url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0.500009 1C3.5 1 3.00001 7 6.00001 7C9 7 8.5 1 11.5 1C12 1 12 0.5 12 0H0C0 0.5 0 1 0.500009 1Z' fill='white'/%3E%3C/svg%3E")`,
+                  WebkitMaskImage: `url("data:image/svg+xml,%3Csvg width='10' height='20' viewBox='0 0 10 20' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0H10C7.8 0 6.8 2.2 6.2 7.3L5.2 19.2C5.1 19.8 4.9 19.8 4.8 19.2L3.8 7.3C3.2 2.2 2.2 0 0 0Z' fill='white'/%3E%3C/svg%3E")`,
+                  maskImage: `url("data:image/svg+xml,%3Csvg width='10' height='20' viewBox='0 0 10 20' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0H10C7.8 0 6.8 2.2 6.2 7.3L5.2 19.2C5.1 19.8 4.9 19.8 4.8 19.2L3.8 7.3C3.2 2.2 2.2 0 0 0Z' fill='white'/%3E%3C/svg%3E")`,
                   WebkitMaskRepeat: "no-repeat",
                   maskRepeat: "no-repeat",
                   WebkitMaskSize: "contain",

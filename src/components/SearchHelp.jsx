@@ -26,8 +26,9 @@ const SearchHelp = forwardRef(({ className = "", anchorRef, hideButton = false }
 
   const POPUP_MAX_WIDTH = 320;
   const GAP = 8;
-  const ARROW_H = 12;
-  const ARROW_W = 48;
+  const ARROW_H = 20;
+  const ARROW_W = 10;
+  const ARROW_MASK = `url("data:image/svg+xml,%3Csvg width='10' height='20' viewBox='0 0 10 20' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0H10C7.8 0 6.8 2.2 6.2 7.3L5.2 19.2C5.1 19.8 4.9 19.8 4.8 19.2L3.8 7.3C3.2 2.2 2.2 0 0 0Z' fill='white'/%3E%3C/svg%3E")`;
   const VIEWPORT_MARGIN = 8;
   const TRIGGER_SIDE_OFFSET = 40;
   const ARROW_X_OFFSET = -14;
@@ -56,7 +57,7 @@ const SearchHelp = forwardRef(({ className = "", anchorRef, hideButton = false }
       width: "max-content",
     });
     setArrowStyle({
-      top: barRect.bottom + GAP - ARROW_H,
+      top: barRect.bottom + GAP - ARROW_H + 1,
       left: triggerCenter + ARROW_X_OFFSET,
     });
   };
@@ -129,13 +130,12 @@ const SearchHelp = forwardRef(({ className = "", anchorRef, hideButton = false }
                 backgroundColor: "#ffffff",
                 zIndex: 2,
                 pointerEvents: "none",
-                WebkitMaskImage: `url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0.500009 1C3.5 1 3.00001 7 6.00001 7C9 7 8.5 1 11.5 1C12 1 12 0.5 12 0H0C0 0.5 0 1 0.500009 1Z' fill='white'/%3E%3C/svg%3E")`,
-                maskImage: `url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0.500009 1C3.5 1 3.00001 7 6.00001 7C9 7 8.5 1 11.5 1C12 1 12 0.5 12 0H0C0 0.5 0 1 0.500009 1Z' fill='white'/%3E%3C/svg%3E")`,
+                WebkitMaskImage: ARROW_MASK,
+                maskImage: ARROW_MASK,
                 WebkitMaskRepeat: "no-repeat",
                 maskRepeat: "no-repeat",
                 WebkitMaskSize: "contain",
                 maskSize: "contain",
-                filter: "drop-shadow(0 2px 6px rgba(4, 80, 20, 0.12))",
               }}
             />
 

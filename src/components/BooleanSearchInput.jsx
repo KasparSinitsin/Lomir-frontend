@@ -48,7 +48,7 @@ const hexToRgba = (hex, alpha) => {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 };
 
-const MIN_QUERY_HINT = "Enter at least 2 characters";
+const MIN_QUERY_HINT = "Enter at least two characters";
 const BOOLEAN_OPERATOR_SPLIT_PATTERN = /\b(?:AND|OR|NOT)\b/i;
 
 const cleanSuggestionSegment = (value) =>
@@ -249,7 +249,7 @@ const BooleanSearchInput = ({
       maxWidth: maxDropdownWidth,
       maxHeight: base.maxHeight,
       zIndex: 10000,
-      arrowTop: base.placement === "bottom" ? base.top - 11 : base.top,
+      arrowTop: base.placement === "bottom" ? base.top - 19 : base.top,
       arrowLeft: base.inputCenterX,
     });
   }, [computeDropdownPosition]);
@@ -324,9 +324,7 @@ const BooleanSearchInput = ({
   const inlinePillsWidthPx =
     totalPillCount > 0 ? pillsWidthPx + pillsGapPx + 8 : 0;
 
-  const baseHelperWidthPx =
-    (showMinQueryHint ? measuredTextWidths.hint + 8 : 0) +
-    topAdornmentWidthPx;
+  const baseHelperWidthPx = topAdornmentWidthPx;
   const trailingIndicatorWidthPx = hasBooleanOperators
     ? (isCompactLayout ? 20 : 42)
     : 20;
@@ -359,7 +357,8 @@ const BooleanSearchInput = ({
   const fieldRightPaddingPx = Math.max(helperWidthPx, 12) + 8;
   const textRowRightPaddingPx = isCompactLayout
     ? 0
-    : indicatorInRowPx + trailingControlsOffsetPx + 8;
+    : indicatorInRowPx + trailingControlsOffsetPx + 2;
+  const queryHintAnchorPx = Math.max(14, measuredTextWidths.query + 13);
   const fieldWidthPx = Math.min(
     estimatedFieldMaxWidthPx,
     Math.max(
@@ -884,7 +883,10 @@ const BooleanSearchInput = ({
                 </div>
               )}
 
-              <div className="flex min-w-0 items-end gap-2">
+              <div
+                className="flex min-w-0 items-end gap-2"
+                style={{ paddingRight: `${textRowRightPaddingPx}px` }}
+              >
                 <textarea
                   ref={inputRef}
                   value={query}
@@ -896,14 +898,46 @@ const BooleanSearchInput = ({
                   className="min-w-0 flex-1 bg-transparent text-sm leading-[1.25] focus:outline-none px-0 py-0"
                   style={{
                     overflow: "hidden",
-                    paddingRight: `${textRowRightPaddingPx}px`,
                     resize: "none",
                   }}
                   minLength={2}
                   rows={1}
                 />
-
               </div>
+              {showMinQueryHint && (
+                <>
+                  <div
+                    className="pointer-events-none absolute top-full z-[9999] mt-1 max-w-[280px] rounded-lg bg-white text-left whitespace-pre-line text-[var(--color-primary-focus)]"
+                    style={{
+                      left: 0,
+                      padding: "0.5rem 0.75rem",
+                      fontSize: "0.775rem",
+                      lineHeight: 1.15,
+                      fontWeight: 450,
+                      boxShadow: "0 2px 8px rgba(4, 80, 20, 0.15)",
+                    }}
+                    role="tooltip"
+                  >
+                    {MIN_QUERY_HINT}
+                  </div>
+                  <div
+                    className="pointer-events-none absolute top-full z-[10001] bg-white"
+                    style={{
+                      left: `${queryHintAnchorPx}px`,
+                      transform: "translate(-50%, -11px) rotate(180deg)",
+                      width: "14px",
+                      height: "16px",
+                      WebkitMaskImage: `url("data:image/svg+xml,%3Csvg width='14' height='16' viewBox='0 0 14 16' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0H14C10.8 0 9.45 1.8 8.4 6L7.25 15.2C7.12 15.8 6.88 15.8 6.75 15.2L5.6 6C4.55 1.8 3.2 0 0 0Z' fill='white'/%3E%3C/svg%3E")`,
+                      maskImage: `url("data:image/svg+xml,%3Csvg width='14' height='16' viewBox='0 0 14 16' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0H14C10.8 0 9.45 1.8 8.4 6L7.25 15.2C7.12 15.8 6.88 15.8 6.75 15.2L5.6 6C4.55 1.8 3.2 0 0 0Z' fill='white'/%3E%3C/svg%3E")`,
+                      WebkitMaskRepeat: "no-repeat",
+                      maskRepeat: "no-repeat",
+                      WebkitMaskSize: "contain",
+                      maskSize: "contain",
+                    }}
+                    aria-hidden="true"
+                  />
+                </>
+              )}
               <div
                 className={trailingControlsClassName}
                 style={trailingControlsStyle}
@@ -927,11 +961,6 @@ const BooleanSearchInput = ({
             </div>
 
             <div className={helperControlsClassName}>
-              {showMinQueryHint && (
-                <span className="text-xs text-warning whitespace-nowrap">
-                  {MIN_QUERY_HINT}
-                </span>
-              )}
               {showInlinePills && (
                 <>
                   {badgePills.length > 0 && (
@@ -963,13 +992,13 @@ const BooleanSearchInput = ({
                       top: `${menuStyle.arrowTop}px`,
                       left: `${menuStyle.arrowLeft ?? 0}px`,
                       transform: menuPlacement === "bottom" ? "translateX(-50%) rotate(180deg)" : "translateX(-50%)",
-                      width: "48px",
-                      height: "12px",
+                      width: "10px",
+                      height: "20px",
                       backgroundColor: "#ffffff",
                       zIndex: 10001,
                       pointerEvents: "none",
-                    WebkitMaskImage: `url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0.500009 1C3.5 1 3.00001 7 6.00001 7C9 7 8.5 1 11.5 1C12 1 12 0.5 12 0H0C0 0.5 0 1 0.500009 1Z' fill='white'/%3E%3C/svg%3E")`,
-                    maskImage: `url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0.500009 1C3.5 1 3.00001 7 6.00001 7C9 7 8.5 1 11.5 1C12 1 12 0.5 12 0H0C0 0.5 0 1 0.500009 1Z' fill='white'/%3E%3C/svg%3E")`,
+                    WebkitMaskImage: `url("data:image/svg+xml,%3Csvg width='10' height='20' viewBox='0 0 10 20' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0H10C7.8 0 6.8 2.2 6.2 7.3L5.2 19.2C5.1 19.8 4.9 19.8 4.8 19.2L3.8 7.3C3.2 2.2 2.2 0 0 0Z' fill='white'/%3E%3C/svg%3E")`,
+                    maskImage: `url("data:image/svg+xml,%3Csvg width='10' height='20' viewBox='0 0 10 20' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0H10C7.8 0 6.8 2.2 6.2 7.3L5.2 19.2C5.1 19.8 4.9 19.8 4.8 19.2L3.8 7.3C3.2 2.2 2.2 0 0 0Z' fill='white'/%3E%3C/svg%3E")`,
                     WebkitMaskRepeat: "no-repeat",
                     maskRepeat: "no-repeat",
                     WebkitMaskSize: "contain",
