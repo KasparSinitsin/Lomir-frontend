@@ -34,7 +34,7 @@ import {
   SlidersHorizontal,
   UserPlus,
   UserMinus,
-  Ruler,
+  Radius,
   MapPin,
   Globe,
   Target,
@@ -528,7 +528,7 @@ const SearchPage = () => {
       value: "locationPriority",
       sortValue: "proximity",
       defaultDir: "asc",
-      labelAsc: "Nearest First",
+      labelAsc: "Nearest",
       labelRemote: "Remote First",
       shortLabelAsc: "Near 1st",
       shortLabelRemote: "Remote 1st",
@@ -545,7 +545,7 @@ const SearchPage = () => {
       labelAsc: "Distance",
       shortLabelAsc: "Distance",
       tooltipAsc: "Filter results by distance from your location",
-      iconAsc: Ruler,
+      iconAsc: Radius,
     },
     {
       value: "capacity",
@@ -2218,11 +2218,8 @@ const SearchPage = () => {
                             <FilterSortOptionButton
                               onClick={handleIncludeOwnTeamsToggle}
                               icon={IncludeOwnTeamsIcon}
-                              label={
-                                effectiveIncludeOwnTeams
-                                  ? "+ My Teams"
-                                  : "- My Teams"
-                              }
+                              prefix={effectiveIncludeOwnTeams ? "+" : "-"}
+                              label="My Teams"
                               active={!effectiveIncludeOwnTeams}
                               disabled={loading}
                               aria-label={
@@ -2254,10 +2251,9 @@ const SearchPage = () => {
                               setCurrentPage(1);
                             }}
                             icon={FlaskConical}
-                            label={
-                              includeDemoData ? "+ Demo Data" : "- Demo Data"
-                            }
-                            mobileLabel={includeDemoData ? "+ Demo" : "- Demo"}
+                            prefix={includeDemoData ? "+" : "-"}
+                            label="Demo Data"
+                            mobileLabel="Demo"
                             active={!includeDemoData}
                             disabled={loading}
                             aria-label={

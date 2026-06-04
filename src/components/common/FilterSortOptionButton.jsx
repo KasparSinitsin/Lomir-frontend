@@ -14,6 +14,7 @@ const FilterSortOptionButton = React.forwardRef(
       icon: Icon,
       label,
       mobileLabel,
+      prefix = null,
       active = false,
       className = "",
       iconClassName = "",
@@ -24,6 +25,9 @@ const FilterSortOptionButton = React.forwardRef(
     ref,
   ) => {
     const hasResponsiveLabel = mobileLabel && mobileLabel !== label;
+    const iconNode = Icon ? (
+      <Icon className={`${ICON_CLASS_NAME} ${iconClassName}`.trim()} />
+    ) : null;
 
     return (
       <button
@@ -34,8 +38,13 @@ const FilterSortOptionButton = React.forwardRef(
         } ${className}`}
         {...buttonProps}
       >
-        {Icon && (
-          <Icon className={`${ICON_CLASS_NAME} ${iconClassName}`.trim()} />
+        {prefix ? (
+          <span className="inline-flex items-center gap-px">
+            <span className="leading-none">{prefix}</span>
+            {iconNode}
+          </span>
+        ) : (
+          iconNode
         )}
         {children ??
           (hasResponsiveLabel ? (
