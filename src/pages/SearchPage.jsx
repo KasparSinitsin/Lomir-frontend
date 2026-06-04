@@ -284,6 +284,7 @@ const SearchPage = () => {
         cat.tags?.forEach((tag) => {
           lookup[Number(tag.id)] = {
             ...tag,
+            category: cat.name,
             supercategory: supercat.name,
           };
         });
@@ -291,6 +292,20 @@ const SearchPage = () => {
     });
     return lookup;
   }, [structuredTags]);
+
+  const resolveTagWithTaxonomy = useCallback(
+    (tag) => {
+      const id = Number(tag?.id ?? tag?.tag_id ?? tag?.tagId);
+      if (!Number.isFinite(id)) return tag;
+
+      return {
+        ...structuredTagLookup[id],
+        ...tag,
+        id,
+      };
+    },
+    [structuredTagLookup],
+  );
 
   // ===== SORTING STATE =====
   const [sortBy, setSortBy] = useState(() => {
@@ -1047,6 +1062,8 @@ const SearchPage = () => {
     key: `tag-${id}`,
     id,
     label: filterTagMap[id]?.name || `Tag ${id}`,
+    category: filterTagMap[id]?.category || "",
+    supercategory: filterTagMap[id]?.supercategory || "",
   }));
 
   const badgePills = filterBadgeIds
@@ -1212,6 +1229,44 @@ const SearchPage = () => {
     });
     setFilterTagMap(map);
   }, [location.search, structuredTagLookup]);
+
+  useEffect(() => {
+    if (
+      filterTagIds.length === 0 ||
+      Object.keys(structuredTagLookup).length === 0
+    ) {
+      return;
+    }
+
+    setFilterTagMap((prev) => {
+      let changed = false;
+      const next = { ...prev };
+
+      filterTagIds.forEach((id) => {
+        const taxonomyTag = structuredTagLookup[id];
+        if (!taxonomyTag) return;
+
+        const current = next[id];
+        if (
+          current?.category === taxonomyTag.category &&
+          current?.supercategory === taxonomyTag.supercategory
+        ) {
+          return;
+        }
+
+        next[id] = {
+          ...taxonomyTag,
+          ...current,
+          id,
+          category: current?.category || taxonomyTag.category,
+          supercategory: current?.supercategory || taxonomyTag.supercategory,
+        };
+        changed = true;
+      });
+
+      return changed ? next : prev;
+    });
+  }, [filterTagIds, structuredTagLookup]);
 
   useEffect(() => {
     if (!showSortDropdown) {
@@ -1618,10 +1673,11 @@ const SearchPage = () => {
   };
 
   const handleAddTagFilter = (tag) => {
-    const id = Number(tag.id);
-    if (filterTagIds.includes(id)) return;
+    const id = Number(tag?.id ?? tag?.tag_id ?? tag?.tagId);
+    if (!Number.isFinite(id) || filterTagIds.includes(id)) return;
+    const resolvedTag = resolveTagWithTaxonomy(tag);
     setFilterTagIds((prev) => [...prev, id]);
-    setFilterTagMap((prev) => ({ ...prev, [id]: tag }));
+    setFilterTagMap((prev) => ({ ...prev, [id]: resolvedTag }));
     setCurrentPage(1);
   };
 
@@ -1666,6 +1722,7 @@ const SearchPage = () => {
 
       const tags = (Array.isArray(rawTags) ? rawTags : rawTags?.data || [])
         .filter((t) => !filterTagIds.includes(Number(t.id)))
+        .map(resolveTagWithTaxonomy)
         .slice(0, 8);
 
       const q = trimmed.toLowerCase();
@@ -1679,7 +1736,7 @@ const SearchPage = () => {
 
       return { tags, badges };
     },
-    [allBadges, filterTagIds, filterBadgeIds],
+    [allBadges, filterTagIds, filterBadgeIds, resolveTagWithTaxonomy],
   );
 
   const handleActivePillRemove = (pillKey) => {
