@@ -619,18 +619,19 @@ const BooleanSearchInput = ({
         : {}),
   };
   const pillBaseClassName =
-    "inline-grid h-[1.375rem] grid-cols-[0.625rem_minmax(0,auto)_0.625rem] items-center gap-1 rounded-lg px-2.5 py-0 text-xs font-medium leading-[1.1] transition-opacity hover:opacity-80";
+    "inline-grid min-h-[1.375rem] max-w-full grid-cols-[0.625rem_minmax(0,1fr)_0.625rem] items-start gap-1 rounded-lg px-[5px] py-[3px] text-xs font-medium leading-[1.1] transition-opacity hover:opacity-80";
   const advancedIndicatorClassName = isCompactLayout
     ? "inline-flex h-3.5 w-3.5 items-center justify-center rounded-full p-0 text-[0.625rem] font-medium leading-none text-white transition-opacity hover:opacity-80"
     : "inline-flex h-[1.125rem] items-center justify-center rounded-lg px-2 py-0 text-xs font-medium leading-[1.1] text-white transition-opacity hover:opacity-80";
   const pillIconClassName =
-    "flex h-2.5 w-2.5 items-center justify-center overflow-hidden [&>svg]:h-2.5 [&>svg]:w-2.5 [&>svg]:shrink-0";
+    "mt-[0.0625rem] flex h-2.5 w-2.5 items-center justify-center overflow-hidden [&>svg]:h-2.5 [&>svg]:w-2.5 [&>svg]:shrink-0";
   const pillSvgClassName = "h-2.5 w-2.5";
-  const pillLabelClassName = "min-w-0 whitespace-nowrap text-left leading-[1.1]";
+  const pillLabelClassName =
+    "min-w-0 max-w-full whitespace-normal break-words text-left leading-[1.1] [overflow-wrap:anywhere]";
   const pillCloseClassName =
-    "flex h-2.5 w-2.5 items-center justify-center overflow-hidden [&>svg]:h-2.5 [&>svg]:w-2.5 [&>svg]:shrink-0";
+    "mt-[0.0625rem] flex h-2.5 w-2.5 items-center justify-center overflow-hidden [&>svg]:h-2.5 [&>svg]:w-2.5 [&>svg]:shrink-0";
   const pillTooltipClassName =
-    "inline-flex z-10 hover:z-[500] focus-within:z-[500]";
+    "inline-flex max-w-full min-w-0 z-10 hover:z-[500] focus-within:z-[500]";
   const renderPillTooltipContent = (Icon, filterName, removeAction) => (
     <span className="inline-flex flex-wrap items-center gap-y-0.5">
       <span>{getRemoveActionParts(removeAction).firstWord}</span>
@@ -724,7 +725,7 @@ const BooleanSearchInput = ({
       : null;
     const pillSign = labelParts.sign || shortLabelParts?.sign;
     const criteriaPillClassName = `${pillBaseClassName}${
-      pillSign ? " grid-cols-[auto_minmax(0,auto)_0.625rem]" : ""
+      pillSign ? " grid-cols-[auto_minmax(0,1fr)_0.625rem]" : ""
     }`;
     const renderLeadingIcon = (iconNode, ariaHidden = false) => (
       <span

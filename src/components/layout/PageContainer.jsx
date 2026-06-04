@@ -28,7 +28,7 @@ const PageContainer = ({
           <div className="flex flex-col sm:flex-row sm:items-start justify-between mb-6">
             <div className={titleAlignment === "center" ? "w-full text-center" : ""}>
               {title && (
-                <h1 className="text-2xl sm:text-3xl font-medium text-primary mb-1">
+                <h1 className="text-2xl sm:text-3xl font-medium leading-[110%] text-primary mb-1">
                   {title}
                 </h1>
               )}
