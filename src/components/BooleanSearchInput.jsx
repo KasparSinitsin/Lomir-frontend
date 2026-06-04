@@ -120,6 +120,11 @@ const getCriteriaPillIcon = (pill) => {
   }
 };
 
+const getFocusAreaPillIcon = (pill) =>
+  SUPERCATEGORY_ICONS[pill.supercategory] ||
+  SUPERCATEGORY_ICONS[pill.category] ||
+  Layers;
+
 const getCriteriaFilterType = (pill) => {
   if (pill.type === "role") return "searchTerm";
   if (pill.key === "sort") return "sort";
@@ -614,16 +619,19 @@ const BooleanSearchInput = ({
         : {}),
   };
   const pillBaseClassName =
-    "inline-grid grid-cols-[0.625rem_minmax(0,auto)_0.625rem] items-start gap-1 rounded-lg px-2.5 py-[0.1875rem] text-xs font-medium leading-[1.1] transition-opacity hover:opacity-80";
+    "inline-grid min-h-[1.375rem] max-w-full grid-cols-[0.625rem_minmax(0,1fr)_0.625rem] items-start gap-1 rounded-lg px-[5px] py-[3px] text-xs font-medium leading-[1.1] transition-opacity hover:opacity-80";
   const advancedIndicatorClassName = isCompactLayout
     ? "inline-flex h-3.5 w-3.5 items-center justify-center rounded-full p-0 text-[0.625rem] font-medium leading-none text-white transition-opacity hover:opacity-80"
     : "inline-flex h-[1.125rem] items-center justify-center rounded-lg px-2 py-0 text-xs font-medium leading-[1.1] text-white transition-opacity hover:opacity-80";
-  const pillIconClassName = "flex h-[1.1em] w-2.5 items-center justify-center";
+  const pillIconClassName =
+    "mt-[0.0625rem] flex h-2.5 w-2.5 items-center justify-center overflow-hidden [&>svg]:h-2.5 [&>svg]:w-2.5 [&>svg]:shrink-0";
   const pillSvgClassName = "h-2.5 w-2.5";
-  const pillLabelClassName = "min-w-0 text-left leading-[1.1]";
-  const pillCloseClassName = "flex h-[1.1em] w-2.5 items-center justify-center";
+  const pillLabelClassName =
+    "min-w-0 max-w-full whitespace-normal break-words text-left leading-[1.1] [overflow-wrap:anywhere]";
+  const pillCloseClassName =
+    "mt-[0.0625rem] flex h-2.5 w-2.5 items-center justify-center overflow-hidden [&>svg]:h-2.5 [&>svg]:w-2.5 [&>svg]:shrink-0";
   const pillTooltipClassName =
-    "inline-flex z-10 hover:z-[500] focus-within:z-[500]";
+    "inline-flex max-w-full min-w-0 z-10 hover:z-[500] focus-within:z-[500]";
   const renderPillTooltipContent = (Icon, filterName, removeAction) => (
     <span className="inline-flex flex-wrap items-center gap-y-0.5">
       <span>{getRemoveActionParts(removeAction).firstWord}</span>
@@ -691,10 +699,19 @@ const BooleanSearchInput = ({
     });
 
   const renderFocusAreaPill = (pill) => {
+    const FocusAreaIcon = getFocusAreaPillIcon(pill);
+
     return renderColoredFilterPill({
       pill,
       color: FOCUS_GREEN,
-      icon: <Tag size={10} strokeWidth={3} className={pillSvgClassName} />,
+      icon: (
+        <FocusAreaIcon
+          size={10}
+          strokeWidth={3}
+          className={pillSvgClassName}
+          aria-hidden="true"
+        />
+      ),
       onRemove: onRemoveFocusAreaPill,
       TooltipIcon: Tag,
       removeAction: "Remove Focus Area",
@@ -708,7 +725,7 @@ const BooleanSearchInput = ({
       : null;
     const pillSign = labelParts.sign || shortLabelParts?.sign;
     const criteriaPillClassName = `${pillBaseClassName}${
-      pillSign ? " grid-cols-[auto_minmax(0,auto)_0.625rem]" : ""
+      pillSign ? " grid-cols-[auto_minmax(0,1fr)_0.625rem]" : ""
     }`;
     const renderLeadingIcon = (iconNode, ariaHidden = false) => (
       <span
@@ -765,10 +782,16 @@ const BooleanSearchInput = ({
             className={`${criteriaPillClassName} border border-amber-400 bg-amber-50 text-amber-700 transition-colors hover:border-amber-500 hover:bg-amber-100 hover:opacity-100`}
             aria-label={ariaLabel}
           >
-            {renderLeadingIcon(<UserSearch size={12} className={pillSvgClassName} />)}
+            {renderLeadingIcon(
+              <UserSearch
+                size={10}
+                strokeWidth={3}
+                className={pillSvgClassName}
+              />,
+            )}
             {pillLabelNode}
             <span className={pillCloseClassName} aria-hidden="true">
-              <X size={10} strokeWidth={2.5} className={pillSvgClassName} />
+              <X size={10} strokeWidth={3} className={pillSvgClassName} />
             </span>
           </button>
         </Tooltip>
@@ -788,10 +811,12 @@ const BooleanSearchInput = ({
             className={`${criteriaPillClassName} border border-slate-400 bg-slate-50 text-slate-600 transition-colors hover:border-slate-500 hover:bg-slate-100 hover:opacity-100`}
             aria-label={ariaLabel}
           >
-            {renderLeadingIcon(<Users size={12} className={pillSvgClassName} />)}
+            {renderLeadingIcon(
+              <Users size={10} strokeWidth={3} className={pillSvgClassName} />,
+            )}
             {pillLabelNode}
             <span className={pillCloseClassName} aria-hidden="true">
-              <X size={10} strokeWidth={2.5} className={pillSvgClassName} />
+              <X size={10} strokeWidth={3} className={pillSvgClassName} />
             </span>
           </button>
         </Tooltip>
@@ -814,8 +839,8 @@ const BooleanSearchInput = ({
           {renderLeadingIcon(
             CriteriaIcon ? (
               <CriteriaIcon
-                size={12}
-                strokeWidth={2.5}
+                size={10}
+                strokeWidth={3}
                 className={pillSvgClassName}
               />
             ) : null,
@@ -823,7 +848,7 @@ const BooleanSearchInput = ({
           )}
           {pillLabelNode}
           <span className={pillCloseClassName} aria-hidden="true">
-            <X size={10} strokeWidth={2.5} className={pillSvgClassName} />
+            <X size={10} strokeWidth={3} className={pillSvgClassName} />
           </span>
         </button>
       </Tooltip>
