@@ -6,6 +6,7 @@ import Button from "../components/common/Button";
 import TeamCard from "../components/teams/TeamCard";
 import Section from "../components/layout/Section";
 import Pagination from "../components/common/Pagination";
+import FilterSortOptionButton from "../components/common/FilterSortOptionButton";
 import ResultViewToggle from "../components/common/ResultViewToggle";
 import { teamService } from "../services/teamService";
 import useSocketEvents from "../hooks/useSocketEvents";
@@ -603,49 +604,42 @@ const MyTeams = () => {
     <PageContainer title="My Teams" action={CreateTeamAction} variant="muted">
       <div className="flex flex-wrap items-center justify-between gap-y-0.5 mb-6">
         <div className="flex flex-wrap items-center gap-1 -ml-2">
-          <button
-            type="button"
+          <FilterSortOptionButton
             onClick={() => handleSortChange("name")}
-            className={`flex items-center gap-1 px-1 text-xs rounded transition-colors shrink-0 ${
-              sortBy === "name"
-                ? "text-[var(--color-primary)] font-bold"
-                : "text-[var(--color-primary-focus)]/70 hover:text-[var(--color-primary-focus)] hover:font-medium"
-            }`}
-          >
-            {sortDir === "desc" && sortBy === "name" ? (
-              <ArrowUpZA className="w-3.5 h-3.5 shrink-0" />
-            ) : (
-              <ArrowDownAZ className="w-3.5 h-3.5 shrink-0" />
-            )}
-            {sortBy === "name" && sortDir === "desc" ? "Z-A" : "A-Z"}
-          </button>
-          <button
-            type="button"
+            icon={
+              sortDir === "desc" && sortBy === "name"
+                ? ArrowUpZA
+                : ArrowDownAZ
+            }
+            label={sortBy === "name" && sortDir === "desc" ? "Z-A" : "A-Z"}
+            active={sortBy === "name"}
+          />
+          <FilterSortOptionButton
             onClick={() => handleSortChange("recent")}
-            className={`flex items-center gap-1 px-1 text-xs rounded transition-colors shrink-0 ${
-              sortBy === "recent"
-                ? "text-[var(--color-primary)] font-bold"
-                : "text-[var(--color-primary-focus)]/70 hover:text-[var(--color-primary-focus)] hover:font-medium"
-            }`}
-          >
-            <Clock className="w-3.5 h-3.5 shrink-0" />
-            {sortBy === "recent" && sortDir === "asc" ? "Inactive" : "Active"}
-          </button>
-          <button
-            type="button"
+            icon={Clock}
+            label={
+              sortBy === "recent" && sortDir === "asc"
+                ? "Inactive"
+                : "Active"
+            }
+            active={sortBy === "recent"}
+          />
+          <FilterSortOptionButton
             onClick={() => handleSortChange("newest")}
-            className={`flex items-center gap-1 px-1 text-xs rounded transition-colors shrink-0 ${
-              sortBy === "newest"
-                ? "text-[var(--color-primary)] font-bold"
-                : "text-[var(--color-primary-focus)]/70 hover:text-[var(--color-primary-focus)] hover:font-medium"
-            }`}
-          >
-            <Sparkles className="w-3.5 h-3.5 shrink-0" />
-            {sortBy === "newest" && sortDir === "asc" ? "Oldest" : "Newest"}
-          </button>
+            icon={Sparkles}
+            label={
+              sortBy === "newest" && sortDir === "asc" ? "Oldest" : "Newest"
+            }
+            active={sortBy === "newest"}
+          />
         </div>
 
-        <ResultViewToggle value={resultView} onChange={setResultView} />
+        <ResultViewToggle
+          value={resultView}
+          onChange={setResultView}
+          align="responsive-start"
+          className="-ml-2 sm:ml-0"
+        />
       </div>
 
       {/* Pending Invitations Section */}

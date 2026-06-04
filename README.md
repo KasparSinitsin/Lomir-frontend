@@ -26,10 +26,10 @@ Contact the project owner for a demo login, or register a new account with a val
 
 ## Features
 
-- **Search & Discovery** — Find teams, users, and vacant roles by keyword, tags, badges, or location; toggle between list view and interactive map view
+- **Search & Discovery** — Find teams, users, and vacant roles by keyword, tags, badges, or location; use Boolean search helpers, responsive filter/sort controls, and shared card/mini/list/map view toggles
 - **Best Match Sorting** — Weighted matching algorithm scores teams and roles against your profile (tags 40%, badges 30%, distance 30%)
 - **Map View** — Leaflet-powered map with custom markers for teams, users, and roles; popups with detail cards; distance-based filtering and proximity sorting
-- **Team Management** — Create teams, manage members and roles, post vacant roles, handle applications and invitations with role-specific targeting; action buttons for already-filled or closed roles are disabled with status-aware tooltips; role cards update in real time while modals are open
+- **Team Management** — Create teams, manage members and roles, post vacant roles, handle applications and invitations with role-specific targeting; My Teams uses the same responsive sort and result-view controls as search
 - **User Profiles** — Customizable profiles with interest tags, badges, avatar uploads (ImageKit), and geocoded location
 - **Real-Time Chat** — Direct and team group messaging with typing indicators, read receipts, file/image sharing, @mentions, reply threading, and rich system event messages (Socket.IO)
 - **Badge System** — Browse 30 badges across 5 color-coded categories; award badges to teammates with reasons and team context
@@ -160,6 +160,7 @@ Lomir-frontend/
 │   │   ├── search/                 # SearchMapView (Leaflet map with markers/popups)
 │   │   ├── common/                 # Shared UI: Button, Card, Modal, Alert, Pagination,
 │   │   │                           #   ImageUploader, LocationInput, TurnstileWidget,
+│   │   │                           #   FilterSortOptionButton, ResultViewToggle,
 │   │   │                           #   PersonRequestCard, RequestListModal, Tooltip...
 │   │   └── layout/                 # Navbar, Footer, PageContainer, Grid, Section
 │   ├── contexts/
@@ -232,8 +233,8 @@ Lomir-frontend/
 | Route | Page | Description |
 |---|---|---|
 | `/` | Landing Page | Public homepage with feature overview |
-| `/search` | Search | Find teams, users, and roles; list/map toggle; advanced filtering by tags, badges, distance |
-| `/teams/my-teams` | My Teams | Teams you belong to, pending invitations and applications |
+| `/search` | Search | Find teams, users, and roles; Boolean search input; shared result-view toggle; advanced filtering by tags, badges, distance |
+| `/teams/my-teams` | My Teams | Teams you belong to, pending invitations and applications; shared sort and result-view controls |
 | `/profile` | Profile | Edit your profile, tags, avatar, and location |
 | `/profile/:id` | Public Profile | View any user's profile; shows placeholder for deleted/missing users |
 | `/chat` | Chat | Direct messages and team group chat with file/image sharing, @mentions, and reply threading |
@@ -249,6 +250,8 @@ The search page supports multiple sort and filter modes:
 **Sort options:** Name (A–Z / Z–A), Newest, Recently updated, Best Match, Proximity (nearest / remote first), Capacity (member slots or open roles)
 
 **Filter options:** Filter by tags, filter by badges, distance radius, open roles only, exclude teams you're already in, include/exclude demo data
+
+**Responsive controls:** Search and My Teams share `FilterSortOptionButton` for compact sort/filter toolbar actions and `ResultViewToggle` for card, mini-card, list, and map/list view modes. These controls keep icon size, active state styling, spacing, and narrow-viewport alignment consistent across both pages.
 
 **Best Match scoring** uses the backend matching engine (tag overlap 40%, badge overlap 30%, distance 30%) and falls back to client-side profile overlap calculations when backend scores aren't available.
 

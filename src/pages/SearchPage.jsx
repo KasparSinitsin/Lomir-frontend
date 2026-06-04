@@ -18,6 +18,7 @@ import SearchMapView from "../components/search/SearchMapView";
 import Pagination from "../components/common/Pagination";
 import BooleanSearchInput from "../components/BooleanSearchInput";
 import Tooltip from "../components/common/Tooltip";
+import FilterSortOptionButton from "../components/common/FilterSortOptionButton";
 import ResultViewToggle from "../components/common/ResultViewToggle";
 import {
   User,
@@ -1763,13 +1764,6 @@ const SearchPage = () => {
     !includeDemoData ||
     (sortBy === "capacity" && capacityMode !== "spots") ||
     (customDistanceInput && customDistanceInput.trim() !== "");
-  const hasSearchInputContent =
-    searchQuery.trim() ||
-    activeCriteriaPills.length > 0 ||
-    focusAreaPills.length > 0 ||
-    badgePills.length > 0 ||
-    searchType !== "all";
-
   const isFilterOptionsActive =
     showFilterOptions ||
     maxDistance !== null ||
@@ -1794,24 +1788,18 @@ const SearchPage = () => {
         maxDistance,
       });
     const optionButton = (
-      <button
+      <FilterSortOptionButton
         ref={(node) => {
           sortButtonRefs.current[option.value] = node;
         }}
-        type="button"
         onClick={() => handleTopLevelSortOptionClick(option.value)}
-        className={`flex items-center gap-1 px-1 text-xs rounded transition-colors shrink-0 ${
-          isActive
-            ? "text-[var(--color-primary)] font-bold"
-            : "text-[var(--color-primary-focus)]/70 hover:text-[var(--color-primary-focus)] hover:font-medium"
-        }`}
+        icon={IconComponent}
+        label={label}
+        mobileLabel={shortLabel}
+        active={isActive}
         disabled={loading}
         aria-label={tooltip ? `${label} - ${tooltip}` : label}
-      >
-        <IconComponent className="w-3.5 h-3.5 shrink-0" />
-        <span className="hidden sm:inline">{label}</span>
-        <span className="sm:hidden">{shortLabel}</span>
-      </button>
+      />
     );
 
     return tooltip ? (
@@ -1834,23 +1822,17 @@ const SearchPage = () => {
       }
       wrapperClassName="inline-flex items-center shrink-0"
     >
-      <button
-        type="button"
+      <FilterSortOptionButton
         onClick={handleFilterOptionsToggle}
-        className={`flex items-center gap-1 px-1 text-xs rounded transition-colors shrink-0 ${
-          isFilterOptionsActive
-            ? "text-[var(--color-primary)] font-bold"
-            : "text-[var(--color-primary-focus)]/70 hover:text-[var(--color-primary-focus)] hover:font-medium"
-        }`}
+        icon={Filter}
+        label={showFilterOptions ? "Hide Filters:" : "Show Filters ..."}
+        mobileLabel={showFilterOptions ? "Hide Filters:" : "Filters ..."}
+        active={isFilterOptionsActive}
         disabled={loading}
         aria-label={
           showFilterOptions ? "Hide filter controls" : "Show filter controls"
         }
-      >
-        <Filter className="w-3.5 h-3.5 shrink-0" />
-        <span className="hidden sm:inline">{showFilterOptions ? "Hide Filters:" : "Show Filters ..."}</span>
-        <span className="sm:hidden">{showFilterOptions ? "Hide Filters:" : "Filters ..."}</span>
-      </button>
+      />
     </Tooltip>
   );
 
@@ -2051,7 +2033,7 @@ const SearchPage = () => {
     >
       <div className="w-full max-w-4xl mx-auto mb-8">
         <div className="relative z-20 flex justify-center space-x-2 pt-2 mb-2">
-          <div className="btn-group">
+          <div className="flex items-center gap-1">
             <button
               type="button"
               className={`btn btn-sm ${
@@ -2067,7 +2049,7 @@ const SearchPage = () => {
 
             <button
               type="button"
-              className={`btn btn-sm tooltip tooltip-top tooltip-lomir search-type-tooltip ${
+              className={`btn btn-sm !gap-0.5 tooltip tooltip-top tooltip-lomir search-type-tooltip ${
                 searchType === "teams"
                   ? "btn-primary"
                   : "btn-ghost hover:bg-base-200"
@@ -2077,13 +2059,13 @@ const SearchPage = () => {
               aria-pressed={searchType === "teams"}
               onClick={() => handleToggleChange("teams")}
             >
-              <Users2 className="w-4 h-4 sm:mr-1" aria-hidden="true" />
+              <Users2 className="w-4 h-4" aria-hidden="true" />
               <span className="sr-only sm:not-sr-only">Teams</span>
             </button>
 
             <button
               type="button"
-              className={`btn btn-sm tooltip tooltip-top tooltip-lomir search-type-tooltip ${
+              className={`btn btn-sm !gap-0.5 tooltip tooltip-top tooltip-lomir search-type-tooltip ${
                 searchType === "users"
                   ? "btn-primary"
                   : "btn-ghost hover:bg-base-200"
@@ -2093,13 +2075,13 @@ const SearchPage = () => {
               aria-pressed={searchType === "users"}
               onClick={() => handleToggleChange("users")}
             >
-              <User className="w-4 h-4 sm:mr-1" aria-hidden="true" />
+              <User className="w-4 h-4" aria-hidden="true" />
               <span className="sr-only sm:not-sr-only">People</span>
             </button>
 
             <button
               type="button"
-              className={`btn btn-sm tooltip tooltip-top tooltip-lomir search-type-tooltip ${
+              className={`btn btn-sm !gap-0.5 tooltip tooltip-top tooltip-lomir search-type-tooltip ${
                 searchType === "roles"
                   ? "btn-primary"
                   : "btn-ghost hover:bg-base-200"
@@ -2109,7 +2091,7 @@ const SearchPage = () => {
               aria-pressed={searchType === "roles"}
               onClick={() => handleToggleChange("roles")}
             >
-              <UserSearch className="w-4 h-4 sm:mr-1" aria-hidden="true" />
+              <UserSearch className="w-4 h-4" aria-hidden="true" />
               <span className="sr-only sm:not-sr-only">Open Roles</span>
             </button>
           </div>
@@ -2194,9 +2176,9 @@ const SearchPage = () => {
             </div>
 
             {showSortDropdown && (
-              <div className="mt-2 py-1 pl-7 sm:pl-9">
-                <div className="space-y-[6px]">
-                  <div className="flex flex-row flex-wrap items-start gap-x-3 gap-y-[6px]">
+              <div className="mt-1.5 py-0.5 pl-7 sm:mt-2 sm:py-1 sm:pl-9">
+                <div className="space-y-[3px] sm:space-y-[6px]">
+                  <div className="flex flex-row flex-wrap items-start gap-x-1 gap-y-[3px] sm:gap-x-3 sm:gap-y-[6px]">
                     <div
                       role="group"
                       aria-label="Sort options"
@@ -2209,7 +2191,7 @@ const SearchPage = () => {
                   </div>
 
                   {showFilterOptions && (
-                    <div className="flex flex-row flex-wrap items-start gap-x-3 gap-y-[6px]">
+                    <div className="flex flex-row flex-wrap items-start gap-x-1 gap-y-[3px] sm:gap-x-3 sm:gap-y-[6px]">
                       {renderFilterOptionsToggle()}
                       <div
                         role="group"
@@ -2233,28 +2215,22 @@ const SearchPage = () => {
                             }
                             wrapperClassName="inline-flex items-center shrink-0"
                           >
-                            <button
-                              type="button"
+                            <FilterSortOptionButton
                               onClick={handleIncludeOwnTeamsToggle}
-                              className={`flex items-center gap-1 px-1 text-xs rounded transition-colors shrink-0 ${
-                                !effectiveIncludeOwnTeams
-                                  ? "text-[var(--color-primary)] font-bold"
-                                  : "text-[var(--color-primary-focus)]/70 hover:text-[var(--color-primary-focus)] hover:font-medium"
-                              }`}
+                              icon={IncludeOwnTeamsIcon}
+                              label={
+                                effectiveIncludeOwnTeams
+                                  ? "+ My Teams"
+                                  : "- My Teams"
+                              }
+                              active={!effectiveIncludeOwnTeams}
                               disabled={loading}
                               aria-label={
                                 effectiveIncludeOwnTeams
                                   ? "Include My Teams"
                                   : "Exclude My Teams"
                               }
-                            >
-                              <IncludeOwnTeamsIcon className="w-3.5 h-3.5 shrink-0" />
-                              <span>
-                                {effectiveIncludeOwnTeams
-                                  ? "+ My Teams"
-                                  : "- My Teams"}
-                              </span>
-                            </button>
+                            />
                           </Tooltip>
                         </div>
                       )}
@@ -2272,32 +2248,24 @@ const SearchPage = () => {
                           }
                           wrapperClassName="inline-flex items-center shrink-0"
                         >
-                          <button
-                            type="button"
+                          <FilterSortOptionButton
                             onClick={() => {
                               setIncludeDemoData((prev) => !prev);
                               setCurrentPage(1);
                             }}
-                            className={`flex items-center gap-1 px-1 text-xs rounded transition-colors shrink-0 ${
-                              !includeDemoData
-                                ? "text-[var(--color-primary)] font-bold"
-                                : "text-[var(--color-primary-focus)]/70 hover:text-[var(--color-primary-focus)] hover:font-medium"
-                            }`}
+                            icon={FlaskConical}
+                            label={
+                              includeDemoData ? "+ Demo Data" : "- Demo Data"
+                            }
+                            mobileLabel={includeDemoData ? "+ Demo" : "- Demo"}
+                            active={!includeDemoData}
                             disabled={loading}
                             aria-label={
                               includeDemoData
                                 ? "Include test/demo profiles, roles and teams"
                                 : "Show only real users, roles and teams"
                             }
-                          >
-                            <FlaskConical className="w-3.5 h-3.5 shrink-0" />
-                            <span className="hidden sm:inline">
-                              {includeDemoData ? "+ Demo Data" : "- Demo Data"}
-                            </span>
-                            <span className="sm:hidden">
-                              {includeDemoData ? "+ Demo" : "- Demo"}
-                            </span>
-                          </button>
+                          />
                         </Tooltip>
                       </div>
                     </div>
@@ -2365,6 +2333,8 @@ const SearchPage = () => {
                   value={resultView}
                   onChange={setResultView}
                   modes={["card", "mini", "list", "map"]}
+                  align="responsive-start"
+                  className="-ml-1 sm:ml-0"
                 />
               </div>
 
