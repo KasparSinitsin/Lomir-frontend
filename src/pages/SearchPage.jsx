@@ -18,6 +18,7 @@ import SearchMapView from "../components/search/SearchMapView";
 import Pagination from "../components/common/Pagination";
 import BooleanSearchInput from "../components/BooleanSearchInput";
 import Tooltip from "../components/common/Tooltip";
+import ResultViewToggle from "../components/common/ResultViewToggle";
 import {
   User,
   UserSearch,
@@ -64,6 +65,7 @@ import {
   RESULTS_PER_PAGE_OPTIONS,
   DEFAULT_RESULTS_PER_PAGE,
 } from "../constants/pagination";
+import { CATEGORY_ORDER } from "../constants/badgeConstants";
 import {
   calculateDistanceKm,
   locationsHaveDifferentKnownParts,
@@ -83,6 +85,11 @@ const SORTING_OPTION_VALUES = new Set([
   "locationPriority",
 ]);
 const EMPTY_QUERY_ARRAY = [];
+
+const getBadgeCategoryOrder = (category) => {
+  const index = CATEGORY_ORDER.indexOf(category || "Other");
+  return index === -1 ? CATEGORY_ORDER.length : index;
+};
 
 const getFilterableDistanceKm = (item) => {
   const matchDetails = item?.matchDetails ?? item?.match_details ?? null;
@@ -253,6 +260,7 @@ const SearchPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [hasSearched, setHasSearched] = useState(false);
+  const [searchInputResetSignal, setSearchInputResetSignal] = useState(0);
   const viewerPendingRequestsQuery = useViewerPendingRequests(user?.id, {
     enabled: isAuthenticated,
   });
@@ -1020,12 +1028,19 @@ const SearchPage = () => {
     label: filterTagMap[id]?.name || `Tag ${id}`,
   }));
 
-  const badgePills = filterBadgeIds.map((id) => ({
-    key: `badge-${id}`,
-    id,
-    label: filterBadgeMap[id]?.name || `Badge ${id}`,
-    category: filterBadgeMap[id]?.category || "",
-  }));
+  const badgePills = filterBadgeIds
+    .map((id) => ({
+      key: `badge-${id}`,
+      id,
+      label: filterBadgeMap[id]?.name || `Badge ${id}`,
+      category: filterBadgeMap[id]?.category || "",
+    }))
+    .sort((a, b) => {
+      const categoryDiff =
+        getBadgeCategoryOrder(a.category) - getBadgeCategoryOrder(b.category);
+      if (categoryDiff !== 0) return categoryDiff;
+      return a.label.localeCompare(b.label);
+    });
   const activeCriteriaPills = getActiveCriteriaPills({
     sortBy,
     sortDir,
@@ -1376,7 +1391,12 @@ const SearchPage = () => {
     setOpenSubmenuKey(null);
   };
 
-  const handleResetSortFilters = () => {
+  const handleResetSearchInput = () => {
+    setSearchInputResetSignal((value) => value + 1);
+    setSearchQuery("");
+    setHasSearched(false);
+    setError(null);
+    setSearchType("all");
     setSortBy("name");
     setSortDir("asc");
     setMaxDistance(null);
@@ -1385,9 +1405,40 @@ const SearchPage = () => {
     setOpenRolesOnly(false);
     setIncludeOwnTeams(true);
     setIncludeDemoData(true);
+    setFilterTagIds([]);
+    setFilterTagMap({});
+    setFilterBadgeIds([]);
+    setFilterBadgeMap({});
+    setMatchRoleId(null);
+    setMatchRoleName(null);
+    setMatchRoleMaxDistanceKm(null);
+    setExcludeTeamId(null);
+    setExcludeTeamName(null);
     setOpenSubmenuKey(null);
     setShowFilterOptions(false);
     setCurrentPage(1);
+
+    const newParams = new URLSearchParams(window.location.search);
+    [
+      "type",
+      "sort",
+      "proximity",
+      "tags",
+      "badges",
+      "roleId",
+      "roleName",
+      "roleMaxDistanceKm",
+      "excludeTeamId",
+      "excludeTeamName",
+    ].forEach((param) => newParams.delete(param));
+    const nextSearch = newParams.toString();
+    window.history.replaceState(
+      {},
+      "",
+      nextSearch
+        ? `${window.location.pathname}?${nextSearch}`
+        : window.location.pathname,
+    );
   };
 
   const handleSortChange = (newSortBy) => {
@@ -1712,6 +1763,12 @@ const SearchPage = () => {
     !includeDemoData ||
     (sortBy === "capacity" && capacityMode !== "spots") ||
     (customDistanceInput && customDistanceInput.trim() !== "");
+  const hasSearchInputContent =
+    searchQuery.trim() ||
+    activeCriteriaPills.length > 0 ||
+    focusAreaPills.length > 0 ||
+    badgePills.length > 0 ||
+    searchType !== "all";
 
   const isFilterOptionsActive =
     showFilterOptions ||
@@ -1773,7 +1830,7 @@ const SearchPage = () => {
   const renderFilterOptionsToggle = () => (
     <Tooltip
       content={
-        showFilterOptions ? "Hide filter controls" : "Show filter controls"
+        showFilterOptions ? "Click to hide filters" : "Show filter controls"
       }
       wrapperClassName="inline-flex items-center shrink-0"
     >
@@ -1791,8 +1848,8 @@ const SearchPage = () => {
         }
       >
         <Filter className="w-3.5 h-3.5 shrink-0" />
-        <span className="hidden sm:inline">{showFilterOptions ? "Hide Filters" : "Show Filters ..."}</span>
-        <span className="sm:hidden">{showFilterOptions ? "Hide Filters" : "Filters ..."}</span>
+        <span className="hidden sm:inline">{showFilterOptions ? "Hide Filters:" : "Show Filters ..."}</span>
+        <span className="sm:hidden">{showFilterOptions ? "Hide Filters:" : "Filters ..."}</span>
       </button>
     </Tooltip>
   );
@@ -1983,12 +2040,17 @@ const SearchPage = () => {
   };
   return (
     <PageContainer
-      title="Search teams, people or open roles"
+      title={
+        <>
+          <span className="inline-block">Find teams, people</span>{" "}
+          <span className="inline-block">or open roles</span>
+        </>
+      }
       titleAlignment="center"
       variant="muted"
     >
       <div className="w-full max-w-4xl mx-auto mb-8">
-        <div className="flex justify-center space-x-2 pt-2 mb-2">
+        <div className="relative z-20 flex justify-center space-x-2 pt-2 mb-2">
           <div className="btn-group">
             <button
               type="button"
@@ -1997,6 +2059,7 @@ const SearchPage = () => {
                   ? "btn-primary"
                   : "btn-ghost hover:bg-base-200"
               }`}
+              aria-pressed={searchType === "all"}
               onClick={() => handleToggleChange("all")}
             >
               All
@@ -2004,48 +2067,57 @@ const SearchPage = () => {
 
             <button
               type="button"
-              className={`btn btn-sm ${
+              className={`btn btn-sm tooltip tooltip-top tooltip-lomir search-type-tooltip ${
                 searchType === "teams"
                   ? "btn-primary"
                   : "btn-ghost hover:bg-base-200"
               }`}
+              data-tip="Teams"
+              aria-label="Teams"
+              aria-pressed={searchType === "teams"}
               onClick={() => handleToggleChange("teams")}
             >
-              <Users2 className="w-4 h-4 mr-1" />
-              Teams
+              <Users2 className="w-4 h-4 sm:mr-1" aria-hidden="true" />
+              <span className="sr-only sm:not-sr-only">Teams</span>
             </button>
 
             <button
               type="button"
-              className={`btn btn-sm ${
+              className={`btn btn-sm tooltip tooltip-top tooltip-lomir search-type-tooltip ${
                 searchType === "users"
                   ? "btn-primary"
                   : "btn-ghost hover:bg-base-200"
               }`}
+              data-tip="People"
+              aria-label="People"
+              aria-pressed={searchType === "users"}
               onClick={() => handleToggleChange("users")}
             >
-              <User className="w-4 h-4 mr-1" />
-              People
+              <User className="w-4 h-4 sm:mr-1" aria-hidden="true" />
+              <span className="sr-only sm:not-sr-only">People</span>
             </button>
 
             <button
               type="button"
-              className={`btn btn-sm ${
+              className={`btn btn-sm tooltip tooltip-top tooltip-lomir search-type-tooltip ${
                 searchType === "roles"
                   ? "btn-primary"
                   : "btn-ghost hover:bg-base-200"
               }`}
+              data-tip="Open Roles"
+              aria-label="Open Roles"
+              aria-pressed={searchType === "roles"}
               onClick={() => handleToggleChange("roles")}
             >
-              <UserSearch className="w-4 h-4 mr-1" />
-              Open Roles
+              <UserSearch className="w-4 h-4 sm:mr-1" aria-hidden="true" />
+              <span className="sr-only sm:not-sr-only">Open Roles</span>
             </button>
           </div>
         </div>
 
         <div
           ref={sortFilterRef}
-          className="mx-auto w-full max-w-full px-2 sm:px-0"
+          className="mx-auto w-full max-w-full"
         >
           <div className="mx-auto w-full max-w-full sm:w-fit">
             <div className="flex w-full max-w-full items-center gap-2">
@@ -2059,7 +2131,7 @@ const SearchPage = () => {
                 <button
                   type="button"
                   onClick={handleSortDropdownToggle}
-                  className="shrink-0 rounded-lg p-2 transition-colors"
+                  className="shrink-0 rounded-lg p-0.5 sm:p-1 transition-colors"
                   aria-label={
                     showSortDropdown
                       ? "Hide Filtering & Sorting Options"
@@ -2067,7 +2139,7 @@ const SearchPage = () => {
                   }
                 >
                   <SlidersHorizontal
-                    className="w-5 h-5"
+                    className="w-4 h-4 sm:w-5 sm:h-5"
                     color={sortIconColor}
                   />
                 </button>
@@ -2084,6 +2156,13 @@ const SearchPage = () => {
                         ? "Matching results to your profile — type to narrow"
                         : "Try: hiking AND photography, or hiking NOT photography"
                   }
+                  compactPlaceholder={
+                    matchRoleId
+                      ? "Type to narrow results..."
+                      : sortBy === "match"
+                        ? "Type to narrow results..."
+                        : "Try: hiking AND photo"
+                  }
                   activePills={activeCriteriaPills}
                   onRemoveActivePill={handleActivePillRemove}
                   focusAreaPills={focusAreaPills}
@@ -2093,24 +2172,21 @@ const SearchPage = () => {
                   onSelectTagSuggestion={handleAddTagFilter}
                   onSelectBadgeSuggestion={handleAddBadgeFilter}
                   onSearchSuggestions={handleSearchSuggestions}
+                  resetSignal={searchInputResetSignal}
                   leftAdornment={
-                    isSortModified ? (
-                      <div className="transition-all duration-200 opacity-100 scale-100">
-                        <Tooltip content="Reset sorting and filters">
-                          <button
-                            type="button"
-                            onClick={handleResetSortFilters}
-                            className="shrink-0 rounded-lg p-0.5 transition-colors"
-                            aria-label="Reset sorting and filters"
-                          >
-                            <RotateCcw
-                              className="w-3.5 h-3.5"
-                              color="var(--color-primary-focus)"
-                            />
-                          </button>
-                        </Tooltip>
-                      </div>
-                    ) : null
+                    <Tooltip content="Clear search input">
+                      <button
+                        type="button"
+                        onClick={handleResetSearchInput}
+                        className="shrink-0 rounded-lg p-0.5 transition-colors hover:bg-base-200"
+                        aria-label="Clear search input"
+                      >
+                        <RotateCcw
+                          className="w-3.5 h-3.5"
+                          color="var(--color-primary-focus)"
+                        />
+                      </button>
+                    </Tooltip>
                   }
                   className="min-w-0 w-full sm:w-auto sm:max-w-full"
                 />
@@ -2118,7 +2194,7 @@ const SearchPage = () => {
             </div>
 
             {showSortDropdown && (
-              <div className="mt-2 py-1 pl-11">
+              <div className="mt-2 py-1 pl-7 sm:pl-9">
                 <div className="space-y-[6px]">
                   <div className="flex flex-row flex-wrap items-start gap-x-3 gap-y-[6px]">
                     <div
@@ -2264,8 +2340,8 @@ const SearchPage = () => {
         <div>
           {hasVisibleResults && (
             <section className="mb-8">
-              <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1 mb-4">
-                <h2 className="flex flex-wrap items-baseline gap-x-2 text-sm leading-[1.15] font-semibold">
+              <div className="flex flex-wrap items-start sm:items-center justify-between gap-x-4 gap-y-1 mb-4">
+                <h2 className="flex flex-wrap items-center gap-x-2 text-sm leading-[1.15] font-semibold">
                   <span className="whitespace-nowrap">
                     {searchType === "all" && "All"}
                     {searchType === "teams" && "Teams"}
@@ -2285,51 +2361,11 @@ const SearchPage = () => {
                   </span>
                 </h2>
 
-                <div className="flex flex-wrap items-center justify-end text-sm leading-[1.15] font-normal text-base-content/60 gap-1">
-                  <button
-                    type="button"
-                    aria-pressed={resultView === "card"}
-                    onClick={() => setResultView("card")}
-                    className={`pl-0 pr-2 rounded hover:text-base-content transition-colors ${
-                      resultView === "card" ? "font-bold text-base-content" : ""
-                    }`}
-                  >
-                    Card
-                  </button>
-                  <span className="text-base-content/30">|</span>
-                  <button
-                    type="button"
-                    aria-pressed={resultView === "mini"}
-                    onClick={() => setResultView("mini")}
-                    className={`px-2 rounded hover:text-base-content transition-colors ${
-                      resultView === "mini" ? "font-bold text-base-content" : ""
-                    }`}
-                  >
-                    Mini Card
-                  </button>
-                  <span className="text-base-content/30">|</span>
-                  <button
-                    type="button"
-                    aria-pressed={resultView === "list"}
-                    onClick={() => setResultView("list")}
-                    className={`px-2 rounded hover:text-base-content transition-colors ${
-                      resultView === "list" ? "font-bold text-base-content" : ""
-                    }`}
-                  >
-                    List
-                  </button>
-                  <span className="text-base-content/30">|</span>
-                  <button
-                    type="button"
-                    aria-pressed={resultView === "map"}
-                    onClick={() => setResultView("map")}
-                    className={`px-2 rounded hover:text-base-content transition-colors ${
-                      resultView === "map" ? "font-bold text-base-content" : ""
-                    }`}
-                  >
-                    Map
-                  </button>
-                </div>
+                <ResultViewToggle
+                  value={resultView}
+                  onChange={setResultView}
+                  modes={["card", "mini", "list", "map"]}
+                />
               </div>
 
               {resultView === "map" && (

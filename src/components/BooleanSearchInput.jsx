@@ -6,8 +6,27 @@ import {
   useLayoutEffect,
 } from "react";
 import { createPortal } from "react-dom";
-import { Tag, Award, UserSearch, Users, X, Layers } from "lucide-react";
+import {
+  Tag,
+  Award,
+  UserSearch,
+  Users,
+  X,
+  Layers,
+  ArrowDownAZ,
+  ArrowUpZA,
+  Clock,
+  FlaskConical,
+  Globe,
+  MapPin,
+  Ruler,
+  Sparkles,
+  Target,
+  UserMinus,
+  UserPlus,
+} from "lucide-react";
 import SearchHelp from "./SearchHelp";
+import Tooltip from "./common/Tooltip";
 import {
   getBadgeIcon,
   getCategoryIcon,
@@ -17,6 +36,7 @@ import {
   CATEGORY_COLORS,
   DEFAULT_COLOR,
   FOCUS_GREEN,
+  FOCUS_GREEN_DARK,
 } from "../constants/badgeConstants";
 
 const hexToRgba = (hex, alpha) => {
@@ -27,6 +47,66 @@ const hexToRgba = (hex, alpha) => {
 };
 
 const MIN_QUERY_HINT = "Enter at least 2 characters";
+const BOOLEAN_OPERATOR_SPLIT_PATTERN = /\b(?:AND|OR|NOT)\b/i;
+
+const cleanSuggestionSegment = (value) =>
+  value
+    .replace(/[()]/g, " ")
+    .replace(/^[\s"'-]+|[\s"')]+$/g, "")
+    .trim();
+
+const getSuggestionQuery = (value, cursorIndex = value.length) => {
+  const beforeCursor = value.slice(0, cursorIndex);
+  const segmentAtCursor = cleanSuggestionSegment(
+    beforeCursor.split(BOOLEAN_OPERATOR_SPLIT_PATTERN).pop() || "",
+  );
+
+  if (segmentAtCursor) return segmentAtCursor;
+
+  const fallbackSegments = value
+    .split(BOOLEAN_OPERATOR_SPLIT_PATTERN)
+    .map(cleanSuggestionSegment)
+    .filter(Boolean);
+
+  return fallbackSegments[fallbackSegments.length - 1] || "";
+};
+
+const getCriteriaPillIcon = (pill) => {
+  if (pill.key === "maxDistance") return Ruler;
+  if (pill.key === "openRolesOnly") return UserSearch;
+  if (pill.key === "includeOwnTeams") return Users;
+  if (pill.key === "includeDemoData") return FlaskConical;
+
+  if (pill.key !== "sort") return null;
+
+  switch (pill.label) {
+    case "Best Match":
+      return Target;
+    case "Name Z-A":
+      return ArrowUpZA;
+    case "Name A-Z":
+      return ArrowDownAZ;
+    case "Active":
+    case "Inactive":
+      return Clock;
+    case "Newest":
+    case "Oldest":
+      return Sparkles;
+    case "Most Spots":
+      return UserPlus;
+    case "Almost Full":
+      return UserMinus;
+    case "Most Open Roles":
+    case "Least Open Roles":
+      return UserSearch;
+    case "Remote First":
+      return Globe;
+    case "Nearest First":
+      return MapPin;
+    default:
+      return null;
+  }
+};
 
 /**
  * Enhanced Search Input with Boolean Search Support
@@ -42,6 +122,7 @@ const BooleanSearchInput = ({
   onSearch,
   initialQuery = "",
   placeholder = "Search teams and users...",
+  compactPlaceholder = null,
   className = "",
   activePills = [],
   onRemoveActivePill,
@@ -53,6 +134,7 @@ const BooleanSearchInput = ({
   onSelectTagSuggestion,
   onSelectBadgeSuggestion,
   leftAdornment = null,
+  resetSignal = 0,
 }) => {
   const [query, setQuery] = useState(initialQuery);
   const [hasBooleanOperators, setHasBooleanOperators] = useState(false);
@@ -66,6 +148,7 @@ const BooleanSearchInput = ({
 
   const inputRef = useRef(null);
   const fieldRef = useRef(null);
+  const searchHelpRef = useRef(null);
   const queryMeasureRef = useRef(null);
   const placeholderMeasureRef = useRef(null);
   const hintMeasureRef = useRef(null);
@@ -182,18 +265,26 @@ const BooleanSearchInput = ({
 
   const showMinQueryHint = query.trim().length > 0 && query.trim().length < 2;
   const hasLeftAdornment = Boolean(leftAdornment);
-  const leftAdornmentWidthPx = hasLeftAdornment ? 24 : 0;
   const minimumInputWidthPx = query.trim().length > 0 ? 132 : 180;
   const inputTextWidthPx = Math.max(
     minimumInputWidthPx,
     query.trim().length > 0
-      ? measuredTextWidths.query + 8
+      ? measuredTextWidths.query + 32
       : measuredTextWidths.placeholder + 12,
-  ) + leftAdornmentWidthPx;
+  );
 
   // Combined pill width calculations across all three groups
   const allPills = [...badgePills, ...focusAreaPills, ...activePills];
   const totalPillCount = allPills.length;
+  const hasVisibleLeftAdornment =
+    hasLeftAdornment &&
+    (query.trim().length > 0 ||
+      initialQuery.trim().length > 0 ||
+      totalPillCount > 0);
+  const showResetInTrailingControls =
+    hasVisibleLeftAdornment && hasBooleanOperators;
+  const topAdornmentWidthPx =
+    hasVisibleLeftAdornment && !showResetInTrailingControls ? 22 : 0;
   const pillsWidthPx = allPills.reduce(
     (sum, pill) => sum + pill.label.length * 8 + 28,
     0,
@@ -204,12 +295,19 @@ const BooleanSearchInput = ({
     totalPillCount > 0 ? pillsWidthPx + pillsGapPx + 8 : 0;
 
   const baseHelperWidthPx =
-    24 +
-    (hasBooleanOperators ? 72 : 0) +
-    (showMinQueryHint ? measuredTextWidths.hint + 8 : 0);
-  const fieldInsetsPx = baseHelperWidthPx + 28;
+    (showMinQueryHint ? measuredTextWidths.hint + 8 : 0) +
+    topAdornmentWidthPx;
+  const trailingIndicatorWidthPx = hasBooleanOperators
+    ? (isCompactLayout ? 20 : 42)
+    : 20;
+  const indicatorInRowPx =
+    trailingIndicatorWidthPx + (showResetInTrailingControls ? 26 : 0);
+  const sideControlsWidthPx = Math.max(baseHelperWidthPx, indicatorInRowPx);
+  const fieldInsetsPx = sideControlsWidthPx + 32;
   const fieldInsetsWithInlinePillsPx =
-    baseHelperWidthPx + inlinePillsWidthPx + 28;
+    Math.max(baseHelperWidthPx + inlinePillsWidthPx, indicatorInRowPx) + 28;
+  const desktopQueryWithPillsMinWidthPx =
+    !isCompactLayout && query.length > 0 && totalPillCount > 0 ? 400 : 0;
   const estimatedFieldMaxWidthPx = Math.max(
     320,
     Math.min(viewportWidth - 16, 896) - 128,
@@ -218,21 +316,30 @@ const BooleanSearchInput = ({
     inputTextWidthPx + fieldInsetsWithInlinePillsPx;
   const canInlinePills =
     totalPillCount > 0 &&
+    query.trim().length === 0 &&
+    !hasVisibleLeftAdornment &&
+    !hasBooleanOperators &&
     !isCompactLayout &&
     desiredSingleRowWidthPx <= estimatedFieldMaxWidthPx;
   const showInlinePills = canInlinePills;
   const showStackedPills = totalPillCount > 0 && !showInlinePills;
   const helperWidthPx =
     baseHelperWidthPx + (showInlinePills ? inlinePillsWidthPx : 0);
-  const fieldRightPaddingPx = showStackedPills
-    ? 48
-    : Math.max(48, helperWidthPx + 16);
+  const trailingControlsOffsetPx =
+    hasVisibleLeftAdornment && !showStackedPills && !isCompactLayout && !hasBooleanOperators
+      ? 30
+      : 0;
+  const fieldRightPaddingPx = Math.max(helperWidthPx, 12) + 8;
+  const textRowRightPaddingPx = isCompactLayout
+    ? 0
+    : indicatorInRowPx + trailingControlsOffsetPx + 8;
   const fieldWidthPx = Math.min(
     estimatedFieldMaxWidthPx,
     Math.max(
       inputTextWidthPx +
         (showInlinePills ? fieldInsetsWithInlinePillsPx : fieldInsetsPx),
       showStackedPills ? stackedPillsWidthPx + fieldInsetsPx : 0,
+      desktopQueryWithPillsMinWidthPx,
     ),
   );
 
@@ -254,9 +361,14 @@ const BooleanSearchInput = ({
   }, []);
 
   useEffect(() => {
+    if (suggestionsTimerRef.current) {
+      clearTimeout(suggestionsTimerRef.current);
+    }
     setQuery(initialQuery);
     setHasBooleanOperators(checkBooleanOperators(initialQuery));
-  }, [initialQuery, checkBooleanOperators]);
+    setSuggestions({ tags: [], badges: [] });
+    setShowDropdown(false);
+  }, [initialQuery, resetSignal, checkBooleanOperators]);
 
   useEffect(() => {
     const mediaQuery = window.matchMedia("(max-width: 639px)");
@@ -310,14 +422,17 @@ const BooleanSearchInput = ({
 
   const handleChange = (e) => {
     const value = e.target.value;
+    const cursorIndex = e.target.selectionStart ?? value.length;
     setQuery(value);
     setHasBooleanOperators(checkBooleanOperators(value));
 
     if (suggestionsTimerRef.current) clearTimeout(suggestionsTimerRef.current);
 
-    if (value.trim().length >= 2 && onSearchSuggestions) {
+    const suggestionQuery = getSuggestionQuery(value, cursorIndex);
+
+    if (suggestionQuery.length >= 2 && onSearchSuggestions) {
       suggestionsTimerRef.current = setTimeout(async () => {
-        const result = await onSearchSuggestions(value.trim());
+        const result = await onSearchSuggestions(suggestionQuery);
         const newSuggestions = result || { tags: [], badges: [] };
         setSuggestions(newSuggestions);
         const hasAny =
@@ -326,6 +441,30 @@ const BooleanSearchInput = ({
           0;
         setShowDropdown(hasAny);
       }, 300);
+    } else {
+      setSuggestions({ tags: [], badges: [] });
+      setShowDropdown(false);
+    }
+  };
+
+  const handleSuggestionRefresh = () => {
+    const value = inputRef.current?.value ?? query;
+    const cursorIndex = inputRef.current?.selectionStart ?? value.length;
+    const suggestionQuery = getSuggestionQuery(value, cursorIndex);
+
+    if (suggestionsTimerRef.current) clearTimeout(suggestionsTimerRef.current);
+
+    if (suggestionQuery.length >= 2 && onSearchSuggestions) {
+      suggestionsTimerRef.current = setTimeout(async () => {
+        const result = await onSearchSuggestions(suggestionQuery);
+        const newSuggestions = result || { tags: [], badges: [] };
+        setSuggestions(newSuggestions);
+        const hasAny =
+          (newSuggestions.tags?.length || 0) +
+            (newSuggestions.badges?.length || 0) >
+          0;
+        setShowDropdown(hasAny);
+      }, 150);
     } else {
       setSuggestions({ tags: [], badges: [] });
       setShowDropdown(false);
@@ -341,25 +480,72 @@ const BooleanSearchInput = ({
   };
 
   const handleKeyDown = (e) => {
-    if (e.key === "Enter") {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
       handleSubmit(e);
     } else if (e.key === "Escape") {
       setShowDropdown(false);
     }
   };
 
+  const resizeTextarea = useCallback(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    if (!el.value) {
+      el.style.height = "";
+      return;
+    }
+    el.style.height = "0";
+    el.style.height = `${el.scrollHeight}px`;
+  }, []);
+
+  useEffect(() => { resizeTextarea(); }, [query, resizeTextarea]);
+
+  useEffect(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    let prevWidth = el.offsetWidth;
+    const observer = new ResizeObserver((entries) => {
+      const newWidth = entries[0].contentRect.width;
+      if (newWidth !== prevWidth) {
+        prevWidth = newWidth;
+        resizeTextarea();
+      }
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [resizeTextarea]);
+
   const handleSelectTag = (tag) => {
     onSelectTagSuggestion?.(tag);
-    setQuery("");
-    setSuggestions({ tags: [], badges: [] });
-    setShowDropdown(false);
+    const nextSuggestions = {
+      tags: suggestions.tags.filter((item) => Number(item.id) !== Number(tag.id)),
+      badges: suggestions.badges,
+    };
+    setSuggestions(nextSuggestions);
+    setShowDropdown(
+      (nextSuggestions.tags?.length || 0) +
+        (nextSuggestions.badges?.length || 0) >
+        0,
+    );
+    requestAnimationFrame(() => inputRef.current?.focus());
   };
 
   const handleSelectBadge = (badge) => {
     onSelectBadgeSuggestion?.(badge);
-    setQuery("");
-    setSuggestions({ tags: [], badges: [] });
-    setShowDropdown(false);
+    const nextSuggestions = {
+      tags: suggestions.tags,
+      badges: suggestions.badges.filter(
+        (item) => Number(item.id) !== Number(badge.id),
+      ),
+    };
+    setSuggestions(nextSuggestions);
+    setShowDropdown(
+      (nextSuggestions.tags?.length || 0) +
+        (nextSuggestions.badges?.length || 0) >
+        0,
+    );
+    requestAnimationFrame(() => inputRef.current?.focus());
   };
 
   const rootClassName = isCompactLayout
@@ -393,98 +579,162 @@ const BooleanSearchInput = ({
         maxWidth: "100%",
         paddingRight: `${fieldRightPaddingPx}px`,
       };
-  const alignHelperToTopPillRow = showStackedPills;
-  const helperControlsClassName = alignHelperToTopPillRow
-    ? "absolute right-8 top-2 flex items-center gap-1 pointer-events-auto"
-    : "absolute right-8 top-1/2 -translate-y-1/2 flex items-center gap-1 pointer-events-auto";
-  const infoIconClassName = alignHelperToTopPillRow
-    ? "absolute right-2 top-2 flex items-center pointer-events-auto"
-    : "absolute inset-y-0 right-2 flex items-center pointer-events-auto";
+  const helperControlsClassName = "absolute right-2 top-2 flex items-center gap-1 pointer-events-auto";
+  const trailingControlsClassName = "absolute right-2 flex items-center gap-1 pointer-events-auto";
+  const trailingControlsStyle = {
+    bottom: isCompactLayout && hasBooleanOperators ? "0.625rem" : "0.5625rem",
+    ...(isCompactLayout && hasVisibleLeftAdornment
+      ? {
+          right:
+            hasBooleanOperators || showStackedPills ? "0.625rem" : "1.875rem",
+        }
+      : trailingControlsOffsetPx > 0
+        ? { right: "1.875rem" }
+        : {}),
+  };
+  const pillBaseClassName =
+    "inline-grid grid-cols-[0.625rem_minmax(0,auto)_0.625rem] items-start gap-1 rounded-lg px-2.5 py-[0.1875rem] text-xs font-medium leading-[1.1] transition-opacity hover:opacity-80";
+  const advancedIndicatorClassName = isCompactLayout
+    ? "inline-flex h-3.5 w-3.5 items-center justify-center rounded-full p-0 text-[0.625rem] font-medium leading-none text-white transition-opacity hover:opacity-80"
+    : "inline-flex h-[1.125rem] items-center justify-center rounded-lg px-2 py-0 text-xs font-medium leading-[1.1] text-white transition-opacity hover:opacity-80";
+  const pillIconClassName = "flex h-[1.1em] w-2.5 items-center justify-center";
+  const pillSvgClassName = "h-2.5 w-2.5";
+  const pillLabelClassName = "min-w-0 text-left leading-[1.1]";
+  const pillCloseClassName = "flex h-[1.1em] w-2.5 items-center justify-center";
+  const pillTooltipClassName =
+    "tooltip tooltip-top tooltip-lomir inline-flex z-10 hover:z-[500] focus-within:z-[500]";
 
-  const renderBadgePill = (pill) => {
-    const color = CATEGORY_COLORS[pill.category] || DEFAULT_COLOR;
+  const renderColoredFilterPill = ({ pill, color, icon, onRemove }) => {
+    const tooltipText = `Remove ${pill.label}`;
     return (
-      <button
+      <span
         key={pill.key}
-        type="button"
-        onClick={() => onRemoveBadgePill?.(pill.id)}
-        className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium transition-opacity hover:opacity-80"
-        style={{ backgroundColor: color, color: "white" }}
-        title={`Remove ${pill.label}`}
+        className={pillTooltipClassName}
+        data-tip={tooltipText}
       >
-        <span className="shrink-0">{getBadgeIcon(pill.label, "white", 10)}</span>
-        <span>{pill.label}</span>
-        <X size={10} />
-      </button>
+        <button
+          type="button"
+          onClick={() => onRemove?.(pill.id)}
+          className={pillBaseClassName}
+          style={{ backgroundColor: color, color: "white" }}
+          aria-label={tooltipText}
+        >
+          <span className={pillIconClassName}>{icon}</span>
+          <span className={pillLabelClassName}>{pill.label}</span>
+          <span className={pillCloseClassName}>
+            <X size={10} strokeWidth={3} className={pillSvgClassName} />
+          </span>
+        </button>
+      </span>
     );
   };
 
-  const renderFocusAreaPill = (pill) => (
-    <button
-      key={pill.key}
-      type="button"
-      onClick={() => onRemoveFocusAreaPill?.(pill.id)}
-      className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium transition-opacity hover:opacity-80"
-      style={{ backgroundColor: FOCUS_GREEN, color: "white" }}
-      title={`Remove ${pill.label}`}
-    >
-      <Tag size={10} className="shrink-0" />
-      <span>{pill.label}</span>
-      <X size={10} />
-    </button>
-  );
+  const renderBadgePill = (pill) =>
+    renderColoredFilterPill({
+      pill,
+      color: CATEGORY_COLORS[pill.category] || DEFAULT_COLOR,
+      icon: getBadgeIcon(pill.label, "white", 10, 3),
+      onRemove: onRemoveBadgePill,
+    });
+
+  const renderFocusAreaPill = (pill) => {
+    return renderColoredFilterPill({
+      pill,
+      color: FOCUS_GREEN,
+      icon: <Tag size={10} strokeWidth={3} className={pillSvgClassName} />,
+      onRemove: onRemoveFocusAreaPill,
+    });
+  };
 
   const renderCriteriaPill = (pill) => {
     const pillLabelNode = pill.shortLabel ? (
       <>
-        <span className="hidden sm:inline">{pill.label}</span>
-        <span className="sm:hidden">{pill.shortLabel}</span>
+        <span className={`hidden sm:inline ${pillLabelClassName}`}>{pill.label}</span>
+        <span className={`sm:hidden ${pillLabelClassName}`}>{pill.shortLabel}</span>
       </>
     ) : (
-      <span>{pill.label}</span>
+      <span className={pillLabelClassName}>{pill.label}</span>
     );
 
     if (pill.type === "role") {
+      const tooltipText = `Remove ${pill.removeLabel ?? pill.label}`;
       return (
-        <button
+        <span
           key={pill.key}
-          type="button"
-          onClick={() => onRemoveActivePill?.(pill.key)}
-          className="inline-flex items-center gap-1 rounded-full border border-amber-400 bg-amber-50 px-2 py-0.5 text-xs font-bold text-amber-700 transition-colors hover:border-amber-500 hover:bg-amber-100"
-          title={`Remove ${pill.label}`}
+          className={pillTooltipClassName}
+          data-tip={tooltipText}
         >
-          <UserSearch size={12} className="flex-shrink-0" />
-          {pillLabelNode}
-          <span aria-hidden="true">×</span>
-        </button>
+          <button
+            type="button"
+            onClick={() => onRemoveActivePill?.(pill.key)}
+            className={`${pillBaseClassName} border border-amber-400 bg-amber-50 text-amber-700 transition-colors hover:border-amber-500 hover:bg-amber-100 hover:opacity-100`}
+            aria-label={tooltipText}
+          >
+            <span className={pillIconClassName}>
+              <UserSearch size={12} className={pillSvgClassName} />
+            </span>
+            {pillLabelNode}
+            <span className={pillCloseClassName} aria-hidden="true">
+              <X size={10} strokeWidth={2.5} className={pillSvgClassName} />
+            </span>
+          </button>
+        </span>
       );
     }
     if (pill.type === "excludeTeam") {
+      const tooltipText = `Remove ${pill.removeLabel ?? pill.label}`;
       return (
-        <button
+        <span
           key={pill.key}
-          type="button"
-          onClick={() => onRemoveActivePill?.(pill.key)}
-          className="inline-flex items-center gap-1 rounded-full border border-slate-400 bg-slate-50 px-2 py-0.5 text-xs font-bold text-slate-600 transition-colors hover:border-slate-500 hover:bg-slate-100"
-          title={`Remove ${pill.label}`}
+          className={pillTooltipClassName}
+          data-tip={tooltipText}
         >
-          <Users size={12} className="flex-shrink-0" />
-          {pillLabelNode}
-          <span aria-hidden="true">×</span>
-        </button>
+          <button
+            type="button"
+            onClick={() => onRemoveActivePill?.(pill.key)}
+            className={`${pillBaseClassName} border border-slate-400 bg-slate-50 text-slate-600 transition-colors hover:border-slate-500 hover:bg-slate-100 hover:opacity-100`}
+            aria-label={tooltipText}
+          >
+            <span className={pillIconClassName}>
+              <Users size={12} className={pillSvgClassName} />
+            </span>
+            {pillLabelNode}
+            <span className={pillCloseClassName} aria-hidden="true">
+              <X size={10} strokeWidth={2.5} className={pillSvgClassName} />
+            </span>
+          </button>
+        </span>
       );
     }
+    const CriteriaIcon = getCriteriaPillIcon(pill);
+    const tooltipText = `Remove ${pill.removeLabel ?? pill.label}`;
     return (
-      <button
+      <span
         key={pill.key}
-        type="button"
-        onClick={() => onRemoveActivePill?.(pill.key)}
-        className="inline-flex items-center gap-1 rounded-full border border-[var(--color-primary)] bg-[#f0fdf4] px-2 py-0.5 text-xs font-bold text-[var(--color-primary)] transition-colors hover:border-[var(--color-primary-focus)] hover:bg-[#dcfce7] hover:text-[var(--color-primary-focus)]"
-        title={`Remove ${pill.label}`}
+        className={pillTooltipClassName}
+        data-tip={tooltipText}
       >
-        {pillLabelNode}
-        <span aria-hidden="true">x</span>
-      </button>
+        <button
+          type="button"
+          onClick={() => onRemoveActivePill?.(pill.key)}
+          className={`${pillBaseClassName} border border-[var(--color-primary)] bg-[#f0fdf4] text-[var(--color-primary)] transition-colors hover:border-[var(--color-primary-focus)] hover:bg-[#dcfce7] hover:text-[var(--color-primary-focus)] hover:opacity-100`}
+          aria-label={tooltipText}
+        >
+          <span className={pillIconClassName} aria-hidden="true">
+            {CriteriaIcon ? (
+              <CriteriaIcon
+                size={12}
+                strokeWidth={2.5}
+                className={pillSvgClassName}
+              />
+            ) : null}
+          </span>
+          {pillLabelNode}
+          <span className={pillCloseClassName} aria-hidden="true">
+            <X size={10} strokeWidth={2.5} className={pillSvgClassName} />
+          </span>
+        </button>
+      </span>
     );
   };
 
@@ -498,7 +748,7 @@ const BooleanSearchInput = ({
           <div className={fieldSlotClassName}>
             <div ref={fieldRef} className={fieldClassName} style={fieldStyle}>
               {showStackedPills && (
-                <div className="mb-1 flex flex-wrap gap-2">
+                <div className="mb-2.5 flex flex-wrap gap-2">
                   {badgePills.length > 0 && (
                     <div className="flex flex-wrap gap-1">
                       {badgePills.map(renderBadgePill)}
@@ -517,26 +767,45 @@ const BooleanSearchInput = ({
                 </div>
               )}
 
-              <div className="flex min-w-0 items-center gap-2">
-                {hasLeftAdornment && (
-                  <div className="shrink-0">{leftAdornment}</div>
-                )}
-
-                <input
+              <div className="flex min-w-0 items-end gap-2">
+                <textarea
                   ref={inputRef}
-                  type="text"
                   value={query}
                   onChange={handleChange}
+                  onFocus={handleSuggestionRefresh}
+                  onClick={handleSuggestionRefresh}
                   onKeyDown={handleKeyDown}
-                  placeholder={placeholder}
-                  className="min-w-0 flex-1 bg-transparent text-sm focus:outline-none"
+                  placeholder={isCompactLayout && compactPlaceholder ? compactPlaceholder : placeholder}
+                  className="min-w-0 flex-1 bg-transparent text-sm leading-[1.25] focus:outline-none px-0 py-0"
                   style={{
                     overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
+                    paddingRight: `${textRowRightPaddingPx}px`,
+                    resize: "none",
                   }}
                   minLength={2}
+                  rows={1}
                 />
+
+              </div>
+              <div
+                className={trailingControlsClassName}
+                style={trailingControlsStyle}
+              >
+                {showResetInTrailingControls && leftAdornment}
+                {hasBooleanOperators && (
+                  <Tooltip content="Search tips" position="top">
+                    <button
+                      type="button"
+                      onClick={(e) => searchHelpRef.current?.open(e.currentTarget)}
+                      className={advancedIndicatorClassName}
+                      style={{ backgroundColor: FOCUS_GREEN_DARK }}
+                      aria-label="Search tips (Advanced Search active)"
+                    >
+                      <span className={isCompactLayout ? "leading-none" : pillLabelClassName}>{isCompactLayout ? "A" : "Advanced"}</span>
+                    </button>
+                  </Tooltip>
+                )}
+                <SearchHelp ref={searchHelpRef} anchorRef={fieldRef} hideButton={hasBooleanOperators} />
               </div>
             </div>
 
@@ -565,15 +834,7 @@ const BooleanSearchInput = ({
                   )}
                 </>
               )}
-              {hasBooleanOperators && (
-                <span className="inline-flex items-center rounded-full bg-primary px-2 py-0.5 text-xs font-bold text-white">
-                  Advanced
-                </span>
-              )}
-            </div>
-
-            <div className={infoIconClassName}>
-              <SearchHelp anchorRef={inputRef} />
+              {hasVisibleLeftAdornment && !showResetInTrailingControls && leftAdornment}
             </div>
 
             {typeof document !== "undefined" && createPortal(
@@ -731,8 +992,9 @@ const BooleanSearchInput = ({
 
           <button
             type="submit"
-            className="btn btn-primary"
+            className="btn btn-primary h-[32px] sm:h-[38px] min-h-0 px-2 sm:px-4 shrink-0"
             disabled={query.trim().length < 2}
+            aria-label="Search"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -740,6 +1002,7 @@ const BooleanSearchInput = ({
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
+              aria-hidden="true"
             >
               <path
                 strokeLinecap="round"
@@ -748,7 +1011,7 @@ const BooleanSearchInput = ({
                 d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
               />
             </svg>
-            Search
+            <span className="sr-only sm:not-sr-only">Search</span>
           </button>
         </div>
 

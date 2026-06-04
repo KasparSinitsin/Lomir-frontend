@@ -6,6 +6,7 @@ import Button from "../components/common/Button";
 import TeamCard from "../components/teams/TeamCard";
 import Section from "../components/layout/Section";
 import Pagination from "../components/common/Pagination";
+import ResultViewToggle from "../components/common/ResultViewToggle";
 import { teamService } from "../services/teamService";
 import useSocketEvents from "../hooks/useSocketEvents";
 import { useAuth } from "../contexts/AuthContext";
@@ -644,37 +645,7 @@ const MyTeams = () => {
           </button>
         </div>
 
-        <div className="flex items-center text-sm font-normal text-base-content/60 gap-1 -ml-2">
-          <button
-            type="button"
-            onClick={() => setResultView("card")}
-            className={`px-2 py-1 rounded hover:text-base-content transition-colors ${
-              resultView === "card" ? "font-bold text-base-content" : ""
-            }`}
-          >
-            Card
-          </button>
-          <span className="text-base-content/30">|</span>
-          <button
-            type="button"
-            onClick={() => setResultView("mini")}
-            className={`px-2 py-1 rounded hover:text-base-content transition-colors ${
-              resultView === "mini" ? "font-bold text-base-content" : ""
-            }`}
-          >
-            Mini Card
-          </button>
-          <span className="text-base-content/30">|</span>
-          <button
-            type="button"
-            onClick={() => setResultView("list")}
-            className={`px-2 py-1 rounded hover:text-base-content transition-colors ${
-              resultView === "list" ? "font-bold text-base-content" : ""
-            }`}
-          >
-            List
-          </button>
-        </div>
+        <ResultViewToggle value={resultView} onChange={setResultView} />
       </div>
 
       {/* Pending Invitations Section */}

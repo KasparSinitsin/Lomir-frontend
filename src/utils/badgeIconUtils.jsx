@@ -91,10 +91,11 @@ export const getCategoryIcon = (category, color, size = 16) => {
  * @param {string} badgeName - Badge name (e.g. "Team Player")
  * @param {string} color - Hex color for the icon
  * @param {number} [size=16] - Icon size in px
+ * @param {number} [strokeWidth=2] - Icon stroke width
  * @returns {React.ReactElement}
  */
-export const getBadgeIcon = (badgeName, color, size = 16) => {
-  const iconProps = { size, style: { color } };
+export const getBadgeIcon = (badgeName, color, size = 16, strokeWidth = 2) => {
+  const iconProps = { size, strokeWidth, style: { color } };
 
   switch (badgeName) {
     // Collaboration Skills
