@@ -307,8 +307,7 @@ const BooleanSearchInput = ({
     (query.trim().length > 0 ||
       initialQuery.trim().length > 0 ||
       totalPillCount > 0);
-  const showResetInTrailingControls =
-    hasVisibleLeftAdornment && hasBooleanOperators;
+  const showResetInTrailingControls = hasVisibleLeftAdornment;
   const topAdornmentWidthPx =
     hasVisibleLeftAdornment && !showResetInTrailingControls ? 22 : 0;
   const pillsWidthPx = allPills.reduce(
@@ -351,10 +350,7 @@ const BooleanSearchInput = ({
   const showStackedPills = totalPillCount > 0 && !showInlinePills;
   const helperWidthPx =
     baseHelperWidthPx + (showInlinePills ? inlinePillsWidthPx : 0);
-  const trailingControlsOffsetPx =
-    hasVisibleLeftAdornment && !showStackedPills && !isCompactLayout && !hasBooleanOperators
-      ? 30
-      : 0;
+  const trailingControlsOffsetPx = 0;
   const fieldRightPaddingPx = Math.max(helperWidthPx, 12) + 8;
   const textRowRightPaddingPx = isCompactLayout
     ? 0
@@ -611,8 +607,7 @@ const BooleanSearchInput = ({
     bottom: isCompactLayout && hasBooleanOperators ? "0.625rem" : "0.5625rem",
     ...(isCompactLayout && hasVisibleLeftAdornment
       ? {
-          right:
-            hasBooleanOperators || showStackedPills ? "0.625rem" : "1.875rem",
+          right: "0.625rem",
         }
       : trailingControlsOffsetPx > 0
         ? { right: "1.875rem" }

@@ -4,7 +4,8 @@ import api from "../services/api";
 import Card from "../components/common/Card";
 import Button from "../components/common/Button";
 import FormGroup from "../components/common/FormGroup";
-import { Mail, ArrowLeft, CheckCircle, AlertCircle } from "lucide-react";
+import Alert from "../components/common/Alert";
+import { Mail, ArrowLeft, CheckCircle } from "lucide-react";
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState("");
@@ -116,10 +117,7 @@ const ForgotPassword = () => {
           </div>
 
           {status === "error" && (
-            <div className="alert alert-error mb-6">
-              <AlertCircle size={20} />
-              <span>{message}</span>
-            </div>
+            <Alert type="error" message={message} className="mb-6 w-full shadow-sm" />
           )}
 
           <form onSubmit={handleSubmit}>

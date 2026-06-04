@@ -934,6 +934,7 @@ body {
   border-radius: 0.5rem !important;
   padding: 0.5rem 0.75rem !important;
   font-size: 0.775rem !important;
+  line-height: 1.15 !important;
   box-shadow: 0 2px 8px rgba(4, 80, 20, 0.15) !important;
   pointer-events: none;
 
@@ -976,9 +977,20 @@ body {
   border-radius: 0.5rem !important;
   padding: 0.5rem 0.75rem !important;
   font-size: 0.775rem !important;
+  line-height: 1.15 !important;
   box-shadow: 0 2px 8px rgba(4, 80, 20, 0.15) !important;
   pointer-events: none;
   z-index: 40 !important;
+}
+
+.tooltip.tooltip-lomir > .tooltip-content p,
+.lomir-tooltip-bubble p {
+  margin: 0;
+}
+
+.tooltip.tooltip-lomir > .tooltip-content p + p,
+.lomir-tooltip-bubble p + p {
+  margin-top: 0.3rem;
 }
 
 .tooltip.tooltip-lomir:hover > .tooltip-content,

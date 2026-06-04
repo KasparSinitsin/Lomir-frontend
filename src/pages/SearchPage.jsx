@@ -20,6 +20,7 @@ import BooleanSearchInput from "../components/BooleanSearchInput";
 import Tooltip from "../components/common/Tooltip";
 import FilterSortOptionButton from "../components/common/FilterSortOptionButton";
 import ResultViewToggle from "../components/common/ResultViewToggle";
+import ScreenAlert from "../components/common/ScreenAlert";
 import {
   User,
   UserSearch,
@@ -262,6 +263,8 @@ const SearchPage = () => {
   const [error, setError] = useState(null);
   const [hasSearched, setHasSearched] = useState(false);
   const [searchInputResetSignal, setSearchInputResetSignal] = useState(0);
+  const [dismissedNoResultsAlertKey, setDismissedNoResultsAlertKey] =
+    useState(null);
   const viewerPendingRequestsQuery = useViewerPendingRequests(user?.id, {
     enabled: isAuthenticated,
   });
@@ -944,6 +947,23 @@ const SearchPage = () => {
         filteredResults.users.length === 0 &&
         filteredResults.roles.length === 0) &&
     !loading;
+  const noResultsAlertKey = [
+    searchQuery.trim(),
+    searchType,
+    sortBy,
+    sortDir,
+    capacityMode,
+    maxDistance ?? "any-distance",
+    openRolesOnly,
+    includeOwnTeams,
+    includeDemoData,
+    matchRoleId ?? "any-role",
+    excludeTeamId ?? "any-team",
+    filterTagIds.join(","),
+    filterBadgeIds.join(","),
+  ].join("|");
+  const showNoResultsAlert =
+    noResultsFound && dismissedNoResultsAlertKey !== noResultsAlertKey;
 
   const hasVisibleResults =
     filteredResults.teams.length > 0 ||
@@ -2160,7 +2180,7 @@ const SearchPage = () => {
                       <button
                         type="button"
                         onClick={handleResetSearchInput}
-                        className="shrink-0 rounded-lg p-0.5 transition-colors hover:bg-base-200"
+                        className="inline-flex h-[1.125rem] w-[1.125rem] shrink-0 items-center justify-center rounded-full bg-transparent p-0 transition-colors hover:bg-base-200"
                         aria-label="Clear search input"
                       >
                         <RotateCcw
@@ -2274,6 +2294,15 @@ const SearchPage = () => {
       </div>
 
       {renderSortSubmenuPortal()}
+      <ScreenAlert
+        type="violet"
+        message={
+          showNoResultsAlert
+            ? "No teams, users or Roles found matching this search query. Try a different search term."
+            : null
+        }
+        onClose={() => setDismissedNoResultsAlertKey(noResultsAlertKey)}
+      />
 
       {error && (
         <Alert
@@ -2281,18 +2310,6 @@ const SearchPage = () => {
           message={error}
           className="max-w-xl mx-auto mb-4"
           onClose={() => setError(null)}
-        />
-      )}
-
-      {noResultsFound && (
-        <Alert
-          type="info"
-          message={
-            searchQuery.trim()
-              ? `No ${searchType === "all" ? "teams or users" : searchType} found matching "${searchQuery}". Try a different search term.`
-              : `No matching ${searchType === "all" ? "teams or users" : searchType} found for the current filters. Try adjusting or removing some filters.`
-          }
-          className="max-w-xl mx-auto"
         />
       )}
 

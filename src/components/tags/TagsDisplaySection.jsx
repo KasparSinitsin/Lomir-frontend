@@ -11,6 +11,7 @@ import {
 import { SUPERCATEGORY_ICONS } from "../../utils/badgeIconUtils";
 import Tooltip from "../common/Tooltip";
 import Button from "../common/Button";
+import Alert from "../common/Alert";
 import TagInput from "./TagInput";
 import { UI_TEXT } from "../../constants/uiText";
 
@@ -448,14 +449,15 @@ const TagsDisplaySection = ({
 
         {/* Error/Success Messages */}
         {error && (
-          <div className="alert alert-error mb-4">
-            <span>{error}</span>
-          </div>
+          <Alert type="error" message={error} className="mb-4 w-full shadow-sm" />
         )}
         {success && (
-          <div className="alert alert-success mb-4">
-            <span>{success}</span>
-          </div>
+          <Alert
+            type="success"
+            message={success}
+            onClose={() => setSuccess(null)}
+            className="mb-4 w-full shadow-sm"
+          />
         )}
 
         {/* Tag Input */}
@@ -509,9 +511,12 @@ const TagsDisplaySection = ({
 
       {/* Success Message (after save) */}
       {success && (
-        <div className="alert alert-success mb-4">
-          <span>{success}</span>
-        </div>
+        <Alert
+          type="success"
+          message={success}
+          onClose={() => setSuccess(null)}
+          className="mb-4 w-full shadow-sm"
+        />
       )}
 
       {/* Tags display */}

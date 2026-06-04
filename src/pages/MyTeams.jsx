@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import { useToast } from "../contexts/ToastContext";
 import PageContainer from "../components/layout/PageContainer";
 import Grid from "../components/layout/Grid";
 import Button from "../components/common/Button";
+import Alert from "../components/common/Alert";
 import TeamCard from "../components/teams/TeamCard";
 import Section from "../components/layout/Section";
 import Pagination from "../components/common/Pagination";
@@ -44,6 +46,7 @@ const MY_TEAMS_LIST_TAGS_WIDTH_CLASSNAME = "sm:w-36";
 const MY_TEAMS_LIST_BADGES_WIDTH_CLASSNAME = "sm:w-32";
 
 const MyTeams = () => {
+  const showToast = useToast();
   const [teams, setTeams] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -374,8 +377,7 @@ const MyTeams = () => {
   };
 
   const handleSendReminder = async (applicationId) => {
-    // TODO: Implement send reminder functionality
-    alert("Reminder feature coming soon!");
+    showToast("Reminder feature coming soon!", "violet");
   };
 
   // Invitation handlers
@@ -574,9 +576,7 @@ const MyTeams = () => {
   if (error) {
     return (
       <PageContainer variant="muted">
-        <div className="alert alert-error">
-          <span>{error}</span>
-        </div>
+        <Alert type="error" message={error} className="w-full shadow-sm" />
       </PageContainer>
     );
   }

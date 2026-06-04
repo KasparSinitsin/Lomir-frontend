@@ -1,4 +1,5 @@
 import React, { useLayoutEffect, useRef, useState } from "react";
+import { useToast } from "../../contexts/ToastContext";
 import {
   Calendar,
   MessageSquare,
@@ -158,6 +159,7 @@ const TeamInvitationDetailsModal = ({
   const { user: currentUser } = useAuth();
 
   // ============ State ============
+  const showToast = useToast();
   const [loading] = useState(false);
   const [actionLoading, setActionLoading] = useState(null); // "acceptRole" | "switchRole" | "acceptTeam" | "decline" | null
   const [error, setError] = useState(null);
@@ -339,6 +341,7 @@ const TeamInvitationDetailsModal = ({
       setActionLoading("acceptRole");
       setError(null);
       await onAccept(invitation.id, responseMessage, true);
+      showToast("Invitation accepted! You've joined the team and taken on the role.", "success");
       setResponseMessage("");
       onClose();
     } catch (err) {
@@ -353,6 +356,7 @@ const TeamInvitationDetailsModal = ({
       setActionLoading("switchRole");
       setError(null);
       await onAccept(invitation.id, responseMessage, true, { switchRoles: true });
+      showToast("Role switched successfully! You've joined the team with the new role.", "success");
       setResponseMessage("");
       onClose();
     } catch (err) {
@@ -367,6 +371,7 @@ const TeamInvitationDetailsModal = ({
       setActionLoading("acceptTeam");
       setError(null);
       await onAccept(invitation.id, responseMessage, false);
+      showToast("Invitation accepted! You've joined the team.", "success");
       setResponseMessage("");
       onClose();
     } catch (err) {
@@ -381,6 +386,7 @@ const TeamInvitationDetailsModal = ({
       setActionLoading("decline");
       setError(null);
       await onDecline(invitation.id, responseMessage);
+      showToast("Invitation declined.", "success");
       setResponseMessage("");
       onClose();
     } catch (err) {
