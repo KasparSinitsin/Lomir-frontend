@@ -6,19 +6,23 @@ const Alert = ({
   children,
   onClose,
   className = "",
+  autoCloseMs = 15000,
 }) => {
   const [fading, setFading] = useState(false);
 
   useEffect(() => {
     if (!onClose) return;
     setFading(false);
-    const fadeTimer = setTimeout(() => setFading(true), 2000);
-    const closeTimer = setTimeout(onClose, 3000);
+    const fadeTimer = setTimeout(
+      () => setFading(true),
+      Math.max(0, autoCloseMs - 1000),
+    );
+    const closeTimer = setTimeout(onClose, autoCloseMs);
     return () => {
       clearTimeout(fadeTimer);
       clearTimeout(closeTimer);
     };
-  }, [type, message, onClose]);
+  }, [type, message, onClose, autoCloseMs]);
 
   const alertClasses = {
     info: "alert-info",
@@ -31,9 +35,9 @@ const Alert = ({
 
   return (
     <div
-      className={`alert ${alertClasses[type]} !text-white w-fit transition-opacity duration-1000 ${fading ? "opacity-0" : "opacity-100"} ${className}`}
+      className={`alert ${alertClasses[type]} !text-white w-fit transition-opacity duration-1000 border-0 outline-none ${fading ? "opacity-0" : "opacity-100"} ${className}`}
     >
-      <div className="flex items-start gap-2">
+      <div className="flex items-center gap-2">
         {type === "info" && (
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -113,7 +117,7 @@ const Alert = ({
       </div>
       {onClose && (
         <button
-          className="btn btn-sm btn-ghost text-white hover:bg-white/20 text-xl font-light"
+          className="text-white hover:text-white/70 text-xl font-light leading-none p-0 bg-transparent border-none cursor-pointer self-start"
           onClick={onClose}
         >
           ×

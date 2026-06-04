@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { useToast } from "../../contexts/ToastContext";
 import {
   User,
   Users,
@@ -58,9 +59,10 @@ const TeamInvitesModal = ({
   highlightUserId = null,
 }) => {
   // ============ State ============
+  const showToast = useToast();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [success, setSuccess] = useState(null);
+  const showSuccess = (message) => showToast(message, "success");
   const [pendingCancelInvitationId, setPendingCancelInvitationId] =
     useState(null);
   const [pendingCancelType, setPendingCancelType] = useState("team");
@@ -136,16 +138,13 @@ const TeamInvitesModal = ({
         await onCancelInvitation(pendingCancelInvitationId);
       }
 
-      setSuccess(
+      showSuccess(
         pendingCancelType === "role"
           ? "Role invitation canceled successfully!"
           : "Team invitation canceled successfully!",
       );
       setPendingCancelInvitationId(null);
       setPendingCancelType("team");
-
-      // Clear success after 3 seconds
-      setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
       setError(err.message || "Failed to cancel invitation");
     } finally {
@@ -208,8 +207,6 @@ const TeamInvitesModal = ({
       footerText="You can cancel invitations that haven't been responded to."
       error={error}
       onErrorClose={() => setError(null)}
-      success={success}
-      onSuccessClose={() => setSuccess(null)}
       emptyIcon={User}
       emptyTitle="No pending invitations"
       emptyMessage="Invitations you send to users will appear here."

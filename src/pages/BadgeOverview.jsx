@@ -2,6 +2,7 @@ import React from 'react';
 import { useEffect, useState } from 'react';
 import PageContainer from '../components/layout/PageContainer';
 import BadgeCategorySection from '../components/badges/BadgeCategorySection';
+import Alert from '../components/common/Alert';
 import api from '../services/api';
 
 const BadgeOverview = () => {
@@ -54,9 +55,7 @@ const BadgeOverview = () => {
   if (error) {
     return (
       <PageContainer>
-        <div className="alert alert-error">
-          <span>{error}</span>
-        </div>
+        <Alert type="error" message={error} className="w-full shadow-sm" />
       </PageContainer>
     );
   }

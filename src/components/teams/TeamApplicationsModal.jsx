@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Check, CheckCheck, UserCheck, X as Decline, User, Users, Mail, MessageSquare, AlertTriangle, ChevronDown, ChevronUp, Pencil } from "lucide-react";
 import RequestListModal from "../common/RequestListModal";
+import { useToast } from "../../contexts/ToastContext";
 import PersonRequestCard from "../common/PersonRequestCard";
 import Button from "../common/Button";
 import Modal from "../common/Modal";
@@ -54,9 +55,10 @@ const TeamApplicationsModal = ({
   const { openTeamModal } = useTeamModal();
 
   // ============ State ============
+  const showToast = useToast();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [success, setSuccess] = useState(null);
+  const showSuccess = (message) => showToast(message, "success");
   const [responses, setResponses] = useState({});
   const [responseExpanded, setResponseExpanded] = useState({});
   const [selectedUserId, setSelectedUserId] = useState(null);
@@ -161,7 +163,7 @@ const TeamApplicationsModal = ({
           "the role";
         const currentRoleName =
           actionData.deferredByCurrentRoleName ?? "their current role";
-        setSuccess(
+        showSuccess(
           `Application approved! ${roleName} is now a role offer the member can accept once they leave ${currentRoleName}.`,
         );
       } else if (action === "approve" && fillRole && roleFilled) {
@@ -169,9 +171,9 @@ const TeamApplicationsModal = ({
           application?.role?.roleName ??
           application?.role?.role_name ??
           "the role";
-        setSuccess(`Application approved! ${roleName} has been marked as filled.`);
+        showSuccess(`Application approved! ${roleName} has been marked as filled.`);
       } else {
-        setSuccess(
+        showSuccess(
           `Application ${action === "approve" ? "approved" : "declined"} successfully!`
         );
       }
@@ -242,7 +244,7 @@ const TeamApplicationsModal = ({
           return next;
         });
 
-        setSuccess("Role reopened successfully!");
+        showSuccess("Role reopened successfully!");
 
         try {
           await onRoleStatusChanged?.(roleId, "open");
@@ -331,8 +333,6 @@ const TeamApplicationsModal = ({
       footerText="Review each application carefully before making decisions."
       error={error}
       onErrorClose={() => setError(null)}
-      success={success}
-      onSuccessClose={() => setSuccess(null)}
       emptyIcon={User}
       emptyTitle="No pending applications"
       emptyMessage="When users apply to join your team, they'll appear here."

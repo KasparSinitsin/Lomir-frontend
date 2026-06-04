@@ -189,6 +189,7 @@ const Tooltip = ({
               ref={tooltipRef}
               role="tooltip"
               className={`
+                lomir-tooltip-bubble
                 fixed z-[9999]
                 bg-white
                 text-[var(--color-primary-focus)]
@@ -203,6 +204,7 @@ const Tooltip = ({
                 left: `${coords.left}px`,
                 padding: "0.5rem 0.75rem",
                 fontSize: "0.775rem",
+                lineHeight: 1.15,
                 fontWeight: 450,
                 boxShadow: "0 2px 8px rgba(4, 80, 20, 0.15)",
               }}

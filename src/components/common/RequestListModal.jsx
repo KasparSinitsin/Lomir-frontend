@@ -1,35 +1,9 @@
 import React from "react";
 import { User, X, Mail } from "lucide-react";
 import Modal from "./Modal";
-import ScreenAlert from "./ScreenAlert";
+import Alert from "./Alert";
 import Button from "./Button";
 
-/**
- * RequestListModal Component
- *
- * A reusable modal wrapper for displaying lists of requests
- * (applications, invitations, etc.)
- *
- * Used by: TeamApplicationsModal, TeamInvitesModal
- *
- * @param {Object} props
- * @param {boolean} props.isOpen - Whether the modal is open
- * @param {Function} props.onClose - Callback to close the modal
- * @param {string} props.title - Main title text
- * @param {string} props.subtitle - Subtitle with context (e.g., team name)
- * @param {number} props.itemCount - Number of items in the list
- * @param {string} props.itemName - Singular name for items (e.g., "application", "invitation")
- * @param {string} props.footerText - Optional footer help text
- * @param {string} props.error - Error message to display
- * @param {Function} props.onErrorClose - Callback to clear error
- * @param {string} props.success - Success message to display
- * @param {Function} props.onSuccessClose - Callback to clear success
- * @param {React.ReactNode} props.emptyIcon - Icon for empty state (default: User)
- * @param {string} props.emptyTitle - Title for empty state
- * @param {string} props.emptyMessage - Message for empty state
- * @param {React.ReactNode} props.children - List content to render
- * @param {React.ReactNode} props.extraModals - Additional modals to render (e.g., UserDetailsModal)
- */
 const RequestListModal = ({
   // Modal control
   isOpen,
@@ -47,8 +21,6 @@ const RequestListModal = ({
   // Alerts
   error,
   onErrorClose,
-  success,
-  onSuccessClose,
 
   // Empty state
   emptyIcon,
@@ -66,10 +38,8 @@ const RequestListModal = ({
 }) => {
   // ============ Computed Values ============
 
-  // Pluralize item name
   const pluralItemName = itemCount === 1 ? itemName : `${itemName}s`;
 
-  // Custom header with count
   const customHeader = (
     <div>
       <h2 className="text-xl font-medium text-primary leading-[110%] mb-[0.2em]">
@@ -82,7 +52,6 @@ const RequestListModal = ({
     </div>
   );
 
-  // Footer with summary
   const footer =
     itemCount > 0 ? (
       <div className="flex flex-wrap justify-between items-center gap-y-1 text-sm text-base-content/70">
@@ -93,7 +62,6 @@ const RequestListModal = ({
       </div>
     ) : null;
 
-  // Default empty state icon
   const EmptyIcon = emptyIcon || User;
 
   // ============ Render ============
@@ -113,6 +81,11 @@ const RequestListModal = ({
         closeOnEscape={true}
         showCloseButton={true}
       >
+        {/* Error shown inline — visible at the point of action */}
+        {error && (
+          <Alert type="error" message={error} onClose={onErrorClose} className="mb-4 w-full shadow-sm" />
+        )}
+
         {/* Content: Empty State or List */}
         {itemCount === 0 ? (
           <div className="text-center py-12">
@@ -131,21 +104,6 @@ const RequestListModal = ({
           <div className="space-y-4">{children}</div>
         )}
       </Modal>
-
-      <ScreenAlert
-        alerts={[
-          error && {
-            type: "error",
-            message: error,
-            onClose: onErrorClose,
-          },
-          success && {
-            type: "success",
-            message: success,
-            onClose: onSuccessClose,
-          },
-        ]}
-      />
 
       {/* Extra modals (e.g., UserDetailsModal) rendered outside */}
       {extraModals}

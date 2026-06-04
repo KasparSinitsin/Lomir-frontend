@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useQueries } from "@tanstack/react-query";
+import { useToast } from "../../contexts/ToastContext";
 import { createPortal } from "react-dom";
 import {
   AttributionControl,
@@ -1938,6 +1939,7 @@ const SearchMapView = ({
   viewerLocation = null,
   proximityRadiusKm = null,
 }) => {
+  const showToast = useToast();
   const teamModal = useTeamModalSafe();
   const userModal = useUserModalSafe();
   const authContext = useAuth();
@@ -2024,8 +2026,8 @@ const SearchMapView = ({
   }, [refreshUserStatusData]);
 
   const handleApplicationReminder = useCallback(async () => {
-    window.alert("Reminder feature coming soon!");
-  }, []);
+    showToast("Reminder feature coming soon!", "violet");
+  }, [showToast]);
 
   const itemsWithUserLocationDetails = useMemo(
     () =>

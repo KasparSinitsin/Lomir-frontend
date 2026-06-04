@@ -1,4 +1,5 @@
 import React, { useLayoutEffect, useRef, useState } from "react";
+import { useToast } from "../../contexts/ToastContext";
 import {
   Calendar,
   Users,
@@ -47,6 +48,7 @@ const TeamApplicationDetailsModal = ({
   notificationHighlight = false,
 }) => {
   // ============ State ============
+  const showToast = useToast();
   const loading = false;
   const [actionLoading, setActionLoading] = useState(null);
   const [error, setError] = useState(null);
@@ -235,6 +237,7 @@ const TeamApplicationDetailsModal = ({
       setActionLoading("cancel");
       setError(null);
       await onCancel(application.id);
+      showToast("Application cancelled successfully.", "success");
       setIsCancelDialogOpen(false);
       onClose();
     } catch (err) {
@@ -414,13 +417,12 @@ const TeamApplicationDetailsModal = ({
         closeOnEscape={true}
         showCloseButton={true}
       >
-        {/* Error Alert */}
         {error && (
           <Alert
             type="error"
             message={error}
             onClose={() => setError(null)}
-            className="mb-4"
+            className="mb-4 w-full shadow-sm"
           />
         )}
 

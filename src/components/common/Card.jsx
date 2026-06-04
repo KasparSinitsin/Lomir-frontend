@@ -267,12 +267,13 @@ const Card = ({
       {rowTooltipVisible && rowTooltipPosition && clickTooltip && createPortal(
         <div
           role="tooltip"
-          className="fixed z-[9999] bg-white text-[var(--color-primary-focus)] rounded-lg whitespace-pre-line text-left max-w-[280px] pointer-events-none"
+          className="lomir-tooltip-bubble fixed z-[9999] bg-white text-[var(--color-primary-focus)] rounded-lg whitespace-pre-line text-left max-w-[280px] pointer-events-none"
           style={{
             top: `${rowTooltipPosition.top}px`,
             left: `${rowTooltipPosition.left}px`,
             padding: "0.5rem 0.75rem",
             fontSize: "0.775rem",
+            lineHeight: 1.15,
             fontWeight: 450,
             boxShadow: "0 2px 8px rgba(4, 80, 20, 0.15)",
           }}
@@ -371,12 +372,13 @@ const Card = ({
       {rowTooltipVisible && rowTooltipPosition && clickTooltip && createPortal(
         <div
           role="tooltip"
-          className="fixed z-[9999] bg-white text-[var(--color-primary-focus)] rounded-lg whitespace-pre-line text-left max-w-[280px] pointer-events-none"
+          className="lomir-tooltip-bubble fixed z-[9999] bg-white text-[var(--color-primary-focus)] rounded-lg whitespace-pre-line text-left max-w-[280px] pointer-events-none"
           style={{
             top: `${rowTooltipPosition.top}px`,
             left: `${rowTooltipPosition.left}px`,
             padding: "0.5rem 0.75rem",
             fontSize: "0.775rem",
+            lineHeight: 1.15,
             fontWeight: 450,
             boxShadow: "0 2px 8px rgba(4, 80, 20, 0.15)",
           }}

@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect, useMemo } from "react";
+import { useToast } from "../../contexts/ToastContext";
 import Button from "../common/Button";
 import Tooltip from "../common/Tooltip";
 import ConfirmModal from "../common/ConfirmModal";
@@ -52,6 +53,8 @@ const TeamEditForm = ({
   const [avatarDeleteLoading, setAvatarDeleteLoading] = useState(false);
   const [isAvatarDeleteDialogOpen, setIsAvatarDeleteDialogOpen] =
     useState(false);
+
+  const showToast = useToast();
 
   // Location auto-fill hook
   const { getSuggestedUpdates } = useLocationAutoFill({
@@ -205,10 +208,11 @@ const TeamEditForm = ({
       }
     } catch (error) {
       console.error("Error deleting team avatar:", error);
-      alert(
+      showToast(
         error.response?.data?.message ||
           error.message ||
           "Failed to remove team picture. Please try again.",
+        "error",
       );
     } finally {
       setAvatarDeleteLoading(false);
