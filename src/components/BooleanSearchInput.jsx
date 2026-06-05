@@ -5,18 +5,211 @@ import {
   useEffect,
   useLayoutEffect,
 } from "react";
-import { Tag, Award, UserSearch, Users } from "lucide-react";
+import { createPortal } from "react-dom";
+import {
+  Tag,
+  Award,
+  UserSearch,
+  Users,
+  X,
+  Layers,
+  ArrowDownAZ,
+  ArrowUpZA,
+  Clock,
+  Filter,
+  FlaskConical,
+  Globe,
+  MapPin,
+  Radius,
+  SlidersHorizontal,
+  Sparkles,
+  Target,
+  UserMinus,
+  UserPlus,
+} from "lucide-react";
 import SearchHelp from "./SearchHelp";
+import Tooltip from "./common/Tooltip";
+import {
+  getBadgeIcon,
+  getCategoryIcon,
+  SUPERCATEGORY_ICONS,
+} from "../utils/badgeIconUtils";
 import {
   CATEGORY_COLORS,
-  CATEGORY_CARD_PASTELS,
-  FOCUS_GREEN_DARK,
-  TAG_SECTION_BG,
   DEFAULT_COLOR,
-  DEFAULT_CARD_PASTEL,
+  FOCUS_GREEN,
+  FOCUS_GREEN_DARK,
 } from "../constants/badgeConstants";
 
-const MIN_QUERY_HINT = "Enter at least 2 characters";
+const hexToRgba = (hex, alpha) => {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+};
+
+const MIN_QUERY_HINT = "Enter at least two characters";
+const ADVANCED_SEARCH_SHADOW =
+  "0 8px 18px rgba(4, 80, 20, 0.22), 0 18px 42px rgba(4, 80, 20, 0.18)";
+const BOOLEAN_OPERATOR_SPLIT_PATTERN = /\b(?:AND|OR|NOT)\b/i;
+const NARROW_DROPDOWN_BREAKPOINT = 640;
+const COMPACT_INLINE_CONTROLS_RESERVED_WIDTH = 76;
+const SUGGESTION_DROPDOWN_ARROW_WIDTH = 20;
+const SUGGESTION_DROPDOWN_ARROW_HEIGHT = 20;
+const SUGGESTION_DROPDOWN_ARROW_MASK = `url("data:image/svg+xml,%3Csvg width='20' height='20' viewBox='0 0 20 20' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0H20C15.6 0 13.6 2.2 12.4 7.3L10.4 19.2C10.2 19.8 9.8 19.8 9.6 19.2L7.6 7.3C6.4 2.2 4.4 0 0 0Z' fill='white'/%3E%3C/svg%3E")`;
+
+const cleanSuggestionSegment = (value) =>
+  value
+    .replace(/[()]/g, " ")
+    .replace(/^[\s"'-]+|[\s"')]+$/g, "")
+    .trim();
+
+const getSuggestionQuery = (value, cursorIndex = value.length) => {
+  const beforeCursor = value.slice(0, cursorIndex);
+  const segmentAtCursor = cleanSuggestionSegment(
+    beforeCursor.split(BOOLEAN_OPERATOR_SPLIT_PATTERN).pop() || "",
+  );
+
+  if (segmentAtCursor) return segmentAtCursor;
+
+  const fallbackSegments = value
+    .split(BOOLEAN_OPERATOR_SPLIT_PATTERN)
+    .map(cleanSuggestionSegment)
+    .filter(Boolean);
+
+  return fallbackSegments[fallbackSegments.length - 1] || "";
+};
+
+const clamp = (value, min, max) => {
+  const safeMax = Math.max(min, max);
+  return Math.min(Math.max(value, min), safeMax);
+};
+
+const getTextareaCaretClientX = (textarea) => {
+  if (typeof document === "undefined" || !textarea) return null;
+
+  const selectionStart = textarea.selectionStart ?? textarea.value.length;
+  const textareaRect = textarea.getBoundingClientRect();
+  const styles = window.getComputedStyle(textarea);
+  const mirror = document.createElement("div");
+  const marker = document.createElement("span");
+  const copiedProperties = [
+    "boxSizing",
+    "fontFamily",
+    "fontSize",
+    "fontStyle",
+    "fontVariant",
+    "fontWeight",
+    "letterSpacing",
+    "lineHeight",
+    "paddingTop",
+    "paddingRight",
+    "paddingBottom",
+    "paddingLeft",
+    "textAlign",
+    "textIndent",
+    "textTransform",
+    "whiteSpace",
+    "wordSpacing",
+    "tabSize",
+  ];
+
+  copiedProperties.forEach((property) => {
+    const value = styles[property];
+    if (value) mirror.style[property] = value;
+  });
+
+  mirror.style.position = "fixed";
+  mirror.style.top = "0";
+  mirror.style.left = "-9999px";
+  mirror.style.visibility = "hidden";
+  mirror.style.overflow = "hidden";
+  mirror.style.width = `${textarea.clientWidth}px`;
+  mirror.style.minHeight = "0";
+  mirror.style.border = "0";
+  mirror.style.wordBreak = "normal";
+  mirror.style.overflowWrap = "break-word";
+
+  mirror.textContent = textarea.value.slice(0, selectionStart);
+  marker.textContent = "\u200b";
+  mirror.appendChild(marker);
+  document.body.appendChild(mirror);
+
+  const markerRect = marker.getBoundingClientRect();
+  const mirrorRect = mirror.getBoundingClientRect();
+  const caretX =
+    textareaRect.left + markerRect.left - mirrorRect.left - textarea.scrollLeft;
+
+  mirror.remove();
+
+  return clamp(caretX, textareaRect.left, textareaRect.right);
+};
+
+const splitLeadingSign = (value) => {
+  const match = String(value ?? "").match(/^([+-])\s+(.+)$/);
+  return match
+    ? { sign: match[1], label: match[2] }
+    : { sign: null, label: value };
+};
+
+const getFilterPillAriaLabel = (removeAction, filterName) =>
+  `${removeAction}: ${filterName}`;
+
+const getCriteriaPillIcon = (pill) => {
+  if (pill.key === "maxDistance") return Radius;
+  if (pill.key === "openRolesOnly") return UserSearch;
+  if (pill.key === "includeOwnTeams") return Users;
+  if (pill.key === "includeDemoData") return FlaskConical;
+
+  if (pill.key !== "sort") return null;
+
+  switch (pill.label) {
+    case "Best Match":
+      return Target;
+    case "Name Z-A":
+      return ArrowUpZA;
+    case "Name A-Z":
+      return ArrowDownAZ;
+    case "Active":
+    case "Inactive":
+      return Clock;
+    case "Newest":
+    case "Oldest":
+      return Sparkles;
+    case "Most Spots":
+      return UserPlus;
+    case "Almost Full":
+      return UserMinus;
+    case "Most Open Roles":
+    case "Least Open Roles":
+      return UserSearch;
+    case "Remote First":
+      return Globe;
+    case "Nearest First":
+      return MapPin;
+    default:
+      return null;
+  }
+};
+
+const getFocusAreaPillIcon = (pill) =>
+  SUPERCATEGORY_ICONS[pill.supercategory] ||
+  SUPERCATEGORY_ICONS[pill.category] ||
+  Layers;
+
+const getCriteriaFilterType = (pill) => {
+  if (pill.type === "role") return "searchTerm";
+  if (pill.key === "sort") return "sort";
+  return "filter";
+};
+
+const getRemoveActionParts = (removeAction) => {
+  const [firstWord, ...restWords] = removeAction.split(" ");
+  return {
+    firstWord,
+    restText: restWords.join(" "),
+  };
+};
 
 /**
  * Enhanced Search Input with Boolean Search Support
@@ -32,6 +225,7 @@ const BooleanSearchInput = ({
   onSearch,
   initialQuery = "",
   placeholder = "Search teams and users...",
+  compactPlaceholder = null,
   className = "",
   activePills = [],
   onRemoveActivePill,
@@ -43,6 +237,11 @@ const BooleanSearchInput = ({
   onSelectTagSuggestion,
   onSelectBadgeSuggestion,
   leftAdornment = null,
+  resetSignal = 0,
+  onQueryWrapChange,
+  wrappedLeadingControl = null,
+  wrappedMiddleControl = null,
+  wrappedControlsExpanded = false,
 }) => {
   const [query, setQuery] = useState(initialQuery);
   const [hasBooleanOperators, setHasBooleanOperators] = useState(false);
@@ -52,13 +251,194 @@ const BooleanSearchInput = ({
   );
   const [suggestions, setSuggestions] = useState({ tags: [], badges: [] });
   const [showDropdown, setShowDropdown] = useState(false);
+  const [hoveredItemKey, setHoveredItemKey] = useState(null);
+  const [queryBreaksLine, setQueryBreaksLine] = useState(false);
+  const [pillsBreakLine, setPillsBreakLine] = useState(false);
 
   const inputRef = useRef(null);
+  const fieldRef = useRef(null);
+  const searchHelpRef = useRef(null);
   const queryMeasureRef = useRef(null);
   const placeholderMeasureRef = useRef(null);
   const hintMeasureRef = useRef(null);
   const dropdownRef = useRef(null);
   const suggestionsTimerRef = useRef(null);
+  const pillsRef = useRef(null);
+
+  const [menuStyle, setMenuStyle] = useState({
+    position: "fixed",
+    top: 0,
+    left: "50%",
+    transform: "translateX(-50%)",
+    width: "max-content",
+    maxWidth: 500,
+    maxHeight: 240,
+    zIndex: 10000,
+    arrowTop: 0,
+    arrowLeft: 0,
+  });
+  const [menuPlacement, setMenuPlacement] = useState("bottom");
+
+  const DROPDOWN_EDGE_MARGIN = 8;
+  const DROPDOWN_GAP = 8;
+  const DROPDOWN_MIN_HEIGHT = 140;
+  const DROPDOWN_MAX_HEIGHT = 360;
+
+  // content-container has padding: 1rem (16px) each side
+  const CONTENT_CONTAINER_PADDING = 16;
+
+  const computeDropdownPosition = useCallback(() => {
+    const el = fieldRef.current;
+    if (!el) return null;
+    const rect = el.getBoundingClientRect();
+    const viewportH = window.innerHeight;
+    const viewportW = window.innerWidth;
+
+    const containerEl = document.querySelector(".content-container");
+    const containerRect = containerEl?.getBoundingClientRect();
+    const fallbackBoundsLeft = DROPDOWN_EDGE_MARGIN;
+    const fallbackBoundsRight = viewportW - DROPDOWN_EDGE_MARGIN;
+    const isNarrowViewport = viewportW <= NARROW_DROPDOWN_BREAKPOINT;
+    const dropdownBoundsLeft = isNarrowViewport && containerRect
+      ? Math.max(
+          fallbackBoundsLeft,
+          containerRect.left + CONTENT_CONTAINER_PADDING,
+        )
+      : fallbackBoundsLeft;
+    const dropdownBoundsRight = isNarrowViewport && containerRect
+      ? Math.min(
+          fallbackBoundsRight,
+          containerRect.right - CONTENT_CONTAINER_PADDING,
+        )
+      : fallbackBoundsRight;
+    const dropdownBoundsWidth = Math.max(
+      0,
+      dropdownBoundsRight - dropdownBoundsLeft,
+    );
+
+    const spaceBelow = viewportH - (rect.bottom + DROPDOWN_GAP) - DROPDOWN_EDGE_MARGIN;
+    const spaceAbove = rect.top - DROPDOWN_GAP - DROPDOWN_EDGE_MARGIN;
+    let placement = spaceBelow >= spaceAbove ? "bottom" : "top";
+    if (spaceBelow >= DROPDOWN_MIN_HEIGHT && spaceAbove < DROPDOWN_MIN_HEIGHT) placement = "bottom";
+    if (spaceAbove >= DROPDOWN_MIN_HEIGHT && spaceBelow < DROPDOWN_MIN_HEIGHT) placement = "top";
+    const available = placement === "bottom" ? spaceBelow : spaceAbove;
+    const maxHeight = Math.min(DROPDOWN_MAX_HEIGHT, Math.max(80, available));
+    const top = placement === "bottom" ? rect.bottom + DROPDOWN_GAP : rect.top - DROPDOWN_GAP - maxHeight;
+    const caretAnchorX = clamp(
+      getTextareaCaretClientX(inputRef.current) ?? rect.left + rect.width / 2,
+      dropdownBoundsLeft + SUGGESTION_DROPDOWN_ARROW_WIDTH / 2,
+      dropdownBoundsRight - SUGGESTION_DROPDOWN_ARROW_WIDTH / 2,
+    );
+    return {
+      placement,
+      top,
+      maxHeight,
+      viewportW,
+      caretAnchorX,
+      dropdownBoundsLeft,
+      dropdownBoundsRight,
+      dropdownBoundsWidth,
+      isNarrowViewport,
+    };
+  }, []);
+
+  const updateDropdownPosition = useCallback(() => {
+    const base = computeDropdownPosition();
+    if (!base) return;
+    setMenuPlacement(base.placement);
+    const maxDropdownWidth = Math.max(
+      0,
+      Math.min(
+        500,
+        base.dropdownBoundsWidth,
+      ),
+    );
+    const shouldFillNarrowViewport = base.isNarrowViewport;
+    const estimatedDropdownWidth = shouldFillNarrowViewport
+      ? maxDropdownWidth
+      : Math.min(360, maxDropdownWidth);
+    const maxMenuLeft = Math.max(
+      base.dropdownBoundsLeft,
+      base.dropdownBoundsRight - estimatedDropdownWidth,
+    );
+    const menuLeft = clamp(
+      base.caretAnchorX - estimatedDropdownWidth / 2,
+      base.dropdownBoundsLeft,
+      maxMenuLeft,
+    );
+    setMenuStyle({
+      position: "fixed",
+      top: base.top,
+      left: menuLeft,
+      transform: "none",
+      width: shouldFillNarrowViewport ? maxDropdownWidth : "max-content",
+      maxWidth: maxDropdownWidth,
+      boxSizing: "border-box",
+      maxHeight: base.maxHeight,
+      zIndex: 10000,
+      arrowTop:
+        base.placement === "bottom"
+          ? base.top - SUGGESTION_DROPDOWN_ARROW_HEIGHT + 1
+          : base.top,
+      arrowLeft: base.caretAnchorX,
+    });
+  }, [computeDropdownPosition]);
+
+  const refineDropdownPosition = useCallback(() => {
+    if (!showDropdown) return;
+    const base = computeDropdownPosition();
+    const el = fieldRef.current;
+    const menuEl = dropdownRef.current;
+    if (!base || !el || !menuEl) return;
+    const rect = el.getBoundingClientRect();
+    const actualHeight = Math.min(menuEl.scrollHeight, menuStyle.maxHeight);
+    const actualWidth = Math.min(
+      menuEl.getBoundingClientRect().width || menuEl.scrollWidth,
+      base.dropdownBoundsWidth,
+    );
+    const maxMenuLeft = Math.max(
+      base.dropdownBoundsLeft,
+      base.dropdownBoundsRight - actualWidth,
+    );
+    const correctedLeft = clamp(
+      base.caretAnchorX - actualWidth / 2,
+      base.dropdownBoundsLeft,
+      maxMenuLeft,
+    );
+    const correctedTop =
+      base.placement === "top"
+        ? Math.max(DROPDOWN_EDGE_MARGIN, rect.top - DROPDOWN_GAP - actualHeight)
+        : base.top;
+    setMenuStyle((prev) => ({
+      ...prev,
+      top: correctedTop,
+      left: correctedLeft,
+      arrowTop:
+        base.placement === "bottom"
+          ? correctedTop - SUGGESTION_DROPDOWN_ARROW_HEIGHT + 1
+          : correctedTop + actualHeight - 1,
+      arrowLeft: base.caretAnchorX,
+    }));
+  }, [showDropdown, computeDropdownPosition, menuStyle.maxHeight]);
+
+  useLayoutEffect(() => {
+    if (!showDropdown) return;
+    updateDropdownPosition();
+    const id = requestAnimationFrame(() => refineDropdownPosition());
+    return () => cancelAnimationFrame(id);
+  }, [showDropdown, updateDropdownPosition, refineDropdownPosition, suggestions.tags.length, suggestions.badges.length]);
+
+  useEffect(() => {
+    if (!showDropdown) return;
+    let raf = 0;
+    const tick = () => {
+      updateDropdownPosition();
+      refineDropdownPosition();
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [showDropdown, updateDropdownPosition, refineDropdownPosition]);
 
   const [measuredTextWidths, setMeasuredTextWidths] = useState({
     query: 0,
@@ -68,18 +448,25 @@ const BooleanSearchInput = ({
 
   const showMinQueryHint = query.trim().length > 0 && query.trim().length < 2;
   const hasLeftAdornment = Boolean(leftAdornment);
-  const leftAdornmentWidthPx = hasLeftAdornment ? 24 : 0;
   const minimumInputWidthPx = query.trim().length > 0 ? 132 : 180;
   const inputTextWidthPx = Math.max(
     minimumInputWidthPx,
     query.trim().length > 0
-      ? measuredTextWidths.query + 8
+      ? measuredTextWidths.query + 32
       : measuredTextWidths.placeholder + 12,
-  ) + leftAdornmentWidthPx;
+  );
 
   // Combined pill width calculations across all three groups
   const allPills = [...badgePills, ...focusAreaPills, ...activePills];
   const totalPillCount = allPills.length;
+  const hasVisibleLeftAdornment =
+    hasLeftAdornment &&
+    (query.trim().length > 0 ||
+      initialQuery.trim().length > 0 ||
+      totalPillCount > 0);
+  const showResetInTrailingControls = hasVisibleLeftAdornment;
+  const topAdornmentWidthPx =
+    hasVisibleLeftAdornment && !showResetInTrailingControls ? 22 : 0;
   const pillsWidthPx = allPills.reduce(
     (sum, pill) => sum + pill.label.length * 8 + 28,
     0,
@@ -89,13 +476,18 @@ const BooleanSearchInput = ({
   const inlinePillsWidthPx =
     totalPillCount > 0 ? pillsWidthPx + pillsGapPx + 8 : 0;
 
-  const baseHelperWidthPx =
-    24 +
-    (hasBooleanOperators ? 72 : 0) +
-    (showMinQueryHint ? measuredTextWidths.hint + 8 : 0);
-  const fieldInsetsPx = baseHelperWidthPx + 28;
+  const baseHelperWidthPx = topAdornmentWidthPx;
+  const trailingIndicatorWidthPx = hasBooleanOperators
+    ? (isCompactLayout ? 20 : 42)
+    : 20;
+  const indicatorInRowPx =
+    trailingIndicatorWidthPx + (showResetInTrailingControls ? 26 : 0);
+  const sideControlsWidthPx = Math.max(baseHelperWidthPx, indicatorInRowPx);
+  const fieldInsetsPx = sideControlsWidthPx + 32;
   const fieldInsetsWithInlinePillsPx =
-    baseHelperWidthPx + inlinePillsWidthPx + 28;
+    Math.max(baseHelperWidthPx + inlinePillsWidthPx, indicatorInRowPx) + 28;
+  const desktopQueryWithPillsMinWidthPx =
+    !isCompactLayout && query.length > 0 && totalPillCount > 0 ? 400 : 0;
   const estimatedFieldMaxWidthPx = Math.max(
     320,
     Math.min(viewportWidth - 16, 896) - 128,
@@ -104,21 +496,28 @@ const BooleanSearchInput = ({
     inputTextWidthPx + fieldInsetsWithInlinePillsPx;
   const canInlinePills =
     totalPillCount > 0 &&
+    query.trim().length === 0 &&
+    !hasVisibleLeftAdornment &&
+    !hasBooleanOperators &&
     !isCompactLayout &&
     desiredSingleRowWidthPx <= estimatedFieldMaxWidthPx;
   const showInlinePills = canInlinePills;
   const showStackedPills = totalPillCount > 0 && !showInlinePills;
   const helperWidthPx =
     baseHelperWidthPx + (showInlinePills ? inlinePillsWidthPx : 0);
-  const fieldRightPaddingPx = showStackedPills
-    ? 48
-    : Math.max(48, helperWidthPx + 16);
+  const trailingControlsOffsetPx = 0;
+  const fieldRightPaddingPx = Math.max(helperWidthPx, 12) + 8;
+  const textRowRightPaddingPx = isCompactLayout
+    ? 0
+    : indicatorInRowPx + trailingControlsOffsetPx + 2;
+  const queryHintAnchorPx = Math.max(14, measuredTextWidths.query + 13);
   const fieldWidthPx = Math.min(
     estimatedFieldMaxWidthPx,
     Math.max(
       inputTextWidthPx +
         (showInlinePills ? fieldInsetsWithInlinePillsPx : fieldInsetsPx),
       showStackedPills ? stackedPillsWidthPx + fieldInsetsPx : 0,
+      desktopQueryWithPillsMinWidthPx,
     ),
   );
 
@@ -140,9 +539,14 @@ const BooleanSearchInput = ({
   }, []);
 
   useEffect(() => {
+    if (suggestionsTimerRef.current) {
+      clearTimeout(suggestionsTimerRef.current);
+    }
     setQuery(initialQuery);
     setHasBooleanOperators(checkBooleanOperators(initialQuery));
-  }, [initialQuery, checkBooleanOperators]);
+    setSuggestions({ tags: [], badges: [] });
+    setShowDropdown(false);
+  }, [initialQuery, resetSignal, checkBooleanOperators]);
 
   useEffect(() => {
     const mediaQuery = window.matchMedia("(max-width: 639px)");
@@ -185,8 +589,8 @@ const BooleanSearchInput = ({
   useEffect(() => {
     const handleClickOutside = (e) => {
       const inDropdown = dropdownRef.current?.contains(e.target);
-      const inInput = inputRef.current?.contains(e.target);
-      if (!inDropdown && !inInput) {
+      const inField = fieldRef.current?.contains(e.target);
+      if (!inDropdown && !inField) {
         setShowDropdown(false);
       }
     };
@@ -196,14 +600,17 @@ const BooleanSearchInput = ({
 
   const handleChange = (e) => {
     const value = e.target.value;
+    const cursorIndex = e.target.selectionStart ?? value.length;
     setQuery(value);
     setHasBooleanOperators(checkBooleanOperators(value));
 
     if (suggestionsTimerRef.current) clearTimeout(suggestionsTimerRef.current);
 
-    if (value.trim().length >= 2 && onSearchSuggestions) {
+    const suggestionQuery = getSuggestionQuery(value, cursorIndex);
+
+    if (suggestionQuery.length >= 2 && onSearchSuggestions) {
       suggestionsTimerRef.current = setTimeout(async () => {
-        const result = await onSearchSuggestions(value.trim());
+        const result = await onSearchSuggestions(suggestionQuery);
         const newSuggestions = result || { tags: [], badges: [] };
         setSuggestions(newSuggestions);
         const hasAny =
@@ -212,6 +619,30 @@ const BooleanSearchInput = ({
           0;
         setShowDropdown(hasAny);
       }, 300);
+    } else {
+      setSuggestions({ tags: [], badges: [] });
+      setShowDropdown(false);
+    }
+  };
+
+  const handleSuggestionRefresh = () => {
+    const value = inputRef.current?.value ?? query;
+    const cursorIndex = inputRef.current?.selectionStart ?? value.length;
+    const suggestionQuery = getSuggestionQuery(value, cursorIndex);
+
+    if (suggestionsTimerRef.current) clearTimeout(suggestionsTimerRef.current);
+
+    if (suggestionQuery.length >= 2 && onSearchSuggestions) {
+      suggestionsTimerRef.current = setTimeout(async () => {
+        const result = await onSearchSuggestions(suggestionQuery);
+        const newSuggestions = result || { tags: [], badges: [] };
+        setSuggestions(newSuggestions);
+        const hasAny =
+          (newSuggestions.tags?.length || 0) +
+            (newSuggestions.badges?.length || 0) >
+          0;
+        setShowDropdown(hasAny);
+      }, 150);
     } else {
       setSuggestions({ tags: [], badges: [] });
       setShowDropdown(false);
@@ -227,25 +658,142 @@ const BooleanSearchInput = ({
   };
 
   const handleKeyDown = (e) => {
-    if (e.key === "Enter") {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
       handleSubmit(e);
     } else if (e.key === "Escape") {
       setShowDropdown(false);
     }
   };
 
+  const resizeTextarea = useCallback(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    if (!el.value) {
+      el.style.height = "";
+      setQueryBreaksLine(false);
+      return;
+    }
+    el.style.height = "0";
+    el.style.height = `${el.scrollHeight}px`;
+    const styles = window.getComputedStyle(el);
+    const lineHeight =
+      parseFloat(styles.lineHeight) ||
+      parseFloat(styles.fontSize) * 1.25 ||
+      18;
+    const isMultiline = el.scrollHeight > lineHeight * 1.5;
+
+    setQueryBreaksLine((wasBreaking) => {
+      if (!isCompactLayout) return false;
+      if (isMultiline) return true;
+      if (!wasBreaking) return false;
+
+      const inlineTextareaWidth = Math.max(
+        0,
+        el.clientWidth - COMPACT_INLINE_CONTROLS_RESERVED_WIDTH,
+      );
+
+      return measuredTextWidths.query > inlineTextareaWidth;
+    });
+  }, [isCompactLayout, measuredTextWidths.query]);
+
+  useEffect(() => { resizeTextarea(); }, [query, resizeTextarea]);
+
+  const controlsWrap = isCompactLayout && (queryBreaksLine || pillsBreakLine);
+
+  useEffect(() => {
+    onQueryWrapChange?.(controlsWrap);
+  }, [onQueryWrapChange, controlsWrap]);
+
+  useEffect(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    let prevWidth = el.offsetWidth;
+    const observer = new ResizeObserver((entries) => {
+      const newWidth = entries[0].contentRect.width;
+      if (newWidth !== prevWidth) {
+        prevWidth = newWidth;
+        resizeTextarea();
+      }
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [resizeTextarea]);
+
+  const measurePillsWrap = useCallback(() => {
+    const el = pillsRef.current;
+    if (!el || !isCompactLayout) {
+      setPillsBreakLine(false);
+      return;
+    }
+    const height = el.offsetHeight;
+    setPillsBreakLine((wasBreaking) => {
+      // One pill row ≈ 22px; two rows ≈ 52px. 36px safely detects overflow.
+      if (height > 36) return true;
+      if (!wasBreaking) return false;
+      // Hysteresis: when the form is in wrapped mode the field is full-width,
+      // so pills may appear to fit in one row even though they would wrap once
+      // the submit button returns inline (narrowing the field). Check whether
+      // the pill content's natural width exceeds the narrower field width before
+      // clearing the flag, to prevent oscillation.
+      const groups = Array.from(el.children);
+      const naturalWidth =
+        groups.reduce((sum, group) => {
+          const pills = Array.from(group.children);
+          const pillsWidth = pills.reduce((s, p) => s + p.getBoundingClientRect().width, 0);
+          return sum + pillsWidth + Math.max(0, pills.length - 1) * 4; // gap-1
+        }, 0) + Math.max(0, groups.length - 1) * 8; // gap-2 between groups
+      const narrowFieldWidth = el.clientWidth - COMPACT_INLINE_CONTROLS_RESERVED_WIDTH;
+      return naturalWidth > narrowFieldWidth;
+    });
+  }, [isCompactLayout]);
+
+  useEffect(() => {
+    if (!showStackedPills) {
+      setPillsBreakLine(false);
+      return;
+    }
+    measurePillsWrap();
+  }, [showStackedPills, measurePillsWrap]);
+
+  useEffect(() => {
+    const el = pillsRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver(() => measurePillsWrap());
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [showStackedPills, measurePillsWrap]);
+
   const handleSelectTag = (tag) => {
     onSelectTagSuggestion?.(tag);
-    setQuery("");
-    setSuggestions({ tags: [], badges: [] });
-    setShowDropdown(false);
+    const nextSuggestions = {
+      tags: suggestions.tags.filter((item) => Number(item.id) !== Number(tag.id)),
+      badges: suggestions.badges,
+    };
+    setSuggestions(nextSuggestions);
+    setShowDropdown(
+      (nextSuggestions.tags?.length || 0) +
+        (nextSuggestions.badges?.length || 0) >
+        0,
+    );
+    requestAnimationFrame(() => inputRef.current?.focus());
   };
 
   const handleSelectBadge = (badge) => {
     onSelectBadgeSuggestion?.(badge);
-    setQuery("");
-    setSuggestions({ tags: [], badges: [] });
-    setShowDropdown(false);
+    const nextSuggestions = {
+      tags: suggestions.tags,
+      badges: suggestions.badges.filter(
+        (item) => Number(item.id) !== Number(badge.id),
+      ),
+    };
+    setSuggestions(nextSuggestions);
+    setShowDropdown(
+      (nextSuggestions.tags?.length || 0) +
+        (nextSuggestions.badges?.length || 0) >
+        0,
+    );
+    requestAnimationFrame(() => inputRef.current?.focus());
   };
 
   const rootClassName = isCompactLayout
@@ -254,6 +802,14 @@ const BooleanSearchInput = ({
   const formClassName = isCompactLayout
     ? "relative w-full min-w-0"
     : "relative inline-block max-w-full";
+  const formControlsClassName =
+    controlsWrap
+      ? "flex max-w-full flex-col items-stretch gap-2"
+      : "flex max-w-full items-center gap-2";
+  const wrappedControlsClassName =
+    wrappedControlsExpanded
+      ? "grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2"
+      : "flex w-full items-center justify-center gap-3";
   const fieldSlotClassName = isCompactLayout
     ? "relative min-w-0 flex-1"
     : "relative max-w-full";
@@ -279,126 +835,292 @@ const BooleanSearchInput = ({
         maxWidth: "100%",
         paddingRight: `${fieldRightPaddingPx}px`,
       };
-  const alignHelperToTopPillRow = showStackedPills;
-  const helperControlsClassName = alignHelperToTopPillRow
-    ? "absolute right-8 top-2 flex items-center gap-1 pointer-events-auto"
-    : "absolute right-8 top-1/2 -translate-y-1/2 flex items-center gap-1 pointer-events-auto";
-  const infoIconClassName = alignHelperToTopPillRow
-    ? "absolute right-2 top-2 flex items-center pointer-events-auto"
-    : "absolute inset-y-0 right-2 flex items-center pointer-events-auto";
-
-  const renderBadgePill = (pill) => (
-    <button
-      key={pill.key}
-      type="button"
-      onClick={() => onRemoveBadgePill?.(pill.id)}
-      style={{
-        borderColor: CATEGORY_COLORS[pill.category] || DEFAULT_COLOR,
-        color: CATEGORY_COLORS[pill.category] || DEFAULT_COLOR,
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.backgroundColor =
-          CATEGORY_CARD_PASTELS[pill.category] || DEFAULT_CARD_PASTEL;
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.backgroundColor = "white";
-      }}
-      className="inline-flex items-center gap-1 rounded-full border bg-white px-2 py-0.5 text-xs font-bold transition-colors"
-      title={`Remove ${pill.label}`}
-    >
-      <span>{pill.label}</span>
-      <span aria-hidden="true">×</span>
-    </button>
+  const helperControlsClassName = "absolute right-2 top-2 flex items-center gap-1 pointer-events-auto";
+  const trailingControlsClassName = "absolute right-2 flex items-center gap-1 pointer-events-auto";
+  const trailingControlsStyle = {
+    bottom: isCompactLayout && hasBooleanOperators ? "0.625rem" : "0.5625rem",
+    ...(isCompactLayout && hasVisibleLeftAdornment
+      ? {
+          right: "0.625rem",
+        }
+      : trailingControlsOffsetPx > 0
+        ? { right: "1.875rem" }
+        : {}),
+  };
+  const pillBaseClassName =
+    "inline-grid min-h-[1.375rem] max-w-full grid-cols-[0.625rem_minmax(0,1fr)_0.625rem] items-start gap-1 rounded-lg px-[5px] py-[3px] text-xs font-medium leading-[1.1] transition-opacity hover:opacity-80";
+  const advancedIndicatorClassName = isCompactLayout
+    ? "inline-flex h-3.5 w-3.5 items-center justify-center rounded-full p-0 text-[0.625rem] font-medium leading-none text-white transition-opacity hover:opacity-80"
+    : "inline-flex h-[1.125rem] items-center justify-center rounded-lg px-2 py-0 text-xs font-medium leading-[1.1] text-white transition-opacity hover:opacity-80";
+  const pillIconClassName =
+    "mt-[0.0625rem] flex h-2.5 w-2.5 items-center justify-center overflow-hidden [&>svg]:h-2.5 [&>svg]:w-2.5 [&>svg]:shrink-0";
+  const pillSvgClassName = "h-2.5 w-2.5";
+  const pillLabelClassName =
+    "min-w-0 max-w-full whitespace-normal break-words text-left leading-[1.1] [overflow-wrap:anywhere]";
+  const pillCloseClassName =
+    "mt-[0.0625rem] flex h-2.5 w-2.5 items-center justify-center overflow-hidden [&>svg]:h-2.5 [&>svg]:w-2.5 [&>svg]:shrink-0";
+  const pillTooltipClassName =
+    "inline-flex max-w-full min-w-0 z-10 hover:z-[500] focus-within:z-[500]";
+  const renderPillTooltipContent = (Icon, filterName, removeAction) => (
+    <span className="inline-flex flex-wrap items-center gap-y-0.5">
+      <span>{getRemoveActionParts(removeAction).firstWord}</span>
+      <span className="inline-flex items-center whitespace-nowrap">
+        {Icon ? (
+          <Icon
+            size={13}
+            strokeWidth={2.5}
+            className="mx-1"
+            aria-hidden="true"
+          />
+        ) : null}
+        <span>{getRemoveActionParts(removeAction).restText}:&nbsp;</span>
+      </span>
+      <span>{filterName}</span>
+    </span>
   );
 
-  const renderFocusAreaPill = (pill) => (
-    <button
-      key={pill.key}
-      type="button"
-      onClick={() => onRemoveFocusAreaPill?.(pill.id)}
-      style={{
-        borderColor: FOCUS_GREEN_DARK,
-        color: FOCUS_GREEN_DARK,
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.backgroundColor = TAG_SECTION_BG;
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.backgroundColor = "white";
-      }}
-      className="inline-flex items-center gap-1 rounded-full border bg-white px-2 py-0.5 text-xs font-bold transition-colors"
-      title={`Remove ${pill.label}`}
-    >
-      <span>{pill.label}</span>
-      <span aria-hidden="true">×</span>
-    </button>
-  );
+  const renderColoredFilterPill = ({
+    pill,
+    color,
+    icon,
+    onRemove,
+    TooltipIcon,
+    removeAction,
+  }) => {
+    const tooltipContent = renderPillTooltipContent(
+      TooltipIcon,
+      pill.label,
+      removeAction,
+    );
+    const ariaLabel = getFilterPillAriaLabel(removeAction, pill.label);
+    return (
+      <Tooltip
+        key={pill.key}
+        content={tooltipContent}
+        position="top"
+        wrapperClassName={pillTooltipClassName}
+      >
+        <button
+          type="button"
+          onClick={() => onRemove?.(pill.id)}
+          className={`${pillBaseClassName} border`}
+          style={{ backgroundColor: color, borderColor: color, color: "white" }}
+          aria-label={ariaLabel}
+        >
+          <span className={pillIconClassName}>{icon}</span>
+          <span className={pillLabelClassName}>{pill.label}</span>
+          <span className={pillCloseClassName}>
+            <X size={10} strokeWidth={3} className={pillSvgClassName} />
+          </span>
+        </button>
+      </Tooltip>
+    );
+  };
+
+  const renderBadgePill = (pill) =>
+    renderColoredFilterPill({
+      pill,
+      color: CATEGORY_COLORS[pill.category] || DEFAULT_COLOR,
+      icon: getBadgeIcon(pill.label, "white", 10, 3),
+      onRemove: onRemoveBadgePill,
+      TooltipIcon: Award,
+      removeAction: "Remove Badge",
+    });
+
+  const renderFocusAreaPill = (pill) => {
+    const FocusAreaIcon = getFocusAreaPillIcon(pill);
+
+    return renderColoredFilterPill({
+      pill,
+      color: FOCUS_GREEN,
+      icon: (
+        <FocusAreaIcon
+          size={10}
+          strokeWidth={3}
+          className={pillSvgClassName}
+          aria-hidden="true"
+        />
+      ),
+      onRemove: onRemoveFocusAreaPill,
+      TooltipIcon: Tag,
+      removeAction: "Remove Focus Area",
+    });
+  };
 
   const renderCriteriaPill = (pill) => {
+    const labelParts = splitLeadingSign(pill.label);
+    const shortLabelParts = pill.shortLabel
+      ? splitLeadingSign(pill.shortLabel)
+      : null;
+    const pillSign = labelParts.sign || shortLabelParts?.sign;
+    const criteriaPillClassName = `${pillBaseClassName}${
+      pillSign ? " grid-cols-[auto_minmax(0,1fr)_0.625rem]" : ""
+    }`;
+    const renderLeadingIcon = (iconNode, ariaHidden = false) => (
+      <span
+        className={`${pillIconClassName}${pillSign ? " w-auto gap-px" : ""}`}
+        aria-hidden={ariaHidden ? "true" : undefined}
+      >
+        {pillSign && <span className="leading-none">{pillSign}</span>}
+        {iconNode}
+      </span>
+    );
     const pillLabelNode = pill.shortLabel ? (
       <>
-        <span className="hidden sm:inline">{pill.label}</span>
-        <span className="sm:hidden">{pill.shortLabel}</span>
+        <span className={`hidden sm:inline ${pillLabelClassName}`}>{labelParts.label}</span>
+        <span className={`sm:hidden ${pillLabelClassName}`}>{shortLabelParts.label}</span>
       </>
     ) : (
-      <span>{pill.label}</span>
+      <span className={pillLabelClassName}>{labelParts.label}</span>
+    );
+    const criteriaType = getCriteriaFilterType(pill);
+    const criteriaTooltipIcon =
+      criteriaType === "searchTerm"
+        ? UserSearch
+        : criteriaType === "sort"
+          ? SlidersHorizontal
+          : Filter;
+    const criteriaRemoveAction =
+      criteriaType === "searchTerm"
+        ? "Remove Role Name"
+        : criteriaType === "sort"
+          ? "Remove Sorting"
+          : "Remove Filter";
+    const criteriaFilterName = pill.removeLabel ?? pill.label;
+    const tooltipContent = renderPillTooltipContent(
+      criteriaTooltipIcon,
+      criteriaFilterName,
+      criteriaRemoveAction,
+    );
+    const ariaLabel = getFilterPillAriaLabel(
+      criteriaRemoveAction,
+      criteriaFilterName,
     );
 
     if (pill.type === "role") {
       return (
-        <button
+        <Tooltip
           key={pill.key}
-          type="button"
-          onClick={() => onRemoveActivePill?.(pill.key)}
-          className="inline-flex items-center gap-1 rounded-full border border-amber-400 bg-amber-50 px-2 py-0.5 text-xs font-bold text-amber-700 transition-colors hover:border-amber-500 hover:bg-amber-100"
-          title={`Remove ${pill.label}`}
+          content={tooltipContent}
+          position="top"
+          wrapperClassName={pillTooltipClassName}
         >
-          <UserSearch size={12} className="flex-shrink-0" />
-          {pillLabelNode}
-          <span aria-hidden="true">×</span>
-        </button>
+          <button
+            type="button"
+            onClick={() => onRemoveActivePill?.(pill.key)}
+            className={`${criteriaPillClassName} border border-amber-400 bg-amber-50 text-amber-700 transition-colors hover:border-amber-500 hover:bg-amber-100 hover:opacity-100`}
+            aria-label={ariaLabel}
+          >
+            {renderLeadingIcon(
+              <UserSearch
+                size={10}
+                strokeWidth={3}
+                className={pillSvgClassName}
+              />,
+            )}
+            {pillLabelNode}
+            <span className={pillCloseClassName} aria-hidden="true">
+              <X size={10} strokeWidth={3} className={pillSvgClassName} />
+            </span>
+          </button>
+        </Tooltip>
       );
     }
     if (pill.type === "excludeTeam") {
       return (
-        <button
+        <Tooltip
           key={pill.key}
-          type="button"
-          onClick={() => onRemoveActivePill?.(pill.key)}
-          className="inline-flex items-center gap-1 rounded-full border border-slate-400 bg-slate-50 px-2 py-0.5 text-xs font-bold text-slate-600 transition-colors hover:border-slate-500 hover:bg-slate-100"
-          title={`Remove ${pill.label}`}
+          content={tooltipContent}
+          position="top"
+          wrapperClassName={pillTooltipClassName}
         >
-          <Users size={12} className="flex-shrink-0" />
-          {pillLabelNode}
-          <span aria-hidden="true">×</span>
-        </button>
+          <button
+            type="button"
+            onClick={() => onRemoveActivePill?.(pill.key)}
+            className={`${criteriaPillClassName} border border-slate-400 bg-slate-50 text-slate-600 transition-colors hover:border-slate-500 hover:bg-slate-100 hover:opacity-100`}
+            aria-label={ariaLabel}
+          >
+            {renderLeadingIcon(
+              <Users size={10} strokeWidth={3} className={pillSvgClassName} />,
+            )}
+            {pillLabelNode}
+            <span className={pillCloseClassName} aria-hidden="true">
+              <X size={10} strokeWidth={3} className={pillSvgClassName} />
+            </span>
+          </button>
+        </Tooltip>
       );
     }
+    const CriteriaIcon = getCriteriaPillIcon(pill);
     return (
-      <button
+      <Tooltip
         key={pill.key}
-        type="button"
-        onClick={() => onRemoveActivePill?.(pill.key)}
-        className="inline-flex items-center gap-1 rounded-full border border-[var(--color-primary)] bg-[#f0fdf4] px-2 py-0.5 text-xs font-bold text-[var(--color-primary)] transition-colors hover:border-[var(--color-primary-focus)] hover:bg-[#dcfce7] hover:text-[var(--color-primary-focus)]"
-        title={`Remove ${pill.label}`}
+        content={tooltipContent}
+        position="top"
+        wrapperClassName={pillTooltipClassName}
       >
-        {pillLabelNode}
-        <span aria-hidden="true">x</span>
-      </button>
+        <button
+          type="button"
+          onClick={() => onRemoveActivePill?.(pill.key)}
+          className={`${criteriaPillClassName} border border-[var(--color-primary)] bg-[#f0fdf4] text-[var(--color-primary)] transition-colors hover:border-[var(--color-primary-focus)] hover:bg-[#dcfce7] hover:text-[var(--color-primary-focus)] hover:opacity-100`}
+          aria-label={ariaLabel}
+        >
+          {renderLeadingIcon(
+            CriteriaIcon ? (
+              <CriteriaIcon
+                size={10}
+                strokeWidth={3}
+                className={pillSvgClassName}
+              />
+            ) : null,
+            true,
+          )}
+          {pillLabelNode}
+          <span className={pillCloseClassName} aria-hidden="true">
+            <X size={10} strokeWidth={3} className={pillSvgClassName} />
+          </span>
+        </button>
+      </Tooltip>
     );
   };
 
   const hasSuggestions =
     (suggestions.tags?.length || 0) + (suggestions.badges?.length || 0) > 0;
+  const showWrappedControls = controlsWrap;
+  const submitButton = (
+    <button
+      type="submit"
+      className="btn btn-primary h-[32px] sm:h-[38px] min-h-0 px-2 sm:px-4 shrink-0"
+      disabled={query.trim().length < 2}
+      aria-label="Search"
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        className="h-5 w-5"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        aria-hidden="true"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+        />
+      </svg>
+      <span className="sr-only sm:not-sr-only">Search</span>
+    </button>
+  );
 
   return (
     <div className={rootClassName}>
       <form onSubmit={handleSubmit} className={formClassName}>
-        <div className="flex max-w-full items-center gap-2">
+        <div className={formControlsClassName}>
           <div className={fieldSlotClassName}>
-            <div className={fieldClassName} style={fieldStyle}>
+            <div ref={fieldRef} className={fieldClassName} style={fieldStyle}>
               {showStackedPills && (
-                <div className="mb-1 flex flex-wrap gap-2">
+                <div ref={pillsRef} className="mb-2.5 flex flex-wrap gap-2">
                   {badgePills.length > 0 && (
                     <div className="flex flex-wrap gap-1">
                       {badgePills.map(renderBadgePill)}
@@ -417,35 +1139,84 @@ const BooleanSearchInput = ({
                 </div>
               )}
 
-              <div className="flex min-w-0 items-center gap-2">
-                {hasLeftAdornment && (
-                  <div className="shrink-0">{leftAdornment}</div>
-                )}
-
-                <input
+              <div
+                className="flex min-w-0 items-end gap-2"
+                style={{ paddingRight: `${textRowRightPaddingPx}px` }}
+              >
+                <textarea
                   ref={inputRef}
-                  type="text"
                   value={query}
                   onChange={handleChange}
+                  onFocus={handleSuggestionRefresh}
+                  onClick={handleSuggestionRefresh}
                   onKeyDown={handleKeyDown}
-                  placeholder={placeholder}
-                  className="min-w-0 flex-1 bg-transparent text-sm focus:outline-none"
+                  placeholder={isCompactLayout && compactPlaceholder ? compactPlaceholder : placeholder}
+                  className="min-w-0 flex-1 bg-transparent text-sm leading-[1.25] focus:outline-none px-0 py-0"
                   style={{
                     overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
+                    resize: "none",
                   }}
                   minLength={2}
+                  rows={1}
                 />
+              </div>
+              {showMinQueryHint && (
+                <>
+                  <div
+                    className="pointer-events-none absolute top-full z-[9999] mt-1 max-w-[280px] rounded-lg bg-white text-left whitespace-pre-line text-[var(--color-primary-focus)]"
+                    style={{
+                      left: 0,
+                      padding: "0.5rem 0.75rem",
+                      fontSize: "0.775rem",
+                      lineHeight: 1.15,
+                      fontWeight: 450,
+                      boxShadow: "0 2px 8px rgba(4, 80, 20, 0.15)",
+                    }}
+                    role="tooltip"
+                  >
+                    {MIN_QUERY_HINT}
+                  </div>
+                  <div
+                    className="pointer-events-none absolute top-full z-[10001] bg-white"
+                    style={{
+                      left: `${queryHintAnchorPx}px`,
+                      transform: "translate(-50%, -11px) rotate(180deg)",
+                      width: "28px",
+                      height: "16px",
+                      WebkitMaskImage: `url("data:image/svg+xml,%3Csvg width='28' height='16' viewBox='0 0 28 16' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0H28C21.6 0 18.9 1.8 16.8 6L14.5 15.2C14.24 15.8 13.76 15.8 13.5 15.2L11.2 6C9.1 1.8 6.4 0 0 0Z' fill='white'/%3E%3C/svg%3E")`,
+                      maskImage: `url("data:image/svg+xml,%3Csvg width='28' height='16' viewBox='0 0 28 16' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0H28C21.6 0 18.9 1.8 16.8 6L14.5 15.2C14.24 15.8 13.76 15.8 13.5 15.2L11.2 6C9.1 1.8 6.4 0 0 0Z' fill='white'/%3E%3C/svg%3E")`,
+                      WebkitMaskRepeat: "no-repeat",
+                      maskRepeat: "no-repeat",
+                      WebkitMaskSize: "contain",
+                      maskSize: "contain",
+                    }}
+                    aria-hidden="true"
+                  />
+                </>
+              )}
+              <div
+                className={trailingControlsClassName}
+                style={trailingControlsStyle}
+              >
+                {showResetInTrailingControls && leftAdornment}
+                {hasBooleanOperators && (
+                  <Tooltip content="Search tips" position="top">
+                    <button
+                      type="button"
+                      onClick={(e) => searchHelpRef.current?.open(e.currentTarget)}
+                      className={advancedIndicatorClassName}
+                      style={{ backgroundColor: FOCUS_GREEN_DARK }}
+                      aria-label="Search tips (Advanced Search active)"
+                    >
+                      <span className={isCompactLayout ? "leading-none" : pillLabelClassName}>{isCompactLayout ? "A" : "Advanced"}</span>
+                    </button>
+                  </Tooltip>
+                )}
+                <SearchHelp ref={searchHelpRef} anchorRef={fieldRef} hideButton={hasBooleanOperators} />
               </div>
             </div>
 
             <div className={helperControlsClassName}>
-              {showMinQueryHint && (
-                <span className="text-xs text-warning whitespace-nowrap">
-                  {MIN_QUERY_HINT}
-                </span>
-              )}
               {showInlinePills && (
                 <>
                   {badgePills.length > 0 && (
@@ -465,115 +1236,184 @@ const BooleanSearchInput = ({
                   )}
                 </>
               )}
-              {hasBooleanOperators && (
-                <span className="inline-flex items-center rounded-full bg-primary px-2 py-0.5 text-xs font-bold text-white">
-                  Advanced
-                </span>
-              )}
+              {hasVisibleLeftAdornment && !showResetInTrailingControls && leftAdornment}
             </div>
 
-            <div className={infoIconClassName}>
-              <SearchHelp anchorRef={inputRef} />
-            </div>
-
-            {showDropdown && hasSuggestions && (
-              <div
-                ref={dropdownRef}
-                className="absolute left-0 top-full z-[10000] mt-1 w-full overflow-y-auto rounded-lg border border-base-300 bg-white shadow-lg"
-                style={{ maxHeight: "16rem" }}
-              >
-                {suggestions.tags.length > 0 && (
-                  <div>
-                    <div className="flex items-center gap-1 px-3 py-1 text-xs text-base-content/50">
-                      <Tag className="h-3 w-3" />
-                      Focus Areas
-                    </div>
-                    {suggestions.tags.map((tag) => (
-                      <button
-                        key={tag.id}
-                        type="button"
-                        onMouseDown={(e) => {
-                          e.preventDefault();
-                          handleSelectTag(tag);
-                        }}
-                        className="flex w-full items-center justify-between px-3 py-1.5 text-sm transition-colors hover:bg-[#F0FDF4]"
-                      >
-                        <span>{tag.name}</span>
-                        {tag.supercategory && (
-                          <span className="ml-2 shrink-0 text-xs text-base-content/40">
-                            {tag.supercategory}
-                          </span>
-                        )}
-                      </button>
-                    ))}
-                  </div>
+            {typeof document !== "undefined" && createPortal(
+              <>
+                {showDropdown && hasSuggestions && (
+                  <div
+                    style={{
+                      position: "fixed",
+                      top: `${menuStyle.arrowTop}px`,
+                      left: `${menuStyle.arrowLeft ?? 0}px`,
+                      transform: menuPlacement === "bottom" ? "translateX(-50%) rotate(180deg)" : "translateX(-50%)",
+                      backgroundColor: "#ffffff",
+                      zIndex: 10001,
+                      pointerEvents: "none",
+                      width: `${SUGGESTION_DROPDOWN_ARROW_WIDTH}px`,
+                      height: `${SUGGESTION_DROPDOWN_ARROW_HEIGHT}px`,
+                      WebkitMaskImage: SUGGESTION_DROPDOWN_ARROW_MASK,
+                      maskImage: SUGGESTION_DROPDOWN_ARROW_MASK,
+                      WebkitMaskRepeat: "no-repeat",
+                      maskRepeat: "no-repeat",
+                      WebkitMaskSize: "contain",
+                      maskSize: "contain",
+                      filter: "drop-shadow(0 2px 6px rgba(4, 80, 20, 0.12))",
+                    }}
+                  />
                 )}
+                <ul
+                  ref={dropdownRef}
+                  style={
+                    showDropdown && hasSuggestions
+                      ? {
+                          ...menuStyle,
+                          boxShadow: ADVANCED_SEARCH_SHADOW,
+                        }
+                      : { display: "none" }
+                  }
+                  className={showDropdown && hasSuggestions ? "menu flex-nowrap bg-base-100 rounded-box p-2 overflow-y-auto" : ""}
+                >
+                  {showDropdown && hasSuggestions && (
+                  <>{/* Focus Areas section */}
+                  {suggestions.tags.length > 0 && (
+                    <>
+                      <li className="menu-title px-3 pt-1 pb-3">
+                        <span className="flex items-center justify-start gap-1.5">
+                          <Tag size={16} strokeWidth={2.5} className="text-primary" />
+                          <span className="font-semibold text-primary-focus">Focus Areas</span>
+                        </span>
+                      </li>
+                      {(() => {
+                        const superGroups = new Map();
+                        suggestions.tags.forEach((tag) => {
+                          const key = tag.supercategory || "Other";
+                          if (!superGroups.has(key)) superGroups.set(key, []);
+                          superGroups.get(key).push(tag);
+                        });
+                        return Array.from(superGroups.entries()).flatMap(
+                          ([supercategory, tags]) => {
+                            const SuperIcon = SUPERCATEGORY_ICONS[supercategory] || Layers;
+                            const bgColor = hexToRgba(FOCUS_GREEN, 0.07);
+                            return tags.map((tag, i) => {
+                              const isFirst = i === 0;
+                              const isLast = i === tags.length - 1;
+                              const groupClass = [
+                                isFirst && isLast ? "rounded-lg" : isFirst ? "rounded-t-lg" : isLast ? "rounded-b-lg" : "",
+                                isLast ? "mb-1.5" : "",
+                              ].filter(Boolean).join(" ");
+                              return (
+                                <li key={tag.id} className={groupClass} style={{ backgroundColor: bgColor }}>
+                                  <button
+                                    type="button"
+                                    onMouseDown={(e) => { e.preventDefault(); handleSelectTag(tag); }}
+                                    onMouseEnter={() => setHoveredItemKey(`tag-${tag.id}`)}
+                                    onMouseLeave={() => setHoveredItemKey(null)}
+                                    style={hoveredItemKey === `tag-${tag.id}` ? { backgroundColor: hexToRgba(FOCUS_GREEN, 0.15) } : undefined}
+                                    className="flex min-w-0 flex-row-reverse flex-wrap items-start w-full leading-none gap-x-2 gap-y-2 py-1.5"
+                                  >
+                                    <div className="flex-none flex items-center gap-0.5">
+                                      {isFirst && (
+                                        <span className="flex max-w-full items-center gap-1 text-xs leading-none whitespace-normal break-words [overflow-wrap:anywhere]" style={{ color: FOCUS_GREEN }}>
+                                          <SuperIcon size={10} className="shrink-0" />
+                                          <span>{supercategory}</span>
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className="[flex:1_1_0] max-w-full flex items-center gap-2 min-w-0">
+                                      <span className="min-w-0 break-words font-medium [overflow-wrap:anywhere]">{tag.name}</span>
+                                    </div>
+                                  </button>
+                                </li>
+                              );
+                            });
+                          }
+                        );
+                      })()}
+                    </>
+                  )}
 
-                {suggestions.badges.length > 0 && (
-                  <div>
-                    <div className="flex items-center gap-1 px-3 py-1 text-xs text-base-content/50">
-                      <Award className="h-3 w-3" />
-                      Badges
-                    </div>
-                    {suggestions.badges.map((badge) => (
-                      <button
-                        key={badge.id}
-                        type="button"
-                        onMouseDown={(e) => {
-                          e.preventDefault();
-                          handleSelectBadge(badge);
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.backgroundColor =
-                            CATEGORY_CARD_PASTELS[badge.category] ||
-                            DEFAULT_CARD_PASTEL;
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.backgroundColor = "";
-                        }}
-                        className="flex w-full items-center justify-between px-3 py-1.5 text-sm transition-colors"
-                      >
-                        <span>{badge.name}</span>
-                        {badge.category && (
-                          <span
-                            className="ml-2 shrink-0 text-xs"
-                            style={{
-                              color:
-                                CATEGORY_COLORS[badge.category] || DEFAULT_COLOR,
-                            }}
-                          >
-                            {badge.category}
-                          </span>
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
+                  {/* Badges section */}
+                  {suggestions.badges.length > 0 && (
+                    <>
+                      <li className="menu-title px-3 pt-3 pb-3">
+                        <span className="flex items-center justify-start gap-1.5">
+                          <Award size={16} strokeWidth={2.5} className="text-primary" />
+                          <span className="font-semibold text-primary-focus">Badges</span>
+                        </span>
+                      </li>
+                      {(() => {
+                        const catGroups = new Map();
+                        suggestions.badges.forEach((badge) => {
+                          const cat = badge.category || "Other";
+                          if (!catGroups.has(cat)) catGroups.set(cat, []);
+                          catGroups.get(cat).push(badge);
+                        });
+                        return Array.from(catGroups.entries()).flatMap(
+                          ([category, badges]) => {
+                            const color = CATEGORY_COLORS[category] || DEFAULT_COLOR;
+                            const bgColor = hexToRgba(color, 0.07);
+                            return badges.map((badge, i) => {
+                              const isFirst = i === 0;
+                              const isLast = i === badges.length - 1;
+                              const groupClass = [
+                                isFirst && isLast ? "rounded-lg" : isFirst ? "rounded-t-lg" : isLast ? "rounded-b-lg" : "",
+                                isLast ? "mb-1.5" : "",
+                              ].filter(Boolean).join(" ");
+                              return (
+                                <li key={badge.id} className={groupClass} style={{ backgroundColor: bgColor }}>
+                                  <button
+                                    type="button"
+                                    onMouseDown={(e) => { e.preventDefault(); handleSelectBadge(badge); }}
+                                    onMouseEnter={() => setHoveredItemKey(`badge-${badge.id}`)}
+                                    onMouseLeave={() => setHoveredItemKey(null)}
+                                    style={hoveredItemKey === `badge-${badge.id}` ? { backgroundColor: hexToRgba(color, 0.15) } : undefined}
+                                    className="flex min-w-0 flex-row-reverse flex-wrap items-start w-full leading-none gap-x-2 gap-y-2 py-1.5"
+                                  >
+                                    <div className="flex-none flex items-center gap-0.5">
+                                      {isFirst && (
+                                        <span className="flex max-w-full items-center gap-1 text-xs leading-none whitespace-normal break-words [overflow-wrap:anywhere]" style={{ color }}>
+                                          {getCategoryIcon(category, color, 10)}
+                                          <span>{category}</span>
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className="[flex:1_1_0] max-w-full flex items-center gap-2 min-w-0">
+                                      <span className="shrink-0">{getBadgeIcon(badge.name, color, 14)}</span>
+                                      <span className="min-w-0 break-words font-medium [overflow-wrap:anywhere]">{badge.name}</span>
+                                    </div>
+                                  </button>
+                                </li>
+                              );
+                            });
+                          }
+                        );
+                      })()}
+                    </>
+                  )}
+                  </>)}
+                </ul>
+              </>,
+              document.body
             )}
           </div>
 
-          <button
-            type="submit"
-            className="btn btn-primary"
-            disabled={query.trim().length < 2}
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-5 w-5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-              />
-            </svg>
-            Search
-          </button>
+          {showWrappedControls ? (
+            <div className={wrappedControlsClassName}>
+              {wrappedLeadingControl ? (
+                <div className="flex items-center">{wrappedLeadingControl}</div>
+              ) : (
+                <span aria-hidden="true" />
+              )}
+              {wrappedControlsExpanded && (
+                <div className="min-w-0">{wrappedMiddleControl}</div>
+              )}
+              {submitButton}
+            </div>
+          ) : (
+            submitButton
+          )}
         </div>
 
         <div className="pointer-events-none absolute left-0 top-0 -z-10 invisible whitespace-pre text-sm">

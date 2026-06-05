@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useQueries } from "@tanstack/react-query";
+import { useToast } from "../../contexts/ToastContext";
 import { createPortal } from "react-dom";
 import {
   AttributionControl,
@@ -94,7 +95,7 @@ const MAP_POPUP_VIEWPORT_PADDING = 12;
 const MAP_POPUP_ARROW_EDGE_PADDING = 14;
 const MAP_MARKER_HALF_HEIGHT = 17;
 const MAP_MARKER_TOOLTIP_GAP = 8;
-const MAP_POPUP_ARROW_MASK = `url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0.500009 1C3.5 1 3.00001 7 6.00001 7C9 7 8.5 1 11.5 1C12 1 12 0.5 12 0H0C0 0.5 0 1 0.500009 1Z' fill='white'/%3E%3C/svg%3E")`;
+const MAP_POPUP_ARROW_MASK = `url("data:image/svg+xml,%3Csvg width='22.5' height='12.8' viewBox='0 0 22.5 12.8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0H22.5C17.55 0 15.3 1.408 13.95 4.672L11.7 12.288C11.475 12.672 11.025 12.672 10.8 12.288L8.55 4.672C7.2 1.408 4.95 0 0 0Z' fill='white'/%3E%3C/svg%3E")`;
 const COUNTRY_COORDINATE_BOUNDS = {
   CA: { minLat: 41.6, maxLat: 83.2, minLng: -141.1, maxLng: -52.6 },
   CO: { minLat: -4.3, maxLat: 13.6, minLng: -82.2, maxLng: -66.8 },
@@ -1938,6 +1939,7 @@ const SearchMapView = ({
   viewerLocation = null,
   proximityRadiusKm = null,
 }) => {
+  const showToast = useToast();
   const teamModal = useTeamModalSafe();
   const userModal = useUserModalSafe();
   const authContext = useAuth();
@@ -2024,8 +2026,8 @@ const SearchMapView = ({
   }, [refreshUserStatusData]);
 
   const handleApplicationReminder = useCallback(async () => {
-    window.alert("Reminder feature coming soon!");
-  }, []);
+    showToast("Reminder feature coming soon!", "violet");
+  }, [showToast]);
 
   const itemsWithUserLocationDetails = useMemo(
     () =>
@@ -2831,16 +2833,16 @@ const SearchMapView = ({
             />
             <div
               aria-hidden="true"
-              className="pointer-events-none absolute h-2 w-3"
+              className="pointer-events-none absolute h-[12.8px] w-[22.5px]"
               style={{
                 backgroundColor: "var(--color-base-100, #ffffff)",
-                bottom: popupPlacement === "top" ? "-7px" : "auto",
+                bottom: popupPlacement === "top" ? "-11.8px" : "auto",
                 filter: "drop-shadow(0 2px 6px rgba(4, 80, 20, 0.12))",
                 left: popupArrowLeft ? `${popupArrowLeft}px` : "50%",
                 maskImage: MAP_POPUP_ARROW_MASK,
                 maskRepeat: "no-repeat",
                 maskSize: "contain",
-                top: popupPlacement === "bottom" ? "-7px" : "auto",
+                top: popupPlacement === "bottom" ? "-11.8px" : "auto",
                 transform:
                   popupPlacement === "bottom"
                     ? "translateX(-50%) rotate(180deg)"

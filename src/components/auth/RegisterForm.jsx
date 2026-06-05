@@ -5,6 +5,7 @@ import { UI_TEXT } from "../../constants/uiText";
 import TagInput from "../tags/TagInput";
 import Card from "../common/Card";
 import Button from "../common/Button";
+import Alert from "../common/Alert";
 import FormSectionDivider from "../common/FormSectionDivider";
 import {
   Tag,
@@ -402,13 +403,12 @@ const RegisterForm = () => {
             </p>
 
             {resendMessage && (
-              <div
-                className={`alert ${
-                  resendStatus === "sent" ? "alert-success" : "alert-error"
-                } mb-4`}
-              >
-                <span>{resendMessage}</span>
-              </div>
+              <Alert
+                type={resendStatus === "sent" ? "success" : "error"}
+                message={resendMessage}
+                onClose={() => setResendMessage("")}
+                className="mb-4 w-full shadow-sm"
+              />
             )}
 
             <div className="flex flex-col gap-2 w-full">
@@ -452,9 +452,7 @@ const RegisterForm = () => {
           </p>
 
           {errors.form && (
-            <div className="alert alert-error mb-4">
-              <span>{errors.form}</span>
-            </div>
+            <Alert type="error" message={errors.form} className="mb-4 w-full shadow-sm" />
           )}
 
           <form onSubmit={handleSubmit} className="space-y-12">

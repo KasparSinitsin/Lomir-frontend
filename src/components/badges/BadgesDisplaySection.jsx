@@ -357,7 +357,7 @@ const BadgesDisplaySection = ({
                             ? highlightRef
                             : undefined
                         }
-                        className={`badge badge-outline p-3 bg-white/60 ${isClickable ? "cursor-pointer hover:shadow-md transition-shadow" : ""} ${
+                        className={`badge badge-outline py-1 px-3 bg-white/60 leading-tight h-auto inline-flex items-start gap-1 ${isClickable ? "cursor-pointer hover:shadow-md transition-shadow" : ""} ${
                           highlightBadgeName &&
                           badge.name?.toLowerCase() ===
                             highlightBadgeName.toLowerCase()
@@ -391,14 +391,14 @@ const BadgesDisplaySection = ({
                         {isBadgeMatch && (
                           <Check
                             size={12}
-                            className="flex-shrink-0"
+                            className="flex-shrink-0 mt-[3px]"
                             style={{ color: categoryColor }}
                           />
                         )}
                         {badge.name}
                         {credits && showCredits && (
-                          <span className="ml-1 opacity-70">
-                            | {credits}ct.
+                          <span className="opacity-70 self-stretch border-l border-current pl-1 flex items-start">
+                            {credits}ct.
                           </span>
                         )}
                       </span>

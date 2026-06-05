@@ -9,6 +9,7 @@ import {
 import { AuthProvider } from "./contexts/AuthContext";
 import { UserModalProvider } from "./contexts/UserModalContext";
 import { TeamModalProvider } from "./contexts/TeamModalContext";
+import { ToastProvider } from "./contexts/ToastContext";
 import Navbar from "./components/layout/Navbar";
 import Footer from "./components/layout/Footer";
 import ProtectedRoute from "./components/layout/ProtectedRoute";
@@ -42,6 +43,7 @@ function AppLayout() {
   ].includes(location.pathname);
 
   return (
+    <ToastProvider>
     <TeamModalProvider>
       <UserModalProvider>
         <div
@@ -105,6 +107,7 @@ function AppLayout() {
         </div>
       </UserModalProvider>
     </TeamModalProvider>
+    </ToastProvider>
   );
 }
 

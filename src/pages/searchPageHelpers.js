@@ -143,7 +143,8 @@ export const getActiveCriteriaPills = ({
   if (maxDistance !== null) {
     pills.push({
       key: "maxDistance",
-      label: `Within ${maxDistance} km`,
+      label: `< ${maxDistance} km`,
+      removeLabel: `Within ${maxDistance} km`,
     });
   }
 
@@ -154,14 +155,16 @@ export const getActiveCriteriaPills = ({
   if (!effectiveIncludeOwnTeams) {
     pills.push({
       key: "includeOwnTeams",
-      label: "Exclude My Teams",
+      label: "- My Teams",
+      removeLabel: "Exclude My Teams",
     });
   }
 
   if (!includeDemoData) {
     pills.push({
       key: "includeDemoData",
-      label: "Exclude Demo Data",
+      label: "- Demo",
+      removeLabel: "Exclude Demo Data",
     });
   }
 
@@ -174,9 +177,11 @@ export const getActiveCriteriaPills = ({
   }
 
   if (excludeTeamId) {
+    const excludedTeamName = excludeTeamName || "team";
     pills.push({
       key: "excludeTeam",
-      label: `Excl. ${excludeTeamName || "team"} members`,
+      label: `- ${excludedTeamName} members`,
+      removeLabel: `Exclude ${excludedTeamName} members`,
       type: "excludeTeam",
     });
   }

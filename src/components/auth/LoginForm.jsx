@@ -4,6 +4,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import Card from "../common/Card";
 import Button from "../common/Button";
 import FormGroup from "../common/FormGroup";
+import Alert from "../common/Alert";
 import { Eye, EyeOff } from "lucide-react";
 
 const LoginForm = () => {
@@ -84,9 +85,7 @@ const LoginForm = () => {
         </p>
 
         {errors.form && (
-          <div className="alert alert-error mb-6">
-            <span>{errors.form}</span>
-          </div>
+          <Alert type="error" message={errors.form} className="mb-6 w-full shadow-sm" />
         )}
 
         <form onSubmit={handleSubmit} noValidate>

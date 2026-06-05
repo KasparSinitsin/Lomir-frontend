@@ -11,6 +11,7 @@ import {
 import { SUPERCATEGORY_ICONS } from "../../utils/badgeIconUtils";
 import Tooltip from "../common/Tooltip";
 import Button from "../common/Button";
+import Alert from "../common/Alert";
 import TagInput from "./TagInput";
 import { UI_TEXT } from "../../constants/uiText";
 
@@ -322,7 +323,7 @@ const TagsDisplaySection = ({
       <Tooltip key={tag.key} content={tooltipText}>
         <span
           ref={isHighlighted ? highlightTagRef : undefined}
-          className={`badge badge-outline p-3 bg-white/60 inline-flex items-center gap-1 ${isClickable ? "cursor-pointer hover:shadow-md transition-shadow" : ""} ${
+          className={`badge badge-outline py-1 px-3 bg-white/60 leading-tight h-auto inline-flex items-start gap-1 ${isClickable ? "cursor-pointer hover:shadow-md transition-shadow" : ""} ${
             isHighlighted ? "animate-badge-highlight" : ""
           }`}
           style={{
@@ -347,13 +348,15 @@ const TagsDisplaySection = ({
           {isUserMatch && (
             <Check
               size={12}
-              className="flex-shrink-0"
+              className="flex-shrink-0 mt-[3px]"
               style={{ color: FOCUS_GREEN }}
             />
           )}
           {tag.name}
           {hasBadgeCredits && (
-            <span className="ml-1 opacity-70">| {tag.badgeCredits}ct.</span>
+            <span className="opacity-70 self-stretch border-l border-current pl-1 flex items-start">
+              {tag.badgeCredits}ct.
+            </span>
           )}
         </span>
       </Tooltip>
@@ -446,14 +449,15 @@ const TagsDisplaySection = ({
 
         {/* Error/Success Messages */}
         {error && (
-          <div className="alert alert-error mb-4">
-            <span>{error}</span>
-          </div>
+          <Alert type="error" message={error} className="mb-4 w-full shadow-sm" />
         )}
         {success && (
-          <div className="alert alert-success mb-4">
-            <span>{success}</span>
-          </div>
+          <Alert
+            type="success"
+            message={success}
+            onClose={() => setSuccess(null)}
+            className="mb-4 w-full shadow-sm"
+          />
         )}
 
         {/* Tag Input */}
@@ -507,9 +511,12 @@ const TagsDisplaySection = ({
 
       {/* Success Message (after save) */}
       {success && (
-        <div className="alert alert-success mb-4">
-          <span>{success}</span>
-        </div>
+        <Alert
+          type="success"
+          message={success}
+          onClose={() => setSuccess(null)}
+          className="mb-4 w-full shadow-sm"
+        />
       )}
 
       {/* Tags display */}

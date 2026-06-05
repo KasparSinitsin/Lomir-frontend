@@ -1,11 +1,15 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import { useToast } from "../contexts/ToastContext";
 import PageContainer from "../components/layout/PageContainer";
 import Grid from "../components/layout/Grid";
 import Button from "../components/common/Button";
+import Alert from "../components/common/Alert";
 import TeamCard from "../components/teams/TeamCard";
 import Section from "../components/layout/Section";
 import Pagination from "../components/common/Pagination";
+import FilterSortOptionButton from "../components/common/FilterSortOptionButton";
+import ResultViewToggle from "../components/common/ResultViewToggle";
 import { teamService } from "../services/teamService";
 import useSocketEvents from "../hooks/useSocketEvents";
 import { useAuth } from "../contexts/AuthContext";
@@ -42,6 +46,7 @@ const MY_TEAMS_LIST_TAGS_WIDTH_CLASSNAME = "sm:w-36";
 const MY_TEAMS_LIST_BADGES_WIDTH_CLASSNAME = "sm:w-32";
 
 const MyTeams = () => {
+  const showToast = useToast();
   const [teams, setTeams] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -372,8 +377,7 @@ const MyTeams = () => {
   };
 
   const handleSendReminder = async (applicationId) => {
-    // TODO: Implement send reminder functionality
-    alert("Reminder feature coming soon!");
+    showToast("Reminder feature coming soon!", "violet");
   };
 
   // Invitation handlers
@@ -572,9 +576,7 @@ const MyTeams = () => {
   if (error) {
     return (
       <PageContainer variant="muted">
-        <div className="alert alert-error">
-          <span>{error}</span>
-        </div>
+        <Alert type="error" message={error} className="w-full shadow-sm" />
       </PageContainer>
     );
   }
@@ -602,79 +604,42 @@ const MyTeams = () => {
     <PageContainer title="My Teams" action={CreateTeamAction} variant="muted">
       <div className="flex flex-wrap items-center justify-between gap-y-0.5 mb-6">
         <div className="flex flex-wrap items-center gap-1 -ml-2">
-          <button
-            type="button"
+          <FilterSortOptionButton
             onClick={() => handleSortChange("name")}
-            className={`flex items-center gap-1 px-1 text-xs rounded transition-colors shrink-0 ${
-              sortBy === "name"
-                ? "text-[var(--color-primary)] font-bold"
-                : "text-[var(--color-primary-focus)]/70 hover:text-[var(--color-primary-focus)] hover:font-medium"
-            }`}
-          >
-            {sortDir === "desc" && sortBy === "name" ? (
-              <ArrowUpZA className="w-3.5 h-3.5 shrink-0" />
-            ) : (
-              <ArrowDownAZ className="w-3.5 h-3.5 shrink-0" />
-            )}
-            {sortBy === "name" && sortDir === "desc" ? "Z-A" : "A-Z"}
-          </button>
-          <button
-            type="button"
+            icon={
+              sortDir === "desc" && sortBy === "name"
+                ? ArrowUpZA
+                : ArrowDownAZ
+            }
+            label={sortBy === "name" && sortDir === "desc" ? "Z-A" : "A-Z"}
+            active={sortBy === "name"}
+          />
+          <FilterSortOptionButton
             onClick={() => handleSortChange("recent")}
-            className={`flex items-center gap-1 px-1 text-xs rounded transition-colors shrink-0 ${
-              sortBy === "recent"
-                ? "text-[var(--color-primary)] font-bold"
-                : "text-[var(--color-primary-focus)]/70 hover:text-[var(--color-primary-focus)] hover:font-medium"
-            }`}
-          >
-            <Clock className="w-3.5 h-3.5 shrink-0" />
-            {sortBy === "recent" && sortDir === "asc" ? "Inactive" : "Active"}
-          </button>
-          <button
-            type="button"
+            icon={Clock}
+            label={
+              sortBy === "recent" && sortDir === "asc"
+                ? "Inactive"
+                : "Active"
+            }
+            active={sortBy === "recent"}
+          />
+          <FilterSortOptionButton
             onClick={() => handleSortChange("newest")}
-            className={`flex items-center gap-1 px-1 text-xs rounded transition-colors shrink-0 ${
-              sortBy === "newest"
-                ? "text-[var(--color-primary)] font-bold"
-                : "text-[var(--color-primary-focus)]/70 hover:text-[var(--color-primary-focus)] hover:font-medium"
-            }`}
-          >
-            <Sparkles className="w-3.5 h-3.5 shrink-0" />
-            {sortBy === "newest" && sortDir === "asc" ? "Oldest" : "Newest"}
-          </button>
+            icon={Sparkles}
+            label={
+              sortBy === "newest" && sortDir === "asc" ? "Oldest" : "Newest"
+            }
+            active={sortBy === "newest"}
+          />
         </div>
 
-        <div className="flex items-center text-sm font-normal text-base-content/60 gap-1 -ml-2">
-          <button
-            type="button"
-            onClick={() => setResultView("card")}
-            className={`px-2 py-1 rounded hover:text-base-content transition-colors ${
-              resultView === "card" ? "font-bold text-base-content" : ""
-            }`}
-          >
-            Card
-          </button>
-          <span className="text-base-content/30">|</span>
-          <button
-            type="button"
-            onClick={() => setResultView("mini")}
-            className={`px-2 py-1 rounded hover:text-base-content transition-colors ${
-              resultView === "mini" ? "font-bold text-base-content" : ""
-            }`}
-          >
-            Mini Card
-          </button>
-          <span className="text-base-content/30">|</span>
-          <button
-            type="button"
-            onClick={() => setResultView("list")}
-            className={`px-2 py-1 rounded hover:text-base-content transition-colors ${
-              resultView === "list" ? "font-bold text-base-content" : ""
-            }`}
-          >
-            List
-          </button>
-        </div>
+        <ResultViewToggle
+          value={resultView}
+          onChange={setResultView}
+          align="responsive-start"
+          className="-ml-2 sm:ml-0"
+        />
       </div>
 
       {/* Pending Invitations Section */}

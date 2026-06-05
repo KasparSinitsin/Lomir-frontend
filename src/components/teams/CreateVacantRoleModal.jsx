@@ -7,15 +7,10 @@ import LocationInput from "../common/LocationInput";
 import LocationModeToggle from "../common/LocationModeToggle";
 import FormSectionDivider from "../common/FormSectionDivider";
 import TagInput from "../tags/TagInput";
+import BadgeInput from "../badges/BadgeInput";
 import Tooltip from "../common/Tooltip";
 import { vacantRoleService } from "../../services/vacantRoleService";
 import { useLocationAutoFill } from "../../hooks/useLocationAutoFill";
-import { getCategoryIcon, getBadgeIcon } from "../../utils/badgeIconUtils";
-import {
-  CATEGORY_COLORS,
-  DEFAULT_COLOR,
-  CATEGORY_SECTION_PASTELS,
-} from "../../constants/badgeConstants";
 import {
   UserSearch,
   SquarePen,
@@ -23,11 +18,9 @@ import {
   Tag,
   Award,
   Ruler,
-  ChevronDown,
-  ChevronUp,
   Trash2,
-  X,
   Save,
+  X,
 } from "lucide-react";
 import api from "../../services/api";
 
@@ -77,10 +70,6 @@ const CreateVacantRoleModal = ({
   const [submitError, setSubmitError] = useState(null);
   const [submitSuccess, setSubmitSuccess] = useState(false);
 
-  // Badge data
-  const [allBadges, setAllBadges] = useState([]);
-  const [badgesLoading, setBadgesLoading] = useState(false);
-  const [expandedCategory, setExpandedCategory] = useState(null);
 
   // Location auto-fill
   const { getSuggestedUpdates } = useLocationAutoFill({
@@ -138,37 +127,7 @@ const CreateVacantRoleModal = ({
     setFormErrors({});
     setSubmitError(null);
     setSubmitSuccess(false);
-    setExpandedCategory(null);
   }, [isOpen, isEditMode, existingRole]);
-
-  // Fetch all badges once
-  useEffect(() => {
-    if (!isOpen || allBadges.length > 0) return;
-
-    const fetchBadges = async () => {
-      setBadgesLoading(true);
-      try {
-        const response = await api.get("/api/badges");
-        setAllBadges(response.data?.data || response.data || []);
-      } catch (err) {
-        console.error("Error fetching badges:", err);
-      } finally {
-        setBadgesLoading(false);
-      }
-    };
-
-    fetchBadges();
-  }, [isOpen, allBadges.length]);
-
-  // Group badges by category
-  const badgesByCategory = allBadges.reduce((acc, badge) => {
-    const cat = badge.category || "Other";
-    if (!acc[cat]) acc[cat] = [];
-    acc[cat].push(badge);
-    return acc;
-  }, {});
-
-  const sortedCategories = Object.keys(badgesByCategory).sort();
 
   // Handlers
   const handleChange = useCallback(
@@ -240,18 +199,9 @@ const CreateVacantRoleModal = ({
     }));
   }, []);
 
-  const handleBadgeToggle = useCallback((badgeId) => {
-    setFormData((prev) => {
-      const ids = prev.selectedBadgeIds.includes(badgeId)
-        ? prev.selectedBadgeIds.filter((id) => id !== badgeId)
-        : [...prev.selectedBadgeIds, badgeId];
-      return { ...prev, selectedBadgeIds: ids };
-    });
+  const handleBadgeIdsChange = useCallback((ids) => {
+    setFormData((prev) => ({ ...prev, selectedBadgeIds: ids }));
   }, []);
-
-  const handleCategoryToggle = (category) => {
-    setExpandedCategory((prev) => (prev === category ? null : category));
-  };
 
   // Validation
   const validateForm = () => {
@@ -571,174 +521,11 @@ const CreateVacantRoleModal = ({
                     What qualities or badges should this person have? (Optional)
                   </span>
                 </label>
-
-                {/* Selected badges summary */}
-                {formData.selectedBadgeIds.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 mb-3">
-                    {formData.selectedBadgeIds.map((badgeId) => {
-                      const badge = allBadges.find((b) => b.id === badgeId);
-                      if (!badge) return null;
-                      const color =
-                        CATEGORY_COLORS[badge.category] || DEFAULT_COLOR;
-                      return (
-                        <span
-                          key={badgeId}
-                          className="badge badge-outline p-2 cursor-pointer hover:opacity-70"
-                          style={{ borderColor: color, color }}
-                          onClick={() => handleBadgeToggle(badgeId)}
-                          title="Click to remove"
-                        >
-                          {badge.name} ×
-                        </span>
-                      );
-                    })}
-                  </div>
-                )}
-
-                {/* Badge category accordion */}
-                {badgesLoading ? (
-                  <div className="flex justify-center py-4">
-                    <span className="loading loading-spinner loading-sm text-primary"></span>
-                  </div>
-                ) : (
-                  <div className="space-y-2 max-h-64 overflow-y-auto">
-                    {sortedCategories.map((category) => {
-                      const color =
-                        CATEGORY_COLORS[category] || DEFAULT_COLOR;
-                      const pastel =
-                        CATEGORY_SECTION_PASTELS[category] || "#F3F4F6";
-                      const isExpanded = expandedCategory === category;
-                      const categoryBadges =
-                        badgesByCategory[category] || [];
-                      const selectedInCategory = categoryBadges.filter((b) =>
-                        formData.selectedBadgeIds.includes(b.id)
-                      );
-
-                      return (
-                        <div
-                          key={category}
-                          className="rounded-xl overflow-hidden border border-base-200"
-                          style={
-                            selectedInCategory.length > 0
-                              ? { borderColor: color, borderWidth: 2 }
-                              : {}
-                          }
-                        >
-                          {/* Category header */}
-                          <button
-                            type="button"
-                            onClick={() => handleCategoryToggle(category)}
-                            className="w-full flex items-center justify-between p-3 hover:bg-base-200/30 transition-colors"
-                            style={{ backgroundColor: pastel }}
-                          >
-                            <div className="flex items-center gap-2">
-                              {getCategoryIcon(category, color)}
-                              <span
-                                className="font-medium text-sm"
-                                style={{ color }}
-                              >
-                                {category}
-                              </span>
-                              {selectedInCategory.length > 0 &&
-                                !isExpanded && (
-                                  <span
-                                    className="text-xs px-2 py-0.5 rounded-full text-white"
-                                    style={{ backgroundColor: color }}
-                                  >
-                                    {selectedInCategory.length} selected
-                                  </span>
-                                )}
-                            </div>
-                            {isExpanded ? (
-                              <ChevronUp
-                                size={16}
-                                className="text-base-content/50"
-                              />
-                            ) : (
-                              <ChevronDown
-                                size={16}
-                                className="text-base-content/50"
-                              />
-                            )}
-                          </button>
-
-                          {/* Badge list (multi-select) */}
-                          {isExpanded && (
-                            <div
-                              className="px-3 pb-3 grid grid-cols-1 sm:grid-cols-2 gap-2"
-                              style={{ backgroundColor: pastel }}
-                            >
-                              {categoryBadges.map((badge) => {
-                                const isSelected =
-                                  formData.selectedBadgeIds.includes(badge.id);
-
-                                return (
-                                  <button
-                                    key={badge.id}
-                                    type="button"
-                                    onClick={() =>
-                                      handleBadgeToggle(badge.id)
-                                    }
-                                    className={`flex items-center gap-2 p-2.5 rounded-lg text-left transition-all duration-200 ${
-                                      isSelected
-                                        ? "bg-white shadow-md ring-2"
-                                        : "bg-white/60 hover:bg-white/80"
-                                    }`}
-                                    style={
-                                      isSelected
-                                        ? {
-                                            "--tw-ring-color": color,
-                                          }
-                                        : undefined
-                                    }
-                                  >
-                                    <span style={{ color }}>
-                                      {getBadgeIcon(badge.name, color)}
-                                    </span>
-                                    <div className="min-w-0 flex-1">
-                                      <p
-                                        className="text-sm font-medium truncate"
-                                        style={
-                                          isSelected ? { color } : {}
-                                        }
-                                      >
-                                        {badge.name}
-                                      </p>
-                                      <p className="text-xs text-base-content/60 line-clamp-1">
-                                        {badge.description}
-                                      </p>
-                                    </div>
-                                    {isSelected && (
-                                      <span
-                                        className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0"
-                                        style={{ backgroundColor: color }}
-                                      >
-                                        <svg
-                                          width="12"
-                                          height="12"
-                                          viewBox="0 0 12 12"
-                                          fill="none"
-                                        >
-                                          <path
-                                            d="M2 6L5 9L10 3"
-                                            stroke="white"
-                                            strokeWidth="2"
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                          />
-                                        </svg>
-                                      </span>
-                                    )}
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
+                <BadgeInput
+                  selectedBadgeIds={formData.selectedBadgeIds}
+                  onBadgeIdsChange={handleBadgeIdsChange}
+                  placeholder="Search for badges..."
+                />
               </div>
             </section>
           </form>
