@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 
-const TOOLTIP_ARROW_WIDTH = 10;
-const TOOLTIP_ARROW_HEIGHT = 20;
-const TOOLTIP_ARROW_MASK = `url("data:image/svg+xml,%3Csvg width='10' height='20' viewBox='0 0 10 20' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0H10C7.8 0 6.8 2.2 6.2 7.3L5.2 19.2C5.1 19.8 4.9 19.8 4.8 19.2L3.8 7.3C3.2 2.2 2.2 0 0 0Z' fill='white'/%3E%3C/svg%3E")`;
+const TOOLTIP_ARROW_WIDTH = 22.5;
+const TOOLTIP_ARROW_HEIGHT = 12.8;
+const TOOLTIP_ARROW_MASK = `url("data:image/svg+xml,%3Csvg width='22.5' height='12.8' viewBox='0 0 22.5 12.8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0H22.5C17.55 0 15.3 1.408 13.95 4.672L11.7 12.288C11.475 12.672 11.025 12.672 10.8 12.288L8.55 4.672C7.2 1.408 4.95 0 0 0Z' fill='white'/%3E%3C/svg%3E")`;
 
 /**
  * Portal-based Tooltip Component
