@@ -726,8 +726,26 @@ const BooleanSearchInput = ({
       setPillsBreakLine(false);
       return;
     }
-    // One pill row ≈ 22px; two rows ≈ 52px. 36px safely detects overflow.
-    setPillsBreakLine(el.offsetHeight > 36);
+    const height = el.offsetHeight;
+    setPillsBreakLine((wasBreaking) => {
+      // One pill row ≈ 22px; two rows ≈ 52px. 36px safely detects overflow.
+      if (height > 36) return true;
+      if (!wasBreaking) return false;
+      // Hysteresis: when the form is in wrapped mode the field is full-width,
+      // so pills may appear to fit in one row even though they would wrap once
+      // the submit button returns inline (narrowing the field). Check whether
+      // the pill content's natural width exceeds the narrower field width before
+      // clearing the flag, to prevent oscillation.
+      const groups = Array.from(el.children);
+      const naturalWidth =
+        groups.reduce((sum, group) => {
+          const pills = Array.from(group.children);
+          const pillsWidth = pills.reduce((s, p) => s + p.getBoundingClientRect().width, 0);
+          return sum + pillsWidth + Math.max(0, pills.length - 1) * 4; // gap-1
+        }, 0) + Math.max(0, groups.length - 1) * 8; // gap-2 between groups
+      const narrowFieldWidth = el.clientWidth - COMPACT_INLINE_CONTROLS_RESERVED_WIDTH;
+      return naturalWidth > narrowFieldWidth;
+    });
   }, [isCompactLayout]);
 
   useEffect(() => {
