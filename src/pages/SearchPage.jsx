@@ -526,7 +526,7 @@ const SearchPage = () => {
       labelAsc: "Oldest",
       labelDesc: "Newest",
       shortLabelAsc: "Oldest",
-      shortLabelDesc: "Newest",
+      shortLabelDesc: "New",
       tooltipAsc: "Show the oldest results first",
       tooltipDesc: "Show the newest results first",
       iconAsc: Sparkles,
@@ -548,7 +548,7 @@ const SearchPage = () => {
       defaultDir: "asc",
       labelAsc: "Nearest",
       labelRemote: "Remote First",
-      shortLabelAsc: "Nearest",
+      shortLabelAsc: "Near",
       shortLabelRemote: "Remote 1st",
       tooltipAsc: "Keep nearby results ahead of remote-friendly results",
       tooltipRemote: "Show remote-friendly results first",
@@ -1664,11 +1664,13 @@ const SearchPage = () => {
 
   const handleOpenRolesOnlyToggle = () => {
     setOpenRolesOnly((prev) => !prev);
+    setOpenSubmenuKey(null);
     setCurrentPage(1);
   };
 
   const handleIncludeOwnTeamsToggle = () => {
     setIncludeOwnTeams((prev) => !prev);
+    setOpenSubmenuKey(null);
     setCurrentPage(1);
   };
 
@@ -1884,7 +1886,7 @@ const SearchPage = () => {
   const getReducedMenuIconClassName = (reduced) =>
     reduced ? "w-2.5 h-2.5 sm:w-3.5 sm:h-3.5" : "";
 
-  const renderToolbarOption = (option, { reduced = false } = {}) => {
+  const renderToolbarOption = (option, { reduced = false, collapseLabel = false } = {}) => {
     const { isActive, IconComponent, label, shortLabel, tooltip } =
       getSortOptionDisplay({
         option,
@@ -1893,6 +1895,8 @@ const SearchPage = () => {
         isCapacitySpotsSort,
         maxDistance,
       });
+    const isSubmenuAnchor = !!activeSubmenuKey && submenuAnchorSortKey === option.value;
+    const shouldCollapseLabel = !isSubmenuAnchor && collapseLabel && !isActive;
     const optionButton = (
       <FilterSortOptionButton
         ref={(node) => {
@@ -1905,6 +1909,7 @@ const SearchPage = () => {
         active={isActive}
         disabled={loading}
         iconClassName={getReducedMenuIconClassName(reduced)}
+        collapseLabel={shouldCollapseLabel}
         aria-label={tooltip ? `${label} - ${tooltip}` : label}
       />
     );
@@ -1922,7 +1927,7 @@ const SearchPage = () => {
     );
   };
 
-  const renderFilterOptionsToggle = ({ reduced = false } = {}) => (
+  const renderFilterOptionsToggle = ({ reduced = false, collapseLabel = false } = {}) => (
     <Tooltip
       content={
         showFilterOptions ? "Click to hide filters" : "Show filter controls"
@@ -1937,6 +1942,7 @@ const SearchPage = () => {
         active={isFilterOptionsActive}
         disabled={loading}
         iconClassName={getReducedMenuIconClassName(reduced)}
+        collapseLabel={collapseLabel && !isFilterOptionsActive}
         aria-label={
           showFilterOptions ? "Hide filter controls" : "Show filter controls"
         }
@@ -1944,7 +1950,10 @@ const SearchPage = () => {
     </Tooltip>
   );
 
-  const renderSortFilterOptionsMenu = ({ inline = false } = {}) => (
+  const renderSortFilterOptionsMenu = ({ inline = false } = {}) => {
+    const collapseLabel =
+      activeSubmenuKey === DISTANCE_SUBMENU_TYPE || activeSubmenuKey === "capacity";
+    return (
     <div
       className={
         inline
@@ -1953,8 +1962,8 @@ const SearchPage = () => {
       }
     >
       <div
-        className={`flex flex-row flex-wrap items-start gap-x-1 gap-y-[3px] sm:gap-x-3 sm:gap-y-[6px] ${
-          inline ? "justify-center" : ""
+        className={`flex flex-row flex-wrap items-start gap-y-[3px] sm:gap-x-3 sm:gap-y-[6px] ${
+          inline ? "gap-x-0.5" : "gap-x-1"
         }`}
       >
         <div
@@ -1963,27 +1972,27 @@ const SearchPage = () => {
           className="contents"
         >
           {visibleSortingOptions.map((option) =>
-            renderToolbarOption(option, { reduced: inline }),
+            renderToolbarOption(option, { reduced: inline, collapseLabel }),
           )}
         </div>
 
-        {!showFilterOptions && renderFilterOptionsToggle({ reduced: inline })}
+        {!showFilterOptions && renderFilterOptionsToggle({ reduced: inline, collapseLabel })}
       </div>
 
       {showFilterOptions && (
         <div
-          className={`flex flex-row flex-wrap items-start gap-x-1 gap-y-[3px] sm:gap-x-3 sm:gap-y-[6px] ${
-            inline ? "justify-center" : ""
+          className={`flex flex-row flex-wrap items-start gap-y-[3px] sm:gap-x-3 sm:gap-y-[6px] ${
+            inline ? "gap-x-0.5" : "gap-x-1"
           }`}
         >
-          {renderFilterOptionsToggle({ reduced: inline })}
+          {renderFilterOptionsToggle({ reduced: inline, collapseLabel })}
           <div
             role="group"
             aria-label="Filter options"
             className="contents"
           >
             {visibleFilterOptions.map((option) =>
-              renderToolbarOption(option, { reduced: inline }),
+              renderToolbarOption(option, { reduced: inline, collapseLabel }),
             )}
           </div>
 
@@ -2009,6 +2018,11 @@ const SearchPage = () => {
                   active={!effectiveIncludeOwnTeams}
                   disabled={loading}
                   iconClassName={getReducedMenuIconClassName(inline)}
+                  collapseLabel={collapseLabel && (
+                    activeSubmenuKey === DISTANCE_SUBMENU_TYPE ||
+                    activeSubmenuKey === "capacity" ||
+                    effectiveIncludeOwnTeams
+                  )}
                   aria-label={
                     effectiveIncludeOwnTeams
                       ? "Include My Teams"
@@ -2035,6 +2049,7 @@ const SearchPage = () => {
               <FilterSortOptionButton
                 onClick={() => {
                   setIncludeDemoData((prev) => !prev);
+                  setOpenSubmenuKey(null);
                   setCurrentPage(1);
                 }}
                 icon={FlaskConical}
@@ -2044,6 +2059,11 @@ const SearchPage = () => {
                 active={!includeDemoData}
                 disabled={loading}
                 iconClassName={getReducedMenuIconClassName(inline)}
+                collapseLabel={collapseLabel && (
+                  activeSubmenuKey === DISTANCE_SUBMENU_TYPE ||
+                  activeSubmenuKey === "capacity" ||
+                  includeDemoData
+                )}
                 aria-label={
                   includeDemoData
                     ? "Include test/demo profiles, roles and teams"
@@ -2055,7 +2075,8 @@ const SearchPage = () => {
         </div>
       )}
     </div>
-  );
+    );
+  };
 
   const renderSortSubmenuPortal = () => {
     if (!activeSubmenuKey || !submenuPosition) return null;
@@ -2076,8 +2097,8 @@ const SearchPage = () => {
               }`}
             >
               {isCapacityRolesSort && sortDir === "asc"
-                ? "Least Open Roles"
-                : "Most Open Roles"}
+                ? "Least Roles"
+                : "Most Roles"}
             </button>
 
             <button
@@ -2091,13 +2112,13 @@ const SearchPage = () => {
                   : "text-[var(--color-primary-focus)] hover:text-[var(--color-primary-focus)] hover:font-medium"
               }`}
             >
-              Open Roles Only
+              Roles only
             </button>
           </div>
         )}
 
         {activeSubmenuKey === DISTANCE_SUBMENU_TYPE && (
-          <div className="flex items-center justify-end flex-wrap gap-x-[5px] gap-y-1 pr-1">
+          <div className="flex items-center flex-wrap gap-x-[5px] gap-y-1 pr-1">
             <div className="hidden sm:contents">
               {distancePresets.map((km) => (
                 <button
@@ -2106,7 +2127,7 @@ const SearchPage = () => {
                   type="button"
                   onClick={() => handleDistancePreset(km)}
                   disabled={loading}
-                  className={`px-1 text-xs leading-none rounded transition-colors ${
+                  className={`pr-1 text-xs leading-none rounded transition-colors ${
                     maxDistance === km
                       ? "text-[var(--color-primary)] font-bold"
                       : "text-[var(--color-primary-focus)] hover:text-[var(--color-primary-focus)] hover:font-medium"
@@ -2142,7 +2163,7 @@ const SearchPage = () => {
                     ? "border-[var(--color-success)] text-[var(--color-success)] font-medium"
                     : "border-[var(--color-text)]/20 text-[var(--color-text)]/60"
                 }
-                bg-transparent focus:outline-none focus:border-[var(--color-success)]`}
+                bg-white focus:outline-none focus:border-[var(--color-success)]`}
                 disabled={loading}
               />
               <span className="text-xs leading-none text-[var(--color-primary-focus)]">
@@ -2323,11 +2344,7 @@ const SearchPage = () => {
           className="mx-auto w-full max-w-full"
         >
           <div className="mx-auto w-full max-w-full sm:w-fit">
-            <div
-              className={`flex w-full max-w-full gap-2 ${
-                searchInputQueryWraps ? "items-end" : "items-center"
-              }`}
-            >
+            <div className="flex w-full max-w-full gap-2 items-center">
               {!searchInputQueryWraps && renderSortFilterToggle()}
 
               <div className="min-w-0 flex-1 sm:w-auto sm:flex-none sm:max-w-full">

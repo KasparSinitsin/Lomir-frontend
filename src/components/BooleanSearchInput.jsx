@@ -253,6 +253,7 @@ const BooleanSearchInput = ({
   const [showDropdown, setShowDropdown] = useState(false);
   const [hoveredItemKey, setHoveredItemKey] = useState(null);
   const [queryBreaksLine, setQueryBreaksLine] = useState(false);
+  const [pillsBreakLine, setPillsBreakLine] = useState(false);
 
   const inputRef = useRef(null);
   const fieldRef = useRef(null);
@@ -262,6 +263,7 @@ const BooleanSearchInput = ({
   const hintMeasureRef = useRef(null);
   const dropdownRef = useRef(null);
   const suggestionsTimerRef = useRef(null);
+  const pillsRef = useRef(null);
 
   const [menuStyle, setMenuStyle] = useState({
     position: "fixed",
@@ -697,9 +699,11 @@ const BooleanSearchInput = ({
 
   useEffect(() => { resizeTextarea(); }, [query, resizeTextarea]);
 
+  const controlsWrap = isCompactLayout && (queryBreaksLine || pillsBreakLine);
+
   useEffect(() => {
-    onQueryWrapChange?.(isCompactLayout && queryBreaksLine);
-  }, [isCompactLayout, onQueryWrapChange, queryBreaksLine]);
+    onQueryWrapChange?.(controlsWrap);
+  }, [onQueryWrapChange, controlsWrap]);
 
   useEffect(() => {
     const el = inputRef.current;
@@ -715,6 +719,32 @@ const BooleanSearchInput = ({
     observer.observe(el);
     return () => observer.disconnect();
   }, [resizeTextarea]);
+
+  const measurePillsWrap = useCallback(() => {
+    const el = pillsRef.current;
+    if (!el || !isCompactLayout) {
+      setPillsBreakLine(false);
+      return;
+    }
+    // One pill row ≈ 22px; two rows ≈ 52px. 36px safely detects overflow.
+    setPillsBreakLine(el.offsetHeight > 36);
+  }, [isCompactLayout]);
+
+  useEffect(() => {
+    if (!showStackedPills) {
+      setPillsBreakLine(false);
+      return;
+    }
+    measurePillsWrap();
+  }, [showStackedPills, measurePillsWrap]);
+
+  useEffect(() => {
+    const el = pillsRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver(() => measurePillsWrap());
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [showStackedPills, measurePillsWrap]);
 
   const handleSelectTag = (tag) => {
     onSelectTagSuggestion?.(tag);
@@ -755,7 +785,7 @@ const BooleanSearchInput = ({
     ? "relative w-full min-w-0"
     : "relative inline-block max-w-full";
   const formControlsClassName =
-    isCompactLayout && queryBreaksLine
+    controlsWrap
       ? "flex max-w-full flex-col items-stretch gap-2"
       : "flex max-w-full items-center gap-2";
   const wrappedControlsClassName =
@@ -1038,7 +1068,7 @@ const BooleanSearchInput = ({
 
   const hasSuggestions =
     (suggestions.tags?.length || 0) + (suggestions.badges?.length || 0) > 0;
-  const showWrappedControls = isCompactLayout && queryBreaksLine;
+  const showWrappedControls = controlsWrap;
   const submitButton = (
     <button
       type="submit"
@@ -1072,7 +1102,7 @@ const BooleanSearchInput = ({
           <div className={fieldSlotClassName}>
             <div ref={fieldRef} className={fieldClassName} style={fieldStyle}>
               {showStackedPills && (
-                <div className="mb-2.5 flex flex-wrap gap-2">
+                <div ref={pillsRef} className="mb-2.5 flex flex-wrap gap-2">
                   {badgePills.length > 0 && (
                     <div className="flex flex-wrap gap-1">
                       {badgePills.map(renderBadgePill)}
