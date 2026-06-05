@@ -26,11 +26,12 @@ const SearchHelp = forwardRef(({ className = "", anchorRef, hideButton = false }
 
   const POPUP_MAX_WIDTH = 320;
   const GAP = 8;
-  const ARROW_H = 12;
-  const ARROW_W = 48;
+  const ARROW_H = 20;
+  const ARROW_W = 20;
+  const ARROW_MASK = `url("data:image/svg+xml,%3Csvg width='20' height='20' viewBox='0 0 20 20' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0H20C15.6 0 13.6 2.2 12.4 7.3L10.4 19.2C10.2 19.8 9.8 19.8 9.6 19.2L7.6 7.3C6.4 2.2 4.4 0 0 0Z' fill='white'/%3E%3C/svg%3E")`;
   const VIEWPORT_MARGIN = 8;
-  const TRIGGER_SIDE_OFFSET = 40;
-  const ARROW_X_OFFSET = -14;
+  const TRIGGER_SIDE_OFFSET = 54;
+  const ARROW_X_OFFSET = 0;
 
   const positionPopup = (triggerEl, measuredWidth = POPUP_MAX_WIDTH) => {
     const anchorEl = anchorRef?.current;
@@ -56,7 +57,7 @@ const SearchHelp = forwardRef(({ className = "", anchorRef, hideButton = false }
       width: "max-content",
     });
     setArrowStyle({
-      top: barRect.bottom + GAP - ARROW_H,
+      top: barRect.bottom + GAP - ARROW_H + 1,
       left: triggerCenter + ARROW_X_OFFSET,
     });
   };
@@ -129,21 +130,23 @@ const SearchHelp = forwardRef(({ className = "", anchorRef, hideButton = false }
                 backgroundColor: "#ffffff",
                 zIndex: 2,
                 pointerEvents: "none",
-                WebkitMaskImage: `url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0.500009 1C3.5 1 3.00001 7 6.00001 7C9 7 8.5 1 11.5 1C12 1 12 0.5 12 0H0C0 0.5 0 1 0.500009 1Z' fill='white'/%3E%3C/svg%3E")`,
-                maskImage: `url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0.500009 1C3.5 1 3.00001 7 6.00001 7C9 7 8.5 1 11.5 1C12 1 12 0.5 12 0H0C0 0.5 0 1 0.500009 1Z' fill='white'/%3E%3C/svg%3E")`,
+                WebkitMaskImage: ARROW_MASK,
+                maskImage: ARROW_MASK,
                 WebkitMaskRepeat: "no-repeat",
                 maskRepeat: "no-repeat",
                 WebkitMaskSize: "contain",
                 maskSize: "contain",
-                filter: "drop-shadow(0 2px 6px rgba(4, 80, 20, 0.12))",
               }}
             />
 
             {/* Popup box */}
             <div
               ref={popupRef}
-              className="fixed z-[1] p-4 bg-base-100 rounded-lg shadow-lg"
-              style={popupStyle}
+              className="fixed z-[1] p-4 bg-base-100 rounded-lg"
+              style={{
+                ...popupStyle,
+                boxShadow: "0 8px 18px rgba(4, 80, 20, 0.22), 0 18px 42px rgba(4, 80, 20, 0.18)",
+              }}
             >
               <div className="flex justify-between items-center mb-3">
                 <h3 className="font-semibold text-base-content">

@@ -18,6 +18,7 @@ const FilterSortOptionButton = React.forwardRef(
       active = false,
       className = "",
       iconClassName = "",
+      collapseLabel = false,
       children,
       type = "button",
       ...buttonProps
@@ -26,7 +27,10 @@ const FilterSortOptionButton = React.forwardRef(
   ) => {
     const hasResponsiveLabel = mobileLabel && mobileLabel !== label;
     const iconNode = Icon ? (
-      <Icon className={`${ICON_CLASS_NAME} ${iconClassName}`.trim()} />
+      <Icon
+        className={`${ICON_CLASS_NAME} ${iconClassName}`.trim()}
+        strokeWidth={active ? 2.5 : 2}
+      />
     ) : null;
 
     return (
@@ -50,10 +54,10 @@ const FilterSortOptionButton = React.forwardRef(
           (hasResponsiveLabel ? (
             <>
               <span className="hidden sm:inline">{label}</span>
-              <span className="sm:hidden">{mobileLabel}</span>
+              <span className={collapseLabel ? "hidden" : "sm:hidden"}>{mobileLabel}</span>
             </>
           ) : (
-            <span>{label}</span>
+            <span className={collapseLabel ? "hidden sm:inline" : ""}>{label}</span>
           ))}
       </button>
     );

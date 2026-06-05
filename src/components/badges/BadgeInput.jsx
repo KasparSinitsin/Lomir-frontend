@@ -150,7 +150,7 @@ const BadgeInput = ({
       maxWidth: `min(500px, calc(100vw - ${left}px - ${EDGE_MARGIN}px))`,
       maxHeight: base.maxHeight,
       zIndex: 10000,
-      arrowTop: base.placement === "bottom" ? base.top - 11 : base.top,
+      arrowTop: base.placement === "bottom" ? base.top - 11.8 : base.top,
     });
   }, [computeBasePosition]);
 
@@ -277,13 +277,13 @@ const BadgeInput = ({
                     menuPlacement === "bottom"
                       ? "translateX(-50%) rotate(180deg)"
                       : "translateX(-50%)",
-                  width: "48px",
-                  height: "12px",
+                  width: "22.5px",
+                  height: "12.8px",
                   backgroundColor: "#ffffff",
                   zIndex: 10001,
                   pointerEvents: "none",
-                  WebkitMaskImage: `url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0.500009 1C3.5 1 3.00001 7 6.00001 7C9 7 8.5 1 11.5 1C12 1 12 0.5 12 0H0C0 0.5 0 1 0.500009 1Z' fill='white'/%3E%3C/svg%3E")`,
-                  maskImage: `url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0.500009 1C3.5 1 3.00001 7 6.00001 7C9 7 8.5 1 11.5 1C12 1 12 0.5 12 0H0C0 0.5 0 1 0.500009 1Z' fill='white'/%3E%3C/svg%3E")`,
+                  WebkitMaskImage: `url("data:image/svg+xml,%3Csvg width='22.5' height='12.8' viewBox='0 0 22.5 12.8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0H22.5C17.55 0 15.3 1.408 13.95 4.672L11.7 12.288C11.475 12.672 11.025 12.672 10.8 12.288L8.55 4.672C7.2 1.408 4.95 0 0 0Z' fill='white'/%3E%3C/svg%3E")`,
+                  maskImage: `url("data:image/svg+xml,%3Csvg width='22.5' height='12.8' viewBox='0 0 22.5 12.8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0H22.5C17.55 0 15.3 1.408 13.95 4.672L11.7 12.288C11.475 12.672 11.025 12.672 10.8 12.288L8.55 4.672C7.2 1.408 4.95 0 0 0Z' fill='white'/%3E%3C/svg%3E")`,
                   WebkitMaskRepeat: "no-repeat",
                   maskRepeat: "no-repeat",
                   WebkitMaskSize: "contain",

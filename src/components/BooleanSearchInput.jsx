@@ -48,8 +48,15 @@ const hexToRgba = (hex, alpha) => {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 };
 
-const MIN_QUERY_HINT = "Enter at least 2 characters";
+const MIN_QUERY_HINT = "Enter at least two characters";
+const ADVANCED_SEARCH_SHADOW =
+  "0 8px 18px rgba(4, 80, 20, 0.22), 0 18px 42px rgba(4, 80, 20, 0.18)";
 const BOOLEAN_OPERATOR_SPLIT_PATTERN = /\b(?:AND|OR|NOT)\b/i;
+const NARROW_DROPDOWN_BREAKPOINT = 640;
+const COMPACT_INLINE_CONTROLS_RESERVED_WIDTH = 76;
+const SUGGESTION_DROPDOWN_ARROW_WIDTH = 20;
+const SUGGESTION_DROPDOWN_ARROW_HEIGHT = 20;
+const SUGGESTION_DROPDOWN_ARROW_MASK = `url("data:image/svg+xml,%3Csvg width='20' height='20' viewBox='0 0 20 20' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0H20C15.6 0 13.6 2.2 12.4 7.3L10.4 19.2C10.2 19.8 9.8 19.8 9.6 19.2L7.6 7.3C6.4 2.2 4.4 0 0 0Z' fill='white'/%3E%3C/svg%3E")`;
 
 const cleanSuggestionSegment = (value) =>
   value
@@ -71,6 +78,71 @@ const getSuggestionQuery = (value, cursorIndex = value.length) => {
     .filter(Boolean);
 
   return fallbackSegments[fallbackSegments.length - 1] || "";
+};
+
+const clamp = (value, min, max) => {
+  const safeMax = Math.max(min, max);
+  return Math.min(Math.max(value, min), safeMax);
+};
+
+const getTextareaCaretClientX = (textarea) => {
+  if (typeof document === "undefined" || !textarea) return null;
+
+  const selectionStart = textarea.selectionStart ?? textarea.value.length;
+  const textareaRect = textarea.getBoundingClientRect();
+  const styles = window.getComputedStyle(textarea);
+  const mirror = document.createElement("div");
+  const marker = document.createElement("span");
+  const copiedProperties = [
+    "boxSizing",
+    "fontFamily",
+    "fontSize",
+    "fontStyle",
+    "fontVariant",
+    "fontWeight",
+    "letterSpacing",
+    "lineHeight",
+    "paddingTop",
+    "paddingRight",
+    "paddingBottom",
+    "paddingLeft",
+    "textAlign",
+    "textIndent",
+    "textTransform",
+    "whiteSpace",
+    "wordSpacing",
+    "tabSize",
+  ];
+
+  copiedProperties.forEach((property) => {
+    const value = styles[property];
+    if (value) mirror.style[property] = value;
+  });
+
+  mirror.style.position = "fixed";
+  mirror.style.top = "0";
+  mirror.style.left = "-9999px";
+  mirror.style.visibility = "hidden";
+  mirror.style.overflow = "hidden";
+  mirror.style.width = `${textarea.clientWidth}px`;
+  mirror.style.minHeight = "0";
+  mirror.style.border = "0";
+  mirror.style.wordBreak = "normal";
+  mirror.style.overflowWrap = "break-word";
+
+  mirror.textContent = textarea.value.slice(0, selectionStart);
+  marker.textContent = "\u200b";
+  mirror.appendChild(marker);
+  document.body.appendChild(mirror);
+
+  const markerRect = marker.getBoundingClientRect();
+  const mirrorRect = mirror.getBoundingClientRect();
+  const caretX =
+    textareaRect.left + markerRect.left - mirrorRect.left - textarea.scrollLeft;
+
+  mirror.remove();
+
+  return clamp(caretX, textareaRect.left, textareaRect.right);
 };
 
 const splitLeadingSign = (value) => {
@@ -166,6 +238,10 @@ const BooleanSearchInput = ({
   onSelectBadgeSuggestion,
   leftAdornment = null,
   resetSignal = 0,
+  onQueryWrapChange,
+  wrappedLeadingControl = null,
+  wrappedMiddleControl = null,
+  wrappedControlsExpanded = false,
 }) => {
   const [query, setQuery] = useState(initialQuery);
   const [hasBooleanOperators, setHasBooleanOperators] = useState(false);
@@ -176,6 +252,8 @@ const BooleanSearchInput = ({
   const [suggestions, setSuggestions] = useState({ tags: [], badges: [] });
   const [showDropdown, setShowDropdown] = useState(false);
   const [hoveredItemKey, setHoveredItemKey] = useState(null);
+  const [queryBreaksLine, setQueryBreaksLine] = useState(false);
+  const [pillsBreakLine, setPillsBreakLine] = useState(false);
 
   const inputRef = useRef(null);
   const fieldRef = useRef(null);
@@ -185,6 +263,7 @@ const BooleanSearchInput = ({
   const hintMeasureRef = useRef(null);
   const dropdownRef = useRef(null);
   const suggestionsTimerRef = useRef(null);
+  const pillsRef = useRef(null);
 
   const [menuStyle, setMenuStyle] = useState({
     position: "fixed",
@@ -201,7 +280,7 @@ const BooleanSearchInput = ({
   const [menuPlacement, setMenuPlacement] = useState("bottom");
 
   const DROPDOWN_EDGE_MARGIN = 8;
-  const DROPDOWN_GAP = 16;
+  const DROPDOWN_GAP = 8;
   const DROPDOWN_MIN_HEIGHT = 140;
   const DROPDOWN_MAX_HEIGHT = 360;
 
@@ -217,10 +296,25 @@ const BooleanSearchInput = ({
 
     const containerEl = document.querySelector(".content-container");
     const containerRect = containerEl?.getBoundingClientRect();
-    const containerW = containerRect?.width ?? viewportW;
-    const containerCenterX = containerRect
-      ? containerRect.left + containerRect.width / 2
-      : viewportW / 2;
+    const fallbackBoundsLeft = DROPDOWN_EDGE_MARGIN;
+    const fallbackBoundsRight = viewportW - DROPDOWN_EDGE_MARGIN;
+    const isNarrowViewport = viewportW <= NARROW_DROPDOWN_BREAKPOINT;
+    const dropdownBoundsLeft = isNarrowViewport && containerRect
+      ? Math.max(
+          fallbackBoundsLeft,
+          containerRect.left + CONTENT_CONTAINER_PADDING,
+        )
+      : fallbackBoundsLeft;
+    const dropdownBoundsRight = isNarrowViewport && containerRect
+      ? Math.min(
+          fallbackBoundsRight,
+          containerRect.right - CONTENT_CONTAINER_PADDING,
+        )
+      : fallbackBoundsRight;
+    const dropdownBoundsWidth = Math.max(
+      0,
+      dropdownBoundsRight - dropdownBoundsLeft,
+    );
 
     const spaceBelow = viewportH - (rect.bottom + DROPDOWN_GAP) - DROPDOWN_EDGE_MARGIN;
     const spaceAbove = rect.top - DROPDOWN_GAP - DROPDOWN_EDGE_MARGIN;
@@ -229,64 +323,122 @@ const BooleanSearchInput = ({
     if (spaceAbove >= DROPDOWN_MIN_HEIGHT && spaceBelow < DROPDOWN_MIN_HEIGHT) placement = "top";
     const available = placement === "bottom" ? spaceBelow : spaceAbove;
     const maxHeight = Math.min(DROPDOWN_MAX_HEIGHT, Math.max(80, available));
-    const left = Math.max(DROPDOWN_EDGE_MARGIN, rect.left);
     const top = placement === "bottom" ? rect.bottom + DROPDOWN_GAP : rect.top - DROPDOWN_GAP - maxHeight;
-    const inputCenterX = rect.left + rect.width / 2;
-    return { placement, top, left, maxHeight, viewportW, inputCenterX, containerW, containerCenterX };
+    const caretAnchorX = clamp(
+      getTextareaCaretClientX(inputRef.current) ?? rect.left + rect.width / 2,
+      dropdownBoundsLeft + SUGGESTION_DROPDOWN_ARROW_WIDTH / 2,
+      dropdownBoundsRight - SUGGESTION_DROPDOWN_ARROW_WIDTH / 2,
+    );
+    return {
+      placement,
+      top,
+      maxHeight,
+      viewportW,
+      caretAnchorX,
+      dropdownBoundsLeft,
+      dropdownBoundsRight,
+      dropdownBoundsWidth,
+      isNarrowViewport,
+    };
   }, []);
 
   const updateDropdownPosition = useCallback(() => {
     const base = computeDropdownPosition();
     if (!base) return;
     setMenuPlacement(base.placement);
-    const maxDropdownWidth = Math.min(500, base.containerW - CONTENT_CONTAINER_PADDING * 2);
+    const maxDropdownWidth = Math.max(
+      0,
+      Math.min(
+        500,
+        base.dropdownBoundsWidth,
+      ),
+    );
+    const shouldFillNarrowViewport = base.isNarrowViewport;
+    const estimatedDropdownWidth = shouldFillNarrowViewport
+      ? maxDropdownWidth
+      : Math.min(360, maxDropdownWidth);
+    const maxMenuLeft = Math.max(
+      base.dropdownBoundsLeft,
+      base.dropdownBoundsRight - estimatedDropdownWidth,
+    );
+    const menuLeft = clamp(
+      base.caretAnchorX - estimatedDropdownWidth / 2,
+      base.dropdownBoundsLeft,
+      maxMenuLeft,
+    );
     setMenuStyle({
       position: "fixed",
       top: base.top,
-      left: base.containerCenterX,
-      transform: "translateX(-50%)",
-      width: "max-content",
+      left: menuLeft,
+      transform: "none",
+      width: shouldFillNarrowViewport ? maxDropdownWidth : "max-content",
       maxWidth: maxDropdownWidth,
+      boxSizing: "border-box",
       maxHeight: base.maxHeight,
       zIndex: 10000,
-      arrowTop: base.placement === "bottom" ? base.top - 11 : base.top,
-      arrowLeft: base.inputCenterX,
+      arrowTop:
+        base.placement === "bottom"
+          ? base.top - SUGGESTION_DROPDOWN_ARROW_HEIGHT + 1
+          : base.top,
+      arrowLeft: base.caretAnchorX,
     });
   }, [computeDropdownPosition]);
 
-  const refineDropdownTop = useCallback(() => {
-    if (!showDropdown || menuPlacement !== "top") return;
+  const refineDropdownPosition = useCallback(() => {
+    if (!showDropdown) return;
+    const base = computeDropdownPosition();
     const el = fieldRef.current;
     const menuEl = dropdownRef.current;
-    if (!el || !menuEl) return;
+    if (!base || !el || !menuEl) return;
     const rect = el.getBoundingClientRect();
     const actualHeight = Math.min(menuEl.scrollHeight, menuStyle.maxHeight);
-    const correctedTop = Math.max(DROPDOWN_EDGE_MARGIN, rect.top - DROPDOWN_GAP - actualHeight);
+    const actualWidth = Math.min(
+      menuEl.getBoundingClientRect().width || menuEl.scrollWidth,
+      base.dropdownBoundsWidth,
+    );
+    const maxMenuLeft = Math.max(
+      base.dropdownBoundsLeft,
+      base.dropdownBoundsRight - actualWidth,
+    );
+    const correctedLeft = clamp(
+      base.caretAnchorX - actualWidth / 2,
+      base.dropdownBoundsLeft,
+      maxMenuLeft,
+    );
+    const correctedTop =
+      base.placement === "top"
+        ? Math.max(DROPDOWN_EDGE_MARGIN, rect.top - DROPDOWN_GAP - actualHeight)
+        : base.top;
     setMenuStyle((prev) => ({
       ...prev,
       top: correctedTop,
-      arrowTop: correctedTop + actualHeight - 1,
+      left: correctedLeft,
+      arrowTop:
+        base.placement === "bottom"
+          ? correctedTop - SUGGESTION_DROPDOWN_ARROW_HEIGHT + 1
+          : correctedTop + actualHeight - 1,
+      arrowLeft: base.caretAnchorX,
     }));
-  }, [showDropdown, menuPlacement, menuStyle.maxHeight]);
+  }, [showDropdown, computeDropdownPosition, menuStyle.maxHeight]);
 
   useLayoutEffect(() => {
     if (!showDropdown) return;
     updateDropdownPosition();
-    const id = requestAnimationFrame(() => refineDropdownTop());
+    const id = requestAnimationFrame(() => refineDropdownPosition());
     return () => cancelAnimationFrame(id);
-  }, [showDropdown, updateDropdownPosition, refineDropdownTop, suggestions.tags.length, suggestions.badges.length]);
+  }, [showDropdown, updateDropdownPosition, refineDropdownPosition, suggestions.tags.length, suggestions.badges.length]);
 
   useEffect(() => {
     if (!showDropdown) return;
     let raf = 0;
     const tick = () => {
       updateDropdownPosition();
-      refineDropdownTop();
+      refineDropdownPosition();
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [showDropdown, updateDropdownPosition, refineDropdownTop]);
+  }, [showDropdown, updateDropdownPosition, refineDropdownPosition]);
 
   const [measuredTextWidths, setMeasuredTextWidths] = useState({
     query: 0,
@@ -324,9 +476,7 @@ const BooleanSearchInput = ({
   const inlinePillsWidthPx =
     totalPillCount > 0 ? pillsWidthPx + pillsGapPx + 8 : 0;
 
-  const baseHelperWidthPx =
-    (showMinQueryHint ? measuredTextWidths.hint + 8 : 0) +
-    topAdornmentWidthPx;
+  const baseHelperWidthPx = topAdornmentWidthPx;
   const trailingIndicatorWidthPx = hasBooleanOperators
     ? (isCompactLayout ? 20 : 42)
     : 20;
@@ -359,7 +509,8 @@ const BooleanSearchInput = ({
   const fieldRightPaddingPx = Math.max(helperWidthPx, 12) + 8;
   const textRowRightPaddingPx = isCompactLayout
     ? 0
-    : indicatorInRowPx + trailingControlsOffsetPx + 8;
+    : indicatorInRowPx + trailingControlsOffsetPx + 2;
+  const queryHintAnchorPx = Math.max(14, measuredTextWidths.query + 13);
   const fieldWidthPx = Math.min(
     estimatedFieldMaxWidthPx,
     Math.max(
@@ -520,13 +671,39 @@ const BooleanSearchInput = ({
     if (!el) return;
     if (!el.value) {
       el.style.height = "";
+      setQueryBreaksLine(false);
       return;
     }
     el.style.height = "0";
     el.style.height = `${el.scrollHeight}px`;
-  }, []);
+    const styles = window.getComputedStyle(el);
+    const lineHeight =
+      parseFloat(styles.lineHeight) ||
+      parseFloat(styles.fontSize) * 1.25 ||
+      18;
+    const isMultiline = el.scrollHeight > lineHeight * 1.5;
+
+    setQueryBreaksLine((wasBreaking) => {
+      if (!isCompactLayout) return false;
+      if (isMultiline) return true;
+      if (!wasBreaking) return false;
+
+      const inlineTextareaWidth = Math.max(
+        0,
+        el.clientWidth - COMPACT_INLINE_CONTROLS_RESERVED_WIDTH,
+      );
+
+      return measuredTextWidths.query > inlineTextareaWidth;
+    });
+  }, [isCompactLayout, measuredTextWidths.query]);
 
   useEffect(() => { resizeTextarea(); }, [query, resizeTextarea]);
+
+  const controlsWrap = isCompactLayout && (queryBreaksLine || pillsBreakLine);
+
+  useEffect(() => {
+    onQueryWrapChange?.(controlsWrap);
+  }, [onQueryWrapChange, controlsWrap]);
 
   useEffect(() => {
     const el = inputRef.current;
@@ -542,6 +719,50 @@ const BooleanSearchInput = ({
     observer.observe(el);
     return () => observer.disconnect();
   }, [resizeTextarea]);
+
+  const measurePillsWrap = useCallback(() => {
+    const el = pillsRef.current;
+    if (!el || !isCompactLayout) {
+      setPillsBreakLine(false);
+      return;
+    }
+    const height = el.offsetHeight;
+    setPillsBreakLine((wasBreaking) => {
+      // One pill row ≈ 22px; two rows ≈ 52px. 36px safely detects overflow.
+      if (height > 36) return true;
+      if (!wasBreaking) return false;
+      // Hysteresis: when the form is in wrapped mode the field is full-width,
+      // so pills may appear to fit in one row even though they would wrap once
+      // the submit button returns inline (narrowing the field). Check whether
+      // the pill content's natural width exceeds the narrower field width before
+      // clearing the flag, to prevent oscillation.
+      const groups = Array.from(el.children);
+      const naturalWidth =
+        groups.reduce((sum, group) => {
+          const pills = Array.from(group.children);
+          const pillsWidth = pills.reduce((s, p) => s + p.getBoundingClientRect().width, 0);
+          return sum + pillsWidth + Math.max(0, pills.length - 1) * 4; // gap-1
+        }, 0) + Math.max(0, groups.length - 1) * 8; // gap-2 between groups
+      const narrowFieldWidth = el.clientWidth - COMPACT_INLINE_CONTROLS_RESERVED_WIDTH;
+      return naturalWidth > narrowFieldWidth;
+    });
+  }, [isCompactLayout]);
+
+  useEffect(() => {
+    if (!showStackedPills) {
+      setPillsBreakLine(false);
+      return;
+    }
+    measurePillsWrap();
+  }, [showStackedPills, measurePillsWrap]);
+
+  useEffect(() => {
+    const el = pillsRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver(() => measurePillsWrap());
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [showStackedPills, measurePillsWrap]);
 
   const handleSelectTag = (tag) => {
     onSelectTagSuggestion?.(tag);
@@ -581,6 +802,14 @@ const BooleanSearchInput = ({
   const formClassName = isCompactLayout
     ? "relative w-full min-w-0"
     : "relative inline-block max-w-full";
+  const formControlsClassName =
+    controlsWrap
+      ? "flex max-w-full flex-col items-stretch gap-2"
+      : "flex max-w-full items-center gap-2";
+  const wrappedControlsClassName =
+    wrappedControlsExpanded
+      ? "grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2"
+      : "flex w-full items-center justify-center gap-3";
   const fieldSlotClassName = isCompactLayout
     ? "relative min-w-0 flex-1"
     : "relative max-w-full";
@@ -857,15 +1086,41 @@ const BooleanSearchInput = ({
 
   const hasSuggestions =
     (suggestions.tags?.length || 0) + (suggestions.badges?.length || 0) > 0;
+  const showWrappedControls = controlsWrap;
+  const submitButton = (
+    <button
+      type="submit"
+      className="btn btn-primary h-[32px] sm:h-[38px] min-h-0 px-2 sm:px-4 shrink-0"
+      disabled={query.trim().length < 2}
+      aria-label="Search"
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        className="h-5 w-5"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        aria-hidden="true"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+        />
+      </svg>
+      <span className="sr-only sm:not-sr-only">Search</span>
+    </button>
+  );
 
   return (
     <div className={rootClassName}>
       <form onSubmit={handleSubmit} className={formClassName}>
-        <div className="flex max-w-full items-center gap-2">
+        <div className={formControlsClassName}>
           <div className={fieldSlotClassName}>
             <div ref={fieldRef} className={fieldClassName} style={fieldStyle}>
               {showStackedPills && (
-                <div className="mb-2.5 flex flex-wrap gap-2">
+                <div ref={pillsRef} className="mb-2.5 flex flex-wrap gap-2">
                   {badgePills.length > 0 && (
                     <div className="flex flex-wrap gap-1">
                       {badgePills.map(renderBadgePill)}
@@ -884,7 +1139,10 @@ const BooleanSearchInput = ({
                 </div>
               )}
 
-              <div className="flex min-w-0 items-end gap-2">
+              <div
+                className="flex min-w-0 items-end gap-2"
+                style={{ paddingRight: `${textRowRightPaddingPx}px` }}
+              >
                 <textarea
                   ref={inputRef}
                   value={query}
@@ -896,14 +1154,46 @@ const BooleanSearchInput = ({
                   className="min-w-0 flex-1 bg-transparent text-sm leading-[1.25] focus:outline-none px-0 py-0"
                   style={{
                     overflow: "hidden",
-                    paddingRight: `${textRowRightPaddingPx}px`,
                     resize: "none",
                   }}
                   minLength={2}
                   rows={1}
                 />
-
               </div>
+              {showMinQueryHint && (
+                <>
+                  <div
+                    className="pointer-events-none absolute top-full z-[9999] mt-1 max-w-[280px] rounded-lg bg-white text-left whitespace-pre-line text-[var(--color-primary-focus)]"
+                    style={{
+                      left: 0,
+                      padding: "0.5rem 0.75rem",
+                      fontSize: "0.775rem",
+                      lineHeight: 1.15,
+                      fontWeight: 450,
+                      boxShadow: "0 2px 8px rgba(4, 80, 20, 0.15)",
+                    }}
+                    role="tooltip"
+                  >
+                    {MIN_QUERY_HINT}
+                  </div>
+                  <div
+                    className="pointer-events-none absolute top-full z-[10001] bg-white"
+                    style={{
+                      left: `${queryHintAnchorPx}px`,
+                      transform: "translate(-50%, -11px) rotate(180deg)",
+                      width: "28px",
+                      height: "16px",
+                      WebkitMaskImage: `url("data:image/svg+xml,%3Csvg width='28' height='16' viewBox='0 0 28 16' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0H28C21.6 0 18.9 1.8 16.8 6L14.5 15.2C14.24 15.8 13.76 15.8 13.5 15.2L11.2 6C9.1 1.8 6.4 0 0 0Z' fill='white'/%3E%3C/svg%3E")`,
+                      maskImage: `url("data:image/svg+xml,%3Csvg width='28' height='16' viewBox='0 0 28 16' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0H28C21.6 0 18.9 1.8 16.8 6L14.5 15.2C14.24 15.8 13.76 15.8 13.5 15.2L11.2 6C9.1 1.8 6.4 0 0 0Z' fill='white'/%3E%3C/svg%3E")`,
+                      WebkitMaskRepeat: "no-repeat",
+                      maskRepeat: "no-repeat",
+                      WebkitMaskSize: "contain",
+                      maskSize: "contain",
+                    }}
+                    aria-hidden="true"
+                  />
+                </>
+              )}
               <div
                 className={trailingControlsClassName}
                 style={trailingControlsStyle}
@@ -927,11 +1217,6 @@ const BooleanSearchInput = ({
             </div>
 
             <div className={helperControlsClassName}>
-              {showMinQueryHint && (
-                <span className="text-xs text-warning whitespace-nowrap">
-                  {MIN_QUERY_HINT}
-                </span>
-              )}
               {showInlinePills && (
                 <>
                   {badgePills.length > 0 && (
@@ -963,25 +1248,32 @@ const BooleanSearchInput = ({
                       top: `${menuStyle.arrowTop}px`,
                       left: `${menuStyle.arrowLeft ?? 0}px`,
                       transform: menuPlacement === "bottom" ? "translateX(-50%) rotate(180deg)" : "translateX(-50%)",
-                      width: "48px",
-                      height: "12px",
                       backgroundColor: "#ffffff",
                       zIndex: 10001,
                       pointerEvents: "none",
-                    WebkitMaskImage: `url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0.500009 1C3.5 1 3.00001 7 6.00001 7C9 7 8.5 1 11.5 1C12 1 12 0.5 12 0H0C0 0.5 0 1 0.500009 1Z' fill='white'/%3E%3C/svg%3E")`,
-                    maskImage: `url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0.500009 1C3.5 1 3.00001 7 6.00001 7C9 7 8.5 1 11.5 1C12 1 12 0.5 12 0H0C0 0.5 0 1 0.500009 1Z' fill='white'/%3E%3C/svg%3E")`,
-                    WebkitMaskRepeat: "no-repeat",
-                    maskRepeat: "no-repeat",
-                    WebkitMaskSize: "contain",
-                    maskSize: "contain",
-                    filter: "drop-shadow(0 2px 6px rgba(4, 80, 20, 0.12))",
-                  }}
+                      width: `${SUGGESTION_DROPDOWN_ARROW_WIDTH}px`,
+                      height: `${SUGGESTION_DROPDOWN_ARROW_HEIGHT}px`,
+                      WebkitMaskImage: SUGGESTION_DROPDOWN_ARROW_MASK,
+                      maskImage: SUGGESTION_DROPDOWN_ARROW_MASK,
+                      WebkitMaskRepeat: "no-repeat",
+                      maskRepeat: "no-repeat",
+                      WebkitMaskSize: "contain",
+                      maskSize: "contain",
+                      filter: "drop-shadow(0 2px 6px rgba(4, 80, 20, 0.12))",
+                    }}
                   />
                 )}
                 <ul
                   ref={dropdownRef}
-                  style={showDropdown && hasSuggestions ? menuStyle : { display: "none" }}
-                  className={showDropdown && hasSuggestions ? "menu flex-nowrap bg-base-100 rounded-box p-2 shadow-xl overflow-y-auto" : ""}
+                  style={
+                    showDropdown && hasSuggestions
+                      ? {
+                          ...menuStyle,
+                          boxShadow: ADVANCED_SEARCH_SHADOW,
+                        }
+                      : { display: "none" }
+                  }
+                  className={showDropdown && hasSuggestions ? "menu flex-nowrap bg-base-100 rounded-box p-2 overflow-y-auto" : ""}
                 >
                   {showDropdown && hasSuggestions && (
                   <>{/* Focus Areas section */}
@@ -1019,18 +1311,18 @@ const BooleanSearchInput = ({
                                     onMouseEnter={() => setHoveredItemKey(`tag-${tag.id}`)}
                                     onMouseLeave={() => setHoveredItemKey(null)}
                                     style={hoveredItemKey === `tag-${tag.id}` ? { backgroundColor: hexToRgba(FOCUS_GREEN, 0.15) } : undefined}
-                                    className="flex flex-row-reverse flex-wrap items-start w-full leading-none gap-x-2 gap-y-2 py-1.5"
+                                    className="flex min-w-0 flex-row-reverse flex-wrap items-start w-full leading-none gap-x-2 gap-y-2 py-1.5"
                                   >
                                     <div className="flex-none flex items-center gap-0.5">
                                       {isFirst && (
-                                        <span className="flex items-center gap-1 text-xs leading-none whitespace-nowrap" style={{ color: FOCUS_GREEN }}>
+                                        <span className="flex max-w-full items-center gap-1 text-xs leading-none whitespace-normal break-words [overflow-wrap:anywhere]" style={{ color: FOCUS_GREEN }}>
                                           <SuperIcon size={10} className="shrink-0" />
                                           <span>{supercategory}</span>
                                         </span>
                                       )}
                                     </div>
-                                    <div className="[flex:1_0_auto] max-w-full flex items-center gap-2 min-w-0">
-                                      <span className="font-medium">{tag.name}</span>
+                                    <div className="[flex:1_1_0] max-w-full flex items-center gap-2 min-w-0">
+                                      <span className="min-w-0 break-words font-medium [overflow-wrap:anywhere]">{tag.name}</span>
                                     </div>
                                   </button>
                                 </li>
@@ -1077,19 +1369,19 @@ const BooleanSearchInput = ({
                                     onMouseEnter={() => setHoveredItemKey(`badge-${badge.id}`)}
                                     onMouseLeave={() => setHoveredItemKey(null)}
                                     style={hoveredItemKey === `badge-${badge.id}` ? { backgroundColor: hexToRgba(color, 0.15) } : undefined}
-                                    className="flex flex-row-reverse flex-wrap items-start w-full leading-none gap-x-2 gap-y-2 py-1.5"
+                                    className="flex min-w-0 flex-row-reverse flex-wrap items-start w-full leading-none gap-x-2 gap-y-2 py-1.5"
                                   >
                                     <div className="flex-none flex items-center gap-0.5">
                                       {isFirst && (
-                                        <span className="flex items-center gap-1 text-xs leading-none whitespace-nowrap" style={{ color }}>
+                                        <span className="flex max-w-full items-center gap-1 text-xs leading-none whitespace-normal break-words [overflow-wrap:anywhere]" style={{ color }}>
                                           {getCategoryIcon(category, color, 10)}
                                           <span>{category}</span>
                                         </span>
                                       )}
                                     </div>
-                                    <div className="[flex:1_0_auto] max-w-full flex items-center gap-2 min-w-0">
+                                    <div className="[flex:1_1_0] max-w-full flex items-center gap-2 min-w-0">
                                       <span className="shrink-0">{getBadgeIcon(badge.name, color, 14)}</span>
-                                      <span className="font-medium">{badge.name}</span>
+                                      <span className="min-w-0 break-words font-medium [overflow-wrap:anywhere]">{badge.name}</span>
                                     </div>
                                   </button>
                                 </li>
@@ -1107,29 +1399,21 @@ const BooleanSearchInput = ({
             )}
           </div>
 
-          <button
-            type="submit"
-            className="btn btn-primary h-[32px] sm:h-[38px] min-h-0 px-2 sm:px-4 shrink-0"
-            disabled={query.trim().length < 2}
-            aria-label="Search"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-5 w-5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              aria-hidden="true"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-              />
-            </svg>
-            <span className="sr-only sm:not-sr-only">Search</span>
-          </button>
+          {showWrappedControls ? (
+            <div className={wrappedControlsClassName}>
+              {wrappedLeadingControl ? (
+                <div className="flex items-center">{wrappedLeadingControl}</div>
+              ) : (
+                <span aria-hidden="true" />
+              )}
+              {wrappedControlsExpanded && (
+                <div className="min-w-0">{wrappedMiddleControl}</div>
+              )}
+              {submitButton}
+            </div>
+          ) : (
+            submitButton
+          )}
         </div>
 
         <div className="pointer-events-none absolute left-0 top-0 -z-10 invisible whitespace-pre text-sm">

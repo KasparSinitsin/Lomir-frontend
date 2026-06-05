@@ -643,18 +643,25 @@ const ConversationList = ({
             chatVisible && String(activeConversationId) === String(conversation.id);
 
           const conversationCard = (
-            <div
-              ref={isActive ? activeConversationRef : null}
-              className={`
-                p-4 mr-4 cursor-pointer rounded-lg border shadow-soft transition-all duration-300 hover:shadow-md group
-                ${
-                  isActive
-                    ? "lomir-active-conversation-card bg-green-100 border-transparent"
-                    : "bg-white/80 border-base-200"
-                }
-              `}
-              onClick={() => onSelectConversation(conversation.id)}
-            >
+            <div className={isActive ? "lomir-active-conversation-wrap" : undefined}>
+              {isActive && (
+                <span
+                  className="lomir-active-conversation-arrow"
+                  aria-hidden="true"
+                />
+              )}
+              <div
+                ref={isActive ? activeConversationRef : null}
+                className={`
+                  p-4 mr-4 cursor-pointer rounded-lg border shadow-soft transition-all duration-300 hover:shadow-md group
+                  ${
+                    isActive
+                      ? "lomir-active-conversation-card bg-green-100 border-transparent"
+                      : "bg-white/80 border-base-200"
+                  }
+                `}
+                onClick={() => onSelectConversation(conversation.id)}
+              >
               <div className="flex items-center">
                 {/* Avatar - Clickable for both team and direct conversations */}
                 <Tooltip
@@ -912,6 +919,7 @@ const ConversationList = ({
                   </Tooltip>
                 )}
               </div>
+            </div>
             </div>
           );
 

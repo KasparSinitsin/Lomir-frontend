@@ -1,6 +1,10 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 
+const TOOLTIP_ARROW_WIDTH = 22.5;
+const TOOLTIP_ARROW_HEIGHT = 12.8;
+const TOOLTIP_ARROW_MASK = `url("data:image/svg+xml,%3Csvg width='22.5' height='12.8' viewBox='0 0 22.5 12.8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0H22.5C17.55 0 15.3 1.408 13.95 4.672L11.7 12.288C11.475 12.672 11.025 12.672 10.8 12.288L8.55 4.672C7.2 1.408 4.95 0 0 0Z' fill='white'/%3E%3C/svg%3E")`;
+
 /**
  * Portal-based Tooltip Component
  *
@@ -36,7 +40,7 @@ const Tooltip = ({
     const viewportHeight = window.innerHeight;
     const gap = 8;
     const padding = 12; // Minimum distance from viewport edge
-    const arrowSize = 8; // Arrow height
+    const arrowSize = TOOLTIP_ARROW_HEIGHT;
 
     let top, left;
     let finalPosition = position;
@@ -106,8 +110,8 @@ const Tooltip = ({
     const arrowLeft = triggerRect.left + triggerRect.width / 2;
     const arrowTop =
       finalPosition === "bottom"
-        ? triggerRect.bottom + (gap - arrowSize) / 2
-        : triggerRect.top - (gap + arrowSize) / 2;
+        ? top - arrowSize + 1
+        : top + tooltipRect.height - 1;
 
     setCoords({ top, left });
     setArrowCoords({ top: arrowTop, left: arrowLeft });
@@ -132,21 +136,19 @@ const Tooltip = ({
   const getArrowStyle = () => {
     const baseStyle = {
       position: "fixed",
-      width: "12px",
-      height: "8px",
+      width: `${TOOLTIP_ARROW_WIDTH}px`,
+      height: `${TOOLTIP_ARROW_HEIGHT}px`,
       backgroundColor: "#ffffff",
-      zIndex: 10000,
+      zIndex: 10001,
       pointerEvents: "none",
       left: `${arrowCoords.left}px`,
       transform: "translateX(-50%)",
-      // Using the same wavy SVG mask from tooltip-lomir
-      WebkitMaskImage: `url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0.500009 1C3.5 1 3.00001 7 6.00001 7C9 7 8.5 1 11.5 1C12 1 12 0.5 12 0H0C0 0.5 0 1 0.500009 1Z' fill='white'/%3E%3C/svg%3E")`,
-      maskImage: `url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0.500009 1C3.5 1 3.00001 7 6.00001 7C9 7 8.5 1 11.5 1C12 1 12 0.5 12 0H0C0 0.5 0 1 0.500009 1Z' fill='white'/%3E%3C/svg%3E")`,
+      WebkitMaskImage: TOOLTIP_ARROW_MASK,
+      maskImage: TOOLTIP_ARROW_MASK,
       WebkitMaskRepeat: "no-repeat",
       maskRepeat: "no-repeat",
       WebkitMaskSize: "contain",
       maskSize: "contain",
-      filter: "drop-shadow(0 2px 6px rgba(4, 80, 20, 0.12))",
     };
 
     if (actualPosition === "bottom") {
