@@ -134,6 +134,7 @@ Lomir-frontend/
 │   ├── pages/
 │   │   ├── Home.jsx                # Public landing page
 │   │   ├── SearchPage.jsx          # Search with list/map toggle, advanced filtering
+│   │   ├── searchPageHelpers.js    # Helper functions for SearchPage (not a page itself)
 │   │   ├── MyTeams.jsx             # User's teams, invitations, applications
 │   │   ├── Profile.jsx             # User profile editing
 │   │   ├── PublicProfile.jsx       # Profile placeholder for deleted/missing users
@@ -147,6 +148,8 @@ Lomir-frontend/
 │   │   ├── VerifyEmail.jsx
 │   │   └── DesignSystem.jsx        # Dev-only component playground
 │   ├── components/
+│   │   ├── BooleanSearchInput.jsx  # Textarea-based Boolean search input with operator helpers
+│   │   ├── SearchHelp.jsx          # Search Tips popup panel
 │   │   ├── auth/                   # Login/register forms, TurnstileWidget
 │   │   ├── teams/                  # Team cards, detail modals, vacant roles,
 │   │   │                           #   applications, invitations, member management
@@ -167,17 +170,20 @@ Lomir-frontend/
 │   │   ├── AuthContext.jsx         # Authentication state + JWT management
 │   │   ├── UserModalContext.jsx    # Global user detail modal stack
 │   │   ├── TeamModalContext.jsx    # Global team detail modal state
+│   │   ├── ToastContext.jsx        # Toast notification state + dispatch
 │   │   └── ModalLayerContext.jsx   # Modal z-index stacking
+│   ├── lib/
+│   │   └── queryClient.js          # TanStack React Query client configuration
 │   ├── services/
 │   │   ├── api.js                  # Axios instance with default camelCase ↔ snake_case interceptors;
 │   │   │                           #   call sites can opt out via skipRequestCaseTransform /
 │   │   │                           #   skipResponseCaseTransform for explicit per-call data contracts
-│   │   ├── authService.js
 │   │   ├── userService.js          # Includes deletionPreview + deleteUser
 │   │   ├── teamService.js
 │   │   ├── searchService.js
 │   │   ├── matchingService.js
 │   │   ├── vacantRoleService.js
+│   │   ├── teamMemberRoleReopenService.js # Role reopen requests by team members
 │   │   ├── badgeService.js
 │   │   ├── tagService.js
 │   │   ├── messageService.js
@@ -203,18 +209,30 @@ Lomir-frontend/
 │   │   ├── useAwardModals.js       # Badge award modal state management
 │   │   └── useTheme.js             # Theme toggle state
 │   ├── utils/
+│   │   ├── formatters.js           # camelCase ↔ snake_case conversion (used by api.js interceptors)
 │   │   ├── deletedUser.js          # "Former Lomir User" display utilities + FormerUserAvatar
 │   │   ├── userHelpers.js          # Initials, display names, isSynthetic* helpers, demo tooltips
+│   │   ├── nameFormatters.js       # Middle-name abbreviation and display name formatting
 │   │   ├── teamMatchUtils.js       # Team/role match scoring + overlap calculations
+│   │   ├── matchHelpers.js         # Shared match score helpers (weights, render cascade)
 │   │   ├── matchScoreUtils.js      # Match tier color coding (green/yellow/orange)
+│   │   ├── payloadExtractors.js    # Role/team payload field extractors shared across components
 │   │   ├── locationUtils.js        # Haversine distance calculation
+│   │   ├── vacantRoleUtils.js      # Role status helpers (filled, closed, open) + display labels
+│   │   ├── teamRequestUtils.js     # Invitation + application helper functions (build card data, labels)
 │   │   ├── eventPreview.js         # Parse + format chat system event messages for previews and toasts
 │   │   ├── roleEventMessages.js    # Build role event message strings (filled, closed, updated, deleted, reopened)
-│   │   └── fileExpiration.js       # File/image expiration status + formatted countdown strings
+│   │   ├── chatEntityResolvers.js  # Resolve user/team entity objects from chat conversation payloads
+│   │   ├── messageNotificationUtils.js # Unread count + notification badge helpers for chat
+│   │   ├── fileExpiration.js       # File/image expiration status + formatted countdown strings
+│   │   ├── dateHelpers.js          # Date formatting utilities
+│   │   ├── debounce.js             # Generic debounce utility
+│   │   ├── badgeIconUtils.jsx      # Badge icon component resolution by category
+│   │   └── Colors.js              # Shared color constants for badge categories and UI accents
 │   ├── constants/
-│   │   ├── badgeConstants.js       # Badge category colors
-│   │   ├── uiText.js              # Shared UI strings
-│   │   └── paginationConfig.js
+│   │   ├── badgeConstants.js       # Badge category metadata (names, colors, icons)
+│   │   ├── uiText.js               # Shared UI strings
+│   │   └── pagination.js           # Pagination page-size defaults
 │   ├── config/
 │   │   └── imagekit.js             # ImageKit upload helper with folder routing
 │   └── assets/                     # Logos, gradients, and icon assets
@@ -307,12 +325,6 @@ The chat page supports both direct (1-to-1) and team group conversations.
 - **CAPTCHA not showing locally** — Expected behavior; if `VITE_TURNSTILE_SITE_KEY` is unset, registration skips CAPTCHA
 - **Images not uploading** — Check that `VITE_IMAGEKIT_PUBLIC_KEY` and `VITE_IMAGEKIT_URL_ENDPOINT` are set in `.env`
 - **Map not rendering** — Leaflet CSS must be imported; check that `leaflet` and `react-leaflet` are installed
-
----
-
-## Deferred Features
-
-- **Forgot password flow** — The full reset flow is implemented (`ForgotPassword.jsx`, `ResetPassword.jsx`, `/api/auth/forgot-password`, `/api/auth/reset-password`) but the "Forgot password?" link on the login form is currently hidden. Re-enable it in `src/components/auth/LoginForm.jsx` once email delivery is confirmed stable.
 
 ---
 
