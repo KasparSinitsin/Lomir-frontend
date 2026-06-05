@@ -2233,17 +2233,14 @@ const SearchPage = () => {
                   onSearchSuggestions={handleSearchSuggestions}
                   resetSignal={searchInputResetSignal}
                   leftAdornment={
-                    <Tooltip content="Clear search input">
+                    <Tooltip content="Clear search input" position="top">
                       <button
                         type="button"
                         onClick={handleResetSearchInput}
-                        className="inline-flex h-[1.125rem] w-[1.125rem] shrink-0 items-center justify-center rounded-full bg-transparent p-0 transition-colors hover:bg-base-200"
+                        className="inline-flex h-[1.125rem] w-[1.125rem] shrink-0 items-center justify-center rounded-full bg-transparent p-0 text-[var(--color-primary-focus)] transition-colors hover:text-[var(--color-primary)] focus:outline-none"
                         aria-label="Clear search input"
                       >
-                        <RotateCcw
-                          className="w-3.5 h-3.5"
-                          color="var(--color-primary-focus)"
-                        />
+                        <RotateCcw className="w-3.5 h-3.5" />
                       </button>
                     </Tooltip>
                   }

@@ -49,7 +49,13 @@ const hexToRgba = (hex, alpha) => {
 };
 
 const MIN_QUERY_HINT = "Enter at least two characters";
+const ADVANCED_SEARCH_SHADOW =
+  "0 8px 18px rgba(4, 80, 20, 0.22), 0 18px 42px rgba(4, 80, 20, 0.18)";
 const BOOLEAN_OPERATOR_SPLIT_PATTERN = /\b(?:AND|OR|NOT)\b/i;
+const NARROW_DROPDOWN_BREAKPOINT = 640;
+const SUGGESTION_DROPDOWN_ARROW_WIDTH = 20;
+const SUGGESTION_DROPDOWN_ARROW_HEIGHT = 20;
+const SUGGESTION_DROPDOWN_ARROW_MASK = `url("data:image/svg+xml,%3Csvg width='20' height='20' viewBox='0 0 20 20' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0H20C15.6 0 13.6 2.2 12.4 7.3L10.4 19.2C10.2 19.8 9.8 19.8 9.6 19.2L7.6 7.3C6.4 2.2 4.4 0 0 0Z' fill='white'/%3E%3C/svg%3E")`;
 
 const cleanSuggestionSegment = (value) =>
   value
@@ -71,6 +77,68 @@ const getSuggestionQuery = (value, cursorIndex = value.length) => {
     .filter(Boolean);
 
   return fallbackSegments[fallbackSegments.length - 1] || "";
+};
+
+const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+
+const getTextareaCaretClientX = (textarea) => {
+  if (typeof document === "undefined" || !textarea) return null;
+
+  const selectionStart = textarea.selectionStart ?? textarea.value.length;
+  const textareaRect = textarea.getBoundingClientRect();
+  const styles = window.getComputedStyle(textarea);
+  const mirror = document.createElement("div");
+  const marker = document.createElement("span");
+  const copiedProperties = [
+    "boxSizing",
+    "fontFamily",
+    "fontSize",
+    "fontStyle",
+    "fontVariant",
+    "fontWeight",
+    "letterSpacing",
+    "lineHeight",
+    "paddingTop",
+    "paddingRight",
+    "paddingBottom",
+    "paddingLeft",
+    "textAlign",
+    "textIndent",
+    "textTransform",
+    "whiteSpace",
+    "wordSpacing",
+    "tabSize",
+  ];
+
+  copiedProperties.forEach((property) => {
+    const value = styles[property];
+    if (value) mirror.style[property] = value;
+  });
+
+  mirror.style.position = "fixed";
+  mirror.style.top = "0";
+  mirror.style.left = "-9999px";
+  mirror.style.visibility = "hidden";
+  mirror.style.overflow = "hidden";
+  mirror.style.width = `${textarea.clientWidth}px`;
+  mirror.style.minHeight = "0";
+  mirror.style.border = "0";
+  mirror.style.wordBreak = "normal";
+  mirror.style.overflowWrap = "break-word";
+
+  mirror.textContent = textarea.value.slice(0, selectionStart);
+  marker.textContent = "\u200b";
+  mirror.appendChild(marker);
+  document.body.appendChild(mirror);
+
+  const markerRect = marker.getBoundingClientRect();
+  const mirrorRect = mirror.getBoundingClientRect();
+  const caretX =
+    textareaRect.left + markerRect.left - mirrorRect.left - textarea.scrollLeft;
+
+  mirror.remove();
+
+  return clamp(caretX, textareaRect.left, textareaRect.right);
 };
 
 const splitLeadingSign = (value) => {
@@ -201,7 +269,7 @@ const BooleanSearchInput = ({
   const [menuPlacement, setMenuPlacement] = useState("bottom");
 
   const DROPDOWN_EDGE_MARGIN = 8;
-  const DROPDOWN_GAP = 16;
+  const DROPDOWN_GAP = 8;
   const DROPDOWN_MIN_HEIGHT = 140;
   const DROPDOWN_MAX_HEIGHT = 360;
 
@@ -218,9 +286,6 @@ const BooleanSearchInput = ({
     const containerEl = document.querySelector(".content-container");
     const containerRect = containerEl?.getBoundingClientRect();
     const containerW = containerRect?.width ?? viewportW;
-    const containerCenterX = containerRect
-      ? containerRect.left + containerRect.width / 2
-      : viewportW / 2;
 
     const spaceBelow = viewportH - (rect.bottom + DROPDOWN_GAP) - DROPDOWN_EDGE_MARGIN;
     const spaceAbove = rect.top - DROPDOWN_GAP - DROPDOWN_EDGE_MARGIN;
@@ -229,64 +294,113 @@ const BooleanSearchInput = ({
     if (spaceAbove >= DROPDOWN_MIN_HEIGHT && spaceBelow < DROPDOWN_MIN_HEIGHT) placement = "top";
     const available = placement === "bottom" ? spaceBelow : spaceAbove;
     const maxHeight = Math.min(DROPDOWN_MAX_HEIGHT, Math.max(80, available));
-    const left = Math.max(DROPDOWN_EDGE_MARGIN, rect.left);
     const top = placement === "bottom" ? rect.bottom + DROPDOWN_GAP : rect.top - DROPDOWN_GAP - maxHeight;
-    const inputCenterX = rect.left + rect.width / 2;
-    return { placement, top, left, maxHeight, viewportW, inputCenterX, containerW, containerCenterX };
+    const caretAnchorX = clamp(
+      getTextareaCaretClientX(inputRef.current) ?? rect.left + rect.width / 2,
+      DROPDOWN_EDGE_MARGIN + 12,
+      viewportW - DROPDOWN_EDGE_MARGIN - 12,
+    );
+    return { placement, top, maxHeight, viewportW, caretAnchorX, containerW };
   }, []);
 
   const updateDropdownPosition = useCallback(() => {
     const base = computeDropdownPosition();
     if (!base) return;
     setMenuPlacement(base.placement);
-    const maxDropdownWidth = Math.min(500, base.containerW - CONTENT_CONTAINER_PADDING * 2);
+    const maxDropdownWidth = Math.max(
+      0,
+      Math.min(
+        500,
+        base.viewportW - DROPDOWN_EDGE_MARGIN * 2,
+        base.containerW - CONTENT_CONTAINER_PADDING * 2,
+      ),
+    );
+    const shouldFillNarrowViewport =
+      base.viewportW <= NARROW_DROPDOWN_BREAKPOINT;
+    const estimatedDropdownWidth = shouldFillNarrowViewport
+      ? maxDropdownWidth
+      : Math.min(360, maxDropdownWidth);
+    const maxMenuLeft = Math.max(
+      DROPDOWN_EDGE_MARGIN,
+      base.viewportW - estimatedDropdownWidth - DROPDOWN_EDGE_MARGIN,
+    );
+    const menuLeft = clamp(
+      base.caretAnchorX - estimatedDropdownWidth / 2,
+      DROPDOWN_EDGE_MARGIN,
+      maxMenuLeft,
+    );
     setMenuStyle({
       position: "fixed",
       top: base.top,
-      left: base.containerCenterX,
-      transform: "translateX(-50%)",
-      width: "max-content",
+      left: menuLeft,
+      transform: "none",
+      width: shouldFillNarrowViewport ? maxDropdownWidth : "max-content",
       maxWidth: maxDropdownWidth,
       maxHeight: base.maxHeight,
       zIndex: 10000,
-      arrowTop: base.placement === "bottom" ? base.top - 11.8 : base.top,
-      arrowLeft: base.inputCenterX,
+      arrowTop:
+        base.placement === "bottom"
+          ? base.top - SUGGESTION_DROPDOWN_ARROW_HEIGHT + 1
+          : base.top,
+      arrowLeft: base.caretAnchorX,
     });
   }, [computeDropdownPosition]);
 
-  const refineDropdownTop = useCallback(() => {
-    if (!showDropdown || menuPlacement !== "top") return;
+  const refineDropdownPosition = useCallback(() => {
+    if (!showDropdown) return;
+    const base = computeDropdownPosition();
     const el = fieldRef.current;
     const menuEl = dropdownRef.current;
-    if (!el || !menuEl) return;
+    if (!base || !el || !menuEl) return;
     const rect = el.getBoundingClientRect();
     const actualHeight = Math.min(menuEl.scrollHeight, menuStyle.maxHeight);
-    const correctedTop = Math.max(DROPDOWN_EDGE_MARGIN, rect.top - DROPDOWN_GAP - actualHeight);
+    const actualWidth = Math.min(
+      menuEl.getBoundingClientRect().width || menuEl.scrollWidth,
+      base.viewportW - DROPDOWN_EDGE_MARGIN * 2,
+    );
+    const maxMenuLeft = Math.max(
+      DROPDOWN_EDGE_MARGIN,
+      base.viewportW - actualWidth - DROPDOWN_EDGE_MARGIN,
+    );
+    const correctedLeft = clamp(
+      base.caretAnchorX - actualWidth / 2,
+      DROPDOWN_EDGE_MARGIN,
+      maxMenuLeft,
+    );
+    const correctedTop =
+      base.placement === "top"
+        ? Math.max(DROPDOWN_EDGE_MARGIN, rect.top - DROPDOWN_GAP - actualHeight)
+        : base.top;
     setMenuStyle((prev) => ({
       ...prev,
       top: correctedTop,
-      arrowTop: correctedTop + actualHeight - 1,
+      left: correctedLeft,
+      arrowTop:
+        base.placement === "bottom"
+          ? correctedTop - SUGGESTION_DROPDOWN_ARROW_HEIGHT + 1
+          : correctedTop + actualHeight - 1,
+      arrowLeft: base.caretAnchorX,
     }));
-  }, [showDropdown, menuPlacement, menuStyle.maxHeight]);
+  }, [showDropdown, computeDropdownPosition, menuStyle.maxHeight]);
 
   useLayoutEffect(() => {
     if (!showDropdown) return;
     updateDropdownPosition();
-    const id = requestAnimationFrame(() => refineDropdownTop());
+    const id = requestAnimationFrame(() => refineDropdownPosition());
     return () => cancelAnimationFrame(id);
-  }, [showDropdown, updateDropdownPosition, refineDropdownTop, suggestions.tags.length, suggestions.badges.length]);
+  }, [showDropdown, updateDropdownPosition, refineDropdownPosition, suggestions.tags.length, suggestions.badges.length]);
 
   useEffect(() => {
     if (!showDropdown) return;
     let raf = 0;
     const tick = () => {
       updateDropdownPosition();
-      refineDropdownTop();
+      refineDropdownPosition();
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [showDropdown, updateDropdownPosition, refineDropdownTop]);
+  }, [showDropdown, updateDropdownPosition, refineDropdownPosition]);
 
   const [measuredTextWidths, setMeasuredTextWidths] = useState({
     query: 0,
@@ -992,25 +1106,32 @@ const BooleanSearchInput = ({
                       top: `${menuStyle.arrowTop}px`,
                       left: `${menuStyle.arrowLeft ?? 0}px`,
                       transform: menuPlacement === "bottom" ? "translateX(-50%) rotate(180deg)" : "translateX(-50%)",
-                      width: "22.5px",
-                      height: "12.8px",
                       backgroundColor: "#ffffff",
                       zIndex: 10001,
                       pointerEvents: "none",
-                    WebkitMaskImage: `url("data:image/svg+xml,%3Csvg width='22.5' height='12.8' viewBox='0 0 22.5 12.8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0H22.5C17.55 0 15.3 1.408 13.95 4.672L11.7 12.288C11.475 12.672 11.025 12.672 10.8 12.288L8.55 4.672C7.2 1.408 4.95 0 0 0Z' fill='white'/%3E%3C/svg%3E")`,
-                    maskImage: `url("data:image/svg+xml,%3Csvg width='22.5' height='12.8' viewBox='0 0 22.5 12.8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0H22.5C17.55 0 15.3 1.408 13.95 4.672L11.7 12.288C11.475 12.672 11.025 12.672 10.8 12.288L8.55 4.672C7.2 1.408 4.95 0 0 0Z' fill='white'/%3E%3C/svg%3E")`,
-                    WebkitMaskRepeat: "no-repeat",
-                    maskRepeat: "no-repeat",
-                    WebkitMaskSize: "contain",
-                    maskSize: "contain",
-                    filter: "drop-shadow(0 2px 6px rgba(4, 80, 20, 0.12))",
-                  }}
+                      width: `${SUGGESTION_DROPDOWN_ARROW_WIDTH}px`,
+                      height: `${SUGGESTION_DROPDOWN_ARROW_HEIGHT}px`,
+                      WebkitMaskImage: SUGGESTION_DROPDOWN_ARROW_MASK,
+                      maskImage: SUGGESTION_DROPDOWN_ARROW_MASK,
+                      WebkitMaskRepeat: "no-repeat",
+                      maskRepeat: "no-repeat",
+                      WebkitMaskSize: "contain",
+                      maskSize: "contain",
+                      filter: "drop-shadow(0 2px 6px rgba(4, 80, 20, 0.12))",
+                    }}
                   />
                 )}
                 <ul
                   ref={dropdownRef}
-                  style={showDropdown && hasSuggestions ? menuStyle : { display: "none" }}
-                  className={showDropdown && hasSuggestions ? "menu flex-nowrap bg-base-100 rounded-box p-2 shadow-xl overflow-y-auto" : ""}
+                  style={
+                    showDropdown && hasSuggestions
+                      ? {
+                          ...menuStyle,
+                          boxShadow: ADVANCED_SEARCH_SHADOW,
+                        }
+                      : { display: "none" }
+                  }
+                  className={showDropdown && hasSuggestions ? "menu flex-nowrap bg-base-100 rounded-box p-2 overflow-y-auto" : ""}
                 >
                   {showDropdown && hasSuggestions && (
                   <>{/* Focus Areas section */}
@@ -1048,18 +1169,18 @@ const BooleanSearchInput = ({
                                     onMouseEnter={() => setHoveredItemKey(`tag-${tag.id}`)}
                                     onMouseLeave={() => setHoveredItemKey(null)}
                                     style={hoveredItemKey === `tag-${tag.id}` ? { backgroundColor: hexToRgba(FOCUS_GREEN, 0.15) } : undefined}
-                                    className="flex flex-row-reverse flex-wrap items-start w-full leading-none gap-x-2 gap-y-2 py-1.5"
+                                    className="flex min-w-0 flex-row-reverse flex-wrap items-start w-full leading-none gap-x-2 gap-y-2 py-1.5"
                                   >
                                     <div className="flex-none flex items-center gap-0.5">
                                       {isFirst && (
-                                        <span className="flex items-center gap-1 text-xs leading-none whitespace-nowrap" style={{ color: FOCUS_GREEN }}>
+                                        <span className="flex max-w-full items-center gap-1 text-xs leading-none whitespace-normal break-words [overflow-wrap:anywhere]" style={{ color: FOCUS_GREEN }}>
                                           <SuperIcon size={10} className="shrink-0" />
                                           <span>{supercategory}</span>
                                         </span>
                                       )}
                                     </div>
-                                    <div className="[flex:1_0_auto] max-w-full flex items-center gap-2 min-w-0">
-                                      <span className="font-medium">{tag.name}</span>
+                                    <div className="[flex:1_1_0] max-w-full flex items-center gap-2 min-w-0">
+                                      <span className="min-w-0 break-words font-medium [overflow-wrap:anywhere]">{tag.name}</span>
                                     </div>
                                   </button>
                                 </li>
@@ -1106,19 +1227,19 @@ const BooleanSearchInput = ({
                                     onMouseEnter={() => setHoveredItemKey(`badge-${badge.id}`)}
                                     onMouseLeave={() => setHoveredItemKey(null)}
                                     style={hoveredItemKey === `badge-${badge.id}` ? { backgroundColor: hexToRgba(color, 0.15) } : undefined}
-                                    className="flex flex-row-reverse flex-wrap items-start w-full leading-none gap-x-2 gap-y-2 py-1.5"
+                                    className="flex min-w-0 flex-row-reverse flex-wrap items-start w-full leading-none gap-x-2 gap-y-2 py-1.5"
                                   >
                                     <div className="flex-none flex items-center gap-0.5">
                                       {isFirst && (
-                                        <span className="flex items-center gap-1 text-xs leading-none whitespace-nowrap" style={{ color }}>
+                                        <span className="flex max-w-full items-center gap-1 text-xs leading-none whitespace-normal break-words [overflow-wrap:anywhere]" style={{ color }}>
                                           {getCategoryIcon(category, color, 10)}
                                           <span>{category}</span>
                                         </span>
                                       )}
                                     </div>
-                                    <div className="[flex:1_0_auto] max-w-full flex items-center gap-2 min-w-0">
+                                    <div className="[flex:1_1_0] max-w-full flex items-center gap-2 min-w-0">
                                       <span className="shrink-0">{getBadgeIcon(badge.name, color, 14)}</span>
-                                      <span className="font-medium">{badge.name}</span>
+                                      <span className="min-w-0 break-words font-medium [overflow-wrap:anywhere]">{badge.name}</span>
                                     </div>
                                   </button>
                                 </li>
