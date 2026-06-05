@@ -925,10 +925,10 @@ const BooleanSearchInput = ({
                     style={{
                       left: `${queryHintAnchorPx}px`,
                       transform: "translate(-50%, -11px) rotate(180deg)",
-                      width: "14px",
+                      width: "28px",
                       height: "16px",
-                      WebkitMaskImage: `url("data:image/svg+xml,%3Csvg width='14' height='16' viewBox='0 0 14 16' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0H14C10.8 0 9.45 1.8 8.4 6L7.25 15.2C7.12 15.8 6.88 15.8 6.75 15.2L5.6 6C4.55 1.8 3.2 0 0 0Z' fill='white'/%3E%3C/svg%3E")`,
-                      maskImage: `url("data:image/svg+xml,%3Csvg width='14' height='16' viewBox='0 0 14 16' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0H14C10.8 0 9.45 1.8 8.4 6L7.25 15.2C7.12 15.8 6.88 15.8 6.75 15.2L5.6 6C4.55 1.8 3.2 0 0 0Z' fill='white'/%3E%3C/svg%3E")`,
+                      WebkitMaskImage: `url("data:image/svg+xml,%3Csvg width='28' height='16' viewBox='0 0 28 16' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0H28C21.6 0 18.9 1.8 16.8 6L14.5 15.2C14.24 15.8 13.76 15.8 13.5 15.2L11.2 6C9.1 1.8 6.4 0 0 0Z' fill='white'/%3E%3C/svg%3E")`,
+                      maskImage: `url("data:image/svg+xml,%3Csvg width='28' height='16' viewBox='0 0 28 16' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0H28C21.6 0 18.9 1.8 16.8 6L14.5 15.2C14.24 15.8 13.76 15.8 13.5 15.2L11.2 6C9.1 1.8 6.4 0 0 0Z' fill='white'/%3E%3C/svg%3E")`,
                       WebkitMaskRepeat: "no-repeat",
                       maskRepeat: "no-repeat",
                       WebkitMaskSize: "contain",

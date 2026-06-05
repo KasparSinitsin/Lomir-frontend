@@ -27,11 +27,11 @@ const SearchHelp = forwardRef(({ className = "", anchorRef, hideButton = false }
   const POPUP_MAX_WIDTH = 320;
   const GAP = 8;
   const ARROW_H = 20;
-  const ARROW_W = 10;
-  const ARROW_MASK = `url("data:image/svg+xml,%3Csvg width='10' height='20' viewBox='0 0 10 20' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0H10C7.8 0 6.8 2.2 6.2 7.3L5.2 19.2C5.1 19.8 4.9 19.8 4.8 19.2L3.8 7.3C3.2 2.2 2.2 0 0 0Z' fill='white'/%3E%3C/svg%3E")`;
+  const ARROW_W = 20;
+  const ARROW_MASK = `url("data:image/svg+xml,%3Csvg width='20' height='20' viewBox='0 0 20 20' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0H20C15.6 0 13.6 2.2 12.4 7.3L10.4 19.2C10.2 19.8 9.8 19.8 9.6 19.2L7.6 7.3C6.4 2.2 4.4 0 0 0Z' fill='white'/%3E%3C/svg%3E")`;
   const VIEWPORT_MARGIN = 8;
-  const TRIGGER_SIDE_OFFSET = 40;
-  const ARROW_X_OFFSET = -14;
+  const TRIGGER_SIDE_OFFSET = 54;
+  const ARROW_X_OFFSET = 0;
 
   const positionPopup = (triggerEl, measuredWidth = POPUP_MAX_WIDTH) => {
     const anchorEl = anchorRef?.current;
@@ -142,8 +142,11 @@ const SearchHelp = forwardRef(({ className = "", anchorRef, hideButton = false }
             {/* Popup box */}
             <div
               ref={popupRef}
-              className="fixed z-[1] p-4 bg-base-100 rounded-lg shadow-lg"
-              style={popupStyle}
+              className="fixed z-[1] p-4 bg-base-100 rounded-lg"
+              style={{
+                ...popupStyle,
+                boxShadow: "0 8px 18px rgba(4, 80, 20, 0.22), 0 18px 42px rgba(4, 80, 20, 0.18)",
+              }}
             >
               <div className="flex justify-between items-center mb-3">
                 <h3 className="font-semibold text-base-content">
