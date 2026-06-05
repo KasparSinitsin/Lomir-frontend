@@ -79,7 +79,10 @@ const getSuggestionQuery = (value, cursorIndex = value.length) => {
   return fallbackSegments[fallbackSegments.length - 1] || "";
 };
 
-const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+const clamp = (value, min, max) => {
+  const safeMax = Math.max(min, max);
+  return Math.min(Math.max(value, min), safeMax);
+};
 
 const getTextareaCaretClientX = (textarea) => {
   if (typeof document === "undefined" || !textarea) return null;
@@ -285,7 +288,25 @@ const BooleanSearchInput = ({
 
     const containerEl = document.querySelector(".content-container");
     const containerRect = containerEl?.getBoundingClientRect();
-    const containerW = containerRect?.width ?? viewportW;
+    const fallbackBoundsLeft = DROPDOWN_EDGE_MARGIN;
+    const fallbackBoundsRight = viewportW - DROPDOWN_EDGE_MARGIN;
+    const isNarrowViewport = viewportW <= NARROW_DROPDOWN_BREAKPOINT;
+    const dropdownBoundsLeft = isNarrowViewport && containerRect
+      ? Math.max(
+          fallbackBoundsLeft,
+          containerRect.left + CONTENT_CONTAINER_PADDING,
+        )
+      : fallbackBoundsLeft;
+    const dropdownBoundsRight = isNarrowViewport && containerRect
+      ? Math.min(
+          fallbackBoundsRight,
+          containerRect.right - CONTENT_CONTAINER_PADDING,
+        )
+      : fallbackBoundsRight;
+    const dropdownBoundsWidth = Math.max(
+      0,
+      dropdownBoundsRight - dropdownBoundsLeft,
+    );
 
     const spaceBelow = viewportH - (rect.bottom + DROPDOWN_GAP) - DROPDOWN_EDGE_MARGIN;
     const spaceAbove = rect.top - DROPDOWN_GAP - DROPDOWN_EDGE_MARGIN;
@@ -297,10 +318,20 @@ const BooleanSearchInput = ({
     const top = placement === "bottom" ? rect.bottom + DROPDOWN_GAP : rect.top - DROPDOWN_GAP - maxHeight;
     const caretAnchorX = clamp(
       getTextareaCaretClientX(inputRef.current) ?? rect.left + rect.width / 2,
-      DROPDOWN_EDGE_MARGIN + 12,
-      viewportW - DROPDOWN_EDGE_MARGIN - 12,
+      dropdownBoundsLeft + SUGGESTION_DROPDOWN_ARROW_WIDTH / 2,
+      dropdownBoundsRight - SUGGESTION_DROPDOWN_ARROW_WIDTH / 2,
     );
-    return { placement, top, maxHeight, viewportW, caretAnchorX, containerW };
+    return {
+      placement,
+      top,
+      maxHeight,
+      viewportW,
+      caretAnchorX,
+      dropdownBoundsLeft,
+      dropdownBoundsRight,
+      dropdownBoundsWidth,
+      isNarrowViewport,
+    };
   }, []);
 
   const updateDropdownPosition = useCallback(() => {
@@ -311,22 +342,20 @@ const BooleanSearchInput = ({
       0,
       Math.min(
         500,
-        base.viewportW - DROPDOWN_EDGE_MARGIN * 2,
-        base.containerW - CONTENT_CONTAINER_PADDING * 2,
+        base.dropdownBoundsWidth,
       ),
     );
-    const shouldFillNarrowViewport =
-      base.viewportW <= NARROW_DROPDOWN_BREAKPOINT;
+    const shouldFillNarrowViewport = base.isNarrowViewport;
     const estimatedDropdownWidth = shouldFillNarrowViewport
       ? maxDropdownWidth
       : Math.min(360, maxDropdownWidth);
     const maxMenuLeft = Math.max(
-      DROPDOWN_EDGE_MARGIN,
-      base.viewportW - estimatedDropdownWidth - DROPDOWN_EDGE_MARGIN,
+      base.dropdownBoundsLeft,
+      base.dropdownBoundsRight - estimatedDropdownWidth,
     );
     const menuLeft = clamp(
       base.caretAnchorX - estimatedDropdownWidth / 2,
-      DROPDOWN_EDGE_MARGIN,
+      base.dropdownBoundsLeft,
       maxMenuLeft,
     );
     setMenuStyle({
@@ -336,6 +365,7 @@ const BooleanSearchInput = ({
       transform: "none",
       width: shouldFillNarrowViewport ? maxDropdownWidth : "max-content",
       maxWidth: maxDropdownWidth,
+      boxSizing: "border-box",
       maxHeight: base.maxHeight,
       zIndex: 10000,
       arrowTop:
@@ -356,15 +386,15 @@ const BooleanSearchInput = ({
     const actualHeight = Math.min(menuEl.scrollHeight, menuStyle.maxHeight);
     const actualWidth = Math.min(
       menuEl.getBoundingClientRect().width || menuEl.scrollWidth,
-      base.viewportW - DROPDOWN_EDGE_MARGIN * 2,
+      base.dropdownBoundsWidth,
     );
     const maxMenuLeft = Math.max(
-      DROPDOWN_EDGE_MARGIN,
-      base.viewportW - actualWidth - DROPDOWN_EDGE_MARGIN,
+      base.dropdownBoundsLeft,
+      base.dropdownBoundsRight - actualWidth,
     );
     const correctedLeft = clamp(
       base.caretAnchorX - actualWidth / 2,
-      DROPDOWN_EDGE_MARGIN,
+      base.dropdownBoundsLeft,
       maxMenuLeft,
     );
     const correctedTop =
