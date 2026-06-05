@@ -1,5 +1,6 @@
 import React from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import Tooltip from "./Tooltip";
 
 /**
  * Pagination Component
@@ -104,10 +105,19 @@ const Pagination = ({
   const startItem = (currentPage - 1) * resultsPerPage + 1;
   const endItem = Math.min(currentPage * resultsPerPage, totalItems);
 
+  const isMinOption = resultsPerPage === resultsPerPageOptions[0];
+  const isMaxOption = resultsPerPage === resultsPerPageOptions[resultsPerPageOptions.length - 1];
+  const arrowSvg = isMinOption
+    ? `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7' viewBox='0 0 10 7' fill='none' stroke='%23666' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M1 6L5 1L9 6'/%3E%3C/svg%3E")`
+    : isMaxOption
+    ? `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7' viewBox='0 0 10 7' fill='none' stroke='%23666' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M1 1L5 6L9 1'/%3E%3C/svg%3E")`
+    : `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='14' viewBox='0 0 10 14' fill='none' stroke='%23666' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M1 5L5 1L9 5'/%3E%3Cpath d='M1 9L5 13L9 9'/%3E%3C/svg%3E")`;
+  const arrowSize = isMinOption || isMaxOption ? "7px 5px" : "7px 10px";
+
   return (
-    <div className="flex flex-wrap items-center gap-4 mt-8 pb-4">
+    <div className="flex flex-wrap items-center gap-2 sm:gap-4 mt-[30px] pb-2 w-full">
       {/* Results info */}
-      <div className="text-sm text-base-content/70">
+      <div className="text-xs text-base-content/70">
         {totalItems > 0 ? (
           <span>
             Showing <span className="font-medium text-base-content">{startItem}</span> to{" "}
@@ -121,27 +131,29 @@ const Pagination = ({
 
       {/* Page navigation */}
       {totalPages > 1 && (
-        <div className="flex items-center gap-1">
-          <button
-            className={`btn btn-sm btn-outline border-base-300 hover:bg-base-200 hover:border-base-300 ${
-              currentPage === 1 ? "btn-disabled opacity-50" : ""
-            }`}
-            onClick={handlePrevious}
-            disabled={currentPage === 1}
-            aria-label="Previous page"
-          >
-            <ChevronLeft size={16} />
-          </button>
+        <div className="flex items-center gap-1 min-w-0">
+          <Tooltip content={currentPage === 1 ? null : "Go to previous page"} position="top" wrapperClassName="inline-flex">
+            <button
+              className={`inline-flex items-center justify-center text-base-content/50 hover:text-base-content transition-colors ${
+                currentPage === 1 ? "opacity-30" : ""
+              }`}
+              onClick={handlePrevious}
+              disabled={currentPage === 1}
+              aria-label="Previous page"
+            >
+              <ChevronLeft size={13} />
+            </button>
+          </Tooltip>
 
           {getPageNumbers().map((page, index) => (
             <button
               key={`page-${index}`}
-              className={`btn btn-sm min-w-[2.5rem] ${
+              className={`btn btn-xs btn-square btn-ghost ${
                 page === currentPage
-                  ? "btn-outline btn-primary"
+                  ? "bg-white text-base-content hover:bg-white shadow-sm"
                   : page === "..."
-                  ? "btn-ghost btn-disabled cursor-default"
-                  : "btn-outline border-base-300 hover:bg-base-200 hover:border-base-300"
+                  ? "btn-disabled cursor-default"
+                  : "hover:bg-base-200"
               }`}
               onClick={() => handlePageClick(page)}
               disabled={page === "..."}
@@ -152,16 +164,18 @@ const Pagination = ({
             </button>
           ))}
 
-          <button
-            className={`btn btn-sm btn-outline border-base-300 hover:bg-base-200 hover:border-base-300 ${
-              currentPage === totalPages ? "btn-disabled opacity-50" : ""
-            }`}
-            onClick={handleNext}
-            disabled={currentPage === totalPages}
-            aria-label="Next page"
-          >
-            <ChevronRight size={16} />
-          </button>
+          <Tooltip content={currentPage === totalPages ? null : "Go to next page"} position="top" wrapperClassName="inline-flex">
+            <button
+              className={`inline-flex items-center justify-center text-base-content/50 hover:text-base-content transition-colors ${
+                currentPage === totalPages ? "opacity-30" : ""
+              }`}
+              onClick={handleNext}
+              disabled={currentPage === totalPages}
+              aria-label="Next page"
+            >
+              <ChevronRight size={13} />
+            </button>
+          </Tooltip>
         </div>
       )}
 
@@ -173,14 +187,23 @@ const Pagination = ({
       {/* Results per page selector */}
       {showResultsPerPage && onResultsPerPageChange && (
         <div className="flex items-center gap-2 flex-shrink-0">
-          <label htmlFor="resultsPerPage" className="text-sm text-base-content/70 whitespace-nowrap">
+          <label htmlFor="resultsPerPage" className="text-xs text-base-content/70 whitespace-nowrap">
             Per page:
           </label>
           <select
             id="resultsPerPage"
             value={resultsPerPage}
             onChange={handleResultsPerPageChange}
-            className="select select-bordered select-sm w-20 focus:outline-primary"
+            className="text-xs font-semibold text-base-content/70 bg-white rounded shadow-sm cursor-pointer h-6 appearance-none pl-[5px] pr-[16px]"
+            style={{
+              border: "none",
+              outline: "none",
+              width: `${resultsPerPage.toString().length * 8 + 22}px`,
+              backgroundImage: arrowSvg,
+              backgroundRepeat: "no-repeat",
+              backgroundPosition: "right 4px center",
+              backgroundSize: arrowSize,
+            }}
           >
             {resultsPerPageOptions.map((option) => (
               <option key={option} value={option}>
