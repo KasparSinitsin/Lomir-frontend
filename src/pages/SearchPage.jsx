@@ -40,7 +40,6 @@ import {
   Globe,
   Target,
 } from "lucide-react";
-import Alert from "../components/common/Alert";
 import { searchService, getApiErrorMessage } from "../services/searchService";
 import { tagService } from "../services/tagService";
 import { badgeService } from "../services/badgeService";
@@ -263,6 +262,7 @@ const SearchPage = () => {
   const [error, setError] = useState(null);
   const [hasSearched, setHasSearched] = useState(false);
   const [searchInputResetSignal, setSearchInputResetSignal] = useState(0);
+  const [searchInputQueryWraps, setSearchInputQueryWraps] = useState(false);
   const [dismissedNoResultsAlertKey, setDismissedNoResultsAlertKey] =
     useState(null);
   const viewerPendingRequestsQuery = useViewerPendingRequests(user?.id, {
@@ -548,7 +548,7 @@ const SearchPage = () => {
       defaultDir: "asc",
       labelAsc: "Nearest",
       labelRemote: "Remote First",
-      shortLabelAsc: "Near 1st",
+      shortLabelAsc: "Nearest",
       shortLabelRemote: "Remote 1st",
       tooltipAsc: "Keep nearby results ahead of remote-friendly results",
       tooltipRemote: "Show remote-friendly results first",
@@ -1854,8 +1854,37 @@ const SearchPage = () => {
     ? "var(--color-primary)"
     : "var(--color-primary-focus)";
   const IncludeOwnTeamsIcon = Users2;
+  const renderSortFilterToggle = (wrapperClassName = "inline-flex items-center") => (
+    <Tooltip
+      content={
+        showSortDropdown
+          ? "Hide Filtering & Sorting Options"
+          : "Show Filtering & Sorting Options"
+      }
+      wrapperClassName={wrapperClassName}
+    >
+      <button
+        type="button"
+        onClick={handleSortDropdownToggle}
+        className="shrink-0 rounded-lg p-0.5 sm:p-1 transition-colors"
+        aria-label={
+          showSortDropdown
+            ? "Hide Filtering & Sorting Options"
+            : "Show Filtering & Sorting Options"
+        }
+      >
+        <SlidersHorizontal
+          className="w-4 h-4 sm:w-5 sm:h-5"
+          color={sortIconColor}
+        />
+      </button>
+    </Tooltip>
+  );
 
-  const renderToolbarOption = (option) => {
+  const getReducedMenuIconClassName = (reduced) =>
+    reduced ? "w-2.5 h-2.5 sm:w-3.5 sm:h-3.5" : "";
+
+  const renderToolbarOption = (option, { reduced = false } = {}) => {
     const { isActive, IconComponent, label, shortLabel, tooltip } =
       getSortOptionDisplay({
         option,
@@ -1875,6 +1904,7 @@ const SearchPage = () => {
         mobileLabel={shortLabel}
         active={isActive}
         disabled={loading}
+        iconClassName={getReducedMenuIconClassName(reduced)}
         aria-label={tooltip ? `${label} - ${tooltip}` : label}
       />
     );
@@ -1892,7 +1922,7 @@ const SearchPage = () => {
     );
   };
 
-  const renderFilterOptionsToggle = () => (
+  const renderFilterOptionsToggle = ({ reduced = false } = {}) => (
     <Tooltip
       content={
         showFilterOptions ? "Click to hide filters" : "Show filter controls"
@@ -1906,11 +1936,125 @@ const SearchPage = () => {
         mobileLabel={showFilterOptions ? "Hide Filters:" : "Filters ..."}
         active={isFilterOptionsActive}
         disabled={loading}
+        iconClassName={getReducedMenuIconClassName(reduced)}
         aria-label={
           showFilterOptions ? "Hide filter controls" : "Show filter controls"
         }
       />
     </Tooltip>
+  );
+
+  const renderSortFilterOptionsMenu = ({ inline = false } = {}) => (
+    <div
+      className={
+        inline
+          ? "min-w-0 space-y-[3px]"
+          : "space-y-[3px] sm:space-y-[6px]"
+      }
+    >
+      <div
+        className={`flex flex-row flex-wrap items-start gap-x-1 gap-y-[3px] sm:gap-x-3 sm:gap-y-[6px] ${
+          inline ? "justify-center" : ""
+        }`}
+      >
+        <div
+          role="group"
+          aria-label="Sort options"
+          className="contents"
+        >
+          {visibleSortingOptions.map((option) =>
+            renderToolbarOption(option, { reduced: inline }),
+          )}
+        </div>
+
+        {!showFilterOptions && renderFilterOptionsToggle({ reduced: inline })}
+      </div>
+
+      {showFilterOptions && (
+        <div
+          className={`flex flex-row flex-wrap items-start gap-x-1 gap-y-[3px] sm:gap-x-3 sm:gap-y-[6px] ${
+            inline ? "justify-center" : ""
+          }`}
+        >
+          {renderFilterOptionsToggle({ reduced: inline })}
+          <div
+            role="group"
+            aria-label="Filter options"
+            className="contents"
+          >
+            {visibleFilterOptions.map((option) =>
+              renderToolbarOption(option, { reduced: inline }),
+            )}
+          </div>
+
+          {showIncludeOwnTeamsFilter && (
+            <div
+              role="group"
+              aria-label="Search filters"
+              className="contents"
+            >
+              <Tooltip
+                content={
+                  effectiveIncludeOwnTeams
+                    ? "Include My Teams"
+                    : "Exclude My Teams"
+                }
+                wrapperClassName="inline-flex items-center shrink-0"
+              >
+                <FilterSortOptionButton
+                  onClick={handleIncludeOwnTeamsToggle}
+                  icon={IncludeOwnTeamsIcon}
+                  prefix={effectiveIncludeOwnTeams ? "+" : "-"}
+                  label="My Teams"
+                  active={!effectiveIncludeOwnTeams}
+                  disabled={loading}
+                  iconClassName={getReducedMenuIconClassName(inline)}
+                  aria-label={
+                    effectiveIncludeOwnTeams
+                      ? "Include My Teams"
+                      : "Exclude My Teams"
+                  }
+                />
+              </Tooltip>
+            </div>
+          )}
+
+          <div
+            role="group"
+            aria-label="Demo data filter"
+            className="contents"
+          >
+            <Tooltip
+              content={
+                includeDemoData
+                  ? "Include test/demo profiles, roles and teams"
+                  : "Show only real users, roles and teams"
+              }
+              wrapperClassName="inline-flex items-center shrink-0"
+            >
+              <FilterSortOptionButton
+                onClick={() => {
+                  setIncludeDemoData((prev) => !prev);
+                  setCurrentPage(1);
+                }}
+                icon={FlaskConical}
+                prefix={includeDemoData ? "+" : "-"}
+                label="Demo Data"
+                mobileLabel="Demo"
+                active={!includeDemoData}
+                disabled={loading}
+                iconClassName={getReducedMenuIconClassName(inline)}
+                aria-label={
+                  includeDemoData
+                    ? "Include test/demo profiles, roles and teams"
+                    : "Show only real users, roles and teams"
+                }
+              />
+            </Tooltip>
+          </div>
+        </div>
+      )}
+    </div>
   );
 
   const renderSortSubmenuPortal = () => {
@@ -2179,30 +2323,12 @@ const SearchPage = () => {
           className="mx-auto w-full max-w-full"
         >
           <div className="mx-auto w-full max-w-full sm:w-fit">
-            <div className="flex w-full max-w-full items-center gap-2">
-              <Tooltip
-                content={
-                  showSortDropdown
-                    ? "Hide Filtering & Sorting Options"
-                    : "Show Filtering & Sorting Options"
-                }
-              >
-                <button
-                  type="button"
-                  onClick={handleSortDropdownToggle}
-                  className="shrink-0 rounded-lg p-0.5 sm:p-1 transition-colors"
-                  aria-label={
-                    showSortDropdown
-                      ? "Hide Filtering & Sorting Options"
-                      : "Show Filtering & Sorting Options"
-                  }
-                >
-                  <SlidersHorizontal
-                    className="w-4 h-4 sm:w-5 sm:h-5"
-                    color={sortIconColor}
-                  />
-                </button>
-              </Tooltip>
+            <div
+              className={`flex w-full max-w-full gap-2 ${
+                searchInputQueryWraps ? "items-end" : "items-center"
+              }`}
+            >
+              {!searchInputQueryWraps && renderSortFilterToggle()}
 
               <div className="min-w-0 flex-1 sm:w-auto sm:flex-none sm:max-w-full">
                 <BooleanSearchInput
@@ -2232,6 +2358,14 @@ const SearchPage = () => {
                   onSelectBadgeSuggestion={handleAddBadgeFilter}
                   onSearchSuggestions={handleSearchSuggestions}
                   resetSignal={searchInputResetSignal}
+                  onQueryWrapChange={setSearchInputQueryWraps}
+                  wrappedLeadingControl={renderSortFilterToggle()}
+                  wrappedMiddleControl={
+                    showSortDropdown
+                      ? renderSortFilterOptionsMenu({ inline: true })
+                      : null
+                  }
+                  wrappedControlsExpanded={showSortDropdown}
                   leftAdornment={
                     <Tooltip content="Clear search input" position="top">
                       <button
@@ -2249,98 +2383,13 @@ const SearchPage = () => {
               </div>
             </div>
 
-            {showSortDropdown && (
-              <div className="mt-1.5 py-0.5 pl-7 sm:mt-2 sm:py-1 sm:pl-9">
-                <div className="space-y-[3px] sm:space-y-[6px]">
-                  <div className="flex flex-row flex-wrap items-start gap-x-1 gap-y-[3px] sm:gap-x-3 sm:gap-y-[6px]">
-                    <div
-                      role="group"
-                      aria-label="Sort options"
-                      className="contents"
-                    >
-                      {visibleSortingOptions.map(renderToolbarOption)}
-                    </div>
-
-                    {!showFilterOptions && renderFilterOptionsToggle()}
-                  </div>
-
-                  {showFilterOptions && (
-                    <div className="flex flex-row flex-wrap items-start gap-x-1 gap-y-[3px] sm:gap-x-3 sm:gap-y-[6px]">
-                      {renderFilterOptionsToggle()}
-                      <div
-                        role="group"
-                        aria-label="Filter options"
-                        className="contents"
-                      >
-                        {visibleFilterOptions.map(renderToolbarOption)}
-                      </div>
-
-                      {showIncludeOwnTeamsFilter && (
-                        <div
-                          role="group"
-                          aria-label="Search filters"
-                          className="contents"
-                        >
-                          <Tooltip
-                            content={
-                              effectiveIncludeOwnTeams
-                                ? "Include My Teams"
-                                : "Exclude My Teams"
-                            }
-                            wrapperClassName="inline-flex items-center shrink-0"
-                          >
-                            <FilterSortOptionButton
-                              onClick={handleIncludeOwnTeamsToggle}
-                              icon={IncludeOwnTeamsIcon}
-                              prefix={effectiveIncludeOwnTeams ? "+" : "-"}
-                              label="My Teams"
-                              active={!effectiveIncludeOwnTeams}
-                              disabled={loading}
-                              aria-label={
-                                effectiveIncludeOwnTeams
-                                  ? "Include My Teams"
-                                  : "Exclude My Teams"
-                              }
-                            />
-                          </Tooltip>
-                        </div>
-                      )}
-
-                      <div
-                        role="group"
-                        aria-label="Demo data filter"
-                        className="contents"
-                      >
-                        <Tooltip
-                          content={
-                            includeDemoData
-                              ? "Include test/demo profiles, roles and teams"
-                              : "Show only real users, roles and teams"
-                          }
-                          wrapperClassName="inline-flex items-center shrink-0"
-                        >
-                          <FilterSortOptionButton
-                            onClick={() => {
-                              setIncludeDemoData((prev) => !prev);
-                              setCurrentPage(1);
-                            }}
-                            icon={FlaskConical}
-                            prefix={includeDemoData ? "+" : "-"}
-                            label="Demo Data"
-                            mobileLabel="Demo"
-                            active={!includeDemoData}
-                            disabled={loading}
-                            aria-label={
-                              includeDemoData
-                                ? "Include test/demo profiles, roles and teams"
-                                : "Show only real users, roles and teams"
-                            }
-                          />
-                        </Tooltip>
-                      </div>
-                    </div>
-                  )}
-                </div>
+            {showSortDropdown && !searchInputQueryWraps && (
+              <div
+                className={`mt-1.5 py-0.5 sm:mt-2 sm:py-1 sm:pl-9 ${
+                  searchInputQueryWraps ? "pl-0" : "pl-7"
+                }`}
+              >
+                {renderSortFilterOptionsMenu()}
               </div>
             )}
           </div>
@@ -2349,23 +2398,24 @@ const SearchPage = () => {
 
       {renderSortSubmenuPortal()}
       <ScreenAlert
-        type="violet"
-        message={
+        alerts={[
           showNoResultsAlert
-            ? "No teams, users or Roles found matching this search query. Try a different search term."
-            : null
-        }
-        onClose={() => setDismissedNoResultsAlertKey(noResultsAlertKey)}
+            ? {
+                type: "violet",
+                message:
+                  "No teams, users or Roles found matching this search query. Try a different search term.",
+                onClose: () => setDismissedNoResultsAlertKey(noResultsAlertKey),
+              }
+            : null,
+          error
+            ? {
+                type: "error",
+                message: error,
+                onClose: () => setError(null),
+              }
+            : null,
+        ]}
       />
-
-      {error && (
-        <Alert
-          type="error"
-          message={error}
-          className="max-w-xl mx-auto mb-4"
-          onClose={() => setError(null)}
-        />
-      )}
 
       {loading ? (
         <div className="flex justify-center items-center h-64">

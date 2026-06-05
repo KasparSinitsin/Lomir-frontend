@@ -53,6 +53,7 @@ const ADVANCED_SEARCH_SHADOW =
   "0 8px 18px rgba(4, 80, 20, 0.22), 0 18px 42px rgba(4, 80, 20, 0.18)";
 const BOOLEAN_OPERATOR_SPLIT_PATTERN = /\b(?:AND|OR|NOT)\b/i;
 const NARROW_DROPDOWN_BREAKPOINT = 640;
+const COMPACT_INLINE_CONTROLS_RESERVED_WIDTH = 76;
 const SUGGESTION_DROPDOWN_ARROW_WIDTH = 20;
 const SUGGESTION_DROPDOWN_ARROW_HEIGHT = 20;
 const SUGGESTION_DROPDOWN_ARROW_MASK = `url("data:image/svg+xml,%3Csvg width='20' height='20' viewBox='0 0 20 20' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0H20C15.6 0 13.6 2.2 12.4 7.3L10.4 19.2C10.2 19.8 9.8 19.8 9.6 19.2L7.6 7.3C6.4 2.2 4.4 0 0 0Z' fill='white'/%3E%3C/svg%3E")`;
@@ -237,6 +238,10 @@ const BooleanSearchInput = ({
   onSelectBadgeSuggestion,
   leftAdornment = null,
   resetSignal = 0,
+  onQueryWrapChange,
+  wrappedLeadingControl = null,
+  wrappedMiddleControl = null,
+  wrappedControlsExpanded = false,
 }) => {
   const [query, setQuery] = useState(initialQuery);
   const [hasBooleanOperators, setHasBooleanOperators] = useState(false);
@@ -247,6 +252,7 @@ const BooleanSearchInput = ({
   const [suggestions, setSuggestions] = useState({ tags: [], badges: [] });
   const [showDropdown, setShowDropdown] = useState(false);
   const [hoveredItemKey, setHoveredItemKey] = useState(null);
+  const [queryBreaksLine, setQueryBreaksLine] = useState(false);
 
   const inputRef = useRef(null);
   const fieldRef = useRef(null);
@@ -663,13 +669,37 @@ const BooleanSearchInput = ({
     if (!el) return;
     if (!el.value) {
       el.style.height = "";
+      setQueryBreaksLine(false);
       return;
     }
     el.style.height = "0";
     el.style.height = `${el.scrollHeight}px`;
-  }, []);
+    const styles = window.getComputedStyle(el);
+    const lineHeight =
+      parseFloat(styles.lineHeight) ||
+      parseFloat(styles.fontSize) * 1.25 ||
+      18;
+    const isMultiline = el.scrollHeight > lineHeight * 1.5;
+
+    setQueryBreaksLine((wasBreaking) => {
+      if (!isCompactLayout) return false;
+      if (isMultiline) return true;
+      if (!wasBreaking) return false;
+
+      const inlineTextareaWidth = Math.max(
+        0,
+        el.clientWidth - COMPACT_INLINE_CONTROLS_RESERVED_WIDTH,
+      );
+
+      return measuredTextWidths.query > inlineTextareaWidth;
+    });
+  }, [isCompactLayout, measuredTextWidths.query]);
 
   useEffect(() => { resizeTextarea(); }, [query, resizeTextarea]);
+
+  useEffect(() => {
+    onQueryWrapChange?.(isCompactLayout && queryBreaksLine);
+  }, [isCompactLayout, onQueryWrapChange, queryBreaksLine]);
 
   useEffect(() => {
     const el = inputRef.current;
@@ -724,6 +754,14 @@ const BooleanSearchInput = ({
   const formClassName = isCompactLayout
     ? "relative w-full min-w-0"
     : "relative inline-block max-w-full";
+  const formControlsClassName =
+    isCompactLayout && queryBreaksLine
+      ? "flex max-w-full flex-col items-stretch gap-2"
+      : "flex max-w-full items-center gap-2";
+  const wrappedControlsClassName =
+    wrappedControlsExpanded
+      ? "grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2"
+      : "flex w-full items-center justify-center gap-3";
   const fieldSlotClassName = isCompactLayout
     ? "relative min-w-0 flex-1"
     : "relative max-w-full";
@@ -1000,11 +1038,37 @@ const BooleanSearchInput = ({
 
   const hasSuggestions =
     (suggestions.tags?.length || 0) + (suggestions.badges?.length || 0) > 0;
+  const showWrappedControls = isCompactLayout && queryBreaksLine;
+  const submitButton = (
+    <button
+      type="submit"
+      className="btn btn-primary h-[32px] sm:h-[38px] min-h-0 px-2 sm:px-4 shrink-0"
+      disabled={query.trim().length < 2}
+      aria-label="Search"
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        className="h-5 w-5"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        aria-hidden="true"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+        />
+      </svg>
+      <span className="sr-only sm:not-sr-only">Search</span>
+    </button>
+  );
 
   return (
     <div className={rootClassName}>
       <form onSubmit={handleSubmit} className={formClassName}>
-        <div className="flex max-w-full items-center gap-2">
+        <div className={formControlsClassName}>
           <div className={fieldSlotClassName}>
             <div ref={fieldRef} className={fieldClassName} style={fieldStyle}>
               {showStackedPills && (
@@ -1287,29 +1351,21 @@ const BooleanSearchInput = ({
             )}
           </div>
 
-          <button
-            type="submit"
-            className="btn btn-primary h-[32px] sm:h-[38px] min-h-0 px-2 sm:px-4 shrink-0"
-            disabled={query.trim().length < 2}
-            aria-label="Search"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-5 w-5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              aria-hidden="true"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-              />
-            </svg>
-            <span className="sr-only sm:not-sr-only">Search</span>
-          </button>
+          {showWrappedControls ? (
+            <div className={wrappedControlsClassName}>
+              {wrappedLeadingControl ? (
+                <div className="flex items-center">{wrappedLeadingControl}</div>
+              ) : (
+                <span aria-hidden="true" />
+              )}
+              {wrappedControlsExpanded && (
+                <div className="min-w-0">{wrappedMiddleControl}</div>
+              )}
+              {submitButton}
+            </div>
+          ) : (
+            submitButton
+          )}
         </div>
 
         <div className="pointer-events-none absolute left-0 top-0 -z-10 invisible whitespace-pre text-sm">
