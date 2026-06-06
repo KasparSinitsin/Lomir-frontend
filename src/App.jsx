@@ -30,6 +30,7 @@ import backgroundImage from "./assets/images/Gradient-peach-yellow-violet-invert
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import Settings from "./pages/Settings";
+import Contact from "./pages/Contact";
 
 function AppLayout() {
   const location = useLocation();
@@ -67,6 +68,7 @@ function AppLayout() {
                 <Route path="/register" element={<Register />} />
                 <Route path="/verify-email" element={<VerifyEmail />} />
                 <Route path="/badges" element={<BadgeOverview />} />
+                <Route path="/contact" element={<Contact />} />
                 <Route
                   path="/garden"
                   element={<Placeholder pageName="Project Garden" />}
