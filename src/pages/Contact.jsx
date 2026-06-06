@@ -3,7 +3,9 @@ import { Link, useNavigate } from "react-router-dom";
 import {
   Mail,
   MessageCircle,
+  Paperclip,
   Send,
+  X,
 } from "lucide-react";
 import Alert from "../components/common/Alert";
 import Button from "../components/common/Button";
@@ -42,7 +44,32 @@ const Contact = () => {
   const [statusMessage, setStatusMessage] = useState("");
   const [turnstileToken, setTurnstileToken] = useState(null);
   const [isEmailFormOpen, setIsEmailFormOpen] = useState(false);
+  const [attachments, setAttachments] = useState([]);
+  const ATTACHMENT_MAX_FILES = 5;
   const turnstileRef = useRef(null);
+  const fileInputRef = useRef(null);
+
+  const ATTACHMENT_MAX_MB = 25;
+  const ATTACHMENT_MAX_BYTES = ATTACHMENT_MAX_MB * 1024 * 1024;
+  const ATTACHMENT_ALLOWED_TYPES = [
+    // Images (matches chatImage)
+    "image/jpeg",
+    "image/png",
+    "image/gif",
+    "image/webp",
+    // Documents (matches chatFile)
+    "application/pdf",
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/vnd.ms-excel",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "text/csv",
+    "application/vnd.ms-powerpoint",
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    "text/plain",
+    "application/zip",
+    "application/x-rar-compressed",
+  ];
 
   const canUseInAppContact =
     isAuthenticated && Boolean(LOMIR_CONTACT_USER_ID);
@@ -91,6 +118,45 @@ const Contact = () => {
     setTurnstileToken(null);
   };
 
+  const handleFileChange = (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+
+    if (!file) return;
+
+    if (!ATTACHMENT_ALLOWED_TYPES.includes(file.type)) {
+      setErrors((prev) => ({
+        ...prev,
+        attachment: "File type not supported. Accepted: images, PDF, Word, Excel, PowerPoint, TXT, ZIP",
+      }));
+      return;
+    }
+
+    if (file.size > ATTACHMENT_MAX_BYTES) {
+      setErrors((prev) => ({
+        ...prev,
+        attachment: `File must be ${ATTACHMENT_MAX_MB} MB or smaller.`,
+      }));
+      return;
+    }
+
+    setErrors((prev) => {
+      const next = { ...prev };
+      delete next.attachment;
+      return next;
+    });
+    setAttachments((prev) => [...prev, file]);
+  };
+
+  const removeAttachment = (index) => {
+    setAttachments((prev) => prev.filter((_, i) => i !== index));
+    setErrors((prev) => {
+      const next = { ...prev };
+      delete next.attachment;
+      return next;
+    });
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
 
@@ -102,13 +168,26 @@ const Contact = () => {
     setStatusMessage("");
 
     try {
-      const response = await api.post("/api/contact", {
-        name: formValues.name.trim(),
-        email: formValues.email.trim(),
-        topic: formValues.topic,
-        message: formValues.message.trim(),
-        ...(hasTurnstile ? { turnstile_token: turnstileToken } : {}),
-      });
+      let body;
+      if (attachments.length > 0) {
+        body = new FormData();
+        body.append("name", formValues.name.trim());
+        body.append("email", formValues.email.trim());
+        body.append("topic", formValues.topic);
+        body.append("message", formValues.message.trim());
+        if (hasTurnstile) body.append("turnstile_token", turnstileToken);
+        attachments.forEach((file) => body.append("attachments", file));
+      } else {
+        body = {
+          name: formValues.name.trim(),
+          email: formValues.email.trim(),
+          topic: formValues.topic,
+          message: formValues.message.trim(),
+          ...(hasTurnstile ? { turnstile_token: turnstileToken } : {}),
+        };
+      }
+
+      const response = await api.post("/api/contact", body);
 
       setStatus("success");
       setStatusMessage(
@@ -116,6 +195,7 @@ const Contact = () => {
           "Thanks, your message has been sent to the Lomir team.",
       );
       setFormValues(initialFormValues);
+      setAttachments([]);
       resetTurnstile();
     } catch (error) {
       console.error("Contact form submission error:", error);
@@ -293,17 +373,69 @@ const Contact = () => {
               required
               className="mb-0"
             >
-              <textarea
-                id="contact-message"
-                className={`textarea textarea-bordered min-h-40 w-full resize-y ${
-                  errors.message ? "textarea-error" : ""
-                }`}
-                value={formValues.message}
-                onChange={(event) => updateField("message", event.target.value)}
-                placeholder="Tell us what is on your mind"
-                disabled={isSubmitting}
-              />
+              <div className="relative">
+                <textarea
+                  id="contact-message"
+                  className={`textarea textarea-bordered min-h-40 w-full resize-y pb-10 ${
+                    errors.message ? "textarea-error" : ""
+                  }`}
+                  value={formValues.message}
+                  onChange={(event) => updateField("message", event.target.value)}
+                  placeholder="Tell us what is on your mind"
+                  disabled={isSubmitting}
+                />
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  className="hidden"
+                  accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx,.csv,.ppt,.pptx,.txt,.zip,.rar"
+                  onChange={handleFileChange}
+                  disabled={isSubmitting}
+                />
+                {attachments.length < ATTACHMENT_MAX_FILES && (
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isSubmitting}
+                    className="absolute bottom-2 right-2 btn btn-ghost btn-xs gap-1 px-2 text-base-content/40 hover:text-base-content/70"
+                  >
+                    <Paperclip size={13} />
+                    Attach file
+                  </button>
+                )}
+              </div>
             </FormGroup>
+
+            {(attachments.length > 0 || errors.attachment) && (
+              <div className="space-y-1.5">
+                {attachments.map((file, index) => (
+                  <div
+                    key={index}
+                    className="flex items-center gap-2 rounded-lg border border-base-300 bg-base-200/50 px-3 py-2 text-sm"
+                  >
+                    <Paperclip size={14} className="shrink-0 text-base-content/60" />
+                    <span className="min-w-0 truncate text-base-content/80">
+                      {file.name}
+                    </span>
+                    <span className="shrink-0 text-base-content/50">
+                      ({(file.size / 1024).toFixed(0)} KB)
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => removeAttachment(index)}
+                      disabled={isSubmitting}
+                      className="btn btn-ghost btn-xs ml-auto shrink-0 p-0.5"
+                      aria-label="Remove attachment"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                ))}
+                {errors.attachment && (
+                  <p className="text-xs text-error">{errors.attachment}</p>
+                )}
+              </div>
+            )}
 
             <div className="pt-3 flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
               <div className="sm:pt-0">
@@ -348,7 +480,7 @@ const Contact = () => {
         </form>
 
         {!isAuthenticated && (
-          <div className="mt-6 rounded-lg bg-base-100/60 p-4 text-sm text-base-content/70">
+          <div className="mt-6 rounded-lg bg-base-100/60 text-sm text-base-content/70">
             <p>
               Already part of Lomir?{" "}
               <Link to="/login" className="link link-primary">
