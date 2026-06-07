@@ -5,6 +5,7 @@ import {
   EyeClosed,
   Calendar,
   FlaskConical,
+  MapPin,
 } from "lucide-react";
 import {
   DEMO_PROFILE_TOOLTIP,
@@ -13,6 +14,7 @@ import {
 } from "../../utils/userHelpers";
 import DemoAvatarOverlay from "./DemoAvatarOverlay";
 import { getMatchTier } from "../../utils/matchScoreUtils";
+import { getCountryCode, normalizeLocationData } from "../../utils/locationUtils";
 import { format } from "date-fns";
 
 /**
@@ -99,6 +101,11 @@ const UserProfileHeaderSection = ({
   };
 
   const displayName = getDisplayName();
+  const location = normalizeLocationData(user);
+  const countryCode = getCountryCode(location.country);
+  const headerLocationText = location.hasLocation
+    ? [location.city, countryCode || location.country].filter(Boolean).join(", ")
+    : "";
 
   useLayoutEffect(() => {
     const container = titleContainerRef.current;
@@ -177,6 +184,12 @@ const UserProfileHeaderSection = ({
         </h1>
         <div className="flex items-center flex-wrap gap-x-3 gap-y-0.5 text-sm leading-[110%]">
           <span className="text-base-content/70">@{user?.username}</span>
+          {headerLocationText && (
+            <span className="flex items-center text-base-content/70">
+              <MapPin size={14} className="mr-1 flex-shrink-0" />
+              <span>{headerLocationText}</span>
+            </span>
+          )}
 
           {/* Visibility Indicator - Only show for own profile */}
           {shouldShowVisibilityIndicator() && (
