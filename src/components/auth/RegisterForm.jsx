@@ -777,8 +777,7 @@ const RegisterForm = () => {
               <span className="font-medium">{formData.email}</span>
             </p>
             <p className="text-sm text-base-content/60 mb-6">
-              Please click the link in the email to verify your account. The
-              link will expire in 24 hours.
+              Please click the link in the email to verify your account. The link will expire in <strong>24 hours</strong> — if you don't verify within this time, your registration will be automatically deleted and you'll need to sign up again.
             </p>
 
             {resendMessage && (
