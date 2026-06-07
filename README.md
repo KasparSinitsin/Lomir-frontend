@@ -36,7 +36,7 @@ Contact the project owner for a demo login, or register a new account with a val
 - **Notifications** — In-app notification center for invitations, applications, badge awards, and role updates
 - **Account Deletion** — Multi-step account deletion with impact preview, automatic team ownership transfer, and graceful "Former Lomir User" handling across chat, badges, and notifications
 - **Demo Data Indicators** — Synthetic/seed data is visually labeled with FlaskConical icons and "DEMO" avatar overlays so users can distinguish test content from real data
-- **Security** — Cloudflare Turnstile CAPTCHA on registration (feature-flagged), enforced password policy (min 8 chars, letter + number)
+- **Security** — Cloudflare Turnstile CAPTCHA on registration (feature-flagged), enforced password policy (min 8 chars, letter + number), and self-service password reset from the login form
 
 ---
 
@@ -251,6 +251,9 @@ Lomir-frontend/
 | Route | Page | Description |
 |---|---|---|
 | `/` | Landing Page | Public homepage with feature overview |
+| `/login` | Login | Sign in, register redirect, and forgot-password entry point |
+| `/forgot-password` | Forgot Password | Request a password reset email |
+| `/reset-password` | Reset Password | Set a new password from a reset email link |
 | `/search` | Search | Find teams, users, and roles; Boolean search input; shared result-view toggle; advanced filtering by tags, badges, distance |
 | `/teams/my-teams` | My Teams | Teams you belong to, pending invitations and applications; shared sort and result-view controls |
 | `/profile` | Profile | Edit your profile, tags, avatar, and location |
