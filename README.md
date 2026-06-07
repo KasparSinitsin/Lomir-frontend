@@ -53,6 +53,7 @@ Contact the project owner for a demo login, or register a new account with a val
 | Server State | TanStack React Query 5 |
 | Real-time | Socket.IO Client |
 | Maps | Leaflet + React Leaflet |
+| Typography | Roboto (self-hosted woff2, GDPR-compliant — no Google CDN) |
 | Icons | Lucide React, React Icons |
 | Date Utilities | date-fns |
 | Autocomplete | Downshift |
@@ -131,6 +132,7 @@ The app starts on `http://localhost:5173` with hot module replacement.
 ```text
 Lomir-frontend/
 ├── public/
+│   └── fonts/                      # Self-hosted Roboto woff2 files (weights 300/400/500/700)
 ├── src/
 │   ├── main.jsx                    # App entry point
 │   ├── App.jsx                     # Root component with routing
