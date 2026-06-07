@@ -13,6 +13,7 @@ import Card from "../components/common/Card";
 import FormGroup from "../components/common/FormGroup";
 import TurnstileWidget from "../components/common/TurnstileWidget";
 import { useAuth } from "../contexts/AuthContext";
+import { useToast } from "../contexts/ToastContext";
 import api from "../services/api";
 
 const LOMIR_CONTACT_USER_ID = (
@@ -36,6 +37,7 @@ const topicOptions = [
 const Contact = () => {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
+  const showToast = useToast();
   const hasTurnstile = Boolean(import.meta.env.VITE_TURNSTILE_SITE_KEY);
 
   const [formValues, setFormValues] = useState(initialFormValues);
@@ -189,13 +191,15 @@ const Contact = () => {
 
       const response = await api.post("/api/contact", body);
 
-      setStatus("success");
-      setStatusMessage(
+      showToast(
         response.data?.message ||
           "Thanks, your message has been sent to the Lomir team.",
       );
       setFormValues(initialFormValues);
       setAttachments([]);
+      setStatus("idle");
+      setStatusMessage("");
+      setIsEmailFormOpen(false);
       resetTurnstile();
     } catch (error) {
       console.error("Contact form submission error:", error);
@@ -291,14 +295,6 @@ const Contact = () => {
         className="h-full"
         marginClassName="mb-0"
       >
-        {status === "success" && (
-          <Alert
-            type="success"
-            message={statusMessage}
-            className="mb-5 w-full shadow-sm"
-          />
-        )}
-
         {status === "error" && (
           <Alert
             type="error"
