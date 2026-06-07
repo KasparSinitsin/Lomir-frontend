@@ -36,7 +36,8 @@ Contact the project owner for a demo login, or register a new account with a val
 - **Notifications** — In-app notification center for invitations, applications, badge awards, and role updates
 - **Account Deletion** — Multi-step account deletion with impact preview, automatic team ownership transfer, and graceful "Former Lomir User" handling across chat, badges, and notifications
 - **Demo Data Indicators** — Synthetic/seed data is visually labeled with FlaskConical icons and "DEMO" avatar overlays so users can distinguish test content from real data
-- **Security** — Cloudflare Turnstile CAPTCHA on registration (feature-flagged), enforced password policy (min 8 chars, letter + number), and self-service password reset from the login form
+- **Contact Page** — Email contact form with optional file attachments (up to 5 files, 25 MB each — images, PDF, Word, Excel, PPT, TXT, ZIP); authenticated users with a configured contact user ID are routed directly to in-app chat instead; optional Turnstile CAPTCHA; success toast on submit
+- **Security** — Cloudflare Turnstile CAPTCHA on registration and contact form (feature-flagged), enforced password policy (min 8 chars, letter + number), and self-service password reset from the login form
 
 ---
 
@@ -97,6 +98,9 @@ VITE_IMAGEKIT_URL_ENDPOINT=https://ik.imagekit.io/<your-id>
 
 # Cloudflare Turnstile (optional for local dev — if unset, CAPTCHA is not shown)
 # VITE_TURNSTILE_SITE_KEY=<turnstile-site-key>
+
+# Contact page — set to a Lomir user ID to route authenticated users to in-app chat
+# VITE_LOMIR_CONTACT_USER_ID=<lomir-team-user-id>
 ```
 
 > Get the ImageKit values from the project owner.
@@ -146,6 +150,7 @@ Lomir-frontend/
 │   │   ├── ForgotPassword.jsx
 │   │   ├── ResetPassword.jsx
 │   │   ├── VerifyEmail.jsx
+│   │   ├── Contact.jsx             # Contact form with file attachments + in-app chat routing
 │   │   └── DesignSystem.jsx        # Dev-only component playground
 │   ├── components/
 │   │   ├── BooleanSearchInput.jsx  # Textarea-based Boolean search input with operator helpers
@@ -261,6 +266,7 @@ Lomir-frontend/
 | `/chat` | Chat | Direct messages and team group chat with file/image sharing, @mentions, and reply threading |
 | `/badges` | Badges | Browse all 30 badges across 5 categories |
 | `/settings` | Settings | Change password and delete account |
+| `/contact` | Contact | Email form with file attachments; authenticated users with a contact user ID configured are routed to in-app chat |
 
 ---
 
