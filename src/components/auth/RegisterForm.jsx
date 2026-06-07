@@ -51,12 +51,28 @@ const RegisterForm = () => {
   const [registrationSuccess, setRegistrationSuccess] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState(null);
   const turnstileRef = useRef(null);
+  const emailInputValueRef = useRef("");
+  const lastEmailAvailabilityRef = useRef({
+    email: "",
+    available: null,
+    message: "",
+  });
+  const emailAvailabilityRequestIdRef = useRef(0);
+  const usernameInputValueRef = useRef("");
+  const lastUsernameAvailabilityRef = useRef({
+    username: "",
+    available: null,
+    message: "",
+  });
+  const usernameAvailabilityRequestIdRef = useRef(0);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const [resendStatus, setResendStatus] = useState("idle"); // 'idle' | 'sending' | 'sent' | 'error'
   const [resendMessage, setResendMessage] = useState("");
   const [resendCooldown, setResendCooldown] = useState(0);
+  const formAlertClassName =
+    "field-error-animate shadow-[0_4px_10px_rgba(0,0,0,0.12),0_12px_30px_rgba(0,0,0,0.18),0_28px_56px_rgba(0,0,0,0.14)]";
 
   const { getSuggestedUpdates } = useLocationAutoFill({
     postalCode: formData.postal_code || "",
@@ -79,7 +95,7 @@ const RegisterForm = () => {
     }
   }, [getSuggestedUpdates]);
 
-  const validateForm = () => {
+  const getFormValidationErrors = () => {
     const newErrors = {};
 
     if (!formData.username) {
@@ -115,18 +131,32 @@ const RegisterForm = () => {
       newErrors.turnstile = "Please complete the CAPTCHA verification";
     }
 
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    return newErrors;
   };
 
   const clearFieldError = (fieldName) => {
     setErrors((prev) => {
-      if (!prev[fieldName]) {
+      if (!prev[fieldName] && !prev.form) {
         return prev;
       }
 
       const remainingErrors = { ...prev };
       delete remainingErrors[fieldName];
+      delete remainingErrors.form;
+      delete remainingErrors.formMessages;
+      return remainingErrors;
+    });
+  };
+
+  const clearFormError = () => {
+    setErrors((prev) => {
+      if (!prev.form) {
+        return prev;
+      }
+
+      const remainingErrors = { ...prev };
+      delete remainingErrors.form;
+      delete remainingErrors.formMessages;
       return remainingErrors;
     });
   };
@@ -151,39 +181,194 @@ const RegisterForm = () => {
     return usernameErrors;
   };
 
-  const handleEmailBlur = () => {
-    if (!formData.email) return;
+  const checkEmailAvailability = async (emailValue = formData.email) => {
+    const email = emailValue.trim();
+    const emailErrorMessage =
+      "Please enter a valid email address (e.g. your@email.com).";
 
-    setErrors((prev) => {
-      const nextErrors = { ...prev };
+    if (!email) return false;
 
-      if (!/\S+@\S+\.\S+/.test(formData.email)) {
-        nextErrors.email =
-          "Please enter a valid email address (e.g. your@email.com).";
-      } else {
-        delete nextErrors.email;
+    emailInputValueRef.current = emailValue;
+
+    if (!/\S+@\S+\.\S+/.test(email)) {
+      setErrors((prev) => ({
+        ...prev,
+        email: emailErrorMessage,
+      }));
+      return false;
+    }
+
+    if (lastEmailAvailabilityRef.current.email === email) {
+      const { available, message } = lastEmailAvailabilityRef.current;
+
+      if (available === false) {
+        setErrors((prev) => ({
+          ...prev,
+          email: message || "This email address is already registered.",
+        }));
+        return false;
       }
 
-      return nextErrors;
-    });
+      if (available === true) {
+        setErrors((prev) => {
+          const nextErrors = { ...prev };
+          delete nextErrors.email;
+          return nextErrors;
+        });
+        return true;
+      }
+    }
+
+    const requestId = emailAvailabilityRequestIdRef.current + 1;
+    emailAvailabilityRequestIdRef.current = requestId;
+
+    try {
+      const response = await api.post("/api/auth/check-email", { email });
+
+      if (
+        requestId !== emailAvailabilityRequestIdRef.current ||
+        emailInputValueRef.current.trim() !== email
+      ) {
+        return false;
+      }
+
+      const available = Boolean(response.data.available);
+      const message =
+        response.data.message || "This email address is already registered.";
+
+      lastEmailAvailabilityRef.current = {
+        email,
+        available,
+        message: available ? "" : message,
+      };
+
+      setErrors((prev) => {
+        const nextErrors = { ...prev };
+
+        if (available) {
+          delete nextErrors.email;
+        } else {
+          nextErrors.email = message;
+        }
+
+        return nextErrors;
+      });
+
+      return available;
+    } catch (error) {
+      console.warn("Email availability check failed:", error);
+      return true;
+    }
   };
 
-  const handleUsernameBlur = () => {
-    if (!formData.username) return;
+  const handleEmailBlur = (e) => {
+    void checkEmailAvailability(e.currentTarget.value);
+  };
 
-    const usernameErrors = getUsernameValidationErrors(formData.username);
+  const handleEmailKeyDown = (e) => {
+    if (e.key !== "Enter") return;
 
-    setErrors((prev) => {
-      const nextErrors = { ...prev };
+    e.preventDefault();
+    void checkEmailAvailability(e.currentTarget.value);
+  };
 
-      if (usernameErrors.length > 0) {
-        nextErrors.username = usernameErrors;
-      } else {
-        delete nextErrors.username;
+  const handleEmailFocus = () => {
+    if (getAvailabilityErrorClass(errors.email)) return;
+
+    clearFieldError("email");
+  };
+
+  const checkUsernameAvailability = async (
+    usernameValue = formData.username,
+  ) => {
+    const username = usernameValue.trim();
+
+    if (!username) return false;
+
+    usernameInputValueRef.current = usernameValue;
+
+    const usernameErrors = getUsernameValidationErrors(username);
+    if (usernameErrors.length > 0) {
+      setErrors((prev) => ({
+        ...prev,
+        username: usernameErrors,
+      }));
+      return false;
+    }
+
+    if (lastUsernameAvailabilityRef.current.username === username) {
+      const { available, message } = lastUsernameAvailabilityRef.current;
+
+      if (available === false) {
+        setErrors((prev) => ({
+          ...prev,
+          username: [message || "This username is already taken."],
+        }));
+        return false;
       }
 
-      return nextErrors;
-    });
+      if (available === true) {
+        setErrors((prev) => {
+          const nextErrors = { ...prev };
+          delete nextErrors.username;
+          return nextErrors;
+        });
+        return true;
+      }
+    }
+
+    const requestId = usernameAvailabilityRequestIdRef.current + 1;
+    usernameAvailabilityRequestIdRef.current = requestId;
+
+    try {
+      const response = await api.post("/api/auth/check-username", {
+        username,
+      });
+
+      if (
+        requestId !== usernameAvailabilityRequestIdRef.current ||
+        usernameInputValueRef.current.trim() !== username
+      ) {
+        return false;
+      }
+
+      const available = Boolean(response.data.available);
+      const message = response.data.message || "This username is already taken.";
+
+      lastUsernameAvailabilityRef.current = {
+        username,
+        available,
+        message: available ? "" : message,
+      };
+
+      setErrors((prev) => {
+        const nextErrors = { ...prev };
+
+        if (available) {
+          delete nextErrors.username;
+        } else {
+          nextErrors.username = [message];
+        }
+
+        return nextErrors;
+      });
+
+      return available;
+    } catch (error) {
+      console.warn("Username availability check failed:", error);
+      return true;
+    }
+  };
+
+  const handleUsernameBlur = (e) => {
+    void checkUsernameAvailability(e.currentTarget.value);
+  };
+
+  const handleUsernameKeyDown = (e) => {
+    if (e.key !== "Enter") return;
+
+    e.preventDefault();
+    void checkUsernameAvailability(e.currentTarget.value);
   };
 
   const getPasswordValidationErrors = (password) => {
@@ -238,6 +423,22 @@ const RegisterForm = () => {
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
+
+    if (name === "email") {
+      emailInputValueRef.current = value;
+
+      if (
+        getAvailabilityErrorClass(errors.email) &&
+        value.trim() !== lastEmailAvailabilityRef.current.email
+      ) {
+        clearFieldError("email");
+      }
+    }
+
+    if (name === "username") {
+      usernameInputValueRef.current = value;
+    }
+
     setFormData((prev) => ({
       ...prev,
       [name]: type === "checkbox" ? checked : value,
@@ -268,16 +469,108 @@ const RegisterForm = () => {
     setTurnstileToken(null);
   };
 
+  const isEmailConflictMessage = (message = "") =>
+    message.toLowerCase().includes("email already exists");
+
+  const isUsernameConflictMessage = (message = "") =>
+    message.toLowerCase().includes("username already exists");
+
+  const getAvailabilityErrorClass = (message = "") => {
+    const normalizedMessage = message.toLowerCase();
+
+    return normalizedMessage.includes("already registered") ||
+      normalizedMessage.includes("already taken")
+      ? " field-error-animate"
+      : "";
+  };
+
+  const getAccountCreationErrorMessages = (fieldMessages) => [
+    ...new Set(Object.values(fieldMessages).flat().filter(Boolean)),
+  ];
+
+  const getAccountCreationErrorMessage = (fieldMessages) => {
+    const messages = getAccountCreationErrorMessages(fieldMessages);
+
+    if (messages.length === 0) {
+      return "Account could not be created. Please check the highlighted fields.";
+    }
+
+    return `Account could not be created. Please fix: ${messages.join("; ")}`;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!validateForm()) return;
 
     setIsSubmitting(true);
 
     try {
+      const trimmedEmail = formData.email.trim();
+      const trimmedUsername = formData.username.trim();
+      const validationErrors = getFormValidationErrors();
+      const availabilityErrors = {};
+
+      try {
+        const availabilityChecks = [];
+
+        if (!validationErrors.email && trimmedEmail) {
+          availabilityChecks.push(
+            api
+              .post("/api/auth/check-email", {
+                email: trimmedEmail,
+              })
+              .then((emailCheck) => {
+                if (!emailCheck.data.available) {
+                  availabilityErrors.email =
+                    emailCheck.data.message ||
+                    "This email address is already registered.";
+                }
+              }),
+          );
+        }
+
+        if (!validationErrors.username && trimmedUsername) {
+          availabilityChecks.push(
+            api
+              .post("/api/auth/check-username", {
+                username: trimmedUsername,
+              })
+              .then((usernameCheck) => {
+                if (!usernameCheck.data.available) {
+                  availabilityErrors.username = [
+                    usernameCheck.data.message ||
+                      "This username is already taken.",
+                  ];
+                }
+              }),
+          );
+        }
+
+        await Promise.all(availabilityChecks);
+      } catch (availabilityError) {
+        console.warn("Availability check failed:", availabilityError);
+      }
+
+      const blockingErrors = {
+        ...validationErrors,
+        ...availabilityErrors,
+      };
+
+      if (Object.keys(blockingErrors).length > 0) {
+        const formMessages = getAccountCreationErrorMessages(blockingErrors);
+
+        setErrors({
+          ...blockingErrors,
+          form: getAccountCreationErrorMessage(blockingErrors),
+          formMessages,
+        });
+        resetTurnstile();
+        setIsSubmitting(false);
+        return;
+      }
+
       const userData = {
-        username: formData.username,
-        email: formData.email,
+        username: trimmedUsername,
+        email: trimmedEmail,
         password: formData.password,
         first_name: formData.first_name,
         last_name: formData.last_name,
@@ -323,18 +616,70 @@ const RegisterForm = () => {
         }
       } else {
         resetTurnstile();
-        setErrors((prev) => ({
-          ...prev,
-          form: result.message,
-        }));
+        const msg = result.message || "";
+
+        if (isEmailConflictMessage(msg)) {
+          const formMessages = ["This email address is already registered."];
+
+          setErrors((prev) => ({
+            ...prev,
+            email: "This email address is already registered.",
+            form: getAccountCreationErrorMessage({
+              email: "This email address is already registered.",
+            }),
+            formMessages,
+          }));
+        } else if (isUsernameConflictMessage(msg)) {
+          const formMessages = ["This username is already taken."];
+
+          setErrors((prev) => ({
+            ...prev,
+            username: ["This username is already taken."],
+            form: getAccountCreationErrorMessage({
+              username: "This username is already taken.",
+            }),
+            formMessages,
+          }));
+        } else {
+          setErrors((prev) => ({
+            ...prev,
+            form: msg,
+          }));
+        }
       }
     } catch (error) {
       resetTurnstile();
       console.error("Full Registration error:", error);
-      setErrors((prev) => ({
-        ...prev,
-        form: error.response?.data?.message || "Registration failed.",
-      }));
+      const msg = error.response?.data?.message || "Registration failed.";
+
+      if (isEmailConflictMessage(msg)) {
+        const formMessages = ["This email address is already registered."];
+
+        setErrors((prev) => ({
+          ...prev,
+          email: "This email address is already registered.",
+          form: getAccountCreationErrorMessage({
+            email: "This email address is already registered.",
+          }),
+          formMessages,
+        }));
+      } else if (isUsernameConflictMessage(msg)) {
+        const formMessages = ["This username is already taken."];
+
+        setErrors((prev) => ({
+          ...prev,
+          username: ["This username is already taken."],
+          form: getAccountCreationErrorMessage({
+            username: "This username is already taken.",
+          }),
+          formMessages,
+        }));
+      } else {
+        setErrors((prev) => ({
+          ...prev,
+          form: msg,
+        }));
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -383,6 +728,40 @@ const RegisterForm = () => {
     : errors.password
       ? [errors.password]
       : [];
+  const formErrorMessages = Array.isArray(errors.formMessages)
+    ? errors.formMessages
+    : [];
+
+  const renderFormAlert = (className = "") => {
+    if (!errors.form) return null;
+
+    return (
+      <div className="flex w-full justify-center">
+        <Alert
+          type="error"
+        message={errors.form}
+        onClose={clearFormError}
+        autoCloseMs={10000}
+          className={className}
+        >
+          {formErrorMessages.length > 0 ? (
+            <div className="text-left">
+              <p className="font-medium">
+                Account could not be created. Please fix:
+              </p>
+              <ul className="mt-2 list-disc space-y-0.5 pl-5">
+                {formErrorMessages.map((message) => (
+                  <li key={message}>{message}</li>
+                ))}
+              </ul>
+            </div>
+          ) : (
+            errors.form
+          )}
+        </Alert>
+      </div>
+    );
+  };
 
   if (registrationSuccess) {
     return (
@@ -451,9 +830,7 @@ const RegisterForm = () => {
             Join Lomir and start building teams
           </p>
 
-          {errors.form && (
-            <Alert type="error" message={errors.form} className="mb-4 w-full shadow-sm" />
-          )}
+          {renderFormAlert(`mb-4 ${formAlertClassName}`)}
 
           <form onSubmit={handleSubmit} className="space-y-12">
             {/* Account Information */}
@@ -477,6 +854,7 @@ const RegisterForm = () => {
                     onChange={handleChange}
                     onFocus={() => clearFieldError("username")}
                     onBlur={handleUsernameBlur}
+                    onKeyDown={handleUsernameKeyDown}
                     name="username"
                   />
                   {usernameErrorMessages.length === 0 && (
@@ -487,7 +865,12 @@ const RegisterForm = () => {
                   {usernameErrorMessages.length > 0 && (
                     <div className="mt-2 px-1 flex flex-col gap-0.5">
                       {usernameErrorMessages.map((err) => (
-                        <p key={err} className="text-xs text-error">
+                        <p
+                          key={err}
+                          className={`text-xs text-error${getAvailabilityErrorClass(
+                            err,
+                          )}`}
+                        >
                           {err}
                         </p>
                       ))}
@@ -509,12 +892,17 @@ const RegisterForm = () => {
                     }`}
                     value={formData.email}
                     onChange={handleChange}
-                    onFocus={() => clearFieldError("email")}
+                    onFocus={handleEmailFocus}
                     onBlur={handleEmailBlur}
+                    onKeyDown={handleEmailKeyDown}
                     name="email"
                   />
                   {errors.email && (
-                    <p className="text-xs text-error mt-2 px-1">
+                    <p
+                      className={`text-xs text-error mt-2 px-1${getAvailabilityErrorClass(
+                        errors.email,
+                      )}`}
+                    >
                       {errors.email}
                     </p>
                   )}
@@ -747,36 +1135,7 @@ const RegisterForm = () => {
             <div className="divider mt-12 mb-0"></div>
 
             <section className="space-y-4 !mt-4">
-              {hasTurnstile && (
-                <div className="form-control w-full">
-                  <div className="flex justify-center">
-                    <TurnstileWidget
-                      ref={turnstileRef}
-                      onVerify={(token) => {
-                        setTurnstileToken(token);
-                        setErrors((prev) => {
-                          if (!prev.turnstile) {
-                            return prev;
-                          }
-
-                          const remainingErrors = { ...prev };
-                          delete remainingErrors.turnstile;
-                          return remainingErrors;
-                        });
-                      }}
-                      onExpire={() => setTurnstileToken(null)}
-                      onError={() => setTurnstileToken(null)}
-                    />
-                  </div>
-                  {errors.turnstile && (
-                    <label className="label">
-                      <span className="label-text-alt text-error">
-                        {errors.turnstile}
-                      </span>
-                    </label>
-                  )}
-                </div>
-              )}
+              {renderFormAlert(formAlertClassName)}
 
               <Button
                 type="submit"
@@ -794,12 +1153,45 @@ const RegisterForm = () => {
                 )}
               </Button>
 
-              <p className="text-center text-sm">
-                Already have an account?{" "}
-                <Link to="/login" className="link link-primary">
-                  Login
-                </Link>
-              </p>
+              <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <p className="text-left text-sm sm:pt-1">
+                  Already have an account?{" "}
+                  <Link to="/login" className="link link-primary">
+                    Login
+                  </Link>
+                </p>
+
+                {hasTurnstile && (
+                  <div className="form-control w-full sm:w-auto sm:items-end">
+                    <div className="flex w-full justify-end">
+                      <TurnstileWidget
+                        ref={turnstileRef}
+                        onVerify={(token) => {
+                          setTurnstileToken(token);
+                          setErrors((prev) => {
+                            if (!prev.turnstile) {
+                              return prev;
+                            }
+
+                            const remainingErrors = { ...prev };
+                            delete remainingErrors.turnstile;
+                            return remainingErrors;
+                          });
+                        }}
+                        onExpire={() => setTurnstileToken(null)}
+                        onError={() => setTurnstileToken(null)}
+                      />
+                    </div>
+                    {errors.turnstile && (
+                      <label className="label flex w-full justify-end px-0">
+                        <span className="label-text-alt text-error">
+                          {errors.turnstile}
+                        </span>
+                      </label>
+                    )}
+                  </div>
+                )}
+              </div>
             </section>
           </form>
         </div>
