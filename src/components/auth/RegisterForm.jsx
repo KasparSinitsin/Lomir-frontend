@@ -412,13 +412,13 @@ const RegisterForm = () => {
             )}
 
             <div className="flex flex-col gap-2 w-full">
-              <Link to="/login" className="btn btn-primary w-full">
+              <Link to="/login" className="btn btn-primary w-fit self-center px-6">
                 Go to Login
               </Link>
 
               <button
                 type="button"
-                className="btn btn-ghost btn-sm"
+                className="btn btn-ghost btn-sm w-fit self-center px-4"
                 onClick={handleResendVerification}
                 disabled={resendStatus === "sending" || resendCooldown > 0}
               >
