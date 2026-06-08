@@ -1315,14 +1315,14 @@ const BooleanSearchInput = ({
                                   >
                                     <div className="flex-none flex items-center gap-0.5">
                                       {isFirst && (
-                                        <span className="flex max-w-full items-center gap-1 text-xs leading-none whitespace-normal break-words [overflow-wrap:anywhere]" style={{ color: FOCUS_GREEN }}>
+                                        <span className="flex max-w-full items-center gap-1 text-xs leading-none whitespace-normal [overflow-wrap:anywhere]" style={{ color: FOCUS_GREEN }}>
                                           <SuperIcon size={10} className="shrink-0" />
                                           <span>{supercategory}</span>
                                         </span>
                                       )}
                                     </div>
                                     <div className="[flex:1_1_0] max-w-full flex items-center gap-2 min-w-0">
-                                      <span className="min-w-0 break-words font-medium [overflow-wrap:anywhere]">{tag.name}</span>
+                                      <span className="min-w-0 font-medium [overflow-wrap:anywhere]">{tag.name}</span>
                                     </div>
                                   </button>
                                 </li>
@@ -1373,7 +1373,7 @@ const BooleanSearchInput = ({
                                   >
                                     <div className="flex-none flex items-center gap-0.5">
                                       {isFirst && (
-                                        <span className="flex max-w-full items-center gap-1 text-xs leading-none whitespace-normal break-words [overflow-wrap:anywhere]" style={{ color }}>
+                                        <span className="flex max-w-full items-center gap-1 text-xs leading-none whitespace-normal [overflow-wrap:anywhere]" style={{ color }}>
                                           {getCategoryIcon(category, color, 10)}
                                           <span>{category}</span>
                                         </span>
@@ -1381,7 +1381,7 @@ const BooleanSearchInput = ({
                                     </div>
                                     <div className="[flex:1_1_0] max-w-full flex items-center gap-2 min-w-0">
                                       <span className="shrink-0">{getBadgeIcon(badge.name, color, 14)}</span>
-                                      <span className="min-w-0 break-words font-medium [overflow-wrap:anywhere]">{badge.name}</span>
+                                      <span className="min-w-0 font-medium [overflow-wrap:anywhere]">{badge.name}</span>
                                     </div>
                                   </button>
                                 </li>
