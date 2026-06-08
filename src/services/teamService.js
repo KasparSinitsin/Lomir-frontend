@@ -231,6 +231,7 @@ export const teamService = {
         : toNullOrTrimmed(teamData.postal_code ?? teamData.postalCode);
       const city = isRemote ? null : toNullOrTrimmed(teamData.city);
       const state = isRemote ? null : toNullOrTrimmed(teamData.state);
+      const district = isRemote ? null : toNullOrTrimmed(teamData.district);
       const country = isRemote ? null : toNullOrTrimmed(teamData.country);
 
       const dataToSend = {
@@ -240,6 +241,7 @@ export const teamService = {
         postal_code,
         city,
         state,
+        district,
         country,
       };
 

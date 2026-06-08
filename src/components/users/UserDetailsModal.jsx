@@ -10,6 +10,7 @@ import BadgeCategoryModal from "../badges/BadgeCategoryModal";
 import TagAwardsModal from "../badges/TagAwardsModal";
 import UserProfileHeaderSection from "./UserProfileHeaderSection";
 import { messageService } from "../../services/messageService";
+import { geocodingService } from "../../services/geocodingService";
 import { userService } from "../../services/userService";
 import {
   useUserBadges,
@@ -196,6 +197,14 @@ const UserDetailsModal = ({
     setLoading(viewedUserProfileQuery.isLoading);
   }, [viewedUserProfileQuery.isLoading]);
 
+  // Force a fresh fetch whenever this modal opens so that privacy access level
+  // is always evaluated against the current auth state (avoids stale cache).
+  useEffect(() => {
+    if (isOpen && userId) {
+      queryClient.invalidateQueries({ queryKey: userProfileQueryKey(userId) });
+    }
+  }, [isOpen, userId, queryClient]);
+
   useEffect(() => {
     if (!isOpen || !userId) return;
     if (!viewedUserProfileQuery.data) return;
@@ -262,6 +271,62 @@ const UserDetailsModal = ({
     console.error("Error fetching user tags:", viewedUserTagsQuery.error);
     setUserTags([]);
   }, [viewedUserTagsQuery.error]);
+
+  // Enrich postal-code-only locations with city, district, and state.
+  // The geocoding service has an in-memory cache so repeated lookups are free.
+  useEffect(() => {
+    if (!user) return;
+    const postalCode = user.postal_code || user.postalCode;
+    if (!postalCode) return;
+
+    const hasAllLocationDetails =
+      user.city &&
+      user.state &&
+      (user.district || user.suburb || user.borough || user.cityDistrict);
+    if (hasAllLocationDetails) return;
+
+    const country = user.country; // may be null; geocodingService.detectCountryCode will fall back
+    geocodingService
+      .getLocationFromPostalCode(postalCode, country || null)
+      .then((locationInfo) => {
+        if (!locationInfo) return;
+        setUser((prev) => {
+          if (!prev) return prev;
+
+          const nextDistrict =
+            prev.district ||
+            locationInfo.district ||
+            locationInfo.suburb ||
+            locationInfo.borough ||
+            locationInfo.cityDistrict;
+          const nextUser = {
+            ...prev,
+            city: prev.city || locationInfo.city,
+            state: prev.state || locationInfo.state,
+            country: prev.country || locationInfo.country,
+            district: nextDistrict,
+          };
+
+          return nextUser.city === prev.city &&
+            nextUser.state === prev.state &&
+            nextUser.country === prev.country &&
+            nextUser.district === prev.district
+            ? prev
+            : nextUser;
+        });
+      })
+      .catch(() => {}); // silently fail — location falls back to known profile fields
+  }, [
+    user?.id,
+    user?.postal_code,
+    user?.postalCode,
+    user?.city,
+    user?.state,
+    user?.district,
+    user?.suburb,
+    user?.borough,
+    user?.cityDistrict,
+  ]);
 
   // Resolve CURRENT user's tags/badges for overlap highlighting (not the viewed user's)
   useEffect(() => {
@@ -677,6 +742,12 @@ const UserDetailsModal = ({
               For comprehensive profile editing, you'll be redirected to the
               full profile page.
             </p>
+          </div>
+        ) : (!ownProfile && (user?.profileAccess === "limited" || user?.profile_access === "limited")) ? (
+          // PRIVATE PROFILE - non-owner, non-teammate viewing a private account
+          <div className="text-center text-base-content/60 py-8">
+            <p className="text-lg font-medium">{user.username}</p>
+            <p className="text-sm mt-2">This profile is private.</p>
           </div>
         ) : (
           // VIEW MODE - User profile information

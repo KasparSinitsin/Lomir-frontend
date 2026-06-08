@@ -498,12 +498,19 @@ const TeamDetailsModal = ({
         console.error("Error fetching team details:", err);
         // Only show error if we don't have any data to display
         if (!team) {
-          setNotification({
-            type: "error",
-            message:
-              "Server error: " +
-              (err.response?.data?.error || err.message || "Unknown error"),
-          });
+          if (err.response?.status === 404) {
+            setNotification({
+              type: "error",
+              message: "Team not found or you don't have access to it.",
+            });
+          } else {
+            setNotification({
+              type: "error",
+              message:
+                "Server error: " +
+                (err.response?.data?.error || err.message || "Unknown error"),
+            });
+          }
         }
         return null;
       } finally {
@@ -1119,6 +1126,7 @@ const TeamDetailsModal = ({
           : formData.postalCode?.trim() || null,
         city: isRemoteBoolean ? null : formData.city?.trim() || null,
         state: isRemoteBoolean ? null : formData.state?.trim() || null,
+        district: isRemoteBoolean ? null : formData.district?.trim() || null,
         country: isRemoteBoolean ? null : formData.country?.trim() || null,
       };
 

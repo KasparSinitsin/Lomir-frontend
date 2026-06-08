@@ -78,7 +78,7 @@ const LocationSection = ({
               {formatLocation(location, {
                 displayType: "full",
                 showPostalCode: true,
-                showState: false,
+                showState: true,
                 showCountry: true,
               })}
             </span>

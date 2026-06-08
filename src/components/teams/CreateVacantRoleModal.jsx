@@ -234,6 +234,7 @@ const CreateVacantRoleModal = ({
         postal_code: formData.isRemote ? null : formData.postalCode || null,
         city: formData.isRemote ? null : formData.city || null,
         state: formData.isRemote ? null : formData.state || null,
+        district: formData.isRemote ? null : formData.district || null,
         country: formData.isRemote ? null : formData.country || null,
         max_distance_km: formData.isRemote
           ? null
