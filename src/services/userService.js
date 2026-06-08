@@ -38,7 +38,9 @@ export const userService = {
     ).then(normalizeUserPayload),
 
   searchUsers: (query) =>
-    api.get(`/api/users?search=${encodeURIComponent(query)}`),
+    api.get("/api/search/global", {
+      params: { searchType: "users", query },
+    }),
 
   /**
    * Updates user details. Keeps the verbose error block because we want the

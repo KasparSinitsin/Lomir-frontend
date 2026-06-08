@@ -1553,9 +1553,9 @@ const MessageDisplay = ({
     const fromTeam = resolveUserIdFromTeamMembers(name);
     if (fromTeam) return fromTeam;
 
-    // 2) fallback: backend search (your endpoint currently returns placeholder [])
+    // 2) fallback: backend search
     const res = await userService.searchUsers(name);
-    const users = res?.data?.data || [];
+    const users = res?.data?.data?.users || [];
 
     if (users.length === 1) return users[0].id;
 
