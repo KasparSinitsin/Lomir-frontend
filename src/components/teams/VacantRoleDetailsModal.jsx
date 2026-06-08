@@ -1409,8 +1409,13 @@ const VacantRoleDetailsModal = ({
 
   const getLocationText = () => {
     if (isRemote) return "Remote — no geographic preference";
-    const parts = [city, state, country].filter(Boolean);
-    return parts.length > 0 ? parts.join(", ") : null;
+
+    return formatLocation(normalizeLocationData(displayRole), {
+      displayType: "full",
+      showPostalCode: true,
+      showState: true,
+      showCountry: true,
+    }) || null;
   };
 
   const getPersonLocationText = (person, fallbackDistanceKm = null) => {

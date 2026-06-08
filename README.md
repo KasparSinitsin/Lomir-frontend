@@ -30,14 +30,14 @@ Contact the project owner for a demo login, or register a new account with a val
 - **Best Match Sorting** — Weighted matching algorithm scores teams and roles against your profile (tags 40%, badges 30%, distance 30%)
 - **Map View** — Leaflet-powered map with custom markers for teams, users, and roles; popups with detail cards; distance-based filtering and proximity sorting
 - **Team Management** — Create teams, manage members and roles, post vacant roles, handle applications and invitations with role-specific targeting; My Teams uses the same responsive sort and result-view controls as search
-- **User Profiles** — Customizable profiles with interest tags, badges, avatar uploads (ImageKit), and geocoded location
+- **User Profiles** — Customizable profiles with interest tags, badges, avatar uploads (ImageKit), and geocoded location; profile header shows city and country code; non-public profiles are protected — non-owners and non-teammates see only the username and avatar ("This profile is private")
 - **Real-Time Chat** — Direct and team group messaging with typing indicators, read receipts, file/image sharing, @mentions, reply threading, and rich system event messages (Socket.IO)
 - **Badge System** — Browse 30 badges across 5 color-coded categories; award badges to teammates with reasons and team context
 - **Notifications** — In-app notification center for invitations, applications, badge awards, and role updates
 - **Account Deletion** — Multi-step account deletion with impact preview, automatic team ownership transfer, and graceful "Former Lomir User" handling across chat, badges, and notifications
 - **Demo Data Indicators** — Synthetic/seed data is visually labeled with FlaskConical icons and "DEMO" avatar overlays so users can distinguish test content from real data
 - **Contact Page** — Email contact form with optional file attachments (up to 5 files, 25 MB each — images, PDF, Word, Excel, PPT, TXT, ZIP); authenticated users with a configured contact user ID are routed directly to in-app chat instead; optional Turnstile CAPTCHA; success toast on submit
-- **Security** — Cloudflare Turnstile CAPTCHA on registration and contact form (feature-flagged), enforced password policy (min 8 chars, letter + number), and self-service password reset from the login form
+- **Security** — Cloudflare Turnstile CAPTCHA on registration and contact form (feature-flagged), enforced password policy (min 8 chars, letter + number), self-service password reset from the login form; search results use approximate coordinates (~11km precision) so exact user locations are never exposed to the frontend; real-time email and username availability feedback during registration; unverified accounts are automatically deleted after 24 hours
 
 ---
 
@@ -143,7 +143,8 @@ Lomir-frontend/
 │   │   ├── searchPageHelpers.js    # Helper functions for SearchPage (not a page itself)
 │   │   ├── MyTeams.jsx             # User's teams, invitations, applications
 │   │   ├── Profile.jsx             # User profile editing
-│   │   ├── PublicProfile.jsx       # Profile placeholder for deleted/missing users
+│   │   ├── PublicProfile.jsx       # Other users' public profiles; shows "private" message for
+│   │   │                           #   limited-access profiles; placeholder for deleted users
 │   │   ├── Register.jsx            # Multi-step registration with CAPTCHA
 │   │   ├── Login.jsx
 │   │   ├── Chat.jsx                # Direct + team messaging with file sharing
@@ -160,8 +161,9 @@ Lomir-frontend/
 │   │   ├── auth/                   # Login/register forms, TurnstileWidget
 │   │   ├── teams/                  # Team cards, detail modals, vacant roles,
 │   │   │                           #   applications, invitations, member management
-│   │   ├── users/                  # User cards, detail modals, InlineUserLink,
-│   │   │                           #   UserAvatar, DemoAvatarOverlay, deleted user handling
+│   │   ├── users/                  # User cards, detail modals, InlineUserLink, UserAvatar,
+│   │   │                           #   UserProfileHeaderSection (avatar + name + location header),
+│   │   │                           #   DemoAvatarOverlay, deleted user handling
 │   │   ├── badges/                 # Badge display, awarding, category modals, AwardCard
 │   │   ├── tags/                   # Tag input, display, and selection
 │   │   ├── chat/                   # Chat UI, message bubbles, file/image previews,
@@ -224,7 +226,9 @@ Lomir-frontend/
 │   │   ├── matchHelpers.js         # Shared match score helpers (weights, render cascade)
 │   │   ├── matchScoreUtils.js      # Match tier color coding (green/yellow/orange)
 │   │   ├── payloadExtractors.js    # Role/team payload field extractors shared across components
-│   │   ├── locationUtils.js        # Haversine distance calculation
+│   │   ├── locationUtils.js        # Haversine distance, formatLocation / normalizeLocationData
+│   │   │                           #   (de-duplicated city/district/state/country display,
+│   │   │                           #   postal-code city fallback, Berlin district lookup)
 │   │   ├── vacantRoleUtils.js      # Role status helpers (filled, closed, open) + display labels
 │   │   ├── teamRequestUtils.js     # Invitation + application helper functions (build card data, labels)
 │   │   ├── eventPreview.js         # Parse + format chat system event messages for previews and toasts
@@ -264,7 +268,7 @@ Lomir-frontend/
 | `/search` | Search | Find teams, users, and roles; Boolean search input; shared result-view toggle; advanced filtering by tags, badges, distance |
 | `/teams/my-teams` | My Teams | Teams you belong to, pending invitations and applications; shared sort and result-view controls |
 | `/profile` | Profile | Edit your profile, tags, avatar, and location |
-| `/profile/:id` | Public Profile | View any user's profile; shows placeholder for deleted/missing users |
+| `/profile/:id` | Public Profile | View any user's profile; shows "private" message for non-public profiles; placeholder for deleted users |
 | `/chat` | Chat | Direct messages and team group chat with file/image sharing, @mentions, and reply threading |
 | `/badges` | Badges | Browse all 30 badges across 5 categories |
 | `/settings` | Settings | Change password and delete account |
@@ -284,7 +288,9 @@ The search page supports multiple sort and filter modes:
 
 **Best Match scoring** uses the backend matching engine (tag overlap 40%, badge overlap 30%, distance 30%) and falls back to client-side profile overlap calculations when backend scores aren't available.
 
-**Map view** renders all results on a Leaflet map with color-coded markers. Clicking a marker shows a popup with the team/user/role card. Distance indicators show how far each result is from your location.
+**Map view** renders all results on a Leaflet map with color-coded markers. Clicking a marker shows a popup with the team/user/role card. Distance indicators show how far each result is from your location. Map markers use approximate coordinates (~11km precision) returned by the backend — exact user locations are never sent to the client.
+
+**Distance on role cards** — Vacant role cards and mini-cards show a distance indicator (km) when search results include proximity data.
 
 ---
 

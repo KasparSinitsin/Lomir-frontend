@@ -886,6 +886,7 @@ const Profile = () => {
           country: formData.country,
           // Pick up geocoded state & coordinates from the API response
           state: response.data?.state ?? user.state,
+          district: response.data?.district ?? user.district,
           latitude: response.data?.latitude ?? user.latitude,
           longitude: response.data?.longitude ?? user.longitude,
           // Use the avatar URL from ImageKit if we uploaded a new image,
@@ -973,6 +974,7 @@ const Profile = () => {
     postalCode: displayUser.postalCode || "",
     city: displayUser.city || "",
     state: displayUser.state || "",
+    district: displayUser.district || "",
     country: displayUser.country || "",
   };
   const hasProfileLocation = Boolean(

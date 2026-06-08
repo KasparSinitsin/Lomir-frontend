@@ -49,6 +49,10 @@ import { teamService } from "../../services/teamService";
 import { useAuth } from "../../contexts/AuthContext";
 import { format } from "date-fns";
 import { formatDisplayName } from "../../utils/nameFormatters";
+import {
+  formatLocation,
+  normalizeLocationData,
+} from "../../utils/locationUtils";
 
 const userPendingApplicationsCache = new Map();
 const userReceivedInvitationsCache = new Map();
@@ -560,8 +564,12 @@ const VacantRoleCard = ({
 
   const getLocationText = () => {
     if (is_remote) return "Remote";
-    const parts = [city, country].filter(Boolean);
-    return parts.length > 0 ? parts.join(", ") : null;
+    return formatLocation(normalizeLocationData(role), {
+      displayType: "full",
+      showPostalCode: true,
+      showState: true,
+      showCountry: true,
+    }) || null;
   };
 
   const locationText = getLocationText();
@@ -817,18 +825,27 @@ const VacantRoleCard = ({
     </Tooltip>
   ) : null;
   const miniLocationSubtitleItem =
-    isMiniView && !activeFilters.showLocation && locationText ? (
-      <span className="inline-flex min-w-0 items-center gap-0.5 leading-none">
-        {is_remote ? (
-          <>
-            <Globe size={10} className="flex-shrink-0" />
-            <span className="leading-[1.05]">{locationText}</span>
-          </>
-        ) : (
-          <>
-            <MapPin size={10} className="flex-shrink-0" />
-            <span className="leading-[1.05]">{locationText}</span>
-          </>
+    isMiniView &&
+    !activeFilters.showLocation &&
+    (locationText || showDistance) ? (
+      <span className="inline-flex min-w-0 items-center gap-1 leading-none">
+        {locationText && (
+          <span className="inline-flex min-w-0 items-center gap-0.5">
+            {is_remote ? (
+              <Globe size={10} className="flex-shrink-0" />
+            ) : (
+              <MapPin size={10} className="flex-shrink-0" />
+            )}
+            <span className="min-w-0 truncate leading-[1.05]">
+              {locationText}
+            </span>
+          </span>
+        )}
+        {showDistance && (
+          <span className="inline-flex items-center gap-0.5 whitespace-nowrap text-base-content">
+            <Ruler size={10} className="flex-shrink-0" />
+            <span>{Math.round(rawDistanceKm)} km</span>
+          </span>
         )}
       </span>
     ) : null;
@@ -1208,6 +1225,7 @@ const VacantRoleCard = ({
           <LocationDistanceTagsRow
             entity={role}
             entityType="team"
+            distance={showDistance ? rawDistanceKm : null}
             tags={viewMode === "mini" && !activeFilters.showTags ? null : tagNames}
             badges={
               viewMode === "mini" && !activeFilters.showBadges
@@ -1474,6 +1492,12 @@ const VacantRoleCard = ({
                     <span className="truncate">{locationText}</span>
                   </span>
                 )}
+                {showDistance && (
+                  <span className="flex items-center gap-1 text-base-content">
+                    <Ruler size={10} className="shrink-0" />
+                    <span>{Math.round(rawDistanceKm)} km away</span>
+                  </span>
+                )}
                 {!is_remote && max_distance_km && (
                   <span className="flex items-center gap-1 text-base-content/50">
                     <CircleDot size={10} className="shrink-0" />
@@ -1482,7 +1506,7 @@ const VacantRoleCard = ({
                 )}
                 {demoRoleMetaItem}
               </div>
-            ) : locationText || (!is_remote && max_distance_km) || demoRoleMetaItem ? (
+            ) : locationText || showDistance || (!is_remote && max_distance_km) || demoRoleMetaItem ? (
               <div className="mt-0.5 flex max-h-[2.1em] flex-wrap items-center gap-2 overflow-hidden text-xs text-base-content/60">
                 {locationText && (
                   <span className="flex items-center gap-1 min-w-0">
@@ -1495,6 +1519,12 @@ const VacantRoleCard = ({
                   </span>
                 )}
 
+                {showDistance && (
+                  <span className="flex items-center gap-1 text-base-content">
+                    <Ruler size={10} className="shrink-0" />
+                    <span>{Math.round(rawDistanceKm)} km away</span>
+                  </span>
+                )}
                 {!is_remote && max_distance_km && (
                   <span className="flex items-center gap-1 text-base-content/50">
                     <CircleDot size={10} className="shrink-0" />
@@ -1512,6 +1542,11 @@ const VacantRoleCard = ({
                   {locationText}
                 </CardMetaItem>
               )}
+              {showDistance && (
+                <CardMetaItem icon={Ruler} nowrap>
+                  {Math.round(rawDistanceKm)} km away
+                </CardMetaItem>
+              )}
               {!is_remote && max_distance_km && (
                 <CardMetaItem icon={CircleDot} tone="muted" nowrap>
                   {max_distance_km} km
@@ -1519,7 +1554,7 @@ const VacantRoleCard = ({
               )}
               {demoRoleMetaItem}
             </CardMetaRow>
-          ) : locationText || (!is_remote && max_distance_km) || demoRoleMetaItem ? (
+          ) : locationText || showDistance || (!is_remote && max_distance_km) || demoRoleMetaItem ? (
             <CardMetaRow>
               {locationText && (
                 <CardMetaItem icon={is_remote ? Globe : MapPin}>
@@ -1527,6 +1562,11 @@ const VacantRoleCard = ({
                 </CardMetaItem>
               )}
 
+              {showDistance && (
+                <CardMetaItem icon={Ruler} nowrap>
+                  {Math.round(rawDistanceKm)} km away
+                </CardMetaItem>
+              )}
               {!is_remote && max_distance_km && (
                 <CardMetaItem icon={CircleDot} tone="muted" nowrap>
                   {max_distance_km} km

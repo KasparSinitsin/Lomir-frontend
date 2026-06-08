@@ -53,7 +53,11 @@ import {
   isSyntheticTeam,
   isSyntheticUser,
 } from "../../utils/userHelpers";
-import { getCountryCode, getCountryDisplayName } from "../../utils/locationUtils";
+import {
+  formatLocation,
+  getCountryCode,
+  normalizeLocationData,
+} from "../../utils/locationUtils";
 import DemoAvatarOverlay from "../users/DemoAvatarOverlay";
 import Tooltip from "../common/Tooltip";
 
@@ -126,10 +130,15 @@ const CITY_COORDINATE_FALLBACKS = {
   bogotá: { lat: 4.711, lng: -74.0721 },
   "bogotá dc": { lat: 4.711, lng: -74.0721 },
   "bogotá d.c.": { lat: 4.711, lng: -74.0721 },
+  cologne: { lat: 50.938, lng: 6.960 },
   frankfurt: { lat: 50.1109, lng: 8.6821 },
   "frankfurt am main": { lat: 50.1109, lng: 8.6821 },
+  hamburg: { lat: 53.550, lng: 9.993 },
   johannesburg: { lat: -26.2041, lng: 28.0473 },
+  köln: { lat: 50.938, lng: 6.960 },
   madrid: { lat: 40.4168, lng: -3.7038 },
+  münchen: { lat: 48.137, lng: 11.576 },
+  munich: { lat: 48.137, lng: 11.576 },
   toronto: { lat: 43.6532, lng: -79.3832 },
 };
 const DEMO_PROFILE_LOCATION_FALLBACKS = {
@@ -213,6 +222,7 @@ const isValidCoordinate = (lat, lng) =>
 const getLatLng = (item) => {
   const lat = toNumber(firstPresent(
     item?.latitude,
+    item?.approximate_latitude,
     item?.lat,
     item?.location?.latitude,
     item?.roleLocation?.latitude,
@@ -220,6 +230,7 @@ const getLatLng = (item) => {
   ));
   const lng = toNumber(firstPresent(
     item?.longitude,
+    item?.approximate_longitude,
     item?.lng,
     item?.lon,
     item?.location?.longitude,
@@ -411,6 +422,15 @@ const inferCityFromPostalCode = (value) => {
   if (postalCode === "2000") return "Johannesburg";
   if (/^28\d{3}$/.test(postalCode)) return "Madrid";
   if (/^M\d[A-Z]\s?\d[A-Z]\d$/.test(postalCode)) return "Toronto";
+  // 5-digit German postal codes — map numeric ranges to major cities
+  if (/^\d{5}$/.test(postalCode)) {
+    const n = parseInt(postalCode, 10);
+    if (n >= 10115 && n <= 14199) return "Berlin";
+    if (n >= 20095 && n <= 22769) return "Hamburg";
+    if (n >= 50667 && n <= 51149) return "Cologne";
+    if (n >= 60311 && n <= 65936) return "Frankfurt";
+    if (n >= 80331 && n <= 81929) return "München";
+  }
   return null;
 };
 
@@ -475,14 +495,20 @@ const getLocationLabel = (item) => {
     item.user?.state,
     item.role?.state,
   );
-  const countryLabel = country
-    ? getCountryDisplayName(getCountryCode(country) ?? country)
-    : inferredCountryCode
-      ? getCountryDisplayName(inferredCountryCode)
-      : null;
-  const parts = [city, state, countryLabel].filter(Boolean);
+  const locationLabel = formatLocation(
+    normalizeLocationData({
+      ...item,
+      city,
+      state,
+      country: country || inferredCountryCode,
+    }),
+    {
+      displayType: "short",
+      showState: true,
+    },
+  );
 
-  return parts.length > 0 ? parts.join(", ") : LOCATION_NOT_AVAILABLE;
+  return locationLabel || LOCATION_NOT_AVAILABLE;
 };
 
 const getItemCountryCode = (item) => {
@@ -1001,6 +1027,7 @@ const normalizeMapPoint = (
   const type = getMapPointType(item);
   const lat = toNumber(firstPresent(
     item.latitude,
+    item.approximate_latitude,
     item.lat,
     item.location?.latitude,
     item.roleLocation?.latitude,
@@ -1008,6 +1035,7 @@ const normalizeMapPoint = (
   ));
   const lng = toNumber(firstPresent(
     item.longitude,
+    item.approximate_longitude,
     item.lng,
     item.lon,
     item.location?.longitude,

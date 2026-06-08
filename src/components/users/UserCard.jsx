@@ -25,6 +25,7 @@ import LocationDistanceTagsRow from "../common/LocationDistanceTagsRow";
 import SearchResultTypeOverlay from "../common/SearchResultTypeOverlay";
 import { getMatchTier } from "../../utils/matchScoreUtils";
 import { getResultMatchScore } from "../../utils/teamMatchUtils";
+import { formatLocation, normalizeLocationData } from "../../utils/locationUtils";
 
 /**
  * UserCard Component
@@ -206,6 +207,16 @@ const UserCard = ({
   ) : (
     matchOverlay
   );
+  const userLocation = normalizeLocationData(user);
+  const locationText =
+    user.is_remote || user.isRemote
+      ? "Remote"
+      : formatLocation(userLocation, {
+          displayType: "short",
+          showState: true,
+          showCountry: true,
+        });
+
   const demoAvatarOverlay = isSyntheticUser(user) ? (
     <DemoAvatarOverlay
       textClassName={
@@ -227,10 +238,6 @@ const UserCard = ({
 
   // ============ LIST VIEW ============
   if (viewMode === "list") {
-    const locationText =
-      user.is_remote || user.isRemote
-        ? "Remote"
-        : [user.city, user.country].filter(Boolean).join(", ");
     const distance = user.distanceKm ?? user.distance_km;
     const showDistance = distance != null && distance < 999999 && !(user.is_remote || user.isRemote);
 
@@ -380,7 +387,7 @@ const UserCard = ({
           )}
           {viewMode === "mini" &&
             !activeFilters.showLocation &&
-            (user.is_remote || user.isRemote || user.city || user.country) && (
+            locationText && (
               <span className="flex items-start">
                 {user.is_remote || user.isRemote ? (
                   <Globe size={12} className="mr-0.5 flex-shrink-0 mt-0.5" />
@@ -388,9 +395,7 @@ const UserCard = ({
                   <MapPin size={12} className="mr-0.5 flex-shrink-0 mt-0.5" />
                 )}
                 <span>
-                  {user.is_remote || user.isRemote
-                    ? "Remote"
-                    : [user.city, user.country].filter(Boolean).join(", ")}
+                  {locationText}
                 </span>
               </span>
             )}
