@@ -38,6 +38,7 @@ import { useTeamModalSafe } from "../../contexts/TeamModalContext";
 import { useUserModalSafe } from "../../contexts/UserModalContext";
 import { useAuth } from "../../contexts/AuthContext";
 import { teamService } from "../../services/teamService";
+import { vacantRoleService } from "../../services/vacantRoleService";
 import useViewerPendingRequests from "../../hooks/useViewerPendingRequests";
 import useViewerTeamMemberships from "../../hooks/useViewerTeamMemberships";
 import {
@@ -600,23 +601,89 @@ const getTeamMemberCount = (item) => {
 const getTeamMaxMembers = (item) =>
   firstPresent(item?.max_members, item?.maxMembers) ?? "∞";
 
-const getTeamOpenRoleCount = (item) => {
-  const count = firstPresent(
-    item?.open_role_count,
+const isOpenRole = (r) => String(r?.status ?? "open").toLowerCase() === "open";
+
+const extractArrayPayload = (payload) => {
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.data)) return payload.data;
+  if (Array.isArray(payload?.data?.data)) return payload.data.data;
+  return [];
+};
+
+const getRoleDisplayName = (role) => {
+  if (!role) return null;
+
+  return (
+    role.roleName ??
+    role.role_name ??
+    role.name ??
+    role.title ??
+    null
+  );
+};
+
+const normalizeRoleNames = (value) => {
+  if (Array.isArray(value)) {
+    return value
+      .map((item) =>
+        typeof item === "string" ? item.trim() : getRoleDisplayName(item),
+      )
+      .filter(Boolean);
+  }
+
+  if (typeof value === "string") {
+    return value
+      .split(",")
+      .map((name) => name.trim())
+      .filter(Boolean);
+  }
+
+  return [];
+};
+
+const getTeamRoleCollections = (item) =>
+  [
+    item?.openRoles,
+    item?.open_roles,
+    item?.vacantRoles,
+    item?.vacant_roles,
+  ].filter(Array.isArray);
+
+const resolveTeamOpenRoleSnapshot = (item, fetchedSnapshot = null) => {
+  if (fetchedSnapshot) {
+    return {
+      count: fetchedSnapshot.count,
+      names: fetchedSnapshot.names ?? [],
+      source: "fetch",
+    };
+  }
+
+  const roleCollections = getTeamRoleCollections(item);
+  if (roleCollections.length > 0) {
+    const roles = roleCollections.flat().filter(isOpenRole);
+    return {
+      count: roles.length,
+      names: roles.map(getRoleDisplayName).filter(Boolean),
+      source: "records",
+    };
+  }
+
+  const rawCount = firstPresent(
     item?.openRoleCount,
-    item?.open_roles_count,
+    item?.open_role_count,
     item?.openRolesCount,
-    item?.vacant_role_count,
-    item?.vacantRoleCount,
-    item?.vacant_roles_count,
-    item?.vacantRolesCount,
-    Array.isArray(item?.openRoles) ? item.openRoles.length : null,
-    Array.isArray(item?.open_roles) ? item.open_roles.length : null,
-    Array.isArray(item?.vacantRoles) ? item.vacantRoles.length : null,
-    Array.isArray(item?.vacant_roles) ? item.vacant_roles.length : null,
+    item?.open_roles_count,
+  );
+  const count = toNumber(rawCount);
+  const names = normalizeRoleNames(
+    firstPresent(item?.openRoleNames, item?.open_role_names),
   );
 
-  return toNumber(count) ?? 0;
+  return {
+    count: count ?? names.length,
+    names,
+    source: rawCount != null || names.length > 0 ? "aggregate" : "none",
+  };
 };
 
 const getTeamViewerRole = (item, viewerUser = null) => {
@@ -1021,6 +1088,7 @@ const normalizeMapPoint = (
   fetchedApplications = [],
   fetchedInvitations = [],
   fetchedUserTeamIds = new Set(),
+  fetchedOpenRoleSnapshots = {},
 ) => {
   if (!item) return null;
 
@@ -1123,6 +1191,13 @@ const normalizeMapPoint = (
           matchesRoleItem(inv, rawId, roleTeamId, getDisplayName(item, "role"))) ??
         null
       : null;
+  const openRoleSnapshot =
+    type === "team"
+      ? resolveTeamOpenRoleSnapshot(
+          item,
+          rawId != null ? fetchedOpenRoleSnapshots[String(rawId)] : null,
+        )
+      : null;
 
   return {
     id: `${type}-${rawId ?? getDisplayName(item, type)}`,
@@ -1142,7 +1217,8 @@ const normalizeMapPoint = (
     teamName: item.teamName ?? item.team_name ?? item.team?.name ?? null,
     memberCount: type === "team" ? getTeamMemberCount(item) : null,
     maxMembers: type === "team" ? getTeamMaxMembers(item) : null,
-    openRoleCount: type === "team" ? getTeamOpenRoleCount(item) : null,
+    openRoleCount: openRoleSnapshot?.count ?? null,
+    openRoleNames: openRoleSnapshot?.names ?? null,
     currentUserRole,
     teamInvitation,
     hasTeamInvitation: Boolean(teamInvitation),
@@ -2071,6 +2147,63 @@ const SearchMapView = ({
     [items, userLocationDetailsById],
   );
 
+  const teamIdsNeedingOpenRoleFetch = useMemo(() => {
+    const ids = [];
+    const seenIds = new Set();
+
+    itemsWithUserLocationDetails.forEach((item) => {
+      if (getMapPointType(item) !== "team") return;
+
+      const teamId = getTeamItemId(item);
+      if (teamId == null) return;
+      if (resolveTeamOpenRoleSnapshot(item).source !== "aggregate") return;
+
+      const key = String(teamId);
+      if (seenIds.has(key)) return;
+
+      seenIds.add(key);
+      ids.push(teamId);
+    });
+
+    return ids;
+  }, [itemsWithUserLocationDetails]);
+
+  const openRoleQueries = useQueries({
+    queries: teamIdsNeedingOpenRoleFetch.map((teamId) => ({
+      queryKey: ["team-open-roles", teamId],
+      queryFn: async () => {
+        const response = await vacantRoleService.getVacantRoles(teamId, "open");
+        const roles = extractArrayPayload(response).filter(isOpenRole);
+
+        return {
+          count: roles.length,
+          names: roles.map(getRoleDisplayName).filter(Boolean),
+        };
+      },
+      staleTime: 30_000,
+    })),
+  });
+
+  const openRoleQuerySignature = openRoleQueries
+    .map(
+      (query) =>
+        `${query.status}:${query.dataUpdatedAt ?? 0}:${query.errorUpdatedAt ?? 0}`,
+    )
+    .join("|");
+
+  const fetchedOpenRoleSnapshots = useMemo(() => {
+    const snapshots = {};
+
+    teamIdsNeedingOpenRoleFetch.forEach((teamId, index) => {
+      const query = openRoleQueries[index];
+      if (!query?.isSuccess) return;
+
+      snapshots[String(teamId)] = query.data;
+    });
+
+    return snapshots;
+  }, [teamIdsNeedingOpenRoleFetch, openRoleQueries, openRoleQuerySignature]);
+
   const normalizedPoints = useMemo(
     () =>
       itemsWithUserLocationDetails
@@ -2082,6 +2215,7 @@ const SearchMapView = ({
             fetchedApplications,
             fetchedInvitations,
             fetchedUserTeamIds,
+            fetchedOpenRoleSnapshots,
           ))
         .filter(Boolean),
     [
@@ -2090,6 +2224,7 @@ const SearchMapView = ({
       fetchedApplications,
       fetchedInvitations,
       fetchedUserTeamIds,
+      fetchedOpenRoleSnapshots,
       itemsWithUserLocationDetails,
     ],
   );
@@ -2778,6 +2913,21 @@ const SearchMapView = ({
                                 <span className="min-w-0 flex-1 truncate">{point.teamName}</span>
                               </div>
                             )}
+                          </div>
+                        )}
+                        {point.type === "team" && Array.isArray(point.openRoleNames) && point.openRoleNames.length > 0 && (
+                          <div className="mt-2 space-y-0.5 text-xs text-base-content/70">
+                            <div className="flex items-center gap-1.5">
+                              <UserSearch size={13} aria-hidden="true" />
+                              <span className="min-w-0 flex-1 truncate">
+                                {(() => {
+                                  const names = point.openRoleNames;
+                                  const max = 2;
+                                  if (names.length <= max) return names.join(", ");
+                                  return names.slice(0, max).join(", ") + ` +${names.length - max}`;
+                                })()}
+                              </span>
+                            </div>
                           </div>
                         )}
                         {point.teamName && point.type !== "role" && (

@@ -1251,7 +1251,7 @@ const VacantRoleCard = ({
               }`}
             >
               <Users
-                size={teamLineIconSize}
+                size={viewMode === "mini" ? 12 : 16}
                 className="text-base-content mr-1 flex-shrink-0 mt-0.5"
               />
               <span className="min-w-0 leading-[1.05] whitespace-normal break-words">

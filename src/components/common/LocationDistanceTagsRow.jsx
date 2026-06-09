@@ -1,5 +1,5 @@
 import React, { useRef, useState, useLayoutEffect } from "react";
-import { Tag, Award } from "lucide-react";
+import { Tag, Award, UserSearch } from "lucide-react";
 import LocationSection from "./LocationSection";
 import {
   SUPERCATEGORY_ORDER,
@@ -85,6 +85,7 @@ const LocationDistanceTagsRow = ({
   distance = null,
   tags = null,
   badges = null,
+  openRoles = null,
   getDisplayTags = null,
   className = "",
   hideLocation = false,
@@ -286,12 +287,17 @@ const LocationDistanceTagsRow = ({
 
   const badgeNames = normalizeSortedBadges(badges).map((b) => b.name);
 
+  const openRoleNames = Array.isArray(openRoles)
+    ? openRoles.filter(Boolean)
+    : [];
+
   const hasTags = tagList.length > 0;
   const hasBadges = badgeNames.length > 0;
+  const hasOpenRoles = openRoleNames.length > 0;
 
-  if (!hasTags && !hasBadges && !entity) return null;
+  if (!hasTags && !hasBadges && !hasOpenRoles && !entity) return null;
 
-  if (hideLocation && !hasTags && !hasBadges) return null;
+  if (hideLocation && !hasTags && !hasBadges && !hasOpenRoles) return null;
 
   return (
     <div className={`${compact ? "space-y-1" : "space-y-2"} ${className}`}>
@@ -312,6 +318,9 @@ const LocationDistanceTagsRow = ({
       )}
       {hasBadges && (
         <TruncatedList items={badgeNames} icon={Award} compact={compact} />
+      )}
+      {hasOpenRoles && (
+        <TruncatedList items={openRoleNames} icon={UserSearch} compact={compact} />
       )}
     </div>
   );

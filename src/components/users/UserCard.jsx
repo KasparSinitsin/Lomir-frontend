@@ -172,7 +172,7 @@ const UserCard = ({
     }
 
     const iconSizeSubtitle =
-      viewMode === "list" ? 10 : viewMode === "mini" ? 11 : 12;
+      viewMode === "list" ? 9 : viewMode === "mini" ? 11 : 12;
     scoreSubtitleItem = (
       <Tooltip content={matchTooltipText}>
         <span className="flex items-center gap-0.5">
@@ -279,9 +279,9 @@ const UserCard = ({
         {shouldShowVisibilityIcon() && (
           <Tooltip content={isUserProfilePublic() ? "Public Profile - visible for everyone" : "Private Profile - only visible for you"}>
             {isUserProfilePublic() ? (
-              <Eye size={11} className="text-green-600" />
+              <Eye size={9} className="text-green-600" />
             ) : (
-              <EyeClosed size={11} className="text-gray-500" />
+              <EyeClosed size={9} className="text-gray-500" />
             )}
           </Tooltip>
         )}
@@ -290,7 +290,7 @@ const UserCard = ({
             content={DEMO_PROFILE_TOOLTIP}
             wrapperClassName="flex items-center whitespace-nowrap text-base-content/50"
           >
-            <FlaskConical className="h-[11px] w-auto flex-shrink-0" />
+            <FlaskConical className="h-[9px] w-auto flex-shrink-0" />
           </Tooltip>
         )}
       </span>
@@ -316,7 +316,7 @@ const UserCard = ({
               <div className="text-xs text-base-content flex items-center gap-1 overflow-hidden">
                 <Tooltip content={`${Math.round(distance)} km away from you`}>
                   <div className="flex items-center gap-1">
-                    <Ruler size={11} className="flex-shrink-0" />
+                    <Ruler size={9} className="flex-shrink-0" />
                     <span className="whitespace-nowrap">{Math.round(distance)} km</span>
                   </div>
                 </Tooltip>
@@ -327,9 +327,9 @@ const UserCard = ({
             <div className="min-w-0 flex-1 text-xs text-base-content/60 flex items-center gap-1 overflow-hidden">
               <Tooltip content={locationText || listLocationText} wrapperClassName="flex items-center gap-1 min-w-0 overflow-hidden w-full">
                 {user.is_remote || user.isRemote ? (
-                  <Globe size={11} className="flex-shrink-0" />
+                  <Globe size={9} className="flex-shrink-0" />
                 ) : (
-                  <MapPin size={11} className="flex-shrink-0" />
+                  <MapPin size={9} className="flex-shrink-0" />
                 )}
                 <span className="truncate">{listLocationText}</span>
               </Tooltip>
@@ -339,7 +339,7 @@ const UserCard = ({
         <div className="hidden w-52 flex-shrink-0 text-xs text-base-content/60 lg:flex items-center gap-1 overflow-hidden">
           {tagsSummary && (
             <Tooltip content={tagNames.join(", ")} wrapperClassName="flex items-center gap-1 min-w-0 overflow-hidden w-full">
-              <Tag size={11} className="flex-shrink-0" />
+              <Tag size={9} className="flex-shrink-0" />
               <span className="truncate">{tagsSummary}</span>
             </Tooltip>
           )}
@@ -347,7 +347,7 @@ const UserCard = ({
         <div className="hidden w-48 flex-shrink-0 text-xs text-base-content/60 xl:flex items-center gap-1 overflow-hidden">
           {badgesSummary && (
             <Tooltip content={badgeNames.join(", ")} wrapperClassName="flex items-center gap-1 min-w-0 overflow-hidden w-full">
-              <Award size={11} className="flex-shrink-0" />
+              <Award size={9} className="flex-shrink-0" />
               <span className="truncate">{badgesSummary}</span>
             </Tooltip>
           )}

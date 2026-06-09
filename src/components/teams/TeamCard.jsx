@@ -63,7 +63,89 @@ import DemoAvatarOverlay from "../users/DemoAvatarOverlay";
 
 const teamMemberBadgesCache = new Map();
 const viewerRoleProfileCache = new Map();
+const teamOpenRolesCache = new Map();
 const EMPTY_ARRAY = [];
+
+const extractArrayPayload = (payload) => {
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.data)) return payload.data;
+  if (Array.isArray(payload?.data?.data)) return payload.data.data;
+  return [];
+};
+
+const getRoleStatus = (role) =>
+  String(role?.status ?? "open").toLowerCase();
+
+const isOpenRole = (role) => getRoleStatus(role) === "open";
+
+const getRoleDisplayName = (role) => {
+  if (!role) return null;
+
+  return (
+    role.roleName ??
+    role.role_name ??
+    role.name ??
+    role.title ??
+    null
+  );
+};
+
+const normalizeRoleNames = (value) => {
+  if (Array.isArray(value)) {
+    return value
+      .map((item) =>
+        typeof item === "string" ? item.trim() : getRoleDisplayName(item),
+      )
+      .filter(Boolean);
+  }
+
+  if (typeof value === "string") {
+    return value
+      .split(",")
+      .map((name) => name.trim())
+      .filter(Boolean);
+  }
+
+  return [];
+};
+
+const getTeamRoleCollections = (team) =>
+  [
+    team?.openRoles,
+    team?.open_roles,
+    team?.vacantRoles,
+    team?.vacant_roles,
+  ].filter(Array.isArray);
+
+const resolveTeamOpenRoleSnapshot = (team) => {
+  const roleCollections = getTeamRoleCollections(team);
+
+  if (roleCollections.length > 0) {
+    const roles = roleCollections.flat().filter(isOpenRole);
+    return {
+      count: roles.length,
+      names: roles.map(getRoleDisplayName).filter(Boolean),
+      source: "records",
+    };
+  }
+
+  const rawCount =
+    team?.openRoleCount ??
+    team?.open_role_count ??
+    team?.openRolesCount ??
+    team?.open_roles_count ??
+    null;
+  const count = Number(rawCount);
+  const names = normalizeRoleNames(
+    team?.openRoleNames ?? team?.open_role_names,
+  );
+
+  return {
+    count: Number.isFinite(count) ? count : names.length,
+    names,
+    source: rawCount != null || names.length > 0 ? "aggregate" : "none",
+  };
+};
 
 const extractBadgeRows = (payload) => {
   if (Array.isArray(payload)) return payload;
@@ -526,6 +608,7 @@ const TeamCard = ({
   const [error, setError] = useState(null);
   const [userRole, setUserRole] = useState(null);
   const [teamData, setTeamData] = useState(normalizedData.team);
+  const [freshOpenRoleSnapshot, setFreshOpenRoleSnapshot] = useState(null);
   const { user, isAuthenticated } = useAuth();
   const [isApplicationsModalOpen, setIsApplicationsModalOpen] = useState(false);
   const [isInvitesModalOpen, setIsInvitesModalOpen] = useState(false);
@@ -603,6 +686,65 @@ const TeamCard = ({
       return incoming;
     });
   }, [team, application, invitation, viewerDistanceSource, user]);
+
+  useEffect(() => {
+    setFreshOpenRoleSnapshot(null);
+  }, [teamData?.id]);
+
+  useEffect(() => {
+    if (!shouldShowOpenRoleCount || !teamData?.id) {
+      setFreshOpenRoleSnapshot(null);
+      return;
+    }
+
+    const localSnapshot = resolveTeamOpenRoleSnapshot(teamData);
+    if (localSnapshot.source !== "aggregate") {
+      setFreshOpenRoleSnapshot(null);
+      return;
+    }
+
+    let isActive = true;
+    const cacheKey = String(teamData.id);
+    let openRolesRequest = teamOpenRolesCache.get(cacheKey);
+
+    if (!openRolesRequest) {
+      openRolesRequest = vacantRoleService
+        .getVacantRoles(teamData.id, "open")
+        .then((response) => extractArrayPayload(response).filter(isOpenRole));
+      teamOpenRolesCache.set(cacheKey, openRolesRequest);
+    }
+
+    openRolesRequest
+      .then((roles) => {
+        if (!isActive) return;
+
+        setFreshOpenRoleSnapshot({
+          teamId: teamData.id,
+          count: roles.length,
+          names: roles.map(getRoleDisplayName).filter(Boolean),
+          source: "fetch",
+        });
+      })
+      .catch((error) => {
+        teamOpenRolesCache.delete(cacheKey);
+        if (!isActive) return;
+        console.warn("Could not fetch current open roles for team card:", error);
+        setFreshOpenRoleSnapshot(null);
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [
+    shouldShowOpenRoleCount,
+    teamData?.id,
+    teamData?.openRoleCount,
+    teamData?.open_role_count,
+    teamData?.openRolesCount,
+    teamData?.open_roles_count,
+    teamData?.openRoleNames,
+    teamData?.open_role_names,
+  ]);
 
   //   // Fetch user's role in this team (only for member variant)
   //   useEffect(() => {
@@ -919,6 +1061,8 @@ const TeamCard = ({
             badges: resolvedBadges,
             distance_km: preservedDistanceKm,
             distanceKm: preservedDistanceKm,
+            open_role_count: fullTeam.openRoleCount ?? fullTeam.open_role_count ?? prev.open_role_count,
+            open_role_names: fullTeam.openRoleNames ?? fullTeam.open_role_names ?? prev.open_role_names,
           };
         });
 
@@ -1278,7 +1422,15 @@ const TeamCard = ({
     return maxMembers === null || maxMembers === undefined ? "∞" : maxMembers;
   };
 
-  const openRoleCount = teamData.open_role_count ?? teamData.openRoleCount ?? 0;
+  const localOpenRoleSnapshot = resolveTeamOpenRoleSnapshot(teamData);
+  const resolvedOpenRoleSnapshot =
+    freshOpenRoleSnapshot?.teamId != null &&
+    teamData?.id != null &&
+    String(freshOpenRoleSnapshot.teamId) === String(teamData.id)
+      ? freshOpenRoleSnapshot
+      : localOpenRoleSnapshot;
+  const openRoleCount = resolvedOpenRoleSnapshot.count;
+  const openRoleNames = resolvedOpenRoleSnapshot.names;
 
   const getFormattedDate = () => {
     const date = normalizedData.date;
@@ -1512,6 +1664,8 @@ const TeamCard = ({
               ? normalizedTeam.badges
               : teamData.badges,
           };
+          mergedTeam.open_role_count = normalizedTeam.openRoleCount ?? normalizedTeam.open_role_count ?? teamData.open_role_count;
+          mergedTeam.open_role_names = normalizedTeam.openRoleNames ?? normalizedTeam.open_role_names ?? teamData.open_role_names;
           const refreshedDistance = resolveDistanceKm({
             preferredDistance:
               normalizedTeam.distance_km ?? normalizedTeam.distanceKm,
@@ -1542,6 +1696,8 @@ const TeamCard = ({
         ? updatedTeam.badges
         : teamData.badges,
     };
+    mergedTeam.open_role_count = updatedTeam?.openRoleCount ?? updatedTeam?.open_role_count ?? teamData.open_role_count;
+    mergedTeam.open_role_names = updatedTeam?.openRoleNames ?? updatedTeam?.open_role_names ?? teamData.open_role_names;
     const refreshedDistance = resolveDistanceKm({
       preferredDistance: updatedTeam?.distance_km ?? updatedTeam?.distanceKm,
       fallbackDistance: teamData.distance_km ?? teamData.distanceKm,
@@ -1567,6 +1723,11 @@ const TeamCard = ({
   };
 
   const handleVacantRoleStatusChange = async () => {
+    if (teamData?.id != null) {
+      teamOpenRolesCache.delete(String(teamData.id));
+      setFreshOpenRoleSnapshot(null);
+    }
+
     await fetchPendingApplications();
 
     try {
@@ -1587,6 +1748,8 @@ const TeamCard = ({
           ? normalizedTeam.badges
           : teamData.badges,
       };
+      mergedTeam.open_role_count = normalizedTeam.openRoleCount ?? normalizedTeam.open_role_count ?? teamData.open_role_count;
+      mergedTeam.open_role_names = normalizedTeam.openRoleNames ?? normalizedTeam.open_role_names ?? teamData.open_role_names;
       const refreshedDistance = resolveDistanceKm({
         preferredDistance:
           normalizedTeam.distance_km ?? normalizedTeam.distanceKm,
@@ -1980,7 +2143,7 @@ const TeamCard = ({
     }
 
     const iconSizeSubtitle =
-      viewMode === "list" ? 10 : viewMode === "mini" ? 11 : 12;
+      viewMode === "list" ? 9 : viewMode === "mini" ? 11 : 12;
     scoreSubtitleItem = (
       <Tooltip content={matchTooltipText}>
         <span className="flex items-center gap-0.5">
@@ -2203,7 +2366,7 @@ const TeamCard = ({
             content={teamInvitationRoleName}
             wrapperClassName="inline-flex items-center gap-0.5"
           >
-            <UserSearch size={10} className="flex-shrink-0 text-orange-500" />
+            <UserSearch size={9} className="flex-shrink-0 text-orange-500" />
             <span>{teamInvitationRoleName}</span>
           </Tooltip>
         )}
@@ -2242,14 +2405,14 @@ const TeamCard = ({
             content={teamApplicationRoleName}
             wrapperClassName="inline-flex items-center gap-0.5"
           >
-            <UserSearch size={10} className="flex-shrink-0 text-orange-500" />
+            <UserSearch size={9} className="flex-shrink-0 text-orange-500" />
             <span>{teamApplicationRoleName}</span>
           </Tooltip>
         )}
         {shouldShowOpenRoleCount && openRoleCount > 0 && (
           <Tooltip content={`${openRoleCount} open ${openRoleCount === 1 ? 'role' : 'roles'} posted in this team`}>
             <span className="flex items-center">
-              <UserSearch size={10} className="text-orange-500 mr-0.5" />
+              <UserSearch size={9} className="text-orange-500 mr-0.5" />
               <span>{openRoleCount}</span>
             </span>
           </Tooltip>
@@ -2932,6 +3095,7 @@ const TeamCard = ({
               ? null
               : getDisplayBadges()
           }
+          openRoles={openRoleNames}
           hideLocation={viewMode === "mini" && !activeFilters.showLocation}
           compact={viewMode === "mini"}
         />
