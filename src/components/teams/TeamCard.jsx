@@ -42,7 +42,7 @@ import { format } from "date-fns";
 import LocationDistanceTagsRow from "../common/LocationDistanceTagsRow";
 import { getMatchTier } from "../../utils/matchScoreUtils";
 import { getResultMatchScore } from "../../utils/teamMatchUtils";
-import { calculateDistanceKm } from "../../utils/locationUtils";
+import { calculateDistanceKm, normalizeLocationData } from "../../utils/locationUtils";
 import {
   extractListPayload,
   extractProfilePayload,
@@ -2118,10 +2118,11 @@ const TeamCard = ({
   // ============ LIST VIEW ============
 
   if (viewMode === "list") {
+    const teamLocation = normalizeLocationData(teamData);
     const locationText =
       teamData.is_remote || teamData.isRemote
         ? "Remote"
-        : [teamData.city, teamData.country].filter(Boolean).join(", ");
+        : [teamData.city, teamLocation.countryName].filter(Boolean).join(", ");
     const distance = teamData.distance_km ?? teamData.distanceKm;
     const showDistance =
       !hideDistanceInfo &&
@@ -2156,14 +2157,14 @@ const TeamCard = ({
     const maxMembers = getMaxMembers();
     const shouldReserveMyTeamsActionSlot = !isSearchResult;
     const memberCountListItem = shouldShowMemberCountInList ? (
-      <span className="flex items-center gap-0.5">
+      <span className="inline-flex items-center gap-0.5">
         <Users size={9} />
         <span>{memberCount}/{maxMembers}</span>
       </span>
     ) : null;
 
     const subtitleContent = (
-      <span className="flex min-w-0 flex-nowrap items-center gap-1 overflow-hidden whitespace-nowrap text-base-content/60">
+      <span className="block min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-base-content/60 space-x-1">
         {scoreSubtitleItem}
         {memberCountListItem}
         {(effectiveVariant === "invitation" || isRoleInvitationVariant || pendingInvitationForTeam) && (
@@ -2200,12 +2201,10 @@ const TeamCard = ({
         {teamInvitationRoleName && (
           <Tooltip
             content={teamInvitationRoleName}
-            wrapperClassName="min-w-0 max-w-full overflow-hidden"
+            wrapperClassName="inline-flex items-center gap-0.5"
           >
-            <span className="flex min-w-0 max-w-full items-center gap-0.5 overflow-hidden">
-              <UserSearch size={10} className="flex-shrink-0 text-orange-500" />
-              <span className="truncate">{teamInvitationRoleName}</span>
-            </span>
+            <UserSearch size={10} className="flex-shrink-0 text-orange-500" />
+            <span>{teamInvitationRoleName}</span>
           </Tooltip>
         )}
         {(effectiveVariant === "application" || isRoleApplicationVariant || pendingApplicationForTeam) && (
@@ -2241,12 +2240,10 @@ const TeamCard = ({
         {teamApplicationRoleName && (
           <Tooltip
             content={teamApplicationRoleName}
-            wrapperClassName="min-w-0 max-w-full overflow-hidden"
+            wrapperClassName="inline-flex items-center gap-0.5"
           >
-            <span className="flex min-w-0 max-w-full items-center gap-0.5 overflow-hidden">
-              <UserSearch size={10} className="flex-shrink-0 text-orange-500" />
-              <span className="truncate">{teamApplicationRoleName}</span>
-            </span>
+            <UserSearch size={10} className="flex-shrink-0 text-orange-500" />
+            <span>{teamApplicationRoleName}</span>
           </Tooltip>
         )}
         {shouldShowOpenRoleCount && openRoleCount > 0 && (
@@ -2258,16 +2255,13 @@ const TeamCard = ({
           </Tooltip>
         )}
         {isRoleVariant && teamData._teamName && (
-          <Tooltip content="Click to view team details" wrapperClassName="min-w-0 overflow-hidden flex-1">
+          <Tooltip content="Click to view team details" wrapperClassName="inline-flex items-center gap-0.5">
             <span
-              className="flex items-center gap-0.5 min-w-0 overflow-hidden cursor-pointer w-full"
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsModalOpen(true);
-              }}
+              className="inline-flex items-center gap-0.5 cursor-pointer"
+              onClick={(e) => { e.stopPropagation(); setIsModalOpen(true); }}
             >
               <Users size={9} className="flex-shrink-0 text-primary" />
-              <span className="truncate">{teamData._teamName}</span>
+              <span>{teamData._teamName}</span>
             </span>
           </Tooltip>
         )}
@@ -2302,7 +2296,7 @@ const TeamCard = ({
         {showDemoIndicator && (
           <Tooltip
             content={demoTooltip}
-            wrapperClassName="flex items-center whitespace-nowrap text-base-content/50"
+            wrapperClassName="inline-flex items-center whitespace-nowrap text-base-content/50"
           >
             <FlaskConical size={9} className="flex-shrink-0" />
           </Tooltip>

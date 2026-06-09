@@ -241,7 +241,7 @@ const Card = ({
             <div className="font-medium text-sm text-[var(--color-primary-focus)] truncate">{title}</div>
           </Tooltip>
           {subtitle && (
-            <div className="mt-0.5 max-h-[2.1em] overflow-hidden text-xs leading-[1.05] text-base-content/60">
+            <div className="mt-0.5 overflow-hidden text-xs leading-[1.05] text-base-content/60">
               {subtitle}
             </div>
           )}

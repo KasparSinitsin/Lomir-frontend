@@ -238,6 +238,10 @@ const UserCard = ({
 
   // ============ LIST VIEW ============
   if (viewMode === "list") {
+    const listLocationText = user.is_remote || user.isRemote
+      ? "Remote"
+      : [userLocation.city, userLocation.countryName].filter(Boolean).join(", ");
+
     const distance = user.distanceKm ?? user.distance_km;
     const showDistance = distance != null && distance < 999999 && !(user.is_remote || user.isRemote);
 
@@ -269,9 +273,9 @@ const UserCard = ({
       isSyntheticUser(user) ||
       shouldShowVisibilityIcon()
     ) ? (
-      <span className="flex min-w-0 flex-nowrap items-center gap-1 overflow-hidden whitespace-nowrap text-base-content/60">
-        {scoreSubtitleItem}
-        {user.username && <span>@{user.username}</span>}
+      <span className="flex min-w-0 flex-nowrap items-center gap-1 overflow-hidden text-base-content/60">
+        {scoreSubtitleItem && <span className="flex-shrink-0">{scoreSubtitleItem}</span>}
+        {user.username && <span className="truncate min-w-0">@{user.username}</span>}
         {shouldShowVisibilityIcon() && (
           <Tooltip content={isUserProfilePublic() ? "Public Profile - visible for everyone" : "Private Profile - only visible for you"}>
             {isUserProfilePublic() ? (
@@ -319,17 +323,15 @@ const UserCard = ({
               </div>
             )}
           </div>
-          {locationText && (
-            <div className="min-w-0 text-xs text-base-content/60 flex items-center gap-1 overflow-hidden">
-              <Tooltip content={locationText}>
-                <div className="flex items-center gap-1 overflow-hidden">
-                  {user.is_remote || user.isRemote ? (
-                    <Globe size={11} className="flex-shrink-0" />
-                  ) : (
-                    <MapPin size={11} className="flex-shrink-0" />
-                  )}
-                  <span className="truncate">{locationText}</span>
-                </div>
+          {listLocationText && (
+            <div className="min-w-0 flex-1 text-xs text-base-content/60 flex items-center gap-1 overflow-hidden">
+              <Tooltip content={locationText || listLocationText} wrapperClassName="flex items-center gap-1 min-w-0 overflow-hidden w-full">
+                {user.is_remote || user.isRemote ? (
+                  <Globe size={11} className="flex-shrink-0" />
+                ) : (
+                  <MapPin size={11} className="flex-shrink-0" />
+                )}
+                <span className="truncate">{listLocationText}</span>
               </Tooltip>
             </div>
           )}
