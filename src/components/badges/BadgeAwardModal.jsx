@@ -32,15 +32,12 @@ import Modal from "../common/Modal";
 import Button from "../common/Button";
 import Alert from "../common/Alert";
 import Tooltip from "../common/Tooltip";
-import DemoAvatarOverlay from "../users/DemoAvatarOverlay";
+import UserAvatar from "../users/UserAvatar";
 import { badgeService } from "../../services/badgeService";
 import { tagService } from "../../services/tagService";
 import { useBadges, useSharedTeamsForAward } from "../../hooks/useBadgeQueries";
 import { useUserTags } from "../../hooks/useUserQueries";
-import {
-  getUserInitials,
-  DEMO_PROFILE_TOOLTIP,
-} from "../../utils/userHelpers";
+import { DEMO_PROFILE_TOOLTIP } from "../../utils/userHelpers";
 
 /**
  * BadgeAwardModal Component
@@ -451,65 +448,37 @@ const BadgeAwardModal = ({
           <div className="flex items-start space-x-3 mb-3">
             {onUserClick ? (
               <Tooltip content="View profile" position="bottom" wrapperClassName="block">
-                <div
-                  className="avatar cursor-pointer hover:opacity-80 transition-opacity"
+                <UserAvatar
+                  user={{
+                    avatar_url: awardeeAvatar,
+                    avatarUrl: awardeeAvatar,
+                    first_name: awardeeFirstName,
+                    last_name: awardeeLastName,
+                    username: awardeeUsername,
+                  }}
+                  sizeClass="w-12 h-12"
+                  clickable
                   onClick={() => onUserClick(awardeeId)}
-                >
-                  <div className="w-12 h-12 rounded-full relative overflow-hidden">
-                    {awardeeAvatar ? (
-                      <img
-                        src={awardeeAvatar}
-                        alt={awardeeUsername}
-                        className="object-cover w-full h-full rounded-full"
-                        onError={(e) => {
-                          e.target.style.display = "none";
-                          const fallback = e.target.parentElement.querySelector(".avatar-fallback");
-                          if (fallback) fallback.style.display = "flex";
-                        }}
-                      />
-                    ) : null}
-                    <div
-                      className="avatar-fallback bg-[var(--color-primary-focus)] text-primary-content flex items-center justify-center w-full h-full rounded-full absolute inset-0"
-                      style={{ display: awardeeAvatar ? "none" : "flex" }}
-                    >
-                      <span className="text-lg font-medium">
-                        {getUserInitials({ first_name: awardeeFirstName, last_name: awardeeLastName, username: awardeeUsername })}
-                      </span>
-                    </div>
-                    {awardeeIsDemo && (
-                      <DemoAvatarOverlay textClassName="text-[8px]" textTranslateClassName="-translate-y-[3px]" />
-                    )}
-                  </div>
-                </div>
+                  title="View profile"
+                  showDemoOverlay={awardeeIsDemo}
+                  demoOverlayTextClassName="text-[8px]"
+                  demoOverlayTextTranslateClassName="-translate-y-[3px]"
+                />
               </Tooltip>
             ) : (
-              <div className="avatar">
-                <div className="w-12 h-12 rounded-full relative overflow-hidden">
-                  {awardeeAvatar ? (
-                    <img
-                      src={awardeeAvatar}
-                      alt={awardeeUsername}
-                      className="object-cover w-full h-full rounded-full"
-                      onError={(e) => {
-                        e.target.style.display = "none";
-                        const fallback = e.target.parentElement.querySelector(".avatar-fallback");
-                        if (fallback) fallback.style.display = "flex";
-                      }}
-                    />
-                  ) : null}
-                  <div
-                    className="avatar-fallback bg-[var(--color-primary-focus)] text-primary-content flex items-center justify-center w-full h-full rounded-full absolute inset-0"
-                    style={{ display: awardeeAvatar ? "none" : "flex" }}
-                  >
-                    <span className="text-lg font-medium">
-                      {getUserInitials({ first_name: awardeeFirstName, last_name: awardeeLastName, username: awardeeUsername })}
-                    </span>
-                  </div>
-                  {awardeeIsDemo && (
-                    <DemoAvatarOverlay textClassName="text-[8px]" textTranslateClassName="-translate-y-[3px]" />
-                  )}
-                </div>
-              </div>
+              <UserAvatar
+                user={{
+                  avatar_url: awardeeAvatar,
+                  avatarUrl: awardeeAvatar,
+                  first_name: awardeeFirstName,
+                  last_name: awardeeLastName,
+                  username: awardeeUsername,
+                }}
+                sizeClass="w-12 h-12"
+                showDemoOverlay={awardeeIsDemo}
+                demoOverlayTextClassName="text-[8px]"
+                demoOverlayTextTranslateClassName="-translate-y-[3px]"
+              />
             )}
 
             <div className="flex-1 min-w-0">

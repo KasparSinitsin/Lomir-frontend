@@ -64,7 +64,7 @@ const LocationSection = ({
   if (compact) {
     return (
       <div
-        className={`flex flex-wrap items-start leading-snug text-sm text-base-content/70 ${className} ${iconSize < 16 ? "gap-x-2 gap-y-1" : "gap-x-3 gap-y-2"}`}
+        className={`flex flex-wrap items-start leading-[110%] text-sm text-base-content/70 ${className} ${iconSize < 16 ? "gap-x-2 gap-y-1" : "gap-x-3 gap-y-2"}`}
       >
         {/* Location info */}
         <div className="flex items-start">
@@ -121,15 +121,17 @@ const LocationSection = ({
     <div className={className}>
       {/* Title row - icon and title together */}
       {shouldShowTitle && (
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center">
-            <IconComponent
-              size={18}
-              className="mr-2 text-primary flex-shrink-0"
-            />
-            <h3 className="font-medium">{title}</h3>
+        <div className="flex items-start gap-2 mb-1">
+          <IconComponent
+            size={18}
+            className="mt-0.5 text-primary flex-shrink-0"
+          />
+          <div className="min-w-0 flex-1 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-x-3 gap-y-0.5">
+            <h3 className="font-medium leading-[1.1]">{title}</h3>
+            {resolvedHeaderRight && (
+              <div className="shrink-0">{resolvedHeaderRight}</div>
+            )}
           </div>
-          {resolvedHeaderRight}
         </div>
       )}
 
@@ -153,6 +155,7 @@ const LocationSection = ({
                 showPostalCode: true,
                 showState: true,
                 showCountry: true,
+                showCountryCode,
               })}
             </span>
           </div>

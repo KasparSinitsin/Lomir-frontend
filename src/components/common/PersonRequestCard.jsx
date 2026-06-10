@@ -11,6 +11,7 @@ import {
 } from "../../utils/userHelpers";
 import DemoAvatarOverlay from "../users/DemoAvatarOverlay";
 import { formatDisplayName } from "../../utils/nameFormatters";
+import { formatListLocation } from "../../utils/locationUtils";
 
 /**
  * PersonRequestCard Component
@@ -214,7 +215,7 @@ const PersonRequestCard = ({
                 <div className="flex min-w-0 max-w-[calc(100%-1.5rem)] flex-[0_1_auto] items-center gap-1 overflow-hidden">
                   <MapPin size={10} className="text-base-content/60 shrink-0" />
                   <span className="min-w-0 truncate text-base-content/60 leading-[1.05]">
-                    {[user?.city, user?.country].filter(Boolean).join(", ") || getPostalCode()}
+                    {formatListLocation(user, { isRemote: user?.is_remote || user?.isRemote }).short || getPostalCode()}
                   </span>
                 </div>
               )}

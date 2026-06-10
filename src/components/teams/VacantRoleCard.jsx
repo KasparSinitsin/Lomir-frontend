@@ -29,6 +29,8 @@ import CardMetaItem from "../common/CardMetaItem";
 import CardMetaRow from "../common/CardMetaRow";
 import LocationDistanceTagsRow from "../common/LocationDistanceTagsRow";
 import SearchResultTypeOverlay from "../common/SearchResultTypeOverlay";
+import ListViewRow from "../common/ListViewRow";
+import MatchScoreOverlay from "../common/MatchScoreOverlay";
 import Tooltip from "../common/Tooltip";
 import {
   DEMO_PROFILE_TOOLTIP,
@@ -39,6 +41,7 @@ import {
   isSyntheticUser,
 } from "../../utils/userHelpers";
 import DemoAvatarOverlay from "../users/DemoAvatarOverlay";
+import UserAvatar from "../users/UserAvatar";
 import { resolveFilledRoleUser } from "../../utils/vacantRoleUtils";
 import {
   getMatchTier,
@@ -50,6 +53,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { format } from "date-fns";
 import { formatDisplayName } from "../../utils/nameFormatters";
 import {
+  formatListLocation,
   formatLocation,
   normalizeLocationData,
 } from "../../utils/locationUtils";
@@ -899,26 +903,15 @@ const VacantRoleCard = ({
     if (!matchTier) return null;
 
     return (
-      <Tooltip content={getMatchTooltip()}>
-        <div
-          aria-label={getMatchTooltip()}
-          className="absolute -top-0.5 -left-0.5 z-10 rounded-full ring-2 ring-white flex items-center justify-center text-white"
-          style={{
-            width: `${size}px`,
-            height: `${size}px`,
-          }}
-        >
-          <div
-            className={`w-full h-full rounded-full flex items-center justify-center ${matchTier.bg}`}
-          >
-            <matchTier.Icon
-              size={iconSize}
-              className="text-white"
-              strokeWidth={2.5}
-            />
-          </div>
-        </div>
-      </Tooltip>
+      <MatchScoreOverlay
+        matchTier={matchTier}
+        tooltipText={getMatchTooltip()}
+        iconSize={iconSize}
+        sizeClassName=""
+        className=""
+        positionClassName="absolute -top-0.5 -left-0.5 z-10"
+        style={{ width: `${size}px`, height: `${size}px` }}
+      />
     );
   };
   const searchResultTypeOverlay = showSearchResultTypeOverlay ? (
@@ -999,42 +992,18 @@ const VacantRoleCard = ({
     />
   );
   const demoAvatarOverlay = isSyntheticRole(role) ? (
-    <DemoAvatarOverlay
-      textClassName={
-        viewMode === "list"
-          ? "text-[5px]"
-          : viewMode === "mini"
-            ? "text-[9px]"
-            : "text-[10px]"
-      }
-      textTranslateClassName={
-        viewMode === "list"
-          ? "-translate-y-[2px]"
-          : viewMode === "mini"
-            ? "-translate-y-[4px]"
-            : "-translate-y-[4px]"
-      }
-    />
+    <DemoAvatarOverlay viewMode={viewMode} />
   ) : null;
   const compactDemoAvatarOverlay = isSyntheticRole(role) ? (
-    <DemoAvatarOverlay
-      textClassName={isMiniView ? "text-[6px]" : "text-[7px]"}
-      textTranslateClassName="-translate-y-[3px]"
-    />
-  ) : null;
-  const compactFilledUserDemoAvatarOverlay = isSyntheticUser(filledUser) ? (
-    <DemoAvatarOverlay
-      textClassName={isMiniView ? "text-[6px]" : "text-[7px]"}
-      textTranslateClassName="-translate-y-[3px]"
-    />
+    <DemoAvatarOverlay viewMode={isMiniView ? "compact-mini" : "compact"} />
   ) : null;
 
   if (viewMode === "list") {
     const roundedDistanceKm = showDistance ? Math.round(rawDistanceKm) : null;
-    const roleLocationNorm = normalizeLocationData(role);
-    const locationTextShort = is_remote
-      ? "Remote"
-      : ([roleLocationNorm.city, roleLocationNorm.countryCode].filter(Boolean).join(", ") || locationText);
+    const { short: locationTextShort, full: locationText } = formatListLocation(
+      role,
+      { isRemote: is_remote },
+    );
     const visibleTags = tagNames.slice(0, 3);
     const remainingTagCount = tagNames.length - visibleTags.length;
     const tagsSummary =
@@ -1086,64 +1055,16 @@ const VacantRoleCard = ({
           }
           className={status !== "open" ? "opacity-70" : ""}
         >
-          <div className="flex w-24 flex-shrink-0 items-center gap-3 overflow-hidden sm:w-56">
-            {showDistance && (
-              <div className="hidden w-16 flex-shrink-0 overflow-hidden md:block">
-                <div className="text-xs text-base-content flex items-center gap-1 overflow-hidden">
-                  <Tooltip content={`${roundedDistanceKm} km away from you`}>
-                    <div className="flex items-center gap-1">
-                      <Ruler size={9} className="flex-shrink-0" />
-                      <span className="whitespace-nowrap">
-                        {roundedDistanceKm} km
-                      </span>
-                    </div>
-                  </Tooltip>
-                </div>
-              </div>
-            )}
-            {locationText && (
-              <div className="min-w-0 text-xs text-base-content/60 flex items-center gap-1 overflow-hidden">
-                <Tooltip
-                  content={locationText}
-                  wrapperClassName="flex min-w-0 w-full items-center overflow-hidden"
-                >
-                  <div className="flex min-w-0 w-full items-center gap-1 overflow-hidden">
-                    {is_remote ? (
-                      <Globe size={9} className="flex-shrink-0" />
-                    ) : (
-                      <MapPin size={9} className="flex-shrink-0" />
-                    )}
-                    <span className="min-w-0 flex-1 truncate sm:hidden">{locationTextShort}</span>
-                    <span className="min-w-0 flex-1 truncate hidden sm:block">{locationText}</span>
-                  </div>
-                </Tooltip>
-              </div>
-            )}
-          </div>
-
-          <div className="hidden w-52 flex-shrink-0 text-xs text-base-content/60 lg:flex items-center gap-1 overflow-hidden">
-            {tagsSummary && (
-              <Tooltip
-                content={tagNames.join(", ")}
-                wrapperClassName="flex items-center gap-1 min-w-0 overflow-hidden w-full"
-              >
-                <Tag size={9} className="flex-shrink-0" />
-                <span className="truncate">{tagsSummary}</span>
-              </Tooltip>
-            )}
-          </div>
-
-          <div className="hidden w-48 flex-shrink-0 text-xs text-base-content/60 xl:flex items-center gap-1 overflow-hidden">
-            {badgesSummary && (
-              <Tooltip
-                content={badgeNames.join(", ")}
-                wrapperClassName="flex items-center gap-1 min-w-0 overflow-hidden w-full"
-              >
-                <Award size={9} className="flex-shrink-0" />
-                <span className="truncate">{badgesSummary}</span>
-              </Tooltip>
-            )}
-          </div>
+          <ListViewRow
+            locationText={locationTextShort}
+            locationTooltip={locationText}
+            isRemote={is_remote}
+            distance={showDistance ? roundedDistanceKm : null}
+            tagsSummary={tagsSummary}
+            tagsTooltip={tagNames.join(", ")}
+            badgesSummary={badgesSummary}
+            badgesTooltip={badgeNames.join(", ")}
+          />
         </Card>
         {detailsModal}
       </>
@@ -1153,7 +1074,7 @@ const VacantRoleCard = ({
   if (usesSharedSearchCard) {
     const searchCardSubtitle = (
       <span
-        className={`mt-0.5 flex max-h-[2.75em] overflow-hidden text-base-content/70 leading-snug ${
+        className={`mt-0.5 flex max-h-[2.75em] overflow-hidden text-base-content/70 leading-[110%] ${
           isMiniView
             ? "items-center flex-wrap text-xs gap-x-1 gap-y-px w-full"
             : "items-center flex-wrap text-sm gap-x-1.5 gap-y-px"
@@ -1206,12 +1127,12 @@ const VacantRoleCard = ({
           }
           headerClassName={
             viewMode === "mini"
-              ? `!p-4 sm:!p-5 ${miniHasContent ? "!pb-4" : "!pb-0"}`
+              ? "!p-4 sm:!p-5 !pb-4 sm:!pb-5"
               : ""
           }
           imageWrapperClassName={viewMode === "mini" ? "mb-0 pb-0" : ""}
           titleClassName={
-            viewMode === "mini" ? "text-base mb-0.5 leading-[110%]" : ""
+            viewMode === "mini" ? "text-base mb-0 leading-[110%]" : ""
           }
           marginClassName="mb-0"
           imageOverlay={
@@ -1256,7 +1177,7 @@ const VacantRoleCard = ({
               }`}
             >
               <Users
-                size={viewMode === "mini" ? 12 : 16}
+                size={viewMode === "mini" ? 10 : 13}
                 className="mr-1 flex-shrink-0 mt-0.5"
               />
               <span className="min-w-0 whitespace-normal break-words">
@@ -1283,32 +1204,15 @@ const VacantRoleCard = ({
         } ${notificationHighlight ? "role-card-highlight" : ""}`}
       >
         {isFilled && filledUser ? (
-            <div className="avatar">
-              <div className={`${avatarSizeClass} rounded-full relative overflow-hidden`}>
-                {filledUserAvatarUrl ? (
-                  <img
-                    src={filledUserAvatarUrl}
-                    alt={filledUserDisplayName || "Filled role"}
-                    className="object-cover w-full h-full rounded-full"
-                    onError={(e) => {
-                      e.target.style.display = "none";
-                      const fallback =
-                        e.target.parentElement.querySelector(".avatar-fallback");
-                      if (fallback) fallback.style.display = "flex";
-                    }}
-                  />
-                ) : null}
-                <div
-                  className="avatar-fallback bg-[var(--color-primary-focus)] text-white flex items-center justify-center w-full h-full rounded-full absolute inset-0"
-                  style={{ display: filledUserAvatarUrl ? "none" : "flex" }}
-                >
-                  <span className={`${avatarTextClass} font-medium`}>
-                    {getUserInitials(filledUser)}
-                  </span>
-                </div>
-                {compactFilledUserDemoAvatarOverlay ?? compactDemoAvatarOverlay}
-                {miniMatchOverlay}
-              </div>
+            <div className="relative">
+              <UserAvatar
+                user={filledUser}
+                sizeClass={avatarSizeClass}
+                showDemoOverlay={isSyntheticUser(filledUser)}
+                demoOverlayTextClassName={isMiniView ? "text-[6px]" : "text-[7px]"}
+                demoOverlayTextTranslateClassName="-translate-y-[3px]"
+              />
+              {miniMatchOverlay}
             </div>
           ) : hasMatchScore && !isMiniView ? (
             <Tooltip content={getMatchTooltip()}>

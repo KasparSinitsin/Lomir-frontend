@@ -37,12 +37,18 @@ import Alert from "../common/Alert";
 import ConfirmModal from "../common/ConfirmModal";
 import NotificationBadge from "../common/NotificationBadge";
 import SearchResultTypeOverlay from "../common/SearchResultTypeOverlay";
+import ListViewRow from "../common/ListViewRow";
+import MatchScoreOverlay from "../common/MatchScoreOverlay";
 import TeamApplicationsModal from "./TeamApplicationsModal";
 import { format } from "date-fns";
 import LocationDistanceTagsRow from "../common/LocationDistanceTagsRow";
 import { getMatchTier } from "../../utils/matchScoreUtils";
 import { getResultMatchScore } from "../../utils/teamMatchUtils";
-import { calculateDistanceKm, normalizeLocationData } from "../../utils/locationUtils";
+import {
+  calculateDistanceKm,
+  formatListLocation,
+  normalizeLocationData,
+} from "../../utils/locationUtils";
 import {
   extractListPayload,
   extractProfilePayload,
@@ -2257,15 +2263,13 @@ const TeamCard = ({
       );
     } else {
       matchOverlay = (
-        <div
-          className={`absolute -top-0.5 -left-0.5 rounded-full ring-2 ring-white flex items-center justify-center ${matchTier.bg} ${viewMode === "list" ? "w-[14px] h-[14px]" : "w-5 h-5"}`}
-        >
-          <matchTier.Icon
-            size={viewMode === "list" ? 7 : 10}
-            className="text-white"
-            strokeWidth={2.5}
-          />
-        </div>
+        <MatchScoreOverlay
+          matchTier={matchTier}
+          tooltipText={matchTooltipText}
+          sizeClassName={viewMode === "list" ? "w-[14px] h-[14px]" : "w-5 h-5"}
+          iconSize={viewMode === "list" ? 7 : 10}
+          positionClassName="absolute -top-0.5 -left-0.5 z-10"
+        />
       );
     }
   }
@@ -2290,36 +2294,16 @@ const TeamCard = ({
     ? DEMO_ROLE_TOOLTIP
     : DEMO_TEAM_TOOLTIP;
   const demoAvatarOverlay = showDemoIndicator ? (
-    <DemoAvatarOverlay
-      textClassName={
-        viewMode === "list"
-          ? "text-[5px]"
-          : viewMode === "mini"
-            ? "text-[9px]"
-            : "text-[10px]"
-      }
-      textTranslateClassName={
-        viewMode === "list"
-          ? "-translate-y-[2px]"
-          : viewMode === "mini"
-            ? "-translate-y-[4px]"
-            : "-translate-y-[4px]"
-      }
-    />
+    <DemoAvatarOverlay viewMode={viewMode} />
   ) : null;
 
   // ============ LIST VIEW ============
 
   if (viewMode === "list") {
-    const teamLocation = normalizeLocationData(teamData);
-    const locationText =
-      teamData.is_remote || teamData.isRemote
-        ? "Remote"
-        : [teamData.city, teamLocation.countryName].filter(Boolean).join(", ");
-    const locationTextShort =
-      teamData.is_remote || teamData.isRemote
-        ? "Remote"
-        : ([teamData.city, teamLocation.countryCode].filter(Boolean).join(", ") || locationText);
+    const { short: locationTextShort, full: locationText } =
+      formatListLocation(teamData, {
+        isRemote: teamData.is_remote || teamData.isRemote,
+      });
     const distance = teamData.distance_km ?? teamData.distanceKm;
     const showDistance =
       !hideDistanceInfo &&
@@ -2518,69 +2502,22 @@ const TeamCard = ({
           imageInnerOverlay={demoAvatarOverlay}
           listEdgeRounding={!disableListEdgeRounding}
       >
-          <div
-            className={`box-border ${listLocationVisibilityClassName} w-24 flex-shrink-0 items-center gap-3 overflow-hidden sm:w-56 ${listLocationWidthClassName} ${listLocationInsetClassName}`}
-          >
-            {showDistance && (
-              <div className="hidden w-16 flex-shrink-0 overflow-hidden md:block">
-                <div className="text-xs text-base-content flex items-center gap-1 overflow-hidden">
-                  <Tooltip content={`${Math.round(distance)} km away from you`}>
-                    <div className="flex items-center gap-1">
-                      <Ruler size={9} className="flex-shrink-0" />
-                      <span className="whitespace-nowrap">{Math.round(distance)} km</span>
-                    </div>
-                  </Tooltip>
-                </div>
-              </div>
-            )}
-            {locationText && (
-              <div className="min-w-0 text-xs text-base-content/60 flex items-center gap-1 overflow-hidden">
-                <Tooltip
-                  content={locationText}
-                  wrapperClassName="flex min-w-0 w-full items-center overflow-hidden"
-                >
-                  <div className="flex min-w-0 w-full items-center gap-1 overflow-hidden">
-                    {teamData.is_remote || teamData.isRemote ? (
-                      <Globe size={9} className="flex-shrink-0" />
-                    ) : (
-                      <MapPin size={9} className="flex-shrink-0" />
-                    )}
-                    {listLocationShortBreakpoint === "md" ? (
-                      <>
-                        <span className="min-w-0 flex-1 truncate md:hidden">{locationTextShort}</span>
-                        <span className="min-w-0 flex-1 truncate hidden md:block">{locationText}</span>
-                      </>
-                    ) : (
-                      <>
-                        <span className="min-w-0 flex-1 truncate sm:hidden">{locationTextShort}</span>
-                        <span className="min-w-0 flex-1 truncate hidden sm:block">{locationText}</span>
-                      </>
-                    )}
-                  </div>
-                </Tooltip>
-              </div>
-            )}
-          </div>
-          <div
-            className={`hidden w-52 flex-shrink-0 text-xs text-base-content/60 lg:flex items-center gap-1 overflow-hidden ${listTagsWidthClassName}`}
-          >
-            {tagsSummary && (
-              <Tooltip content={tagNames.join(", ")} wrapperClassName="flex items-center gap-1 min-w-0 overflow-hidden w-full">
-                <Tag size={9} className="flex-shrink-0" />
-                <span className="truncate">{tagsSummary}</span>
-              </Tooltip>
-            )}
-          </div>
-          <div
-            className={`hidden w-48 flex-shrink-0 text-xs text-base-content/60 xl:flex items-center gap-1 overflow-hidden ${listBadgesWidthClassName}`}
-          >
-            {badgesSummary && (
-              <Tooltip content={badgeNames.join(", ")} wrapperClassName="flex items-center gap-1 min-w-0 overflow-hidden w-full">
-                <Award size={9} className="flex-shrink-0" />
-                <span className="truncate">{badgesSummary}</span>
-              </Tooltip>
-            )}
-          </div>
+          <ListViewRow
+            locationText={locationTextShort}
+            locationTooltip={locationText}
+            isRemote={teamData.is_remote || teamData.isRemote}
+            distance={showDistance ? Math.round(distance) : null}
+            tagsSummary={tagsSummary}
+            tagsTooltip={tagNames.join(", ")}
+            badgesSummary={badgesSummary}
+            badgesTooltip={badgeNames.join(", ")}
+            locationVisibilityClassName={listLocationVisibilityClassName}
+            locationWidthClassName={listLocationWidthClassName}
+            locationInsetClassName={listLocationInsetClassName}
+            tagsWidthClassName={listTagsWidthClassName}
+            badgesWidthClassName={listBadgesWidthClassName}
+            locationBreakpoint={listLocationShortBreakpoint}
+          />
           {shouldReserveMyTeamsActionSlot && (
             <div className="w-20 flex-shrink-0 flex items-center justify-end gap-2">
               {(effectiveVariant === "invitation" || isRoleInvitationVariant) && (
@@ -2775,7 +2712,7 @@ const TeamCard = ({
         title={cardTitle}
         subtitle={
           <span
-            className={`mt-0.5 flex max-h-[2.75em] overflow-hidden items-center flex-wrap leading-snug text-base-content/70 ${viewMode === "mini" ? "text-xs gap-x-1 gap-y-px w-full" : "text-sm gap-x-1.5 gap-y-px"}`}
+            className={`mt-0.5 flex max-h-[2.75em] overflow-hidden items-center flex-wrap leading-[110%] text-base-content/70 ${viewMode === "mini" ? "text-xs gap-x-1 gap-y-px w-full" : "text-sm gap-x-1.5 gap-y-px"}`}
           >
             {scoreSubtitleItem}
             {isRoleVariant && getFormattedDate() && (
@@ -2849,10 +2786,10 @@ const TeamCard = ({
                     />
                   </span>
                 ) : (
-                  <span className="flex items-center gap-1">
+                  <span className="flex items-start gap-1">
                     <UserSearch
                       size={viewMode === "mini" ? 10 : 13}
-                      className="text-orange-500 flex-shrink-0"
+                      className="text-orange-500 flex-shrink-0 mt-0.5"
                     />
                     <span className="leading-[1.05]">{teamInvitationRoleName}</span>
                   </span>
@@ -2891,10 +2828,10 @@ const TeamCard = ({
                     />
                   </span>
                 ) : (
-                  <span className="flex items-center gap-1">
+                  <span className="flex items-start gap-1">
                     <UserSearch
                       size={viewMode === "mini" ? 10 : 13}
-                      className="text-orange-500 flex-shrink-0"
+                      className="text-orange-500 flex-shrink-0 mt-0.5"
                     />
                     <span className="leading-[1.05]">{teamApplicationRoleName}</span>
                   </span>
@@ -2920,7 +2857,7 @@ const TeamCard = ({
                   </span>
                 ) : (
                   <span
-                    className="flex items-center gap-1 cursor-pointer"
+                    className="flex items-start gap-1 cursor-pointer"
                     onClick={(e) => {
                       e.stopPropagation();
                       setIsModalOpen(true);
@@ -2928,7 +2865,7 @@ const TeamCard = ({
                   >
                     <Users
                       size={viewMode === "mini" ? 10 : 13}
-                      className="text-primary flex-shrink-0"
+                      className="text-primary flex-shrink-0 mt-0.5"
                     />
                     <span className="leading-[1.05]">{teamData._teamName}</span>
                   </span>
@@ -3084,12 +3021,12 @@ const TeamCard = ({
         }
         headerClassName={
           viewMode === "mini"
-            ? `!p-4 sm:!p-5 ${activeFilters.showLocation || activeFilters.showTags || activeFilters.showBadges ? "!pb-4" : "!pb-0"}`
+            ? "!p-4 sm:!p-5 !pb-4 sm:!pb-5"
             : ""
         }
         imageWrapperClassName={viewMode === "mini" ? "mb-0 pb-0" : ""}
         titleClassName={
-          viewMode === "mini" ? "text-base mb-0.5 leading-[110%]" : ""
+          viewMode === "mini" ? "text-base mb-0 leading-[110%]" : ""
         }
         marginClassName="mb-0"
         imageOverlay={avatarOverlay}

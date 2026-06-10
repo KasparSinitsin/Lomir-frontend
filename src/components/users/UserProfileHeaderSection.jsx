@@ -5,7 +5,6 @@ import {
   EyeClosed,
   Calendar,
   FlaskConical,
-  MapPin,
 } from "lucide-react";
 import {
   DEMO_PROFILE_TOOLTIP,
@@ -14,7 +13,6 @@ import {
 } from "../../utils/userHelpers";
 import DemoAvatarOverlay from "./DemoAvatarOverlay";
 import { getMatchTier } from "../../utils/matchScoreUtils";
-import { getCountryCode, normalizeLocationData } from "../../utils/locationUtils";
 import { format } from "date-fns";
 
 /**
@@ -101,12 +99,6 @@ const UserProfileHeaderSection = ({
   };
 
   const displayName = getDisplayName();
-  const location = normalizeLocationData(user);
-  const countryCode = getCountryCode(location.country);
-  const headerLocationText = location.hasLocation
-    ? [location.city, countryCode || location.country].filter(Boolean).join(", ")
-    : "";
-
   useLayoutEffect(() => {
     const container = titleContainerRef.current;
     const probe = titleProbeRef.current;
@@ -184,13 +176,6 @@ const UserProfileHeaderSection = ({
         </h1>
         <div className="flex items-center flex-wrap gap-x-3 gap-y-0.5 text-sm leading-[110%]">
           <span className="text-base-content/70">@{user?.username}</span>
-          {headerLocationText && (
-            <span className="flex items-center text-base-content/70">
-              <MapPin size={14} className="mr-1 flex-shrink-0" />
-              <span>{headerLocationText}</span>
-            </span>
-          )}
-
           {/* Visibility Indicator - Only show for own profile */}
           {shouldShowVisibilityIndicator() && (
             <div className="flex items-center text-base-content/70">
@@ -207,13 +192,13 @@ const UserProfileHeaderSection = ({
               )}
             </div>
           )}
-          {((dateIsNarrow && getMemberSinceDate()) || isSyntheticUser(user)) && (
-            <span className="flex items-center gap-3 flex-shrink-0">
-              {dateIsNarrow && getMemberSinceDate() && (
+          {(getMemberSinceDate() || isSyntheticUser(user)) && (
+            <span className="flex items-center gap-1.5 flex-shrink-0">
+              {getMemberSinceDate() && (
                 <Tooltip
                   content={`Joined Lomir on ${getMemberSinceDate().full}`}
                   position="bottom"
-                  wrapperClassName="flex items-center text-base-content/70 flex-shrink-0 cursor-help"
+                  wrapperClassName={`items-center text-base-content/70 flex-shrink-0 cursor-help ${dateIsNarrow ? "flex" : "flex sm:hidden"}`}
                 >
                   <Calendar size={14} className="mr-1" />
                   <span>{getMemberSinceDate().short}</span>
@@ -224,8 +209,8 @@ const UserProfileHeaderSection = ({
                   content={DEMO_PROFILE_TOOLTIP}
                   wrapperClassName="flex items-start text-base-content/50"
                 >
-                  <FlaskConical size={14} className={`flex-shrink-0 mt-px${dateIsNarrow ? "" : " mr-0.5"}`} />
-                  {!dateIsNarrow && <span className="leading-[1.15]">Demo Profile</span>}
+                  <FlaskConical size={14} className={`flex-shrink-0 mt-px${dateIsNarrow ? "" : " sm:mr-0.5"}`} />
+                  {!dateIsNarrow && <span className="hidden sm:inline leading-[1.15]">Demo Profile</span>}
                 </Tooltip>
               )}
             </span>
@@ -237,7 +222,7 @@ const UserProfileHeaderSection = ({
       {getMemberSinceDate() && (
         <div
           ref={dateRef}
-          className={`flex-shrink-0${dateIsNarrow ? " absolute opacity-0 pointer-events-none" : ""}`}
+          className={`flex-shrink-0${dateIsNarrow ? " absolute opacity-0 pointer-events-none" : " hidden sm:block"}`}
         >
           <Tooltip
             content={`Joined Lomir on ${getMemberSinceDate().full}`}

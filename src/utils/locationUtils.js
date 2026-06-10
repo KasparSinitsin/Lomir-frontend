@@ -450,6 +450,26 @@ const FRANKFURT_POSTAL_CODE_DISTRICTS = {
   65936: "Nied",
 };
 
+const DE_CITY_COORDS = [
+  { pattern: /^10\d{3}$|^11\d{3}$|^12\d{3}$|^13\d{3}$|^14[01]\d{2}$/, city: "Berlin", state: "Berlin", lat: 52.52, lng: 13.405 },
+  { pattern: /^60\d{3}$|^6[1-5]\d{3}$/, city: "Frankfurt am Main", state: "Hessen", lat: 50.1109, lng: 8.6821 },
+  { pattern: /^8[01]\d{3}$/, city: "München", state: "Bayern", lat: 48.1351, lng: 11.582 },
+  { pattern: /^86\d{3}$/, city: "Augsburg", state: "Bayern", lat: 48.3705, lng: 10.8978 },
+  { pattern: /^2[012]\d{3}$/, city: "Hamburg", state: "Hamburg", lat: 53.5511, lng: 9.9937 },
+  { pattern: /^5[01]\d{3}$/, city: "Köln", state: "Nordrhein-Westfalen", lat: 50.9333, lng: 6.95 },
+  { pattern: /^7[01]\d{3}$/, city: "Stuttgart", state: "Baden-Württemberg", lat: 48.7758, lng: 9.1829 },
+  { pattern: /^40\d{3}$/, city: "Düsseldorf", state: "Nordrhein-Westfalen", lat: 51.2217, lng: 6.7762 },
+  { pattern: /^44\d{3}$/, city: "Dortmund", state: "Nordrhein-Westfalen", lat: 51.5136, lng: 7.4653 },
+  { pattern: /^45\d{3}$/, city: "Essen", state: "Nordrhein-Westfalen", lat: 51.4556, lng: 7.0116 },
+  { pattern: /^28\d{3}$/, city: "Bremen", state: "Bremen", lat: 53.0793, lng: 8.8017 },
+  { pattern: /^30\d{3}$/, city: "Hannover", state: "Niedersachsen", lat: 52.3759, lng: 9.732 },
+  { pattern: /^90\d{3}$/, city: "Nürnberg", state: "Bayern", lat: 49.4521, lng: 11.0767 },
+  { pattern: /^04\d{3}$/, city: "Leipzig", state: "Sachsen", lat: 51.3397, lng: 12.3731 },
+  { pattern: /^01\d{3}$/, city: "Dresden", state: "Sachsen", lat: 51.0504, lng: 13.7373 },
+  { pattern: /^48\d{3}$/, city: "Münster", state: "Nordrhein-Westfalen", lat: 51.9607, lng: 7.6261 },
+  { pattern: /^09\d{3}$/, city: "Chemnitz", state: "Sachsen", lat: 50.8278, lng: 12.9214 },
+];
+
 export const deriveLocationFromPostalCode = (postalCode, country) => {
   const code = normalizePostalCode(postalCode);
   if (!code) return {};
@@ -464,11 +484,9 @@ export const deriveLocationFromPostalCode = (postalCode, country) => {
       state: "Berlin",
       country: "Germany",
       district: berlinDistrict,
+      latitude: 52.52,
+      longitude: 13.405,
     };
-  }
-
-  if (/^10\d{3}$|^11\d{3}$|^12\d{3}$|^13\d{3}$|^14[01]\d{2}$/.test(code)) {
-    return { city: "Berlin", state: "Berlin", country: "Germany" };
   }
 
   const frankfurtDistrict = FRANKFURT_POSTAL_CODE_DISTRICTS[code];
@@ -478,11 +496,20 @@ export const deriveLocationFromPostalCode = (postalCode, country) => {
       state: "Hessen",
       country: "Germany",
       district: frankfurtDistrict,
+      latitude: 50.1109,
+      longitude: 8.6821,
     };
   }
 
-  if (/^60\d{3}$|^65\d{3}$/.test(code)) {
-    return { city: "Frankfurt am Main", state: "Hessen", country: "Germany" };
+  const cityMatch = DE_CITY_COORDS.find((entry) => entry.pattern.test(code));
+  if (cityMatch) {
+    return {
+      city: cityMatch.city,
+      state: cityMatch.state,
+      country: "Germany",
+      latitude: cityMatch.lat,
+      longitude: cityMatch.lng,
+    };
   }
 
   return {};
@@ -569,6 +596,7 @@ export const normalizeLocationData = (entity) => {
     entity.role_location?.lat,
     entity.roleLocation?.latitude,
     entity.roleLocation?.lat,
+    derivedLocation.latitude,
   ) ?? null;
   const longitude = firstPresent(
     entity.longitude,
@@ -583,6 +611,7 @@ export const normalizeLocationData = (entity) => {
     entity.roleLocation?.longitude,
     entity.roleLocation?.lng,
     entity.roleLocation?.lon,
+    derivedLocation.longitude,
   ) ?? null;
   const isRemote = entity.is_remote === true || entity.isRemote === true;
 
@@ -735,6 +764,30 @@ export const formatLocation = (locationData, options = {}) => {
   }
 
   return parts.filter(Boolean).join(", ");
+};
+
+/**
+ * Format location for list-style display.
+ *
+ * Returns a compact short string (city, country code) and a full string
+ * (city, country name) while preserving the existing "Remote" behavior.
+ *
+ * @param {Object} entity - Entity with location fields (raw or normalized)
+ * @param {Object} options
+ * @param {boolean} options.isRemote - Whether the entity is remote
+ * @returns {{ short: string, full: string }} Short and full location strings
+ */
+export const formatListLocation = (entity, { isRemote = false } = {}) => {
+  if (isRemote) {
+    return { short: "Remote", full: "Remote" };
+  }
+
+  const normalized = normalizeLocationData(entity);
+  const full = [normalized.city, normalized.countryName].filter(Boolean).join(", ");
+  const short =
+    [normalized.city, normalized.countryCode].filter(Boolean).join(", ") || full;
+
+  return { short, full };
 };
 
 /**

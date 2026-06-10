@@ -81,6 +81,8 @@ const MatchScoreSection = ({
   matchDetails,
   comparisonLabel = null,
   roleLabel = null,
+  headline: headlineProp = null,
+  headlineTooltip = null,
 }) => {
   if (matchScore == null) return null;
 
@@ -127,15 +129,6 @@ const MatchScoreSection = ({
     totalBadgeCount > 0 && sharedBadgeCount !== null
       ? Math.round((sharedBadgeCount / totalBadgeCount) * 100)
       : null;
-  const summaryParts = [];
-
-  if (sharedTagCount > 0) {
-    summaryParts.push(pluralize(sharedTagCount, "shared focus area"));
-  }
-  if (sharedBadgeCount > 0) {
-    summaryParts.push(pluralize(sharedBadgeCount, "shared badge"));
-  }
-
   // ── Headline text ─────────────────────────────────────────
   const comparisonSuffix = comparisonLabel
     ? ` of you and ${comparisonLabel}`
@@ -150,18 +143,74 @@ const MatchScoreSection = ({
         ? `the ${normalizedRoleLabel}`
         : `the ${normalizedRoleLabel} role`
     : null;
+  // ── Headline title (overridable via headlineProp) ────────────
   let headline;
-  if (normalizedMatchType === "role_match" && formattedRoleLabel) {
+  if (headlineProp) {
+    headline = headlineProp;
+  } else if (normalizedMatchType === "role_match" && formattedRoleLabel) {
     headline = `${tier.pct}% matching score of ${comparisonLabel || "this person"} with ${formattedRoleLabel}`;
   } else if (normalizedMatchType === "role_match") {
     headline = comparisonLabel
       ? `${tier.pct}% match of your profile with ${comparisonLabel}`
       : `${tier.pct}% match of your profile`;
   } else {
-    headline =
-      summaryParts.length > 0
-        ? `${tier.pct}% profile match${comparisonSuffix} — ${summaryParts.join(", ")}`
-        : `${tier.pct}% profile match${comparisonSuffix}`;
+    headline = `${tier.pct}% profile match${comparisonSuffix}`;
+  }
+
+  // ── Detail line (always computed from matchDetails) ───────────
+  let detailLine = null;
+  if (normalizedMatchType === "role_match" && formattedRoleLabel) {
+    const roleItems = [];
+    if (totalTagCount > 0 && sharedTagCount !== null)
+      roleItems.push(`${sharedTagCount} of ${totalTagCount} required focus areas`);
+    if (totalBadgeCount > 0 && sharedBadgeCount !== null)
+      roleItems.push(`${sharedBadgeCount} of ${totalBadgeCount} badges`);
+    const roleLocationHint =
+      distPct === 100 ? "within the role's location radius" :
+      distPct === 25  ? "up to 20 km beyond the role's radius" :
+      distPct === 0   ? "outside the role's location radius" :
+      null;
+    const roleParts = roleItems.length > 0 ? [roleItems.join(", ") + " met"] : [];
+    if (roleLocationHint) roleParts.push(roleLocationHint);
+    if (roleParts.length > 0) detailLine = roleParts.join(", ");
+  } else if (normalizedMatchType === "role_match") {
+    const commonItems = [];
+    if (totalTagCount > 0 && sharedTagCount !== null)
+      commonItems.push(`${sharedTagCount} of ${totalTagCount} focus areas`);
+    if (totalBadgeCount > 0 && sharedBadgeCount !== null)
+      commonItems.push(`${sharedBadgeCount} of ${totalBadgeCount} badges`);
+    const locationHint =
+      distPct === 100 ? "same location or remote-friendly team" :
+      distPct >= 75   ? "within 100 km of each other" :
+      distPct >= 50   ? "within 300 km of each other" :
+      distPct >= 25   ? "within 1000 km of each other" :
+      distPct === 0   ? "locations too far apart" :
+      null;
+    if (commonItems.length > 0 && locationHint) {
+      detailLine = `${commonItems.join(", ")} in common and ${locationHint}`;
+    } else if (commonItems.length > 0) {
+      detailLine = `${commonItems.join(", ")} in common`;
+    } else if (locationHint) {
+      detailLine = locationHint.charAt(0).toUpperCase() + locationHint.slice(1);
+    }
+  } else {
+    const commonItems = [];
+    if (sharedTagCount > 0) commonItems.push(pluralize(sharedTagCount, "focus area"));
+    if (sharedBadgeCount > 0) commonItems.push(pluralize(sharedBadgeCount, "badge"));
+    const locationHint =
+      distPct === 100 ? "same location or remote-friendly team" :
+      distPct >= 75   ? "within 100 km of each other" :
+      distPct >= 50   ? "within 300 km of each other" :
+      distPct >= 25   ? "within 1000 km of each other" :
+      distPct === 0   ? "locations too far apart" :
+      null;
+    if (commonItems.length > 0 && locationHint) {
+      detailLine = `${commonItems.join(", ")} in common and ${locationHint}`;
+    } else if (commonItems.length > 0) {
+      detailLine = `${commonItems.join(", ")} in common`;
+    } else if (locationHint) {
+      detailLine = locationHint.charAt(0).toUpperCase() + locationHint.slice(1);
+    }
   }
 
   // ── Progress bar rows ─────────────────────────────────────
@@ -170,15 +219,22 @@ const MatchScoreSection = ({
       label: "Location",
       icon: MapPin,
       value: distPct ?? 0,
-      tooltip: (
-        <>
-          Location factors into the score with {LOCATION_WEIGHT}%.
-          <br />
-          Remote teams = 100%. Same city = 100%. Within 100 km = 75%.
-          <br />
-          Within 300 km = 50%. Within 1000 km = 25%. Farther away = 0%.
-        </>
-      ),
+      tooltip:
+        normalizedMatchType === "role_match" ? (
+          <>
+            Location factors into the score with {LOCATION_WEIGHT}%.
+            <br />
+            Within the role's radius = 100%. Up to 20 km beyond = 25%. Farther = 0%.
+          </>
+        ) : (
+          <>
+            Location factors into the score with {LOCATION_WEIGHT}%.
+            <br />
+            Remote teams = 100%. Same city = 100%. Within 100 km = 75%.
+            <br />
+            Within 300 km = 50%. Within 1000 km = 25%. Farther away = 0%.
+          </>
+        ),
     },
     {
       label: "Focus Areas",
@@ -227,33 +283,50 @@ const MatchScoreSection = ({
   ];
 
   return (
-    <div className="rounded-xl p-4 bg-base-200/50 border border-base-300">
+    <div className={`rounded-xl p-4 border leading-[110%] ${tier.bgTint} ${tier.borderTint}`}>
       {/* Headline */}
-      <div className="flex items-start gap-2 mb-3">
-        <Icon size={16} className={`mt-0.5 flex-shrink-0 ${tier.text}`} />
-        <span className={`min-w-0 text-sm font-semibold ${tier.text}`}>{headline}</span>
+      <div className="flex items-start gap-1 mb-3">
+        <Icon size={14} className={`mt-0.5 flex-shrink-0 ${tier.text}`} />
+        <div className="min-w-0">
+          {headlineTooltip ? (
+            <Tooltip content={headlineTooltip} wrapperClassName="inline">
+              <span className={`text-sm leading-[110%] font-semibold ${tier.text}`}>
+                {headline}{detailLine ? ":" : ""}
+              </span>
+            </Tooltip>
+          ) : (
+            <span className={`text-sm leading-[110%] font-semibold ${tier.text}`}>
+              {headline}{detailLine ? ":" : ""}
+            </span>
+          )}
+          {detailLine && (
+            <span className={`text-sm leading-[110%] font-semibold ${tier.text}`}>
+              {" "}{detailLine}
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Per-dimension bars */}
       <div className="space-y-2">
         {rows.map(({ label, value, icon, tooltip }) => (
           <div key={label} className="flex items-center gap-2">
-            <Tooltip content={tooltip}>
-              <span className="text-xs text-base-content/60 w-24 flex-shrink-0 flex items-center gap-1 cursor-help">
+            <Tooltip content={tooltip} wrapperClassName="w-24 flex-shrink-0">
+              <span className="text-sm leading-[110%] text-base-content/60 flex items-center gap-1 cursor-help whitespace-nowrap">
                 {React.createElement(icon, {
-                  size: 12,
+                  size: 14,
                   className: "flex-shrink-0",
                 })}
                 {label}
               </span>
             </Tooltip>
-            <div className="flex-1 h-1.5 bg-base-200 rounded-full overflow-hidden">
+            <div className={`flex-1 h-1.5 rounded-full overflow-hidden ${tier.bgMid}`}>
               <div
                 className={`h-full rounded-full transition-all duration-500 ${tier.bg}`}
                 style={{ width: `${value}%` }}
               />
             </div>
-            <span className="text-xs font-medium text-base-content/60 w-8 text-right">
+            <span className="text-sm leading-[110%] font-medium text-base-content/60 w-8 text-right">
               {value}%
             </span>
           </div>

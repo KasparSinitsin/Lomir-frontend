@@ -1875,13 +1875,13 @@ on ${format(new Date((effectivePendingInvitation.createdAt ?? effectivePendingIn
                           </Tooltip>
                         )}
 
-                      {((teamDateIsNarrow && getTeamCreatedDate()) || isSyntheticTeam(team)) && (
-                        <span className="flex items-center gap-3 flex-shrink-0">
-                          {teamDateIsNarrow && getTeamCreatedDate() && (
+                      {(getTeamCreatedDate() || isSyntheticTeam(team)) && (
+                        <span className="flex items-center gap-1.5 flex-shrink-0">
+                          {getTeamCreatedDate() && (
                             <Tooltip
                               content={`Created on ${getTeamCreatedDate().full}`}
                               position="bottom"
-                              wrapperClassName="flex items-center text-base-content/70 flex-shrink-0 cursor-help"
+                              wrapperClassName={`items-center text-base-content/70 flex-shrink-0 cursor-help ${teamDateIsNarrow ? "flex" : "flex sm:hidden"}`}
                             >
                               <Calendar size={14} className="mr-1" />
                               <span>{getTeamCreatedDate().narrow}</span>
@@ -1892,8 +1892,8 @@ on ${format(new Date((effectivePendingInvitation.createdAt ?? effectivePendingIn
                               content={DEMO_TEAM_TOOLTIP}
                               wrapperClassName="flex items-start text-base-content/50"
                             >
-                              <FlaskConical size={14} className={`flex-shrink-0 mt-px${teamDateIsNarrow ? "" : " mr-0.5"}`} />
-                              {!teamDateIsNarrow && <span className="leading-[1.15]">Demo Team</span>}
+                              <FlaskConical size={14} className={`flex-shrink-0 mt-px${teamDateIsNarrow ? "" : " sm:mr-0.5"}`} />
+                              {!teamDateIsNarrow && <span className="hidden sm:inline leading-[1.15]">Demo Team</span>}
                             </Tooltip>
                           )}
                         </span>
@@ -1903,7 +1903,7 @@ on ${format(new Date((effectivePendingInvitation.createdAt ?? effectivePendingIn
                   {getTeamCreatedDate() && (
                     <div
                       ref={teamDateRef}
-                      className={`flex-shrink-0${teamDateIsNarrow ? " absolute opacity-0 pointer-events-none" : ""}`}
+                      className={`flex-shrink-0${teamDateIsNarrow ? " absolute opacity-0 pointer-events-none" : " hidden sm:block"}`}
                     >
                       <Tooltip
                         content={`Created on ${getTeamCreatedDate().full}`}
@@ -1941,6 +1941,7 @@ on ${format(new Date((effectivePendingInvitation.createdAt ?? effectivePendingIn
                     entityType="team"
                     distance={showHighlightsForContext ? effectiveTeamDistanceKm : null}
                     showDefaultHeaderRight={showHighlightsForContext}
+                    showCountryCode={false}
                   />
 
                   {/* Team Focus Areas */}
@@ -1970,14 +1971,14 @@ on ${format(new Date((effectivePendingInvitation.createdAt ?? effectivePendingIn
                           return (
                             <span className="flex items-center gap-1.5 text-sm text-success">
                               <MatchIcon size={14} className="flex-shrink-0" />
-                              <span>{matchCount}/{total} in common</span>
+                              <span>{matchCount}/{total} matching</span>
                             </span>
                           );
                         }
                         return (
                           <span className="flex items-center gap-1.5 text-sm text-slate-500">
                             <X size={14} className="flex-shrink-0" />
-                            <span>None in common</span>
+                            <span className="leading-[1.1]">None matching</span>
                           </span>
                         );
                       })() : null}
@@ -2007,14 +2008,14 @@ on ${format(new Date((effectivePendingInvitation.createdAt ?? effectivePendingIn
                           return (
                             <span className="flex items-center gap-1.5 text-sm text-success">
                               <MatchIcon size={14} className="flex-shrink-0" />
-                              <span>{matchCount}/{total} in common</span>
+                              <span>{matchCount}/{total} matching</span>
                             </span>
                           );
                         }
                         return (
                           <span className="flex items-center gap-1.5 text-sm text-slate-500">
                             <X size={14} className="flex-shrink-0" />
-                            <span>None in common</span>
+                            <span className="leading-[1.1]">None matching</span>
                           </span>
                         );
                       })() : null}

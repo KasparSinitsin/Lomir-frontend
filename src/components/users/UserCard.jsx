@@ -23,9 +23,15 @@ import {
 import DemoAvatarOverlay from "./DemoAvatarOverlay";
 import LocationDistanceTagsRow from "../common/LocationDistanceTagsRow";
 import SearchResultTypeOverlay from "../common/SearchResultTypeOverlay";
+import ListViewRow from "../common/ListViewRow";
+import MatchScoreOverlay from "../common/MatchScoreOverlay";
 import { getMatchTier } from "../../utils/matchScoreUtils";
 import { getResultMatchScore } from "../../utils/teamMatchUtils";
-import { formatLocation, normalizeLocationData } from "../../utils/locationUtils";
+import {
+  formatListLocation,
+  formatLocation,
+  normalizeLocationData,
+} from "../../utils/locationUtils";
 
 /**
  * UserCard Component
@@ -189,11 +195,13 @@ const UserCard = ({
     const badgeIconSize =
       viewMode === "list" ? 7 : 10;
     matchOverlay = (
-      <div
-        className={`absolute -top-0.5 -left-0.5 rounded-full ring-2 ring-white flex items-center justify-center ${matchTier.bg} ${badgeSize}`}
-      >
-        <matchTier.Icon size={badgeIconSize} className="text-white" strokeWidth={2.5} />
-      </div>
+      <MatchScoreOverlay
+        matchTier={matchTier}
+        tooltipText={matchTooltipText}
+        sizeClassName={badgeSize}
+        iconSize={badgeIconSize}
+        positionClassName="absolute -top-0.5 -left-0.5 z-10"
+      />
     );
   }
 
@@ -219,32 +227,15 @@ const UserCard = ({
         });
 
   const demoAvatarOverlay = isSyntheticUser(user) ? (
-    <DemoAvatarOverlay
-      textClassName={
-        viewMode === "list"
-          ? "text-[5px]"
-          : viewMode === "mini"
-            ? "text-[9px]"
-            : "text-[10px]"
-      }
-      textTranslateClassName={
-        viewMode === "list"
-          ? "-translate-y-[2px]"
-          : viewMode === "mini"
-            ? "-translate-y-[4px]"
-            : "-translate-y-[4px]"
-      }
-    />
+    <DemoAvatarOverlay viewMode={viewMode} />
   ) : null;
 
   // ============ LIST VIEW ============
   if (viewMode === "list") {
-    const listLocationText = user.is_remote || user.isRemote
-      ? "Remote"
-      : [userLocation.city, userLocation.countryName].filter(Boolean).join(", ");
-    const listLocationTextShort = user.is_remote || user.isRemote
-      ? "Remote"
-      : ([userLocation.city, userLocation.countryCode].filter(Boolean).join(", ") || listLocationText);
+    const { short: listLocationTextShort, full: listLocationText } =
+      formatListLocation(user, {
+        isRemote: user.is_remote || user.isRemote,
+      });
 
     const distance = user.distanceKm ?? user.distance_km;
     const showDistance = distance != null && distance < 999999 && !(user.is_remote || user.isRemote);
@@ -314,49 +305,16 @@ const UserCard = ({
         imageOverlay={avatarOverlay}
         imageInnerOverlay={demoAvatarOverlay}
       >
-        <div className="flex w-24 flex-shrink-0 items-center gap-3 overflow-hidden sm:w-56">
-          <div className="hidden w-16 flex-shrink-0 overflow-hidden md:block">
-            {showDistance && (
-              <div className="text-xs text-base-content flex items-center gap-1 overflow-hidden">
-                <Tooltip content={`${Math.round(distance)} km away from you`}>
-                  <div className="flex items-center gap-1">
-                    <Ruler size={9} className="flex-shrink-0" />
-                    <span className="whitespace-nowrap">{Math.round(distance)} km</span>
-                  </div>
-                </Tooltip>
-              </div>
-            )}
-          </div>
-          {listLocationText && (
-            <div className="min-w-0 flex-1 text-xs text-base-content/60 flex items-center gap-1 overflow-hidden">
-              <Tooltip content={locationText || listLocationText} wrapperClassName="flex items-center gap-1 min-w-0 overflow-hidden w-full">
-                {user.is_remote || user.isRemote ? (
-                  <Globe size={9} className="flex-shrink-0" />
-                ) : (
-                  <MapPin size={9} className="flex-shrink-0" />
-                )}
-                <span className="truncate sm:hidden">{listLocationTextShort}</span>
-                <span className="truncate hidden sm:block">{listLocationText}</span>
-              </Tooltip>
-            </div>
-          )}
-        </div>
-        <div className="hidden w-52 flex-shrink-0 text-xs text-base-content/60 lg:flex items-center gap-1 overflow-hidden">
-          {tagsSummary && (
-            <Tooltip content={tagNames.join(", ")} wrapperClassName="flex items-center gap-1 min-w-0 overflow-hidden w-full">
-              <Tag size={9} className="flex-shrink-0" />
-              <span className="truncate">{tagsSummary}</span>
-            </Tooltip>
-          )}
-        </div>
-        <div className="hidden w-48 flex-shrink-0 text-xs text-base-content/60 xl:flex items-center gap-1 overflow-hidden">
-          {badgesSummary && (
-            <Tooltip content={badgeNames.join(", ")} wrapperClassName="flex items-center gap-1 min-w-0 overflow-hidden w-full">
-              <Award size={9} className="flex-shrink-0" />
-              <span className="truncate">{badgesSummary}</span>
-            </Tooltip>
-          )}
-        </div>
+        <ListViewRow
+          locationText={listLocationTextShort}
+          locationTooltip={listLocationText}
+          isRemote={user.is_remote || user.isRemote}
+          distance={showDistance ? Math.round(distance) : null}
+          tagsSummary={tagsSummary}
+          tagsTooltip={tagNames.join(", ")}
+          badgesSummary={badgesSummary}
+          badgesTooltip={badgeNames.join(", ")}
+        />
       </Card>
     );
   }
@@ -367,7 +325,7 @@ const UserCard = ({
       title={displayName()}
       subtitle={
         <span
-          className={`mt-0.5 flex max-h-[2.75em] items-center flex-wrap overflow-hidden leading-snug text-base-content/70 ${viewMode === "mini" ? "text-xs gap-x-1 gap-y-px w-full" : "text-sm gap-x-1.5 gap-y-px"}`}
+          className={`mt-0.5 flex max-h-[2.75em] items-center flex-wrap overflow-hidden leading-[110%] text-base-content/70 ${viewMode === "mini" ? "text-xs gap-x-1 gap-y-px w-full" : "text-sm gap-x-1.5 gap-y-px"}`}
         >
           {scoreSubtitleItem}
           {user.username && <span>@{user.username}</span>}
@@ -435,12 +393,12 @@ const UserCard = ({
       }
       headerClassName={
         viewMode === "mini"
-          ? `!p-4 sm:!p-5 ${activeFilters.showLocation || activeFilters.showTags || activeFilters.showBadges ? "!pb-4" : "!pb-0"}`
+          ? "!p-4 sm:!p-5 !pb-4 sm:!pb-5"
           : ""
       }
       imageWrapperClassName={viewMode === "mini" ? "mb-0 pb-0" : ""}
       titleClassName={
-        viewMode === "mini" ? "text-base mb-0.5 leading-[110%]" : ""
+        viewMode === "mini" ? "text-base mb-0 leading-[110%]" : ""
       }
       marginClassName="mb-0"
       imageOverlay={avatarOverlay}

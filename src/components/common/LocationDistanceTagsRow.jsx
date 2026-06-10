@@ -67,7 +67,7 @@ const TruncatedList = ({ items, icon: Icon, compact = false }) => {
 
   return (
     <div
-      className={`flex items-start leading-snug text-base-content/70 ${compact ? "text-xs" : "text-sm"}`}
+      className={`flex items-start leading-[110%] text-base-content/70 ${compact ? "text-xs" : "text-sm"}`}
     >
       <Icon size={compact ? 10 : 13} className="mr-1 flex-shrink-0 mt-0.5" />
       <span ref={spanRef}>{displayText}</span>
