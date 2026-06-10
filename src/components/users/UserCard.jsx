@@ -219,22 +219,7 @@ const UserCard = ({
         });
 
   const demoAvatarOverlay = isSyntheticUser(user) ? (
-    <DemoAvatarOverlay
-      textClassName={
-        viewMode === "list"
-          ? "text-[5px]"
-          : viewMode === "mini"
-            ? "text-[9px]"
-            : "text-[10px]"
-      }
-      textTranslateClassName={
-        viewMode === "list"
-          ? "-translate-y-[2px]"
-          : viewMode === "mini"
-            ? "-translate-y-[4px]"
-            : "-translate-y-[4px]"
-      }
-    />
+    <DemoAvatarOverlay viewMode={viewMode} />
   ) : null;
 
   // ============ LIST VIEW ============

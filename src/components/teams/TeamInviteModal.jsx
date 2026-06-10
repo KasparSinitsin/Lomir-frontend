@@ -22,6 +22,7 @@ import CardMetaRow from "../common/CardMetaRow";
 import RoleBadgePill from "../common/RoleBadgePill";
 import Tooltip from "../common/Tooltip";
 import DemoAvatarOverlay from "../users/DemoAvatarOverlay";
+import UserAvatar from "../users/UserAvatar";
 import UserDetailsModal from "../users/UserDetailsModal";
 import TeamDetailsModal from "../teams/TeamDetailsModal";
 import TeamInvitesModal from "../teams/TeamInvitesModal";
@@ -31,7 +32,6 @@ import {
   DEMO_PROFILE_TOOLTIP,
   DEMO_ROLE_TOOLTIP,
   DEMO_TEAM_TOOLTIP,
-  getUserInitials,
   isSyntheticUser,
   isSyntheticRole,
   isSyntheticTeam,
@@ -1442,44 +1442,16 @@ const TeamInviteModal = ({
           {/* Invitee info */}
           <div className="flex items-start space-x-3 mb-3">
             <Tooltip content="View profile" position="bottom" wrapperClassName="block">
-              <div
-                className="avatar cursor-pointer hover:opacity-80 transition-opacity"
+              <UserAvatar
+                user={inviteeUser}
+                sizeClass="w-12 h-12"
+                clickable
                 onClick={() => handleUserClick(inviteeId)}
-              >
-                <div className="w-12 h-12 rounded-full relative overflow-hidden">
-                  {inviteeAvatar ? (
-                    <img
-                      src={inviteeAvatar}
-                      alt={getUsername()}
-                      className="object-cover w-full h-full rounded-full"
-                      onError={(e) => {
-                        e.target.style.display = "none";
-                        const fallback =
-                          e.target.parentElement.querySelector(
-                            ".avatar-fallback"
-                          );
-                        if (fallback) fallback.style.display = "flex";
-                      }}
-                    />
-                  ) : null}
-                  <div
-                    className="avatar-fallback bg-[var(--color-primary-focus)] text-primary-content flex items-center justify-center w-full h-full rounded-full absolute inset-0"
-                    style={{
-                      display: inviteeAvatar ? "none" : "flex",
-                    }}
-                  >
-                    <span className="text-lg font-medium">
-                      {getUserInitials(inviteeUser)}
-                    </span>
-                  </div>
-                  {showInviteeDemoProfile && (
-                    <DemoAvatarOverlay
-                      textClassName="text-[8px]"
-                      textTranslateClassName="-translate-y-[3px]"
-                    />
-                  )}
-                </div>
-              </div>
+                title="View profile"
+                showDemoOverlay={showInviteeDemoProfile}
+                demoOverlayTextClassName="text-[8px]"
+                demoOverlayTextTranslateClassName="-translate-y-[3px]"
+              />
             </Tooltip>
 
             <div className="flex-1 min-w-0">

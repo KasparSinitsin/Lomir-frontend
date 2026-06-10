@@ -39,6 +39,7 @@ import {
   isSyntheticUser,
 } from "../../utils/userHelpers";
 import DemoAvatarOverlay from "../users/DemoAvatarOverlay";
+import UserAvatar from "../users/UserAvatar";
 import { resolveFilledRoleUser } from "../../utils/vacantRoleUtils";
 import {
   getMatchTier,
@@ -999,34 +1000,10 @@ const VacantRoleCard = ({
     />
   );
   const demoAvatarOverlay = isSyntheticRole(role) ? (
-    <DemoAvatarOverlay
-      textClassName={
-        viewMode === "list"
-          ? "text-[5px]"
-          : viewMode === "mini"
-            ? "text-[9px]"
-            : "text-[10px]"
-      }
-      textTranslateClassName={
-        viewMode === "list"
-          ? "-translate-y-[2px]"
-          : viewMode === "mini"
-            ? "-translate-y-[4px]"
-            : "-translate-y-[4px]"
-      }
-    />
+    <DemoAvatarOverlay viewMode={viewMode} />
   ) : null;
   const compactDemoAvatarOverlay = isSyntheticRole(role) ? (
-    <DemoAvatarOverlay
-      textClassName={isMiniView ? "text-[6px]" : "text-[7px]"}
-      textTranslateClassName="-translate-y-[3px]"
-    />
-  ) : null;
-  const compactFilledUserDemoAvatarOverlay = isSyntheticUser(filledUser) ? (
-    <DemoAvatarOverlay
-      textClassName={isMiniView ? "text-[6px]" : "text-[7px]"}
-      textTranslateClassName="-translate-y-[3px]"
-    />
+    <DemoAvatarOverlay viewMode={isMiniView ? "compact-mini" : "compact"} />
   ) : null;
 
   if (viewMode === "list") {
@@ -1283,32 +1260,15 @@ const VacantRoleCard = ({
         } ${notificationHighlight ? "role-card-highlight" : ""}`}
       >
         {isFilled && filledUser ? (
-            <div className="avatar">
-              <div className={`${avatarSizeClass} rounded-full relative overflow-hidden`}>
-                {filledUserAvatarUrl ? (
-                  <img
-                    src={filledUserAvatarUrl}
-                    alt={filledUserDisplayName || "Filled role"}
-                    className="object-cover w-full h-full rounded-full"
-                    onError={(e) => {
-                      e.target.style.display = "none";
-                      const fallback =
-                        e.target.parentElement.querySelector(".avatar-fallback");
-                      if (fallback) fallback.style.display = "flex";
-                    }}
-                  />
-                ) : null}
-                <div
-                  className="avatar-fallback bg-[var(--color-primary-focus)] text-white flex items-center justify-center w-full h-full rounded-full absolute inset-0"
-                  style={{ display: filledUserAvatarUrl ? "none" : "flex" }}
-                >
-                  <span className={`${avatarTextClass} font-medium`}>
-                    {getUserInitials(filledUser)}
-                  </span>
-                </div>
-                {compactFilledUserDemoAvatarOverlay ?? compactDemoAvatarOverlay}
-                {miniMatchOverlay}
-              </div>
+            <div className="relative">
+              <UserAvatar
+                user={filledUser}
+                sizeClass={avatarSizeClass}
+                showDemoOverlay={isSyntheticUser(filledUser)}
+                demoOverlayTextClassName={isMiniView ? "text-[6px]" : "text-[7px]"}
+                demoOverlayTextTranslateClassName="-translate-y-[3px]"
+              />
+              {miniMatchOverlay}
             </div>
           ) : hasMatchScore && !isMiniView ? (
             <Tooltip content={getMatchTooltip()}>

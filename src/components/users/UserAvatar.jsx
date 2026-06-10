@@ -18,6 +18,7 @@ const UserAvatar = ({
   title,
   iconSize = 12,
   initialsClassName = "text-[10px] font-medium",
+  fallbackText,
   showDemoOverlay = false,
   demoOverlayTextClassName = "text-[7px]",
   demoOverlayTextTranslateClassName = "-translate-y-[2px]",
@@ -63,7 +64,9 @@ const UserAvatar = ({
           {isFormerUser ? (
             <User size={iconSize} />
           ) : (
-            <span className={initialsClassName}>{getUserInitials(user)}</span>
+            <span className={initialsClassName}>
+              {fallbackText ?? getUserInitials(user)}
+            </span>
           )}
         </div>
 

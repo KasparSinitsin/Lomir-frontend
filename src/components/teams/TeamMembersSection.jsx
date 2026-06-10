@@ -15,7 +15,7 @@ import { formatDisplayName } from "../../utils/nameFormatters";
 import CardMetaItem from "../common/CardMetaItem";
 import CardMetaRow from "../common/CardMetaRow";
 import Tooltip from "../common/Tooltip";
-import DemoAvatarOverlay from "../users/DemoAvatarOverlay";
+import UserAvatar from "../users/UserAvatar";
 import { DEMO_PROFILE_TOOLTIP, isSyntheticUser } from "../../utils/userHelpers";
 
 const getTeamMemberId = (member) =>
@@ -172,36 +172,14 @@ const TeamMembersSection = ({
               key={memberId}
               className="flex items-start bg-green-50 rounded-xl shadow p-4 gap-4 transition-all duration-200 hover:bg-green-100 hover:shadow-md"
             >
-              <div className="avatar">
-                <div className="rounded-full w-14 h-14 relative overflow-hidden">
-                  {memberAvatarUrl ? (
-                    <img
-                      src={memberAvatarUrl}
-                      alt={member.username}
-                      className="object-cover w-full h-full rounded-full"
-                      onError={(e) => {
-                        e.target.style.display = "none";
-                        const fallback =
-                          e.target.parentElement.querySelector(
-                            ".avatar-fallback",
-                          );
-                        if (fallback) fallback.style.display = "flex";
-                      }}
-                    />
-                  ) : null}
-                  <div
-                    className="avatar-fallback placeholder bg-[var(--color-primary-focus)] text-primary-content rounded-full w-full h-full absolute inset-0 flex items-center justify-center"
-                    style={{ display: memberAvatarUrl ? "none" : "flex" }}
-                  >
-                    <span className="text-xl">
-                      {anonymize ? "PP" : getMemberInitials(member)}
-                    </span>
-                  </div>
-                  {showDemoAvatarOverlay && (
-                    <DemoAvatarOverlay textClassName="text-[8px]" />
-                  )}
-                </div>
-              </div>
+              <UserAvatar
+                user={member}
+                sizeClass="w-14 h-14"
+                showDemoOverlay={showDemoAvatarOverlay}
+                demoOverlayTextClassName="text-[8px]"
+                fallbackText={anonymize ? "PP" : undefined}
+                initialsClassName="text-xl"
+              />
 
               <div className="flex-1 min-w-0 pt-[1px]">
                 <div className="flex flex-col">
