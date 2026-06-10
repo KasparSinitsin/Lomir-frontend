@@ -26,7 +26,11 @@ import SearchResultTypeOverlay from "../common/SearchResultTypeOverlay";
 import MatchScoreOverlay from "../common/MatchScoreOverlay";
 import { getMatchTier } from "../../utils/matchScoreUtils";
 import { getResultMatchScore } from "../../utils/teamMatchUtils";
-import { formatLocation, normalizeLocationData } from "../../utils/locationUtils";
+import {
+  formatListLocation,
+  formatLocation,
+  normalizeLocationData,
+} from "../../utils/locationUtils";
 
 /**
  * UserCard Component
@@ -227,12 +231,10 @@ const UserCard = ({
 
   // ============ LIST VIEW ============
   if (viewMode === "list") {
-    const listLocationText = user.is_remote || user.isRemote
-      ? "Remote"
-      : [userLocation.city, userLocation.countryName].filter(Boolean).join(", ");
-    const listLocationTextShort = user.is_remote || user.isRemote
-      ? "Remote"
-      : ([userLocation.city, userLocation.countryCode].filter(Boolean).join(", ") || listLocationText);
+    const { short: listLocationTextShort, full: listLocationText } =
+      formatListLocation(user, {
+        isRemote: user.is_remote || user.isRemote,
+      });
 
     const distance = user.distanceKm ?? user.distance_km;
     const showDistance = distance != null && distance < 999999 && !(user.is_remote || user.isRemote);

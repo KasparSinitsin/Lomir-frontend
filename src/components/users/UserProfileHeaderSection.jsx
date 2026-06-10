@@ -14,7 +14,7 @@ import {
 } from "../../utils/userHelpers";
 import DemoAvatarOverlay from "./DemoAvatarOverlay";
 import { getMatchTier } from "../../utils/matchScoreUtils";
-import { getCountryCode, normalizeLocationData } from "../../utils/locationUtils";
+import { formatListLocation, normalizeLocationData } from "../../utils/locationUtils";
 import { format } from "date-fns";
 
 /**
@@ -102,9 +102,8 @@ const UserProfileHeaderSection = ({
 
   const displayName = getDisplayName();
   const location = normalizeLocationData(user);
-  const countryCode = getCountryCode(location.country);
   const headerLocationText = location.hasLocation
-    ? [location.city, countryCode || location.country].filter(Boolean).join(", ")
+    ? formatListLocation(user, { isRemote: location.isRemote }).short
     : "";
 
   useLayoutEffect(() => {

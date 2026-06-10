@@ -738,6 +738,30 @@ export const formatLocation = (locationData, options = {}) => {
 };
 
 /**
+ * Format location for list-style display.
+ *
+ * Returns a compact short string (city, country code) and a full string
+ * (city, country name) while preserving the existing "Remote" behavior.
+ *
+ * @param {Object} entity - Entity with location fields (raw or normalized)
+ * @param {Object} options
+ * @param {boolean} options.isRemote - Whether the entity is remote
+ * @returns {{ short: string, full: string }} Short and full location strings
+ */
+export const formatListLocation = (entity, { isRemote = false } = {}) => {
+  if (isRemote) {
+    return { short: "Remote", full: "Remote" };
+  }
+
+  const normalized = normalizeLocationData(entity);
+  const full = [normalized.city, normalized.countryName].filter(Boolean).join(", ");
+  const short =
+    [normalized.city, normalized.countryCode].filter(Boolean).join(", ") || full;
+
+  return { short, full };
+};
+
+/**
  * Check if location data has changed between two objects
  * Used to determine if geocoding is needed
  *

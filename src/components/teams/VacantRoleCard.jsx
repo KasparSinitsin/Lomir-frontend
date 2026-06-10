@@ -52,6 +52,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { format } from "date-fns";
 import { formatDisplayName } from "../../utils/nameFormatters";
 import {
+  formatListLocation,
   formatLocation,
   normalizeLocationData,
 } from "../../utils/locationUtils";
@@ -998,10 +999,10 @@ const VacantRoleCard = ({
 
   if (viewMode === "list") {
     const roundedDistanceKm = showDistance ? Math.round(rawDistanceKm) : null;
-    const roleLocationNorm = normalizeLocationData(role);
-    const locationTextShort = is_remote
-      ? "Remote"
-      : ([roleLocationNorm.city, roleLocationNorm.countryCode].filter(Boolean).join(", ") || locationText);
+    const { short: locationTextShort, full: locationText } = formatListLocation(
+      role,
+      { isRemote: is_remote },
+    );
     const visibleTags = tagNames.slice(0, 3);
     const remainingTagCount = tagNames.length - visibleTags.length;
     const tagsSummary =

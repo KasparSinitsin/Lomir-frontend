@@ -43,7 +43,11 @@ import { format } from "date-fns";
 import LocationDistanceTagsRow from "../common/LocationDistanceTagsRow";
 import { getMatchTier } from "../../utils/matchScoreUtils";
 import { getResultMatchScore } from "../../utils/teamMatchUtils";
-import { calculateDistanceKm, normalizeLocationData } from "../../utils/locationUtils";
+import {
+  calculateDistanceKm,
+  formatListLocation,
+  normalizeLocationData,
+} from "../../utils/locationUtils";
 import {
   extractListPayload,
   extractProfilePayload,
@@ -2295,15 +2299,10 @@ const TeamCard = ({
   // ============ LIST VIEW ============
 
   if (viewMode === "list") {
-    const teamLocation = normalizeLocationData(teamData);
-    const locationText =
-      teamData.is_remote || teamData.isRemote
-        ? "Remote"
-        : [teamData.city, teamLocation.countryName].filter(Boolean).join(", ");
-    const locationTextShort =
-      teamData.is_remote || teamData.isRemote
-        ? "Remote"
-        : ([teamData.city, teamLocation.countryCode].filter(Boolean).join(", ") || locationText);
+    const { short: locationTextShort, full: locationText } =
+      formatListLocation(teamData, {
+        isRemote: teamData.is_remote || teamData.isRemote,
+      });
     const distance = teamData.distance_km ?? teamData.distanceKm;
     const showDistance =
       !hideDistanceInfo &&

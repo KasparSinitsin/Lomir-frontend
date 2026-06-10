@@ -12,6 +12,7 @@ import RoleBadgeDropdown from "./RoleBadgeDropdown";
 import ScreenAlert from "../common/ScreenAlert";
 import { teamService } from "../../services/teamService";
 import { formatDisplayName } from "../../utils/nameFormatters";
+import { formatListLocation } from "../../utils/locationUtils";
 import CardMetaItem from "../common/CardMetaItem";
 import CardMetaRow from "../common/CardMetaRow";
 import Tooltip from "../common/Tooltip";
@@ -316,11 +317,15 @@ const TeamMembersSection = ({
 
                   {shouldShowMemberMetaRow && (
                     <CardMetaRow>
-                      {!anonymize && (member.city || member.country) && (
-                        <CardMetaItem icon={MapPin}>
-                          {[member.city, member.country].filter(Boolean).join(", ")}
-                        </CardMetaItem>
-                      )}
+                      {!anonymize && (() => {
+                        const memberLocationText = formatListLocation(member, {
+                          isRemote: member.is_remote || member.isRemote,
+                        }).short;
+
+                        return memberLocationText ? (
+                          <CardMetaItem icon={MapPin}>{memberLocationText}</CardMetaItem>
+                        ) : null;
+                      })()}
 
                       {!anonymize && member.distance_km != null && (
                         <CardMetaItem icon={Ruler} tone="muted" nowrap>
