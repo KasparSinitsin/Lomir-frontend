@@ -2019,7 +2019,7 @@ const VacantRoleDetailsModal = ({
               )}
 
               {(rolePostedDate || isSyntheticRole(displayRole)) && (
-                <span className="flex items-center gap-3 flex-shrink-0">
+                <span className="flex items-center gap-1.5 flex-shrink-0">
                   {rolePostedDate && (
                     <Tooltip
                       content={`${rolePostedDate.label} ${rolePostedDate.full}`}
