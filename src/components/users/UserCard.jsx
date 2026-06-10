@@ -393,12 +393,12 @@ const UserCard = ({
       }
       headerClassName={
         viewMode === "mini"
-          ? `!p-4 sm:!p-5 ${activeFilters.showLocation || activeFilters.showTags || activeFilters.showBadges ? "!pb-4" : "!pb-0"}`
+          ? "!p-4 sm:!p-5 !pb-4 sm:!pb-5"
           : ""
       }
       imageWrapperClassName={viewMode === "mini" ? "mb-0 pb-0" : ""}
       titleClassName={
-        viewMode === "mini" ? "text-base mb-0.5 leading-[110%]" : ""
+        viewMode === "mini" ? "text-base mb-0 leading-[110%]" : ""
       }
       marginClassName="mb-0"
       imageOverlay={avatarOverlay}

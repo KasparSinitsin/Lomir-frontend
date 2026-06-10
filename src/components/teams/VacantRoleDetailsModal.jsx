@@ -25,6 +25,7 @@ import {
   XCircle,
   CheckCircle,
   PenLine,
+  Minus,
 } from "lucide-react";
 import Modal from "../common/Modal";
 import {
@@ -1250,9 +1251,15 @@ const VacantRoleDetailsModal = ({
     comparisonUserId != null &&
     currentUser?.id != null &&
     String(comparisonUserId) === String(currentUser.id);
-  const comparisonShortName = isComparisonSelf
-    ? null
-    : comparisonFirstName || comparisonDisplayName;
+  const comparisonShortName = (() => {
+    if (isComparisonSelf) return null;
+
+    const firstName = comparisonFirstName?.trim().split(/\s+/)[0];
+    if (firstName) return firstName;
+
+    const fallbackName = comparisonDisplayName?.trim();
+    return fallbackName ? fallbackName.split(/\s+/)[0] : null;
+  })();
   const comparisonPossessive = toPossessive(comparisonShortName);
   const filledRoleUser = isFilledRole
     ? comparisonUser || resolvedFilledUser
@@ -1415,6 +1422,7 @@ const VacantRoleDetailsModal = ({
       showPostalCode: true,
       showState: true,
       showCountry: true,
+      showCountryCode: false,
     }) || null;
   };
 
@@ -1428,6 +1436,7 @@ const VacantRoleDetailsModal = ({
     const locationLabel = formatLocation(normalizeLocationData(person), {
       displayType: "short",
       showCountry: true,
+      showCountryCode: false,
     });
 
     if (locationLabel) return locationLabel;
@@ -2193,14 +2202,14 @@ const VacantRoleDetailsModal = ({
 
         {locationText && (
           <div>
-            <div className="flex items-start gap-2 mb-2">
+            <div className="flex items-start gap-2 mb-1">
               {isRemote ? (
                 <Globe size={18} className="mt-0.5 text-primary flex-shrink-0" />
               ) : (
                 <MapPin size={18} className="mt-0.5 text-primary flex-shrink-0" />
               )}
-              <div className="min-w-0 flex-1 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
-                <h3 className="font-medium leading-5">
+              <div className="min-w-0 flex-1 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-x-3 gap-y-0.5">
+                <h3 className="font-medium leading-[1.1]">
                   <span className="sm:hidden">Location</span>
                   <span className="hidden sm:inline">Location Preference</span>
                 </h3>
@@ -2234,7 +2243,24 @@ const VacantRoleDetailsModal = ({
                       status = (
                         <span className="flex items-center gap-1.5 text-sm text-slate-500">
                           <X size={14} className="flex-shrink-0" />
-                          <span>{locationMismatchText}</span>
+                          <span className="leading-[1.1]">{locationMismatchText}</span>
+                        </span>
+                      );
+                    }
+                  } else if (comparisonUser) {
+                    const userHasLocation = normalizeLocationData(comparisonUser).hasLocation;
+                    if (!userHasLocation) {
+                      status = (
+                        <span className="flex items-center gap-1.5 text-sm text-slate-500">
+                          <X size={14} className="flex-shrink-0" />
+                          <span className="leading-[1.1]">No location set</span>
+                        </span>
+                      );
+                    } else {
+                      status = (
+                        <span className="flex items-center gap-1.5 text-sm text-slate-500">
+                          <Minus size={14} className="flex-shrink-0" />
+                          <span className="leading-[1.1]">Location not compared</span>
                         </span>
                       );
                     }
@@ -2242,16 +2268,12 @@ const VacantRoleDetailsModal = ({
 
                   if (!status) return null;
 
-                  return (
-                    <div className="flex items-center justify-end gap-2 text-right whitespace-nowrap">
-                      {status}
-                    </div>
-                  );
+                  return <div className="shrink-0">{status}</div>;
                 })()}
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-base-content/70">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm text-base-content/70">
               <span className="min-w-0">{locationText}</span>
               {!isRemote && maxDistanceKm && (
                 <span className="flex items-center gap-1 text-base-content/50 whitespace-nowrap">
@@ -2268,43 +2290,43 @@ const VacantRoleDetailsModal = ({
 
         {/* Desired Focus Areas */}
         <div>
-          <div className="flex items-start justify-between gap-3 mb-2">
-            <div className="flex items-start gap-2 min-w-0">
-              <Tag size={18} className="mt-0.5 text-primary flex-shrink-0" />
-              <h3 className="font-medium leading-5">
+          <div className="flex items-start gap-2 mb-2">
+            <Tag size={18} className="mt-0.5 text-primary flex-shrink-0" />
+            <div className="min-w-0 flex-1 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-x-3 gap-y-0.5">
+              <h3 className="font-medium leading-[1.1]">
                 <span className="sm:hidden">Focus Areas</span>
                 <span className="hidden sm:inline">Desired Focus Areas</span>
               </h3>
-            </div>
-            {shouldShowComparisonSummary && tags.length > 0 && (() => {
-              const matchCount = tags.filter((t) => {
-                const tagId = Number(t.tagId ?? t.tag_id ?? t.id);
-                return userTagMap.has(tagId);
-              }).length;
-              const total = tags.length;
-              if (matchCount > 0) {
-                const MatchIcon = matchCount === total ? CheckCheck : Check;
-                const compactLabel =
-                  matchCount === total
-                    ? "All in common"
-                    : `${matchCount}/${total} in common`;
-                return (
-                  <span className="flex items-center gap-1.5 text-sm text-success">
-                    <MatchIcon size={14} className="flex-shrink-0" />
-                    <span className="sm:hidden">{compactLabel}</span>
-                    <span className="hidden sm:inline">
-                      {matchCount}/{total} in common{summarySuffix}
+              {shouldShowComparisonSummary && tags.length > 0 && (() => {
+                const matchCount = tags.filter((t) => {
+                  const tagId = Number(t.tagId ?? t.tag_id ?? t.id);
+                  return userTagMap.has(tagId);
+                }).length;
+                const total = tags.length;
+                if (matchCount > 0) {
+                  const MatchIcon = matchCount === total ? CheckCheck : Check;
+                  const compactLabel =
+                    matchCount === total
+                      ? "All matching"
+                      : `${matchCount}/${total} matching`;
+                  return (
+                    <span className="flex items-center gap-1.5 text-sm text-success shrink-0">
+                      <MatchIcon size={14} className="flex-shrink-0" />
+                      <span className="break-words sm:hidden">{compactLabel}{summarySuffix}</span>
+                      <span className="hidden break-words sm:inline">
+                        {matchCount}/{total} matching{summarySuffix}
+                      </span>
                     </span>
+                  );
+                }
+                return (
+                  <span className="flex items-center gap-1.5 text-sm text-slate-500 shrink-0">
+                    <X size={14} className="flex-shrink-0" />
+                    <span className="leading-[1.1]">None matching{summarySuffix}</span>
                   </span>
                 );
-              }
-              return (
-                <span className="flex items-center gap-1.5 text-sm text-slate-500">
-                  <X size={14} className="flex-shrink-0" />
-                  <span>None in common{summarySuffix}</span>
-                </span>
-              );
-            })()}
+              })()}
+            </div>
           </div>
 
           {tags.length > 0 ? (
@@ -2409,43 +2431,43 @@ const VacantRoleDetailsModal = ({
 
         {/* Desired Badges */}
         <div>
-          <div className="flex items-start justify-between gap-3 mb-2">
-            <div className="flex items-start gap-2 min-w-0">
-              <Award size={18} className="mt-0.5 text-primary flex-shrink-0" />
-              <h3 className="font-medium leading-5">
+          <div className="flex items-start gap-2 mb-2">
+            <Award size={18} className="mt-0.5 text-primary flex-shrink-0" />
+            <div className="min-w-0 flex-1 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-x-3 gap-y-0.5">
+              <h3 className="font-medium leading-[1.1]">
                 <span className="sm:hidden">Badges</span>
                 <span className="hidden sm:inline">Desired Badges</span>
               </h3>
-            </div>
-            {shouldShowComparisonSummary && badges.length > 0 && (() => {
-              const matchCount = badges.filter((b) => {
-                const badgeKey = (b.name ?? b.badgeName ?? b.badge_name ?? "").trim().toLowerCase();
-                return userBadgeMap.has(badgeKey);
-              }).length;
-              const total = badges.length;
-              if (matchCount > 0) {
-                const MatchIcon = matchCount === total ? CheckCheck : Check;
-                const compactLabel =
-                  matchCount === total
-                    ? "All in common"
-                    : `${matchCount}/${total} in common`;
-                return (
-                  <span className="flex items-center gap-1.5 text-sm text-success">
-                    <MatchIcon size={14} className="flex-shrink-0" />
-                    <span className="sm:hidden">{compactLabel}</span>
-                    <span className="hidden sm:inline">
-                      {matchCount}/{total} in common{summarySuffix}
+              {shouldShowComparisonSummary && badges.length > 0 && (() => {
+                const matchCount = badges.filter((b) => {
+                  const badgeKey = (b.name ?? b.badgeName ?? b.badge_name ?? "").trim().toLowerCase();
+                  return userBadgeMap.has(badgeKey);
+                }).length;
+                const total = badges.length;
+                if (matchCount > 0) {
+                  const MatchIcon = matchCount === total ? CheckCheck : Check;
+                  const compactLabel =
+                    matchCount === total
+                      ? "All matching"
+                      : `${matchCount}/${total} matching`;
+                  return (
+                    <span className="flex items-center gap-1.5 text-sm text-success shrink-0">
+                      <MatchIcon size={14} className="flex-shrink-0" />
+                      <span className="break-words sm:hidden">{compactLabel}{summarySuffix}</span>
+                      <span className="hidden break-words sm:inline">
+                        {matchCount}/{total} matching{summarySuffix}
+                      </span>
                     </span>
+                  );
+                }
+                return (
+                  <span className="flex items-center gap-1.5 text-sm text-slate-500 shrink-0">
+                    <X size={14} className="flex-shrink-0" />
+                    <span className="leading-[1.1]">None matching{summarySuffix}</span>
                   </span>
                 );
-              }
-              return (
-                <span className="flex items-center gap-1.5 text-sm text-slate-500">
-                  <X size={14} className="flex-shrink-0" />
-                  <span>None in common{summarySuffix}</span>
-                </span>
-              );
-            })()}
+              })()}
+            </div>
           </div>
 
           {badges.length > 0 ? (

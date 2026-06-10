@@ -1127,12 +1127,12 @@ const VacantRoleCard = ({
           }
           headerClassName={
             viewMode === "mini"
-              ? `!p-4 sm:!p-5 ${miniHasContent ? "!pb-4" : "!pb-0"}`
+              ? "!p-4 sm:!p-5 !pb-4 sm:!pb-5"
               : ""
           }
           imageWrapperClassName={viewMode === "mini" ? "mb-0 pb-0" : ""}
           titleClassName={
-            viewMode === "mini" ? "text-base mb-0.5 leading-[110%]" : ""
+            viewMode === "mini" ? "text-base mb-0 leading-[110%]" : ""
           }
           marginClassName="mb-0"
           imageOverlay={
@@ -1177,7 +1177,7 @@ const VacantRoleCard = ({
               }`}
             >
               <Users
-                size={viewMode === "mini" ? 12 : 16}
+                size={viewMode === "mini" ? 10 : 13}
                 className="mr-1 flex-shrink-0 mt-0.5"
               />
               <span className="min-w-0 whitespace-normal break-words">

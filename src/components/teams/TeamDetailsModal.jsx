@@ -1941,6 +1941,7 @@ on ${format(new Date((effectivePendingInvitation.createdAt ?? effectivePendingIn
                     entityType="team"
                     distance={showHighlightsForContext ? effectiveTeamDistanceKm : null}
                     showDefaultHeaderRight={showHighlightsForContext}
+                    showCountryCode={false}
                   />
 
                   {/* Team Focus Areas */}
@@ -1970,14 +1971,14 @@ on ${format(new Date((effectivePendingInvitation.createdAt ?? effectivePendingIn
                           return (
                             <span className="flex items-center gap-1.5 text-sm text-success">
                               <MatchIcon size={14} className="flex-shrink-0" />
-                              <span>{matchCount}/{total} in common</span>
+                              <span>{matchCount}/{total} matching</span>
                             </span>
                           );
                         }
                         return (
                           <span className="flex items-center gap-1.5 text-sm text-slate-500">
                             <X size={14} className="flex-shrink-0" />
-                            <span>None in common</span>
+                            <span className="leading-[1.1]">None matching</span>
                           </span>
                         );
                       })() : null}
@@ -2007,14 +2008,14 @@ on ${format(new Date((effectivePendingInvitation.createdAt ?? effectivePendingIn
                           return (
                             <span className="flex items-center gap-1.5 text-sm text-success">
                               <MatchIcon size={14} className="flex-shrink-0" />
-                              <span>{matchCount}/{total} in common</span>
+                              <span>{matchCount}/{total} matching</span>
                             </span>
                           );
                         }
                         return (
                           <span className="flex items-center gap-1.5 text-sm text-slate-500">
                             <X size={14} className="flex-shrink-0" />
-                            <span>None in common</span>
+                            <span className="leading-[1.1]">None matching</span>
                           </span>
                         );
                       })() : null}

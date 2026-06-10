@@ -2786,10 +2786,10 @@ const TeamCard = ({
                     />
                   </span>
                 ) : (
-                  <span className="flex items-center gap-1">
+                  <span className="flex items-start gap-1">
                     <UserSearch
                       size={viewMode === "mini" ? 10 : 13}
-                      className="text-orange-500 flex-shrink-0"
+                      className="text-orange-500 flex-shrink-0 mt-0.5"
                     />
                     <span className="leading-[1.05]">{teamInvitationRoleName}</span>
                   </span>
@@ -2828,10 +2828,10 @@ const TeamCard = ({
                     />
                   </span>
                 ) : (
-                  <span className="flex items-center gap-1">
+                  <span className="flex items-start gap-1">
                     <UserSearch
                       size={viewMode === "mini" ? 10 : 13}
-                      className="text-orange-500 flex-shrink-0"
+                      className="text-orange-500 flex-shrink-0 mt-0.5"
                     />
                     <span className="leading-[1.05]">{teamApplicationRoleName}</span>
                   </span>
@@ -2857,7 +2857,7 @@ const TeamCard = ({
                   </span>
                 ) : (
                   <span
-                    className="flex items-center gap-1 cursor-pointer"
+                    className="flex items-start gap-1 cursor-pointer"
                     onClick={(e) => {
                       e.stopPropagation();
                       setIsModalOpen(true);
@@ -2865,7 +2865,7 @@ const TeamCard = ({
                   >
                     <Users
                       size={viewMode === "mini" ? 10 : 13}
-                      className="text-primary flex-shrink-0"
+                      className="text-primary flex-shrink-0 mt-0.5"
                     />
                     <span className="leading-[1.05]">{teamData._teamName}</span>
                   </span>
@@ -3021,12 +3021,12 @@ const TeamCard = ({
         }
         headerClassName={
           viewMode === "mini"
-            ? `!p-4 sm:!p-5 ${activeFilters.showLocation || activeFilters.showTags || activeFilters.showBadges ? "!pb-4" : "!pb-0"}`
+            ? "!p-4 sm:!p-5 !pb-4 sm:!pb-5"
             : ""
         }
         imageWrapperClassName={viewMode === "mini" ? "mb-0 pb-0" : ""}
         titleClassName={
-          viewMode === "mini" ? "text-base mb-0.5 leading-[110%]" : ""
+          viewMode === "mini" ? "text-base mb-0 leading-[110%]" : ""
         }
         marginClassName="mb-0"
         imageOverlay={avatarOverlay}
