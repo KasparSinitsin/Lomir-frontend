@@ -37,6 +37,7 @@ import Alert from "../common/Alert";
 import ConfirmModal from "../common/ConfirmModal";
 import NotificationBadge from "../common/NotificationBadge";
 import SearchResultTypeOverlay from "../common/SearchResultTypeOverlay";
+import MatchScoreOverlay from "../common/MatchScoreOverlay";
 import TeamApplicationsModal from "./TeamApplicationsModal";
 import { format } from "date-fns";
 import LocationDistanceTagsRow from "../common/LocationDistanceTagsRow";
@@ -2257,15 +2258,13 @@ const TeamCard = ({
       );
     } else {
       matchOverlay = (
-        <div
-          className={`absolute -top-0.5 -left-0.5 rounded-full ring-2 ring-white flex items-center justify-center ${matchTier.bg} ${viewMode === "list" ? "w-[14px] h-[14px]" : "w-5 h-5"}`}
-        >
-          <matchTier.Icon
-            size={viewMode === "list" ? 7 : 10}
-            className="text-white"
-            strokeWidth={2.5}
-          />
-        </div>
+        <MatchScoreOverlay
+          matchTier={matchTier}
+          tooltipText={matchTooltipText}
+          sizeClassName={viewMode === "list" ? "w-[14px] h-[14px]" : "w-5 h-5"}
+          iconSize={viewMode === "list" ? 7 : 10}
+          positionClassName="absolute -top-0.5 -left-0.5 z-10"
+        />
       );
     }
   }

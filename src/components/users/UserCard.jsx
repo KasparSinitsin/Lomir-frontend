@@ -23,6 +23,7 @@ import {
 import DemoAvatarOverlay from "./DemoAvatarOverlay";
 import LocationDistanceTagsRow from "../common/LocationDistanceTagsRow";
 import SearchResultTypeOverlay from "../common/SearchResultTypeOverlay";
+import MatchScoreOverlay from "../common/MatchScoreOverlay";
 import { getMatchTier } from "../../utils/matchScoreUtils";
 import { getResultMatchScore } from "../../utils/teamMatchUtils";
 import { formatLocation, normalizeLocationData } from "../../utils/locationUtils";
@@ -189,11 +190,13 @@ const UserCard = ({
     const badgeIconSize =
       viewMode === "list" ? 7 : 10;
     matchOverlay = (
-      <div
-        className={`absolute -top-0.5 -left-0.5 rounded-full ring-2 ring-white flex items-center justify-center ${matchTier.bg} ${badgeSize}`}
-      >
-        <matchTier.Icon size={badgeIconSize} className="text-white" strokeWidth={2.5} />
-      </div>
+      <MatchScoreOverlay
+        matchTier={matchTier}
+        tooltipText={matchTooltipText}
+        sizeClassName={badgeSize}
+        iconSize={badgeIconSize}
+        positionClassName="absolute -top-0.5 -left-0.5 z-10"
+      />
     );
   }
 

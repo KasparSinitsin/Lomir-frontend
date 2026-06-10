@@ -29,6 +29,7 @@ import CardMetaItem from "../common/CardMetaItem";
 import CardMetaRow from "../common/CardMetaRow";
 import LocationDistanceTagsRow from "../common/LocationDistanceTagsRow";
 import SearchResultTypeOverlay from "../common/SearchResultTypeOverlay";
+import MatchScoreOverlay from "../common/MatchScoreOverlay";
 import Tooltip from "../common/Tooltip";
 import {
   DEMO_PROFILE_TOOLTIP,
@@ -900,26 +901,15 @@ const VacantRoleCard = ({
     if (!matchTier) return null;
 
     return (
-      <Tooltip content={getMatchTooltip()}>
-        <div
-          aria-label={getMatchTooltip()}
-          className="absolute -top-0.5 -left-0.5 z-10 rounded-full ring-2 ring-white flex items-center justify-center text-white"
-          style={{
-            width: `${size}px`,
-            height: `${size}px`,
-          }}
-        >
-          <div
-            className={`w-full h-full rounded-full flex items-center justify-center ${matchTier.bg}`}
-          >
-            <matchTier.Icon
-              size={iconSize}
-              className="text-white"
-              strokeWidth={2.5}
-            />
-          </div>
-        </div>
-      </Tooltip>
+      <MatchScoreOverlay
+        matchTier={matchTier}
+        tooltipText={getMatchTooltip()}
+        iconSize={iconSize}
+        sizeClassName=""
+        className=""
+        positionClassName="absolute -top-0.5 -left-0.5 z-10"
+        style={{ width: `${size}px`, height: `${size}px` }}
+      />
     );
   };
   const searchResultTypeOverlay = showSearchResultTypeOverlay ? (
