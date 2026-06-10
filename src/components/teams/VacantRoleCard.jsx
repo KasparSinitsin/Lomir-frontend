@@ -29,6 +29,7 @@ import CardMetaItem from "../common/CardMetaItem";
 import CardMetaRow from "../common/CardMetaRow";
 import LocationDistanceTagsRow from "../common/LocationDistanceTagsRow";
 import SearchResultTypeOverlay from "../common/SearchResultTypeOverlay";
+import ListViewRow from "../common/ListViewRow";
 import MatchScoreOverlay from "../common/MatchScoreOverlay";
 import Tooltip from "../common/Tooltip";
 import {
@@ -1054,64 +1055,16 @@ const VacantRoleCard = ({
           }
           className={status !== "open" ? "opacity-70" : ""}
         >
-          <div className="flex w-24 flex-shrink-0 items-center gap-3 overflow-hidden sm:w-56">
-            {showDistance && (
-              <div className="hidden w-16 flex-shrink-0 overflow-hidden md:block">
-                <div className="text-xs text-base-content flex items-center gap-1 overflow-hidden">
-                  <Tooltip content={`${roundedDistanceKm} km away from you`}>
-                    <div className="flex items-center gap-1">
-                      <Ruler size={9} className="flex-shrink-0" />
-                      <span className="whitespace-nowrap">
-                        {roundedDistanceKm} km
-                      </span>
-                    </div>
-                  </Tooltip>
-                </div>
-              </div>
-            )}
-            {locationText && (
-              <div className="min-w-0 text-xs text-base-content/60 flex items-center gap-1 overflow-hidden">
-                <Tooltip
-                  content={locationText}
-                  wrapperClassName="flex min-w-0 w-full items-center overflow-hidden"
-                >
-                  <div className="flex min-w-0 w-full items-center gap-1 overflow-hidden">
-                    {is_remote ? (
-                      <Globe size={9} className="flex-shrink-0" />
-                    ) : (
-                      <MapPin size={9} className="flex-shrink-0" />
-                    )}
-                    <span className="min-w-0 flex-1 truncate sm:hidden">{locationTextShort}</span>
-                    <span className="min-w-0 flex-1 truncate hidden sm:block">{locationText}</span>
-                  </div>
-                </Tooltip>
-              </div>
-            )}
-          </div>
-
-          <div className="hidden w-52 flex-shrink-0 text-xs text-base-content/60 lg:flex items-center gap-1 overflow-hidden">
-            {tagsSummary && (
-              <Tooltip
-                content={tagNames.join(", ")}
-                wrapperClassName="flex items-center gap-1 min-w-0 overflow-hidden w-full"
-              >
-                <Tag size={9} className="flex-shrink-0" />
-                <span className="truncate">{tagsSummary}</span>
-              </Tooltip>
-            )}
-          </div>
-
-          <div className="hidden w-48 flex-shrink-0 text-xs text-base-content/60 xl:flex items-center gap-1 overflow-hidden">
-            {badgesSummary && (
-              <Tooltip
-                content={badgeNames.join(", ")}
-                wrapperClassName="flex items-center gap-1 min-w-0 overflow-hidden w-full"
-              >
-                <Award size={9} className="flex-shrink-0" />
-                <span className="truncate">{badgesSummary}</span>
-              </Tooltip>
-            )}
-          </div>
+          <ListViewRow
+            locationText={locationTextShort}
+            locationTooltip={locationText}
+            isRemote={is_remote}
+            distance={showDistance ? roundedDistanceKm : null}
+            tagsSummary={tagsSummary}
+            tagsTooltip={tagNames.join(", ")}
+            badgesSummary={badgesSummary}
+            badgesTooltip={badgeNames.join(", ")}
+          />
         </Card>
         {detailsModal}
       </>
@@ -1121,7 +1074,7 @@ const VacantRoleCard = ({
   if (usesSharedSearchCard) {
     const searchCardSubtitle = (
       <span
-        className={`mt-0.5 flex max-h-[2.75em] overflow-hidden text-base-content/70 leading-snug ${
+        className={`mt-0.5 flex max-h-[2.75em] overflow-hidden text-base-content/70 leading-[110%] ${
           isMiniView
             ? "items-center flex-wrap text-xs gap-x-1 gap-y-px w-full"
             : "items-center flex-wrap text-sm gap-x-1.5 gap-y-px"

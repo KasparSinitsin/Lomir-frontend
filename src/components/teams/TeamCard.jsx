@@ -37,6 +37,7 @@ import Alert from "../common/Alert";
 import ConfirmModal from "../common/ConfirmModal";
 import NotificationBadge from "../common/NotificationBadge";
 import SearchResultTypeOverlay from "../common/SearchResultTypeOverlay";
+import ListViewRow from "../common/ListViewRow";
 import MatchScoreOverlay from "../common/MatchScoreOverlay";
 import TeamApplicationsModal from "./TeamApplicationsModal";
 import { format } from "date-fns";
@@ -2501,69 +2502,22 @@ const TeamCard = ({
           imageInnerOverlay={demoAvatarOverlay}
           listEdgeRounding={!disableListEdgeRounding}
       >
-          <div
-            className={`box-border ${listLocationVisibilityClassName} w-24 flex-shrink-0 items-center gap-3 overflow-hidden sm:w-56 ${listLocationWidthClassName} ${listLocationInsetClassName}`}
-          >
-            {showDistance && (
-              <div className="hidden w-16 flex-shrink-0 overflow-hidden md:block">
-                <div className="text-xs text-base-content flex items-center gap-1 overflow-hidden">
-                  <Tooltip content={`${Math.round(distance)} km away from you`}>
-                    <div className="flex items-center gap-1">
-                      <Ruler size={9} className="flex-shrink-0" />
-                      <span className="whitespace-nowrap">{Math.round(distance)} km</span>
-                    </div>
-                  </Tooltip>
-                </div>
-              </div>
-            )}
-            {locationText && (
-              <div className="min-w-0 text-xs text-base-content/60 flex items-center gap-1 overflow-hidden">
-                <Tooltip
-                  content={locationText}
-                  wrapperClassName="flex min-w-0 w-full items-center overflow-hidden"
-                >
-                  <div className="flex min-w-0 w-full items-center gap-1 overflow-hidden">
-                    {teamData.is_remote || teamData.isRemote ? (
-                      <Globe size={9} className="flex-shrink-0" />
-                    ) : (
-                      <MapPin size={9} className="flex-shrink-0" />
-                    )}
-                    {listLocationShortBreakpoint === "md" ? (
-                      <>
-                        <span className="min-w-0 flex-1 truncate md:hidden">{locationTextShort}</span>
-                        <span className="min-w-0 flex-1 truncate hidden md:block">{locationText}</span>
-                      </>
-                    ) : (
-                      <>
-                        <span className="min-w-0 flex-1 truncate sm:hidden">{locationTextShort}</span>
-                        <span className="min-w-0 flex-1 truncate hidden sm:block">{locationText}</span>
-                      </>
-                    )}
-                  </div>
-                </Tooltip>
-              </div>
-            )}
-          </div>
-          <div
-            className={`hidden w-52 flex-shrink-0 text-xs text-base-content/60 lg:flex items-center gap-1 overflow-hidden ${listTagsWidthClassName}`}
-          >
-            {tagsSummary && (
-              <Tooltip content={tagNames.join(", ")} wrapperClassName="flex items-center gap-1 min-w-0 overflow-hidden w-full">
-                <Tag size={9} className="flex-shrink-0" />
-                <span className="truncate">{tagsSummary}</span>
-              </Tooltip>
-            )}
-          </div>
-          <div
-            className={`hidden w-48 flex-shrink-0 text-xs text-base-content/60 xl:flex items-center gap-1 overflow-hidden ${listBadgesWidthClassName}`}
-          >
-            {badgesSummary && (
-              <Tooltip content={badgeNames.join(", ")} wrapperClassName="flex items-center gap-1 min-w-0 overflow-hidden w-full">
-                <Award size={9} className="flex-shrink-0" />
-                <span className="truncate">{badgesSummary}</span>
-              </Tooltip>
-            )}
-          </div>
+          <ListViewRow
+            locationText={locationTextShort}
+            locationTooltip={locationText}
+            isRemote={teamData.is_remote || teamData.isRemote}
+            distance={showDistance ? Math.round(distance) : null}
+            tagsSummary={tagsSummary}
+            tagsTooltip={tagNames.join(", ")}
+            badgesSummary={badgesSummary}
+            badgesTooltip={badgeNames.join(", ")}
+            locationVisibilityClassName={listLocationVisibilityClassName}
+            locationWidthClassName={listLocationWidthClassName}
+            locationInsetClassName={listLocationInsetClassName}
+            tagsWidthClassName={listTagsWidthClassName}
+            badgesWidthClassName={listBadgesWidthClassName}
+            locationBreakpoint={listLocationShortBreakpoint}
+          />
           {shouldReserveMyTeamsActionSlot && (
             <div className="w-20 flex-shrink-0 flex items-center justify-end gap-2">
               {(effectiveVariant === "invitation" || isRoleInvitationVariant) && (
@@ -2758,7 +2712,7 @@ const TeamCard = ({
         title={cardTitle}
         subtitle={
           <span
-            className={`mt-0.5 flex max-h-[2.75em] overflow-hidden items-center flex-wrap leading-snug text-base-content/70 ${viewMode === "mini" ? "text-xs gap-x-1 gap-y-px w-full" : "text-sm gap-x-1.5 gap-y-px"}`}
+            className={`mt-0.5 flex max-h-[2.75em] overflow-hidden items-center flex-wrap leading-[110%] text-base-content/70 ${viewMode === "mini" ? "text-xs gap-x-1 gap-y-px w-full" : "text-sm gap-x-1.5 gap-y-px"}`}
           >
             {scoreSubtitleItem}
             {isRoleVariant && getFormattedDate() && (
