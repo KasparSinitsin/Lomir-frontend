@@ -242,6 +242,9 @@ const UserCard = ({
     const listLocationText = user.is_remote || user.isRemote
       ? "Remote"
       : [userLocation.city, userLocation.countryName].filter(Boolean).join(", ");
+    const listLocationTextShort = user.is_remote || user.isRemote
+      ? "Remote"
+      : ([userLocation.city, userLocation.countryCode].filter(Boolean).join(", ") || listLocationText);
 
     const distance = user.distanceKm ?? user.distance_km;
     const showDistance = distance != null && distance < 999999 && !(user.is_remote || user.isRemote);
@@ -332,7 +335,8 @@ const UserCard = ({
                 ) : (
                   <MapPin size={9} className="flex-shrink-0" />
                 )}
-                <span className="truncate">{listLocationText}</span>
+                <span className="truncate sm:hidden">{listLocationTextShort}</span>
+                <span className="truncate hidden sm:block">{listLocationText}</span>
               </Tooltip>
             </div>
           )}

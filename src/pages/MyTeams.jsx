@@ -706,6 +706,7 @@ const MyTeams = () => {
                             listLocationVisibilityClassName={MY_TEAMS_LIST_LOCATION_VISIBILITY_CLASSNAME}
                             listTagsWidthClassName={MY_TEAMS_LIST_TAGS_WIDTH_CLASSNAME}
                             listBadgesWidthClassName={MY_TEAMS_LIST_BADGES_WIDTH_CLASSNAME}
+                            listLocationShortBreakpoint="md"
                             viewMode="list"
                             activeFilters={{}}
                             showMatchScore={true}
@@ -821,6 +822,7 @@ const MyTeams = () => {
                           listLocationVisibilityClassName={MY_TEAMS_LIST_LOCATION_VISIBILITY_CLASSNAME}
                           listTagsWidthClassName={MY_TEAMS_LIST_TAGS_WIDTH_CLASSNAME}
                           listBadgesWidthClassName={MY_TEAMS_LIST_BADGES_WIDTH_CLASSNAME}
+                          listLocationShortBreakpoint="md"
                           viewMode="list"
                           activeFilters={{}}
                           showMatchScore={true}
@@ -972,6 +974,7 @@ const MyTeams = () => {
                       listLocationVisibilityClassName={MY_TEAMS_LIST_LOCATION_VISIBILITY_CLASSNAME}
                       listTagsWidthClassName={MY_TEAMS_LIST_TAGS_WIDTH_CLASSNAME}
                       listBadgesWidthClassName={MY_TEAMS_LIST_BADGES_WIDTH_CLASSNAME}
+                      listLocationShortBreakpoint="md"
                       autoOpenApplications={
                         team.id === autoOpenApplicationsTeamId
                       }

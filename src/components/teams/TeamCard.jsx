@@ -324,6 +324,7 @@ const TeamCard = ({
   listLocationVisibilityClassName = "flex",
   listTagsWidthClassName = "",
   listBadgesWidthClassName = "",
+  listLocationShortBreakpoint = "sm",
   hideDistanceInfo = false,
   hideMemberRoleIcon = false,
   disableListEdgeRounding = false,
@@ -2315,6 +2316,10 @@ const TeamCard = ({
       teamData.is_remote || teamData.isRemote
         ? "Remote"
         : [teamData.city, teamLocation.countryName].filter(Boolean).join(", ");
+    const locationTextShort =
+      teamData.is_remote || teamData.isRemote
+        ? "Remote"
+        : ([teamData.city, teamLocation.countryCode].filter(Boolean).join(", ") || locationText);
     const distance = teamData.distance_km ?? teamData.distanceKm;
     const showDistance =
       !hideDistanceInfo &&
@@ -2540,7 +2545,17 @@ const TeamCard = ({
                     ) : (
                       <MapPin size={9} className="flex-shrink-0" />
                     )}
-                    <span className="min-w-0 flex-1 truncate">{locationText}</span>
+                    {listLocationShortBreakpoint === "md" ? (
+                      <>
+                        <span className="min-w-0 flex-1 truncate md:hidden">{locationTextShort}</span>
+                        <span className="min-w-0 flex-1 truncate hidden md:block">{locationText}</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="min-w-0 flex-1 truncate sm:hidden">{locationTextShort}</span>
+                        <span className="min-w-0 flex-1 truncate hidden sm:block">{locationText}</span>
+                      </>
+                    )}
                   </div>
                 </Tooltip>
               </div>

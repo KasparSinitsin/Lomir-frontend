@@ -1031,6 +1031,10 @@ const VacantRoleCard = ({
 
   if (viewMode === "list") {
     const roundedDistanceKm = showDistance ? Math.round(rawDistanceKm) : null;
+    const roleLocationNorm = normalizeLocationData(role);
+    const locationTextShort = is_remote
+      ? "Remote"
+      : ([roleLocationNorm.city, roleLocationNorm.countryCode].filter(Boolean).join(", ") || locationText);
     const visibleTags = tagNames.slice(0, 3);
     const remainingTagCount = tagNames.length - visibleTags.length;
     const tagsSummary =
@@ -1109,9 +1113,8 @@ const VacantRoleCard = ({
                     ) : (
                       <MapPin size={9} className="flex-shrink-0" />
                     )}
-                    <span className="min-w-0 flex-1 truncate">
-                      {locationText}
-                    </span>
+                    <span className="min-w-0 flex-1 truncate sm:hidden">{locationTextShort}</span>
+                    <span className="min-w-0 flex-1 truncate hidden sm:block">{locationText}</span>
                   </div>
                 </Tooltip>
               </div>
