@@ -17,6 +17,9 @@ export function getMatchTier(score) {
       pct,
       Icon: Sparkles,
       bg: "bg-orange-500",
+      bgMid: "bg-orange-800/30",
+      bgTint: "bg-orange-50",
+      borderTint: "border-orange-500",
       text: "text-orange-500",
       label: "Great match",
     };
@@ -25,6 +28,9 @@ export function getMatchTier(score) {
       pct,
       Icon: TrendingUp,
       bg: "bg-success",
+      bgMid: "bg-[#036b0c]/30",
+      bgTint: "bg-green-50",
+      borderTint: "border-success",
       text: "text-success",
       label: "Good match",
     };
@@ -32,6 +38,9 @@ export function getMatchTier(score) {
     pct,
     Icon: TrendingDown,
     bg: "bg-slate-400",
+    bgMid: "bg-slate-400/30",
+    bgTint: "bg-slate-50",
+    borderTint: "border-slate-400",
     text: "text-slate-400",
     label: "Low match",
   };

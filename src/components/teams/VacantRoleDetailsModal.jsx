@@ -89,6 +89,7 @@ import {
   computeRoleUserMatch,
 } from "../../utils/matchHelpers";
 import { formatDisplayName } from "../../utils/nameFormatters";
+import MatchScoreSection from "../common/MatchScoreSection";
 import { resolveFilledRoleUser } from "../../utils/vacantRoleUtils";
 import { useUserModalSafe } from "../../contexts/UserModalContext";
 import { useTeamModalSafe } from "../../contexts/TeamModalContext";
@@ -1261,6 +1262,13 @@ const VacantRoleDetailsModal = ({
     return fallbackName ? fallbackName.split(/\s+/)[0] : null;
   })();
   const comparisonPossessive = toPossessive(comparisonShortName);
+  const compactComparisonName =
+    comparisonUser && comparisonShortName
+      ? formatDisplayName(comparisonUser)
+      : comparisonShortName;
+  const compactComparisonPossessive = isComparisonSelf
+    ? "your"
+    : toPossessive(compactComparisonName);
   const filledRoleUser = isFilledRole
     ? comparisonUser || resolvedFilledUser
     : null;
@@ -1328,6 +1336,16 @@ const VacantRoleDetailsModal = ({
       ? getMatchTier(effectiveMatchScore)
       : null;
   const MatchTierIcon = matchTier?.Icon ?? null;
+  const matchHeadline = effectivePct !== null
+    ? (isFilledRole
+      ? `${effectivePct}% matching score for ${filledRoleCompactDisplayName || "this member"} with this role`
+      : `${effectivePct}% match with ${compactComparisonPossessive} profile`)
+    : null;
+  const matchHeadlineTooltip = effectivePct !== null
+    ? (isFilledRole
+      ? `${effectivePct}% matching score for ${filledRoleDisplayName || "this member"} with this role`
+      : `${effectivePct}% match with ${comparisonPossessive} profile`)
+    : null;
   const handleFilledUserClick = () => {
     const filledUserId = filledRoleUser?.id;
     if (filledUserId && userModal?.openUserModal) {
@@ -2059,146 +2077,15 @@ const VacantRoleDetailsModal = ({
             </div>
           )}
 
-        {effectiveMatchScore !== null &&
-          effectiveMatchScore !== undefined &&
-          (() => {
-            const pct = Math.round(effectiveMatchScore * 100);
-            const tagPct = Math.round(
-              (effectiveMatchDetails?.tagScore ??
-                effectiveMatchDetails?.tag_score ??
-                0) * 100,
-            );
-            const badgePct = Math.round(
-              (effectiveMatchDetails?.badgeScore ??
-                effectiveMatchDetails?.badge_score ??
-                0) * 100,
-            );
-            const distPct = Math.round(
-              (effectiveMatchDetails?.distanceScore ??
-                effectiveMatchDetails?.distance_score ??
-                0) * 100,
-            );
-            const compactComparisonName =
-              comparisonUser && comparisonShortName
-                ? formatDisplayName(comparisonUser)
-                : comparisonShortName;
-            const compactComparisonPossessive =
-              isComparisonSelf
-                ? "your"
-                : toPossessive(compactComparisonName);
-            const matchSummaryText = isFilledRole
-              ? `${pct}% matching score for ${filledRoleCompactDisplayName || "this member"} with this role`
-              : `${pct}% match with ${compactComparisonPossessive} profile`;
-            const fullMatchSummaryText = isFilledRole
-              ? `${pct}% matching score for ${filledRoleDisplayName || "this member"} with this role`
-              : `${pct}% match with ${comparisonPossessive} profile`;
-
-            const tierColor = {
-              bg: "bg-base-200/50",
-              border: "border-base-300",
-              text: matchTier?.text ?? "text-base-content/70",
-            };
-
-            return (
-              <div
-                className={`rounded-xl p-4 ${tierColor.bg} border ${tierColor.border}`}
-              >
-                <div className="flex min-w-0 items-start gap-2 mb-3">
-                  {MatchTierIcon ? (
-                    <MatchTierIcon size={16} className={`${tierColor.text} mt-px flex-shrink-0`} />
-                  ) : null}
-                  <Tooltip
-                    content={fullMatchSummaryText}
-                    wrapperClassName="min-w-0"
-                  >
-                    <span className={`block min-w-0 overflow-hidden text-sm font-semibold leading-[115%] [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] ${tierColor.text}`}>
-                      {matchSummaryText}
-                    </span>
-                  </Tooltip>
-                </div>
-
-                <div className="space-y-2">
-                  {[
-                    {
-                      label: "Location",
-                      value: distPct,
-                      icon: MapPin,
-                      tooltip: (
-                        <>
-                          Location factors into the score with 30%.
-                          <br />
-                          Within the role's radius = 100%. Up to 20 km beyond =
-                          25%. Farther = 0%.
-                        </>
-                      ),
-                    },
-                    {
-                      label: "Focus Areas",
-                      value: tagPct,
-                      icon: Tag,
-                      tooltip: (
-                        <>
-                          Focus Areas factor into the score with 40%.
-                          <br />
-                          {effectiveMatchDetails?.matchingTags ??
-                            effectiveMatchDetails?.matching_tags ??
-                            0}{" "}
-                          out of{" "}
-                          {effectiveMatchDetails?.totalRequiredTags ??
-                            effectiveMatchDetails?.total_required_tags ??
-                            0}{" "}
-                          required focus areas met.
-                        </>
-                      ),
-                    },
-                    {
-                      label: "Badges",
-                      value: badgePct,
-                      icon: Award,
-                      tooltip: (
-                        <>
-                          Badges factor into the score with 30%.
-                          <br />
-                          {effectiveMatchDetails?.matchingBadges ??
-                            effectiveMatchDetails?.matching_badges ??
-                            0}{" "}
-                          out of{" "}
-                          {effectiveMatchDetails?.totalRequiredBadges ??
-                            effectiveMatchDetails?.total_required_badges ??
-                            0}{" "}
-                          required badges met.
-                        </>
-                      ),
-                    },
-                  ].map((row) => {
-                    const IconComponent = row.icon;
-
-                    return (
-                      <div key={row.label} className="flex items-center gap-2">
-                        <Tooltip content={row.tooltip}>
-                          <span className="text-xs text-base-content/60 w-24 flex-shrink-0 flex items-center gap-1 cursor-help">
-                            <IconComponent size={12} className="flex-shrink-0" />
-                            {row.label}
-                          </span>
-                        </Tooltip>
-                        <div className="flex-1 h-1.5 bg-base-200 rounded-full overflow-hidden">
-                          <div
-                            className={`h-full rounded-full transition-all duration-500 ${
-                              matchTier?.bg ?? "bg-slate-400"
-                            }`}
-                            style={{ width: `${Math.max(0, row.value)}%` }}
-                          />
-                        </div>
-                        <span className="text-xs font-medium text-base-content/60 w-8 text-right">
-                          {row.value}%
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })()}
+        {effectiveMatchScore !== null && effectiveMatchScore !== undefined && (
+          <MatchScoreSection
+            matchScore={effectiveMatchScore}
+            matchType="role_match"
+            matchDetails={effectiveMatchDetails}
+            headline={matchHeadline}
+            headlineTooltip={matchHeadlineTooltip !== matchHeadline ? matchHeadlineTooltip : null}
+          />
+        )}
 
         {locationText && (
           <div>
