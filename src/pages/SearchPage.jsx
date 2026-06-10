@@ -992,8 +992,7 @@ const SearchPage = () => {
     searchType === "teams" && sortBy === "capacity" && capacityMode === "spots";
   const isCapacityRolesSort =
     searchType === "teams" && sortBy === "capacity" && capacityMode === "roles";
-  const shouldShowLocationContext =
-    sortBy === "proximity" || maxDistance !== null || sortBy === "match";
+  const shouldShowLocationContext = true;
 
   const activeSubmenuKey =
     showSortDropdown && showFilterOptions ? openSubmenuKey : null;
@@ -2669,12 +2668,7 @@ const SearchPage = () => {
               )}
 
               {searchType === "roles" && resultView !== "list" && resultView !== "map" && (
-                <Grid
-                  cols={1}
-                  md={resultView === "mini" ? 3 : 2}
-                  lg={resultView === "mini" ? 4 : 3}
-                  gap={resultView === "mini" ? 2 : 6}
-                >
+                <Grid cols={1} md={2} lg={3} gap={resultView === "card" ? 6 : 4}>
                   {sortedRoles.map((role) => (
                     <VacantRoleCard
                       key={`role-${role.id}`}

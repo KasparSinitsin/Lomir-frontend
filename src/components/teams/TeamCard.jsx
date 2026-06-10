@@ -42,7 +42,7 @@ import { format } from "date-fns";
 import LocationDistanceTagsRow from "../common/LocationDistanceTagsRow";
 import { getMatchTier } from "../../utils/matchScoreUtils";
 import { getResultMatchScore } from "../../utils/teamMatchUtils";
-import { calculateDistanceKm } from "../../utils/locationUtils";
+import { calculateDistanceKm, normalizeLocationData } from "../../utils/locationUtils";
 import {
   extractListPayload,
   extractProfilePayload,
@@ -63,7 +63,89 @@ import DemoAvatarOverlay from "../users/DemoAvatarOverlay";
 
 const teamMemberBadgesCache = new Map();
 const viewerRoleProfileCache = new Map();
+const teamOpenRolesCache = new Map();
 const EMPTY_ARRAY = [];
+
+const extractArrayPayload = (payload) => {
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.data)) return payload.data;
+  if (Array.isArray(payload?.data?.data)) return payload.data.data;
+  return [];
+};
+
+const getRoleStatus = (role) =>
+  String(role?.status ?? "open").toLowerCase();
+
+const isOpenRole = (role) => getRoleStatus(role) === "open";
+
+const getRoleDisplayName = (role) => {
+  if (!role) return null;
+
+  return (
+    role.roleName ??
+    role.role_name ??
+    role.name ??
+    role.title ??
+    null
+  );
+};
+
+const normalizeRoleNames = (value) => {
+  if (Array.isArray(value)) {
+    return value
+      .map((item) =>
+        typeof item === "string" ? item.trim() : getRoleDisplayName(item),
+      )
+      .filter(Boolean);
+  }
+
+  if (typeof value === "string") {
+    return value
+      .split(",")
+      .map((name) => name.trim())
+      .filter(Boolean);
+  }
+
+  return [];
+};
+
+const getTeamRoleCollections = (team) =>
+  [
+    team?.openRoles,
+    team?.open_roles,
+    team?.vacantRoles,
+    team?.vacant_roles,
+  ].filter(Array.isArray);
+
+const resolveTeamOpenRoleSnapshot = (team) => {
+  const roleCollections = getTeamRoleCollections(team);
+
+  if (roleCollections.length > 0) {
+    const roles = roleCollections.flat().filter(isOpenRole);
+    return {
+      count: roles.length,
+      names: roles.map(getRoleDisplayName).filter(Boolean),
+      source: "records",
+    };
+  }
+
+  const rawCount =
+    team?.openRoleCount ??
+    team?.open_role_count ??
+    team?.openRolesCount ??
+    team?.open_roles_count ??
+    null;
+  const count = Number(rawCount);
+  const names = normalizeRoleNames(
+    team?.openRoleNames ?? team?.open_role_names,
+  );
+
+  return {
+    count: Number.isFinite(count) ? count : names.length,
+    names,
+    source: rawCount != null || names.length > 0 ? "aggregate" : "none",
+  };
+};
 
 const extractBadgeRows = (payload) => {
   if (Array.isArray(payload)) return payload;
@@ -242,6 +324,7 @@ const TeamCard = ({
   listLocationVisibilityClassName = "flex",
   listTagsWidthClassName = "",
   listBadgesWidthClassName = "",
+  listLocationShortBreakpoint = "sm",
   hideDistanceInfo = false,
   hideMemberRoleIcon = false,
   disableListEdgeRounding = false,
@@ -319,15 +402,19 @@ const TeamCard = ({
         team: {
           name: role.roleName ?? role.role_name ?? "Vacant Role",
           description: role.bio ?? role.roleBio ?? appTeam.description ?? null,
-          is_remote: role.isRemote ?? role.is_remote,
-          city: role.city,
-          country: role.country,
+          is_remote: role.isRemote ?? role.is_remote ?? appTeam.is_remote ?? appTeam.isRemote,
+          city: role.city ?? appTeam.city,
+          state: role.state ?? role.region ?? role.province ?? appTeam.state ?? appTeam.region ?? appTeam.province,
+          country: role.country ?? appTeam.country,
+          postal_code: role.postal_code ?? role.postalCode ?? appTeam.postal_code ?? appTeam.postalCode,
+          latitude: role.latitude ?? role.lat ?? appTeam.latitude ?? appTeam.lat,
+          longitude: role.longitude ?? role.lng ?? role.lon ?? appTeam.longitude ?? appTeam.lng ?? appTeam.lon,
           tags: role.tags ?? [],
           badges: role.badges ?? [],
           _teamName: appTeam.name ?? null,
           matchScore: null,
           matchDetails: null,
-          id: undefined,
+          id: appTeam.id,
         },
         id: application.id,
         message: application.message,
@@ -341,15 +428,19 @@ const TeamCard = ({
         team: {
           name: role.roleName ?? role.role_name ?? "Role Invitation",
           description: role.bio ?? role.roleBio ?? invTeam.description ?? null,
-          is_remote: role.isRemote ?? role.is_remote,
-          city: role.city,
-          country: role.country,
+          is_remote: role.isRemote ?? role.is_remote ?? invTeam.is_remote ?? invTeam.isRemote,
+          city: role.city ?? invTeam.city,
+          state: role.state ?? role.region ?? role.province ?? invTeam.state ?? invTeam.region ?? invTeam.province,
+          country: role.country ?? invTeam.country,
+          postal_code: role.postal_code ?? role.postalCode ?? invTeam.postal_code ?? invTeam.postalCode,
+          latitude: role.latitude ?? role.lat ?? invTeam.latitude ?? invTeam.lat,
+          longitude: role.longitude ?? role.lng ?? role.lon ?? invTeam.longitude ?? invTeam.lng ?? invTeam.lon,
           tags: role.tags ?? [],
           badges: role.badges ?? [],
           _teamName: invTeam.name ?? null,
           matchScore: null,
           matchDetails: null,
-          id: undefined,
+          id: invTeam.id,
         },
         id: invitation.id,
         message: invitation.message,
@@ -526,6 +617,7 @@ const TeamCard = ({
   const [error, setError] = useState(null);
   const [userRole, setUserRole] = useState(null);
   const [teamData, setTeamData] = useState(normalizedData.team);
+  const [freshOpenRoleSnapshot, setFreshOpenRoleSnapshot] = useState(null);
   const { user, isAuthenticated } = useAuth();
   const [isApplicationsModalOpen, setIsApplicationsModalOpen] = useState(false);
   const [isInvitesModalOpen, setIsInvitesModalOpen] = useState(false);
@@ -603,6 +695,65 @@ const TeamCard = ({
       return incoming;
     });
   }, [team, application, invitation, viewerDistanceSource, user]);
+
+  useEffect(() => {
+    setFreshOpenRoleSnapshot(null);
+  }, [teamData?.id]);
+
+  useEffect(() => {
+    if (!shouldShowOpenRoleCount || !teamData?.id) {
+      setFreshOpenRoleSnapshot(null);
+      return;
+    }
+
+    const localSnapshot = resolveTeamOpenRoleSnapshot(teamData);
+    if (localSnapshot.source !== "aggregate") {
+      setFreshOpenRoleSnapshot(null);
+      return;
+    }
+
+    let isActive = true;
+    const cacheKey = String(teamData.id);
+    let openRolesRequest = teamOpenRolesCache.get(cacheKey);
+
+    if (!openRolesRequest) {
+      openRolesRequest = vacantRoleService
+        .getVacantRoles(teamData.id, "open")
+        .then((response) => extractArrayPayload(response).filter(isOpenRole));
+      teamOpenRolesCache.set(cacheKey, openRolesRequest);
+    }
+
+    openRolesRequest
+      .then((roles) => {
+        if (!isActive) return;
+
+        setFreshOpenRoleSnapshot({
+          teamId: teamData.id,
+          count: roles.length,
+          names: roles.map(getRoleDisplayName).filter(Boolean),
+          source: "fetch",
+        });
+      })
+      .catch((error) => {
+        teamOpenRolesCache.delete(cacheKey);
+        if (!isActive) return;
+        console.warn("Could not fetch current open roles for team card:", error);
+        setFreshOpenRoleSnapshot(null);
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [
+    shouldShowOpenRoleCount,
+    teamData?.id,
+    teamData?.openRoleCount,
+    teamData?.open_role_count,
+    teamData?.openRolesCount,
+    teamData?.open_roles_count,
+    teamData?.openRoleNames,
+    teamData?.open_role_names,
+  ]);
 
   //   // Fetch user's role in this team (only for member variant)
   //   useEffect(() => {
@@ -919,6 +1070,8 @@ const TeamCard = ({
             badges: resolvedBadges,
             distance_km: preservedDistanceKm,
             distanceKm: preservedDistanceKm,
+            open_role_count: fullTeam.openRoleCount ?? fullTeam.open_role_count ?? prev.open_role_count,
+            open_role_names: fullTeam.openRoleNames ?? fullTeam.open_role_names ?? prev.open_role_names,
           };
         });
 
@@ -936,6 +1089,27 @@ const TeamCard = ({
 
     fetchCompleteTeamData();
   }, [teamData?.id, effectiveVariant, user, viewerDistanceSource]);
+
+  // For role variants the invitation/application API response doesn't include
+  // team lat/lon, so fetch just those two fields to enable distance display.
+  useEffect(() => {
+    if (!isRoleVariant || !teamData?.id) return;
+    if (teamData.latitude != null) return;
+
+    let active = true;
+    teamService.getTeamById(teamData.id)
+      .then((response) => {
+        if (!active) return;
+        const fullTeam = response?.data?.data ?? response?.data ?? null;
+        if (!fullTeam) return;
+        const lat = fullTeam.latitude ?? fullTeam.lat ?? null;
+        const lng = fullTeam.longitude ?? fullTeam.lng ?? fullTeam.lon ?? null;
+        if (lat == null || lng == null) return;
+        setTeamData((prev) => ({ ...prev, latitude: lat, longitude: lng }));
+      })
+      .catch(() => {});
+    return () => { active = false; };
+  }, [isRoleVariant, teamData?.id]);
 
   // Sync parent-managed member badges into teamData. When the parent provides
   // an array (bulk fetch resolved), we use it directly. While the parent is
@@ -1210,7 +1384,7 @@ const TeamCard = ({
     <button
       type="button"
       data-tooltip-trigger="true"
-      className="block max-w-full truncate bg-transparent p-0 text-left text-inherit [font:inherit] hover:underline focus:outline-none"
+      className="block max-w-full bg-transparent p-0 text-left text-inherit [font:inherit] hover:underline focus:outline-none"
       onClick={(event) => {
         event.stopPropagation();
         setIsRoleDetailsModalOpen(true);
@@ -1278,7 +1452,15 @@ const TeamCard = ({
     return maxMembers === null || maxMembers === undefined ? "∞" : maxMembers;
   };
 
-  const openRoleCount = teamData.open_role_count ?? teamData.openRoleCount ?? 0;
+  const localOpenRoleSnapshot = resolveTeamOpenRoleSnapshot(teamData);
+  const resolvedOpenRoleSnapshot =
+    freshOpenRoleSnapshot?.teamId != null &&
+    teamData?.id != null &&
+    String(freshOpenRoleSnapshot.teamId) === String(teamData.id)
+      ? freshOpenRoleSnapshot
+      : localOpenRoleSnapshot;
+  const openRoleCount = resolvedOpenRoleSnapshot.count;
+  const openRoleNames = resolvedOpenRoleSnapshot.names;
 
   const getFormattedDate = () => {
     const date = normalizedData.date;
@@ -1512,6 +1694,8 @@ const TeamCard = ({
               ? normalizedTeam.badges
               : teamData.badges,
           };
+          mergedTeam.open_role_count = normalizedTeam.openRoleCount ?? normalizedTeam.open_role_count ?? teamData.open_role_count;
+          mergedTeam.open_role_names = normalizedTeam.openRoleNames ?? normalizedTeam.open_role_names ?? teamData.open_role_names;
           const refreshedDistance = resolveDistanceKm({
             preferredDistance:
               normalizedTeam.distance_km ?? normalizedTeam.distanceKm,
@@ -1542,6 +1726,8 @@ const TeamCard = ({
         ? updatedTeam.badges
         : teamData.badges,
     };
+    mergedTeam.open_role_count = updatedTeam?.openRoleCount ?? updatedTeam?.open_role_count ?? teamData.open_role_count;
+    mergedTeam.open_role_names = updatedTeam?.openRoleNames ?? updatedTeam?.open_role_names ?? teamData.open_role_names;
     const refreshedDistance = resolveDistanceKm({
       preferredDistance: updatedTeam?.distance_km ?? updatedTeam?.distanceKm,
       fallbackDistance: teamData.distance_km ?? teamData.distanceKm,
@@ -1567,6 +1753,11 @@ const TeamCard = ({
   };
 
   const handleVacantRoleStatusChange = async () => {
+    if (teamData?.id != null) {
+      teamOpenRolesCache.delete(String(teamData.id));
+      setFreshOpenRoleSnapshot(null);
+    }
+
     await fetchPendingApplications();
 
     try {
@@ -1587,6 +1778,8 @@ const TeamCard = ({
           ? normalizedTeam.badges
           : teamData.badges,
       };
+      mergedTeam.open_role_count = normalizedTeam.openRoleCount ?? normalizedTeam.open_role_count ?? teamData.open_role_count;
+      mergedTeam.open_role_names = normalizedTeam.openRoleNames ?? normalizedTeam.open_role_names ?? teamData.open_role_names;
       const refreshedDistance = resolveDistanceKm({
         preferredDistance:
           normalizedTeam.distance_km ?? normalizedTeam.distanceKm,
@@ -1980,7 +2173,7 @@ const TeamCard = ({
     }
 
     const iconSizeSubtitle =
-      viewMode === "list" ? 10 : viewMode === "mini" ? 11 : 12;
+      viewMode === "list" ? 9 : viewMode === "mini" ? 10 : 13;
     scoreSubtitleItem = (
       <Tooltip content={matchTooltipText}>
         <span className="flex items-center gap-0.5">
@@ -2118,10 +2311,15 @@ const TeamCard = ({
   // ============ LIST VIEW ============
 
   if (viewMode === "list") {
+    const teamLocation = normalizeLocationData(teamData);
     const locationText =
       teamData.is_remote || teamData.isRemote
         ? "Remote"
-        : [teamData.city, teamData.country].filter(Boolean).join(", ");
+        : [teamData.city, teamLocation.countryName].filter(Boolean).join(", ");
+    const locationTextShort =
+      teamData.is_remote || teamData.isRemote
+        ? "Remote"
+        : ([teamData.city, teamLocation.countryCode].filter(Boolean).join(", ") || locationText);
     const distance = teamData.distance_km ?? teamData.distanceKm;
     const showDistance =
       !hideDistanceInfo &&
@@ -2156,14 +2354,14 @@ const TeamCard = ({
     const maxMembers = getMaxMembers();
     const shouldReserveMyTeamsActionSlot = !isSearchResult;
     const memberCountListItem = shouldShowMemberCountInList ? (
-      <span className="flex items-center gap-0.5">
+      <span className="inline-flex items-center gap-0.5">
         <Users size={9} />
         <span>{memberCount}/{maxMembers}</span>
       </span>
     ) : null;
 
     const subtitleContent = (
-      <span className="flex min-w-0 flex-nowrap items-center gap-1 overflow-hidden whitespace-nowrap text-base-content/60">
+      <span className="block min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-base-content/60 space-x-1">
         {scoreSubtitleItem}
         {memberCountListItem}
         {(effectiveVariant === "invitation" || isRoleInvitationVariant || pendingInvitationForTeam) && (
@@ -2200,12 +2398,10 @@ const TeamCard = ({
         {teamInvitationRoleName && (
           <Tooltip
             content={teamInvitationRoleName}
-            wrapperClassName="min-w-0 max-w-full overflow-hidden"
+            wrapperClassName="inline-flex items-center gap-0.5"
           >
-            <span className="flex min-w-0 max-w-full items-center gap-0.5 overflow-hidden">
-              <UserSearch size={10} className="flex-shrink-0 text-orange-500" />
-              <span className="truncate">{teamInvitationRoleName}</span>
-            </span>
+            <UserSearch size={9} className="flex-shrink-0 text-orange-500" />
+            <span>{teamInvitationRoleName}</span>
           </Tooltip>
         )}
         {(effectiveVariant === "application" || isRoleApplicationVariant || pendingApplicationForTeam) && (
@@ -2241,33 +2437,28 @@ const TeamCard = ({
         {teamApplicationRoleName && (
           <Tooltip
             content={teamApplicationRoleName}
-            wrapperClassName="min-w-0 max-w-full overflow-hidden"
+            wrapperClassName="inline-flex items-center gap-0.5"
           >
-            <span className="flex min-w-0 max-w-full items-center gap-0.5 overflow-hidden">
-              <UserSearch size={10} className="flex-shrink-0 text-orange-500" />
-              <span className="truncate">{teamApplicationRoleName}</span>
-            </span>
+            <UserSearch size={9} className="flex-shrink-0 text-orange-500" />
+            <span>{teamApplicationRoleName}</span>
           </Tooltip>
         )}
         {shouldShowOpenRoleCount && openRoleCount > 0 && (
           <Tooltip content={`${openRoleCount} open ${openRoleCount === 1 ? 'role' : 'roles'} posted in this team`}>
             <span className="flex items-center">
-              <UserSearch size={10} className="text-orange-500 mr-0.5" />
+              <UserSearch size={9} className="text-orange-500 mr-0.5" />
               <span>{openRoleCount}</span>
             </span>
           </Tooltip>
         )}
         {isRoleVariant && teamData._teamName && (
-          <Tooltip content="Click to view team details" wrapperClassName="min-w-0 overflow-hidden flex-1">
+          <Tooltip content="Click to view team details" wrapperClassName="inline-flex items-center gap-0.5">
             <span
-              className="flex items-center gap-0.5 min-w-0 overflow-hidden cursor-pointer w-full"
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsModalOpen(true);
-              }}
+              className="inline-flex items-center gap-0.5 cursor-pointer"
+              onClick={(e) => { e.stopPropagation(); setIsModalOpen(true); }}
             >
               <Users size={9} className="flex-shrink-0 text-primary" />
-              <span className="truncate">{teamData._teamName}</span>
+              <span>{teamData._teamName}</span>
             </span>
           </Tooltip>
         )}
@@ -2302,7 +2493,7 @@ const TeamCard = ({
         {showDemoIndicator && (
           <Tooltip
             content={demoTooltip}
-            wrapperClassName="flex items-center whitespace-nowrap text-base-content/50"
+            wrapperClassName="inline-flex items-center whitespace-nowrap text-base-content/50"
           >
             <FlaskConical size={9} className="flex-shrink-0" />
           </Tooltip>
@@ -2354,7 +2545,17 @@ const TeamCard = ({
                     ) : (
                       <MapPin size={9} className="flex-shrink-0" />
                     )}
-                    <span className="min-w-0 flex-1 truncate">{locationText}</span>
+                    {listLocationShortBreakpoint === "md" ? (
+                      <>
+                        <span className="min-w-0 flex-1 truncate md:hidden">{locationTextShort}</span>
+                        <span className="min-w-0 flex-1 truncate hidden md:block">{locationText}</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="min-w-0 flex-1 truncate sm:hidden">{locationTextShort}</span>
+                        <span className="min-w-0 flex-1 truncate hidden sm:block">{locationText}</span>
+                      </>
+                    )}
                   </div>
                 </Tooltip>
               </div>
@@ -2574,37 +2775,30 @@ const TeamCard = ({
         title={cardTitle}
         subtitle={
           <span
-            className={`mt-0.5 flex max-h-[2.75em] overflow-hidden text-base-content/70 ${isRoleVariant ? `flex-col leading-snug ${viewMode === "mini" ? "text-xs gap-y-px w-full" : "text-sm gap-y-px"}` : `items-center flex-wrap leading-snug ${viewMode === "mini" ? "text-xs gap-x-1 gap-y-px w-full" : "text-sm gap-x-1.5 gap-y-px"}`}`}
+            className={`mt-0.5 flex max-h-[2.75em] overflow-hidden items-center flex-wrap leading-snug text-base-content/70 ${viewMode === "mini" ? "text-xs gap-x-1 gap-y-px w-full" : "text-sm gap-x-1.5 gap-y-px"}`}
           >
-            {/* Score + date on the same row for role variants */}
-            {isRoleVariant ? (
-              <span className="flex items-center gap-1.5 flex-nowrap">
-                {scoreSubtitleItem}
-                {getFormattedDate() && (
-                  <Tooltip content={getRoleStatusTooltip()}>
-                    <span className="flex items-center gap-0.5 whitespace-nowrap">
-                      {isRoleInvitationVariant ? (
-                        <Mail
-                          size={viewMode === "mini" ? 11 : 12}
-                          className={`flex-shrink-0 ${hasInternalRoleInvitation ? "text-orange-500" : "text-pink-500"}`}
-                        />
-                      ) : (
-                        <SendHorizontal size={viewMode === "mini" ? 11 : 12} className="flex-shrink-0 text-orange-500" />
-                      )}
-                      <span>{getFormattedDate()}</span>
-                    </span>
-                  </Tooltip>
-                )}
-              </span>
-            ) : (
-              scoreSubtitleItem
+            {scoreSubtitleItem}
+            {isRoleVariant && getFormattedDate() && (
+              <Tooltip content={getRoleStatusTooltip()}>
+                <span className="flex items-center gap-0.5 whitespace-nowrap">
+                  {isRoleInvitationVariant ? (
+                    <Mail
+                      size={viewMode === "mini" ? 10 : 13}
+                      className={`flex-shrink-0 ${hasInternalRoleInvitation ? "text-orange-500" : "text-pink-500"}`}
+                    />
+                  ) : (
+                    <SendHorizontal size={viewMode === "mini" ? 10 : 13} className="flex-shrink-0 text-orange-500" />
+                  )}
+                  <span>{getFormattedDate()}</span>
+                </span>
+              </Tooltip>
             )}
 
             {/* Members count for member search results */}
             {!isRoleVariant && shouldShowMemberCountInSubtitle && (
               <span className="flex items-center">
                 <Users
-                  size={viewMode === "mini" ? 12 : 14}
+                  size={viewMode === "mini" ? 10 : 13}
                   className="text-primary mr-0.5"
                 />
                 <span>
@@ -2630,9 +2824,9 @@ const TeamCard = ({
                       }`
                 }
               >
-                <span className="flex items-center">
+                <span className="flex items-center gap-0.5 whitespace-nowrap">
                   <Mail
-                    size={viewMode === "mini" ? 12 : 14}
+                    size={viewMode === "mini" ? 10 : 13}
                     className={
                       hasInternalRoleInvitation
                         ? "text-orange-500"
@@ -2640,7 +2834,7 @@ const TeamCard = ({
                     }
                   />
                   {getFormattedDate() && (
-                    <span className="ml-0.5">{getFormattedDate()}</span>
+                    <span>{getFormattedDate()}</span>
                   )}
                 </span>
               </Tooltip>
@@ -2650,14 +2844,14 @@ const TeamCard = ({
                 {viewMode === "card" ? (
                   <span className="flex items-center">
                     <UserSearch
-                      size={11}
+                      size={13}
                       className="text-orange-500"
                     />
                   </span>
                 ) : (
                   <span className="flex items-center gap-1">
                     <UserSearch
-                      size={viewMode === "mini" ? 12 : 14}
+                      size={viewMode === "mini" ? 10 : 13}
                       className="text-orange-500 flex-shrink-0"
                     />
                     <span className="leading-[1.05]">{teamInvitationRoleName}</span>
@@ -2676,13 +2870,13 @@ const TeamCard = ({
                     : `You applied to join this team${getFormattedDate() ? `\non ${format(new Date(normalizedData.date), "MMM d, yyyy")}` : ""}`
                 }
               >
-                <span className="flex items-center">
+                <span className="flex items-center gap-0.5 whitespace-nowrap">
                   <SendHorizontal
-                    size={viewMode === "mini" ? 12 : 14}
+                    size={viewMode === "mini" ? 10 : 13}
                     className={isCombinedApplication ? "text-violet-500" : "text-info"}
                   />
                   {getFormattedDate() && (
-                    <span className="ml-0.5">{getFormattedDate()}</span>
+                    <span>{getFormattedDate()}</span>
                   )}
                 </span>
               </Tooltip>
@@ -2692,14 +2886,14 @@ const TeamCard = ({
                 {viewMode === "card" ? (
                   <span className="flex items-center">
                     <UserSearch
-                      size={11}
+                      size={13}
                       className="text-orange-500"
                     />
                   </span>
                 ) : (
                   <span className="flex items-center gap-1">
                     <UserSearch
-                      size={viewMode === "mini" ? 12 : 14}
+                      size={viewMode === "mini" ? 10 : 13}
                       className="text-orange-500 flex-shrink-0"
                     />
                     <span className="leading-[1.05]">{teamApplicationRoleName}</span>
@@ -2720,7 +2914,7 @@ const TeamCard = ({
                     }}
                   >
                     <Users
-                      size={11}
+                      size={13}
                       className="text-primary"
                     />
                   </span>
@@ -2733,7 +2927,7 @@ const TeamCard = ({
                     }}
                   >
                     <Users
-                      size={viewMode === "mini" ? 12 : 14}
+                      size={viewMode === "mini" ? 10 : 13}
                       className="text-primary flex-shrink-0"
                     />
                     <span className="leading-[1.05]">{teamData._teamName}</span>
@@ -2747,7 +2941,7 @@ const TeamCard = ({
                 <Tooltip content={isPendingCombinedApplicationForTeam ? "You applied to join this team and fill a role" : "You applied for a role within this team"}>
                   <span className="flex items-center">
                     <SendHorizontal
-                      size={viewMode === "mini" ? 12 : 14}
+                      size={viewMode === "mini" ? 10 : 13}
                       className={isPendingCombinedApplicationForTeam ? "text-violet-500" : "text-orange-500"}
                     />
                   </span>
@@ -2759,7 +2953,7 @@ const TeamCard = ({
               <Tooltip content={`${openRoleCount} open ${openRoleCount === 1 ? 'role' : 'roles'} posted in this team`}>
                 <span className="flex items-center">
                   <UserSearch
-                    size={viewMode === "mini" ? 12 : 14}
+                    size={viewMode === "mini" ? 10 : 13}
                     className="text-orange-500 mr-0.5"
                   />
                   <span>{openRoleCount}</span>
@@ -2778,12 +2972,12 @@ const TeamCard = ({
               >
                 {teamData.is_public === true || teamData.isPublic === true ? (
                   <EyeIcon
-                    size={viewMode === "mini" ? 12 : 14}
+                    size={viewMode === "mini" ? 10 : 13}
                     className="text-green-600"
                   />
                 ) : (
                   <EyeClosed
-                    size={viewMode === "mini" ? 12 : 14}
+                    size={viewMode === "mini" ? 10 : 13}
                     className="text-gray-500"
                   />
                 )}
@@ -2796,7 +2990,7 @@ const TeamCard = ({
               <Tooltip content="You applied for a role within this team">
                 <span className="flex items-center">
                   <SendHorizontal
-                    size={viewMode === "mini" ? 12 : 14}
+                    size={viewMode === "mini" ? 10 : 13}
                     className="text-orange-500"
                   />
                 </span>
@@ -2804,12 +2998,13 @@ const TeamCard = ({
               )}
 
             {/* User role - show for member variant when user has a role */}
-            {userRole && effectiveVariant === "member" && (
+            {userRole && effectiveVariant === "member" &&
+              (userRole === "owner" || userRole === "admin" || (userRole === "member" && !hideMemberRoleIcon)) && (
               <span className="flex items-center text-base-content/70">
                 {userRole === "owner" && (
                   <Tooltip content="You are the owner of this team">
                     <Crown
-                      size={viewMode === "mini" ? 12 : 14}
+                      size={viewMode === "mini" ? 10 : 13}
                       className="text-[var(--color-role-owner-bg)]"
                     />
                   </Tooltip>
@@ -2817,7 +3012,7 @@ const TeamCard = ({
                 {userRole === "admin" && (
                   <Tooltip content="You are an admin of this team">
                     <ShieldCheck
-                      size={viewMode === "mini" ? 12 : 14}
+                      size={viewMode === "mini" ? 10 : 13}
                       className="text-[var(--color-role-admin-bg)]"
                     />
                   </Tooltip>
@@ -2825,7 +3020,7 @@ const TeamCard = ({
                 {userRole === "member" && !hideMemberRoleIcon && (
                   <Tooltip content="You are a member of this team">
                     <User
-                      size={viewMode === "mini" ? 12 : 14}
+                      size={viewMode === "mini" ? 10 : 13}
                       className="text-[var(--color-role-member-bg)]"
                     />
                   </Tooltip>
@@ -2833,9 +3028,10 @@ const TeamCard = ({
               </span>
             )}
 
-            {/* Compact location in subtitle for mini cards */}
+            {/* Compact location in subtitle for mini cards — search results only (My Teams always shows location in body) */}
             {viewMode === "mini" &&
               !activeFilters.showLocation &&
+              isSearchResult &&
               (teamData.city ||
                 teamData.country ||
                 teamData.is_remote ||
@@ -2850,7 +3046,7 @@ const TeamCard = ({
                     <>
                       <MapPin size={10} className="flex-shrink-0" />
                       <span>
-                        {[teamData.city, teamData.country]
+                        {[teamData.city, normalizeLocationData(teamData).countryName]
                           .filter(Boolean)
                           .join(", ")}
                       </span>
@@ -2864,7 +3060,7 @@ const TeamCard = ({
                 wrapperClassName="flex items-center gap-1 text-base-content/50"
               >
                 <FlaskConical
-                  size={viewMode === "mini" ? 10 : 11}
+                  size={viewMode === "mini" ? 10 : 13}
                   className="flex-shrink-0"
                 />
               </Tooltip>
@@ -2938,14 +3134,16 @@ const TeamCard = ({
               ? null
               : getDisplayBadges()
           }
-          hideLocation={viewMode === "mini" && !activeFilters.showLocation}
+          openRoles={openRoleNames}
+          hideLocation={viewMode === "mini" && !activeFilters.showLocation && isSearchResult}
           compact={viewMode === "mini"}
+          showCountryCode={viewMode !== "card" && viewMode !== "mini"}
         />
         {viewMode === "card" && teamRequestRoleName && (
           <div className="mt-2 flex items-start text-sm text-base-content/70">
             <UserSearch
-              size={16}
-              className="mr-1 flex-shrink-0 mt-0.5 text-base-content"
+              size={13}
+              className="mr-1 flex-shrink-0 mt-0.5"
             />
             <span>{teamRequestRoleName}</span>
           </div>
@@ -2960,8 +3158,8 @@ const TeamCard = ({
               }}
             >
               <Users
-                size={16}
-                className="mr-1 flex-shrink-0 mt-0.5 text-base-content"
+                size={13}
+                className="mr-1 flex-shrink-0 mt-0.5"
               />
               <span>{teamData._teamName}</span>
             </div>

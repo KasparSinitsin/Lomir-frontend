@@ -1,5 +1,5 @@
 import React, { useRef, useState, useLayoutEffect } from "react";
-import { Tag, Award } from "lucide-react";
+import { Tag, Award, UserSearch } from "lucide-react";
 import LocationSection from "./LocationSection";
 import {
   SUPERCATEGORY_ORDER,
@@ -67,9 +67,9 @@ const TruncatedList = ({ items, icon: Icon, compact = false }) => {
 
   return (
     <div
-      className={`flex items-start text-base-content/70 ${compact ? "text-xs" : "text-sm"}`}
+      className={`flex items-start leading-snug text-base-content/70 ${compact ? "text-xs" : "text-sm"}`}
     >
-      <Icon size={compact ? 12 : 16} className="mr-1 flex-shrink-0 mt-0.5" />
+      <Icon size={compact ? 10 : 13} className="mr-1 flex-shrink-0 mt-0.5" />
       <span ref={spanRef}>{displayText}</span>
     </div>
   );
@@ -85,10 +85,12 @@ const LocationDistanceTagsRow = ({
   distance = null,
   tags = null,
   badges = null,
+  openRoles = null,
   getDisplayTags = null,
   className = "",
   hideLocation = false,
   compact = false,
+  showCountryCode = true,
 }) => {
   // ─── Normalize tags into a sorted array of strings ───
   const normalizeSortedTagStrings = (input) => {
@@ -286,12 +288,17 @@ const LocationDistanceTagsRow = ({
 
   const badgeNames = normalizeSortedBadges(badges).map((b) => b.name);
 
+  const openRoleNames = Array.isArray(openRoles)
+    ? openRoles.filter(Boolean)
+    : [];
+
   const hasTags = tagList.length > 0;
   const hasBadges = badgeNames.length > 0;
+  const hasOpenRoles = openRoleNames.length > 0;
 
-  if (!hasTags && !hasBadges && !entity) return null;
+  if (!hasTags && !hasBadges && !hasOpenRoles && !entity) return null;
 
-  if (hideLocation && !hasTags && !hasBadges) return null;
+  if (hideLocation && !hasTags && !hasBadges && !hasOpenRoles) return null;
 
   return (
     <div className={`${compact ? "space-y-1" : "space-y-2"} ${className}`}>
@@ -304,7 +311,8 @@ const LocationDistanceTagsRow = ({
           compact={true}
           distance={distance}
           className={compact ? "text-xs" : ""}
-          iconSize={compact ? 12 : 16}
+          iconSize={compact ? 10 : 13}
+          showCountryCode={showCountryCode && !compact}
         />
       )}
       {hasTags && (
@@ -312,6 +320,9 @@ const LocationDistanceTagsRow = ({
       )}
       {hasBadges && (
         <TruncatedList items={badgeNames} icon={Award} compact={compact} />
+      )}
+      {hasOpenRoles && (
+        <TruncatedList items={openRoleNames} icon={UserSearch} compact={compact} />
       )}
     </div>
   );

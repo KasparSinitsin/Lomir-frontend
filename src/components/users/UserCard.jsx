@@ -172,7 +172,7 @@ const UserCard = ({
     }
 
     const iconSizeSubtitle =
-      viewMode === "list" ? 10 : viewMode === "mini" ? 11 : 12;
+      viewMode === "list" ? 9 : viewMode === "mini" ? 10 : 13;
     scoreSubtitleItem = (
       <Tooltip content={matchTooltipText}>
         <span className="flex items-center gap-0.5">
@@ -215,6 +215,7 @@ const UserCard = ({
           displayType: "short",
           showState: true,
           showCountry: true,
+          showCountryCode: viewMode !== "card" && viewMode !== "mini",
         });
 
   const demoAvatarOverlay = isSyntheticUser(user) ? (
@@ -238,6 +239,13 @@ const UserCard = ({
 
   // ============ LIST VIEW ============
   if (viewMode === "list") {
+    const listLocationText = user.is_remote || user.isRemote
+      ? "Remote"
+      : [userLocation.city, userLocation.countryName].filter(Boolean).join(", ");
+    const listLocationTextShort = user.is_remote || user.isRemote
+      ? "Remote"
+      : ([userLocation.city, userLocation.countryCode].filter(Boolean).join(", ") || listLocationText);
+
     const distance = user.distanceKm ?? user.distance_km;
     const showDistance = distance != null && distance < 999999 && !(user.is_remote || user.isRemote);
 
@@ -269,15 +277,15 @@ const UserCard = ({
       isSyntheticUser(user) ||
       shouldShowVisibilityIcon()
     ) ? (
-      <span className="flex min-w-0 flex-nowrap items-center gap-1 overflow-hidden whitespace-nowrap text-base-content/60">
-        {scoreSubtitleItem}
-        {user.username && <span>@{user.username}</span>}
+      <span className="flex min-w-0 flex-nowrap items-center gap-1 overflow-hidden text-base-content/60">
+        {scoreSubtitleItem && <span className="flex-shrink-0">{scoreSubtitleItem}</span>}
+        {user.username && <span className="truncate min-w-0">@{user.username}</span>}
         {shouldShowVisibilityIcon() && (
           <Tooltip content={isUserProfilePublic() ? "Public Profile - visible for everyone" : "Private Profile - only visible for you"}>
             {isUserProfilePublic() ? (
-              <Eye size={11} className="text-green-600" />
+              <Eye size={9} className="text-green-600" />
             ) : (
-              <EyeClosed size={11} className="text-gray-500" />
+              <EyeClosed size={9} className="text-gray-500" />
             )}
           </Tooltip>
         )}
@@ -286,7 +294,7 @@ const UserCard = ({
             content={DEMO_PROFILE_TOOLTIP}
             wrapperClassName="flex items-center whitespace-nowrap text-base-content/50"
           >
-            <FlaskConical className="h-[11px] w-auto flex-shrink-0" />
+            <FlaskConical size={9} className="flex-shrink-0" />
           </Tooltip>
         )}
       </span>
@@ -312,24 +320,23 @@ const UserCard = ({
               <div className="text-xs text-base-content flex items-center gap-1 overflow-hidden">
                 <Tooltip content={`${Math.round(distance)} km away from you`}>
                   <div className="flex items-center gap-1">
-                    <Ruler size={11} className="flex-shrink-0" />
+                    <Ruler size={9} className="flex-shrink-0" />
                     <span className="whitespace-nowrap">{Math.round(distance)} km</span>
                   </div>
                 </Tooltip>
               </div>
             )}
           </div>
-          {locationText && (
-            <div className="min-w-0 text-xs text-base-content/60 flex items-center gap-1 overflow-hidden">
-              <Tooltip content={locationText}>
-                <div className="flex items-center gap-1 overflow-hidden">
-                  {user.is_remote || user.isRemote ? (
-                    <Globe size={11} className="flex-shrink-0" />
-                  ) : (
-                    <MapPin size={11} className="flex-shrink-0" />
-                  )}
-                  <span className="truncate">{locationText}</span>
-                </div>
+          {listLocationText && (
+            <div className="min-w-0 flex-1 text-xs text-base-content/60 flex items-center gap-1 overflow-hidden">
+              <Tooltip content={locationText || listLocationText} wrapperClassName="flex items-center gap-1 min-w-0 overflow-hidden w-full">
+                {user.is_remote || user.isRemote ? (
+                  <Globe size={9} className="flex-shrink-0" />
+                ) : (
+                  <MapPin size={9} className="flex-shrink-0" />
+                )}
+                <span className="truncate sm:hidden">{listLocationTextShort}</span>
+                <span className="truncate hidden sm:block">{listLocationText}</span>
               </Tooltip>
             </div>
           )}
@@ -337,7 +344,7 @@ const UserCard = ({
         <div className="hidden w-52 flex-shrink-0 text-xs text-base-content/60 lg:flex items-center gap-1 overflow-hidden">
           {tagsSummary && (
             <Tooltip content={tagNames.join(", ")} wrapperClassName="flex items-center gap-1 min-w-0 overflow-hidden w-full">
-              <Tag size={11} className="flex-shrink-0" />
+              <Tag size={9} className="flex-shrink-0" />
               <span className="truncate">{tagsSummary}</span>
             </Tooltip>
           )}
@@ -345,7 +352,7 @@ const UserCard = ({
         <div className="hidden w-48 flex-shrink-0 text-xs text-base-content/60 xl:flex items-center gap-1 overflow-hidden">
           {badgesSummary && (
             <Tooltip content={badgeNames.join(", ")} wrapperClassName="flex items-center gap-1 min-w-0 overflow-hidden w-full">
-              <Award size={11} className="flex-shrink-0" />
+              <Award size={9} className="flex-shrink-0" />
               <span className="truncate">{badgesSummary}</span>
             </Tooltip>
           )}
@@ -374,12 +381,12 @@ const UserCard = ({
             >
               {isUserProfilePublic() ? (
                 <Eye
-                  size={viewMode === "mini" ? 12 : 14}
+                  size={viewMode === "mini" ? 10 : 13}
                   className="text-green-600"
                 />
               ) : (
                 <EyeClosed
-                  size={viewMode === "mini" ? 12 : 14}
+                  size={viewMode === "mini" ? 10 : 13}
                   className="text-gray-500"
                 />
               )}
@@ -390,9 +397,9 @@ const UserCard = ({
             locationText && (
               <span className="flex items-start">
                 {user.is_remote || user.isRemote ? (
-                  <Globe size={12} className="mr-0.5 flex-shrink-0 mt-0.5" />
+                  <Globe size={10} className="mr-0.5 flex-shrink-0 mt-0.5" />
                 ) : (
-                  <MapPin size={12} className="mr-0.5 flex-shrink-0 mt-0.5" />
+                  <MapPin size={10} className="mr-0.5 flex-shrink-0 mt-0.5" />
                 )}
                 <span>
                   {locationText}
@@ -402,14 +409,12 @@ const UserCard = ({
           {isSyntheticUser(user) && (
             <Tooltip
               content={DEMO_PROFILE_TOOLTIP}
-              wrapperClassName="flex items-start text-base-content/50"
+              wrapperClassName="flex items-center gap-1 text-base-content/50"
             >
               <FlaskConical
-                className={`w-auto mr-0.5 flex-shrink-0 ${viewMode === "mini" ? "h-3 mt-px" : "h-[13px] mt-px"}`}
+                size={viewMode === "mini" ? 10 : 13}
+                className="flex-shrink-0"
               />
-              <span className="leading-[1.15]">
-                {viewMode === "mini" ? "Demo" : "Demo Profile"}
-              </span>
             </Tooltip>
           )}
         </span>
@@ -457,6 +462,7 @@ const UserCard = ({
         }
         hideLocation={viewMode === "mini" && !activeFilters.showLocation}
         compact={viewMode === "mini"}
+        showCountryCode={viewMode !== "card" && viewMode !== "mini"}
       />
 
       {/* <div className="mt-auto">

@@ -241,7 +241,7 @@ const Card = ({
             <div className="font-medium text-sm text-[var(--color-primary-focus)] truncate">{title}</div>
           </Tooltip>
           {subtitle && (
-            <div className="mt-0.5 max-h-[2.1em] overflow-hidden text-xs leading-[1.05] text-base-content/60">
+            <div className="mt-0.5 overflow-hidden text-xs leading-[1.05] text-base-content/60">
               {subtitle}
             </div>
           )}
@@ -337,7 +337,7 @@ const Card = ({
 
               <div className="min-w-0 flex-1">
                 <h3
-                  className={`font-medium text-[var(--color-primary-focus)] leading-[120%] mb-1 ${titleClassName || "text-lg"}`}
+                  className={`font-medium text-[var(--color-primary-focus)] leading-[110%] mb-1 ${titleClassName || "text-lg"}`}
                 >
                   {title}
                 </h3>
