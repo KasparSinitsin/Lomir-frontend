@@ -22,12 +22,12 @@ import {
 import { Link } from "react-router-dom";
 import Tooltip from "../common/Tooltip";
 import { CountBadge } from "../common/NotificationBadge";
-import { getTeamInitials, isSyntheticTeam } from "../../utils/userHelpers";
+import { isSyntheticTeam } from "../../utils/userHelpers";
 import { formatRelativeChatTimestamp, formatShortRelativeChatTimestamp } from "../../utils/dateHelpers";
 import TeamDetailsModal from "../teams/TeamDetailsModal";
 import UserDetailsModal from "../users/UserDetailsModal";
 import UserAvatar from "../users/UserAvatar";
-import DemoAvatarOverlay from "../users/DemoAvatarOverlay";
+import TeamAvatar from "../teams/TeamAvatar";
 import {
   DELETED_USER_DISPLAY_NAME,
   getDisplayName as getDeletedUserDisplayName,
@@ -689,38 +689,13 @@ const ConversationList = ({
                   }
                 >
                   {isTeam ? (
-                    <div className="w-14 h-14 rounded-full relative overflow-hidden">
-                      {getTeamAvatarUrl(conversationData) ? (
-                        <img
-                          src={getTeamAvatarUrl(conversationData)}
-                          alt={displayName}
-                          className="object-cover w-full h-full rounded-full"
-                          onError={(e) => {
-                            e.target.style.display = "none";
-                            const fallback =
-                              e.target.parentElement.querySelector(
-                                ".avatar-fallback",
-                              );
-                            if (fallback) fallback.style.display = "flex";
-                          }}
-                        />
-                      ) : null}
-                      <div
-                        className="avatar-fallback bg-[var(--color-primary-focus)] text-primary-content flex items-center justify-center w-full h-full rounded-full absolute inset-0"
-                        style={{
-                          display: getTeamAvatarUrl(conversationData)
-                            ? "none"
-                            : "flex",
-                        }}
-                      >
-                        <span className="text-xl font-medium">
-                          {getTeamInitials(conversationData)}
-                        </span>
-                      </div>
-                      {isSyntheticTeam(conversationData) && (
-                        <DemoAvatarOverlay textClassName="text-[8px]" />
-                      )}
-                    </div>
+                    <TeamAvatar
+                      team={conversationData}
+                      sizeClass="w-14 h-14"
+                      initialsClassName="text-xl font-medium"
+                      showDemoOverlay={isSyntheticTeam(conversationData)}
+                      demoOverlayTextClassName="text-[8px]"
+                    />
                   ) : (
                     <UserAvatar
                       user={isFormerPartner ? null : conversationData}

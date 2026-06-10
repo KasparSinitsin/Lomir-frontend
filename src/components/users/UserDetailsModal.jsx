@@ -933,6 +933,9 @@ const UserDetailsModal = ({
           inviteeAvatar={user.avatar_url || user.avatarUrl}
           inviteeBio={user.bio}
           inviteeIsSynthetic={user.is_synthetic ?? user.isSynthetic}
+          inviteeCity={user.city}
+          inviteeCountry={user.country}
+          inviteeJoinedAt={user.created_at || user.createdAt}
           prefillTeamId={invitationPrefillTeamId}
           prefillRoleId={invitationPrefillRoleId}
           prefillTeamName={invitationPrefillTeamName}
@@ -976,6 +979,9 @@ const UserDetailsModal = ({
           awardeeAvatar={user.avatar_url || user.avatarUrl}
           awardeeBio={user.bio}
           awardeeIsDemo={!!(user.is_synthetic ?? user.isSynthetic)}
+          awardeeCity={user.city}
+          awardeeCountry={user.country}
+          awardeeJoinedAt={user.created_at || user.createdAt}
           onAwardComplete={() => {
             queryClient.invalidateQueries({
               queryKey: userProfileQueryKey(user.id),

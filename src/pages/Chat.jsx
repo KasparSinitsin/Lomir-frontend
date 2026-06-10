@@ -27,16 +27,15 @@ import Tooltip from "../components/common/Tooltip";
 import { CountBadge } from "../components/common/NotificationBadge";
 import { uploadToImageKit } from "../config/imagekit";
 import UserAvatar from "../components/users/UserAvatar";
-import DemoAvatarOverlay from "../components/users/DemoAvatarOverlay";
+import TeamAvatar from "../components/teams/TeamAvatar";
 import TeamDetailsModal from "../components/teams/TeamDetailsModal";
 import UserDetailsModal from "../components/users/UserDetailsModal";
-import { getTeamInitials, isSyntheticTeam } from "../utils/userHelpers";
+import { isSyntheticTeam } from "../utils/userHelpers";
 import { formatDisplayName } from "../utils/nameFormatters";
 import {
   formatRelativeChatTimestamp,
   normalizeTimestampToDate,
 } from "../utils/dateHelpers";
-import { getTeamAvatarUrl } from "../utils/chatEntityResolvers";
 import { getMessageConversationTarget } from "../utils/messageNotificationUtils";
 
 const getConversationPartnerId = (conversation) =>
@@ -3145,31 +3144,16 @@ const Chat = () => {
                         position="bottom"
                         wrapperClassName="inline-flex items-center flex-shrink-0"
                       >
-                        <div
-                          className="w-10 h-10 rounded-full relative overflow-hidden cursor-pointer hover:opacity-80 transition-opacity"
-                          onClick={handleHeaderTeamClick}
-                        >
-                          {getTeamAvatarUrl(teamData) ? (
-                            <img
-                              src={getTeamAvatarUrl(teamData)}
-                              alt={teamData.name}
-                              className="object-cover w-full h-full rounded-full"
-                              onError={(e) => {
-                                e.target.style.display = "none";
-                                const fallback = e.target.parentElement.querySelector(".avatar-fallback");
-                                if (fallback) fallback.style.display = "flex";
-                              }}
-                            />
-                          ) : null}
-                          <div
-                            className="avatar-fallback bg-[var(--color-primary-focus)] text-primary-content flex items-center justify-center w-full h-full rounded-full absolute inset-0"
-                            style={{ display: getTeamAvatarUrl(teamData) ? "none" : "flex" }}
-                          >
-                            <span className="text-sm font-medium">{getTeamInitials(teamData)}</span>
-                          </div>
-                          {isSyntheticTeam(teamData) && (
-                            <DemoAvatarOverlay textClassName="text-[7px]" />
-                          )}
+                        <div className="relative">
+                          <TeamAvatar
+                            team={teamData}
+                            sizeClass="w-10 h-10"
+                            clickable={true}
+                            onClick={handleHeaderTeamClick}
+                            initialsClassName="text-sm font-medium"
+                            showDemoOverlay={isSyntheticTeam(teamData)}
+                            demoOverlayTextClassName="text-[7px]"
+                          />
                           {(activeConversation?.unreadCount || activeConversation?.unread_count) > 0 && (
                             <CountBadge
                               count={activeConversation.unreadCount ?? activeConversation.unread_count}

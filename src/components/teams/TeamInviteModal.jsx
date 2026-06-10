@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useLayoutEffect, useRef } from "react";
 import {
   Users,
   Send,
@@ -13,6 +13,7 @@ import {
   FlaskConical,
   ChevronRight,
   ChevronUp,
+  Calendar,
 } from "lucide-react";
 import Modal from "../common/Modal";
 import Button from "../common/Button";
@@ -45,6 +46,7 @@ import {
   normalizeNumericId,
   numericIdsMatch,
 } from "../../utils/teamRequestUtils";
+import { format } from "date-fns";
 
 const normalizeId = normalizeNumericId;
 const idsMatch = numericIdsMatch;
@@ -227,6 +229,9 @@ const TeamInviteModal = ({
   inviteeAvatar,
   inviteeBio,
   inviteeIsSynthetic = false,
+  inviteeCity = null,
+  inviteeCountry = null,
+  inviteeJoinedAt = null,
   prefillTeamId = null,
   prefillRoleId = null,
   prefillTeamName = null,
@@ -264,6 +269,12 @@ const TeamInviteModal = ({
   const [selectedTeamForModal, setSelectedTeamForModal] = useState(null);
   const [selectedTeamInvitations, setSelectedTeamInvitations] = useState([]);
   const [selectedTeamApplications, setSelectedTeamApplications] = useState([]);
+  const nameContainerRef = useRef(null);
+  const nameProbeRef = useRef(null);
+  const dateRef = useRef(null);
+  const [dateIsNarrow, setDateIsNarrow] = useState(false);
+  const dateIsNarrowRef = useRef(false);
+  dateIsNarrowRef.current = dateIsNarrow;
 
   // Fetch teams where user can invite
   useEffect(() => {
@@ -587,6 +598,7 @@ const TeamInviteModal = ({
       first_name: inviteeFirstName,
       last_name: inviteeLastName,
       username: inviteeUsername || inviteeName,
+      avatar_url: inviteeAvatar || null,
       is_synthetic: inviteeIsSynthetic,
       isSynthetic: inviteeIsSynthetic,
     };
@@ -843,6 +855,30 @@ const TeamInviteModal = ({
       setIsTeamSectionExpanded(false);
     }
   }, [isOpen, selectedTeamId, vacantRoles, loadingRoles]);
+
+  useLayoutEffect(() => {
+    const container = nameContainerRef.current;
+    const probe = nameProbeRef.current;
+    if (!container || !probe) return;
+
+    const update = () => {
+      const first = inviteeFirstName || "";
+      const last = inviteeLastName || "";
+      const full = `${first} ${last}`.trim();
+      const displayName = full || inviteeName || inviteeUsername || "Unknown User";
+      const dateEl = dateRef.current;
+      const reservedWidth =
+        dateIsNarrowRef.current && dateEl ? dateEl.offsetWidth + 16 : 0;
+      probe.textContent = displayName;
+      setDateIsNarrow(probe.scrollWidth > container.clientWidth - reservedWidth);
+    };
+
+    const resizeObserver = new ResizeObserver(update);
+    resizeObserver.observe(container);
+    if (dateRef.current) resizeObserver.observe(dateRef.current);
+    update();
+    return () => resizeObserver.disconnect();
+  }, [inviteeFirstName, inviteeLastName, inviteeName, inviteeUsername]);
 
   const prefillContextNote = useMemo(() => {
     if (!idsMatch(selectedTeamId, normalizedPrefillTeamId)) return null;
@@ -1220,6 +1256,15 @@ const TeamInviteModal = ({
     (!selectedTeamRequiresRole || selectedRoleId !== null);
   const inviteeUser = getInviteeUserObject();
   const showInviteeDemoProfile = isSyntheticUser(inviteeUser);
+  const locationText = [inviteeCity, inviteeCountry].filter(Boolean).join(", ");
+  const joinedDateText = (() => {
+    if (!inviteeJoinedAt) return null;
+    try {
+      return format(new Date(inviteeJoinedAt), "MMM d, yyyy");
+    } catch {
+      return null;
+    }
+  })();
   const handleRoleSectionToggle = () => {
     setIsRoleSectionExpanded((isExpanded) => {
       if (isExpanded && isRoleSelectionRequired) {
@@ -1440,49 +1485,83 @@ const TeamInviteModal = ({
 
         <div className="space-y-5">
           {/* Invitee info */}
-          <div className="flex items-start space-x-3 mb-3">
-            <Tooltip content="View profile" position="bottom" wrapperClassName="block">
-              <UserAvatar
-                user={inviteeUser}
-                sizeClass="w-12 h-12"
-                clickable
-                onClick={() => handleUserClick(inviteeId)}
-                title="View profile"
-                showDemoOverlay={showInviteeDemoProfile}
-                demoOverlayTextClassName="text-[8px]"
-                demoOverlayTextTranslateClassName="-translate-y-[3px]"
-              />
-            </Tooltip>
-
-            <div className="flex-1 min-w-0">
+          <div className="relative flex items-start justify-between gap-4 mb-5">
+            <div className="flex min-w-0 flex-1 items-start space-x-4">
               <Tooltip content="View profile" position="bottom" wrapperClassName="block">
-                <h4
-                  className="font-medium text-base-content cursor-pointer hover:text-primary transition-colors leading-[120%] mb-[0.2em]"
+                <UserAvatar
+                  user={inviteeUser}
+                  sizeClass="w-12 h-12"
+                  initialsClassName="text-xl font-medium"
+                  clickable
                   onClick={() => handleUserClick(inviteeId)}
-                >
-                  {getInviteeDisplayName()}
-                </h4>
+                  title="View profile"
+                  showDemoOverlay={showInviteeDemoProfile}
+                  demoOverlayTextClassName="text-[8px]"
+                />
               </Tooltip>
 
-              <div className="flex flex-wrap items-center gap-x-2 gap-y-0">
-                <Tooltip content="View profile" position="bottom" wrapperClassName="inline-flex">
-                  <p
-                    className="text-sm text-base-content/70 cursor-pointer hover:text-primary transition-colors"
-                    onClick={() => handleUserClick(inviteeId)}
-                  >
-                    @{getUsername()}
-                  </p>
-                </Tooltip>
-                {showInviteeDemoProfile && (
-                  <Tooltip
-                    content={DEMO_PROFILE_TOOLTIP}
-                    wrapperClassName="flex items-center gap-0.5 text-base-content/50 text-xs"
-                  >
-                    <FlaskConical size={12} className="flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <h4
+                  ref={nameContainerRef}
+                  className="font-medium text-base-content leading-[120%] mb-[0.2em] truncate relative"
+                >
+                  <Tooltip content="View profile" position="bottom" wrapperClassName="cursor-pointer hover:text-primary transition-colors">
+                    <span onClick={() => handleUserClick(inviteeId)}>{getInviteeDisplayName()}</span>
                   </Tooltip>
-                )}
+                  <span
+                    ref={nameProbeRef}
+                    className="invisible absolute whitespace-nowrap pointer-events-none left-0 top-0 font-medium"
+                    aria-hidden="true"
+                  >
+                    {getInviteeDisplayName()}
+                  </span>
+                </h4>
+
+                <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0 overflow-hidden text-xs" style={{ maxHeight: "2.1em" }}>
+                  <Tooltip content="View profile" position="bottom" wrapperClassName="inline-flex">
+                    <p
+                      className="text-base-content/70 cursor-pointer hover:text-primary transition-colors"
+                      onClick={() => handleUserClick(inviteeId)}
+                    >
+                      @{getUsername()}
+                    </p>
+                  </Tooltip>
+                  {dateIsNarrow && joinedDateText && (
+                    <div className="flex shrink-0 items-center gap-1 text-base-content/60">
+                      <Calendar size={10} className="shrink-0" />
+                      <span className="leading-[1.05] whitespace-nowrap">{joinedDateText}</span>
+                    </div>
+                  )}
+                  {locationText && (
+                    <Tooltip
+                      content={locationText}
+                      wrapperClassName="flex min-w-0 max-w-[calc(100%-1.5rem)] flex-[0_1_auto] items-center gap-1 overflow-hidden"
+                    >
+                      <MapPin size={10} className="shrink-0 text-base-content/60" />
+                      <span className="min-w-0 truncate text-base-content/60 leading-[1.05]">{locationText}</span>
+                    </Tooltip>
+                  )}
+                  {showInviteeDemoProfile && (
+                    <Tooltip
+                      content={DEMO_PROFILE_TOOLTIP}
+                      wrapperClassName="flex items-center gap-0.5 text-base-content/50 text-xs"
+                    >
+                      <FlaskConical size={12} className="flex-shrink-0" />
+                    </Tooltip>
+                  )}
+                </div>
               </div>
             </div>
+
+            {joinedDateText && (
+              <div
+                ref={dateRef}
+                className={`flex items-center text-xs text-base-content/60 whitespace-nowrap flex-shrink-0${dateIsNarrow ? " absolute opacity-0 pointer-events-none" : ""}`}
+              >
+                <Calendar size={12} className="mr-1" />
+                <span>{joinedDateText}</span>
+              </div>
+            )}
           </div>
 
           {/* Bio if available */}

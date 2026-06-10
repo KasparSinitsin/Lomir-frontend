@@ -106,13 +106,13 @@ const PersonRequestCard = ({
   const fullName = getDisplayName();
   const abbrevName = user ? formatDisplayName(user) : fullName;
   const [displayedName, setDisplayedName] = useState(fullName);
-  const displayedNameRef = useRef(fullName);
-  displayedNameRef.current = displayedName;
+  const [isOverflow, setIsOverflow] = useState(false);
+  const isOverflowRef = useRef(false);
+  isOverflowRef.current = isOverflow;
   const forceNarrowRef = useRef(forceNarrow);
   forceNarrowRef.current = forceNarrow;
 
   useLayoutEffect(() => {
-    if (fullName === abbrevName) { setDisplayedName(fullName); return; }
     const container = nameContainerRef.current;
     const probe = probeRef.current;
     if (!container || !probe) return;
@@ -120,11 +120,13 @@ const PersonRequestCard = ({
       // Date is absolute (out of flow) when either this card or any sibling card is narrow.
       // Subtract its width + gap back so the measurement is always against the same
       // effective width, preventing oscillation.
-      const isDateAbsolute = displayedNameRef.current !== fullName || forceNarrowRef.current;
+      const isDateAbsolute = isOverflowRef.current || forceNarrowRef.current;
       const dateEl = dateRef.current;
-      const dateReservedWidth = isDateAbsolute && dateEl ? dateEl.offsetWidth + 16 : 0; // 16 = space-x-4 gap
+      const dateReservedWidth = isDateAbsolute && dateEl ? dateEl.offsetWidth + 16 : 0;
       probe.textContent = fullName;
-      setDisplayedName(probe.scrollWidth <= container.clientWidth - dateReservedWidth ? fullName : abbrevName);
+      const overflows = probe.scrollWidth > container.clientWidth - dateReservedWidth;
+      setIsOverflow(overflows);
+      setDisplayedName(overflows && fullName !== abbrevName ? abbrevName : fullName);
     };
     const ro = new ResizeObserver(update);
     ro.observe(container);
@@ -132,8 +134,8 @@ const PersonRequestCard = ({
     return () => ro.disconnect();
   }, [fullName, abbrevName]);
 
-  const isNarrow = displayedName !== fullName;
-  const dateIsNarrow = isNarrow || forceNarrow;
+  const isNarrow = isOverflow;
+  const dateIsNarrow = isOverflow || forceNarrow;
 
   // Report narrow state to parent for cross-card sync
   useEffect(() => { onNarrowChange?.(isNarrow); }, [isNarrow]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -143,100 +145,103 @@ const PersonRequestCard = ({
   return (
     <div className="bg-base-200/30 rounded-lg border border-base-300 p-4">
       {/* User Info Header */}
-      <div className="flex items-start space-x-4 mb-4 relative">
-        {/* Avatar */}
-        <Tooltip
-          content={clickable ? "View profile" : undefined}
-          wrapperClassName={`avatar ${clickableStyles}`}
-        >
-          <div className="w-12 h-12 rounded-full relative overflow-hidden" onClick={handleUserClick}>
-            {avatarUrl ? (
-              <img
-                src={avatarUrl}
-                alt={user?.username || "User"}
-                className="object-cover w-full h-full rounded-full"
-                onError={(e) => {
-                  e.target.style.display = "none";
-                  const fallback =
-                    e.target.parentElement.querySelector(".avatar-fallback");
-                  if (fallback) fallback.style.display = "flex";
+      <div className="relative flex items-start justify-between gap-4 mb-4">
+        <div className="flex min-w-0 flex-1 items-start space-x-4">
+          {/* Avatar */}
+          <Tooltip
+            content={clickable ? "View profile" : undefined}
+            wrapperClassName={`avatar ${clickableStyles}`}
+          >
+            <div className="w-12 h-12 rounded-full relative overflow-hidden" onClick={handleUserClick}>
+              {avatarUrl ? (
+                <img
+                  src={avatarUrl}
+                  alt={user?.username || "User"}
+                  className="object-cover w-full h-full rounded-full"
+                  onError={(e) => {
+                    e.target.style.display = "none";
+                    const fallback =
+                      e.target.parentElement.querySelector(".avatar-fallback");
+                    if (fallback) fallback.style.display = "flex";
+                  }}
+                />
+              ) : null}
+              {/* Fallback initials */}
+              <div
+                className="avatar-fallback bg-[var(--color-primary-focus)] text-primary-content flex items-center justify-center w-full h-full rounded-full absolute inset-0"
+                style={{
+                  display: avatarUrl ? "none" : "flex",
                 }}
-              />
-            ) : null}
-            {/* Fallback initials */}
-            <div
-              className="avatar-fallback bg-[var(--color-primary-focus)] text-primary-content flex items-center justify-center w-full h-full rounded-full absolute inset-0"
-              style={{
-                display: avatarUrl ? "none" : "flex",
-              }}
-            >
-              <span className="text-xl font-medium">
-                {getUserInitials(user)}
-              </span>
+              >
+                <span className="text-xl font-medium">
+                  {getUserInitials(user)}
+                </span>
+              </div>
+              {isSyntheticUser(user) && <DemoAvatarOverlay textClassName="text-[8px]" />}
             </div>
-            {isSyntheticUser(user) && <DemoAvatarOverlay textClassName="text-[8px]" />}
-          </div>
-        </Tooltip>
+          </Tooltip>
 
-        {/* Name and Details */}
-        <div className="flex-1 min-w-0">
-          <h4 ref={nameContainerRef} className="font-medium text-base-content leading-[120%] mb-[0.2em] truncate relative">
-            {clickable ? (
-              <Tooltip content="View profile" wrapperClassName="cursor-pointer hover:text-primary transition-colors">
-                <span onClick={handleUserClick}>{displayedName}</span>
-              </Tooltip>
-            ) : (
-              displayedName
-            )}
-            <span ref={probeRef} className="invisible absolute whitespace-nowrap pointer-events-none left-0 top-0 font-medium" aria-hidden="true" />
-          </h4>
-
-          {(dateIsNarrow || showUsername || (showLocation && (user?.city || user?.country || getPostalCode())) || sublineExtra || showDemoProfile) && (
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-0 overflow-hidden text-xs" style={{ maxHeight: "2.1em" }}>
-              {dateIsNarrow ? (
-                <div className="flex shrink-0 items-center gap-1 text-base-content/60">
-                  <Calendar size={10} className="shrink-0" />
-                  <span className="leading-[1.05] whitespace-nowrap">{formatDate()}</span>
-                </div>
-              ) : showUsername && (
-                clickable ? (
-                  <div className="min-w-0 flex-[0_1_auto] overflow-hidden">
-                    <Tooltip content="View profile" wrapperClassName="block truncate leading-[1.05] text-base-content/70 cursor-pointer hover:text-primary transition-colors">
-                      <span onClick={handleUserClick}>@{user.username}</span>
-                    </Tooltip>
-                  </div>
-                ) : (
-                  <div className="min-w-0 flex-[0_1_auto] overflow-hidden">
-                    <span className="block truncate leading-[1.05] text-base-content/70">@{user.username}</span>
-                  </div>
-                )
-              )}
-              {showLocation && (user?.city || user?.country || getPostalCode()) && (
-                <div className="flex min-w-0 max-w-[calc(100%-1.5rem)] flex-[0_1_auto] items-center gap-1 overflow-hidden">
-                  <MapPin size={10} className="text-base-content/60 shrink-0" />
-                  <span className="min-w-0 truncate text-base-content/60 leading-[1.05]">
-                    {formatListLocation(user, { isRemote: user?.is_remote || user?.isRemote }).short || getPostalCode()}
-                  </span>
-                </div>
-              )}
-              {sublineExtra}
-              {showDemoProfile && (
-                <Tooltip
-                  content={DEMO_PROFILE_TOOLTIP}
-                  wrapperClassName="flex shrink-0 items-center gap-0.5 text-base-content/50"
-                >
-                  <FlaskConical size={10} className="flex-shrink-0" />
+          {/* Name and Details */}
+          <div className="flex-1 min-w-0">
+            <h4 ref={nameContainerRef} className="font-medium text-base-content leading-[120%] mb-[0.2em] truncate relative">
+              {clickable ? (
+                <Tooltip content="View profile" wrapperClassName="cursor-pointer hover:text-primary transition-colors">
+                  <span onClick={handleUserClick}>{displayedName}</span>
                 </Tooltip>
+              ) : (
+                displayedName
               )}
-            </div>
-          )}
+              <span ref={probeRef} className="invisible absolute whitespace-nowrap pointer-events-none left-0 top-0 font-medium" aria-hidden="true" />
+            </h4>
+
+            {(showUsername || dateIsNarrow || (showLocation && (user?.city || user?.country || getPostalCode())) || sublineExtra || showDemoProfile) && (
+              <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0 overflow-hidden text-xs" style={{ maxHeight: "2.1em" }}>
+                {showUsername && (
+                  clickable ? (
+                    <div className="min-w-0 flex-[0_1_auto] overflow-hidden">
+                      <Tooltip content="View profile" wrapperClassName="block truncate leading-[1.05] text-base-content/70 cursor-pointer hover:text-primary transition-colors">
+                        <span onClick={handleUserClick}>@{user.username}</span>
+                      </Tooltip>
+                    </div>
+                  ) : (
+                    <div className="min-w-0 flex-[0_1_auto] overflow-hidden">
+                      <span className="block truncate leading-[1.05] text-base-content/70">@{user.username}</span>
+                    </div>
+                  )
+                )}
+                {dateIsNarrow && (
+                  <div className="flex shrink-0 items-center gap-1 text-base-content/60">
+                    <Calendar size={10} className="shrink-0" />
+                    <span className="leading-[1.05] whitespace-nowrap">{formatDate()}</span>
+                  </div>
+                )}
+                {showLocation && (user?.city || user?.country || getPostalCode()) && (
+                  <div className="flex min-w-0 max-w-[calc(100%-1.5rem)] flex-[0_1_auto] items-center gap-1 overflow-hidden">
+                    <MapPin size={10} className="text-base-content/60 shrink-0" />
+                    <span className="min-w-0 truncate text-base-content/60 leading-[1.05]">
+                      {formatListLocation(user, { isRemote: user?.is_remote || user?.isRemote }).short || getPostalCode()}
+                    </span>
+                  </div>
+                )}
+                {sublineExtra}
+                {showDemoProfile && (
+                  <Tooltip
+                    content={DEMO_PROFILE_TOOLTIP}
+                    wrapperClassName="flex shrink-0 items-center gap-0.5 text-base-content/50"
+                  >
+                    <FlaskConical size={10} className="flex-shrink-0" />
+                  </Tooltip>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Date - top right; absolute (out of flow) when narrow so subline gets full width,
             but still rendered so its width can be measured for stable name-fit calculation */}
         <div
           ref={dateRef}
-          className={`flex items-center text-xs text-base-content/60 flex-shrink-0${dateIsNarrow ? " absolute opacity-0 pointer-events-none" : ""}`}
+          className={`flex items-center text-xs text-base-content/60 whitespace-nowrap flex-shrink-0${dateIsNarrow ? " absolute opacity-0 pointer-events-none" : ""}`}
         >
           <Calendar size={12} className="mr-1" />
           <span>{formatDate()}</span>
