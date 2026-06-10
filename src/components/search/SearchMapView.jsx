@@ -506,6 +506,7 @@ const getLocationLabel = (item) => {
     {
       displayType: "short",
       showState: true,
+      showCountryCode: false,
     },
   );
 
@@ -1946,6 +1947,26 @@ const RoleSubline = ({
   );
 };
 
+const formatRoleNamesSummary = (names, max = 2) => {
+  if (!Array.isArray(names) || names.length === 0) return null;
+  if (names.length <= max) return names.join(", ");
+  return `${names.slice(0, max).join(", ")} +${names.length - max}`;
+};
+
+const TeamOpenRoleNamesLine = ({ point }) => {
+  if (point.type !== "team") return null;
+
+  const summary = formatRoleNamesSummary(point.openRoleNames);
+  if (!summary) return null;
+
+  return (
+    <div className="flex min-w-0 items-center gap-1.5">
+      <UserSearch size={13} aria-hidden="true" />
+      <span className="min-w-0 flex-1 truncate">{summary}</span>
+    </div>
+  );
+};
+
 const MapPopupCard = ({
   point,
   showMatchScore = false,
@@ -1955,7 +1976,7 @@ const MapPopupCard = ({
   onClose,
 }) => {
   return (
-    <div className="inline-block max-w-[22rem] align-top">
+    <div className="max-w-full align-top">
       <div className="mb-2 flex items-center justify-between text-base-content/70">
         <EntityMetaLine point={point} />
         <button
@@ -1978,6 +1999,7 @@ const MapPopupCard = ({
           <TeamMetaLine
             point={point}
             showMatchScore={showMatchScore}
+            showRoleRequestNames={false}
             onOpenInvitation={onOpenInvitation}
             onOpenApplication={onOpenApplication}
           />
@@ -1993,25 +2015,26 @@ const MapPopupCard = ({
 
       <div className="mt-3 space-y-0.5 text-xs text-base-content/70">
         {point.teamName && point.type === "role" && (
-          <div className="flex items-center gap-1.5">
+          <div className="flex min-w-0 items-center gap-1.5">
             <Users size={13} aria-hidden="true" />
-            <span>{point.teamName}</span>
+            <span className="min-w-0 flex-1 truncate">{point.teamName}</span>
           </div>
         )}
         {point.teamName && point.type !== "role" && (
-          <div className="flex items-center gap-1.5">
+          <div className="flex min-w-0 items-center gap-1.5">
             <Users size={13} aria-hidden="true" />
-            <span>{point.teamName}</span>
+            <span className="min-w-0 flex-1 truncate">{point.teamName}</span>
           </div>
         )}
-        <div className="flex items-center gap-1.5">
+        <TeamOpenRoleNamesLine point={point} />
+        <div className="flex min-w-0 items-center gap-1.5">
           <LocationIcon point={point} />
-          <span>{point.locationLabel}</span>
+          <span className="min-w-0 flex-1 truncate">{point.locationLabel}</span>
         </div>
         {point.distanceLabel && (
-          <div className="flex items-center gap-1.5">
+          <div className="flex min-w-0 items-center gap-1.5">
             <Ruler size={13} />
-            <span>{point.distanceLabel}</span>
+            <span className="min-w-0 flex-1 truncate">{point.distanceLabel}</span>
           </div>
         )}
       </div>
@@ -2917,17 +2940,7 @@ const SearchMapView = ({
                         )}
                         {point.type === "team" && Array.isArray(point.openRoleNames) && point.openRoleNames.length > 0 && (
                           <div className="mt-2 space-y-0.5 text-xs text-base-content/70">
-                            <div className="flex items-center gap-1.5">
-                              <UserSearch size={13} aria-hidden="true" />
-                              <span className="min-w-0 flex-1 truncate">
-                                {(() => {
-                                  const names = point.openRoleNames;
-                                  const max = 2;
-                                  if (names.length <= max) return names.join(", ");
-                                  return names.slice(0, max).join(", ") + ` +${names.length - max}`;
-                                })()}
-                              </span>
-                            </div>
+                            <TeamOpenRoleNamesLine point={point} />
                           </div>
                         )}
                         {point.teamName && point.type !== "role" && (
@@ -2987,7 +3000,7 @@ const SearchMapView = ({
             style={{
               top: `${popupCoords ? popupCoords.top : popupAnchor.y}px`,
               left: `${popupCoords ? popupCoords.left : popupAnchor.x}px`,
-              width: "max-content",
+              width: "fit-content",
               maxWidth: `min(${MAP_POPUP_MAX_WIDTH}px, calc(100vw - ${MAP_POPUP_VIEWPORT_PADDING * 2}px))`,
               visibility: popupCoords ? "visible" : "hidden",
             }}

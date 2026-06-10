@@ -172,7 +172,7 @@ const UserCard = ({
     }
 
     const iconSizeSubtitle =
-      viewMode === "list" ? 9 : viewMode === "mini" ? 11 : 12;
+      viewMode === "list" ? 9 : viewMode === "mini" ? 10 : 13;
     scoreSubtitleItem = (
       <Tooltip content={matchTooltipText}>
         <span className="flex items-center gap-0.5">
@@ -215,6 +215,7 @@ const UserCard = ({
           displayType: "short",
           showState: true,
           showCountry: true,
+          showCountryCode: viewMode !== "card" && viewMode !== "mini",
         });
 
   const demoAvatarOverlay = isSyntheticUser(user) ? (
@@ -290,7 +291,7 @@ const UserCard = ({
             content={DEMO_PROFILE_TOOLTIP}
             wrapperClassName="flex items-center whitespace-nowrap text-base-content/50"
           >
-            <FlaskConical className="h-[9px] w-auto flex-shrink-0" />
+            <FlaskConical size={9} className="flex-shrink-0" />
           </Tooltip>
         )}
       </span>
@@ -376,12 +377,12 @@ const UserCard = ({
             >
               {isUserProfilePublic() ? (
                 <Eye
-                  size={viewMode === "mini" ? 12 : 14}
+                  size={viewMode === "mini" ? 10 : 13}
                   className="text-green-600"
                 />
               ) : (
                 <EyeClosed
-                  size={viewMode === "mini" ? 12 : 14}
+                  size={viewMode === "mini" ? 10 : 13}
                   className="text-gray-500"
                 />
               )}
@@ -392,9 +393,9 @@ const UserCard = ({
             locationText && (
               <span className="flex items-start">
                 {user.is_remote || user.isRemote ? (
-                  <Globe size={12} className="mr-0.5 flex-shrink-0 mt-0.5" />
+                  <Globe size={10} className="mr-0.5 flex-shrink-0 mt-0.5" />
                 ) : (
-                  <MapPin size={12} className="mr-0.5 flex-shrink-0 mt-0.5" />
+                  <MapPin size={10} className="mr-0.5 flex-shrink-0 mt-0.5" />
                 )}
                 <span>
                   {locationText}
@@ -404,14 +405,12 @@ const UserCard = ({
           {isSyntheticUser(user) && (
             <Tooltip
               content={DEMO_PROFILE_TOOLTIP}
-              wrapperClassName="flex items-start text-base-content/50"
+              wrapperClassName="flex items-center gap-1 text-base-content/50"
             >
               <FlaskConical
-                className={`w-auto mr-0.5 flex-shrink-0 ${viewMode === "mini" ? "h-3 mt-px" : "h-[13px] mt-px"}`}
+                size={viewMode === "mini" ? 10 : 13}
+                className="flex-shrink-0"
               />
-              <span className="leading-[1.15]">
-                {viewMode === "mini" ? "Demo" : "Demo Profile"}
-              </span>
             </Tooltip>
           )}
         </span>
@@ -459,6 +458,7 @@ const UserCard = ({
         }
         hideLocation={viewMode === "mini" && !activeFilters.showLocation}
         compact={viewMode === "mini"}
+        showCountryCode={viewMode !== "card" && viewMode !== "mini"}
       />
 
       {/* <div className="mt-auto">

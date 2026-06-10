@@ -401,15 +401,19 @@ const TeamCard = ({
         team: {
           name: role.roleName ?? role.role_name ?? "Vacant Role",
           description: role.bio ?? role.roleBio ?? appTeam.description ?? null,
-          is_remote: role.isRemote ?? role.is_remote,
-          city: role.city,
-          country: role.country,
+          is_remote: role.isRemote ?? role.is_remote ?? appTeam.is_remote ?? appTeam.isRemote,
+          city: role.city ?? appTeam.city,
+          state: role.state ?? role.region ?? role.province ?? appTeam.state ?? appTeam.region ?? appTeam.province,
+          country: role.country ?? appTeam.country,
+          postal_code: role.postal_code ?? role.postalCode ?? appTeam.postal_code ?? appTeam.postalCode,
+          latitude: role.latitude ?? role.lat ?? appTeam.latitude ?? appTeam.lat,
+          longitude: role.longitude ?? role.lng ?? role.lon ?? appTeam.longitude ?? appTeam.lng ?? appTeam.lon,
           tags: role.tags ?? [],
           badges: role.badges ?? [],
           _teamName: appTeam.name ?? null,
           matchScore: null,
           matchDetails: null,
-          id: undefined,
+          id: appTeam.id,
         },
         id: application.id,
         message: application.message,
@@ -423,15 +427,19 @@ const TeamCard = ({
         team: {
           name: role.roleName ?? role.role_name ?? "Role Invitation",
           description: role.bio ?? role.roleBio ?? invTeam.description ?? null,
-          is_remote: role.isRemote ?? role.is_remote,
-          city: role.city,
-          country: role.country,
+          is_remote: role.isRemote ?? role.is_remote ?? invTeam.is_remote ?? invTeam.isRemote,
+          city: role.city ?? invTeam.city,
+          state: role.state ?? role.region ?? role.province ?? invTeam.state ?? invTeam.region ?? invTeam.province,
+          country: role.country ?? invTeam.country,
+          postal_code: role.postal_code ?? role.postalCode ?? invTeam.postal_code ?? invTeam.postalCode,
+          latitude: role.latitude ?? role.lat ?? invTeam.latitude ?? invTeam.lat,
+          longitude: role.longitude ?? role.lng ?? role.lon ?? invTeam.longitude ?? invTeam.lng ?? invTeam.lon,
           tags: role.tags ?? [],
           badges: role.badges ?? [],
           _teamName: invTeam.name ?? null,
           matchScore: null,
           matchDetails: null,
-          id: undefined,
+          id: invTeam.id,
         },
         id: invitation.id,
         message: invitation.message,
@@ -1081,6 +1089,27 @@ const TeamCard = ({
     fetchCompleteTeamData();
   }, [teamData?.id, effectiveVariant, user, viewerDistanceSource]);
 
+  // For role variants the invitation/application API response doesn't include
+  // team lat/lon, so fetch just those two fields to enable distance display.
+  useEffect(() => {
+    if (!isRoleVariant || !teamData?.id) return;
+    if (teamData.latitude != null) return;
+
+    let active = true;
+    teamService.getTeamById(teamData.id)
+      .then((response) => {
+        if (!active) return;
+        const fullTeam = response?.data?.data ?? response?.data ?? null;
+        if (!fullTeam) return;
+        const lat = fullTeam.latitude ?? fullTeam.lat ?? null;
+        const lng = fullTeam.longitude ?? fullTeam.lng ?? fullTeam.lon ?? null;
+        if (lat == null || lng == null) return;
+        setTeamData((prev) => ({ ...prev, latitude: lat, longitude: lng }));
+      })
+      .catch(() => {});
+    return () => { active = false; };
+  }, [isRoleVariant, teamData?.id]);
+
   // Sync parent-managed member badges into teamData. When the parent provides
   // an array (bulk fetch resolved), we use it directly. While the parent is
   // still loading (prop === null), we leave teamData.badges alone so the card
@@ -1354,7 +1383,7 @@ const TeamCard = ({
     <button
       type="button"
       data-tooltip-trigger="true"
-      className="block max-w-full truncate bg-transparent p-0 text-left text-inherit [font:inherit] hover:underline focus:outline-none"
+      className="block max-w-full bg-transparent p-0 text-left text-inherit [font:inherit] hover:underline focus:outline-none"
       onClick={(event) => {
         event.stopPropagation();
         setIsRoleDetailsModalOpen(true);
@@ -2143,7 +2172,7 @@ const TeamCard = ({
     }
 
     const iconSizeSubtitle =
-      viewMode === "list" ? 9 : viewMode === "mini" ? 11 : 12;
+      viewMode === "list" ? 9 : viewMode === "mini" ? 10 : 13;
     scoreSubtitleItem = (
       <Tooltip content={matchTooltipText}>
         <span className="flex items-center gap-0.5">
@@ -2731,37 +2760,30 @@ const TeamCard = ({
         title={cardTitle}
         subtitle={
           <span
-            className={`mt-0.5 flex max-h-[2.75em] overflow-hidden text-base-content/70 ${isRoleVariant ? `flex-col leading-snug ${viewMode === "mini" ? "text-xs gap-y-px w-full" : "text-sm gap-y-px"}` : `items-center flex-wrap leading-snug ${viewMode === "mini" ? "text-xs gap-x-1 gap-y-px w-full" : "text-sm gap-x-1.5 gap-y-px"}`}`}
+            className={`mt-0.5 flex max-h-[2.75em] overflow-hidden items-center flex-wrap leading-snug text-base-content/70 ${viewMode === "mini" ? "text-xs gap-x-1 gap-y-px w-full" : "text-sm gap-x-1.5 gap-y-px"}`}
           >
-            {/* Score + date on the same row for role variants */}
-            {isRoleVariant ? (
-              <span className="flex items-center gap-1.5 flex-nowrap">
-                {scoreSubtitleItem}
-                {getFormattedDate() && (
-                  <Tooltip content={getRoleStatusTooltip()}>
-                    <span className="flex items-center gap-0.5 whitespace-nowrap">
-                      {isRoleInvitationVariant ? (
-                        <Mail
-                          size={viewMode === "mini" ? 11 : 12}
-                          className={`flex-shrink-0 ${hasInternalRoleInvitation ? "text-orange-500" : "text-pink-500"}`}
-                        />
-                      ) : (
-                        <SendHorizontal size={viewMode === "mini" ? 11 : 12} className="flex-shrink-0 text-orange-500" />
-                      )}
-                      <span>{getFormattedDate()}</span>
-                    </span>
-                  </Tooltip>
-                )}
-              </span>
-            ) : (
-              scoreSubtitleItem
+            {scoreSubtitleItem}
+            {isRoleVariant && getFormattedDate() && (
+              <Tooltip content={getRoleStatusTooltip()}>
+                <span className="flex items-center gap-0.5 whitespace-nowrap">
+                  {isRoleInvitationVariant ? (
+                    <Mail
+                      size={viewMode === "mini" ? 10 : 13}
+                      className={`flex-shrink-0 ${hasInternalRoleInvitation ? "text-orange-500" : "text-pink-500"}`}
+                    />
+                  ) : (
+                    <SendHorizontal size={viewMode === "mini" ? 10 : 13} className="flex-shrink-0 text-orange-500" />
+                  )}
+                  <span>{getFormattedDate()}</span>
+                </span>
+              </Tooltip>
             )}
 
             {/* Members count for member search results */}
             {!isRoleVariant && shouldShowMemberCountInSubtitle && (
               <span className="flex items-center">
                 <Users
-                  size={viewMode === "mini" ? 12 : 14}
+                  size={viewMode === "mini" ? 10 : 13}
                   className="text-primary mr-0.5"
                 />
                 <span>
@@ -2787,9 +2809,9 @@ const TeamCard = ({
                       }`
                 }
               >
-                <span className="flex items-center">
+                <span className="flex items-center gap-0.5 whitespace-nowrap">
                   <Mail
-                    size={viewMode === "mini" ? 12 : 14}
+                    size={viewMode === "mini" ? 10 : 13}
                     className={
                       hasInternalRoleInvitation
                         ? "text-orange-500"
@@ -2797,7 +2819,7 @@ const TeamCard = ({
                     }
                   />
                   {getFormattedDate() && (
-                    <span className="ml-0.5">{getFormattedDate()}</span>
+                    <span>{getFormattedDate()}</span>
                   )}
                 </span>
               </Tooltip>
@@ -2807,14 +2829,14 @@ const TeamCard = ({
                 {viewMode === "card" ? (
                   <span className="flex items-center">
                     <UserSearch
-                      size={11}
+                      size={13}
                       className="text-orange-500"
                     />
                   </span>
                 ) : (
                   <span className="flex items-center gap-1">
                     <UserSearch
-                      size={viewMode === "mini" ? 12 : 14}
+                      size={viewMode === "mini" ? 10 : 13}
                       className="text-orange-500 flex-shrink-0"
                     />
                     <span className="leading-[1.05]">{teamInvitationRoleName}</span>
@@ -2833,13 +2855,13 @@ const TeamCard = ({
                     : `You applied to join this team${getFormattedDate() ? `\non ${format(new Date(normalizedData.date), "MMM d, yyyy")}` : ""}`
                 }
               >
-                <span className="flex items-center">
+                <span className="flex items-center gap-0.5 whitespace-nowrap">
                   <SendHorizontal
-                    size={viewMode === "mini" ? 12 : 14}
+                    size={viewMode === "mini" ? 10 : 13}
                     className={isCombinedApplication ? "text-violet-500" : "text-info"}
                   />
                   {getFormattedDate() && (
-                    <span className="ml-0.5">{getFormattedDate()}</span>
+                    <span>{getFormattedDate()}</span>
                   )}
                 </span>
               </Tooltip>
@@ -2849,14 +2871,14 @@ const TeamCard = ({
                 {viewMode === "card" ? (
                   <span className="flex items-center">
                     <UserSearch
-                      size={11}
+                      size={13}
                       className="text-orange-500"
                     />
                   </span>
                 ) : (
                   <span className="flex items-center gap-1">
                     <UserSearch
-                      size={viewMode === "mini" ? 12 : 14}
+                      size={viewMode === "mini" ? 10 : 13}
                       className="text-orange-500 flex-shrink-0"
                     />
                     <span className="leading-[1.05]">{teamApplicationRoleName}</span>
@@ -2877,7 +2899,7 @@ const TeamCard = ({
                     }}
                   >
                     <Users
-                      size={11}
+                      size={13}
                       className="text-primary"
                     />
                   </span>
@@ -2890,7 +2912,7 @@ const TeamCard = ({
                     }}
                   >
                     <Users
-                      size={viewMode === "mini" ? 12 : 14}
+                      size={viewMode === "mini" ? 10 : 13}
                       className="text-primary flex-shrink-0"
                     />
                     <span className="leading-[1.05]">{teamData._teamName}</span>
@@ -2904,7 +2926,7 @@ const TeamCard = ({
                 <Tooltip content={isPendingCombinedApplicationForTeam ? "You applied to join this team and fill a role" : "You applied for a role within this team"}>
                   <span className="flex items-center">
                     <SendHorizontal
-                      size={viewMode === "mini" ? 12 : 14}
+                      size={viewMode === "mini" ? 10 : 13}
                       className={isPendingCombinedApplicationForTeam ? "text-violet-500" : "text-orange-500"}
                     />
                   </span>
@@ -2916,7 +2938,7 @@ const TeamCard = ({
               <Tooltip content={`${openRoleCount} open ${openRoleCount === 1 ? 'role' : 'roles'} posted in this team`}>
                 <span className="flex items-center">
                   <UserSearch
-                    size={viewMode === "mini" ? 12 : 14}
+                    size={viewMode === "mini" ? 10 : 13}
                     className="text-orange-500 mr-0.5"
                   />
                   <span>{openRoleCount}</span>
@@ -2935,12 +2957,12 @@ const TeamCard = ({
               >
                 {teamData.is_public === true || teamData.isPublic === true ? (
                   <EyeIcon
-                    size={viewMode === "mini" ? 12 : 14}
+                    size={viewMode === "mini" ? 10 : 13}
                     className="text-green-600"
                   />
                 ) : (
                   <EyeClosed
-                    size={viewMode === "mini" ? 12 : 14}
+                    size={viewMode === "mini" ? 10 : 13}
                     className="text-gray-500"
                   />
                 )}
@@ -2953,7 +2975,7 @@ const TeamCard = ({
               <Tooltip content="You applied for a role within this team">
                 <span className="flex items-center">
                   <SendHorizontal
-                    size={viewMode === "mini" ? 12 : 14}
+                    size={viewMode === "mini" ? 10 : 13}
                     className="text-orange-500"
                   />
                 </span>
@@ -2961,12 +2983,13 @@ const TeamCard = ({
               )}
 
             {/* User role - show for member variant when user has a role */}
-            {userRole && effectiveVariant === "member" && (
+            {userRole && effectiveVariant === "member" &&
+              (userRole === "owner" || userRole === "admin" || (userRole === "member" && !hideMemberRoleIcon)) && (
               <span className="flex items-center text-base-content/70">
                 {userRole === "owner" && (
                   <Tooltip content="You are the owner of this team">
                     <Crown
-                      size={viewMode === "mini" ? 12 : 14}
+                      size={viewMode === "mini" ? 10 : 13}
                       className="text-[var(--color-role-owner-bg)]"
                     />
                   </Tooltip>
@@ -2974,7 +2997,7 @@ const TeamCard = ({
                 {userRole === "admin" && (
                   <Tooltip content="You are an admin of this team">
                     <ShieldCheck
-                      size={viewMode === "mini" ? 12 : 14}
+                      size={viewMode === "mini" ? 10 : 13}
                       className="text-[var(--color-role-admin-bg)]"
                     />
                   </Tooltip>
@@ -2982,7 +3005,7 @@ const TeamCard = ({
                 {userRole === "member" && !hideMemberRoleIcon && (
                   <Tooltip content="You are a member of this team">
                     <User
-                      size={viewMode === "mini" ? 12 : 14}
+                      size={viewMode === "mini" ? 10 : 13}
                       className="text-[var(--color-role-member-bg)]"
                     />
                   </Tooltip>
@@ -2990,9 +3013,10 @@ const TeamCard = ({
               </span>
             )}
 
-            {/* Compact location in subtitle for mini cards */}
+            {/* Compact location in subtitle for mini cards — search results only (My Teams always shows location in body) */}
             {viewMode === "mini" &&
               !activeFilters.showLocation &&
+              isSearchResult &&
               (teamData.city ||
                 teamData.country ||
                 teamData.is_remote ||
@@ -3007,7 +3031,7 @@ const TeamCard = ({
                     <>
                       <MapPin size={10} className="flex-shrink-0" />
                       <span>
-                        {[teamData.city, teamData.country]
+                        {[teamData.city, normalizeLocationData(teamData).countryName]
                           .filter(Boolean)
                           .join(", ")}
                       </span>
@@ -3021,7 +3045,7 @@ const TeamCard = ({
                 wrapperClassName="flex items-center gap-1 text-base-content/50"
               >
                 <FlaskConical
-                  size={viewMode === "mini" ? 10 : 11}
+                  size={viewMode === "mini" ? 10 : 13}
                   className="flex-shrink-0"
                 />
               </Tooltip>
@@ -3096,14 +3120,15 @@ const TeamCard = ({
               : getDisplayBadges()
           }
           openRoles={openRoleNames}
-          hideLocation={viewMode === "mini" && !activeFilters.showLocation}
+          hideLocation={viewMode === "mini" && !activeFilters.showLocation && isSearchResult}
           compact={viewMode === "mini"}
+          showCountryCode={viewMode !== "card" && viewMode !== "mini"}
         />
         {viewMode === "card" && teamRequestRoleName && (
           <div className="mt-2 flex items-start text-sm text-base-content/70">
             <UserSearch
-              size={16}
-              className="mr-1 flex-shrink-0 mt-0.5 text-base-content"
+              size={13}
+              className="mr-1 flex-shrink-0 mt-0.5"
             />
             <span>{teamRequestRoleName}</span>
           </div>
@@ -3118,8 +3143,8 @@ const TeamCard = ({
               }}
             >
               <Users
-                size={16}
-                className="mr-1 flex-shrink-0 mt-0.5 text-base-content"
+                size={13}
+                className="mr-1 flex-shrink-0 mt-0.5"
               />
               <span>{teamData._teamName}</span>
             </div>

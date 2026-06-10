@@ -694,7 +694,6 @@ const MyTeams = () => {
                             onAccept={handleInvitationAccept}
                             onDecline={handleInvitationDecline}
                             viewerDistanceSource={viewerDistanceSource}
-                            hideDistanceInfo={true}
                             disableListEdgeRounding={true}
                             listClassName={`${index === 0 ? "rounded-t-xl" : ""} ${
                               index ===
@@ -749,7 +748,6 @@ const MyTeams = () => {
                             onAccept={handleInvitationAccept}
                             onDecline={handleInvitationDecline}
                             viewerDistanceSource={viewerDistanceSource}
-                            hideDistanceInfo={true}
                             viewMode={resultView}
                             activeFilters={{}}
                             showMatchScore={true}
@@ -818,7 +816,6 @@ const MyTeams = () => {
                           onCancel={handleApplicationCancel}
                           onSendReminder={handleSendReminder}
                           viewerDistanceSource={viewerDistanceSource}
-                          hideDistanceInfo={true}
                           listLocationWidthClassName={MY_TEAMS_LIST_LOCATION_WIDTH_CLASSNAME}
                           listLocationInsetClassName={MY_TEAMS_LIST_LOCATION_INSET_CLASSNAME}
                           listLocationVisibilityClassName={MY_TEAMS_LIST_LOCATION_VISIBILITY_CLASSNAME}
@@ -855,7 +852,6 @@ const MyTeams = () => {
                           onCancel={handleApplicationCancel}
                           onSendReminder={handleSendReminder}
                           viewerDistanceSource={viewerDistanceSource}
-                          hideDistanceInfo={true}
                           viewMode={resultView}
                           activeFilters={{}}
                           showMatchScore={true}

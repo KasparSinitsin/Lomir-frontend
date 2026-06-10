@@ -67,9 +67,9 @@ const TruncatedList = ({ items, icon: Icon, compact = false }) => {
 
   return (
     <div
-      className={`flex items-start text-base-content/70 ${compact ? "text-xs" : "text-sm"}`}
+      className={`flex items-start leading-snug text-base-content/70 ${compact ? "text-xs" : "text-sm"}`}
     >
-      <Icon size={compact ? 12 : 16} className="mr-1 flex-shrink-0 mt-0.5" />
+      <Icon size={compact ? 10 : 13} className="mr-1 flex-shrink-0 mt-0.5" />
       <span ref={spanRef}>{displayText}</span>
     </div>
   );
@@ -90,6 +90,7 @@ const LocationDistanceTagsRow = ({
   className = "",
   hideLocation = false,
   compact = false,
+  showCountryCode = true,
 }) => {
   // ─── Normalize tags into a sorted array of strings ───
   const normalizeSortedTagStrings = (input) => {
@@ -310,7 +311,8 @@ const LocationDistanceTagsRow = ({
           compact={true}
           distance={distance}
           className={compact ? "text-xs" : ""}
-          iconSize={compact ? 12 : 16}
+          iconSize={compact ? 10 : 13}
+          showCountryCode={showCountryCode && !compact}
         />
       )}
       {hasTags && (

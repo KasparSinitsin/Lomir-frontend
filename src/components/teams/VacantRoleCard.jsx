@@ -569,6 +569,7 @@ const VacantRoleCard = ({
       showPostalCode: true,
       showState: true,
       showCountry: true,
+      showCountryCode: viewMode !== "card" && viewMode !== "mini",
     }) || null;
   };
 
@@ -598,10 +599,10 @@ const VacantRoleCard = ({
   const getRoleInitials = () => {
     const name = role_name || "Vacant Role";
     const words = name.trim().split(/\s+/);
-    if (words.length >= 2) {
-      return `${words[0].charAt(0)}${words[1].charAt(0)}`.toUpperCase();
+    if (words.length === 1) {
+      return name.substring(0, 2).toUpperCase();
     }
-    return name.substring(0, 2).toUpperCase();
+    return words.slice(0, 3).map((word) => word.charAt(0)).join("").toUpperCase();
   };
 
   const getRoleShortInitials = () =>
@@ -758,7 +759,7 @@ const VacantRoleCard = ({
   const avatarTextClass = isMiniView ? "text-sm" : "text-xl";
   const matchIconSize = isMiniView ? 32 : 44;
   const wrapperPaddingClass = isMiniView ? "p-3" : "p-4";
-  const titleLeadingClass = isMiniView ? "leading-[110%]" : "leading-[120%]";
+  const titleLeadingClass = "leading-[110%]";
   const roleNameClass = isMiniView
     ? "text-sm font-medium"
     : "text-base font-medium";
@@ -776,11 +777,11 @@ const VacantRoleCard = ({
         .filter(Boolean)
     : [];
   const scoreSubtitleIconSize =
-    viewMode === "list" ? 8 : viewMode === "mini" ? 9 : 10;
+    viewMode === "list" ? 8 : viewMode === "mini" ? 10 : 13;
   const subtitleMetaIconSize =
-    viewMode === "list" ? 9 : viewMode === "mini" ? 9 : 10;
+    viewMode === "list" ? 9 : viewMode === "mini" ? 10 : 13;
   const teamLineIconSize =
-    viewMode === "list" ? 9 : viewMode === "mini" ? 10 : 11;
+    viewMode === "list" ? 9 : viewMode === "mini" ? 10 : 13;
   const formattedPostedDate = getFormattedPostedDate();
   const scoreSubtitleItem = matchTier ? (
     <Tooltip content={getMatchTooltip()}>
@@ -890,7 +891,7 @@ const VacantRoleCard = ({
       content={isSyntheticRole(role) ? DEMO_ROLE_TOOLTIP : DEMO_PROFILE_TOOLTIP}
       wrapperClassName="flex items-center gap-1 whitespace-nowrap text-base-content/50"
     >
-      <FlaskConical size={10} className="flex-shrink-0" />
+      <FlaskConical size={9} className="flex-shrink-0" />
     </Tooltip>
   ) : null;
 
@@ -1167,7 +1168,7 @@ const VacantRoleCard = ({
             wrapperClassName="flex items-center gap-1 text-base-content/50"
           >
             <FlaskConical
-              size={viewMode === "mini" ? 10 : 11}
+              size={viewMode === "mini" ? 10 : 13}
               className="flex-shrink-0"
             />
           </Tooltip>
@@ -1234,6 +1235,7 @@ const VacantRoleCard = ({
             }
             hideLocation={viewMode === "mini" && !activeFilters.showLocation}
             compact={viewMode === "mini"}
+            showCountryCode={viewMode !== "card" && viewMode !== "mini"}
           />
 
           {resolvedTeamName &&
@@ -1252,9 +1254,9 @@ const VacantRoleCard = ({
             >
               <Users
                 size={viewMode === "mini" ? 12 : 16}
-                className="text-base-content mr-1 flex-shrink-0 mt-0.5"
+                className="mr-1 flex-shrink-0 mt-0.5"
               />
-              <span className="min-w-0 leading-[1.05] whitespace-normal break-words">
+              <span className="min-w-0 whitespace-normal break-words">
                 {resolvedTeamName}
               </span>
             </div>

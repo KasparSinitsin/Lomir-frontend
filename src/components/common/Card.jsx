@@ -337,7 +337,7 @@ const Card = ({
 
               <div className="min-w-0 flex-1">
                 <h3
-                  className={`font-medium text-[var(--color-primary-focus)] leading-[120%] mb-1 ${titleClassName || "text-lg"}`}
+                  className={`font-medium text-[var(--color-primary-focus)] leading-[110%] mb-1 ${titleClassName || "text-lg"}`}
                 >
                   {title}
                 </h3>
