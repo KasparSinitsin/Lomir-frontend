@@ -502,6 +502,7 @@ const BadgeAwardModal = ({
                       first_name: awardeeFirstName,
                       last_name: awardeeLastName,
                       username: awardeeUsername,
+                      is_synthetic: awardeeIsDemo,
                     }}
                     sizeClass="w-12 h-12"
                     initialsClassName="text-xl font-medium"
@@ -520,6 +521,7 @@ const BadgeAwardModal = ({
                     first_name: awardeeFirstName,
                     last_name: awardeeLastName,
                     username: awardeeUsername,
+                    is_synthetic: awardeeIsDemo,
                   }}
                   sizeClass="w-12 h-12"
                   initialsClassName="text-xl font-medium"

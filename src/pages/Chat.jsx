@@ -8,6 +8,7 @@ import {
   Trash2,
   Search,
   X,
+  FlaskConical,
 } from "lucide-react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import PageContainer from "../components/layout/PageContainer";
@@ -30,7 +31,7 @@ import UserAvatar from "../components/users/UserAvatar";
 import TeamAvatar from "../components/teams/TeamAvatar";
 import TeamDetailsModal from "../components/teams/TeamDetailsModal";
 import UserDetailsModal from "../components/users/UserDetailsModal";
-import { isSyntheticTeam } from "../utils/userHelpers";
+import { isSyntheticTeam, isSyntheticUser, DEMO_PROFILE_TOOLTIP, DEMO_TEAM_TOOLTIP } from "../utils/userHelpers";
 import { formatDisplayName } from "../utils/nameFormatters";
 import {
   formatRelativeChatTimestamp,
@@ -3216,6 +3217,14 @@ const Chat = () => {
                                 ? `Team Chat with ${teamData.members.length} ${teamData.members.length === 1 ? "Member" : "Members"}`
                                 : "Team Chat"}
                             </span>
+                            {isSyntheticTeam(teamData) && (
+                              <Tooltip
+                                content={DEMO_TEAM_TOOLTIP}
+                                wrapperClassName="flex items-center gap-0.5 text-base-content/50 flex-shrink-0"
+                              >
+                                <FlaskConical size={10} className="flex-shrink-0" />
+                              </Tooltip>
+                            )}
                           </div>
                           {conversationUpdatedAt && (
                             <span className="text-xs text-base-content/50 whitespace-nowrap ml-2">
@@ -3228,6 +3237,14 @@ const Chat = () => {
                           <div className="flex items-center gap-1.5 min-w-0">
                             <User size={12} className="flex-shrink-0" />
                             <span className="truncate">DM Chat</span>
+                            {isSyntheticUser(conversationPartner) && (
+                              <Tooltip
+                                content={DEMO_PROFILE_TOOLTIP}
+                                wrapperClassName="flex items-center gap-0.5 text-base-content/50 flex-shrink-0"
+                              >
+                                <FlaskConical size={10} className="flex-shrink-0" />
+                              </Tooltip>
+                            )}
                           </div>
                           {conversationUpdatedAt && (
                             <span className="text-xs text-base-content/50 whitespace-nowrap ml-2">
