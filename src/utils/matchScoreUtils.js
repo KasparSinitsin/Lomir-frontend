@@ -45,3 +45,60 @@ export function getMatchTier(score) {
     label: "Low match",
   };
 }
+
+/**
+ * Build a human-readable tooltip string for a match score.
+ *
+ * @param {Object} matchTier - from getMatchTier()
+ * @param {Object|null} matchDetails - optional breakdown object
+ * @param {Object} options
+ * @returns {string}
+ */
+export const getMatchTooltipText = (
+  matchTier,
+  matchDetails = null,
+  {
+    breakdownLabel = "match",
+    fallbackLabel = "profile match",
+    sharedFocusCount = null,
+  } = {},
+) => {
+  if (!matchTier) return "";
+
+  const hasBreakdown =
+    matchDetails &&
+    ((matchDetails.tagScore ?? matchDetails.tag_score) != null ||
+      (matchDetails.badgeScore ?? matchDetails.badge_score) != null ||
+      (matchDetails.distanceScore ?? matchDetails.distance_score) != null);
+
+  if (hasBreakdown) {
+    const tagPct = Math.round(
+      (matchDetails.tagScore ?? matchDetails.tag_score ?? 0) * 100,
+    );
+    const badgePct = Math.round(
+      (matchDetails.badgeScore ?? matchDetails.badge_score ?? 0) * 100,
+    );
+    const distPct = Math.round(
+      (matchDetails.distanceScore ?? matchDetails.distance_score ?? 0) * 100,
+    );
+
+    return `${matchTier.pct}% ${breakdownLabel} — Tags ${tagPct}% · Badges ${badgePct}% · Location ${distPct}%`;
+  }
+
+  if (matchDetails) {
+    const sharedTags =
+      matchDetails.sharedTagCount ?? matchDetails.shared_tag_count ?? 0;
+    const sharedBadges =
+      matchDetails.sharedBadgeCount ?? matchDetails.shared_badge_count ?? 0;
+
+    if (sharedTags > 0 || sharedBadges > 0) {
+      return `${matchTier.pct}% ${fallbackLabel} — ${sharedTags} shared tags, ${sharedBadges} shared badges`;
+    }
+  }
+
+  if (!matchDetails && sharedFocusCount > 0) {
+    return `${matchTier.pct}% ${fallbackLabel} — ${sharedFocusCount} shared focus areas`;
+  }
+
+  return `${matchTier.pct}% ${fallbackLabel}`;
+};

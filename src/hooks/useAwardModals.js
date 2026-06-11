@@ -10,6 +10,7 @@ import { useState, useCallback } from "react";
  * @param {() => Promise} options.fetchTagAwards   - Fetches awards for tag/supercategory modals
  * @param {() => Promise} options.fetchBadgeAwards - Fetches awards for badge category/pill modals
  * @param {"user"|"team"} [options.entityType="user"]
+ * @param {string|number|null} [options.subjectUserId] - Viewed user when award rows omit awardee id
  * @returns {Object} Modal state, handlers, closers, and props-spreaders
  */
 
@@ -72,7 +73,12 @@ const sameBadge = (a, b) => {
   return Boolean(aName && bName && aName === bName);
 };
 
-const useAwardModals = ({ fetchTagAwards, fetchBadgeAwards, entityType = "user" }) => {
+const useAwardModals = ({
+  fetchTagAwards,
+  fetchBadgeAwards,
+  entityType = "user",
+  subjectUserId = null,
+}) => {
   // ========= Badge Category Modal state =========
   const [badgeCategoryModal, setBadgeCategoryModal] = useState({
     isOpen: false,
@@ -385,6 +391,7 @@ const useAwardModals = ({ fetchTagAwards, fetchBadgeAwards, entityType = "user" 
     totalCredits: badgeCategoryModal.totalCredits,
     loading: badgeModalLoading,
     focusedBadgeName: badgeCategoryModal.focusedBadgeName,
+    subjectUserId,
   };
 
   /** Spread onto <TagAwardsModal ... /> */
@@ -397,6 +404,7 @@ const useAwardModals = ({ fetchTagAwards, fetchBadgeAwards, entityType = "user" 
     awards: tagAwards,
     loading: tagAwardsLoading,
     entityType,
+    subjectUserId,
   };
 
   /** Spread onto <SupercategoryAwardsModal ... /> */
@@ -409,6 +417,7 @@ const useAwardModals = ({ fetchTagAwards, fetchBadgeAwards, entityType = "user" 
     awards: supercategoryAwards,
     loading: supercategoryLoading,
     entityType,
+    subjectUserId,
   };
 
   return {

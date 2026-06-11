@@ -105,7 +105,11 @@ const Profile = () => {
     tagAwardsModalProps,
     supercategoryModalProps,
     removeAwardFromBadgeModal,
-  } = useAwardModals({ fetchTagAwards: fetchUserAwards, fetchBadgeAwards: fetchUserAwards });
+  } = useAwardModals({
+    fetchTagAwards: fetchUserAwards,
+    fetchBadgeAwards: fetchUserAwards,
+    subjectUserId: profileUserId,
+  });
 
   const [avatarDeleteLoading, setAvatarDeleteLoading] = useState(false);
   const [isAvatarDeleteDialogOpen, setIsAvatarDeleteDialogOpen] =

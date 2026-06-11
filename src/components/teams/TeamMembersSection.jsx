@@ -77,23 +77,6 @@ const TeamMembersSection = ({
     return statuses;
   }, [members]);
 
-  // Helper function to get member initials (2 letters: "NK" for Nam Khoa)
-  const getMemberInitials = (member) => {
-    const firstName = member.firstName || member.first_name;
-    const lastName = member.lastName || member.last_name;
-
-    if (firstName && lastName) {
-      return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
-    }
-    if (firstName) {
-      return firstName.charAt(0).toUpperCase();
-    }
-    if (member.username) {
-      return member.username.charAt(0).toUpperCase();
-    }
-    return "?";
-  };
-
   // Early return if no members
   if (!team?.members || team.members.length === 0) {
     return null;
@@ -135,6 +118,15 @@ const TeamMembersSection = ({
           const anonymize = shouldAnonymizeMember(member);
           const memberAvatarUrl =
             !anonymize ? member.avatarUrl || member.avatar_url || null : null;
+          const displayMember = {
+            ...member,
+            avatar_url: memberAvatarUrl,
+            avatarUrl: memberAvatarUrl,
+            is_public: anonymize ? false : member.is_public,
+            isPublic: anonymize ? false : member.isPublic,
+            is_private: anonymize ? true : member.is_private,
+            isPrivate: anonymize ? true : member.isPrivate,
+          };
           const memberSyntheticStatus =
             memberId != null ? syntheticMemberStatusMap[String(memberId)] : undefined;
           const showDemoAvatarOverlay =
@@ -174,8 +166,9 @@ const TeamMembersSection = ({
               className="flex items-start bg-green-50 rounded-xl shadow p-4 gap-4 transition-all duration-200 hover:bg-green-100 hover:shadow-md"
             >
               <UserAvatar
-                user={member}
+                user={displayMember}
                 sizeClass="w-14 h-14"
+                privateProfile={anonymize}
                 showDemoOverlay={showDemoAvatarOverlay}
                 demoOverlayTextClassName="text-[8px]"
                 fallbackText={anonymize ? "PP" : undefined}

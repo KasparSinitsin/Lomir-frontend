@@ -45,9 +45,11 @@ import UserAvatar from "../users/UserAvatar";
 import { resolveFilledRoleUser } from "../../utils/vacantRoleUtils";
 import {
   getMatchTier,
+  getMatchTooltipText,
   MATCH_TIER_GOOD,
   MATCH_TIER_GREAT,
 } from "../../utils/matchScoreUtils";
+import { summarizeList } from "../../utils/listSummaryUtils";
 import { teamService } from "../../services/teamService";
 import { useAuth } from "../../contexts/AuthContext";
 import { format } from "date-fns";
@@ -650,24 +652,10 @@ const VacantRoleCard = ({
 
   const matchColor = hasMatchScore ? getMatchColor() : null;
 
-  const getMatchTooltip = () => {
-    if (!visibleMatchDetails) return `${pct}% match`;
-    const tagPct = Math.round(
-      (visibleMatchDetails.tagScore ?? visibleMatchDetails.tag_score ?? 0) *
-        100,
-    );
-    const badgePct = Math.round(
-      (visibleMatchDetails.badgeScore ??
-        visibleMatchDetails.badge_score ??
-        0) * 100,
-    );
-    const distPct = Math.round(
-      (visibleMatchDetails.distanceScore ??
-        visibleMatchDetails.distance_score ??
-        0) * 100,
-    );
-    return `${pct}% match — Tags ${tagPct}% · Badges ${badgePct}% · Location ${distPct}%`;
-  };
+  const getMatchTooltip = () =>
+    getMatchTooltipText(matchTier, visibleMatchDetails, {
+      fallbackLabel: "match",
+    });
 
   const getFormattedPostedDate = () => {
     if (!rolePostedAt) return null;
@@ -1004,18 +992,10 @@ const VacantRoleCard = ({
       role,
       { isRemote: is_remote },
     );
-    const visibleTags = tagNames.slice(0, 3);
-    const remainingTagCount = tagNames.length - visibleTags.length;
-    const tagsSummary =
-      visibleTags.length > 0
-        ? visibleTags.join(", ") + (remainingTagCount > 0 ? ` +${remainingTagCount}` : "")
-        : "";
-    const visibleBadges = badgeNames.slice(0, 3);
-    const remainingBadgeCount = badgeNames.length - visibleBadges.length;
-    const badgesSummary =
-      visibleBadges.length > 0
-        ? visibleBadges.join(", ") + (remainingBadgeCount > 0 ? ` +${remainingBadgeCount}` : "")
-        : "";
+    const { summary: tagsSummary, tooltip: tagsTooltip } =
+      summarizeList(tagNames, 3);
+    const { summary: badgesSummary, tooltip: badgesTooltip } =
+      summarizeList(badgeNames, 3);
     const listSubtitle =
       scoreSubtitleItem ||
       postedDateSubtitleItem ||
@@ -1061,9 +1041,9 @@ const VacantRoleCard = ({
             isRemote={is_remote}
             distance={showDistance ? roundedDistanceKm : null}
             tagsSummary={tagsSummary}
-            tagsTooltip={tagNames.join(", ")}
+            tagsTooltip={tagsTooltip}
             badgesSummary={badgesSummary}
-            badgesTooltip={badgeNames.join(", ")}
+            badgesTooltip={badgesTooltip}
           />
         </Card>
         {detailsModal}

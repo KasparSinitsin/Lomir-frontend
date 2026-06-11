@@ -42,6 +42,7 @@ import { vacantRoleService } from "../../services/vacantRoleService";
 import useSocketEvents from "../../hooks/useSocketEvents";
 import {
   isExistingMemberStatus,
+  isPrivateProfileUser,
   normalizeBoolean,
   normalizeNumericId,
   numericIdsMatch,
@@ -213,6 +214,8 @@ const unwrapTeamPayload = (payload) => {
  * @param {string} inviteeAvatar - Avatar URL of the invitee
  * @param {string} inviteeBio - Bio/description of the invitee
  * @param {boolean|string|number} inviteeIsSynthetic - Whether the invitee is demo data
+ * @param {boolean|string|number} inviteeIsPublic - Whether the invitee profile is public
+ * @param {boolean|string|number} inviteeIsPrivate - Whether the invitee profile is private
  * @param {string|number|null} prefillTeamId - Team ID to preselect when available
  * @param {string|number|null} prefillRoleId - Vacant role ID to preselect when available
  * @param {string|null} prefillTeamName - Team name for prefill context
@@ -229,6 +232,8 @@ const TeamInviteModal = ({
   inviteeAvatar,
   inviteeBio,
   inviteeIsSynthetic = false,
+  inviteeIsPublic,
+  inviteeIsPrivate,
   inviteeCity = null,
   inviteeCountry = null,
   inviteeJoinedAt = null,
@@ -599,10 +604,18 @@ const TeamInviteModal = ({
       last_name: inviteeLastName,
       username: inviteeUsername || inviteeName,
       avatar_url: inviteeAvatar || null,
+      avatarUrl: inviteeAvatar || null,
+      is_public: inviteeIsPublic,
+      isPublic: inviteeIsPublic,
+      is_private: inviteeIsPrivate,
+      isPrivate: inviteeIsPrivate,
       is_synthetic: inviteeIsSynthetic,
       isSynthetic: inviteeIsSynthetic,
     };
   };
+  const inviteeUser = getInviteeUserObject();
+  const inviteeIsPrivateProfile = isPrivateProfileUser(inviteeUser);
+  const displayInviteeUser = inviteeUser;
 
   // Get team avatar URL
   const getTeamAvatarUrl = (team) => {
@@ -865,7 +878,9 @@ const TeamInviteModal = ({
       const first = inviteeFirstName || "";
       const last = inviteeLastName || "";
       const full = `${first} ${last}`.trim();
-      const displayName = full || inviteeName || inviteeUsername || "Unknown User";
+      const displayName = inviteeIsPrivateProfile
+        ? "Private Profile"
+        : full || inviteeName || inviteeUsername || "Unknown User";
       const dateEl = dateRef.current;
       const reservedWidth =
         dateIsNarrowRef.current && dateEl ? dateEl.offsetWidth + 16 : 0;
@@ -878,7 +893,7 @@ const TeamInviteModal = ({
     if (dateRef.current) resizeObserver.observe(dateRef.current);
     update();
     return () => resizeObserver.disconnect();
-  }, [inviteeFirstName, inviteeLastName, inviteeName, inviteeUsername]);
+  }, [inviteeFirstName, inviteeLastName, inviteeName, inviteeUsername, inviteeIsPrivateProfile]);
 
   const prefillContextNote = useMemo(() => {
     if (!idsMatch(selectedTeamId, normalizedPrefillTeamId)) return null;
@@ -1254,7 +1269,6 @@ const TeamInviteModal = ({
     !sending &&
     !success &&
     (!selectedTeamRequiresRole || selectedRoleId !== null);
-  const inviteeUser = getInviteeUserObject();
   const showInviteeDemoProfile = isSyntheticUser(inviteeUser);
   const locationText = [inviteeCity, inviteeCountry].filter(Boolean).join(", ");
   const joinedDateText = (() => {
@@ -1487,14 +1501,17 @@ const TeamInviteModal = ({
           {/* Invitee info */}
           <div className="relative flex items-start justify-between gap-4 mb-5">
             <div className="flex min-w-0 flex-1 items-start space-x-4">
-              <Tooltip content="View profile" position="bottom" wrapperClassName="block">
+              <Tooltip content={inviteeIsPrivateProfile ? undefined : "View profile"} position="bottom" wrapperClassName="block">
                 <UserAvatar
-                  user={inviteeUser}
+                  user={displayInviteeUser}
                   sizeClass="w-12 h-12"
                   initialsClassName="text-xl font-medium"
-                  clickable
-                  onClick={() => handleUserClick(inviteeId)}
-                  title="View profile"
+                  clickable={!inviteeIsPrivateProfile}
+                  onClick={() => {
+                    if (!inviteeIsPrivateProfile) handleUserClick(inviteeId);
+                  }}
+                  title={inviteeIsPrivateProfile ? undefined : "View profile"}
+                  privateProfile={false}
                   showDemoOverlay={showInviteeDemoProfile}
                   demoOverlayTextClassName="text-[8px]"
                 />
@@ -1505,9 +1522,13 @@ const TeamInviteModal = ({
                   ref={nameContainerRef}
                   className="font-medium text-base-content leading-[120%] mb-[0.2em] truncate relative"
                 >
-                  <Tooltip content="View profile" position="bottom" wrapperClassName="cursor-pointer hover:text-primary transition-colors">
-                    <span onClick={() => handleUserClick(inviteeId)}>{getInviteeDisplayName()}</span>
-                  </Tooltip>
+                  {inviteeIsPrivateProfile ? (
+                    <span>{getInviteeDisplayName()}</span>
+                  ) : (
+                    <Tooltip content="View profile" position="bottom" wrapperClassName="cursor-pointer hover:text-primary transition-colors">
+                      <span onClick={() => handleUserClick(inviteeId)}>{getInviteeDisplayName()}</span>
+                    </Tooltip>
+                  )}
                   <span
                     ref={nameProbeRef}
                     className="invisible absolute whitespace-nowrap pointer-events-none left-0 top-0 font-medium"
@@ -1518,14 +1539,20 @@ const TeamInviteModal = ({
                 </h4>
 
                 <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0 overflow-hidden text-xs" style={{ maxHeight: "2.1em" }}>
-                  <Tooltip content="View profile" position="bottom" wrapperClassName="inline-flex">
-                    <p
-                      className="text-base-content/70 cursor-pointer hover:text-primary transition-colors"
-                      onClick={() => handleUserClick(inviteeId)}
-                    >
-                      @{getUsername()}
-                    </p>
-                  </Tooltip>
+                  {inviteeUsername && (
+                    inviteeIsPrivateProfile ? (
+                      <p className="text-base-content/70">@{getUsername()}</p>
+                    ) : (
+                      <Tooltip content="View profile" position="bottom" wrapperClassName="inline-flex">
+                        <p
+                          className="text-base-content/70 cursor-pointer hover:text-primary transition-colors"
+                          onClick={() => handleUserClick(inviteeId)}
+                        >
+                          @{getUsername()}
+                        </p>
+                      </Tooltip>
+                    )
+                  )}
                   {dateIsNarrow && joinedDateText && (
                     <div className="flex shrink-0 items-center gap-1 text-base-content/60">
                       <Calendar size={10} className="shrink-0" />
@@ -1565,7 +1592,7 @@ const TeamInviteModal = ({
           </div>
 
           {/* Bio if available */}
-          {inviteeBio && (
+          {!inviteeIsPrivateProfile && inviteeBio && (
             <div className="text-sm text-base-content/80 mb-5">
               <p className="line-clamp-2">{inviteeBio}</p>
             </div>
@@ -1991,6 +2018,8 @@ const TeamInviteModal = ({
           onClose={handleRoleDetailsClose}
           team={selectedTeam}
           role={selectedRoleForDetails}
+          isTeamMember={true}
+          canManage={true}
           hideActions
         />
       )}

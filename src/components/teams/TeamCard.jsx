@@ -42,8 +42,9 @@ import MatchScoreOverlay from "../common/MatchScoreOverlay";
 import TeamApplicationsModal from "./TeamApplicationsModal";
 import { format } from "date-fns";
 import LocationDistanceTagsRow from "../common/LocationDistanceTagsRow";
-import { getMatchTier } from "../../utils/matchScoreUtils";
+import { getMatchTier, getMatchTooltipText } from "../../utils/matchScoreUtils";
 import { getResultMatchScore } from "../../utils/teamMatchUtils";
+import { extractNames, summarizeList } from "../../utils/listSummaryUtils";
 import {
   calculateDistanceKm,
   formatListLocation,
@@ -1999,21 +2000,6 @@ const TeamCard = ({
     // Search page: always show View Details button on the card
     if (isSearchResult) {
       return null;
-      // return (
-      //   <div className="mt-auto">
-      //     <Button
-      //       variant="primary"
-      //       size={viewMode === "mini" ? "xs" : "sm"}
-      //       className="w-full"
-      //       onClick={(e) => {
-      //         e.stopPropagation();
-      //         setIsModalOpen(true);
-      //       }}
-      //     >
-      //       View Details
-      //     </Button>
-      //   </div>
-      // );
     }
 
     if (
@@ -2023,8 +2009,6 @@ const TeamCard = ({
     ) {
       return (
         <div className="mt-auto pt-4">
-          {" "}
-          {/* pt-4: spacing from tags row — TODO: revert to pt-0 when LocationDistanceTagsRow mb-4 is restored */}
           <Button
             variant="primary"
             className="w-full"
@@ -2045,8 +2029,6 @@ const TeamCard = ({
     if (effectiveVariant === "application" || effectiveVariant === "role_application" || pendingApplicationForTeam) {
       return (
         <div className="mt-auto pt-4">
-          {" "}
-          {/* pt-4: spacing from tags row — TODO: revert to pt-0 when LocationDistanceTagsRow mb-4 is restored */}
           <Button
             variant="primary"
             className="w-full"
@@ -2066,8 +2048,6 @@ const TeamCard = ({
     // Member variant: View Details + management actions
     return (
       <div className="mt-auto pt-4 flex justify-between items-center">
-        {" "}
-        {/* pt-4: spacing from tags row — TODO: revert to pt-0 when LocationDistanceTagsRow mb-4 is restored */}
         <Button
           variant="primary"
           suppressCardTooltip={true}
@@ -2142,41 +2122,13 @@ const TeamCard = ({
           roleMatchData?.matchDetails ??
           null
         );
-    const hasScoreBreakdown =
-      matchDetails &&
-      ((matchDetails.tagScore ?? matchDetails.tag_score) != null ||
-        (matchDetails.badgeScore ?? matchDetails.badge_score) != null ||
-        (matchDetails.distanceScore ?? matchDetails.distance_score) != null);
-
-    if (hasScoreBreakdown) {
-      const tagPct = Math.round(
-        (matchDetails.tagScore ?? matchDetails.tag_score ?? 0) * 100,
-      );
-      const badgePct = Math.round(
-        (matchDetails.badgeScore ?? matchDetails.badge_score ?? 0) * 100,
-      );
-      const distPct = Math.round(
-        (matchDetails.distanceScore ?? matchDetails.distance_score ?? 0) * 100,
-      );
-      matchTooltipText = `${matchTier.pct}% match — Tags ${tagPct}% · Badges ${badgePct}% · Location ${distPct}%`;
-    } else if (matchDetails) {
-      const sharedTags =
-        matchDetails.sharedTagCount ?? matchDetails.shared_tag_count ?? 0;
-      const sharedBadges =
-        matchDetails.sharedBadgeCount ?? matchDetails.shared_badge_count ?? 0;
-      matchTooltipText =
-        sharedTags > 0 || sharedBadges > 0
-          ? `${matchTier.pct}% profile match — ${sharedTags} shared tags, ${sharedBadges} shared badges`
-          : `${matchTier.pct}% profile match`;
-    } else {
-      const sharedTagCount =
-        normalizedData.team?.sharedTagCount ??
-        normalizedData.team?.shared_tag_count ?? 0;
-      matchTooltipText =
-        sharedTagCount > 0
-          ? `${matchTier.pct}% profile match — ${sharedTagCount} shared focus areas`
-          : `${matchTier.pct}% profile match`;
-    }
+    const sharedTagCount =
+      normalizedData.team?.sharedTagCount ??
+      normalizedData.team?.shared_tag_count ??
+      0;
+    matchTooltipText = getMatchTooltipText(matchTier, matchDetails, {
+      sharedFocusCount: sharedTagCount,
+    });
 
     const iconSizeSubtitle =
       viewMode === "list" ? 9 : viewMode === "mini" ? 10 : 13;
@@ -2311,28 +2263,13 @@ const TeamCard = ({
       distance < 999999 &&
       !(teamData.is_remote || teamData.isRemote);
 
-    const tagNames = (teamData.tags || [])
-      .map((t) => (typeof t === "string" ? t : t.name || t.tag || ""))
-      .filter(Boolean);
-    const maxInlineTags = 3;
-    const visibleTags = tagNames.slice(0, maxInlineTags);
-    const remainingTags = tagNames.length - maxInlineTags;
-    const tagsSummary =
-      visibleTags.length > 0
-        ? visibleTags.join(", ") +
-          (remainingTags > 0 ? ` +${remainingTags}` : "")
-        : "";
+    const tagNames = extractNames(teamData.tags);
+    const { summary: tagsSummary, tooltip: tagsTooltip } =
+      summarizeList(tagNames);
 
-    const badgeNames = getDisplayBadges()
-      .map((badge) => (typeof badge === "string" ? badge : badge.name || ""))
-      .filter(Boolean);
-    const maxInlineBadges = 3;
-    const visibleBadges = badgeNames.slice(0, maxInlineBadges);
-    const remainingBadges = badgeNames.length - maxInlineBadges;
-    const badgesSummary =
-      visibleBadges.length > 0
-        ? visibleBadges.join(", ") + (remainingBadges > 0 ? ` +${remainingBadges}` : "")
-        : "";
+    const badgeNames = extractNames(getDisplayBadges());
+    const { summary: badgesSummary, tooltip: badgesTooltip } =
+      summarizeList(badgeNames);
 
     const memberCount = getMemberCount();
     const maxMembers = getMaxMembers();
@@ -2508,9 +2445,9 @@ const TeamCard = ({
             isRemote={teamData.is_remote || teamData.isRemote}
             distance={showDistance ? Math.round(distance) : null}
             tagsSummary={tagsSummary}
-            tagsTooltip={tagNames.join(", ")}
+            tagsTooltip={tagsTooltip}
             badgesSummary={badgesSummary}
-            badgesTooltip={badgeNames.join(", ")}
+            badgesTooltip={badgesTooltip}
             locationVisibilityClassName={listLocationVisibilityClassName}
             locationWidthClassName={listLocationWidthClassName}
             locationInsetClassName={listLocationInsetClassName}
@@ -2601,6 +2538,7 @@ const TeamCard = ({
               : pendingApplicationForTeam
           }
           onViewApplicationDetails={() => setIsApplicationModalOpen(true)}
+          onSendReminder={onSendReminder}
           showMatchHighlights={shouldShowTeamModalMatchHighlights}
           hideMatchData={shouldHideMatchData}
           matchScore={teamModalRawScore ?? null}
@@ -2684,6 +2622,8 @@ const TeamCard = ({
             role={roleData}
             matchScore={rawScore ?? null}
             matchDetails={roleModalMatchDetails}
+            canManage={canManageInvitations}
+            isTeamMember={Boolean(userRole) || isOwner}
             onViewApplicationDetails={
               isRoleApplicationVariant
                 ? () => {
@@ -3168,6 +3108,7 @@ const TeamCard = ({
             : pendingApplicationForTeam
         }
         onViewApplicationDetails={() => setIsApplicationModalOpen(true)}
+        onSendReminder={onSendReminder}
         showMatchHighlights={shouldShowTeamModalMatchHighlights}
         hideMatchData={shouldHideMatchData}
         roleMatchBadgeNames={roleMatchBadgeNames}
@@ -3254,6 +3195,8 @@ const TeamCard = ({
           role={roleData}
           matchScore={rawScore ?? null}
           matchDetails={roleModalMatchDetails}
+          canManage={canManageInvitations}
+          isTeamMember={Boolean(userRole) || isOwner}
           onViewApplicationDetails={
             isRoleApplicationVariant
               ? () => {

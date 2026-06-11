@@ -25,8 +25,9 @@ import LocationDistanceTagsRow from "../common/LocationDistanceTagsRow";
 import SearchResultTypeOverlay from "../common/SearchResultTypeOverlay";
 import ListViewRow from "../common/ListViewRow";
 import MatchScoreOverlay from "../common/MatchScoreOverlay";
-import { getMatchTier } from "../../utils/matchScoreUtils";
+import { getMatchTier, getMatchTooltipText } from "../../utils/matchScoreUtils";
 import { getResultMatchScore } from "../../utils/teamMatchUtils";
+import { extractNames, summarizeList } from "../../utils/listSummaryUtils";
 import {
   formatListLocation,
   formatLocation,
@@ -156,26 +157,9 @@ const UserCard = ({
     const matchType = user.matchType ?? user.match_type;
     const matchDetails = user.matchDetails ?? user.match_details;
 
-    if (matchType === "role_match" && matchDetails) {
-      const tagPct = Math.round(
-        (matchDetails.tagScore ?? matchDetails.tag_score ?? 0) * 100,
-      );
-      const badgePct = Math.round(
-        (matchDetails.badgeScore ?? matchDetails.badge_score ?? 0) * 100,
-      );
-      const distPct = Math.round(
-        (matchDetails.distanceScore ?? matchDetails.distance_score ?? 0) * 100,
-      );
-      matchTooltipText = `${matchTier.pct}% role match — Tags ${tagPct}% · Badges ${badgePct}% · Location ${distPct}%`;
-    } else if (matchDetails) {
-      const sharedTags =
-        matchDetails.sharedTagCount ?? matchDetails.shared_tag_count ?? 0;
-      const sharedBadges =
-        matchDetails.sharedBadgeCount ?? matchDetails.shared_badge_count ?? 0;
-      matchTooltipText = `${matchTier.pct}% profile match — ${sharedTags} shared tags, ${sharedBadges} shared badges`;
-    } else {
-      matchTooltipText = `${matchTier.pct}% profile match`;
-    }
+    matchTooltipText = getMatchTooltipText(matchTier, matchDetails, {
+      breakdownLabel: matchType === "role_match" ? "role match" : "match",
+    });
 
     const iconSizeSubtitle =
       viewMode === "list" ? 9 : viewMode === "mini" ? 10 : 13;
@@ -240,27 +224,13 @@ const UserCard = ({
     const distance = user.distanceKm ?? user.distance_km;
     const showDistance = distance != null && distance < 999999 && !(user.is_remote || user.isRemote);
 
-    const tagNames = (user.tags || [])
-      .map((t) => (typeof t === "string" ? t : t.name || t.tag || ""))
-      .filter(Boolean);
-    const maxInlineTags = 3;
-    const visibleTags = tagNames.slice(0, maxInlineTags);
-    const remainingTags = tagNames.length - maxInlineTags;
-    const tagsSummary =
-      visibleTags.length > 0
-        ? visibleTags.join(", ") + (remainingTags > 0 ? ` +${remainingTags}` : "")
-        : "";
+    const tagNames = extractNames(user.tags);
+    const { summary: tagsSummary, tooltip: tagsTooltip } =
+      summarizeList(tagNames);
 
-    const badgeNames = (user.badges || [])
-      .map((b) => b.name || "")
-      .filter(Boolean);
-    const maxInlineBadges = 3;
-    const visibleBadges = badgeNames.slice(0, maxInlineBadges);
-    const remainingBadges = badgeNames.length - maxInlineBadges;
-    const badgesSummary =
-      visibleBadges.length > 0
-        ? visibleBadges.join(", ") + (remainingBadges > 0 ? ` +${remainingBadges}` : "")
-        : "";
+    const badgeNames = extractNames(user.badges);
+    const { summary: badgesSummary, tooltip: badgesTooltip } =
+      summarizeList(badgeNames);
 
     const listSubtitle = (
       scoreSubtitleItem ||
@@ -311,9 +281,9 @@ const UserCard = ({
           isRemote={user.is_remote || user.isRemote}
           distance={showDistance ? Math.round(distance) : null}
           tagsSummary={tagsSummary}
-          tagsTooltip={tagNames.join(", ")}
+          tagsTooltip={tagsTooltip}
           badgesSummary={badgesSummary}
-          badgesTooltip={badgeNames.join(", ")}
+          badgesTooltip={badgesTooltip}
         />
       </Card>
     );

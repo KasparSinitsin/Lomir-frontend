@@ -154,7 +154,11 @@ const UserDetailsModal = ({
     badgeCategoryModalProps,
     tagAwardsModalProps,
     supercategoryModalProps,
-  } = useAwardModals({ fetchTagAwards: fetchUserAwards, fetchBadgeAwards: fetchUserAwards });
+  } = useAwardModals({
+    fetchTagAwards: fetchUserAwards,
+    fetchBadgeAwards: fetchUserAwards,
+    subjectUserId: userId,
+  });
 
   // Determine if this modal is showing the current user (more reliable than comparing fetched user)
   const ownProfile =
@@ -933,6 +937,22 @@ const UserDetailsModal = ({
           inviteeAvatar={user.avatar_url || user.avatarUrl}
           inviteeBio={user.bio}
           inviteeIsSynthetic={user.is_synthetic ?? user.isSynthetic}
+          inviteeIsPublic={
+            user.is_public ??
+            user.isPublic ??
+            user.profile_is_public ??
+            user.profileIsPublic ??
+            user.public_profile ??
+            user.publicProfile
+          }
+          inviteeIsPrivate={
+            user.is_private ??
+            user.isPrivate ??
+            user.profile_is_private ??
+            user.profileIsPrivate ??
+            user.private_profile ??
+            user.privateProfile
+          }
           inviteeCity={user.city}
           inviteeCountry={user.country}
           inviteeJoinedAt={user.created_at || user.createdAt}
