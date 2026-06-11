@@ -45,6 +45,7 @@ import {
 import Button from "../common/Button";
 import Tooltip from "../common/Tooltip";
 import DemoAvatarOverlay from "../users/DemoAvatarOverlay";
+import UserAvatar from "../users/UserAvatar";
 import CardMetaItem from "../common/CardMetaItem";
 import CardMetaRow from "../common/CardMetaRow";
 import TeamApplicationButton from "./TeamApplicationButton";
@@ -1279,8 +1280,6 @@ const VacantRoleDetailsModal = ({
   const filledRoleCompactDisplayName = filledRoleUser
     ? formatDisplayName(filledRoleUser)
     : filledRoleDisplayName;
-  const filledRoleAvatarUrl =
-    filledRoleUser?.avatarUrl ?? filledRoleUser?.avatar_url ?? null;
   const filledAt =
     displayRole.filledAt ??
     displayRole.filled_at ??
@@ -1809,36 +1808,21 @@ const VacantRoleDetailsModal = ({
             {isFilledRole ? (
               <Tooltip content={filledRoleUser?.id ? `Click to view ${filledRoleDisplayName || "this user"}'s profile` : undefined}>
               <div
-                className={`w-20 h-20 rounded-full relative overflow-hidden ${filledRoleUser?.id ? "cursor-pointer" : ""}`}
-                onClick={filledRoleUser?.id ? handleFilledUserClick : undefined}
                 role={filledRoleUser?.id ? "button" : undefined}
                 tabIndex={filledRoleUser?.id ? 0 : undefined}
                 onKeyDown={filledRoleUser?.id ? (e) => { if (e.key === "Enter" || e.key === " ") handleFilledUserClick(); } : undefined}
               >
-                {filledRoleAvatarUrl ? (
-                  <img
-                    src={filledRoleAvatarUrl}
-                    alt={filledRoleDisplayName || roleName}
-                    className="object-cover w-full h-full rounded-full"
-                    onError={(e) => {
-                      e.target.style.display = "none";
-                      const fallback =
-                        e.target.parentElement.querySelector(".avatar-fallback");
-                      if (fallback) fallback.style.display = "flex";
-                    }}
-                  />
-                ) : null}
-                <div
-                  className="avatar-fallback bg-[var(--color-primary-focus)] text-white rounded-full w-full h-full flex items-center justify-center absolute inset-0"
-                  style={{ display: filledRoleAvatarUrl ? "none" : "flex" }}
-                >
-                  <span className="text-2xl font-semibold">
-                    {filledRoleUser
-                      ? getUserInitials(filledRoleUser)
-                      : getRoleInitials()}
-                  </span>
-                </div>
-                {demoAvatarOverlay}
+                <UserAvatar
+                  user={filledRoleUser}
+                  sizeClass="w-20 h-20"
+                  clickable={!!filledRoleUser?.id}
+                  onClick={handleFilledUserClick}
+                  initialsClassName="text-2xl font-semibold"
+                  showDemoOverlay={!!demoAvatarOverlay}
+                  demoOverlayTextClassName="text-[9px]"
+                  demoOverlayTextTranslateClassName="-translate-y-[4px]"
+                  fallbackText={!filledRoleUser ? getRoleInitials() : undefined}
+                />
               </div>
               </Tooltip>
             ) : effectivePct !== null ? (
@@ -2469,18 +2453,9 @@ const VacantRoleDetailsModal = ({
                     applicantProfile.last_name ??
                     "";
                   const username = applicantProfile.username ?? "";
-                  const avatarUrl =
-                    applicantProfile.avatarUrl ??
-                    applicantProfile.avatar_url ??
-                    null;
                   const displayName = firstName && lastName
                     ? `${firstName} ${lastName}`
                     : firstName || lastName || username || "Unknown";
-                  const initials = firstName && lastName
-                    ? `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase()
-                    : (firstName || lastName || username || "?")
-                        .charAt(0)
-                        .toUpperCase();
                   const applicationRoleMatch = application.role || {};
                   const applicantScore =
                     applicantMatch?.matchScore ??
@@ -2533,27 +2508,13 @@ const VacantRoleDetailsModal = ({
                         }}
                       >
                         <div className="avatar relative">
-                          <div className="w-14 h-14 rounded-full relative overflow-hidden">
-                            {avatarUrl ? (
-                              <img
-                                src={avatarUrl}
-                                alt={displayName}
-                                className="object-cover w-full h-full rounded-full"
-                                onError={(e) => {
-                                  e.target.style.display = "none";
-                                  const fallback =
-                                    e.target.parentElement.querySelector(".avatar-fallback");
-                                  if (fallback) fallback.style.display = "flex";
-                                }}
-                              />
-                            ) : null}
-                            <div
-                              className="avatar-fallback placeholder bg-[var(--color-primary-focus)] text-primary-content rounded-full w-full h-full absolute inset-0 flex items-center justify-center"
-                              style={{ display: avatarUrl ? "none" : "flex" }}
-                            >
-                              <span className="text-xl">{initials}</span>
-                            </div>
-                          </div>
+                          <UserAvatar
+                            user={applicantProfile}
+                            sizeClass="w-14 h-14"
+                            initialsClassName="text-xl"
+                            showDemoOverlay={isSyntheticUser(applicantProfile)}
+                            demoOverlayTextClassName="text-[8px]"
+                          />
                           {ApplicantMatchIcon && (
                             <div
                               className={`absolute -top-0.5 -left-0.5 w-[14px] h-[14px] rounded-full ring-2 ring-white flex items-center justify-center ${applicantMatchTier.bg}`}
@@ -2675,18 +2636,9 @@ const VacantRoleDetailsModal = ({
                     inviteeProfile.last_name ??
                     "";
                   const username = inviteeProfile.username ?? "";
-                  const avatarUrl =
-                    inviteeProfile.avatarUrl ??
-                    inviteeProfile.avatar_url ??
-                    null;
                   const displayName = firstName && lastName
                     ? `${firstName} ${lastName}`
                     : firstName || lastName || username || "Unknown";
-                  const initials = firstName && lastName
-                    ? `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase()
-                    : (firstName || lastName || username || "?")
-                        .charAt(0)
-                        .toUpperCase();
                   const invitationRoleMatch = invitation.role || {};
                   const inviteeScore =
                     inviteeMatch?.matchScore ??
@@ -2739,27 +2691,13 @@ const VacantRoleDetailsModal = ({
                         }}
                       >
                         <div className="avatar relative">
-                          <div className="w-14 h-14 rounded-full relative overflow-hidden">
-                            {avatarUrl ? (
-                              <img
-                                src={avatarUrl}
-                                alt={displayName}
-                                className="object-cover w-full h-full rounded-full"
-                                onError={(e) => {
-                                  e.target.style.display = "none";
-                                  const fallback =
-                                    e.target.parentElement.querySelector(".avatar-fallback");
-                                  if (fallback) fallback.style.display = "flex";
-                                }}
-                              />
-                            ) : null}
-                            <div
-                              className="avatar-fallback placeholder bg-[var(--color-primary-focus)] text-primary-content rounded-full w-full h-full absolute inset-0 flex items-center justify-center"
-                              style={{ display: avatarUrl ? "none" : "flex" }}
-                            >
-                              <span className="text-xl">{initials}</span>
-                            </div>
-                          </div>
+                          <UserAvatar
+                            user={inviteeProfile}
+                            sizeClass="w-14 h-14"
+                            initialsClassName="text-xl"
+                            showDemoOverlay={isSyntheticUser(inviteeProfile)}
+                            demoOverlayTextClassName="text-[8px]"
+                          />
                           {InviteeMatchIcon && (
                             <div
                               className={`absolute -top-0.5 -left-0.5 w-[14px] h-[14px] rounded-full ring-2 ring-white flex items-center justify-center ${inviteeMatchTier.bg}`}

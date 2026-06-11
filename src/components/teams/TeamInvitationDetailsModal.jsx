@@ -30,7 +30,7 @@ import Alert from "../common/Alert";
 import { format } from "date-fns";
 import InlineUserLink from "../users/InlineUserLink";
 import { useHydratedRole } from "../../hooks/useHydratedRole";
-import DemoAvatarOverlay from "../users/DemoAvatarOverlay";
+import TeamAvatar from "./TeamAvatar";
 import { DEMO_TEAM_TOOLTIP, isSyntheticTeam } from "../../utils/userHelpers";
 import { useAuth } from "../../contexts/AuthContext";
 import {
@@ -265,34 +265,6 @@ const TeamInvitationDetailsModal = ({
       console.error("Error formatting date:", error);
       return "Unknown date";
     }
-  };
-
-  const getTeamAvatar = () => {
-    return (
-      team.teamavatar_url ||
-      team.teamavatarUrl ||
-      team.avatar_url ||
-      team.avatarUrl ||
-      null
-    );
-  };
-
-  // Get team initials from name (e.g., "Urban Gardeners Berlin" → "UGB")
-  const getTeamInitials = () => {
-    const name = team?.name;
-    if (!name || typeof name !== "string") return "?";
-
-    const words = name.trim().split(/\s+/);
-
-    if (words.length === 1) {
-      return name.slice(0, 2).toUpperCase();
-    }
-
-    return words
-      .slice(0, 3)
-      .map((word) => word.charAt(0))
-      .join("")
-      .toUpperCase();
   };
 
   const getMemberCount = () => {
@@ -723,40 +695,14 @@ const TeamInvitationDetailsModal = ({
             onClick={handleTeamClick}
           >
             <Tooltip content="Click to view team details" wrapperClassName="avatar">
-              <div className="w-12 h-12 rounded-full relative overflow-hidden">
-                {getTeamAvatar() ? (
-                  <img
-                    src={getTeamAvatar()}
-                    alt={team.name || "Team"}
-                    className="object-cover w-full h-full rounded-full"
-                    onError={(e) => {
-                      e.target.style.display = "none";
-                      const fallback =
-                        e.target.parentElement.querySelector(
-                          ".avatar-fallback",
-                        );
-                      if (fallback) fallback.style.display = "flex";
-                    }}
-                  />
-                ) : null}
-
-                {/* Fallback initials */}
-                <div
-                  className="avatar-fallback bg-[var(--color-primary-focus)] text-primary-content flex items-center justify-center w-full h-full rounded-full absolute inset-0"
-                  style={{ display: getTeamAvatar() ? "none" : "flex" }}
-                >
-                  <span className="text-xl font-medium">
-                    {getTeamInitials()}
-                  </span>
-                </div>
-
-                {isSyntheticTeam(team) && (
-                  <DemoAvatarOverlay
-                    textClassName="text-[8px]"
-                    textTranslateClassName="-translate-y-[2px]"
-                  />
-                )}
-              </div>
+              <TeamAvatar
+                team={team}
+                sizeClass="w-12 h-12"
+                initialsClassName="text-xl font-medium"
+                showDemoOverlay={isSyntheticTeam(team)}
+                demoOverlayTextClassName="text-[8px]"
+                demoOverlayTextTranslateClassName="-translate-y-[2px]"
+              />
             </Tooltip>
 
             <div className="flex-1 min-w-0">

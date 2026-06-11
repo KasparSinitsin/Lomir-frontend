@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useLayoutEffect } from "react";
 import {
   Award,
   Send,
@@ -17,6 +17,8 @@ import {
   FlaskConical,
   // Badge icons
   MessageCircle,
+  Calendar,
+  MapPin,
 } from "lucide-react";
 import {
   CATEGORY_COLORS,
@@ -38,6 +40,7 @@ import { tagService } from "../../services/tagService";
 import { useBadges, useSharedTeamsForAward } from "../../hooks/useBadgeQueries";
 import { useUserTags } from "../../hooks/useUserQueries";
 import { DEMO_PROFILE_TOOLTIP } from "../../utils/userHelpers";
+import { format } from "date-fns";
 
 /**
  * BadgeAwardModal Component
@@ -94,6 +97,9 @@ const BadgeAwardModal = ({
   awardeeAvatar,
   awardeeBio,
   awardeeIsDemo,
+  awardeeCity = null,
+  awardeeCountry = null,
+  awardeeJoinedAt = null,
   onUserClick,
   onAwardComplete,
 }) => {
@@ -120,6 +126,12 @@ const BadgeAwardModal = ({
   const [showTagSearch, setShowTagSearch] = useState(false);
   const tagSearchRef = useRef(null);
   const tagSearchTimerRef = useRef(null);
+  const nameContainerRef = useRef(null);
+  const nameProbeRef = useRef(null);
+  const dateRef = useRef(null);
+  const [dateIsNarrow, setDateIsNarrow] = useState(false);
+  const dateIsNarrowRef = useRef(false);
+  dateIsNarrowRef.current = dateIsNarrow;
   const {
     data: badges = EMPTY_QUERY_ARRAY,
     error: badgesError,
@@ -159,6 +171,16 @@ const BadgeAwardModal = ({
   const getAbbreviatedName = () => {
     return (awardeeFirstName || "").split(" ")[0] || awardeeUsername || "User";
   };
+
+  const locationText = [awardeeCity, awardeeCountry].filter(Boolean).join(", ");
+  const joinedDateText = (() => {
+    if (!awardeeJoinedAt) return null;
+    try {
+      return format(new Date(awardeeJoinedAt), "MMM d, yyyy");
+    } catch {
+      return null;
+    }
+  })();
 
   useEffect(() => {
     setAwardeeTags(fetchedAwardeeTags);
@@ -268,6 +290,30 @@ const BadgeAwardModal = ({
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  useLayoutEffect(() => {
+    const container = nameContainerRef.current;
+    const probe = nameProbeRef.current;
+    if (!container || !probe) return;
+
+    const update = () => {
+      const first = awardeeFirstName || "";
+      const last = awardeeLastName || "";
+      const full = `${first} ${last}`.trim();
+      const displayName = full || awardeeUsername || "User";
+      const dateEl = dateRef.current;
+      const reservedWidth =
+        dateIsNarrowRef.current && dateEl ? dateEl.offsetWidth + 16 : 0;
+      probe.textContent = displayName;
+      setDateIsNarrow(probe.scrollWidth > container.clientWidth - reservedWidth);
+    };
+
+    const resizeObserver = new ResizeObserver(update);
+    resizeObserver.observe(container);
+    if (dateRef.current) resizeObserver.observe(dateRef.current);
+    update();
+    return () => resizeObserver.disconnect();
+  }, [awardeeFirstName, awardeeLastName, awardeeUsername]);
 
   // Group badges by category
   const badgesByCategory = badges.reduce((acc, badge) => {
@@ -445,9 +491,29 @@ const BadgeAwardModal = ({
 
         {/* Awardee info */}
         {!success && (
-          <div className="flex items-start space-x-3 mb-3">
-            {onUserClick ? (
-              <Tooltip content="View profile" position="bottom" wrapperClassName="block">
+          <div className="relative flex items-start justify-between gap-4 mb-5">
+            <div className="flex min-w-0 flex-1 items-start space-x-4">
+              {onUserClick ? (
+                <Tooltip content="View profile" position="bottom" wrapperClassName="block">
+                  <UserAvatar
+                    user={{
+                      avatar_url: awardeeAvatar,
+                      avatarUrl: awardeeAvatar,
+                      first_name: awardeeFirstName,
+                      last_name: awardeeLastName,
+                      username: awardeeUsername,
+                      is_synthetic: awardeeIsDemo,
+                    }}
+                    sizeClass="w-12 h-12"
+                    initialsClassName="text-xl font-medium"
+                    clickable
+                    onClick={() => onUserClick(awardeeId)}
+                    title="View profile"
+                    showDemoOverlay={awardeeIsDemo}
+                    demoOverlayTextClassName="text-[8px]"
+                  />
+                </Tooltip>
+              ) : (
                 <UserAvatar
                   user={{
                     avatar_url: awardeeAvatar,
@@ -455,71 +521,85 @@ const BadgeAwardModal = ({
                     first_name: awardeeFirstName,
                     last_name: awardeeLastName,
                     username: awardeeUsername,
+                    is_synthetic: awardeeIsDemo,
                   }}
                   sizeClass="w-12 h-12"
-                  clickable
-                  onClick={() => onUserClick(awardeeId)}
-                  title="View profile"
+                  initialsClassName="text-xl font-medium"
                   showDemoOverlay={awardeeIsDemo}
                   demoOverlayTextClassName="text-[8px]"
-                  demoOverlayTextTranslateClassName="-translate-y-[3px]"
                 />
-              </Tooltip>
-            ) : (
-              <UserAvatar
-                user={{
-                  avatar_url: awardeeAvatar,
-                  avatarUrl: awardeeAvatar,
-                  first_name: awardeeFirstName,
-                  last_name: awardeeLastName,
-                  username: awardeeUsername,
-                }}
-                sizeClass="w-12 h-12"
-                showDemoOverlay={awardeeIsDemo}
-                demoOverlayTextClassName="text-[8px]"
-                demoOverlayTextTranslateClassName="-translate-y-[3px]"
-              />
-            )}
-
-            <div className="flex-1 min-w-0">
-              {onUserClick ? (
-                <Tooltip content="View profile" position="bottom" wrapperClassName="block">
-                  <h4
-                    className="font-medium text-base-content cursor-pointer hover:text-primary transition-colors leading-[120%] mb-[0.2em]"
-                    onClick={() => onUserClick(awardeeId)}
-                  >
-                    {getDisplayName()}
-                  </h4>
-                </Tooltip>
-              ) : (
-                <h4 className="font-medium text-base-content leading-[120%] mb-[0.2em]">
-                  {getDisplayName()}
-                </h4>
               )}
 
-              <div className="flex flex-wrap items-center gap-x-2 gap-y-0">
-                {onUserClick ? (
-                  <Tooltip content="View profile" position="bottom" wrapperClassName="inline-flex">
-                    <p
-                      className="text-sm text-base-content/70 cursor-pointer hover:text-primary transition-colors"
-                      onClick={() => onUserClick(awardeeId)}
-                    >
-                      @{awardeeUsername}
-                    </p>
-                  </Tooltip>
-                ) : (
-                  <p className="text-sm text-base-content/70">@{awardeeUsername}</p>
-                )}
-                {awardeeIsDemo && (
-                  <Tooltip
-                    content={DEMO_PROFILE_TOOLTIP}
-                    wrapperClassName="flex items-center gap-0.5 text-base-content/50 text-xs"
+              <div className="flex-1 min-w-0">
+                <h4
+                  ref={nameContainerRef}
+                  className="font-medium text-base-content leading-[120%] mb-[0.2em] truncate relative"
+                >
+                  {onUserClick ? (
+                    <Tooltip content="View profile" position="bottom" wrapperClassName="cursor-pointer hover:text-primary transition-colors">
+                      <span onClick={() => onUserClick(awardeeId)}>{getDisplayName()}</span>
+                    </Tooltip>
+                  ) : (
+                    <span>{getDisplayName()}</span>
+                  )}
+                  <span
+                    ref={nameProbeRef}
+                    className="invisible absolute whitespace-nowrap pointer-events-none left-0 top-0 font-medium"
+                    aria-hidden="true"
                   >
-                    <FlaskConical size={12} className="flex-shrink-0" />
-                  </Tooltip>
-                )}
+                    {getDisplayName()}
+                  </span>
+                </h4>
+
+                <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0 overflow-hidden text-xs" style={{ maxHeight: "2.1em" }}>
+                  {onUserClick ? (
+                    <Tooltip content="View profile" position="bottom" wrapperClassName="inline-flex">
+                      <p
+                        className="text-base-content/70 cursor-pointer hover:text-primary transition-colors"
+                        onClick={() => onUserClick(awardeeId)}
+                      >
+                        @{awardeeUsername}
+                      </p>
+                    </Tooltip>
+                  ) : (
+                    <p className="text-base-content/70">@{awardeeUsername}</p>
+                  )}
+                  {dateIsNarrow && joinedDateText && (
+                    <div className="flex shrink-0 items-center gap-1 text-base-content/60">
+                      <Calendar size={10} className="shrink-0" />
+                      <span className="leading-[1.05] whitespace-nowrap">{joinedDateText}</span>
+                    </div>
+                  )}
+                  {locationText && (
+                    <Tooltip
+                      content={locationText}
+                      wrapperClassName="flex min-w-0 max-w-[calc(100%-1.5rem)] flex-[0_1_auto] items-center gap-1 overflow-hidden"
+                    >
+                      <MapPin size={10} className="shrink-0 text-base-content/60" />
+                      <span className="min-w-0 truncate text-base-content/60 leading-[1.05]">{locationText}</span>
+                    </Tooltip>
+                  )}
+                  {awardeeIsDemo && (
+                    <Tooltip
+                      content={DEMO_PROFILE_TOOLTIP}
+                      wrapperClassName="flex items-center gap-0.5 text-base-content/50 text-xs"
+                    >
+                      <FlaskConical size={12} className="flex-shrink-0" />
+                    </Tooltip>
+                  )}
+                </div>
               </div>
             </div>
+
+            {joinedDateText && (
+              <div
+                ref={dateRef}
+                className={`flex items-center text-xs text-base-content/60 whitespace-nowrap flex-shrink-0${dateIsNarrow ? " absolute opacity-0 pointer-events-none" : ""}`}
+              >
+                <Calendar size={12} className="mr-1" />
+                <span>{joinedDateText}</span>
+              </div>
+            )}
           </div>
         )}
 

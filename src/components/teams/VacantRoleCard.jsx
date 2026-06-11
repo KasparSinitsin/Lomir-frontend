@@ -570,10 +570,10 @@ const VacantRoleCard = ({
     if (is_remote) return "Remote";
     return formatLocation(normalizeLocationData(role), {
       displayType: "full",
-      showPostalCode: true,
-      showState: true,
+      showPostalCode: false,
+      showState: false,
       showCountry: true,
-      showCountryCode: viewMode !== "card" && viewMode !== "mini",
+      showCountryCode: false,
     }) || null;
   };
 
@@ -1451,14 +1451,14 @@ const VacantRoleCard = ({
                   {locationText}
                 </CardMetaItem>
               )}
-              {showDistance && (
-                <CardMetaItem icon={Ruler} nowrap>
-                  {Math.round(rawDistanceKm)} km away
-                </CardMetaItem>
-              )}
               {!is_remote && max_distance_km && (
                 <CardMetaItem icon={CircleDot} tone="muted" nowrap>
                   {max_distance_km} km
+                </CardMetaItem>
+              )}
+              {showDistance && (
+                <CardMetaItem icon={Ruler} nowrap>
+                  {Math.round(rawDistanceKm)} km away
                 </CardMetaItem>
               )}
               {demoRoleMetaItem}
@@ -1470,15 +1470,14 @@ const VacantRoleCard = ({
                   {locationText}
                 </CardMetaItem>
               )}
-
-              {showDistance && (
-                <CardMetaItem icon={Ruler} nowrap>
-                  {Math.round(rawDistanceKm)} km away
-                </CardMetaItem>
-              )}
               {!is_remote && max_distance_km && (
                 <CardMetaItem icon={CircleDot} tone="muted" nowrap>
                   {max_distance_km} km
+                </CardMetaItem>
+              )}
+              {showDistance && (
+                <CardMetaItem icon={Ruler} nowrap>
+                  {Math.round(rawDistanceKm)} km away
                 </CardMetaItem>
               )}
               {demoRoleMetaItem}
