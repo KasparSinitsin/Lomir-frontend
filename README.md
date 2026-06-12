@@ -36,7 +36,8 @@ Contact the project owner for a demo login, or register a new account with a val
 - **Notifications** — In-app notification center for invitations, applications, badge awards, and role updates
 - **Account Deletion** — Multi-step account deletion with impact preview, automatic team ownership transfer, and graceful "Former Lomir User" handling across chat, badges, and notifications
 - **Demo Data Indicators** — Synthetic/seed data is visually labeled with FlaskConical icons and "DEMO" avatar overlays so users can distinguish test content from real data
-- **Contact Page** — Email contact form with optional file attachments (up to 5 files, 25 MB each — images, PDF, Word, Excel, PPT, TXT, ZIP); authenticated users with a configured contact user ID are routed directly to in-app chat instead; optional Turnstile CAPTCHA; success toast on submit
+- **Contact Page** — Email contact form with optional multipart file attachments (up to 5 files, 25 MB each — images, PDF, Word, Excel, PPT, TXT, ZIP); authenticated users with a configured contact user ID are routed directly to in-app chat instead; optional Turnstile CAPTCHA; success toast on submit
+- **Authentication UX** — Login and forgot-password flows use shared floating screen alerts for submit-level errors such as rate limits, while field validation remains inline
 - **Security** — Cloudflare Turnstile CAPTCHA on registration and contact form (feature-flagged), enforced password policy (min 8 chars, letter + number), self-service password reset from the login form; search results use approximate coordinates (~11km precision) so exact user locations are never exposed to the frontend; real-time email and username availability feedback during registration; unverified accounts are automatically deleted after 24 hours
 
 ---
@@ -200,7 +201,8 @@ Lomir-frontend/
 │   │   └── queryClient.js          # TanStack React Query client configuration
 │   ├── services/
 │   │   ├── api.js                  # Axios instance with default camelCase ↔ snake_case interceptors;
-│   │   │                           #   call sites can opt out via skipRequestCaseTransform /
+│   │   │                           #   preserves FormData requests so multipart boundaries are set by
+│   │   │                           #   the browser; call sites can opt out via skipRequestCaseTransform /
 │   │   │                           #   skipResponseCaseTransform for explicit per-call data contracts
 │   │   ├── userService.js          # Includes deletionPreview + deleteUser
 │   │   ├── teamService.js
