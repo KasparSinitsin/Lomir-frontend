@@ -39,6 +39,7 @@ import NotificationBadge from "../common/NotificationBadge";
 import SearchResultTypeOverlay from "../common/SearchResultTypeOverlay";
 import ListViewRow from "../common/ListViewRow";
 import MatchScoreOverlay from "../common/MatchScoreOverlay";
+import MatchScoreSubtitle from "../common/MatchScoreSubtitle";
 import TeamApplicationsModal from "./TeamApplicationsModal";
 import { format } from "date-fns";
 import LocationDistanceTagsRow from "../common/LocationDistanceTagsRow";
@@ -2133,85 +2134,42 @@ const TeamCard = ({
     const iconSizeSubtitle =
       viewMode === "list" ? 9 : viewMode === "mini" ? 10 : 13;
     scoreSubtitleItem = (
-      <Tooltip content={matchTooltipText}>
-        <span className="flex items-center gap-0.5">
-          <matchTier.Icon size={iconSizeSubtitle} className={matchTier.text} />
-          <span className="text-base-content">{matchTier.pct}%</span>
-        </span>
-      </Tooltip>
+      <MatchScoreSubtitle
+        matchTier={matchTier}
+        tooltipText={matchTooltipText}
+        iconSize={iconSizeSubtitle}
+      />
     );
 
-    if (isRoleVariant) {
-      const isListMatchBadge = viewMode === "list";
-      const isCompactMatchBadge =
-        isListMatchBadge || viewMode === "mini";
-      const matchBadgeIconSize = isListMatchBadge
-        ? 7
-        : isCompactMatchBadge
-          ? 11
-          : 13;
+    const isListMatchBadge = viewMode === "list";
+    const isCompactMatchBadge = isListMatchBadge || viewMode === "mini";
+    const matchBadgeIconSize = isListMatchBadge ? 7 : isCompactMatchBadge ? 11 : 13;
+    const matchBadgePx = isListMatchBadge ? 14 : isCompactMatchBadge ? 22 : 26;
+    const overlayPosition = `absolute ${isListMatchBadge ? "-top-0.5 -left-0.5" : "-top-1 -left-1"} z-10`;
 
+    if (isRoleVariant) {
       matchOverlay = (
-        <Tooltip content={matchTooltipText}>
-          <div
-            aria-label={matchTooltipText}
-            className={`absolute ${isListMatchBadge ? "-top-0.5 -left-0.5" : "-top-1 -left-1"} z-10 rounded-full ring-2 ring-white flex items-center justify-center ${matchTier.bg} text-white`}
-            style={{
-              width: isListMatchBadge
-                ? "14px"
-                : isCompactMatchBadge
-                  ? "22px"
-                  : "26px",
-              height: isListMatchBadge
-                ? "14px"
-                : isCompactMatchBadge
-                  ? "22px"
-                  : "26px",
-            }}
-          >
-            <UserSearch
-              size={matchBadgeIconSize}
-              className="text-white"
-              strokeWidth={2.5}
-            />
-          </div>
-        </Tooltip>
+        <MatchScoreOverlay
+          matchTier={matchTier}
+          icon={UserSearch}
+          tooltipText={matchTooltipText}
+          sizeClassName=""
+          iconSize={matchBadgeIconSize}
+          positionClassName={overlayPosition}
+          style={{ width: `${matchBadgePx}px`, height: `${matchBadgePx}px` }}
+        />
       );
     } else if (isTeamInvitationOrApplicationVariant) {
-      const isListMatchBadge = viewMode === "list";
-      const isCompactMatchBadge =
-        isListMatchBadge || viewMode === "mini";
-      const matchBadgeIconSize = isListMatchBadge
-        ? 7
-        : isCompactMatchBadge
-          ? 11
-          : 13;
-
       matchOverlay = (
-        <Tooltip content={matchTooltipText}>
-          <div
-            aria-label={matchTooltipText}
-            className={`absolute ${isListMatchBadge ? "-top-0.5 -left-0.5" : "-top-1 -left-1"} z-10 rounded-full ring-2 ring-white flex items-center justify-center ${matchTier.bg} text-white`}
-            style={{
-              width: isListMatchBadge
-                ? "14px"
-                : isCompactMatchBadge
-                  ? "22px"
-                  : "26px",
-              height: isListMatchBadge
-                ? "14px"
-                : isCompactMatchBadge
-                  ? "22px"
-                  : "26px",
-            }}
-          >
-            <Users
-              size={matchBadgeIconSize}
-              className="text-white"
-              strokeWidth={2.5}
-            />
-          </div>
-        </Tooltip>
+        <MatchScoreOverlay
+          matchTier={matchTier}
+          icon={Users}
+          tooltipText={matchTooltipText}
+          sizeClassName=""
+          iconSize={matchBadgeIconSize}
+          positionClassName={overlayPosition}
+          style={{ width: `${matchBadgePx}px`, height: `${matchBadgePx}px` }}
+        />
       );
     } else {
       matchOverlay = (

@@ -25,6 +25,7 @@ import LocationDistanceTagsRow from "../common/LocationDistanceTagsRow";
 import SearchResultTypeOverlay from "../common/SearchResultTypeOverlay";
 import ListViewRow from "../common/ListViewRow";
 import MatchScoreOverlay from "../common/MatchScoreOverlay";
+import MatchScoreSubtitle from "../common/MatchScoreSubtitle";
 import { getMatchTier, getMatchTooltipText } from "../../utils/matchScoreUtils";
 import { getResultMatchScore } from "../../utils/teamMatchUtils";
 import { extractNames, summarizeList } from "../../utils/listSummaryUtils";
@@ -164,12 +165,11 @@ const UserCard = ({
     const iconSizeSubtitle =
       viewMode === "list" ? 9 : viewMode === "mini" ? 10 : 13;
     scoreSubtitleItem = (
-      <Tooltip content={matchTooltipText}>
-        <span className="flex items-center gap-0.5">
-          <matchTier.Icon size={iconSizeSubtitle} className={matchTier.text} />
-          <span className="text-base-content">{matchTier.pct}%</span>
-        </span>
-      </Tooltip>
+      <MatchScoreSubtitle
+        matchTier={matchTier}
+        tooltipText={matchTooltipText}
+        iconSize={iconSizeSubtitle}
+      />
     );
 
     const badgeSize =

@@ -31,6 +31,7 @@ import LocationDistanceTagsRow from "../common/LocationDistanceTagsRow";
 import SearchResultTypeOverlay from "../common/SearchResultTypeOverlay";
 import ListViewRow from "../common/ListViewRow";
 import MatchScoreOverlay from "../common/MatchScoreOverlay";
+import MatchScoreSubtitle from "../common/MatchScoreSubtitle";
 import Tooltip from "../common/Tooltip";
 import {
   DEMO_PROFILE_TOOLTIP,
@@ -776,15 +777,11 @@ const VacantRoleCard = ({
     viewMode === "list" ? 9 : viewMode === "mini" ? 10 : 13;
   const formattedPostedDate = getFormattedPostedDate();
   const scoreSubtitleItem = matchTier ? (
-    <Tooltip content={getMatchTooltip()}>
-      <span className="inline-flex items-center gap-0.5 whitespace-nowrap leading-none">
-        <matchTier.Icon
-          size={scoreSubtitleIconSize}
-          className={`${matchTier.text} flex-shrink-0`}
-        />
-        <span className="text-base-content">{matchTier.pct}%</span>
-      </span>
-    </Tooltip>
+    <MatchScoreSubtitle
+      matchTier={matchTier}
+      tooltipText={getMatchTooltip()}
+      iconSize={scoreSubtitleIconSize}
+    />
   ) : null;
   const roleApplicationSubtitleItem = hasCurrentUserRoleApplication ? (
     <Tooltip content="You applied for this role">
