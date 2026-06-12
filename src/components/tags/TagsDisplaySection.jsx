@@ -152,19 +152,35 @@ const TagsDisplaySection = ({
     // Case 2 & 3: Array
     if (Array.isArray(tags) && tags.length > 0) {
       // Case 2: Array of objects with name property
-      if (typeof tags[0] === "object" && tags[0].name) {
-        return tags.map((tag) => ({
-          key: tag.id || tag.tag_id || tag.tagId,
-          name: tag.name,
-          badgeCredits: tag.badge_credits || tag.badgeCredits || 0,
-          dominantBadgeCategory:
-            tag.dominant_badge_category || tag.dominantBadgeCategory || null,
-          supercategory: tag.supercategory || null,
-          category: tag.category || null,
-          linkedBadgeCount: tag.linked_badge_count || tag.linkedBadgeCount || 0,
-          awarderCount: tag.awarder_count || tag.awarderCount || 0,
-          awardeeCount: tag.awardee_count || tag.awardeeCount || 0,
-        }));
+      if (typeof tags[0] === "object") {
+        const objectTags = tags
+          .map((tag) => {
+            const name =
+              tag.name ??
+              tag.tagName ??
+              tag.tag_name ??
+              tag.label ??
+              tag.title ??
+              null;
+
+            if (!name) return null;
+
+            return {
+              key: tag.id || tag.tag_id || tag.tagId || name,
+              name,
+              badgeCredits: tag.badge_credits || tag.badgeCredits || 0,
+              dominantBadgeCategory:
+                tag.dominant_badge_category || tag.dominantBadgeCategory || null,
+              supercategory: tag.supercategory || tag.supercategoryName || tag.supercategory_name || null,
+              category: tag.category || tag.categoryName || tag.category_name || null,
+              linkedBadgeCount: tag.linked_badge_count || tag.linkedBadgeCount || 0,
+              awarderCount: tag.awarder_count || tag.awarderCount || 0,
+              awardeeCount: tag.awardee_count || tag.awardeeCount || 0,
+            };
+          })
+          .filter(Boolean);
+
+        if (objectTags.length > 0) return objectTags;
       }
 
       // Case 3: Array of IDs

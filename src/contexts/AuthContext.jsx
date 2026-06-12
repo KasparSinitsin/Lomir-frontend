@@ -26,6 +26,8 @@ const normalizeAuthUser = (userData, { defaultIsPublic = false } = {}) => ({
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
+  // Browser storage note: Lomir currently keeps the JWT in localStorage.token
+  // for signed-in sessions. TODO: evaluate moving auth to httpOnly cookies.
   const [token, setToken] = useState(localStorage.getItem("token"));
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);

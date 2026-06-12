@@ -12,6 +12,7 @@ import UserProfileHeaderSection from "./UserProfileHeaderSection";
 import { messageService } from "../../services/messageService";
 import { geocodingService } from "../../services/geocodingService";
 import { userService } from "../../services/userService";
+import { teamService } from "../../services/teamService";
 import {
   useUserBadges,
   useUserProfile,
@@ -72,6 +73,119 @@ const normalizeStringSet = (values) => {
   );
 };
 
+const getInitialUserId = (source) =>
+  source?.userId ??
+  source?.user_id ??
+  source?.memberId ??
+  source?.member_id ??
+  source?.user?.id ??
+  source?.id ??
+  null;
+
+const extractUserTags = (source) => {
+  if (!source || typeof source !== "object") return [];
+
+  const candidates = [
+    source.tags,
+    source.userTags,
+    source.user_tags,
+    source.focusAreas,
+    source.focus_areas,
+    source.focusAreaTags,
+    source.focus_area_tags,
+    source.profile?.tags,
+    source.user?.tags,
+    source.user?.userTags,
+    source.user?.user_tags,
+    source.user?.focusAreas,
+    source.user?.focus_areas,
+  ];
+
+  const match = candidates.find((value) => Array.isArray(value) && value.length > 0);
+  return match ?? [];
+};
+
+const getAwardTargetUserId = (award) => {
+  const awardedToSource =
+    award?.awardedTo ??
+    award?.awarded_to ??
+    award?.awardedToUser ??
+    award?.awarded_to_user ??
+    award?.awardee ??
+    award?.awardeeUser ??
+    award?.awardee_user ??
+    {};
+
+  return (
+    award?.awardedToUserId ??
+    award?.awarded_to_user_id ??
+    award?.awardeeUserId ??
+    award?.awardee_user_id ??
+    awardedToSource?.id ??
+    awardedToSource?.userId ??
+    awardedToSource?.user_id ??
+    null
+  );
+};
+
+const getAwardTargetUsername = (award) => {
+  const awardedToSource =
+    award?.awardedTo ??
+    award?.awarded_to ??
+    award?.awardedToUser ??
+    award?.awarded_to_user ??
+    award?.awardee ??
+    award?.awardeeUser ??
+    award?.awardee_user ??
+    {};
+
+  return (
+    award?.awardedToUsername ??
+    award?.awarded_to_username ??
+    award?.awardeeUsername ??
+    award?.awardee_username ??
+    awardedToSource?.username ??
+    null
+  );
+};
+
+const mergeProfileWithInitialUser = (profile, initialUserData) => {
+  if (!initialUserData) return profile;
+  if (!profile) return initialUserData;
+
+  const initialTags = extractUserTags(initialUserData);
+  const profileTags = extractUserTags(profile);
+  const initialBadges = Array.isArray(initialUserData.badges)
+    ? initialUserData.badges
+    : [];
+  const profileBadges = Array.isArray(profile.badges) ? profile.badges : [];
+
+  return {
+    ...initialUserData,
+    ...profile,
+    tags: profileTags.length > 0 ? profileTags : initialTags,
+    badges: profileBadges.length > 0 ? profileBadges : initialBadges,
+  };
+};
+
+const unwrapRows = (response) => {
+  if (!response) return [];
+  if (Array.isArray(response)) return response;
+
+  const payload =
+    response?.success !== undefined
+      ? response
+      : response?.data?.success !== undefined
+        ? response.data
+        : (response?.data ?? response);
+
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.data)) return payload.data;
+  if (Array.isArray(payload?.data?.data)) return payload.data.data;
+
+  return [];
+};
+
 const UserDetailsModal = ({
   isOpen,
   userId,
@@ -98,6 +212,8 @@ const UserDetailsModal = ({
   invitationPrefillRoleId = null,
   invitationPrefillTeamName = null,
   invitationPrefillRoleName = null,
+  initialUserData = null,
+  sharedTeamId = null,
 }) => {
   const { user: currentUser, isAuthenticated } = useAuth();
   const queryClient = useQueryClient();
@@ -142,10 +258,52 @@ const UserDetailsModal = ({
 
   // =====================================================
 
-  const fetchUserAwards = useCallback(
-    () => userService.getUserBadges(userId),
-    [userId],
+  const initialUserId = getInitialUserId(initialUserData);
+  const targetUsername =
+    initialUserData?.username ?? user?.username ?? user?.userName ?? null;
+  const filterAwardsToViewedUser = useCallback(
+    (rows) =>
+      rows.filter((award) => {
+        const awardeeId = getAwardTargetUserId(award);
+
+        if (awardeeId != null && userId != null) {
+          return String(awardeeId) === String(userId);
+        }
+
+        if (awardeeId != null && initialUserId != null) {
+          return String(awardeeId) === String(initialUserId);
+        }
+
+        const awardeeUsername = getAwardTargetUsername(award);
+        return Boolean(
+          awardeeUsername &&
+            targetUsername &&
+            String(awardeeUsername).toLowerCase() ===
+              String(targetUsername).toLowerCase(),
+        );
+      }),
+    [initialUserId, targetUsername, userId],
   );
+  const fetchUserTagAwards = useCallback(async () => {
+    if (!sharedTeamId) {
+      return userService.getUserBadges(userId);
+    }
+
+    const rows = unwrapRows(
+      await teamService.getTeamMemberBadgeAwards(sharedTeamId),
+    );
+    return filterAwardsToViewedUser(rows);
+  }, [filterAwardsToViewedUser, sharedTeamId, userId]);
+  const fetchUserBadgeAwards = useCallback(async () => {
+    if (!sharedTeamId) {
+      return userService.getUserBadges(userId);
+    }
+
+    const rows = unwrapRows(
+      await teamService.getTeamMemberBadgeAwards(sharedTeamId),
+    );
+    return filterAwardsToViewedUser(rows);
+  }, [filterAwardsToViewedUser, sharedTeamId, userId]);
   const {
     handleBadgeCategoryClick,
     handleBadgeClick,
@@ -155,8 +313,8 @@ const UserDetailsModal = ({
     tagAwardsModalProps,
     supercategoryModalProps,
   } = useAwardModals({
-    fetchTagAwards: fetchUserAwards,
-    fetchBadgeAwards: fetchUserAwards,
+    fetchTagAwards: fetchUserTagAwards,
+    fetchBadgeAwards: fetchUserBadgeAwards,
     subjectUserId: userId,
   });
 
@@ -213,7 +371,10 @@ const UserDetailsModal = ({
     if (!isOpen || !userId) return;
     if (!viewedUserProfileQuery.data) return;
 
-    const userData = viewedUserProfileQuery.data;
+    const userData = mergeProfileWithInitialUser(
+      viewedUserProfileQuery.data,
+      initialUserData,
+    );
     const preservedDistanceKm =
       distanceKm ??
       user?.distanceKm ??
@@ -246,12 +407,50 @@ const UserDetailsModal = ({
     user?.distance_km,
     userId,
     viewedUserProfileQuery.data,
+    initialUserData,
   ]);
 
   useEffect(() => {
     if (!isOpen || !userId) return;
-    setUserTags(viewedUserTagsQuery.data ?? []);
-  }, [isOpen, userId, viewedUserTagsQuery.data]);
+    const fallbackTags = extractUserTags(initialUserData);
+    const fetchedTags = viewedUserTagsQuery.data ?? [];
+    setUserTags(fetchedTags.length > 0 ? fetchedTags : fallbackTags);
+  }, [initialUserData, isOpen, userId, viewedUserTagsQuery.data]);
+
+  useEffect(() => {
+    if (!isOpen || !sharedTeamId || !userId || userTags.length > 0) return;
+
+    let cancelled = false;
+
+    const fetchSharedTeamMemberTags = async () => {
+      try {
+        const response = await teamService.getTeamById(sharedTeamId);
+        const teamData = response?.data ?? response;
+        const members = Array.isArray(teamData?.members) ? teamData.members : [];
+        const matchingMember = members.find((member) => {
+          const memberId = getInitialUserId(member);
+          return memberId != null && String(memberId) === String(userId);
+        });
+        const memberTags = extractUserTags(matchingMember);
+
+        if (!cancelled && memberTags.length > 0) {
+          setUserTags(memberTags);
+          setUser((prev) => {
+            if (!prev || extractUserTags(prev).length > 0) return prev;
+            return { ...prev, tags: memberTags };
+          });
+        }
+      } catch (error) {
+        console.warn("Could not fetch shared team member tags:", error);
+      }
+    };
+
+    fetchSharedTeamMemberTags();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, sharedTeamId, userId, userTags.length]);
 
   useEffect(() => {
     if (!viewedUserProfileQuery.error) return;
@@ -747,7 +946,7 @@ const UserDetailsModal = ({
               full profile page.
             </p>
           </div>
-        ) : (!ownProfile && (user?.profileAccess === "limited" || user?.profile_access === "limited")) ? (
+        ) : (!ownProfile && !sharedTeamId && (user?.profileAccess === "limited" || user?.profile_access === "limited")) ? (
           // PRIVATE PROFILE - non-owner, non-teammate viewing a private account
           <div className="text-center text-base-content/60 py-8">
             <p className="text-lg font-medium">{user.username}</p>
@@ -969,6 +1168,7 @@ const UserDetailsModal = ({
         onOpenUser={onOpenUser}
         hiddenAwardIds={hiddenAwardIds}
         showHiddenBadgeAwards={ownProfile}
+        canViewPrivateAwardees={Boolean(sharedTeamId)}
       />
 
       {/* Tag Awards Modal */}
@@ -977,6 +1177,7 @@ const UserDetailsModal = ({
         onOpenUser={onOpenUser}
         hiddenAwardIds={hiddenAwardIds}
         showHiddenBadgeAwards={ownProfile}
+        canViewPrivateAwardees={Boolean(sharedTeamId)}
       />
 
       {/* Supercategory Awards Modal */}
@@ -985,6 +1186,7 @@ const UserDetailsModal = ({
         onOpenUser={onOpenUser}
         hiddenAwardIds={hiddenAwardIds}
         showHiddenBadgeAwards={ownProfile}
+        canViewPrivateAwardees={Boolean(sharedTeamId)}
       />
 
       {/* Badge Award Modal */}

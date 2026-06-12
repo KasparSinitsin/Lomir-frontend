@@ -433,6 +433,16 @@ const Contact = () => {
               </div>
             )}
 
+            <p className="form-helper-text rounded-lg border border-base-300 bg-base-100/70 p-3">
+              By submitting this form, you agree that we process your name,
+              email address, message, and any attachments you provide in order
+              to respond to your inquiry. For details, please see our{" "}
+              <Link to="/privacy" className="link link-primary">
+                Privacy Policy
+              </Link>
+              .
+            </p>
+
             <div className="pt-3 flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
               <div className="sm:pt-0">
                 <Button

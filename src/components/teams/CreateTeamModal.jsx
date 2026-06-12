@@ -13,6 +13,7 @@ import { UI_TEXT } from "../../constants/uiText";
 import { teamService } from "../../services/teamService";
 import { uploadToImageKit } from "../../config/imagekit";
 import { useLocationAutoFill } from "../../hooks/useLocationAutoFill";
+import { AVATAR_UPLOAD_NOTICE } from "../../constants/privacyText";
 import TeamDetailsModal from "./TeamDetailsModal";
 import {
   Users,
@@ -425,6 +426,7 @@ const CreateTeamModal = ({ isOpen, onClose, onTeamCreated }) => {
                     size="mdPlus"
                     shape="circle"
                     fallbackText={getTeamInitials()}
+                    helpText={AVATAR_UPLOAD_NOTICE}
                     disabled={loading}
                   />
                 </div>

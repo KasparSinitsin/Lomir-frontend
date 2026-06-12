@@ -1,5 +1,9 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
 import { Upload, X, ImagePlus } from "lucide-react";
+import { CHAT_UPLOAD_NOTICE } from "../../constants/privacyText";
+
+const MAX_SIZE_MB = 10;
+const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
 
 const ChatImageUploader = ({ onImageSelect, onClose }) => {
   const [isDragging, setIsDragging] = useState(false);
@@ -9,19 +13,16 @@ const ChatImageUploader = ({ onImageSelect, onClose }) => {
   const fileInputRef = useRef(null);
   const dragCounter = useRef(0);
 
-  const maxSizeMB = 10;
-  const acceptedTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
-
   const validateFile = useCallback((file) => {
     if (!file.type.startsWith("image/")) {
       return "Please select an image file";
     }
-    if (!acceptedTypes.includes(file.type)) {
+    if (!ACCEPTED_TYPES.includes(file.type)) {
       return "Accepted formats: JPEG, PNG, GIF, WebP";
     }
-    const maxSizeBytes = maxSizeMB * 1024 * 1024;
+    const maxSizeBytes = MAX_SIZE_MB * 1024 * 1024;
     if (file.size > maxSizeBytes) {
-      return `Image must be less than ${maxSizeMB}MB`;
+      return `Image must be less than ${MAX_SIZE_MB}MB`;
     }
     return null;
   }, []);
@@ -152,7 +153,7 @@ const ChatImageUploader = ({ onImageSelect, onClose }) => {
               {isDragging ? "Drop image here" : "Drag & drop, click, or paste"}
             </p>
             <p className="text-xs text-base-content/50">
-              Max {maxSizeMB}MB • JPEG, PNG, GIF, WebP
+              Max {MAX_SIZE_MB}MB • JPEG, PNG, GIF, WebP
             </p>
           </div>
         </div>
@@ -176,6 +177,10 @@ const ChatImageUploader = ({ onImageSelect, onClose }) => {
       {/* Error Message */}
       {error && (
         <p className="text-xs text-error mt-2">{error}</p>
+      )}
+
+      {!error && (
+        <p className="form-helper-text mt-2">{CHAT_UPLOAD_NOTICE}</p>
       )}
 
       {/* Action Buttons */}
@@ -202,7 +207,7 @@ const ChatImageUploader = ({ onImageSelect, onClose }) => {
       <input
         ref={fileInputRef}
         type="file"
-        accept={acceptedTypes.join(",")}
+        accept={ACCEPTED_TYPES.join(",")}
         onChange={(e) => {
           if (e.target.files?.[0]) {
             handleFile(e.target.files[0]);

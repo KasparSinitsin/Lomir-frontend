@@ -1,5 +1,39 @@
-import React, { useState, useRef, useCallback, useEffect } from "react";
-import { Upload, X, FileText, File, FileSpreadsheet, FileImage } from "lucide-react";
+import React, { useState, useRef, useCallback } from "react";
+import { Upload, X, FileText, File, FileSpreadsheet } from "lucide-react";
+import { CHAT_UPLOAD_NOTICE } from "../../constants/privacyText";
+
+const MAX_SIZE_MB = 25;
+
+const ACCEPTED_TYPES = {
+  // Documents
+  "application/pdf": { icon: FileText, label: "PDF" },
+  "application/msword": { icon: FileText, label: "DOC" },
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": {
+    icon: FileText,
+    label: "DOCX",
+  },
+  // Spreadsheets
+  "application/vnd.ms-excel": { icon: FileSpreadsheet, label: "XLS" },
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+    icon: FileSpreadsheet,
+    label: "XLSX",
+  },
+  "text/csv": { icon: FileSpreadsheet, label: "CSV" },
+  // Presentations
+  "application/vnd.ms-powerpoint": { icon: File, label: "PPT" },
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation": {
+    icon: File,
+    label: "PPTX",
+  },
+  // Text
+  "text/plain": { icon: FileText, label: "TXT" },
+  // Archives
+  "application/zip": { icon: File, label: "ZIP" },
+  "application/x-rar-compressed": { icon: File, label: "RAR" },
+};
+
+const ACCEPTED_EXTENSIONS =
+  ".pdf,.doc,.docx,.xls,.xlsx,.csv,.ppt,.pptx,.txt,.zip,.rar";
 
 const ChatFileUploader = ({ onFileSelect, onClose }) => {
   const [isDragging, setIsDragging] = useState(false);
@@ -8,41 +42,17 @@ const ChatFileUploader = ({ onFileSelect, onClose }) => {
   const fileInputRef = useRef(null);
   const dragCounter = useRef(0);
 
-  const maxSizeMB = 25;
-  
-  // Accepted file types
-  const acceptedTypes = {
-    // Documents
-    'application/pdf': { icon: FileText, label: 'PDF' },
-    'application/msword': { icon: FileText, label: 'DOC' },
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': { icon: FileText, label: 'DOCX' },
-    // Spreadsheets
-    'application/vnd.ms-excel': { icon: FileSpreadsheet, label: 'XLS' },
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': { icon: FileSpreadsheet, label: 'XLSX' },
-    'text/csv': { icon: FileSpreadsheet, label: 'CSV' },
-    // Presentations
-    'application/vnd.ms-powerpoint': { icon: File, label: 'PPT' },
-    'application/vnd.openxmlformats-officedocument.presentationml.presentation': { icon: File, label: 'PPTX' },
-    // Text
-    'text/plain': { icon: FileText, label: 'TXT' },
-    // Archives
-    'application/zip': { icon: File, label: 'ZIP' },
-    'application/x-rar-compressed': { icon: File, label: 'RAR' },
-  };
-
-  const acceptedExtensions = '.pdf,.doc,.docx,.xls,.xlsx,.csv,.ppt,.pptx,.txt,.zip,.rar';
-
   const validateFile = useCallback((file) => {
-    const maxSizeBytes = maxSizeMB * 1024 * 1024;
+    const maxSizeBytes = MAX_SIZE_MB * 1024 * 1024;
     
     if (file.size > maxSizeBytes) {
-      return `File must be less than ${maxSizeMB}MB`;
+      return `File must be less than ${MAX_SIZE_MB}MB`;
     }
 
     // Check if file type is accepted
-    const isAcceptedType = Object.keys(acceptedTypes).includes(file.type);
+    const isAcceptedType = Object.keys(ACCEPTED_TYPES).includes(file.type);
     const extension = '.' + file.name.split('.').pop().toLowerCase();
-    const isAcceptedExtension = acceptedExtensions.includes(extension);
+    const isAcceptedExtension = ACCEPTED_EXTENSIONS.includes(extension);
 
     if (!isAcceptedType && !isAcceptedExtension) {
       return "File type not supported. Accepted: PDF, Word, Excel, PowerPoint, TXT, ZIP";
@@ -112,7 +122,7 @@ const ChatFileUploader = ({ onFileSelect, onClose }) => {
   };
 
   const getFileIcon = (file) => {
-    const typeInfo = acceptedTypes[file.type];
+    const typeInfo = ACCEPTED_TYPES[file.type];
     if (typeInfo) {
       const IconComponent = typeInfo.icon;
       return <IconComponent size={32} className="text-primary" />;
@@ -167,7 +177,7 @@ const ChatFileUploader = ({ onFileSelect, onClose }) => {
               {isDragging ? "Drop file here" : "Drag & drop or click to select"}
             </p>
             <p className="text-xs text-base-content/50">
-              Max {maxSizeMB}MB • PDF, Word, Excel, PPT, TXT, ZIP
+              Max {MAX_SIZE_MB}MB • PDF, Word, Excel, PPT, TXT, ZIP
             </p>
           </div>
         </div>
@@ -197,6 +207,10 @@ const ChatFileUploader = ({ onFileSelect, onClose }) => {
         <p className="text-xs text-error mt-2">{error}</p>
       )}
 
+      {!error && (
+        <p className="form-helper-text mt-2">{CHAT_UPLOAD_NOTICE}</p>
+      )}
+
       {/* Action Buttons */}
       {selectedFile && (
         <div className="flex gap-2 mt-3">
@@ -221,7 +235,7 @@ const ChatFileUploader = ({ onFileSelect, onClose }) => {
       <input
         ref={fileInputRef}
         type="file"
-        accept={acceptedExtensions}
+        accept={ACCEPTED_EXTENSIONS}
         onChange={(e) => {
           if (e.target.files?.[0]) {
             handleFile(e.target.files[0]);

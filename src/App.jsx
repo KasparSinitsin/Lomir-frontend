@@ -31,6 +31,7 @@ import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import Settings from "./pages/Settings";
 import Contact from "./pages/Contact";
+import LegalPlaceholderPage from "./pages/LegalPlaceholderPage";
 
 function AppLayout() {
   const location = useLocation();
@@ -69,6 +70,13 @@ function AppLayout() {
                 <Route path="/verify-email" element={<VerifyEmail />} />
                 <Route path="/badges" element={<BadgeOverview />} />
                 <Route path="/contact" element={<Contact />} />
+                <Route path="/about" element={<LegalPlaceholderPage type="about" />} />
+                <Route path="/terms" element={<LegalPlaceholderPage type="terms" />} />
+                <Route path="/privacy" element={<LegalPlaceholderPage type="privacy" />} />
+                <Route
+                  path="/legal-notice"
+                  element={<LegalPlaceholderPage type="legalNotice" />}
+                />
                 <Route
                   path="/garden"
                   element={<Placeholder pageName="Project Garden" />}

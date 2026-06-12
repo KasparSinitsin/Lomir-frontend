@@ -13,6 +13,7 @@ import LocationInput from "../common/LocationInput";
 import TagInput from "../tags/TagInput";
 import { UI_TEXT } from "../../constants/uiText";
 import { useLocationAutoFill } from "../../hooks/useLocationAutoFill";
+import { AVATAR_UPLOAD_NOTICE } from "../../constants/privacyText";
 import { Camera, Users, Settings, Tag, Trash2, X, Save } from "lucide-react";
 
 const PRESET_OPTIONS = [2, 3, 4, 5, 6, 8, 10, 12, 15, 20];
@@ -281,6 +282,7 @@ const TeamEditForm = ({
               size="mdPlus"
               disabled={loading || uploadingImage}
               loading={avatarDeleteLoading}
+              helpText={AVATAR_UPLOAD_NOTICE}
               showRemoveButton={
                 !!(
                   formData.teamavatarUrl ||
