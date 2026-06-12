@@ -107,6 +107,81 @@ const roleMemberMatchDataQueryKey = (memberId) => [
 const toPossessive = (value) =>
   !value ? "your" : value.endsWith("s") ? `${value}'` : `${value}'s`;
 
+const firstPresent = (...values) =>
+  values.find((value) => value !== undefined && value !== null);
+
+const idsMatch = (firstId, secondId) => {
+  if (firstId === undefined || firstId === null) return false;
+  if (secondId === undefined || secondId === null) return false;
+  return String(firstId).trim() === String(secondId).trim();
+};
+
+const normalizeBooleanFlag = (value) => {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "number") return value === 1;
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    if (["true", "1", "yes"].includes(normalized)) return true;
+    if (["false", "0", "no"].includes(normalized)) return false;
+  }
+  return null;
+};
+
+const getTeamMemberUserId = (member) =>
+  member?.userId ??
+  member?.user_id ??
+  member?.memberId ??
+  member?.member_id ??
+  member?.user?.id ??
+  member?.id ??
+  null;
+
+const getProfilePublicFlag = (user) =>
+  firstPresent(
+    user?.isPublic,
+    user?.is_public,
+    user?.profileIsPublic,
+    user?.profile_is_public,
+    user?.user?.isPublic,
+    user?.user?.is_public,
+  );
+
+const getProfilePrivateFlag = (user) =>
+  firstPresent(
+    user?.isPrivate,
+    user?.is_private,
+    user?.profileIsPrivate,
+    user?.profile_is_private,
+    user?.user?.isPrivate,
+    user?.user?.is_private,
+  );
+
+const shouldAnonymizePrivateUser = ({
+  targetUser,
+  targetUserId,
+  teamMembers,
+  viewerUserId,
+  viewerIsTeamMember,
+}) => {
+  if (!targetUserId) return false;
+  if (idsMatch(targetUserId, viewerUserId)) return false;
+  if (viewerIsTeamMember) return false;
+
+  const teamMember = Array.isArray(teamMembers)
+    ? teamMembers.find((member) =>
+        idsMatch(getTeamMemberUserId(member), targetUserId),
+      )
+    : null;
+  const privacySource = teamMember || targetUser || {};
+  const isPublic = normalizeBooleanFlag(getProfilePublicFlag(privacySource));
+  const isPrivate = normalizeBooleanFlag(getProfilePrivateFlag(privacySource));
+
+  if (isPublic === true) return false;
+  if (isPrivate === true || isPublic === false) return true;
+
+  return true;
+};
+
 const getRoleRecordId = (record) =>
   record?.role?.id ?? record?.roleId ?? record?.role_id ?? null;
 
@@ -1229,11 +1304,39 @@ const VacantRoleDetailsModal = ({
     displayRole.creator_id ??
     displayRole.creator?.id ??
     null;
+  const creatorIsPublic =
+    displayRole.creator_is_public ??
+    displayRole.creatorIsPublic ??
+    displayRole.creator?.is_public ??
+    displayRole.creator?.isPublic ??
+    null;
+  const creatorUser = {
+    ...(displayRole.creator ?? {}),
+    id: creatorUserId,
+    firstName: creatorFirstName,
+    first_name: creatorFirstName,
+    lastName: creatorLastName,
+    last_name: creatorLastName,
+    username: creatorUsername,
+    is_public: creatorIsPublic,
+    isPublic: creatorIsPublic,
+  };
+  const shouldAnonymizeCreator = shouldAnonymizePrivateUser({
+    targetUser: creatorUser,
+    targetUserId: creatorUserId,
+    teamMembers,
+    viewerUserId: currentUser?.id,
+    viewerIsTeamMember,
+  });
   const creatorName =
-    creatorFirstName && creatorLastName
+    shouldAnonymizeCreator
+      ? "Private Profile"
+      : creatorFirstName && creatorLastName
       ? `${creatorFirstName} ${creatorLastName}`
       : creatorUsername || null;
-  const creatorDisplayName = creatorName
+  const creatorDisplayName = shouldAnonymizeCreator
+    ? "Private Profile"
+    : creatorName
     ? formatDisplayName({
         first_name: creatorFirstName,
         last_name: creatorLastName,
@@ -1273,11 +1376,34 @@ const VacantRoleDetailsModal = ({
   const filledRoleUser = isFilledRole
     ? comparisonUser || resolvedFilledUser
     : null;
-  const filledRoleDisplayName =
-    filledRoleUser && getDisplayName(filledRoleUser) !== "Unknown"
+  const filledRoleUserId =
+    filledRoleUser?.id ?? filledRoleUser?.userId ?? filledRoleUser?.user_id;
+  const shouldAnonymizeFilledRoleUser = shouldAnonymizePrivateUser({
+    targetUser: filledRoleUser,
+    targetUserId: filledRoleUserId,
+    teamMembers,
+    viewerUserId: currentUser?.id,
+    viewerIsTeamMember,
+  });
+  const displayFilledRoleUser = shouldAnonymizeFilledRoleUser
+    ? {
+        ...(filledRoleUser ?? {}),
+        avatar_url: null,
+        avatarUrl: null,
+        is_public: false,
+        isPublic: false,
+        is_private: true,
+        isPrivate: true,
+      }
+    : filledRoleUser;
+  const filledRoleDisplayName = shouldAnonymizeFilledRoleUser
+    ? "Private Profile"
+    : filledRoleUser && getDisplayName(filledRoleUser) !== "Unknown"
       ? getDisplayName(filledRoleUser)
       : null;
-  const filledRoleCompactDisplayName = filledRoleUser
+  const filledRoleCompactDisplayName = shouldAnonymizeFilledRoleUser
+    ? "Private Profile"
+    : filledRoleUser
     ? formatDisplayName(filledRoleUser)
     : filledRoleDisplayName;
   const filledAt =
@@ -1346,8 +1472,12 @@ const VacantRoleDetailsModal = ({
       : `${effectivePct}% match with ${comparisonPossessive} profile`)
     : null;
   const handleFilledUserClick = () => {
-    const filledUserId = filledRoleUser?.id;
-    if (filledUserId && userModal?.openUserModal) {
+    const filledUserId = filledRoleUserId;
+    if (
+      filledUserId &&
+      !shouldAnonymizeFilledRoleUser &&
+      userModal?.openUserModal
+    ) {
       userModal.openUserModal(filledUserId, {
         filledRoleName: roleName ?? null,
         teamName: teamName ?? null,
@@ -1355,7 +1485,7 @@ const VacantRoleDetailsModal = ({
     }
   };
   const handleCreatorUserClick = () => {
-    if (creatorUserId && userModal?.openUserModal) {
+    if (creatorUserId && !shouldAnonymizeCreator && userModal?.openUserModal) {
       userModal.openUserModal(creatorUserId, {
         teamName: teamName ?? null,
       });
@@ -1806,22 +1936,43 @@ const VacantRoleDetailsModal = ({
         <div className="relative flex items-start space-x-4 mb-6">
           <div className="avatar relative">
             {isFilledRole ? (
-              <Tooltip content={filledRoleUser?.id ? `Click to view ${filledRoleDisplayName || "this user"}'s profile` : undefined}>
+              <Tooltip
+                content={
+                  filledRoleUserId && !shouldAnonymizeFilledRoleUser
+                    ? `Click to view ${filledRoleDisplayName || "this user"}'s profile`
+                    : undefined
+                }
+              >
               <div
-                role={filledRoleUser?.id ? "button" : undefined}
-                tabIndex={filledRoleUser?.id ? 0 : undefined}
-                onKeyDown={filledRoleUser?.id ? (e) => { if (e.key === "Enter" || e.key === " ") handleFilledUserClick(); } : undefined}
+                role={
+                  filledRoleUserId && !shouldAnonymizeFilledRoleUser
+                    ? "button"
+                    : undefined
+                }
+                tabIndex={
+                  filledRoleUserId && !shouldAnonymizeFilledRoleUser
+                    ? 0
+                    : undefined
+                }
+                onKeyDown={
+                  filledRoleUserId && !shouldAnonymizeFilledRoleUser
+                    ? (e) => { if (e.key === "Enter" || e.key === " ") handleFilledUserClick(); }
+                    : undefined
+                }
               >
                 <UserAvatar
-                  user={filledRoleUser}
+                  user={displayFilledRoleUser}
                   sizeClass="w-20 h-20"
-                  clickable={!!filledRoleUser?.id}
+                  clickable={Boolean(
+                    filledRoleUserId && !shouldAnonymizeFilledRoleUser,
+                  )}
                   onClick={handleFilledUserClick}
                   initialsClassName="text-2xl font-semibold"
+                  privateProfile={shouldAnonymizeFilledRoleUser}
                   showDemoOverlay={!!demoAvatarOverlay}
                   demoOverlayTextClassName="text-[9px]"
                   demoOverlayTextTranslateClassName="-translate-y-[4px]"
-                  fallbackText={!filledRoleUser ? getRoleInitials() : undefined}
+                  fallbackText={!displayFilledRoleUser ? getRoleInitials() : undefined}
                 />
               </div>
               </Tooltip>
@@ -1884,7 +2035,7 @@ const VacantRoleDetailsModal = ({
               {creatorName && (
                 <span className="flex min-w-0 max-w-[12rem] items-center gap-1 text-base-content/50 sm:max-w-[16rem]">
                   <PenLine size={14} className="flex-shrink-0" />
-                  {creatorUserId ? (
+                  {creatorUserId && !shouldAnonymizeCreator ? (
                     <Tooltip
                       content={`Created by ${creatorName}. Click to view their profile`}
                       wrapperClassName="inline-flex min-w-0 max-w-full items-center"
@@ -1906,7 +2057,7 @@ const VacantRoleDetailsModal = ({
               {isFilledRole && filledRoleDisplayName && (
                 <span className="flex min-w-0 max-w-[12rem] items-center gap-1 text-base-content/50 sm:max-w-[16rem]">
                   <UserCheck size={14} className="flex-shrink-0 text-success" />
-                  {filledRoleUser?.id ? (
+                  {filledRoleUserId && !shouldAnonymizeFilledRoleUser ? (
                     <Tooltip
                       content={`Filled by ${filledRoleDisplayName}. Click to view their profile`}
                       wrapperClassName="inline-flex min-w-0 max-w-full items-center"

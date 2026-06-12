@@ -3,6 +3,7 @@ import Tooltip from "./Tooltip";
 
 const MatchScoreOverlay = ({
   matchTier,
+  icon: IconOverride,
   tooltipText,
   sizeClassName = "w-5 h-5",
   iconSize = 10,
@@ -15,6 +16,8 @@ const MatchScoreOverlay = ({
   if (!matchTier) {
     return null;
   }
+
+  const Icon = IconOverride || matchTier.Icon;
 
   const overlay = (
     <div
@@ -30,7 +33,7 @@ const MatchScoreOverlay = ({
         .join(" ")}
       style={style}
     >
-      <matchTier.Icon
+      <Icon
         size={iconSize}
         className={iconClassName}
         strokeWidth={strokeWidth}

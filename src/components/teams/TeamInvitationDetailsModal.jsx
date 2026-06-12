@@ -36,6 +36,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import {
   extractRoleMatchData,
   getMemberUserId,
+  getPrivateAwareUserLabel,
   idsMatch,
   isExistingMemberStatus,
   normalizeBoolean,
@@ -167,12 +168,11 @@ const TeamInvitationDetailsModal = ({
   const [responseExpanded, setResponseExpanded] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState(null);
   const [isTeamDetailsOpen, setIsTeamDetailsOpen] = useState(false);
+  const teamHeaderRowRef = useRef(null);
   const teamNameContainerRef = useRef(null);
   const teamNameProbeRef = useRef(null);
   const teamDateRef = useRef(null);
   const [teamDateIsNarrow, setTeamDateIsNarrow] = useState(false);
-  const teamDateIsNarrowRef = useRef(false);
-  teamDateIsNarrowRef.current = teamDateIsNarrow;
 
   // ============ Helpers ============
 
@@ -193,28 +193,31 @@ const TeamInvitationDetailsModal = ({
   const teamName = team.name || "Unknown Team";
 
   useLayoutEffect(() => {
+    const row = teamHeaderRowRef.current;
     const container = teamNameContainerRef.current;
     const probe = teamNameProbeRef.current;
-    if (!container || !probe) return;
+    if (!row || !container || !probe) return;
 
     const update = () => {
-      const dateEl = teamDateRef.current;
-      const reservedWidth =
-        teamDateIsNarrowRef.current && dateEl ? dateEl.offsetWidth + 16 : 0;
-
       probe.textContent = teamName;
+      const rowWidth = row.clientWidth;
+      const shouldCollapseForRowWidth = rowWidth > 0 && rowWidth < 520;
+      const shouldCollapseForTitle =
+        probe.scrollWidth > container.clientWidth;
+
       setTeamDateIsNarrow(
-        probe.scrollWidth > container.clientWidth - reservedWidth,
+        shouldCollapseForRowWidth || shouldCollapseForTitle,
       );
     };
 
     const resizeObserver = new ResizeObserver(update);
+    resizeObserver.observe(row);
     resizeObserver.observe(container);
     if (teamDateRef.current) resizeObserver.observe(teamDateRef.current);
     update();
 
     return () => resizeObserver.disconnect();
-  }, [teamName]);
+  }, [isOpen, teamName]);
   const roleId =
     invitation?.role?.id ?? invitation?.roleId ?? invitation?.role_id ?? null;
   const teamId = team?.id ?? null;
@@ -688,7 +691,10 @@ const TeamInvitationDetailsModal = ({
         )}
 
         {/* Top row: Team info (left, clickable) + Date (right) */}
-        <div className="relative flex items-start justify-between gap-4 mb-5">
+        <div
+          ref={teamHeaderRowRef}
+          className="relative flex items-start justify-between gap-4 mb-5"
+        >
           {/* Team info (hover + onClick like in TeamInvitesModal) */}
           <div
             className="flex min-w-0 flex-1 items-start space-x-4 cursor-pointer hover:opacity-80 transition-opacity"
@@ -803,7 +809,7 @@ const TeamInvitationDetailsModal = ({
           <div className="mb-5">
             <p className="text-xs text-base-content/60 mb-1 flex items-center">
               <MailOpen size={12} className="text-info mr-1" />
-              {`Invitation message from ${inviter?.first_name || inviter?.firstName || inviter?.username || "them"}:`}
+              {`Invitation message from ${getPrivateAwareUserLabel(inviter, "them")}:`}
             </p>
             <div className="w-fit max-w-full bg-base-200 rounded-lg rounded-bl-none p-3">
               <p className="text-sm text-base-content/90 leading-relaxed">

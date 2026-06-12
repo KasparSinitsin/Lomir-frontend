@@ -22,6 +22,7 @@ import {
   getRequestUserLabel,
   getRequestUserId,
   getRequestRoleId,
+  isPrivateProfileUser,
   isRequestForUser,
 } from "../../utils/teamRequestUtils";
 
@@ -395,6 +396,8 @@ const TeamApplicationsModal = ({
           "applicant",
           currentUser?.id,
         );
+        const applicantIsPrivate =
+          isPrivateProfileUser(application.applicant) && !isSelfApplication;
         const isInternalRoleApplication = Boolean(
           application?.isInternalRoleApplication ??
             application?.is_internal_role_application ??
@@ -462,6 +465,7 @@ const TeamApplicationsModal = ({
           >
             <PersonRequestCard
               user={application.applicant}
+              privateProfile={applicantIsPrivate}
               date={getRequestDateValue(application)}
               onNarrowChange={(narrow) => setNarrowMap((prev) => {
                 if ((prev[String(application.id)] ?? false) === narrow) return prev;
@@ -506,15 +510,16 @@ const TeamApplicationsModal = ({
                       }
                       allowedStatusActions={["filled", "open"]}
                       statusActionLoading={statusUpdatingRoleId === roleId}
-                      viewAsUserId={application.applicant?.id}
-                      viewAsUser={application.applicant}
+                      viewAsUserId={applicantIsPrivate ? null : application.applicant?.id}
+                      viewAsUser={applicantIsPrivate ? null : application.applicant}
                     />
                 ) : null
               }
               extraContent={
                 <>
                   {/* User Tags/Skills if available */}
-                  {application.applicant?.tags &&
+                  {!applicantIsPrivate &&
+                    application.applicant?.tags &&
                     application.applicant.tags.length > 0 && (
                       <div className="mb-4">
                         <h5 className="font-medium text-sm text-base-content/80 mb-2">

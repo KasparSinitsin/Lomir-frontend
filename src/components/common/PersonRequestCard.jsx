@@ -5,13 +5,12 @@ import Tooltip from "./Tooltip";
 import {
   DEMO_PROFILE_TOOLTIP,
   getDisplayName as getUserDisplayName,
-  getUserAvatarUrl,
-  getUserInitials,
   isSyntheticUser,
 } from "../../utils/userHelpers";
-import DemoAvatarOverlay from "../users/DemoAvatarOverlay";
+import UserAvatar from "../users/UserAvatar";
 import { formatDisplayName } from "../../utils/nameFormatters";
 import { formatListLocation } from "../../utils/locationUtils";
+import { isPrivateProfileUser } from "../../utils/teamRequestUtils";
 
 /**
  * PersonRequestCard Component
@@ -35,6 +34,7 @@ import { formatListLocation } from "../../utils/locationUtils";
  * @param {React.ReactNode} props.footerLeft - Content for the left side of the footer (e.g., inviter info)
  * @param {boolean} props.clickable - Whether user elements are clickable (default: true)
  * @param {boolean} props.showLocation - Whether to show location info (default: true)
+ * @param {boolean} props.privateProfile - Whether to render this user as a private profile
  */
 const PersonRequestCard = ({
   user,
@@ -52,11 +52,32 @@ const PersonRequestCard = ({
   showLocation = true,
   onNarrowChange,
   forceNarrow = false,
+  privateProfile,
 }) => {
   // ============ Helper Functions ============
+  const isPrivateUser = privateProfile ?? isPrivateProfileUser(user);
+  const displayUser = isPrivateUser
+    ? {
+        ...(user ?? {}),
+        first_name: "Private",
+        firstName: "Private",
+        last_name: "Profile",
+        lastName: "Profile",
+        username: null,
+        avatar_url: null,
+        avatarUrl: null,
+        is_public: false,
+        isPublic: false,
+        is_private: true,
+        isPrivate: true,
+      }
+    : user;
+  const effectiveClickable = clickable && !isPrivateUser;
 
   // Get display name
   const getDisplayName = () => {
+    if (isPrivateUser) return "Private Profile";
+
     const displayName = getUserDisplayName(user);
     return displayName === "Unknown" ? "Unknown User" : displayName;
   };
@@ -80,31 +101,31 @@ const PersonRequestCard = ({
 
   // Handle click on user elements
   const handleUserClick = () => {
-    if (clickable && onUserClick && user?.id) {
+    if (effectiveClickable && onUserClick && user?.id) {
       onUserClick(user.id);
     }
   };
 
   // Clickable styles
-  const clickableStyles = clickable
+  const clickableStyles = effectiveClickable
     ? "cursor-pointer hover:opacity-80 transition-opacity"
     : "";
 
-  const clickableTextStyles = clickable
-    ? "cursor-pointer hover:text-primary transition-colors"
-    : "";
   const showUsername =
+    !isPrivateUser &&
     user?.username &&
     (getDisplayName() !== user.username || isSyntheticUser(user));
-  const showDemoProfile = isSyntheticUser(user);
-  const avatarUrl = getUserAvatarUrl(user);
+  const showDemoProfile = !isPrivateUser && isSyntheticUser(user);
 
   // ============ Adaptive name (full → abbreviated → CSS truncate) ============
   const nameContainerRef = useRef(null);
   const probeRef = useRef(null);
   const dateRef = useRef(null);
   const fullName = getDisplayName();
-  const abbrevName = user ? formatDisplayName(user) : fullName;
+  const abbrevName = displayUser ? formatDisplayName(displayUser) : fullName;
+  const hasLocation =
+    !isPrivateUser &&
+    (user?.city || user?.country || getPostalCode());
   const [displayedName, setDisplayedName] = useState(fullName);
   const [isOverflow, setIsOverflow] = useState(false);
   const isOverflowRef = useRef(false);
@@ -149,42 +170,25 @@ const PersonRequestCard = ({
         <div className="flex min-w-0 flex-1 items-start space-x-4">
           {/* Avatar */}
           <Tooltip
-            content={clickable ? "View profile" : undefined}
+            content={effectiveClickable ? "View profile" : undefined}
             wrapperClassName={`avatar ${clickableStyles}`}
           >
-            <div className="w-12 h-12 rounded-full relative overflow-hidden" onClick={handleUserClick}>
-              {avatarUrl ? (
-                <img
-                  src={avatarUrl}
-                  alt={user?.username || "User"}
-                  className="object-cover w-full h-full rounded-full"
-                  onError={(e) => {
-                    e.target.style.display = "none";
-                    const fallback =
-                      e.target.parentElement.querySelector(".avatar-fallback");
-                    if (fallback) fallback.style.display = "flex";
-                  }}
-                />
-              ) : null}
-              {/* Fallback initials */}
-              <div
-                className="avatar-fallback bg-[var(--color-primary-focus)] text-primary-content flex items-center justify-center w-full h-full rounded-full absolute inset-0"
-                style={{
-                  display: avatarUrl ? "none" : "flex",
-                }}
-              >
-                <span className="text-xl font-medium">
-                  {getUserInitials(user)}
-                </span>
-              </div>
-              {isSyntheticUser(user) && <DemoAvatarOverlay textClassName="text-[8px]" />}
-            </div>
+            <UserAvatar
+              user={displayUser}
+              sizeClass="w-12 h-12"
+              initialsClassName="text-xl font-medium"
+              clickable={effectiveClickable}
+              onClick={handleUserClick}
+              privateProfile={isPrivateUser}
+              showDemoOverlay={showDemoProfile}
+              demoOverlayTextClassName="text-[8px]"
+            />
           </Tooltip>
 
           {/* Name and Details */}
           <div className="flex-1 min-w-0">
             <h4 ref={nameContainerRef} className="font-medium text-base-content leading-[120%] mb-[0.2em] truncate relative">
-              {clickable ? (
+              {effectiveClickable ? (
                 <Tooltip content="View profile" wrapperClassName="cursor-pointer hover:text-primary transition-colors">
                   <span onClick={handleUserClick}>{displayedName}</span>
                 </Tooltip>
@@ -194,10 +198,10 @@ const PersonRequestCard = ({
               <span ref={probeRef} className="invisible absolute whitespace-nowrap pointer-events-none left-0 top-0 font-medium" aria-hidden="true" />
             </h4>
 
-            {(showUsername || dateIsNarrow || (showLocation && (user?.city || user?.country || getPostalCode())) || sublineExtra || showDemoProfile) && (
+            {(showUsername || dateIsNarrow || (showLocation && hasLocation) || sublineExtra || showDemoProfile) && (
               <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0 overflow-hidden text-xs" style={{ maxHeight: "2.1em" }}>
                 {showUsername && (
-                  clickable ? (
+                  effectiveClickable ? (
                     <div className="min-w-0 flex-[0_1_auto] overflow-hidden">
                       <Tooltip content="View profile" wrapperClassName="block truncate leading-[1.05] text-base-content/70 cursor-pointer hover:text-primary transition-colors">
                         <span onClick={handleUserClick}>@{user.username}</span>
@@ -215,7 +219,7 @@ const PersonRequestCard = ({
                     <span className="leading-[1.05] whitespace-nowrap">{formatDate()}</span>
                   </div>
                 )}
-                {showLocation && (user?.city || user?.country || getPostalCode()) && (
+                {showLocation && hasLocation && (
                   <div className="flex min-w-0 max-w-[calc(100%-1.5rem)] flex-[0_1_auto] items-center gap-1 overflow-hidden">
                     <MapPin size={10} className="text-base-content/60 shrink-0" />
                     <span className="min-w-0 truncate text-base-content/60 leading-[1.05]">
@@ -249,7 +253,7 @@ const PersonRequestCard = ({
       </div>
 
       {/* Bio if available */}
-      {user?.bio && (
+      {!isPrivateUser && user?.bio && (
         <div className="mb-5 text-sm text-base-content/80">
           <p className="line-clamp-2">{user.bio}</p>
         </div>

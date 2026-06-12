@@ -35,6 +35,8 @@ const BadgeCategoryModal = ({
   badgeActionLoadingKey = null,
   hiddenAwardIds = [],
   showHiddenBadgeAwards = false,
+  subjectUserId = null,
+  canViewPrivateAwardees = false,
 }) => {
   // Team details modal state (for AwardCard team clicks)
   const [selectedTeamForDetails, setSelectedTeamForDetails] = useState(null);
@@ -323,6 +325,8 @@ const BadgeCategoryModal = ({
                         onDeleteAward={onDeleteAward}
                         isBadgeHidden={isAwardHidden(award)}
                         badgeActionLoadingKey={badgeActionLoadingKey}
+                        subjectUserId={subjectUserId}
+                        canViewPrivateAwardees={canViewPrivateAwardees}
                         highlighted={
                           !!highlightBadgeName &&
                           (

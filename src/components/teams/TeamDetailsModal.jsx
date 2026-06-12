@@ -127,6 +127,7 @@ const TeamDetailsModal = ({
   hasPendingApplication = false,
   pendingApplication = null,
   onViewApplicationDetails,
+  onSendReminder,
   showMatchHighlights = false,
   roleMatchBadgeNames = null,
   matchScore = null,
@@ -1315,7 +1316,7 @@ const TeamDetailsModal = ({
   const openApplicationDetails = (application = null) => {
     const applicationToOpen = application ?? effectivePendingApplication;
     if (applicationToOpen) {
-      setSelectedPendingApplication(application);
+      setSelectedPendingApplication(applicationToOpen);
       setIsApplicationDetailsOpen(true);
       return;
     }
@@ -1335,13 +1336,35 @@ const TeamDetailsModal = ({
   const handleTeamApplicationSuccess = useCallback(
     (applicationData, submitResponse) => {
       const submittedApplication = submitResponse?.data ?? {};
+      const selectedRoleId =
+        applicationData.roleId ??
+        submittedApplication.roleId ??
+        submittedApplication.role_id ??
+        null;
+      const selectedRole = selectedRoleId
+        ? teamRoles.find((role) => idsMatch(role.id, selectedRoleId))
+        : null;
+      const applicationId =
+        submittedApplication.applicationId ??
+        submittedApplication.application_id ??
+        submittedApplication.id ??
+        null;
+      const createdAt = new Date().toISOString();
+
       setLocalPendingApplication({
-        id: submittedApplication.applicationId,
-        applicationId: submittedApplication.applicationId,
+        id: applicationId,
+        applicationId,
+        application_id: applicationId,
         status: submittedApplication.status ?? "pending",
         message: applicationData.message,
-        created_at: new Date().toISOString(),
+        created_at: createdAt,
+        createdAt,
         team: team ?? { id: effectiveTeamId },
+        teamId: effectiveTeamId,
+        team_id: effectiveTeamId,
+        role: submittedApplication.role ?? selectedRole ?? null,
+        roleId: selectedRoleId,
+        role_id: selectedRoleId,
         isInternalRoleApplication:
           submittedApplication.isInternalRoleApplication ?? false,
         is_internal_role_application:
@@ -1354,7 +1377,7 @@ const TeamDetailsModal = ({
           : "Application sent successfully!",
       });
     },
-    [effectiveTeamId, team],
+    [effectiveTeamId, team, teamRoles],
   );
 
   const renderJoinButton = () => {
@@ -2112,13 +2135,20 @@ on ${format(new Date((effectivePendingInvitation.createdAt ?? effectivePendingIn
           </p>
         )}
       </ConfirmModal>
-      <TagAwardsModal {...tagAwardsModalProps} />
-      <SupercategoryAwardsModal {...supercategoryModalProps} />
+      <TagAwardsModal
+        {...tagAwardsModalProps}
+        canViewPrivateAwardees={isTeamMember}
+      />
+      <SupercategoryAwardsModal
+        {...supercategoryModalProps}
+        canViewPrivateAwardees={isTeamMember}
+      />
 
       {/* Badge Category Modal */}
       <BadgeCategoryModal
         {...badgeCategoryModalProps}
         onOpenUser={handleMemberClick}
+        canViewPrivateAwardees={isTeamMember}
       />
 
       {/* Invitation Details Modal */}
@@ -2161,6 +2191,7 @@ on ${format(new Date((effectivePendingInvitation.createdAt ?? effectivePendingIn
             setIsApplicationDetailsOpen(false);
             await fetchTeamDetails(true);
           }}
+          onSendReminder={onSendReminder}
         />
       )}
     </>
