@@ -158,23 +158,38 @@ Lomir-frontend/
 │   ├── components/
 │   │   ├── BooleanSearchInput.jsx  # Textarea-based Boolean search input with operator helpers
 │   │   ├── SearchHelp.jsx          # Search Tips popup panel
-│   │   ├── auth/                   # Login/register forms, TurnstileWidget
-│   │   ├── teams/                  # Team cards, detail modals, vacant roles,
-│   │   │                           #   applications, invitations, member management
-│   │   ├── users/                  # User cards, detail modals, InlineUserLink, UserAvatar,
+│   │   ├── auth/                   # LoginForm, RegisterForm
+│   │   ├── teams/                  # TeamCard, TeamDetailsModal, TeamAvatar, TeamEditForm,
+│   │   │                           #   TeamFocusAreaSection, TeamMembersSection, TeamRoleManager,
+│   │   │                           #   VacantRoleCard, VacantRoleDetailsModal, VacantRolesSection,
+│   │   │                           #   CreateTeamModal, CreateVacantRoleModal, RoleBadgeDropdown,
+│   │   │                           #   TeamApplicationButton, TeamApplicationModal,
+│   │   │                           #   TeamApplicationsModal, TeamApplicationDetailsModal,
+│   │   │                           #   TeamInviteModal, TeamInvitesModal,
+│   │   │                           #   TeamInvitationDetailsModal, RequestRoleCard
+│   │   ├── users/                  # UserCard, UserDetailsModal, UserAvatar,
 │   │   │                           #   UserProfileHeaderSection (avatar + name + location header),
-│   │   │                           #   DemoAvatarOverlay, deleted user handling
+│   │   │                           #   UserBioSection, InlineUserLink, DemoAvatarOverlay,
+│   │   │                           #   DeletedUserProfilePlaceholder
 │   │   ├── badges/                 # Badge display, awarding, category modals, AwardCard
 │   │   ├── tags/                   # Tag input, display, and selection
 │   │   ├── chat/                   # Chat UI, message bubbles, file/image previews,
 │   │   │                           #   MentionDropdown, MessageText (mentions + URLs),
 │   │   │                           #   reply previews, system event messages
 │   │   ├── search/                 # SearchMapView (Leaflet map with markers/popups)
-│   │   ├── common/                 # Shared UI: Button, Card, Modal, Alert, Pagination,
-│   │   │                           #   ImageUploader, LocationInput, TurnstileWidget,
-│   │   │                           #   FilterSortOptionButton, ResultViewToggle,
-│   │   │                           #   PersonRequestCard, RequestListModal, Tooltip...
-│   │   └── layout/                 # Navbar, Footer, PageContainer, Grid, Section
+│   │   ├── common/                 # Shared UI primitives and composed widgets:
+│   │   │                           #   Button, Card, Modal, Alert, Pagination, Tooltip,
+│   │   │                           #   Input, Select, Checkbox, Dropdown, FormGroup,
+│   │   │                           #   FormSectionDivider, DataDisplay, InfoCard, Placeholder,
+│   │   │                           #   ImageUploader, LocationInput, LocationDisplay,
+│   │   │                           #   LocationSection, LocationModeToggle, CountrySelect,
+│   │   │                           #   TurnstileWidget, FilterSortOptionButton, ResultViewToggle,
+│   │   │                           #   ListViewRow, CardMetaItem, CardMetaRow, RoleBadgePill,
+│   │   │                           #   MatchScoreOverlay, MatchScoreSubtitle, MatchScoreSection,
+│   │   │                           #   SearchResultTypeOverlay, NotificationBadge,
+│   │   │                           #   PersonRequestCard, RequestListModal, SendMessageButton,
+│   │   │                           #   VisibilityToggle, ScreenAlert, ConfirmModal
+│   │   └── layout/                 # Navbar, Footer, PageContainer, ProtectedRoute, Grid, Section
 │   ├── contexts/
 │   │   ├── AuthContext.jsx         # Authentication state + JWT management
 │   │   ├── UserModalContext.jsx    # Global user detail modal stack
@@ -215,7 +230,8 @@ Lomir-frontend/
 │   │   ├── useMyTeamsSort.js       # Sort state for MyTeams page
 │   │   ├── useClientPagination.js  # Client-side pagination state for lists
 │   │   ├── useSocketEvents.js      # Subscribe to a set of Socket.IO events with React-safe cleanup
-│   │   ├── useAwardModals.js       # Badge award modal state management
+│   │   ├── useAwardModals.js       # Badge award modal state management (user profile context)
+│   │   ├── useTeamAwardModals.js   # Badge award modal state management (team context)
 │   │   └── useTheme.js             # Theme toggle state
 │   ├── utils/
 │   │   ├── formatters.js           # camelCase ↔ snake_case conversion (used by api.js interceptors)
@@ -225,6 +241,7 @@ Lomir-frontend/
 │   │   ├── teamMatchUtils.js       # Team/role match scoring + overlap calculations
 │   │   ├── matchHelpers.js         # Shared match score helpers (weights, render cascade)
 │   │   ├── matchScoreUtils.js      # Match tier color coding (green/yellow/orange)
+│   │   ├── listSummaryUtils.js     # extractNames + summarizeList for tag/badge summary strings
 │   │   ├── payloadExtractors.js    # Role/team payload field extractors shared across components
 │   │   ├── locationUtils.js        # Haversine distance, formatLocation / normalizeLocationData
 │   │   │                           #   (de-duplicated city/district/state/country display,
@@ -239,7 +256,7 @@ Lomir-frontend/
 │   │   ├── dateHelpers.js          # Date formatting utilities
 │   │   ├── debounce.js             # Generic debounce utility
 │   │   ├── badgeIconUtils.jsx      # Badge icon component resolution by category
-│   │   └── Colors.js              # Shared color constants for badge categories and UI accents
+│   │   └── Colors.js               # Shared color constants for badge categories and UI accents
 │   ├── constants/
 │   │   ├── badgeConstants.js       # Badge category metadata (names, colors, icons)
 │   │   ├── uiText.js               # Shared UI strings
