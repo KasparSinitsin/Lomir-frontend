@@ -4,7 +4,7 @@ import api from "../services/api";
 import Card from "../components/common/Card";
 import Button from "../components/common/Button";
 import FormGroup from "../components/common/FormGroup";
-import Alert from "../components/common/Alert";
+import ScreenAlert from "../components/common/ScreenAlert";
 import { Mail, ArrowLeft, CheckCircle } from "lucide-react";
 
 const ForgotPassword = () => {
@@ -52,6 +52,11 @@ const ForgotPassword = () => {
           "Something went wrong. Please try again.",
       );
     }
+  };
+
+  const clearErrorMessage = () => {
+    setStatus("idle");
+    setMessage("");
   };
 
   // Success state
@@ -103,7 +108,12 @@ const ForgotPassword = () => {
   // Form state
   return (
     <div className="content-container">
-    <div className="max-w-md mx-auto w-full">
+      <ScreenAlert
+        type="error"
+        message={status === "error" ? message : ""}
+        onClose={clearErrorMessage}
+      />
+      <div className="max-w-md mx-auto w-full">
       <Card>
         <div className="card-body">
           <div className="text-center mb-6">
@@ -115,10 +125,6 @@ const ForgotPassword = () => {
               No worries! Enter your email and we'll send you a reset link.
             </p>
           </div>
-
-          {status === "error" && (
-            <Alert type="error" message={message} className="mb-6 w-full shadow-sm" />
-          )}
 
           <form onSubmit={handleSubmit}>
             <FormGroup

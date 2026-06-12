@@ -19,11 +19,12 @@ api.interceptors.request.use(
       config.headers["Authorization"] = `Bearer ${token}`;
     }
 
-    if (
+    if (config.data instanceof FormData) {
+      delete config.headers["Content-Type"];
+    } else if (
       config.skipRequestCaseTransform !== true &&
       config.data &&
-      typeof config.data === "object" &&
-      !(config.data instanceof FormData)
+      typeof config.data === "object"
     ) {
       config.data = camelToSnake(config.data);
     }
