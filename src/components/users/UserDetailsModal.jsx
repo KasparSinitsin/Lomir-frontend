@@ -1169,6 +1169,7 @@ const UserDetailsModal = ({
         hiddenAwardIds={hiddenAwardIds}
         showHiddenBadgeAwards={ownProfile}
         canViewPrivateAwardees={Boolean(sharedTeamId)}
+        showAwarderAtBottom
       />
 
       {/* Tag Awards Modal */}
@@ -1178,6 +1179,7 @@ const UserDetailsModal = ({
         hiddenAwardIds={hiddenAwardIds}
         showHiddenBadgeAwards={ownProfile}
         canViewPrivateAwardees={Boolean(sharedTeamId)}
+        showAwarderAtBottom
       />
 
       {/* Supercategory Awards Modal */}
@@ -1187,6 +1189,7 @@ const UserDetailsModal = ({
         hiddenAwardIds={hiddenAwardIds}
         showHiddenBadgeAwards={ownProfile}
         canViewPrivateAwardees={Boolean(sharedTeamId)}
+        showAwarderAtBottom
       />
 
       {/* Badge Award Modal */}
