@@ -9,9 +9,11 @@ const Footer = () => {
         <p className="text-sm sm:text-base text-base-content">Lomir - Team Up App © {new Date().getFullYear()}</p>
 
         {/* Footer Links */}
-        <div className="flex space-x-6 mt-2">
-          <a href="#" className="text-base-content hover:text-primary-focus rounded-full px-4 py-1">Terms</a>
-          <a href="#" className="text-base-content hover:text-primary-focus rounded-full px-4 py-1">Privacy</a>
+        <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 mt-2">
+          <Link to="/about" className="text-base-content hover:text-primary-focus rounded-full px-4 py-1">About</Link>
+          <Link to="/terms" className="text-base-content hover:text-primary-focus rounded-full px-4 py-1">Terms</Link>
+          <Link to="/privacy" className="text-base-content hover:text-primary-focus rounded-full px-4 py-1">Privacy</Link>
+          <Link to="/legal-notice" className="text-base-content hover:text-primary-focus rounded-full px-4 py-1">Legal Notice</Link>
           <Link to="/contact" className="text-base-content hover:text-primary-focus rounded-full px-4 py-1">Contact</Link>
         </div>
       </div>

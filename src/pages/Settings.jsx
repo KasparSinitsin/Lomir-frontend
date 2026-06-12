@@ -11,6 +11,10 @@ import Modal from "../components/common/Modal";
 import { userService } from "../services/userService";
 import { teamService } from "../services/teamService";
 import { AlertTriangle, Eye, EyeOff, KeyRound, Shield, Trash2, Users } from "lucide-react";
+import {
+  ACCOUNT_DELETION_NOTICE,
+  PROFILE_VISIBILITY_SETTINGS_NOTICE,
+} from "../constants/privacyText";
 
 const DELETE_STEP_PASSWORD = "password";
 const DELETE_STEP_SUMMARY = "summary";
@@ -675,6 +679,9 @@ const Settings = () => {
               showDescription={true}
               disabled={visibilityLoading}
             />
+            <p className="form-helper-text px-1">
+              {PROFILE_VISIBILITY_SETTINGS_NOTICE}
+            </p>
           </section>
 
           {/* ── Account ── */}
@@ -924,8 +931,7 @@ const Settings = () => {
 
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <p className="form-helper-text">
-                Permanently delete your profile, messages, teams, and all
-                associated data. This cannot be undone.
+                {ACCOUNT_DELETION_NOTICE}
               </p>
               <Button
                 variant="errorOutline"
@@ -970,7 +976,7 @@ const Settings = () => {
           {deletionStep === DELETE_STEP_PASSWORD ? (
             <form onSubmit={handleDeletionPreview} className="space-y-4">
               <Alert type="warning" className="w-full">
-                This action is immediate, permanent, and cannot be undone.
+                {ACCOUNT_DELETION_NOTICE}
               </Alert>
 
               {deleteAlertError && (
@@ -1022,8 +1028,7 @@ const Settings = () => {
           ) : (
             <div className="space-y-4">
               <Alert type="warning" className="w-full mb-2">
-                Please review this carefully. Deleting your account is
-                irreversible.
+                Please review this carefully. {ACCOUNT_DELETION_NOTICE}
               </Alert>
 
               {deleteAlertError && (

@@ -55,6 +55,11 @@ import {
 import DemoAvatarOverlay from "../components/users/DemoAvatarOverlay";
 import ConfirmModal from "../components/common/ConfirmModal";
 import LocationInput from "../components/common/LocationInput";
+import VisibilityToggle from "../components/common/VisibilityToggle";
+import {
+  AVATAR_UPLOAD_NOTICE,
+  PROFILE_VISIBILITY_SETTINGS_NOTICE,
+} from "../constants/privacyText";
 import { format } from "date-fns";
 
 const EMPTY_QUERY_ARRAY = [];
@@ -1071,6 +1076,7 @@ const Profile = () => {
                     size="xl"
                     disabled={loading}
                     loading={avatarDeleteLoading}
+                    helpText={AVATAR_UPLOAD_NOTICE}
                     showRemoveButton={
                       !!(imagePreview || user?.avatarUrl) &&
                       !formData.profileImage
@@ -1166,6 +1172,24 @@ const Profile = () => {
                   placeholder="Tell us about yourself"
                   rows="4"
                 />
+              </div>
+
+              <div className="form-control w-full">
+                <VisibilityToggle
+                  name="isPublic"
+                  checked={formData.isPublic}
+                  onChange={handleChange}
+                  label="Profile Visibility"
+                  entityType="profile"
+                  visibleLabel="Public Profile"
+                  hiddenLabel="Private Profile"
+                  visibleDescription="Your profile can be discovered by other Lomir users."
+                  hiddenDescription="Your profile is hidden from search results, but may still appear where you interact."
+                  disabled={loading}
+                />
+                <p className="form-helper-text mt-2 px-1">
+                  {PROFILE_VISIBILITY_SETTINGS_NOTICE}
+                </p>
               </div>
             </section>
 

@@ -1,0 +1,23 @@
+export const LOCATION_PRIVACY_NOTICE =
+  "We use location information to suggest nearby users, teams, and roles. Lomir does not ask for your street address. Your approximate location may be used for distance-based search and matching.";
+
+export const PROFILE_VISIBILITY_NOTICE =
+  "Your profile may be visible to other Lomir users depending on your visibility settings. Public profile information may include your username, name, bio, avatar, focus areas, badges, and approximate location. You can change your profile visibility later in your settings.";
+
+export const PROFILE_VISIBILITY_SETTINGS_NOTICE =
+  "Public profiles may be visible to other Lomir users. Private profiles reduce public visibility, but your activity may still appear in teams, messages, applications, or badges.";
+
+export const AVATAR_UPLOAD_NOTICE =
+  "Uploaded images are stored and delivered via ImageKit. Your avatar may be visible to other users depending on your visibility settings.";
+
+export const CHAT_UPLOAD_NOTICE =
+  "Files and images shared in chat are visible to conversation participants. Please do not upload sensitive or confidential information.";
+
+export const BROWSER_STORAGE_NOTICE =
+  "Lomir uses browser storage such as localStorage and sessionStorage for technically necessary functions, including keeping users signed in and managing in-app notifications. We do not currently use advertising cookies, marketing trackers, or third-party analytics tools.";
+
+export const LEGAL_PLACEHOLDER_NOTICE =
+  "Lomir is currently being prepared for public use. Please do not enter sensitive personal information until the final legal documents are available.";
+
+export const ACCOUNT_DELETION_NOTICE =
+  "Account deletion is permanent. Some content may be deleted, while certain references may be anonymized as 'Former Lomir User' to preserve team and conversation context.";

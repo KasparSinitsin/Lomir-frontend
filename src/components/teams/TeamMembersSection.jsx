@@ -196,7 +196,13 @@ const TeamMembersSection = ({
                     >
                       <div
                         className={`min-w-0 ${!anonymize ? "cursor-pointer" : ""}`}
-                        onClick={() => !anonymize && onMemberClick(memberId)}
+                        onClick={() =>
+                          !anonymize &&
+                          onMemberClick(memberId, {
+                            member,
+                            teamId: team?.id ?? team?.teamId ?? team?.team_id,
+                          })
+                        }
                       >
                         <h3 className="font-medium text-base truncate leading-[120%]">
                           {anonymize

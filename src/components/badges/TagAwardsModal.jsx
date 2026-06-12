@@ -48,6 +48,7 @@ const TagAwardsModal = ({
   showHiddenBadgeAwards = false,
   subjectUserId = null,
   canViewPrivateAwardees = false,
+  showAwarderAtBottom = false,
 }) => {
   // Internal TeamDetailsModal state (mirrors SupercategoryAwardsModal)
   const [selectedTeamForDetails, setSelectedTeamForDetails] = useState(null);
@@ -290,6 +291,7 @@ const TagAwardsModal = ({
                               badgeActionLoadingKey={badgeActionLoadingKey}
                               subjectUserId={subjectUserId}
                               canViewPrivateAwardees={canViewPrivateAwardees}
+                              showAwarderAtBottom={showAwarderAtBottom}
                               highlighted={
                                 !!highlightBadgeName &&
                                 (

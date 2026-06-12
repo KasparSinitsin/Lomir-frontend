@@ -2,6 +2,7 @@ import React from "react";
 import { MapPin, Globe } from "lucide-react";
 import CountrySelect from "./CountrySelect";
 import FormSectionDivider from "./FormSectionDivider";
+import { LOCATION_PRIVACY_NOTICE } from "../../constants/privacyText";
 
 /**
  * LocationInput Component
@@ -187,7 +188,7 @@ const LocationInput = ({
 
           {/* Helper text */}
           <p className="form-helper-text -mt-2 px-1">
-            Location helps others find you nearby. This information is optional.
+            {LOCATION_PRIVACY_NOTICE}
           </p>
         </div>
       )}

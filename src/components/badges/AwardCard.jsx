@@ -106,6 +106,7 @@ const AwardCard = ({
   badgeActionLoadingKey = null,
   subjectUserId = null,
   canViewPrivateAwardees = false,
+  showAwarderAtBottom = false,
 }) => {
   const mutedBadgeColor = "#6B7280";
   const mutedCardBackground = "#F3F4F6";
@@ -691,7 +692,7 @@ const AwardCard = ({
           {/* ── Subline ── */}
           <div className="mt-1 flex max-h-[2.5em] min-w-0 flex-wrap items-center gap-x-3 gap-y-0.5 overflow-hidden text-xs leading-[110%] text-base-content/60">
             {/* Awarded by (team context only — awarder name, clickable) */}
-            {hasAwardeeInfo && (
+            {hasAwardeeInfo && !showAwarderAtBottom && (
               <span className="flex items-center gap-1 min-w-0">
                 <Award
                   size={11}
@@ -914,7 +915,7 @@ const AwardCard = ({
 
       {/* Bottom row pinned to bottom */}
       <div className="flex items-end justify-between mt-auto pt-3 gap-2">
-        {hasAwardeeInfo ? (
+        {hasAwardeeInfo && !showAwarderAtBottom ? (
           <InlineUserLink
             label={
               <>

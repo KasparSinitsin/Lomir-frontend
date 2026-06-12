@@ -23,6 +23,10 @@ import LocationInput from "../common/LocationInput";
 import { useLocationAutoFill } from "../../hooks/useLocationAutoFill";
 import VisibilityToggle from "../common/VisibilityToggle";
 import TurnstileWidget from "../common/TurnstileWidget";
+import {
+  AVATAR_UPLOAD_NOTICE,
+  PROFILE_VISIBILITY_NOTICE,
+} from "../../constants/privacyText";
 
 const RegisterForm = () => {
   const navigate = useNavigate();
@@ -41,6 +45,7 @@ const RegisterForm = () => {
     city: "",
     country: "",
     isPublic: true,
+    acceptedLegal: false,
     profile_image: null,
     selectedTags: [],
   });
@@ -129,6 +134,11 @@ const RegisterForm = () => {
 
     if (hasTurnstile && !turnstileToken) {
       newErrors.turnstile = "Please complete the CAPTCHA verification";
+    }
+
+    if (!formData.acceptedLegal) {
+      newErrors.acceptedLegal =
+        "Please agree to the Terms of Service and Privacy Policy to create an account.";
     }
 
     return newErrors;
@@ -439,6 +449,10 @@ const RegisterForm = () => {
       usernameInputValueRef.current = value;
     }
 
+    if (errors[name]) {
+      clearFieldError(name);
+    }
+
     setFormData((prev) => ({
       ...prev,
       [name]: type === "checkbox" ? checked : value,
@@ -578,6 +592,9 @@ const RegisterForm = () => {
         postal_code: formData.postal_code,
         city: formData.city,
         country: formData.country,
+        isPublic: formData.isPublic,
+        acceptedTerms: true,
+        acceptedPrivacy: true,
         tags:
           formData.selectedTags.length > 0
             ? formData.selectedTags
@@ -1060,7 +1077,14 @@ const RegisterForm = () => {
                   onChange={handleChange}
                   label="Profile Visibility"
                   entityType="profile"
+                  visibleLabel="Public Profile"
+                  hiddenLabel="Private Profile"
+                  visibleDescription="Default: your profile can be discovered by other Lomir users."
+                  hiddenDescription="Your profile is hidden from search results, but may still appear where you interact."
                 />
+                <p className="form-helper-text mt-2 px-1">
+                  {PROFILE_VISIBILITY_NOTICE}
+                </p>
               </div>
             </section>
 
@@ -1104,6 +1128,7 @@ const RegisterForm = () => {
                     size="mdPlus"
                     shape="circle"
                     fallbackText={getUserInitialsFromForm()}
+                    helpText={AVATAR_UPLOAD_NOTICE}
                   />
                 </div>
               </div>
@@ -1135,6 +1160,37 @@ const RegisterForm = () => {
 
             <section className="space-y-4 !mt-4">
               {renderFormAlert(formAlertClassName)}
+
+              <div className="form-control">
+                <label className="label cursor-pointer items-start justify-start gap-3 rounded-lg border border-base-300 bg-base-100/70 p-4">
+                  <input
+                    type="checkbox"
+                    name="acceptedLegal"
+                    checked={formData.acceptedLegal}
+                    onChange={handleChange}
+                    className={`checkbox checkbox-primary mt-0.5 ${
+                      errors.acceptedLegal ? "checkbox-error" : ""
+                    }`}
+                    disabled={isSubmitting}
+                  />
+                  <span className="label-text leading-relaxed">
+                    I have read and agree to the{" "}
+                    <Link to="/terms" className="link link-primary">
+                      Terms of Service
+                    </Link>{" "}
+                    and{" "}
+                    <Link to="/privacy" className="link link-primary">
+                      Privacy Policy
+                    </Link>
+                    .
+                  </span>
+                </label>
+                {errors.acceptedLegal && (
+                  <p className="text-xs text-error mt-2 px-1">
+                    {errors.acceptedLegal}
+                  </p>
+                )}
+              </div>
 
               <Button
                 type="submit"

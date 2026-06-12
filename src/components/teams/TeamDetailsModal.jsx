@@ -180,6 +180,7 @@ const TeamDetailsModal = ({
   const [isPublic, setIsPublic] = useState(false);
 
   const [selectedUserId, setSelectedUserId] = useState(null);
+  const [selectedUserContext, setSelectedUserContext] = useState(null);
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [allTags, setAllTags] = useState([]);
   const [currentUserTagIds, setCurrentUserTagIds] = useState(null); // Set<number>
@@ -1477,14 +1478,29 @@ const TeamDetailsModal = ({
     );
   };
 
-  const handleMemberClick = (memberId) => {
+  const handleMemberClick = (memberId, context = {}) => {
+    const sourceMember =
+      context.member ??
+      team?.members?.find((member) => {
+        const rowUserId = getTeamMemberUserId(member);
+        return rowUserId != null && String(rowUserId) === String(memberId);
+      }) ??
+      null;
+    const sharedTeamId =
+      context.teamId ?? team?.id ?? team?.teamId ?? team?.team_id ?? effectiveTeamId;
+
     setSelectedUserId(memberId);
+    setSelectedUserContext({
+      member: sourceMember,
+      sharedTeamId: isTeamMember ? sharedTeamId : null,
+    });
     setIsUserModalOpen(true);
   };
 
   const handleUserModalClose = () => {
     setIsUserModalOpen(false);
     setSelectedUserId(null);
+    setSelectedUserContext(null);
   };
 
   // Create custom title with buttons
@@ -2086,6 +2102,9 @@ on ${format(new Date((effectivePendingInvitation.createdAt ?? effectivePendingIn
           userId={selectedUserId}
           onClose={handleUserModalClose}
           mode="view"
+          initialUserData={selectedUserContext?.member}
+          sharedTeamId={selectedUserContext?.sharedTeamId}
+          onOpenUser={handleMemberClick}
           filledRoleName={(() => {
             const r = teamRoles.find((r) => {
               if (String(r.status ?? "").toLowerCase() !== "filled") return false;
