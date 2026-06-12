@@ -44,7 +44,7 @@ const RegisterForm = () => {
     postal_code: "",
     city: "",
     country: "",
-    isPublic: true,
+    isPublic: false,
     acceptedLegal: false,
     profile_image: null,
     selectedTags: [],
@@ -592,7 +592,6 @@ const RegisterForm = () => {
         postal_code: formData.postal_code,
         city: formData.city,
         country: formData.country,
-        isPublic: formData.isPublic,
         acceptedTerms: true,
         acceptedPrivacy: true,
         tags:
@@ -613,7 +612,6 @@ const RegisterForm = () => {
 
         if (uploadResult.success) {
           userData.avatar_url = uploadResult.url;
-          userData.avatar_file_id = uploadResult.fileId;
         } else {
           console.error("Avatar upload failed:", uploadResult.error);
         }
@@ -1079,11 +1077,11 @@ const RegisterForm = () => {
                   entityType="profile"
                   visibleLabel="Public Profile"
                   hiddenLabel="Private Profile"
-                  visibleDescription="Default: your profile can be discovered by other Lomir users."
-                  hiddenDescription="Your profile is hidden from search results, but may still appear where you interact."
+                  hiddenDescription="Your profile will be private until you verify your email."
+                  disabled={true}
                 />
                 <p className="form-helper-text mt-2 px-1">
-                  {PROFILE_VISIBILITY_NOTICE}
+                  Profile visibility is locked to private during registration. Once you verify your email and log in, you can make your profile public in your settings.
                 </p>
               </div>
             </section>
