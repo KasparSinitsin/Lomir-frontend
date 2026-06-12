@@ -72,7 +72,7 @@ const VisibilityToggle = ({
 <div
   className={`input input-bordered w-full h-auto px-4 py-3 ${
   error ? "input-error" : ""
-} flex flex-col items-start gap-0`}
+} ${disabled ? "opacity-60 cursor-not-allowed" : ""} flex flex-col items-start gap-0`}
 >
   {/* Row 1: icon + state text + toggle */}
   <div className="flex items-center justify-between w-full">
@@ -94,7 +94,7 @@ const VisibilityToggle = ({
     <label
       htmlFor={inputId}
       className={`relative inline-flex items-center ${
-        disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer"
+        disabled ? "cursor-not-allowed" : "cursor-pointer"
       }`}
     >
       <input
