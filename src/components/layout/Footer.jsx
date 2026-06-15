@@ -13,7 +13,7 @@ const Footer = () => {
           <Link to="/about" className="text-base-content hover:text-primary-focus rounded-full px-4 py-1">About</Link>
           <Link to="/terms" className="text-base-content hover:text-primary-focus rounded-full px-4 py-1">Terms</Link>
           <Link to="/privacy" className="text-base-content hover:text-primary-focus rounded-full px-4 py-1">Privacy</Link>
-          <Link to="/legal-notice" className="text-base-content hover:text-primary-focus rounded-full px-4 py-1">Legal Notice</Link>
+          <Link to="/legal-notice" className="text-base-content hover:text-primary-focus rounded-full px-4 py-1">Legal Notice / Impressum</Link>
           <Link to="/contact" className="text-base-content hover:text-primary-focus rounded-full px-4 py-1">Contact</Link>
         </div>
       </div>
