@@ -22,6 +22,7 @@ import { LOCATION_PRIVACY_NOTICE } from "../../constants/privacyText";
  * @param {boolean} props.showDivider - Show section divider with icon
  * @param {string} props.dividerText - Text for the divider (default: "Location")
  * @param {boolean} props.required - Mark fields as required
+ * @param {string} props.privacyNotice - Helper text shown below location fields
  * @param {string} props.className - Additional CSS classes
  */
 const LocationInput = ({
@@ -33,6 +34,7 @@ const LocationInput = ({
   showDivider = true,
   dividerText = "Location",
   required = false,
+  privacyNotice = LOCATION_PRIVACY_NOTICE,
   className = "",
 }) => {
   // Normalize form data - handle both snake_case and camelCase
@@ -114,7 +116,7 @@ const LocationInput = ({
             {/* Postal Code */}
             <div className="form-control w-full">
               <label className="label">
-                <span className="label-text">Postal Code</span>
+                <span className="label-text">Postal Code (optional)</span>
               </label>
               <input
                 type="text"
@@ -139,7 +141,7 @@ const LocationInput = ({
             {/* City / Town */}
             <div className="form-control w-full">
               <label className="label">
-                <span className="label-text">City / Town</span>
+                <span className="label-text">City / Town (optional)</span>
               </label>
               <input
                 type="text"
@@ -166,7 +168,11 @@ const LocationInput = ({
               <label className="label">
                 <span className="label-text">
                   Country
-                  {required && <span className="text-error ml-1">*</span>}
+                  {required ? (
+                    <span className="text-error ml-1">*</span>
+                  ) : (
+                    " (optional)"
+                  )}
                 </span>
               </label>
               <CountrySelect
@@ -188,7 +194,7 @@ const LocationInput = ({
 
           {/* Helper text */}
           <p className="form-helper-text -mt-2 px-1">
-            {LOCATION_PRIVACY_NOTICE}
+            {privacyNotice}
           </p>
         </div>
       )}

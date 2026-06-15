@@ -59,6 +59,7 @@ import VisibilityToggle from "../components/common/VisibilityToggle";
 import {
   AVATAR_UPLOAD_NOTICE,
   PROFILE_VISIBILITY_SETTINGS_NOTICE,
+  USER_LOCATION_PRIVACY_NOTICE,
 } from "../constants/privacyText";
 import { format } from "date-fns";
 
@@ -1211,6 +1212,7 @@ const Profile = () => {
                 showRemoteToggle={false}
                 showDivider={true}
                 dividerText="Location"
+                privacyNotice={USER_LOCATION_PRIVACY_NOTICE}
               />
             </section>
 

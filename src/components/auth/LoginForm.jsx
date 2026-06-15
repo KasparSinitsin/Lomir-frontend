@@ -62,12 +62,8 @@ const LoginForm = () => {
 
       if (result.success) {
         navigate("/profile");
-      } else if (result.message === "Invalid email") {
-        setErrors({ email: result.message });
-      } else if (result.message?.toLowerCase().includes("too many attempts")) {
-        setErrors({ form: result.message });
       } else {
-        setErrors({ password: result.message });
+        setErrors({ form: result.message });
       }
     } catch (error) {
       setErrors({ form: "An unexpected error occurred. Please try again." });
