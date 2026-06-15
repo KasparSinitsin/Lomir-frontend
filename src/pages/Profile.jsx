@@ -1317,8 +1317,8 @@ const Profile = () => {
                     className="flex items-center text-base-content/70 tooltip tooltip-bottom tooltip-lomir cursor-help"
                     data-tip={
                       isProfilePublic()
-                        ? "Public Profile - visible for everyone"
-                        : "Private Profile - only visible for you"
+                        ? "Public Profile - visible for everyone\nChange in profile settings"
+                        : "Private Profile - only visible for you\nChange in profile settings"
                     }
                   >
                     {isProfilePublic() ? (

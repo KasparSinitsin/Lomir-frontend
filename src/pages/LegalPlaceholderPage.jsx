@@ -31,7 +31,7 @@ const LegalPlaceholderPage = ({ type }) => {
   const content = pageContent[type] ?? pageContent.about;
 
   return (
-    <div className="mx-auto max-w-3xl">
+    <div className="max-w-5xl mx-auto space-y-6">
       <Card hoverable={false} truncateContent={false}>
         <div className="space-y-5">
           <div>

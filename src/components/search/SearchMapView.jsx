@@ -1199,6 +1199,11 @@ const normalizeMapPoint = (
           rawId != null ? fetchedOpenRoleSnapshots[String(rawId)] : null,
         )
       : null;
+  const isOwnProfile =
+    type === "user" &&
+    rawId != null &&
+    viewerUser?.id != null &&
+    String(rawId) === String(viewerUser.id);
 
   return {
     id: `${type}-${rawId ?? getDisplayName(item, type)}`,
@@ -1240,12 +1245,18 @@ const normalizeMapPoint = (
     initials: avatarData.initials,
     isDemo: isDemoPoint(item, type),
     username: type === "user" ? (item.username ?? null) : null,
+    isOwnProfile,
     isPublicProfile: type === "user"
-      ? normalizeBooleanFlag(firstPresent(item?.is_public, item?.isPublic))
+      ? normalizeBooleanFlag(
+          firstPresent(
+            isOwnProfile
+              ? firstPresent(viewerUser?.is_public, viewerUser?.isPublic)
+              : undefined,
+            item?.is_public,
+            item?.isPublic,
+          ),
+        )
       : null,
-    isOwnProfile: type === "user" && rawId != null && viewerUser?.id != null
-      ? String(rawId) === String(viewerUser.id)
-      : false,
     postedAt: type === "role" ? getRolePostedAt(item) : null,
     hasApplied: type === "role" ? (
       getRoleHasApplied(item) ||

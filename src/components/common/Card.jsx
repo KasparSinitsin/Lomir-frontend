@@ -127,6 +127,10 @@ const Card = ({
     return "[&>p:first-of-type]:line-clamp-3 [&>p:first-of-type]:-mt-4";
   };
 
+  const contentPaddingClass = title
+    ? "p-4 sm:p-7 pt-0.5 sm:pt-1"
+    : "p-4 sm:p-7";
+
   const handleRowMouseOver = clickTooltip
     ? (e) => {
         const shouldShow = !e.target.closest("[data-tooltip-trigger]");
@@ -357,7 +361,7 @@ const Card = ({
 
         {/* Only the first direct <p> inside this wrapper will be clamped */}
         <div
-          className={`p-4 sm:p-7 pt-0.5 sm:pt-1 flex-1 flex flex-col ${getTruncateClasses()} ${contentClassName}`}
+          className={`${contentPaddingClass} flex-1 flex flex-col ${getTruncateClasses()} ${contentClassName}`}
         >
           {children}
         </div>

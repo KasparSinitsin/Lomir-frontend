@@ -30,15 +30,15 @@ Contact the project owner for a demo login, or register a new account with a val
 - **Best Match Sorting** — Weighted matching algorithm scores teams and roles against your profile (tags 40%, badges 30%, distance 30%)
 - **Map View** — Leaflet-powered map with custom markers for teams, users, and roles; popups with detail cards; distance-based filtering and proximity sorting
 - **Team Management** — Create teams, manage members and roles, post vacant roles, handle applications and invitations with role-specific targeting; My Teams uses the same responsive sort and result-view controls as search
-- **User Profiles** — Customizable profiles with interest tags, badges, avatar uploads (ImageKit), and geocoded location; profile header shows city and country code; non-public profiles are protected — non-owners and non-teammates see only the username and avatar ("This profile is private")
+- **User Profiles** — Customizable profiles with interest tags, badges, avatar uploads (ImageKit), and geocoded location; profile header shows city and country code; non-public profiles are protected — non-owners and non-teammates see only the username and avatar ("This profile is private"); owners see public/private visibility indicators on profile, card, list, mini-card, and map views
 - **Real-Time Chat** — Direct and team group messaging with typing indicators, read receipts, file/image sharing, @mentions, reply threading, and rich system event messages (Socket.IO)
 - **Badge System** — Browse 30 badges across 5 color-coded categories; award badges to teammates with reasons and team context
 - **Notifications** — In-app notification center for invitations, applications, badge awards, and role updates
 - **Account Deletion** — Multi-step account deletion with impact preview, automatic team ownership transfer, and graceful "Former Lomir User" handling across chat, badges, and notifications
 - **Demo Data Indicators** — Synthetic/seed data is visually labeled with FlaskConical icons and "DEMO" avatar overlays so users can distinguish test content from real data
-- **Contact Page** — Email contact form with optional multipart file attachments (up to 5 files, 25 MB each — images, PDF, Word, Excel, PPT, TXT, ZIP); authenticated users with a configured contact user ID are routed directly to in-app chat instead; optional Turnstile CAPTCHA; success toast on submit
-- **Authentication UX** — Login and forgot-password flows use shared floating screen alerts for submit-level errors such as rate limits, while field validation remains inline
-- **Security** — Cloudflare Turnstile CAPTCHA on registration and contact form (feature-flagged), enforced password policy (min 8 chars, letter + number), self-service password reset from the login form; search results use approximate coordinates (~11km precision) so exact user locations are never exposed to the frontend; real-time email and username availability feedback during registration; unverified accounts are automatically deleted after 24 hours
+- **Contact Page** — Email contact form with optional multipart file attachments (up to 5 files, 25 MB each — images, PDF, Word, Excel, PPT, TXT, ZIP); authenticated users with a configured contact user ID are routed directly to in-app chat instead; optional Turnstile CAPTCHA; privacy disclosure with `/privacy` link at submission; success toast on submit
+- **Authentication UX** — Login and forgot-password flows use shared floating screen alerts for submit-level errors such as rate limits, while field validation remains inline; registration surfaces backend validation details and availability-check rate limits instead of generic "Invalid input data" errors
+- **Security & Privacy** — Cloudflare Turnstile CAPTCHA on registration and contact form (feature-flagged), enforced password policy (min 8 chars, letter + number), self-service password reset from the login form; new accounts remain private after email verification until users change visibility in settings; search results use approximate coordinates (~11km precision) so exact user locations are never exposed to the frontend; real-time email and username availability feedback during registration; unverified accounts are automatically deleted after 24 hours
 
 ---
 
@@ -154,7 +154,8 @@ Lomir-frontend/
 │   │   ├── ForgotPassword.jsx
 │   │   ├── ResetPassword.jsx
 │   │   ├── VerifyEmail.jsx
-│   │   ├── Contact.jsx             # Contact form with file attachments + in-app chat routing
+│   │   ├── Contact.jsx             # Contact form with file attachments, privacy notice, and in-app chat routing
+│   │   ├── LegalPlaceholderPage.jsx # Shared /about, /terms, /privacy, /legal-notice placeholder page
 │   │   └── DesignSystem.jsx        # Dev-only component playground
 │   ├── components/
 │   │   ├── BooleanSearchInput.jsx  # Textarea-based Boolean search input with operator helpers
@@ -261,6 +262,7 @@ Lomir-frontend/
 │   │   └── Colors.js               # Shared color constants for badge categories and UI accents
 │   ├── constants/
 │   │   ├── badgeConstants.js       # Badge category metadata (names, colors, icons)
+│   │   ├── privacyText.js          # Shared privacy, storage, upload, and visibility notices
 │   │   ├── uiText.js               # Shared UI strings
 │   │   └── pagination.js           # Pagination page-size defaults
 │   ├── config/
@@ -282,6 +284,8 @@ Lomir-frontend/
 |---|---|---|
 | `/` | Landing Page | Public homepage with feature overview |
 | `/login` | Login | Sign in, register redirect, and forgot-password entry point |
+| `/register` | Register | Multi-step registration with legal consent, private-by-default visibility copy, availability checks, and optional Turnstile |
+| `/verify-email` | Verify Email | Confirms new-account email verification links before login |
 | `/forgot-password` | Forgot Password | Request a password reset email |
 | `/reset-password` | Reset Password | Set a new password from a reset email link |
 | `/search` | Search | Find teams, users, and roles; Boolean search input; shared result-view toggle; advanced filtering by tags, badges, distance |
@@ -290,8 +294,12 @@ Lomir-frontend/
 | `/profile/:id` | Public Profile | View any user's profile; shows "private" message for non-public profiles; placeholder for deleted users |
 | `/chat` | Chat | Direct messages and team group chat with file/image sharing, @mentions, and reply threading |
 | `/badges` | Badges | Browse all 30 badges across 5 categories |
-| `/settings` | Settings | Change password and delete account |
-| `/contact` | Contact | Email form with file attachments; authenticated users with a contact user ID configured are routed to in-app chat |
+| `/settings` | Settings | Change profile visibility, password, email, and delete account |
+| `/contact` | Contact | Email form with file attachments and privacy notice; authenticated users with a contact user ID configured are routed to in-app chat |
+| `/about` | About | Legal placeholder content for project/about information |
+| `/terms` | Terms | Terms placeholder content while final documents are prepared |
+| `/privacy` | Privacy | Privacy placeholder content, browser storage notice, and contact link |
+| `/legal-notice` | Legal Notice | Legal notice placeholder content |
 
 ---
 

@@ -433,36 +433,7 @@ const Contact = () => {
               </div>
             )}
 
-            <p className="form-helper-text rounded-lg border border-base-300 bg-base-100/70 p-3">
-              By submitting this form, you agree that we process your name,
-              email address, message, and any attachments you provide in order
-              to respond to your inquiry. For details, please see our{" "}
-              <Link to="/privacy" className="link link-primary">
-                Privacy Policy
-              </Link>
-              .
-            </p>
-
-            <div className="pt-3 flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
-              <div className="sm:pt-0">
-                <Button
-                  type="submit"
-                  variant="primary"
-                  icon={!isSubmitting ? <Send size={16} /> : null}
-                  className="w-full sm:w-auto"
-                  disabled={isSubmitting}
-                >
-                  {isSubmitting ? (
-                    <>
-                      <span className="loading loading-spinner loading-sm"></span>
-                      Sending...
-                    </>
-                  ) : (
-                    "Send Message"
-                  )}
-                </Button>
-              </div>
-
+            <div className="pt-3 flex flex-col gap-5">
               {hasTurnstile && (
                 <div className="form-control w-full sm:w-auto sm:items-end">
                   <div className="flex justify-center sm:justify-end">
@@ -482,6 +453,34 @@ const Contact = () => {
                   )}
                 </div>
               )}
+
+              <p className="text-xs text-base-content/50 leading-relaxed">
+                By submitting this form, your name and email address will be processed
+                to respond to your inquiry. See our{" "}
+                <Link to="/privacy" className="link link-primary">
+                  Privacy Policy
+                </Link>{" "}
+                for details on how we handle your data.
+              </p>
+
+              <div className="flex justify-end">
+                <Button
+                  type="submit"
+                  variant="primary"
+                  icon={!isSubmitting ? <Send size={16} /> : null}
+                  className="w-full sm:w-auto"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <span className="loading loading-spinner loading-sm"></span>
+                      Sending...
+                    </>
+                  ) : (
+                    "Send Message"
+                  )}
+                </Button>
+              </div>
             </div>
         </form>
 

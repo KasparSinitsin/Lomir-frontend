@@ -57,12 +57,19 @@ const UserProfileHeaderSection = ({
       return false;
     }
     // Only show for the user's own profile
-    return currentUser.id === user.id;
+    return String(currentUser.id) === String(user.id);
   };
 
   // Helper to check if profile is public
   const isUserProfilePublic = () => {
     if (!user) return false;
+
+    if (shouldShowVisibilityIndicator()) {
+      if (currentUser.is_public === true) return true;
+      if (currentUser.isPublic === true) return true;
+      if (currentUser.is_public === false) return false;
+      if (currentUser.isPublic === false) return false;
+    }
 
     // Check both property name formats
     if (user.is_public === true) return true;
