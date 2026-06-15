@@ -75,8 +75,8 @@ const VisibilityToggle = ({
 } ${disabled ? "opacity-60 cursor-not-allowed" : ""} flex flex-col items-start gap-0`}
 >
   {/* Row 1: icon + state text + toggle */}
-  <div className="flex items-center justify-between w-full">
-    <div className="flex items-center">
+  <div className="flex items-center justify-between w-full gap-3">
+    <div className="flex items-center min-w-0">
       {isChecked ? (
         <Eye size={24} className="text-primary mr-3 flex-shrink-0" />
       ) : (
@@ -86,14 +86,14 @@ const VisibilityToggle = ({
         />
       )}
 
-      <span className="text-base-content font-normal">
+      <span className="text-base-content font-normal min-w-0 break-words">
         {isChecked ? visibleLabel : hiddenLabel}
       </span>
     </div>
 
     <label
       htmlFor={inputId}
-      className={`relative inline-flex items-center ${
+      className={`relative inline-flex flex-shrink-0 items-center ${
         disabled ? "cursor-not-allowed" : "cursor-pointer"
       }`}
     >

@@ -1207,7 +1207,7 @@ const RegisterForm = () => {
               />
 
               <div className="form-control w-full">
-                <label className="label">
+                <label className="label whitespace-normal">
                   <span className="label-text">
                     Select focus areas matching your interests and skills
                   </span>
@@ -1227,7 +1227,7 @@ const RegisterForm = () => {
               {renderFormAlert(formAlertClassName)}
 
               <div className="form-control">
-                <label className="label cursor-pointer items-start justify-start gap-3 rounded-lg border border-base-300 bg-base-100/70 p-4">
+                <label className="label flex w-full cursor-pointer items-start justify-start gap-3 whitespace-normal rounded-lg border border-base-300 bg-base-100/70 p-4">
                   <input
                     type="checkbox"
                     name="acceptedLegal"
@@ -1258,7 +1258,7 @@ const RegisterForm = () => {
               </div>
 
               <div className="form-control">
-                <label className="label cursor-pointer items-start justify-start gap-3 rounded-lg border border-base-300 bg-base-100/70 p-4">
+                <label className="label flex w-full cursor-pointer items-start justify-start gap-3 whitespace-normal rounded-lg border border-base-300 bg-base-100/70 p-4">
                   <input
                     type="checkbox"
                     name="confirmedAge16"
@@ -1306,7 +1306,7 @@ const RegisterForm = () => {
 
                 {hasTurnstile && (
                   <div className="form-control w-full sm:w-auto sm:items-end">
-                    <div className="flex w-full justify-end">
+                    <div className="flex w-full justify-center sm:justify-end">
                       <TurnstileWidget
                         ref={turnstileRef}
                         onVerify={(token) => {
@@ -1326,7 +1326,7 @@ const RegisterForm = () => {
                       />
                     </div>
                     {errors.turnstile && (
-                      <label className="label flex w-full justify-end px-0">
+                      <label className="label flex w-full justify-center px-0 sm:justify-end">
                         <span className="label-text-alt text-error">
                           {errors.turnstile}
                         </span>
