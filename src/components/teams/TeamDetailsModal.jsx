@@ -141,7 +141,7 @@ const TeamDetailsModal = ({
 }) => {
   const navigate = useNavigate();
   const { id: urlTeamId } = useParams();
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, blockedRelationshipIds } = useAuth();
 
   const effectiveTeamId = useMemo(
     () => propTeamId || urlTeamId,
@@ -698,6 +698,15 @@ const TeamDetailsModal = ({
       String(memberId) === String(viewerId)
     ) {
       return false;
+    }
+
+    // Blocked users are mutually anonymized everywhere, even if their profile is
+    // public — so a blocked member shows as "Private Profile" in shared teams.
+    if (
+      memberId != null &&
+      blockedRelationshipIds?.has?.(String(memberId))
+    ) {
+      return true;
     }
 
     // Determine profile visibility flags (support snake_case + camelCase)

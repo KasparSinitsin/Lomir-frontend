@@ -1,6 +1,7 @@
 import React from "react";
 import { FlaskConical } from "lucide-react";
 import { useUserModalSafe } from "../../contexts/UserModalContext";
+import { useAuth } from "../../contexts/AuthContext";
 import { useUserProfile } from "../../hooks/useUserQueries";
 import Tooltip from "../common/Tooltip";
 import { DEMO_PROFILE_TOOLTIP } from "../../utils/userHelpers";
@@ -100,11 +101,16 @@ const InlineUserLink = ({
 }) => {
   // Try to get global modal context (returns null if not available)
   const userModalContext = useUserModalSafe();
+  const { blockedRelationshipIds } = useAuth();
 
   // Normalize user ID from various possible field names
   const userId = user?.id || user?.user_id || user?.userId;
   const isFormerUser = isDeletedUser(user);
-  const isPrivateUser = isPrivateProfile(user);
+  // A block in either direction anonymizes the referenced user everywhere this
+  // inline link appears (e.g. "Invited by", "Awarded by", "Applied by").
+  const isBlockedUser =
+    userId != null && blockedRelationshipIds?.has?.(String(userId));
+  const isPrivateUser = isPrivateProfile(user) || isBlockedUser;
   // Only hydrate when the parent didn't pass enough to render a name —
   // missing avatar / synthetic flag alone aren't worth a network round trip,
   // since UserAvatar falls back to initials and the synthetic indicator is

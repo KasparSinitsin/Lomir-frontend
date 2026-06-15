@@ -30,15 +30,15 @@ Contact the project owner for a demo login, or register a new account with a val
 - **Best Match Sorting** — Weighted matching algorithm scores teams and roles against your profile (tags 40%, badges 30%, distance 30%)
 - **Map View** — Leaflet-powered map with custom markers for teams, users, and roles; popups with detail cards; distance-based filtering and proximity sorting
 - **Team Management** — Create teams, manage members and roles, post vacant roles, handle applications and invitations with role-specific targeting; My Teams uses the same responsive sort and result-view controls as search
-- **User Profiles** — Customizable profiles with interest tags, badges, avatar uploads (ImageKit), and geocoded location; profile header shows city and country code; non-public profiles are protected — non-owners and non-teammates see only the username and avatar ("This profile is private"); owners see public/private visibility indicators on profile, card, list, mini-card, and map views
-- **Real-Time Chat** — Direct and team group messaging with typing indicators, read receipts, file/image sharing, @mentions, reply threading, and rich system event messages (Socket.IO)
+- **User Profiles** — Customizable profiles with interest tags, badges, avatar uploads (ImageKit), and geocoded location; profile header shows city and country code; non-public profiles are protected — non-owners and non-teammates see only the username and avatar ("This profile is private"); owners see public/private visibility indicators on profile, card, list, mini-card, and map views; signed-in users can block another profile from the user details modal
+- **Real-Time Chat** — Direct and team group messaging with typing indicators, read receipts, file/image sharing, @mentions, reply threading, and rich system event messages (Socket.IO); blocked users are hidden from direct conversations, team rosters, mention lists, and rendered message streams
 - **Badge System** — Browse 30 badges across 5 color-coded categories; award badges to teammates with reasons and team context
 - **Notifications** — In-app notification center for invitations, applications, badge awards, and role updates
 - **Account Deletion** — Multi-step account deletion with impact preview, automatic team ownership transfer, and graceful "Former Lomir User" handling across chat, badges, and notifications
 - **Demo Data Indicators** — Synthetic/seed data is visually labeled with FlaskConical icons and "DEMO" avatar overlays so users can distinguish test content from real data
 - **Contact Page** — Email contact form with optional multipart file attachments (up to 5 files, 25 MB each — images, PDF, Word, Excel, PPT, TXT, ZIP); authenticated users with a configured contact user ID are routed directly to in-app chat instead; optional Turnstile CAPTCHA; privacy disclosure with `/privacy` link at submission; success toast on submit
 - **Authentication UX** — Login and forgot-password flows use shared floating screen alerts for submit-level errors such as rate limits, while field validation remains inline; registration surfaces backend validation details and availability-check rate limits instead of generic "Invalid input data" errors
-- **Security & Privacy** — Cloudflare Turnstile CAPTCHA on registration and contact form (feature-flagged), enforced password policy (min 8 chars, letter + number), self-service password reset from the login form; new accounts remain private after email verification until users change visibility in settings; search results use approximate coordinates (~11km precision) so exact user locations are never exposed to the frontend; real-time email and username availability feedback during registration (results are cached so repeated validation skips redundant API calls); separate age-16 confirmation checkbox at registration; timestamps and document versions stored for accepted Terms of Service, acknowledged Privacy Policy, and age confirmation; unverified accounts are automatically deleted after 24 hours
+- **Security & Privacy** — Cloudflare Turnstile CAPTCHA on registration and contact form (feature-flagged), enforced password policy (min 8 chars, letter + number), self-service password reset from the login form; new accounts remain private after email verification until users change visibility in settings; users can manage a blocklist from Settings, with blocked relationships mutually anonymized across profiles, teams, roles, badge awards, invitations, and inline profile links; search results use approximate coordinates (~11km precision) so exact user locations are never exposed to the frontend; real-time email and username availability feedback during registration (results are cached so repeated validation skips redundant API calls); separate age-16 confirmation checkbox at registration; timestamps and document versions stored for accepted Terms of Service, acknowledged Privacy Policy, and age confirmation; unverified accounts are automatically deleted after 24 hours
 
 ---
 
@@ -148,9 +148,9 @@ Lomir-frontend/
 │   │   │                           #   limited-access profiles; placeholder for deleted users
 │   │   ├── Register.jsx            # Multi-step registration with CAPTCHA
 │   │   ├── Login.jsx
-│   │   ├── Chat.jsx                # Direct + team messaging with file sharing
+│   │   ├── Chat.jsx                # Direct + team messaging with file sharing; filters blocked users
 │   │   ├── BadgeOverview.jsx       # Badge catalog and details
-│   │   ├── Settings.jsx            # Password change + account deletion modal
+│   │   ├── Settings.jsx            # Visibility, blocklist, password/email changes + account deletion modal
 │   │   ├── ForgotPassword.jsx
 │   │   ├── ResetPassword.jsx
 │   │   ├── VerifyEmail.jsx
@@ -171,7 +171,8 @@ Lomir-frontend/
 │   │   │                           #   TeamInvitationDetailsModal, RequestRoleCard
 │   │   ├── users/                  # UserCard, UserDetailsModal, UserAvatar,
 │   │   │                           #   UserProfileHeaderSection (avatar + name + location header),
-│   │   │                           #   UserBioSection, InlineUserLink, DemoAvatarOverlay,
+│   │   │                           #   UserBioSection, InlineUserLink, BlocklistSection,
+│   │   │                           #   DemoAvatarOverlay,
 │   │   │                           #   DeletedUserProfilePlaceholder
 │   │   ├── badges/                 # Badge display, awarding, category modals, AwardCard
 │   │   ├── tags/                   # Tag input, display, and selection
@@ -193,7 +194,7 @@ Lomir-frontend/
 │   │   │                           #   VisibilityToggle, ScreenAlert, ConfirmModal
 │   │   └── layout/                 # Navbar, Footer, PageContainer, ProtectedRoute, Grid, Section
 │   ├── contexts/
-│   │   ├── AuthContext.jsx         # Authentication state + JWT management
+│   │   ├── AuthContext.jsx         # Authentication state, JWT management, and block relationship state
 │   │   ├── UserModalContext.jsx    # Global user detail modal stack
 │   │   ├── TeamModalContext.jsx    # Global team detail modal state
 │   │   ├── ToastContext.jsx        # Toast notification state + dispatch
@@ -205,7 +206,7 @@ Lomir-frontend/
 │   │   │                           #   preserves FormData requests so multipart boundaries are set by
 │   │   │                           #   the browser; call sites can opt out via skipRequestCaseTransform /
 │   │   │                           #   skipResponseCaseTransform for explicit per-call data contracts
-│   │   ├── userService.js          # Includes deletionPreview + deleteUser
+│   │   ├── userService.js          # Profile, avatar, blocklist, and account deletion endpoints
 │   │   ├── teamService.js
 │   │   ├── searchService.js
 │   │   ├── matchingService.js
@@ -294,7 +295,7 @@ Lomir-frontend/
 | `/profile/:id` | Public Profile | View any user's profile; shows "private" message for non-public profiles; placeholder for deleted users |
 | `/chat` | Chat | Direct messages and team group chat with file/image sharing, @mentions, and reply threading |
 | `/badges` | Badges | Browse all 30 badges across 5 categories |
-| `/settings` | Settings | Change profile visibility, password, email, and delete account |
+| `/settings` | Settings | Change profile visibility, manage blocked users, update password/email, and delete account |
 | `/contact` | Contact | Email form with file attachments and privacy notice; authenticated users with a contact user ID configured are routed to in-app chat |
 | `/about` | About | Project description, status, and contact information |
 | `/terms` | Terms | Full Terms of Service (14 sections, German law) |
@@ -336,6 +337,11 @@ All components handle deleted user references gracefully: chat messages show "Fo
 ## Chat
 
 The chat page supports both direct (1-to-1) and team group conversations.
+
+**Blocking**
+- Blocking a user removes unavailable direct conversations from the chat list and closes the active direct conversation if the relationship changes while it is open
+- Team chats stay available, but blocked members are filtered out of rosters, mention suggestions, and the visible message stream
+- Socket.IO `blocks:updated` events refresh block relationships without requiring a page reload
 
 **Messaging**
 - Messages are delivered in real time via Socket.IO

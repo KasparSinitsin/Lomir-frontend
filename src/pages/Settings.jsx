@@ -7,6 +7,7 @@ import Alert from "../components/common/Alert";
 import ScreenAlert from "../components/common/ScreenAlert";
 import FormSectionDivider from "../components/common/FormSectionDivider";
 import VisibilityToggle from "../components/common/VisibilityToggle";
+import BlocklistSection from "../components/users/BlocklistSection";
 import Modal from "../components/common/Modal";
 import { userService } from "../services/userService";
 import { teamService } from "../services/teamService";
@@ -207,7 +208,7 @@ const normalizeTransferOptions = (members, currentUserId) =>
     .filter(Boolean);
 
 const Settings = () => {
-  const { user, updateUser, logout } = useAuth();
+  const { user, updateUser, logout, refreshBlocks } = useAuth();
   const navigate = useNavigate();
 
   const [success, setSuccess] = useState(null);
@@ -682,6 +683,10 @@ const Settings = () => {
             <p className="form-helper-text px-1">
               {PROFILE_VISIBILITY_SETTINGS_NOTICE}
             </p>
+
+            {user?.id && (
+              <BlocklistSection userId={user.id} onChange={refreshBlocks} />
+            )}
           </section>
 
           {/* ── Account ── */}

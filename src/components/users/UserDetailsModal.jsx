@@ -24,7 +24,8 @@ import Button from "../common/Button";
 import Alert from "../common/Alert";
 import Tooltip from "../common/Tooltip";
 import { useAuth } from "../../contexts/AuthContext";
-import { Edit, MessageCircle, UserPlus, Award, Check, CheckCheck, X, Ruler, User } from "lucide-react";
+import { Edit, MessageCircle, UserPlus, Award, Check, CheckCheck, X, Ruler, User, Ban } from "lucide-react";
+import ConfirmModal from "../common/ConfirmModal";
 import TeamInviteModal from "../teams/TeamInviteModal";
 import BadgeAwardModal from "../badges/BadgeAwardModal";
 import SupercategoryAwardsModal from "../badges/SupercategoryAwardsModal";
@@ -215,7 +216,7 @@ const UserDetailsModal = ({
   initialUserData = null,
   sharedTeamId = null,
 }) => {
-  const { user: currentUser, isAuthenticated } = useAuth();
+  const { user: currentUser, isAuthenticated, refreshBlocks } = useAuth();
   const queryClient = useQueryClient();
   const normalizedRoleMatchTagIds = useMemo(
     () => normalizeNumericSet(roleMatchTagIds),
@@ -255,6 +256,11 @@ const UserDetailsModal = ({
 
   // ========= Badge Award Modal state =========
   const [isBadgeAwardModalOpen, setIsBadgeAwardModalOpen] = useState(false);
+
+  // ========= Block user state =========
+  const [isBlockModalOpen, setIsBlockModalOpen] = useState(false);
+  const [blocking, setBlocking] = useState(false);
+  const [blockError, setBlockError] = useState(null);
 
   // =====================================================
 
@@ -612,6 +618,25 @@ const UserDetailsModal = ({
     setIsInviteModalOpen(true);
   };
 
+  const handleConfirmBlock = async () => {
+    if (!currentUser?.id || !userId) return;
+    try {
+      setBlocking(true);
+      await userService.blockUser(currentUser.id, userId);
+      await refreshBlocks?.();
+      // Drop any cached view of this now-hidden profile.
+      queryClient.invalidateQueries({ queryKey: userProfileQueryKey(userId) });
+      setIsBlockModalOpen(false);
+      onClose?.();
+    } catch (error) {
+      setBlockError(
+        error.response?.data?.message || "Failed to block this user.",
+      );
+    } finally {
+      setBlocking(false);
+    }
+  };
+
   const handleInviteModalClose = () => {
     setIsInviteModalOpen(false);
   };
@@ -888,6 +913,24 @@ const UserDetailsModal = ({
             >
               <Award size={16} />
               <span className="hidden sm:inline">Award</span>
+            </Button>
+          </Tooltip>
+          <Tooltip
+            content="Block this person. They won't be able to message you or see your profile."
+            position="bottom"
+          >
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setBlockError(null);
+                setIsBlockModalOpen(true);
+              }}
+              className="flex items-center gap-1 hover:bg-red-100 hover:text-red-700"
+              aria-label="Block user"
+            >
+              <Ban size={16} />
+              <span className="hidden sm:inline">Block</span>
             </Button>
           </Tooltip>
         </>
@@ -1202,6 +1245,28 @@ const UserDetailsModal = ({
           }}
         />
       )}
+
+      {/* Block User Confirmation */}
+      <ConfirmModal
+        isOpen={isBlockModalOpen}
+        onClose={() => !blocking && setIsBlockModalOpen(false)}
+        onConfirm={handleConfirmBlock}
+        title="Block this user?"
+        confirmLabel="Block"
+        loadingLabel="Blocking…"
+        confirmVariant="error"
+        confirmIcon={<Ban size={16} />}
+        loading={blocking}
+      >
+        <div className="space-y-2">
+          <p className="text-base-content/80">
+            {getUserDisplayName()} won’t be able to message you or see your
+            profile anywhere on Lomir, and you won’t see theirs. You can undo this
+            from Settings → Privacy.
+          </p>
+          {blockError && <Alert type="error" message={blockError} />}
+        </div>
+      </ConfirmModal>
     </>
   );
 };

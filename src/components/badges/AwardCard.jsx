@@ -129,7 +129,9 @@ const AwardCard = ({
     ? `0 0 12px ${isBadgeHidden ? "#9CA3AF66" : `${catColor}66`}`
     : undefined;
   const childTeamModalZIndex = useChildModalZIndex();
-  const { user: currentUser } = useAuth();
+  const { user: currentUser, blockedRelationshipIds } = useAuth();
+  const isBlockedUser = (id) =>
+    id != null && blockedRelationshipIds?.has?.(String(id));
 
   // --- Normalize fields (camelCase + snake_case) ---
   const awardId = award?.awardId || award?.award_id || award?.id || null;
@@ -388,11 +390,16 @@ const AwardCard = ({
   const recipientUserId = firstPresent(awardedToUserId, subjectUserId);
   const viewerIsRecipient = idsMatch(currentUser?.id, recipientUserId);
   const viewerCanSeeAwardee = viewerIsRecipient || canViewPrivateAwardees;
+  // A block in either direction always anonymizes the other person, even on my
+  // own badge where I'd otherwise see them.
+  const awarderIsBlocked = isBlockedUser(awardedByUserId);
+  const awardeeIsBlocked = isBlockedUser(awardedToUserId);
   const shouldFetchAwarderPrivacy = Boolean(
     awardedByUserId &&
       !viewerIsRecipient &&
       !awardedByHasExplicitPrivacy &&
-      !awarderIsFormerUser,
+      !awarderIsFormerUser &&
+      !awarderIsBlocked,
   );
   const {
     data: resolvedAwarderProfile = null,
@@ -404,7 +411,8 @@ const AwardCard = ({
   const shouldFetchAwardeePrivacy = Boolean(
     awardedToUserId &&
       !viewerCanSeeAwardee &&
-      !awardedToHasExplicitPrivacy,
+      !awardedToHasExplicitPrivacy &&
+      !awardeeIsBlocked,
   );
   const {
     data: resolvedAwardeeProfile = null,
@@ -432,7 +440,8 @@ const AwardCard = ({
       !awardedByHasExplicitPrivacy &&
       (awarderPrivacyLoading ||
           normalizeBooleanFlag(resolvedAwarderIsPublic) !== true)));
-  const shouldAnonymizeAwarder = awarderProfileIsPrivate && !viewerIsRecipient;
+  const shouldAnonymizeAwarder =
+    awarderIsBlocked || (awarderProfileIsPrivate && !viewerIsRecipient);
   const explicitAwardeeProfileIsPrivate =
     normalizeBooleanFlag(awardedToIsPublic) === false ||
     normalizeBooleanFlag(awardedToIsPrivate) === true ||
@@ -444,7 +453,7 @@ const AwardCard = ({
       (awardeePrivacyLoading ||
         normalizeBooleanFlag(resolvedAwardeeIsPublic) !== true));
   const shouldAnonymizeAwardee =
-    awardeeProfileIsPrivate && !viewerCanSeeAwardee;
+    awardeeIsBlocked || (awardeeProfileIsPrivate && !viewerCanSeeAwardee);
   const awardedByDisplayIsPublic = shouldAnonymizeAwarder
     ? false
     : awarderProfileIsPrivate
