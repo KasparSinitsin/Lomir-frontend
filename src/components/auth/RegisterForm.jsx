@@ -512,6 +512,73 @@ const RegisterForm = () => {
     return `Account could not be created. Please fix: ${messages.join("; ")}`;
   };
 
+  const getApiErrorMessages = (errorSource) => {
+    const responseData = errorSource?.response?.data ?? errorSource ?? {};
+    const rawErrors = responseData.errors;
+
+    if (Array.isArray(rawErrors)) {
+      return rawErrors
+        .map((error) => {
+          if (typeof error === "string") return error;
+          if (!error || typeof error !== "object") return null;
+
+          const field = error.path || error.param || error.field;
+          const message = error.msg || error.message;
+
+          if (field && message) return `${field}: ${message}`;
+          return message || field || null;
+        })
+        .filter(Boolean);
+    }
+
+    if (rawErrors && typeof rawErrors === "object") {
+      return getAccountCreationErrorMessages(rawErrors);
+    }
+
+    return [];
+  };
+
+  const getApiErrorMessage = (errorSource, fallback = "Registration failed.") =>
+    errorSource?.response?.data?.message || errorSource?.message || fallback;
+
+  const buildRegistrationErrorState = (errorSource) => {
+    const apiMessages = getApiErrorMessages(errorSource);
+    const message = getApiErrorMessage(errorSource);
+
+    if (apiMessages.length > 0) {
+      return {
+        form: getAccountCreationErrorMessage({ api: apiMessages }),
+        formMessages: apiMessages,
+      };
+    }
+
+    if (isEmailConflictMessage(message)) {
+      const formMessages = ["This email address is already registered."];
+
+      return {
+        email: "This email address is already registered.",
+        form: getAccountCreationErrorMessage({
+          email: "This email address is already registered.",
+        }),
+        formMessages,
+      };
+    }
+
+    if (isUsernameConflictMessage(message)) {
+      const formMessages = ["This username is already taken."];
+
+      return {
+        username: ["This username is already taken."],
+        form: getAccountCreationErrorMessage({
+          username: "This username is already taken.",
+        }),
+        formMessages,
+      };
+    }
+
+    return { form: message };
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -562,6 +629,9 @@ const RegisterForm = () => {
         await Promise.all(availabilityChecks);
       } catch (availabilityError) {
         console.warn("Availability check failed:", availabilityError);
+        availabilityErrors.form =
+          availabilityError.response?.data?.message ||
+          "We could not check username or email availability. Please try again in a few minutes.";
       }
 
       const blockingErrors = {
@@ -631,70 +701,18 @@ const RegisterForm = () => {
         }
       } else {
         resetTurnstile();
-        const msg = result.message || "";
-
-        if (isEmailConflictMessage(msg)) {
-          const formMessages = ["This email address is already registered."];
-
-          setErrors((prev) => ({
-            ...prev,
-            email: "This email address is already registered.",
-            form: getAccountCreationErrorMessage({
-              email: "This email address is already registered.",
-            }),
-            formMessages,
-          }));
-        } else if (isUsernameConflictMessage(msg)) {
-          const formMessages = ["This username is already taken."];
-
-          setErrors((prev) => ({
-            ...prev,
-            username: ["This username is already taken."],
-            form: getAccountCreationErrorMessage({
-              username: "This username is already taken.",
-            }),
-            formMessages,
-          }));
-        } else {
-          setErrors((prev) => ({
-            ...prev,
-            form: msg,
-          }));
-        }
+        setErrors((prev) => ({
+          ...prev,
+          ...buildRegistrationErrorState(result),
+        }));
       }
     } catch (error) {
       resetTurnstile();
       console.error("Full Registration error:", error);
-      const msg = error.response?.data?.message || "Registration failed.";
-
-      if (isEmailConflictMessage(msg)) {
-        const formMessages = ["This email address is already registered."];
-
-        setErrors((prev) => ({
-          ...prev,
-          email: "This email address is already registered.",
-          form: getAccountCreationErrorMessage({
-            email: "This email address is already registered.",
-          }),
-          formMessages,
-        }));
-      } else if (isUsernameConflictMessage(msg)) {
-        const formMessages = ["This username is already taken."];
-
-        setErrors((prev) => ({
-          ...prev,
-          username: ["This username is already taken."],
-          form: getAccountCreationErrorMessage({
-            username: "This username is already taken.",
-          }),
-          formMessages,
-        }));
-      } else {
-        setErrors((prev) => ({
-          ...prev,
-          form: msg,
-        }));
-      }
+      setErrors((prev) => ({
+        ...prev,
+        ...buildRegistrationErrorState(error),
+      }));
     } finally {
       setIsSubmitting(false);
     }
@@ -754,9 +772,9 @@ const RegisterForm = () => {
       <div className="flex w-full justify-center">
         <Alert
           type="error"
-        message={errors.form}
-        onClose={clearFormError}
-        autoCloseMs={10000}
+          message={errors.form}
+          onClose={clearFormError}
+          autoCloseMs={10000}
           className={className}
         >
           {formErrorMessages.length > 0 ? (

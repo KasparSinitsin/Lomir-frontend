@@ -48,9 +48,7 @@ export const AuthProvider = ({ children }) => {
           if (cancelled) return;
 
           const userData = response.data.data.user;
-          const enhancedUserData = normalizeAuthUser(userData, {
-            defaultIsPublic: true,
-          });
+          const enhancedUserData = normalizeAuthUser(userData);
           setUser(enhancedUserData);
           setUserTimezone(enhancedUserData);
           setError(null);
@@ -134,6 +132,7 @@ export const AuthProvider = ({ children }) => {
       return {
         success: false,
         message: err.response?.data?.message || "Registration failed",
+        errors: err.response?.data?.errors,
       };
     } finally {
       setLoading(false);

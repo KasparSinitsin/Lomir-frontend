@@ -107,11 +107,18 @@ const UserCard = ({
     }
 
     // Only show if this card represents the current user's profile
-    return currentUser.id === user.id;
+    return String(currentUser.id) === String(user.id);
   };
 
   // Helper function to check if user profile is public
   const isUserProfilePublic = () => {
+    if (shouldShowVisibilityIcon()) {
+      if (currentUser.is_public === true) return true;
+      if (currentUser.isPublic === true) return true;
+      if (currentUser.is_public === false) return false;
+      if (currentUser.isPublic === false) return false;
+    }
+
     // Check both possible property names for is_public
     if (user.is_public === true) return true;
     if (user.isPublic === true) return true;

@@ -994,6 +994,7 @@ body {
   font-size: 0.775rem !important;
   line-height: 1.15 !important;
   box-shadow: 0 2px 8px rgba(4, 80, 20, 0.15) !important;
+  white-space: pre-line !important;
   pointer-events: none;
 
   /* stacking */
