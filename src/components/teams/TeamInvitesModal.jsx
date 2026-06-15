@@ -73,7 +73,9 @@ const TeamInvitesModal = ({
   const highlightedRef = useRef(null);
 
   // ============ Context ============
-  const { user: currentUser } = useAuth();
+  const { user: currentUser, blockedRelationshipIds } = useAuth();
+  const isBlockedUser = (id) =>
+    id != null && blockedRelationshipIds?.has?.(String(id));
   const { openUserModal } = useUserModal();
   const { openTeamModal } = useTeamModal();
   const hydratedRoleMap = usePolledRequestRoles(invitations, {
@@ -271,7 +273,9 @@ const TeamInvitesModal = ({
           currentUser?.id,
         );
         const inviteeIsPrivate =
-          isPrivateProfileUser(invitation.invitee) && !isSelfInvitation;
+          (isPrivateProfileUser(invitation.invitee) ||
+            isBlockedUser(inviteeId)) &&
+          !isSelfInvitation;
         const inviteeRoleMatch =
           roleId != null && invitation?.role && !inviteeIsPrivate
             ? extractRoleMatchData(invitation.role)

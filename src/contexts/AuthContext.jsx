@@ -1,6 +1,13 @@
-import { createContext, useState, useEffect, useContext } from "react";
+import {
+  createContext,
+  useState,
+  useEffect,
+  useContext,
+  useCallback,
+} from "react";
 import api from "../services/api";
 import socketService from "../services/socketService";
+import { userService } from "../services/userService";
 import { setUserTimezone } from "../utils/dateHelpers";
 
 const AuthContext = createContext(null);
@@ -31,6 +38,54 @@ export const AuthProvider = ({ children }) => {
   const [token, setToken] = useState(localStorage.getItem("token"));
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  // Ids of users in a block relationship with the current user (either
+  // direction), used to mutually anonymize blocked users across the app.
+  const [blockedRelationshipIds, setBlockedRelationshipIds] = useState(
+    () => new Set(),
+  );
+
+  const userId = user?.id ?? null;
+
+  // Refresh the block-relationship set from the backend. Exposed so screens
+  // that change the blocklist (Settings, profile Block action) can keep the
+  // app-wide set in sync.
+  const refreshBlocks = useCallback(async () => {
+    if (!userId) {
+      setBlockedRelationshipIds(new Set());
+      return;
+    }
+    try {
+      const response = await userService.getBlockRelationships(userId);
+      const ids = Array.isArray(response?.data?.ids) ? response.data.ids : [];
+      setBlockedRelationshipIds(new Set(ids.map((id) => String(id))));
+    } catch (err) {
+      console.error("Failed to load block relationships:", err);
+    }
+  }, [userId]);
+
+  useEffect(() => {
+    refreshBlocks();
+  }, [refreshBlocks]);
+
+  // Refresh the block set in realtime when the server signals a block/unblock
+  // (from either party), so hiding/restoring takes effect without a reload.
+  useEffect(() => {
+    if (!userId) return undefined;
+    let activeSocket = null;
+    const handleBlocksUpdated = () => {
+      refreshBlocks();
+    };
+    const unsubscribe = socketService.onSocketReady((socketInstance) => {
+      if (!socketInstance) return;
+      activeSocket = socketInstance;
+      socketInstance.off("blocks:updated", handleBlocksUpdated);
+      socketInstance.on("blocks:updated", handleBlocksUpdated);
+    });
+    return () => {
+      unsubscribe?.();
+      if (activeSocket) activeSocket.off("blocks:updated", handleBlocksUpdated);
+    };
+  }, [userId, refreshBlocks]);
 
   // Load user data if token exists
   useEffect(() => {
@@ -199,6 +254,7 @@ export const AuthProvider = ({ children }) => {
     setToken(null);
     setUser(null);
     setUserTimezone(null);
+    setBlockedRelationshipIds(new Set());
     setError(null); // Clear error when logging out
     // Disconnect socket
     socketService.disconnect();
@@ -223,6 +279,8 @@ export const AuthProvider = ({ children }) => {
         login,
         logout,
         updateUser,
+        blockedRelationshipIds,
+        refreshBlocks,
       }}
     >
       {children}

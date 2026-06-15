@@ -222,7 +222,7 @@ const VacantRoleCard = ({
     useState(null);
   const [isCurrentUserTeamMember, setIsCurrentUserTeamMember] =
     useState(false);
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, blockedRelationshipIds } = useAuth();
   const usesSharedSearchCard = hideActions && Boolean(teamContext);
   const roleId = role?.id ?? role?.roleId ?? role?.role_id ?? null;
   const roleNameForMatch = role?.roleName ?? role?.role_name ?? "";
@@ -709,13 +709,21 @@ const VacantRoleCard = ({
   const filledUser = isFilled
     ? resolveFilledRoleUser(role, { viewAsUserId, viewAsUser })
     : null;
-  const filledUserAvatarUrl =
-    filledUser?.avatar_url ?? filledUser?.avatarUrl ?? null;
+  // A block in either direction anonymizes the member filling this role.
+  const filledUserIsBlocked = Boolean(
+    filledUser?.id != null &&
+      blockedRelationshipIds?.has?.(String(filledUser.id)),
+  );
+  const filledUserAvatarUrl = filledUserIsBlocked
+    ? null
+    : filledUser?.avatar_url ?? filledUser?.avatarUrl ?? null;
   const filledUserDisplayName =
     filledUser && getDisplayName(filledUser) !== "Unknown"
       ? getDisplayName(filledUser)
       : null;
-  const filledByText = filledUser
+  const filledByText = filledUserIsBlocked
+    ? "Private Profile"
+    : filledUser
     ? formatDisplayName(filledUser)
     : filledUserDisplayName
     ? filledUserDisplayName
@@ -874,15 +882,47 @@ const VacantRoleCard = ({
       </span>
     </Tooltip>
   ) : null;
-  const hasDemoRoleMeta = isSyntheticRole(role) || isSyntheticUser(filledUser);
+  // The role itself and the member filling it are independent "demo" dimensions,
+  // so they get separate markers/labels: a synthetic role shows the DEMO_ROLE
+  // tooltip, a synthetic filled member shows the DEMO_PROFILE tooltip (and both
+  // can appear together on a filled card). A blocked member is never flagged.
+  const roleIsDemo = isSyntheticRole(role);
+  const filledMemberIsDemo =
+    isFilled && !filledUserIsBlocked && isSyntheticUser(filledUser);
+  const hasDemoRoleMeta = roleIsDemo || filledMemberIsDemo;
   const demoRoleMetaItem = hasDemoRoleMeta ? (
-    <Tooltip
-      content={isSyntheticRole(role) ? DEMO_ROLE_TOOLTIP : DEMO_PROFILE_TOOLTIP}
-      wrapperClassName="flex items-center gap-1 whitespace-nowrap text-base-content/50"
-    >
-      <FlaskConical size={9} className="flex-shrink-0" />
-    </Tooltip>
+    <>
+      {roleIsDemo && (
+        <Tooltip
+          content={DEMO_ROLE_TOOLTIP}
+          wrapperClassName="flex items-center gap-1 whitespace-nowrap text-base-content/50"
+        >
+          <FlaskConical size={9} className="flex-shrink-0" />
+        </Tooltip>
+      )}
+      {filledMemberIsDemo && (
+        <Tooltip
+          content={DEMO_PROFILE_TOOLTIP}
+          wrapperClassName="flex items-center gap-1 whitespace-nowrap text-base-content/50"
+        >
+          <FlaskConical size={9} className="flex-shrink-0" />
+        </Tooltip>
+      )}
+    </>
   ) : null;
+
+  // The filled-member avatar should carry the "DEMO" badge whenever the card is
+  // demo data (synthetic role or synthetic member), matching the vacant demo
+  // cards. UserAvatar only paints that overlay when the user object is flagged
+  // synthetic, but role payloads don't include the member's synthetic flag, so
+  // flag the avatar's copy when the card is demo data. A demo *role* still shows
+  // the badge even when the filling member is blocked (the role's demo status is
+  // independent of the member); `hasDemoRoleMeta` already drops a blocked
+  // member's own synthetic status, so this never reveals a blocked profile.
+  const showFilledDemoOverlay = hasDemoRoleMeta;
+  const filledAvatarUser = showFilledDemoOverlay
+    ? { ...(filledUser || {}), is_synthetic: true }
+    : filledUser;
 
   const renderMatchOverlay = ({ size, iconSize }) => {
     if (!matchTier) return null;
@@ -1063,9 +1103,20 @@ const VacantRoleCard = ({
         {roleInvitationSubtitleItem}
         {roleApplicationSubtitleItem}
         {miniLocationSubtitleItem}
-        {isSyntheticRole(role) && (
+        {roleIsDemo && (
           <Tooltip
             content={DEMO_ROLE_TOOLTIP}
+            wrapperClassName="flex items-center gap-1 text-base-content/50"
+          >
+            <FlaskConical
+              size={viewMode === "mini" ? 10 : 13}
+              className="flex-shrink-0"
+            />
+          </Tooltip>
+        )}
+        {filledMemberIsDemo && (
+          <Tooltip
+            content={DEMO_PROFILE_TOOLTIP}
             wrapperClassName="flex items-center gap-1 text-base-content/50"
           >
             <FlaskConical
@@ -1085,7 +1136,11 @@ const VacantRoleCard = ({
           hoverable
           image={isFilled ? filledUserAvatarUrl : null}
           imageFallback={
-            isFilled && filledUser ? getUserInitials(filledUser) : getRoleInitials()
+            filledUserIsBlocked
+              ? "PP"
+              : isFilled && filledUser
+              ? getUserInitials(filledUser)
+              : getRoleInitials()
           }
           imageAlt={role_name || "Vacant Role"}
           imageSize="medium"
@@ -1183,9 +1238,12 @@ const VacantRoleCard = ({
         {isFilled && filledUser ? (
             <div className="relative">
               <UserAvatar
-                user={filledUser}
+                user={filledAvatarUser}
                 sizeClass={avatarSizeClass}
-                showDemoOverlay={isSyntheticUser(filledUser)}
+                initialsClassName={avatarTextClass}
+                privateProfile={filledUserIsBlocked}
+                fallbackText={filledUserIsBlocked ? "PP" : undefined}
+                showDemoOverlay={showFilledDemoOverlay}
                 demoOverlayTextClassName={isMiniView ? "text-[6px]" : "text-[7px]"}
                 demoOverlayTextTranslateClassName="-translate-y-[3px]"
               />

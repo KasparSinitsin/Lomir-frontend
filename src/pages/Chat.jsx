@@ -694,7 +694,12 @@ const Chat = () => {
   const { conversationId } = useParams();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, blockedRelationshipIds } = useAuth();
+  const isBlockedId = useCallback(
+    (id) =>
+      id != null && blockedRelationshipIds?.has?.(String(id)),
+    [blockedRelationshipIds],
+  );
   const [conversations, setConversations] = useState([]);
   const [activeConversation, setActiveConversation] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -810,8 +815,26 @@ const Chat = () => {
   const teamData =
     conversationType === "team" ? activeConversation?.team || null : null;
 
-  const teamMembers =
-    conversationType === "team" ? activeConversation?.team?.members || [] : [];
+  const teamMembers = useMemo(() => {
+    const members =
+      conversationType === "team" ? activeConversation?.team?.members || [] : [];
+    // Hide blocked users from the roster/mention list (both directions).
+    return members.filter((member) => {
+      const memberId =
+        member?.userId ?? member?.user_id ?? member?.id ?? member?.user?.id;
+      return !isBlockedId(memberId);
+    });
+  }, [conversationType, activeConversation?.team?.members, isBlockedId]);
+  // Hide messages from blocked users from the rendered stream (both directions).
+  // The backend already filters fetches and realtime delivery; this keeps an
+  // open session consistent the instant a block is added/removed.
+  const visibleMessages = useMemo(
+    () =>
+      messages.filter(
+        (message) => !isBlockedId(message?.senderId ?? message?.sender_id),
+      ),
+    [messages, isBlockedId],
+  );
   const isCurrentUserActiveTeamMember =
     conversationType !== "team" || isUserTeamMember(teamMembers, user?.id);
   const canSendInActiveConversation =
@@ -1341,6 +1364,47 @@ const Chat = () => {
       console.error("Error refreshing conversations:", err);
     }
   }, [hydrateMissingConversationPreviews]);
+
+  // Apply live block/unblock changes to the chat view: drop blocked DMs (and
+  // restore unblocked ones) from the list, and close the active DM if its
+  // partner is now blocked. Team chats stay open — the blocker is hidden via
+  // the visibleMessages / teamMembers filters. The first run is skipped because
+  // the initial conversation fetch below already loads the correct state.
+  const blocksSyncInitializedRef = useRef(false);
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    if (!blocksSyncInitializedRef.current) {
+      blocksSyncInitializedRef.current = true;
+      return;
+    }
+
+    refreshConversationList();
+
+    const currentUrlType =
+      new URLSearchParams(window.location.search).get("type") ||
+      activeConversationRef.current?.type ||
+      "direct";
+    if (currentUrlType !== "direct") return;
+
+    const activePartnerId = getConversationPartnerId(
+      activeConversationRef.current,
+    );
+    if (isBlockedId(activePartnerId)) {
+      setError("This conversation is no longer available.");
+      setActiveConversation(null);
+      setMessages([]);
+      setTypingUsers({});
+      setHighlightMessageIds([]);
+      setHasMoreMessages(false);
+      navigate("/chat", { replace: true });
+    }
+  }, [
+    blockedRelationshipIds,
+    isAuthenticated,
+    isBlockedId,
+    refreshConversationList,
+    navigate,
+  ]);
 
   // Fetch conversations
   useEffect(() => {
@@ -3286,7 +3350,7 @@ const Chat = () => {
 
               <div ref={messagesContainerRef} className="flex-grow overflow-y-auto p-4">
                 <MessageDisplay
-                  messages={messages}
+                  messages={visibleMessages}
                   currentUserId={user?.id}
                   conversationPartner={conversationPartner}
                   teamData={teamData}

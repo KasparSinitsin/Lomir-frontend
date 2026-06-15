@@ -158,6 +158,52 @@ export const userService = {
       api.delete(`/api/users/${userId}/avatar`),
     ),
 
+  // --- User Blocks ---
+
+  /**
+   * Fetches the users the current user has blocked (card data for the blocklist).
+   * @param {string|number} userId
+   * @returns {Promise<object>}
+   */
+  getBlockedUsers: (userId) =>
+    call(`fetching blocked users for ${userId}`, () =>
+      api.get(`/api/users/${userId}/blocks`),
+    ),
+
+  /**
+   * Blocks another user. The request interceptor converts `blockedId` to
+   * `blocked_id` for the backend.
+   * @param {string|number} userId - The current (blocking) user's id.
+   * @param {string|number} blockedId - The user to block.
+   * @returns {Promise<object>}
+   */
+  blockUser: (userId, blockedId) =>
+    call(`blocking user ${blockedId}`, () =>
+      api.post(`/api/users/${userId}/blocks`, { blockedId }),
+    ),
+
+  /**
+   * Removes a user from the current user's blocklist.
+   * @param {string|number} userId
+   * @param {string|number} blockedId
+   * @returns {Promise<object>}
+   */
+  unblockUser: (userId, blockedId) =>
+    call(`unblocking user ${blockedId}`, () =>
+      api.delete(`/api/users/${userId}/blocks/${blockedId}`),
+    ),
+
+  /**
+   * Fetches every user id in a block relationship with the current user
+   * (either direction), used to mutually anonymize blocked users in teams.
+   * @param {string|number} userId
+   * @returns {Promise<object>}
+   */
+  getBlockRelationships: (userId) =>
+    call(`fetching block relationships for ${userId}`, () =>
+      api.get(`/api/users/${userId}/block-relationships`),
+    ),
+
   changePassword: (currentPassword, newPassword) =>
     call("changing password", () =>
       api.put("/api/auth/change-password", { currentPassword, newPassword }),
