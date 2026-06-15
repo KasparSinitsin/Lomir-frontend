@@ -88,11 +88,11 @@ const pageContent = {
         items: [
           "Account data: username, email address, password hash, email verification status, timestamps, and account settings.",
           "Legal acknowledgement data: timestamps and document versions for accepted Terms of Service, acknowledged Privacy Policy, and the separate confirmation that the user is at least 16 years old.",
-          "Profile data: optional first and last name, bio, avatar, focus areas, badges, approximate location fields, and public/private visibility status.",
+          "Profile data: optional first and last name, bio, avatar, focus areas, badges, optional location details such as postal code, city, district, state, and country, and public/private visibility status.",
           "Team and role data: team names, descriptions, avatars, members, roles, applications, invitations, and team location preferences.",
           "Messages and notifications: direct messages, team messages, mentions, typing/read indicators, system messages, notification records, and message metadata.",
           "Uploads: profile avatars, team avatars, chat images, chat files, and contact form attachments.",
-          "Location data: postal code, city, district, state, country, and coordinates resolved from the location data a user provides. Public search and map results expose rounded approximate coordinates, not exact stored coordinates.",
+          "Location data: postal code, city, district, state, country, and coordinates resolved from the location data a user provides. Lomir does not ask for a street address. Postal code and other location details are used as approximate location information for search, distance-based matching, recommendations, and profile/team/role location display. Depending on visibility settings and feature context, postal code, city, district, state, or country may be visible to other users. Public search and map results expose rounded approximate coordinates, not exact stored coordinates.",
           "Contact data: name, email address, topic, message, and optional attachments submitted through the contact form.",
           "Security and technical data: IP-related request data handled by hosting providers, browser and device metadata in server logs, rate-limit data, CAPTCHA verification data where enabled, JWT authentication tokens, and browser storage needed for the app to work.",
         ],
@@ -108,9 +108,9 @@ const pageContent = {
       {
         title: "6. Purposes and Legal Bases",
         items: [
-          "Account creation, login, profile management, team matching, chat, notifications, and app operation: Art. 6(1)(b) GDPR.",
+          "Account creation, login, profile management, optional location-based matching, team matching, chat, notifications, and app operation: Art. 6(1)(b) GDPR.",
           "Legal acknowledgements, age confirmation, and documentation of accepted legal documents: Art. 6(1)(c) and Art. 6(1)(f) GDPR.",
-          "Public profile visibility and optional profile content that users choose to publish: Art. 6(1)(a) GDPR and, where relevant, Art. 6(1)(b) GDPR.",
+          "Public profile visibility and optional profile content that users choose to publish, including optional approximate location details: Art. 6(1)(a) GDPR and, where relevant, Art. 6(1)(b) GDPR.",
           "Security, abuse prevention, rate limiting, CAPTCHA checks, fraud prevention, debugging, and service reliability: Art. 6(1)(f) GDPR.",
           "Contact requests and support communication: Art. 6(1)(b) GDPR where the request relates to an account or potential account, otherwise Art. 6(1)(f) GDPR.",
           "Legal compliance and preservation of claims where required: Art. 6(1)(c) and Art. 6(1)(f) GDPR.",
@@ -127,13 +127,14 @@ const pageContent = {
         paragraphs: [
           "There is no statutory requirement to create a Lomir account. Account credentials, legal acknowledgements, age confirmation, and security-related data are necessary to create and maintain an account and to enter into or perform the user agreement. Without this data, Lomir cannot provide an account.",
           "Profile details, avatars, focus areas, teams, roles, applications, messages, uploads, and location details are generally provided voluntarily, but some of them are necessary for the respective feature. If optional data is not provided, the related feature may be unavailable or less useful.",
+          "Location fields such as postal code, city, and country are optional. Users may leave them empty or remove them later in their profile settings. Without location data, nearby search, distance-based matching, and location-based recommendations may be less precise or unavailable.",
         ],
       },
       {
         title: "9. Public Visibility",
         paragraphs: [
           "Lomir is designed so that users do not unintentionally publish profile details. New accounts remain private after email verification unless the user changes the setting.",
-          "If a profile is public, other users may see profile details such as username, name, bio, avatar, focus areas, badges, and approximate location. If a profile is private, it is not shown in public search or public profile views. Team members and conversation participants may still see information needed for team collaboration, messaging, applications, invitations, badge context, and safety-related system messages.",
+          "If a profile is public, other users may see profile details such as username, name, bio, avatar, focus areas, badges, and approximate location details added by the user. Approximate location details may include postal code, city, district, state, or country. If a profile is private, it is not shown in public search or public profile views. Team members and conversation participants may still see information needed for team collaboration, messaging, applications, invitations, badge context, and safety-related system messages.",
           "Users can change profile visibility in settings. Turning a profile private affects future public visibility, but it may not remove information already seen by other users or contained in team/chat context.",
         ],
       },
@@ -142,14 +143,17 @@ const pageContent = {
         items: [
           "Other Lomir users may receive personal data where the app feature requires it, for example public profile views, search results, team pages, applications, invitations, messages, badge context, and notifications.",
           "Team members, team owners, invitees, applicants, and conversation participants may receive information needed for the relevant collaboration context.",
-          "Technical service providers process data on Lomir's behalf or as independent providers where needed for hosting, database storage, uploads, email, CAPTCHA, geocoding, maps, and service delivery.",
+          "The Lomir project operators may access personal data where this is necessary to operate the app, provide support, investigate abuse, debug errors, maintain security, or comply with legal obligations.",
+          "Hosting, database, upload, email, CAPTCHA, geocoding, map, and infrastructure providers process personal data where needed to provide the app. Depending on the provider and context, they may act as processors on Lomir's behalf or as independent providers under their own privacy terms.",
+          "Email providers may process email addresses, message content, email metadata, verification emails, password reset emails, and contact form messages including attachments where email delivery or support communication requires this.",
+          "Geocoding and map providers may receive location queries, map requests, IP addresses, browser or device data, and request metadata when location lookup or map views are used.",
           "Authorities, courts, legal advisers, or other third parties may receive data where disclosure is legally required or necessary to protect rights, security, users, or the service.",
         ],
       },
       {
         title: "11. Matching, Recommendations, and Automated Decisions",
         paragraphs: [
-          "Lomir calculates match and overlap scores from tags, badges, and distance information to sort or recommend people, teams, and roles. The logic compares shared focus areas, badge context, role information, and approximate distance where available.",
+          "Lomir calculates match and overlap scores from tags, badges, and distance information to sort or recommend people, teams, and roles. The logic compares shared focus areas, badge context, role information, and approximate distance where available. Postal code, city, district, state, country, and derived coordinates may be used to calculate approximate distances.",
           "These scores are assistance features only. Lomir does not use automated decision-making that produces legal effects or similarly significant effects within the meaning of Art. 22 GDPR.",
         ],
       },
@@ -164,19 +168,21 @@ const pageContent = {
       {
         title: "13. Third-Party Services",
         items: [
-          "Vercel hosts the frontend and may process technical access logs.",
-          "Render hosts the backend and may process technical access logs.",
-          "Neon provides the PostgreSQL database used to store app data.",
-          "ImageKit stores and delivers uploaded avatars, team avatars, chat images, and chat files.",
-          "Gmail/Google SMTP is used through Nodemailer to send account verification emails, password reset emails, and contact form messages.",
-          "Cloudflare Turnstile may be used for CAPTCHA checks on registration and contact forms.",
-          "OpenStreetMap/Nominatim is used to resolve user-provided location information. OpenStreetMap map tiles may be loaded when the map view is opened.",
+          "Vercel hosts and delivers the frontend. Vercel may process IP addresses, browser and device data, request metadata, deployment data, and technical logs needed to deliver and secure the frontend.",
+          "Render hosts the backend API. Render may process IP addresses, browser and device data, API request metadata, server logs, error information, and data transmitted to or from the backend.",
+          "Neon, now part of Databricks, provides the PostgreSQL database. App data stored in the database may include account data, profile data, team and role data, messages, notifications, legal acknowledgement records, location data, and related metadata.",
+          "ImageKit stores, transforms, optimizes, and delivers uploaded media and files, including profile avatars, team avatars, chat images, chat files, and related delivery logs or metadata.",
+          "Gmail/Google SMTP is used through Nodemailer to send account verification emails, password reset emails, and contact form messages. Google may process email addresses, email content, email metadata, and contact form attachments as part of email delivery and mailbox operation.",
+          "Cloudflare Turnstile may be used for CAPTCHA checks on registration and contact forms. Cloudflare may process technical data such as IP address, browser and device information, challenge data, and verification tokens to detect abuse and confirm that a request is likely made by a human.",
+          "OpenStreetMap/Nominatim is used to resolve user-provided location information such as postal code, city, district, state, or country. OpenStreetMap map tiles may be loaded when the map view is opened. OpenStreetMap-related services may receive location queries, IP addresses, browser and device data, and request metadata.",
         ],
       },
       {
         title: "14. International Transfers",
         paragraphs: [
-          "Some providers may process data outside the European Economic Area, especially where infrastructure, support, or security services are provided internationally. Where this happens, Lomir relies on the provider's available safeguards, such as adequacy decisions, EU Standard Contractual Clauses, or other safeguards permitted by Chapter V GDPR, where required.",
+          "Some providers are established outside the European Economic Area or may process data in the United States, the United Kingdom, India, or other countries, especially where infrastructure, support, security, email delivery, content delivery, or global network services are provided internationally.",
+          "Where personal data is transferred to a country without an EU adequacy decision, Lomir relies on the available transfer mechanisms and safeguards offered by the relevant provider where required. These may include the EU-U.S. Data Privacy Framework, the UK Extension to the EU-U.S. Data Privacy Framework, the Swiss-U.S. Data Privacy Framework, EU Standard Contractual Clauses, data processing agreements, and supplementary technical and organizational measures.",
+          "Vercel, Render, Databricks/Neon, Cloudflare, and ImageKit publish information about data processing, transfer safeguards, or subprocessors in their legal or trust documentation. Google/Gmail and OpenStreetMap-related services process data under their own privacy terms where they act as independent providers or public infrastructure operators.",
           <>Users may contact Lomir at {mailLink} to ask for more information about the safeguards relevant to a specific provider.</>,
         ],
       },
@@ -262,6 +268,7 @@ const pageContent = {
         title: "5. Profiles, Teams, and Visibility",
         paragraphs: [
           "Your profile is private by default. You decide whether to make it public. Public profile content may be visible to other Lomir users and may appear in search, profile, card, list, and map views.",
+          "If you add location details, they may be used for matching and recommendations. Depending on your visibility settings and feature context, approximate location details such as postal code, city, district, state, or country may be visible to other users.",
           "Team and role visibility depends on team settings and membership context. Even when your profile is private, information needed for teams, applications, invitations, messages, and notifications may be shown to the relevant participants.",
         ],
       },

@@ -26,6 +26,7 @@ import TurnstileWidget from "../common/TurnstileWidget";
 import {
   AVATAR_UPLOAD_NOTICE,
   PROFILE_VISIBILITY_NOTICE,
+  USER_LOCATION_PRIVACY_NOTICE,
 } from "../../constants/privacyText";
 
 const RegisterForm = () => {
@@ -1171,6 +1172,7 @@ const RegisterForm = () => {
                 showRemoteToggle={false}
                 showDivider={true}
                 dividerText="Location"
+                privacyNotice={USER_LOCATION_PRIVACY_NOTICE}
               />
             </section>
 
