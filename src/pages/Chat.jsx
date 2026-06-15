@@ -1527,23 +1527,43 @@ const Chat = () => {
           }
 
           if (type === "direct") {
-            try {
-              await messageService.startConversation(
-                parseInt(conversationId),
-                "",
-              );
-
-              conversationDetails = await messageService.getConversationById(
-                conversationId,
-                type,
-              );
-              setActiveConversation(conversationDetails.data);
-
-              const conversationsResponse =
-                await messageService.getConversations();
-              setConversations(conversationsResponse.data || []);
-            } catch (createError) {
-              console.error("Failed to create conversation:", createError);
+            // No messages exist yet — this is a new/virtual conversation.
+            // Build activeConversation from what we already know so the chat
+            // panel opens and the user can type the first message. The
+            // conversation row is created in the backend when they send it.
+            const knownConv = conversationsRef.current.find(
+              (c) =>
+                String(c.id) === String(conversationId) &&
+                c.type === "direct",
+            );
+            if (knownConv?.partner) {
+              setActiveConversation({
+                id: parseInt(conversationId),
+                type: "direct",
+                partner: knownConv.partner,
+                isVirtual: true,
+              });
+            } else {
+              try {
+                const userResponse = await userService.getUserById(conversationId);
+                const userData = userResponse.data;
+                setActiveConversation({
+                  id: parseInt(conversationId),
+                  type: "direct",
+                  partner: {
+                    id: userData.id,
+                    username: userData.username,
+                    firstName: userData.firstName || userData.first_name,
+                    lastName: userData.lastName || userData.last_name,
+                    avatarUrl: userData.avatarUrl || userData.avatar_url,
+                    isSynthetic: userData.isSynthetic ?? userData.is_synthetic ?? undefined,
+                    is_synthetic: userData.is_synthetic ?? userData.isSynthetic ?? undefined,
+                  },
+                  isVirtual: true,
+                });
+              } catch (userError) {
+                console.error("Failed to load partner for new conversation:", userError);
+              }
             }
           }
         }
@@ -2884,8 +2904,14 @@ const Chat = () => {
   };
 
   const selectConversation = (id) => {
-    // Deselect only when the chat panel is currently visible for this conversation
-    if (showChatView && String(id) === String(conversationId)) {
+    // Deselect only when the chat panel is actually open for this conversation.
+    // If activeConversation is null and not loading, the panel isn't visible yet
+    // (e.g. new virtual conversation) — re-open instead of deselecting.
+    if (
+      showChatView &&
+      String(id) === String(conversationId) &&
+      (activeConversation || loadingMessages)
+    ) {
       setShowChatView(false);
       navigate("/chat");
       return;
