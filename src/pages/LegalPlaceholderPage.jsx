@@ -1,31 +1,420 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import Card from "../components/common/Card";
-import {
-  BROWSER_STORAGE_NOTICE,
-  LEGAL_PLACEHOLDER_NOTICE,
-} from "../constants/privacyText";
+
+const CONTACT_EMAIL = "lomirapp@gmail.com";
+const LAST_UPDATED = "June 15, 2026";
+
+const mailLink = (
+  <a href={`mailto:${CONTACT_EMAIL}`} className="link link-primary">
+    {CONTACT_EMAIL}
+  </a>
+);
+
+const contactLink = (
+  <Link to="/contact" className="link link-primary">
+    contact page
+  </Link>
+);
+
+const privacyLink = (
+  <Link to="/privacy" className="link link-primary">
+    Privacy Policy
+  </Link>
+);
 
 const pageContent = {
   about: {
     title: "About Lomir",
+    updated: LAST_UPDATED,
     intro:
-      "Lomir is a free, non-commercial, open-source portfolio and learning project by two private developers.",
+      "Lomir is a free team-matching app for people who want to find collaborators, form teams, and exchange messages around shared interests, focus areas, badges, roles, and location preferences.",
+    sections: [
+      {
+        title: "Project Status",
+        paragraphs: [
+          "Lomir is currently operated as a non-commercial portfolio and learning project. The app is designed with privacy-by-default settings: new profiles stay private until users actively make them public.",
+          "The app may evolve as the project develops. If material features change, the legal and privacy information should be reviewed and updated before public rollout.",
+        ],
+      },
+      {
+        title: "Contact",
+        paragraphs: [
+          <>Questions about Lomir can be sent through the {contactLink} or by email to {mailLink}.</>,
+        ],
+      },
+    ],
   },
   privacy: {
     title: "Privacy Policy",
-    intro: "Full Privacy Policy coming soon.",
-    showStorage: true,
+    updated: LAST_UPDATED,
+    intro:
+      "This Privacy Policy explains how Lomir processes personal data. It is written for an app operated from Germany and aligned with the GDPR, the German Federal Data Protection Act, and German rules on technically necessary browser storage under the TDDDG.",
+    sections: [
+      {
+        title: "1. Controller",
+        paragraphs: [
+          "The controller responsible for Lomir is:",
+          <>
+            Julia Baur
+            <br />
+            Walpodenstraße 16
+            <br />
+            55116 Mainz
+            <br />
+            Germany
+            <br />
+            Email: {mailLink}
+          </>,
+          "No data protection officer has been appointed because this is currently not legally required for the project.",
+        ],
+      },
+      {
+        title: "2. What Lomir Is",
+        paragraphs: [
+          "Lomir helps users find people, teams, and open roles based on profile information, focus areas, badges, location preferences, and team membership. It also provides direct and team chat, file sharing, notifications, contact forms, and account management.",
+          "Profiles are private by default. Public profile information is only shown in public search and profile views when a user actively changes their profile status to public.",
+        ],
+      },
+      {
+        title: "3. Minimum Age",
+        paragraphs: [
+          "Lomir is not intended for users under 16. During registration, users must separately confirm that they are at least 16 years old.",
+          <>Lomir does not knowingly collect personal data from users under 16. If you believe that a person under 16 has created an account, please contact us at {mailLink} so we can review and delete the account where appropriate.</>,
+        ],
+      },
+      {
+        title: "4. Data We Process",
+        items: [
+          "Account data: username, email address, password hash, email verification status, timestamps, and account settings.",
+          "Legal acknowledgement data: timestamps and document versions for accepted Terms of Service, acknowledged Privacy Policy, and the separate confirmation that the user is at least 16 years old.",
+          "Profile data: optional first and last name, bio, avatar, focus areas, badges, approximate location fields, and public/private visibility status.",
+          "Team and role data: team names, descriptions, avatars, members, roles, applications, invitations, and team location preferences.",
+          "Messages and notifications: direct messages, team messages, mentions, typing/read indicators, system messages, notification records, and message metadata.",
+          "Uploads: profile avatars, team avatars, chat images, chat files, and contact form attachments.",
+          "Location data: postal code, city, district, state, country, and coordinates resolved from the location data a user provides. Public search and map results expose rounded approximate coordinates, not exact stored coordinates.",
+          "Contact data: name, email address, topic, message, and optional attachments submitted through the contact form.",
+          "Security and technical data: IP-related request data handled by hosting providers, browser and device metadata in server logs, rate-limit data, CAPTCHA verification data where enabled, JWT authentication tokens, and browser storage needed for the app to work.",
+        ],
+      },
+      {
+        title: "5. Sources of Data",
+        paragraphs: [
+          "Most personal data processed by Lomir is provided directly by the user, for example during registration, profile editing, team creation, messaging, applications, invitations, uploads, and contact requests.",
+          "Some data may be generated by the app or provided by other users in the course of collaboration, for example team membership records, invitations, applications, badge awards, messages, mentions, notifications, ownership transfers, and system messages.",
+          "Location details may be derived from postal code, city, district, state, or country information that a user provides, using OpenStreetMap/Nominatim.",
+        ],
+      },
+      {
+        title: "6. Purposes and Legal Bases",
+        items: [
+          "Account creation, login, profile management, team matching, chat, notifications, and app operation: Art. 6(1)(b) GDPR.",
+          "Legal acknowledgements, age confirmation, and documentation of accepted legal documents: Art. 6(1)(c) and Art. 6(1)(f) GDPR.",
+          "Public profile visibility and optional profile content that users choose to publish: Art. 6(1)(a) GDPR and, where relevant, Art. 6(1)(b) GDPR.",
+          "Security, abuse prevention, rate limiting, CAPTCHA checks, fraud prevention, debugging, and service reliability: Art. 6(1)(f) GDPR.",
+          "Contact requests and support communication: Art. 6(1)(b) GDPR where the request relates to an account or potential account, otherwise Art. 6(1)(f) GDPR.",
+          "Legal compliance and preservation of claims where required: Art. 6(1)(c) and Art. 6(1)(f) GDPR.",
+        ],
+      },
+      {
+        title: "7. Legitimate Interests",
+        paragraphs: [
+          "Where Lomir relies on Art. 6(1)(f) GDPR, the legitimate interests are operating a secure and reliable app, preventing abuse and spam, protecting users and the service, debugging errors, enforcing rules, preserving evidence where needed, responding to support requests, and defending or asserting legal claims.",
+        ],
+      },
+      {
+        title: "8. Required and Optional Data",
+        paragraphs: [
+          "There is no statutory requirement to create a Lomir account. Account credentials, legal acknowledgements, age confirmation, and security-related data are necessary to create and maintain an account and to enter into or perform the user agreement. Without this data, Lomir cannot provide an account.",
+          "Profile details, avatars, focus areas, teams, roles, applications, messages, uploads, and location details are generally provided voluntarily, but some of them are necessary for the respective feature. If optional data is not provided, the related feature may be unavailable or less useful.",
+        ],
+      },
+      {
+        title: "9. Public Visibility",
+        paragraphs: [
+          "Lomir is designed so that users do not unintentionally publish profile details. New accounts remain private after email verification unless the user changes the setting.",
+          "If a profile is public, other users may see profile details such as username, name, bio, avatar, focus areas, badges, and approximate location. If a profile is private, it is not shown in public search or public profile views. Team members and conversation participants may still see information needed for team collaboration, messaging, applications, invitations, badge context, and safety-related system messages.",
+          "Users can change profile visibility in settings. Turning a profile private affects future public visibility, but it may not remove information already seen by other users or contained in team/chat context.",
+        ],
+      },
+      {
+        title: "10. Recipients and Disclosure",
+        items: [
+          "Other Lomir users may receive personal data where the app feature requires it, for example public profile views, search results, team pages, applications, invitations, messages, badge context, and notifications.",
+          "Team members, team owners, invitees, applicants, and conversation participants may receive information needed for the relevant collaboration context.",
+          "Technical service providers process data on Lomir's behalf or as independent providers where needed for hosting, database storage, uploads, email, CAPTCHA, geocoding, maps, and service delivery.",
+          "Authorities, courts, legal advisers, or other third parties may receive data where disclosure is legally required or necessary to protect rights, security, users, or the service.",
+        ],
+      },
+      {
+        title: "11. Matching, Recommendations, and Automated Decisions",
+        paragraphs: [
+          "Lomir calculates match and overlap scores from tags, badges, and distance information to sort or recommend people, teams, and roles. The logic compares shared focus areas, badge context, role information, and approximate distance where available.",
+          "These scores are assistance features only. Lomir does not use automated decision-making that produces legal effects or similarly significant effects within the meaning of Art. 22 GDPR.",
+        ],
+      },
+      {
+        title: "12. Browser Storage, Cookies, and Similar Technologies",
+        paragraphs: [
+          "Lomir currently uses technically necessary browser storage such as localStorage and sessionStorage. For example, the app stores the login token in localStorage and uses sessionStorage for in-app notification state.",
+          "This storage is necessary to provide authentication, API access, real-time chat, and notification features. Lomir does not currently use advertising cookies, marketing trackers, or third-party analytics tools.",
+          "Where Cloudflare Turnstile is enabled for registration or the contact form, Cloudflare may process technical data to verify that a request is made by a human. This is used for abuse prevention.",
+        ],
+      },
+      {
+        title: "13. Third-Party Services",
+        items: [
+          "Vercel hosts the frontend and may process technical access logs.",
+          "Render hosts the backend and may process technical access logs.",
+          "Neon provides the PostgreSQL database used to store app data.",
+          "ImageKit stores and delivers uploaded avatars, team avatars, chat images, and chat files.",
+          "Gmail/Google SMTP is used through Nodemailer to send account verification emails, password reset emails, and contact form messages.",
+          "Cloudflare Turnstile may be used for CAPTCHA checks on registration and contact forms.",
+          "OpenStreetMap/Nominatim is used to resolve user-provided location information. OpenStreetMap map tiles may be loaded when the map view is opened.",
+        ],
+      },
+      {
+        title: "14. International Transfers",
+        paragraphs: [
+          "Some providers may process data outside the European Economic Area, especially where infrastructure, support, or security services are provided internationally. Where this happens, Lomir relies on the provider's available safeguards, such as adequacy decisions, EU Standard Contractual Clauses, or other safeguards permitted by Chapter V GDPR, where required.",
+          <>Users may contact Lomir at {mailLink} to ask for more information about the safeguards relevant to a specific provider.</>,
+        ],
+      },
+      {
+        title: "15. Storage Periods",
+        items: [
+          "Account and profile data are stored while the account exists and are deleted or anonymized according to the account deletion workflow.",
+          "Legal acknowledgement records are stored while the account exists and may be retained where necessary to document compliance or defend legal claims.",
+          "Unverified accounts are scheduled for deletion after the verification link expires, with cleanup running periodically.",
+          "Password reset tokens expire after one hour and are cleared by scheduled cleanup.",
+          "Chat file and image uploads expire after 60 days and are removed by scheduled cleanup where possible. Message records may remain with deleted file references removed.",
+          "Avatars and team avatars are stored until replaced, removed, or deleted with the relevant account or team where technically possible.",
+          "Contact form messages and related emails are kept as long as needed to answer the request and, where necessary, to document or defend claims.",
+          "Technical logs are kept only as long as necessary for security, troubleshooting, and hosting operations, subject to the relevant provider settings.",
+        ],
+      },
+      {
+        title: "16. Account Deletion",
+        paragraphs: [
+          "Users can delete their account from the app. Deletion is designed to remove the user row and direct messages involving the user. Some team context may be preserved in anonymized form, for example as 'Former Lomir User', so that remaining teams, badge histories, ownership transfers, and role status remain understandable.",
+          "Uploaded avatars are deleted from ImageKit on a best-effort basis after successful account deletion.",
+        ],
+      },
+      {
+        title: "17. Your Rights",
+        paragraphs: [
+          <>You may contact Lomir at {mailLink} to request access, rectification, erasure, restriction of processing, data portability, objection to processing based on legitimate interests, and withdrawal of consent for the future.</>,
+          "Withdrawal of consent does not affect the lawfulness of processing based on consent before withdrawal. For example, users can turn a public profile private for the future, but this does not undo visibility that already occurred before the change.",
+          "You also have the right to lodge a complaint with a data protection supervisory authority. In Rheinland-Pfalz, this is the Landesbeauftragte für den Datenschutz und die Informationsfreiheit Rheinland-Pfalz. You may also contact another competent supervisory authority.",
+        ],
+      },
+      {
+        title: "18. Sensitive Data",
+        paragraphs: [
+          "Please do not enter special categories of personal data, confidential information, or third-party secrets into your profile, teams, messages, uploads, or contact form unless it is strictly necessary and you have the right to share it.",
+        ],
+      },
+      {
+        title: "19. Updates and Further Processing",
+        paragraphs: [
+          "This Privacy Policy may be updated when Lomir changes, when providers change, or when legal requirements change. Material updates should be published before they apply to new processing activities.",
+          "If Lomir intends to process personal data for a new purpose that is not compatible with the purpose for which the data was collected, users will be informed before that further processing where required by law.",
+        ],
+      },
+    ],
   },
   terms: {
     title: "Terms of Service",
-    intro: "Full Terms of Service coming soon.",
+    updated: LAST_UPDATED,
+    intro:
+      "These Terms of Service govern the use of Lomir. By creating an account or using the app, you agree to these terms.",
+    sections: [
+      {
+        title: "1. Provider",
+        paragraphs: [
+          <>Lomir is provided by Julia Baur, Walpodenstraße 16, 55116 Mainz, Germany. Contact: {mailLink}.</>,
+        ],
+      },
+      {
+        title: "2. Service",
+        paragraphs: [
+          "Lomir is a free, non-commercial team-matching and collaboration app. Users can create profiles, find teams and open roles, manage teams, exchange messages, upload avatars or chat files, and contact the Lomir team.",
+          "The app is provided as a portfolio and learning project. It may change, be interrupted, or be discontinued, especially while it is still under active development.",
+        ],
+      },
+      {
+        title: "3. Eligibility",
+        paragraphs: [
+          "You may create an account and use Lomir only if you are at least 16 years old. You must provide accurate account information and keep your login credentials secure.",
+        ],
+      },
+      {
+        title: "4. Account Rules",
+        items: [
+          "Do not create accounts for someone else without permission.",
+          "Do not share your password or authentication token.",
+          "Do not use Lomir to harass, deceive, spam, threaten, or unlawfully discriminate against others.",
+          "Do not upload malware, illegal content, confidential third-party information, or content that infringes intellectual property rights.",
+          "Do not attempt to bypass security, scrape private data, or access accounts, teams, messages, or API endpoints without authorization.",
+        ],
+      },
+      {
+        title: "5. Profiles, Teams, and Visibility",
+        paragraphs: [
+          "Your profile is private by default. You decide whether to make it public. Public profile content may be visible to other Lomir users and may appear in search, profile, card, list, and map views.",
+          "Team and role visibility depends on team settings and membership context. Even when your profile is private, information needed for teams, applications, invitations, messages, and notifications may be shown to the relevant participants.",
+        ],
+      },
+      {
+        title: "6. User Content",
+        paragraphs: [
+          "You keep ownership of content you submit to Lomir. By submitting content, you grant Lomir a limited, non-exclusive right to store, display, transmit, and process that content as necessary to operate the app.",
+          "You are responsible for the content you provide. Please do not include sensitive personal data, confidential information, or data about other people unless you have a lawful basis and their permission where required.",
+        ],
+      },
+      {
+        title: "7. Messages and Uploads",
+        paragraphs: [
+          "Messages are visible to the relevant direct-message participant or team members. Chat file and image uploads are intended for temporary collaboration and currently expire after 60 days.",
+          "Contact form attachments are sent by email to the Lomir contact inbox. Do not send sensitive or confidential material through the contact form unless it is necessary for your request.",
+        ],
+      },
+      {
+        title: "8. Account Deletion",
+        paragraphs: [
+          "You may delete your account in the app. Account deletion is intended to be permanent. Some team and badge context may remain in anonymized or system-message form so that other users' team history and collaboration context stay understandable.",
+        ],
+      },
+      {
+        title: "9. Availability and Changes",
+        paragraphs: [
+          "Lomir is provided free of charge and without a promise of uninterrupted availability. Features may be changed, limited, or removed. Maintenance, hosting limits, provider outages, security incidents, or project changes may affect the app.",
+        ],
+      },
+      {
+        title: "10. Suspension and Removal",
+        paragraphs: [
+          "Accounts or content may be restricted, removed, or deleted if they violate these terms, harm other users, create legal risk, threaten the security of the app, or are required to be removed by law.",
+        ],
+      },
+      {
+        title: "11. Liability",
+        paragraphs: [
+          "Nothing in these terms limits liability for intent, gross negligence, injury to life, body, or health, or any other liability that cannot be limited under applicable law.",
+          "For free use of Lomir, liability for ordinary negligence is limited to breaches of essential contractual duties and to typical, foreseeable damage, unless mandatory law provides otherwise.",
+        ],
+      },
+      {
+        title: "12. Privacy",
+        paragraphs: [
+          <>Information about how personal data is processed is available in the {privacyLink}.</>,
+        ],
+      },
+      {
+        title: "13. Governing Law",
+        paragraphs: [
+          "German law applies, subject to any mandatory consumer protection rules that apply in the country where a user has their habitual residence.",
+        ],
+      },
+      {
+        title: "14. Contact",
+        paragraphs: [
+          <>Questions about these terms can be sent through the {contactLink} or by email to {mailLink}.</>,
+        ],
+      },
+    ],
   },
   legalNotice: {
-    title: "Legal Notice",
-    intro: "Full Legal Notice coming soon.",
+    title: "Legal Notice / Impressum",
+    updated: LAST_UPDATED,
+    intro:
+      "Information according to Section 5 of the German Digital Services Act (Digitale-Dienste-Gesetz, DDG).",
+    sections: [
+      {
+        title: "Provider",
+        paragraphs: [
+          <>
+            Julia Baur
+            <br />
+            Walpodenstraße 16
+            <br />
+            55116 Mainz
+            <br />
+            Germany
+          </>,
+        ],
+      },
+      {
+        title: "Contact",
+        paragraphs: [<>Email: {mailLink}</>],
+      },
+      {
+        title: "Responsible for Content",
+        paragraphs: [
+          <>
+            Julia Baur
+            <br />
+            Walpodenstraße 16
+            <br />
+            55116 Mainz
+            <br />
+            Germany
+          </>,
+        ],
+      },
+      {
+        title: "Nature of the Project",
+        paragraphs: [
+          "Lomir is currently operated as a free, non-commercial portfolio and learning project. If the legal or commercial status of the app changes, this notice should be reviewed and updated.",
+        ],
+      },
+      {
+        title: "Consumer Dispute Resolution",
+        paragraphs: [
+          "We are not willing or obliged to participate in dispute resolution proceedings before a consumer arbitration board.",
+        ],
+      },
+      {
+        title: "Liability for Content",
+        paragraphs: [
+          "We make reasonable efforts to keep our own content accurate and up to date. User-generated content is created by users. If you notice unlawful content or rights violations, please contact us so we can review it.",
+        ],
+      },
+      {
+        title: "External Links",
+        paragraphs: [
+          "Lomir may contain links to external websites or services. We have no control over their content and are not responsible for third-party websites. External links are reviewed when added; if we become aware of unlawful content, we will remove the relevant link where possible.",
+        ],
+      },
+      {
+        title: "Copyright",
+        paragraphs: [
+          "Content and assets created for Lomir are protected by applicable copyright law. Content submitted by users remains the responsibility of the respective user. Any use outside the limits of applicable law requires permission from the relevant rights holder.",
+        ],
+      },
+    ],
   },
 };
+
+const LegalSection = ({ section }) => (
+  <section className="space-y-3 border-t border-base-300/70 pt-5 first:border-t-0 first:pt-0">
+    <h2 className="text-xl font-medium text-base-content">{section.title}</h2>
+
+    {section.paragraphs?.map((paragraph, index) => (
+      <p key={index} className="text-sm leading-relaxed text-base-content/75">
+        {paragraph}
+      </p>
+    ))}
+
+    {section.items && (
+      <ul className="list-disc space-y-2 pl-5 text-sm leading-relaxed text-base-content/75">
+        {section.items.map((item, index) => (
+          <li key={index}>{item}</li>
+        ))}
+      </ul>
+    )}
+  </section>
+);
 
 const LegalPlaceholderPage = ({ type }) => {
   const content = pageContent[type] ?? pageContent.about;
@@ -39,28 +428,18 @@ const LegalPlaceholderPage = ({ type }) => {
               {content.title}
             </h1>
             <p className="mt-3 text-base-content/75">{content.intro}</p>
+            {content.updated && (
+              <p className="mt-2 text-sm text-base-content/55">
+                Last updated: {content.updated}
+              </p>
+            )}
           </div>
 
-          <p className="text-base-content/75">{LEGAL_PLACEHOLDER_NOTICE}</p>
-
-          {content.showStorage && (
-            <section className="rounded-lg border border-base-300 bg-base-200/40 p-4">
-              <h2 className="text-lg font-medium text-base-content">
-                Browser Storage
-              </h2>
-              <p className="mt-2 text-sm text-base-content/75">
-                {BROWSER_STORAGE_NOTICE}
-              </p>
-            </section>
-          )}
-
-          <p className="text-sm text-base-content/60">
-            For questions while the final documents are being prepared, please{" "}
-            <Link to="/contact" className="link link-primary">
-              contact the Lomir team
-            </Link>
-            .
-          </p>
+          <div className="space-y-6">
+            {content.sections?.map((section) => (
+              <LegalSection key={section.title} section={section} />
+            ))}
+          </div>
         </div>
       </Card>
     </div>

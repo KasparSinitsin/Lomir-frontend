@@ -46,6 +46,7 @@ const RegisterForm = () => {
     country: "",
     isPublic: false,
     acceptedLegal: false,
+    confirmedAge16: false,
     profile_image: null,
     selectedTags: [],
   });
@@ -138,7 +139,12 @@ const RegisterForm = () => {
 
     if (!formData.acceptedLegal) {
       newErrors.acceptedLegal =
-        "Please agree to the Terms of Service and Privacy Policy to create an account.";
+        "Please agree to the Terms of Service and acknowledge the Privacy Policy to create an account.";
+    }
+
+    if (!formData.confirmedAge16) {
+      newErrors.confirmedAge16 =
+        "Please confirm that you are at least 16 years old to create an account.";
     }
 
     return newErrors;
@@ -594,36 +600,78 @@ const RegisterForm = () => {
         const availabilityChecks = [];
 
         if (!validationErrors.email && trimmedEmail) {
-          availabilityChecks.push(
-            api
-              .post("/api/auth/check-email", {
-                email: trimmedEmail,
-              })
-              .then((emailCheck) => {
-                if (!emailCheck.data.available) {
-                  availabilityErrors.email =
+          const cachedEmailAvailability = lastEmailAvailabilityRef.current;
+
+          if (cachedEmailAvailability.email === trimmedEmail) {
+            if (cachedEmailAvailability.available === false) {
+              availabilityErrors.email =
+                cachedEmailAvailability.message ||
+                "This email address is already registered.";
+            }
+          } else {
+            availabilityChecks.push(
+              api
+                .post("/api/auth/check-email", {
+                  email: trimmedEmail,
+                })
+                .then((emailCheck) => {
+                  const available = Boolean(emailCheck.data.available);
+                  const message =
                     emailCheck.data.message ||
                     "This email address is already registered.";
-                }
-              }),
-          );
+
+                  lastEmailAvailabilityRef.current = {
+                    email: trimmedEmail,
+                    available,
+                    message: available ? "" : message,
+                  };
+
+                  if (!available) {
+                    availabilityErrors.email =
+                      message || "This email address is already registered.";
+                  }
+                }),
+            );
+          }
         }
 
         if (!validationErrors.username && trimmedUsername) {
-          availabilityChecks.push(
-            api
-              .post("/api/auth/check-username", {
-                username: trimmedUsername,
-              })
-              .then((usernameCheck) => {
-                if (!usernameCheck.data.available) {
-                  availabilityErrors.username = [
+          const cachedUsernameAvailability =
+            lastUsernameAvailabilityRef.current;
+
+          if (cachedUsernameAvailability.username === trimmedUsername) {
+            if (cachedUsernameAvailability.available === false) {
+              availabilityErrors.username = [
+                cachedUsernameAvailability.message ||
+                  "This username is already taken.",
+              ];
+            }
+          } else {
+            availabilityChecks.push(
+              api
+                .post("/api/auth/check-username", {
+                  username: trimmedUsername,
+                })
+                .then((usernameCheck) => {
+                  const available = Boolean(usernameCheck.data.available);
+                  const message =
                     usernameCheck.data.message ||
-                      "This username is already taken.",
-                  ];
-                }
-              }),
-          );
+                    "This username is already taken.";
+
+                  lastUsernameAvailabilityRef.current = {
+                    username: trimmedUsername,
+                    available,
+                    message: available ? "" : message,
+                  };
+
+                  if (!available) {
+                    availabilityErrors.username = [
+                      message || "This username is already taken.",
+                    ];
+                  }
+                }),
+            );
+          }
         }
 
         await Promise.all(availabilityChecks);
@@ -664,6 +712,7 @@ const RegisterForm = () => {
         country: formData.country,
         acceptedTerms: true,
         acceptedPrivacy: true,
+        confirmed_age_16: true,
         tags:
           formData.selectedTags.length > 0
             ? formData.selectedTags
@@ -1190,11 +1239,11 @@ const RegisterForm = () => {
                     disabled={isSubmitting}
                   />
                   <span className="label-text leading-relaxed">
-                    I have read and agree to the{" "}
+                    I agree to the{" "}
                     <Link to="/terms" className="link link-primary">
                       Terms of Service
                     </Link>{" "}
-                    and{" "}
+                    and acknowledge the{" "}
                     <Link to="/privacy" className="link link-primary">
                       Privacy Policy
                     </Link>
@@ -1204,6 +1253,29 @@ const RegisterForm = () => {
                 {errors.acceptedLegal && (
                   <p className="text-xs text-error mt-2 px-1">
                     {errors.acceptedLegal}
+                  </p>
+                )}
+              </div>
+
+              <div className="form-control">
+                <label className="label cursor-pointer items-start justify-start gap-3 rounded-lg border border-base-300 bg-base-100/70 p-4">
+                  <input
+                    type="checkbox"
+                    name="confirmedAge16"
+                    checked={formData.confirmedAge16}
+                    onChange={handleChange}
+                    className={`checkbox checkbox-primary mt-0.5 ${
+                      errors.confirmedAge16 ? "checkbox-error" : ""
+                    }`}
+                    disabled={isSubmitting}
+                  />
+                  <span className="label-text leading-relaxed">
+                    I confirm that I am at least 16 years old.
+                  </span>
+                </label>
+                {errors.confirmedAge16 && (
+                  <p className="text-xs text-error mt-2 px-1">
+                    {errors.confirmedAge16}
                   </p>
                 )}
               </div>
