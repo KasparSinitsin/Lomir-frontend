@@ -280,51 +280,60 @@ const pageContent = {
         ],
       },
       {
-        title: "7. Messages and Uploads",
+        title: "7. Reporting Illegal Content and Abuse",
+        paragraphs: [
+          <>If you believe that content, an account, a team, a message, or an upload on Lomir is unlawful, abusive, harassing, spam, malware, infringing, privacy-invasive, or otherwise violates these terms, please report it through the {contactLink} or by email to {mailLink}.</>,
+          "Reports should include enough information to locate and review the issue, such as usernames, team names, message context, links, screenshots, the reason for the report, and a contact email. Please submit reports in good faith.",
+          "Lomir may review reported content or accounts and may restrict, remove, or delete content; suspend or delete accounts; contact affected users; preserve information where needed; or report matters to competent authorities where legally required or necessary to protect users, the app, or third parties.",
+          <>If your content or account is restricted and you believe this was a mistake, you can contact Lomir through the {contactLink} or by email to {mailLink}.</>,
+        ],
+      },
+      {
+        title: "8. Messages and Uploads",
         paragraphs: [
           "Messages are visible to the relevant direct-message participant or team members. Chat file and image uploads are intended for temporary collaboration and currently expire after 60 days.",
           "Contact form attachments are sent by email to the Lomir contact inbox. Do not send sensitive or confidential material through the contact form unless it is necessary for your request.",
         ],
       },
       {
-        title: "8. Account Deletion",
+        title: "9. Account Deletion",
         paragraphs: [
           "You may delete your account in the app. Account deletion is intended to be permanent. Some team and badge context may remain in anonymized or system-message form so that other users' team history and collaboration context stay understandable.",
         ],
       },
       {
-        title: "9. Availability and Changes",
+        title: "10. Availability and Changes",
         paragraphs: [
           "Lomir is provided free of charge and without a promise of uninterrupted availability. Features may be changed, limited, or removed. Maintenance, hosting limits, provider outages, security incidents, or project changes may affect the app.",
         ],
       },
       {
-        title: "10. Suspension and Removal",
+        title: "11. Suspension and Removal",
         paragraphs: [
           "Accounts or content may be restricted, removed, or deleted if they violate these terms, harm other users, create legal risk, threaten the security of the app, or are required to be removed by law.",
         ],
       },
       {
-        title: "11. Liability",
+        title: "12. Liability",
         paragraphs: [
           "Nothing in these terms limits liability for intent, gross negligence, injury to life, body, or health, or any other liability that cannot be limited under applicable law.",
           "For free use of Lomir, liability for ordinary negligence is limited to breaches of essential contractual duties and to typical, foreseeable damage, unless mandatory law provides otherwise.",
         ],
       },
       {
-        title: "12. Privacy",
+        title: "13. Privacy",
         paragraphs: [
           <>Information about how personal data is processed is available in the {privacyLink}.</>,
         ],
       },
       {
-        title: "13. Governing Law",
+        title: "14. Governing Law",
         paragraphs: [
           "German law applies, subject to any mandatory consumer protection rules that apply in the country where a user has their habitual residence.",
         ],
       },
       {
-        title: "14. Contact",
+        title: "15. Contact",
         paragraphs: [
           <>Questions about these terms can be sent through the {contactLink} or by email to {mailLink}.</>,
         ],

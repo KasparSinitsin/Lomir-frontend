@@ -27,10 +27,13 @@ const initialFormValues = {
   message: "",
 };
 
+const REPORT_TOPIC = "Report content or abuse";
+
 const topicOptions = [
   "General question",
   "Account support",
   "Privacy request",
+  REPORT_TOPIC,
   "Feedback",
 ];
 
@@ -227,6 +230,7 @@ const Contact = () => {
 
   const renderContactForm = () => {
     const isSubmitting = status === "submitting";
+    const isReportTopic = formValues.topic === REPORT_TOPIC;
     const emailSubtitle = isAuthenticated
       ? "We will reply by email."
       : "We will reply by email. Create an account for direct in-app messaging with the Lomir team.";
@@ -346,7 +350,16 @@ const Contact = () => {
               </FormGroup>
             </div>
 
-            <FormGroup label="Topic" htmlFor="contact-topic" className="mb-0">
+            <FormGroup
+              label="Topic"
+              htmlFor="contact-topic"
+              helperText={
+                isReportTopic
+                  ? "Use this topic to report illegal content, abuse, harassment, spam, privacy issues, or security concerns."
+                  : ""
+              }
+              className="mb-0"
+            >
               <select
                 id="contact-topic"
                 className="select select-bordered w-full"
@@ -366,6 +379,11 @@ const Contact = () => {
               label="Message"
               htmlFor="contact-message"
               error={errors.message}
+              helperText={
+                isReportTopic
+                  ? "Please include enough detail to find the content or account, such as usernames, team names, message context, links, screenshots, and why you believe it should be reviewed."
+                  : ""
+              }
               required
               className="mb-0"
             >
@@ -557,7 +575,8 @@ const Contact = () => {
           Contact Lomir
         </h1>
         <p className="mx-auto mt-3 max-w-2xl text-base-content/75">
-          Questions, feedback, account help, or privacy requests can all start here.
+          Questions, feedback, account help, privacy requests, or content reports
+          can all start here.
           <br />
           We will get your message to the right place.
         </p>
