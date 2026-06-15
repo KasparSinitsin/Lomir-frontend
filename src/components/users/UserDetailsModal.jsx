@@ -597,30 +597,15 @@ const UserDetailsModal = ({
     setIsEditing(mode === "edit");
   }, [mode]);
 
-  const handleStartChat = async () => {
+  const handleStartChat = () => {
     if (!isAuthenticated) {
       console.warn("Attempted to start chat while not authenticated");
       return;
     }
     if (!userId) return;
 
-    try {
-      // Create conversation with the user and send an empty message to ensure it appears
-      await messageService.startConversation(userId, "");
-
-      // Give a bit more time for the conversation to be created
-      await new Promise((resolve) => setTimeout(resolve, 600));
-
-      // Open chat in new tab with direct message type
-      const chatUrl = `${window.location.origin}/chat/${userId}?type=direct`;
-      window.open(chatUrl, "_blank", "noopener,noreferrer");
-    } catch (error) {
-      console.error("Error starting conversation:", error);
-
-      // Fallback: still open chat page even if API call fails
-      const chatUrl = `${window.location.origin}/chat/${userId}?type=direct`;
-      window.open(chatUrl, "_blank", "noopener,noreferrer");
-    }
+    const chatUrl = `${window.location.origin}/chat/${userId}?type=direct`;
+    window.open(chatUrl, "_blank", "noopener,noreferrer");
   };
 
   const handleInviteToTeam = () => {
