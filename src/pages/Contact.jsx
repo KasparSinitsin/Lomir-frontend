@@ -37,6 +37,131 @@ const topicOptions = [
   "Feedback",
 ];
 
+const ATTACHMENT_MAX_FILES = 3;
+const ATTACHMENT_MAX_MB = 5;
+const ATTACHMENT_TOTAL_MAX_MB = 10;
+const ATTACHMENT_MAX_BYTES = ATTACHMENT_MAX_MB * 1024 * 1024;
+const ATTACHMENT_TOTAL_MAX_BYTES = ATTACHMENT_TOTAL_MAX_MB * 1024 * 1024;
+const ATTACHMENT_ALLOWED_LABEL = "JPG, PNG, WebP, PDF, TXT, CSV";
+const ATTACHMENT_ALLOWED_FILE_TYPES = [
+  {
+    extensions: [".jpg", ".jpeg"],
+    mimeTypes: ["image/jpeg", "image/pjpeg"],
+  },
+  {
+    extensions: [".png"],
+    mimeTypes: ["image/png", "image/x-png"],
+  },
+  {
+    extensions: [".webp"],
+    mimeTypes: ["image/webp"],
+  },
+  {
+    extensions: [".pdf"],
+    mimeTypes: ["application/pdf", "application/x-pdf"],
+  },
+  {
+    extensions: [".txt"],
+    mimeTypes: ["text/plain"],
+  },
+  {
+    extensions: [".csv"],
+    mimeTypes: [
+      "text/csv",
+      "application/csv",
+      "application/vnd.ms-excel",
+      "text/plain",
+    ],
+  },
+];
+
+const ATTACHMENT_ALLOWED_BY_EXTENSION = ATTACHMENT_ALLOWED_FILE_TYPES.reduce(
+  (map, fileType) => {
+    fileType.extensions.forEach((extension) => {
+      map.set(extension, new Set(fileType.mimeTypes));
+    });
+    return map;
+  },
+  new Map(),
+);
+
+const ATTACHMENT_ACCEPT = ATTACHMENT_ALLOWED_FILE_TYPES.flatMap((fileType) => [
+  ...fileType.extensions,
+  ...fileType.mimeTypes,
+]).join(",");
+
+const ATTACHMENT_HELPER_TEXT = `Accepted: ${ATTACHMENT_ALLOWED_LABEL}. Max ${ATTACHMENT_MAX_FILES} files, ${ATTACHMENT_MAX_MB} MB each, ${ATTACHMENT_TOTAL_MAX_MB} MB total.`;
+
+const getFileExtension = (fileName = "") => {
+  const match = fileName.toLowerCase().match(/\.[^.]+$/);
+  return match ? match[0] : "";
+};
+
+const getAttachmentDisplayName = (fileName = "") => {
+  const sanitizedName = fileName
+    .replace(/[\u0000-\u001f\u007f/\\]/g, "")
+    .trim();
+
+  if (!sanitizedName) {
+    return "Selected file";
+  }
+
+  return sanitizedName.length > 80
+    ? `${sanitizedName.slice(0, 77)}...`
+    : sanitizedName;
+};
+
+const hasUnsafeFileName = (fileName = "") => {
+  const trimmedFileName = fileName.trim();
+
+  return (
+    !trimmedFileName ||
+    fileName.length > 120 ||
+    trimmedFileName.startsWith(".") ||
+    /[\u0000-\u001f\u007f/\\]/.test(fileName)
+  );
+};
+
+const isAllowedAttachmentType = (file) => {
+  const extension = getFileExtension(file.name);
+  const allowedMimeTypes = ATTACHMENT_ALLOWED_BY_EXTENSION.get(extension);
+
+  if (!allowedMimeTypes) {
+    return false;
+  }
+
+  const mimeType = (file.type || "").toLowerCase();
+  return !mimeType || allowedMimeTypes.has(mimeType);
+};
+
+const isSameAttachment = (firstFile, secondFile) =>
+  firstFile.name === secondFile.name &&
+  firstFile.size === secondFile.size &&
+  firstFile.lastModified === secondFile.lastModified;
+
+const getTotalAttachmentBytes = (files) =>
+  files.reduce((totalBytes, file) => totalBytes + file.size, 0);
+
+const formatAttachmentSize = (bytes) => {
+  if (bytes >= 1024 * 1024) {
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  }
+
+  return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+};
+
+const formatAttachmentErrors = (messages) => {
+  const uniqueMessages = [...new Set(messages.filter(Boolean))];
+
+  if (uniqueMessages.length <= 2) {
+    return uniqueMessages.join(" ");
+  }
+
+  return `${uniqueMessages.slice(0, 2).join(" ")} ${
+    uniqueMessages.length - 2
+  } more file(s) were skipped.`;
+};
+
 const Contact = () => {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
@@ -50,31 +175,8 @@ const Contact = () => {
   const [turnstileToken, setTurnstileToken] = useState(null);
   const [isEmailFormOpen, setIsEmailFormOpen] = useState(false);
   const [attachments, setAttachments] = useState([]);
-  const ATTACHMENT_MAX_FILES = 5;
   const turnstileRef = useRef(null);
   const fileInputRef = useRef(null);
-
-  const ATTACHMENT_MAX_MB = 25;
-  const ATTACHMENT_MAX_BYTES = ATTACHMENT_MAX_MB * 1024 * 1024;
-  const ATTACHMENT_ALLOWED_TYPES = [
-    // Images (matches chatImage)
-    "image/jpeg",
-    "image/png",
-    "image/gif",
-    "image/webp",
-    // Documents (matches chatFile)
-    "application/pdf",
-    "application/msword",
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    "application/vnd.ms-excel",
-    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    "text/csv",
-    "application/vnd.ms-powerpoint",
-    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-    "text/plain",
-    "application/zip",
-    "application/x-rar-compressed",
-  ];
 
   const canUseInAppContact =
     isAuthenticated && Boolean(LOMIR_CONTACT_USER_ID);
@@ -110,6 +212,11 @@ const Contact = () => {
       nextErrors.message = "Message is required";
     }
 
+    const attachmentError = validateAttachmentsForSubmit(attachments);
+    if (attachmentError) {
+      nextErrors.attachment = attachmentError;
+    }
+
     if (hasTurnstile && !turnstileToken) {
       nextErrors.turnstile = "Please complete the CAPTCHA verification";
     }
@@ -123,34 +230,102 @@ const Contact = () => {
     setTurnstileToken(null);
   };
 
-  const handleFileChange = (event) => {
-    const file = event.target.files?.[0];
-    event.target.value = "";
+  const validateAttachment = (file, currentAttachments) => {
+    if (hasUnsafeFileName(file.name)) {
+      return "File name is not supported. Please rename the file and try again.";
+    }
 
-    if (!file) return;
+    if (!isAllowedAttachmentType(file)) {
+      return `File type not supported. Accepted: ${ATTACHMENT_ALLOWED_LABEL}.`;
+    }
 
-    if (!ATTACHMENT_ALLOWED_TYPES.includes(file.type)) {
-      setErrors((prev) => ({
-        ...prev,
-        attachment: "File type not supported. Accepted: images, PDF, Word, Excel, PowerPoint, TXT, ZIP",
-      }));
-      return;
+    if (file.size <= 0) {
+      return "File is empty and cannot be attached.";
     }
 
     if (file.size > ATTACHMENT_MAX_BYTES) {
-      setErrors((prev) => ({
-        ...prev,
-        attachment: `File must be ${ATTACHMENT_MAX_MB} MB or smaller.`,
-      }));
-      return;
+      return `Each file must be ${ATTACHMENT_MAX_MB} MB or smaller.`;
     }
 
-    setErrors((prev) => {
-      const next = { ...prev };
-      delete next.attachment;
-      return next;
+    if (
+      currentAttachments.some((attachment) =>
+        isSameAttachment(attachment, file),
+      )
+    ) {
+      return "This file is already attached.";
+    }
+
+    const totalBytes = getTotalAttachmentBytes(currentAttachments) + file.size;
+    if (totalBytes > ATTACHMENT_TOTAL_MAX_BYTES) {
+      return `Attachments must be ${ATTACHMENT_TOTAL_MAX_MB} MB total or smaller.`;
+    }
+
+    return "";
+  };
+
+  const validateAttachmentsForSubmit = (files) => {
+    if (files.length > ATTACHMENT_MAX_FILES) {
+      return `You can attach up to ${ATTACHMENT_MAX_FILES} files.`;
+    }
+
+    let checkedAttachments = [];
+
+    for (const file of files) {
+      const error = validateAttachment(file, checkedAttachments);
+      if (error) {
+        return error;
+      }
+
+      checkedAttachments = [...checkedAttachments, file];
+    }
+
+    return "";
+  };
+
+  const handleFileChange = (event) => {
+    const selectedFiles = Array.from(event.target.files || []);
+    event.target.value = "";
+
+    if (selectedFiles.length === 0) return;
+
+    const nextAttachments = [...attachments];
+    const attachmentErrors = [];
+
+    selectedFiles.forEach((file) => {
+      if (nextAttachments.length >= ATTACHMENT_MAX_FILES) {
+        attachmentErrors.push(
+          `You can attach up to ${ATTACHMENT_MAX_FILES} files.`,
+        );
+        return;
+      }
+
+      const attachmentError = validateAttachment(file, nextAttachments);
+      if (attachmentError) {
+        attachmentErrors.push(
+          `${getAttachmentDisplayName(file.name)}: ${attachmentError}`,
+        );
+        return;
+      }
+
+      nextAttachments.push(file);
     });
-    setAttachments((prev) => [...prev, file]);
+
+    if (attachmentErrors.length > 0) {
+      setErrors((prev) => ({
+        ...prev,
+        attachment: formatAttachmentErrors(attachmentErrors),
+      }));
+    } else {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next.attachment;
+        return next;
+      });
+    }
+
+    if (nextAttachments.length !== attachments.length) {
+      setAttachments(nextAttachments);
+    }
   };
 
   const removeAttachment = (index) => {
@@ -390,7 +565,7 @@ const Contact = () => {
               <div className="relative">
                 <textarea
                   id="contact-message"
-                  className={`textarea textarea-bordered min-h-40 w-full resize-y pb-10 ${
+                  className={`textarea textarea-bordered min-h-40 w-full resize-y pb-24 ${
                     errors.message ? "textarea-error" : ""
                   }`}
                   value={formValues.message}
@@ -402,21 +577,33 @@ const Contact = () => {
                   ref={fileInputRef}
                   type="file"
                   className="hidden"
-                  accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx,.csv,.ppt,.pptx,.txt,.zip,.rar"
+                  accept={ATTACHMENT_ACCEPT}
+                  multiple
                   onChange={handleFileChange}
-                  disabled={isSubmitting}
+                  disabled={
+                    isSubmitting || attachments.length >= ATTACHMENT_MAX_FILES
+                  }
                 />
-                {attachments.length < ATTACHMENT_MAX_FILES && (
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={isSubmitting}
-                    className="absolute bottom-2 right-2 btn btn-ghost btn-xs gap-1 px-2 text-base-content/40 hover:text-base-content/70"
+                <div className="pointer-events-none absolute inset-x-3 bottom-2 flex flex-col items-end gap-1 sm:flex-row-reverse sm:items-center sm:gap-3">
+                  {attachments.length < ATTACHMENT_MAX_FILES && (
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isSubmitting}
+                      aria-describedby="contact-attachment-rules"
+                      className="pointer-events-auto btn btn-ghost btn-xs gap-1 px-2 text-base-content/40 hover:text-base-content/70"
+                    >
+                      <Paperclip size={13} />
+                      Attach files
+                    </button>
+                  )}
+                  <p
+                    id="contact-attachment-rules"
+                    className="w-full text-right text-xs leading-[115%] text-[#9ca3af] sm:flex-1 sm:text-left"
                   >
-                    <Paperclip size={13} />
-                    Attach file
-                  </button>
-                )}
+                    {ATTACHMENT_HELPER_TEXT}
+                  </p>
+                </div>
               </div>
             </FormGroup>
 
@@ -429,10 +616,10 @@ const Contact = () => {
                   >
                     <Paperclip size={14} className="shrink-0 text-base-content/60" />
                     <span className="min-w-0 truncate text-base-content/80">
-                      {file.name}
+                      {getAttachmentDisplayName(file.name)}
                     </span>
                     <span className="shrink-0 text-base-content/50">
-                      ({(file.size / 1024).toFixed(0)} KB)
+                      ({formatAttachmentSize(file.size)})
                     </span>
                     <button
                       type="button"
@@ -451,28 +638,8 @@ const Contact = () => {
               </div>
             )}
 
-            <div className="pt-3 flex flex-col gap-5">
-              {hasTurnstile && (
-                <div className="form-control w-full sm:w-auto sm:items-end">
-                  <div className="flex justify-center sm:justify-end">
-                    <TurnstileWidget
-                      ref={turnstileRef}
-                      onVerify={handleTurnstileVerify}
-                      onExpire={() => setTurnstileToken(null)}
-                      onError={() => setTurnstileToken(null)}
-                    />
-                  </div>
-                  {errors.turnstile && (
-                    <label className="label justify-center sm:justify-end">
-                      <span className="label-text-alt text-error">
-                        {errors.turnstile}
-                      </span>
-                    </label>
-                  )}
-                </div>
-              )}
-
-              <p className="text-xs text-base-content/50 leading-relaxed">
+            <div className="flex flex-col gap-5">
+              <p className="text-xs text-base-content/50 leading-[115%]">
                 By submitting this form, your name and email address will be processed
                 to respond to your inquiry. See our{" "}
                 <Link to="/privacy" className="link link-primary">
@@ -502,15 +669,39 @@ const Contact = () => {
             </div>
         </form>
 
-        {!isAuthenticated && (
-          <div className="mt-6 rounded-lg bg-base-100/60 text-sm text-base-content/70">
-            <p>
-              Already part of Lomir?{" "}
-              <Link to="/login" className="link link-primary">
-                Log in
-              </Link>{" "}
-              to contact us through the app chat.
-            </p>
+        {(!isAuthenticated || hasTurnstile) && (
+          <div className="mt-12 flex flex-wrap items-end justify-between gap-4">
+            {!isAuthenticated && (
+              <div className="rounded-lg bg-base-100/60 text-sm text-base-content/70">
+                <p>
+                  Already part of Lomir?{" "}
+                  <Link to="/login" className="link link-primary">
+                    Log in
+                  </Link>{" "}
+                  to contact us through the app chat.
+                </p>
+              </div>
+            )}
+
+            {hasTurnstile && (
+              <div className="form-control w-full sm:w-auto sm:items-end">
+                <div className="flex justify-center sm:justify-end">
+                  <TurnstileWidget
+                    ref={turnstileRef}
+                    onVerify={handleTurnstileVerify}
+                    onExpire={() => setTurnstileToken(null)}
+                    onError={() => setTurnstileToken(null)}
+                  />
+                </div>
+                {errors.turnstile && (
+                  <label className="label justify-center sm:justify-end">
+                    <span className="label-text-alt text-error">
+                      {errors.turnstile}
+                    </span>
+                  </label>
+                )}
+              </div>
+            )}
           </div>
         )}
       </Card>
