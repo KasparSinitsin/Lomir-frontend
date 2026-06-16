@@ -4,6 +4,7 @@ import {
   Mail,
   MessageCircle,
   Paperclip,
+  PenLine,
   Send,
   X,
 } from "lucide-react";
@@ -13,7 +14,6 @@ import Card from "../components/common/Card";
 import FormGroup from "../components/common/FormGroup";
 import TurnstileWidget from "../components/common/TurnstileWidget";
 import { useAuth } from "../contexts/AuthContext";
-import { useToast } from "../contexts/ToastContext";
 import api from "../services/api";
 
 const LOMIR_CONTACT_USER_ID = (
@@ -165,7 +165,6 @@ const formatAttachmentErrors = (messages) => {
 const Contact = () => {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
-  const showToast = useToast();
   const hasTurnstile = Boolean(import.meta.env.VITE_TURNSTILE_SITE_KEY);
 
   const [formValues, setFormValues] = useState(initialFormValues);
@@ -368,7 +367,6 @@ const Contact = () => {
       }
 
       const response = await api.post("/api/contact", body);
-      const wasReportTopic = formValues.topic === REPORT_TOPIC;
       const referenceId = response.data?.data?.referenceId;
       const successMessage =
         response.data?.message ||
@@ -376,12 +374,11 @@ const Contact = () => {
           ? `Your report has been received. Reference ID: ${referenceId}.`
           : "Thanks, your message has been sent to the Lomir team.");
 
-      showToast(successMessage);
       setFormValues(initialFormValues);
       setAttachments([]);
-      setStatus(wasReportTopic ? "success" : "idle");
-      setStatusMessage(wasReportTopic ? successMessage : "");
-      setIsEmailFormOpen(wasReportTopic);
+      setStatus("success");
+      setStatusMessage(successMessage);
+      setIsEmailFormOpen(false);
       resetTurnstile();
     } catch (error) {
       console.error("Contact form submission error:", error);
@@ -409,6 +406,7 @@ const Contact = () => {
 
   const renderContactForm = () => {
     const isSubmitting = status === "submitting";
+    const hasSuccessMessage = status === "success" && Boolean(statusMessage);
     const isReportTopic = formValues.topic === REPORT_TOPIC;
     const emailSubtitle = isAuthenticated
       ? "We will reply by email."
@@ -432,7 +430,7 @@ const Contact = () => {
 
             <div className="min-w-0 flex-1">
               <h3 className="font-medium text-[var(--color-primary-focus)] leading-[120%] mb-1 text-lg">
-                Send us a message
+                {hasSuccessMessage ? "Write another email?" : "Send us a message"}
               </h3>
               <p className="max-h-[2.75em] overflow-hidden">
                 {emailSubtitle}
@@ -440,13 +438,25 @@ const Contact = () => {
             </div>
           </div>
 
+          {hasSuccessMessage && (
+            <Alert
+              type="success"
+              message={statusMessage}
+              className="mt-5 w-full shadow-[0_4px_10px_rgba(0,0,0,0.12),0_12px_30px_rgba(0,0,0,0.18),0_28px_56px_rgba(0,0,0,0.14)]"
+            />
+          )}
+
           <div className="mt-auto flex justify-end pt-6">
             <Button
               type="button"
               variant="primary"
-              icon={<Mail size={16} />}
+              icon={<PenLine size={16} />}
               className="w-full sm:w-auto"
-              onClick={() => setIsEmailFormOpen(true)}
+              onClick={() => {
+                setStatus("idle");
+                setStatusMessage("");
+                setIsEmailFormOpen(true);
+              }}
             >
               Compose Email
             </Button>
@@ -485,16 +495,9 @@ const Contact = () => {
             className="mb-5 w-full shadow-sm"
           />
         )}
-        {status === "success" && (
-          <Alert
-            type="success"
-            message={statusMessage}
-            className="mb-5 w-full shadow-sm"
-          />
-        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <FormGroup
                 label="Name"
                 htmlFor="contact-name"
@@ -534,32 +537,31 @@ const Contact = () => {
                   disabled={isSubmitting}
                 />
               </FormGroup>
-            </div>
-
-            <FormGroup
-              label="Topic"
-              htmlFor="contact-topic"
-              helperText={
-                isReportTopic
-                  ? "Use this topic to report illegal content, abuse, harassment, spam, privacy issues, or security concerns."
-                  : ""
-              }
-              className="mb-0"
-            >
-              <select
-                id="contact-topic"
-                className="select select-bordered w-full"
-                value={formValues.topic}
-                onChange={(event) => updateField("topic", event.target.value)}
-                disabled={isSubmitting}
+              <FormGroup
+                label="Topic"
+                htmlFor="contact-topic"
+                helperText={
+                  isReportTopic
+                    ? "Use this topic to report illegal content, abuse, harassment, spam, privacy issues, or security concerns."
+                    : ""
+                }
+                className="mb-0"
               >
-                {topicOptions.map((topic) => (
-                  <option key={topic} value={topic}>
-                    {topic}
-                  </option>
-                ))}
-              </select>
-            </FormGroup>
+                <select
+                  id="contact-topic"
+                  className="select select-bordered w-full"
+                  value={formValues.topic}
+                  onChange={(event) => updateField("topic", event.target.value)}
+                  disabled={isSubmitting}
+                >
+                  {topicOptions.map((topic) => (
+                    <option key={topic} value={topic}>
+                      {topic}
+                    </option>
+                  ))}
+                </select>
+              </FormGroup>
+            </div>
 
             <FormGroup
               label="Message"
@@ -620,101 +622,95 @@ const Contact = () => {
 
             {(attachments.length > 0 || errors.attachment) && (
               <div className="space-y-1.5">
-                {attachments.map((file, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center gap-2 rounded-lg border border-base-300 bg-base-200/50 px-3 py-2 text-sm"
-                  >
-                    <Paperclip size={14} className="shrink-0 text-base-content/60" />
-                    <span className="min-w-0 truncate text-base-content/80">
-                      {getAttachmentDisplayName(file.name)}
-                    </span>
-                    <span className="shrink-0 text-base-content/50">
-                      ({formatAttachmentSize(file.size)})
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => removeAttachment(index)}
-                      disabled={isSubmitting}
-                      className="btn btn-ghost btn-xs ml-auto shrink-0 p-0.5"
-                      aria-label="Remove attachment"
+                <div className="grid gap-1.5 lg:grid-cols-2">
+                  {attachments.map((file, index) => (
+                    <div
+                      key={index}
+                      className="flex min-w-0 items-center gap-2 rounded-lg border border-base-300 bg-base-200/50 px-3 py-2 text-sm"
                     >
-                      <X size={14} />
-                    </button>
-                  </div>
-                ))}
+                      <Paperclip size={14} className="shrink-0 text-base-content/60" />
+                      <span className="min-w-0 truncate text-base-content/80">
+                        {getAttachmentDisplayName(file.name)}
+                      </span>
+                      <span className="shrink-0 text-base-content/50">
+                        ({formatAttachmentSize(file.size)})
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => removeAttachment(index)}
+                        disabled={isSubmitting}
+                        className="btn btn-ghost btn-xs ml-auto shrink-0 p-0.5"
+                        aria-label="Remove attachment"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
                 {errors.attachment && (
                   <p className="text-xs text-error">{errors.attachment}</p>
                 )}
               </div>
             )}
 
-            <div className="flex flex-col gap-5">
-              <p className="text-xs text-base-content/50 leading-[115%]">
-                By submitting this form, your name and email address will be processed
-                to respond to your inquiry. See our{" "}
-                <Link to="/privacy" className="link link-primary">
-                  Privacy Policy
-                </Link>{" "}
-                for details on how we handle your data.
-              </p>
-
-              <div className="flex justify-end">
-                <Button
-                  type="submit"
-                  variant="primary"
-                  icon={!isSubmitting ? <Send size={16} /> : null}
-                  className="w-full sm:w-auto"
-                  disabled={isSubmitting}
-                >
-                  {isSubmitting ? (
-                    <>
-                      <span className="loading loading-spinner loading-sm"></span>
-                      Sending...
-                    </>
-                  ) : (
-                    "Send Message"
+            <div className="flex flex-col items-center gap-8 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+              {hasTurnstile && (
+                <div className="form-control">
+                  <div className="flex justify-center">
+                    <TurnstileWidget
+                      ref={turnstileRef}
+                      size="normal"
+                      onVerify={handleTurnstileVerify}
+                      onExpire={() => setTurnstileToken(null)}
+                      onError={() => setTurnstileToken(null)}
+                    />
+                  </div>
+                  {errors.turnstile && (
+                    <p className="mt-1 text-center text-xs text-error sm:text-left">
+                      {errors.turnstile}
+                    </p>
                   )}
-                </Button>
-              </div>
+                </div>
+              )}
+              <Button
+                type="submit"
+                variant="primary"
+                icon={!isSubmitting ? <Send size={16} /> : null}
+                className="w-full sm:w-auto"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? (
+                  <>
+                    <span className="loading loading-spinner loading-sm"></span>
+                    Sending...
+                  </>
+                ) : (
+                  "Send Message"
+                )}
+              </Button>
             </div>
         </form>
 
-        {(!isAuthenticated || hasTurnstile) && (
-          <div className="mt-12 flex flex-wrap items-end justify-between gap-4">
-            {!isAuthenticated && (
-              <div className="rounded-lg bg-base-100/60 text-sm text-base-content/70">
-                <p>
-                  Already part of Lomir?{" "}
-                  <Link to="/login" className="link link-primary">
-                    Log in
-                  </Link>{" "}
-                  to contact us through the app chat.
-                </p>
-              </div>
-            )}
-
-            {hasTurnstile && (
-              <div className="form-control w-full sm:w-auto sm:items-end">
-                <div className="flex justify-center sm:justify-end">
-                  <TurnstileWidget
-                    ref={turnstileRef}
-                    onVerify={handleTurnstileVerify}
-                    onExpire={() => setTurnstileToken(null)}
-                    onError={() => setTurnstileToken(null)}
-                  />
-                </div>
-                {errors.turnstile && (
-                  <label className="label justify-center sm:justify-end">
-                    <span className="label-text-alt text-error">
-                      {errors.turnstile}
-                    </span>
-                  </label>
-                )}
-              </div>
-            )}
+        {!isAuthenticated && (
+          <div className="mt-12 rounded-lg bg-base-100/60 text-sm text-base-content/70">
+            <p>
+              Already part of Lomir?{" "}
+              <Link to="/login" className="link link-primary">
+                Log in
+              </Link>{" "}
+              to contact us through the app chat.
+            </p>
           </div>
         )}
+
+        <p className="mt-6 text-xs text-base-content/50">
+          By submitting this form, your name and email address will be processed
+          to respond to your inquiry. See our{" "}
+          <Link to="/privacy" className="link link-primary">
+            Privacy Policy
+          </Link>{" "}
+          for details on how we handle your data.
+        </p>
       </Card>
     );
   };
