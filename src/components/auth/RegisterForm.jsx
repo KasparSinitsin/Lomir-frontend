@@ -58,13 +58,6 @@ const RegisterForm = () => {
   const [registrationSuccess, setRegistrationSuccess] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState(null);
   const turnstileRef = useRef(null);
-  const emailInputValueRef = useRef("");
-  const lastEmailAvailabilityRef = useRef({
-    email: "",
-    available: null,
-    message: "",
-  });
-  const emailAvailabilityRequestIdRef = useRef(0);
   const usernameInputValueRef = useRef("");
   const lastUsernameAvailabilityRef = useRef({
     username: "",
@@ -196,103 +189,6 @@ const RegisterForm = () => {
     }
 
     return usernameErrors;
-  };
-
-  const checkEmailAvailability = async (emailValue = formData.email) => {
-    const email = emailValue.trim();
-    const emailErrorMessage =
-      "Please enter a valid email address (e.g. your@email.com).";
-
-    if (!email) return false;
-
-    emailInputValueRef.current = emailValue;
-
-    if (!/\S+@\S+\.\S+/.test(email)) {
-      setErrors((prev) => ({
-        ...prev,
-        email: emailErrorMessage,
-      }));
-      return false;
-    }
-
-    if (lastEmailAvailabilityRef.current.email === email) {
-      const { available, message } = lastEmailAvailabilityRef.current;
-
-      if (available === false) {
-        setErrors((prev) => ({
-          ...prev,
-          email: message || "This email address is already registered.",
-        }));
-        return false;
-      }
-
-      if (available === true) {
-        setErrors((prev) => {
-          const nextErrors = { ...prev };
-          delete nextErrors.email;
-          return nextErrors;
-        });
-        return true;
-      }
-    }
-
-    const requestId = emailAvailabilityRequestIdRef.current + 1;
-    emailAvailabilityRequestIdRef.current = requestId;
-
-    try {
-      const response = await api.post("/api/auth/check-email", { email });
-
-      if (
-        requestId !== emailAvailabilityRequestIdRef.current ||
-        emailInputValueRef.current.trim() !== email
-      ) {
-        return false;
-      }
-
-      const available = Boolean(response.data.available);
-      const message =
-        response.data.message || "This email address is already registered.";
-
-      lastEmailAvailabilityRef.current = {
-        email,
-        available,
-        message: available ? "" : message,
-      };
-
-      setErrors((prev) => {
-        const nextErrors = { ...prev };
-
-        if (available) {
-          delete nextErrors.email;
-        } else {
-          nextErrors.email = message;
-        }
-
-        return nextErrors;
-      });
-
-      return available;
-    } catch (error) {
-      console.warn("Email availability check failed:", error);
-      return true;
-    }
-  };
-
-  const handleEmailBlur = (e) => {
-    void checkEmailAvailability(e.currentTarget.value);
-  };
-
-  const handleEmailKeyDown = (e) => {
-    if (e.key !== "Enter") return;
-
-    e.preventDefault();
-    void checkEmailAvailability(e.currentTarget.value);
-  };
-
-  const handleEmailFocus = () => {
-    if (getAvailabilityErrorClass(errors.email)) return;
-
-    clearFieldError("email");
   };
 
   const checkUsernameAvailability = async (
@@ -441,17 +337,6 @@ const RegisterForm = () => {
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
 
-    if (name === "email") {
-      emailInputValueRef.current = value;
-
-      if (
-        getAvailabilityErrorClass(errors.email) &&
-        value.trim() !== lastEmailAvailabilityRef.current.email
-      ) {
-        clearFieldError("email");
-      }
-    }
-
     if (name === "username") {
       usernameInputValueRef.current = value;
     }
@@ -490,11 +375,9 @@ const RegisterForm = () => {
     setTurnstileToken(null);
   };
 
-  const isEmailConflictMessage = (message = "") =>
-    message.toLowerCase().includes("email already exists");
-
   const isUsernameConflictMessage = (message = "") =>
-    message.toLowerCase().includes("username already exists");
+    message.toLowerCase().includes("username already exists") ||
+    message.toLowerCase().includes("username is already taken");
 
   const getAvailabilityErrorClass = (message = "") => {
     const normalizedMessage = message.toLowerCase();
@@ -559,18 +442,6 @@ const RegisterForm = () => {
       };
     }
 
-    if (isEmailConflictMessage(message)) {
-      const formMessages = ["This email address is already registered."];
-
-      return {
-        email: "This email address is already registered.",
-        form: getAccountCreationErrorMessage({
-          email: "This email address is already registered.",
-        }),
-        formMessages,
-      };
-    }
-
     if (isUsernameConflictMessage(message)) {
       const formMessages = ["This username is already taken."];
 
@@ -595,98 +466,21 @@ const RegisterForm = () => {
       const trimmedEmail = formData.email.trim();
       const trimmedUsername = formData.username.trim();
       const validationErrors = getFormValidationErrors();
-      const availabilityErrors = {};
-
-      try {
-        const availabilityChecks = [];
-
-        if (!validationErrors.email && trimmedEmail) {
-          const cachedEmailAvailability = lastEmailAvailabilityRef.current;
-
-          if (cachedEmailAvailability.email === trimmedEmail) {
-            if (cachedEmailAvailability.available === false) {
-              availabilityErrors.email =
-                cachedEmailAvailability.message ||
-                "This email address is already registered.";
-            }
-          } else {
-            availabilityChecks.push(
-              api
-                .post("/api/auth/check-email", {
-                  email: trimmedEmail,
-                })
-                .then((emailCheck) => {
-                  const available = Boolean(emailCheck.data.available);
-                  const message =
-                    emailCheck.data.message ||
-                    "This email address is already registered.";
-
-                  lastEmailAvailabilityRef.current = {
-                    email: trimmedEmail,
-                    available,
-                    message: available ? "" : message,
-                  };
-
-                  if (!available) {
-                    availabilityErrors.email =
-                      message || "This email address is already registered.";
-                  }
-                }),
-            );
-          }
-        }
-
-        if (!validationErrors.username && trimmedUsername) {
-          const cachedUsernameAvailability =
-            lastUsernameAvailabilityRef.current;
-
-          if (cachedUsernameAvailability.username === trimmedUsername) {
-            if (cachedUsernameAvailability.available === false) {
-              availabilityErrors.username = [
-                cachedUsernameAvailability.message ||
-                  "This username is already taken.",
-              ];
-            }
-          } else {
-            availabilityChecks.push(
-              api
-                .post("/api/auth/check-username", {
-                  username: trimmedUsername,
-                })
-                .then((usernameCheck) => {
-                  const available = Boolean(usernameCheck.data.available);
-                  const message =
-                    usernameCheck.data.message ||
-                    "This username is already taken.";
-
-                  lastUsernameAvailabilityRef.current = {
-                    username: trimmedUsername,
-                    available,
-                    message: available ? "" : message,
-                  };
-
-                  if (!available) {
-                    availabilityErrors.username = [
-                      message || "This username is already taken.",
-                    ];
-                  }
-                }),
-            );
-          }
-        }
-
-        await Promise.all(availabilityChecks);
-      } catch (availabilityError) {
-        console.warn("Availability check failed:", availabilityError);
-        availabilityErrors.form =
-          availabilityError.response?.data?.message ||
-          "We could not check username or email availability. Please try again in a few minutes.";
-      }
+      const cachedUsernameAvailability = lastUsernameAvailabilityRef.current;
 
       const blockingErrors = {
         ...validationErrors,
-        ...availabilityErrors,
       };
+
+      if (
+        !blockingErrors.username &&
+        cachedUsernameAvailability.username === trimmedUsername &&
+        cachedUsernameAvailability.available === false
+      ) {
+        blockingErrors.username = [
+          cachedUsernameAvailability.message || "This username is already taken.",
+        ];
+      }
 
       if (Object.keys(blockingErrors).length > 0) {
         const formMessages = getAccountCreationErrorMessages(blockingErrors);
@@ -778,7 +572,9 @@ const RegisterForm = () => {
       });
 
       setResendStatus("sent");
-      setResendMessage("Verification email sent! Please check your inbox.");
+      setResendMessage(
+        "If a verification email can be sent for this address, it will arrive shortly.",
+      );
 
       setResendCooldown(30);
       const timer = setInterval(() => {
@@ -856,11 +652,13 @@ const RegisterForm = () => {
               Check your email
             </h2>
             <p className="text-base-content/70 mb-4">
-              We've sent a verification link to{" "}
+              If this address can be used for registration, a verification link
+              will be sent to{" "}
               <span className="font-medium">{formData.email}</span>
             </p>
             <p className="text-sm text-base-content/60 mb-6">
-              Please click the link in the email to verify your account. The link will expire in <strong>24 hours</strong> — if you don't verify within this time, your registration will be automatically deleted and you'll need to sign up again.
+              Please click the link in the email to verify your account. The link
+              will expire in <strong>24 hours</strong>.
             </p>
 
             {resendMessage && (
@@ -974,9 +772,7 @@ const RegisterForm = () => {
                     }`}
                     value={formData.email}
                     onChange={handleChange}
-                    onFocus={handleEmailFocus}
-                    onBlur={handleEmailBlur}
-                    onKeyDown={handleEmailKeyDown}
+                    onFocus={() => clearFieldError("email")}
                     name="email"
                   />
                   {errors.email && (
