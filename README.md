@@ -36,9 +36,9 @@ Contact the project owner for a demo login, or register a new account with a val
 - **Notifications** — In-app notification center for invitations, applications, badge awards, and role updates
 - **Account Deletion** — Multi-step account deletion with impact preview, automatic team ownership transfer, and graceful "Former Lomir User" handling across chat, badges, and notifications
 - **Demo Data Indicators** — Synthetic/seed data is visually labeled with FlaskConical icons and "DEMO" avatar overlays so users can distinguish test content from real data
-- **Contact Page** — Email contact form with optional multipart file attachments (up to 5 files, 25 MB each — images, PDF, Word, Excel, PPT, TXT, ZIP); authenticated users with a configured contact user ID are routed directly to in-app chat instead; optional Turnstile CAPTCHA; privacy disclosure with `/privacy` link at submission; success toast on submit
-- **Authentication UX** — Login and forgot-password flows use shared floating screen alerts for submit-level errors such as rate limits, while field validation remains inline; registration surfaces backend validation details and availability-check rate limits instead of generic "Invalid input data" errors
-- **Security & Privacy** — Cloudflare Turnstile CAPTCHA on registration and contact form (feature-flagged), enforced password policy (min 8 chars, letter + number), self-service password reset from the login form; new accounts remain private after email verification until users change visibility in settings; users can manage a blocklist from Settings, with blocked relationships mutually anonymized across profiles, teams, roles, badge awards, invitations, and inline profile links; search results use approximate coordinates (~11km precision) so exact user locations are never exposed to the frontend; real-time email and username availability feedback during registration (results are cached so repeated validation skips redundant API calls); separate age-16 confirmation checkbox at registration; timestamps and document versions stored for accepted Terms of Service, acknowledged Privacy Policy, and age confirmation; unverified accounts are automatically deleted after 24 hours
+- **Contact Page** — Email contact form with optional multipart file attachments (up to 3 files, 5 MB each, 10 MB total — JPG, PNG, WebP, PDF, TXT, CSV); authenticated users with a configured contact user ID are routed directly to in-app chat instead; optional Turnstile CAPTCHA; privacy disclosure with `/privacy` link at submission; abuse/content reports show a persistent reference ID after submit
+- **Authentication UX** — Login and forgot-password flows use shared floating screen alerts for submit-level errors such as rate limits, while field validation remains inline; registration surfaces backend validation details and username availability-check rate limits instead of generic "Invalid input data" errors
+- **Security & Privacy** — Cloudflare Turnstile CAPTCHA on registration and contact form (feature-flagged), enforced password policy (min 8 chars, letter + number), self-service password reset from the login form; new accounts remain private after email verification until users change visibility in settings; users can manage a blocklist from Settings, with blocked relationships mutually anonymized across profiles, teams, roles, badge awards, invitations, and inline profile links; search results use approximate coordinates (~11km precision) so exact user locations are never exposed to the frontend; username availability feedback during registration is rate-limited while email availability is not exposed; separate age-16 confirmation checkbox at registration; timestamps and document versions stored for accepted Terms of Service, acknowledged Privacy Policy, and age confirmation; unverified accounts are automatically deleted after 24 hours
 
 ---
 
@@ -154,7 +154,8 @@ Lomir-frontend/
 │   │   ├── ForgotPassword.jsx
 │   │   ├── ResetPassword.jsx
 │   │   ├── VerifyEmail.jsx
-│   │   ├── Contact.jsx             # Contact form with file attachments, privacy notice, and in-app chat routing
+│   │   ├── Contact.jsx             # Contact form with file attachments, report reference display,
+│   │   │                           #   privacy notice, and in-app chat routing
 │   │   ├── LegalPlaceholderPage.jsx # Shared page for /about, /terms, /privacy, /legal-notice — full legal documents (no longer placeholders)
 │   │   └── DesignSystem.jsx        # Dev-only component playground
 │   ├── components/
@@ -285,7 +286,7 @@ Lomir-frontend/
 |---|---|---|
 | `/` | Landing Page | Public homepage with feature overview |
 | `/login` | Login | Sign in, register redirect, and forgot-password entry point |
-| `/register` | Register | Multi-step registration with legal consent, private-by-default visibility copy, availability checks, and optional Turnstile |
+| `/register` | Register | Multi-step registration with legal consent, private-by-default visibility copy, username availability helper, and optional Turnstile |
 | `/verify-email` | Verify Email | Confirms new-account email verification links before login |
 | `/forgot-password` | Forgot Password | Request a password reset email |
 | `/reset-password` | Reset Password | Set a new password from a reset email link |
@@ -296,7 +297,7 @@ Lomir-frontend/
 | `/chat` | Chat | Direct messages and team group chat with file/image sharing, @mentions, and reply threading |
 | `/badges` | Badges | Browse all 30 badges across 5 categories |
 | `/settings` | Settings | Change profile visibility, manage blocked users, update password/email, and delete account |
-| `/contact` | Contact | Email form with file attachments and privacy notice; authenticated users with a contact user ID configured are routed to in-app chat |
+| `/contact` | Contact | Email form with file attachments and privacy notice; abuse/content reports show a reference ID; authenticated users with a contact user ID configured are routed to in-app chat |
 | `/about` | About | Project description, status, and contact information |
 | `/terms` | Terms | Full Terms of Service (14 sections, German law) |
 | `/privacy` | Privacy | Full GDPR-aligned Privacy Policy (19 sections) |

@@ -55,7 +55,7 @@ const loadTurnstileScript = () => {
 };
 
 const TurnstileWidget = forwardRef(function TurnstileWidget(
-  { onVerify, onExpire, onError },
+  { onVerify, onExpire, onError, size = "normal" },
   ref,
 ) {
   const containerRef = useRef(null);
@@ -116,6 +116,7 @@ const TurnstileWidget = forwardRef(function TurnstileWidget(
           "expired-callback": () => onExpireRef.current?.(),
           "error-callback": () => onErrorRef.current?.(),
           theme: "light",
+          size,
         });
       } catch (error) {
         onErrorRef.current?.(error);
@@ -170,7 +171,7 @@ const TurnstileWidget = forwardRef(function TurnstileWidget(
         widgetIdRef.current = null;
       }
     };
-  }, [siteKey]);
+  }, [siteKey, size]);
 
   if (!siteKey) {
     return null;
