@@ -368,16 +368,20 @@ const Contact = () => {
       }
 
       const response = await api.post("/api/contact", body);
-
-      showToast(
+      const wasReportTopic = formValues.topic === REPORT_TOPIC;
+      const referenceId = response.data?.data?.referenceId;
+      const successMessage =
         response.data?.message ||
-          "Thanks, your message has been sent to the Lomir team.",
-      );
+        (referenceId
+          ? `Your report has been received. Reference ID: ${referenceId}.`
+          : "Thanks, your message has been sent to the Lomir team.");
+
+      showToast(successMessage);
       setFormValues(initialFormValues);
       setAttachments([]);
-      setStatus("idle");
-      setStatusMessage("");
-      setIsEmailFormOpen(false);
+      setStatus(wasReportTopic ? "success" : "idle");
+      setStatusMessage(wasReportTopic ? successMessage : "");
+      setIsEmailFormOpen(wasReportTopic);
       resetTurnstile();
     } catch (error) {
       console.error("Contact form submission error:", error);
@@ -477,6 +481,13 @@ const Contact = () => {
         {status === "error" && (
           <Alert
             type="error"
+            message={statusMessage}
+            className="mb-5 w-full shadow-sm"
+          />
+        )}
+        {status === "success" && (
+          <Alert
+            type="success"
             message={statusMessage}
             className="mb-5 w-full shadow-sm"
           />
