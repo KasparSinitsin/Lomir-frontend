@@ -5,6 +5,7 @@ import Card from "../components/common/Card";
 const CONTACT_EMAIL = "lomirapp@gmail.com";
 const LAST_UPDATED = "June 15, 2026";
 const LEGAL_NOTICE_UPDATED = "June 16, 2026";
+const PRIVACY_UPDATED = "June 16, 2026";
 
 const mailLink = (
   <a href={`mailto:${CONTACT_EMAIL}`} className="link link-primary">
@@ -48,7 +49,7 @@ const pageContent = {
   },
   privacy: {
     title: "Privacy Policy",
-    updated: LAST_UPDATED,
+    updated: PRIVACY_UPDATED,
     intro:
       "This Privacy Policy explains how Lomir processes personal data. It is written for an app operated from Germany and aligned with the GDPR, the German Federal Data Protection Act, and German rules on technically necessary browser storage under the TDDDG.",
     sections: [
@@ -161,8 +162,8 @@ const pageContent = {
       {
         title: "12. Browser Storage, Cookies, and Similar Technologies",
         paragraphs: [
-          "Lomir currently uses technically necessary browser storage such as localStorage and sessionStorage. For example, the app stores the login token in localStorage and uses sessionStorage for in-app notification state.",
-          "This storage is necessary to provide authentication, API access, real-time chat, and notification features. Lomir does not currently use advertising cookies, marketing trackers, or third-party analytics tools.",
+          "Lomir uses a technically necessary, httpOnly session cookie to keep you signed in after login. This cookie holds your authentication token, is not readable by JavaScript, and is sent only to the Lomir backend to authenticate your requests and real-time chat connection. Lomir also uses technically necessary browser storage such as sessionStorage, for example for in-app notification state.",
+          "This cookie and storage are strictly necessary to provide authentication, API access, real-time chat, and notification features, and therefore do not require consent under Section 25(2) TDDDG. Lomir does not currently use advertising cookies, marketing trackers, or third-party analytics tools.",
           "Where Cloudflare Turnstile is enabled for registration or the contact form, Cloudflare may process technical data to verify that a request is made by a human. This is used for abuse prevention.",
         ],
       },
