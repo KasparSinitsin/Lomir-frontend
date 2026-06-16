@@ -65,7 +65,7 @@ const LoginForm = () => {
       } else {
         setErrors({ form: result.message });
       }
-    } catch (error) {
+    } catch {
       setErrors({ form: "An unexpected error occurred. Please try again." });
     } finally {
       setIsSubmitting(false);

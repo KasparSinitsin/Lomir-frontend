@@ -1,5 +1,4 @@
 import React, { useState, useCallback, useEffect } from "react";
-import { useAuth } from "../../contexts/AuthContext";
 import Modal from "../common/Modal";
 import Button from "../common/Button";
 import Alert from "../common/Alert";
@@ -22,7 +21,6 @@ import {
   Save,
   X,
 } from "lucide-react";
-import api from "../../services/api";
 
 /**
  * CreateVacantRoleModal Component
@@ -34,7 +32,6 @@ import api from "../../services/api";
  * @param {boolean} isOpen
  * @param {Function} onClose
  * @param {number} teamId
- * @param {Object|null} team - Team object (used for chat event message on creation)
  * @param {Object|null} existingRole - If provided, modal is in edit mode
  * @param {Function} onSuccess - Called after successful create/update
  */
@@ -42,12 +39,10 @@ const CreateVacantRoleModal = ({
   isOpen,
   onClose,
   teamId,
-  team = null,
   existingRole = null,
   onSuccess,
   onDelete,
 }) => {
-  const { user: currentUser } = useAuth();
   const SUCCESS_CLOSE_DELAY_MS = 3000;
   const isEditMode = !!existingRole;
 

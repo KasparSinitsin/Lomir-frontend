@@ -1,7 +1,5 @@
 import React, { useRef, useEffect, useState, useCallback, useMemo } from "react";
-import { format, isToday, isYesterday } from "date-fns";
 import {
-  normalizeTimestampToDate,
   formatLocalTime,
   formatDateHeading as formatMessageDateHeading,
   getDateGroupKey,
@@ -1062,10 +1060,8 @@ const MessageDisplay = ({
   loadingMore = false,
   teamMembersRefreshSignal = null,
   onLoadEarlierMessages,
-  onDeleteConversation,
   onDeleteMessage,
   onEditMessage,
-  onLeaveTeam,
   onReply,
   onConversationHeaderVisibilityChange,
   searchQuery = "",
@@ -2303,10 +2299,6 @@ const MessageDisplay = ({
     parsedMessage,
     isCurrentUser,
   ) => {
-    const approver = parsedMessage.approverName;
-    const applicant = parsedMessage.applicantName;
-    const teamName = parsedMessage.teamName;
-
     const messageText = isCurrentUser ? (
       parsedMessage.hasPersonalMessage ? (
         <>
@@ -2389,9 +2381,6 @@ const MessageDisplay = ({
   const renderApplicationApprovedMessage = (
     message,
     parsedMessage,
-    senderInfo,
-    isCurrentUser,
-    senderId,
   ) => {
     const isApplicantCurrentUser = isCurrentViewer(parsedMessage.applicantId);
     const isApproverCurrentUser = isCurrentViewer(parsedMessage.approverId);
@@ -3166,7 +3155,7 @@ const MessageDisplay = ({
   // =============================================================================
   // renderUserLeftLomirMessage - Neutral grey theme
   // =============================================================================
-  const renderUserLeftLomirMessage = (message, parsedMessage) => {
+  const renderUserLeftLomirMessage = (message) => {
     const leaveText = <>Former Lomir Member has left Lomir.</>;
 
     return (
@@ -3218,70 +3207,6 @@ const MessageDisplay = ({
           <span className="text-sm font-medium event-message-text">
             <UserMinus size={16} className="event-inline-icon mr-1" />
             {highlightEventContent(text)}
-          </span>
-        </div>
-
-        <div className="text-xs text-base-content/50">
-          {formatLocalTime(message.createdAt)}
-        </div>
-      </div>
-    );
-  };
-
-  // =============================================================================
-  // renderInvitationAcceptedMessage - Green success theme
-  // =============================================================================
-  const renderInvitationAcceptedMessage = (
-    message,
-    parsedMessage,
-    isCurrentUser,
-  ) => {
-    const isInviteeCurrentUser = isCurrentViewer(parsedMessage.inviteeId);
-    const isInviterCurrentUser = isCurrentViewer(parsedMessage.inviterId);
-    const messageText = isInviteeCurrentUser ? (
-      <>
-        You accepted <Mention name={parsedMessage.inviterName} />
-        {"'s"} invitation for{" "}
-        <TeamMentionById
-          teamId={parsedMessage.teamId}
-          name={parsedMessage.teamName}
-        />
-        . Welcome to the team!
-      </>
-    ) : isInviterCurrentUser ? (
-      <>
-        {userMentionOrYou(parsedMessage.inviteeId, parsedMessage.inviteeName, {
-          capitalized: true,
-        })}{" "}
-        accepted your invitation for{" "}
-        <TeamMentionById
-          teamId={parsedMessage.teamId}
-          name={parsedMessage.teamName}
-        />
-        . Welcome to the team!
-      </>
-    ) : (
-      <>
-        {userMentionOrYou(parsedMessage.inviteeId, parsedMessage.inviteeName, {
-          capitalized: true,
-        })}{" "}
-        accepted{" "}
-        {userMentionOrYou(parsedMessage.inviterId, parsedMessage.inviterName)}
-        {"'s"} invitation for{" "}
-        <TeamMentionById
-          teamId={parsedMessage.teamId}
-          name={parsedMessage.teamName}
-        />
-        . Welcome to the team!
-      </>
-    );
-
-    return (
-      <div className="flex flex-col items-center w-full my-4">
-        <div className="event-banner event-banner--success mb-3">
-          <span className="text-sm font-medium event-message-text">
-            {highlightEventContent(messageText)}
-            <PartyPopper size={16} className="event-inline-icon ml-1" />
           </span>
         </div>
 
@@ -3462,8 +3387,6 @@ const MessageDisplay = ({
     parsedMessage,
     isCurrentUser,
   ) => {
-    const team = parsedMessage.teamName;
-
     const messageText = isCurrentUser ? (
       parsedMessage.hasPersonalMessage ? (
         <>
@@ -3621,8 +3544,6 @@ const MessageDisplay = ({
     parsedMessage,
     isCurrentUser,
   ) => {
-    const team = parsedMessage.teamName;
-
     const messageText = isCurrentUser ? (
       parsedMessage.hasPersonalMessage ? (
         <>
@@ -3813,7 +3734,7 @@ const MessageDisplay = ({
   // =============================================================================
   // renderRoleChangedMessage - Dynamic theme based on new role
   // =============================================================================
-  const renderRoleChangedMessage = (message, parsedMessage, isCurrentUser) => {
+  const renderRoleChangedMessage = (message, parsedMessage) => {
     const isPromotion = parsedMessage.newRole === "admin";
     const newRole = parsedMessage.newRole;
 
@@ -4077,50 +3998,6 @@ const MessageDisplay = ({
             <UserMinus size={16} className="event-inline-icon mr-1" />
             {highlightEventContent(messageText)}
           </span>
-        </div>
-
-        <div className="text-xs text-base-content/50">
-          {formatLocalTime(message.createdAt)}
-        </div>
-      </div>
-    );
-  };
-
-  /**
-   * Render a team deleted message with special formatting (red/error theme)
-   * Shows in team chat with option to leave team
-   */
-  const renderTeamDeletedMessage = (message, parsedMessage, isCurrentUser) => {
-    let messageText;
-
-    if (isCurrentUser) {
-      messageText = `You initiated the deletion of the team "${parsedMessage.teamName}". The team is archived and inactive now. Remaining members are able to text in this chat until the last member leaves.`;
-    } else {
-      messageText = `${parsedMessage.ownerName} has initiated the deletion of the team "${parsedMessage.teamName}". The team is archived and inactive now. Remaining members are able to text in this chat until the last member leaves.`;
-    }
-
-    return (
-      <div className="flex flex-col items-center w-full my-4">
-        <div
-          className="flex flex-col items-center gap-3 px-5 py-4 rounded-2xl mb-3 max-w-md text-center"
-          style={{
-            backgroundColor: "rgba(239, 68, 68, 0.1)",
-            color: "#dc2626",
-          }}
-        >
-          <span className="text-sm font-medium event-message-text">
-            {highlightEventContent(messageText)}
-          </span>
-
-          {onLeaveTeam && (
-            <button
-              onClick={() => onLeaveTeam()}
-              className="flex items-center gap-1 text-xs underline hover:no-underline opacity-80 hover:opacity-100 transition-opacity cursor-pointer"
-            >
-              <LogOut size={14} />
-              Leave team and remove from chat list
-            </button>
-          )}
         </div>
 
         <div className="text-xs text-base-content/50">

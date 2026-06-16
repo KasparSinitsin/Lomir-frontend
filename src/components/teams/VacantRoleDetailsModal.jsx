@@ -306,7 +306,6 @@ const VacantRoleDetailsModal = ({
   onViewApplicationDetails = null,
   hideActions = false,
   onEdit = null,
-  onDelete = null,
   onStatusChange = null,
 }) => {
   const { user: currentUser, isAuthenticated } = useAuth();
@@ -387,16 +386,6 @@ const VacantRoleDetailsModal = ({
     return map;
   }, [roleTeamMembers]);
   const canViewTeamMemberMatches = canManage || viewerIsTeamMember;
-  const teamMemberIdsKey = JSON.stringify(
-    [
-      ...new Set(
-        teamMembers
-          .map((member) => member?.userId ?? member?.user_id ?? null)
-          .filter((id) => id != null)
-          .map(String),
-      ),
-    ],
-  );
   useEffect(() => {
     const fetchFullRole = async () => {
       if (!isOpen || !roleId || !teamId) return;
@@ -1186,15 +1175,11 @@ const VacantRoleDetailsModal = ({
   const roleName =
     displayRole.roleName ?? displayRole.role_name ?? "Vacant Role";
   const bio = displayRole.bio ?? "";
-  const city = displayRole.city;
-  const country = displayRole.country;
-  const state = displayRole.state;
   const _postalCode = displayRole.postalCode ?? displayRole.postal_code;
   const maxDistanceKm =
     displayRole.maxDistanceKm ?? displayRole.max_distance_km;
   const isRemote = displayRole.isRemote ?? displayRole.is_remote;
   const createdAt = displayRole.createdAt ?? displayRole.created_at;
-  const updatedAt = displayRole.updatedAt ?? displayRole.updated_at;
   const tags =
     displayRole.tags?.length > 0
       ? displayRole.tags
@@ -1406,11 +1391,6 @@ const VacantRoleDetailsModal = ({
     : filledRoleUser
     ? formatDisplayName(filledRoleUser)
     : filledRoleDisplayName;
-  const filledAt =
-    displayRole.filledAt ??
-    displayRole.filled_at ??
-    updatedAt ??
-    createdAt;
   const serverRoleMatchScore =
     shouldShowRoleMatchScore
       ? matchScore ??

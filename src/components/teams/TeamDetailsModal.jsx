@@ -12,7 +12,6 @@ import TeamRoleManager from "./TeamRoleManager";
 import TeamEditForm from "./TeamEditForm";
 import { useAuth } from "../../contexts/AuthContext";
 import { teamService } from "../../services/teamService";
-import { userService } from "../../services/userService";
 import Button from "../common/Button";
 import SendMessageButton from "../common/SendMessageButton";
 import ScreenAlert from "../common/ScreenAlert";
@@ -60,7 +59,6 @@ import TeamInvitationDetailsModal from "./TeamInvitationDetailsModal";
 import TeamMembersSection from "./TeamMembersSection";
 import TeamFocusAreaSection from "./TeamFocusAreaSection";
 import VacantRolesSection from "./VacantRolesSection";
-import axios from "axios";
 import Modal from "../common/Modal";
 import ConfirmModal from "../common/ConfirmModal";
 import LocationSection from "../common/LocationSection";
@@ -189,7 +187,6 @@ const TeamDetailsModal = ({
   const [distanceViewerUser, setDistanceViewerUser] = useState(null);
 
   const [teamBadges, setTeamBadges] = useState(null);
-  const [teamBadgesTotalCredits, setTeamBadgesTotalCredits] = useState(0);
   const [currentUserBadgeNames, setCurrentUserBadgeNames] = useState(null); // Set<string>
 
   const fetchTeamTagAwards = useCallback(
@@ -299,7 +296,7 @@ const TeamDetailsModal = ({
   const handledMembersRefreshKeyRef = useRef(0);
 
   const fetchTeamDetails = useCallback(
-    async (forceRefresh = false) => {
+    async () => {
       if (!effectiveTeamId) return null;
 
       // If we already have data and don't need a refresh, skip the loading state
@@ -603,14 +600,6 @@ const TeamDetailsModal = ({
   // Use internal role state, fall back to prop
   const effectiveUserRole = internalUserRole || userRole;
 
-  // Use independent isOwner state for more reliability
-  const isTeamOwner = useMemo(() => isOwner, [isOwner]);
-
-  const isTeamAdmin = useMemo(
-    () => effectiveUserRole === "admin",
-    [effectiveUserRole],
-  );
-
   const canEditTeam = useMemo(() => {
     if (!isAuthenticated || !user || !team) {
       return false;
@@ -752,54 +741,6 @@ const TeamDetailsModal = ({
     }, 300);
   }, [onClose, navigate, urlTeamId]);
 
-  const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-
-    // Special handling for isPublic to ensure it's always a boolean
-    if (name === "isPublic") {
-      setFormData((prev) => ({
-        ...prev,
-        isPublic: checked, // Explicitly use the checked property
-      }));
-      return;
-    }
-
-    // Handle other form fields normally
-    const newValue = type === "checkbox" ? checked : value;
-
-    // Clear error for this field when user starts typing
-    if (formErrors[name]) {
-      setFormErrors((prev) => {
-        const newErrors = { ...prev };
-        delete newErrors[name];
-        return newErrors;
-      });
-    }
-
-    setFormData((prev) => ({
-      ...prev,
-      [name]:
-        name === "maxMembers"
-          ? newValue === null
-            ? null
-            : parseInt(newValue, 10)
-          : newValue,
-    }));
-  };
-
-  const handleTagSelection = useCallback((selected) => {
-    userHasEditedTagsRef.current = true; // mark as intentional user edit
-    const ids = (selected ?? [])
-      .map((t) => (typeof t === "object" ? (t.id ?? t.value ?? t) : t))
-      .map((x) => Number(x))
-      .filter((x) => Number.isFinite(x));
-
-    setFormData((prev) => ({
-      ...prev,
-      selectedTags: Array.from(new Set(ids)),
-    }));
-  }, []);
-
   useEffect(() => {
     if (!isEditing) return;
     const ids = normalizeTeamTagIds(team);
@@ -822,13 +763,6 @@ const TeamDetailsModal = ({
     if (teamMemberBadges !== undefined) {
       if (Array.isArray(teamMemberBadges)) {
         setTeamBadges(teamMemberBadges);
-        setTeamBadgesTotalCredits(
-          teamMemberBadges.reduce(
-            (sum, badge) =>
-              sum + Number(badge?.totalCredits ?? badge?.total_credits ?? 0),
-            0,
-          ),
-        );
       }
       return;
     }
@@ -838,7 +772,6 @@ const TeamDetailsModal = ({
         const response = await teamService.getTeamMemberBadges(effectiveTeamId);
         const badges = response?.data || [];
         setTeamBadges(badges);
-        setTeamBadgesTotalCredits(response?.meta?.totalCredits || 0);
       } catch (error) {
         console.warn("Could not fetch team member badges:", error);
         setTeamBadges([]);
@@ -913,30 +846,6 @@ const TeamDetailsModal = ({
       console.error("Error fetching tags:", structuredTagsError);
     }
   }, [structuredTagsError]);
-
-  // Handle team tags update
-  const handleTeamTagsUpdate = async (newTagIds) => {
-    try {
-      // Normalize tag IDs to numbers and format for the API
-      const tagsPayload = newTagIds
-        .map((tagId) => Number(tagId))
-        .filter((id) => !Number.isNaN(id))
-        .map((tag_id) => ({ tag_id }));
-
-      await teamService.updateTeam(effectiveTeamId, { tags: tagsPayload });
-
-      // Refresh team details to show updated tags
-      await fetchTeamDetails();
-
-      setNotification({
-        type: "success",
-        message: "Focus areas updated successfully!",
-      });
-    } catch (error) {
-      console.error("Error updating team tags:", error);
-      throw new Error("Failed to update team focus areas");
-    }
-  };
 
   const handleLeaveTeam = async () => {
     if (!user?.id || !team?.id) return;
@@ -1172,10 +1081,7 @@ const TeamDetailsModal = ({
         .filter((id) => Number.isFinite(id) && id > 0)
         .map((tag_id) => ({ tag_id }));
 
-      const response = await teamService.updateTeam(
-        effectiveTeamId,
-        submissionData,
-      );
+      await teamService.updateTeam(effectiveTeamId, submissionData);
 
       // Update our local state with the new visibility value
       setIsPublic(isPublicBoolean);

@@ -68,7 +68,6 @@ export const COUNTRY_NAMES = {
   AR: "Argentina",
   CL: "Chile",
   PE: "Peru",
-  CO: "Colombia",
   VE: "Venezuela",
   UA: "Ukraine",
   TR: "Turkey",

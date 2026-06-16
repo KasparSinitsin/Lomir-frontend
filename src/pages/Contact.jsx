@@ -97,9 +97,16 @@ const getFileExtension = (fileName = "") => {
   return match ? match[0] : "";
 };
 
+const isUnsafeFileNameCharacter = (char) => {
+  const code = char.charCodeAt(0);
+  return code <= 31 || code === 127 || char === "/" || char === "\\";
+};
+
 const getAttachmentDisplayName = (fileName = "") => {
   const sanitizedName = fileName
-    .replace(/[\u0000-\u001f\u007f/\\]/g, "")
+    .split("")
+    .filter((char) => !isUnsafeFileNameCharacter(char))
+    .join("")
     .trim();
 
   if (!sanitizedName) {
@@ -118,7 +125,7 @@ const hasUnsafeFileName = (fileName = "") => {
     !trimmedFileName ||
     fileName.length > 120 ||
     trimmedFileName.startsWith(".") ||
-    /[\u0000-\u001f\u007f/\\]/.test(fileName)
+    [...fileName].some(isUnsafeFileNameCharacter)
   );
 };
 

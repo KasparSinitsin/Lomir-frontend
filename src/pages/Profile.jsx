@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import FormSectionDivider from "../components/common/FormSectionDivider";
 import { useAuth } from "../contexts/AuthContext";
 import PageContainer from "../components/layout/PageContainer";
@@ -44,7 +44,6 @@ import BadgeCategoryModal from "../components/badges/BadgeCategoryModal";
 import TagsDisplaySection from "../components/tags/TagsDisplaySection";
 import TagAwardsModal from "../components/badges/TagAwardsModal";
 import LocationDisplay from "../components/common/LocationDisplay";
-import { geocodingService } from "../services/geocodingService";
 import { useLocationAutoFill } from "../hooks/useLocationAutoFill";
 import ImageUploader from "../components/common/ImageUploader";
 import {
@@ -66,7 +65,7 @@ import { format } from "date-fns";
 const EMPTY_QUERY_ARRAY = [];
 
 const Profile = () => {
-  const { user, updateUser, logout } = useAuth();
+  const { user, updateUser } = useAuth();
   const queryClient = useQueryClient();
   const [localUser, setLocalUser] = useState(null);
   const [registrationMessage, setRegistrationMessage] = useState("");
@@ -80,7 +79,6 @@ const Profile = () => {
   const [success, setSuccess] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [imageError, setImageError] = useState(false);
-  const navigate = useNavigate();
   const { openUserModal } = useUserModal();
   const { data: structuredTags, error: structuredTagsError } =
     useStructuredTags();
@@ -122,8 +120,6 @@ const Profile = () => {
     useState(false);
   const [badgeActionLoadingKey, setBadgeActionLoadingKey] = useState(null);
   const [pendingBadgeAction, setPendingBadgeAction] = useState(null);
-  const [selectedUserId, setSelectedUserId] = useState(null);
-
   // Add form errors state
   const [formErrors, setFormErrors] = useState({});
   const [formData, setFormData] = useState({
@@ -756,31 +752,6 @@ const Profile = () => {
     }
   };
 
-  const handleTagsUpdate = async (newTags) => {
-    if (!user) return;
-
-    try {
-      setLoading(true);
-      setError(null);
-
-      // Use the newTags parameter instead of selectedTags
-      await userService.updateUserTags(user.id, newTags);
-
-      // Update Profile's state with the new tags
-      setSelectedTags(newTags);
-      queryClient.invalidateQueries({
-        queryKey: userTagsQueryKey(user.id),
-      });
-
-      setSuccess("Tags updated successfully");
-    } catch (error) {
-      console.error("Error updating user tags:", error);
-      setError("Failed to update tags. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   // Add form validation function
   const validateForm = () => {
     const errors = {};
@@ -939,25 +910,6 @@ const Profile = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  // For debugging purposes
-  const displayUserData = () => {
-    if (!user) return "No user data available";
-
-    return (
-      <pre className="text-xs overflow-auto p-2 bg-gray-100 rounded">
-        {JSON.stringify(user, null, 2)}
-      </pre>
-    );
-  };
-
-  const displayFormData = () => {
-    return (
-      <pre className="text-xs overflow-auto p-2 bg-gray-100 rounded">
-        {JSON.stringify(formData, null, 2)}
-      </pre>
-    );
   };
 
   if (!displayUser) {

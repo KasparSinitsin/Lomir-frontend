@@ -7,7 +7,6 @@ import {
   UserSearch,
   EyeClosed,
   EyeIcon,
-  Tag,
   Award,
   User,
   Crown,
@@ -343,9 +342,6 @@ const TeamCard = ({
   activeFilters = {},
   showSearchResultTypeOverlay = false,
 
-  // Loading state
-  loading = false,
-
   autoOpenApplications = false,
   highlightApplicantId = null,
   highlightApplicationId = null,
@@ -630,7 +626,6 @@ const TeamCard = ({
   const [isApplicationsModalOpen, setIsApplicationsModalOpen] = useState(false);
   const [isInvitesModalOpen, setIsInvitesModalOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState(null);
-  const [responses, setResponses] = useState({});
   const [isInvitationDetailsModalOpen, setIsInvitationDetailsModalOpen] =
     useState(false);
   const [pendingInvitationForTeam, setPendingInvitationForTeam] =
@@ -1475,7 +1470,7 @@ const TeamCard = ({
     if (!date) return null;
     try {
       return format(new Date(date), "MM/dd/yy");
-    } catch (e) {
+    } catch {
       return null;
     }
   };
@@ -1490,7 +1485,7 @@ const TeamCard = ({
         new Date(normalizedData.date),
         "MMM d, yyyy",
       )}`;
-    } catch (e) {
+    } catch {
       return "You are invited to fill a role in this team";
     }
   };
@@ -1552,7 +1547,7 @@ const TeamCard = ({
           .map((tagStr) => {
             try {
               return JSON.parse(tagStr.trim());
-            } catch (e) {
+            } catch {
               return null;
             }
           })
@@ -1573,14 +1568,14 @@ const TeamCard = ({
         } else if (typeof teamData.tags === "string") {
           try {
             displayTags = JSON.parse(teamData.tags);
-          } catch (e) {
+          } catch {
             displayTags = teamData.tags
               .split(",")
               .map((name) => ({ name: name.trim() }));
           }
         }
       }
-    } catch (e) {
+    } catch {
       displayTags = [];
     }
     return displayTags.filter(
@@ -1653,12 +1648,6 @@ const TeamCard = ({
 
   // ============ Event Handlers ============
 
-  const handleUserClick = (userId) => {
-    if (userId) {
-      setSelectedUserId(userId);
-    }
-  };
-
   const openRoleDetails = (event) => {
     if (event) {
       event.stopPropagation();
@@ -1674,13 +1663,6 @@ const TeamCard = ({
     } else {
       setIsModalOpen(true);
     }
-  };
-
-  const handleResponseChange = (id, response) => {
-    setResponses((prev) => ({
-      ...prev,
-      [id]: response,
-    }));
   };
 
   const handleModalClose = async () => {
@@ -1828,12 +1810,6 @@ const TeamCard = ({
     }
   };
 
-  // Member variant handlers
-  const handleDeleteClick = async (e) => {
-    e.stopPropagation();
-    setIsDeleteDialogOpen(true);
-  };
-
   const closeDeleteTeamDialog = () => {
     if (isDeleting) return;
     setIsDeleteDialogOpen(false);
@@ -1858,12 +1834,6 @@ const TeamCard = ({
     if (onLeave) onLeave(teamId);
   };
 
-  // Application variant handlers
-  const handleCancelApplication = (e) => {
-    e?.stopPropagation();
-    setIsCancelApplicationDialogOpen(true);
-  };
-
   const closeCancelApplicationDialog = () => {
     if (actionLoading === "cancel") return;
     setIsCancelApplicationDialogOpen(false);
@@ -1885,115 +1855,7 @@ const TeamCard = ({
     }
   };
 
-  const handleSendReminder = async (e) => {
-    e.stopPropagation();
-    setActionLoading("reminder");
-    setReminderNotice(null);
-    try {
-      if (onSendReminder) {
-        await onSendReminder(normalizedData.id);
-      } else {
-        setReminderNotice("Reminder feature coming soon!");
-      }
-    } catch (err) {
-      console.error("Error sending reminder:", err);
-      setError("Failed to send reminder. Please try again.");
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
-  // Invitation variant handlers
-  const handleAccept = async () => {
-    if (!onAccept) return;
-    try {
-      setActionLoading("accept");
-      const invitationId = invitation?.id;
-      const responseMessage = responses[invitationId] || "";
-      await onAccept(invitationId, responseMessage, false);
-      // Clear the response after successful action
-      setResponses((prev) => {
-        const newResponses = { ...prev };
-        delete newResponses[invitationId];
-        return newResponses;
-      });
-    } catch (error) {
-      console.error("Error accepting invitation:", error);
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
-  const handleDecline = async () => {
-    if (!onDecline) return;
-    try {
-      setActionLoading("decline");
-      const invitationId = invitation?.id;
-      const responseMessage = responses[invitationId] || "";
-      await onDecline(invitationId, responseMessage);
-      // Clear the response after successful action
-      setResponses((prev) => {
-        const newResponses = { ...prev };
-        delete newResponses[invitationId];
-        return newResponses;
-      });
-    } catch (error) {
-      console.error("Error declining invitation:", error);
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
   // ============ Render Helpers ============
-
-  const renderBadges = () => {
-    const formattedDate = getFormattedDate();
-    const displayTags = getDisplayTags();
-    const isPublic = teamData.is_public === true || teamData.isPublic === true;
-
-    return (
-      <div className="flex flex-wrap items-center gap-2 mb-4">
-        {/* Tags display (member / invitation / application) */}
-        {(
-          effectiveVariant === "member" ||
-          effectiveVariant === "invitation" ||
-          effectiveVariant === "application" ||
-          effectiveVariant === "role_application" ||
-          effectiveVariant === "role_invitation"
-        ) &&
-          displayTags.length > 0 && (
-            <div className="flex items-start text-sm text-base-content/70">
-              <Tag size={16} className="mr-1 flex-shrink-0 mt-0.5" />
-              <span>
-                {(() => {
-                  const maxVisible = 5;
-                  const visibleTags = displayTags.slice(0, maxVisible);
-                  const remainingCount = displayTags.length - maxVisible;
-
-                  return (
-                    <>
-                      {visibleTags.map((tag, index) => {
-                        const tagName =
-                          typeof tag === "string"
-                            ? tag
-                            : tag.name || tag.tag || "";
-                        return (
-                          <span key={index}>
-                            {index > 0 ? ", " : ""}
-                            {tagName}
-                          </span>
-                        );
-                      })}
-                      {remainingCount > 0 && ` +${remainingCount}`}
-                    </>
-                  );
-                })()}
-              </span>
-            </div>
-          )}
-      </div>
-    );
-  };
 
   const renderActionButtons = () => {
     // If user has a pending invitation (search or invitation variant)

@@ -361,7 +361,7 @@ const MyTeams = () => {
   };
 
   // Handler for when user LEAVES a team (not deletes it)
-  const handleTeamLeave = (teamId) => {
+  const handleTeamLeave = () => {
     // Refetch to update pagination correctly
     fetchUserTeams(currentPage, resultsPerPage);
   };
@@ -376,7 +376,7 @@ const MyTeams = () => {
     }
   };
 
-  const handleSendReminder = async (applicationId) => {
+  const handleSendReminder = async () => {
     showToast("Reminder feature coming soon!", "violet");
   };
 
@@ -423,7 +423,7 @@ const MyTeams = () => {
   };
 
   // Handler for when a new team is created
-  const handleTeamCreated = (newTeam) => {
+  const handleTeamCreated = () => {
     // Refresh the teams list
     fetchUserTeams(1, resultsPerPage);
     setCurrentPage(1);

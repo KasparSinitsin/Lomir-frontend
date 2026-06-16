@@ -24,7 +24,7 @@ const MAX_LINES = 2;
  * then final state is committed once — no multi-render loop,
  * no CSS ellipsis, no visible flash.
  */
-const TruncatedList = ({ items, icon: Icon, compact = false }) => {
+const TruncatedList = ({ items, icon: LeadingIcon, compact = false }) => {
   const spanRef = useRef(null);
   const [displayText, setDisplayText] = useState(() => items.join(", "));
 
@@ -69,7 +69,10 @@ const TruncatedList = ({ items, icon: Icon, compact = false }) => {
     <div
       className={`flex items-start leading-[110%] text-base-content/70 ${compact ? "text-xs" : "text-sm"}`}
     >
-      <Icon size={compact ? 10 : 13} className="mr-1 flex-shrink-0 mt-0.5" />
+      {React.createElement(LeadingIcon, {
+        size: compact ? 10 : 13,
+        className: "mr-1 flex-shrink-0 mt-0.5",
+      })}
       <span ref={spanRef}>{displayText}</span>
     </div>
   );
