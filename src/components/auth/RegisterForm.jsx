@@ -17,7 +17,6 @@ import {
   EyeOff,
 } from "lucide-react";
 import ImageUploader from "../common/ImageUploader";
-import { uploadToImageKit } from "../../config/imagekit";
 import api from "../../services/api";
 import LocationInput from "../common/LocationInput";
 import { useLocationAutoFill } from "../../hooks/useLocationAutoFill";
@@ -495,43 +494,42 @@ const RegisterForm = () => {
         return;
       }
 
-      const userData = {
-        username: trimmedUsername,
-        email: trimmedEmail,
-        password: formData.password,
-        first_name: formData.first_name,
-        last_name: formData.last_name,
-        bio: formData.bio,
-        postal_code: formData.postal_code,
-        city: formData.city,
-        country: formData.country,
-        acceptedTerms: true,
-        acceptedPrivacy: true,
-        confirmed_age_16: true,
-        tags:
-          formData.selectedTags.length > 0
-            ? formData.selectedTags
-                .map((id) => Number(id))
-                .filter((n) => Number.isFinite(n))
-                .map((id) => ({ tag_id: id }))
-            : [],
-        ...(hasTurnstile ? { turnstile_token: turnstileToken } : {}),
-      };
+      const selectedTagObjects =
+        formData.selectedTags.length > 0
+          ? formData.selectedTags
+              .map((id) => Number(id))
+              .filter((n) => Number.isFinite(n))
+              .map((id) => ({ tag_id: id }))
+          : [];
 
-      if (formData.profile_image) {
-        const uploadResult = await uploadToImageKit(
-          formData.profile_image,
-          "avatars",
-        );
+      // Send registration as multipart/form-data so the avatar is uploaded
+      // to ImageKit server-side, only after the account is actually created.
+      // This avoids exposing the image (and an ImageKit auth token) from the
+      // browser before a valid registration exists.
+      const registrationData = new FormData();
+      registrationData.append("username", trimmedUsername);
+      registrationData.append("email", trimmedEmail);
+      registrationData.append("password", formData.password);
+      registrationData.append("first_name", formData.first_name);
+      registrationData.append("last_name", formData.last_name);
+      registrationData.append("bio", formData.bio);
+      registrationData.append("postal_code", formData.postal_code);
+      registrationData.append("city", formData.city);
+      registrationData.append("country", formData.country);
+      registrationData.append("accepted_terms", "true");
+      registrationData.append("accepted_privacy", "true");
+      registrationData.append("confirmed_age_16", "true");
+      registrationData.append("tags", JSON.stringify(selectedTagObjects));
 
-        if (uploadResult.success) {
-          userData.avatar_url = uploadResult.url;
-        } else {
-          console.error("Avatar upload failed:", uploadResult.error);
-        }
+      if (hasTurnstile) {
+        registrationData.append("turnstile_token", turnstileToken);
       }
 
-      const result = await register(userData);
+      if (formData.profile_image) {
+        registrationData.append("avatar", formData.profile_image);
+      }
+
+      const result = await register(registrationData);
 
       if (result.success) {
         if (result.requiresVerification) {
