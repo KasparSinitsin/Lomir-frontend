@@ -47,10 +47,9 @@ const TeamEditForm = ({
   onCancel,
   onDelete,
   loading = false,
-  isOwner = false,
   onAvatarDeleted,
 }) => {
-  const [uploadingImage, setUploadingImage] = useState(false);
+  const [uploadingImage] = useState(false);
   const [avatarDeleteLoading, setAvatarDeleteLoading] = useState(false);
   const [isAvatarDeleteDialogOpen, setIsAvatarDeleteDialogOpen] =
     useState(false);
@@ -566,7 +565,7 @@ const TeamEditForm = ({
           </label>
           <TagInput
             // Pass objects so TagInput can render names for preselected tags
-            selectedTags={formData.selectedTags ?? []}
+            selectedTags={selectedFocusAreaTags}
             onTagsChange={handleTagSelection}
             placeholder={UI_TEXT.focusAreas.searchPlaceholder}
             showPopularTags={true}

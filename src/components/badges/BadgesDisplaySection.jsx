@@ -38,7 +38,6 @@ const BadgesDisplaySection = ({
   showCredits = true,
   onCategoryClick = null,
   onBadgeClick = null,
-  onOpenUser = null,
   highlightBadgeName = null,
   matchingBadgeNames = null,
   headerRight = null,

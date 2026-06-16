@@ -1791,7 +1791,7 @@ const Chat = () => {
               }, 3000);
             }
           }
-        } catch (messagesError) {
+        } catch {
           setHasMoreMessages(false);
           setMessages([]);
         }
@@ -2675,7 +2675,7 @@ const Chat = () => {
     }
   };
 
-  const handleSendImage = async (file, previewUrl) => {
+  const handleSendImage = async (file) => {
     if (!canSendInActiveConversation || !file) {
       if (!isCurrentUserActiveTeamMember) {
         setError("You no longer have access to this team chat.");
@@ -3017,7 +3017,7 @@ const Chat = () => {
   // Get active typing users for current conversation
   const activeTypingUsers = Object.entries(typingUsers)
     .filter(([userId, username]) => userId !== user?.id && username)
-    .map(([_, username]) => username);
+    .map(([, username]) => username);
 
   const pendingChatActionType = pendingChatAction?.type;
   const pendingChatActionConfig = {

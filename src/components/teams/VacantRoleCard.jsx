@@ -442,8 +442,6 @@ const VacantRoleCard = ({
   // Handle both camelCase (from API response interceptor) and snake_case
   const role_name = role.roleName ?? role.role_name;
   const role_bio = role.bio ?? role.roleBio ?? role.role_bio ?? "";
-  const city = role.city;
-  const country = role.country;
   const max_distance_km = role.maxDistanceKm ?? role.max_distance_km;
   const is_remote = role.isRemote ?? role.is_remote;
   const status = role.status;

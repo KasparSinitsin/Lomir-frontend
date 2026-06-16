@@ -9,7 +9,6 @@ import BadgesDisplaySection from "../badges/BadgesDisplaySection";
 import BadgeCategoryModal from "../badges/BadgeCategoryModal";
 import TagAwardsModal from "../badges/TagAwardsModal";
 import UserProfileHeaderSection from "./UserProfileHeaderSection";
-import { messageService } from "../../services/messageService";
 import { geocodingService } from "../../services/geocodingService";
 import { userService } from "../../services/userService";
 import { teamService } from "../../services/teamService";

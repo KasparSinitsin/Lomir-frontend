@@ -5,14 +5,12 @@ import { messageService } from "../../services/messageService";
 
 const SendMessageButton = ({
   recipientId,
-  recipientName,
   variant = "primary",
   size = "sm",
   className = "",
   children,
   type = "direct", // "direct" or "team"
   teamId = null,
-  teamName = null,
 }) => {
   const handleSendMessage = async () => {
     if (type === "team" && teamId) {
