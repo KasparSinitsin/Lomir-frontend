@@ -4,6 +4,7 @@ import Card from "../components/common/Card";
 
 const CONTACT_EMAIL = "lomirapp@gmail.com";
 const LAST_UPDATED = "June 15, 2026";
+const LEGAL_NOTICE_UPDATED = "June 16, 2026";
 
 const mailLink = (
   <a href={`mailto:${CONTACT_EMAIL}`} className="link link-primary">
@@ -343,9 +344,9 @@ const pageContent = {
   },
   legalNotice: {
     title: "Legal Notice / Impressum",
-    updated: LAST_UPDATED,
+    updated: LEGAL_NOTICE_UPDATED,
     intro:
-      "Information according to Section 5 of the German Digital Services Act (Digitale-Dienste-Gesetz, DDG).",
+      "Provider information under Section 18(1) of the German Interstate Media Treaty (Medienstaatsvertrag, MStV) and, where applicable, Section 5 of the German Digital Services Act (Digitale-Dienste-Gesetz, DDG).",
     sections: [
       {
         title: "Provider",
@@ -366,17 +367,9 @@ const pageContent = {
         paragraphs: [<>Email: {mailLink}</>],
       },
       {
-        title: "Responsible for Content",
+        title: "Journalistic-Editorial Content",
         paragraphs: [
-          <>
-            Julia Baur
-            <br />
-            Walpodenstraße 16
-            <br />
-            55116 Mainz
-            <br />
-            Germany
-          </>,
+          "Lomir does not currently provide journalistic-editorial content within the meaning of Section 18(2) of the German Interstate Media Treaty (MStV). A separate responsible person under Section 18(2) MStV is therefore not designated. If such content is offered in the future, this notice will be updated accordingly.",
         ],
       },
       {
