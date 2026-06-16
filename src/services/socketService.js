@@ -12,7 +12,7 @@ const notifySocketReady = (socketInstance) => {
 
 const socketService = {
   // Connect to the socket server
-  connect: (token) => {
+  connect: () => {
     if (socket && socket.connected) {
       notifySocketReady(socket);
       return socket;
@@ -27,8 +27,10 @@ const socketService = {
     const SOCKET_URL =
       import.meta.env.VITE_SOCKET_URL || "http://localhost:5001";
 
+    // The backend authenticates the handshake from the httpOnly session
+    // cookie; withCredentials makes the browser send it with the connection.
     const newSocket = io(SOCKET_URL, {
-      auth: { token },
+      withCredentials: true,
       transports: ["polling", "websocket"],
       reconnection: true,
       reconnectionAttempts: 5,

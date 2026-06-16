@@ -38,7 +38,7 @@ Contact the project owner for a demo login, or register a new account with a val
 - **Demo Data Indicators** — Synthetic/seed data is visually labeled with FlaskConical icons and "DEMO" avatar overlays so users can distinguish test content from real data
 - **Contact Page** — Email contact form with optional multipart file attachments (up to 3 files, 5 MB each, 10 MB total — JPG, PNG, WebP, PDF, TXT, CSV); authenticated users with a configured contact user ID are routed directly to in-app chat instead; optional Turnstile CAPTCHA; privacy disclosure with `/privacy` link at submission; abuse/content reports show a persistent reference ID after submit
 - **Authentication UX** — Login and forgot-password flows use shared floating screen alerts for submit-level errors such as rate limits, while field validation remains inline; registration surfaces backend validation details and username availability-check rate limits instead of generic "Invalid input data" errors
-- **Security & Privacy** — Cloudflare Turnstile CAPTCHA on registration and contact form (feature-flagged), enforced password policy (min 8 chars, letter + number), self-service password reset from the login form; new accounts remain private after email verification until users change visibility in settings; users can manage a blocklist from Settings, with blocked relationships mutually anonymized across profiles, teams, roles, badge awards, invitations, and inline profile links; search results use approximate coordinates (~11km precision) so exact user locations are never exposed to the frontend; username availability feedback during registration is rate-limited while email availability is not exposed; separate age-16 confirmation checkbox at registration; timestamps and document versions stored for accepted Terms of Service, acknowledged Privacy Policy, and age confirmation; unverified accounts are automatically deleted after 24 hours
+- **Security & Privacy** — the session is held in a backend-set `httpOnly` cookie rather than `localStorage`, so the auth token is never readable by JavaScript (XSS-resistant); requests and the realtime socket send it automatically via credentialed requests, and auth state is restored on load from `GET /api/auth/me`; Cloudflare Turnstile CAPTCHA on registration and contact form (feature-flagged), enforced password policy (min 8 chars, letter + number), self-service password reset from the login form; new accounts remain private after email verification until users change visibility in settings; users can manage a blocklist from Settings, with blocked relationships mutually anonymized across profiles, teams, roles, badge awards, invitations, and inline profile links; search results use approximate coordinates (~11km precision) so exact user locations are never exposed to the frontend; username availability feedback during registration is rate-limited while email availability is not exposed; separate age-16 confirmation checkbox at registration; timestamps and document versions stored for accepted Terms of Service, acknowledged Privacy Policy, and age confirmation; unverified accounts are automatically deleted after 24 hours
 
 ---
 
@@ -195,7 +195,7 @@ Lomir-frontend/
 │   │   │                           #   VisibilityToggle, ScreenAlert, ConfirmModal
 │   │   └── layout/                 # Navbar, Footer, PageContainer, ProtectedRoute, Grid, Section
 │   ├── contexts/
-│   │   ├── AuthContext.jsx         # Authentication state, JWT management, and block relationship state
+│   │   ├── AuthContext.jsx         # Authentication state (httpOnly cookie session, restored via /api/auth/me) and block relationship state
 │   │   ├── UserModalContext.jsx    # Global user detail modal stack
 │   │   ├── TeamModalContext.jsx    # Global team detail modal state
 │   │   ├── ToastContext.jsx        # Toast notification state + dispatch
@@ -372,7 +372,7 @@ The chat page supports both direct (1-to-1) and team group conversations.
 
 - **CORS errors** — Make sure the backend is running on port 5001 and the frontend on 5173; check that `VITE_API_URL` matches
 - **Socket.IO won't connect** — Verify `VITE_SOCKET_URL` in `.env` if you set it; otherwise the client falls back to `VITE_API_URL`
-- **"Access denied. No token provided."** — Your JWT has expired; log out and log back in
+- **"Access denied. No token provided."** — Your session cookie is missing or expired; log out and log back in (and ensure the API is reached over a credentialed/CORS-allowed origin so the cookie is sent)
 - **CAPTCHA not showing locally** — Expected behavior; if `VITE_TURNSTILE_SITE_KEY` is unset, registration skips CAPTCHA
 - **Images not uploading** — Check that `VITE_IMAGEKIT_PUBLIC_KEY` and `VITE_IMAGEKIT_URL_ENDPOINT` are set in `.env`
 - **Map not rendering** — Leaflet CSS must be imported; check that `leaflet` and `react-leaflet` are installed

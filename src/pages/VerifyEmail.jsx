@@ -31,9 +31,6 @@ const VerifyEmail = () => {
       if (response.data.success) {
         setStatus("success");
         setMessage("Your email has been verified successfully!");
-
-        const authToken = response.data?.data?.token;
-        if (authToken) localStorage.setItem("token", authToken);
       }
     } catch (error) {
       console.error("Verification error:", error);

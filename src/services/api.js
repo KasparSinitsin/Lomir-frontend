@@ -14,11 +14,8 @@ const api = axios.create({
 // Add request interceptor to convert request data to snake_case
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem("token");
-    if (token) {
-      config.headers["Authorization"] = `Bearer ${token}`;
-    }
-
+    // Auth travels in an httpOnly session cookie sent automatically via
+    // withCredentials; there is no JS-readable token to attach here.
     if (config.data instanceof FormData) {
       delete config.headers["Content-Type"];
     } else if (
@@ -51,9 +48,9 @@ api.interceptors.response.use(
         console.error("API Error:", error.response.data);
       }
 
-      // 401 = invalid/expired token → log out. 403 = forbidden resource → stay logged in.
+      // 401 = invalid/expired session → send to login. 403 = forbidden
+      // resource → stay logged in. The cookie is cleared server-side on logout.
       if (!skipAuthRedirect && error.response.status === 401) {
-        localStorage.removeItem("token");
         window.location.href = "/login";
       }
     } else if (error.request) {

@@ -46,10 +46,11 @@ export const uploadToImageKit = async (file, type) => {
   }
 
   try {
-    // 1. Get auth params from backend (requires JWT)
-    const token = localStorage.getItem("token");
+    // 1. Get auth params from backend (requires an authenticated session).
+    // The session lives in an httpOnly cookie, so send credentials instead of
+    // an Authorization header.
     const authRes = await fetch(IMAGEKIT_CONFIG.authEndpoint, {
-      headers: { Authorization: `Bearer ${token}` },
+      credentials: "include",
     });
 
     if (!authRes.ok) {
