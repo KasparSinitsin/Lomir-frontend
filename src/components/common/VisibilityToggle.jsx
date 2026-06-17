@@ -37,7 +37,7 @@ const VisibilityToggle = ({
   const getVisibleDescription = () => {
     if (entityType === "team") return "Anyone can find and view your team";
     if (entityType === "profile")
-      return "Your profile will be discoverable by other users";
+      return "Your profile will be discoverable by others";
     return visibleDescription;
   };
 
