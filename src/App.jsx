@@ -21,6 +21,7 @@ import Register from "./pages/Register";
 import Profile from "./pages/Profile";
 import PublicProfile from "./pages/PublicProfile";
 import VerifyEmail from "./pages/VerifyEmail";
+import VerifyEmailChange from "./pages/VerifyEmailChange";
 import BadgeOverview from "./pages/BadgeOverview";
 import MyTeams from "./pages/MyTeams";
 import SearchPage from "./pages/SearchPage";
@@ -42,6 +43,7 @@ function AppLayout() {
     "/forgot-password",
     "/reset-password",
     "/verify-email",
+    "/verify-email-change",
   ].includes(location.pathname);
 
   return (
@@ -68,6 +70,10 @@ function AppLayout() {
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
                 <Route path="/verify-email" element={<VerifyEmail />} />
+                <Route
+                  path="/verify-email-change"
+                  element={<VerifyEmailChange />}
+                />
                 <Route path="/badges" element={<BadgeOverview />} />
                 <Route path="/contact" element={<Contact />} />
                 <Route path="/about" element={<LegalPlaceholderPage type="about" />} />

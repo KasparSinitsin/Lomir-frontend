@@ -38,7 +38,7 @@ Contact the project owner for a demo login, or register a new account with a val
 - **Demo Data Indicators** — Synthetic/seed data is visually labeled with FlaskConical icons and "DEMO" avatar overlays so users can distinguish test content from real data
 - **Contact Page** — Email contact form with optional multipart file attachments (up to 3 files, 5 MB each, 10 MB total — JPG, PNG, WebP, PDF, TXT, CSV); authenticated users with a configured contact user ID are routed directly to in-app chat instead; optional Turnstile CAPTCHA; privacy disclosure with `/privacy` link at submission; abuse/content reports show a persistent reference ID after submit
 - **Authentication UX** — Login and forgot-password flows use shared floating screen alerts for submit-level errors such as rate limits, while field validation remains inline; registration surfaces backend validation details and username availability-check rate limits instead of generic "Invalid input data" errors
-- **Security & Privacy** — the session is held in a backend-set `httpOnly` cookie rather than `localStorage`, so the auth token is never readable by JavaScript (XSS-resistant); requests and the realtime socket send it automatically via credentialed requests, and auth state is restored on load from `GET /api/auth/me`; Cloudflare Turnstile CAPTCHA on registration and contact form (feature-flagged), enforced password policy (min 8 chars, letter + number), self-service password reset from the login form; new accounts remain private after email verification until users change visibility in settings; users can manage a blocklist from Settings, with blocked relationships mutually anonymized across profiles, teams, roles, badge awards, invitations, and inline profile links; search results use approximate coordinates (~11km precision) so exact user locations are never exposed to the frontend; username availability feedback during registration is rate-limited while email availability is not exposed; separate age-16 confirmation checkbox at registration; timestamps and document versions stored for accepted Terms of Service, acknowledged Privacy Policy, and age confirmation; unverified accounts are automatically deleted after 24 hours
+- **Security & Privacy** — the session is held in a backend-set `httpOnly` cookie rather than `localStorage`, so the auth token is never readable by JavaScript (XSS-resistant); requests and the realtime socket send it automatically via credentialed requests, and auth state is restored on load from `GET /api/auth/me`; Cloudflare Turnstile CAPTCHA on registration and contact form (feature-flagged), enforced password policy (min 8 chars, letter + number), self-service password reset from the login form; changing your account email requires confirming the new address via a verification link before it takes effect — the current email stays active until then; new accounts remain private after email verification until users change visibility in settings; users can manage a blocklist from Settings, with blocked relationships mutually anonymized across profiles, teams, roles, badge awards, invitations, and inline profile links; search results use approximate coordinates (~11km precision) so exact user locations are never exposed to the frontend; username availability feedback during registration is rate-limited while email availability is not exposed; separate age-16 confirmation checkbox at registration; timestamps and document versions stored for accepted Terms of Service, acknowledged Privacy Policy, and age confirmation; unverified accounts are automatically deleted after 24 hours
 
 ---
 
@@ -150,10 +150,11 @@ Lomir-frontend/
 │   │   ├── Login.jsx
 │   │   ├── Chat.jsx                # Direct + team messaging with file sharing; filters blocked users
 │   │   ├── BadgeOverview.jsx       # Badge catalog and details
-│   │   ├── Settings.jsx            # Visibility, blocklist, password/email changes + account deletion modal
+│   │   ├── Settings.jsx            # Visibility, blocklist, password/email changes (email change sends a verification link) + account deletion modal
 │   │   ├── ForgotPassword.jsx
 │   │   ├── ResetPassword.jsx
 │   │   ├── VerifyEmail.jsx
+│   │   ├── VerifyEmailChange.jsx   # Confirms email-change links for logged-in users (verifying/success/error states)
 │   │   ├── Contact.jsx             # Contact form with file attachments, report reference display,
 │   │   │                           #   privacy notice, and in-app chat routing
 │   │   ├── LegalPlaceholderPage.jsx # Shared page for /about, /terms, /privacy, /legal-notice — full legal documents (no longer placeholders)
@@ -207,7 +208,7 @@ Lomir-frontend/
 │   │   │                           #   preserves FormData requests so multipart boundaries are set by
 │   │   │                           #   the browser; call sites can opt out via skipRequestCaseTransform /
 │   │   │                           #   skipResponseCaseTransform for explicit per-call data contracts
-│   │   ├── userService.js          # Profile, avatar, blocklist, and account deletion endpoints
+│   │   ├── userService.js          # Profile, avatar, blocklist, account deletion, and email-change verification endpoints
 │   │   ├── teamService.js
 │   │   ├── searchService.js
 │   │   ├── matchingService.js
@@ -288,6 +289,7 @@ Lomir-frontend/
 | `/login` | Login | Sign in, register redirect, and forgot-password entry point |
 | `/register` | Register | Multi-step registration with legal consent, private-by-default visibility copy, username availability helper, and optional Turnstile |
 | `/verify-email` | Verify Email | Confirms new-account email verification links before login |
+| `/verify-email-change` | Verify Email Change | Confirms an email-change link for a logged-in user and updates the account email |
 | `/forgot-password` | Forgot Password | Request a password reset email |
 | `/reset-password` | Reset Password | Set a new password from a reset email link |
 | `/search` | Search | Find teams, users, and roles; Boolean search input; shared result-view toggle; advanced filtering by tags, badges, distance |
@@ -296,7 +298,7 @@ Lomir-frontend/
 | `/profile/:id` | Public Profile | View any user's profile; shows "private" message for non-public profiles; placeholder for deleted users |
 | `/chat` | Chat | Direct messages and team group chat with file/image sharing, @mentions, and reply threading |
 | `/badges` | Badges | Browse all 30 badges across 5 categories |
-| `/settings` | Settings | Change profile visibility, manage blocked users, update password/email, and delete account |
+| `/settings` | Settings | Change profile visibility, manage blocked users, update password, request a verified email change, and delete account |
 | `/contact` | Contact | Email form with file attachments and privacy notice; abuse/content reports show a reference ID; authenticated users with a contact user ID configured are routed to in-app chat |
 | `/about` | About | Project description, status, and contact information |
 | `/terms` | Terms | Full Terms of Service (14 sections, German law) |
