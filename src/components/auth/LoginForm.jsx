@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import Card from "../common/Card";
 import Button from "../common/Button";
@@ -17,6 +17,12 @@ const LoginForm = () => {
   const [showPassword, setShowPassword] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  // One-off flash message passed via navigation state (e.g. after a password
+  // change logs the user out and redirects here).
+  const [infoMessage, setInfoMessage] = useState(
+    location.state?.message || "",
+  );
 
   const validateForm = () => {
     const newErrors = {};
@@ -79,9 +85,19 @@ const LoginForm = () => {
   return (
     <>
       <ScreenAlert
-        type="error"
-        message={errors.form || ""}
-        onClose={clearFormError}
+        alerts={[
+          infoMessage && {
+            type: "success",
+            message: infoMessage,
+            onClose: () => setInfoMessage(""),
+            autoCloseMs: 8000,
+          },
+          errors.form && {
+            type: "error",
+            message: errors.form,
+            onClose: clearFormError,
+          },
+        ].filter(Boolean)}
       />
       <div className="max-w-md mx-auto w-full">
         <Card>

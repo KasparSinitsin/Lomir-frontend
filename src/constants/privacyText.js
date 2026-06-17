@@ -8,7 +8,7 @@ export const PROFILE_VISIBILITY_NOTICE =
   "Your profile may be visible to other Lomir users depending on your visibility settings. Public profile information may include your username, name, bio, avatar, focus areas, badges, and approximate location details you add. You can change your profile visibility later in your settings.";
 
 export const PROFILE_VISIBILITY_SETTINGS_NOTICE =
-  "Public profiles may be visible to other Lomir users. Private profiles reduce public visibility, but your activity may still appear in teams, messages, applications, or badges. Location details you add may be shown as part of your approximate public profile location.";
+  "Public profiles are visible to anyone visiting Lomir, whether or not they are logged in. Private profiles reduce public visibility, but your activity may still appear in teams, messages, applications, or badges. Location details you add may be shown as part of your approximate public profile location.";
 
 export const AVATAR_UPLOAD_NOTICE =
   "Uploaded images are stored and delivered via ImageKit. Your avatar may be visible to other users depending on your visibility settings.";
