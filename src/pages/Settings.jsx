@@ -210,6 +210,7 @@ const normalizeTransferOptions = (members, currentUserId) =>
 const Settings = () => {
   const { user, updateUser, logout, refreshBlocks } = useAuth();
   const navigate = useNavigate();
+  const pendingEmail = user?.pendingEmail || user?.pending_email || null;
 
   const [success, setSuccess] = useState(null);
   const [error, setError] = useState(null);
@@ -265,16 +266,30 @@ const Settings = () => {
     setEmailLoading(true);
 
     try {
-      await userService.changeEmail(
+      const response = await userService.changeEmail(
         emailData.newEmail,
         emailData.currentPasswordForEmail,
       );
-      updateUser({ email: emailData.newEmail });
-      setSuccess("Email address updated successfully");
+      const nextPendingEmail =
+        response?.data?.pendingEmail || emailData.newEmail;
+
+      updateUser({ pendingEmail: nextPendingEmail });
+      setSuccess(
+        `Verification email sent to ${nextPendingEmail}. Your current email stays active until you confirm the new address.`,
+      );
       setEmailData({ newEmail: "", currentPasswordForEmail: "" });
       setShowEmailForm(false);
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to update email");
+      if (err.response?.status === 401) {
+        setEmailErrors((prev) => ({
+          ...prev,
+          currentPasswordForEmail:
+            err.response?.data?.message || "Current password is incorrect",
+        }));
+        return;
+      }
+
+      setError(err.response?.data?.message || "Failed to send verification email");
     } finally {
       setEmailLoading(false);
     }
@@ -334,6 +349,15 @@ const Settings = () => {
       });
       setShowPasswordForm(false);
     } catch (err) {
+      if (err.response?.status === 401) {
+        setPasswordErrors((prev) => ({
+          ...prev,
+          currentPassword:
+            err.response?.data?.message || "Current password is incorrect",
+        }));
+        return;
+      }
+
       setError(err.response?.data?.message || "Failed to change password");
     } finally {
       setPasswordLoading(false);
@@ -714,6 +738,12 @@ const Settings = () => {
                   {showEmailForm ? "Cancel" : "Change"}
                 </button>
               </div>
+              {pendingEmail && (
+                <p className="mt-2 text-sm text-info">
+                  Pending change to {pendingEmail}. Check that inbox to confirm
+                  the new address.
+                </p>
+              )}
             </div>
 
             {/* Change email form */}
@@ -781,7 +811,7 @@ const Settings = () => {
                     {emailLoading ? (
                       <span className="loading loading-spinner loading-xs" />
                     ) : (
-                      "Update Email"
+                      "Send Verification Email"
                     )}
                   </Button>
                 </div>

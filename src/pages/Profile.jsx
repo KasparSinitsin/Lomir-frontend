@@ -763,13 +763,6 @@ const Profile = () => {
       errors.username = "Use 3–20 chars: letters, numbers, underscore";
     }
 
-    // Email validation
-    if (!formData.email.trim()) {
-      errors.email = "Email is required";
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      errors.email = "Email is invalid";
-    }
-
     // First name validation (optional)
     if (!formData.firstName.trim()) {
       errors.firstName = "First name is required";
@@ -798,7 +791,6 @@ const Profile = () => {
         firstName: formData.firstName,
         lastName: formData.lastName,
         username: formData.username.trim(),
-        email: formData.email,
         bio: formData.bio,
         postalCode: formData.postalCode,
         city: formData.city,
@@ -861,7 +853,6 @@ const Profile = () => {
           firstName: formData.firstName,
           lastName: formData.lastName,
           username: formData.username.trim(),
-          email: formData.email, // Include email in the updated user object
           bio: formData.bio,
           city: formData.city,
           country: formData.country,

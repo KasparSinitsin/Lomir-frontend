@@ -206,12 +206,28 @@ export const userService = {
 
   changePassword: (currentPassword, newPassword) =>
     call("changing password", () =>
-      api.put("/api/auth/change-password", { currentPassword, newPassword }),
+      api.put(
+        "/api/auth/change-password",
+        { currentPassword, newPassword },
+        { skipAuthRedirect: true },
+      ),
     ),
 
   changeEmail: (newEmail, currentPassword) =>
     call("changing email", () =>
-      api.put("/api/auth/change-email", { newEmail, currentPassword }),
+      api.put(
+        "/api/auth/change-email",
+        { newEmail, currentPassword },
+        { skipAuthRedirect: true },
+      ),
+    ),
+
+  verifyEmailChange: (token) =>
+    call("verifying email change", () =>
+      api.get("/api/auth/verify-email-change", {
+        params: { token },
+        skipAuthRedirect: true,
+      }),
     ),
 };
 
