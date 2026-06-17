@@ -387,3 +387,9 @@ The chat page supports both direct (1-to-1) and team group conversations.
 
 - **Backend repo:** [Lomir-backend](https://github.com/KasparSinitsin/Lomir-backend)
 - **Account deletion spec:** Backend repo → `docs/USER_DELETION_SPEC.md`
+
+---
+
+## License
+
+This project is licensed under the GNU Affero General Public License v3.0 (AGPL-3.0). See the [LICENSE](LICENSE) file for the full text.
