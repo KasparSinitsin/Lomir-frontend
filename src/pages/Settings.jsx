@@ -382,11 +382,7 @@ const Settings = () => {
     `input input-bordered w-full ${hasError ? "input-error" : ""}`;
 
   const FieldError = ({ msg }) =>
-    msg ? (
-      <label className="label">
-        <span className="label-text-alt text-error">{msg}</span>
-      </label>
-    ) : null;
+    msg ? <p className="text-xs text-error mt-2 px-1">{msg}</p> : null;
 
   const resetDeleteState = () => {
     setDeletionStep(DELETE_STEP_PASSWORD);

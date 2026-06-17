@@ -81,7 +81,7 @@ const BlocklistSection = ({ userId, onChange }) => {
   };
 
   return (
-    <div>
+    <div className="!mt-[25px]">
       <ScreenAlert
         type={notification.type}
         message={notification.message}
@@ -91,10 +91,14 @@ const BlocklistSection = ({ userId, onChange }) => {
       {/* Section Header */}
       <div className="flex items-center mb-4">
         <Ban size={18} className="mr-2 text-primary flex-shrink-0" />
-        <h3 className="label-text">
-          Blocked Users
-          {!loading && <span className="label-text ml-1">({blocked.length})</span>}
-        </h3>
+        <label className="label">
+          <span className="label-text">
+            Blocked Users
+            {!loading && (
+              <span className="label-text ml-1">({blocked.length})</span>
+            )}
+          </span>
+        </label>
       </div>
 
       {loading ? (
