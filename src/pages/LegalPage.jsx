@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import Card from "../components/common/Card";
 
 const CONTACT_EMAIL = "lomirapp@gmail.com";
-const LAST_UPDATED = "June 15, 2026";
+const LAST_UPDATED = "June 18, 2026";
 const LEGAL_NOTICE_UPDATED = "June 16, 2026";
 const PRIVACY_UPDATED = "June 18, 2026";
 
@@ -96,7 +96,7 @@ const pageContent = {
           "Uploads: profile avatars, team avatars, chat images, chat files, and contact form attachments.",
           "Location data: postal code, city, district, state, country, and coordinates resolved from the location data a user provides. Lomir does not ask for a street address. Postal code and other location details are used as approximate location information for search, distance-based matching, recommendations, and profile/team/role location display. Depending on visibility settings and feature context, postal code, city, district, state, or country may be visible to other users. Public search and map results expose rounded approximate coordinates, not exact stored coordinates.",
           "Contact and report data: name, email address, topic, message, optional contact form attachments, report reference IDs, report status, email-forwarding status, and attachment metadata for abuse or illegal-content reports.",
-          "Security and technical data: IP-related request data handled by hosting providers, browser and device metadata in server logs, rate-limit data, CAPTCHA verification data where enabled, JWT authentication tokens, and browser storage needed for the app to work.",
+          "Security and technical data: IP-related request data handled by hosting providers, browser and device metadata in server logs, rate-limit data, CAPTCHA verification data where enabled, session and authentication data, and browser storage needed for the app to work.",
         ],
       },
       {
@@ -162,7 +162,7 @@ const pageContent = {
       {
         title: "12. Browser Storage, Cookies, and Similar Technologies",
         paragraphs: [
-          "Lomir uses a technically necessary, httpOnly session cookie to keep you signed in after login. This cookie holds your authentication token, is not readable by JavaScript, and is sent only to the Lomir backend to authenticate your requests and real-time chat connection. Lomir also uses technically necessary browser storage such as sessionStorage, for example for in-app notification state.",
+          "Lomir uses a technically necessary, httpOnly session cookie to keep you signed in after login. This cookie contains session authentication data, is not readable by JavaScript, and is sent to the Lomir backend to authenticate your requests and real-time chat connection. Lomir also uses technically necessary browser storage such as sessionStorage, for example for in-app notification state.",
           "This cookie and storage are strictly necessary to provide authentication, API access, real-time chat, and notification features, and therefore do not require consent under Section 25(2) TDDDG. Lomir does not currently use advertising cookies, marketing trackers, or third-party analytics tools.",
           "Where Cloudflare Turnstile is enabled for registration or the contact form, Cloudflare may process technical data to verify that a request is made by a human. This is used for abuse prevention.",
         ],
@@ -174,7 +174,7 @@ const pageContent = {
           "Render hosts the backend API. Render may process IP addresses, browser and device data, API request metadata, server logs, error information, and data transmitted to or from the backend.",
           "Neon, now part of Databricks, provides the PostgreSQL database. App data stored in the database may include account data, profile data, team and role data, messages, notifications, legal acknowledgement records, location data, and related metadata.",
           "ImageKit stores, transforms, optimizes, and delivers uploaded media and files, including profile avatars, team avatars, chat images, chat files, and related delivery logs or metadata.",
-          "Gmail/Google SMTP is used through Nodemailer to send account verification emails, password reset emails, account-change notifications, contact form messages, and abuse or illegal-content report emails. Google may process email addresses, email content, email metadata, contact form attachments, and report-related content as part of email delivery and mailbox operation.",
+          "Gmail/Google SMTP is used to send account verification emails, password reset emails, account-change notifications, contact form messages, and abuse or illegal-content report emails. Google may process email addresses, email content, email metadata, contact form attachments, and report-related content as part of email delivery and mailbox operation.",
           "Cloudflare Turnstile may be used for CAPTCHA checks on registration and contact forms. Cloudflare may process technical data such as IP address, browser and device information, challenge data, and verification tokens to detect abuse and confirm that a request is likely made by a human.",
           "OpenStreetMap/Nominatim is used to resolve user-provided location information such as postal code, city, district, state, or country. OpenStreetMap map tiles may be loaded when the map view is opened. OpenStreetMap-related services may receive location queries, IP addresses, browser and device data, and request metadata.",
         ],
@@ -260,7 +260,7 @@ const pageContent = {
         title: "4. Account Rules",
         items: [
           "Do not create accounts for someone else without permission.",
-          "Do not share your password or authentication token.",
+          "Do not share your password, login links, verification codes, or other account credentials.",
           "Do not use Lomir to harass, deceive, spam, threaten, or unlawfully discriminate against others.",
           "Do not upload malware, illegal content, confidential third-party information, or content that infringes intellectual property rights.",
           "Do not attempt to bypass security, scrape private data, or access accounts, teams, messages, or API endpoints without authorization.",
