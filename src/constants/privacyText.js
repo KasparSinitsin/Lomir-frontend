@@ -17,7 +17,7 @@ export const CHAT_UPLOAD_NOTICE =
   "Files and images shared in chat are visible to conversation participants. Please do not upload sensitive or confidential information.";
 
 export const BROWSER_STORAGE_NOTICE =
-  "Lomir uses browser storage such as localStorage and sessionStorage for technically necessary functions, including keeping users signed in and managing in-app notifications. We do not currently use advertising cookies, marketing trackers, or third-party analytics tools.";
+  "Lomir uses a technically necessary httpOnly session cookie to keep users signed in. Browser storage such as sessionStorage or short-lived localStorage messages is used only for necessary UI state, for example in-app notification checks or registration success messages. We do not currently use advertising cookies, marketing trackers, or third-party analytics tools.";
 
 export const LEGAL_PLACEHOLDER_NOTICE =
   "Lomir is currently being prepared for public use. Please do not enter sensitive personal information until the final legal documents are available.";
