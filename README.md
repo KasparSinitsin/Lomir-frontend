@@ -98,7 +98,7 @@ VITE_API_URL=http://localhost:5001
 VITE_IMAGEKIT_PUBLIC_KEY=<your-public-key>
 VITE_IMAGEKIT_URL_ENDPOINT=https://ik.imagekit.io/<your-id>
 
-# Cloudflare Turnstile (optional for local dev — if unset, CAPTCHA is not shown)
+# Cloudflare Turnstile (configured in the deployed app; the widget stays hidden locally until a site key is set)
 # VITE_TURNSTILE_SITE_KEY=<turnstile-site-key>
 
 # Contact page — set to a Lomir user ID to route authenticated users to in-app chat
@@ -377,7 +377,7 @@ The chat page supports both direct (1-to-1) and team group conversations.
 - **CORS errors** — Make sure the backend is running on port 5001 and the frontend on 5173; check that `VITE_API_URL` matches
 - **Socket.IO won't connect** — Verify `VITE_SOCKET_URL` in `.env` if you set it; otherwise the client falls back to `VITE_API_URL`
 - **"Access denied. No token provided."** — Your session cookie is missing or expired; log out and log back in (and ensure the API is reached over a credentialed/CORS-allowed origin so the cookie is sent)
-- **CAPTCHA not showing locally** — Expected behavior; if `VITE_TURNSTILE_SITE_KEY` is unset, registration skips CAPTCHA
+- **CAPTCHA not showing locally** — Expected when no Turnstile site key is configured; the CAPTCHA is active in the deployed app
 - **Images not uploading** — Check that `VITE_IMAGEKIT_PUBLIC_KEY` and `VITE_IMAGEKIT_URL_ENDPOINT` are set in `.env`
 - **Map not rendering** — Leaflet CSS must be imported; check that `leaflet` and `react-leaflet` are installed
 
