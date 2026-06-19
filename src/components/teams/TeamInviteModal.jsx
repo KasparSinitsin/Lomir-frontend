@@ -187,17 +187,6 @@ const isInviteModalDemoTeam = (team) => {
   );
 };
 
-const unwrapTeamPayload = (payload) => {
-  if (!payload || typeof payload !== "object") return null;
-
-  const nestedData = payload.data;
-  if (nestedData && typeof nestedData === "object" && !Array.isArray(nestedData)) {
-    return nestedData;
-  }
-
-  return payload;
-};
-
 /**
  * TeamInviteModal Component
  *
@@ -308,100 +297,40 @@ const TeamInviteModal = ({
         });
         setTeams(uniqueTeams);
 
-        // Fetch pending invitations and applications for each team
+        // Per-team status (pending invite / application for this invitee,
+        // filled role, open-role count, demo flag) is embedded in the
+        // /can-invite payload, so no per-team request fan-out is needed.
+        // The full invitation/application lists are loaded lazily only when a
+        // pending badge is clicked (see handleBadgeClick).
         const statusData = {};
 
-        await Promise.all(
-          uniqueTeams.map(async (team) => {
-            try {
-              // Fetch all sent invitations for this team
-              const invitationsResponse =
-                await teamService.getTeamSentInvitations(team.id);
-              const allInvitations = invitationsResponse.data || [];
+        uniqueTeams.forEach((team) => {
+          const isExistingMember =
+            team.isInviteeMember === true ||
+            team.is_invitee_member === true ||
+            isInviteeExistingTeamMember(team, inviteeId);
 
-              // Check if invitee has a pending invitation
-              const hasInviteForUser = allInvitations.some(
-                (inv) =>
-                  (inv.invitee?.id === inviteeId ||
-                    inv.invitee_id === inviteeId) &&
-                  inv.status === "pending"
-              );
-
-              // Fetch all applications for this team
-              const applicationsResponse =
-                await teamService.getTeamApplications(team.id);
-              const allApplications = applicationsResponse.data || [];
-
-              // Check if invitee has a pending application
-              const hasApplicationFromUser = allApplications.some(
-                (app) =>
-                  (app.applicant?.id === inviteeId ||
-                    app.applicant_id === inviteeId) &&
-                  app.status === "pending"
-              );
-              const isExistingMember =
-                team.isInviteeMember === true ||
-                team.is_invitee_member === true ||
-                isInviteeExistingTeamMember(team, inviteeId);
-
-              let openRoleCount = 0;
-              let hasFilledRoleForInvitee = hasInviteeFilledRole(team, inviteeId);
-              let isDemoTeam = isInviteModalDemoTeam(team);
-
-              if (!isDemoTeam) {
-                try {
-                  const teamDetailsResponse = await teamService.getTeamById(team.id);
-                  const teamDetails = unwrapTeamPayload(teamDetailsResponse);
-                  isDemoTeam = isInviteModalDemoTeam(teamDetails);
-                } catch {
-                  isDemoTeam = false;
-                }
-              }
-
-              try {
-                const rolesResponse = await vacantRoleService.getVacantRoles(team.id, "all");
-                const allRoles = rolesResponse.data || [];
-                openRoleCount = allRoles.filter((role) => {
-                  const status = String(role?.status ?? "open").toLowerCase();
-                  return status === "open";
-                }).length;
-                hasFilledRoleForInvitee =
-                  hasFilledRoleForInvitee ||
-                  allRoles.some((role) => isRoleFilledByInvitee(role, inviteeId));
-              } catch {
-                try {
-                  const rolesResponse = await vacantRoleService.getVacantRoles(team.id, "open");
-                  openRoleCount = (rolesResponse.data || []).length;
-                } catch {
-                  openRoleCount = 0;
-                }
-              }
-
-              statusData[team.id] = {
-                hasInviteForUser,
-                hasApplicationFromUser,
-                isExistingMember,
-                hasFilledRoleForInvitee,
-                isDemoTeam,
-                allInvitations,
-                allApplications,
-                openRoleCount,
-              };
-            } catch (err) {
-              console.warn(`Could not fetch status for team ${team.id}:`, err);
-              statusData[team.id] = {
-                hasInviteForUser: false,
-                hasApplicationFromUser: false,
-                isExistingMember: false,
-                hasFilledRoleForInvitee: false,
-                isDemoTeam: isInviteModalDemoTeam(team),
-                allInvitations: [],
-                allApplications: [],
-                openRoleCount: 0,
-              };
-            }
-          })
-        );
+          statusData[team.id] = {
+            hasInviteForUser:
+              normalizeBoolean(
+                team.hasPendingInviteForInvitee ??
+                  team.has_pending_invite_for_invitee,
+              ) === true,
+            hasApplicationFromUser:
+              normalizeBoolean(
+                team.hasPendingApplicationFromInvitee ??
+                  team.has_pending_application_from_invitee,
+              ) === true,
+            isExistingMember,
+            hasFilledRoleForInvitee: hasInviteeFilledRole(team, inviteeId),
+            isDemoTeam: isInviteModalDemoTeam(team),
+            openRoleCount:
+              Number(team.openRoleCount ?? team.open_role_count ?? 0) || 0,
+            // Loaded on demand when a pending badge is clicked.
+            allInvitations: undefined,
+            allApplications: undefined,
+          };
+        });
 
         setTeamStatusData(statusData);
       } catch (err) {
@@ -974,11 +903,19 @@ const TeamInviteModal = ({
       setSelectedTeamForModal(team);
       setSelectedTeamInvitations(status.allInvitations || []);
       setIsInvitesModalOpen(true);
+      // The full lists aren't prefetched (to avoid the per-team fan-out) —
+      // load them on demand the first time a pending badge is opened.
+      if (!status.allInvitations) {
+        refreshSelectedTeamRequests(teamId);
+      }
     } else if (statusBadge.type === "pending-application") {
       // Open TeamApplicationsModal with this team's applications
       setSelectedTeamForModal(team);
       setSelectedTeamApplications(status.allApplications || []);
       setIsApplicationsModalOpen(true);
+      if (!status.allApplications) {
+        refreshSelectedTeamRequests(teamId);
+      }
     } else if (
       statusBadge.type === "available" ||
       statusBadge.type === "selected" ||
@@ -1040,10 +977,10 @@ const TeamInviteModal = ({
     setSelectedRoleForDetails(null);
   };
 
-  const refreshSelectedTeamRequests = useCallback(async () => {
-    if (!selectedTeamForModal?.id) return;
+  const refreshSelectedTeamRequests = useCallback(async (teamIdArg) => {
+    const teamId = teamIdArg ?? selectedTeamForModal?.id;
+    if (!teamId) return;
 
-    const teamId = selectedTeamForModal.id;
     const [invitationsResult, applicationsResult] = await Promise.allSettled([
       teamService.getTeamSentInvitations(teamId),
       teamService.getTeamApplications(teamId),
