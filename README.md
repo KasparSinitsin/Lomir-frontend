@@ -159,8 +159,7 @@ Lomir-frontend/
 │   │   ├── VerifyEmailChange.jsx   # Confirms email-change links for logged-in users (verifying/success/error states)
 │   │   ├── Contact.jsx             # Contact form with file attachments, report reference display,
 │   │   │                           #   privacy notice, and in-app chat routing
-│   │   ├── LegalPage.jsx            # Shared page for /about, /terms, /privacy, /legal-notice
-│   │   └── DesignSystem.jsx        # Dev-only component playground
+│   │   └── LegalPage.jsx            # Shared page for /about, /terms, /privacy, /legal-notice
 │   ├── components/
 │   │   ├── BooleanSearchInput.jsx  # Textarea-based Boolean search input with operator helpers
 │   │   ├── SearchHelp.jsx          # Search Tips popup panel
