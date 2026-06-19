@@ -12,10 +12,11 @@ import RoleBadgeDropdown from "./RoleBadgeDropdown";
 import ScreenAlert from "../common/ScreenAlert";
 import { teamService } from "../../services/teamService";
 import { formatDisplayName } from "../../utils/nameFormatters";
+import { formatListLocation } from "../../utils/locationUtils";
 import CardMetaItem from "../common/CardMetaItem";
 import CardMetaRow from "../common/CardMetaRow";
 import Tooltip from "../common/Tooltip";
-import DemoAvatarOverlay from "../users/DemoAvatarOverlay";
+import UserAvatar from "../users/UserAvatar";
 import { DEMO_PROFILE_TOOLTIP, isSyntheticUser } from "../../utils/userHelpers";
 
 const getTeamMemberId = (member) =>
@@ -76,23 +77,6 @@ const TeamMembersSection = ({
     return statuses;
   }, [members]);
 
-  // Helper function to get member initials (2 letters: "NK" for Nam Khoa)
-  const getMemberInitials = (member) => {
-    const firstName = member.firstName || member.first_name;
-    const lastName = member.lastName || member.last_name;
-
-    if (firstName && lastName) {
-      return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
-    }
-    if (firstName) {
-      return firstName.charAt(0).toUpperCase();
-    }
-    if (member.username) {
-      return member.username.charAt(0).toUpperCase();
-    }
-    return "?";
-  };
-
   // Early return if no members
   if (!team?.members || team.members.length === 0) {
     return null;
@@ -134,6 +118,15 @@ const TeamMembersSection = ({
           const anonymize = shouldAnonymizeMember(member);
           const memberAvatarUrl =
             !anonymize ? member.avatarUrl || member.avatar_url || null : null;
+          const displayMember = {
+            ...member,
+            avatar_url: memberAvatarUrl,
+            avatarUrl: memberAvatarUrl,
+            is_public: anonymize ? false : member.is_public,
+            isPublic: anonymize ? false : member.isPublic,
+            is_private: anonymize ? true : member.is_private,
+            isPrivate: anonymize ? true : member.isPrivate,
+          };
           const memberSyntheticStatus =
             memberId != null ? syntheticMemberStatusMap[String(memberId)] : undefined;
           const showDemoAvatarOverlay =
@@ -172,36 +165,15 @@ const TeamMembersSection = ({
               key={memberId}
               className="flex items-start bg-green-50 rounded-xl shadow p-4 gap-4 transition-all duration-200 hover:bg-green-100 hover:shadow-md"
             >
-              <div className="avatar">
-                <div className="rounded-full w-14 h-14 relative overflow-hidden">
-                  {memberAvatarUrl ? (
-                    <img
-                      src={memberAvatarUrl}
-                      alt={member.username}
-                      className="object-cover w-full h-full rounded-full"
-                      onError={(e) => {
-                        e.target.style.display = "none";
-                        const fallback =
-                          e.target.parentElement.querySelector(
-                            ".avatar-fallback",
-                          );
-                        if (fallback) fallback.style.display = "flex";
-                      }}
-                    />
-                  ) : null}
-                  <div
-                    className="avatar-fallback placeholder bg-[var(--color-primary-focus)] text-primary-content rounded-full w-full h-full absolute inset-0 flex items-center justify-center"
-                    style={{ display: memberAvatarUrl ? "none" : "flex" }}
-                  >
-                    <span className="text-xl">
-                      {anonymize ? "PP" : getMemberInitials(member)}
-                    </span>
-                  </div>
-                  {showDemoAvatarOverlay && (
-                    <DemoAvatarOverlay textClassName="text-[8px]" />
-                  )}
-                </div>
-              </div>
+              <UserAvatar
+                user={displayMember}
+                sizeClass="w-14 h-14"
+                privateProfile={anonymize}
+                showDemoOverlay={showDemoAvatarOverlay}
+                demoOverlayTextClassName="text-[8px]"
+                fallbackText={anonymize ? "PP" : undefined}
+                initialsClassName="text-xl"
+              />
 
               <div className="flex-1 min-w-0 pt-[1px]">
                 <div className="flex flex-col">
@@ -224,7 +196,13 @@ const TeamMembersSection = ({
                     >
                       <div
                         className={`min-w-0 ${!anonymize ? "cursor-pointer" : ""}`}
-                        onClick={() => !anonymize && onMemberClick(memberId)}
+                        onClick={() =>
+                          !anonymize &&
+                          onMemberClick(memberId, {
+                            member,
+                            teamId: team?.id ?? team?.teamId ?? team?.team_id,
+                          })
+                        }
                       >
                         <h3 className="font-medium text-base truncate leading-[120%]">
                           {anonymize
@@ -338,11 +316,15 @@ const TeamMembersSection = ({
 
                   {shouldShowMemberMetaRow && (
                     <CardMetaRow>
-                      {!anonymize && (member.city || member.country) && (
-                        <CardMetaItem icon={MapPin}>
-                          {[member.city, member.country].filter(Boolean).join(", ")}
-                        </CardMetaItem>
-                      )}
+                      {!anonymize && (() => {
+                        const memberLocationText = formatListLocation(member, {
+                          isRemote: member.is_remote || member.isRemote,
+                        }).short;
+
+                        return memberLocationText ? (
+                          <CardMetaItem icon={MapPin}>{memberLocationText}</CardMetaItem>
+                        ) : null;
+                      })()}
 
                       {!anonymize && member.distance_km != null && (
                         <CardMetaItem icon={Ruler} tone="muted" nowrap>

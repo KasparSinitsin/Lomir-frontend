@@ -33,6 +33,9 @@ const SupercategoryAwardsModal = ({
   badgeActionLoadingKey = null,
   hiddenAwardIds = [],
   showHiddenBadgeAwards = false,
+  subjectUserId = null,
+  canViewPrivateAwardees = false,
+  showAwarderAtBottom = false,
 }) => {
   // Internal TeamDetailsModal state (so the team click works even if parent doesn’t manage it)
   const [selectedTeamForDetails, setSelectedTeamForDetails] = useState(null);
@@ -273,6 +276,9 @@ const SupercategoryAwardsModal = ({
                               onDeleteAward={onDeleteAward}
                               isBadgeHidden={isAwardHidden(award)}
                               badgeActionLoadingKey={badgeActionLoadingKey}
+                              subjectUserId={subjectUserId}
+                              canViewPrivateAwardees={canViewPrivateAwardees}
+                              showAwarderAtBottom={showAwarderAtBottom}
                               highlighted={
                                 !!highlightBadgeName &&
                                 (

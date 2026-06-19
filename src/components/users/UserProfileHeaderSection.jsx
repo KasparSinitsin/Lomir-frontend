@@ -57,12 +57,19 @@ const UserProfileHeaderSection = ({
       return false;
     }
     // Only show for the user's own profile
-    return currentUser.id === user.id;
+    return String(currentUser.id) === String(user.id);
   };
 
   // Helper to check if profile is public
   const isUserProfilePublic = () => {
     if (!user) return false;
+
+    if (shouldShowVisibilityIndicator()) {
+      if (currentUser.is_public === true) return true;
+      if (currentUser.isPublic === true) return true;
+      if (currentUser.is_public === false) return false;
+      if (currentUser.isPublic === false) return false;
+    }
 
     // Check both property name formats
     if (user.is_public === true) return true;
@@ -99,7 +106,6 @@ const UserProfileHeaderSection = ({
   };
 
   const displayName = getDisplayName();
-
   useLayoutEffect(() => {
     const container = titleContainerRef.current;
     const probe = titleProbeRef.current;
@@ -177,7 +183,6 @@ const UserProfileHeaderSection = ({
         </h1>
         <div className="flex items-center flex-wrap gap-x-3 gap-y-0.5 text-sm leading-[110%]">
           <span className="text-base-content/70">@{user?.username}</span>
-
           {/* Visibility Indicator - Only show for own profile */}
           {shouldShowVisibilityIndicator() && (
             <div className="flex items-center text-base-content/70">
@@ -194,13 +199,13 @@ const UserProfileHeaderSection = ({
               )}
             </div>
           )}
-          {((dateIsNarrow && getMemberSinceDate()) || isSyntheticUser(user)) && (
-            <span className="flex items-center gap-3 flex-shrink-0">
-              {dateIsNarrow && getMemberSinceDate() && (
+          {(getMemberSinceDate() || isSyntheticUser(user)) && (
+            <span className="flex items-center gap-1.5 flex-shrink-0">
+              {getMemberSinceDate() && (
                 <Tooltip
                   content={`Joined Lomir on ${getMemberSinceDate().full}`}
                   position="bottom"
-                  wrapperClassName="flex items-center text-base-content/70 flex-shrink-0 cursor-help"
+                  wrapperClassName={`items-center text-base-content/70 flex-shrink-0 cursor-help ${dateIsNarrow ? "flex" : "flex sm:hidden"}`}
                 >
                   <Calendar size={14} className="mr-1" />
                   <span>{getMemberSinceDate().short}</span>
@@ -211,8 +216,8 @@ const UserProfileHeaderSection = ({
                   content={DEMO_PROFILE_TOOLTIP}
                   wrapperClassName="flex items-start text-base-content/50"
                 >
-                  <FlaskConical size={14} className={`flex-shrink-0 mt-px${dateIsNarrow ? "" : " mr-0.5"}`} />
-                  {!dateIsNarrow && <span className="leading-[1.15]">Demo Profile</span>}
+                  <FlaskConical size={14} className={`flex-shrink-0 mt-px${dateIsNarrow ? "" : " sm:mr-0.5"}`} />
+                  {!dateIsNarrow && <span className="hidden sm:inline leading-[1.15]">Demo Profile</span>}
                 </Tooltip>
               )}
             </span>
@@ -224,7 +229,7 @@ const UserProfileHeaderSection = ({
       {getMemberSinceDate() && (
         <div
           ref={dateRef}
-          className={`flex-shrink-0${dateIsNarrow ? " absolute opacity-0 pointer-events-none" : ""}`}
+          className={`flex-shrink-0${dateIsNarrow ? " absolute opacity-0 pointer-events-none" : " hidden sm:block"}`}
         >
           <Tooltip
             content={`Joined Lomir on ${getMemberSinceDate().full}`}

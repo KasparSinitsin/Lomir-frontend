@@ -16,6 +16,8 @@ import {
 } from "lucide-react";
 import Tooltip from "../common/Tooltip";
 import InlineUserLink from "../users/InlineUserLink";
+import { useAuth } from "../../contexts/AuthContext";
+import { useUserProfile } from "../../hooks/useUserQueries";
 import { useTeamModalSafe } from "../../contexts/TeamModalContext";
 import { useUserModalSafe } from "../../contexts/UserModalContext";
 import { getBadgeIcon } from "../../utils/badgeIconUtils";
@@ -31,6 +33,34 @@ import {
 } from "../../utils/deletedUser";
 import { formatDisplayName } from "../../utils/nameFormatters";
 import { getDisplayName } from "../../utils/userHelpers";
+
+const normalizeBooleanFlag = (value) => {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "number") return value === 1;
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    if (["true", "1", "yes"].includes(normalized)) return true;
+    if (["false", "0", "no"].includes(normalized)) return false;
+  }
+  return null;
+};
+
+const firstPresent = (...values) =>
+  values.find((value) => value !== undefined && value !== null);
+
+const idsMatch = (firstId, secondId) => {
+  if (firstId === undefined || firstId === null) return false;
+  if (secondId === undefined || secondId === null) return false;
+  return String(firstId).trim() === String(secondId).trim();
+};
+
+const getProfilePublicStatus = (profile) =>
+  firstPresent(
+    profile?.isPublic,
+    profile?.is_public,
+    profile?.profileIsPublic,
+    profile?.profile_is_public,
+  );
 
 /**
  * AwardCard
@@ -74,6 +104,9 @@ const AwardCard = ({
   onDeleteAward = null,
   isBadgeHidden = false,
   badgeActionLoadingKey = null,
+  subjectUserId = null,
+  canViewPrivateAwardees = false,
+  showAwarderAtBottom = false,
 }) => {
   const mutedBadgeColor = "#6B7280";
   const mutedCardBackground = "#F3F4F6";
@@ -96,6 +129,9 @@ const AwardCard = ({
     ? `0 0 12px ${isBadgeHidden ? "#9CA3AF66" : `${catColor}66`}`
     : undefined;
   const childTeamModalZIndex = useChildModalZIndex();
+  const { user: currentUser, blockedRelationshipIds } = useAuth();
+  const isBlockedUser = (id) =>
+    id != null && blockedRelationshipIds?.has?.(String(id));
 
   // --- Normalize fields (camelCase + snake_case) ---
   const awardId = award?.awardId || award?.award_id || award?.id || null;
@@ -160,30 +196,130 @@ const AwardCard = ({
   const tagName = award?.tagName ?? award?.tag_name ?? null;
 
   // --- Awarded BY (bottom row) ---
-  const awardedByUserId = award?.awardedByUserId || award?.awarded_by_user_id;
+  const awardedBySource =
+    award?.awardedBy ??
+    award?.awarded_by ??
+    award?.awardedByUser ??
+    award?.awarded_by_user ??
+    award?.awarder ??
+    award?.awarderUser ??
+    award?.awarder_user ??
+    {};
+  const awardedByUserId =
+    award?.awardedByUserId ??
+    award?.awarded_by_user_id ??
+    awardedBySource?.id ??
+    awardedBySource?.userId ??
+    awardedBySource?.user_id ??
+    null;
   const awardedByFirstName =
-    award?.awardedByFirstName || award?.awarded_by_first_name;
+    award?.awardedByFirstName ??
+    award?.awarded_by_first_name ??
+    awardedBySource?.firstName ??
+    awardedBySource?.first_name ??
+    null;
   const awardedByLastName =
-    award?.awardedByLastName || award?.awarded_by_last_name;
+    award?.awardedByLastName ??
+    award?.awarded_by_last_name ??
+    awardedBySource?.lastName ??
+    awardedBySource?.last_name ??
+    null;
   const awardedByUsername =
-    award?.awardedByUsername || award?.awarded_by_username;
+    award?.awardedByUsername ??
+    award?.awarded_by_username ??
+    awardedBySource?.username ??
+    null;
   const awardedByAvatarUrl =
-    award?.awardedByAvatarUrl || award?.awarded_by_avatar_url;
+    award?.awardedByAvatarUrl ??
+    award?.awarded_by_avatar_url ??
+    awardedBySource?.avatarUrl ??
+    awardedBySource?.avatar_url ??
+    null;
   const awardedByIsSynthetic =
-    award?.awardedByIsSynthetic ?? award?.awarded_by_is_synthetic ?? false;
-
-  const awardedByUser = {
-    id: awardedByUserId,
-    first_name: awardedByFirstName,
-    last_name: awardedByLastName,
-    username: awardedByUsername,
-    avatar_url: awardedByAvatarUrl,
-    is_synthetic: awardedByIsSynthetic,
-  };
+    award?.awardedByIsSynthetic ??
+    award?.awarded_by_is_synthetic ??
+    awardedBySource?.isSynthetic ??
+    awardedBySource?.is_synthetic ??
+    false;
+  const awardedByIsPublic =
+    firstPresent(
+      award?.awardedByIsPublic,
+      award?.awarded_by_is_public,
+      award?.awarderIsPublic,
+      award?.awarder_is_public,
+      award?.awardedByPublic,
+      award?.awarded_by_public,
+      award?.awarderPublic,
+      award?.awarder_public,
+      award?.awardedByProfileIsPublic,
+      award?.awarded_by_profile_is_public,
+      award?.awarderProfileIsPublic,
+      award?.awarder_profile_is_public,
+      awardedBySource?.isPublic,
+      awardedBySource?.is_public,
+      awardedBySource?.profile?.isPublic,
+      awardedBySource?.profile?.is_public,
+    );
+  const awardedByIsPrivate =
+    firstPresent(
+      award?.awardedByIsPrivate,
+      award?.awarded_by_is_private,
+      award?.awarderIsPrivate,
+      award?.awarder_is_private,
+      award?.awardedByPrivate,
+      award?.awarded_by_private,
+      award?.awarderPrivate,
+      award?.awarder_private,
+      award?.awardedByProfileIsPrivate,
+      award?.awarded_by_profile_is_private,
+      award?.awarderProfileIsPrivate,
+      award?.awarder_profile_is_private,
+      awardedBySource?.isPrivate,
+      awardedBySource?.is_private,
+      awardedBySource?.profile?.isPrivate,
+      awardedBySource?.profile?.is_private,
+    );
+  const awardedByVisibility = firstPresent(
+    award?.awardedByVisibility,
+    award?.awarded_by_visibility,
+    award?.awarderVisibility,
+    award?.awarder_visibility,
+    award?.awardedByProfileVisibility,
+    award?.awarded_by_profile_visibility,
+    award?.awarderProfileVisibility,
+    award?.awarder_profile_visibility,
+    awardedBySource?.visibility,
+    awardedBySource?.profileVisibility,
+    awardedBySource?.profile_visibility,
+    awardedBySource?.profile?.visibility,
+  );
+  const awardedByHasExplicitPrivacy = Boolean(
+    awardedByIsPublic !== undefined ||
+      awardedByIsPrivate !== undefined ||
+      awardedByVisibility !== undefined,
+  );
+  const awarderIsFormerUser = !awardedByUserId && !awardedByUsername;
 
   // --- Awarded TO / Awardee (title row — team context) ---
+  const awardedToSource =
+    award?.awardedTo ??
+    award?.awarded_to ??
+    award?.awardedToUser ??
+    award?.awarded_to_user ??
+    award?.awardee ??
+    award?.awardeeUser ??
+    award?.awardee_user ??
+    {};
   const awardedToUserId =
-    award?.awardedToUserId || award?.awarded_to_user_id || null;
+    firstPresent(
+      award?.awardedToUserId,
+      award?.awarded_to_user_id,
+      award?.awardeeUserId,
+      award?.awardee_user_id,
+      awardedToSource?.id,
+      awardedToSource?.userId,
+      awardedToSource?.user_id,
+    ) ?? null;
   const awardedToFirstName =
     award?.awardedToFirstName || award?.awarded_to_first_name || null;
   const awardedToLastName =
@@ -194,12 +330,180 @@ const AwardCard = ({
     award?.awardedToAvatarUrl || award?.awarded_to_avatar_url || null;
   const awardedToIsSynthetic =
     award?.awardedToIsSynthetic ?? award?.awarded_to_is_synthetic ?? false;
+  const awardedToIsPublic = firstPresent(
+    award?.awardedToIsPublic,
+    award?.awarded_to_is_public,
+    award?.awardeeIsPublic,
+    award?.awardee_is_public,
+    award?.awardedToPublic,
+    award?.awarded_to_public,
+    award?.awardeePublic,
+    award?.awardee_public,
+    award?.awardedToProfileIsPublic,
+    award?.awarded_to_profile_is_public,
+    award?.awardeeProfileIsPublic,
+    award?.awardee_profile_is_public,
+    awardedToSource?.isPublic,
+    awardedToSource?.is_public,
+    awardedToSource?.profile?.isPublic,
+    awardedToSource?.profile?.is_public,
+  );
+  const awardedToIsPrivate = firstPresent(
+    award?.awardedToIsPrivate,
+    award?.awarded_to_is_private,
+    award?.awardeeIsPrivate,
+    award?.awardee_is_private,
+    award?.awardedToPrivate,
+    award?.awarded_to_private,
+    award?.awardeePrivate,
+    award?.awardee_private,
+    award?.awardedToProfileIsPrivate,
+    award?.awarded_to_profile_is_private,
+    award?.awardeeProfileIsPrivate,
+    award?.awardee_profile_is_private,
+    awardedToSource?.isPrivate,
+    awardedToSource?.is_private,
+    awardedToSource?.profile?.isPrivate,
+    awardedToSource?.profile?.is_private,
+  );
+  const awardedToVisibility = firstPresent(
+    award?.awardedToVisibility,
+    award?.awarded_to_visibility,
+    award?.awardeeVisibility,
+    award?.awardee_visibility,
+    award?.awardedToProfileVisibility,
+    award?.awarded_to_profile_visibility,
+    award?.awardeeProfileVisibility,
+    award?.awardee_profile_visibility,
+    awardedToSource?.visibility,
+    awardedToSource?.profileVisibility,
+    awardedToSource?.profile_visibility,
+    awardedToSource?.profile?.visibility,
+  );
+  const awardedToHasExplicitPrivacy = Boolean(
+    awardedToIsPublic !== undefined ||
+      awardedToIsPrivate !== undefined ||
+      awardedToVisibility !== undefined,
+  );
 
   const hasAwardeeInfo = Boolean(awardedToUserId);
+  const recipientUserId = firstPresent(awardedToUserId, subjectUserId);
+  const viewerIsRecipient = idsMatch(currentUser?.id, recipientUserId);
+  const viewerCanSeeAwardee = viewerIsRecipient || canViewPrivateAwardees;
+  // A block in either direction always anonymizes the other person, even on my
+  // own badge where I'd otherwise see them.
+  const awarderIsBlocked = isBlockedUser(awardedByUserId);
+  const awardeeIsBlocked = isBlockedUser(awardedToUserId);
+  const shouldFetchAwarderPrivacy = Boolean(
+    awardedByUserId &&
+      !viewerIsRecipient &&
+      !awardedByHasExplicitPrivacy &&
+      !awarderIsFormerUser &&
+      !awarderIsBlocked,
+  );
+  const {
+    data: resolvedAwarderProfile = null,
+    isLoading: awarderPrivacyLoading = false,
+  } = useUserProfile(awardedByUserId, {
+    enabled: shouldFetchAwarderPrivacy,
+  });
+  const resolvedAwarderIsPublic = getProfilePublicStatus(resolvedAwarderProfile);
+  const shouldFetchAwardeePrivacy = Boolean(
+    awardedToUserId &&
+      !viewerCanSeeAwardee &&
+      !awardedToHasExplicitPrivacy &&
+      !awardeeIsBlocked,
+  );
+  const {
+    data: resolvedAwardeeProfile = null,
+    isLoading: awardeePrivacyLoading = false,
+  } = useUserProfile(awardedToUserId, {
+    enabled: shouldFetchAwardeePrivacy,
+  });
+  const resolvedAwardeeIsPublic = getProfilePublicStatus(resolvedAwardeeProfile);
+  const awardedByVisibilityValue =
+    typeof awardedByVisibility === "string"
+      ? awardedByVisibility.trim().toLowerCase()
+      : null;
+  const awardedToVisibilityValue =
+    typeof awardedToVisibility === "string"
+      ? awardedToVisibility.trim().toLowerCase()
+      : null;
+  const explicitAwarderProfileIsPrivate =
+    normalizeBooleanFlag(awardedByIsPublic) === false ||
+    normalizeBooleanFlag(awardedByIsPrivate) === true ||
+    ["private", "hidden", "anonymous"].includes(awardedByVisibilityValue);
+  const awarderProfileIsPrivate =
+    !awarderIsFormerUser &&
+    (explicitAwarderProfileIsPrivate ||
+      (!viewerIsRecipient &&
+      !awardedByHasExplicitPrivacy &&
+      (awarderPrivacyLoading ||
+          normalizeBooleanFlag(resolvedAwarderIsPublic) !== true)));
+  const shouldAnonymizeAwarder =
+    awarderIsBlocked || (awarderProfileIsPrivate && !viewerIsRecipient);
+  const explicitAwardeeProfileIsPrivate =
+    normalizeBooleanFlag(awardedToIsPublic) === false ||
+    normalizeBooleanFlag(awardedToIsPrivate) === true ||
+    ["private", "hidden", "anonymous"].includes(awardedToVisibilityValue);
+  const awardeeProfileIsPrivate =
+    explicitAwardeeProfileIsPrivate ||
+    (!viewerCanSeeAwardee &&
+      !awardedToHasExplicitPrivacy &&
+      (awardeePrivacyLoading ||
+        normalizeBooleanFlag(resolvedAwardeeIsPublic) !== true));
+  const shouldAnonymizeAwardee =
+    awardeeIsBlocked || (awardeeProfileIsPrivate && !viewerCanSeeAwardee);
+  const awardedByDisplayIsPublic = shouldAnonymizeAwarder
+    ? false
+    : awarderProfileIsPrivate
+      ? true
+      : awardedByIsPublic;
+  const awardedByDisplayIsPrivate = shouldAnonymizeAwarder
+    ? true
+    : awarderProfileIsPrivate
+      ? false
+      : awardedByIsPrivate;
+  const awardedByUser = {
+    id: awardedByUserId,
+    first_name: awardedByFirstName,
+    last_name: awardedByLastName,
+    username: awardedByUsername,
+    avatar_url: awardedByAvatarUrl,
+    is_synthetic: awardedByIsSynthetic,
+    is_public: awardedByDisplayIsPublic,
+    isPublic: awardedByDisplayIsPublic,
+    is_private: awardedByDisplayIsPrivate,
+    isPrivate: awardedByDisplayIsPrivate,
+  };
+  const awardedToDisplayIsPublic = shouldAnonymizeAwardee
+    ? false
+    : awardeeProfileIsPrivate
+      ? true
+      : awardedToIsPublic;
+  const awardedToDisplayIsPrivate = shouldAnonymizeAwardee
+    ? true
+    : awardeeProfileIsPrivate
+      ? false
+      : awardedToIsPrivate;
+  const awardedToUser = {
+    id: awardedToUserId,
+    first_name: awardedToFirstName,
+    last_name: awardedToLastName,
+    username: awardedToUsername,
+    avatar_url: shouldAnonymizeAwardee ? null : awardedToAvatarUrl,
+    is_synthetic: awardedToIsSynthetic,
+    is_public: awardedToDisplayIsPublic,
+    isPublic: awardedToDisplayIsPublic,
+    is_private: awardedToDisplayIsPrivate,
+    isPrivate: awardedToDisplayIsPrivate,
+  };
 
-  const awarderName = awardedByFirstName
-    ? `${awardedByFirstName}${awardedByLastName ? ` ${awardedByLastName}` : ""}`
-    : awardedByUsername || getDeletedUserDisplayName(awardedByUser);
+  const awarderName = shouldAnonymizeAwarder
+    ? "Private Profile"
+    : awardedByFirstName
+      ? `${awardedByFirstName}${awardedByLastName ? ` ${awardedByLastName}` : ""}`
+      : awardedByUsername || getDeletedUserDisplayName(awardedByUser);
   const isDeletedAwarder = !awardedByUserId || isDeletedUser(awardedByUser);
 
   // --- Team modal integration (global fallback) ---
@@ -395,9 +699,9 @@ const AwardCard = ({
           </div>
 
           {/* ── Subline ── */}
-          <div className="mt-1 flex max-h-[2.5em] min-w-0 flex-wrap items-center gap-x-3 gap-y-0.5 overflow-hidden text-xs leading-tight text-base-content/60">
+          <div className="mt-1 flex max-h-[2.5em] min-w-0 flex-wrap items-center gap-x-3 gap-y-0.5 overflow-hidden text-xs leading-[110%] text-base-content/60">
             {/* Awarded by (team context only — awarder name, clickable) */}
-            {hasAwardeeInfo && (
+            {hasAwardeeInfo && !showAwarderAtBottom && (
               <span className="flex items-center gap-1 min-w-0">
                 <Award
                   size={11}
@@ -406,7 +710,10 @@ const AwardCard = ({
                 <span className="flex-shrink-0">awarded by</span>
                 <Tooltip
                   content={
-                    awardedByUserId && canOpenUser && !isDeletedAwarder
+                    awardedByUserId &&
+                    canOpenUser &&
+                    !isDeletedAwarder &&
+                    !shouldAnonymizeAwarder
                       ? "View profile"
                       : null
                   }
@@ -415,15 +722,21 @@ const AwardCard = ({
                   <span
                     className={[
                       "truncate font-medium",
-                      isDeletedAwarder
+                      isDeletedAwarder || shouldAnonymizeAwarder
                         ? "text-base-content/50"
                         : "text-base-content/70",
-                      awardedByUserId && canOpenUser && !isDeletedAwarder
+                      awardedByUserId &&
+                      canOpenUser &&
+                      !isDeletedAwarder &&
+                      !shouldAnonymizeAwarder
                         ? "cursor-pointer hover:text-primary transition-colors"
                         : "",
                     ].join(" ")}
                     onClick={
-                      awardedByUserId && canOpenUser && !isDeletedAwarder
+                      awardedByUserId &&
+                      canOpenUser &&
+                      !isDeletedAwarder &&
+                      !shouldAnonymizeAwarder
                         ? () => openUser(awardedByUserId)
                         : undefined
                     }
@@ -611,38 +924,33 @@ const AwardCard = ({
 
       {/* Bottom row pinned to bottom */}
       <div className="flex items-end justify-between mt-auto pt-3 gap-2">
-        {hasAwardeeInfo ? (
+        {hasAwardeeInfo && !showAwarderAtBottom ? (
           <InlineUserLink
             label={
               <>
                 <span className="hidden sm:inline">Awarded </span>to
               </>
             }
-            user={{
-              id: awardedToUserId,
-              first_name: awardedToFirstName,
-              last_name: awardedToLastName,
-              username: awardedToUsername,
-              avatar_url: awardedToAvatarUrl,
-              is_synthetic: awardedToIsSynthetic,
-            }}
+            user={awardedToUser}
             displayName={
-              <>
-                <span className="hidden sm:inline">
-                  {getDisplayName({
-                    first_name: awardedToFirstName,
-                    last_name: awardedToLastName,
-                    username: awardedToUsername,
-                  })}
-                </span>
-                <span className="sm:hidden">
-                  {formatDisplayName({
-                    first_name: awardedToFirstName,
-                    last_name: awardedToLastName,
-                    username: awardedToUsername,
-                  })}
-                </span>
-              </>
+              shouldAnonymizeAwardee ? undefined : (
+                <>
+                  <span className="hidden sm:inline">
+                    {getDisplayName({
+                      first_name: awardedToFirstName,
+                      last_name: awardedToLastName,
+                      username: awardedToUsername,
+                    })}
+                  </span>
+                  <span className="sm:hidden">
+                    {formatDisplayName({
+                      first_name: awardedToFirstName,
+                      last_name: awardedToLastName,
+                      username: awardedToUsername,
+                    })}
+                  </span>
+                </>
+              )
             }
             onOpenUser={openUser}
           />
@@ -654,16 +962,6 @@ const AwardCard = ({
               </>
             }
             user={awardedByUser}
-            displayName={
-              <>
-                <span className="hidden sm:inline">
-                  {getDisplayName(awardedByUser)}
-                </span>
-                <span className="sm:hidden">
-                  {formatDisplayName(awardedByUser)}
-                </span>
-              </>
-            }
             onOpenUser={openUser}
           />
         )}

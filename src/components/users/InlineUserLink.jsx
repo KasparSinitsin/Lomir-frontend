@@ -1,6 +1,7 @@
 import React from "react";
 import { FlaskConical } from "lucide-react";
 import { useUserModalSafe } from "../../contexts/UserModalContext";
+import { useAuth } from "../../contexts/AuthContext";
 import { useUserProfile } from "../../hooks/useUserQueries";
 import Tooltip from "../common/Tooltip";
 import { DEMO_PROFILE_TOOLTIP } from "../../utils/userHelpers";
@@ -40,6 +41,23 @@ const mergeInlineUserData = (user, profile) => {
     isSynthetic: resolvedSyntheticStatus,
   };
 };
+
+const normalizeBooleanFlag = (value) => {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "number") return value === 1;
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    if (["true", "1", "yes"].includes(normalized)) return true;
+    if (["false", "0", "no"].includes(normalized)) return false;
+  }
+  return null;
+};
+
+const isPrivateProfile = (user) =>
+  normalizeBooleanFlag(user?.is_public) === false ||
+  normalizeBooleanFlag(user?.isPublic) === false ||
+  normalizeBooleanFlag(user?.is_private) === true ||
+  normalizeBooleanFlag(user?.isPrivate) === true;
 
 /**
  * InlineUserLink Component
@@ -83,10 +101,16 @@ const InlineUserLink = ({
 }) => {
   // Try to get global modal context (returns null if not available)
   const userModalContext = useUserModalSafe();
+  const { blockedRelationshipIds } = useAuth();
 
   // Normalize user ID from various possible field names
   const userId = user?.id || user?.user_id || user?.userId;
   const isFormerUser = isDeletedUser(user);
+  // A block in either direction anonymizes the referenced user everywhere this
+  // inline link appears (e.g. "Invited by", "Awarded by", "Applied by").
+  const isBlockedUser =
+    userId != null && blockedRelationshipIds?.has?.(String(userId));
+  const isPrivateUser = isPrivateProfile(user) || isBlockedUser;
   // Only hydrate when the parent didn't pass enough to render a name —
   // missing avatar / synthetic flag alone aren't worth a network round trip,
   // since UserAvatar falls back to initials and the synthetic indicator is
@@ -99,7 +123,7 @@ const InlineUserLink = ({
       user?.lastName,
   );
   const needsInlineHydration =
-    !isFormerUser && Boolean(userId) && !hasDisplayableName;
+    !isFormerUser && !isPrivateUser && Boolean(userId) && !hasDisplayableName;
   const { data: resolvedInlineProfile = null } = useUserProfile(userId, {
     enabled: needsInlineHydration,
   });
@@ -107,10 +131,21 @@ const InlineUserLink = ({
   if (!user) return null;
 
   // Determine if we can handle clicks
-  const canClick = !isFormerUser && userId && (userModalContext || onOpenUser);
+  const canClick =
+    !isFormerUser &&
+    !isPrivateUser &&
+    userId &&
+    (userModalContext || onOpenUser);
   const inlineUser = mergeInlineUserData(user, resolvedInlineProfile);
-  const name = displayName ?? (getDisplayName(inlineUser) || "Unknown");
-  const showDemoIndicator = !isFormerUser && Boolean(inlineUser?.is_synthetic || inlineUser?.isSynthetic);
+  const name = isFormerUser
+    ? getDisplayName(inlineUser)
+    : isPrivateUser
+      ? "Private Profile"
+      : displayName ?? getDisplayName(inlineUser);
+  const showDemoIndicator =
+    !isFormerUser &&
+    !isPrivateUser &&
+    Boolean(inlineUser?.is_synthetic || inlineUser?.isSynthetic);
 
   const handleClick = (e) => {
     if (!canClick) return;
@@ -142,6 +177,7 @@ const InlineUserLink = ({
           <UserAvatar
             user={inlineUser}
             deleted={isFormerUser}
+            privateProfile={!isFormerUser && isPrivateUser}
             sizeClass={avatarSize}
             clickable={Boolean(canClick)}
             onClick={handleClick}
@@ -151,6 +187,7 @@ const InlineUserLink = ({
                 ? "text-[8px] font-medium"
                 : "text-[10px] font-medium"
             }
+            fallbackText={!isFormerUser && isPrivateUser ? "PP" : undefined}
           />
         </Tooltip>
       )}
@@ -162,7 +199,9 @@ const InlineUserLink = ({
       >
         <span
           className={`font-medium truncate ${
-            isFormerUser ? "text-base-content/50" : "text-base-content/80"
+            isFormerUser || isPrivateUser
+              ? "text-base-content/50"
+              : "text-base-content/80"
           } ${canClick ? "cursor-pointer hover:text-primary transition-colors" : ""}`}
           onClick={canClick ? handleClick : undefined}
         >

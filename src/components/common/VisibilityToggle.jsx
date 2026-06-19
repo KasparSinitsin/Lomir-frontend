@@ -37,7 +37,7 @@ const VisibilityToggle = ({
   const getVisibleDescription = () => {
     if (entityType === "team") return "Anyone can find and view your team";
     if (entityType === "profile")
-      return "Your profile will be discoverable by other users";
+      return "Your profile will be discoverable by others";
     return visibleDescription;
   };
 
@@ -72,11 +72,11 @@ const VisibilityToggle = ({
 <div
   className={`input input-bordered w-full h-auto px-4 py-3 ${
   error ? "input-error" : ""
-} flex flex-col items-start gap-0`}
+} ${disabled ? "opacity-60 cursor-not-allowed" : ""} flex flex-col items-start gap-0`}
 >
   {/* Row 1: icon + state text + toggle */}
-  <div className="flex items-center justify-between w-full">
-    <div className="flex items-center">
+  <div className="flex items-center justify-between w-full gap-3">
+    <div className="flex items-center min-w-0">
       {isChecked ? (
         <Eye size={24} className="text-primary mr-3 flex-shrink-0" />
       ) : (
@@ -86,15 +86,15 @@ const VisibilityToggle = ({
         />
       )}
 
-      <span className="text-base-content font-normal">
+      <span className="text-base-content font-normal min-w-0 break-words">
         {isChecked ? visibleLabel : hiddenLabel}
       </span>
     </div>
 
     <label
       htmlFor={inputId}
-      className={`relative inline-flex items-center ${
-        disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer"
+      className={`relative inline-flex flex-shrink-0 items-center ${
+        disabled ? "cursor-not-allowed" : "cursor-pointer"
       }`}
     >
       <input

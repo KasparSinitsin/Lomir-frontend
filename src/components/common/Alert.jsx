@@ -35,15 +35,15 @@ const Alert = ({
 
   return (
     <div
-      className={`alert ${alertClasses[type]} !text-white w-fit transition-opacity duration-1000 border-0 outline-none ${fading ? "opacity-0" : "opacity-100"} ${className}`}
+      className={`alert ${alertClasses[type]} !text-white inline-flex w-fit max-w-full items-start justify-between gap-4 transition-opacity duration-1000 border-0 outline-none ${fading ? "opacity-0" : "opacity-100"} ${className}`}
     >
-      <div className="flex items-center gap-2">
+      <div className="flex items-start gap-2">
         {type === "info" && (
           <svg
             xmlns="http://www.w3.org/2000/svg"
             fill="none"
             viewBox="0 0 24 24"
-            className="stroke-current flex-shrink-0 w-6 h-6"
+            className="stroke-current flex-shrink-0 w-6 h-6 -mt-0.5"
           >
             <path
               strokeLinecap="round"
@@ -56,7 +56,7 @@ const Alert = ({
         {type === "success" && (
           <svg
             xmlns="http://www.w3.org/2000/svg"
-            className="stroke-current flex-shrink-0 w-6 h-6"
+            className="stroke-current flex-shrink-0 w-6 h-6 -mt-0.5"
             fill="none"
             viewBox="0 0 24 24"
           >
@@ -71,7 +71,7 @@ const Alert = ({
         {type === "warning" && (
           <svg
             xmlns="http://www.w3.org/2000/svg"
-            className="stroke-current flex-shrink-0 w-6 h-6"
+            className="stroke-current flex-shrink-0 w-6 h-6 -mt-0.5"
             fill="none"
             viewBox="0 0 24 24"
           >
@@ -86,7 +86,7 @@ const Alert = ({
         {type === "error" && (
           <svg
             xmlns="http://www.w3.org/2000/svg"
-            className="stroke-current flex-shrink-0 w-6 h-6"
+            className="stroke-current flex-shrink-0 w-6 h-6 -mt-0.5"
             fill="none"
             viewBox="0 0 24 24"
           >
@@ -101,7 +101,7 @@ const Alert = ({
         {type === "violet" && (
           <svg
             xmlns="http://www.w3.org/2000/svg"
-            className="stroke-current flex-shrink-0 w-6 h-6"
+            className="stroke-current flex-shrink-0 w-6 h-6 -mt-0.5"
             fill="none"
             viewBox="0 0 24 24"
           >
@@ -113,11 +113,15 @@ const Alert = ({
             />
           </svg>
         )}
-        <span>{content}</span>
+        {children ? (
+          <div className="min-w-0">{children}</div>
+        ) : (
+          <span>{content}</span>
+        )}
       </div>
       {onClose && (
         <button
-          className="text-white hover:text-white/70 text-xl font-light leading-none p-0 bg-transparent border-none cursor-pointer self-start"
+          className="ml-auto self-start text-white hover:text-white/70 text-xl font-light leading-none p-0 bg-transparent border-none cursor-pointer"
           onClick={onClose}
         >
           ×

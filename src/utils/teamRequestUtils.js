@@ -36,6 +36,44 @@ export const normalizeBoolean = (value) => {
   return null;
 };
 
+const firstPresent = (...values) =>
+  values.find((value) => value !== undefined && value !== null);
+
+export const getUserPublicFlag = (user) =>
+  firstPresent(
+    user?.is_public,
+    user?.isPublic,
+    user?.profile_is_public,
+    user?.profileIsPublic,
+    user?.public_profile,
+    user?.publicProfile,
+  );
+
+export const getUserPrivateFlag = (user) =>
+  firstPresent(
+    user?.is_private,
+    user?.isPrivate,
+    user?.profile_is_private,
+    user?.profileIsPrivate,
+    user?.private_profile,
+    user?.privateProfile,
+  );
+
+export const isPrivateProfileUser = (user) => {
+  if (!user) return false;
+
+  return (
+    normalizeBoolean(getUserPublicFlag(user)) === false ||
+    normalizeBoolean(getUserPrivateFlag(user)) === true
+  );
+};
+
+export const getPrivateAwareUserLabel = (user, fallback = "Their") => {
+  if (isPrivateProfileUser(user)) return "Private Profile";
+
+  return user?.first_name ?? user?.firstName ?? user?.username ?? fallback;
+};
+
 export const isExistingMemberStatus = (value) => {
   if (typeof value !== "string") return false;
 
@@ -95,7 +133,7 @@ export const getRequestUser = (request, userKey) =>
 export const getRequestUserLabel = (request, userKey, fallback = "Their") => {
   const user = getRequestUser(request, userKey);
 
-  return user?.first_name ?? user?.firstName ?? user?.username ?? fallback;
+  return getPrivateAwareUserLabel(user, fallback);
 };
 
 export const isRequestForUser = (request, userKey, userId) =>
@@ -162,9 +200,6 @@ export const buildInvitationRoleForCard = (invitation, polledRole = null) => {
     ...(polledRole ?? {}),
   };
 };
-
-const firstPresent = (...values) =>
-  values.find((value) => value !== undefined && value !== null);
 
 export const buildCurrentFilledRoleForCard = (
   invitation,

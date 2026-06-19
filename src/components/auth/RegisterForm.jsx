@@ -17,12 +17,16 @@ import {
   EyeOff,
 } from "lucide-react";
 import ImageUploader from "../common/ImageUploader";
-import { uploadToImageKit } from "../../config/imagekit";
 import api from "../../services/api";
 import LocationInput from "../common/LocationInput";
 import { useLocationAutoFill } from "../../hooks/useLocationAutoFill";
 import VisibilityToggle from "../common/VisibilityToggle";
 import TurnstileWidget from "../common/TurnstileWidget";
+import {
+  AVATAR_UPLOAD_NOTICE,
+  PROFILE_VISIBILITY_NOTICE,
+  USER_LOCATION_PRIVACY_NOTICE,
+} from "../../constants/privacyText";
 
 const RegisterForm = () => {
   const navigate = useNavigate();
@@ -40,7 +44,9 @@ const RegisterForm = () => {
     postal_code: "",
     city: "",
     country: "",
-    isPublic: true,
+    isPublic: false,
+    acceptedLegal: false,
+    confirmedAge16: false,
     profile_image: null,
     selectedTags: [],
   });
@@ -51,12 +57,21 @@ const RegisterForm = () => {
   const [registrationSuccess, setRegistrationSuccess] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState(null);
   const turnstileRef = useRef(null);
+  const usernameInputValueRef = useRef("");
+  const lastUsernameAvailabilityRef = useRef({
+    username: "",
+    available: null,
+    message: "",
+  });
+  const usernameAvailabilityRequestIdRef = useRef(0);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const [resendStatus, setResendStatus] = useState("idle"); // 'idle' | 'sending' | 'sent' | 'error'
   const [resendMessage, setResendMessage] = useState("");
   const [resendCooldown, setResendCooldown] = useState(0);
+  const formAlertClassName =
+    "field-error-animate shadow-[0_4px_10px_rgba(0,0,0,0.12),0_12px_30px_rgba(0,0,0,0.18),0_28px_56px_rgba(0,0,0,0.14)]";
 
   const { getSuggestedUpdates } = useLocationAutoFill({
     postalCode: formData.postal_code || "",
@@ -79,7 +94,7 @@ const RegisterForm = () => {
     }
   }, [getSuggestedUpdates]);
 
-  const validateForm = () => {
+  const getFormValidationErrors = () => {
     const newErrors = {};
 
     if (!formData.username) {
@@ -115,18 +130,42 @@ const RegisterForm = () => {
       newErrors.turnstile = "Please complete the CAPTCHA verification";
     }
 
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    if (!formData.acceptedLegal) {
+      newErrors.acceptedLegal =
+        "Please agree to the Terms of Service and acknowledge the Privacy Policy to create an account.";
+    }
+
+    if (!formData.confirmedAge16) {
+      newErrors.confirmedAge16 =
+        "Please confirm that you are at least 16 years old to create an account.";
+    }
+
+    return newErrors;
   };
 
   const clearFieldError = (fieldName) => {
     setErrors((prev) => {
-      if (!prev[fieldName]) {
+      if (!prev[fieldName] && !prev.form) {
         return prev;
       }
 
       const remainingErrors = { ...prev };
       delete remainingErrors[fieldName];
+      delete remainingErrors.form;
+      delete remainingErrors.formMessages;
+      return remainingErrors;
+    });
+  };
+
+  const clearFormError = () => {
+    setErrors((prev) => {
+      if (!prev.form) {
+        return prev;
+      }
+
+      const remainingErrors = { ...prev };
+      delete remainingErrors.form;
+      delete remainingErrors.formMessages;
       return remainingErrors;
     });
   };
@@ -151,39 +190,97 @@ const RegisterForm = () => {
     return usernameErrors;
   };
 
-  const handleEmailBlur = () => {
-    if (!formData.email) return;
+  const checkUsernameAvailability = async (
+    usernameValue = formData.username,
+  ) => {
+    const username = usernameValue.trim();
 
-    setErrors((prev) => {
-      const nextErrors = { ...prev };
+    if (!username) return false;
 
-      if (!/\S+@\S+\.\S+/.test(formData.email)) {
-        nextErrors.email =
-          "Please enter a valid email address (e.g. your@email.com).";
-      } else {
-        delete nextErrors.email;
+    usernameInputValueRef.current = usernameValue;
+
+    const usernameErrors = getUsernameValidationErrors(username);
+    if (usernameErrors.length > 0) {
+      setErrors((prev) => ({
+        ...prev,
+        username: usernameErrors,
+      }));
+      return false;
+    }
+
+    if (lastUsernameAvailabilityRef.current.username === username) {
+      const { available, message } = lastUsernameAvailabilityRef.current;
+
+      if (available === false) {
+        setErrors((prev) => ({
+          ...prev,
+          username: [message || "This username is already taken."],
+        }));
+        return false;
       }
 
-      return nextErrors;
-    });
+      if (available === true) {
+        setErrors((prev) => {
+          const nextErrors = { ...prev };
+          delete nextErrors.username;
+          return nextErrors;
+        });
+        return true;
+      }
+    }
+
+    const requestId = usernameAvailabilityRequestIdRef.current + 1;
+    usernameAvailabilityRequestIdRef.current = requestId;
+
+    try {
+      const response = await api.post("/api/auth/check-username", {
+        username,
+      });
+
+      if (
+        requestId !== usernameAvailabilityRequestIdRef.current ||
+        usernameInputValueRef.current.trim() !== username
+      ) {
+        return false;
+      }
+
+      const available = Boolean(response.data.available);
+      const message = response.data.message || "This username is already taken.";
+
+      lastUsernameAvailabilityRef.current = {
+        username,
+        available,
+        message: available ? "" : message,
+      };
+
+      setErrors((prev) => {
+        const nextErrors = { ...prev };
+
+        if (available) {
+          delete nextErrors.username;
+        } else {
+          nextErrors.username = [message];
+        }
+
+        return nextErrors;
+      });
+
+      return available;
+    } catch (error) {
+      console.warn("Username availability check failed:", error);
+      return true;
+    }
   };
 
-  const handleUsernameBlur = () => {
-    if (!formData.username) return;
+  const handleUsernameBlur = (e) => {
+    void checkUsernameAvailability(e.currentTarget.value);
+  };
 
-    const usernameErrors = getUsernameValidationErrors(formData.username);
+  const handleUsernameKeyDown = (e) => {
+    if (e.key !== "Enter") return;
 
-    setErrors((prev) => {
-      const nextErrors = { ...prev };
-
-      if (usernameErrors.length > 0) {
-        nextErrors.username = usernameErrors;
-      } else {
-        delete nextErrors.username;
-      }
-
-      return nextErrors;
-    });
+    e.preventDefault();
+    void checkUsernameAvailability(e.currentTarget.value);
   };
 
   const getPasswordValidationErrors = (password) => {
@@ -238,6 +335,15 @@ const RegisterForm = () => {
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
+
+    if (name === "username") {
+      usernameInputValueRef.current = value;
+    }
+
+    if (errors[name]) {
+      clearFieldError(name);
+    }
+
     setFormData((prev) => ({
       ...prev,
       [name]: type === "checkbox" ? checked : value,
@@ -268,48 +374,162 @@ const RegisterForm = () => {
     setTurnstileToken(null);
   };
 
+  const isUsernameConflictMessage = (message = "") =>
+    message.toLowerCase().includes("username already exists") ||
+    message.toLowerCase().includes("username is already taken");
+
+  const getAvailabilityErrorClass = (message = "") => {
+    const normalizedMessage = message.toLowerCase();
+
+    return normalizedMessage.includes("already registered") ||
+      normalizedMessage.includes("already taken")
+      ? " field-error-animate"
+      : "";
+  };
+
+  const getAccountCreationErrorMessages = (fieldMessages) => [
+    ...new Set(Object.values(fieldMessages).flat().filter(Boolean)),
+  ];
+
+  const getAccountCreationErrorMessage = (fieldMessages) => {
+    const messages = getAccountCreationErrorMessages(fieldMessages);
+
+    if (messages.length === 0) {
+      return "Account could not be created. Please check the highlighted fields.";
+    }
+
+    return `Account could not be created. Please fix: ${messages.join("; ")}`;
+  };
+
+  const getApiErrorMessages = (errorSource) => {
+    const responseData = errorSource?.response?.data ?? errorSource ?? {};
+    const rawErrors = responseData.errors;
+
+    if (Array.isArray(rawErrors)) {
+      return rawErrors
+        .map((error) => {
+          if (typeof error === "string") return error;
+          if (!error || typeof error !== "object") return null;
+
+          const field = error.path || error.param || error.field;
+          const message = error.msg || error.message;
+
+          if (field && message) return `${field}: ${message}`;
+          return message || field || null;
+        })
+        .filter(Boolean);
+    }
+
+    if (rawErrors && typeof rawErrors === "object") {
+      return getAccountCreationErrorMessages(rawErrors);
+    }
+
+    return [];
+  };
+
+  const getApiErrorMessage = (errorSource, fallback = "Registration failed.") =>
+    errorSource?.response?.data?.message || errorSource?.message || fallback;
+
+  const buildRegistrationErrorState = (errorSource) => {
+    const apiMessages = getApiErrorMessages(errorSource);
+    const message = getApiErrorMessage(errorSource);
+
+    if (apiMessages.length > 0) {
+      return {
+        form: getAccountCreationErrorMessage({ api: apiMessages }),
+        formMessages: apiMessages,
+      };
+    }
+
+    if (isUsernameConflictMessage(message)) {
+      const formMessages = ["This username is already taken."];
+
+      return {
+        username: ["This username is already taken."],
+        form: getAccountCreationErrorMessage({
+          username: "This username is already taken.",
+        }),
+        formMessages,
+      };
+    }
+
+    return { form: message };
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!validateForm()) return;
 
     setIsSubmitting(true);
 
     try {
-      const userData = {
-        username: formData.username,
-        email: formData.email,
-        password: formData.password,
-        first_name: formData.first_name,
-        last_name: formData.last_name,
-        bio: formData.bio,
-        postal_code: formData.postal_code,
-        city: formData.city,
-        country: formData.country,
-        tags:
-          formData.selectedTags.length > 0
-            ? formData.selectedTags
-                .map((id) => Number(id))
-                .filter((n) => Number.isFinite(n))
-                .map((id) => ({ tag_id: id }))
-            : [],
-        ...(hasTurnstile ? { turnstile_token: turnstileToken } : {}),
+      const trimmedEmail = formData.email.trim();
+      const trimmedUsername = formData.username.trim();
+      const validationErrors = getFormValidationErrors();
+      const cachedUsernameAvailability = lastUsernameAvailabilityRef.current;
+
+      const blockingErrors = {
+        ...validationErrors,
       };
 
-      if (formData.profile_image) {
-        const uploadResult = await uploadToImageKit(
-          formData.profile_image,
-          "avatars",
-        );
-
-        if (uploadResult.success) {
-          userData.avatar_url = uploadResult.url;
-          userData.avatar_file_id = uploadResult.fileId;
-        } else {
-          console.error("Avatar upload failed:", uploadResult.error);
-        }
+      if (
+        !blockingErrors.username &&
+        cachedUsernameAvailability.username === trimmedUsername &&
+        cachedUsernameAvailability.available === false
+      ) {
+        blockingErrors.username = [
+          cachedUsernameAvailability.message || "This username is already taken.",
+        ];
       }
 
-      const result = await register(userData);
+      if (Object.keys(blockingErrors).length > 0) {
+        const formMessages = getAccountCreationErrorMessages(blockingErrors);
+
+        setErrors({
+          ...blockingErrors,
+          form: getAccountCreationErrorMessage(blockingErrors),
+          formMessages,
+        });
+        resetTurnstile();
+        setIsSubmitting(false);
+        return;
+      }
+
+      const selectedTagObjects =
+        formData.selectedTags.length > 0
+          ? formData.selectedTags
+              .map((id) => Number(id))
+              .filter((n) => Number.isFinite(n))
+              .map((id) => ({ tag_id: id }))
+          : [];
+
+      // Send registration as multipart/form-data so the avatar is uploaded
+      // to ImageKit server-side, only after the account is actually created.
+      // This avoids exposing the image (and an ImageKit auth token) from the
+      // browser before a valid registration exists.
+      const registrationData = new FormData();
+      registrationData.append("username", trimmedUsername);
+      registrationData.append("email", trimmedEmail);
+      registrationData.append("password", formData.password);
+      registrationData.append("first_name", formData.first_name);
+      registrationData.append("last_name", formData.last_name);
+      registrationData.append("bio", formData.bio);
+      registrationData.append("postal_code", formData.postal_code);
+      registrationData.append("city", formData.city);
+      registrationData.append("country", formData.country);
+      registrationData.append("accepted_terms", "true");
+      registrationData.append("accepted_privacy", "true");
+      registrationData.append("confirmed_age_16", "true");
+      registrationData.append("tags", JSON.stringify(selectedTagObjects));
+
+      if (hasTurnstile) {
+        registrationData.append("turnstile_token", turnstileToken);
+      }
+
+      if (formData.profile_image) {
+        registrationData.append("avatar", formData.profile_image);
+      }
+
+      const result = await register(registrationData);
 
       if (result.success) {
         if (result.requiresVerification) {
@@ -325,7 +545,7 @@ const RegisterForm = () => {
         resetTurnstile();
         setErrors((prev) => ({
           ...prev,
-          form: result.message,
+          ...buildRegistrationErrorState(result),
         }));
       }
     } catch (error) {
@@ -333,7 +553,7 @@ const RegisterForm = () => {
       console.error("Full Registration error:", error);
       setErrors((prev) => ({
         ...prev,
-        form: error.response?.data?.message || "Registration failed.",
+        ...buildRegistrationErrorState(error),
       }));
     } finally {
       setIsSubmitting(false);
@@ -350,7 +570,9 @@ const RegisterForm = () => {
       });
 
       setResendStatus("sent");
-      setResendMessage("Verification email sent! Please check your inbox.");
+      setResendMessage(
+        "If a verification email can be sent for this address, it will arrive shortly.",
+      );
 
       setResendCooldown(30);
       const timer = setInterval(() => {
@@ -383,6 +605,40 @@ const RegisterForm = () => {
     : errors.password
       ? [errors.password]
       : [];
+  const formErrorMessages = Array.isArray(errors.formMessages)
+    ? errors.formMessages
+    : [];
+
+  const renderFormAlert = (className = "") => {
+    if (!errors.form) return null;
+
+    return (
+      <div className="flex w-full justify-center">
+        <Alert
+          type="error"
+          message={errors.form}
+          onClose={clearFormError}
+          autoCloseMs={10000}
+          className={className}
+        >
+          {formErrorMessages.length > 0 ? (
+            <div className="text-left">
+              <p className="font-medium">
+                Account could not be created. Please fix:
+              </p>
+              <ul className="mt-2 list-disc space-y-0.5 pl-5">
+                {formErrorMessages.map((message) => (
+                  <li key={message}>{message}</li>
+                ))}
+              </ul>
+            </div>
+          ) : (
+            errors.form
+          )}
+        </Alert>
+      </div>
+    );
+  };
 
   if (registrationSuccess) {
     return (
@@ -394,12 +650,13 @@ const RegisterForm = () => {
               Check your email
             </h2>
             <p className="text-base-content/70 mb-4">
-              We've sent a verification link to{" "}
+              If this address can be used for registration, a verification link
+              will be sent to{" "}
               <span className="font-medium">{formData.email}</span>
             </p>
             <p className="text-sm text-base-content/60 mb-6">
-              Please click the link in the email to verify your account. The
-              link will expire in 24 hours.
+              Please click the link in the email to verify your account. The link
+              will expire in <strong>24 hours</strong>.
             </p>
 
             {resendMessage && (
@@ -412,13 +669,13 @@ const RegisterForm = () => {
             )}
 
             <div className="flex flex-col gap-2 w-full">
-              <Link to="/login" className="btn btn-primary w-full">
+              <Link to="/login" className="btn btn-primary w-fit self-center px-6">
                 Go to Login
               </Link>
 
               <button
                 type="button"
-                className="btn btn-ghost btn-sm"
+                className="btn btn-ghost btn-sm w-fit self-center px-4"
                 onClick={handleResendVerification}
                 disabled={resendStatus === "sending" || resendCooldown > 0}
               >
@@ -451,9 +708,7 @@ const RegisterForm = () => {
             Join Lomir and start building teams
           </p>
 
-          {errors.form && (
-            <Alert type="error" message={errors.form} className="mb-4 w-full shadow-sm" />
-          )}
+          {renderFormAlert(`mb-4 ${formAlertClassName}`)}
 
           <form onSubmit={handleSubmit} className="space-y-12">
             {/* Account Information */}
@@ -477,6 +732,7 @@ const RegisterForm = () => {
                     onChange={handleChange}
                     onFocus={() => clearFieldError("username")}
                     onBlur={handleUsernameBlur}
+                    onKeyDown={handleUsernameKeyDown}
                     name="username"
                   />
                   {usernameErrorMessages.length === 0 && (
@@ -487,7 +743,12 @@ const RegisterForm = () => {
                   {usernameErrorMessages.length > 0 && (
                     <div className="mt-2 px-1 flex flex-col gap-0.5">
                       {usernameErrorMessages.map((err) => (
-                        <p key={err} className="text-xs text-error">
+                        <p
+                          key={err}
+                          className={`text-xs text-error${getAvailabilityErrorClass(
+                            err,
+                          )}`}
+                        >
                           {err}
                         </p>
                       ))}
@@ -510,11 +771,14 @@ const RegisterForm = () => {
                     value={formData.email}
                     onChange={handleChange}
                     onFocus={() => clearFieldError("email")}
-                    onBlur={handleEmailBlur}
                     name="email"
                   />
                   {errors.email && (
-                    <p className="text-xs text-error mt-2 px-1">
+                    <p
+                      className={`text-xs text-error mt-2 px-1${getAvailabilityErrorClass(
+                        errors.email,
+                      )}`}
+                    >
                       {errors.email}
                     </p>
                   )}
@@ -673,7 +937,14 @@ const RegisterForm = () => {
                   onChange={handleChange}
                   label="Profile Visibility"
                   entityType="profile"
+                  visibleLabel="Public Profile"
+                  hiddenLabel="Private Profile"
+                  hiddenDescription="Your profile will be private until you verify your email."
+                  disabled={true}
                 />
+                <p className="form-helper-text mt-2 px-1">
+                  Profile visibility is locked to private during registration. Once you verify your email and log in, you can make your profile public in your settings.
+                </p>
               </div>
             </section>
 
@@ -695,6 +966,7 @@ const RegisterForm = () => {
                 showRemoteToggle={false}
                 showDivider={true}
                 dividerText="Location"
+                privacyNotice={USER_LOCATION_PRIVACY_NOTICE}
               />
             </section>
 
@@ -717,6 +989,7 @@ const RegisterForm = () => {
                     size="mdPlus"
                     shape="circle"
                     fallbackText={getUserInitialsFromForm()}
+                    helpText={AVATAR_UPLOAD_NOTICE}
                   />
                 </div>
               </div>
@@ -730,7 +1003,7 @@ const RegisterForm = () => {
               />
 
               <div className="form-control w-full">
-                <label className="label">
+                <label className="label whitespace-normal">
                   <span className="label-text">
                     Select focus areas matching your interests and skills
                   </span>
@@ -747,36 +1020,61 @@ const RegisterForm = () => {
             <div className="divider mt-12 mb-0"></div>
 
             <section className="space-y-4 !mt-4">
-              {hasTurnstile && (
-                <div className="form-control w-full">
-                  <div className="flex justify-center">
-                    <TurnstileWidget
-                      ref={turnstileRef}
-                      onVerify={(token) => {
-                        setTurnstileToken(token);
-                        setErrors((prev) => {
-                          if (!prev.turnstile) {
-                            return prev;
-                          }
+              {renderFormAlert(formAlertClassName)}
 
-                          const remainingErrors = { ...prev };
-                          delete remainingErrors.turnstile;
-                          return remainingErrors;
-                        });
-                      }}
-                      onExpire={() => setTurnstileToken(null)}
-                      onError={() => setTurnstileToken(null)}
-                    />
-                  </div>
-                  {errors.turnstile && (
-                    <label className="label">
-                      <span className="label-text-alt text-error">
-                        {errors.turnstile}
-                      </span>
-                    </label>
-                  )}
-                </div>
-              )}
+              <div className="form-control">
+                <label className="label flex w-full cursor-pointer items-start justify-start gap-3 whitespace-normal rounded-lg border border-base-300 bg-base-100/70 p-4">
+                  <input
+                    type="checkbox"
+                    name="acceptedLegal"
+                    checked={formData.acceptedLegal}
+                    onChange={handleChange}
+                    className={`checkbox checkbox-primary mt-0.5 ${
+                      errors.acceptedLegal ? "checkbox-error" : ""
+                    }`}
+                    disabled={isSubmitting}
+                  />
+                  <span className="label-text leading-relaxed">
+                    I agree to the{" "}
+                    <Link to="/terms" className="link link-primary">
+                      Terms of Service
+                    </Link>{" "}
+                    and acknowledge the{" "}
+                    <Link to="/privacy" className="link link-primary">
+                      Privacy Policy
+                    </Link>
+                    .
+                  </span>
+                </label>
+                {errors.acceptedLegal && (
+                  <p className="text-xs text-error mt-2 px-1">
+                    {errors.acceptedLegal}
+                  </p>
+                )}
+              </div>
+
+              <div className="form-control">
+                <label className="label flex w-full cursor-pointer items-start justify-start gap-3 whitespace-normal rounded-lg border border-base-300 bg-base-100/70 p-4">
+                  <input
+                    type="checkbox"
+                    name="confirmedAge16"
+                    checked={formData.confirmedAge16}
+                    onChange={handleChange}
+                    className={`checkbox checkbox-primary mt-0.5 ${
+                      errors.confirmedAge16 ? "checkbox-error" : ""
+                    }`}
+                    disabled={isSubmitting}
+                  />
+                  <span className="label-text leading-relaxed">
+                    I confirm that I am at least 16 years old.
+                  </span>
+                </label>
+                {errors.confirmedAge16 && (
+                  <p className="text-xs text-error mt-2 px-1">
+                    {errors.confirmedAge16}
+                  </p>
+                )}
+              </div>
 
               <Button
                 type="submit"
@@ -794,12 +1092,45 @@ const RegisterForm = () => {
                 )}
               </Button>
 
-              <p className="text-center text-sm">
-                Already have an account?{" "}
-                <Link to="/login" className="link link-primary">
-                  Login
-                </Link>
-              </p>
+              <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <p className="text-left text-sm sm:pt-1">
+                  Already have an account?{" "}
+                  <Link to="/login" className="link link-primary">
+                    Login
+                  </Link>
+                </p>
+
+                {hasTurnstile && (
+                  <div className="form-control w-full sm:w-auto sm:items-end">
+                    <div className="flex w-full justify-center sm:justify-end">
+                      <TurnstileWidget
+                        ref={turnstileRef}
+                        onVerify={(token) => {
+                          setTurnstileToken(token);
+                          setErrors((prev) => {
+                            if (!prev.turnstile) {
+                              return prev;
+                            }
+
+                            const remainingErrors = { ...prev };
+                            delete remainingErrors.turnstile;
+                            return remainingErrors;
+                          });
+                        }}
+                        onExpire={() => setTurnstileToken(null)}
+                        onError={() => setTurnstileToken(null)}
+                      />
+                    </div>
+                    {errors.turnstile && (
+                      <label className="label flex w-full justify-center px-0 sm:justify-end">
+                        <span className="label-text-alt text-error">
+                          {errors.turnstile}
+                        </span>
+                      </label>
+                    )}
+                  </div>
+                )}
+              </div>
             </section>
           </form>
         </div>

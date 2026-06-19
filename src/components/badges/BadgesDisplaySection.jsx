@@ -38,7 +38,6 @@ const BadgesDisplaySection = ({
   showCredits = true,
   onCategoryClick = null,
   onBadgeClick = null,
-  onOpenUser = null,
   highlightBadgeName = null,
   matchingBadgeNames = null,
   headerRight = null,
@@ -91,7 +90,7 @@ const BadgesDisplaySection = ({
   const pillCount = (badges || []).length;
 
   const titleSummary = totalCredits > 0 ? (
-    <span className="min-w-0 text-sm font-normal text-base-content/60 whitespace-nowrap">
+    <span className="min-w-0 text-sm font-normal text-base-content/60 whitespace-normal sm:whitespace-nowrap">
       ({totalCredits} ct. in {pillCount} {pillCount === 1 ? 'area' : 'areas'})
     </span>
   ) : null;
@@ -100,16 +99,18 @@ const BadgesDisplaySection = ({
     <div className="flex items-start gap-2 mb-3">
       <Award size={18} className="mt-0.5 text-primary flex-shrink-0" />
       <div className="min-w-0 flex-1">
-        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
-          <div className="min-w-0 flex flex-wrap items-baseline gap-x-1 gap-y-0.5">
-            <h3 className="font-medium leading-5 whitespace-nowrap">{title}</h3>
-            {titleSummary}
-          </div>
-          {headerRight && (
-            <div className="flex items-center justify-end gap-2 text-right whitespace-nowrap">
-              {headerRight}
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0 flex-1 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-x-3 gap-y-0.5">
+            <div className="min-w-0 flex flex-wrap items-baseline gap-x-1 gap-y-0.5">
+              <h3 className="font-medium leading-[1.1] break-words sm:whitespace-nowrap">{title}</h3>
+              {titleSummary}
             </div>
-          )}
+            {headerRight && (
+              <div className="shrink-0">
+                {headerRight}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

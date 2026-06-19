@@ -12,7 +12,6 @@ import TeamRoleManager from "./TeamRoleManager";
 import TeamEditForm from "./TeamEditForm";
 import { useAuth } from "../../contexts/AuthContext";
 import { teamService } from "../../services/teamService";
-import { userService } from "../../services/userService";
 import Button from "../common/Button";
 import SendMessageButton from "../common/SendMessageButton";
 import ScreenAlert from "../common/ScreenAlert";
@@ -60,7 +59,6 @@ import TeamInvitationDetailsModal from "./TeamInvitationDetailsModal";
 import TeamMembersSection from "./TeamMembersSection";
 import TeamFocusAreaSection from "./TeamFocusAreaSection";
 import VacantRolesSection from "./VacantRolesSection";
-import axios from "axios";
 import Modal from "../common/Modal";
 import ConfirmModal from "../common/ConfirmModal";
 import LocationSection from "../common/LocationSection";
@@ -127,6 +125,7 @@ const TeamDetailsModal = ({
   hasPendingApplication = false,
   pendingApplication = null,
   onViewApplicationDetails,
+  onSendReminder,
   showMatchHighlights = false,
   roleMatchBadgeNames = null,
   matchScore = null,
@@ -140,7 +139,7 @@ const TeamDetailsModal = ({
 }) => {
   const navigate = useNavigate();
   const { id: urlTeamId } = useParams();
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, blockedRelationshipIds } = useAuth();
 
   const effectiveTeamId = useMemo(
     () => propTeamId || urlTeamId,
@@ -179,6 +178,7 @@ const TeamDetailsModal = ({
   const [isPublic, setIsPublic] = useState(false);
 
   const [selectedUserId, setSelectedUserId] = useState(null);
+  const [selectedUserContext, setSelectedUserContext] = useState(null);
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [allTags, setAllTags] = useState([]);
   const [currentUserTagIds, setCurrentUserTagIds] = useState(null); // Set<number>
@@ -187,7 +187,6 @@ const TeamDetailsModal = ({
   const [distanceViewerUser, setDistanceViewerUser] = useState(null);
 
   const [teamBadges, setTeamBadges] = useState(null);
-  const [teamBadgesTotalCredits, setTeamBadgesTotalCredits] = useState(0);
   const [currentUserBadgeNames, setCurrentUserBadgeNames] = useState(null); // Set<string>
 
   const fetchTeamTagAwards = useCallback(
@@ -297,7 +296,7 @@ const TeamDetailsModal = ({
   const handledMembersRefreshKeyRef = useRef(0);
 
   const fetchTeamDetails = useCallback(
-    async (forceRefresh = false) => {
+    async () => {
       if (!effectiveTeamId) return null;
 
       // If we already have data and don't need a refresh, skip the loading state
@@ -498,12 +497,19 @@ const TeamDetailsModal = ({
         console.error("Error fetching team details:", err);
         // Only show error if we don't have any data to display
         if (!team) {
-          setNotification({
-            type: "error",
-            message:
-              "Server error: " +
-              (err.response?.data?.error || err.message || "Unknown error"),
-          });
+          if (err.response?.status === 404) {
+            setNotification({
+              type: "error",
+              message: "Team not found or you don't have access to it.",
+            });
+          } else {
+            setNotification({
+              type: "error",
+              message:
+                "Server error: " +
+                (err.response?.data?.error || err.message || "Unknown error"),
+            });
+          }
         }
         return null;
       } finally {
@@ -594,14 +600,6 @@ const TeamDetailsModal = ({
   // Use internal role state, fall back to prop
   const effectiveUserRole = internalUserRole || userRole;
 
-  // Use independent isOwner state for more reliability
-  const isTeamOwner = useMemo(() => isOwner, [isOwner]);
-
-  const isTeamAdmin = useMemo(
-    () => effectiveUserRole === "admin",
-    [effectiveUserRole],
-  );
-
   const canEditTeam = useMemo(() => {
     if (!isAuthenticated || !user || !team) {
       return false;
@@ -691,6 +689,15 @@ const TeamDetailsModal = ({
       return false;
     }
 
+    // Blocked users are mutually anonymized everywhere, even if their profile is
+    // public — so a blocked member shows as "Private Profile" in shared teams.
+    if (
+      memberId != null &&
+      blockedRelationshipIds?.has?.(String(memberId))
+    ) {
+      return true;
+    }
+
     // Determine profile visibility flags (support snake_case + camelCase)
     const memberIsPublic =
       member?.is_public === true || member?.isPublic === true;
@@ -734,54 +741,6 @@ const TeamDetailsModal = ({
     }, 300);
   }, [onClose, navigate, urlTeamId]);
 
-  const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-
-    // Special handling for isPublic to ensure it's always a boolean
-    if (name === "isPublic") {
-      setFormData((prev) => ({
-        ...prev,
-        isPublic: checked, // Explicitly use the checked property
-      }));
-      return;
-    }
-
-    // Handle other form fields normally
-    const newValue = type === "checkbox" ? checked : value;
-
-    // Clear error for this field when user starts typing
-    if (formErrors[name]) {
-      setFormErrors((prev) => {
-        const newErrors = { ...prev };
-        delete newErrors[name];
-        return newErrors;
-      });
-    }
-
-    setFormData((prev) => ({
-      ...prev,
-      [name]:
-        name === "maxMembers"
-          ? newValue === null
-            ? null
-            : parseInt(newValue, 10)
-          : newValue,
-    }));
-  };
-
-  const handleTagSelection = useCallback((selected) => {
-    userHasEditedTagsRef.current = true; // mark as intentional user edit
-    const ids = (selected ?? [])
-      .map((t) => (typeof t === "object" ? (t.id ?? t.value ?? t) : t))
-      .map((x) => Number(x))
-      .filter((x) => Number.isFinite(x));
-
-    setFormData((prev) => ({
-      ...prev,
-      selectedTags: Array.from(new Set(ids)),
-    }));
-  }, []);
-
   useEffect(() => {
     if (!isEditing) return;
     const ids = normalizeTeamTagIds(team);
@@ -804,13 +763,6 @@ const TeamDetailsModal = ({
     if (teamMemberBadges !== undefined) {
       if (Array.isArray(teamMemberBadges)) {
         setTeamBadges(teamMemberBadges);
-        setTeamBadgesTotalCredits(
-          teamMemberBadges.reduce(
-            (sum, badge) =>
-              sum + Number(badge?.totalCredits ?? badge?.total_credits ?? 0),
-            0,
-          ),
-        );
       }
       return;
     }
@@ -820,7 +772,6 @@ const TeamDetailsModal = ({
         const response = await teamService.getTeamMemberBadges(effectiveTeamId);
         const badges = response?.data || [];
         setTeamBadges(badges);
-        setTeamBadgesTotalCredits(response?.meta?.totalCredits || 0);
       } catch (error) {
         console.warn("Could not fetch team member badges:", error);
         setTeamBadges([]);
@@ -895,30 +846,6 @@ const TeamDetailsModal = ({
       console.error("Error fetching tags:", structuredTagsError);
     }
   }, [structuredTagsError]);
-
-  // Handle team tags update
-  const handleTeamTagsUpdate = async (newTagIds) => {
-    try {
-      // Normalize tag IDs to numbers and format for the API
-      const tagsPayload = newTagIds
-        .map((tagId) => Number(tagId))
-        .filter((id) => !Number.isNaN(id))
-        .map((tag_id) => ({ tag_id }));
-
-      await teamService.updateTeam(effectiveTeamId, { tags: tagsPayload });
-
-      // Refresh team details to show updated tags
-      await fetchTeamDetails();
-
-      setNotification({
-        type: "success",
-        message: "Focus areas updated successfully!",
-      });
-    } catch (error) {
-      console.error("Error updating team tags:", error);
-      throw new Error("Failed to update team focus areas");
-    }
-  };
 
   const handleLeaveTeam = async () => {
     if (!user?.id || !team?.id) return;
@@ -1119,6 +1046,7 @@ const TeamDetailsModal = ({
           : formData.postalCode?.trim() || null,
         city: isRemoteBoolean ? null : formData.city?.trim() || null,
         state: isRemoteBoolean ? null : formData.state?.trim() || null,
+        district: isRemoteBoolean ? null : formData.district?.trim() || null,
         country: isRemoteBoolean ? null : formData.country?.trim() || null,
       };
 
@@ -1153,10 +1081,7 @@ const TeamDetailsModal = ({
         .filter((id) => Number.isFinite(id) && id > 0)
         .map((tag_id) => ({ tag_id }));
 
-      const response = await teamService.updateTeam(
-        effectiveTeamId,
-        submissionData,
-      );
+      await teamService.updateTeam(effectiveTeamId, submissionData);
 
       // Update our local state with the new visibility value
       setIsPublic(isPublicBoolean);
@@ -1307,7 +1232,7 @@ const TeamDetailsModal = ({
   const openApplicationDetails = (application = null) => {
     const applicationToOpen = application ?? effectivePendingApplication;
     if (applicationToOpen) {
-      setSelectedPendingApplication(application);
+      setSelectedPendingApplication(applicationToOpen);
       setIsApplicationDetailsOpen(true);
       return;
     }
@@ -1327,13 +1252,35 @@ const TeamDetailsModal = ({
   const handleTeamApplicationSuccess = useCallback(
     (applicationData, submitResponse) => {
       const submittedApplication = submitResponse?.data ?? {};
+      const selectedRoleId =
+        applicationData.roleId ??
+        submittedApplication.roleId ??
+        submittedApplication.role_id ??
+        null;
+      const selectedRole = selectedRoleId
+        ? teamRoles.find((role) => idsMatch(role.id, selectedRoleId))
+        : null;
+      const applicationId =
+        submittedApplication.applicationId ??
+        submittedApplication.application_id ??
+        submittedApplication.id ??
+        null;
+      const createdAt = new Date().toISOString();
+
       setLocalPendingApplication({
-        id: submittedApplication.applicationId,
-        applicationId: submittedApplication.applicationId,
+        id: applicationId,
+        applicationId,
+        application_id: applicationId,
         status: submittedApplication.status ?? "pending",
         message: applicationData.message,
-        created_at: new Date().toISOString(),
+        created_at: createdAt,
+        createdAt,
         team: team ?? { id: effectiveTeamId },
+        teamId: effectiveTeamId,
+        team_id: effectiveTeamId,
+        role: submittedApplication.role ?? selectedRole ?? null,
+        roleId: selectedRoleId,
+        role_id: selectedRoleId,
         isInternalRoleApplication:
           submittedApplication.isInternalRoleApplication ?? false,
         is_internal_role_application:
@@ -1346,7 +1293,7 @@ const TeamDetailsModal = ({
           : "Application sent successfully!",
       });
     },
-    [effectiveTeamId, team],
+    [effectiveTeamId, team, teamRoles],
   );
 
   const renderJoinButton = () => {
@@ -1446,14 +1393,29 @@ const TeamDetailsModal = ({
     );
   };
 
-  const handleMemberClick = (memberId) => {
+  const handleMemberClick = (memberId, context = {}) => {
+    const sourceMember =
+      context.member ??
+      team?.members?.find((member) => {
+        const rowUserId = getTeamMemberUserId(member);
+        return rowUserId != null && String(rowUserId) === String(memberId);
+      }) ??
+      null;
+    const sharedTeamId =
+      context.teamId ?? team?.id ?? team?.teamId ?? team?.team_id ?? effectiveTeamId;
+
     setSelectedUserId(memberId);
+    setSelectedUserContext({
+      member: sourceMember,
+      sharedTeamId: isTeamMember ? sharedTeamId : null,
+    });
     setIsUserModalOpen(true);
   };
 
   const handleUserModalClose = () => {
     setIsUserModalOpen(false);
     setSelectedUserId(null);
+    setSelectedUserContext(null);
   };
 
   // Create custom title with buttons
@@ -1867,13 +1829,13 @@ on ${format(new Date((effectivePendingInvitation.createdAt ?? effectivePendingIn
                           </Tooltip>
                         )}
 
-                      {((teamDateIsNarrow && getTeamCreatedDate()) || isSyntheticTeam(team)) && (
-                        <span className="flex items-center gap-3 flex-shrink-0">
-                          {teamDateIsNarrow && getTeamCreatedDate() && (
+                      {(getTeamCreatedDate() || isSyntheticTeam(team)) && (
+                        <span className="flex items-center gap-1.5 flex-shrink-0">
+                          {getTeamCreatedDate() && (
                             <Tooltip
                               content={`Created on ${getTeamCreatedDate().full}`}
                               position="bottom"
-                              wrapperClassName="flex items-center text-base-content/70 flex-shrink-0 cursor-help"
+                              wrapperClassName={`items-center text-base-content/70 flex-shrink-0 cursor-help ${teamDateIsNarrow ? "flex" : "flex sm:hidden"}`}
                             >
                               <Calendar size={14} className="mr-1" />
                               <span>{getTeamCreatedDate().narrow}</span>
@@ -1884,8 +1846,8 @@ on ${format(new Date((effectivePendingInvitation.createdAt ?? effectivePendingIn
                               content={DEMO_TEAM_TOOLTIP}
                               wrapperClassName="flex items-start text-base-content/50"
                             >
-                              <FlaskConical size={14} className={`flex-shrink-0 mt-px${teamDateIsNarrow ? "" : " mr-0.5"}`} />
-                              {!teamDateIsNarrow && <span className="leading-[1.15]">Demo Team</span>}
+                              <FlaskConical size={14} className={`flex-shrink-0 mt-px${teamDateIsNarrow ? "" : " sm:mr-0.5"}`} />
+                              {!teamDateIsNarrow && <span className="hidden sm:inline leading-[1.15]">Demo Team</span>}
                             </Tooltip>
                           )}
                         </span>
@@ -1895,7 +1857,7 @@ on ${format(new Date((effectivePendingInvitation.createdAt ?? effectivePendingIn
                   {getTeamCreatedDate() && (
                     <div
                       ref={teamDateRef}
-                      className={`flex-shrink-0${teamDateIsNarrow ? " absolute opacity-0 pointer-events-none" : ""}`}
+                      className={`flex-shrink-0${teamDateIsNarrow ? " absolute opacity-0 pointer-events-none" : " hidden sm:block"}`}
                     >
                       <Tooltip
                         content={`Created on ${getTeamCreatedDate().full}`}
@@ -1933,6 +1895,7 @@ on ${format(new Date((effectivePendingInvitation.createdAt ?? effectivePendingIn
                     entityType="team"
                     distance={showHighlightsForContext ? effectiveTeamDistanceKm : null}
                     showDefaultHeaderRight={showHighlightsForContext}
+                    showCountryCode={false}
                   />
 
                   {/* Team Focus Areas */}
@@ -1962,14 +1925,14 @@ on ${format(new Date((effectivePendingInvitation.createdAt ?? effectivePendingIn
                           return (
                             <span className="flex items-center gap-1.5 text-sm text-success">
                               <MatchIcon size={14} className="flex-shrink-0" />
-                              <span>{matchCount}/{total} in common</span>
+                              <span>{matchCount}/{total} matching</span>
                             </span>
                           );
                         }
                         return (
                           <span className="flex items-center gap-1.5 text-sm text-slate-500">
                             <X size={14} className="flex-shrink-0" />
-                            <span>None in common</span>
+                            <span className="leading-[1.1]">None matching</span>
                           </span>
                         );
                       })() : null}
@@ -1999,14 +1962,14 @@ on ${format(new Date((effectivePendingInvitation.createdAt ?? effectivePendingIn
                           return (
                             <span className="flex items-center gap-1.5 text-sm text-success">
                               <MatchIcon size={14} className="flex-shrink-0" />
-                              <span>{matchCount}/{total} in common</span>
+                              <span>{matchCount}/{total} matching</span>
                             </span>
                           );
                         }
                         return (
                           <span className="flex items-center gap-1.5 text-sm text-slate-500">
                             <X size={14} className="flex-shrink-0" />
-                            <span>None in common</span>
+                            <span className="leading-[1.1]">None matching</span>
                           </span>
                         );
                       })() : null}
@@ -2054,6 +2017,9 @@ on ${format(new Date((effectivePendingInvitation.createdAt ?? effectivePendingIn
           userId={selectedUserId}
           onClose={handleUserModalClose}
           mode="view"
+          initialUserData={selectedUserContext?.member}
+          sharedTeamId={selectedUserContext?.sharedTeamId}
+          onOpenUser={handleMemberClick}
           filledRoleName={(() => {
             const r = teamRoles.find((r) => {
               if (String(r.status ?? "").toLowerCase() !== "filled") return false;
@@ -2103,13 +2069,20 @@ on ${format(new Date((effectivePendingInvitation.createdAt ?? effectivePendingIn
           </p>
         )}
       </ConfirmModal>
-      <TagAwardsModal {...tagAwardsModalProps} />
-      <SupercategoryAwardsModal {...supercategoryModalProps} />
+      <TagAwardsModal
+        {...tagAwardsModalProps}
+        canViewPrivateAwardees={isTeamMember}
+      />
+      <SupercategoryAwardsModal
+        {...supercategoryModalProps}
+        canViewPrivateAwardees={isTeamMember}
+      />
 
       {/* Badge Category Modal */}
       <BadgeCategoryModal
         {...badgeCategoryModalProps}
         onOpenUser={handleMemberClick}
+        canViewPrivateAwardees={isTeamMember}
       />
 
       {/* Invitation Details Modal */}
@@ -2152,6 +2125,7 @@ on ${format(new Date((effectivePendingInvitation.createdAt ?? effectivePendingIn
             setIsApplicationDetailsOpen(false);
             await fetchTeamDetails(true);
           }}
+          onSendReminder={onSendReminder}
         />
       )}
     </>

@@ -18,14 +18,22 @@ const UserAvatar = ({
   title,
   iconSize = 12,
   initialsClassName = "text-[10px] font-medium",
+  fallbackText,
+  privateProfile = false,
   showDemoOverlay = false,
   demoOverlayTextClassName = "text-[7px]",
   demoOverlayTextTranslateClassName = "-translate-y-[2px]",
 }) => {
   const isFormerUser = deleted || isDeletedUser(user);
   const avatarUrl =
-    !isFormerUser && (user?.avatar_url || user?.avatarUrl || null);
-  const displayName = getDisplayName(user, DELETED_USER_DISPLAY_NAME);
+    !isFormerUser &&
+    !privateProfile &&
+    (user?.avatar_url || user?.avatarUrl || null);
+  const displayName = isFormerUser
+    ? DELETED_USER_DISPLAY_NAME
+    : privateProfile
+      ? "Private Profile"
+      : getDisplayName(user, DELETED_USER_DISPLAY_NAME);
   const showSyntheticOverlay =
     showDemoOverlay && !isFormerUser && isSyntheticUser(user);
 
@@ -63,7 +71,9 @@ const UserAvatar = ({
           {isFormerUser ? (
             <User size={iconSize} />
           ) : (
-            <span className={initialsClassName}>{getUserInitials(user)}</span>
+            <span className={initialsClassName}>
+              {privateProfile ? "PP" : fallbackText ?? getUserInitials(user)}
+            </span>
           )}
         </div>
 

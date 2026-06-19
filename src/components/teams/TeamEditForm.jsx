@@ -13,6 +13,7 @@ import LocationInput from "../common/LocationInput";
 import TagInput from "../tags/TagInput";
 import { UI_TEXT } from "../../constants/uiText";
 import { useLocationAutoFill } from "../../hooks/useLocationAutoFill";
+import { AVATAR_UPLOAD_NOTICE } from "../../constants/privacyText";
 import { Camera, Users, Settings, Tag, Trash2, X, Save } from "lucide-react";
 
 const PRESET_OPTIONS = [2, 3, 4, 5, 6, 8, 10, 12, 15, 20];
@@ -46,10 +47,9 @@ const TeamEditForm = ({
   onCancel,
   onDelete,
   loading = false,
-  isOwner = false,
   onAvatarDeleted,
 }) => {
-  const [uploadingImage, setUploadingImage] = useState(false);
+  const [uploadingImage] = useState(false);
   const [avatarDeleteLoading, setAvatarDeleteLoading] = useState(false);
   const [isAvatarDeleteDialogOpen, setIsAvatarDeleteDialogOpen] =
     useState(false);
@@ -281,6 +281,7 @@ const TeamEditForm = ({
               size="mdPlus"
               disabled={loading || uploadingImage}
               loading={avatarDeleteLoading}
+              helpText={AVATAR_UPLOAD_NOTICE}
               showRemoveButton={
                 !!(
                   formData.teamavatarUrl ||
@@ -564,7 +565,7 @@ const TeamEditForm = ({
           </label>
           <TagInput
             // Pass objects so TagInput can render names for preselected tags
-            selectedTags={formData.selectedTags ?? []}
+            selectedTags={selectedFocusAreaTags}
             onTagsChange={handleTagSelection}
             placeholder={UI_TEXT.focusAreas.searchPlaceholder}
             showPopularTags={true}

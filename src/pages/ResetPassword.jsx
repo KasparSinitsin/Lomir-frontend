@@ -1,5 +1,5 @@
-import { useEffect, useState, useRef } from "react";
-import { useSearchParams, Link, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useSearchParams, Link } from "react-router-dom";
 import api from "../services/api";
 import Card from "../components/common/Card";
 import Button from "../components/common/Button";
@@ -15,7 +15,6 @@ import {
 
 const ResetPassword = () => {
   const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
   const [status, setStatus] = useState("idle"); // idle, submitting, success, error
   const [message, setMessage] = useState("");
   const [formData, setFormData] = useState({

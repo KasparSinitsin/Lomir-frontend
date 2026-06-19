@@ -9,8 +9,9 @@ import BadgesDisplaySection from "../badges/BadgesDisplaySection";
 import BadgeCategoryModal from "../badges/BadgeCategoryModal";
 import TagAwardsModal from "../badges/TagAwardsModal";
 import UserProfileHeaderSection from "./UserProfileHeaderSection";
-import { messageService } from "../../services/messageService";
+import { geocodingService } from "../../services/geocodingService";
 import { userService } from "../../services/userService";
+import { teamService } from "../../services/teamService";
 import {
   useUserBadges,
   useUserProfile,
@@ -22,7 +23,8 @@ import Button from "../common/Button";
 import Alert from "../common/Alert";
 import Tooltip from "../common/Tooltip";
 import { useAuth } from "../../contexts/AuthContext";
-import { Edit, MessageCircle, UserPlus, Award, Check, CheckCheck, X, Ruler, User } from "lucide-react";
+import { Edit, MessageCircle, UserPlus, Award, Check, CheckCheck, X, Ruler, User, Ban } from "lucide-react";
+import ConfirmModal from "../common/ConfirmModal";
 import TeamInviteModal from "../teams/TeamInviteModal";
 import BadgeAwardModal from "../badges/BadgeAwardModal";
 import SupercategoryAwardsModal from "../badges/SupercategoryAwardsModal";
@@ -71,6 +73,119 @@ const normalizeStringSet = (values) => {
   );
 };
 
+const getInitialUserId = (source) =>
+  source?.userId ??
+  source?.user_id ??
+  source?.memberId ??
+  source?.member_id ??
+  source?.user?.id ??
+  source?.id ??
+  null;
+
+const extractUserTags = (source) => {
+  if (!source || typeof source !== "object") return [];
+
+  const candidates = [
+    source.tags,
+    source.userTags,
+    source.user_tags,
+    source.focusAreas,
+    source.focus_areas,
+    source.focusAreaTags,
+    source.focus_area_tags,
+    source.profile?.tags,
+    source.user?.tags,
+    source.user?.userTags,
+    source.user?.user_tags,
+    source.user?.focusAreas,
+    source.user?.focus_areas,
+  ];
+
+  const match = candidates.find((value) => Array.isArray(value) && value.length > 0);
+  return match ?? [];
+};
+
+const getAwardTargetUserId = (award) => {
+  const awardedToSource =
+    award?.awardedTo ??
+    award?.awarded_to ??
+    award?.awardedToUser ??
+    award?.awarded_to_user ??
+    award?.awardee ??
+    award?.awardeeUser ??
+    award?.awardee_user ??
+    {};
+
+  return (
+    award?.awardedToUserId ??
+    award?.awarded_to_user_id ??
+    award?.awardeeUserId ??
+    award?.awardee_user_id ??
+    awardedToSource?.id ??
+    awardedToSource?.userId ??
+    awardedToSource?.user_id ??
+    null
+  );
+};
+
+const getAwardTargetUsername = (award) => {
+  const awardedToSource =
+    award?.awardedTo ??
+    award?.awarded_to ??
+    award?.awardedToUser ??
+    award?.awarded_to_user ??
+    award?.awardee ??
+    award?.awardeeUser ??
+    award?.awardee_user ??
+    {};
+
+  return (
+    award?.awardedToUsername ??
+    award?.awarded_to_username ??
+    award?.awardeeUsername ??
+    award?.awardee_username ??
+    awardedToSource?.username ??
+    null
+  );
+};
+
+const mergeProfileWithInitialUser = (profile, initialUserData) => {
+  if (!initialUserData) return profile;
+  if (!profile) return initialUserData;
+
+  const initialTags = extractUserTags(initialUserData);
+  const profileTags = extractUserTags(profile);
+  const initialBadges = Array.isArray(initialUserData.badges)
+    ? initialUserData.badges
+    : [];
+  const profileBadges = Array.isArray(profile.badges) ? profile.badges : [];
+
+  return {
+    ...initialUserData,
+    ...profile,
+    tags: profileTags.length > 0 ? profileTags : initialTags,
+    badges: profileBadges.length > 0 ? profileBadges : initialBadges,
+  };
+};
+
+const unwrapRows = (response) => {
+  if (!response) return [];
+  if (Array.isArray(response)) return response;
+
+  const payload =
+    response?.success !== undefined
+      ? response
+      : response?.data?.success !== undefined
+        ? response.data
+        : (response?.data ?? response);
+
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.data)) return payload.data;
+  if (Array.isArray(payload?.data?.data)) return payload.data.data;
+
+  return [];
+};
+
 const UserDetailsModal = ({
   isOpen,
   userId,
@@ -97,8 +212,10 @@ const UserDetailsModal = ({
   invitationPrefillRoleId = null,
   invitationPrefillTeamName = null,
   invitationPrefillRoleName = null,
+  initialUserData = null,
+  sharedTeamId = null,
 }) => {
-  const { user: currentUser, isAuthenticated } = useAuth();
+  const { user: currentUser, isAuthenticated, refreshBlocks } = useAuth();
   const queryClient = useQueryClient();
   const normalizedRoleMatchTagIds = useMemo(
     () => normalizeNumericSet(roleMatchTagIds),
@@ -139,12 +256,59 @@ const UserDetailsModal = ({
   // ========= Badge Award Modal state =========
   const [isBadgeAwardModalOpen, setIsBadgeAwardModalOpen] = useState(false);
 
+  // ========= Block user state =========
+  const [isBlockModalOpen, setIsBlockModalOpen] = useState(false);
+  const [blocking, setBlocking] = useState(false);
+  const [blockError, setBlockError] = useState(null);
+
   // =====================================================
 
-  const fetchUserAwards = useCallback(
-    () => userService.getUserBadges(userId),
-    [userId],
+  const initialUserId = getInitialUserId(initialUserData);
+  const targetUsername =
+    initialUserData?.username ?? user?.username ?? user?.userName ?? null;
+  const filterAwardsToViewedUser = useCallback(
+    (rows) =>
+      rows.filter((award) => {
+        const awardeeId = getAwardTargetUserId(award);
+
+        if (awardeeId != null && userId != null) {
+          return String(awardeeId) === String(userId);
+        }
+
+        if (awardeeId != null && initialUserId != null) {
+          return String(awardeeId) === String(initialUserId);
+        }
+
+        const awardeeUsername = getAwardTargetUsername(award);
+        return Boolean(
+          awardeeUsername &&
+            targetUsername &&
+            String(awardeeUsername).toLowerCase() ===
+              String(targetUsername).toLowerCase(),
+        );
+      }),
+    [initialUserId, targetUsername, userId],
   );
+  const fetchUserTagAwards = useCallback(async () => {
+    if (!sharedTeamId) {
+      return userService.getUserBadges(userId);
+    }
+
+    const rows = unwrapRows(
+      await teamService.getTeamMemberBadgeAwards(sharedTeamId),
+    );
+    return filterAwardsToViewedUser(rows);
+  }, [filterAwardsToViewedUser, sharedTeamId, userId]);
+  const fetchUserBadgeAwards = useCallback(async () => {
+    if (!sharedTeamId) {
+      return userService.getUserBadges(userId);
+    }
+
+    const rows = unwrapRows(
+      await teamService.getTeamMemberBadgeAwards(sharedTeamId),
+    );
+    return filterAwardsToViewedUser(rows);
+  }, [filterAwardsToViewedUser, sharedTeamId, userId]);
   const {
     handleBadgeCategoryClick,
     handleBadgeClick,
@@ -153,7 +317,11 @@ const UserDetailsModal = ({
     badgeCategoryModalProps,
     tagAwardsModalProps,
     supercategoryModalProps,
-  } = useAwardModals({ fetchTagAwards: fetchUserAwards, fetchBadgeAwards: fetchUserAwards });
+  } = useAwardModals({
+    fetchTagAwards: fetchUserTagAwards,
+    fetchBadgeAwards: fetchUserBadgeAwards,
+    subjectUserId: userId,
+  });
 
   // Determine if this modal is showing the current user (more reliable than comparing fetched user)
   const ownProfile =
@@ -196,11 +364,22 @@ const UserDetailsModal = ({
     setLoading(viewedUserProfileQuery.isLoading);
   }, [viewedUserProfileQuery.isLoading]);
 
+  // Force a fresh fetch whenever this modal opens so that privacy access level
+  // is always evaluated against the current auth state (avoids stale cache).
+  useEffect(() => {
+    if (isOpen && userId) {
+      queryClient.invalidateQueries({ queryKey: userProfileQueryKey(userId) });
+    }
+  }, [isOpen, userId, queryClient]);
+
   useEffect(() => {
     if (!isOpen || !userId) return;
     if (!viewedUserProfileQuery.data) return;
 
-    const userData = viewedUserProfileQuery.data;
+    const userData = mergeProfileWithInitialUser(
+      viewedUserProfileQuery.data,
+      initialUserData,
+    );
     const preservedDistanceKm =
       distanceKm ??
       user?.distanceKm ??
@@ -233,12 +412,50 @@ const UserDetailsModal = ({
     user?.distance_km,
     userId,
     viewedUserProfileQuery.data,
+    initialUserData,
   ]);
 
   useEffect(() => {
     if (!isOpen || !userId) return;
-    setUserTags(viewedUserTagsQuery.data ?? []);
-  }, [isOpen, userId, viewedUserTagsQuery.data]);
+    const fallbackTags = extractUserTags(initialUserData);
+    const fetchedTags = viewedUserTagsQuery.data ?? [];
+    setUserTags(fetchedTags.length > 0 ? fetchedTags : fallbackTags);
+  }, [initialUserData, isOpen, userId, viewedUserTagsQuery.data]);
+
+  useEffect(() => {
+    if (!isOpen || !sharedTeamId || !userId || userTags.length > 0) return;
+
+    let cancelled = false;
+
+    const fetchSharedTeamMemberTags = async () => {
+      try {
+        const response = await teamService.getTeamById(sharedTeamId);
+        const teamData = response?.data ?? response;
+        const members = Array.isArray(teamData?.members) ? teamData.members : [];
+        const matchingMember = members.find((member) => {
+          const memberId = getInitialUserId(member);
+          return memberId != null && String(memberId) === String(userId);
+        });
+        const memberTags = extractUserTags(matchingMember);
+
+        if (!cancelled && memberTags.length > 0) {
+          setUserTags(memberTags);
+          setUser((prev) => {
+            if (!prev || extractUserTags(prev).length > 0) return prev;
+            return { ...prev, tags: memberTags };
+          });
+        }
+      } catch (error) {
+        console.warn("Could not fetch shared team member tags:", error);
+      }
+    };
+
+    fetchSharedTeamMemberTags();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, sharedTeamId, userId, userTags.length]);
 
   useEffect(() => {
     if (!viewedUserProfileQuery.error) return;
@@ -262,6 +479,62 @@ const UserDetailsModal = ({
     console.error("Error fetching user tags:", viewedUserTagsQuery.error);
     setUserTags([]);
   }, [viewedUserTagsQuery.error]);
+
+  // Enrich postal-code-only locations with city, district, and state.
+  // The geocoding service has an in-memory cache so repeated lookups are free.
+  useEffect(() => {
+    if (!user) return;
+    const postalCode = user.postal_code || user.postalCode;
+    if (!postalCode) return;
+
+    const hasAllLocationDetails =
+      user.city &&
+      user.state &&
+      (user.district || user.suburb || user.borough || user.cityDistrict);
+    if (hasAllLocationDetails) return;
+
+    const country = user.country; // may be null; geocodingService.detectCountryCode will fall back
+    geocodingService
+      .getLocationFromPostalCode(postalCode, country || null)
+      .then((locationInfo) => {
+        if (!locationInfo) return;
+        setUser((prev) => {
+          if (!prev) return prev;
+
+          const nextDistrict =
+            prev.district ||
+            locationInfo.district ||
+            locationInfo.suburb ||
+            locationInfo.borough ||
+            locationInfo.cityDistrict;
+          const nextUser = {
+            ...prev,
+            city: prev.city || locationInfo.city,
+            state: prev.state || locationInfo.state,
+            country: prev.country || locationInfo.country,
+            district: nextDistrict,
+          };
+
+          return nextUser.city === prev.city &&
+            nextUser.state === prev.state &&
+            nextUser.country === prev.country &&
+            nextUser.district === prev.district
+            ? prev
+            : nextUser;
+        });
+      })
+      .catch(() => {}); // silently fail — location falls back to known profile fields
+  }, [
+    user?.id,
+    user?.postal_code,
+    user?.postalCode,
+    user?.city,
+    user?.state,
+    user?.district,
+    user?.suburb,
+    user?.borough,
+    user?.cityDistrict,
+  ]);
 
   // Resolve CURRENT user's tags/badges for overlap highlighting (not the viewed user's)
   useEffect(() => {
@@ -329,34 +602,38 @@ const UserDetailsModal = ({
     setIsEditing(mode === "edit");
   }, [mode]);
 
-  const handleStartChat = async () => {
+  const handleStartChat = () => {
     if (!isAuthenticated) {
       console.warn("Attempted to start chat while not authenticated");
       return;
     }
     if (!userId) return;
 
-    try {
-      // Create conversation with the user and send an empty message to ensure it appears
-      await messageService.startConversation(userId, "");
-
-      // Give a bit more time for the conversation to be created
-      await new Promise((resolve) => setTimeout(resolve, 600));
-
-      // Open chat in new tab with direct message type
-      const chatUrl = `${window.location.origin}/chat/${userId}?type=direct`;
-      window.open(chatUrl, "_blank", "noopener,noreferrer");
-    } catch (error) {
-      console.error("Error starting conversation:", error);
-
-      // Fallback: still open chat page even if API call fails
-      const chatUrl = `${window.location.origin}/chat/${userId}?type=direct`;
-      window.open(chatUrl, "_blank", "noopener,noreferrer");
-    }
+    const chatUrl = `${window.location.origin}/chat/${userId}?type=direct`;
+    window.open(chatUrl, "_blank", "noopener,noreferrer");
   };
 
   const handleInviteToTeam = () => {
     setIsInviteModalOpen(true);
+  };
+
+  const handleConfirmBlock = async () => {
+    if (!currentUser?.id || !userId) return;
+    try {
+      setBlocking(true);
+      await userService.blockUser(currentUser.id, userId);
+      await refreshBlocks?.();
+      // Drop any cached view of this now-hidden profile.
+      queryClient.invalidateQueries({ queryKey: userProfileQueryKey(userId) });
+      setIsBlockModalOpen(false);
+      onClose?.();
+    } catch (error) {
+      setBlockError(
+        error.response?.data?.message || "Failed to block this user.",
+      );
+    } finally {
+      setBlocking(false);
+    }
   };
 
   const handleInviteModalClose = () => {
@@ -637,6 +914,24 @@ const UserDetailsModal = ({
               <span className="hidden sm:inline">Award</span>
             </Button>
           </Tooltip>
+          <Tooltip
+            content="Block this person. They won't be able to message you or see your profile."
+            position="bottom"
+          >
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setBlockError(null);
+                setIsBlockModalOpen(true);
+              }}
+              className="flex items-center gap-1 hover:bg-red-100 hover:text-red-700"
+              aria-label="Block user"
+            >
+              <Ban size={16} />
+              <span className="hidden sm:inline">Block</span>
+            </Button>
+          </Tooltip>
         </>
       )}
     </div>
@@ -678,6 +973,12 @@ const UserDetailsModal = ({
               full profile page.
             </p>
           </div>
+        ) : (!ownProfile && !sharedTeamId && (user?.profileAccess === "limited" || user?.profile_access === "limited")) ? (
+          // PRIVATE PROFILE - non-owner, non-teammate viewing a private account
+          <div className="text-center text-base-content/60 py-8">
+            <p className="text-lg font-medium">{user.username}</p>
+            <p className="text-sm mt-2">This profile is private.</p>
+          </div>
         ) : (
           // VIEW MODE - User profile information
           <div className="space-y-8">
@@ -711,6 +1012,7 @@ const UserDetailsModal = ({
               className=""
               distance={showMatchHighlights ? effectiveDistanceKm : null}
               headerRight={roleMatchLocationHeaderRight}
+              showCountryCode={false}
             />
 
             {/* Focus Areas */}
@@ -754,14 +1056,14 @@ const UserDetailsModal = ({
                   return (
                     <span className="flex items-center gap-1.5 text-sm text-success">
                       <MatchIcon size={14} className="flex-shrink-0" />
-                      <span>{matchCount}/{total} in common</span>
+                      <span>{matchCount}/{total} matching</span>
                     </span>
                   );
                 }
                 return (
                   <span className="flex items-center gap-1.5 text-sm text-slate-500">
                     <X size={14} className="flex-shrink-0" />
-                    <span>None in common</span>
+                    <span className="leading-[1.1]">None matching</span>
                   </span>
                 );
               })()}
@@ -818,14 +1120,14 @@ const UserDetailsModal = ({
                   return (
                     <span className="flex items-center gap-1.5 text-sm text-success">
                       <MatchIcon size={14} className="flex-shrink-0" />
-                      <span>{matchCount}/{total} in common</span>
+                      <span>{matchCount}/{total} matching</span>
                     </span>
                   );
                 }
                 return (
                   <span className="flex items-center gap-1.5 text-sm text-slate-500">
                     <X size={14} className="flex-shrink-0" />
-                    <span>None in common</span>
+                    <span className="leading-[1.1]">None matching</span>
                   </span>
                 );
               })()}
@@ -861,6 +1163,25 @@ const UserDetailsModal = ({
           inviteeAvatar={user.avatar_url || user.avatarUrl}
           inviteeBio={user.bio}
           inviteeIsSynthetic={user.is_synthetic ?? user.isSynthetic}
+          inviteeIsPublic={
+            user.is_public ??
+            user.isPublic ??
+            user.profile_is_public ??
+            user.profileIsPublic ??
+            user.public_profile ??
+            user.publicProfile
+          }
+          inviteeIsPrivate={
+            user.is_private ??
+            user.isPrivate ??
+            user.profile_is_private ??
+            user.profileIsPrivate ??
+            user.private_profile ??
+            user.privateProfile
+          }
+          inviteeCity={user.city}
+          inviteeCountry={user.country}
+          inviteeJoinedAt={user.created_at || user.createdAt}
           prefillTeamId={invitationPrefillTeamId}
           prefillRoleId={invitationPrefillRoleId}
           prefillTeamName={invitationPrefillTeamName}
@@ -874,6 +1195,8 @@ const UserDetailsModal = ({
         onOpenUser={onOpenUser}
         hiddenAwardIds={hiddenAwardIds}
         showHiddenBadgeAwards={ownProfile}
+        canViewPrivateAwardees={Boolean(sharedTeamId)}
+        showAwarderAtBottom
       />
 
       {/* Tag Awards Modal */}
@@ -882,6 +1205,8 @@ const UserDetailsModal = ({
         onOpenUser={onOpenUser}
         hiddenAwardIds={hiddenAwardIds}
         showHiddenBadgeAwards={ownProfile}
+        canViewPrivateAwardees={Boolean(sharedTeamId)}
+        showAwarderAtBottom
       />
 
       {/* Supercategory Awards Modal */}
@@ -890,6 +1215,8 @@ const UserDetailsModal = ({
         onOpenUser={onOpenUser}
         hiddenAwardIds={hiddenAwardIds}
         showHiddenBadgeAwards={ownProfile}
+        canViewPrivateAwardees={Boolean(sharedTeamId)}
+        showAwarderAtBottom
       />
 
       {/* Badge Award Modal */}
@@ -904,6 +1231,9 @@ const UserDetailsModal = ({
           awardeeAvatar={user.avatar_url || user.avatarUrl}
           awardeeBio={user.bio}
           awardeeIsDemo={!!(user.is_synthetic ?? user.isSynthetic)}
+          awardeeCity={user.city}
+          awardeeCountry={user.country}
+          awardeeJoinedAt={user.created_at || user.createdAt}
           onAwardComplete={() => {
             queryClient.invalidateQueries({
               queryKey: userProfileQueryKey(user.id),
@@ -914,6 +1244,28 @@ const UserDetailsModal = ({
           }}
         />
       )}
+
+      {/* Block User Confirmation */}
+      <ConfirmModal
+        isOpen={isBlockModalOpen}
+        onClose={() => !blocking && setIsBlockModalOpen(false)}
+        onConfirm={handleConfirmBlock}
+        title="Block this user?"
+        confirmLabel="Block"
+        loadingLabel="Blocking…"
+        confirmVariant="error"
+        confirmIcon={<Ban size={16} />}
+        loading={blocking}
+      >
+        <div className="space-y-2">
+          <p className="text-base-content/80">
+            {getUserDisplayName()} won’t be able to message you or see your
+            profile anywhere on Lomir, and you won’t see theirs. You can undo this
+            from Settings → Privacy.
+          </p>
+          {blockError && <Alert type="error" message={blockError} />}
+        </div>
+      </ConfirmModal>
     </>
   );
 };

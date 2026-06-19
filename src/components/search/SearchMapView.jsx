@@ -38,6 +38,7 @@ import { useTeamModalSafe } from "../../contexts/TeamModalContext";
 import { useUserModalSafe } from "../../contexts/UserModalContext";
 import { useAuth } from "../../contexts/AuthContext";
 import { teamService } from "../../services/teamService";
+import { vacantRoleService } from "../../services/vacantRoleService";
 import useViewerPendingRequests from "../../hooks/useViewerPendingRequests";
 import useViewerTeamMemberships from "../../hooks/useViewerTeamMemberships";
 import {
@@ -53,7 +54,11 @@ import {
   isSyntheticTeam,
   isSyntheticUser,
 } from "../../utils/userHelpers";
-import { getCountryCode, getCountryDisplayName } from "../../utils/locationUtils";
+import {
+  formatLocation,
+  getCountryCode,
+  normalizeLocationData,
+} from "../../utils/locationUtils";
 import DemoAvatarOverlay from "../users/DemoAvatarOverlay";
 import Tooltip from "../common/Tooltip";
 
@@ -126,10 +131,15 @@ const CITY_COORDINATE_FALLBACKS = {
   bogotá: { lat: 4.711, lng: -74.0721 },
   "bogotá dc": { lat: 4.711, lng: -74.0721 },
   "bogotá d.c.": { lat: 4.711, lng: -74.0721 },
+  cologne: { lat: 50.938, lng: 6.960 },
   frankfurt: { lat: 50.1109, lng: 8.6821 },
   "frankfurt am main": { lat: 50.1109, lng: 8.6821 },
+  hamburg: { lat: 53.550, lng: 9.993 },
   johannesburg: { lat: -26.2041, lng: 28.0473 },
+  köln: { lat: 50.938, lng: 6.960 },
   madrid: { lat: 40.4168, lng: -3.7038 },
+  münchen: { lat: 48.137, lng: 11.576 },
+  munich: { lat: 48.137, lng: 11.576 },
   toronto: { lat: 43.6532, lng: -79.3832 },
 };
 const DEMO_PROFILE_LOCATION_FALLBACKS = {
@@ -213,6 +223,7 @@ const isValidCoordinate = (lat, lng) =>
 const getLatLng = (item) => {
   const lat = toNumber(firstPresent(
     item?.latitude,
+    item?.approximate_latitude,
     item?.lat,
     item?.location?.latitude,
     item?.roleLocation?.latitude,
@@ -220,6 +231,7 @@ const getLatLng = (item) => {
   ));
   const lng = toNumber(firstPresent(
     item?.longitude,
+    item?.approximate_longitude,
     item?.lng,
     item?.lon,
     item?.location?.longitude,
@@ -411,6 +423,15 @@ const inferCityFromPostalCode = (value) => {
   if (postalCode === "2000") return "Johannesburg";
   if (/^28\d{3}$/.test(postalCode)) return "Madrid";
   if (/^M\d[A-Z]\s?\d[A-Z]\d$/.test(postalCode)) return "Toronto";
+  // 5-digit German postal codes — map numeric ranges to major cities
+  if (/^\d{5}$/.test(postalCode)) {
+    const n = parseInt(postalCode, 10);
+    if (n >= 10115 && n <= 14199) return "Berlin";
+    if (n >= 20095 && n <= 22769) return "Hamburg";
+    if (n >= 50667 && n <= 51149) return "Cologne";
+    if (n >= 60311 && n <= 65936) return "Frankfurt";
+    if (n >= 80331 && n <= 81929) return "München";
+  }
   return null;
 };
 
@@ -475,14 +496,21 @@ const getLocationLabel = (item) => {
     item.user?.state,
     item.role?.state,
   );
-  const countryLabel = country
-    ? getCountryDisplayName(getCountryCode(country) ?? country)
-    : inferredCountryCode
-      ? getCountryDisplayName(inferredCountryCode)
-      : null;
-  const parts = [city, state, countryLabel].filter(Boolean);
+  const locationLabel = formatLocation(
+    normalizeLocationData({
+      ...item,
+      city,
+      state,
+      country: country || inferredCountryCode,
+    }),
+    {
+      displayType: "short",
+      showState: true,
+      showCountryCode: false,
+    },
+  );
 
-  return parts.length > 0 ? parts.join(", ") : LOCATION_NOT_AVAILABLE;
+  return locationLabel || LOCATION_NOT_AVAILABLE;
 };
 
 const getItemCountryCode = (item) => {
@@ -574,23 +602,89 @@ const getTeamMemberCount = (item) => {
 const getTeamMaxMembers = (item) =>
   firstPresent(item?.max_members, item?.maxMembers) ?? "∞";
 
-const getTeamOpenRoleCount = (item) => {
-  const count = firstPresent(
-    item?.open_role_count,
+const isOpenRole = (r) => String(r?.status ?? "open").toLowerCase() === "open";
+
+const extractArrayPayload = (payload) => {
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.data)) return payload.data;
+  if (Array.isArray(payload?.data?.data)) return payload.data.data;
+  return [];
+};
+
+const getRoleDisplayName = (role) => {
+  if (!role) return null;
+
+  return (
+    role.roleName ??
+    role.role_name ??
+    role.name ??
+    role.title ??
+    null
+  );
+};
+
+const normalizeRoleNames = (value) => {
+  if (Array.isArray(value)) {
+    return value
+      .map((item) =>
+        typeof item === "string" ? item.trim() : getRoleDisplayName(item),
+      )
+      .filter(Boolean);
+  }
+
+  if (typeof value === "string") {
+    return value
+      .split(",")
+      .map((name) => name.trim())
+      .filter(Boolean);
+  }
+
+  return [];
+};
+
+const getTeamRoleCollections = (item) =>
+  [
+    item?.openRoles,
+    item?.open_roles,
+    item?.vacantRoles,
+    item?.vacant_roles,
+  ].filter(Array.isArray);
+
+const resolveTeamOpenRoleSnapshot = (item, fetchedSnapshot = null) => {
+  if (fetchedSnapshot) {
+    return {
+      count: fetchedSnapshot.count,
+      names: fetchedSnapshot.names ?? [],
+      source: "fetch",
+    };
+  }
+
+  const roleCollections = getTeamRoleCollections(item);
+  if (roleCollections.length > 0) {
+    const roles = roleCollections.flat().filter(isOpenRole);
+    return {
+      count: roles.length,
+      names: roles.map(getRoleDisplayName).filter(Boolean),
+      source: "records",
+    };
+  }
+
+  const rawCount = firstPresent(
     item?.openRoleCount,
-    item?.open_roles_count,
+    item?.open_role_count,
     item?.openRolesCount,
-    item?.vacant_role_count,
-    item?.vacantRoleCount,
-    item?.vacant_roles_count,
-    item?.vacantRolesCount,
-    Array.isArray(item?.openRoles) ? item.openRoles.length : null,
-    Array.isArray(item?.open_roles) ? item.open_roles.length : null,
-    Array.isArray(item?.vacantRoles) ? item.vacantRoles.length : null,
-    Array.isArray(item?.vacant_roles) ? item.vacant_roles.length : null,
+    item?.open_roles_count,
+  );
+  const count = toNumber(rawCount);
+  const names = normalizeRoleNames(
+    firstPresent(item?.openRoleNames, item?.open_role_names),
   );
 
-  return toNumber(count) ?? 0;
+  return {
+    count: count ?? names.length,
+    names,
+    source: rawCount != null || names.length > 0 ? "aggregate" : "none",
+  };
 };
 
 const getTeamViewerRole = (item, viewerUser = null) => {
@@ -995,12 +1089,14 @@ const normalizeMapPoint = (
   fetchedApplications = [],
   fetchedInvitations = [],
   fetchedUserTeamIds = new Set(),
+  fetchedOpenRoleSnapshots = {},
 ) => {
   if (!item) return null;
 
   const type = getMapPointType(item);
   const lat = toNumber(firstPresent(
     item.latitude,
+    item.approximate_latitude,
     item.lat,
     item.location?.latitude,
     item.roleLocation?.latitude,
@@ -1008,6 +1104,7 @@ const normalizeMapPoint = (
   ));
   const lng = toNumber(firstPresent(
     item.longitude,
+    item.approximate_longitude,
     item.lng,
     item.lon,
     item.location?.longitude,
@@ -1095,6 +1192,18 @@ const normalizeMapPoint = (
           matchesRoleItem(inv, rawId, roleTeamId, getDisplayName(item, "role"))) ??
         null
       : null;
+  const openRoleSnapshot =
+    type === "team"
+      ? resolveTeamOpenRoleSnapshot(
+          item,
+          rawId != null ? fetchedOpenRoleSnapshots[String(rawId)] : null,
+        )
+      : null;
+  const isOwnProfile =
+    type === "user" &&
+    rawId != null &&
+    viewerUser?.id != null &&
+    String(rawId) === String(viewerUser.id);
 
   return {
     id: `${type}-${rawId ?? getDisplayName(item, type)}`,
@@ -1114,7 +1223,8 @@ const normalizeMapPoint = (
     teamName: item.teamName ?? item.team_name ?? item.team?.name ?? null,
     memberCount: type === "team" ? getTeamMemberCount(item) : null,
     maxMembers: type === "team" ? getTeamMaxMembers(item) : null,
-    openRoleCount: type === "team" ? getTeamOpenRoleCount(item) : null,
+    openRoleCount: openRoleSnapshot?.count ?? null,
+    openRoleNames: openRoleSnapshot?.names ?? null,
     currentUserRole,
     teamInvitation,
     hasTeamInvitation: Boolean(teamInvitation),
@@ -1135,12 +1245,18 @@ const normalizeMapPoint = (
     initials: avatarData.initials,
     isDemo: isDemoPoint(item, type),
     username: type === "user" ? (item.username ?? null) : null,
+    isOwnProfile,
     isPublicProfile: type === "user"
-      ? normalizeBooleanFlag(firstPresent(item?.is_public, item?.isPublic))
+      ? normalizeBooleanFlag(
+          firstPresent(
+            isOwnProfile
+              ? firstPresent(viewerUser?.is_public, viewerUser?.isPublic)
+              : undefined,
+            item?.is_public,
+            item?.isPublic,
+          ),
+        )
       : null,
-    isOwnProfile: type === "user" && rawId != null && viewerUser?.id != null
-      ? String(rawId) === String(viewerUser.id)
-      : false,
     postedAt: type === "role" ? getRolePostedAt(item) : null,
     hasApplied: type === "role" ? (
       getRoleHasApplied(item) ||
@@ -1842,6 +1958,26 @@ const RoleSubline = ({
   );
 };
 
+const formatRoleNamesSummary = (names, max = 2) => {
+  if (!Array.isArray(names) || names.length === 0) return null;
+  if (names.length <= max) return names.join(", ");
+  return `${names.slice(0, max).join(", ")} +${names.length - max}`;
+};
+
+const TeamOpenRoleNamesLine = ({ point }) => {
+  if (point.type !== "team") return null;
+
+  const summary = formatRoleNamesSummary(point.openRoleNames);
+  if (!summary) return null;
+
+  return (
+    <div className="flex min-w-0 items-center gap-1.5">
+      <UserSearch size={13} aria-hidden="true" />
+      <span className="min-w-0 flex-1 truncate">{summary}</span>
+    </div>
+  );
+};
+
 const MapPopupCard = ({
   point,
   showMatchScore = false,
@@ -1851,7 +1987,7 @@ const MapPopupCard = ({
   onClose,
 }) => {
   return (
-    <div className="inline-block max-w-[22rem] align-top">
+    <div className="max-w-full align-top">
       <div className="mb-2 flex items-center justify-between text-base-content/70">
         <EntityMetaLine point={point} />
         <button
@@ -1874,6 +2010,7 @@ const MapPopupCard = ({
           <TeamMetaLine
             point={point}
             showMatchScore={showMatchScore}
+            showRoleRequestNames={false}
             onOpenInvitation={onOpenInvitation}
             onOpenApplication={onOpenApplication}
           />
@@ -1889,25 +2026,26 @@ const MapPopupCard = ({
 
       <div className="mt-3 space-y-0.5 text-xs text-base-content/70">
         {point.teamName && point.type === "role" && (
-          <div className="flex items-center gap-1.5">
+          <div className="flex min-w-0 items-center gap-1.5">
             <Users size={13} aria-hidden="true" />
-            <span>{point.teamName}</span>
+            <span className="min-w-0 flex-1 truncate">{point.teamName}</span>
           </div>
         )}
         {point.teamName && point.type !== "role" && (
-          <div className="flex items-center gap-1.5">
+          <div className="flex min-w-0 items-center gap-1.5">
             <Users size={13} aria-hidden="true" />
-            <span>{point.teamName}</span>
+            <span className="min-w-0 flex-1 truncate">{point.teamName}</span>
           </div>
         )}
-        <div className="flex items-center gap-1.5">
+        <TeamOpenRoleNamesLine point={point} />
+        <div className="flex min-w-0 items-center gap-1.5">
           <LocationIcon point={point} />
-          <span>{point.locationLabel}</span>
+          <span className="min-w-0 flex-1 truncate">{point.locationLabel}</span>
         </div>
         {point.distanceLabel && (
-          <div className="flex items-center gap-1.5">
+          <div className="flex min-w-0 items-center gap-1.5">
             <Ruler size={13} />
-            <span>{point.distanceLabel}</span>
+            <span className="min-w-0 flex-1 truncate">{point.distanceLabel}</span>
           </div>
         )}
       </div>
@@ -2043,6 +2181,63 @@ const SearchMapView = ({
     [items, userLocationDetailsById],
   );
 
+  const teamIdsNeedingOpenRoleFetch = useMemo(() => {
+    const ids = [];
+    const seenIds = new Set();
+
+    itemsWithUserLocationDetails.forEach((item) => {
+      if (getMapPointType(item) !== "team") return;
+
+      const teamId = getTeamItemId(item);
+      if (teamId == null) return;
+      if (resolveTeamOpenRoleSnapshot(item).source !== "aggregate") return;
+
+      const key = String(teamId);
+      if (seenIds.has(key)) return;
+
+      seenIds.add(key);
+      ids.push(teamId);
+    });
+
+    return ids;
+  }, [itemsWithUserLocationDetails]);
+
+  const openRoleQueries = useQueries({
+    queries: teamIdsNeedingOpenRoleFetch.map((teamId) => ({
+      queryKey: ["team-open-roles", teamId],
+      queryFn: async () => {
+        const response = await vacantRoleService.getVacantRoles(teamId, "open");
+        const roles = extractArrayPayload(response).filter(isOpenRole);
+
+        return {
+          count: roles.length,
+          names: roles.map(getRoleDisplayName).filter(Boolean),
+        };
+      },
+      staleTime: 30_000,
+    })),
+  });
+
+  const openRoleQuerySignature = openRoleQueries
+    .map(
+      (query) =>
+        `${query.status}:${query.dataUpdatedAt ?? 0}:${query.errorUpdatedAt ?? 0}`,
+    )
+    .join("|");
+
+  const fetchedOpenRoleSnapshots = useMemo(() => {
+    const snapshots = {};
+
+    teamIdsNeedingOpenRoleFetch.forEach((teamId, index) => {
+      const query = openRoleQueries[index];
+      if (!query?.isSuccess) return;
+
+      snapshots[String(teamId)] = query.data;
+    });
+
+    return snapshots;
+  }, [teamIdsNeedingOpenRoleFetch, openRoleQueries, openRoleQuerySignature]);
+
   const normalizedPoints = useMemo(
     () =>
       itemsWithUserLocationDetails
@@ -2054,6 +2249,7 @@ const SearchMapView = ({
             fetchedApplications,
             fetchedInvitations,
             fetchedUserTeamIds,
+            fetchedOpenRoleSnapshots,
           ))
         .filter(Boolean),
     [
@@ -2062,6 +2258,7 @@ const SearchMapView = ({
       fetchedApplications,
       fetchedInvitations,
       fetchedUserTeamIds,
+      fetchedOpenRoleSnapshots,
       itemsWithUserLocationDetails,
     ],
   );
@@ -2752,6 +2949,11 @@ const SearchMapView = ({
                             )}
                           </div>
                         )}
+                        {point.type === "team" && Array.isArray(point.openRoleNames) && point.openRoleNames.length > 0 && (
+                          <div className="mt-2 space-y-0.5 text-xs text-base-content/70">
+                            <TeamOpenRoleNamesLine point={point} />
+                          </div>
+                        )}
                         {point.teamName && point.type !== "role" && (
                           <div className="mt-2 flex items-center gap-1.5 text-xs text-base-content/70">
                             <Users size={13} aria-hidden="true" />
@@ -2809,7 +3011,7 @@ const SearchMapView = ({
             style={{
               top: `${popupCoords ? popupCoords.top : popupAnchor.y}px`,
               left: `${popupCoords ? popupCoords.left : popupAnchor.x}px`,
-              width: "max-content",
+              width: "fit-content",
               maxWidth: `min(${MAP_POPUP_MAX_WIDTH}px, calc(100vw - ${MAP_POPUP_VIEWPORT_PADDING * 2}px))`,
               visibility: popupCoords ? "visible" : "hidden",
             }}

@@ -21,6 +21,7 @@ import Register from "./pages/Register";
 import Profile from "./pages/Profile";
 import PublicProfile from "./pages/PublicProfile";
 import VerifyEmail from "./pages/VerifyEmail";
+import VerifyEmailChange from "./pages/VerifyEmailChange";
 import BadgeOverview from "./pages/BadgeOverview";
 import MyTeams from "./pages/MyTeams";
 import SearchPage from "./pages/SearchPage";
@@ -30,6 +31,8 @@ import backgroundImage from "./assets/images/Gradient-peach-yellow-violet-invert
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import Settings from "./pages/Settings";
+import Contact from "./pages/Contact";
+import LegalPage from "./pages/LegalPage";
 
 function AppLayout() {
   const location = useLocation();
@@ -40,6 +43,7 @@ function AppLayout() {
     "/forgot-password",
     "/reset-password",
     "/verify-email",
+    "/verify-email-change",
   ].includes(location.pathname);
 
   return (
@@ -66,7 +70,19 @@ function AppLayout() {
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
                 <Route path="/verify-email" element={<VerifyEmail />} />
+                <Route
+                  path="/verify-email-change"
+                  element={<VerifyEmailChange />}
+                />
                 <Route path="/badges" element={<BadgeOverview />} />
+                <Route path="/contact" element={<Contact />} />
+                <Route path="/about" element={<LegalPage type="about" />} />
+                <Route path="/terms" element={<LegalPage type="terms" />} />
+                <Route path="/privacy" element={<LegalPage type="privacy" />} />
+                <Route
+                  path="/legal-notice"
+                  element={<LegalPage type="legalNotice" />}
+                />
                 <Route
                   path="/garden"
                   element={<Placeholder pageName="Project Garden" />}

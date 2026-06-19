@@ -8,6 +8,7 @@ import {
   Trash2,
   Search,
   X,
+  FlaskConical,
 } from "lucide-react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import PageContainer from "../components/layout/PageContainer";
@@ -27,16 +28,15 @@ import Tooltip from "../components/common/Tooltip";
 import { CountBadge } from "../components/common/NotificationBadge";
 import { uploadToImageKit } from "../config/imagekit";
 import UserAvatar from "../components/users/UserAvatar";
-import DemoAvatarOverlay from "../components/users/DemoAvatarOverlay";
+import TeamAvatar from "../components/teams/TeamAvatar";
 import TeamDetailsModal from "../components/teams/TeamDetailsModal";
 import UserDetailsModal from "../components/users/UserDetailsModal";
-import { getTeamInitials, isSyntheticTeam } from "../utils/userHelpers";
+import { isSyntheticTeam, isSyntheticUser, DEMO_PROFILE_TOOLTIP, DEMO_TEAM_TOOLTIP } from "../utils/userHelpers";
 import { formatDisplayName } from "../utils/nameFormatters";
 import {
   formatRelativeChatTimestamp,
   normalizeTimestampToDate,
 } from "../utils/dateHelpers";
-import { getTeamAvatarUrl } from "../utils/chatEntityResolvers";
 import { getMessageConversationTarget } from "../utils/messageNotificationUtils";
 
 const getConversationPartnerId = (conversation) =>
@@ -694,7 +694,12 @@ const Chat = () => {
   const { conversationId } = useParams();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, blockedRelationshipIds } = useAuth();
+  const isBlockedId = useCallback(
+    (id) =>
+      id != null && blockedRelationshipIds?.has?.(String(id)),
+    [blockedRelationshipIds],
+  );
   const [conversations, setConversations] = useState([]);
   const [activeConversation, setActiveConversation] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -810,8 +815,26 @@ const Chat = () => {
   const teamData =
     conversationType === "team" ? activeConversation?.team || null : null;
 
-  const teamMembers =
-    conversationType === "team" ? activeConversation?.team?.members || [] : [];
+  const teamMembers = useMemo(() => {
+    const members =
+      conversationType === "team" ? activeConversation?.team?.members || [] : [];
+    // Hide blocked users from the roster/mention list (both directions).
+    return members.filter((member) => {
+      const memberId =
+        member?.userId ?? member?.user_id ?? member?.id ?? member?.user?.id;
+      return !isBlockedId(memberId);
+    });
+  }, [conversationType, activeConversation?.team?.members, isBlockedId]);
+  // Hide messages from blocked users from the rendered stream (both directions).
+  // The backend already filters fetches and realtime delivery; this keeps an
+  // open session consistent the instant a block is added/removed.
+  const visibleMessages = useMemo(
+    () =>
+      messages.filter(
+        (message) => !isBlockedId(message?.senderId ?? message?.sender_id),
+      ),
+    [messages, isBlockedId],
+  );
   const isCurrentUserActiveTeamMember =
     conversationType !== "team" || isUserTeamMember(teamMembers, user?.id);
   const canSendInActiveConversation =
@@ -1342,6 +1365,47 @@ const Chat = () => {
     }
   }, [hydrateMissingConversationPreviews]);
 
+  // Apply live block/unblock changes to the chat view: drop blocked DMs (and
+  // restore unblocked ones) from the list, and close the active DM if its
+  // partner is now blocked. Team chats stay open — the blocker is hidden via
+  // the visibleMessages / teamMembers filters. The first run is skipped because
+  // the initial conversation fetch below already loads the correct state.
+  const blocksSyncInitializedRef = useRef(false);
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    if (!blocksSyncInitializedRef.current) {
+      blocksSyncInitializedRef.current = true;
+      return;
+    }
+
+    refreshConversationList();
+
+    const currentUrlType =
+      new URLSearchParams(window.location.search).get("type") ||
+      activeConversationRef.current?.type ||
+      "direct";
+    if (currentUrlType !== "direct") return;
+
+    const activePartnerId = getConversationPartnerId(
+      activeConversationRef.current,
+    );
+    if (isBlockedId(activePartnerId)) {
+      setError("This conversation is no longer available.");
+      setActiveConversation(null);
+      setMessages([]);
+      setTypingUsers({});
+      setHighlightMessageIds([]);
+      setHasMoreMessages(false);
+      navigate("/chat", { replace: true });
+    }
+  }, [
+    blockedRelationshipIds,
+    isAuthenticated,
+    isBlockedId,
+    refreshConversationList,
+    navigate,
+  ]);
+
   // Fetch conversations
   useEffect(() => {
     const fetchConversations = async () => {
@@ -1527,23 +1591,43 @@ const Chat = () => {
           }
 
           if (type === "direct") {
-            try {
-              await messageService.startConversation(
-                parseInt(conversationId),
-                "",
-              );
-
-              conversationDetails = await messageService.getConversationById(
-                conversationId,
-                type,
-              );
-              setActiveConversation(conversationDetails.data);
-
-              const conversationsResponse =
-                await messageService.getConversations();
-              setConversations(conversationsResponse.data || []);
-            } catch (createError) {
-              console.error("Failed to create conversation:", createError);
+            // No messages exist yet — this is a new/virtual conversation.
+            // Build activeConversation from what we already know so the chat
+            // panel opens and the user can type the first message. The
+            // conversation row is created in the backend when they send it.
+            const knownConv = conversationsRef.current.find(
+              (c) =>
+                String(c.id) === String(conversationId) &&
+                c.type === "direct",
+            );
+            if (knownConv?.partner) {
+              setActiveConversation({
+                id: parseInt(conversationId),
+                type: "direct",
+                partner: knownConv.partner,
+                isVirtual: true,
+              });
+            } else {
+              try {
+                const userResponse = await userService.getUserById(conversationId);
+                const userData = userResponse.data;
+                setActiveConversation({
+                  id: parseInt(conversationId),
+                  type: "direct",
+                  partner: {
+                    id: userData.id,
+                    username: userData.username,
+                    firstName: userData.firstName || userData.first_name,
+                    lastName: userData.lastName || userData.last_name,
+                    avatarUrl: userData.avatarUrl || userData.avatar_url,
+                    isSynthetic: userData.isSynthetic ?? userData.is_synthetic ?? undefined,
+                    is_synthetic: userData.is_synthetic ?? userData.isSynthetic ?? undefined,
+                  },
+                  isVirtual: true,
+                });
+              } catch (userError) {
+                console.error("Failed to load partner for new conversation:", userError);
+              }
             }
           }
         }
@@ -1707,7 +1791,7 @@ const Chat = () => {
               }, 3000);
             }
           }
-        } catch (messagesError) {
+        } catch {
           setHasMoreMessages(false);
           setMessages([]);
         }
@@ -2591,7 +2675,7 @@ const Chat = () => {
     }
   };
 
-  const handleSendImage = async (file, previewUrl) => {
+  const handleSendImage = async (file) => {
     if (!canSendInActiveConversation || !file) {
       if (!isCurrentUserActiveTeamMember) {
         setError("You no longer have access to this team chat.");
@@ -2884,8 +2968,14 @@ const Chat = () => {
   };
 
   const selectConversation = (id) => {
-    // Deselect only when the chat panel is currently visible for this conversation
-    if (showChatView && String(id) === String(conversationId)) {
+    // Deselect only when the chat panel is actually open for this conversation.
+    // If activeConversation is null and not loading, the panel isn't visible yet
+    // (e.g. new virtual conversation) — re-open instead of deselecting.
+    if (
+      showChatView &&
+      String(id) === String(conversationId) &&
+      (activeConversation || loadingMessages)
+    ) {
       setShowChatView(false);
       navigate("/chat");
       return;
@@ -2927,7 +3017,7 @@ const Chat = () => {
   // Get active typing users for current conversation
   const activeTypingUsers = Object.entries(typingUsers)
     .filter(([userId, username]) => userId !== user?.id && username)
-    .map(([_, username]) => username);
+    .map(([, username]) => username);
 
   const pendingChatActionType = pendingChatAction?.type;
   const pendingChatActionConfig = {
@@ -3145,31 +3235,16 @@ const Chat = () => {
                         position="bottom"
                         wrapperClassName="inline-flex items-center flex-shrink-0"
                       >
-                        <div
-                          className="w-10 h-10 rounded-full relative overflow-hidden cursor-pointer hover:opacity-80 transition-opacity"
-                          onClick={handleHeaderTeamClick}
-                        >
-                          {getTeamAvatarUrl(teamData) ? (
-                            <img
-                              src={getTeamAvatarUrl(teamData)}
-                              alt={teamData.name}
-                              className="object-cover w-full h-full rounded-full"
-                              onError={(e) => {
-                                e.target.style.display = "none";
-                                const fallback = e.target.parentElement.querySelector(".avatar-fallback");
-                                if (fallback) fallback.style.display = "flex";
-                              }}
-                            />
-                          ) : null}
-                          <div
-                            className="avatar-fallback bg-[var(--color-primary-focus)] text-primary-content flex items-center justify-center w-full h-full rounded-full absolute inset-0"
-                            style={{ display: getTeamAvatarUrl(teamData) ? "none" : "flex" }}
-                          >
-                            <span className="text-sm font-medium">{getTeamInitials(teamData)}</span>
-                          </div>
-                          {isSyntheticTeam(teamData) && (
-                            <DemoAvatarOverlay textClassName="text-[7px]" />
-                          )}
+                        <div className="relative">
+                          <TeamAvatar
+                            team={teamData}
+                            sizeClass="w-10 h-10"
+                            clickable={true}
+                            onClick={handleHeaderTeamClick}
+                            initialsClassName="text-sm font-medium"
+                            showDemoOverlay={isSyntheticTeam(teamData)}
+                            demoOverlayTextClassName="text-[7px]"
+                          />
                           {(activeConversation?.unreadCount || activeConversation?.unread_count) > 0 && (
                             <CountBadge
                               count={activeConversation.unreadCount ?? activeConversation.unread_count}
@@ -3232,6 +3307,14 @@ const Chat = () => {
                                 ? `Team Chat with ${teamData.members.length} ${teamData.members.length === 1 ? "Member" : "Members"}`
                                 : "Team Chat"}
                             </span>
+                            {isSyntheticTeam(teamData) && (
+                              <Tooltip
+                                content={DEMO_TEAM_TOOLTIP}
+                                wrapperClassName="flex items-center gap-0.5 text-base-content/50 flex-shrink-0"
+                              >
+                                <FlaskConical size={10} className="flex-shrink-0" />
+                              </Tooltip>
+                            )}
                           </div>
                           {conversationUpdatedAt && (
                             <span className="text-xs text-base-content/50 whitespace-nowrap ml-2">
@@ -3244,6 +3327,14 @@ const Chat = () => {
                           <div className="flex items-center gap-1.5 min-w-0">
                             <User size={12} className="flex-shrink-0" />
                             <span className="truncate">DM Chat</span>
+                            {isSyntheticUser(conversationPartner) && (
+                              <Tooltip
+                                content={DEMO_PROFILE_TOOLTIP}
+                                wrapperClassName="flex items-center gap-0.5 text-base-content/50 flex-shrink-0"
+                              >
+                                <FlaskConical size={10} className="flex-shrink-0" />
+                              </Tooltip>
+                            )}
                           </div>
                           {conversationUpdatedAt && (
                             <span className="text-xs text-base-content/50 whitespace-nowrap ml-2">
@@ -3259,7 +3350,7 @@ const Chat = () => {
 
               <div ref={messagesContainerRef} className="flex-grow overflow-y-auto p-4">
                 <MessageDisplay
-                  messages={messages}
+                  messages={visibleMessages}
                   currentUserId={user?.id}
                   conversationPartner={conversationPartner}
                   teamData={teamData}

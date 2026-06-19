@@ -7,10 +7,23 @@ import Alert from "../components/common/Alert";
 import ScreenAlert from "../components/common/ScreenAlert";
 import FormSectionDivider from "../components/common/FormSectionDivider";
 import VisibilityToggle from "../components/common/VisibilityToggle";
+import BlocklistSection from "../components/users/BlocklistSection";
 import Modal from "../components/common/Modal";
 import { userService } from "../services/userService";
 import { teamService } from "../services/teamService";
-import { AlertTriangle, Eye, EyeOff, KeyRound, Shield, Trash2, Users } from "lucide-react";
+import {
+  AlertTriangle,
+  Eye,
+  EyeOff,
+  KeyRound,
+  Shield,
+  Trash2,
+  Users,
+} from "lucide-react";
+import {
+  ACCOUNT_DELETION_NOTICE,
+  PROFILE_VISIBILITY_SETTINGS_NOTICE,
+} from "../constants/privacyText";
 
 const DELETE_STEP_PASSWORD = "password";
 const DELETE_STEP_SUMMARY = "summary";
@@ -162,8 +175,12 @@ const getDefaultSuccessor = (team) => {
 };
 
 const getRoleToReopenName = (role) =>
-  firstNonEmptyString(role?.roleName, role?.role_name, role?.name, role?.title) ||
-  "Untitled role";
+  firstNonEmptyString(
+    role?.roleName,
+    role?.role_name,
+    role?.name,
+    role?.title,
+  ) || "Untitled role";
 
 const getRoleToReopenTeamName = (role) =>
   firstNonEmptyString(
@@ -203,8 +220,9 @@ const normalizeTransferOptions = (members, currentUserId) =>
     .filter(Boolean);
 
 const Settings = () => {
-  const { user, updateUser, logout } = useAuth();
+  const { user, updateUser, logout, refreshBlocks } = useAuth();
   const navigate = useNavigate();
+  const pendingEmail = user?.pendingEmail || user?.pending_email || null;
 
   const [success, setSuccess] = useState(null);
   const [error, setError] = useState(null);
@@ -260,16 +278,32 @@ const Settings = () => {
     setEmailLoading(true);
 
     try {
-      await userService.changeEmail(
+      const response = await userService.changeEmail(
         emailData.newEmail,
         emailData.currentPasswordForEmail,
       );
-      updateUser({ email: emailData.newEmail });
-      setSuccess("Email address updated successfully");
+      const nextPendingEmail =
+        response?.data?.pendingEmail || emailData.newEmail;
+
+      updateUser({ pendingEmail: nextPendingEmail });
+      setSuccess(
+        `Verification email sent to ${nextPendingEmail}. Your current email stays active until you confirm the new address.`,
+      );
       setEmailData({ newEmail: "", currentPasswordForEmail: "" });
       setShowEmailForm(false);
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to update email");
+      if (err.response?.status === 401) {
+        setEmailErrors((prev) => ({
+          ...prev,
+          currentPasswordForEmail:
+            err.response?.data?.message || "Current password is incorrect",
+        }));
+        return;
+      }
+
+      setError(
+        err.response?.data?.message || "Failed to send verification email",
+      );
     } finally {
       setEmailLoading(false);
     }
@@ -284,7 +318,8 @@ const Settings = () => {
   const [passwordErrors, setPasswordErrors] = useState({});
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [showPasswordForm, setShowPasswordForm] = useState(false);
-  const [showCurrentPasswordForEmail, setShowCurrentPasswordForEmail] = useState(false);
+  const [showCurrentPasswordForEmail, setShowCurrentPasswordForEmail] =
+    useState(false);
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -321,14 +356,28 @@ const Settings = () => {
         passwordData.currentPassword,
         passwordData.newPassword,
       );
-      setSuccess("Password changed successfully");
-      setPasswordData({
-        currentPassword: "",
-        newPassword: "",
-        confirmPassword: "",
+
+      // The change invalidates the current session server-side, so log out and
+      // send the user straight to the login form with their new password.
+      await logout();
+      navigate("/login", {
+        replace: true,
+        state: {
+          message:
+            "Password changed successfully. Please log in with your new password. We've also sent a confirmation email.",
+        },
       });
-      setShowPasswordForm(false);
+      return;
     } catch (err) {
+      if (err.response?.status === 401) {
+        setPasswordErrors((prev) => ({
+          ...prev,
+          currentPassword:
+            err.response?.data?.message || "Current password is incorrect",
+        }));
+        return;
+      }
+
       setError(err.response?.data?.message || "Failed to change password");
     } finally {
       setPasswordLoading(false);
@@ -353,11 +402,7 @@ const Settings = () => {
     `input input-bordered w-full ${hasError ? "input-error" : ""}`;
 
   const FieldError = ({ msg }) =>
-    msg ? (
-      <label className="label">
-        <span className="label-text-alt text-error">{msg}</span>
-      </label>
-    ) : null;
+    msg ? <p className="text-xs text-error mt-2 px-1">{msg}</p> : null;
 
   const resetDeleteState = () => {
     setDeletionStep(DELETE_STEP_PASSWORD);
@@ -376,8 +421,7 @@ const Settings = () => {
     setIsDeleteModalOpen(true);
   };
 
-  const isDeleteBusy =
-    previewLoading || deletionStep === DELETE_STEP_EXECUTING;
+  const isDeleteBusy = previewLoading || deletionStep === DELETE_STEP_EXECUTING;
 
   const closeDeleteModal = () => {
     if (isDeleteBusy) return;
@@ -398,7 +442,8 @@ const Settings = () => {
     deletionPreviewData?.counts?.directMessages,
   );
   const passwordFieldError =
-    deletionStep === DELETE_STEP_PASSWORD && deleteError === "Incorrect password"
+    deletionStep === DELETE_STEP_PASSWORD &&
+    deleteError === "Incorrect password"
       ? deleteError
       : null;
   const deleteAlertError =
@@ -587,7 +632,10 @@ const Settings = () => {
     setOwnershipOverrides((prev) => {
       const next = new Map(prev);
 
-      if (defaultSuccessor && sameId(defaultSuccessor.id, normalizedSuccessorId)) {
+      if (
+        defaultSuccessor &&
+        sameId(defaultSuccessor.id, normalizedSuccessorId)
+      ) {
         next.delete(teamId);
       } else {
         next.set(teamId, normalizedSuccessorId);
@@ -602,12 +650,12 @@ const Settings = () => {
       setDeleteError(null);
       setDeletionStep(DELETE_STEP_EXECUTING);
 
-      const ownershipOverridePayload = Array.from(ownershipOverrides.entries()).map(
-        ([teamId, successorId]) => ({
-          teamId: normalizeId(teamId),
-          successorId: normalizeId(successorId),
-        }),
-      );
+      const ownershipOverridePayload = Array.from(
+        ownershipOverrides.entries(),
+      ).map(([teamId, successorId]) => ({
+        teamId: normalizeId(teamId),
+        successorId: normalizeId(successorId),
+      }));
 
       const result = await userService.deleteUser(
         user.id,
@@ -675,264 +723,337 @@ const Settings = () => {
               showDescription={true}
               disabled={visibilityLoading}
             />
+            <p className="form-helper-text px-1">
+              {PROFILE_VISIBILITY_SETTINGS_NOTICE}
+            </p>
+
+            {user?.id && (
+              <BlocklistSection userId={user.id} onChange={refreshBlocks} />
+            )}
           </section>
 
           {/* ── Account ── */}
           <section className="space-y-4">
             <FormSectionDivider text="Account" icon={KeyRound} />
 
-            {/* Current email display */}
-            <div className="form-control w-full">
-              <label className="label">
-                <span className="label-text">Email Address</span>
-              </label>
-              <div className="input input-bordered w-full flex items-center justify-between pr-2">
-                <span className="text-base-content/70">
-                  {user?.email || "—"}
-                </span>
-                <button
-                  type="button"
-                  className="btn btn-ghost btn-xs"
-                  onClick={() => {
-                    setShowEmailForm(!showEmailForm);
-                    setEmailErrors({});
-                    setShowCurrentPasswordForEmail(false);
-                  }}
-                >
-                  {showEmailForm ? "Cancel" : "Change"}
-                </button>
-              </div>
-            </div>
-
-            {/* Change email form */}
-            {showEmailForm && (
-              <form
-                onSubmit={handleEmailChange}
-                className="border border-base-300 rounded-lg p-4 space-y-3 bg-base-200/40"
-              >
+            <div
+              className={`grid grid-cols-1 gap-4 items-start ${
+                showEmailForm || showPasswordForm ? "" : "md:grid-cols-2"
+              }`}
+            >
+              {/* Email column */}
+              <div className="space-y-4">
+                {/* Current email display */}
                 <div className="form-control w-full">
                   <label className="label">
-                    <span className="label-text">New Email Address</span>
+                    <span className="label-text">Email Address</span>
                   </label>
-                  <input
-                    type="email"
-                    className={inputClass(emailErrors.newEmail)}
-                    value={emailData.newEmail}
-                    onChange={(e) =>
-                      setEmailData({ ...emailData, newEmail: e.target.value })
-                    }
-                    placeholder="new@email.com"
-                  />
-                  <FieldError msg={emailErrors.newEmail} />
-                </div>
-
-                <div className="form-control w-full">
-                  <label className="label">
-                    <span className="label-text">
-                      Confirm with Current Password
+                  <div className="input input-bordered w-full flex items-center justify-between pr-2">
+                    <span className="text-base-content/70">
+                      {user?.email || "—"}
                     </span>
-                  </label>
-                  <div className="relative">
-                    <input
-                      type={showCurrentPasswordForEmail ? "text" : "password"}
-                      className={`${inputClass(emailErrors.currentPasswordForEmail)} pr-12`}
-                      value={emailData.currentPasswordForEmail}
-                      onChange={(e) =>
-                        setEmailData({
-                          ...emailData,
-                          currentPasswordForEmail: e.target.value,
-                        })
-                      }
-                      placeholder="••••••••"
-                    />
                     <button
                       type="button"
-                      className="absolute inset-y-0 right-0 flex items-center px-3 text-base-content/60 transition-colors hover:text-base-content"
-                      onClick={() => setShowCurrentPasswordForEmail((prev) => !prev)}
-                      onMouseDown={(e) => e.preventDefault()}
-                      aria-label={showCurrentPasswordForEmail ? "Hide password" : "Show password"}
-                      aria-pressed={showCurrentPasswordForEmail}
+                      className="btn btn-ghost btn-xs"
+                      onClick={() => {
+                        setShowEmailForm(!showEmailForm);
+                        setShowPasswordForm(false);
+                        setEmailErrors({});
+                        setShowCurrentPasswordForEmail(false);
+                      }}
                     >
-                      {showCurrentPasswordForEmail ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      {showEmailForm ? "Cancel" : "Change"}
                     </button>
                   </div>
-                  <FieldError msg={emailErrors.currentPasswordForEmail} />
+                  {pendingEmail && (
+                    <p className="mt-2 text-sm text-info">
+                      Pending change to {pendingEmail}. Check that inbox to
+                      confirm the new address.
+                    </p>
+                  )}
                 </div>
 
-                <div className="flex justify-end pt-1">
-                  <Button
-                    type="submit"
-                    variant="primary"
-                    size="sm"
-                    disabled={emailLoading}
+                {/* Change email form */}
+                {showEmailForm && (
+                  <form
+                    onSubmit={handleEmailChange}
+                    className="border border-base-300 rounded-lg p-4 space-y-3 bg-base-200/40"
                   >
-                    {emailLoading ? (
-                      <span className="loading loading-spinner loading-xs" />
-                    ) : (
-                      "Update Email"
-                    )}
-                  </Button>
-                </div>
-              </form>
-            )}
+                    <div className="form-control w-full">
+                      <label className="label">
+                        <span className="label-text">New Email Address</span>
+                      </label>
+                      <input
+                        type="email"
+                        className={inputClass(emailErrors.newEmail)}
+                        value={emailData.newEmail}
+                        onChange={(e) =>
+                          setEmailData({
+                            ...emailData,
+                            newEmail: e.target.value,
+                          })
+                        }
+                        placeholder="new@email.com"
+                      />
+                      <FieldError msg={emailErrors.newEmail} />
+                    </div>
 
-            {/* Change password trigger */}
-            <div className="form-control w-full">
-              <label className="label">
-                <span className="label-text">Password</span>
-              </label>
-              <div className="input input-bordered w-full flex items-center justify-between pr-2">
-                <span className="text-base-content/70 tracking-widest text-sm">
-                  ••••••••
-                </span>
-                <button
-                  type="button"
-                  className="btn btn-ghost btn-xs"
-                  onClick={() => {
-                    setShowPasswordForm(!showPasswordForm);
-                    setPasswordErrors({});
-                    setShowCurrentPassword(false);
-                    setShowNewPassword(false);
-                    setShowConfirmPassword(false);
-                  }}
-                >
-                  {showPasswordForm ? "Cancel" : "Change"}
-                </button>
+                    <div className="form-control w-full">
+                      <label className="label">
+                        <span className="label-text">
+                          Confirm with Current Password
+                        </span>
+                      </label>
+                      <div className="relative">
+                        <input
+                          type={
+                            showCurrentPasswordForEmail ? "text" : "password"
+                          }
+                          className={`${inputClass(emailErrors.currentPasswordForEmail)} pr-12`}
+                          value={emailData.currentPasswordForEmail}
+                          onChange={(e) =>
+                            setEmailData({
+                              ...emailData,
+                              currentPasswordForEmail: e.target.value,
+                            })
+                          }
+                          placeholder="••••••••"
+                        />
+                        <button
+                          type="button"
+                          className="absolute inset-y-0 right-0 flex items-center px-3 text-base-content/60 transition-colors hover:text-base-content"
+                          onClick={() =>
+                            setShowCurrentPasswordForEmail((prev) => !prev)
+                          }
+                          onMouseDown={(e) => e.preventDefault()}
+                          aria-label={
+                            showCurrentPasswordForEmail
+                              ? "Hide password"
+                              : "Show password"
+                          }
+                          aria-pressed={showCurrentPasswordForEmail}
+                        >
+                          {showCurrentPasswordForEmail ? (
+                            <EyeOff className="h-4 w-4" />
+                          ) : (
+                            <Eye className="h-4 w-4" />
+                          )}
+                        </button>
+                      </div>
+                      <FieldError msg={emailErrors.currentPasswordForEmail} />
+                    </div>
+
+                    <div className="flex justify-end !mt-[25px] pt-1">
+                      <Button
+                        type="submit"
+                        variant="primary"
+                        size="sm"
+                        disabled={emailLoading}
+                        className="w-full sm:w-auto"
+                      >
+                        {emailLoading ? (
+                          <span className="loading loading-spinner loading-xs" />
+                        ) : (
+                          "Send Verification Email"
+                        )}
+                      </Button>
+                    </div>
+                  </form>
+                )}
+              </div>
+
+              {/* Password column */}
+              <div className="space-y-4">
+                {/* Change password trigger */}
+                <div className="form-control w-full">
+                  <label className="label">
+                    <span className="label-text">Password</span>
+                  </label>
+                  <div className="input input-bordered w-full flex items-center justify-between pr-2">
+                    <span className="text-base-content/70 tracking-widest text-sm">
+                      ••••••••
+                    </span>
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-xs"
+                      onClick={() => {
+                        setShowPasswordForm(!showPasswordForm);
+                        setShowEmailForm(false);
+                        setPasswordErrors({});
+                        setShowCurrentPassword(false);
+                        setShowNewPassword(false);
+                        setShowConfirmPassword(false);
+                      }}
+                    >
+                      {showPasswordForm ? "Cancel" : "Change"}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Change password form */}
+                {showPasswordForm && (
+                  <form
+                    onSubmit={handlePasswordChange}
+                    className="border border-base-300 rounded-lg p-4 space-y-3 bg-base-200/40"
+                  >
+                    <div className="form-control w-full">
+                      <label className="label">
+                        <span className="label-text">Current Password</span>
+                      </label>
+                      <div className="relative">
+                        <input
+                          type={showCurrentPassword ? "text" : "password"}
+                          className={`${inputClass(passwordErrors.currentPassword)} pr-12`}
+                          value={passwordData.currentPassword}
+                          onChange={(e) =>
+                            setPasswordData({
+                              ...passwordData,
+                              currentPassword: e.target.value,
+                            })
+                          }
+                          placeholder="••••••••"
+                        />
+                        <button
+                          type="button"
+                          className="absolute inset-y-0 right-0 flex items-center px-3 text-base-content/60 transition-colors hover:text-base-content"
+                          onClick={() =>
+                            setShowCurrentPassword((prev) => !prev)
+                          }
+                          onMouseDown={(e) => e.preventDefault()}
+                          aria-label={
+                            showCurrentPassword
+                              ? "Hide password"
+                              : "Show password"
+                          }
+                          aria-pressed={showCurrentPassword}
+                        >
+                          {showCurrentPassword ? (
+                            <EyeOff className="h-4 w-4" />
+                          ) : (
+                            <Eye className="h-4 w-4" />
+                          )}
+                        </button>
+                      </div>
+                      <FieldError msg={passwordErrors.currentPassword} />
+                    </div>
+
+                    <div className="form-control w-full">
+                      <label className="label">
+                        <span className="label-text">New Password</span>
+                      </label>
+                      <div className="relative">
+                        <input
+                          type={showNewPassword ? "text" : "password"}
+                          className={`${inputClass(passwordErrors.newPassword)} pr-12`}
+                          value={passwordData.newPassword}
+                          onChange={(e) =>
+                            setPasswordData({
+                              ...passwordData,
+                              newPassword: e.target.value,
+                            })
+                          }
+                          placeholder="••••••••"
+                        />
+                        <button
+                          type="button"
+                          className="absolute inset-y-0 right-0 flex items-center px-3 text-base-content/60 transition-colors hover:text-base-content"
+                          onClick={() => setShowNewPassword((prev) => !prev)}
+                          onMouseDown={(e) => e.preventDefault()}
+                          aria-label={
+                            showNewPassword ? "Hide password" : "Show password"
+                          }
+                          aria-pressed={showNewPassword}
+                        >
+                          {showNewPassword ? (
+                            <EyeOff className="h-4 w-4" />
+                          ) : (
+                            <Eye className="h-4 w-4" />
+                          )}
+                        </button>
+                      </div>
+                      <FieldError msg={passwordErrors.newPassword} />
+                    </div>
+
+                    <div className="form-control w-full">
+                      <label className="label">
+                        <span className="label-text">Confirm New Password</span>
+                      </label>
+                      <div className="relative">
+                        <input
+                          type={showConfirmPassword ? "text" : "password"}
+                          className={`${inputClass(passwordErrors.confirmPassword)} pr-12`}
+                          value={passwordData.confirmPassword}
+                          onChange={(e) =>
+                            setPasswordData({
+                              ...passwordData,
+                              confirmPassword: e.target.value,
+                            })
+                          }
+                          placeholder="••••••••"
+                        />
+                        <button
+                          type="button"
+                          className="absolute inset-y-0 right-0 flex items-center px-3 text-base-content/60 transition-colors hover:text-base-content"
+                          onClick={() =>
+                            setShowConfirmPassword((prev) => !prev)
+                          }
+                          onMouseDown={(e) => e.preventDefault()}
+                          aria-label={
+                            showConfirmPassword
+                              ? "Hide password"
+                              : "Show password"
+                          }
+                          aria-pressed={showConfirmPassword}
+                        >
+                          {showConfirmPassword ? (
+                            <EyeOff className="h-4 w-4" />
+                          ) : (
+                            <Eye className="h-4 w-4" />
+                          )}
+                        </button>
+                      </div>
+                      <FieldError msg={passwordErrors.confirmPassword} />
+                    </div>
+
+                    <div className="flex flex-col-reverse gap-4 !mt-[25px] pt-1 sm:flex-row sm:justify-between sm:items-start">
+                      <p className="form-helper-text px-1 !mt-0">
+                        After updating your password, you will receive a
+                        confirmation email on your password change. You will be
+                        logged out of your current session and directed to the
+                        login form to use your new password.
+                      </p>
+                      <Button
+                        type="submit"
+                        variant="primary"
+                        size="sm"
+                        disabled={passwordLoading}
+                        className="w-full sm:w-auto sm:flex-shrink-0"
+                      >
+                        {passwordLoading ? (
+                          <span className="loading loading-spinner loading-xs" />
+                        ) : (
+                          "Update Password"
+                        )}
+                      </Button>
+                    </div>
+                  </form>
+                )}
               </div>
             </div>
-
-            {/* Change password form */}
-            {showPasswordForm && (
-              <form
-                onSubmit={handlePasswordChange}
-                className="border border-base-300 rounded-lg p-4 space-y-3 bg-base-200/40"
-              >
-                <div className="form-control w-full">
-                  <label className="label">
-                    <span className="label-text">Current Password</span>
-                  </label>
-                  <div className="relative">
-                    <input
-                      type={showCurrentPassword ? "text" : "password"}
-                      className={`${inputClass(passwordErrors.currentPassword)} pr-12`}
-                      value={passwordData.currentPassword}
-                      onChange={(e) =>
-                        setPasswordData({
-                          ...passwordData,
-                          currentPassword: e.target.value,
-                        })
-                      }
-                      placeholder="••••••••"
-                    />
-                    <button
-                      type="button"
-                      className="absolute inset-y-0 right-0 flex items-center px-3 text-base-content/60 transition-colors hover:text-base-content"
-                      onClick={() => setShowCurrentPassword((prev) => !prev)}
-                      onMouseDown={(e) => e.preventDefault()}
-                      aria-label={showCurrentPassword ? "Hide password" : "Show password"}
-                      aria-pressed={showCurrentPassword}
-                    >
-                      {showCurrentPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </div>
-                  <FieldError msg={passwordErrors.currentPassword} />
-                </div>
-
-                <div className="form-control w-full">
-                  <label className="label">
-                    <span className="label-text">New Password</span>
-                  </label>
-                  <div className="relative">
-                    <input
-                      type={showNewPassword ? "text" : "password"}
-                      className={`${inputClass(passwordErrors.newPassword)} pr-12`}
-                      value={passwordData.newPassword}
-                      onChange={(e) =>
-                        setPasswordData({
-                          ...passwordData,
-                          newPassword: e.target.value,
-                        })
-                      }
-                      placeholder="••••••••"
-                    />
-                    <button
-                      type="button"
-                      className="absolute inset-y-0 right-0 flex items-center px-3 text-base-content/60 transition-colors hover:text-base-content"
-                      onClick={() => setShowNewPassword((prev) => !prev)}
-                      onMouseDown={(e) => e.preventDefault()}
-                      aria-label={showNewPassword ? "Hide password" : "Show password"}
-                      aria-pressed={showNewPassword}
-                    >
-                      {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </div>
-                  <FieldError msg={passwordErrors.newPassword} />
-                </div>
-
-                <div className="form-control w-full">
-                  <label className="label">
-                    <span className="label-text">Confirm New Password</span>
-                  </label>
-                  <div className="relative">
-                    <input
-                      type={showConfirmPassword ? "text" : "password"}
-                      className={`${inputClass(passwordErrors.confirmPassword)} pr-12`}
-                      value={passwordData.confirmPassword}
-                      onChange={(e) =>
-                        setPasswordData({
-                          ...passwordData,
-                          confirmPassword: e.target.value,
-                        })
-                      }
-                      placeholder="••••••••"
-                    />
-                    <button
-                      type="button"
-                      className="absolute inset-y-0 right-0 flex items-center px-3 text-base-content/60 transition-colors hover:text-base-content"
-                      onClick={() => setShowConfirmPassword((prev) => !prev)}
-                      onMouseDown={(e) => e.preventDefault()}
-                      aria-label={showConfirmPassword ? "Hide password" : "Show password"}
-                      aria-pressed={showConfirmPassword}
-                    >
-                      {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </div>
-                  <FieldError msg={passwordErrors.confirmPassword} />
-                </div>
-
-                <div className="flex justify-end pt-1">
-                  <Button
-                    type="submit"
-                    variant="primary"
-                    size="sm"
-                    disabled={passwordLoading}
-                  >
-                    {passwordLoading ? (
-                      <span className="loading loading-spinner loading-xs" />
-                    ) : (
-                      "Update Password"
-                    )}
-                  </Button>
-                </div>
-              </form>
-            )}
           </section>
 
           {/* ── Danger Zone ── */}
           <section className="space-y-4">
             <FormSectionDivider text="Danger Zone" icon={Trash2} />
 
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <p className="form-helper-text">
-                Permanently delete your profile, messages, teams, and all
-                associated data. This cannot be undone.
-              </p>
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <p className="form-helper-text">{ACCOUNT_DELETION_NOTICE}</p>
               <Button
                 variant="errorOutline"
                 size="sm"
                 onClick={openDeleteModal}
                 icon={<Trash2 size={16} />}
-                className="flex-shrink-0 mx-auto sm:mx-0 sm:ml-4"
+                className="w-full sm:w-auto sm:flex-shrink-0 sm:ml-4"
               >
                 Delete Account
               </Button>
@@ -970,7 +1091,7 @@ const Settings = () => {
           {deletionStep === DELETE_STEP_PASSWORD ? (
             <form onSubmit={handleDeletionPreview} className="space-y-4">
               <Alert type="warning" className="w-full">
-                This action is immediate, permanent, and cannot be undone.
+                {ACCOUNT_DELETION_NOTICE}
               </Alert>
 
               {deleteAlertError && (
@@ -1022,8 +1143,7 @@ const Settings = () => {
           ) : (
             <div className="space-y-4">
               <Alert type="warning" className="w-full mb-2">
-                Please review this carefully. Deleting your account is
-                irreversible.
+                Please review this carefully. {ACCOUNT_DELETION_NOTICE}
               </Alert>
 
               {deleteAlertError && (
@@ -1050,7 +1170,8 @@ const Settings = () => {
                   <div className="space-y-3">
                     {transferTeams.map((team) => {
                       const teamId = getTransferTeamId(team);
-                      const selectedSuccessor = getSelectedSuccessorForTeam(team);
+                      const selectedSuccessor =
+                        getSelectedSuccessorForTeam(team);
                       const transferOptions = getTransferOptionsForTeam(team);
                       const isEditing = sameId(editingTransferTeamId, teamId);
                       const isLoadingOptions = Boolean(
@@ -1158,7 +1279,9 @@ const Settings = () => {
                   <div className="space-y-3">
                     {teamsToDelete.map((team) => (
                       <div
-                        key={getTransferTeamId(team) ?? getTransferTeamName(team)}
+                        key={
+                          getTransferTeamId(team) ?? getTransferTeamName(team)
+                        }
                         className="flex items-start gap-3 rounded-xl border border-warning/30 bg-warning/10 p-4"
                       >
                         <AlertTriangle

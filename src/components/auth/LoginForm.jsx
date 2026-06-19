@@ -1,10 +1,10 @@
 import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import Card from "../common/Card";
 import Button from "../common/Button";
 import FormGroup from "../common/FormGroup";
-import Alert from "../common/Alert";
+import ScreenAlert from "../common/ScreenAlert";
 import { Eye, EyeOff } from "lucide-react";
 
 const LoginForm = () => {
@@ -17,6 +17,12 @@ const LoginForm = () => {
   const [showPassword, setShowPassword] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  // One-off flash message passed via navigation state (e.g. after a password
+  // change logs the user out and redirects here).
+  const [infoMessage, setInfoMessage] = useState(
+    location.state?.message || "",
+  );
 
   const validateForm = () => {
     const newErrors = {};
@@ -62,113 +68,126 @@ const LoginForm = () => {
 
       if (result.success) {
         navigate("/profile");
-      } else if (result.message === "Invalid email") {
-        setErrors({ email: result.message });
       } else {
-        setErrors({ password: result.message });
+        setErrors({ form: result.message });
       }
-    } catch (error) {
+    } catch {
       setErrors({ form: "An unexpected error occurred. Please try again." });
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  const clearFormError = () => {
+    setErrors((prev) => ({ ...prev, form: undefined }));
+  };
+
   return (
-    <div className="max-w-md mx-auto w-full">
-      <Card>
-        <h2 className="card-title text-2xl font-bold text-center justify-center mt-6 mb-4 text-success">
-          Login
-        </h2>
-        <p className="text-center text-base-content/70 mb-6">
-          Welcome back to Lomir
-        </p>
+    <>
+      <ScreenAlert
+        alerts={[
+          infoMessage && {
+            type: "success",
+            message: infoMessage,
+            onClose: () => setInfoMessage(""),
+            autoCloseMs: 8000,
+          },
+          errors.form && {
+            type: "error",
+            message: errors.form,
+            onClose: clearFormError,
+          },
+        ].filter(Boolean)}
+      />
+      <div className="max-w-md mx-auto w-full">
+        <Card>
+          <h2 className="card-title text-2xl font-bold text-center justify-center mt-6 mb-4 text-success">
+            Login
+          </h2>
+          <p className="text-center text-base-content/70 mb-6">
+            Welcome back to Lomir
+          </p>
 
-        {errors.form && (
-          <Alert type="error" message={errors.form} className="mb-6 w-full shadow-sm" />
-        )}
-
-        <form onSubmit={handleSubmit} noValidate>
-          <FormGroup
-            label="Email"
-            htmlFor="email"
-            error={errors.email}
-            required
-          >
-            <input
-              id="email"
-              type="email"
-              name="email"
-              placeholder="email@example.com"
-              className={`input input-bordered w-full ${errors.email ? "input-error" : ""}`}
-              value={formData.email}
-              onChange={handleChange}
-            />
-          </FormGroup>
-
-          <FormGroup
-            label="Password"
-            htmlFor="password"
-            error={errors.password}
-            required
-          >
-            <div className="relative">
+          <form onSubmit={handleSubmit} noValidate>
+            <FormGroup
+              label="Email"
+              htmlFor="email"
+              error={errors.email}
+              required
+            >
               <input
-                id="password"
-                type={showPassword ? "text" : "password"}
-                name="password"
-                placeholder="••••••••"
-                className={`input input-bordered w-full pr-12 ${errors.password ? "input-error" : ""}`}
-                value={formData.password}
+                id="email"
+                type="email"
+                name="email"
+                placeholder="email@example.com"
+                className={`input input-bordered w-full ${errors.email ? "input-error" : ""}`}
+                value={formData.email}
                 onChange={handleChange}
               />
-              <button
-                type="button"
-                className="absolute inset-y-0 right-0 flex items-center px-3 text-base-content/60 transition-colors hover:text-base-content"
-                onClick={() => setShowPassword((prev) => !prev)}
-                onMouseDown={(e) => e.preventDefault()}
-                aria-label={showPassword ? "Hide password" : "Show password"}
-                aria-pressed={showPassword}
-              >
-                {showPassword ? (
-                  <EyeOff className="h-4 w-4" />
-                ) : (
-                  <Eye className="h-4 w-4" />
-                )}
-              </button>
-            </div>
-          </FormGroup>
+            </FormGroup>
 
-          {/* Forgot password link — hidden for now, re-enable when email delivery is stable
-          <div className="text-right mt-1">
-            <Link to="/forgot-password" className="link link-primary text-sm">
-              Forgot password?
+            <FormGroup
+              label="Password"
+              htmlFor="password"
+              error={errors.password}
+              required
+            >
+              <div className="relative">
+                <input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  name="password"
+                  placeholder="••••••••"
+                  className={`input input-bordered w-full pr-12 ${errors.password ? "input-error" : ""}`}
+                  value={formData.password}
+                  onChange={handleChange}
+                />
+                <button
+                  type="button"
+                  className="absolute inset-y-0 right-0 flex items-center px-3 text-base-content/60 transition-colors hover:text-base-content"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  onMouseDown={(e) => e.preventDefault()}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  aria-pressed={showPassword}
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
+            </FormGroup>
+
+            <div className="text-right mt-1">
+              <Link to="/forgot-password" className="link link-primary text-sm">
+                Forgot password?
+              </Link>
+            </div>
+
+            <div className="mt-6">
+              <Button
+                type="submit"
+                variant="primary"
+                fullWidth
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? "Logging in..." : "Login"}
+              </Button>
+            </div>
+          </form>
+
+          <div className="divider my-6">OR</div>
+
+          <div className="text-center">
+            <p className="mb-2">Don't have an account?</p>
+            <Link to="/register" className="link link-primary">
+              Register
             </Link>
           </div>
-          */}
-
-          <div className="mt-6">
-            <Button
-              type="submit"
-              variant="primary"
-              fullWidth
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? "Logging in..." : "Login"}
-            </Button>
-          </div>
-        </form>
-
-        <div className="divider my-6">OR</div>
-
-        <div className="text-center">
-          <p className="mb-2">Don't have an account?</p>
-          <Link to="/register" className="link link-primary">
-            Register
-          </Link>
-        </div>
-      </Card>
-    </div>
+        </Card>
+      </div>
+    </>
   );
 };
 

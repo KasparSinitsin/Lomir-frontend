@@ -3,7 +3,6 @@ import { useEffect, useState } from 'react';
 import PageContainer from '../components/layout/PageContainer';
 import BadgeCategorySection from '../components/badges/BadgeCategorySection';
 import Alert from '../components/common/Alert';
-import api from '../services/api';
 
 const BadgeOverview = () => {
   const [badgeCategories, setBadgeCategories] = useState({});

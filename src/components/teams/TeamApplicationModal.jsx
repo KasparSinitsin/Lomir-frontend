@@ -1,4 +1,5 @@
 import React, { lazy, Suspense, useState, useEffect } from "react";
+import { format } from "date-fns";
 import {
   Send,
   Users,
@@ -10,6 +11,7 @@ import {
   FlaskConical,
   ChevronRight,
   ChevronUp,
+  Calendar,
 } from "lucide-react";
 import { vacantRoleService } from "../../services/vacantRoleService";
 import { teamService } from "../../services/teamService";
@@ -331,6 +333,11 @@ const TeamApplicationModal = ({
   const teamLocation = getTeamLocation();
   const teamIsRemote = displayTeam?.isRemote ?? displayTeam?.is_remote;
   const showDemoTeam = isSyntheticTeam(displayTeam);
+  const teamCreatedAtRaw = displayTeam?.created_at ?? displayTeam?.createdAt ?? null;
+  const teamCreatedAtText = (() => {
+    if (!teamCreatedAtRaw) return null;
+    try { return format(new Date(teamCreatedAtRaw), "MMM d, yyyy"); } catch { return null; }
+  })();
   const shouldShowRolePicker =
     loadingRoles || vacantRoles.length > 0 || isRoleSectionExpanded;
   const roleAvailabilityLabel =
@@ -438,6 +445,13 @@ const TeamApplicationModal = ({
                 </CardMetaRow>
               </div>
             </div>
+
+            {teamCreatedAtText && (
+              <div className="flex items-center text-xs text-base-content/60 whitespace-nowrap flex-shrink-0">
+                <Calendar size={12} className="mr-1" />
+                <span>{teamCreatedAtText}</span>
+              </div>
+            )}
           </div>
 
           {displayTeam?.description && (

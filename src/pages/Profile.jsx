@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import FormSectionDivider from "../components/common/FormSectionDivider";
 import { useAuth } from "../contexts/AuthContext";
 import PageContainer from "../components/layout/PageContainer";
@@ -44,7 +44,6 @@ import BadgeCategoryModal from "../components/badges/BadgeCategoryModal";
 import TagsDisplaySection from "../components/tags/TagsDisplaySection";
 import TagAwardsModal from "../components/badges/TagAwardsModal";
 import LocationDisplay from "../components/common/LocationDisplay";
-import { geocodingService } from "../services/geocodingService";
 import { useLocationAutoFill } from "../hooks/useLocationAutoFill";
 import ImageUploader from "../components/common/ImageUploader";
 import {
@@ -55,12 +54,18 @@ import {
 import DemoAvatarOverlay from "../components/users/DemoAvatarOverlay";
 import ConfirmModal from "../components/common/ConfirmModal";
 import LocationInput from "../components/common/LocationInput";
+import VisibilityToggle from "../components/common/VisibilityToggle";
+import {
+  AVATAR_UPLOAD_NOTICE,
+  PROFILE_VISIBILITY_SETTINGS_NOTICE,
+  USER_LOCATION_PRIVACY_NOTICE,
+} from "../constants/privacyText";
 import { format } from "date-fns";
 
 const EMPTY_QUERY_ARRAY = [];
 
 const Profile = () => {
-  const { user, updateUser, logout } = useAuth();
+  const { user, updateUser } = useAuth();
   const queryClient = useQueryClient();
   const [localUser, setLocalUser] = useState(null);
   const [registrationMessage, setRegistrationMessage] = useState("");
@@ -74,7 +79,6 @@ const Profile = () => {
   const [success, setSuccess] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [imageError, setImageError] = useState(false);
-  const navigate = useNavigate();
   const { openUserModal } = useUserModal();
   const { data: structuredTags, error: structuredTagsError } =
     useStructuredTags();
@@ -105,15 +109,17 @@ const Profile = () => {
     tagAwardsModalProps,
     supercategoryModalProps,
     removeAwardFromBadgeModal,
-  } = useAwardModals({ fetchTagAwards: fetchUserAwards, fetchBadgeAwards: fetchUserAwards });
+  } = useAwardModals({
+    fetchTagAwards: fetchUserAwards,
+    fetchBadgeAwards: fetchUserAwards,
+    subjectUserId: profileUserId,
+  });
 
   const [avatarDeleteLoading, setAvatarDeleteLoading] = useState(false);
   const [isAvatarDeleteDialogOpen, setIsAvatarDeleteDialogOpen] =
     useState(false);
   const [badgeActionLoadingKey, setBadgeActionLoadingKey] = useState(null);
   const [pendingBadgeAction, setPendingBadgeAction] = useState(null);
-  const [selectedUserId, setSelectedUserId] = useState(null);
-
   // Add form errors state
   const [formErrors, setFormErrors] = useState({});
   const [formData, setFormData] = useState({
@@ -746,31 +752,6 @@ const Profile = () => {
     }
   };
 
-  const handleTagsUpdate = async (newTags) => {
-    if (!user) return;
-
-    try {
-      setLoading(true);
-      setError(null);
-
-      // Use the newTags parameter instead of selectedTags
-      await userService.updateUserTags(user.id, newTags);
-
-      // Update Profile's state with the new tags
-      setSelectedTags(newTags);
-      queryClient.invalidateQueries({
-        queryKey: userTagsQueryKey(user.id),
-      });
-
-      setSuccess("Tags updated successfully");
-    } catch (error) {
-      console.error("Error updating user tags:", error);
-      setError("Failed to update tags. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   // Add form validation function
   const validateForm = () => {
     const errors = {};
@@ -780,13 +761,6 @@ const Profile = () => {
       errors.username = "Username is required";
     } else if (!/^[a-zA-Z0-9_]{3,20}$/.test(formData.username.trim())) {
       errors.username = "Use 3–20 chars: letters, numbers, underscore";
-    }
-
-    // Email validation
-    if (!formData.email.trim()) {
-      errors.email = "Email is required";
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      errors.email = "Email is invalid";
     }
 
     // First name validation (optional)
@@ -817,7 +791,6 @@ const Profile = () => {
         firstName: formData.firstName,
         lastName: formData.lastName,
         username: formData.username.trim(),
-        email: formData.email,
         bio: formData.bio,
         postalCode: formData.postalCode,
         city: formData.city,
@@ -880,12 +853,12 @@ const Profile = () => {
           firstName: formData.firstName,
           lastName: formData.lastName,
           username: formData.username.trim(),
-          email: formData.email, // Include email in the updated user object
           bio: formData.bio,
           city: formData.city,
           country: formData.country,
           // Pick up geocoded state & coordinates from the API response
           state: response.data?.state ?? user.state,
+          district: response.data?.district ?? user.district,
           latitude: response.data?.latitude ?? user.latitude,
           longitude: response.data?.longitude ?? user.longitude,
           // Use the avatar URL from ImageKit if we uploaded a new image,
@@ -930,25 +903,6 @@ const Profile = () => {
     }
   };
 
-  // For debugging purposes
-  const displayUserData = () => {
-    if (!user) return "No user data available";
-
-    return (
-      <pre className="text-xs overflow-auto p-2 bg-gray-100 rounded">
-        {JSON.stringify(user, null, 2)}
-      </pre>
-    );
-  };
-
-  const displayFormData = () => {
-    return (
-      <pre className="text-xs overflow-auto p-2 bg-gray-100 rounded">
-        {JSON.stringify(formData, null, 2)}
-      </pre>
-    );
-  };
-
   if (!displayUser) {
     return (
       <PageContainer>
@@ -973,6 +927,7 @@ const Profile = () => {
     postalCode: displayUser.postalCode || "",
     city: displayUser.city || "",
     state: displayUser.state || "",
+    district: displayUser.district || "",
     country: displayUser.country || "",
   };
   const hasProfileLocation = Boolean(
@@ -1065,6 +1020,7 @@ const Profile = () => {
                     size="xl"
                     disabled={loading}
                     loading={avatarDeleteLoading}
+                    helpText={AVATAR_UPLOAD_NOTICE}
                     showRemoveButton={
                       !!(imagePreview || user?.avatarUrl) &&
                       !formData.profileImage
@@ -1161,6 +1117,24 @@ const Profile = () => {
                   rows="4"
                 />
               </div>
+
+              <div className="form-control w-full">
+                <VisibilityToggle
+                  name="isPublic"
+                  checked={formData.isPublic}
+                  onChange={handleChange}
+                  label="Profile Visibility"
+                  entityType="profile"
+                  visibleLabel="Public Profile"
+                  hiddenLabel="Private Profile"
+                  visibleDescription="Your profile can be discovered by other Lomir users."
+                  hiddenDescription="Your profile is hidden from search results, but may still appear where you interact."
+                  disabled={loading}
+                />
+                <p className="form-helper-text mt-2 px-1">
+                  {PROFILE_VISIBILITY_SETTINGS_NOTICE}
+                </p>
+              </div>
             </section>
 
             {/* Location Section */}
@@ -1181,6 +1155,7 @@ const Profile = () => {
                 showRemoteToggle={false}
                 showDivider={true}
                 dividerText="Location"
+                privacyNotice={USER_LOCATION_PRIVACY_NOTICE}
               />
             </section>
 
@@ -1287,8 +1262,8 @@ const Profile = () => {
                     className="flex items-center text-base-content/70 tooltip tooltip-bottom tooltip-lomir cursor-help"
                     data-tip={
                       isProfilePublic()
-                        ? "Public Profile - visible for everyone"
-                        : "Private Profile - only visible for you"
+                        ? "Public Profile - visible for everyone\nChange in profile settings"
+                        : "Private Profile - only visible for you\nChange in profile settings"
                     }
                   >
                     {isProfilePublic() ? (

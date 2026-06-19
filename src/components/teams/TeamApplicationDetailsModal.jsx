@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useToast } from "../../contexts/ToastContext";
 import {
   Calendar,
@@ -20,7 +20,7 @@ import TeamDetailsModal from "./TeamDetailsModal";
 import UserDetailsModal from "../users/UserDetailsModal";
 import InlineUserLink from "../users/InlineUserLink";
 import VacantRoleCard from "./VacantRoleCard";
-import DemoAvatarOverlay from "../users/DemoAvatarOverlay";
+import TeamAvatar from "./TeamAvatar";
 import {
   DEMO_TEAM_TOOLTIP,
   isSyntheticTeam,
@@ -28,10 +28,127 @@ import {
 import Alert from "../common/Alert";
 import { format } from "date-fns";
 import { useHydratedRole } from "../../hooks/useHydratedRole";
+import { teamService } from "../../services/teamService";
+import { useAuth } from "../../contexts/AuthContext";
 import {
   extractRoleMatchData,
+  getMemberUserId,
+  idsMatch,
+  isExistingMemberStatus,
   normalizeBoolean,
 } from "../../utils/teamRequestUtils";
+
+const EMPTY_OBJECT = {};
+
+const firstDefined = (...values) =>
+  values.find((value) => value !== undefined);
+
+const firstPresent = (...values) =>
+  values.find(
+    (value) => value !== undefined && value !== null && value !== "",
+  );
+
+const hasValue = (value) =>
+  value !== undefined && value !== null && value !== "";
+
+const isApplicantExistingTeamMember = ({ application, team, currentUser }) => {
+  const applicantId =
+    application?.applicant?.id ??
+    application?.user?.id ??
+    application?.applicantId ??
+    application?.applicant_id ??
+    application?.userId ??
+    application?.user_id ??
+    currentUser?.id ??
+    null;
+
+  if (!team || applicantId === null || applicantId === undefined) return false;
+
+  const directFlags = [
+    application?.isInternalRoleApplication,
+    application?.is_internal_role_application,
+    application?.isInternal,
+    application?.is_internal,
+    application?.isApplicantMember,
+    application?.is_applicant_member,
+    application?.applicantIsMember,
+    application?.applicant_is_member,
+    application?.alreadyMember,
+    application?.already_member,
+    application?.isExistingMember,
+    application?.is_existing_member,
+    application?.existingMember,
+    application?.existing_member,
+    application?.currentUserIsMember,
+    application?.current_user_is_member,
+    team?.isApplicantMember,
+    team?.is_applicant_member,
+    team?.applicantIsMember,
+    team?.applicant_is_member,
+    team?.alreadyMember,
+    team?.already_member,
+    team?.isExistingMember,
+    team?.is_existing_member,
+    team?.existingMember,
+    team?.existing_member,
+    team?.currentUserIsMember,
+    team?.current_user_is_member,
+  ];
+
+  if (directFlags.some((flag) => normalizeBoolean(flag) === true)) {
+    return true;
+  }
+
+  const membershipStatuses = [
+    application?.applicantMembershipStatus,
+    application?.applicant_membership_status,
+    application?.membershipStatus,
+    application?.membership_status,
+    application?.applicantStatus,
+    application?.applicant_status,
+    team?.applicantMembershipStatus,
+    team?.applicant_membership_status,
+    team?.membershipStatus,
+    team?.membership_status,
+    team?.applicantStatus,
+    team?.applicant_status,
+  ];
+
+  if (membershipStatuses.some(isExistingMemberStatus)) {
+    return true;
+  }
+
+  if (idsMatch(team?.owner_id ?? team?.ownerId, applicantId)) {
+    return true;
+  }
+
+  const memberCollections = [
+    team?.members,
+    team?.teamMembers,
+    team?.team_members,
+  ].filter(Array.isArray);
+
+  if (
+    memberCollections.some((members) =>
+      members.some((member) => idsMatch(getMemberUserId(member), applicantId)),
+    )
+  ) {
+    return true;
+  }
+
+  const memberIdLists = [
+    team?.memberIds,
+    team?.member_ids,
+    team?.memberUserIds,
+    team?.member_user_ids,
+    team?.teamMemberIds,
+    team?.team_member_ids,
+  ].filter(Array.isArray);
+
+  return memberIdLists.some((memberIds) =>
+    memberIds.some((memberId) => idsMatch(memberId, applicantId)),
+  );
+};
 
 /**
  * TeamApplicationDetailsModal Component
@@ -47,6 +164,8 @@ const TeamApplicationDetailsModal = ({
   onSendReminder,
   notificationHighlight = false,
 }) => {
+  const { user: currentUser } = useAuth();
+
   // ============ State ============
   const showToast = useToast();
   const loading = false;
@@ -55,54 +174,242 @@ const TeamApplicationDetailsModal = ({
   const [isTeamDetailsOpen, setIsTeamDetailsOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState(null);
   const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
+  const [hydratedTeam, setHydratedTeam] = useState(null);
+  const teamHeaderRowRef = useRef(null);
   const teamNameContainerRef = useRef(null);
   const teamNameProbeRef = useRef(null);
   const teamDateRef = useRef(null);
   const [teamDateIsNarrow, setTeamDateIsNarrow] = useState(false);
-  const teamDateIsNarrowRef = useRef(false);
-  teamDateIsNarrowRef.current = teamDateIsNarrow;
 
   // ============ Helpers ============
 
   // Get team data from application
-  const baseTeam = application?.team || {};
+  const baseTeam = application?.team || EMPTY_OBJECT;
+  const effectiveTeamId =
+    baseTeam?.id ??
+    baseTeam?.teamId ??
+    baseTeam?.team_id ??
+    application?.teamId ??
+    application?.team_id ??
+    null;
+  const sourceTeam = hydratedTeam
+    ? { ...baseTeam, ...hydratedTeam }
+    : baseTeam;
   const syntheticTeamFlag =
-    baseTeam?.is_synthetic ??
-    baseTeam?.isSynthetic ??
+    sourceTeam?.is_synthetic ??
+    sourceTeam?.isSynthetic ??
     application?.team_is_synthetic ??
     application?.teamIsSynthetic;
   const team = {
-    ...baseTeam,
+    ...sourceTeam,
+    id: firstPresent(
+      sourceTeam?.id,
+      sourceTeam?.teamId,
+      sourceTeam?.team_id,
+      application?.teamId,
+      application?.team_id,
+    ),
+    name: firstPresent(
+      sourceTeam?.name,
+      application?.teamName,
+      application?.team_name,
+    ),
+    current_members_count: firstDefined(
+      sourceTeam?.current_members_count,
+      sourceTeam?.currentMembersCount,
+      application?.team_current_members_count,
+      application?.teamCurrentMembersCount,
+    ),
+    currentMembersCount: firstDefined(
+      sourceTeam?.currentMembersCount,
+      sourceTeam?.current_members_count,
+      application?.teamCurrentMembersCount,
+      application?.team_current_members_count,
+    ),
+    member_count: firstDefined(
+      sourceTeam?.member_count,
+      sourceTeam?.memberCount,
+      application?.team_member_count,
+      application?.teamMemberCount,
+    ),
+    memberCount: firstDefined(
+      sourceTeam?.memberCount,
+      sourceTeam?.member_count,
+      application?.teamMemberCount,
+      application?.team_member_count,
+    ),
+    members_count: firstDefined(
+      sourceTeam?.members_count,
+      sourceTeam?.membersCount,
+      application?.team_members_count,
+      application?.teamMembersCount,
+    ),
+    membersCount: firstDefined(
+      sourceTeam?.membersCount,
+      sourceTeam?.members_count,
+      application?.teamMembersCount,
+      application?.team_members_count,
+    ),
+    max_members: firstDefined(
+      sourceTeam?.max_members,
+      sourceTeam?.maxMembers,
+      application?.team_max_members,
+      application?.teamMaxMembers,
+    ),
+    maxMembers: firstDefined(
+      sourceTeam?.maxMembers,
+      sourceTeam?.max_members,
+      application?.teamMaxMembers,
+      application?.team_max_members,
+    ),
+    city: firstPresent(sourceTeam?.city, application?.team_city),
+    country: firstPresent(sourceTeam?.country, application?.team_country),
+    location: firstPresent(sourceTeam?.location, application?.team_location),
+    postal_code: firstPresent(
+      sourceTeam?.postal_code,
+      sourceTeam?.postalCode,
+      application?.team_postal_code,
+      application?.teamPostalCode,
+    ),
+    postalCode: firstPresent(
+      sourceTeam?.postalCode,
+      sourceTeam?.postal_code,
+      application?.teamPostalCode,
+      application?.team_postal_code,
+    ),
+    is_remote: firstDefined(
+      sourceTeam?.is_remote,
+      sourceTeam?.isRemote,
+      application?.team_is_remote,
+      application?.teamIsRemote,
+    ),
+    isRemote: firstDefined(
+      sourceTeam?.isRemote,
+      sourceTeam?.is_remote,
+      application?.teamIsRemote,
+      application?.team_is_remote,
+    ),
     is_synthetic:
-      baseTeam?.is_synthetic ?? baseTeam?.isSynthetic ?? syntheticTeamFlag,
+      sourceTeam?.is_synthetic ?? sourceTeam?.isSynthetic ?? syntheticTeamFlag,
     isSynthetic:
-      baseTeam?.isSynthetic ?? baseTeam?.is_synthetic ?? syntheticTeamFlag,
+      sourceTeam?.isSynthetic ?? sourceTeam?.is_synthetic ?? syntheticTeamFlag,
   };
   const teamName = team.name || "Unknown Team";
 
+  useEffect(() => {
+    if (!isOpen) {
+      setHydratedTeam(null);
+      return;
+    }
+
+    if (!effectiveTeamId) return;
+
+    const hasMemberCount =
+      [
+        baseTeam?.current_members_count,
+        baseTeam?.currentMembersCount,
+        baseTeam?.member_count,
+        baseTeam?.memberCount,
+        baseTeam?.members_count,
+        baseTeam?.membersCount,
+        application?.team_current_members_count,
+        application?.teamCurrentMembersCount,
+        application?.team_member_count,
+        application?.teamMemberCount,
+        application?.team_members_count,
+        application?.teamMembersCount,
+      ].some((value) => value !== undefined) ||
+      Array.isArray(baseTeam?.members);
+    const hasMaxMembers = [
+      baseTeam?.max_members,
+      baseTeam?.maxMembers,
+      application?.team_max_members,
+      application?.teamMaxMembers,
+    ].some((value) => value !== undefined);
+    const hasLocation = [
+      baseTeam?.city,
+      baseTeam?.country,
+      baseTeam?.location,
+      baseTeam?.postal_code,
+      baseTeam?.postalCode,
+      application?.team_city,
+      application?.team_country,
+      application?.team_location,
+      application?.team_postal_code,
+      application?.teamPostalCode,
+    ].some(hasValue);
+    const hasRemoteFlag = [
+      baseTeam?.is_remote,
+      baseTeam?.isRemote,
+      application?.team_is_remote,
+      application?.teamIsRemote,
+    ].some((value) => value !== undefined);
+    const hasSyntheticFlag = [
+      baseTeam?.is_synthetic,
+      baseTeam?.isSynthetic,
+      application?.team_is_synthetic,
+      application?.teamIsSynthetic,
+    ].some((value) => value !== undefined);
+
+    if (
+      hasMemberCount &&
+      hasMaxMembers &&
+      (hasLocation || hasRemoteFlag) &&
+      hasSyntheticFlag
+    ) {
+      setHydratedTeam(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    const fetchTeamDetails = async () => {
+      try {
+        const response = await teamService.getTeamById(effectiveTeamId);
+        if (cancelled) return;
+        setHydratedTeam(response?.data ?? response ?? null);
+      } catch (err) {
+        console.warn(
+          "Could not fetch team details for application details modal:",
+          err,
+        );
+        if (!cancelled) setHydratedTeam(null);
+      }
+    };
+
+    fetchTeamDetails();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, effectiveTeamId, application, baseTeam]);
+
   useLayoutEffect(() => {
+    const row = teamHeaderRowRef.current;
     const container = teamNameContainerRef.current;
     const probe = teamNameProbeRef.current;
-    if (!container || !probe) return;
+    if (!row || !container || !probe) return;
 
     const update = () => {
-      const dateEl = teamDateRef.current;
-      const reservedWidth =
-        teamDateIsNarrowRef.current && dateEl ? dateEl.offsetWidth + 16 : 0;
-
       probe.textContent = teamName;
+      const rowWidth = row.clientWidth;
+      const shouldCollapseForRowWidth = rowWidth > 0 && rowWidth < 520;
+      const shouldCollapseForTitle =
+        probe.scrollWidth > container.clientWidth;
+
       setTeamDateIsNarrow(
-        probe.scrollWidth > container.clientWidth - reservedWidth,
+        shouldCollapseForRowWidth || shouldCollapseForTitle,
       );
     };
 
     const resizeObserver = new ResizeObserver(update);
+    resizeObserver.observe(row);
     resizeObserver.observe(container);
     if (teamDateRef.current) resizeObserver.observe(teamDateRef.current);
     update();
 
     return () => resizeObserver.disconnect();
-  }, [teamName]);
+  }, [isOpen, teamName]);
   const roleId = application?.role?.id ?? application?.roleId ?? null;
   const teamId = team?.id ?? null;
   const {
@@ -147,41 +454,14 @@ const TeamApplicationDetailsModal = ({
     }
   };
 
-  // Get team avatar
-  const getTeamAvatar = () => {
-    return (
-      team.teamavatar_url ||
-      team.teamavatarUrl ||
-      team.avatar_url ||
-      team.avatarUrl ||
-      null
-    );
-  };
-
-  // Get team initials from name (e.g., "Urban Gardeners Berlin" → "UGB")
-  const getTeamInitials = () => {
-    const name = team?.name;
-    if (!name || typeof name !== "string") return "?";
-
-    const words = name.trim().split(/\s+/);
-
-    if (words.length === 1) {
-      return name.slice(0, 2).toUpperCase();
-    }
-
-    return words
-      .slice(0, 3)
-      .map((word) => word.charAt(0))
-      .join("")
-      .toUpperCase();
-  };
-
   const getMemberCount = () => {
     return (
       team.current_members_count ??
       team.currentMembersCount ??
       team.member_count ??
       team.memberCount ??
+      team.members_count ??
+      team.membersCount ??
       team.members?.length ??
       0
     );
@@ -210,6 +490,21 @@ const TeamApplicationDetailsModal = ({
           : fallbackLocation,
     };
   };
+
+  const hasTeamMemberCountData =
+    [
+      team.current_members_count,
+      team.currentMembersCount,
+      team.member_count,
+      team.memberCount,
+      team.members_count,
+      team.membersCount,
+    ].some((value) => value !== undefined) ||
+    Array.isArray(team.members);
+  const hasTeamMaxMemberData =
+    team.max_members !== undefined || team.maxMembers !== undefined;
+  const showTeamMemberCapacity =
+    hasTeamMemberCountData && hasTeamMaxMemberData;
 
   const handleTeamClick = () => {
     if (team?.id) setIsTeamDetailsOpen(true);
@@ -268,6 +563,11 @@ const TeamApplicationDetailsModal = ({
 
   const isInternalRoleApplication =
     application?.isInternalRoleApplication ?? application?.is_internal_role_application ?? false;
+  const applicantAlreadyTeamMember = isApplicantExistingTeamMember({
+    application,
+    team,
+    currentUser,
+  });
   const hasRoleApplication = !!(
     application?.role ||
     application?.roleId ||
@@ -427,47 +727,24 @@ const TeamApplicationDetailsModal = ({
         )}
 
         {/* Top row: Team info (left, clickable) + Date (right) */}
-        <div className="relative flex items-start justify-between gap-4 mb-5">
+        <div
+          ref={teamHeaderRowRef}
+          className="relative flex items-start justify-between gap-4 mb-5"
+        >
           {/* Team info */}
           <div
             className="flex min-w-0 flex-1 items-start space-x-4 cursor-pointer hover:opacity-80 transition-opacity"
             onClick={handleTeamClick}
           >
             <Tooltip content="Click to view team details" wrapperClassName="avatar">
-              <div className="w-12 h-12 rounded-full relative overflow-hidden">
-                {getTeamAvatar() ? (
-                  <img
-                    src={getTeamAvatar()}
-                    alt={team.name || "Team"}
-                    className="object-cover w-full h-full rounded-full"
-                    onError={(e) => {
-                      e.target.style.display = "none";
-                      const fallback =
-                        e.target.parentElement.querySelector(
-                          ".avatar-fallback"
-                        );
-                      if (fallback) fallback.style.display = "flex";
-                    }}
-                  />
-                ) : null}
-
-                {/* Fallback initials */}
-                <div
-                  className="avatar-fallback bg-[var(--color-primary-focus)] text-primary-content flex items-center justify-center w-full h-full rounded-full absolute inset-0"
-                  style={{ display: getTeamAvatar() ? "none" : "flex" }}
-                >
-                  <span className="text-xl font-medium">
-                    {getTeamInitials()}
-                  </span>
-                </div>
-
-                {isSyntheticTeam(team) && (
-                  <DemoAvatarOverlay
-                    textClassName="text-[8px]"
-                    textTranslateClassName="-translate-y-[2px]"
-                  />
-                )}
-              </div>
+              <TeamAvatar
+                team={team}
+                sizeClass="w-12 h-12"
+                initialsClassName="text-xl font-medium"
+                showDemoOverlay={isSyntheticTeam(team)}
+                demoOverlayTextClassName="text-[8px]"
+                demoOverlayTextTranslateClassName="-translate-y-[2px]"
+              />
             </Tooltip>
 
             <div className="flex-1 min-w-0">
@@ -501,15 +778,17 @@ const TeamApplicationDetailsModal = ({
                     </span>
                   </div>
                 )}
-                <Tooltip
-                  content="Team members"
-                  wrapperClassName="flex shrink-0 items-center gap-1 text-base-content/70"
-                >
-                  <Users size={10} className="shrink-0 text-primary" />
-                  <span className="leading-[1.05] whitespace-nowrap">
-                    {getMemberCount()}/{getMaxMembers()}
-                  </span>
-                </Tooltip>
+                {showTeamMemberCapacity && (
+                  <Tooltip
+                    content="Team members"
+                    wrapperClassName="flex shrink-0 items-center gap-1 text-base-content/70"
+                  >
+                    <Users size={10} className="shrink-0 text-primary" />
+                    <span className="leading-[1.05] whitespace-nowrap">
+                      {getMemberCount()}/{getMaxMembers()}
+                    </span>
+                  </Tooltip>
+                )}
                 {teamLocationDetails.locationText && (
                   <Tooltip
                     content={teamLocationDetails.locationText}
@@ -525,7 +804,7 @@ const TeamApplicationDetailsModal = ({
                     </span>
                   </Tooltip>
                 )}
-                {isInternalRoleApplication && (
+                {applicantAlreadyTeamMember && (
                   <Tooltip
                     content="You are already a member of this team"
                     wrapperClassName="flex min-w-0 overflow-hidden items-center gap-0.5 text-base-content/70"

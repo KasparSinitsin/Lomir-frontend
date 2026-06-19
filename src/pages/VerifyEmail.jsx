@@ -31,9 +31,6 @@ const VerifyEmail = () => {
       if (response.data.success) {
         setStatus("success");
         setMessage("Your email has been verified successfully!");
-
-        const authToken = response.data?.data?.token;
-        if (authToken) localStorage.setItem("token", authToken);
       }
     } catch (error) {
       console.error("Verification error:", error);
@@ -79,7 +76,17 @@ const VerifyEmail = () => {
     if (status === "verifying") return "Please wait a moment.";
     if (status === "success")
       return "Your account is now active. You can log in with your credentials.";
-    return message;
+    if (status === "info")
+      return "Your account may already be verified. Try logging in.";
+    return (
+      <>
+        {message}
+        <br />
+        <span className="text-sm mt-2 block">
+          If your verification link has expired, your registration may have been removed. You can sign up again with the same email address.
+        </span>
+      </>
+    );
   };
 
   return (

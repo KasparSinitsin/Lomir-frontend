@@ -361,7 +361,7 @@ const MyTeams = () => {
   };
 
   // Handler for when user LEAVES a team (not deletes it)
-  const handleTeamLeave = (teamId) => {
+  const handleTeamLeave = () => {
     // Refetch to update pagination correctly
     fetchUserTeams(currentPage, resultsPerPage);
   };
@@ -376,7 +376,7 @@ const MyTeams = () => {
     }
   };
 
-  const handleSendReminder = async (applicationId) => {
+  const handleSendReminder = async () => {
     showToast("Reminder feature coming soon!", "violet");
   };
 
@@ -423,7 +423,7 @@ const MyTeams = () => {
   };
 
   // Handler for when a new team is created
-  const handleTeamCreated = (newTeam) => {
+  const handleTeamCreated = () => {
     // Refresh the teams list
     fetchUserTeams(1, resultsPerPage);
     setCurrentPage(1);
@@ -694,7 +694,6 @@ const MyTeams = () => {
                             onAccept={handleInvitationAccept}
                             onDecline={handleInvitationDecline}
                             viewerDistanceSource={viewerDistanceSource}
-                            hideDistanceInfo={true}
                             disableListEdgeRounding={true}
                             listClassName={`${index === 0 ? "rounded-t-xl" : ""} ${
                               index ===
@@ -707,6 +706,7 @@ const MyTeams = () => {
                             listLocationVisibilityClassName={MY_TEAMS_LIST_LOCATION_VISIBILITY_CLASSNAME}
                             listTagsWidthClassName={MY_TEAMS_LIST_TAGS_WIDTH_CLASSNAME}
                             listBadgesWidthClassName={MY_TEAMS_LIST_BADGES_WIDTH_CLASSNAME}
+                            listLocationShortBreakpoint="md"
                             viewMode="list"
                             activeFilters={{}}
                             showMatchScore={true}
@@ -749,7 +749,6 @@ const MyTeams = () => {
                             onAccept={handleInvitationAccept}
                             onDecline={handleInvitationDecline}
                             viewerDistanceSource={viewerDistanceSource}
-                            hideDistanceInfo={true}
                             viewMode={resultView}
                             activeFilters={{}}
                             showMatchScore={true}
@@ -818,12 +817,12 @@ const MyTeams = () => {
                           onCancel={handleApplicationCancel}
                           onSendReminder={handleSendReminder}
                           viewerDistanceSource={viewerDistanceSource}
-                          hideDistanceInfo={true}
                           listLocationWidthClassName={MY_TEAMS_LIST_LOCATION_WIDTH_CLASSNAME}
                           listLocationInsetClassName={MY_TEAMS_LIST_LOCATION_INSET_CLASSNAME}
                           listLocationVisibilityClassName={MY_TEAMS_LIST_LOCATION_VISIBILITY_CLASSNAME}
                           listTagsWidthClassName={MY_TEAMS_LIST_TAGS_WIDTH_CLASSNAME}
                           listBadgesWidthClassName={MY_TEAMS_LIST_BADGES_WIDTH_CLASSNAME}
+                          listLocationShortBreakpoint="md"
                           viewMode="list"
                           activeFilters={{}}
                           showMatchScore={true}
@@ -855,7 +854,6 @@ const MyTeams = () => {
                           onCancel={handleApplicationCancel}
                           onSendReminder={handleSendReminder}
                           viewerDistanceSource={viewerDistanceSource}
-                          hideDistanceInfo={true}
                           viewMode={resultView}
                           activeFilters={{}}
                           showMatchScore={true}
@@ -976,6 +974,7 @@ const MyTeams = () => {
                       listLocationVisibilityClassName={MY_TEAMS_LIST_LOCATION_VISIBILITY_CLASSNAME}
                       listTagsWidthClassName={MY_TEAMS_LIST_TAGS_WIDTH_CLASSNAME}
                       listBadgesWidthClassName={MY_TEAMS_LIST_BADGES_WIDTH_CLASSNAME}
+                      listLocationShortBreakpoint="md"
                       autoOpenApplications={
                         team.id === autoOpenApplicationsTeamId
                       }

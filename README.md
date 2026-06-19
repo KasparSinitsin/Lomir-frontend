@@ -30,13 +30,15 @@ Contact the project owner for a demo login, or register a new account with a val
 - **Best Match Sorting** — Weighted matching algorithm scores teams and roles against your profile (tags 40%, badges 30%, distance 30%)
 - **Map View** — Leaflet-powered map with custom markers for teams, users, and roles; popups with detail cards; distance-based filtering and proximity sorting
 - **Team Management** — Create teams, manage members and roles, post vacant roles, handle applications and invitations with role-specific targeting; My Teams uses the same responsive sort and result-view controls as search
-- **User Profiles** — Customizable profiles with interest tags, badges, avatar uploads (ImageKit), and geocoded location
-- **Real-Time Chat** — Direct and team group messaging with typing indicators, read receipts, file/image sharing, @mentions, reply threading, and rich system event messages (Socket.IO)
+- **User Profiles** — Customizable profiles with interest tags, badges, avatar uploads (ImageKit), and geocoded location; profile header shows city and country code; non-public profiles are protected — non-owners and non-teammates see only the username and avatar ("This profile is private"); owners see public/private visibility indicators on profile, card, list, mini-card, and map views; signed-in users can block another profile from the user details modal
+- **Real-Time Chat** — Direct and team group messaging with typing indicators, read receipts, file/image sharing, @mentions, reply threading, and rich system event messages (Socket.IO); blocked users are hidden from direct conversations, team rosters, mention lists, and rendered message streams
 - **Badge System** — Browse 30 badges across 5 color-coded categories; award badges to teammates with reasons and team context
 - **Notifications** — In-app notification center for invitations, applications, badge awards, and role updates
 - **Account Deletion** — Multi-step account deletion with impact preview, automatic team ownership transfer, and graceful "Former Lomir User" handling across chat, badges, and notifications
 - **Demo Data Indicators** — Synthetic/seed data is visually labeled with FlaskConical icons and "DEMO" avatar overlays so users can distinguish test content from real data
-- **Security** — Cloudflare Turnstile CAPTCHA on registration (feature-flagged), enforced password policy (min 8 chars, letter + number)
+- **Contact Page** — Email contact form with optional multipart file attachments (up to 3 files, 5 MB each, 10 MB total — JPG, PNG, WebP, PDF, TXT, CSV); authenticated users with a configured contact user ID are routed directly to in-app chat instead; optional Turnstile CAPTCHA; privacy disclosure with `/privacy` link at submission; abuse/content reports show a persistent reference ID after submit
+- **Authentication UX** — Login and forgot-password flows use shared floating screen alerts for submit-level errors such as rate limits, while field validation remains inline; registration surfaces backend validation details and username availability-check rate limits instead of generic "Invalid input data" errors
+- **Security & Privacy** — the session is held in a backend-set `httpOnly` cookie rather than `localStorage`, so the auth token is never readable by JavaScript (XSS-resistant); requests and the realtime socket send it automatically via credentialed requests, and auth state is restored on load from `GET /api/auth/me`; Cloudflare Turnstile CAPTCHA on registration and contact form (feature-flagged), enforced password policy (min 8 chars, letter + number), self-service password reset from the login form; changing your password while logged in requires the current password, must differ from it, sends a confirmation email, and immediately invalidates every existing session on all devices (tokens issued before the change are rejected server-side, so you are logged out and redirected to sign in again); changing your account email requires confirming the new address via a verification link before it takes effect — the current email stays active until then; new accounts remain private after email verification until users change visibility in settings; users can manage a blocklist from Settings, with blocked relationships mutually anonymized across profiles, teams, roles, badge awards, invitations, and inline profile links; search results use approximate coordinates (~11km precision) so exact user locations are never exposed to the frontend; username availability feedback during registration is rate-limited while email availability is not exposed; separate age-16 confirmation checkbox at registration; timestamps and document versions stored for accepted Terms of Service, acknowledged Privacy Policy, and age confirmation; unverified accounts are automatically deleted after 24 hours
 
 ---
 
@@ -52,6 +54,7 @@ Contact the project owner for a demo login, or register a new account with a val
 | Server State | TanStack React Query 5 |
 | Real-time | Socket.IO Client |
 | Maps | Leaflet + React Leaflet |
+| Typography | Roboto (self-hosted woff2, GDPR-compliant — no Google CDN) |
 | Icons | Lucide React, React Icons |
 | Date Utilities | date-fns |
 | Autocomplete | Downshift |
@@ -95,8 +98,11 @@ VITE_API_URL=http://localhost:5001
 VITE_IMAGEKIT_PUBLIC_KEY=<your-public-key>
 VITE_IMAGEKIT_URL_ENDPOINT=https://ik.imagekit.io/<your-id>
 
-# Cloudflare Turnstile (optional for local dev — if unset, CAPTCHA is not shown)
+# Cloudflare Turnstile (configured in the deployed app; the widget stays hidden locally until a site key is set)
 # VITE_TURNSTILE_SITE_KEY=<turnstile-site-key>
+
+# Contact page — set to a Lomir user ID to route authenticated users to in-app chat
+# VITE_LOMIR_CONTACT_USER_ID=<lomir-team-user-id>
 ```
 
 > Get the ImageKit values from the project owner.
@@ -127,6 +133,7 @@ The app starts on `http://localhost:5173` with hot module replacement.
 ```text
 Lomir-frontend/
 ├── public/
+│   └── fonts/                      # Self-hosted Roboto woff2 files (weights 300/400/500/700)
 ├── src/
 │   ├── main.jsx                    # App entry point
 │   ├── App.jsx                     # Root component with routing
@@ -137,37 +144,61 @@ Lomir-frontend/
 │   │   ├── searchPageHelpers.js    # Helper functions for SearchPage (not a page itself)
 │   │   ├── MyTeams.jsx             # User's teams, invitations, applications
 │   │   ├── Profile.jsx             # User profile editing
-│   │   ├── PublicProfile.jsx       # Profile placeholder for deleted/missing users
+│   │   ├── PublicProfile.jsx       # Other users' public profiles; shows "private" message for
+│   │   │                           #   limited-access profiles; placeholder for deleted users
 │   │   ├── Register.jsx            # Multi-step registration with CAPTCHA
 │   │   ├── Login.jsx
-│   │   ├── Chat.jsx                # Direct + team messaging with file sharing
+│   │   ├── Chat.jsx                # Direct + team messaging with file sharing; filters blocked users
 │   │   ├── BadgeOverview.jsx       # Badge catalog and details
-│   │   ├── Settings.jsx            # Password change + account deletion modal
+│   │   ├── Settings.jsx            # Visibility, blocklist, password/email changes (password change sends a
+│   │   │                           #   confirmation email and logs you out of all sessions; email change sends
+│   │   │                           #   a verification link) + account deletion modal
 │   │   ├── ForgotPassword.jsx
 │   │   ├── ResetPassword.jsx
 │   │   ├── VerifyEmail.jsx
+│   │   ├── VerifyEmailChange.jsx   # Confirms email-change links for logged-in users (verifying/success/error states)
+│   │   ├── Contact.jsx             # Contact form with file attachments, report reference display,
+│   │   │                           #   privacy notice, and in-app chat routing
+│   │   ├── LegalPage.jsx            # Shared page for /about, /terms, /privacy, /legal-notice
 │   │   └── DesignSystem.jsx        # Dev-only component playground
 │   ├── components/
 │   │   ├── BooleanSearchInput.jsx  # Textarea-based Boolean search input with operator helpers
 │   │   ├── SearchHelp.jsx          # Search Tips popup panel
-│   │   ├── auth/                   # Login/register forms, TurnstileWidget
-│   │   ├── teams/                  # Team cards, detail modals, vacant roles,
-│   │   │                           #   applications, invitations, member management
-│   │   ├── users/                  # User cards, detail modals, InlineUserLink,
-│   │   │                           #   UserAvatar, DemoAvatarOverlay, deleted user handling
+│   │   ├── auth/                   # LoginForm, RegisterForm
+│   │   ├── teams/                  # TeamCard, TeamDetailsModal, TeamAvatar, TeamEditForm,
+│   │   │                           #   TeamFocusAreaSection, TeamMembersSection, TeamRoleManager,
+│   │   │                           #   VacantRoleCard, VacantRoleDetailsModal, VacantRolesSection,
+│   │   │                           #   CreateTeamModal, CreateVacantRoleModal, RoleBadgeDropdown,
+│   │   │                           #   TeamApplicationButton, TeamApplicationModal,
+│   │   │                           #   TeamApplicationsModal, TeamApplicationDetailsModal,
+│   │   │                           #   TeamInviteModal, TeamInvitesModal,
+│   │   │                           #   TeamInvitationDetailsModal, RequestRoleCard
+│   │   ├── users/                  # UserCard, UserDetailsModal, UserAvatar,
+│   │   │                           #   UserProfileHeaderSection (avatar + name + location header),
+│   │   │                           #   UserBioSection, InlineUserLink, BlocklistSection,
+│   │   │                           #   DemoAvatarOverlay,
+│   │   │                           #   DeletedUserProfilePlaceholder
 │   │   ├── badges/                 # Badge display, awarding, category modals, AwardCard
 │   │   ├── tags/                   # Tag input, display, and selection
 │   │   ├── chat/                   # Chat UI, message bubbles, file/image previews,
 │   │   │                           #   MentionDropdown, MessageText (mentions + URLs),
 │   │   │                           #   reply previews, system event messages
 │   │   ├── search/                 # SearchMapView (Leaflet map with markers/popups)
-│   │   ├── common/                 # Shared UI: Button, Card, Modal, Alert, Pagination,
-│   │   │                           #   ImageUploader, LocationInput, TurnstileWidget,
-│   │   │                           #   FilterSortOptionButton, ResultViewToggle,
-│   │   │                           #   PersonRequestCard, RequestListModal, Tooltip...
-│   │   └── layout/                 # Navbar, Footer, PageContainer, Grid, Section
+│   │   ├── common/                 # Shared UI primitives and composed widgets:
+│   │   │                           #   Button, Card, Modal, Alert, Pagination, Tooltip,
+│   │   │                           #   Input, Select, Checkbox, Dropdown, FormGroup,
+│   │   │                           #   FormSectionDivider, DataDisplay, InfoCard, Placeholder,
+│   │   │                           #   ImageUploader, LocationInput, LocationDisplay,
+│   │   │                           #   LocationSection, LocationModeToggle, CountrySelect,
+│   │   │                           #   TurnstileWidget, FilterSortOptionButton, ResultViewToggle,
+│   │   │                           #   ListViewRow, CardMetaItem, CardMetaRow, RoleBadgePill,
+│   │   │                           #   MatchScoreOverlay, MatchScoreSubtitle, MatchScoreSection,
+│   │   │                           #   SearchResultTypeOverlay, NotificationBadge,
+│   │   │                           #   PersonRequestCard, RequestListModal, SendMessageButton,
+│   │   │                           #   VisibilityToggle, ScreenAlert, ConfirmModal
+│   │   └── layout/                 # Navbar, Footer, PageContainer, ProtectedRoute, Grid, Section
 │   ├── contexts/
-│   │   ├── AuthContext.jsx         # Authentication state + JWT management
+│   │   ├── AuthContext.jsx         # Authentication state (httpOnly cookie session, restored via /api/auth/me) and block relationship state
 │   │   ├── UserModalContext.jsx    # Global user detail modal stack
 │   │   ├── TeamModalContext.jsx    # Global team detail modal state
 │   │   ├── ToastContext.jsx        # Toast notification state + dispatch
@@ -176,9 +207,10 @@ Lomir-frontend/
 │   │   └── queryClient.js          # TanStack React Query client configuration
 │   ├── services/
 │   │   ├── api.js                  # Axios instance with default camelCase ↔ snake_case interceptors;
-│   │   │                           #   call sites can opt out via skipRequestCaseTransform /
+│   │   │                           #   preserves FormData requests so multipart boundaries are set by
+│   │   │                           #   the browser; call sites can opt out via skipRequestCaseTransform /
 │   │   │                           #   skipResponseCaseTransform for explicit per-call data contracts
-│   │   ├── userService.js          # Includes deletionPreview + deleteUser
+│   │   ├── userService.js          # Profile, avatar, blocklist, account deletion, and email-change verification endpoints
 │   │   ├── teamService.js
 │   │   ├── searchService.js
 │   │   ├── matchingService.js
@@ -206,7 +238,8 @@ Lomir-frontend/
 │   │   ├── useMyTeamsSort.js       # Sort state for MyTeams page
 │   │   ├── useClientPagination.js  # Client-side pagination state for lists
 │   │   ├── useSocketEvents.js      # Subscribe to a set of Socket.IO events with React-safe cleanup
-│   │   ├── useAwardModals.js       # Badge award modal state management
+│   │   ├── useAwardModals.js       # Badge award modal state management (user profile context)
+│   │   ├── useTeamAwardModals.js   # Badge award modal state management (team context)
 │   │   └── useTheme.js             # Theme toggle state
 │   ├── utils/
 │   │   ├── formatters.js           # camelCase ↔ snake_case conversion (used by api.js interceptors)
@@ -216,8 +249,11 @@ Lomir-frontend/
 │   │   ├── teamMatchUtils.js       # Team/role match scoring + overlap calculations
 │   │   ├── matchHelpers.js         # Shared match score helpers (weights, render cascade)
 │   │   ├── matchScoreUtils.js      # Match tier color coding (green/yellow/orange)
+│   │   ├── listSummaryUtils.js     # extractNames + summarizeList for tag/badge summary strings
 │   │   ├── payloadExtractors.js    # Role/team payload field extractors shared across components
-│   │   ├── locationUtils.js        # Haversine distance calculation
+│   │   ├── locationUtils.js        # Haversine distance, formatLocation / normalizeLocationData
+│   │   │                           #   (de-duplicated city/district/state/country display,
+│   │   │                           #   postal-code city fallback, Berlin district lookup)
 │   │   ├── vacantRoleUtils.js      # Role status helpers (filled, closed, open) + display labels
 │   │   ├── teamRequestUtils.js     # Invitation + application helper functions (build card data, labels)
 │   │   ├── eventPreview.js         # Parse + format chat system event messages for previews and toasts
@@ -228,9 +264,10 @@ Lomir-frontend/
 │   │   ├── dateHelpers.js          # Date formatting utilities
 │   │   ├── debounce.js             # Generic debounce utility
 │   │   ├── badgeIconUtils.jsx      # Badge icon component resolution by category
-│   │   └── Colors.js              # Shared color constants for badge categories and UI accents
+│   │   └── Colors.js               # Shared color constants for badge categories and UI accents
 │   ├── constants/
 │   │   ├── badgeConstants.js       # Badge category metadata (names, colors, icons)
+│   │   ├── privacyText.js          # Shared privacy, storage, upload, and visibility notices
 │   │   ├── uiText.js               # Shared UI strings
 │   │   └── pagination.js           # Pagination page-size defaults
 │   ├── config/
@@ -251,13 +288,24 @@ Lomir-frontend/
 | Route | Page | Description |
 |---|---|---|
 | `/` | Landing Page | Public homepage with feature overview |
+| `/login` | Login | Sign in, register redirect, and forgot-password entry point |
+| `/register` | Register | Multi-step registration with legal consent, private-by-default visibility copy, username availability helper, and optional Turnstile |
+| `/verify-email` | Verify Email | Confirms new-account email verification links before login |
+| `/verify-email-change` | Verify Email Change | Confirms an email-change link for a logged-in user and updates the account email |
+| `/forgot-password` | Forgot Password | Request a password reset email |
+| `/reset-password` | Reset Password | Set a new password from a reset email link |
 | `/search` | Search | Find teams, users, and roles; Boolean search input; shared result-view toggle; advanced filtering by tags, badges, distance |
 | `/teams/my-teams` | My Teams | Teams you belong to, pending invitations and applications; shared sort and result-view controls |
 | `/profile` | Profile | Edit your profile, tags, avatar, and location |
-| `/profile/:id` | Public Profile | View any user's profile; shows placeholder for deleted/missing users |
+| `/profile/:id` | Public Profile | View any user's profile; shows "private" message for non-public profiles; placeholder for deleted users |
 | `/chat` | Chat | Direct messages and team group chat with file/image sharing, @mentions, and reply threading |
 | `/badges` | Badges | Browse all 30 badges across 5 categories |
-| `/settings` | Settings | Change password and delete account |
+| `/settings` | Settings | Change profile visibility, manage blocked users, update password (logs you out of all sessions and sends a confirmation email), request a verified email change, and delete account |
+| `/contact` | Contact | Email form with file attachments and privacy notice; abuse/content reports show a reference ID; authenticated users with a contact user ID configured are routed to in-app chat |
+| `/about` | About | Project description, status, and contact information |
+| `/terms` | Terms | Full Terms of Service (14 sections, German law) |
+| `/privacy` | Privacy | Full GDPR-aligned Privacy Policy (19 sections) |
+| `/legal-notice` | Legal Notice / Impressum | Legal notice per DDG §5 |
 
 ---
 
@@ -273,7 +321,9 @@ The search page supports multiple sort and filter modes:
 
 **Best Match scoring** uses the backend matching engine (tag overlap 40%, badge overlap 30%, distance 30%) and falls back to client-side profile overlap calculations when backend scores aren't available.
 
-**Map view** renders all results on a Leaflet map with color-coded markers. Clicking a marker shows a popup with the team/user/role card. Distance indicators show how far each result is from your location.
+**Map view** renders all results on a Leaflet map with color-coded markers. Clicking a marker shows a popup with the team/user/role card. Distance indicators show how far each result is from your location. Map markers use approximate coordinates (~11km precision) returned by the backend — exact user locations are never sent to the client.
+
+**Distance on role cards** — Vacant role cards and mini-cards show a distance indicator (km) when search results include proximity data.
 
 ---
 
@@ -292,6 +342,11 @@ All components handle deleted user references gracefully: chat messages show "Fo
 ## Chat
 
 The chat page supports both direct (1-to-1) and team group conversations.
+
+**Blocking**
+- Blocking a user removes unavailable direct conversations from the chat list and closes the active direct conversation if the relationship changes while it is open
+- Team chats stay available, but blocked members are filtered out of rosters, mention suggestions, and the visible message stream
+- Socket.IO `blocks:updated` events refresh block relationships without requiring a page reload
 
 **Messaging**
 - Messages are delivered in real time via Socket.IO
@@ -321,8 +376,8 @@ The chat page supports both direct (1-to-1) and team group conversations.
 
 - **CORS errors** — Make sure the backend is running on port 5001 and the frontend on 5173; check that `VITE_API_URL` matches
 - **Socket.IO won't connect** — Verify `VITE_SOCKET_URL` in `.env` if you set it; otherwise the client falls back to `VITE_API_URL`
-- **"Access denied. No token provided."** — Your JWT has expired; log out and log back in
-- **CAPTCHA not showing locally** — Expected behavior; if `VITE_TURNSTILE_SITE_KEY` is unset, registration skips CAPTCHA
+- **"Access denied. No token provided."** — Your session cookie is missing or expired; log out and log back in (and ensure the API is reached over a credentialed/CORS-allowed origin so the cookie is sent)
+- **CAPTCHA not showing locally** — Expected when no Turnstile site key is configured; the CAPTCHA is active in the deployed app
 - **Images not uploading** — Check that `VITE_IMAGEKIT_PUBLIC_KEY` and `VITE_IMAGEKIT_URL_ENDPOINT` are set in `.env`
 - **Map not rendering** — Leaflet CSS must be imported; check that `leaflet` and `react-leaflet` are installed
 
@@ -332,3 +387,9 @@ The chat page supports both direct (1-to-1) and team group conversations.
 
 - **Backend repo:** [Lomir-backend](https://github.com/KasparSinitsin/Lomir-backend)
 - **Account deletion spec:** Backend repo → `docs/USER_DELETION_SPEC.md`
+
+---
+
+## License
+
+This project is licensed under the GNU Affero General Public License v3.0 (AGPL-3.0). See the [LICENSE](LICENSE) file for the full text.

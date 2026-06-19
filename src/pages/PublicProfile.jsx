@@ -112,6 +112,8 @@ const PublicProfile = () => {
     );
   }
 
+  const isPrivateProfile = user?.profileAccess === "limited" || user?.profile_access === "limited";
+
   return (
     <PageContainer title="Profile" variant="transparent" frame={false}>
       <div className="flex justify-center">
@@ -134,22 +136,30 @@ const PublicProfile = () => {
               </div>
             </div>
 
-            <div className="space-y-2 text-center">
-              <h2 className="text-sm font-medium uppercase tracking-[0.12em] text-base-content/50">
-                Bio
-              </h2>
-              <p className="text-base-content/75">
-                {bio || "This user has not added a bio yet."}
-              </p>
-            </div>
+            {isPrivateProfile ? (
+              <div className="text-center text-base-content/60 py-4">
+                <p className="text-sm">This profile is private.</p>
+              </div>
+            ) : (
+              <>
+                <div className="space-y-2 text-center">
+                  <h2 className="text-sm font-medium uppercase tracking-[0.12em] text-base-content/50">
+                    Bio
+                  </h2>
+                  <p className="text-base-content/75">
+                    {bio || "This user has not added a bio yet."}
+                  </p>
+                </div>
 
-            <BadgesDisplaySection
-              title="Badges"
-              badges={badges}
-              emptyMessage={badgeEmptyMessage}
-              groupByCategory={true}
-              showCredits={true}
-            />
+                <BadgesDisplaySection
+                  title="Badges"
+                  badges={badges}
+                  emptyMessage={badgeEmptyMessage}
+                  groupByCategory={true}
+                  showCredits={true}
+                />
+              </>
+            )}
 
             <div className="flex justify-center">
               <Button variant="ghost" onClick={() => navigate(-1)}>

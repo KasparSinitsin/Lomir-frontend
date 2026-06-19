@@ -98,9 +98,13 @@ const buildNotificationTooltip = (count, types, teamCounts) => {
 
   return (
     <div className="flex flex-col gap-1">
-      {lines.map(({ Icon, label }, i) => (
+      {lines.map(({ Icon: NotificationIcon, label }, i) => (
         <div key={i} className="flex items-center gap-1.5">
-          <Icon size={11} strokeWidth={2.5} className="flex-shrink-0 opacity-70" />
+          {React.createElement(NotificationIcon, {
+            size: 11,
+            strokeWidth: 2.5,
+            className: "flex-shrink-0 opacity-70",
+          })}
           <span>{label}</span>
         </div>
       ))}

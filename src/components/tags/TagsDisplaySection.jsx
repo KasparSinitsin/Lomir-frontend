@@ -152,19 +152,35 @@ const TagsDisplaySection = ({
     // Case 2 & 3: Array
     if (Array.isArray(tags) && tags.length > 0) {
       // Case 2: Array of objects with name property
-      if (typeof tags[0] === "object" && tags[0].name) {
-        return tags.map((tag) => ({
-          key: tag.id || tag.tag_id || tag.tagId,
-          name: tag.name,
-          badgeCredits: tag.badge_credits || tag.badgeCredits || 0,
-          dominantBadgeCategory:
-            tag.dominant_badge_category || tag.dominantBadgeCategory || null,
-          supercategory: tag.supercategory || null,
-          category: tag.category || null,
-          linkedBadgeCount: tag.linked_badge_count || tag.linkedBadgeCount || 0,
-          awarderCount: tag.awarder_count || tag.awarderCount || 0,
-          awardeeCount: tag.awardee_count || tag.awardeeCount || 0,
-        }));
+      if (typeof tags[0] === "object") {
+        const objectTags = tags
+          .map((tag) => {
+            const name =
+              tag.name ??
+              tag.tagName ??
+              tag.tag_name ??
+              tag.label ??
+              tag.title ??
+              null;
+
+            if (!name) return null;
+
+            return {
+              key: tag.id || tag.tag_id || tag.tagId || name,
+              name,
+              badgeCredits: tag.badge_credits || tag.badgeCredits || 0,
+              dominantBadgeCategory:
+                tag.dominant_badge_category || tag.dominantBadgeCategory || null,
+              supercategory: tag.supercategory || tag.supercategoryName || tag.supercategory_name || null,
+              category: tag.category || tag.categoryName || tag.category_name || null,
+              linkedBadgeCount: tag.linked_badge_count || tag.linkedBadgeCount || 0,
+              awarderCount: tag.awarder_count || tag.awarderCount || 0,
+              awardeeCount: tag.awardee_count || tag.awardeeCount || 0,
+            };
+          })
+          .filter(Boolean);
+
+        if (objectTags.length > 0) return objectTags;
       }
 
       // Case 3: Array of IDs
@@ -479,18 +495,18 @@ const TagsDisplaySection = ({
       <div className="flex items-start gap-2 mb-3">
         <Tag size={18} className="mt-0.5 text-primary flex-shrink-0" />
         <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0 flex-1 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0 flex-1 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-x-3 gap-y-0.5">
               <div className="min-w-0 flex flex-wrap items-baseline gap-x-1 gap-y-0.5">
-                <h3 className="font-medium leading-5 whitespace-nowrap">{title}</h3>
+                <h3 className="font-medium leading-[1.1] break-words sm:whitespace-nowrap">{title}</h3>
                 {totalCredits > 0 && (
-                  <span className="min-w-0 text-sm font-normal text-base-content/60 whitespace-nowrap">
+                  <span className="min-w-0 text-sm font-normal text-base-content/60 whitespace-normal sm:whitespace-nowrap">
                     ({totalCredits} ct. in {pillCount} {pillCount === 1 ? 'area' : 'areas'})
                   </span>
                 )}
               </div>
               {headerRight && (
-                <div className="flex items-center justify-end gap-2 text-right whitespace-nowrap">
+                <div className="shrink-0">
                   {headerRight}
                 </div>
               )}

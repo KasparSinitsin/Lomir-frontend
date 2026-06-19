@@ -29,6 +29,7 @@ import {
   getRequestUserLabel,
   getRequestUserId,
   getRequestRoleId,
+  isPrivateProfileUser,
   isRequestForUser,
 } from "../../utils/teamRequestUtils";
 
@@ -72,7 +73,9 @@ const TeamInvitesModal = ({
   const highlightedRef = useRef(null);
 
   // ============ Context ============
-  const { user: currentUser } = useAuth();
+  const { user: currentUser, blockedRelationshipIds } = useAuth();
+  const isBlockedUser = (id) =>
+    id != null && blockedRelationshipIds?.has?.(String(id));
   const { openUserModal } = useUserModal();
   const { openTeamModal } = useTeamModal();
   const hydratedRoleMap = usePolledRequestRoles(invitations, {
@@ -269,8 +272,12 @@ const TeamInvitesModal = ({
           "invitee",
           currentUser?.id,
         );
+        const inviteeIsPrivate =
+          (isPrivateProfileUser(invitation.invitee) ||
+            isBlockedUser(inviteeId)) &&
+          !isSelfInvitation;
         const inviteeRoleMatch =
-          roleId != null && invitation?.role
+          roleId != null && invitation?.role && !inviteeIsPrivate
             ? extractRoleMatchData(invitation.role)
             : null;
         const selfRoleMatch =
@@ -314,8 +321,8 @@ const TeamInvitesModal = ({
             primaryMatch={inviteeRoleMatch}
             secondaryMatch={selfRoleMatch}
             canManageStatus={false}
-            viewAsUserId={inviteeId}
-            viewAsUser={invitation.invitee}
+            viewAsUserId={inviteeIsPrivate ? null : inviteeId}
+            viewAsUser={inviteeIsPrivate ? null : invitation.invitee}
             hideActions={true}
           />
         ) : null;
@@ -342,6 +349,7 @@ const TeamInvitesModal = ({
           >
             <PersonRequestCard
               user={invitation.invitee}
+              privateProfile={inviteeIsPrivate}
               date={getRequestDateValue(invitation)}
               onNarrowChange={(narrow) =>
                 setNarrowMap((prev) => {

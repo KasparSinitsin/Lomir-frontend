@@ -127,6 +127,10 @@ const Card = ({
     return "[&>p:first-of-type]:line-clamp-3 [&>p:first-of-type]:-mt-4";
   };
 
+  const contentPaddingClass = title
+    ? "p-4 sm:p-7 pt-0.5 sm:pt-1"
+    : "p-4 sm:p-7";
+
   const handleRowMouseOver = clickTooltip
     ? (e) => {
         const shouldShow = !e.target.closest("[data-tooltip-trigger]");
@@ -241,7 +245,7 @@ const Card = ({
             <div className="font-medium text-sm text-[var(--color-primary-focus)] truncate">{title}</div>
           </Tooltip>
           {subtitle && (
-            <div className="mt-0.5 max-h-[2.1em] overflow-hidden text-xs leading-[1.05] text-base-content/60">
+            <div className="mt-0.5 overflow-hidden text-xs leading-[1.05] text-base-content/60">
               {subtitle}
             </div>
           )}
@@ -337,7 +341,7 @@ const Card = ({
 
               <div className="min-w-0 flex-1">
                 <h3
-                  className={`font-medium text-[var(--color-primary-focus)] leading-[120%] mb-1 ${titleClassName || "text-lg"}`}
+                  className={`font-medium text-[var(--color-primary-focus)] leading-[110%] mb-1 ${titleClassName || "text-lg"}`}
                 >
                   {title}
                 </h3>
@@ -357,7 +361,7 @@ const Card = ({
 
         {/* Only the first direct <p> inside this wrapper will be clamped */}
         <div
-          className={`p-4 sm:p-7 pt-0.5 sm:pt-1 flex-1 flex flex-col ${getTruncateClasses()} ${contentClassName}`}
+          className={`${contentPaddingClass} flex-1 flex flex-col ${getTruncateClasses()} ${contentClassName}`}
         >
           {children}
         </div>
