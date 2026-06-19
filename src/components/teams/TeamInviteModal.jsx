@@ -28,7 +28,7 @@ import UserDetailsModal from "../users/UserDetailsModal";
 import TeamDetailsModal from "../teams/TeamDetailsModal";
 import TeamInvitesModal from "../teams/TeamInvitesModal";
 import TeamApplicationsModal from "../teams/TeamApplicationsModal";
-import VacantRoleDetailsModal from "./VacantRoleDetailsModal";
+import VacantRoleDetailsModal from "./VacantRoleDetailsModalLazy";
 import {
   DEMO_PROFILE_TOOLTIP,
   DEMO_ROLE_TOOLTIP,

@@ -22,7 +22,7 @@ import {
   TrendingDown,
   FlaskConical,
 } from "lucide-react";
-import VacantRoleDetailsModal from "./VacantRoleDetailsModal";
+import VacantRoleDetailsModal from "./VacantRoleDetailsModalLazy";
 import Card from "../common/Card";
 import RoleBadgePill from "../common/RoleBadgePill";
 import CardMetaItem from "../common/CardMetaItem";
