@@ -23,7 +23,7 @@ import {
 import TeamDetailsModal from "./TeamDetailsModal";
 import UserDetailsModal from "../users/UserDetailsModal";
 import TeamApplicationDetailsModal from "./TeamApplicationDetailsModal";
-import VacantRoleDetailsModal from "./VacantRoleDetailsModal";
+import VacantRoleDetailsModal from "./VacantRoleDetailsModalLazy";
 import TeamInvitesModal from "./TeamInvitesModal";
 import TeamInvitationDetailsModal from "./TeamInvitationDetailsModal";
 import { teamService } from "../../services/teamService";

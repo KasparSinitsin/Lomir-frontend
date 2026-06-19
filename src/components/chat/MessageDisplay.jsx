@@ -33,7 +33,7 @@ import {
   CheckCheck,
 } from "lucide-react";
 import TeamDetailsModal from "../teams/TeamDetailsModal";
-import VacantRoleDetailsModal from "../teams/VacantRoleDetailsModal";
+import VacantRoleDetailsModal from "../teams/VacantRoleDetailsModalLazy";
 import UserDetailsModal from "../users/UserDetailsModal";
 import UserAvatar from "../users/UserAvatar";
 import DemoAvatarOverlay from "../users/DemoAvatarOverlay";

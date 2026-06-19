@@ -166,7 +166,7 @@ Lomir-frontend/
 │   │   ├── auth/                   # LoginForm, RegisterForm
 │   │   ├── teams/                  # TeamCard, TeamDetailsModal, TeamAvatar, TeamEditForm,
 │   │   │                           #   TeamFocusAreaSection, TeamMembersSection, TeamRoleManager,
-│   │   │                           #   VacantRoleCard, VacantRoleDetailsModal, VacantRolesSection,
+│   │   │                           #   VacantRoleCard, VacantRoleDetailsModal (lazy-loaded via VacantRoleDetailsModalLazy), VacantRolesSection,
 │   │   │                           #   CreateTeamModal, CreateVacantRoleModal, RoleBadgeDropdown,
 │   │   │                           #   TeamApplicationButton, TeamApplicationModal,
 │   │   │                           #   TeamApplicationsModal, TeamApplicationDetailsModal,
