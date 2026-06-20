@@ -1,7 +1,14 @@
 import axios from "axios";
 import { snakeToCamel, camelToSnake } from "../utils/formatters";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5001";
+// In production the frontend and backend are served same-origin: REST calls go
+// to /api/* on the Vercel deployment, which rewrites them to the Render backend
+// (see vercel.json). A relative baseURL keeps the session cookie first-party, so
+// mobile browsers with strict tracking protection don't drop it. Locally we hit
+// the backend dev server directly.
+const API_URL = import.meta.env.PROD
+  ? ""
+  : import.meta.env.VITE_API_URL || "http://localhost:5001";
 
 const api = axios.create({
   baseURL: API_URL,
