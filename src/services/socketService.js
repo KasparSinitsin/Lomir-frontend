@@ -24,8 +24,15 @@ const socketService = {
       socket = null;
     }
 
-    const SOCKET_URL =
-      import.meta.env.VITE_SOCKET_URL || "http://localhost:5001";
+    // In production connect same-origin (undefined → the page origin), so the
+    // Socket.IO traffic is proxied through the Vercel rewrite and the handshake
+    // cookie stays first-party. Note: Vercel (Hobby) does not proxy the
+    // WebSocket upgrade, so Socket.IO runs over HTTP long-polling there; a
+    // future shared-domain setup restores the native WebSocket transport.
+    // Locally, connect to the backend dev server directly.
+    const SOCKET_URL = import.meta.env.PROD
+      ? undefined
+      : import.meta.env.VITE_SOCKET_URL || "http://localhost:5001";
 
     // The backend authenticates the handshake from the httpOnly session
     // cookie; withCredentials makes the browser send it with the connection.

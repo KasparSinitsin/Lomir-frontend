@@ -31,7 +31,7 @@ import {
   X,
 } from "lucide-react";
 import { format } from "date-fns";
-import VacantRoleDetailsModal from "../teams/VacantRoleDetailsModal";
+import VacantRoleDetailsModal from "../teams/VacantRoleDetailsModalLazy";
 import TeamApplicationDetailsModal from "../teams/TeamApplicationDetailsModal";
 import TeamInvitationDetailsModal from "../teams/TeamInvitationDetailsModal";
 import { useTeamModalSafe } from "../../contexts/TeamModalContext";

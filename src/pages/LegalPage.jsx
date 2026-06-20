@@ -5,7 +5,7 @@ import Card from "../components/common/Card";
 const CONTACT_EMAIL = "lomirapp@gmail.com";
 const LAST_UPDATED = "June 18, 2026";
 const LEGAL_NOTICE_UPDATED = "June 16, 2026";
-const PRIVACY_UPDATED = "June 18, 2026";
+const PRIVACY_UPDATED = "June 19, 2026";
 
 const mailLink = (
   <a href={`mailto:${CONTACT_EMAIL}`} className="link link-primary">
@@ -170,7 +170,7 @@ const pageContent = {
       {
         title: "13. Third-Party Services",
         items: [
-          "Vercel hosts and delivers the frontend. Vercel may process IP addresses, browser and device data, request metadata, deployment data, and technical logs needed to deliver and secure the frontend.",
+          "Vercel hosts and delivers the frontend and routes the app's API and real-time requests to the backend (so that the frontend and backend share one address). Vercel may therefore process IP addresses, browser and device data, request and API metadata, session authentication data in transit, deployment data, and technical logs needed to deliver, route, and secure the app.",
           "Render hosts the backend API. Render may process IP addresses, browser and device data, API request metadata, server logs, error information, and data transmitted to or from the backend.",
           "Neon, now part of Databricks, provides the PostgreSQL database. App data stored in the database may include account data, profile data, team and role data, messages, notifications, legal acknowledgement records, location data, and related metadata.",
           "ImageKit stores, transforms, optimizes, and delivers uploaded media and files, including profile avatars, team avatars, chat images, chat files, and related delivery logs or metadata.",

@@ -1,6 +1,10 @@
 // Centralized ImageKit configuration for Lomir
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5001";
+// Same-origin in production (Vercel rewrites /api/* to the backend); direct to
+// the dev server locally. Keeps the auth call first-party (relative authEndpoint).
+const API_URL = import.meta.env.PROD
+  ? ""
+  : import.meta.env.VITE_API_URL || "http://localhost:5001";
 
 export const IMAGEKIT_CONFIG = {
   publicKey: import.meta.env.VITE_IMAGEKIT_PUBLIC_KEY,

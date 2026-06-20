@@ -159,15 +159,14 @@ Lomir-frontend/
 │   │   ├── VerifyEmailChange.jsx   # Confirms email-change links for logged-in users (verifying/success/error states)
 │   │   ├── Contact.jsx             # Contact form with file attachments, report reference display,
 │   │   │                           #   privacy notice, and in-app chat routing
-│   │   ├── LegalPage.jsx            # Shared page for /about, /terms, /privacy, /legal-notice
-│   │   └── DesignSystem.jsx        # Dev-only component playground
+│   │   └── LegalPage.jsx            # Shared page for /about, /terms, /privacy, /legal-notice
 │   ├── components/
 │   │   ├── BooleanSearchInput.jsx  # Textarea-based Boolean search input with operator helpers
 │   │   ├── SearchHelp.jsx          # Search Tips popup panel
 │   │   ├── auth/                   # LoginForm, RegisterForm
 │   │   ├── teams/                  # TeamCard, TeamDetailsModal, TeamAvatar, TeamEditForm,
 │   │   │                           #   TeamFocusAreaSection, TeamMembersSection, TeamRoleManager,
-│   │   │                           #   VacantRoleCard, VacantRoleDetailsModal, VacantRolesSection,
+│   │   │                           #   VacantRoleCard, VacantRoleDetailsModal (lazy-loaded via VacantRoleDetailsModalLazy), VacantRolesSection,
 │   │   │                           #   CreateTeamModal, CreateVacantRoleModal, RoleBadgeDropdown,
 │   │   │                           #   TeamApplicationButton, TeamApplicationModal,
 │   │   │                           #   TeamApplicationsModal, TeamApplicationDetailsModal,

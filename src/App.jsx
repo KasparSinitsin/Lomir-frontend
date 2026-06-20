@@ -25,7 +25,6 @@ import VerifyEmailChange from "./pages/VerifyEmailChange";
 import BadgeOverview from "./pages/BadgeOverview";
 import MyTeams from "./pages/MyTeams";
 import SearchPage from "./pages/SearchPage";
-import DesignSystem from "./pages/DesignSystem";
 import "./index.css";
 import backgroundImage from "./assets/images/Gradient-peach-yellow-violet-inverted-light.svg";
 import ForgotPassword from "./pages/ForgotPassword";
@@ -83,15 +82,8 @@ function AppLayout() {
                   path="/legal-notice"
                   element={<LegalPage type="legalNotice" />}
                 />
-                <Route
-                  path="/garden"
-                  element={<Placeholder pageName="Project Garden" />}
-                />
                 <Route path="/teams" element={<Placeholder pageName="Teams" />} />
                 <Route path="/search" element={<SearchPage />} />
-                {import.meta.env.DEV && (
-                  <Route path="/design-system" element={<DesignSystem />} />
-                )}
                 <Route path="/forgot-password" element={<ForgotPassword />} />
                 <Route path="/reset-password" element={<ResetPassword />} />
                 <Route path="/profile/:id" element={<PublicProfile />} />

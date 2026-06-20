@@ -406,12 +406,6 @@ const Navbar = () => {
               <Link to="/teams/my-teams" className={`${navLinkClasses} neon`}>
                 My Teams
               </Link>
-              {isAuthenticated && (
-                <>
-                  {/* <Link to="/garden" className={`${navLinkClasses} neon`}>Garden</Link>
-                <Link to="/badges" className={`${navLinkClasses} neon`}>Badges</Link> */}
-                </>
-              )}
             </nav>
           )}
 
