@@ -18,9 +18,11 @@ Built with React 19, Vite, Tailwind CSS, and DaisyUI.
 | Backend  | Render   | [lomir-backend-knae.onrender.com](https://lomir-backend-knae.onrender.com) |
 | Database | Neon     | PostgreSQL (remote) |
 
-### Test Credentials
+### Accounts & Demo Content
 
-Contact the project owner for a demo login, or register a new account with a valid email address (email verification is required).
+Anyone can **register their own account** directly in the app with a valid email address (email verification is required); new profiles stay private until you make them public in settings. A demo login can also be provided on request.
+
+> **Note on demo content:** Lomir currently shows many demo users, teams, and roles — while few real users have registered yet, this seed data gives visitors a realistic impression of the app's purpose and possibilities (and supports ongoing development and testing). You can hide all of it at any time via the demo-data filter in the search page's filter settings.
 
 ---
 
@@ -91,7 +93,7 @@ Create a `.env` file in the project root:
 # API connection
 VITE_API_URL=http://localhost:5001
 
-# Optional Socket.IO override (defaults to VITE_API_URL if unset)
+# Optional Socket.IO override (defaults to http://localhost:5001 if unset)
 # VITE_SOCKET_URL=http://localhost:5001
 
 # ImageKit (image/file uploads — get values from the project owner)
@@ -374,7 +376,7 @@ The chat page supports both direct (1-to-1) and team group conversations.
 ## Troubleshooting
 
 - **CORS errors** — Make sure the backend is running on port 5001 and the frontend on 5173; check that `VITE_API_URL` matches
-- **Socket.IO won't connect** — Verify `VITE_SOCKET_URL` in `.env` if you set it; otherwise the client falls back to `VITE_API_URL`
+- **Socket.IO won't connect** — Verify `VITE_SOCKET_URL` in `.env` if you set it; otherwise the client falls back to `http://localhost:5001`
 - **"Access denied. No token provided."** — Your session cookie is missing or expired; log out and log back in (and ensure the API is reached over a credentialed/CORS-allowed origin so the cookie is sent)
 - **CAPTCHA not showing locally** — Expected when no Turnstile site key is configured; the CAPTCHA is active in the deployed app
 - **Images not uploading** — Check that `VITE_IMAGEKIT_PUBLIC_KEY` and `VITE_IMAGEKIT_URL_ENDPOINT` are set in `.env`
