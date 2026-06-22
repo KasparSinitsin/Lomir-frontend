@@ -20,6 +20,7 @@ import { messageService } from "../services/messageService";
 import socketService from "../services/socketService";
 import useSocketEvents from "../hooks/useSocketEvents";
 import { userService } from "../services/userService";
+import { isQuietError } from "../services/api";
 import { teamService } from "../services/teamService";
 import ScreenAlert from "../components/common/ScreenAlert";
 import Button from "../components/common/Button";
@@ -1427,9 +1428,13 @@ const Chat = () => {
 
             if (type === "direct") {
               try {
-                // Get the user details for the virtual conversation
-                const userResponse =
-                  await userService.getUserById(conversationId);
+                // Get the user details for the virtual conversation. A 404
+                // (no such user — e.g. a stale link or deleted account) is an
+                // expected, gracefully-handled case, not console noise.
+                const userResponse = await userService.getUserById(
+                  conversationId,
+                  { quietErrorStatuses: [404] },
+                );
 
                 const userData = userResponse.data;
 
@@ -1457,7 +1462,9 @@ const Chat = () => {
                 // Add to the beginning of the conversations list
                 conversationsList = [virtualConversation, ...conversationsList];
               } catch (error) {
-                console.error("Error creating virtual conversation:", error);
+                if (!isQuietError(error)) {
+                  console.error("Error creating virtual conversation:", error);
+                }
               }
             }
           }
@@ -1609,7 +1616,12 @@ const Chat = () => {
               });
             } else {
               try {
-                const userResponse = await userService.getUserById(conversationId);
+                // A 404 (no such user — stale link or deleted account) is an
+                // expected, gracefully-handled case, not console noise.
+                const userResponse = await userService.getUserById(
+                  conversationId,
+                  { quietErrorStatuses: [404] },
+                );
                 const userData = userResponse.data;
                 setActiveConversation({
                   id: parseInt(conversationId),
@@ -1626,7 +1638,12 @@ const Chat = () => {
                   isVirtual: true,
                 });
               } catch (userError) {
-                console.error("Failed to load partner for new conversation:", userError);
+                if (!isQuietError(userError)) {
+                  console.error(
+                    "Failed to load partner for new conversation:",
+                    userError,
+                  );
+                }
               }
             }
           }

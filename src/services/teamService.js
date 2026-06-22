@@ -1,4 +1,4 @@
-import api, { call } from "./api";
+import api, { call, isQuietError } from "./api";
 
 export const teamService = {
   // Create a new team — keeps explicit try/catch for the extra response-data
@@ -134,7 +134,12 @@ export const teamService = {
     };
 
     try {
-      const response = await api.get(`/api/teams/${teamId}`);
+      // A 404 here is expected when the team was deleted or is private/hidden
+      // (the backend returns 404, not 403, to avoid leaking existence) —
+      // callers handle it gracefully, so keep it out of the console.
+      const response = await api.get(`/api/teams/${teamId}`, {
+        quietErrorStatuses: [404],
+      });
 
       const teamData = response.data?.data || response.data;
       if (!Array.isArray(teamData.members)) teamData.members = [];
@@ -151,7 +156,9 @@ export const teamService = {
 
       return response.data;
     } catch (error) {
-      console.error(`Error fetching team ${teamId}:`, error);
+      if (!isQuietError(error)) {
+        console.error(`Error fetching team ${teamId}:`, error);
+      }
       throw error;
     }
   },
