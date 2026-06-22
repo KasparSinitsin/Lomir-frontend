@@ -20,7 +20,7 @@ Built with React 19, Vite, Tailwind CSS, and DaisyUI.
 
 ### Accounts & Demo Content
 
-Anyone can **register their own account** directly in the app with a valid email address (email verification is required); new profiles stay private until you make them public in settings. A demo login can also be provided on request.
+To test the live demo, just **register your own account** directly in the deployed app — open the app, sign up with a valid email address, confirm it via the verification link sent to you, and log in (no need to contact the developers). New profiles stay private until you make them public in settings.
 
 > **Note on demo content:** Lomir currently shows many demo users, teams, and roles — while few real users have registered yet, this seed data gives visitors a realistic impression of the app's purpose and possibilities (and supports ongoing development and testing). You can hide all of it at any time via the demo-data filter in the search page's filter settings.
 
@@ -227,6 +227,7 @@ Lomir-frontend/
 │   │   ├── useUserQueries.js       # React Query hooks for user profile/tags/badges (useUserProfile, useUserTags, useUserBadges) + unwrap helpers
 │   │   ├── useTagQueries.js        # React Query hooks for structured tags
 │   │   ├── useBadgeQueries.js      # React Query hooks for badge catalog and shared-teams lookups
+│   │   ├── useTeamQueries.js       # React Query hooks for the paginated user-teams list and bulk member badges (MyTeams)
 │   │   ├── useViewerMatchProfile.js # Viewer's tags/badges/location for client-side scoring
 │   │   ├── useViewerPendingRequests.js # Shared cache of viewer's pending invitations + applications, consumed by MyTeams and modals
 │   │   ├── useViewerTeamMemberships.js # Viewer's team memberships for "already in team" gates
