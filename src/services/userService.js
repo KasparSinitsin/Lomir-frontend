@@ -28,12 +28,17 @@ export const userService = {
   /**
    * Fetches user details by their ID.
    * @param {string|number} userId - The ID of the user to fetch.
+   * @param {object} [options]
+   * @param {number[]} [options.quietErrorStatuses] - Status codes to keep out
+   *   of the console (e.g. `[404]` when a missing user is an expected,
+   *   gracefully-handled case rather than an error worth logging).
    * @returns {Promise<object>} A promise resolving to the user data.
    */
-  getUserById: (userId) =>
+  getUserById: (userId, { quietErrorStatuses } = {}) =>
     call(`fetching user details for ID ${userId}`, () =>
       api.get(`/api/users/${userId}`, {
         skipResponseCaseTransform: true,
+        quietErrorStatuses,
       }),
     ).then(normalizeUserPayload),
 

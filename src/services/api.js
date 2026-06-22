@@ -38,6 +38,20 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+/**
+ * Whether an error response should be kept out of the console. True when the
+ * caller opted out entirely (`skipErrorLog`) or the status is an expected,
+ * already-handled one declared via `quietErrorStatuses` (e.g. a 404 for a
+ * resource that may have been deleted — graceful UX, not red console noise).
+ * The error still propagates; this only governs logging.
+ */
+export const isQuietError = (error) => {
+  if (error?.config?.skipErrorLog === true) return true;
+  const quiet = error?.config?.quietErrorStatuses;
+  const status = error?.response?.status;
+  return Array.isArray(quiet) && status != null && quiet.includes(status);
+};
+
 // Add response interceptor to convert response data to camelCase
 api.interceptors.response.use(
   (response) => {
@@ -49,9 +63,8 @@ api.interceptors.response.use(
   (error) => {
     if (error.response) {
       const skipAuthRedirect = error.config?.skipAuthRedirect === true;
-      const skipErrorLog = error.config?.skipErrorLog === true;
 
-      if (!skipErrorLog) {
+      if (!isQuietError(error)) {
         console.error("API Error:", error.response.data);
       }
 
@@ -87,7 +100,9 @@ export const call = async (label, requestFn) => {
     const response = await requestFn();
     return response.data;
   } catch (error) {
-    console.error(`Error ${label}:`, error);
+    if (!isQuietError(error)) {
+      console.error(`Error ${label}:`, error);
+    }
     throw error;
   }
 };

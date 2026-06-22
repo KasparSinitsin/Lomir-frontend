@@ -25,8 +25,11 @@ export const vacantRoleService = {
    * @param {number} roleId
    */
   async getVacantRoleById(teamId, roleId) {
+    // A 404 here is expected when the role was filled/closed/deleted — callers
+    // handle it gracefully, so keep it out of the console.
     const response = await api.get(
       `/api/teams/${teamId}/vacant-roles/${roleId}`,
+      { quietErrorStatuses: [404] },
     );
     return response.data;
   },
