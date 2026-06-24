@@ -710,7 +710,17 @@ const TeamCard = ({
     }
 
     const localSnapshot = resolveTeamOpenRoleSnapshot(teamData);
-    if (localSnapshot.source !== "aggregate") {
+    // Render straight from the embedded payload: the team-list endpoints
+    // (getUserTeams + search) embed both the open-role count and the names. Only
+    // fall back to a per-card fetch when there *are* open roles (count > 0) whose
+    // names aren't embedded. A zero count needs no fetch (nothing to list), and
+    // embedded names are authoritative — this is what removes the vacant-roles
+    // fan-out across list views.
+    if (
+      localSnapshot.source !== "aggregate" ||
+      localSnapshot.names.length > 0 ||
+      !(localSnapshot.count > 0)
+    ) {
       setFreshOpenRoleSnapshot(null);
       return;
     }
