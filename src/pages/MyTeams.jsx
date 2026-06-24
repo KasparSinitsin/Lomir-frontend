@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Link, useSearchParams } from "react-router-dom";
 import { useToast } from "../contexts/ToastContext";
 import PageContainer from "../components/layout/PageContainer";
@@ -33,6 +34,12 @@ import useClientPagination from "../hooks/useClientPagination";
 import useMyTeamsSort from "../hooks/useMyTeamsSort";
 import useViewerMatchProfile from "../hooks/useViewerMatchProfile";
 import useViewerPendingRequests from "../hooks/useViewerPendingRequests";
+import {
+  useUserTeams,
+  useTeamMemberBadges,
+  userTeamsBaseQueryKey,
+  userTeamsQueryKey,
+} from "../hooks/useTeamQueries";
 
 import {
   RESULTS_PER_PAGE_OPTIONS,
@@ -45,11 +52,18 @@ const MY_TEAMS_LIST_LOCATION_VISIBILITY_CLASSNAME = "hidden sm:flex";
 const MY_TEAMS_LIST_TAGS_WIDTH_CLASSNAME = "sm:w-36";
 const MY_TEAMS_LIST_BADGES_WIDTH_CLASSNAME = "sm:w-32";
 
+const DEFAULT_PAGINATION = {
+  page: 1,
+  limit: 10,
+  totalTeams: 0,
+  totalPages: 1,
+  hasNextPage: false,
+  hasPrevPage: false,
+};
+
 const MyTeams = () => {
   const showToast = useToast();
-  const [teams, setTeams] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const queryClient = useQueryClient();
   const { user } = useAuth();
   const {
     data: viewerPending,
@@ -79,14 +93,42 @@ const MyTeams = () => {
   // ===== PAGINATION STATE =====
   const [currentPage, setCurrentPage] = useState(1);
   const [resultsPerPage, setResultsPerPage] = useState(DEFAULT_RESULTS_PER_PAGE);
-  const [pagination, setPagination] = useState({
-    page: 1,
-    limit: 10,
-    totalTeams: 0,
-    totalPages: 1,
-    hasNextPage: false,
-    hasPrevPage: false,
-  });
+
+  // Teams list via React Query (caching + request dedup + 30s stale window → no
+  // refetch when navigating back to MyTeams). Server-paginated: page/limit are
+  // part of the query key, so each page is cached independently.
+  const {
+    data: userTeamsResponse,
+    isLoading: teamsLoading,
+    isError: teamsIsError,
+  } = useUserTeams(user?.id, { page: currentPage, limit: resultsPerPage });
+
+  const teams = useMemo(
+    () => (userTeamsResponse?.success ? userTeamsResponse.data ?? [] : []),
+    [userTeamsResponse],
+  );
+
+  const pagination = useMemo(
+    () =>
+      userTeamsResponse?.pagination ?? {
+        ...DEFAULT_PAGINATION,
+        totalTeams: teams.length,
+      },
+    [userTeamsResponse, teams.length],
+  );
+
+  const teamsError = teamsIsError
+    ? "Failed to load teams. Please try again."
+    : null;
+
+  // Refresh every cached page after a mutation (create/leave/delete/accept).
+  const invalidateUserTeams = useCallback(
+    () =>
+      queryClient.invalidateQueries({
+        queryKey: userTeamsBaseQueryKey(user?.id),
+      }),
+    [queryClient, user?.id],
+  );
 
   // URL params for highlighting
   const [searchParams, setSearchParams] = useSearchParams();
@@ -117,94 +159,31 @@ const MyTeams = () => {
   const [autoOpenApplicationsTeamId, setAutoOpenApplicationsTeamId] =
     useState(null);
 
-  // Bulk-fetched member badges keyed by team id. null = "still loading" so
-  // child cards wait instead of falling back to their own per-card fetch.
-  const [teamMemberBadgesById, setTeamMemberBadgesById] = useState(null);
-
-  const teamIdsKey = useMemo(
-    () =>
-      teams
-        .map((t) => t?.id)
-        .filter((id) => id != null)
-        .join(","),
+  // Bulk member badges for all visible teams in one request (keyed by team id),
+  // via React Query. Child cards read `null` as "still loading" so they wait
+  // instead of falling back to their own per-card fetch; `{}` means loaded
+  // (or errored) → cards stop waiting and just show no badges.
+  const teamIds = useMemo(
+    () => teams.map((t) => t?.id).filter((id) => id != null),
     [teams],
   );
 
-  useEffect(() => {
-    if (!teamIdsKey) {
-      setTeamMemberBadgesById({});
-      return;
-    }
+  const { data: teamMemberBadgesData, isError: teamMemberBadgesIsError } =
+    useTeamMemberBadges(teamIds);
 
-    const ids = teamIdsKey.split(",").map((id) => parseInt(id, 10));
-    let cancelled = false;
-    setTeamMemberBadgesById(null);
-
-    teamService
-      .getMemberBadgesForTeams(ids)
-      .then((response) => {
-        if (!cancelled) {
-          setTeamMemberBadgesById(response?.data || {});
-        }
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          console.error("Failed to fetch bulk team member badges:", err);
-          // Surface as empty map so cards stop waiting and just show no badges
-          // rather than perpetually loading.
-          setTeamMemberBadgesById({});
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [teamIdsKey]);
-
-  // Fetch user's teams with pagination
-  const fetchUserTeams = useCallback(
-    async (page = 1, limit = 10) => {
-      if (!user?.id) return;
-
-      try {
-        setLoading(true);
-        const response = await teamService.getUserTeams(user.id, {
-          page,
-          limit,
-        });
-
-        if (response.success) {
-          setTeams(response.data || []);
-          setPagination(
-            response.pagination || {
-              page: 1,
-              limit: 10,
-              totalTeams: response.data?.length || 0,
-              totalPages: 1,
-              hasNextPage: false,
-              hasPrevPage: false,
-            },
-          );
-        }
-      } catch (err) {
-        console.error("Error fetching teams:", err);
-        setError("Failed to load teams. Please try again.");
-      } finally {
-        setLoading(false);
-      }
-    },
-    [user?.id],
-  );
+  const teamMemberBadgesById = useMemo(() => {
+    if (teamIds.length === 0) return {};
+    if (teamMemberBadgesIsError) return {};
+    return teamMemberBadgesData ?? null;
+  }, [teamIds.length, teamMemberBadgesIsError, teamMemberBadgesData]);
 
   const handleRequestNotification = useCallback(() => {
     refetchViewerPending();
     // Also refresh the team list so each card's badge counts
     // (pendingApplicationsCount / pendingSentInvitationsCount) stay live
     // without per-card refetches.
-    if (user?.id) {
-      fetchUserTeams(currentPage, resultsPerPage);
-    }
-  }, [refetchViewerPending, fetchUserTeams, user?.id, currentPage, resultsPerPage]);
+    invalidateUserTeams();
+  }, [refetchViewerPending, invalidateUserTeams]);
 
   useSocketEvents(
     user?.id
@@ -216,13 +195,6 @@ const MyTeams = () => {
       : null,
     [handleRequestNotification, user?.id],
   );
-
-  // Fetch teams when page or limit changes
-  useEffect(() => {
-    if (user?.id) {
-      fetchUserTeams(currentPage, resultsPerPage);
-    }
-  }, [currentPage, resultsPerPage, user?.id, fetchUserTeams]);
 
   // Handle URL params for highlighting and auto-opening modals
   useEffect(() => {
@@ -337,14 +309,23 @@ const MyTeams = () => {
   const handleTeamUpdate = (updatedTeam) => {
     if (!updatedTeam) {
       console.warn("Received undefined team data in handleTeamUpdate");
-      fetchUserTeams(currentPage, resultsPerPage);
+      invalidateUserTeams();
       return;
     }
 
-    setTeams((prevTeams) =>
-      prevTeams.map((team) =>
-        team.id === updatedTeam.id ? updatedTeam : team,
-      ),
+    // Optimistic single-team patch on the current page's cached data — avoids a
+    // full refetch for an in-place card update.
+    queryClient.setQueryData(
+      userTeamsQueryKey(user?.id, currentPage, resultsPerPage),
+      (old) =>
+        old
+          ? {
+              ...old,
+              data: (old.data ?? []).map((team) =>
+                team.id === updatedTeam.id ? updatedTeam : team,
+              ),
+            }
+          : old,
     );
   };
 
@@ -352,7 +333,7 @@ const MyTeams = () => {
     try {
       await teamService.deleteTeam(teamId);
       // Refetch to update pagination correctly
-      fetchUserTeams(currentPage, resultsPerPage);
+      invalidateUserTeams();
       return true;
     } catch (error) {
       console.error("Error deleting team:", error);
@@ -363,7 +344,7 @@ const MyTeams = () => {
   // Handler for when user LEAVES a team (not deletes it)
   const handleTeamLeave = () => {
     // Refetch to update pagination correctly
-    fetchUserTeams(currentPage, resultsPerPage);
+    invalidateUserTeams();
   };
 
   // Application handlers
@@ -398,7 +379,7 @@ const MyTeams = () => {
 
       // Refresh the data
       refetchViewerPending();
-      fetchUserTeams(currentPage, resultsPerPage);
+      invalidateUserTeams();
     } catch (error) {
       console.error("Error accepting invitation:", error);
     }
@@ -424,9 +405,9 @@ const MyTeams = () => {
 
   // Handler for when a new team is created
   const handleTeamCreated = () => {
-    // Refresh the teams list
-    fetchUserTeams(1, resultsPerPage);
+    // Jump to page 1 and refresh the teams list
     setCurrentPage(1);
+    invalidateUserTeams();
   };
 
   const { sortBy, sortDir, handleSortChange, sortPendingItems, sortMemberTeams } =
@@ -563,7 +544,7 @@ const MyTeams = () => {
     .filter(Boolean)
     .join(" and ");
 
-  if (loading && loadingApplications && loadingInvitations) {
+  if (teamsLoading && loadingApplications && loadingInvitations) {
     return (
       <PageContainer variant="muted">
         <div className="flex justify-center items-center h-64">
@@ -573,10 +554,10 @@ const MyTeams = () => {
     );
   }
 
-  if (error) {
+  if (teamsError) {
     return (
       <PageContainer variant="muted">
-        <Alert type="error" message={error} className="w-full shadow-sm" />
+        <Alert type="error" message={teamsError} className="w-full shadow-sm" />
       </PageContainer>
     );
   }
@@ -910,7 +891,7 @@ const MyTeams = () => {
         }
         collapsible
       >
-        {loading ? (
+        {teamsLoading ? (
           <div className="flex justify-center py-8">
             <div className="loading loading-spinner loading-md"></div>
           </div>

@@ -313,6 +313,9 @@ export const messageService = {
     call(`fetching conversation ${conversationId}`, () =>
       api.get(`/api/messages/conversations/${conversationId}?type=${type}`, {
         skipResponseCaseTransform: true,
+        // A 404 ("not found or access denied") is expected for a deleted or
+        // inaccessible conversation — handled by the caller, not console noise.
+        quietErrorStatuses: [404],
       }),
     ).then(normalizeConversationPayload),
 
