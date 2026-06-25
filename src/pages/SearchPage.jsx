@@ -40,7 +40,12 @@ import {
   Globe,
   Target,
 } from "lucide-react";
-import { searchService, getApiErrorMessage } from "../services/searchService";
+import { useQueryClient } from "@tanstack/react-query";
+import { getApiErrorMessage } from "../services/searchService";
+import {
+  globalSearchQueryKey,
+  useGlobalSearch,
+} from "../hooks/useSearchQueries";
 import { tagService } from "../services/tagService";
 import { badgeService } from "../services/badgeService";
 import {
@@ -234,17 +239,28 @@ const compareProximityItems = (a, b, sortDir) => {
 const sortByProximity = (items, sortDir) =>
   [...items].sort((a, b) => compareProximityItems(a, b, sortDir));
 
+// Stable fallbacks so the derived search state keeps a constant identity between
+// renders (avoids churning the downstream `effectiveSearchResults` memo).
+const EMPTY_SEARCH_RESULTS = { teams: [], users: [], roles: [] };
+const DEFAULT_PAGINATION = {
+  page: 1,
+  limit: DEFAULT_RESULTS_PER_PAGE,
+  totalTeams: 0,
+  totalUsers: 0,
+  totalRoles: 0,
+  totalItems: 0,
+  totalPages: 1,
+  hasNextPage: false,
+  hasPrevPage: false,
+};
+
 const SearchPage = () => {
   const location = useLocation();
   const { user, isAuthenticated, loading: authLoading } = useAuth();
   const { data: structuredTags = EMPTY_QUERY_ARRAY } = useStructuredTags();
+  const queryClient = useQueryClient();
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState({
-    teams: [],
-    users: [],
-    roles: [],
-  });
 
   const [searchType, setSearchType] = useState(() => {
     const urlParams = new URLSearchParams(location.search);
@@ -258,7 +274,6 @@ const SearchPage = () => {
         : "all";
   });
 
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [hasSearched, setHasSearched] = useState(false);
   const [searchInputResetSignal, setSearchInputResetSignal] = useState(0);
@@ -411,17 +426,123 @@ const SearchPage = () => {
   const [resultsPerPage, setResultsPerPage] = useState(
     DEFAULT_RESULTS_PER_PAGE,
   );
-  const [pagination, setPagination] = useState({
-    page: 1,
-    limit: DEFAULT_RESULTS_PER_PAGE,
-    totalTeams: 0,
-    totalUsers: 0,
-    totalRoles: 0,
-    totalItems: 0,
-    totalPages: 1,
-    hasNextPage: false,
-    hasPrevPage: false,
+
+  // Effective filter values (a couple of filters are forced depending on the
+  // active search type / auth) — feed both the request criteria and the UI.
+  const effectiveOpenRolesOnly =
+    searchType === "users" ? false : openRolesOnly;
+  const effectiveIncludeOwnTeams =
+    !isAuthenticated || searchType === "users" ? true : includeOwnTeams;
+
+  // ===== SEARCH QUERY (React Query) =====
+  // The fully-resolved request criteria double as the query key, so each
+  // page/filter/sort combination is cached independently and identical requests
+  // are deduped across navigations (saves Render CPU + Neon compute).
+  const requestCriteria = useMemo(
+    () =>
+      buildSearchRequestCriteria({
+        hasSearched,
+        searchQuery,
+        searchType,
+        currentPage,
+        resultsPerPage,
+        sortBy,
+        sortDir,
+        maxDistance,
+        effectiveOpenRolesOnly,
+        effectiveIncludeOwnTeams,
+        includeDemoData,
+        capacityMode,
+        filterTagIds,
+        filterBadgeIds,
+        matchRoleId,
+        excludeTeamId,
+      }),
+    [
+      hasSearched,
+      searchQuery,
+      searchType,
+      currentPage,
+      resultsPerPage,
+      sortBy,
+      sortDir,
+      maxDistance,
+      effectiveOpenRolesOnly,
+      effectiveIncludeOwnTeams,
+      includeDemoData,
+      capacityMode,
+      filterTagIds,
+      filterBadgeIds,
+      matchRoleId,
+      excludeTeamId,
+    ],
+  );
+
+  const {
+    data: searchData,
+    isFetching: isSearchFetching,
+    isError: isSearchError,
+    error: searchQueryError,
+  } = useGlobalSearch(requestCriteria, isAuthenticated, {
+    // Wait until auth resolves so we don't fetch with a stale auth flag baked
+    // into the request (the result set differs for authenticated viewers).
+    enabled: !authLoading,
   });
+
+  // On an actual error, blank the list (keepPreviousData would otherwise keep
+  // the last results on screen); on success / while refetching, show the data.
+  const activeSearchData = isSearchError ? undefined : searchData;
+
+  const searchResults = useMemo(
+    () =>
+      activeSearchData?.data
+        ? {
+            teams: activeSearchData.data.teams ?? [],
+            users: activeSearchData.data.users ?? [],
+            roles: activeSearchData.data.roles ?? [],
+          }
+        : EMPTY_SEARCH_RESULTS,
+    [activeSearchData],
+  );
+
+  const pagination = useMemo(
+    () => activeSearchData?.pagination ?? DEFAULT_PAGINATION,
+    [activeSearchData],
+  );
+
+  // `loading` keeps its old "a request is in flight" meaning (button-disabled
+  // states, the no-results gate). The full-page spinner instead uses
+  // `showInitialLoader` so background refetches keep the previous list visible.
+  const loading = isSearchFetching;
+  const showInitialLoader = isSearchFetching && !activeSearchData;
+
+  // Write back the response-derived values that live in editable / URL-bound
+  // state. Gated on the (truthy) data object per the RQ default-vs-effect
+  // footgun; skipped on error (activeSearchData is undefined), matching the old
+  // success-only behaviour.
+  useEffect(() => {
+    if (!activeSearchData) return;
+    setUserHasCoordinates(!!activeSearchData.userLocation?.hasCoordinates);
+    if (activeSearchData.matchRole?.roleName) {
+      setMatchRoleName(activeSearchData.matchRole.roleName);
+    }
+    const nextRoleMaxDistanceKm = Number(
+      activeSearchData.matchRole?.maxDistanceKm ??
+        activeSearchData.matchRole?.max_distance_km ??
+        activeSearchData.matchRole?.distanceLimitKm ??
+        activeSearchData.matchRole?.distance_limit_km,
+    );
+    if (Number.isFinite(nextRoleMaxDistanceKm) && nextRoleMaxDistanceKm > 0) {
+      setMatchRoleMaxDistanceKm(nextRoleMaxDistanceKm);
+    }
+  }, [activeSearchData]);
+
+  // Mirror the query error into the dismissable `error` alert state. Only
+  // re-runs when the query error itself flips, so a manual dismiss (or the
+  // explicit setError(null) clears elsewhere) sticks until the next fetch.
+  useEffect(() => {
+    setError(searchQueryError ? getApiErrorMessage(searchQueryError) : null);
+  }, [searchQueryError]);
 
   const withResolvedDistance = useCallback((item, viewerEntity) => {
     if (!item) return item;
@@ -985,9 +1106,6 @@ const SearchPage = () => {
     filteredResults.users.length > 0 ||
     filteredResults.roles.length > 0;
 
-  const effectiveOpenRolesOnly = searchType === "users" ? false : openRolesOnly;
-  const effectiveIncludeOwnTeams =
-    !isAuthenticated || searchType === "users" ? true : includeOwnTeams;
   const isCapacitySpotsSort =
     searchType === "teams" && sortBy === "capacity" && capacityMode === "spots";
   const isCapacityRolesSort =
@@ -1014,23 +1132,6 @@ const SearchPage = () => {
   );
   const visibleFilterOptions = visibleSortOptions.filter(
     (option) => !SORTING_OPTION_VALUES.has(option.value),
-  );
-
-  const fetchData = useCallback(
-    async (criteria) => {
-      if (criteria.mode === "search") {
-        return await searchService.globalSearch({
-          ...criteria,
-          isAuthenticated,
-        });
-      }
-
-      return await searchService.getAllUsersAndTeams({
-        ...criteria,
-        isAuthenticated,
-      });
-    },
-    [isAuthenticated],
   );
 
   // Fetch all badges once on mount for client-side suggestion filtering
@@ -1092,102 +1193,6 @@ const SearchPage = () => {
     excludeTeamName,
   });
   const showIncludeOwnTeamsFilter = isAuthenticated && searchType !== "users";
-
-  useEffect(() => {
-    // Wait until auth resolves so we don't double-fetch with stale
-    // isAuthenticated baked into fetchData.
-    if (authLoading) return;
-
-    const run = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-
-        const requestCriteria = buildSearchRequestCriteria({
-          hasSearched,
-          searchQuery,
-          searchType,
-          currentPage,
-          resultsPerPage,
-          sortBy,
-          sortDir,
-          maxDistance,
-          effectiveOpenRolesOnly,
-          effectiveIncludeOwnTeams,
-          includeDemoData,
-          capacityMode,
-          filterTagIds,
-          filterBadgeIds,
-          matchRoleId,
-          excludeTeamId,
-        });
-
-        const results = await fetchData(requestCriteria);
-
-        setSearchResults({
-          teams: results.data?.teams ?? [],
-          users: results.data?.users ?? [],
-          roles: results.data?.roles ?? [],
-        });
-        setUserHasCoordinates(!!results.userLocation?.hasCoordinates);
-
-        if (results.matchRole?.roleName) {
-          setMatchRoleName(results.matchRole.roleName);
-        }
-        const nextRoleMaxDistanceKm = Number(
-          results.matchRole?.maxDistanceKm ??
-            results.matchRole?.max_distance_km ??
-            results.matchRole?.distanceLimitKm ??
-            results.matchRole?.distance_limit_km,
-        );
-        if (Number.isFinite(nextRoleMaxDistanceKm) && nextRoleMaxDistanceKm > 0) {
-          setMatchRoleMaxDistanceKm(nextRoleMaxDistanceKm);
-        }
-
-        if (results.pagination) {
-          setPagination(results.pagination);
-        }
-      } catch (err) {
-        console.error("Error fetching data:", err);
-        setSearchResults({ teams: [], users: [], roles: [] });
-        setPagination((p) => ({
-          ...p,
-          totalTeams: 0,
-          totalUsers: 0,
-          totalRoles: 0,
-          totalItems: 0,
-          totalPages: 1,
-          hasNextPage: false,
-          hasPrevPage: false,
-        }));
-        setError(getApiErrorMessage(err));
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    run();
-  }, [
-    authLoading,
-    fetchData,
-    currentPage,
-    resultsPerPage,
-    searchType,
-    sortBy,
-    sortDir,
-    maxDistance,
-    openRolesOnly,
-    effectiveOpenRolesOnly,
-    effectiveIncludeOwnTeams,
-    includeDemoData,
-    capacityMode,
-    hasSearched,
-    searchQuery,
-    filterTagIds,
-    filterBadgeIds,
-    matchRoleId,
-    excludeTeamId,
-  ]);
 
   useEffect(() => {
     const urlParams = new URLSearchParams(location.search);
@@ -1802,22 +1807,47 @@ const SearchPage = () => {
     }
   };
 
+  // Optimistically patch the cached search response so the affected card
+  // reflects the change immediately; the next genuine refetch reconciles it.
   const handleUserUpdate = (updatedUser) => {
-    setSearchResults((prev) => ({
-      ...prev,
-      users: prev.users.map((u) => (u.id === updatedUser.id ? updatedUser : u)),
-    }));
+    queryClient.setQueryData(
+      globalSearchQueryKey(requestCriteria, isAuthenticated),
+      (prev) =>
+        prev?.data
+          ? {
+              ...prev,
+              data: {
+                ...prev.data,
+                users: (prev.data.users ?? []).map((u) =>
+                  u.id === updatedUser.id ? updatedUser : u,
+                ),
+              },
+            }
+          : prev,
+    );
   };
 
   const handleTeamUpdate = (updatedTeam) => {
-    setSearchResults((prev) => ({
-      ...prev,
-      teams: prev.teams.map((t) =>
-        t.id === updatedTeam.id
-          ? { ...updatedTeam, is_public: updatedTeam.is_public === true }
-          : t,
-      ),
-    }));
+    queryClient.setQueryData(
+      globalSearchQueryKey(requestCriteria, isAuthenticated),
+      (prev) =>
+        prev?.data
+          ? {
+              ...prev,
+              data: {
+                ...prev.data,
+                teams: (prev.data.teams ?? []).map((t) =>
+                  t.id === updatedTeam.id
+                    ? {
+                        ...updatedTeam,
+                        is_public: updatedTeam.is_public === true,
+                      }
+                    : t,
+                ),
+              },
+            }
+          : prev,
+    );
   };
 
   const getTotalItemsForFilter = () => {
@@ -2433,7 +2463,7 @@ const SearchPage = () => {
         ]}
       />
 
-      {loading ? (
+      {showInitialLoader ? (
         <div className="flex justify-center items-center h-64">
           <div className="loading loading-spinner loading-lg text-primary"></div>
         </div>
