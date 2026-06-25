@@ -5,7 +5,7 @@ import Card from "../components/common/Card";
 const CONTACT_EMAIL = "lomirapp@gmail.com";
 const LAST_UPDATED = "June 18, 2026";
 const LEGAL_NOTICE_UPDATED = "June 16, 2026";
-const PRIVACY_UPDATED = "June 19, 2026";
+const PRIVACY_UPDATED = "June 25, 2026";
 
 const mailLink = (
   <a href={`mailto:${CONTACT_EMAIL}`} className="link link-primary">
@@ -174,7 +174,7 @@ const pageContent = {
           "Render hosts the backend API. Render may process IP addresses, browser and device data, API request metadata, server logs, error information, and data transmitted to or from the backend.",
           "Neon, now part of Databricks, provides the PostgreSQL database. App data stored in the database may include account data, profile data, team and role data, messages, notifications, legal acknowledgement records, location data, and related metadata.",
           "ImageKit stores, transforms, optimizes, and delivers uploaded media and files, including profile avatars, team avatars, chat images, chat files, and related delivery logs or metadata.",
-          "Gmail/Google SMTP is used to send account verification emails, password reset emails, account-change notifications, contact form messages, and abuse or illegal-content report emails. Google may process email addresses, email content, email metadata, contact form attachments, and report-related content as part of email delivery and mailbox operation.",
+          "Brevo (operated by Sendinblue SAS, France) is used to send the app's transactional emails — account verification, password reset, account-change notifications, and contact form and abuse or illegal-content report messages. Brevo may process email addresses, email content, email metadata, and contact form attachments as part of email delivery. Contact form and report messages are additionally received in the Lomir operators' Google/Gmail mailbox; Google may process that email content and metadata as the mailbox operator.",
           "Cloudflare Turnstile may be used for CAPTCHA checks on registration and contact forms. Cloudflare may process technical data such as IP address, browser and device information, challenge data, and verification tokens to detect abuse and confirm that a request is likely made by a human.",
           "OpenStreetMap/Nominatim is used to resolve user-provided location information such as postal code, city, district, state, or country. OpenStreetMap map tiles may be loaded when the map view is opened. OpenStreetMap-related services may receive location queries, IP addresses, browser and device data, and request metadata.",
         ],
@@ -184,7 +184,7 @@ const pageContent = {
         paragraphs: [
           "Some providers are established outside the European Economic Area or may process data in the United States, the United Kingdom, India, or other countries, especially where infrastructure, support, security, email delivery, content delivery, or global network services are provided internationally.",
           "Where personal data is transferred to a country without an EU adequacy decision, Lomir relies on the available transfer mechanisms and safeguards offered by the relevant provider where required. These may include the EU-U.S. Data Privacy Framework, the UK Extension to the EU-U.S. Data Privacy Framework, the Swiss-U.S. Data Privacy Framework, EU Standard Contractual Clauses, data processing agreements, and supplementary technical and organizational measures.",
-          "Vercel, Render, Databricks/Neon, Cloudflare, and ImageKit publish information about data processing, transfer safeguards, or subprocessors in their legal or trust documentation. Google/Gmail and OpenStreetMap-related services process data under their own privacy terms where they act as independent providers or public infrastructure operators.",
+          "Vercel, Render, Databricks/Neon, Cloudflare, Brevo, and ImageKit publish information about data processing, transfer safeguards, or subprocessors in their legal or trust documentation; Brevo, which handles email delivery, is established in the EU. Google/Gmail and OpenStreetMap-related services process data under their own privacy terms where they act as independent providers or public infrastructure operators.",
           <>Users may contact Lomir at {mailLink} to ask for more information about the safeguards relevant to a specific provider.</>,
         ],
       },
