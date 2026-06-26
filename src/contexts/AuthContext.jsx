@@ -5,9 +5,11 @@ import {
   useContext,
   useCallback,
 } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import api from "../services/api";
 import socketService from "../services/socketService";
 import { userService } from "../services/userService";
+import { conversationsQueryKey } from "../hooks/useChatQueries";
 import { setUserTimezone } from "../utils/dateHelpers";
 
 const AuthContext = createContext(null);
@@ -32,6 +34,7 @@ const normalizeAuthUser = (userData, { defaultIsPublic = false } = {}) => ({
 });
 
 export const AuthProvider = ({ children }) => {
+  const queryClient = useQueryClient();
   const [user, setUser] = useState(null);
   // Auth is carried by an httpOnly session cookie set by the backend and is
   // intentionally not readable by JavaScript. Auth state is derived by calling
@@ -74,6 +77,13 @@ export const AuthProvider = ({ children }) => {
     let activeSocket = null;
     const handleBlocksUpdated = () => {
       refreshBlocks();
+      // A block/unblock changes which direct chats are visible. The conversation
+      // list is filtered server-side by user_blocks, so invalidate its cache
+      // here — app-wide, not just while Chat is mounted — so an unblock made
+      // from Settings restores the DM on the next /chat visit (the cached list
+      // is otherwise served stale by staleTime: Infinity). This event is emitted
+      // after the block row is committed, so the refetch sees the new state.
+      queryClient.invalidateQueries({ queryKey: conversationsQueryKey });
     };
     const unsubscribe = socketService.onSocketReady((socketInstance) => {
       if (!socketInstance) return;
@@ -85,7 +95,7 @@ export const AuthProvider = ({ children }) => {
       unsubscribe?.();
       if (activeSocket) activeSocket.off("blocks:updated", handleBlocksUpdated);
     };
-  }, [userId, refreshBlocks]);
+  }, [userId, refreshBlocks, queryClient]);
 
   // On mount, restore the session from the httpOnly cookie (if present) by
   // asking the backend who we are. skipAuthRedirect keeps a logged-out

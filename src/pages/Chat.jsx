@@ -13,6 +13,7 @@ import {
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { fetchTeamById } from "../hooks/useTeamQueries";
+import { useConversations, conversationsQueryKey } from "../hooks/useChatQueries";
 import PageContainer from "../components/layout/PageContainer";
 import ConversationList from "../components/chat/ConversationList";
 import MessageDisplay, { parseSystemMessage } from "../components/chat/MessageDisplay";
@@ -275,6 +276,10 @@ const getConversationUpdatedAt = (conversation) => {
 const isDirectConversationForPartner = (conversation, partnerId) =>
   conversation?.type === "direct" &&
   String(getConversationPartnerId(conversation)) === String(partnerId);
+
+// Stable empty fallback so the conversations query's default never changes
+// identity between renders (avoids needless re-renders / effect re-runs).
+const EMPTY_CONVERSATIONS = [];
 
 const CHAT_SEARCH_PAGE_SIZE = 100;
 const CHAT_SEARCH_MAX_MESSAGES_PER_CONVERSATION = 500;
@@ -594,6 +599,71 @@ const hasConversationPreview = (conversation) => {
   );
 };
 
+// Fill in last-message previews for conversations the list endpoint returned
+// without one, by fetching the latest message per conversation. Pure: returns a
+// new list with previews merged in (or the input unchanged when nothing needs
+// hydrating), so it can run inside the conversations queryFn.
+const hydrateConversationPreviews = async (conversationList) => {
+  const conversationsToHydrate = (conversationList || []).filter(
+    (conversation) =>
+      !conversation.isVirtual && !hasConversationPreview(conversation),
+  );
+
+  if (conversationsToHydrate.length === 0) return conversationList || [];
+
+  const hydratedPreviews = await Promise.allSettled(
+    conversationsToHydrate.map(async (conversation) => {
+      const type = conversation.type || "direct";
+      const response = await messageService.getMessages(conversation.id, type, {
+        limit: 1,
+      });
+      const latestMessage = response?.data?.[response.data.length - 1];
+      const preview = buildConversationLastMessagePreview(latestMessage);
+
+      if (!latestMessage || !preview) return null;
+
+      return {
+        id: conversation.id,
+        type,
+        preview,
+        updatedAt:
+          latestMessage.createdAt ||
+          latestMessage.created_at ||
+          conversation.updatedAt,
+      };
+    }),
+  );
+
+  const previewByKey = new Map();
+
+  hydratedPreviews.forEach((result) => {
+    if (result.status !== "fulfilled" || !result.value) return;
+    previewByKey.set(
+      `${result.value.type}:${String(result.value.id)}`,
+      result.value,
+    );
+  });
+
+  if (previewByKey.size === 0) return conversationList || [];
+
+  return (conversationList || []).map((conversation) => {
+    const type = conversation.type || "direct";
+    const hydratedPreview = previewByKey.get(
+      `${type}:${String(conversation.id)}`,
+    );
+
+    if (!hydratedPreview || hasConversationPreview(conversation)) {
+      return conversation;
+    }
+
+    return {
+      ...conversation,
+      lastMessage: hydratedPreview.preview,
+      updatedAt: hydratedPreview.updatedAt || conversation.updatedAt,
+    };
+  });
+};
+
 const getMessageSearchTimestamp = (message) => {
   const timestamp =
     message?.createdAt ||
@@ -701,11 +771,31 @@ const Chat = () => {
       id != null && blockedRelationshipIds?.has?.(String(id)),
     [blockedRelationshipIds],
   );
-  const [conversations, setConversations] = useState([]);
+  // Conversation list is backed by the React Query cache. The query fetches +
+  // dedupes + hydrates previews once (keyed on a constant, so switching chats
+  // no longer refetches the list); socket/local updates mutate that cache via
+  // the setConversations wrapper below, keeping their (prev) => next shape.
+  const fetchConversations = useCallback(async () => {
+    const response = await messageService.getConversations();
+    return hydrateConversationPreviews(dedupeConversations(response.data || []));
+  }, []);
+  const {
+    data: conversations = EMPTY_CONVERSATIONS,
+    isLoading: loading,
+    isError: conversationsLoadError,
+  } = useConversations(fetchConversations, isAuthenticated);
+  const setConversations = useCallback(
+    (next) =>
+      queryClient.setQueryData(
+        conversationsQueryKey,
+        (prev = EMPTY_CONVERSATIONS) =>
+          typeof next === "function" ? next(prev) : next,
+      ),
+    [queryClient],
+  );
   const [activeConversation, setActiveConversation] = useState(null);
   const [messages, setMessages] = useState([]);
   const [replyingTo, setReplyingTo] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [onlineUsers, setOnlineUsers] = useState([]);
   const [typingUsers, setTypingUsers] = useState({});
@@ -883,7 +973,7 @@ const Chat = () => {
         navigate("/chat", { replace: true });
       }
     },
-    [conversationId, navigate, searchParams],
+    [conversationId, navigate, searchParams, setConversations],
   );
 
   const refreshActiveTeamMembership = useCallback(
@@ -1271,91 +1361,31 @@ const Chat = () => {
     );
   }, []);
 
-  const hydrateMissingConversationPreviews = useCallback(async (conversationList) => {
-    const conversationsToHydrate = (conversationList || []).filter(
-      (conversation) => !conversation.isVirtual && !hasConversationPreview(conversation),
-    );
-
-    if (conversationsToHydrate.length === 0) return;
-
-    const hydratedPreviews = await Promise.allSettled(
-      conversationsToHydrate.map(async (conversation) => {
-        const type = conversation.type || "direct";
-        const response = await messageService.getMessages(conversation.id, type, {
-          limit: 1,
-        });
-        const latestMessage = response?.data?.[response.data.length - 1];
-        const preview = buildConversationLastMessagePreview(latestMessage);
-
-        if (!latestMessage || !preview) return null;
-
-        return {
-          id: conversation.id,
-          type,
-          preview,
-          updatedAt:
-            latestMessage.createdAt ||
-            latestMessage.created_at ||
-            conversation.updatedAt,
-        };
-      }),
-    );
-
-    const previewByKey = new Map();
-
-    hydratedPreviews.forEach((result) => {
-      if (result.status !== "fulfilled" || !result.value) return;
-      previewByKey.set(
-        `${result.value.type}:${String(result.value.id)}`,
-        result.value,
-      );
-    });
-
-    if (previewByKey.size === 0) return;
-
-    setConversations((prev) =>
-      prev.map((conversation) => {
-        const type = conversation.type || "direct";
-        const hydratedPreview = previewByKey.get(
-          `${type}:${String(conversation.id)}`,
-        );
-
-        if (!hydratedPreview || hasConversationPreview(conversation)) {
-          return conversation;
-        }
-
-        return {
-          ...conversation,
-          lastMessage: hydratedPreview.preview,
-          updatedAt: hydratedPreview.updatedAt || conversation.updatedAt,
-        };
-      }),
-    );
-  }, []);
-
-  const refreshConversationList = useCallback(async () => {
-    try {
-      const response = await messageService.getConversations();
-      const deduplicatedList = dedupeConversations(response.data || []);
-      setConversations(deduplicatedList);
-      hydrateMissingConversationPreviews(deduplicatedList);
-    } catch (err) {
-      console.error("Error refreshing conversations:", err);
-    }
-  }, [hydrateMissingConversationPreviews]);
+  // Re-fetch the conversation list by invalidating its query (the queryFn
+  // re-runs the dedupe + preview hydration). React Query dedupes concurrent
+  // invalidations, so the burst of socket handlers that used to each trigger a
+  // fresh getConversations now collapse into a single refetch.
+  const refreshConversationList = useCallback(
+    () => queryClient.invalidateQueries({ queryKey: conversationsQueryKey }),
+    [queryClient],
+  );
 
   // Apply live block/unblock changes to the chat view: drop blocked DMs (and
   // restore unblocked ones) from the list, and close the active DM if its
   // partner is now blocked. Team chats stay open — the blocker is hidden via
   // the visibleMessages / teamMembers filters. The first run is skipped because
   // the initial conversation fetch below already loads the correct state.
-  const blocksSyncInitializedRef = useRef(false);
+  const prevBlockedIdsRef = useRef(blockedRelationshipIds);
   useEffect(() => {
     if (!isAuthenticated) return;
-    if (!blocksSyncInitializedRef.current) {
-      blocksSyncInitializedRef.current = true;
-      return;
-    }
+    // Only react to an ACTUAL block/unblock change — compare the value, not a
+    // first-run boolean. A "skip first run" boolean ref is defeated by React
+    // StrictMode's mount double-invoke: the ref persists, so the 2nd invoke
+    // passes the guard and refetches the list on every Chat mount. Comparing
+    // the blockedRelationshipIds Set by reference (it only changes when
+    // AuthContext updates it) is StrictMode-safe and mount-safe.
+    if (prevBlockedIdsRef.current === blockedRelationshipIds) return;
+    prevBlockedIdsRef.current = blockedRelationshipIds;
 
     refreshConversationList();
 
@@ -1377,101 +1407,96 @@ const Chat = () => {
       setHasMoreMessages(false);
       navigate("/chat", { replace: true });
     }
-  }, [
-    blockedRelationshipIds,
-    isAuthenticated,
-    isBlockedId,
-    refreshConversationList,
-    navigate,
-  ]);
+    // `navigate` is intentionally NOT a dependency: useNavigate() returns a new
+    // function identity on every navigation, so including it made this effect
+    // re-run — and refetch the whole conversation list — on every chat switch.
+    // This effect must only react to block/unblock state changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [blockedRelationshipIds, isAuthenticated, isBlockedId, refreshConversationList]);
 
-  // Fetch conversations
+  // Surface a load failure from the conversations query (matches the old
+  // fetch-effect error message).
   useEffect(() => {
-    const fetchConversations = async () => {
-      try {
-        setLoading(true);
-        const response = await messageService.getConversations();
-        let conversationsList = response.data || [];
-
-        // If we have a conversationId from URL but it's not in the conversations list,
-        // create a virtual conversation entry
-        if (conversationId && conversationsList.length >= 0) {
-          const conversationExists = conversationsList.some(
-            (conv) => String(conv.id) === String(conversationId),
-          );
-
-          if (!conversationExists) {
-            const urlParams = new URLSearchParams(window.location.search);
-            const type = urlParams.get("type") || "direct";
-
-            if (type === "direct") {
-              try {
-                // Get the user details for the virtual conversation. A 404
-                // (no such user — e.g. a stale link or deleted account) is an
-                // expected, gracefully-handled case, not console noise.
-                const userResponse = await userService.getUserById(
-                  conversationId,
-                  { quietErrorStatuses: [404] },
-                );
-
-                const userData = userResponse.data;
-
-                // Create a virtual conversation entry
-                const virtualConversation = {
-                  id: parseInt(conversationId),
-                  type: "direct",
-                  partner: {
-                    id: userData.id,
-                    username: userData.username,
-                    firstName: userData.firstName || userData.first_name,
-                    lastName: userData.lastName || userData.last_name,
-                    avatarUrl: userData.avatarUrl || userData.avatar_url,
-                    isSynthetic:
-                      userData.isSynthetic ?? userData.is_synthetic ?? undefined,
-                    is_synthetic:
-                      userData.is_synthetic ?? userData.isSynthetic ?? undefined,
-                  },
-                  lastMessage: "Start your conversation...",
-                  updatedAt: new Date().toISOString(),
-                  isVirtual: true,
-                  unreadCount: 0,
-                };
-
-                // Add to the beginning of the conversations list
-                conversationsList = [virtualConversation, ...conversationsList];
-              } catch (error) {
-                if (!isQuietError(error)) {
-                  console.error("Error creating virtual conversation:", error);
-                }
-              }
-            }
-          }
-        }
-
-        const deduplicatedList = dedupeConversations(conversationsList);
-        setConversations(deduplicatedList);
-        hydrateMissingConversationPreviews(deduplicatedList);
-
-        // If there are conversations but none is selected, select the first one
-        if (deduplicatedList.length > 0 && !conversationId) {
-          const firstConversationType = deduplicatedList[0].type || "direct";
-          navigate(
-            `/chat/${deduplicatedList[0].id}?type=${firstConversationType}`,
-          );
-        }
-
-        setLoading(false);
-      } catch (err) {
-        console.error("Error fetching conversations:", err);
-        setError("Failed to load conversations. Please try again.");
-        setLoading(false);
-      }
-    };
-
-    if (isAuthenticated) {
-      fetchConversations();
+    if (conversationsLoadError) {
+      setError("Failed to load conversations. Please try again.");
     }
-  }, [hydrateMissingConversationPreviews, isAuthenticated, conversationId, navigate]);
+  }, [conversationsLoadError]);
+
+  // Once the conversation list has loaded, either auto-select the first chat
+  // (landed on /chat with none chosen) or seed a virtual DM entry when the URL
+  // points at a partner not yet in the list (new/never-messaged conversation).
+  // Team virtuals are created in the messages effect, so this only handles
+  // direct chats. Guarded so each missing id is attempted at most once.
+  const seededVirtualConvRef = useRef(null);
+  useEffect(() => {
+    if (!isAuthenticated || loading) return;
+
+    if (!conversationId) {
+      if (conversations.length > 0) {
+        const firstConversationType = conversations[0].type || "direct";
+        navigate(`/chat/${conversations[0].id}?type=${firstConversationType}`);
+      }
+      return;
+    }
+
+    const conversationExists = conversations.some(
+      (conv) => String(conv.id) === String(conversationId),
+    );
+    if (conversationExists) return;
+    if (seededVirtualConvRef.current === String(conversationId)) return;
+
+    const type =
+      new URLSearchParams(window.location.search).get("type") || "direct";
+    if (type !== "direct") return;
+
+    seededVirtualConvRef.current = String(conversationId);
+
+    (async () => {
+      try {
+        // A 404 (no such user — stale link or deleted account) is expected and
+        // handled gracefully, not console noise.
+        const userResponse = await userService.getUserById(conversationId, {
+          quietErrorStatuses: [404],
+        });
+        const userData = userResponse.data;
+
+        const virtualConversation = {
+          id: parseInt(conversationId),
+          type: "direct",
+          partner: {
+            id: userData.id,
+            username: userData.username,
+            firstName: userData.firstName || userData.first_name,
+            lastName: userData.lastName || userData.last_name,
+            avatarUrl: userData.avatarUrl || userData.avatar_url,
+            isSynthetic:
+              userData.isSynthetic ?? userData.is_synthetic ?? undefined,
+            is_synthetic:
+              userData.is_synthetic ?? userData.isSynthetic ?? undefined,
+          },
+          lastMessage: "Start your conversation...",
+          updatedAt: new Date().toISOString(),
+          isVirtual: true,
+          unreadCount: 0,
+        };
+
+        setConversations((prev) =>
+          dedupeConversations([virtualConversation, ...prev]),
+        );
+      } catch (error) {
+        if (!isQuietError(error)) {
+          console.error("Error creating virtual conversation:", error);
+        }
+      }
+    })();
+  }, [
+    isAuthenticated,
+    loading,
+    conversationId,
+    conversations,
+    navigate,
+    setConversations,
+  ]);
 
   // Fetch messages when conversation changes
   useEffect(() => {
@@ -1838,6 +1863,7 @@ const Chat = () => {
     setSearchParams,
     navigate,
     user?.id,
+    setConversations,
   ]);
 
   useEffect(() => {
@@ -1872,7 +1898,7 @@ const Chat = () => {
         prev.filter((c) => !(c.type === "team" && c.id === data.teamId)),
       );
     },
-    [conversationId, conversationType, revokeTeamChatAccess],
+    [conversationId, conversationType, revokeTeamChatAccess, setConversations],
   );
 
   // Set up WebSocket event listeners
