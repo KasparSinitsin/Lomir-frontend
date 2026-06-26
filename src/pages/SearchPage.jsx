@@ -47,7 +47,7 @@ import {
   useGlobalSearch,
 } from "../hooks/useSearchQueries";
 import { tagService } from "../services/tagService";
-import { badgeService } from "../services/badgeService";
+import { useBadges } from "../hooks/useBadgeQueries";
 import {
   enrichTeamMatchData,
   enrichUserMatchData,
@@ -413,7 +413,11 @@ const SearchPage = () => {
     return [];
   });
   const [filterBadgeMap, setFilterBadgeMap] = useState({});
-  const [allBadges, setAllBadges] = useState([]);
+  // All badges, fetched once and cached across navigation via React Query
+  // (staleTime 5min). Used for client-side suggestion filtering + resolving
+  // badge names from URL params. Replaces a manual mount-effect fetch that
+  // refetched on every SearchPage mount (and double-fired under StrictMode).
+  const { data: allBadges = EMPTY_QUERY_ARRAY } = useBadges();
   const {
     viewerMatchProfile: viewerTeamMatchProfile,
     viewerDistanceSource,
@@ -1133,14 +1137,6 @@ const SearchPage = () => {
   const visibleFilterOptions = visibleSortOptions.filter(
     (option) => !SORTING_OPTION_VALUES.has(option.value),
   );
-
-  // Fetch all badges once on mount for client-side suggestion filtering
-  useEffect(() => {
-    badgeService
-      .getAllBadges()
-      .then((res) => setAllBadges(res.data || []))
-      .catch(() => {});
-  }, []);
 
   // Resolve badge names from URL params once allBadges has loaded
   useEffect(() => {
