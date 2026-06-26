@@ -228,6 +228,7 @@ Lomir-frontend/
 │   │   ├── useTagQueries.js        # React Query hooks for structured tags
 │   │   ├── useBadgeQueries.js      # React Query hooks for badge catalog and shared-teams lookups
 │   │   ├── useTeamQueries.js       # React Query hooks for the paginated user-teams list and bulk member badges (MyTeams)
+│   │   ├── useSearchQueries.js     # React Query hook for the global search (SearchPage): whole criteria object as query key, keepPreviousData
 │   │   ├── useViewerMatchProfile.js # Viewer's tags/badges/location for client-side scoring
 │   │   ├── useViewerPendingRequests.js # Shared cache of viewer's pending invitations + applications, consumed by MyTeams and modals
 │   │   ├── useViewerTeamMemberships.js # Viewer's team memberships for "already in team" gates
