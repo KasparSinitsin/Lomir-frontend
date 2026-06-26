@@ -32,6 +32,28 @@ export const useUserTeams = (
     ...options,
   });
 
+export const teamByIdQueryKey = (teamId) => ["teams", "byId", String(teamId)];
+
+// The getTeamById endpoint may return either the bare team object or an axios
+// envelope ({ data: team }); normalize to the team payload either way.
+const extractTeamDetailsPayload = (response) =>
+  response?.data && typeof response.data === "object" ? response.data : response;
+
+/**
+ * Imperatively fetch (and cache) a team's full detail payload through React
+ * Query — replaces a hand-rolled Map cache plus in-flight-request dedup. A
+ * cached hit is reused while fresh (mirrors the old never-expiring Map);
+ * `force` drops staleness so the call always refetches and refreshes the cache.
+ * Resolves to the unwrapped team payload, not the axios envelope.
+ */
+export const fetchTeamById = (queryClient, teamId, { force = false } = {}) =>
+  queryClient.fetchQuery({
+    queryKey: teamByIdQueryKey(teamId),
+    queryFn: () =>
+      teamService.getTeamById(teamId).then(extractTeamDetailsPayload),
+    staleTime: force ? 0 : Infinity,
+  });
+
 export const teamMemberBadgesQueryKey = (teamIds) => [
   "teams",
   "memberBadges",
