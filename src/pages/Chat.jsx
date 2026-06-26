@@ -11,6 +11,8 @@ import {
   FlaskConical,
 } from "lucide-react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
+import { fetchTeamById } from "../hooks/useTeamQueries";
 import PageContainer from "../components/layout/PageContainer";
 import ConversationList from "../components/chat/ConversationList";
 import MessageDisplay, { parseSystemMessage } from "../components/chat/MessageDisplay";
@@ -217,9 +219,6 @@ const isCurrentUserRemovalPayload = (payload, userId) => {
   const text = getPayloadText(payload);
   return /\byou\b/.test(text) && /removed from/.test(text);
 };
-
-const extractTeamDetailsPayload = (response) =>
-  response?.data && typeof response.data === "object" ? response.data : response;
 
 const mergeTeamDetailsIntoConversationData = (conversationData, teamPayload) => {
   if (!conversationData || !teamPayload) return conversationData;
@@ -694,6 +693,7 @@ const buildConversationSearchText = (conversation) => {
 const Chat = () => {
   const { conversationId } = useParams();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const { user, isAuthenticated, blockedRelationshipIds } = useAuth();
   const isBlockedId = useCallback(
@@ -742,8 +742,6 @@ const Chat = () => {
   const messagesRef = useRef([]);
   const chatSearchLoadingKeysRef = useRef(new Set());
   const pendingChatSearchTargetRef = useRef(null);
-  const teamDetailsCacheRef = useRef(new Map());
-  const teamDetailsRequestsRef = useRef(new Map());
   const [loadingMessages, setLoadingMessages] = useState(false);
 
   // ---- Message de-duplication (focus: ownership/system duplicates) ----
@@ -841,35 +839,15 @@ const Chat = () => {
   const canSendInActiveConversation =
     Boolean(activeConversation) && isCurrentUserActiveTeamMember;
 
-  const fetchTeamDetails = useCallback(async (teamId, { force = false } = {}) => {
-    if (!teamId) return null;
-
-    const cacheKey = String(teamId);
-
-    if (!force && teamDetailsCacheRef.current.has(cacheKey)) {
-      return teamDetailsCacheRef.current.get(cacheKey);
-    }
-
-    if (!force && teamDetailsRequestsRef.current.has(cacheKey)) {
-      return teamDetailsRequestsRef.current.get(cacheKey);
-    }
-
-    const request = teamService
-      .getTeamById(teamId)
-      .then((response) => {
-        const teamPayload = extractTeamDetailsPayload(response);
-        teamDetailsCacheRef.current.set(cacheKey, teamPayload);
-        teamDetailsRequestsRef.current.delete(cacheKey);
-        return teamPayload;
-      })
-      .catch((error) => {
-        teamDetailsRequestsRef.current.delete(cacheKey);
-        throw error;
-      });
-
-    teamDetailsRequestsRef.current.set(cacheKey, request);
-    return request;
-  }, []);
+  const fetchTeamDetails = useCallback(
+    (teamId, { force = false } = {}) => {
+      if (!teamId) return Promise.resolve(null);
+      // React Query handles caching and in-flight request dedup that this
+      // component used to track by hand (see fetchTeamById).
+      return fetchTeamById(queryClient, teamId, { force });
+    },
+    [queryClient],
+  );
 
   const revokeTeamChatAccess = useCallback(
     (teamId, message = "You no longer have access to this team chat.") => {
