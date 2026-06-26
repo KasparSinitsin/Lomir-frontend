@@ -31,7 +31,7 @@ import { messageService } from '../../services/messageService';
 import { useAuth } from '../../contexts/AuthContext';
 import useSocketEvents from '../../hooks/useSocketEvents';
 import { getEventPreview } from '../../utils/eventPreview';
-import { parseSystemMessage } from './MessageDisplay';
+import { parseSystemMessage } from '../../utils/messageSystemParser';
 import {
   getMessageSenderDisplayName,
   getMessageConversationTarget,
