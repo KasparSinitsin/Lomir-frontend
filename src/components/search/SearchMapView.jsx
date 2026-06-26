@@ -2190,7 +2190,15 @@ const SearchMapView = ({
 
       const teamId = getTeamItemId(item);
       if (teamId == null) return;
-      if (resolveTeamOpenRoleSnapshot(item).source !== "aggregate") return;
+
+      // Only fetch as a true fallback: the search endpoint already embeds both
+      // open_role_count and open_role_names, so when the names are present (or
+      // the team has no open roles) the snapshot is authoritative and no
+      // per-team vacant-roles call is needed. Mirrors the TeamCard list gate
+      // (TeamCard.jsx) — without this the map view fired one call per pin.
+      const snapshot = resolveTeamOpenRoleSnapshot(item);
+      if (snapshot.source !== "aggregate") return;
+      if (snapshot.names.length > 0 || !(snapshot.count > 0)) return;
 
       const key = String(teamId);
       if (seenIds.has(key)) return;
