@@ -185,10 +185,10 @@ Lomir-frontend/
 │   │   │                           #   MentionDropdown, MessageText (mentions + URLs),
 │   │   │                           #   reply previews, system event messages.
 │   │   │                           #   MessageDisplay.jsx is a thin orchestrator after the
-│   │   │                           #   Stage 1–4b decomposition; extracted modules:
+│   │   │                           #   Stage 1–4c decomposition; extracted modules:
 │   │   │                           #   messageEventRenderers.jsx (createEventRenderers(ctx)
 │   │   │                           #   factory for the 29 system/event renderers),
-│   │   │                           #   ReadReceipt.jsx, FileAttachment.jsx
+│   │   │                           #   MessageBubble.jsx, ReadReceipt.jsx, FileAttachment.jsx
 │   │   ├── search/                 # SearchMapView (Leaflet map with markers/popups)
 │   │   ├── common/                 # Shared UI primitives and composed widgets:
 │   │   │                           #   Button, Card, Modal, Alert, Pagination, Tooltip,
@@ -201,7 +201,8 @@ Lomir-frontend/
 │   │   │                           #   MatchScoreOverlay, MatchScoreSubtitle, MatchScoreSection,
 │   │   │                           #   SearchResultTypeOverlay, NotificationBadge,
 │   │   │                           #   PersonRequestCard, RequestListModal, SendMessageButton,
-│   │   │                           #   VisibilityToggle, ScreenAlert, ConfirmModal
+│   │   │                           #   VisibilityToggle, ScreenAlert, ConfirmModal,
+│   │   │                           #   ErrorBoundary
 │   │   └── layout/                 # Navbar, Footer, PageContainer, ProtectedRoute, Grid, Section
 │   ├── contexts/
 │   │   ├── AuthContext.jsx         # Authentication state (httpOnly cookie session, restored via /api/auth/me) and block relationship state
@@ -382,11 +383,16 @@ The chat page supports both direct (1-to-1) and team group conversations.
 - Role lifecycle events post dedicated banners: role filled (via application or invitation acceptance), role closed, role updated, role deleted, and role reopened — each with a distinct icon and colour
 - Conversation list cards show a colour-coded icon and short preview for event messages instead of raw system text; notification toasts resolve the same icons and preview text
 
+**Render resilience**
+- Chat routes are wrapped in a small `ErrorBoundary` so unexpected render errors show a visible fallback instead of a blank white screen
+- Individual message bubbles are also isolated by an error boundary; if a legacy message payload fails to render, the rest of the conversation remains usable
+
 ---
 
 ## Troubleshooting
 
 - **CORS errors** — Make sure the backend is running on port 5001 and the frontend on 5173; check that `VITE_API_URL` matches
+- **Local auth suddenly logs out / "No token provided"** — Use the same host for frontend and backend during local development. With `VITE_API_URL=http://localhost:5001`, open the frontend via `http://localhost:5173` (or the actual localhost port Vite prints), not `http://127.0.0.1:5173`, because cookies are host-scoped.
 - **Socket.IO won't connect** — Verify `VITE_SOCKET_URL` in `.env` if you set it; otherwise the client falls back to `http://localhost:5001`
 - **"Access denied. No token provided."** — Your session cookie is missing or expired; log out and log back in (and ensure the API is reached over a credentialed/CORS-allowed origin so the cookie is sent)
 - **CAPTCHA not showing locally** — Expected when no Turnstile site key is configured; the CAPTCHA is active in the deployed app
