@@ -20,8 +20,6 @@ import {
   UserSearch,
   CircleX,
   FileText,
-  File,
-  FileSpreadsheet,
   Download,
   AlertTriangle,
   Clock,
@@ -30,7 +28,6 @@ import {
   Reply,
   X,
   Check,
-  CheckCheck,
 } from "lucide-react";
 import TeamDetailsModal from "../teams/TeamDetailsModal";
 import VacantRoleDetailsModal from "../teams/VacantRoleDetailsModalLazy";
@@ -39,11 +36,10 @@ import UserAvatar from "../users/UserAvatar";
 import DemoAvatarOverlay from "../users/DemoAvatarOverlay";
 import { userService } from "../../services/userService";
 import { vacantRoleService } from "../../services/vacantRoleService";
-import {
-  getFileExpirationStatus,
-  formatFileSize,
-} from "../../utils/fileExpiration";
+import { getFileExpirationStatus } from "../../utils/fileExpiration";
 import MessageText from "./MessageText";
+import ReadReceipt from "./ReadReceipt";
+import FileAttachment from "./FileAttachment";
 import Tooltip from "../common/Tooltip";
 import {
   DELETED_USER_DISPLAY_NAME,
@@ -60,6 +56,7 @@ import { parseSystemMessage } from "../../utils/messageSystemParser";
 import {
   getEventReactionPreview,
   formatReplyTooltipText,
+  getFileIcon,
 } from "../../utils/messageDisplayHelpers";
 import {
   renderReplyContent,
@@ -267,64 +264,6 @@ const MessageDisplay = ({
     }
 
     return formatReadByTooltip([getDisplayName(resolvedConversationPartner)]);
-  };
-
-  const renderReadReceipt = (message, isCurrentUser) => {
-    if (!isCurrentUser) return null;
-
-    const parsedReadCount = Number(message.readCount ?? message.read_count);
-    const readCount = Number.isFinite(parsedReadCount) ? parsedReadCount : 0;
-    const fallbackRecipientCount =
-      conversationType === "team"
-        ? (teamMembers || []).filter((member) => {
-            const memberId = member?.user_id ?? member?.userId ?? member?.id;
-            return String(memberId) !== String(currentUserId);
-          }).length
-        : 1;
-    const parsedRecipientCount = Number(
-      message.recipientCount ??
-        message.recipient_count ??
-        fallbackRecipientCount,
-    );
-    const recipientCount = Number.isFinite(parsedRecipientCount)
-      ? parsedRecipientCount
-      : fallbackRecipientCount;
-
-    if (conversationType === "team") {
-      if (readCount <= 0 && !message.readAt) return null;
-
-      const isReadByAll = recipientCount > 0 && readCount >= recipientCount;
-      const ReceiptIcon = isReadByAll ? CheckCheck : Check;
-
-      return (
-        <Tooltip
-          content={isReadByAll ? "Read by all" : getReadByTooltip(message)}
-          position="top"
-        >
-          <span className="ml-2 inline-flex shrink-0">
-            <ReceiptIcon
-              size={14}
-              strokeWidth={2.25}
-              aria-label={isReadByAll ? "Read by all" : "Read by someone"}
-            />
-          </span>
-        </Tooltip>
-      );
-    }
-
-    if (!message.readAt) return null;
-
-    return (
-      <Tooltip content={getReadByTooltip(message)} position="top">
-        <span className="ml-2 inline-flex shrink-0">
-          <CheckCheck
-            size={14}
-            strokeWidth={2.25}
-            aria-label="Read"
-          />
-        </span>
-      </Tooltip>
-    );
   };
 
   useEffect(() => {
@@ -1206,107 +1145,6 @@ const MessageDisplay = ({
         </div>
       </div>
       </Tooltip>
-    );
-  };
-
-  const getFileIcon = (fileName) => {
-    if (!fileName) return File;
-    const ext = fileName.split(".").pop().toLowerCase();
-
-    if (["pdf", "doc", "docx", "txt"].includes(ext)) return FileText;
-    if (["xls", "xlsx", "csv"].includes(ext)) return FileSpreadsheet;
-    return File;
-  };
-
-  const renderFileAttachment = (message) => {
-    const fileUrl = message?.fileUrl || message?.file_url;
-    const fileName = message?.fileName || message?.file_name;
-    const fileSize = message?.fileSize || message?.file_size;
-    const fileDeletedAt = message?.fileDeletedAt || message?.file_deleted_at;
-    const imageUrl = message?.imageUrl || message?.image_url;
-
-    const expirationStatus = getFileExpirationStatus(message);
-
-    // If file was deleted/expired, show placeholder
-    // But only if there's no imageUrl (to avoid duplicate with image placeholder)
-    // OR if there was specifically a file (fileName exists)
-    if ((expirationStatus.status === "expired" || fileDeletedAt) && !imageUrl) {
-      return (
-        <div className={message.content ? "mb-2" : ""}>
-          <div className="flex items-center gap-3 p-3 bg-base-200/50 rounded-lg border border-base-300">
-            <AlertTriangle size={24} className="text-warning flex-shrink-0" />
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-base-content/60">
-                Image or file no longer available
-              </p>
-              <p className="text-xs text-base-content/40">
-                This data has expired.
-              </p>
-            </div>
-          </div>
-        </div>
-      );
-    }
-
-    if (!fileUrl) return null;
-
-    const FileIcon = getFileIcon(fileName);
-    const fileSizeDisplay = formatFileSize(fileSize);
-
-    return (
-      <div className={message.content ? "mb-2" : ""}>
-        {/* Warning banner for files expiring soon (≤7 days) */}
-        {expirationStatus.status === "expiring-soon" && (
-          <div className="flex items-center gap-2 p-2 mb-2 bg-warning/10 border border-warning/30 rounded-lg">
-            <Clock size={16} className="text-warning flex-shrink-0" />
-            <p className="text-xs text-warning">{expirationStatus.message}</p>
-          </div>
-        )}
-
-        <Tooltip
-          content="Click to open and download file"
-          position="top"
-          wrapperClassName="block"
-        >
-        <a
-          href={fileUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-3 p-3 bg-base-100/50 rounded-lg hover:bg-base-100 hover:shadow-soft transition-all duration-200 group"
-          download={fileName || undefined}
-        >
-          {React.createElement(FileIcon, {
-            size: 24,
-            className: "text-primary flex-shrink-0",
-          })}
-
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium truncate">
-              {fileName || "Download file"}
-            </p>
-            <p className="text-xs text-base-content/60">
-              {fileSizeDisplay || "Click to download"}
-            </p>
-          </div>
-
-          <Download
-            size={18}
-            className="text-base-content/40 group-hover:text-primary transition-colors flex-shrink-0"
-          />
-        </a>
-        </Tooltip>
-
-        {/* Grey expiration info for files NOT expiring soon (>7 days) */}
-        {expirationStatus.status === "active" &&
-          expirationStatus.daysLeft !== null && (
-            <div className="flex items-center gap-2 mt-1 ml-1">
-              <Clock size={12} className="text-base-content/40 flex-shrink-0" />
-              <p className="text-xs text-base-content/40">
-                {expirationStatus.message}
-              </p>
-            </div>
-          )}
-      </div>
     );
   };
 
@@ -2322,7 +2160,16 @@ const MessageDisplay = ({
                   `}
                 >
                   <span>{formatLocalTime(message.createdAt)}</span>
-                  {renderReadReceipt(message, isCurrentUser)}
+                  {
+                    <ReadReceipt
+                      message={message}
+                      isCurrentUser={isCurrentUser}
+                      conversationType={conversationType}
+                      teamMembers={teamMembers}
+                      currentUserId={currentUserId}
+                      getReadByTooltip={getReadByTooltip}
+                    />
+                  }
                 </div>
               </div>
             </div>
@@ -2546,7 +2393,16 @@ const MessageDisplay = ({
                   `}
                 >
                   <span>{formatLocalTime(message.createdAt)}</span>
-                  {renderReadReceipt(message, isCurrentUser)}
+                  {
+                    <ReadReceipt
+                      message={message}
+                      isCurrentUser={isCurrentUser}
+                      conversationType={conversationType}
+                      teamMembers={teamMembers}
+                      currentUserId={currentUserId}
+                      getReadByTooltip={getReadByTooltip}
+                    />
+                  }
                 </div>
               </div>
             </div>
@@ -2693,7 +2549,16 @@ const MessageDisplay = ({
                   `}
                 >
                   <span>{formatLocalTime(message.createdAt)}</span>
-                  {renderReadReceipt(message, isCurrentUser)}
+                  {
+                    <ReadReceipt
+                      message={message}
+                      isCurrentUser={isCurrentUser}
+                      conversationType={conversationType}
+                      teamMembers={teamMembers}
+                      currentUserId={currentUserId}
+                      getReadByTooltip={getReadByTooltip}
+                    />
+                  }
                 </div>
               </div>
             </div>
@@ -4125,7 +3990,7 @@ const MessageDisplay = ({
                                 })()}
 
                                 {/* File attachment if present */}
-                                {renderFileAttachment(message)}
+                                <FileAttachment message={message} />
 
                                 {/* Text content */}
                                 {message.content && !isEditing && (
@@ -4240,7 +4105,16 @@ const MessageDisplay = ({
                                   )}
                                 </span>
                                 <span className="inline-flex items-center">
-                                  {renderReadReceipt(message, isCurrentUser)}
+                                  {
+                    <ReadReceipt
+                      message={message}
+                      isCurrentUser={isCurrentUser}
+                      conversationType={conversationType}
+                      teamMembers={teamMembers}
+                      currentUserId={currentUserId}
+                      getReadByTooltip={getReadByTooltip}
+                    />
+                  }
                                 </span>
                               </div>
                             )}
