@@ -1,4 +1,4 @@
-import { parseSystemMessage } from "../components/chat/MessageDisplay";
+import { parseSystemMessage } from "./messageSystemParser";
 import { getDisplayName } from "./userHelpers";
 
 export const EVENT_PREVIEW_TEXT_COLORS = {
