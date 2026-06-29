@@ -183,7 +183,12 @@ Lomir-frontend/
 │   │   ├── tags/                   # Tag input, display, and selection
 │   │   ├── chat/                   # Chat UI, message bubbles, file/image previews,
 │   │   │                           #   MentionDropdown, MessageText (mentions + URLs),
-│   │   │                           #   reply previews, system event messages
+│   │   │                           #   reply previews, system event messages.
+│   │   │                           #   MessageDisplay.jsx is a thin orchestrator after the
+│   │   │                           #   Stage 1–4b decomposition; extracted modules:
+│   │   │                           #   messageEventRenderers.jsx (createEventRenderers(ctx)
+│   │   │                           #   factory for the 29 system/event renderers),
+│   │   │                           #   ReadReceipt.jsx, FileAttachment.jsx
 │   │   ├── search/                 # SearchMapView (Leaflet map with markers/popups)
 │   │   ├── common/                 # Shared UI primitives and composed widgets:
 │   │   │                           #   Button, Card, Modal, Alert, Pagination, Tooltip,
@@ -229,6 +234,7 @@ Lomir-frontend/
 │   │   ├── useBadgeQueries.js      # React Query hooks for badge catalog and shared-teams lookups
 │   │   ├── useTeamQueries.js       # React Query hooks for the paginated user-teams list and bulk member badges (MyTeams)
 │   │   ├── useSearchQueries.js     # React Query hook for the global search (SearchPage): whole criteria object as query key, keepPreviousData
+│   │   ├── useChatQueries.js       # React Query hooks for Chat: team-details cache + conversation list (staleTime: Infinity, socket-maintained)
 │   │   ├── useViewerMatchProfile.js # Viewer's tags/badges/location for client-side scoring
 │   │   ├── useViewerPendingRequests.js # Shared cache of viewer's pending invitations + applications, consumed by MyTeams and modals
 │   │   ├── useViewerTeamMemberships.js # Viewer's team memberships for "already in team" gates
@@ -262,6 +268,9 @@ Lomir-frontend/
 │   │   ├── eventPreview.js         # Parse + format chat system event messages for previews and toasts
 │   │   ├── roleEventMessages.js    # Build role event message strings (filled, closed, updated, deleted, reopened)
 │   │   ├── chatEntityResolvers.js  # Resolve user/team entity objects from chat conversation payloads
+│   │   ├── messageSystemParser.js  # parseSystemMessage: parse chat system/event message payloads (MessageDisplay)
+│   │   ├── messageDisplayHelpers.js # Pure MessageDisplay helpers: getEventReactionPreview, formatReplyTooltipText, getFileIcon
+│   │   ├── messageDisplayRenderers.jsx # JSX render helpers for MessageDisplay: renderReplyContent, renderHighlightedSearchText
 │   │   ├── messageNotificationUtils.js # Unread count + notification badge helpers for chat
 │   │   ├── fileExpiration.js       # File/image expiration status + formatted countdown strings
 │   │   ├── dateHelpers.js          # Date formatting utilities
