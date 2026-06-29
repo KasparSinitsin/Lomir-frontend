@@ -1,6 +1,5 @@
 import React, { useRef, useEffect, useState, useCallback, useMemo } from "react";
 import {
-  formatLocalTime,
   formatDateHeading as formatMessageDateHeading,
   getDateGroupKey,
 } from "../../utils/dateHelpers";
@@ -9,15 +8,8 @@ import {
   isSyntheticTeam,
 } from "../../utils/userHelpers";
 import {
-  User,
-  Download,
-  AlertTriangle,
-  Clock,
-  Trash2,
-  Pencil,
   Reply,
-  X,
-  Check,
+  User,
 } from "lucide-react";
 import TeamDetailsModal from "../teams/TeamDetailsModal";
 import VacantRoleDetailsModal from "../teams/VacantRoleDetailsModalLazy";
@@ -26,11 +18,8 @@ import UserAvatar from "../users/UserAvatar";
 import DemoAvatarOverlay from "../users/DemoAvatarOverlay";
 import { userService } from "../../services/userService";
 import { vacantRoleService } from "../../services/vacantRoleService";
-import { getFileExpirationStatus } from "../../utils/fileExpiration";
-import MessageText from "./MessageText";
-import ReadReceipt from "./ReadReceipt";
-import FileAttachment from "./FileAttachment";
 import { createEventRenderers } from "./messageEventRenderers";
+import MessageBubble from "./MessageBubble";
 import Tooltip from "../common/Tooltip";
 import {
   DELETED_USER_DISPLAY_NAME,
@@ -44,15 +33,7 @@ import {
   mergeResolvedUserData,
 } from "../../utils/chatEntityResolvers";
 import { parseSystemMessage } from "../../utils/messageSystemParser";
-import {
-  getEventReactionPreview,
-  formatReplyTooltipText,
-  getFileIcon,
-} from "../../utils/messageDisplayHelpers";
-import {
-  renderReplyContent,
-  renderHighlightedSearchText,
-} from "../../utils/messageDisplayRenderers";
+import { renderHighlightedSearchText } from "../../utils/messageDisplayRenderers";
 
 const MessageDisplay = ({
   messages,
@@ -1803,617 +1784,42 @@ const MessageDisplay = ({
                         const showMessageMeta =
                           messageIndex ===
                             messageGroup.messages.length - 1 || messageEdited;
-                        const replySourceMessage = message.replyTo?.id
-                          ? messagesById.get(String(message.replyTo.id))
-                          : null;
-                        const replyPreview = message.replyTo
-                          ? {
-                              ...replySourceMessage,
-                              ...message.replyTo,
-                              content:
-                                message.replyTo.content ??
-                                replySourceMessage?.content,
-                              createdAt:
-                                message.replyTo.createdAt ||
-                                message.replyTo.created_at ||
-                                replySourceMessage?.createdAt ||
-                                replySourceMessage?.created_at,
-                              imageUrl:
-                                message.replyTo.imageUrl ||
-                                message.replyTo.image_url ||
-                                replySourceMessage?.imageUrl ||
-                                replySourceMessage?.image_url,
-                              fileUrl:
-                                message.replyTo.fileUrl ||
-                                message.replyTo.file_url ||
-                                replySourceMessage?.fileUrl ||
-                                replySourceMessage?.file_url,
-                              fileName:
-                                message.replyTo.fileName ||
-                                message.replyTo.file_name ||
-                                replySourceMessage?.fileName ||
-                                replySourceMessage?.file_name,
-                              fileSize:
-                                message.replyTo.fileSize ||
-                                message.replyTo.file_size ||
-                                replySourceMessage?.fileSize ||
-                                replySourceMessage?.file_size,
-                              fileExpiresAt:
-                                message.replyTo.fileExpiresAt ||
-                                message.replyTo.file_expires_at ||
-                                replySourceMessage?.fileExpiresAt ||
-                                replySourceMessage?.file_expires_at,
-                              fileDeletedAt:
-                                message.replyTo.fileDeletedAt ||
-                                message.replyTo.file_deleted_at ||
-                                replySourceMessage?.fileDeletedAt ||
-                                replySourceMessage?.file_deleted_at,
-                            }
-                          : null;
-                        const replyImageUrl =
-                          replyPreview?.imageUrl || replyPreview?.image_url;
-                        const replyFileUrl =
-                          replyPreview?.fileUrl || replyPreview?.file_url;
-                        const replyFileName =
-                          replyPreview?.fileName || replyPreview?.file_name;
-                        const replyFileDeletedAt =
-                          replyPreview?.fileDeletedAt ||
-                          replyPreview?.file_deleted_at;
-                        const replyExpirationStatus = replyPreview
-                          ? getFileExpirationStatus(replyPreview)
-                          : { status: "active" };
-                        const replyMediaExpired =
-                          replyExpirationStatus.status === "expired" ||
-                          Boolean(replyFileDeletedAt);
-                        const replyHasMedia = Boolean(
-                          replyImageUrl || replyFileUrl || replyFileName,
-                        );
-                        const ReplyFileIcon = getFileIcon(replyFileName);
-                        const replyEventPreview = replyPreview?.content
-                          ? getEventReactionPreview(replyPreview.content)
-                          : null;
-
                         return (
-                          <div
+                          <MessageBubble
                             key={`${message.id}-${dateString}-${groupIndex}-${messageIndex}`}
-                            data-message-id={message.id}
                             ref={
                               isFirstHighlighted ? highlightedMessageRef : null
                             }
-                            className={`
-                      relative group rounded-lg p-3 transition-all duration-300 hover:shadow-md
-                      ${
-                        isCurrentUser
-                          ? "bg-green-100 text-base-content rounded-br-none ml-auto"
-                          : "bg-base-200 rounded-bl-none"
-                      }
-                      ${
-                        messageIndex === 0
-                          ? ""
-                          : isCurrentUser
-                            ? "rounded-tr-lg"
-                            : "rounded-tl-lg"
-                      }
-                      ${isHighlighted ? "message-highlight" : ""}
-                    `}
-                          >
-                            {(canReplyMessage ||
-                              canEditMessage ||
-                              canDeleteMessage) &&
-                              !isEditing && (
-                                <div className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity inline-flex items-center gap-1">
-                                  {canReplyMessage && (
-                                    <Tooltip
-                                      content="React"
-                                      position="top"
-                                      wrapperClassName="inline-flex"
-                                    >
-                                      <button
-                                        type="button"
-                                        onClick={() =>
-                                          onReply({
-                                            id: message.id,
-                                            content: message.content,
-                                            createdAt:
-                                              message.createdAt ||
-                                              message.created_at,
-                                            imageUrl:
-                                              message.imageUrl ||
-                                              message.image_url,
-                                            fileUrl:
-                                              message.fileUrl ||
-                                              message.file_url,
-                                            fileName:
-                                              message.fileName ||
-                                              message.file_name,
-                                            fileSize:
-                                              message.fileSize ||
-                                              message.file_size,
-                                            fileExpiresAt:
-                                              message.fileExpiresAt ||
-                                              message.file_expires_at,
-                                            fileDeletedAt:
-                                              message.fileDeletedAt ||
-                                              message.file_deleted_at,
-                                            senderId:
-                                              message.senderId ||
-                                              message.sender_id,
-                                            senderUsername:
-                                              senderInfo?.username ||
-                                              message.senderUsername ||
-                                              message.sender_username,
-                                            senderFirstName:
-                                              senderInfo?.firstName ||
-                                              senderInfo?.first_name ||
-                                              message.senderFirstName ||
-                                              message.sender_first_name,
-                                          })
-                                        }
-                                        className="bg-base-100 border border-base-300 rounded-full p-1 shadow-sm hover:shadow"
-                                        aria-label="React to message"
-                                      >
-                                        <Reply
-                                          size={14}
-                                          className="text-base-content/50 hover:text-primary"
-                                        />
-                                      </button>
-                                    </Tooltip>
-                                  )}
-
-                                  {canEditMessage && (
-                                    <Tooltip
-                                      content="Edit message"
-                                      position="top"
-                                      wrapperClassName="inline-flex"
-                                    >
-                                      <button
-                                        type="button"
-                                        onClick={() =>
-                                          startEditingMessage(message)
-                                        }
-                                        className="bg-base-100 border border-base-300 rounded-full p-1 shadow-sm hover:shadow"
-                                        aria-label="Edit message"
-                                      >
-                                        <Pencil
-                                          size={14}
-                                          className="text-base-content/50 hover:text-primary"
-                                        />
-                                      </button>
-                                    </Tooltip>
-                                  )}
-
-                                  {canDeleteMessage && (
-                                    <Tooltip
-                                      content="Delete message"
-                                      position="top"
-                                      wrapperClassName="inline-flex"
-                                    >
-                                      <button
-                                        type="button"
-                                        onClick={() =>
-                                          onDeleteMessage(message.id)
-                                        }
-                                        className="bg-base-100 border border-base-300 rounded-full p-1 shadow-sm hover:shadow"
-                                        aria-label="Delete message"
-                                      >
-                                        <Trash2
-                                          size={14}
-                                          className="text-base-content/50 hover:text-error"
-                                        />
-                                      </button>
-                                    </Tooltip>
-                                  )}
-                                </div>
-                              )}
-
-                            {/* Only render media/text when NOT deleted */}
-                            {!isDeleted && (
-                              <>
-                                {replyPreview && (
-                                  <div
-                                    onClick={() => {
-                                      const targetEl =
-                                        document.querySelector(
-                                          `[data-message-id="${replyPreview.id}"]`,
-                                        );
-                                      if (targetEl) {
-                                        targetEl.scrollIntoView({
-                                          behavior: "smooth",
-                                          block: "center",
-                                        });
-                                        targetEl.classList.add("bg-primary/10");
-                                        setTimeout(
-                                          () =>
-                                            targetEl.classList.remove(
-                                              "bg-primary/10",
-                                            ),
-                                          2000,
-                                        );
-                                      }
-                                    }}
-                                    className="mb-1.5 px-2.5 py-1.5 rounded-lg bg-white cursor-pointer hover:bg-white transition-colors max-w-full"
-                                  >
-                                    <p className="text-xs font-semibold text-primary truncate">
-                                      {replyPreview.senderFirstName ||
-                                        replyPreview.senderUsername ||
-                                        "Former Lomir User"}
-                                    </p>
-                                    <Tooltip
-                                      content={
-                                        replyHasMedia && !replyPreview.content
-                                          ? replyMediaExpired
-                                            ? "Image or file no longer available"
-                                            : replyExpirationStatus.status !==
-                                                "none"
-                                              ? replyExpirationStatus.message
-                                              : replyImageUrl
-                                                ? "Image"
-                                                : replyFileName || "File"
-                                          : formatReplyTooltipText(
-                                              replyPreview.content,
-                                              replyEventPreview,
-                                            )
-                                      }
-                                      position="top"
-                                      wrapperClassName="block min-w-0 max-w-full"
-                                    >
-                                      {replyHasMedia && replyMediaExpired ? (
-                                        <div className="mt-1 flex min-w-0 items-center gap-2 text-warning">
-                                          <AlertTriangle
-                                            size={16}
-                                            className="shrink-0"
-                                          />
-                                          <p className="text-xs font-medium truncate">
-                                            Image or file no longer available
-                                          </p>
-                                        </div>
-                                      ) : replyImageUrl ? (
-                                        <div className="mt-1 min-w-0">
-                                          <img
-                                            src={replyImageUrl}
-                                            alt="Replied image"
-                                            className="rounded-lg max-w-full max-h-64 object-contain"
-                                            loading="lazy"
-                                          />
-                                          <div className="mt-1 min-w-0">
-                                            {replyPreview.content && (
-                                              <p className="text-xs text-base-content/60 truncate">
-                                                {renderReplyContent(replyPreview.content)}
-                                              </p>
-                                            )}
-                                            {replyExpirationStatus.status !==
-                                              "none" &&
-                                              replyExpirationStatus.daysLeft !==
-                                                null && (
-                                                <div
-                                                  className={`flex items-center gap-1 min-w-0 ${
-                                                    replyExpirationStatus.status ===
-                                                    "expiring-soon"
-                                                      ? "text-warning"
-                                                      : "text-base-content/40"
-                                                  }`}
-                                                >
-                                                  <Clock
-                                                    size={11}
-                                                    className="shrink-0"
-                                                  />
-                                                  <p className="text-[11px] truncate">
-                                                    {replyExpirationStatus.message}
-                                                  </p>
-                                                </div>
-                                              )}
-                                            {replyExpirationStatus.status ===
-                                              "none" &&
-                                              !replyPreview.content && (
-                                                <p className="text-xs text-base-content/60 truncate">
-                                                  Image
-                                                </p>
-                                              )}
-                                          </div>
-                                        </div>
-                                      ) : replyFileUrl ? (
-                                        <div className="mt-1 flex min-w-0 items-start gap-2">
-                                          <ReplyFileIcon
-                                            size={18}
-                                            className="text-primary shrink-0"
-                                          />
-                                          <div className="min-w-0 flex-1">
-                                            <p className="text-xs text-base-content/60 truncate">
-                                              {replyFileName || "File"}
-                                            </p>
-                                            {replyExpirationStatus.status !==
-                                              "none" &&
-                                              replyExpirationStatus.daysLeft !==
-                                                null && (
-                                                <div
-                                                  className={`flex items-center gap-1 min-w-0 ${
-                                                    replyExpirationStatus.status ===
-                                                    "expiring-soon"
-                                                      ? "text-warning"
-                                                      : "text-base-content/40"
-                                                  }`}
-                                                >
-                                                  <Clock
-                                                    size={11}
-                                                    className="shrink-0"
-                                                  />
-                                                  <p className="text-[11px] truncate">
-                                                    {replyExpirationStatus.message}
-                                                  </p>
-                                                </div>
-                                              )}
-                                          </div>
-                                        </div>
-                                      ) : replyEventPreview ? (
-                                        <p
-                                          className="flex min-w-0 items-center gap-1 text-xs font-medium truncate"
-                                          style={{ color: replyEventPreview.color }}
-                                        >
-                                          <replyEventPreview.Icon
-                                            size={13}
-                                            className="shrink-0"
-                                          />
-                                          <span className="truncate">
-                                            {replyEventPreview.text}
-                                          </span>
-                                          {replyEventPreview.trailingIcon && (
-                                            <replyEventPreview.trailingIcon
-                                              size={13}
-                                              className="shrink-0"
-                                            />
-                                          )}
-                                        </p>
-                                      ) : (
-                                        <p className="text-xs text-base-content/60 truncate">
-                                          {replyPreview.content
-                                            ? renderReplyContent(replyPreview.content)
-                                            : "Original message was deleted"}
-                                        </p>
-                                      )}
-                                    </Tooltip>
-                                  </div>
-                                )}
-
-                                {/* Image if present - handle both camelCase and snake_case */}
-                                {(() => {
-                                  const imageUrl =
-                                    message.imageUrl || message.image_url;
-                                  const imageDeletedAt =
-                                    message.fileDeletedAt ||
-                                    message.file_deleted_at;
-                                  const imageExpirationStatus =
-                                    getFileExpirationStatus(message);
-                                  const imageName =
-                                    message.fileName || message.file_name;
-
-                                  // If image was deleted/expired, show placeholder
-                                  if (
-                                    imageUrl &&
-                                    (imageExpirationStatus.status ===
-                                      "expired" ||
-                                      imageDeletedAt)
-                                  ) {
-                                    return (
-                                      <div
-                                        className={
-                                          message.content ? "mb-2" : ""
-                                        }
-                                      >
-                                        <div className="flex items-center gap-3 p-3 bg-base-200/50 rounded-lg border border-base-300 max-w-xs">
-                                          <AlertTriangle
-                                            size={24}
-                                            className="text-warning flex-shrink-0"
-                                          />
-                                          <div className="flex-1 min-w-0">
-                                            <p className="text-sm font-medium text-base-content/60">
-                                              Image or file no longer available
-                                            </p>
-                                            <p className="text-xs text-base-content/40">
-                                              This data has expired.
-                                            </p>
-                                          </div>
-                                        </div>
-                                      </div>
-                                    );
-                                  }
-
-                                  // Show image with expiration warning if expiring soon
-                                  if (imageUrl) {
-                                    return (
-                                      <div
-                                        className={
-                                          message.content ? "mb-2" : ""
-                                        }
-                                      >
-                                        {imageExpirationStatus.status ===
-                                          "expiring-soon" && (
-                                          <div className="flex items-center gap-2 p-2 mb-2 bg-warning/10 border border-warning/30 rounded-lg max-w-xs">
-                                            <Clock
-                                              size={16}
-                                              className="text-warning flex-shrink-0"
-                                            />
-                                            <p className="text-xs text-warning">
-                                              {imageExpirationStatus.message}
-                                            </p>
-                                          </div>
-                                        )}
-                                        <Tooltip
-                                          content="Click to open and download image in new tab"
-                                          position="top"
-                                          wrapperClassName="block"
-                                        >
-                                          <div
-                                            className="relative inline-block group/img cursor-pointer"
-                                            onClick={() => window.open(imageUrl, "_blank")}
-                                          >
-                                            <img
-                                              src={imageUrl}
-                                              alt="Shared image"
-                                              className="rounded-lg max-w-full max-h-64 object-contain transition-opacity group-hover/img:opacity-80"
-                                              loading="lazy"
-                                            />
-                                            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/img:opacity-100 transition-opacity pointer-events-none">
-                                              <Download size={64} className="text-white drop-shadow-lg" />
-                                            </div>
-                                          </div>
-                                        </Tooltip>
-                                        {imageName && (
-                                          <p className="text-xs text-base-content/60 mt-1 ml-1 truncate">
-                                            {imageName}
-                                          </p>
-                                        )}
-                                        {/* Grey expiration info for images NOT expiring soon (>7 days) */}
-                                        {imageExpirationStatus.status ===
-                                          "active" &&
-                                          imageExpirationStatus.daysLeft !==
-                                            null && (
-                                            <div className="flex items-center gap-2 mt-1 ml-1">
-                                              <Clock
-                                                size={12}
-                                                className="text-base-content/40 flex-shrink-0"
-                                              />
-                                              <p className="text-xs text-base-content/40">
-                                                {imageExpirationStatus.message}
-                                              </p>
-                                            </div>
-                                          )}
-                                      </div>
-                                    );
-                                  }
-
-                                  return null;
-                                })()}
-
-                                {/* File attachment if present */}
-                                <FileAttachment message={message} />
-
-                                {/* Text content */}
-                                {message.content && !isEditing && (
-                                  <p>
-                                    <MessageText
-                                      content={message.content}
-                                      searchQuery={searchQuery}
-                                      onUserClick={handleUserClick}
-                                    />
-                                  </p>
-                                )}
-
-                                {isEditing && (
-                                  <div className="space-y-2 min-w-[16rem] max-w-full">
-                                    <textarea
-                                      value={editingContent}
-                                      onChange={(event) =>
-                                        setEditingContent(event.target.value)
-                                      }
-                                      className="textarea textarea-bordered textarea-sm w-full min-h-20 resize-none bg-base-100 text-base-content"
-                                      maxLength={500}
-                                      disabled={isSavingEdit}
-                                      autoFocus
-                                      onKeyDown={(event) => {
-                                        if (
-                                          event.key === "Escape" &&
-                                          !isSavingEdit
-                                        ) {
-                                          cancelEditingMessage();
-                                        }
-
-                                        if (
-                                          event.key === "Enter" &&
-                                          (event.metaKey || event.ctrlKey)
-                                        ) {
-                                          event.preventDefault();
-                                          saveEditingMessage(message.id);
-                                        }
-                                      }}
-                                    />
-                                    {editingError && (
-                                      <p className="text-xs text-error">
-                                        {editingError}
-                                      </p>
-                                    )}
-                                    <div className="flex items-center justify-end gap-2">
-                                      <button
-                                        type="button"
-                                        className="btn btn-ghost btn-xs"
-                                        onClick={cancelEditingMessage}
-                                        disabled={isSavingEdit}
-                                      >
-                                        <X size={14} />
-                                        Cancel
-                                      </button>
-                                      <button
-                                        type="button"
-                                        className="btn btn-primary btn-xs"
-                                        onClick={() =>
-                                          saveEditingMessage(message.id)
-                                        }
-                                        disabled={
-                                          isSavingEdit ||
-                                          !editingContent.trim() ||
-                                          editingContent.trim() ===
-                                            (message.content || "").trim()
-                                        }
-                                      >
-                                        {isSavingEdit ? (
-                                          <span className="loading loading-spinner loading-xs" />
-                                        ) : (
-                                          <Check size={14} />
-                                        )}
-                                        Save
-                                      </button>
-                                    </div>
-                                  </div>
-                                )}
-                              </>
-                            )}
-
-                            {/* Deleted placeholder (ONLY when deleted) */}
-                            {isDeleted && (
-                              <p className="text-sm text-base-content/50 italic">
-                                This message was deleted.
-                              </p>
-                            )}
-
-                            {showMessageMeta && (
-                              <div
-                                className={`
-                          flex justify-between items-center text-xs mt-1
-                          ${isCurrentUser ? "text-base-content/60" : "text-base-content/50"}
-                        `}
-                              >
-                                <span className="inline-flex items-center gap-1">
-                                  {formatLocalTime(
-                                    getMessageDisplayTime(message),
-                                  )}
-                                  {messageEdited && (
-                                    <Tooltip
-                                      content="Message edited"
-                                      position="top"
-                                      wrapperClassName="inline-flex shrink-0"
-                                    >
-                                      <Pencil
-                                        size={12}
-                                        strokeWidth={2.25}
-                                        aria-label="Message edited"
-                                      />
-                                    </Tooltip>
-                                  )}
-                                </span>
-                                <span className="inline-flex items-center">
-                                  {
-                    <ReadReceipt
-                      message={message}
-                      isCurrentUser={isCurrentUser}
-                      conversationType={conversationType}
-                      teamMembers={teamMembers}
-                      currentUserId={currentUserId}
-                      getReadByTooltip={getReadByTooltip}
-                    />
-                  }
-                                </span>
-                              </div>
-                            )}
-                          </div>
+                            message={message}
+                            messageIndex={messageIndex}
+                            messagesById={messagesById}
+                            isCurrentUser={isCurrentUser}
+                            isHighlighted={isHighlighted}
+                            isDeleted={isDeleted}
+                            isEditing={isEditing}
+                            isSavingEdit={isSavingEdit}
+                            canReplyMessage={canReplyMessage}
+                            canEditMessage={canEditMessage}
+                            canDeleteMessage={canDeleteMessage}
+                            showMessageMeta={showMessageMeta}
+                            messageEdited={messageEdited}
+                            senderInfo={senderInfo}
+                            searchQuery={searchQuery}
+                            editingContent={editingContent}
+                            setEditingContent={setEditingContent}
+                            editingError={editingError}
+                            conversationType={conversationType}
+                            teamMembers={teamMembers}
+                            currentUserId={currentUserId}
+                            onUserClick={handleUserClick}
+                            onReply={onReply}
+                            onEditStart={startEditingMessage}
+                            onDeleteMessage={onDeleteMessage}
+                            onCancelEdit={cancelEditingMessage}
+                            onSaveEdit={saveEditingMessage}
+                            getMessageDisplayTime={getMessageDisplayTime}
+                            getReadByTooltip={getReadByTooltip}
+                          />
                         );
                       })}
                     </div>
