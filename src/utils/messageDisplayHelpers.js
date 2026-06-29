@@ -8,6 +8,8 @@ import {
   AlertTriangle,
   CircleX,
   Crown,
+  File,
+  FileSpreadsheet,
   FileText,
   LogOut,
   PartyPopper,
@@ -20,6 +22,17 @@ import {
   UserSearch,
 } from "lucide-react";
 import { parseSystemMessage } from "./messageSystemParser";
+
+// Maps a file name to its lucide icon component reference (not JSX). Shared by
+// FileAttachment and the reply-preview block in MessageDisplay.
+export const getFileIcon = (fileName) => {
+  if (!fileName) return File;
+  const ext = fileName.split(".").pop().toLowerCase();
+
+  if (["pdf", "doc", "docx", "txt"].includes(ext)) return FileText;
+  if (["xls", "xlsx", "csv"].includes(ext)) return FileSpreadsheet;
+  return File;
+};
 
 const EVENT_REACTION_PREVIEW_COLORS = {
   admin: "#9a8ef0",
