@@ -14,6 +14,7 @@ import Navbar from "./components/layout/Navbar";
 import Footer from "./components/layout/Footer";
 import ProtectedRoute from "./components/layout/ProtectedRoute";
 import Placeholder from "./components/common/Placeholder";
+import ErrorBoundary from "./components/common/ErrorBoundary";
 import MessageNotifications from "./components/chat/MessageNotifications";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
@@ -32,6 +33,13 @@ import ResetPassword from "./pages/ResetPassword";
 import Settings from "./pages/Settings";
 import Contact from "./pages/Contact";
 import LegalPage from "./pages/LegalPage";
+
+const renderChatError = (error) => (
+  <div className="mx-auto max-w-3xl rounded-lg border border-error/30 bg-error/10 p-4 text-error">
+    <p className="font-semibold">Chat could not be rendered.</p>
+    <p className="mt-2 text-sm">{error?.message || "Unknown render error"}</p>
+  </div>
+);
 
 function AppLayout() {
   const location = useLocation();
@@ -96,8 +104,28 @@ function AppLayout() {
                     element={<Placeholder pageName="Edit Profile" />}
                   />
                   <Route path="/teams/my-teams" element={<MyTeams />} />
-                  <Route path="/chat" element={<Chat />} />
-                  <Route path="/chat/:conversationId" element={<Chat />} />
+                  <Route
+                    path="/chat"
+                    element={
+                      <ErrorBoundary
+                        logLabel="Chat route render failed:"
+                        fallback={renderChatError}
+                      >
+                        <Chat />
+                      </ErrorBoundary>
+                    }
+                  />
+                  <Route
+                    path="/chat/:conversationId"
+                    element={
+                      <ErrorBoundary
+                        logLabel="Chat route render failed:"
+                        fallback={renderChatError}
+                      >
+                        <Chat />
+                      </ErrorBoundary>
+                    }
+                  />
                   <Route path="/settings" element={<Settings />} />
                 </Route>
 
