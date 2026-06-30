@@ -1216,6 +1216,7 @@ const MessageDisplay = ({
     renderOwnershipTeamMessage,
     renderOwnershipTransferredMessage,
     renderMemberRemovedMessage,
+    renderTeamDeletedMessage,
   } = createEventRenderers({
     Mention,
     MentionById,
@@ -1784,8 +1785,11 @@ const MessageDisplay = ({
                       renderOwnershipTeamMessage(message, parsedMessage),
                     );
                   } else if (parsedMessage.type === "team_deleted") {
-                    // not rendered here (fixed banner elsewhere)
-                    return null;
+                    // Timeline event marking the deletion moment (who + when),
+                    // complementing the persistent archived-chat banner.
+                    return renderSystemMessage(
+                      renderTeamDeletedMessage(message, parsedMessage),
+                    );
                   }
                 }
               }
