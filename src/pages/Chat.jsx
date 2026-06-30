@@ -698,6 +698,10 @@ const buildMessageSearchSnippets = (messages) =>
     .map(({ message }) => ({
       id: getMessageSearchId(message),
       text: buildMessageSearchSnippet(message),
+      // Raw content is kept alongside the humanised search text so the
+      // conversation list can render a matched system/event message with its
+      // canonical icon + colour styling (via getEventPreview), not just plain text.
+      content: message?.content ?? "",
       timestamp: getMessageSearchTimestampValue(message),
     }))
     .filter((snippet) => snippet.text);
@@ -1305,6 +1309,7 @@ const Chat = () => {
                 matchedMessageSnippet.text,
                 normalizedChatSearchQuery,
               ),
+              searchMatchContent: matchedMessageSnippet.content,
               searchMatchMessageId: matchedMessageSnippet.id,
               searchMatchCreatedAt: matchedMessageSnippet.timestamp,
             }
