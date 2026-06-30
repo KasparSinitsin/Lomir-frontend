@@ -83,7 +83,10 @@ const renderHighlightedText = (value, query) => {
     return (
       <mark
         key={`${part}-${index}`}
-        className="rounded-full bg-yellow-100 px-1.5 py-0.5 text-[var(--color-primary-focus)]"
+        className="rounded-full bg-yellow-100 px-1.5 py-0.5"
+        // Highlight only adds the yellow background — keep the surrounding text's
+        // colour and weight (override the browser's default <mark> styling).
+        style={{ color: "inherit", fontWeight: "inherit" }}
       >
         {part}
       </mark>
