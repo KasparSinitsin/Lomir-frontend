@@ -83,7 +83,10 @@ const renderHighlightedText = (value, query) => {
     return (
       <mark
         key={`${part}-${index}`}
-        className="rounded-full bg-yellow-100 px-1.5 py-0.5 text-[var(--color-primary-focus)]"
+        className="rounded-full bg-yellow-100 px-1.5 py-0.5"
+        // Highlight only adds the yellow background — keep the surrounding text's
+        // colour and weight (override the browser's default <mark> styling).
+        style={{ color: "inherit", fontWeight: "inherit" }}
       >
         {part}
       </mark>
@@ -612,16 +615,32 @@ const ConversationList = ({
             lastMessageText,
             currentUser,
           );
-          const shouldUseEventPreview = !isSearchActive && eventPreview;
-          const EventPreviewIcon = shouldUseEventPreview
-            ? EVENT_PREVIEW_ICONS[eventPreview.icon]
+          // During search the matched message may be an older system/event
+          // message (not the conversation's last message). Style it through the
+          // same canonical getEventPreview path so it keeps its icon, colour and
+          // weight instead of falling back to raw/plain text.
+          const hasSearchMessageMatch =
+            isSearchActive && Boolean(conversation.searchMatchContent);
+          const searchEventPreview = hasSearchMessageMatch
+            ? getEventPreview(conversation.searchMatchContent, currentUser)
             : null;
-          const previewText =
-            isSearchActive && conversation.searchMatchPreview
+          // When the hit is on the conversation's metadata (e.g. team name) and
+          // no message matched, the preview shows the last message — style it the
+          // same way the non-search list does instead of leaving it raw.
+          const activeEventPreview = isSearchActive
+            ? hasSearchMessageMatch
+              ? searchEventPreview
+              : eventPreview
+            : eventPreview;
+          const shouldUseEventPreview = Boolean(activeEventPreview);
+          const EventPreviewIcon = shouldUseEventPreview
+            ? EVENT_PREVIEW_ICONS[activeEventPreview.icon]
+            : null;
+          const previewText = shouldUseEventPreview
+            ? activeEventPreview.text
+            : isSearchActive && conversation.searchMatchPreview
               ? conversation.searchMatchPreview
-              : shouldUseEventPreview
-                ? eventPreview.text
-                : attachmentPreview?.text || lastMessageText || "No messages yet";
+              : attachmentPreview?.text || lastMessageText || "No messages yet";
           const formattedAttachmentPreview =
             !isSearchActive && !attachmentPreview
               ? getFormattedAttachmentPreview(previewText)
@@ -764,10 +783,10 @@ const ConversationList = ({
                       <p
                         className="text-sm font-medium truncate"
                         style={{
-                          color: eventPreview.color,
-                          ...(eventPreview.backgroundColor
+                          color: activeEventPreview.color,
+                          ...(activeEventPreview.backgroundColor
                             ? {
-                                backgroundColor: eventPreview.backgroundColor,
+                                backgroundColor: activeEventPreview.backgroundColor,
                                 borderRadius: "0.375rem",
                                 maxWidth: "100%",
                                 paddingLeft: "3px",
@@ -782,7 +801,9 @@ const ConversationList = ({
                             size={14}
                             className="flex-shrink-0"
                           />
-                          <span className="truncate">{previewText}</span>
+                          <span className="truncate">
+                            {renderHighlightedText(previewText, searchQuery)}
+                          </span>
                         </span>
                       </p>
                     ) : visibleAttachmentPreview ? (
