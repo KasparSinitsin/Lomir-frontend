@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import {
   LogOut,
+  AlertTriangle,
   ChevronRight,
   ChevronLeft,
   Users,
@@ -226,11 +227,21 @@ const mergeTeamDetailsIntoConversationData = (conversationData, teamPayload) => 
   if (!conversationData || !teamPayload) return conversationData;
 
   const currentTeam = conversationData.team || {};
+  const archivedAt =
+    currentTeam.archivedAt ??
+    currentTeam.archived_at ??
+    teamPayload.archivedAt ??
+    teamPayload.archived_at ??
+    undefined;
+  const status = currentTeam.status ?? teamPayload.status ?? undefined;
 
   return {
     ...conversationData,
     team: {
       ...currentTeam,
+      archived_at: currentTeam.archived_at ?? teamPayload.archived_at ?? archivedAt,
+      archivedAt,
+      status,
       avatarUrl:
         currentTeam.avatarUrl ||
         currentTeam.teamavatarUrl ||
@@ -256,6 +267,9 @@ const mergeTeamDetailsIntoConversationData = (conversationData, teamPayload) => 
     },
   };
 };
+
+const isArchivedTeamData = (team) =>
+  Boolean(team?.archived_at || team?.archivedAt || team?.status === "inactive");
 
 const getConversationUpdatedAt = (conversation) => {
   const timestamp =
@@ -454,7 +468,7 @@ const buildSystemMessageSearchSnippet = (parsedMessage) => {
     case "ownership_transferred":
       return `${parsedMessage.prevOwnerName} transferred ownership of ${parsedMessage.teamName} to you. You transferred team ownership of ${parsedMessage.teamName} to ${parsedMessage.newOwnerName}. Congratulations`;
     case "team_deleted":
-      return `${parsedMessage.ownerName} has initiated the deletion of the team ${parsedMessage.teamName}. You initiated the deletion of the team ${parsedMessage.teamName}. The team is archived and inactive now.`;
+      return `${parsedMessage.ownerName} deleted the team ${parsedMessage.teamName}. You deleted the team ${parsedMessage.teamName}.`;
     default:
       return "";
   }
@@ -908,6 +922,7 @@ const Chat = () => {
 
   const teamData =
     conversationType === "team" ? activeConversation?.team || null : null;
+  const isActiveTeamArchived = isTeamArchived || isArchivedTeamData(teamData);
 
   const teamMembers = useMemo(() => {
     const members =
@@ -985,10 +1000,36 @@ const Chat = () => {
     async (teamId) => {
       if (!teamId || !user?.id) return true;
 
-      const teamPayload = await fetchTeamDetails(teamId, { force: true });
+      let teamPayload = null;
+
+      try {
+        const conversationResponse = await messageService.getConversationById(
+          teamId,
+          "team",
+        );
+        teamPayload = conversationResponse?.data?.team || null;
+      } catch (conversationError) {
+        if (
+          conversationError.response?.status === 404 ||
+          conversationError.response?.status === 403
+        ) {
+          revokeTeamChatAccess(teamId);
+          return false;
+        }
+
+        throw conversationError;
+      }
 
       if (!Array.isArray(teamPayload?.members)) {
-        return true;
+        try {
+          teamPayload = await fetchTeamDetails(teamId, { force: true });
+        } catch (teamError) {
+          if (teamError.response?.status === 404 && isArchivedTeamData(teamPayload)) {
+            return true;
+          }
+
+          throw teamError;
+        }
       }
 
       if (!isUserTeamMember(teamPayload.members, user.id)) {
@@ -1007,10 +1048,7 @@ const Chat = () => {
 
         return {
           ...prev,
-          team: {
-            ...prev.team,
-            members: teamPayload.members,
-          },
+          team: mergeTeamDetailsIntoConversationData(prev, teamPayload).team,
         };
       });
 
@@ -1023,12 +1061,24 @@ const Chat = () => {
     async (conversationDetails, teamId) => {
       if (!conversationDetails?.data || !teamId) return false;
 
+      if (isArchivedTeamData(conversationDetails.data.team)) {
+        setIsTeamArchived(true);
+
+        if (Array.isArray(conversationDetails.data.team?.members)) {
+          if (!isUserTeamMember(conversationDetails.data.team.members, user?.id)) {
+            revokeTeamChatAccess(teamId);
+            setLoadingMessages(false);
+            return true;
+          }
+        }
+
+        return false;
+      }
+
       try {
         const teamPayload = await fetchTeamDetails(teamId);
 
-        setIsTeamArchived(
-          Boolean(teamPayload?.archived_at || teamPayload?.status === "inactive"),
-        );
+        setIsTeamArchived(isArchivedTeamData(teamPayload));
 
         if (Array.isArray(teamPayload?.members)) {
           if (!isUserTeamMember(teamPayload.members, user?.id)) {
@@ -1541,6 +1591,8 @@ const Chat = () => {
           );
 
           if (type === "team" && conversationDetails?.data) {
+            setIsTeamArchived(isArchivedTeamData(conversationDetails.data.team));
+
             const accessRevoked = await hydrateTeamConversationDetails(
               conversationDetails,
               conversationId,
@@ -1575,6 +1627,11 @@ const Chat = () => {
                       conversationDetails.data.team.is_synthetic ??
                       conversationDetails.data.team.isSynthetic ??
                       undefined,
+                    archived_at: conversationDetails.data.team.archived_at,
+                    archivedAt:
+                      conversationDetails.data.team.archivedAt ??
+                      conversationDetails.data.team.archived_at,
+                    status: conversationDetails.data.team.status,
                   },
                   lastMessage: "Start your team conversation...",
                   updatedAt: new Date().toISOString(),
@@ -2300,35 +2357,7 @@ const Chat = () => {
         return;
       }
 
-      fetchTeamDetails(data.teamId, { force: true })
-        .then((teamPayload) => {
-          if (!Array.isArray(teamPayload?.members)) {
-            return;
-          }
-
-          if (!isUserTeamMember(teamPayload.members, user?.id)) {
-            revokeTeamChatAccess(data.teamId);
-            return;
-          }
-
-          setActiveConversation((prev) => {
-            if (
-              !prev ||
-              prev.type !== "team" ||
-              String(prev.team?.id ?? prev.id) !== String(data.teamId)
-            ) {
-              return prev;
-            }
-
-            return {
-              ...prev,
-              team: {
-                ...prev.team,
-                members: teamPayload.members,
-              },
-            };
-          });
-        })
+      refreshActiveTeamMembership(data.teamId)
         .catch((err) =>
           console.error("Error refreshing active team members:", err),
         );
@@ -3402,7 +3431,9 @@ const Chat = () => {
               {/* Deleted team banner + message input */}
               <div className="border-t border-base-200">
                 {/* Show banner for archived teams */}
-                {isTeamArchived && conversationType === "team" && (
+                {isActiveTeamArchived &&
+                  conversationType === "team" &&
+                  isCurrentUserActiveTeamMember && (
                   <div
                     className="flex flex-col items-center gap-3 px-5 py-4 mx-4 mt-4 rounded-2xl text-center"
                     style={{
@@ -3410,36 +3441,23 @@ const Chat = () => {
                       color: "#dc2626",
                     }}
                   >
-                    <span className="text-sm font-medium">
-                      {activeConversation?.team?.members?.some(
-                        (m) => m.userId === user?.id && m.role === "owner",
-                      )
-                        ? `You initiated the deletion of this team. The team is archived and inactive now. Remaining members are able to text in this chat until the last member leaves.`
-                        : `${(() => {
-                            const owner =
-                              activeConversation?.team?.members?.find(
-                                (m) => m.role === "owner",
-                              );
-                            return owner
-                              ? `${owner.firstName} ${owner.lastName}`
-                              : "The owner";
-                          })()} has initiated the deletion of this team. The team is archived and inactive now. Remaining members are able to text in this chat until the last member leaves.`}
-                    </span>
+                    <AlertTriangle size={18} className="shrink-0" />
+                    <div className="inline-flex max-w-full rounded-md bg-red-500/10 px-3 py-2 text-sm font-medium text-red-600">
+                      <span>
+                        This team was deleted. The chat stays available for up
+                        to 30 days so remaining teammates can say goodbye. Leave
+                        anytime; after leaving or deletion, messages and files
+                        are no longer accessible.
+                      </span>
+                    </div>
 
-                    {/* Leave Team Button */}
                     <button
                       onClick={() => handleLeaveTeam()}
-                      className="flex items-center gap-1 text-xs underline hover:no-underline opacity-80 hover:opacity-100 transition-opacity cursor-pointer"
+                      className="flex items-center gap-1 text-xs text-red-600 underline opacity-80 transition-opacity hover:opacity-100 hover:no-underline cursor-pointer"
                     >
                       <LogOut size={14} />
-                      Leave team and remove from chat list
+                      Leave team chat now
                     </button>
-                  </div>
-                )}
-
-                {conversationType === "team" && !isCurrentUserActiveTeamMember && (
-                  <div className="mx-4 mt-4 rounded-lg bg-base-200 px-4 py-3 text-sm text-base-content/70">
-                    You are no longer a member of this team, so this chat is read-only.
                   </div>
                 )}
 

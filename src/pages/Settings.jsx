@@ -1293,7 +1293,8 @@ const Settings = () => {
                             {getTransferTeamName(team)}
                           </p>
                           <p className="text-sm text-warning">
-                            This team will be permanently deleted
+                            This solo team will be permanently deleted
+                            immediately
                           </p>
                         </div>
                       </div>

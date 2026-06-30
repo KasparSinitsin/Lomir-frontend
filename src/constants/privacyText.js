@@ -23,4 +23,4 @@ export const LEGAL_PLACEHOLDER_NOTICE =
   "Lomir is currently being prepared for public use. Please do not enter sensitive personal information until the final legal documents are available.";
 
 export const ACCOUNT_DELETION_NOTICE =
-  "Account deletion is permanent. Some content may be deleted, while certain references may be anonymized as 'Former Lomir User' to preserve team and conversation context.";
+  "Account deletion is permanent. Your profile and direct messages are deleted immediately after confirmation. Some team and badge references may be anonymized as 'Former Lomir User' to preserve team and conversation context.";

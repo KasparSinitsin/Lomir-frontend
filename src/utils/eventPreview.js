@@ -501,8 +501,8 @@ export const getEventPreview = (lastMessage, currentUser = null) => {
       return {
         text:
           ownerName === "You"
-            ? "You archived this team"
-            : `${ownerName || "Owner"} archived this team`,
+            ? "You deleted this team"
+            : `${ownerName || "Owner"} deleted this team`,
         icon: "AlertTriangle",
         bannerClass: null,
         color: "#dc2626",

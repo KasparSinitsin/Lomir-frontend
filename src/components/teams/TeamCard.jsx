@@ -2889,7 +2889,10 @@ const TeamCard = ({
         confirmIcon={<Trash2 size={16} />}
       >
         <p className="text-sm text-base-content/80">
-          Delete this team? This action cannot be undone.
+          Delete this team? If you are the only member, the team and chat are
+          deleted immediately. If other members remain, the team is archived
+          first and permanently deleted after they leave or after the archive
+          grace period, currently 30 days by default.
         </p>
       </ConfirmModal>
 
