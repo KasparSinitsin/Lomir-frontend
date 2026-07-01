@@ -36,7 +36,6 @@ import {
 import {
   getCachedChatTeamProfile,
   getCachedChatUserProfile,
-  getTeamAvatarUrl,
   mergeResolvedTeamData,
   mergeResolvedUserData,
 } from "../../utils/chatEntityResolvers";
@@ -397,6 +396,12 @@ const ConversationList = ({
     const userIdsToFetch = [];
     const teamIdsToFetch = [];
 
+    // getConversations already embeds everything this list renders — name,
+    // avatar and (as of the N+1 fix) the synthetic flag. Avatar and synthetic
+    // status come from the same DB columns getTeamById/getUserById would read,
+    // so a null avatar is a valid final state, not a reason to re-fetch. Only
+    // resolve when the synthetic flag is genuinely absent, which keeps a
+    // graceful fallback if an older backend omits it from the payload.
     conversations.forEach((conversation) => {
       if (conversation.type === "team") {
         const team = conversation.team;
@@ -404,8 +409,8 @@ const ConversationList = ({
 
         if (
           teamId != null &&
-          (!getTeamAvatarUrl(team) ||
-            (team?.is_synthetic == null && team?.isSynthetic == null))
+          team?.is_synthetic == null &&
+          team?.isSynthetic == null
         ) {
           teamIdsToFetch.push(teamId);
         }
@@ -418,8 +423,8 @@ const ConversationList = ({
 
       if (
         userId != null &&
-        (!(partner?.avatar_url || partner?.avatarUrl) ||
-          (partner?.is_synthetic == null && partner?.isSynthetic == null))
+        partner?.is_synthetic == null &&
+        partner?.isSynthetic == null
       ) {
         userIdsToFetch.push(userId);
       }

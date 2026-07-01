@@ -13,6 +13,14 @@ export const extractEntityPayload = (response) => {
   return payload?.data?.data ?? payload?.data ?? payload;
 };
 
+// A 404 from an entity endpoint is a stable "gone or not visible to you"
+// result for the session (e.g. a chat system/event message that references a
+// deleted team). Keep the rejected request cached so repeat renders/intervals
+// short-circuit through the cache instead of re-hitting /api/teams/:id or
+// /api/users/:id every time. Transient failures (network, 5xx) stay evicted so
+// they can be retried on the next call.
+const isCacheableAbsence = (error) => error?.response?.status === 404;
+
 const getCachedEntity = async (cache, cacheKey, loader) => {
   if (cache.has(cacheKey)) {
     return cache.get(cacheKey);
@@ -26,7 +34,12 @@ const getCachedEntity = async (cache, cacheKey, loader) => {
     cache.set(cacheKey, Promise.resolve(result));
     return result;
   } catch (error) {
-    cache.delete(cacheKey);
+    // Leave the (rejected) request in the cache for a known-absent entity so
+    // future lookups reuse it; evict only transient failures. Callers already
+    // handle the rejection, so the caching is transparent to them.
+    if (!isCacheableAbsence(error)) {
+      cache.delete(cacheKey);
+    }
     throw error;
   }
 };

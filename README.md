@@ -268,7 +268,7 @@ Lomir-frontend/
 │   │   ├── teamRequestUtils.js     # Invitation + application helper functions (build card data, labels)
 │   │   ├── eventPreview.js         # Parse + format chat system event messages for previews and toasts
 │   │   ├── roleEventMessages.js    # Build role event message strings (filled, closed, updated, deleted, reopened)
-│   │   ├── chatEntityResolvers.js  # Resolve user/team entity objects from chat conversation payloads
+│   │   ├── chatEntityResolvers.js  # Merge/resolve user/team entities for chat; conversation list trusts the embedded getConversations payload (name/avatar/synthetic) — per-entity fetch only as a fallback when the synthetic flag is missing
 │   │   ├── messageSystemParser.js  # parseSystemMessage: parse chat system/event message payloads (MessageDisplay)
 │   │   ├── messageDisplayHelpers.js # Pure MessageDisplay helpers: getEventReactionPreview, formatReplyTooltipText, getFileIcon
 │   │   ├── messageDisplayRenderers.jsx # JSX render helpers for MessageDisplay: renderReplyContent, renderHighlightedSearchText
@@ -387,6 +387,7 @@ The chat page supports both direct (1-to-1) and team group conversations.
 - Team actions (joins, role changes, invitations accepted/declined, ownership transfers) post styled event banners into the team chat automatically
 - Role lifecycle events post dedicated banners: role filled (via application or invitation acceptance), role closed, role updated, role deleted, and role reopened — each with a distinct icon and colour
 - Conversation list cards show a colour-coded icon and short preview for event messages instead of raw system text; notification toasts resolve the same icons and preview text
+- Conversation list cards render each team's/partner's name, avatar, and demo overlay directly from the embedded conversation payload — no per-conversation profile fetch on chat load (only the active conversation resolves its own details)
 
 **Render resilience**
 - Chat routes are wrapped in a small `ErrorBoundary` so unexpected render errors show a visible fallback instead of a blank white screen
