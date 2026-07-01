@@ -109,6 +109,13 @@
     mask-size: 100% 100%;
     filter: drop-shadow(0 2px 6px rgba(4, 80, 20, 0.12));
   }
+
+  /* Archived (deleted) team conversation: opaque light-red arrow (the red
+     counterpart of the green #dcfce7 arrow) to match the card's red fill. */
+  .lomir-active-conversation-arrow--archived {
+    background-color: #fee2e2;
+    filter: drop-shadow(0 2px 6px rgba(80, 4, 4, 0.12));
+  }
 }
 
 @layer components {

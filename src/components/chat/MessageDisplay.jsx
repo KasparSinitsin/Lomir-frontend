@@ -307,12 +307,27 @@ const MessageDisplay = ({
     }
 
     (teamMembers || []).forEach((member) => {
-      const memberId = member?.user_id ?? member?.userId ?? null;
+      const memberUser = member?.user || member;
+      const memberId =
+        member?.user_id ??
+        member?.userId ??
+        memberUser?.user_id ??
+        memberUser?.userId ??
+        memberUser?.id ??
+        null;
       if (memberId == null) return;
 
       if (
-        !(member?.avatar_url || member?.avatarUrl) ||
-        (member?.is_synthetic == null && member?.isSynthetic == null)
+        !(
+          member?.avatar_url ||
+          member?.avatarUrl ||
+          memberUser?.avatar_url ||
+          memberUser?.avatarUrl
+        ) ||
+        (member?.is_synthetic == null &&
+          member?.isSynthetic == null &&
+          memberUser?.is_synthetic == null &&
+          memberUser?.isSynthetic == null)
       ) {
         userIdsToFetch.push(memberId);
       }
@@ -451,6 +466,38 @@ const MessageDisplay = ({
       userData,
       userId != null ? resolvedChatUsers[String(userId)] : null,
     );
+
+  const getTeamMemberUserId = (member) => {
+    const memberUser = member?.user || member;
+    return (
+      member?.user_id ??
+      member?.userId ??
+      memberUser?.user_id ??
+      memberUser?.userId ??
+      memberUser?.id ??
+      null
+    );
+  };
+
+  const knownTeamMembers = useMemo(
+    () => [
+      ...(teamMembers || []),
+      ...(resolvedTeamData?.members || []),
+      ...(teamData?.members || []),
+    ],
+    [teamMembers, resolvedTeamData?.members, teamData?.members],
+  );
+
+  const findKnownTeamMember = (userId) => {
+    if (userId == null) return null;
+
+    return (
+      knownTeamMembers.find((member) => {
+        const memberId = getTeamMemberUserId(member);
+        return memberId != null && String(memberId) === String(userId);
+      }) || null
+    );
+  };
 
   const getTeamMemberFullName = (m) => {
     const first = m.first_name ?? m.firstName;
@@ -861,33 +908,49 @@ const MessageDisplay = ({
 
   // Get sender info from team members or message data
   const getSenderInfo = (senderId, message = null) => {
-    if (conversationType === "team" && teamMembers.length > 0) {
-      const member = teamMembers.find(
-        (m) =>
-          m.user_id === senderId ||
-          m.userId === senderId ||
-          String(m.user_id) === String(senderId) ||
-          String(m.userId) === String(senderId),
-      );
+    const member =
+      conversationType === "team" ? findKnownTeamMember(senderId) : null;
 
-      if (member) {
-        return getResolvedUserData(
-          {
-          id: member.user_id || member.userId || senderId,
-          username: member.username,
-          firstName: member.first_name || member.firstName,
-          lastName: member.last_name || member.lastName,
-          avatarUrl: member.avatar_url || member.avatarUrl,
+    if (member) {
+      const memberUser = member.user || member;
+      const memberId = getTeamMemberUserId(member) ?? senderId;
+
+      return getResolvedUserData(
+        {
+          id: memberId,
+          username: member.username ?? memberUser.username,
+          firstName:
+            member.first_name ??
+            member.firstName ??
+            memberUser.first_name ??
+            memberUser.firstName,
+          lastName:
+            member.last_name ??
+            member.lastName ??
+            memberUser.last_name ??
+            memberUser.lastName,
+          avatarUrl:
+            member.avatar_url ??
+            member.avatarUrl ??
+            memberUser.avatar_url ??
+            memberUser.avatarUrl,
           isSynthetic:
-            member.isSynthetic ?? member.is_synthetic ?? undefined,
+            member.isSynthetic ??
+            member.is_synthetic ??
+            memberUser.isSynthetic ??
+            memberUser.is_synthetic ??
+            undefined,
           is_synthetic:
-            member.is_synthetic ?? member.isSynthetic ?? undefined,
+            member.is_synthetic ??
+            member.isSynthetic ??
+            memberUser.is_synthetic ??
+            memberUser.isSynthetic ??
+            undefined,
           isCurrentMember: true,
           isDeletedUser: false,
-          },
-          member.user_id || member.userId || senderId,
-        );
-      }
+        },
+        memberId,
+      );
     }
 
     if (resolvedConversationPartner && senderId === resolvedConversationPartner.id) {
@@ -908,7 +971,10 @@ const MessageDisplay = ({
           message.senderFirstName ?? message.sender_first_name ?? null,
         lastName: message.senderLastName ?? message.sender_last_name ?? null,
         avatarUrl: message.senderAvatarUrl ?? message.sender_avatar_url ?? null,
-        isCurrentMember: message.isCurrentMember === true,
+        isCurrentMember:
+          knownTeamMembers.length > 0
+            ? Boolean(findKnownTeamMember(senderId))
+            : undefined,
       };
       const hasMessageSenderInfo =
         embeddedSender.username ||
@@ -1150,6 +1216,7 @@ const MessageDisplay = ({
     renderOwnershipTeamMessage,
     renderOwnershipTransferredMessage,
     renderMemberRemovedMessage,
+    renderTeamDeletedMessage,
   } = createEventRenderers({
     Mention,
     MentionById,
@@ -1718,8 +1785,11 @@ const MessageDisplay = ({
                       renderOwnershipTeamMessage(message, parsedMessage),
                     );
                   } else if (parsedMessage.type === "team_deleted") {
-                    // not rendered here (fixed banner elsewhere)
-                    return null;
+                    // Timeline event marking the deletion moment (who + when),
+                    // complementing the persistent archived-chat banner.
+                    return renderSystemMessage(
+                      renderTeamDeletedMessage(message, parsedMessage),
+                    );
                   }
                 }
               }

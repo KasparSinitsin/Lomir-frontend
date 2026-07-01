@@ -1,5 +1,6 @@
 import React from "react";
 import {
+  Archive,
   CircleX,
   Crown,
   FileText,
@@ -1784,7 +1785,44 @@ export const createEventRenderers = (ctx) => {
     );
   };
 
+  // =============================================================================
+  // renderTeamDeletedMessage - Red danger theme (matches the archived-chat footer)
+  // Posted at deletion time so the moment + who deleted stay visible in history.
+  // =============================================================================
+  const renderTeamDeletedMessage = (message, parsedMessage) => {
+    const messageText = parsedMessage.ownerName ? (
+      <>
+        This team has just been archived (scheduled for deletion) by{" "}
+        {userMentionOrYou(parsedMessage.ownerId, parsedMessage.ownerName)}.
+      </>
+    ) : (
+      <>This team has just been archived (scheduled for deletion).</>
+    );
+
+    return (
+      <div className="flex flex-col items-center w-full my-4">
+        <div
+          className="event-banner mb-3"
+          style={{
+            backgroundColor: "rgba(239, 68, 68, 0.1)",
+            color: "#dc2626",
+          }}
+        >
+          <span className="text-sm font-medium event-message-text">
+            <Archive size={16} className="event-inline-icon mr-1" />
+            {highlightEventContent(messageText)}
+          </span>
+        </div>
+
+        <div className="text-xs text-base-content/50">
+          {formatLocalTime(message.createdAt)}
+        </div>
+      </div>
+    );
+  };
+
   return {
+    renderTeamDeletedMessage,
     renderApplicationApprovedDmMessage,
     renderApplicationApprovedMessage,
     renderRoleApplicationApprovedMessage,

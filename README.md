@@ -366,6 +366,11 @@ The chat page supports both direct (1-to-1) and team group conversations.
 - Typing indicators and read receipts are shown per conversation
 - Messages can be replied to, edited, and soft-deleted; deleted messages show a placeholder
 
+**Archived (deleted) team chats**
+- When an owner deletes a team that still has other members, the team is archived (scheduled for deletion) and the chat stays open as a "farewell" window — remaining members can still read and post until they leave or the grace period (14 days) elapses
+- The chat shows a red archive banner with the actual time left before deletion (days, then hours on the final day) plus a "leave now" action; the deletion moment is also posted as an in-chat event and sent as a notification
+- Archived team conversations are marked with a red archive icon (and a red active-card state), remain searchable, and their name opens the full Team Details modal with an "Archived" badge/tooltip and no edit/manage actions
+
 **@Mentions**
 - Type `@` in the message input to open a dropdown of conversation participants
 - Select a person or "All members" to insert a mention token

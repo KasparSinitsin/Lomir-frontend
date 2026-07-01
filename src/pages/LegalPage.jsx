@@ -5,7 +5,7 @@ import Card from "../components/common/Card";
 const CONTACT_EMAIL = "lomirapp@gmail.com";
 const LAST_UPDATED = "June 18, 2026";
 const LEGAL_NOTICE_UPDATED = "June 16, 2026";
-const PRIVACY_UPDATED = "June 25, 2026";
+const PRIVACY_UPDATED = "June 30, 2026";
 
 const mailLink = (
   <a href={`mailto:${CONTACT_EMAIL}`} className="link link-primary">
@@ -191,9 +191,10 @@ const pageContent = {
       {
         title: "15. Storage Periods",
         items: [
-          "Account and profile data are stored while the account exists and are deleted or anonymized according to the account deletion workflow.",
+          "Account and profile data are stored while the account exists. When a user deletes their account, the user profile row and direct messages involving that user are deleted immediately after confirmation, while limited team and badge references may remain only in anonymized form.",
+          "When a solo team is deleted, the team, its chat, members, invitations, applications, badges, notifications, and team avatar are deleted immediately. When a team with other remaining members is deleted, it is archived first so remaining members can see the deletion notice and read the team history; it is permanently deleted when the last member leaves or after the configured archive grace period, currently 14 days by default.",
           "Legal acknowledgement records are stored while the account exists and may be retained where necessary to document compliance or defend legal claims.",
-          "Unverified accounts are scheduled for deletion after the verification link expires, with cleanup running periodically.",
+          "Unverified accounts are scheduled for deletion after the verification link expires, with a one-hour buffer. Cleanup runs periodically and once on server startup.",
           "Password reset tokens expire after one hour and are cleared by scheduled cleanup.",
           "Chat file and image uploads expire after 60 days and are removed by scheduled cleanup where possible. Message records may remain with deleted file references removed.",
           "Avatars and team avatars are stored until replaced, removed, or deleted with the relevant account or team where technically possible.",
@@ -204,7 +205,7 @@ const pageContent = {
       {
         title: "16. Account Deletion",
         paragraphs: [
-          "Users can delete their account from the app. Deletion is designed to remove the user row and direct messages involving the user. Some team context may be preserved in anonymized form, for example as 'Former Lomir User', so that remaining teams, badge histories, ownership transfers, and role status remain understandable.",
+          "Users can delete their account from the app. After confirmation, deletion removes the user row and direct messages involving the user immediately. Some team context may be preserved in anonymized form, for example as 'Former Lomir User', so that remaining teams, badge histories, ownership transfers, and role status remain understandable.",
           "Uploaded avatars are deleted from ImageKit on a best-effort basis after successful account deletion.",
         ],
       },
@@ -301,7 +302,7 @@ const pageContent = {
       {
         title: "9. Account Deletion",
         paragraphs: [
-          "You may delete your account in the app. Account deletion is intended to be permanent. Some team and badge context may remain in anonymized or system-message form so that other users' team history and collaboration context stay understandable.",
+          "You may delete your account in the app. Account deletion is intended to be permanent; your profile and direct messages involving you are deleted immediately after confirmation. Some team and badge context may remain in anonymized or system-message form so that other users' team history and collaboration context stay understandable.",
         ],
       },
       {
