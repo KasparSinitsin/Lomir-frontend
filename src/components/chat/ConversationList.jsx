@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import {
   AlertTriangle,
+  Archive,
   ChevronRight,
   CircleX,
   File,
@@ -43,6 +44,7 @@ import { getEventPreview } from "../../utils/eventPreview";
 
 const EVENT_PREVIEW_ICONS = {
   AlertTriangle,
+  Archive,
   CircleX,
   Crown,
   FileText,
@@ -83,7 +85,10 @@ const renderHighlightedText = (value, query) => {
     return (
       <mark
         key={`${part}-${index}`}
-        className="rounded-full bg-yellow-100 px-1.5 py-0.5 text-[var(--color-primary-focus)]"
+        className="rounded-full bg-yellow-100 px-1.5 py-0.5"
+        // Highlight only adds the yellow background — keep the surrounding text's
+        // colour and weight (override the browser's default <mark> styling).
+        style={{ color: "inherit", fontWeight: "inherit" }}
       >
         {part}
       </mark>
@@ -612,16 +617,32 @@ const ConversationList = ({
             lastMessageText,
             currentUser,
           );
-          const shouldUseEventPreview = !isSearchActive && eventPreview;
-          const EventPreviewIcon = shouldUseEventPreview
-            ? EVENT_PREVIEW_ICONS[eventPreview.icon]
+          // During search the matched message may be an older system/event
+          // message (not the conversation's last message). Style it through the
+          // same canonical getEventPreview path so it keeps its icon, colour and
+          // weight instead of falling back to raw/plain text.
+          const hasSearchMessageMatch =
+            isSearchActive && Boolean(conversation.searchMatchContent);
+          const searchEventPreview = hasSearchMessageMatch
+            ? getEventPreview(conversation.searchMatchContent, currentUser)
             : null;
-          const previewText =
-            isSearchActive && conversation.searchMatchPreview
+          // When the hit is on the conversation's metadata (e.g. team name) and
+          // no message matched, the preview shows the last message — style it the
+          // same way the non-search list does instead of leaving it raw.
+          const activeEventPreview = isSearchActive
+            ? hasSearchMessageMatch
+              ? searchEventPreview
+              : eventPreview
+            : eventPreview;
+          const shouldUseEventPreview = Boolean(activeEventPreview);
+          const EventPreviewIcon = shouldUseEventPreview
+            ? EVENT_PREVIEW_ICONS[activeEventPreview.icon]
+            : null;
+          const previewText = shouldUseEventPreview
+            ? activeEventPreview.text
+            : isSearchActive && conversation.searchMatchPreview
               ? conversation.searchMatchPreview
-              : shouldUseEventPreview
-                ? eventPreview.text
-                : attachmentPreview?.text || lastMessageText || "No messages yet";
+              : attachmentPreview?.text || lastMessageText || "No messages yet";
           const formattedAttachmentPreview =
             !isSearchActive && !attachmentPreview
               ? getFormattedAttachmentPreview(previewText)
@@ -642,11 +663,23 @@ const ConversationList = ({
           const isActive =
             chatVisible && String(activeConversationId) === String(conversation.id);
 
+          // Archived (deleted, scheduled-for-deletion) team conversation —
+          // backend getConversations exposes archived_at/status on the team.
+          const isArchived =
+            isTeam &&
+            Boolean(
+              conversationData?.archived_at ||
+                conversationData?.archivedAt ||
+                conversationData?.status === "inactive",
+            );
+
           const conversationCard = (
             <div className={isActive ? "lomir-active-conversation-wrap" : undefined}>
               {isActive && (
                 <span
-                  className="lomir-active-conversation-arrow"
+                  className={`lomir-active-conversation-arrow${
+                    isArchived ? " lomir-active-conversation-arrow--archived" : ""
+                  }`}
                   aria-hidden="true"
                 />
               )}
@@ -656,7 +689,9 @@ const ConversationList = ({
                   p-4 mr-4 cursor-pointer rounded-lg border shadow-soft transition-all duration-300 hover:shadow-md group
                   ${
                     isActive
-                      ? "lomir-active-conversation-card bg-green-100 border-transparent"
+                      ? `lomir-active-conversation-card border-transparent ${
+                          isArchived ? "bg-red-500/10" : "bg-green-100"
+                        }`
                       : "bg-white/80 border-base-200"
                   }
                 `}
@@ -764,10 +799,10 @@ const ConversationList = ({
                       <p
                         className="text-sm font-medium truncate"
                         style={{
-                          color: eventPreview.color,
-                          ...(eventPreview.backgroundColor
+                          color: activeEventPreview.color,
+                          ...(activeEventPreview.backgroundColor
                             ? {
-                                backgroundColor: eventPreview.backgroundColor,
+                                backgroundColor: activeEventPreview.backgroundColor,
                                 borderRadius: "0.375rem",
                                 maxWidth: "100%",
                                 paddingLeft: "3px",
@@ -782,7 +817,9 @@ const ConversationList = ({
                             size={14}
                             className="flex-shrink-0"
                           />
-                          <span className="truncate">{previewText}</span>
+                          <span className="truncate">
+                            {renderHighlightedText(previewText, searchQuery)}
+                          </span>
                         </span>
                       </p>
                     ) : visibleAttachmentPreview ? (
@@ -817,6 +854,12 @@ const ConversationList = ({
                     >
                       {isTeam ? (
                         <>
+                          {isArchived && (
+                            <Archive
+                              size={12}
+                              className="flex-shrink-0 text-red-600"
+                            />
+                          )}
                           <Users size={12} className="flex-shrink-0" />
                           <span className={`lomir-conversation-kind-label whitespace-nowrap ${isSearchActive && chatVisible ? "hidden sm:inline md:hidden" : "inline"}`}>
                             {renderHighlightedText("Team Chat", searchQuery)}

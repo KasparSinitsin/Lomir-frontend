@@ -178,6 +178,59 @@ export const formatRelativeChatTimestamp = (value) => {
   return formatDistanceToNow(date, { addSuffix: true }).replace("about ", "");
 };
 
+// Default archive grace period in days — mirrors the backend
+// ARCHIVED_TEAM_GRACE_DAYS default. Kept in sync manually.
+export const ARCHIVE_GRACE_DAYS = 14;
+
+// Human-readable time left before an archived team (and its chat) is permanently
+// deleted: whole days while more than a day remains, then remaining hours on the
+// final day. Returns null when the archive date is missing/invalid.
+export const formatArchiveTimeRemaining = (
+  archivedAt,
+  graceDays = ARCHIVE_GRACE_DAYS,
+) => {
+  const archivedDate = normalizeTimestampToDate(archivedAt);
+  if (!archivedDate) return null;
+
+  const deletionMs =
+    archivedDate.getTime() + graceDays * 24 * 60 * 60 * 1000;
+  const remainingMs = deletionMs - Date.now();
+  if (remainingMs <= 0) return "less than an hour";
+
+  const remainingHours = remainingMs / (60 * 60 * 1000);
+  if (remainingHours < 24) {
+    const hours = Math.max(1, Math.ceil(remainingHours));
+    return `${hours} ${hours === 1 ? "hour" : "hours"}`;
+  }
+
+  const days = Math.floor(remainingHours / 24);
+  return `${days} ${days === 1 ? "day" : "days"}`;
+};
+
+// Milliseconds until formatArchiveTimeRemaining would next change its output:
+// the next whole-day boundary while more than a day remains, otherwise the next
+// hour boundary. Lets a caller refresh the countdown once per day (then hourly
+// on the final day) instead of on every render. Returns null once the grace
+// period has elapsed (nothing left to update).
+export const msUntilNextArchiveChange = (
+  archivedAt,
+  graceDays = ARCHIVE_GRACE_DAYS,
+) => {
+  const archivedDate = normalizeTimestampToDate(archivedAt);
+  if (!archivedDate) return null;
+
+  const HOUR = 60 * 60 * 1000;
+  const DAY = 24 * HOUR;
+  const remainingMs =
+    archivedDate.getTime() + graceDays * DAY - Date.now();
+  if (remainingMs <= 0) return null;
+
+  const unit = remainingMs < DAY ? HOUR : DAY;
+  const untilNext = remainingMs % unit;
+  // +1s buffer so the recompute lands just past the boundary.
+  return (untilNext === 0 ? unit : untilNext) + 1000;
+};
+
 export const formatShortRelativeChatTimestamp = (value) => {
   return formatRelativeChatTimestamp(value).replace(
     "less than a minute ago",
