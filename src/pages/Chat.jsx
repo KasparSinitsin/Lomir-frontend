@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import {
   LogOut,
-  AlertTriangle,
+  Archive,
   ChevronRight,
   ChevronLeft,
   Users,
@@ -42,6 +42,8 @@ import { formatDisplayName } from "../utils/nameFormatters";
 import {
   formatRelativeChatTimestamp,
   normalizeTimestampToDate,
+  formatArchiveTimeRemaining,
+  msUntilNextArchiveChange,
 } from "../utils/dateHelpers";
 import { getMessageConversationTarget } from "../utils/messageNotificationUtils";
 
@@ -923,6 +925,32 @@ const Chat = () => {
   const teamData =
     conversationType === "team" ? activeConversation?.team || null : null;
   const isActiveTeamArchived = isTeamArchived || isArchivedTeamData(teamData);
+
+  // Time left before an archived team + its chat are permanently deleted
+  // (whole days, then remaining hours on the final day). Refreshed on a
+  // self-scheduling timer — once per day, then hourly on the final day —
+  // instead of recomputing on every render.
+  const activeTeamArchivedAt = teamData?.archivedAt ?? teamData?.archived_at;
+  const [activeTeamArchiveTimeRemaining, setActiveTeamArchiveTimeRemaining] =
+    useState(null);
+  useEffect(() => {
+    if (!isActiveTeamArchived || !activeTeamArchivedAt) {
+      setActiveTeamArchiveTimeRemaining(null);
+      return undefined;
+    }
+    let timeoutId;
+    const update = () => {
+      setActiveTeamArchiveTimeRemaining(
+        formatArchiveTimeRemaining(activeTeamArchivedAt),
+      );
+      const delay = msUntilNextArchiveChange(activeTeamArchivedAt);
+      if (delay != null) {
+        timeoutId = setTimeout(update, delay);
+      }
+    };
+    update();
+    return () => clearTimeout(timeoutId);
+  }, [isActiveTeamArchived, activeTeamArchivedAt]);
 
   const teamMembers = useMemo(() => {
     const members =
@@ -3441,12 +3469,14 @@ const Chat = () => {
                       color: "#dc2626",
                     }}
                   >
-                    <AlertTriangle size={18} className="shrink-0" />
+                    <Archive size={18} className="shrink-0" />
                     <div className="inline-flex max-w-full rounded-md bg-red-500/10 px-3 py-2 text-sm font-medium text-red-600">
                       <span>
-                        This team was deleted. The chat stays available for up
-                        to 30 days so remaining teammates can say goodbye. Leave
-                        anytime; after leaving or deletion, messages and files
+                        This team has been archived and is scheduled for
+                        deletion. The chat stays available for{" "}
+                        {activeTeamArchiveTimeRemaining || "up to 14 days"} so
+                        remaining teammates can say goodbye. Leave anytime; once
+                        you leave or the chat is deleted, its messages and files
                         are no longer accessible.
                       </span>
                     </div>

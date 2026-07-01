@@ -1795,10 +1795,16 @@ on ${format(new Date((effectivePendingInvitation.createdAt ?? effectivePendingIn
 
                       {/* Archived status - ALWAYS show for archived teams */}
                       {(team?.archived_at || team?.status === "inactive") && (
-                        <div className="flex items-center gap-1 text-base-content/70">
-                          <Archive size={14} className="flex-shrink-0" />
-                          <span>Archived</span>
-                        </div>
+                        <Tooltip
+                          content="Archived (scheduled for deletion and inactive — no invitations or changes to the team possible)."
+                          position="bottom"
+                          wrapperClassName="inline-flex"
+                        >
+                          <div className="flex items-center gap-1 text-base-content/70 cursor-help">
+                            <Archive size={14} className="flex-shrink-0" />
+                            <span>Archived</span>
+                          </div>
+                        </Tooltip>
                       )}
 
                       {/* Public/Private status - only for members of NON-archived teams */}
@@ -2047,7 +2053,7 @@ on ${format(new Date((effectivePendingInvitation.createdAt ?? effectivePendingIn
           Delete this team? If you are the only member, the team and chat are
           deleted immediately. If other members remain, the team is archived
           first and permanently deleted after they leave or after the archive
-          grace period, currently 30 days by default.
+          grace period, currently 14 days by default.
         </p>
       </ConfirmModal>
 

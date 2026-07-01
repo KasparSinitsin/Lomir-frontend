@@ -192,7 +192,7 @@ const pageContent = {
         title: "15. Storage Periods",
         items: [
           "Account and profile data are stored while the account exists. When a user deletes their account, the user profile row and direct messages involving that user are deleted immediately after confirmation, while limited team and badge references may remain only in anonymized form.",
-          "When a solo team is deleted, the team, its chat, members, invitations, applications, badges, notifications, and team avatar are deleted immediately. When a team with other remaining members is deleted, it is archived first so remaining members can see the deletion notice and read the team history; it is permanently deleted when the last member leaves or after the configured archive grace period, currently 30 days by default.",
+          "When a solo team is deleted, the team, its chat, members, invitations, applications, badges, notifications, and team avatar are deleted immediately. When a team with other remaining members is deleted, it is archived first so remaining members can see the deletion notice and read the team history; it is permanently deleted when the last member leaves or after the configured archive grace period, currently 14 days by default.",
           "Legal acknowledgement records are stored while the account exists and may be retained where necessary to document compliance or defend legal claims.",
           "Unverified accounts are scheduled for deletion after the verification link expires, with a one-hour buffer. Cleanup runs periodically and once on server startup.",
           "Password reset tokens expire after one hour and are cleared by scheduled cleanup.",

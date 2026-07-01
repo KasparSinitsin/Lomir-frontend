@@ -2892,7 +2892,7 @@ const TeamCard = ({
           Delete this team? If you are the only member, the team and chat are
           deleted immediately. If other members remain, the team is archived
           first and permanently deleted after they leave or after the archive
-          grace period, currently 30 days by default.
+          grace period, currently 14 days by default.
         </p>
       </ConfirmModal>
 

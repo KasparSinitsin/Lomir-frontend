@@ -1,6 +1,6 @@
 import React from "react";
 import {
-  AlertTriangle,
+  Archive,
   CircleX,
   Crown,
   FileText,
@@ -1792,11 +1792,11 @@ export const createEventRenderers = (ctx) => {
   const renderTeamDeletedMessage = (message, parsedMessage) => {
     const messageText = parsedMessage.ownerName ? (
       <>
-        This team has just been deleted by{" "}
+        This team has just been archived (scheduled for deletion) by{" "}
         {userMentionOrYou(parsedMessage.ownerId, parsedMessage.ownerName)}.
       </>
     ) : (
-      <>This team has just been deleted.</>
+      <>This team has just been archived (scheduled for deletion).</>
     );
 
     return (
@@ -1809,7 +1809,7 @@ export const createEventRenderers = (ctx) => {
           }}
         >
           <span className="text-sm font-medium event-message-text">
-            <AlertTriangle size={16} className="event-inline-icon mr-1" />
+            <Archive size={16} className="event-inline-icon mr-1" />
             {highlightEventContent(messageText)}
           </span>
         </div>

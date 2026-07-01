@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import {
   AlertTriangle,
+  Archive,
   ChevronRight,
   CircleX,
   File,
@@ -43,6 +44,7 @@ import { getEventPreview } from "../../utils/eventPreview";
 
 const EVENT_PREVIEW_ICONS = {
   AlertTriangle,
+  Archive,
   CircleX,
   Crown,
   FileText,
@@ -661,11 +663,23 @@ const ConversationList = ({
           const isActive =
             chatVisible && String(activeConversationId) === String(conversation.id);
 
+          // Archived (deleted, scheduled-for-deletion) team conversation —
+          // backend getConversations exposes archived_at/status on the team.
+          const isArchived =
+            isTeam &&
+            Boolean(
+              conversationData?.archived_at ||
+                conversationData?.archivedAt ||
+                conversationData?.status === "inactive",
+            );
+
           const conversationCard = (
             <div className={isActive ? "lomir-active-conversation-wrap" : undefined}>
               {isActive && (
                 <span
-                  className="lomir-active-conversation-arrow"
+                  className={`lomir-active-conversation-arrow${
+                    isArchived ? " lomir-active-conversation-arrow--archived" : ""
+                  }`}
                   aria-hidden="true"
                 />
               )}
@@ -675,7 +689,9 @@ const ConversationList = ({
                   p-4 mr-4 cursor-pointer rounded-lg border shadow-soft transition-all duration-300 hover:shadow-md group
                   ${
                     isActive
-                      ? "lomir-active-conversation-card bg-green-100 border-transparent"
+                      ? `lomir-active-conversation-card border-transparent ${
+                          isArchived ? "bg-red-500/10" : "bg-green-100"
+                        }`
                       : "bg-white/80 border-base-200"
                   }
                 `}
@@ -838,6 +854,12 @@ const ConversationList = ({
                     >
                       {isTeam ? (
                         <>
+                          {isArchived && (
+                            <Archive
+                              size={12}
+                              className="flex-shrink-0 text-red-600"
+                            />
+                          )}
                           <Users size={12} className="flex-shrink-0" />
                           <span className={`lomir-conversation-kind-label whitespace-nowrap ${isSearchActive && chatVisible ? "hidden sm:inline md:hidden" : "inline"}`}>
                             {renderHighlightedText("Team Chat", searchQuery)}
