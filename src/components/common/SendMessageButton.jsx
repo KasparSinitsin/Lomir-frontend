@@ -1,45 +1,26 @@
 import React from "react";
 import { MessageCircle } from "lucide-react";
 import Button from "./Button";
-import { messageService } from "../../services/messageService";
 
+// Opens a team chat in a new tab. There used to be a "direct" mode here that
+// called messageService.startConversation first, but its last caller was
+// removed in 17adcde; direct chats are opened straight from UserDetailsModal,
+// and Chat.jsx handles blocked partners on its own.
 const SendMessageButton = ({
-  recipientId,
+  teamId,
   variant = "primary",
   size = "sm",
   className = "",
   children,
-  type = "direct", // "direct" or "team"
-  teamId = null,
 }) => {
-  const handleSendMessage = async () => {
-    if (type === "team" && teamId) {
-      // Handle team message
-      const chatUrl = `${window.location.origin}/chat/${teamId}?type=team`;
-      window.open(chatUrl, "_blank", "noopener,noreferrer");
+  const handleSendMessage = () => {
+    if (!teamId) {
+      console.error("SendMessageButton: teamId is required");
       return;
     }
 
-    if (type === "direct" && recipientId) {
-      // Existing direct message logic
-      try {
-        await messageService.startConversation(recipientId, "");
-        const chatUrl = `${window.location.origin}/chat/${recipientId}?type=direct`;
-        window.open(chatUrl, "_blank", "noopener,noreferrer");
-      } catch (error) {
-        console.error("Error starting conversation:", error);
-        const chatUrl = `${window.location.origin}/chat/${recipientId}?type=direct`;
-        window.open(chatUrl, "_blank", "noopener,noreferrer");
-      }
-      return;
-    }
-
-    console.error("Missing required props for message type:", type);
-  };
-
-  const getDefaultText = () => {
-    if (type === "team") return "Send Team Message";
-    return "Send Message";
+    const chatUrl = `${window.location.origin}/chat/${teamId}?type=team`;
+    window.open(chatUrl, "_blank", "noopener,noreferrer");
   };
 
   return (
@@ -50,7 +31,7 @@ const SendMessageButton = ({
       className={className}
       icon={<MessageCircle size={16} />}
     >
-      {children || getDefaultText()}
+      {children || "Send Team Message"}
     </Button>
   );
 };
