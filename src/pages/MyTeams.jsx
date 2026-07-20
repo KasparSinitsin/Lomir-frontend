@@ -306,102 +306,117 @@ const MyTeams = () => {
     setCurrentPage(1); // Reset to page 1 when changing limit
   };
 
-  const handleTeamUpdate = (updatedTeam) => {
-    if (!updatedTeam) {
-      console.warn("Received undefined team data in handleTeamUpdate");
-      invalidateUserTeams();
-      return;
-    }
+  // Depends on the current page/page-size, so its identity changes when the
+  // user pages. That is fine: paging re-renders every card anyway, and the
+  // stale-closure alternative would patch the wrong page's cache entry.
+  const handleTeamUpdate = useCallback(
+    (updatedTeam) => {
+      if (!updatedTeam) {
+        console.warn("Received undefined team data in handleTeamUpdate");
+        invalidateUserTeams();
+        return;
+      }
 
-    // Optimistic single-team patch on the current page's cached data — avoids a
-    // full refetch for an in-place card update.
-    queryClient.setQueryData(
-      userTeamsQueryKey(user?.id, currentPage, resultsPerPage),
-      (old) =>
-        old
-          ? {
-              ...old,
-              data: (old.data ?? []).map((team) =>
-                team.id === updatedTeam.id ? updatedTeam : team,
-              ),
-            }
-          : old,
-    );
-  };
+      // Optimistic single-team patch on the current page's cached data — avoids
+      // a full refetch for an in-place card update.
+      queryClient.setQueryData(
+        userTeamsQueryKey(user?.id, currentPage, resultsPerPage),
+        (old) =>
+          old
+            ? {
+                ...old,
+                data: (old.data ?? []).map((team) =>
+                  team.id === updatedTeam.id ? updatedTeam : team,
+                ),
+              }
+            : old,
+      );
+    },
+    [invalidateUserTeams, queryClient, user?.id, currentPage, resultsPerPage],
+  );
 
-  const handleTeamDelete = async (teamId) => {
-    try {
-      await teamService.deleteTeam(teamId);
-      // Refetch to update pagination correctly
-      invalidateUserTeams();
-      return true;
-    } catch (error) {
-      console.error("Error deleting team:", error);
-      return false;
-    }
-  };
+  const handleTeamDelete = useCallback(
+    async (teamId) => {
+      try {
+        await teamService.deleteTeam(teamId);
+        // Refetch to update pagination correctly
+        invalidateUserTeams();
+        return true;
+      } catch (error) {
+        console.error("Error deleting team:", error);
+        return false;
+      }
+    },
+    [invalidateUserTeams],
+  );
 
   // Handler for when user LEAVES a team (not deletes it)
-  const handleTeamLeave = () => {
+  const handleTeamLeave = useCallback(() => {
     // Refetch to update pagination correctly
     invalidateUserTeams();
-  };
+  }, [invalidateUserTeams]);
 
   // Application handlers
-  const handleApplicationCancel = async (applicationId) => {
-    try {
-      await teamService.cancelApplication(applicationId);
-      refetchViewerPending();
-    } catch (error) {
-      console.error("Error canceling application:", error);
-    }
-  };
+  const handleApplicationCancel = useCallback(
+    async (applicationId) => {
+      try {
+        await teamService.cancelApplication(applicationId);
+        refetchViewerPending();
+      } catch (error) {
+        console.error("Error canceling application:", error);
+      }
+    },
+    [refetchViewerPending],
+  );
 
-  const handleSendReminder = async () => {
+  const handleSendReminder = useCallback(async () => {
     showToast("Reminder feature coming soon!", "violet");
-  };
+  }, [showToast]);
 
   // Invitation handlers
-  const handleInvitationAccept = async (
-    invitationId,
-    responseMessage = "",
-    fillRole = false,
-    options = {},
-  ) => {
-    try {
-      await teamService.respondToInvitation(
-        invitationId,
-        "accept",
-        responseMessage,
-        fillRole,
-        options,
-      );
+  const handleInvitationAccept = useCallback(
+    async (
+      invitationId,
+      responseMessage = "",
+      fillRole = false,
+      options = {},
+    ) => {
+      try {
+        await teamService.respondToInvitation(
+          invitationId,
+          "accept",
+          responseMessage,
+          fillRole,
+          options,
+        );
 
-      // Refresh the data
-      refetchViewerPending();
-      invalidateUserTeams();
-    } catch (error) {
-      console.error("Error accepting invitation:", error);
-    }
-  };
+        // Refresh the data
+        refetchViewerPending();
+        invalidateUserTeams();
+      } catch (error) {
+        console.error("Error accepting invitation:", error);
+      }
+    },
+    [refetchViewerPending, invalidateUserTeams],
+  );
 
-  const handleInvitationDecline = async (
-    invitationId,
-    responseMessage = "",
-  ) => {
-    try {
-      await teamService.respondToInvitation(
-        invitationId,
-        "decline",
-        responseMessage,
-      );
+  const handleInvitationDecline = useCallback(
+    async (invitationId, responseMessage = "") => {
+      try {
+        await teamService.respondToInvitation(
+          invitationId,
+          "decline",
+          responseMessage,
+        );
 
-      // Refresh the data
-      refetchViewerPending();
-    } catch (error) {
-      console.error("Error declining invitation:", error);
-    }
-  };
+        // Refresh the data
+        refetchViewerPending();
+      } catch (error) {
+        console.error("Error declining invitation:", error);
+      }
+    },
+    [refetchViewerPending],
+  );
 
   // Handler for when a new team is created
   const handleTeamCreated = () => {
