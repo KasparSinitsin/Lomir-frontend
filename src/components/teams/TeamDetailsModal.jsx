@@ -1344,9 +1344,7 @@ const TeamDetailsModal = ({
           <div className="flex items-center gap-2">
             {/* Send Message to Team Button */}
             <SendMessageButton
-              type="team"
               teamId={team?.id}
-              teamName={team?.name}
               variant="primary"
               className="flex-1"
             >

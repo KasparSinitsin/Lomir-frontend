@@ -368,30 +368,6 @@ export const messageService = {
     ).then(normalizeMessagePayload);
   },
 
-  // Keeps explicit try/catch — logs the response body in addition to the
-  // standard error log because conversation start failures are hard to debug
-  // without the server's reason.
-  startConversation: async (recipientId, initialMessage = "") => {
-    try {
-      const response = await api.post(
-        "/api/messages/conversations",
-        {
-          recipient_id: parseInt(recipientId, 10),
-          initial_message: initialMessage.trim(),
-        },
-        {
-          skipRequestCaseTransform: true,
-          skipResponseCaseTransform: true,
-        },
-      );
-      return normalizeConversationPayload(response.data).data;
-    } catch (error) {
-      console.error("Error starting conversation:", error);
-      console.error("Error response:", error.response?.data);
-      throw error;
-    }
-  },
-
   deleteMessage: (messageId) =>
     call(`deleting message ${messageId}`, () =>
       api.delete(`/api/messages/${messageId}`, {
