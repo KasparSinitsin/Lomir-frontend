@@ -299,6 +299,7 @@ Lomir-frontend/
 ├── tailwind.config.js
 ├── postcss.config.js
 ├── vite.config.js
+├── eslint.config.js                # Flat config; react/jsx-no-undef catches missing component imports
 ├── .env                            # Environment variables (not committed)
 ├── package.json
 └── README.md
