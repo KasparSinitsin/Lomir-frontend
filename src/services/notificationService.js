@@ -50,39 +50,6 @@ const normalizeNotification = (notification) => {
   });
 };
 
-const normalizeNotificationListPayload = (payload) => {
-  if (Array.isArray(payload)) {
-    return payload.map(normalizeNotification);
-  }
-
-  if (Array.isArray(payload?.data)) {
-    return {
-      ...payload,
-      data: payload.data.map(normalizeNotification),
-    };
-  }
-
-  const data = payload?.data ?? payload ?? {};
-  const rawNotifications =
-    data.notifications ?? data.data ?? payload?.notifications ?? [];
-  const notifications = Array.isArray(rawNotifications)
-    ? rawNotifications.map(normalizeNotification)
-    : rawNotifications;
-  const nextPayload = {
-    ...payload,
-    ...(Array.isArray(payload?.notifications) ? { notifications } : {}),
-  };
-
-  return {
-    ...nextPayload,
-    data: {
-      ...data,
-      notifications,
-      data: Array.isArray(data.data) ? notifications : data.data,
-    },
-  };
-};
-
 const normalizeUnreadCountPayload = (payload) => {
   const data = payload?.data ?? payload ?? {};
   const rawFirstUnread = data.firstUnread ?? data.first_unread ?? null;
@@ -112,16 +79,6 @@ export const notificationService = {
       skipResponseCaseTransform: true,
     });
     return normalizeUnreadCountPayload(response.data);
-  },
-
-  // Get all notifications
-  getNotifications: async (params = {}) => {
-    const { limit = 50, offset = 0, unreadOnly = false } = params;
-    const response = await api.get("/api/notifications", {
-      skipResponseCaseTransform: true,
-      params: { limit, offset, unreadOnly },
-    });
-    return normalizeNotificationListPayload(response.data);
   },
 
   // Mark a single notification as read
