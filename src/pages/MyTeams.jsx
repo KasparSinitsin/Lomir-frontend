@@ -356,6 +356,15 @@ const MyTeams = () => {
     invalidateUserTeams();
   }, [invalidateUserTeams]);
 
+  // Stable identity so TeamCard's React.memo can bail: the setState setter
+  // never changes, so an empty dependency array is correct. Passing an inline
+  // arrow here instead left the memo inert on this page (every card re-rendered
+  // on every MyTeams render), which is what #566 missed.
+  const handleApplicationsModalClosed = useCallback(
+    () => setAutoOpenApplicationsTeamId(null),
+    [],
+  );
+
   // Application handlers
   const handleApplicationCancel = useCallback(
     async (applicationId) => {
@@ -985,9 +994,7 @@ const MyTeams = () => {
                           : null
                       }
                       highlightInvitationId={highlightInvitationId}
-                      onApplicationsModalClosed={() =>
-                        setAutoOpenApplicationsTeamId(null)
-                      }
+                      onApplicationsModalClosed={handleApplicationsModalClosed}
                       viewMode="list"
                       activeFilters={{}}
                     />
@@ -1040,9 +1047,7 @@ const MyTeams = () => {
                           : null
                       }
                       highlightInvitationId={highlightInvitationId}
-                      onApplicationsModalClosed={() =>
-                        setAutoOpenApplicationsTeamId(null)
-                      }
+                      onApplicationsModalClosed={handleApplicationsModalClosed}
                       viewMode={resultView}
                       activeFilters={{}}
                     />
