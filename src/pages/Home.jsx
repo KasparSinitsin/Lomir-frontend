@@ -24,11 +24,14 @@ import lomirWordmark from "../assets/images/Lomir-logowordmark-color.svg";
  * labelled placeholder instead of a broken image.
  */
 /**
- * Opens the search page on its Open Roles view with demo data filtered out.
- * Both parameters are read by SearchPage on mount; without the demo filter the
- * first page is dominated by test fixtures that share the database.
+ * Opens the search page on its Open Roles view.
+ *
+ * Demo data is deliberately left in: there are only a handful of real open
+ * roles right now, and filtering the fixtures out leaves the page looking
+ * emptier than the app is. SearchPage also accepts `includeDemoData=false`
+ * here once there are enough real roles to stand on their own.
  */
-const OPEN_ROLES_SEARCH_PATH = "/search?type=roles&includeDemoData=false";
+const OPEN_ROLES_SEARCH_PATH = "/search?type=roles";
 
 const SCREENSHOTS = {
   search: "/screenshots/search-map.png",
