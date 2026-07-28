@@ -50,6 +50,7 @@ import { getMatchTier } from "../../utils/matchScoreUtils";
 import {
   getTeamInitials,
   getUserInitials,
+  hasSyntheticFlag,
   isSyntheticRole,
   isSyntheticTeam,
   isSyntheticUser,
@@ -372,8 +373,10 @@ const getItemNarrativeText = (item) =>
     item.user?.description,
   );
 
-const isDemoItem = (item) =>
-  isSyntheticTeam(item) || isSyntheticUser(item) || isSyntheticRole(item);
+// Placement, not marking: demo profiles get a canonical location resolved from
+// their username or bio text. This has to keep working even when the Demo
+// markers are hidden for screenshots, otherwise those pins would move.
+const isDemoItem = (item) => hasSyntheticFlag(item);
 
 const getCanonicalDemoLocation = (item) => {
   if (!isDemoItem(item)) return null;

@@ -4,7 +4,10 @@ import { useUserModalSafe } from "../../contexts/UserModalContext";
 import { useAuth } from "../../contexts/AuthContext";
 import { useUserProfile } from "../../hooks/useUserQueries";
 import Tooltip from "../common/Tooltip";
-import { DEMO_PROFILE_TOOLTIP } from "../../utils/userHelpers";
+import {
+  DEMO_PROFILE_TOOLTIP,
+  isSyntheticUser,
+} from "../../utils/userHelpers";
 import {
   getDisplayName,
   isDeletedUser,
@@ -143,9 +146,7 @@ const InlineUserLink = ({
       ? "Private Profile"
       : displayName ?? getDisplayName(inlineUser);
   const showDemoIndicator =
-    !isFormerUser &&
-    !isPrivateUser &&
-    Boolean(inlineUser?.is_synthetic || inlineUser?.isSynthetic);
+    !isFormerUser && !isPrivateUser && isSyntheticUser(inlineUser);
 
   const handleClick = (e) => {
     if (!canClick) return;
