@@ -22,11 +22,6 @@ import { useAuth } from "../contexts/AuthContext";
 import lomirWordmark from "../assets/images/Lomir-logowordmark-color.svg";
 
 /**
- * Screenshots live in `public/screenshots/` so they can be added or replaced
- * without touching the bundle. Until a file exists the frame falls back to a
- * labelled placeholder instead of a broken image.
- */
-/**
  * Opens the search page on its Open Roles view.
  *
  * Demo data is deliberately left in: there are only a handful of real open
@@ -36,6 +31,11 @@ import lomirWordmark from "../assets/images/Lomir-logowordmark-color.svg";
  */
 const OPEN_ROLES_SEARCH_PATH = "/search?type=roles";
 
+/**
+ * Screenshots live in `public/screenshots/` so they can be added or replaced
+ * without touching the bundle. Until a file exists the frame falls back to a
+ * labelled placeholder instead of a broken image.
+ */
 const SCREENSHOTS = {
   // JPEG for the map: it is a photographic tile image where PNG cost 1 MB and
   // JPEG costs 288 KB for no visible difference. The other two are flat UI,
@@ -62,7 +62,7 @@ const HERO_MODAL_SHOTS = [
   {
     src: "/screenshots/modal-role.png",
     alt: "Details of the open role selected on the map",
-    position: "hidden lg:block left-[calc(-7%_-_15px)] top-[60%] w-[30%] z-30",
+    position: "hidden lg:block left-[calc(-7%_-_15px)] top-[60%] w-[30%] z-[3]",
     captionTitle: "Open roles",
     caption:
       "An open role spells out what a team is still missing: the focus areas and badges they are hoping for, and how far away you may be based. Applying puts you forward for that one role rather than for the team in general, and you can follow what happens to your application.",
@@ -70,7 +70,7 @@ const HERO_MODAL_SHOTS = [
   {
     src: "/screenshots/modal-user.png",
     alt: "Profile details for a person found through search",
-    position: "hidden lg:block left-[52%] top-[60%] w-[30%] z-20",
+    position: "hidden lg:block left-[52%] top-[60%] w-[30%] z-[2]",
     captionTitle: "People",
     caption:
       "A profile gathers what someone is into: their focus areas and the badges other members awarded them for work they actually did together. From here you can start a chat, invite them into one of your teams, award them a badge yourself, or block them if you would rather not be contacted.",
@@ -78,7 +78,7 @@ const HERO_MODAL_SHOTS = [
   {
     src: "/screenshots/modal-team.png",
     alt: "Team details with focus areas, badges and members",
-    position: "hidden lg:block right-[calc(-7%_-_15px)] top-[33%] w-[30%] z-10",
+    position: "hidden lg:block right-[calc(-7%_-_15px)] top-[33%] w-[30%] z-[1]",
     captionTitle: "Teams",
     caption:
       "A team page shows what the group is about, where it meets and who belongs to it, together with the focus areas and badges its members bring. If the team still has space, you can apply to join straight from here.",
