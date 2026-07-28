@@ -8,6 +8,7 @@ import {
   Search,
   ShieldCheck,
   Sparkles,
+  User,
   UserPlus,
   Users,
 } from "lucide-react";
@@ -109,28 +110,27 @@ const Home = () => {
             alt="Lomir"
             className="h-10 sm:h-12 w-auto mx-auto mb-6"
           />
-          <h1 className="text-3xl sm:text-4xl font-medium tracking-tight text-primary mb-4 max-w-2xl mx-auto text-balance">
+          <h1 className="text-3xl sm:text-4xl font-medium tracking-tight text-primary-focus mb-4 max-w-2xl mx-auto text-balance">
             Find the people your project is missing.
           </h1>
           <p className="text-lg font-light text-base-content/80 mb-8 max-w-xl mx-auto">
-            Lomir matches you with collaborators nearby or worldwide — by shared
-            focus areas, skills other people vouched for, and how far you are
-            willing to go.
+            Lomir matches you with collaborators nearby or worldwide — <br />
+            by shared focus areas, skills other people vouched for, and how far
+            you are willing to go.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
             {!isAuthenticated ? (
               <>
                 <Link to="/register" className="btn btn-primary">
+                  <User className="w-4 h-4" />
                   Create your free profile
-                  <ArrowRight className="w-4 h-4" />
                 </Link>
-                <Link
-                  to="/search?type=teams"
-                  className="btn btn-outline btn-primary"
-                >
+                {/* No type parameter: the search page defaults to All, so the
+                    first view mixes people, teams and open roles. */}
+                <Link to="/search" className="btn btn-primary">
                   <Search className="w-4 h-4" />
-                  Explore teams
+                  Explore public teams &amp; more
                 </Link>
               </>
             ) : (
@@ -156,7 +156,8 @@ const Home = () => {
 
           {!isAuthenticated && (
             <p className="text-sm text-base-content/60 mt-4">
-              No account needed to browse public teams and profiles.
+              Get a first flavor of Lomir without registering: No account needed
+              to browse public teams and profiles.
             </p>
           )}
         </div>
@@ -210,57 +211,56 @@ const Home = () => {
         </div>
       </Section>
 
-      {/* Open roles */}
+      {/* Open roles + chat, sharing one panel */}
       <Section spacing="">
-        <div className="flex flex-col-reverse md:flex-row items-center gap-8">
-          <div className="md:w-1/2">
-            <h2 className="text-xl font-medium text-primary mb-2">
-              Open roles, not vague calls for help
-            </h2>
-            <p className="text-base-content/80 mb-4">
-              Teams publish the roles they still need to fill, with the skills
-              attached. You can see at a glance where you would fit, apply
-              directly, and follow what happens to your application — instead of
-              writing into the void.
-            </p>
-            <Link
-              to={OPEN_ROLES_SEARCH_PATH}
-              className="btn btn-outline btn-primary btn-sm"
-            >
-              Browse open roles
-              <ArrowRight className="w-4 h-4" />
-            </Link>
+        <div className="background-opacity rounded-xl shadow-soft p-6 sm:p-8 space-y-12">
+          <div className="flex flex-col-reverse md:flex-row items-center gap-8">
+            <div className="md:w-1/2">
+              <h2 className="text-xl font-medium text-primary mb-2">
+                Open roles, not vague calls for help
+              </h2>
+              <p className="text-base-content/80 mb-4">
+                Teams publish the roles they still need to fill, with the skills
+                attached. You can see at a glance where you would fit, apply
+                directly, and follow what happens to your application — instead
+                of writing into the void.
+              </p>
+              <Link
+                to={OPEN_ROLES_SEARCH_PATH}
+                className="btn btn-outline btn-primary btn-sm"
+              >
+                Browse open roles
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+            </div>
+            <ScreenshotFrame
+              src={SCREENSHOTS.roles}
+              alt="A team with its open roles and members"
+              caption="Team — open roles"
+              icon={<UserPlus className="w-8 h-8" />}
+              className="md:w-1/2"
+            />
           </div>
-          <ScreenshotFrame
-            src={SCREENSHOTS.roles}
-            alt="A team with its open roles and members"
-            caption="Team — open roles"
-            icon={<UserPlus className="w-8 h-8" />}
-            className="md:w-1/2"
-          />
-        </div>
-      </Section>
 
-      {/* Chat */}
-      <Section spacing="">
-        <div className="flex flex-col md:flex-row items-center gap-8">
-          <ScreenshotFrame
-            src={SCREENSHOTS.chat}
-            alt="Team chat with mentions, replies and reactions"
-            caption="Chat — team conversation"
-            icon={<MessageCircle className="w-8 h-8" />}
-            className="md:w-1/2"
-          />
-          <div className="md:w-1/2">
-            <h2 className="text-xl font-medium text-primary mb-2">
-              Everything the team says stays in one place
-            </h2>
-            <p className="text-base-content/80">
-              Team and direct chat with mentions, replies, reactions, files, and
-              read receipts. Invitations, applications, and role changes appear
-              in the same thread, so a new member can read back and understand
-              how the team got here.
-            </p>
+          <div className="flex flex-col md:flex-row items-center gap-8">
+            <ScreenshotFrame
+              src={SCREENSHOTS.chat}
+              alt="Team chat with mentions, replies and reactions"
+              caption="Chat — team conversation"
+              icon={<MessageCircle className="w-8 h-8" />}
+              className="md:w-1/2"
+            />
+            <div className="md:w-1/2">
+              <h2 className="text-xl font-medium text-primary mb-2">
+                Everything the team says stays in one place
+              </h2>
+              <p className="text-base-content/80">
+                Team and direct chat with mentions, replies, reactions, files,
+                and read receipts. Invitations, applications, and role changes
+                appear in the same thread, so a new member can read back and
+                understand how the team got here.
+              </p>
+            </div>
           </div>
         </div>
       </Section>
@@ -324,7 +324,7 @@ const Home = () => {
 
       {/* Trust + closing CTA */}
       <Section spacing="">
-        <div className="rounded-xl border border-base-200 bg-base-100 shadow-soft px-6 py-10 text-center">
+        <div className="px-6 py-10 text-center">
           <h2 className="text-xl font-medium text-primary mb-2">
             {isAuthenticated
               ? "Find your next team"
@@ -339,10 +339,10 @@ const Home = () => {
             {!isAuthenticated ? (
               <>
                 <Link to="/register" className="btn btn-primary">
+                  <User className="w-4 h-4" />
                   Create your free profile
-                  <ArrowRight className="w-4 h-4" />
                 </Link>
-                <Link to="/privacy" className="btn btn-outline btn-primary">
+                <Link to="/privacy" className="btn btn-primary">
                   <ShieldCheck className="w-4 h-4" />
                   Read the privacy policy
                 </Link>
@@ -353,10 +353,7 @@ const Home = () => {
                   <Search className="w-4 h-4" />
                   Browse teams
                 </Link>
-                <Link
-                  to="/teams/my-teams"
-                  className="btn btn-outline btn-primary"
-                >
+                <Link to="/teams/my-teams" className="btn btn-primary">
                   <Users className="w-4 h-4" />
                   My teams
                 </Link>
