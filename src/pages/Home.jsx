@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   ArrowRight,
   Award,
@@ -11,6 +12,7 @@ import {
   User,
   UserPlus,
   Users,
+  X,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import Section from "../components/layout/Section";
@@ -42,6 +44,142 @@ const SCREENSHOTS = {
   roles: "/screenshots/team-roles.png",
   chat: "/screenshots/team-chat.png",
 };
+
+/**
+ * The three detail modals layered over the hero map.
+ *
+ * The role modal sits directly below the map popup and slightly to its left, so
+ * the link between the selected pin and the detail view is visible. The other
+ * two cascade off to the right, the team one breaking out of the panel on the
+ * right as the role one does on the left.
+ *
+ * Role and user share the same `top` rather than a `bottom` offset, and that is
+ * what keeps their upper edges flush: the images have different heights, so
+ * equal bottom offsets would stagger the tops. The team modal is deliberately
+ * set much higher, since a near-match at the lower edge read as a mistake.
+ */
+const HERO_MODAL_SHOTS = [
+  {
+    src: "/screenshots/modal-role.png",
+    alt: "Details of the open role selected on the map",
+    position: "hidden lg:block left-[calc(-7%_-_15px)] top-[60%] w-[30%] z-30",
+    captionTitle: "Open roles",
+    caption:
+      "An open role spells out what a team is still missing: the focus areas and badges they are hoping for, and how far away you may be based. Applying puts you forward for that one role rather than for the team in general, and you can follow what happens to your application.",
+  },
+  {
+    src: "/screenshots/modal-user.png",
+    alt: "Profile details for a person found through search",
+    position: "hidden lg:block left-[52%] top-[60%] w-[30%] z-20",
+    captionTitle: "People",
+    caption:
+      "A profile gathers what someone is into: their focus areas and the badges other members awarded them for work they actually did together. From here you can start a chat, invite them into one of your teams, award them a badge yourself, or block them if you would rather not be contacted.",
+  },
+  {
+    src: "/screenshots/modal-team.png",
+    alt: "Team details with focus areas, badges and members",
+    position: "hidden lg:block right-[calc(-7%_-_15px)] top-[33%] w-[30%] z-10",
+    captionTitle: "Teams",
+    caption:
+      "A team page shows what the group is about, where it meets and who belongs to it, together with the focus areas and badges its members bring. If the team still has space, you can apply to join straight from here.",
+  },
+];
+
+/**
+ * Full-size view of one screenshot.
+ *
+ * Kept separate from the shared `Modal` on purpose. That component always draws
+ * a header, and its box clips overflow, so a close control sitting outside the
+ * frame is not expressible through it — and widening the shared component for
+ * one decorative case would touch every real modal in the app. Backdrop,
+ * centering, ESC and portal behaviour mirror it exactly.
+ *
+ * The close control sits beside the frame. The wrapper carries a wider margin
+ * from sm up so there is room for it, and the triggers only exist from lg up,
+ * where the viewport is far wider than the frame.
+ *
+ * These captures are portrait and differ a lot in height — the team one is 534
+ * by 783, which at full width would stand taller than most windows. The image
+ * is therefore capped at 68vh and scaled down to fit, leaving room for the
+ * caption below it, so image, text and close control are visible together. The
+ * overlay scrolls as well, which only comes into play on very short windows.
+ */
+const ScreenshotLightbox = ({ shot, onClose }) => {
+  useEffect(() => {
+    if (!shot) return undefined;
+
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") onClose();
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [shot, onClose]);
+
+  if (!shot) return null;
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[50] overflow-y-auto bg-black/50"
+      onClick={onClose}
+    >
+      <div className="flex min-h-full items-center justify-center py-8">
+        {/* w-fit so the wrapper hugs the image once it is scaled down to fit
+            the viewport, which keeps the close control beside its actual edge
+            rather than beside an empty column. */}
+        <div
+          className="relative mx-4 sm:mx-16 w-fit max-w-full"
+          onClick={(event) => event.stopPropagation()}
+        >
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close enlarged screenshot"
+            className="absolute -right-11 top-0 text-white/90 hover:text-white transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+          >
+            <X className="w-7 h-7" />
+          </button>
+          <img
+            src={shot.src}
+            alt={shot.alt}
+            className="block max-h-[68vh] w-auto max-w-full rounded-xl shadow-2xl"
+          />
+          {/* w-0 with min-w-full: the caption then stretches to the image width
+              without its own text length widening the fit-content wrapper. */}
+          <div className="w-0 min-w-full mt-3 rounded-xl bg-base-100 p-4 shadow-2xl">
+            <h3 className="text-sm font-medium text-primary mb-1">
+              {shot.captionTitle}
+            </h3>
+            <p className="text-sm text-base-content/80">{shot.caption}</p>
+          </div>
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
+};
+
+/**
+ * A detail modal floating over the hero map, clickable to open it full size.
+ *
+ * Deliberately a heavier shadow than the map frame behind it: the layering only
+ * reads as depth if the front elements lift further off the page. Positioning
+ * is passed in per instance, since each one sits in a different spot.
+ *
+ * A button rather than an image with a click handler, so it is reachable by
+ * keyboard and announces itself. Below lg the whole element is display:none,
+ * which also takes it out of the tab order.
+ */
+const FloatingShot = ({ src, alt, onOpen, className = "" }) => (
+  <button
+    type="button"
+    onClick={onOpen}
+    aria-label={`Enlarge screenshot: ${alt}`}
+    className={`absolute overflow-hidden rounded-xl border border-base-200 shadow-2xl ring-1 ring-black/5 transition duration-200 hover:scale-[1.03] hover:shadow-[0_35px_60px_-12px_rgba(0,0,0,0.5)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${className}`}
+  >
+    <img src={src} alt={alt} loading="lazy" className="block w-full h-auto" />
+  </button>
+);
 
 /**
  * Framed screenshot with a labelled placeholder while the file is missing.
@@ -108,13 +246,19 @@ const Feature = ({ icon, title, children }) => (
 const Home = () => {
   const { isAuthenticated } = useAuth();
   const [isCreateTeamModalOpen, setIsCreateTeamModalOpen] = useState(false);
+  // The screenshot currently shown full size, or null. Reuses the app's own
+  // Modal, so the enlarged view behaves exactly like a real detail modal.
+  const [enlargedShot, setEnlargedShot] = useState(null);
 
   const handleTeamCreated = () => undefined;
 
   return (
     <div className="space-y-16">
       {/* Hero */}
-      <div className="background-opacity rounded-xl shadow-soft overflow-hidden">
+      {/* No overflow-hidden: the role modal deliberately breaks out of the
+          panel on the left and bottom. The padding below keeps that overhang
+          clear of the next section. */}
+      <div className="background-opacity rounded-xl shadow-soft">
         <div className="text-center py-16 px-6">
           <img
             src={lomirWordmark}
@@ -173,14 +317,43 @@ const Home = () => {
           )}
         </div>
 
-        <div className="px-4 sm:px-8 pb-8 -mt-2">
-          <ScreenshotFrame
-            src={SCREENSHOTS.search}
-            alt="Team search with map view and match scores"
-            caption="Search — teams near you"
-            icon={<MapPin className="w-8 h-8" />}
-            className="max-w-3xl mx-auto"
-          />
+        {/* Map with the detail modals layered over its lower right. The role
+            modal is the largest and sits in front, because it shows the very
+            role the map popup has selected; the user and team modals are
+            scaled down as supporting examples. Below lg the overlay is dropped
+            and the map goes full width, since three stacked modals are
+            unreadable at phone size. */}
+        {/* Horizontal padding matches the p-6 sm:p-8 of the panel further down,
+            so both boxes hold their content at the same inset. */}
+        <div className="px-6 sm:px-8 pb-8 -mt-2">
+          <div className="relative w-full lg:pb-[8%]">
+            <ScreenshotFrame
+              src={SCREENSHOTS.search}
+              alt="Team search with map view and match scores"
+              caption="Search — teams near you"
+              icon={<MapPin className="w-8 h-8" />}
+              className="w-full"
+            />
+
+            {/* Positions and the reasoning behind them: HERO_MODAL_SHOTS. */}
+            {HERO_MODAL_SHOTS.map((shot) => (
+              <FloatingShot
+                key={shot.src}
+                src={shot.src}
+                alt={shot.alt}
+                className={shot.position}
+                onOpen={() => setEnlargedShot(shot)}
+              />
+            ))}
+          </div>
+
+          {/* Only from lg, where the modals it refers to actually exist. The
+              top margin clears the user modal, the one that now reaches
+              furthest down, about 45px below the composition. */}
+          <p className="hidden lg:block mt-16 text-center text-sm text-base-content/60">
+            These are real screens from the app. Click any of them to see it
+            full size, with a note on what the view is for.
+          </p>
         </div>
       </div>
 
@@ -378,6 +551,13 @@ const Home = () => {
         isOpen={isCreateTeamModalOpen}
         onClose={() => setIsCreateTeamModalOpen(false)}
         onTeamCreated={handleTeamCreated}
+      />
+
+      {/* max-w-2xl matches the native width of these captures, so the enlarged
+          view stays sharp rather than being upscaled. */}
+      <ScreenshotLightbox
+        shot={enlargedShot}
+        onClose={() => setEnlargedShot(null)}
       />
     </div>
   );
