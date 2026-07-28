@@ -35,11 +35,22 @@ import lomirWordmark from "../assets/images/Lomir-logowordmark-color.svg";
 const OPEN_ROLES_SEARCH_PATH = "/search?type=roles";
 
 const SCREENSHOTS = {
-  search: "/screenshots/search-map.png",
+  // JPEG for the map: it is a photographic tile image where PNG cost 1 MB and
+  // JPEG costs 288 KB for no visible difference. The other two are flat UI,
+  // which PNG stores efficiently.
+  search: "/screenshots/search-map.jpg",
   roles: "/screenshots/team-roles.png",
   chat: "/screenshots/team-chat.png",
 };
 
+/**
+ * Framed screenshot with a labelled placeholder while the file is missing.
+ *
+ * The image keeps its natural aspect ratio on purpose. Several of these show
+ * modals, which are portrait by nature, and cropping them to a fixed landscape
+ * ratio cuts away the part that carries the message. Only the placeholder uses
+ * a fixed ratio, since it has no content to lose.
+ */
 const ScreenshotFrame = ({ src, alt, caption, icon, className = "" }) => {
   const [hasFailed, setHasFailed] = useState(false);
 
@@ -66,7 +77,7 @@ const ScreenshotFrame = ({ src, alt, caption, icon, className = "" }) => {
           alt={alt}
           loading="lazy"
           onError={() => setHasFailed(true)}
-          className="w-full aspect-[16/10] object-cover object-top"
+          className="w-full h-auto"
         />
       )}
     </figure>

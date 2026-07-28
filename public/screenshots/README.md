@@ -12,11 +12,14 @@ so the page stays presentable until an image is added.
 
 ## Requirements
 
-- **Aspect ratio 16:10.** The frame crops with `object-cover object-top`, so
-  anything below that ratio is cut off from the bottom.
-- **At least 1600 x 1000 px**, ideally 2560 x 1600 for high-DPI displays.
-- **PNG**, and keep each file under roughly 500 KB — they are served as static
-  assets on every landing page visit. Compress before committing.
+- **Any aspect ratio.** The frame shows the image at its natural proportions
+  and never crops, so portrait shots of modals are fine. Keep in mind that a
+  very tall image makes its half of the two-column row equally tall.
+- **At least twice the display width**, so it stays sharp on high-DPI screens.
+  The hero image renders up to about 700 px wide, the two side-by-side ones
+  about 450 px.
+- **PNG**, ideally under roughly 500 KB — they are served on every landing page
+  visit.
 - Capture in the **light theme** (the app ships light only) at a desktop width.
 
 ## Hiding the Demo markers while shooting
