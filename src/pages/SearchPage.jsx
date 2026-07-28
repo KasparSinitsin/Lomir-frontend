@@ -255,6 +255,25 @@ const DEFAULT_PAGINATION = {
   hasPrevPage: false,
 };
 
+/**
+ * Drop a filter parameter from the address bar without navigating.
+ *
+ * Filters initialized from the URL have to clear the parameter when the user
+ * switches them back off, otherwise a reload silently restores a filter the
+ * user just removed.
+ */
+const stripUrlParam = (param) => {
+  const params = new URLSearchParams(window.location.search);
+  if (!params.has(param)) return;
+  params.delete(param);
+  const query = params.toString();
+  window.history.replaceState(
+    {},
+    "",
+    query ? `${window.location.pathname}?${query}` : window.location.pathname,
+  );
+};
+
 const SearchPage = () => {
   const location = useLocation();
   const { user, isAuthenticated, loading: authLoading } = useAuth();
@@ -362,7 +381,13 @@ const SearchPage = () => {
   const [userHasCoordinates, setUserHasCoordinates] = useState(false);
   const [openRolesOnly, setOpenRolesOnly] = useState(false);
   const [includeOwnTeams, setIncludeOwnTeams] = useState(true);
-  const [includeDemoData, setIncludeDemoData] = useState(true);
+  // URL-addressable so entry points can link straight into a demo-free view
+  // (the landing page does this for open roles). Only an explicit "false"
+  // turns demo data off; anything else keeps the default.
+  const [includeDemoData, setIncludeDemoData] = useState(() => {
+    const p = new URLSearchParams(location.search);
+    return p.get("includeDemoData") !== "false";
+  });
 
   // ===== CAPACITY FILTER STATE =====
   const [capacityMode, setCapacityMode] = useState("spots");
@@ -1525,6 +1550,7 @@ const SearchPage = () => {
       "roleMaxDistanceKm",
       "excludeTeamId",
       "excludeTeamName",
+      "includeDemoData",
     ].forEach((param) => newParams.delete(param));
     const nextSearch = newParams.toString();
     window.history.replaceState(
@@ -1783,6 +1809,7 @@ const SearchPage = () => {
         break;
       case "includeDemoData":
         setIncludeDemoData(true);
+        stripUrlParam("includeDemoData");
         setCurrentPage(1);
         break;
       case "matchRole":
@@ -2095,7 +2122,10 @@ const SearchPage = () => {
             >
               <FilterSortOptionButton
                 onClick={() => {
-                  setIncludeDemoData((prev) => !prev);
+                  // Turning demo data back on has to clear the URL parameter,
+                  // otherwise a reload would re-apply the filter.
+                  if (!includeDemoData) stripUrlParam("includeDemoData");
+                  setIncludeDemoData(!includeDemoData);
                   setOpenSubmenuKey(null);
                   setCurrentPage(1);
                 }}

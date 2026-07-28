@@ -23,6 +23,13 @@ import lomirWordmark from "../assets/images/Lomir-logowordmark-color.svg";
  * without touching the bundle. Until a file exists the frame falls back to a
  * labelled placeholder instead of a broken image.
  */
+/**
+ * Opens the search page on its Open Roles view with demo data filtered out.
+ * Both parameters are read by SearchPage on mount; without the demo filter the
+ * first page is dominated by test fixtures that share the database.
+ */
+const OPEN_ROLES_SEARCH_PATH = "/search?type=roles&includeDemoData=false";
+
 const SCREENSHOTS = {
   search: "/screenshots/search-map.png",
   roles: "/screenshots/team-roles.png",
@@ -214,7 +221,7 @@ const Home = () => {
               writing into the void.
             </p>
             <Link
-              to="/search?type=teams"
+              to={OPEN_ROLES_SEARCH_PATH}
               className="btn btn-outline btn-primary btn-sm"
             >
               Browse open roles
