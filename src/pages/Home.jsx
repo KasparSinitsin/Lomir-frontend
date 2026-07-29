@@ -78,7 +78,8 @@ const HERO_MODAL_SHOTS = [
   {
     src: "/screenshots/modal-team.png",
     alt: "Team details with focus areas, badges and members",
-    position: "hidden lg:block right-[calc(-7%_-_15px)] top-[33%] w-[30%] z-[1]",
+    position:
+      "hidden lg:block right-[calc(-7%_-_15px)] top-[33%] w-[30%] z-[1]",
     captionTitle: "Teams",
     caption:
       "A team page shows what the group is about, where it meets and who belongs to it, together with the focus areas and badges its members bring. If the team still has space, you can apply to join straight from here.",
@@ -188,6 +189,11 @@ const FloatingShot = ({ src, alt, onOpen, className = "" }) => (
  * modals, which are portrait by nature, and cropping them to a fixed landscape
  * ratio cuts away the part that carries the message. Only the placeholder uses
  * a fixed ratio, since it has no content to lose.
+ *
+ * Frames that sit side by side therefore only line up in height if their
+ * captures share a similar aspect ratio. That is handled when taking the
+ * screenshot, not here — fitting a mismatched image into a fixed box would
+ * leave visible empty margins beside it.
  */
 const ScreenshotFrame = ({ src, alt, caption, icon, className = "" }) => {
   const [hasFailed, setHasFailed] = useState(false);
@@ -329,8 +335,8 @@ const Home = () => {
           <div className="relative w-full lg:pb-[8%]">
             <ScreenshotFrame
               src={SCREENSHOTS.search}
-              alt="Team search with map view and match scores"
-              caption="Search — teams near you"
+              alt="Map search showing teams, people and open roles as pins"
+              caption="Search — teams, people and open roles"
               icon={<MapPin className="w-8 h-8" />}
               className="w-full"
             />
@@ -360,37 +366,41 @@ const Home = () => {
       {/* How it works */}
       <Section spacing="">
         <div className="text-center mb-8">
-          <h2 className="text-xl font-medium text-primary">How Lomir works</h2>
+          <h2 className="text-xl font-medium text-primary">
+            Find, connect &amp; create
+          </h2>
           <p className="text-base-content/70 text-sm mt-1">
-            Three steps from an empty profile to a working team.
+            What a free profile adds to looking around.
           </p>
         </div>
 
         <div className="flex flex-col sm:flex-row gap-8 sm:gap-4">
           <Step
             number="1"
-            icon={<Sparkles className="w-5 h-5" />}
-            title="Describe what you are into"
+            icon={<Search className="w-5 h-5" />}
+            title="Find and be found"
           >
-            Pick focus areas and skills, set your location and how far you want
-            to collaborate. Your profile stays private until you publish it.
+            Search people, teams and open roles nearby or worldwide — and once
+            your profile is public, teams looking for your skills find you.
+            Every result carries a match score you can open up and check.
           </Step>
           <Step
             number="2"
-            icon={<Percent className="w-5 h-5" />}
-            title="See who actually fits"
+            icon={<MessageCircle className="w-5 h-5" />}
+            title="Connect"
           >
-            Every result carries a match score you can open up — shared focus
-            areas, confirmed skills, and distance, each weighted and shown
-            separately.
+            Message anyone directly, apply for an open role, or accept an
+            invitation into a team. Every application and invitation stays
+            trackable, so you always know where you stand.
           </Step>
           <Step
             number="3"
-            icon={<Users className="w-5 h-5" />}
-            title="Team up and get going"
+            icon={<Sparkles className="w-5 h-5" />}
+            title="Create"
           >
-            Join a team through an open role, or start your own and invite the
-            people you found. Chat comes built in.
+            Start your own team, publish the roles you still need to fill, and
+            invite the people you found. Afterwards, award badges to those who
+            actually showed up for the work.
           </Step>
         </div>
       </Section>
@@ -419,8 +429,8 @@ const Home = () => {
             </div>
             <ScreenshotFrame
               src={SCREENSHOTS.roles}
-              alt="A team with its open roles and members"
-              caption="Team — open roles"
+              alt="An open role with the skills it asks for and how far it matches your profile"
+              caption="Open role — matched to your profile"
               icon={<UserPlus className="w-8 h-8" />}
               className="md:w-1/2"
             />
