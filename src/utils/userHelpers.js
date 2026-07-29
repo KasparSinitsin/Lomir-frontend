@@ -1,3 +1,19 @@
+/**
+ * Local-only switch for producing marketing screenshots without the Demo
+ * markers on top of every synthetic profile, team and role.
+ *
+ * Set `VITE_HIDE_DEMO_MARKERS=true` in a local `.env` (gitignored) and restart
+ * the dev server. It suppresses the visible marking only — the data keeps its
+ * synthetic flag, the search-side demo filter is a backend concern and is not
+ * affected, and `hasSyntheticFlag` below stays truthful for code that needs to
+ * know what an entity really is.
+ *
+ * Never enable this for a deployed build. The markers are what tells a real
+ * visitor that a profile is not a real person.
+ */
+const HIDE_DEMO_MARKERS =
+  import.meta.env?.VITE_HIDE_DEMO_MARKERS === "true";
+
 const hasTruthySyntheticFlag = (value) => {
   if (value === true || value === 1) return true;
 
@@ -75,39 +91,51 @@ export const getDisplayName = (user) => {
 };
 
 /**
+ * Read the synthetic flag off any entity, regardless of casing.
+ *
+ * This is the truthful check and is never suppressed by HIDE_DEMO_MARKERS.
+ * Use it where demo status drives behaviour rather than a visible marker —
+ * the map, for instance, resolves canonical locations for demo profiles.
+ */
+export const hasSyntheticFlag = (entity) => {
+  if (!entity) return false;
+  return (
+    hasTruthySyntheticFlag(entity.is_synthetic) ||
+    hasTruthySyntheticFlag(entity.isSynthetic)
+  );
+};
+
+/**
  * Check if a user is a synthetic/demo user
  * Handles both snake_case (from API) and camelCase (from frontend state)
+ *
+ * Display-facing: returns false while HIDE_DEMO_MARKERS is on.
  */
 export const isSyntheticUser = (user) => {
-  if (!user) return false;
-  return (
-    hasTruthySyntheticFlag(user.is_synthetic) ||
-    hasTruthySyntheticFlag(user.isSynthetic)
-  );
+  if (HIDE_DEMO_MARKERS) return false;
+  return hasSyntheticFlag(user);
 };
 
 /**
  * Check if a team is a synthetic/demo team
  * Handles both snake_case (from API) and camelCase (from frontend state)
+ *
+ * Display-facing: returns false while HIDE_DEMO_MARKERS is on.
  */
 export const isSyntheticTeam = (team) => {
-  if (!team) return false;
-  return (
-    hasTruthySyntheticFlag(team.is_synthetic) ||
-    hasTruthySyntheticFlag(team.isSynthetic)
-  );
+  if (HIDE_DEMO_MARKERS) return false;
+  return hasSyntheticFlag(team);
 };
 
 /**
  * Check if a vacant role is a synthetic/demo role
  * Handles both snake_case (from API) and camelCase (from frontend state)
+ *
+ * Display-facing: returns false while HIDE_DEMO_MARKERS is on.
  */
 export const isSyntheticRole = (role) => {
-  if (!role) return false;
-  return (
-    hasTruthySyntheticFlag(role.is_synthetic) ||
-    hasTruthySyntheticFlag(role.isSynthetic)
-  );
+  if (HIDE_DEMO_MARKERS) return false;
+  return hasSyntheticFlag(role);
 };
 
 export const DEMO_PROFILE_TOOLTIP =

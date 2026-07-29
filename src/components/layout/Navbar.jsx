@@ -507,8 +507,11 @@ const Navbar = () => {
     }
   }, [fetchUnreadMessageCount, fetchUnreadNotificationCount]);
 
+  // z-30 keeps the navbar above page content, which sits at z-20 and below,
+  // while staying under the tooltip layer (40/41 in index.css) and modals
+  // (50+), both of which have to cover it.
   return (
-    <div className="navbar glass-navbar sticky top-0 z-10">
+    <div className="navbar glass-navbar sticky top-0 z-30">
       <div className="content-container flex justify-between items-center w-full">
         {/* Logo - Left aligned */}
         <div className="flex-none">
