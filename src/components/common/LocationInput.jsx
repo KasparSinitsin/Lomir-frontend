@@ -113,13 +113,48 @@ const LocationInput = ({
       {/* Location Fields - hidden if remote */}
       {(!showRemoteToggle || !isRemote) && (
         <div className="space-y-4 animate-fadeIn">
-          {/* 
+          {/*
+            Field order is Country -> Postal Code -> City, following what
+            depends on what: the country makes the lookup possible, the postal
+            code triggers it, and the city is the result it fills in. Asking for
+            the city first would invite typing a value the lookup was about to
+            supply - and a manually edited city suppresses the auto-fill.
+
             Responsive grid layout:
             - Mobile (default): 1 column - all fields stacked
-            - Tablet (sm to lg): 2 columns - Country spans both, Postal + City side by side
+            - Tablet (sm to lg): 2 columns - Country spans both on its own row,
+              Postal + City side by side below it
             - Desktop (lg+): 3 columns - all fields in one row
           */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {/* Country - asked first: it is what makes the postal-code lookup
+                possible. Full width on tablet, 1/3 on desktop. */}
+            <div className="form-control w-full sm:col-span-2 lg:col-span-1">
+              <label className="label">
+                <span className="label-text">
+                  Country
+                  {required ? (
+                    <span className="text-error ml-1">*</span>
+                  ) : (
+                    " (optional)"
+                  )}
+                </span>
+              </label>
+              <CountrySelect
+                value={country}
+                onChange={handleCountryChange}
+                name="country"
+                placeholder="Select country"
+                disabled={disabled}
+              />
+              {errors.country && (
+                <label className="label">
+                  <span className="label-text-alt text-error">
+                    {errors.country}
+                  </span>
+                </label>
+              )}
+            </div>
             {/* Postal Code */}
             <div className="form-control w-full">
               <label className="label">
@@ -177,33 +212,6 @@ const LocationInput = ({
               )}
             </div>
 
-            {/* Country Select - full width on tablet, 1/3 on desktop */}
-            <div className="form-control w-full sm:col-span-2 lg:col-span-1">
-              <label className="label">
-                <span className="label-text">
-                  Country
-                  {required ? (
-                    <span className="text-error ml-1">*</span>
-                  ) : (
-                    " (optional)"
-                  )}
-                </span>
-              </label>
-              <CountrySelect
-                value={country}
-                onChange={handleCountryChange}
-                name="country"
-                placeholder="Select country"
-                disabled={disabled}
-              />
-              {errors.country && (
-                <label className="label">
-                  <span className="label-text-alt text-error">
-                    {errors.country}
-                  </span>
-                </label>
-              )}
-            </div>
           </div>
 
           {/* Helper text */}
