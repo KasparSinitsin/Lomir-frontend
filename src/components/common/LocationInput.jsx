@@ -23,6 +23,7 @@ import { LOCATION_PRIVACY_NOTICE } from "../../constants/privacyText";
  * @param {boolean} props.showDivider - Show section divider with icon
  * @param {string} props.dividerText - Text for the divider (default: "Location")
  * @param {boolean} props.required - Mark fields as required
+ * @param {Function} props.onFieldEdited - Called with "city" or "country" on manual edits
  * @param {string} props.privacyNotice - Helper text shown below location fields
  * @param {string} props.className - Additional CSS classes
  */
@@ -35,6 +36,9 @@ const LocationInput = ({
   showDivider = true,
   dividerText = "Location",
   required = false,
+  // Called when the user types in city or edits country, so the auto-fill can
+  // stop overwriting a value someone entered by hand.
+  onFieldEdited = () => {},
   privacyNotice = LOCATION_PRIVACY_NOTICE,
   className = "",
 }) => {
@@ -74,6 +78,10 @@ const LocationInput = ({
 
   // Handle country select change (may have different event format)
   const handleCountryChange = (e) => {
+    // Includes clearing the field via the X, which must also stop the auto-fill
+    // from immediately putting the country back.
+    onFieldEdited("country");
+
     // CountrySelect might pass value directly or as event
     if (typeof e === "string") {
       onChange({ target: { name: "country", value: e } });
@@ -199,7 +207,10 @@ const LocationInput = ({
                   errors.city ? "input-error" : ""
                 }`}
                 value={city}
-                onChange={onChange}
+                onChange={(e) => {
+                  onFieldEdited("city");
+                  onChange(e);
+                }}
                 name="city"
                 disabled={disabled}
               />

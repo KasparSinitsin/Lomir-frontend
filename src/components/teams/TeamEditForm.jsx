@@ -57,7 +57,7 @@ const TeamEditForm = ({
   const showToast = useToast();
 
   // Location auto-fill hook
-  const { getSuggestedUpdates } = useLocationAutoFill({
+  const { getSuggestedUpdates, markFieldAsEdited } = useLocationAutoFill({
     postalCode: formData.postalCode || "",
     city: formData.city || "",
     country: formData.country || "",
@@ -534,6 +534,7 @@ const TeamEditForm = ({
 
         {!formData.isRemote && (
           <LocationInput
+                onFieldEdited={markFieldAsEdited}
             formData={{
               is_remote: !!formData.isRemote,
               postal_code: formData.postalCode ?? "",

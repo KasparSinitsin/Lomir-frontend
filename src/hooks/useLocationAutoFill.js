@@ -13,8 +13,9 @@ import {
  * suggested updates that can be applied to form state.
  *
  * Features:
- * - Auto-fill city when postal code + country are provided
- * - Respects existing values (won't overwrite user input)
+ * - Auto-fill city and country when a postal code resolves
+ * - Respects user input: a field the user typed or cleared is never overwritten
+ *   (the forms report that through LocationInput's onFieldEdited)
  * - Works with both user profile and team edit forms
  *
  * City and country are both filled from the same lookup, the one the user
@@ -82,22 +83,23 @@ export const useLocationAutoFill = ({
 
     const updates = {};
 
-    // Auto-fill city if:
-    // 1. We have a looked-up city
-    // 2. Current city is empty
-    // 3. User hasn't manually edited the city field
-    if (location.city && !city && !userEditedFields.city) {
+    // Auto-fill city if the lookup returned one and the user has not typed a
+    // city by hand. It deliberately overwrites a value that is merely present:
+    // in edit mode the city always is, so requiring an empty field meant that
+    // changing a postal code never updated the city - Munich stayed Munich
+    // after the code moved to another town.
+    if (location.city && !userEditedFields.city && location.city !== city) {
       updates.city = location.city;
     }
 
     // Auto-fill country if:
-    // 1. The lookup returned one
-    // 2. Current country is empty
-    // 3. User hasn't manually edited the country field
-    if (location.country && !country && !userEditedFields.country) {
+    // Same rule as the city: the lookup wins unless the user chose a country
+    // themselves. Clearing the field via the X counts as choosing, so it is
+    // not silently refilled.
+    if (location.country && !userEditedFields.country) {
       // Convert country name to code for dropdown compatibility
       const countryCode = getCountryCode(location.country);
-      if (countryCode) {
+      if (countryCode && countryCode !== country) {
         updates.country = countryCode;
       }
     }

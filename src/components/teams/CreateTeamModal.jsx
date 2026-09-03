@@ -63,7 +63,7 @@ const CreateTeamModal = ({ isOpen, onClose, onTeamCreated }) => {
   const [isTeamDetailsOpen, setIsTeamDetailsOpen] = useState(false);
 
   // Location auto-fill hook
-  const { getSuggestedUpdates } = useLocationAutoFill({
+  const { getSuggestedUpdates, markFieldAsEdited } = useLocationAutoFill({
     postalCode: formData.postalCode || "",
     city: formData.city || "",
     country: formData.country || "",
@@ -660,6 +660,7 @@ const CreateTeamModal = ({ isOpen, onClose, onTeamCreated }) => {
               {/* Only show fields when NOT remote */}
               {!formData.isRemote && (
                 <LocationInput
+                onFieldEdited={markFieldAsEdited}
                   formData={{
                     is_remote: false,
                     postal_code: formData.postalCode ?? "",

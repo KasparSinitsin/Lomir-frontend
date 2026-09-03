@@ -73,7 +73,7 @@ const RegisterForm = () => {
   const formAlertClassName =
     "field-error-animate shadow-[0_4px_10px_rgba(0,0,0,0.12),0_12px_30px_rgba(0,0,0,0.18),0_28px_56px_rgba(0,0,0,0.14)]";
 
-  const { getSuggestedUpdates } = useLocationAutoFill({
+  const { getSuggestedUpdates, markFieldAsEdited } = useLocationAutoFill({
     postalCode: formData.postal_code || "",
     city: formData.city || "",
     country: formData.country || "",
@@ -951,6 +951,7 @@ const RegisterForm = () => {
             {/* Location */}
             <section>
               <LocationInput
+                onFieldEdited={markFieldAsEdited}
                 formData={{
                   postal_code: formData.postal_code,
                   city: formData.city,

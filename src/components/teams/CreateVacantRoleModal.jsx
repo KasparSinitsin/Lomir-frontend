@@ -67,7 +67,7 @@ const CreateVacantRoleModal = ({
 
 
   // Location auto-fill
-  const { getSuggestedUpdates } = useLocationAutoFill({
+  const { getSuggestedUpdates, markFieldAsEdited } = useLocationAutoFill({
     postalCode: formData.postalCode || "",
     city: formData.city || "",
     country: formData.country || "",
@@ -419,6 +419,7 @@ const CreateVacantRoleModal = ({
               {!formData.isRemote && (
                 <>
                   <LocationInput
+                onFieldEdited={markFieldAsEdited}
                     formData={{
                       is_remote: false,
                       postal_code: formData.postalCode ?? "",

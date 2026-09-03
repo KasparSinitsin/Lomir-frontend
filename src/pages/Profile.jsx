@@ -155,7 +155,7 @@ const Profile = () => {
   const hiddenAwardIds = displayUser?.hiddenAwardIds ?? [];
 
   // Auto-fill city from postal code lookup
-  const { getSuggestedUpdates } = useLocationAutoFill({
+  const { getSuggestedUpdates, markFieldAsEdited } = useLocationAutoFill({
     postalCode: formData.postalCode,
     city: formData.city,
     country: formData.country,
@@ -1140,6 +1140,7 @@ const Profile = () => {
             {/* Location Section */}
             <section>
               <LocationInput
+                onFieldEdited={markFieldAsEdited}
                 formData={{
                   postal_code: formData.postalCode,
                   city: formData.city,
