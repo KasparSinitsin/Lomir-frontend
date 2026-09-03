@@ -19,6 +19,9 @@ import {
 import ImageUploader from "../common/ImageUploader";
 import api from "../../services/api";
 import LocationInput from "../common/LocationInput";
+import CommunicationSection from "../common/CommunicationSection";
+import { LANGUAGE_FEATURE_VISIBLE, getLanguageForCountry } from "../../constants/languages";
+import { readStoredLanguage, resolveLanguage } from "../../utils/languageUtils";
 import {
   useLocationAutoFill,
   describeLocationBlock,
@@ -47,6 +50,10 @@ const RegisterForm = () => {
     postal_code: "",
     city: "",
     country: "",
+    // Carries a logged-out visitor's choice into the account: someone who
+    // read the site in German should not be flipped back to English by the
+    // country rule the moment they register. Falls back to the browser.
+    preferred_language: resolveLanguage(),
     isPublic: false,
     acceptedLegal: false,
     confirmedAge16: false,
@@ -357,6 +364,30 @@ const RegisterForm = () => {
     }));
   };
 
+  // The language follows the country until the visitor picks one themselves -
+  // selecting Austria should offer German without a second click. Any explicit
+  // choice ends that, including one made while browsing logged out: nothing
+  // may quietly overwrite what someone chose. Same rule LocationInput applies
+  // to city and country, and wired the same way rather than assumed.
+  const languageTouchedRef = useRef(Boolean(readStoredLanguage()));
+
+  const handleLanguageChange = (e) => {
+    languageTouchedRef.current = true;
+    handleChange(e);
+  };
+
+  useEffect(() => {
+    if (languageTouchedRef.current || !formData.country) return;
+
+    const fromCountry = getLanguageForCountry(formData.country);
+
+    setFormData((prev) =>
+      prev.preferred_language === fromCountry
+        ? prev
+        : { ...prev, preferred_language: fromCountry },
+    );
+  }, [formData.country]);
+
   const handleTagsChange = (tags) => {
     const normalized = (tags || [])
       .map((t) => (typeof t === "object" ? t.id : t))
@@ -539,6 +570,12 @@ const RegisterForm = () => {
       registrationData.append("postal_code", formData.postal_code);
       registrationData.append("city", formData.city);
       registrationData.append("country", formData.country);
+      // Only sent while the picker is on screen. Storing a language nobody was
+      // shown would make the guess an explicit choice and outrank the country
+      // rule for good.
+      if (LANGUAGE_FEATURE_VISIBLE) {
+        registrationData.append("preferred_language", formData.preferred_language);
+      }
       registrationData.append("accepted_terms", "true");
       registrationData.append("accepted_privacy", "true");
       registrationData.append("confirmed_age_16", "true");
@@ -994,6 +1031,15 @@ const RegisterForm = () => {
                 privacyNotice={USER_LOCATION_PRIVACY_NOTICE}
               />
             </section>
+
+            {/* Communication - under Location, because that is where the
+                default comes from when nothing has been chosen. */}
+            <CommunicationSection
+              value={formData.preferred_language}
+              onChange={handleLanguageChange}
+              name="preferred_language"
+              disabled={isSubmitting}
+            />
 
             {/* Profile Picture */}
             <section className="space-y-4">

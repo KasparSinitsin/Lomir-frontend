@@ -57,6 +57,9 @@ import {
 import DemoAvatarOverlay from "../components/users/DemoAvatarOverlay";
 import ConfirmModal from "../components/common/ConfirmModal";
 import LocationInput from "../components/common/LocationInput";
+import CommunicationSection from "../components/common/CommunicationSection";
+import { LANGUAGE_FEATURE_VISIBLE } from "../constants/languages";
+import { describeLanguageSelection } from "../utils/languageUtils";
 import VisibilityToggle from "../components/common/VisibilityToggle";
 import {
   AVATAR_UPLOAD_NOTICE,
@@ -134,6 +137,7 @@ const Profile = () => {
     city: "",
     postalCode: "",
     country: "",
+    preferredLanguage: "",
     isPublic: true,
     profileImage: null,
   });
@@ -224,6 +228,13 @@ const Profile = () => {
         city: user.city || "",
         postalCode: user.postalCode || "",
         country: user.country || "",
+        // The picker always shows a language. Where the account has none
+        // stored, that is the resolved default - a guess the user can see and
+        // change, not a stored preference.
+        preferredLanguage: describeLanguageSelection({
+          preferredLanguage: user.preferredLanguage,
+          country: user.country,
+        }).value,
         isPublic:
           user.isPublic !== undefined ? user.isPublic : true,
         profileImage: null,
@@ -249,6 +260,10 @@ const Profile = () => {
         postalCode: fetchedProfileUser.postalCode || "",
         city: fetchedProfileUser.city || "",
         country: fetchedProfileUser.country || "",
+        preferredLanguage: describeLanguageSelection({
+          preferredLanguage: fetchedProfileUser.preferredLanguage,
+          country: fetchedProfileUser.country,
+        }).value,
         isPublic:
           fetchedProfileUser.isPublic !== undefined
             ? fetchedProfileUser.isPublic
@@ -817,6 +832,12 @@ const Profile = () => {
         city: formData.city,
         country: formData.country,
         isPublic: formData.isPublic,
+        // Only sent while the picker is actually on screen. Persisting a value
+        // nobody was shown would turn the country guess into an explicit
+        // choice and outrank the country rule from then on.
+        ...(LANGUAGE_FEATURE_VISIBLE
+          ? { preferredLanguage: formData.preferredLanguage }
+          : {}),
       };
 
       // Handle image upload if a new image was selected
@@ -887,6 +908,9 @@ const Profile = () => {
           avatarUrl: avatarUrl || response.data?.avatarUrl || user.avatarUrl,
           userName: formData.username,
           postalCode: formData.postalCode,
+          ...(LANGUAGE_FEATURE_VISIBLE
+            ? { preferredLanguage: formData.preferredLanguage }
+            : {}),
         };
 
         // Update global context with new user data
@@ -1181,6 +1205,15 @@ const Profile = () => {
                 privacyNotice={USER_LOCATION_PRIVACY_NOTICE}
               />
             </section>
+
+            {/* Communication - sits under Location because that is where its
+                default comes from when no language has been chosen. */}
+            <CommunicationSection
+              value={formData.preferredLanguage}
+              onChange={handleChange}
+              name="preferredLanguage"
+              disabled={loading}
+            />
 
             {/* Focus Areas */}
             <section className="space-y-4">
