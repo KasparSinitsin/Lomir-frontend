@@ -1,6 +1,7 @@
 import React from "react";
 import { MapPin, Globe } from "lucide-react";
 import CountrySelect from "./CountrySelect";
+import { getBrowserDefaultCountryCode } from "../../utils/locationUtils";
 import FormSectionDivider from "./FormSectionDivider";
 import { LOCATION_PRIVACY_NOTICE } from "../../constants/privacyText";
 
@@ -42,6 +43,12 @@ const LocationInput = ({
   const postalCode = formData.postal_code ?? formData.postalCode ?? "";
   const city = formData.city ?? "";
   const country = formData.country ?? "";
+
+  // A postal code cannot be looked up without a country. Where none is
+  // selected, the browser's time zone stands in - so the hint below is shown
+  // only when even that is unavailable and the lookup genuinely cannot run.
+  const lookupNeedsCountry =
+    Boolean(postalCode) && !country && !getBrowserDefaultCountryCode();
 
   // Handle the remote toggle
   const handleRemoteToggle = (e) => {
@@ -133,6 +140,13 @@ const LocationInput = ({
                 <label className="label">
                   <span className="label-text-alt text-error">
                     {errors.postal_code}
+                  </span>
+                </label>
+              )}
+              {!errors.postal_code && lookupNeedsCountry && (
+                <label className="label">
+                  <span className="label-text-alt text-base-content/60">
+                    Select a country to look up your city
                   </span>
                 </label>
               )}

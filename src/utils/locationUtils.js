@@ -170,6 +170,101 @@ export const COUNTRY_NAME_TO_CODE = {
  * @param {string} countryCode - ISO country code (e.g., "DE") or full name
  * @returns {string|null} - Country name in English or null
  */
+/**
+ * IANA time zones mapped to the country they sit in.
+ *
+ * Deliberately not exhaustive: it covers Europe, where Lomir's users are, plus
+ * the handful of zones most likely to show up elsewhere. An unknown zone falls
+ * through to the locale region and then to null - a missing default is fine,
+ * a wrong one is not.
+ */
+const TIME_ZONE_COUNTRIES = {
+  "Europe/Berlin": "DE",
+  "Europe/Busingen": "DE",
+  "Europe/Vienna": "AT",
+  "Europe/Zurich": "CH",
+  "Europe/Vaduz": "LI",
+  "Europe/Amsterdam": "NL",
+  "Europe/Brussels": "BE",
+  "Europe/Luxembourg": "LU",
+  "Europe/Paris": "FR",
+  "Europe/Madrid": "ES",
+  "Europe/Lisbon": "PT",
+  "Europe/Rome": "IT",
+  "Europe/London": "GB",
+  "Europe/Dublin": "IE",
+  "Europe/Copenhagen": "DK",
+  "Europe/Oslo": "NO",
+  "Europe/Stockholm": "SE",
+  "Europe/Helsinki": "FI",
+  "Europe/Warsaw": "PL",
+  "Europe/Prague": "CZ",
+  "Europe/Bratislava": "SK",
+  "Europe/Budapest": "HU",
+  "Europe/Ljubljana": "SI",
+  "Europe/Zagreb": "HR",
+  "Europe/Bucharest": "RO",
+  "Europe/Sofia": "BG",
+  "Europe/Athens": "GR",
+  "Europe/Tallinn": "EE",
+  "Europe/Riga": "LV",
+  "Europe/Vilnius": "LT",
+  "America/New_York": "US",
+  "America/Chicago": "US",
+  "America/Denver": "US",
+  "America/Los_Angeles": "US",
+  "America/Toronto": "CA",
+  "America/Vancouver": "CA",
+  "America/Bogota": "CO",
+  "Africa/Johannesburg": "ZA",
+};
+
+/**
+ * Best guess at the visitor's country, used to prefill the country field.
+ *
+ * A postal code alone cannot identify a country (20099 is Hamburg in Germany
+ * and Sesto San Giovanni in Italy), so the lookup no longer guesses. This gives
+ * the majority of visitors a correct, visible and correctable default instead.
+ *
+ * **The time zone is asked first, and the browser language only after it.** The
+ * language says which locale someone reads in, not where they are: a German
+ * user on an English system reports `en-US`, and prefilling the US would send
+ * postal code 10115 from Berlin-Mitte to New York, where it is also a valid
+ * ZIP. The time zone describes the machine's location and gets that case right.
+ *
+ * From a locale only the region subtag counts: "de-AT" yields AT, a bare "de"
+ * yields nothing, because German is spoken in four countries and picking one
+ * would be the guess this replaces.
+ *
+ * @returns {string|null} ISO country code known to COUNTRY_NAMES, else null
+ */
+export const getBrowserDefaultCountryCode = () => {
+  try {
+    const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const fromZone = TIME_ZONE_COUNTRIES[timeZone];
+    if (fromZone && COUNTRY_NAMES[fromZone]) return fromZone;
+  } catch {
+    // Intl is unavailable or the zone is unresolvable - fall through.
+  }
+
+  if (typeof navigator === "undefined") return null;
+
+  const locales = [
+    ...(Array.isArray(navigator.languages) ? navigator.languages : []),
+    navigator.language,
+  ].filter(Boolean);
+
+  for (const locale of locales) {
+    const region = String(locale).split(/[-_]/)[1];
+    if (!region) continue;
+
+    const code = region.toUpperCase();
+    if (COUNTRY_NAMES[code]) return code;
+  }
+
+  return null;
+};
+
 export const getCountryDisplayName = (countryCode) => {
   if (!countryCode) return null;
 
@@ -863,6 +958,7 @@ export default {
   COUNTRY_NAME_TO_CODE,
   getCountryDisplayName,
   getCountryCode,
+  getBrowserDefaultCountryCode,
   deriveLocationFromPostalCode,
   normalizeLocationData,
   formatLocation,

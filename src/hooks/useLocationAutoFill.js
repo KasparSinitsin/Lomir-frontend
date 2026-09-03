@@ -1,6 +1,9 @@
 import { useState, useEffect, useCallback } from "react";
 import { useLocation } from "./useLocation";
-import { getCountryCode } from "../utils/locationUtils";
+import {
+  getBrowserDefaultCountryCode,
+  getCountryCode,
+} from "../utils/locationUtils";
 
 /**
  * useLocationAutoFill Hook
@@ -11,9 +14,22 @@ import { getCountryCode } from "../utils/locationUtils";
  *
  * Features:
  * - Auto-fill city when postal code + country are provided
- * - Auto-fill country when postal code lookup returns a country
  * - Respects existing values (won't overwrite user input)
  * - Works with both user profile and team edit forms
+ *
+ * City and country are both filled from the same lookup, the one the user
+ * triggers by typing their postal code. They are equally derived, equally
+ * visible and equally removable - and the country is what the backend needs:
+ * `resolveLocationData` skips geocoding entirely without one, so a profile
+ * saved with no country gets no coordinates, and with them no distance search
+ * and no map pin.
+ *
+ * What is deliberately NOT done is filling anything before the user has typed
+ * at all. The browser's time zone is used as a hint **for the lookup** when no
+ * country is selected, but it never lands in the form on its own: prefilling
+ * from the device would record where someone is before they have said anything,
+ * and the privacy notice under these fields promises the country can be left
+ * empty.
  *
  * @param {Object} options
  * @param {string} options.postalCode - Current postal code value
@@ -36,11 +52,13 @@ export const useLocationAutoFill = ({
     country: false,
   });
 
-  // Use the existing location lookup hook
-  // Pass country if available, otherwise let it auto-detect
+  // The user's choice wins; the browser hint only keeps the lookup working
+  // while the field is empty. It is never written back into the form.
+  const lookupCountry = country || getBrowserDefaultCountryCode();
+
   const { location, loading, error } = useLocation(
     !isEditing || isRemote ? null : postalCode,
-    country || null,
+    lookupCountry || null,
   );
 
   // Reset user-edited tracking when postal code changes significantly
@@ -73,7 +91,7 @@ export const useLocationAutoFill = ({
     }
 
     // Auto-fill country if:
-    // 1. We have a looked-up country
+    // 1. The lookup returned one
     // 2. Current country is empty
     // 3. User hasn't manually edited the country field
     if (location.country && !country && !userEditedFields.country) {

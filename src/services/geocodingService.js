@@ -5,39 +5,52 @@ class GeocodingService {
     this.cache = new Map(); // Simple in-memory cache
   }
 
-  // Helper function to detect country code from postal code format
+  /**
+   * Detect the country from a postal code format - but only when the format is
+   * genuinely distinctive.
+   *
+   * A postal code does not identify a country. Four digits are used by AT, CH,
+   * BE, DK, NO, HU and SI; five by DE, FR, IT, ES and FI. This function used to
+   * resolve that ambiguity by guessing (four digits -> NL, five -> DE), which
+   * made the later branches for AT, CH, DK, BE, IT, FR and ES unreachable and
+   * could write a wrong country into a profile: 20099 is Hamburg in Germany and
+   * Sesto San Giovanni in Italy, and the Italian user got Hamburg.
+   *
+   * It now returns null when the format is ambiguous. The caller must ask the
+   * user instead of guessing.
+   *
+   * @param {string} postalCode
+   * @returns {string|null} ISO country code, or null when undeterminable
+   */
   detectCountryCode(postalCode) {
-    if (!postalCode) return "DE";
+    if (!postalCode) return null;
 
     const code = postalCode.toString().trim();
 
-    if (/^11\d{4}$/.test(code)) return "CO"; // Bogota, Colombia: 110111
-    if (/^[ABCEGHJ-NPRSTVXY]\d[ABCEGHJ-NPRSTV-Z]\s?\d[ABCEGHJ-NPRSTV-Z]\d$/i.test(code)) return "CA"; // Canadian: M5H 2N2
-    if (/^28\d{3}$/.test(code)) return "ES"; // Madrid, Spain: 28001
-    if (code === "2000") return "ZA"; // Johannesburg, South Africa: 2000
-    if (/^\d{5}$/.test(code)) return "DE"; // German: 12345
-    if (/^\d{4}$/.test(code)) return "NL"; // Dutch: 1234
-    if (/^[A-Z]{1,2}\d[A-Z\d]?\s?\d[A-Z]{2}$/i.test(code)) return "GB"; // UK: SW1A 1AA
-    if (/^\d{2}-\d{3}$/.test(code)) return "PL"; // Polish: 12-345
-    if (/^\d{5}-\d{3}$/.test(code)) return "PT"; // Portuguese: 12345-123
-    if (/^\d{3}\s\d{2}$/.test(code)) return "SE"; // Swedish: 123 45
-    if (/^\d{4}\s[A-Z]{2}$/i.test(code)) return "NO"; // Norwegian: 1234 AB
-    if (/^\d{4}$/.test(code)) return "DK"; // Danish: 1234
-    if (/^\d{4}$/.test(code)) return "AT"; // Austrian: 1234
-    if (/^\d{4}$/.test(code)) return "CH"; // Swiss: 1234
-    if (/^\d{5}$/.test(code)) return "IT"; // Italian: 12345
-    if (/^\d{5}$/.test(code)) return "FR"; // French: 12345
-    if (/^\d{5}$/.test(code)) return "ES"; // Spanish: 12345
-    if (/^\d{4}$/.test(code)) return "BE"; // Belgian: 1234
-    if (/^\d{2}\s\d{3}$/.test(code)) return "CZ"; // Czech: 12 345
+    // Letters make these formats unmistakable
+    if (/^[ABCEGHJ-NPRSTVXY]\d[ABCEGHJ-NPRSTV-Z]\s?\d[ABCEGHJ-NPRSTV-Z]\d$/i.test(code)) return "CA"; // M5H 2N2
+    if (/^[A-Z]{1,2}\d[A-Z\d]?\s?\d[A-Z]{2}$/i.test(code)) return "GB"; // SW1A 1AA
+    if (/^\d{4}\s?[A-Z]{2}$/i.test(code)) return "NL"; // 1012 AB
 
-    return "DE"; // Default fallback
+    // Distinctive separators
+    if (/^\d{2}-\d{3}$/.test(code)) return "PL"; // 12-345
+    if (/^\d{4}-\d{3}$/.test(code)) return "PT"; // 1234-567
+    if (/^\d{3}\s\d{2}$/.test(code)) return "SE"; // 123 45
+
+    // Everything else (four and five bare digits above all) is ambiguous.
+    return null;
   }
 
   async getLocationFromPostalCode(postalCode, countryCode = null) {
     if (!postalCode) return null;
 
     const detectedCountryCode = countryCode || this.detectCountryCode(postalCode);
+
+    // Without a country the lookup cannot be answered correctly - the same
+    // digits exist in several countries - so do not send a request that would
+    // return a confidently wrong place.
+    if (!detectedCountryCode) return null;
+
     const cacheKey = `${postalCode}-${detectedCountryCode}`;
     
     if (this.cache.has(cacheKey)) {
