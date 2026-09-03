@@ -31,11 +31,13 @@ export const isLocationLookupReady = (postalCode, countryCode = null) => {
 
   const normalizedCountry =
     typeof countryCode === "string" ? countryCode.trim().toUpperCase() : null;
-  const minLength = normalizedCountry
-    ? MIN_POSTAL_CODE_LENGTH_BY_COUNTRY[normalizedCountry] || 3
-    : /^\d+$/.test(compactCode)
-      ? 5
-      : 5;
+
+  // No country, no lookup. The minimum length used to fall back to 5 here,
+  // which let five-digit codes be looked up as if they were German while
+  // four-digit ones were silently ignored - see geocodingService.detectCountryCode.
+  if (!normalizedCountry) return false;
+
+  const minLength = MIN_POSTAL_CODE_LENGTH_BY_COUNTRY[normalizedCountry] || 3;
 
   return compactCode.length >= minLength;
 };

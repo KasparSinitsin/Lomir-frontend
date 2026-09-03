@@ -493,7 +493,10 @@ const UserDetailsModal = ({
       (user.district || user.suburb || user.borough || user.cityDistrict);
     if (hasAllLocationDetails) return;
 
-    const country = user.country; // may be null; geocodingService.detectCountryCode will fall back
+    // Without a country the lookup is skipped and returns null, so the modal
+    // shows the details the profile already has rather than a place guessed
+    // from an ambiguous postal code.
+    const country = user.country;
     geocodingService
       .getLocationFromPostalCode(postalCode, country || null)
       .then((locationInfo) => {
