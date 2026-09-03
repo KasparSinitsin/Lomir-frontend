@@ -12,7 +12,10 @@ import FormSectionDivider from "../common/FormSectionDivider";
 import { UI_TEXT } from "../../constants/uiText";
 import { teamService } from "../../services/teamService";
 import { uploadToImageKit } from "../../config/imagekit";
-import { useLocationAutoFill } from "../../hooks/useLocationAutoFill";
+import {
+  useLocationAutoFill,
+  describeLocationBlock,
+} from "../../hooks/useLocationAutoFill";
 import { AVATAR_UPLOAD_NOTICE } from "../../constants/privacyText";
 import TeamDetailsModal from "./TeamDetailsModal";
 import {
@@ -63,7 +66,11 @@ const CreateTeamModal = ({ isOpen, onClose, onTeamCreated }) => {
   const [isTeamDetailsOpen, setIsTeamDetailsOpen] = useState(false);
 
   // Location auto-fill hook
-  const { getSuggestedUpdates, markFieldAsEdited } = useLocationAutoFill({
+  const {
+    getSuggestedUpdates,
+    markFieldAsEdited,
+    locationMismatch,
+  } = useLocationAutoFill({
     postalCode: formData.postalCode || "",
     city: formData.city || "",
     country: formData.country || "",
@@ -252,6 +259,20 @@ const CreateTeamModal = ({ isOpen, onClose, onTeamCreated }) => {
     const errors = validateForm();
     if (Object.keys(errors).length > 0) {
       setFormErrors(errors);
+      return;
+    }
+
+    // The location fields disagree, or one of them could not be confirmed. What
+    // that means per case - which value goes, what the user is told - lives in
+    // describeLocationBlock so the five forms cannot drift apart.
+    if (locationMismatch?.blocksSubmit) {
+      const { clearField, message } = describeLocationBlock(locationMismatch);
+
+      if (clearField) {
+        setFormData((prev) => ({ ...prev, [clearField]: "" }));
+      }
+
+      setSubmitError(message);
       return;
     }
 
@@ -660,7 +681,8 @@ const CreateTeamModal = ({ isOpen, onClose, onTeamCreated }) => {
               {/* Only show fields when NOT remote */}
               {!formData.isRemote && (
                 <LocationInput
-                onFieldEdited={markFieldAsEdited}
+                  onFieldEdited={markFieldAsEdited}
+                  mismatch={locationMismatch}
                   formData={{
                     is_remote: false,
                     postal_code: formData.postalCode ?? "",

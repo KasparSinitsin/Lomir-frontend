@@ -1,8 +1,11 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useLocation } from "./useLocation";
+import { useCityInCountry } from "./useCityInCountry";
 import {
   getBrowserDefaultCountryCode,
   getCountryCode,
+  cityAgreesWithLookup,
+  getCountryDisplayName,
 } from "../utils/locationUtils";
 
 /**
@@ -40,6 +43,40 @@ import {
  * @param {boolean} options.isRemote - Whether this is a remote team (skips lookup)
  * @returns {Object} { location, loading, error, getSuggestedUpdates }
  */
+/**
+ * What a blocking mismatch means for a form: which field carries the value that
+ * could not be confirmed, and what to tell the user.
+ *
+ * Lives here rather than in each form so that the five forms using this hook
+ * cannot drift apart, and so a new mismatch type is handled everywhere at once.
+ *
+ * @param {Object} mismatch - from `locationMismatch`
+ * @returns {Object} { clearField, message } - clearField is "postalCode",
+ *   "city" or null when the user has to decide rather than lose a value
+ */
+export const describeLocationBlock = (mismatch) => {
+  if (!mismatch) return { clearField: null, message: null };
+
+  if (mismatch.type === "postalCodeNotFound") {
+    return {
+      clearField: "postalCode",
+      message: `Postal code ${mismatch.postalCode} does not exist in ${mismatch.countryName} and was removed. Save again to store the rest of your location.`,
+    };
+  }
+
+  if (mismatch.type === "cityNotInCountry") {
+    return {
+      clearField: "city",
+      message: `${mismatch.city} was not found in ${mismatch.countryName} and was removed. Save again to store the rest of your location.`,
+    };
+  }
+
+  return {
+    clearField: null,
+    message: `${mismatch.suggestedCity} is the city for ${mismatch.postalCode}. Choose which value to keep before saving.`,
+  };
+};
+
 export const useLocationAutoFill = ({
   postalCode = "",
   city = "",
@@ -60,6 +97,15 @@ export const useLocationAutoFill = ({
   const { location, loading, error } = useLocation(
     !isEditing || isRemote ? null : postalCode,
     lookupCountry || null,
+  );
+
+  // Without a postal code nothing above can check the city, so it is verified
+  // against the country directly. With one, the postal-code lookup already
+  // settles the place and asking twice would warn twice about the same thing.
+  const { verification: cityVerification } = useCityInCountry(
+    city,
+    country,
+    isEditing && !isRemote && !postalCode,
   );
 
   // Reset user-edited tracking when postal code changes significantly
@@ -108,6 +154,87 @@ export const useLocationAutoFill = ({
   }, [location, isEditing, isRemote, city, country, userEditedFields]);
 
   /**
+   * What the lookup says about the values the user entered.
+   *
+   * - `postalCodeNotFound`: the code did not resolve. **With a country chosen
+   *   this blocks saving**: the country is the user's own statement, so a code
+   *   that does not exist in it is the unverifiable half of the pair, and
+   *   storing it produces records like "63837 Sulzbach am Main" where the town
+   *   is real and the code is not. Without a chosen country it stays advisory,
+   *   because the lookup then ran against a guessed country and failing there
+   *   proves nothing.
+   * - `cityNotInCountry`: there is no postal code, and the town does not exist
+   *   in the chosen country - the case that let "Berlin, Austria" be saved.
+   *   The country comes from a fixed list and the town is free text, so the
+   *   town is the unverifiable half.
+   * - `cityMismatch`: the code resolved somewhere with nothing in common with
+   *   the city that was typed. This one **must be answered before saving**
+   *   (`blocksSubmit`), because the combination is not merely unverified: the
+   *   backend geocodes postal code, city and country as a single query, so a
+   *   contradictory pair yields wrong coordinates or none at all.
+   *
+   * Both answers resolve the contradiction in the data rather than agreeing to
+   * store it: taking the looked-up city keeps the postal code, keeping the
+   * typed city drops the postal code. Nothing that names two different places
+   * can be saved. The cost is real and accepted: someone in a neighbouring
+   * village sharing a postal code the lookup does not name loses the postal
+   * code rather than the city.
+   */
+  const locationMismatch = useMemo(() => {
+    if (!isEditing || isRemote) return null;
+
+    // No postal code: the only thing that can be checked is whether the town
+    // exists in the chosen country.
+    if (!postalCode) {
+      if (city && country && cityVerification?.found === false) {
+        return {
+          type: "cityNotInCountry",
+          city,
+          countryName: getCountryDisplayName(country),
+          blocksSubmit: true,
+        };
+      }
+
+      return null;
+    }
+
+    if (loading || error) return null;
+    if (!location) return null;
+
+    if (!location.city) {
+      const countryName = country ? getCountryDisplayName(country) : null;
+
+      return {
+        type: "postalCodeNotFound",
+        postalCode,
+        countryName,
+        blocksSubmit: Boolean(countryName),
+      };
+    }
+
+    if (city && !cityAgreesWithLookup(city, location)) {
+      return {
+        type: "cityMismatch",
+        postalCode,
+        suggestedCity: location.city,
+        blocksSubmit: true,
+      };
+    }
+
+    return null;
+  }, [
+    isEditing,
+    isRemote,
+    postalCode,
+    loading,
+    error,
+    location,
+    city,
+    country,
+    cityVerification,
+  ]);
+
+  /**
    * Mark a field as manually edited by user
    * Call this when user types in city or country fields
    *
@@ -139,6 +266,8 @@ export const useLocationAutoFill = ({
     error,
     // Get suggested updates to apply to form
     getSuggestedUpdates,
+    // Disagreement between the entered values and the lookup, or null
+    locationMismatch,
     // Mark a field as user-edited (prevents auto-fill)
     markFieldAsEdited,
     // Reset edit tracking

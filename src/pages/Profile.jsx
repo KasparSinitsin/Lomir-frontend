@@ -44,7 +44,10 @@ import BadgeCategoryModal from "../components/badges/BadgeCategoryModal";
 import TagsDisplaySection from "../components/tags/TagsDisplaySection";
 import TagAwardsModal from "../components/badges/TagAwardsModal";
 import LocationDisplay from "../components/common/LocationDisplay";
-import { useLocationAutoFill } from "../hooks/useLocationAutoFill";
+import {
+  useLocationAutoFill,
+  describeLocationBlock,
+} from "../hooks/useLocationAutoFill";
 import ImageUploader from "../components/common/ImageUploader";
 import {
   DEMO_PROFILE_TOOLTIP,
@@ -155,7 +158,11 @@ const Profile = () => {
   const hiddenAwardIds = displayUser?.hiddenAwardIds ?? [];
 
   // Auto-fill city from postal code lookup
-  const { getSuggestedUpdates, markFieldAsEdited } = useLocationAutoFill({
+  const {
+    getSuggestedUpdates,
+    markFieldAsEdited,
+    locationMismatch,
+  } = useLocationAutoFill({
     postalCode: formData.postalCode,
     city: formData.city,
     country: formData.country,
@@ -777,6 +784,20 @@ const Profile = () => {
   const handleProfileUpdate = async () => {
     if (!user) return;
 
+    // The location fields disagree, or one of them could not be confirmed. What
+    // that means per case - which value goes, what the user is told - lives in
+    // describeLocationBlock so the five forms cannot drift apart.
+    if (locationMismatch?.blocksSubmit) {
+      const { clearField, message } = describeLocationBlock(locationMismatch);
+
+      if (clearField) {
+        setFormData((prev) => ({ ...prev, [clearField]: "" }));
+      }
+
+      setError(message);
+      return;
+    }
+
     // Validate form before proceeding
     if (!validateForm()) {
       return; // Stop execution if validation fails
@@ -1141,6 +1162,7 @@ const Profile = () => {
             <section>
               <LocationInput
                 onFieldEdited={markFieldAsEdited}
+                mismatch={locationMismatch}
                 formData={{
                   postal_code: formData.postalCode,
                   city: formData.city,

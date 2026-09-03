@@ -774,6 +774,79 @@ export const locationsHaveDifferentKnownParts = (source, target) => {
  * @param {boolean} options.showCountryCode - Include ISO country code in output
  * @returns {string} Formatted location string
  */
+/**
+ * Fold a place name into a comparable form: lowercase, accents removed,
+ * punctuation and separators collapsed. "Frankfurt am Main" and
+ * "frankfurt-am-main" become the same string.
+ */
+const foldPlaceName = (value) =>
+  String(value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+
+/**
+ * Does the city someone typed agree with what the postal code resolved to?
+ *
+ * Deliberately tolerant, because a strict comparison produces false alarms on
+ * perfectly correct input:
+ * - a postal code area can cover several municipalities, and the lookup names
+ *   only one of them
+ * - people write the district they live in ("Hartenberg-Münchfeld" for Mainz)
+ * - names get shortened ("Frankfurt" for "Frankfurt am Main")
+ *
+ * So a match against any part the lookup returned counts, and containment in
+ * either direction counts. Only a name with nothing in common is reported.
+ *
+ * The bias is deliberate: it errs toward staying silent. A missed warning
+ * costs nothing - the value is the user's own and merely unverified - while a
+ * false one tells someone their correct address is wrong.
+ *
+ * @param {string} enteredCity - what the user typed
+ * @param {Object} location - the geocoding result
+ * @returns {boolean} true when the two are compatible (or undecidable)
+ */
+export const cityAgreesWithLookup = (enteredCity, location) => {
+  const entered = foldPlaceName(enteredCity);
+  if (!entered || !location) return true;
+
+  const candidates = [
+    location.city,
+    location.district,
+    location.suburb,
+    location.borough,
+    location.cityDistrict,
+    location.state,
+  ]
+    .map(foldPlaceName)
+    .filter(Boolean);
+
+  if (!candidates.length) return true;
+
+  // Single letters are abbreviation debris ("Frankfurt a. M."), not name parts.
+  const significantWords = (value) =>
+    new Set(value.split(" ").filter((word) => word.length > 1));
+
+  const enteredWords = significantWords(entered);
+
+  return candidates.some((candidate) => {
+    if (candidate === entered) return true;
+    if (candidate.includes(entered) || entered.includes(candidate)) return true;
+
+    // Word-level containment, so "Frankfurt/Main" agrees with "Frankfurt am
+    // Main" - the same name with a filler word dropped is not a contradiction.
+    const candidateWords = significantWords(candidate);
+    const [smaller, larger] =
+      enteredWords.size <= candidateWords.size
+        ? [enteredWords, candidateWords]
+        : [candidateWords, enteredWords];
+
+    return [...smaller].every((word) => larger.has(word));
+  });
+};
+
 export const formatLocation = (locationData, options = {}) => {
   const {
     displayType = "short",
@@ -959,6 +1032,7 @@ export default {
   getCountryDisplayName,
   getCountryCode,
   getBrowserDefaultCountryCode,
+  cityAgreesWithLookup,
   deriveLocationFromPostalCode,
   normalizeLocationData,
   formatLocation,

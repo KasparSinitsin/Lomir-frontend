@@ -1,5 +1,5 @@
 import React from "react";
-import { MapPin, Globe } from "lucide-react";
+import { MapPin, Globe, X } from "lucide-react";
 import CountrySelect from "./CountrySelect";
 import { getBrowserDefaultCountryCode } from "../../utils/locationUtils";
 import FormSectionDivider from "./FormSectionDivider";
@@ -24,9 +24,56 @@ import { LOCATION_PRIVACY_NOTICE } from "../../constants/privacyText";
  * @param {string} props.dividerText - Text for the divider (default: "Location")
  * @param {boolean} props.required - Mark fields as required
  * @param {Function} props.onFieldEdited - Called with "city" or "country" on manual edits
+ * @param {Object} props.mismatch - Lookup disagreement to warn about, or null
  * @param {string} props.privacyNotice - Helper text shown below location fields
  * @param {string} props.className - Additional CSS classes
  */
+/**
+ * A text input with a clear button on the right, matching the one CountrySelect
+ * already has. Having it in the field is what lets the warnings below stay
+ * short: emptying a field is a click here, not a sentence there.
+ *
+ * `hasWarning` marks the value the lookup could not confirm, so the field
+ * itself carries the state instead of only the sentence underneath. An error
+ * outranks it - a value can be invalid and unconfirmed at once, and invalid is
+ * the more serious of the two.
+ */
+const ClearableInput = ({
+  name,
+  value,
+  placeholder,
+  disabled,
+  hasError,
+  hasWarning,
+  onChange,
+  onClear,
+  clearLabel,
+}) => (
+  <div className="relative">
+    <input
+      type="text"
+      name={name}
+      value={value}
+      placeholder={placeholder}
+      onChange={onChange}
+      disabled={disabled}
+      className={`input input-bordered w-full ${value ? "pr-10" : ""} ${
+        hasError ? "input-error" : hasWarning ? "input-warning text-warning" : ""
+      }`}
+    />
+    {value && !disabled && (
+      <button
+        type="button"
+        onClick={onClear}
+        className="absolute inset-y-0 right-2 my-auto h-7 w-7 flex items-center justify-center p-1 hover:bg-base-200 rounded transition-colors"
+        aria-label={clearLabel}
+      >
+        <X size={14} className="text-base-content/50" />
+      </button>
+    )}
+  </div>
+);
+
 const LocationInput = ({
   formData,
   onChange,
@@ -39,6 +86,8 @@ const LocationInput = ({
   // Called when the user types in city or edits country, so the auto-fill can
   // stop overwriting a value someone entered by hand.
   onFieldEdited = () => {},
+  // { type: "postalCodeNotFound" | "cityMismatch", ... } from useLocationAutoFill
+  mismatch = null,
   privacyNotice = LOCATION_PRIVACY_NOTICE,
   className = "",
 }) => {
@@ -168,16 +217,18 @@ const LocationInput = ({
               <label className="label">
                 <span className="label-text">Postal Code (optional)</span>
               </label>
-              <input
-                type="text"
-                placeholder="e.g., 12345"
-                className={`input input-bordered w-full ${
-                  errors.postal_code ? "input-error" : ""
-                }`}
-                value={postalCode}
-                onChange={onChange}
+              <ClearableInput
                 name="postal_code"
+                value={postalCode}
+                placeholder="e.g., 12345"
                 disabled={disabled}
+                hasError={Boolean(errors.postal_code)}
+                hasWarning={mismatch?.type === "postalCodeNotFound"}
+                onChange={onChange}
+                onClear={() =>
+                  onChange({ target: { name: "postal_code", value: "" } })
+                }
+                clearLabel="Clear postal code"
               />
               {errors.postal_code && (
                 <label className="label">
@@ -187,12 +238,19 @@ const LocationInput = ({
                 </label>
               )}
               {!errors.postal_code && lookupNeedsCountry && (
-                <label className="label">
-                  <span className="label-text-alt text-base-content/60">
-                    Select a country to look up your city
-                  </span>
-                </label>
+                <p className="form-helper-text px-1">
+                  Select a country to look this up
+                </p>
               )}
+              {!errors.postal_code &&
+                !lookupNeedsCountry &&
+                mismatch?.type === "postalCodeNotFound" && (
+                  <p className="text-xs text-warning mt-2 px-1">
+                    {mismatch.countryName
+                      ? `Not found in ${mismatch.countryName}.`
+                      : "Select a country to look this up."}
+                  </p>
+                )}
             </div>
 
             {/* City / Town */}
@@ -200,19 +258,27 @@ const LocationInput = ({
               <label className="label">
                 <span className="label-text">City / Town (optional)</span>
               </label>
-              <input
-                type="text"
-                placeholder="e.g., Berlin"
-                className={`input input-bordered w-full ${
-                  errors.city ? "input-error" : ""
-                }`}
+              <ClearableInput
+                name="city"
                 value={city}
+                placeholder="e.g., Berlin"
+                disabled={disabled}
+                hasError={Boolean(errors.city)}
+                hasWarning={
+                  mismatch?.type === "cityMismatch" ||
+                  mismatch?.type === "cityNotInCountry"
+                }
                 onChange={(e) => {
                   onFieldEdited("city");
                   onChange(e);
                 }}
-                name="city"
-                disabled={disabled}
+                onClear={() => {
+                  // Counts as a manual edit, or the lookup fills it straight
+                  // back in - the same rule the country's clear button follows.
+                  onFieldEdited("city");
+                  onChange({ target: { name: "city", value: "" } });
+                }}
+                clearLabel="Clear city"
               />
               {errors.city && (
                 <label className="label">
@@ -221,8 +287,33 @@ const LocationInput = ({
                   </span>
                 </label>
               )}
+              {mismatch?.type === "cityNotInCountry" && (
+                <p className="text-xs text-warning mt-2 px-1">
+                  {`Not found in ${mismatch.countryName}.`}
+                </p>
+              )}
+              {mismatch?.type === "cityMismatch" && (
+                <p className="text-xs text-warning mt-2 px-1">
+                  {`${mismatch.suggestedCity} is the city for ${mismatch.postalCode}. `}
+                  <button
+                    type="button"
+                    className="link link-primary"
+                    aria-label={`Use ${mismatch.suggestedCity}`}
+                    onClick={() => {
+                      onFieldEdited("city");
+                      onChange({
+                        target: {
+                          name: "city",
+                          value: mismatch.suggestedCity,
+                        },
+                      });
+                    }}
+                  >
+                    Use it
+                  </button>
+                </p>
+              )}
             </div>
-
           </div>
 
           {/* Helper text */}

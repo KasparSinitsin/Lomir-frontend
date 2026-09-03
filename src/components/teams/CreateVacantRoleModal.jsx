@@ -9,7 +9,10 @@ import TagInput from "../tags/TagInput";
 import BadgeInput from "../badges/BadgeInput";
 import Tooltip from "../common/Tooltip";
 import { vacantRoleService } from "../../services/vacantRoleService";
-import { useLocationAutoFill } from "../../hooks/useLocationAutoFill";
+import {
+  useLocationAutoFill,
+  describeLocationBlock,
+} from "../../hooks/useLocationAutoFill";
 import {
   UserSearch,
   SquarePen,
@@ -67,7 +70,11 @@ const CreateVacantRoleModal = ({
 
 
   // Location auto-fill
-  const { getSuggestedUpdates, markFieldAsEdited } = useLocationAutoFill({
+  const {
+    getSuggestedUpdates,
+    markFieldAsEdited,
+    locationMismatch,
+  } = useLocationAutoFill({
     postalCode: formData.postalCode || "",
     city: formData.city || "",
     country: formData.country || "",
@@ -215,6 +222,20 @@ const CreateVacantRoleModal = ({
     const errors = validateForm();
     if (Object.keys(errors).length > 0) {
       setFormErrors(errors);
+      return;
+    }
+
+    // The location fields disagree, or one of them could not be confirmed. What
+    // that means per case - which value goes, what the user is told - lives in
+    // describeLocationBlock so the five forms cannot drift apart.
+    if (locationMismatch?.blocksSubmit) {
+      const { clearField, message } = describeLocationBlock(locationMismatch);
+
+      if (clearField) {
+        setFormData((prev) => ({ ...prev, [clearField]: "" }));
+      }
+
+      setSubmitError(message);
       return;
     }
 
@@ -419,7 +440,8 @@ const CreateVacantRoleModal = ({
               {!formData.isRemote && (
                 <>
                   <LocationInput
-                onFieldEdited={markFieldAsEdited}
+                    onFieldEdited={markFieldAsEdited}
+                    mismatch={locationMismatch}
                     formData={{
                       is_remote: false,
                       postal_code: formData.postalCode ?? "",

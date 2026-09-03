@@ -1,5 +1,96 @@
 import api from "./api";
 
+const CITY_LEVEL_ADDRESS_KEYS = [
+  "city",
+  "town",
+  "village",
+  "municipality",
+];
+
+const NON_CITY_LEVEL_ADDRESS_KEYS = [
+  "hamlet",
+  "locality",
+  "neighbourhood",
+  "quarter",
+  "suburb",
+  "city_district",
+  "borough",
+  "isolated_dwelling",
+  "farm",
+];
+
+const CITY_LEVEL_PLACE_TYPES = new Set([
+  "city",
+  "town",
+  "village",
+  "municipality",
+  "administrative",
+]);
+
+const NON_CITY_LEVEL_PLACE_TYPES = new Set([
+  "hamlet",
+  "locality",
+  "neighbourhood",
+  "quarter",
+  "suburb",
+  "isolated_dwelling",
+  "farm",
+]);
+
+const getPlaceType = (value) =>
+  String(
+    value?.placeType ??
+      value?.place_type ??
+      value?.osmValue ??
+      value?.osm_value ??
+      value?.type ??
+      "",
+  )
+    .trim()
+    .toLowerCase();
+
+const hasCityLevelAddressPart = (value) => {
+  const address = value?.rawAddress ?? value?.address ?? null;
+  if (!address || typeof address !== "object") return false;
+
+  return CITY_LEVEL_ADDRESS_KEYS.some((key) => Boolean(address[key]));
+};
+
+const foldPlaceName = (value) =>
+  String(value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+
+const addressPartMatches = (address, keys, name) => {
+  const foldedName = foldPlaceName(name);
+  if (!foldedName || !address || typeof address !== "object") return false;
+
+  return keys.some((key) => foldPlaceName(address[key]) === foldedName);
+};
+
+const isCityLevelVerification = (value, queriedCity) => {
+  if (!value || value.found !== true) return true;
+
+  const address = value.rawAddress ?? value.address ?? null;
+  if (addressPartMatches(address, CITY_LEVEL_ADDRESS_KEYS, queriedCity)) {
+    return true;
+  }
+  if (addressPartMatches(address, NON_CITY_LEVEL_ADDRESS_KEYS, queriedCity)) {
+    return false;
+  }
+
+  const placeType = getPlaceType(value);
+  if (!placeType) return true;
+  if (CITY_LEVEL_PLACE_TYPES.has(placeType)) return true;
+
+  if (hasCityLevelAddressPart(value)) return true;
+
+  return !NON_CITY_LEVEL_PLACE_TYPES.has(placeType);
+};
+
 class GeocodingService {
   constructor() {
     this.cache = new Map(); // Simple in-memory cache
@@ -39,6 +130,54 @@ class GeocodingService {
 
     // Everything else (four and five bare digits above all) is ambiguous.
     return null;
+  }
+
+  /**
+   * Check whether a town exists in a country.
+   *
+   * Needed because everything else here starts from a postal code: without one
+   * there was nothing to compare a city against, so "Berlin, Austria" could be
+   * saved. Returns null when the question cannot be answered - no country, no
+   * name, or the service being unavailable - which callers must treat as "no
+   * information", never as "does not exist".
+   *
+   * @param {string} city
+   * @param {string} countryCode - ISO code; required
+   * @returns {Promise<Object|null>} { found, city, state, postalCode, ... }
+   */
+  async verifyCityInCountry(city, countryCode) {
+    const name = String(city || "").trim();
+    const country = String(countryCode || "").trim();
+
+    if (!name || !country) return null;
+
+    const cacheKey = `city:${name.toLowerCase()}-${country.toLowerCase()}`;
+    if (this.cache.has(cacheKey)) {
+      return this.cache.get(cacheKey);
+    }
+
+    try {
+      const response = await api.get(
+        `/api/geocoding/city/${encodeURIComponent(name)}`,
+        { params: { country } },
+      );
+
+      if (!response.data || response.data.found === null) return null;
+
+      const result = isCityLevelVerification(response.data, name)
+        ? response.data
+        : {
+            ...response.data,
+            found: false,
+            rejectedReason: "notCityLevel",
+          };
+
+      this.cache.set(cacheKey, result);
+      return result;
+    } catch (error) {
+      console.error("City verification error:", error);
+      return null;
+    }
   }
 
   async getLocationFromPostalCode(postalCode, countryCode = null) {

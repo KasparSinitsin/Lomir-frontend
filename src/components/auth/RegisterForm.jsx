@@ -19,7 +19,10 @@ import {
 import ImageUploader from "../common/ImageUploader";
 import api from "../../services/api";
 import LocationInput from "../common/LocationInput";
-import { useLocationAutoFill } from "../../hooks/useLocationAutoFill";
+import {
+  useLocationAutoFill,
+  describeLocationBlock,
+} from "../../hooks/useLocationAutoFill";
 import VisibilityToggle from "../common/VisibilityToggle";
 import TurnstileWidget from "../common/TurnstileWidget";
 import {
@@ -73,7 +76,11 @@ const RegisterForm = () => {
   const formAlertClassName =
     "field-error-animate shadow-[0_4px_10px_rgba(0,0,0,0.12),0_12px_30px_rgba(0,0,0,0.18),0_28px_56px_rgba(0,0,0,0.14)]";
 
-  const { getSuggestedUpdates, markFieldAsEdited } = useLocationAutoFill({
+  const {
+    getSuggestedUpdates,
+    markFieldAsEdited,
+    locationMismatch,
+  } = useLocationAutoFill({
     postalCode: formData.postal_code || "",
     city: formData.city || "",
     country: formData.country || "",
@@ -458,6 +465,22 @@ const RegisterForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // The location fields disagree, or one of them could not be confirmed. What
+    // that means per case - which value goes, what the user is told - lives in
+    // describeLocationBlock so the five forms cannot drift apart.
+    if (locationMismatch?.blocksSubmit) {
+      const { clearField, message } = describeLocationBlock(locationMismatch);
+
+      if (clearField) {
+        // This form keeps its location fields in snake_case.
+        const fieldName = clearField === "postalCode" ? "postal_code" : clearField;
+        setFormData((prev) => ({ ...prev, [fieldName]: "" }));
+      }
+
+      setErrors((prev) => ({ ...prev, form: message }));
+      return;
+    }
 
     setIsSubmitting(true);
 
@@ -952,6 +975,7 @@ const RegisterForm = () => {
             <section>
               <LocationInput
                 onFieldEdited={markFieldAsEdited}
+                mismatch={locationMismatch}
                 formData={{
                   postal_code: formData.postal_code,
                   city: formData.city,

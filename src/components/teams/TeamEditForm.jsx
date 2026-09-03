@@ -12,7 +12,10 @@ import ImageUploader from "../common/ImageUploader";
 import LocationInput from "../common/LocationInput";
 import TagInput from "../tags/TagInput";
 import { UI_TEXT } from "../../constants/uiText";
-import { useLocationAutoFill } from "../../hooks/useLocationAutoFill";
+import {
+  useLocationAutoFill,
+  describeLocationBlock,
+} from "../../hooks/useLocationAutoFill";
 import { AVATAR_UPLOAD_NOTICE } from "../../constants/privacyText";
 import { Camera, Users, Settings, Tag, Trash2, X, Save } from "lucide-react";
 
@@ -57,7 +60,11 @@ const TeamEditForm = ({
   const showToast = useToast();
 
   // Location auto-fill hook
-  const { getSuggestedUpdates, markFieldAsEdited } = useLocationAutoFill({
+  const {
+    getSuggestedUpdates,
+    markFieldAsEdited,
+    locationMismatch,
+  } = useLocationAutoFill({
     postalCode: formData.postalCode || "",
     city: formData.city || "",
     country: formData.country || "",
@@ -176,6 +183,23 @@ const TeamEditForm = ({
   // Handle form submission
   const handleFormSubmit = (e) => {
     e.preventDefault();
+
+    // The location fields disagree, or one of them could not be confirmed. What
+    // that means per case - which value goes, what the user is told - lives in
+    // describeLocationBlock so the five forms cannot drift apart.
+    if (locationMismatch?.blocksSubmit) {
+      const { clearField, message } = describeLocationBlock(locationMismatch);
+
+      if (clearField) {
+        setFormData((prev) => ({ ...prev, [clearField]: "" }));
+      }
+
+      // LocationInput reads its error keys in snake_case.
+      const errorKey = clearField === "postalCode" ? "postal_code" : "city";
+      setFormErrors((prev) => ({ ...prev, [errorKey]: message }));
+      return;
+    }
+
     onSubmit(e);
   };
 
@@ -534,7 +558,8 @@ const TeamEditForm = ({
 
         {!formData.isRemote && (
           <LocationInput
-                onFieldEdited={markFieldAsEdited}
+            onFieldEdited={markFieldAsEdited}
+            mismatch={locationMismatch}
             formData={{
               is_remote: !!formData.isRemote,
               postal_code: formData.postalCode ?? "",
