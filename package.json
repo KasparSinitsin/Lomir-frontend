@@ -8,6 +8,7 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
+    "i18n:check": "node scripts/i18n-check.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
