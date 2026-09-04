@@ -1074,8 +1074,15 @@ body {
   }
 }
 
-/* ===== Profile dropdown menu ===== */
-.profile-dropdown {
+/* ===== Navbar dropdown menus (profile avatar, language) =====
+   Two classes, one appearance. `.language-dropdown` was split off from
+   `.profile-dropdown` so the two can diverge later; until they do it shares
+   every rule, because a dropdown class with no CSS behind it is not a
+   neutral default - the menu loses its white background and renders
+   see-through over the page, which reads as the menu being covered rather
+   than unstyled. Add a rule below rather than a second copy of the block. */
+.profile-dropdown,
+.language-dropdown {
   background-color: #ffffff !important;
   border-radius: 0.5rem !important;
   box-shadow: 0 4px 16px rgba(4, 80, 20, 0.15) !important;
@@ -1083,21 +1090,27 @@ body {
   overflow: visible !important;
 }
 
-/* Menu item text and hover */
+/* Menu item text and hover. `justify-content: flex-end` is what right-aligns
+   the rows - the language menu's fixed-width mark slot depends on it. */
 .profile-dropdown li > a,
-.profile-dropdown li > button {
+.profile-dropdown li > button,
+.language-dropdown li > a,
+.language-dropdown li > button {
   color: var(--color-primary-focus) !important;
   justify-content: flex-end !important;
 }
 
 .profile-dropdown li > a:hover,
-.profile-dropdown li > button:hover {
+.profile-dropdown li > button:hover,
+.language-dropdown li > a:hover,
+.language-dropdown li > button:hover {
   background-color: rgba(0, 146, 19, 0.08) !important;
   color: var(--color-primary-focus) !important;
 }
 
-/* Upward-pointing arrow aligned with the avatar button */
-.profile-dropdown::before {
+/* Upward-pointing arrow, aligned with the trigger it hangs from */
+.profile-dropdown::before,
+.language-dropdown::before {
   content: '';
   position: absolute;
   top: -6px;
