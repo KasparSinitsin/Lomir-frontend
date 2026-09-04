@@ -86,6 +86,8 @@
     "useSuggestedCityAria": "Use {city}"
   },
   "nav": {
+    "languageCurrent": "Language: {language} ({code})",
+    "languageSettings": "Language Settings",
     "login": "Login",
     "logoAlt": "Lomir Logo",
     "logout": "Logout",

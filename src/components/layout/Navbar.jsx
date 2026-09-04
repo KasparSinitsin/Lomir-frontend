@@ -29,6 +29,7 @@ import { messageService } from "../../services/messageService";
 import { notificationService } from "../../services/notificationService";
 import useSocketEvents from "../../hooks/useSocketEvents";
 import NotificationBadge from "../common/NotificationBadge";
+import NavbarLanguageMenu from "./NavbarLanguageMenu";
 import {
   getMessageConversationTarget,
   isMessageForCurrentChatPath,
@@ -757,6 +758,12 @@ const Navbar = () => {
               </Link>
             </div>
           )}
+
+          {/* Outermost on the right, after the Sign Up button. Signed-out
+              visitors only - signed-in users set their language in Settings,
+              where it lives on the account. Renders nothing while the
+              language feature is hidden. */}
+          <NavbarLanguageMenu />
         </div>
       </div>
     </div>
