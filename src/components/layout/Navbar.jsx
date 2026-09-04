@@ -611,8 +611,8 @@ const Navbar = () => {
         </div>
 
         {/* Navigation & Auth - Right aligned */}
-        <div className="flex items-center space-x-3">
-          <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-2 sm:space-x-3">
+          <div className="flex items-center space-x-3 sm:space-x-4">
             {/* Notification Bell */}
             {isAuthenticated && (
               <div
@@ -749,11 +749,14 @@ const Navbar = () => {
               </ul>
             </div>
           ) : (
-            <div className="flex space-x-4">
-              <Link to="/login" className="neon btn-outline btn-sm">
+            <div className="flex shrink-0 space-x-2 sm:space-x-4">
+              <Link
+                to="/login"
+                className="neon btn-outline btn-sm whitespace-nowrap"
+              >
                 {t("nav.login")}
               </Link>
-              <Link to="/register" className="neon btn-sm">
+              <Link to="/register" className="neon btn-sm whitespace-nowrap">
                 {t("nav.signUp")}
               </Link>
             </div>

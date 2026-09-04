@@ -119,8 +119,14 @@ const NavbarLanguageMenu = ({ className = "" }) => {
             <LanguageFlag code={language} />
           </span>
           {/* The code, not the endonym: it has to stay narrow in the navbar,
-              and it is an indicator rather than the choice itself. */}
-          <span className="flex h-5 items-center pt-px text-sm font-medium leading-none">
+              and it is an indicator rather than the choice itself.
+
+              Hidden below sm. German labels are far wider than English ones -
+              "Anmelden/Registrieren" against "Login/Sign Up" - and on a phone
+              that overflowed the row the moment the interface was actually
+              switched to German. The flag still says which language is
+              active, and the control keeps its aria-label either way. */}
+          <span className="hidden h-5 items-center pt-px text-sm font-medium leading-none sm:flex">
             {language.toUpperCase()}
           </span>
         </div>
