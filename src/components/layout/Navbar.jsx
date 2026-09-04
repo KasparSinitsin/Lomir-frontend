@@ -1,4 +1,5 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "../../contexts/AuthContext";
 import LomirLogo from "../../assets/images/Lomir-logowordmark-color.svg";
@@ -125,7 +126,11 @@ const buildNotificationTooltip = (count, types, teamCounts, onGroupClick) => {
 
 // Wraps a badge's tooltip summary with a clickable "Mark all as read" action at
 // the top. The tooltip must be interactive (pointer-events enabled) for this.
-const withMarkAllRead = (summary, onMarkAll) => (
+//
+// `t` is passed in rather than taken from the i18n instance: this is a plain
+// module function, so there is no hook here, and threading it keeps the
+// function pure. The caller is a component and already has one.
+const withMarkAllRead = (summary, onMarkAll, t) => (
   <div className="flex min-w-[150px] flex-col">
     <button
       type="button"
@@ -136,7 +141,7 @@ const withMarkAllRead = (summary, onMarkAll) => (
       className="flex w-full items-center gap-1.5 rounded px-1 py-0.5 text-left font-semibold text-[var(--color-primary-focus)] transition-colors hover:text-[var(--color-primary)]"
     >
       <CheckCheck size={12} strokeWidth={2.5} className="flex-shrink-0" />
-      <span>Mark all as read</span>
+      <span>{t("nav.markAllAsRead")}</span>
     </button>
     <div className="mt-2 border-t border-base-300 pt-2">
       {typeof summary === "string" ? (
@@ -148,7 +153,23 @@ const withMarkAllRead = (summary, onMarkAll) => (
   </div>
 );
 
+/**
+ * Makes a div that already behaves like a button behave like one for the
+ * keyboard too.
+ *
+ * The bell and the message icon were <div onClick> - not focusable, and Enter
+ * did nothing, so they were unreachable without a mouse. An aria-label alone
+ * would have named a control nobody could get to.
+ */
+const activateOnKey = (handler) => (event) => {
+  if (event.key === "Enter" || event.key === " ") {
+    event.preventDefault();
+    handler(event);
+  }
+};
+
 const Navbar = () => {
+  const { t } = useTranslation();
   const { isAuthenticated, user, logout } = useAuth();
   const [imageError, setImageError] = useState(false);
   // Message notification state
@@ -516,7 +537,7 @@ const Navbar = () => {
         {/* Logo - Left aligned */}
         <div className="flex-none">
           <Link to="/" className="flex items-center">
-            <img src={LomirLogo} alt="Lomir Logo" className="h-6 sm:h-8 mr-2" />
+            <img src={LomirLogo} alt={t("nav.logoAlt")} className="h-6 sm:h-8 mr-2" />
           </Link>
         </div>
 
@@ -526,7 +547,11 @@ const Navbar = () => {
             {/* Notification Bell */}
             {isAuthenticated && (
               <div
+                role="button"
+                tabIndex={0}
+                aria-label={t("nav.notifications")}
                 onClick={handleNotificationClick}
+                onKeyDown={activateOnKey(handleNotificationClick)}
                 className={`${iconClasses} cursor-pointer`}
               >
                 <NotificationBadge
@@ -543,6 +568,7 @@ const Navbar = () => {
                             handleNotificationGroupClick,
                           ),
                           handleMarkAllNotificationsRead,
+                          t,
                         )
                       : undefined
                   }
@@ -555,7 +581,11 @@ const Navbar = () => {
             {/* Message Icon */}
             {isAuthenticated && !location.pathname.startsWith("/chat") && (
               <div
+                role="button"
+                tabIndex={0}
+                aria-label={t("nav.messages")}
                 onClick={handleMessageClick}
+                onKeyDown={activateOnKey(handleMessageClick)}
                 className={`${iconClasses} cursor-pointer`}
               >
                 <NotificationBadge
@@ -572,6 +602,7 @@ const Navbar = () => {
                             messageMentionNotificationCount,
                           ),
                           handleMarkAllMessagesRead,
+                          t,
                         )
                       : undefined
                   }
@@ -582,7 +613,11 @@ const Navbar = () => {
             )}
 
             {!location.pathname.startsWith("/search") && (
-              <Link to="/search" className={iconClasses}>
+              <Link
+                to="/search"
+                aria-label={t("nav.search")}
+                className={iconClasses}
+              >
                 <Search size={22} strokeWidth={2.2} />
               </Link>
             )}
@@ -606,7 +641,7 @@ const Navbar = () => {
                   {user.avatarUrl && !imageError ? (
                     <img
                       src={user.avatarUrl}
-                      alt="Profile"
+                      alt={t("nav.profileImageAlt")}
                       className="rounded-full object-cover w-full h-full"
                       onError={() => setImageError(true)}
                     />
@@ -623,23 +658,32 @@ const Navbar = () => {
                 className="mt-3 z-[1] p-2 menu menu-sm dropdown-content w-auto profile-dropdown"
               >
                 <li>
-                  <Link to="/profile">Profile<User size={12} /></Link>
+                  <Link to="/profile">
+                    {t("nav.profile")}
+                    <User size={12} />
+                  </Link>
                 </li>
                 <li>
-                  <Link to="/settings">Settings<Settings size={12} /></Link>
+                  <Link to="/settings">
+                    {t("nav.settings")}
+                    <Settings size={12} />
+                  </Link>
                 </li>
                 <li>
-                  <button onClick={logout}>Logout<LogOut size={12} /></button>
+                  <button onClick={logout}>
+                    {t("nav.logout")}
+                    <LogOut size={12} />
+                  </button>
                 </li>
               </ul>
             </div>
           ) : (
             <div className="flex space-x-4">
               <Link to="/login" className="neon btn-outline btn-sm">
-                Login
+                {t("nav.login")}
               </Link>
               <Link to="/register" className="neon btn-sm">
-                Sign Up
+                {t("nav.signUp")}
               </Link>
             </div>
           )}

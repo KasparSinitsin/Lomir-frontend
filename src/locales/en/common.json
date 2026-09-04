@@ -4,11 +4,6 @@
     "languageLabel": "Lomir App Language",
     "languageHelp": "Lomir uses this language for the app and for the emails we send you. Without a choice, we follow the country in your profile and otherwise your browser."
   },
-  "languageSelect": {
-    "placeholder": "Select a language",
-    "searchPlaceholder": "Type to search...",
-    "noResults": "No languages found"
-  },
   "datetime": {
     "today": "Today",
     "yesterday": "Yesterday",
@@ -18,5 +13,34 @@
     "archiveRemainingHours": "{count, plural, one {# hour} other {# hours}}",
     "archiveRemainingDays": "{count, plural, one {# day} other {# days}}",
     "archiveRemainingUnderAnHour": "less than an hour"
+  },
+  "footer": {
+    "copyright": "Lomir - Team Up App © {year}",
+    "about": "About",
+    "terms": "Terms",
+    "privacy": "Privacy",
+    "imprint": "Imprint",
+    "contact": "Contact",
+    "license": "License",
+    "source": "Source",
+    "instagram": "Instagram"
+  },
+  "languageSelect": {
+    "placeholder": "Select a language",
+    "searchPlaceholder": "Type to search...",
+    "noResults": "No languages found"
+  },
+  "nav": {
+    "login": "Login",
+    "logoAlt": "Lomir Logo",
+    "logout": "Logout",
+    "markAllAsRead": "Mark all as read",
+    "messages": "Messages",
+    "notifications": "Notifications",
+    "profile": "Profile",
+    "profileImageAlt": "Profile",
+    "search": "Search",
+    "settings": "Settings",
+    "signUp": "Sign Up"
   }
 }
