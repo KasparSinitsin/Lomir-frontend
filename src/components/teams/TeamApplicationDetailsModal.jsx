@@ -26,7 +26,7 @@ import {
   isSyntheticTeam,
 } from "../../utils/userHelpers";
 import Alert from "../common/Alert";
-import { format } from "date-fns";
+import { formatDateMedium } from "../../utils/dateHelpers";
 import { useHydratedRole } from "../../hooks/useHydratedRole";
 import { teamService } from "../../services/teamService";
 import { useAuth } from "../../contexts/AuthContext";
@@ -447,7 +447,7 @@ const TeamApplicationDetailsModal = ({
     if (!date) return "Unknown date";
 
     try {
-      return format(new Date(date), "MMM d, yyyy");
+      return formatDateMedium(new Date(date));
     } catch (error) {
       console.error("Error formatting date:", error);
       return "Unknown date";

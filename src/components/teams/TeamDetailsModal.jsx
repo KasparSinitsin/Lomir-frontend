@@ -7,7 +7,12 @@ import React, {
   useRef,
 } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { format } from "date-fns";
+import {
+  formatDateLong,
+  formatDateMedium,
+  formatDateNumeric,
+  formatMonthNumeric,
+} from "../../utils/dateHelpers";
 import TeamRoleManager from "./TeamRoleManager";
 import TeamEditForm from "./TeamEditForm";
 import { useAuth } from "../../contexts/AuthContext";
@@ -1516,9 +1521,9 @@ const TeamDetailsModal = ({
 
     try {
       return {
-        short: format(new Date(createdAt), "MM/yy"),
-        narrow: format(new Date(createdAt), "MM/yy"),
-        full: format(new Date(createdAt), "MMMM d, yyyy"),
+        short: formatMonthNumeric(new Date(createdAt)),
+        narrow: formatMonthNumeric(new Date(createdAt)),
+        full: formatDateLong(new Date(createdAt)),
       };
     } catch (error) {
       console.error("Error formatting team creation date:", error);
@@ -1709,9 +1714,9 @@ const TeamDetailsModal = ({
                           content={
                             (effectivePendingInvitation.isInternal ?? effectivePendingInvitation.is_internal)
                               ? `You were invited to fill a role in this team${(effectivePendingInvitation.createdAt ?? effectivePendingInvitation.created_at) ? `
-on ${format(new Date((effectivePendingInvitation.createdAt ?? effectivePendingInvitation.created_at)), "MMM d, yyyy")}` : ""}`
+on ${formatDateMedium(new Date((effectivePendingInvitation.createdAt ?? effectivePendingInvitation.created_at)))}` : ""}`
                               : `You were invited to join this team${(effectivePendingInvitation.createdAt ?? effectivePendingInvitation.created_at) ? `
-on ${format(new Date((effectivePendingInvitation.createdAt ?? effectivePendingInvitation.created_at)), "MMM d, yyyy")}` : ""}`
+on ${formatDateMedium(new Date((effectivePendingInvitation.createdAt ?? effectivePendingInvitation.created_at)))}` : ""}`
                           }
                           position="bottom"
                           wrapperClassName="inline-flex"
@@ -1726,7 +1731,7 @@ on ${format(new Date((effectivePendingInvitation.createdAt ?? effectivePendingIn
                               className={`flex-shrink-0 ${(effectivePendingInvitation.isInternal ?? effectivePendingInvitation.is_internal) ? "text-orange-500" : "text-pink-500"}`}
                             />
                             {(effectivePendingInvitation.createdAt ?? effectivePendingInvitation.created_at) && (
-                              <span className="text-base-content/50 transition-colors group-hover:text-primary group-focus-visible:text-primary">{format(new Date((effectivePendingInvitation.createdAt ?? effectivePendingInvitation.created_at)), "MM/dd/yy")}</span>
+                              <span className="text-base-content/50 transition-colors group-hover:text-primary group-focus-visible:text-primary">{formatDateNumeric(new Date((effectivePendingInvitation.createdAt ?? effectivePendingInvitation.created_at)))}</span>
                             )}
                           </button>
                         </Tooltip>
@@ -1736,7 +1741,7 @@ on ${format(new Date((effectivePendingInvitation.createdAt ?? effectivePendingIn
                       {/* Combined team+role application → violet */}
                       {pendingCombinedApplication && (
                         <Tooltip
-                          content={`You applied to join this team and fill a role${(pendingCombinedApplication.createdAt ?? pendingCombinedApplication.created_at) ? `\non ${format(new Date((pendingCombinedApplication.createdAt ?? pendingCombinedApplication.created_at)), "MMM d, yyyy")}` : ""}`}
+                          content={`You applied to join this team and fill a role${(pendingCombinedApplication.createdAt ?? pendingCombinedApplication.created_at) ? `\non ${formatDateMedium(new Date((pendingCombinedApplication.createdAt ?? pendingCombinedApplication.created_at)))}` : ""}`}
                           position="bottom"
                           wrapperClassName="inline-flex"
                         >
@@ -1747,7 +1752,7 @@ on ${format(new Date((effectivePendingInvitation.createdAt ?? effectivePendingIn
                           >
                             <SendHorizontal size={14} className="flex-shrink-0 text-violet-500" />
                             {(pendingCombinedApplication.createdAt ?? pendingCombinedApplication.created_at) && (
-                              <span className="text-base-content/50 transition-colors group-hover:text-primary group-focus-visible:text-primary">{format(new Date((pendingCombinedApplication.createdAt ?? pendingCombinedApplication.created_at)), "MM/dd/yy")}</span>
+                              <span className="text-base-content/50 transition-colors group-hover:text-primary group-focus-visible:text-primary">{formatDateNumeric(new Date((pendingCombinedApplication.createdAt ?? pendingCombinedApplication.created_at)))}</span>
                             )}
                           </button>
                         </Tooltip>
@@ -1755,7 +1760,7 @@ on ${format(new Date((effectivePendingInvitation.createdAt ?? effectivePendingIn
                       {/* Role-only application for existing members → orange */}
                       {pendingInternalRoleApplication && (
                         <Tooltip
-                          content={`You applied to fill a role in this team${(pendingInternalRoleApplication.createdAt ?? pendingInternalRoleApplication.created_at) ? `\non ${format(new Date((pendingInternalRoleApplication.createdAt ?? pendingInternalRoleApplication.created_at)), "MMM d, yyyy")}` : ""}`}
+                          content={`You applied to fill a role in this team${(pendingInternalRoleApplication.createdAt ?? pendingInternalRoleApplication.created_at) ? `\non ${formatDateMedium(new Date((pendingInternalRoleApplication.createdAt ?? pendingInternalRoleApplication.created_at)))}` : ""}`}
                           position="bottom"
                           wrapperClassName="inline-flex"
                         >
@@ -1766,7 +1771,7 @@ on ${format(new Date((effectivePendingInvitation.createdAt ?? effectivePendingIn
                           >
                             <SendHorizontal size={14} className="flex-shrink-0 text-orange-500" />
                             {(pendingInternalRoleApplication.createdAt ?? pendingInternalRoleApplication.created_at) && (
-                              <span className="text-base-content/50 transition-colors group-hover:text-primary group-focus-visible:text-primary">{format(new Date((pendingInternalRoleApplication.createdAt ?? pendingInternalRoleApplication.created_at)), "MM/dd/yy")}</span>
+                              <span className="text-base-content/50 transition-colors group-hover:text-primary group-focus-visible:text-primary">{formatDateNumeric(new Date((pendingInternalRoleApplication.createdAt ?? pendingInternalRoleApplication.created_at)))}</span>
                             )}
                           </button>
                         </Tooltip>
@@ -1774,7 +1779,7 @@ on ${format(new Date((effectivePendingInvitation.createdAt ?? effectivePendingIn
                       {/* Team-only application → blue */}
                       {pendingTeamOnlyApplication && (
                         <Tooltip
-                          content={`You applied to join this team${(pendingTeamOnlyApplication.createdAt ?? pendingTeamOnlyApplication.created_at) ? `\non ${format(new Date((pendingTeamOnlyApplication.createdAt ?? pendingTeamOnlyApplication.created_at)), "MMM d, yyyy")}` : ""}`}
+                          content={`You applied to join this team${(pendingTeamOnlyApplication.createdAt ?? pendingTeamOnlyApplication.created_at) ? `\non ${formatDateMedium(new Date((pendingTeamOnlyApplication.createdAt ?? pendingTeamOnlyApplication.created_at)))}` : ""}`}
                           position="bottom"
                           wrapperClassName="inline-flex"
                         >
@@ -1785,7 +1790,7 @@ on ${format(new Date((effectivePendingInvitation.createdAt ?? effectivePendingIn
                           >
                             <SendHorizontal size={14} className="flex-shrink-0 text-info" />
                             {(pendingTeamOnlyApplication.createdAt ?? pendingTeamOnlyApplication.created_at) && (
-                              <span className="text-base-content/50 transition-colors group-hover:text-primary group-focus-visible:text-primary">{format(new Date((pendingTeamOnlyApplication.createdAt ?? pendingTeamOnlyApplication.created_at)), "MM/dd/yy")}</span>
+                              <span className="text-base-content/50 transition-colors group-hover:text-primary group-focus-visible:text-primary">{formatDateNumeric(new Date((pendingTeamOnlyApplication.createdAt ?? pendingTeamOnlyApplication.created_at)))}</span>
                             )}
                           </button>
                         </Tooltip>

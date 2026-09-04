@@ -46,7 +46,10 @@ import ListViewRow from "../common/ListViewRow";
 import MatchScoreOverlay from "../common/MatchScoreOverlay";
 import MatchScoreSubtitle from "../common/MatchScoreSubtitle";
 import TeamApplicationsModal from "./TeamApplicationsModal";
-import { format } from "date-fns";
+import {
+  formatDateMedium,
+  formatDateNumeric,
+} from "../../utils/dateHelpers";
 import LocationDistanceTagsRow from "../common/LocationDistanceTagsRow";
 import { getMatchTier, getMatchTooltipText } from "../../utils/matchScoreUtils";
 import { getResultMatchScore } from "../../utils/teamMatchUtils";
@@ -1484,7 +1487,7 @@ const TeamCard = ({
     const date = normalizedData.date;
     if (!date) return null;
     try {
-      return format(new Date(date), "MM/dd/yy");
+      return formatDateNumeric(new Date(date));
     } catch {
       return null;
     }
@@ -1496,9 +1499,8 @@ const TeamCard = ({
     }
 
     try {
-      return `You were invited to fill a role in this team on ${format(
+      return `You were invited to fill a role in this team on ${formatDateMedium(
         new Date(normalizedData.date),
-        "MMM d, yyyy",
       )}`;
     } catch {
       return "You are invited to fill a role in this team";
@@ -1517,7 +1519,7 @@ const TeamCard = ({
       return actionText;
     }
 
-    return `${actionText}\non ${format(new Date(normalizedData.date), "MMM d, yyyy")}`;
+    return `${actionText}\non ${formatDateMedium(new Date(normalizedData.date))}`;
   };
 
   const getAssociatedRoleName = (item) => {

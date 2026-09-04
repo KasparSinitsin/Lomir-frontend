@@ -47,7 +47,7 @@ import {
   normalizeNumericId,
   numericIdsMatch,
 } from "../../utils/teamRequestUtils";
-import { format } from "date-fns";
+import { formatDateMedium } from "../../utils/dateHelpers";
 
 const normalizeId = normalizeNumericId;
 const idsMatch = numericIdsMatch;
@@ -1211,7 +1211,7 @@ const TeamInviteModal = ({
   const joinedDateText = (() => {
     if (!inviteeJoinedAt) return null;
     try {
-      return format(new Date(inviteeJoinedAt), "MMM d, yyyy");
+      return formatDateMedium(new Date(inviteeJoinedAt));
     } catch {
       return null;
     }

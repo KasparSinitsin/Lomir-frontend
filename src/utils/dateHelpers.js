@@ -1,6 +1,6 @@
 import { parseISO } from "date-fns";
 import i18n from "../i18n";
-import { DEFAULT_LANGUAGE_CODE } from "../constants/languages";
+import { getActiveLocale } from "./languageUtils";
 
 // Maps country names (Nominatim) and ISO-2 codes to IANA timezone identifiers.
 // Country names come from the geocoding service (OpenStreetMap/Nominatim).
@@ -118,17 +118,12 @@ export const setUserTimezone = (user) => {
 const resolveTimezone = () =>
   Intl.DateTimeFormat().resolvedOptions().timeZone || _userTimezone || "UTC";
 
-// The language the app is currently rendered in - the single source, shared
-// with every t() call. Not the browser locale: a user may have chosen against
-// it, and that choice has to reach date formatting too.
-const activeLocale = () => i18n.language || DEFAULT_LANGUAGE_CODE;
-
 // Intl.DateTimeFormat construction is the expensive part, formatting is cheap,
 // and these run per rendered message. Keyed by locale so a language change
 // simply misses the cache instead of needing invalidation.
 const formatterCache = new Map();
 const getDateFormatter = (options) => {
-  const locale = activeLocale();
+  const locale = getActiveLocale();
   const key = `${locale}|${JSON.stringify(options)}`;
   let formatter = formatterCache.get(key);
   if (!formatter) {
@@ -176,11 +171,11 @@ export const normalizeTimestampToDate = (value) => {
  * every language, with nothing to maintain.
  *
  * Verified output, en / de:
- *   Numeric   09/04/26          04.09.26
- *   Medium    Sep 4, 2026       4. Sept. 2026
- *   Long      September 4, 2026 4. September 2026
- *   MonthYear September 2026    September 2026
- *   MonthNumeric  09/26          09.26
+ *   Numeric      09/04/26          04/09/26
+ *   Medium       Sep 4, 2026       4. Sept. 2026
+ *   Long         September 4, 2026 4. September 2026
+ *   MonthYear    September 2026    September 2026
+ *   MonthNumeric 09/26             09/26
  *
  * ⚠️ Exported but not called yet - the ~43 call sites move over in the
  * follow-up branch feature/i18n-formatting. Not dead code; unfinished work.
@@ -191,7 +186,31 @@ const dateFormatter = (options) => (value) => {
   return getDateFormatter(options).format(date);
 };
 
-export const formatDateNumeric = dateFormatter({
+/**
+ * The all-numeric formats keep the slash in every language.
+ *
+ * German writes 04.09.26 and English 09/04/26 - two things differ, the field
+ * order and the separator. Only the *order* is information; the separator is
+ * part of how the UI looks, and letting it change per language would mean the
+ * same control renders in two visual styles. So Intl decides the order, from
+ * CLDR, and the separator is set here.
+ *
+ * Works by dropping the locale's own separators from formatToParts and
+ * rejoining. Sound for the languages Lomir offers, where every literal
+ * between the fields *is* a separator; a language that inserts a word between
+ * the parts would need this revisited.
+ */
+const slashFormatter = (options) => (value) => {
+  const date = normalizeTimestampToDate(value);
+  if (!date) return "";
+  return getDateFormatter(options)
+    .formatToParts(date)
+    .filter((part) => part.type !== "literal")
+    .map((part) => part.value)
+    .join("/");
+};
+
+export const formatDateNumeric = slashFormatter({
   day: "2-digit", month: "2-digit", year: "2-digit",
 });
 export const formatDateMedium = dateFormatter({
@@ -203,7 +222,7 @@ export const formatDateLong = dateFormatter({
 export const formatMonthYear = dateFormatter({
   month: "long", year: "numeric",
 });
-export const formatMonthNumeric = dateFormatter({
+export const formatMonthNumeric = slashFormatter({
   month: "2-digit", year: "2-digit",
 });
 
@@ -247,7 +266,7 @@ const formatRelative = (date, { short = false } = {}) => {
     RELATIVE_UNITS.find(([, size]) => absMs >= size) ||
     RELATIVE_UNITS[RELATIVE_UNITS.length - 1];
 
-  return new Intl.RelativeTimeFormat(activeLocale(), {
+  return new Intl.RelativeTimeFormat(getActiveLocale(), {
     numeric: "always",
   }).format(Math.round(diffMs / unitMs), unit);
 };

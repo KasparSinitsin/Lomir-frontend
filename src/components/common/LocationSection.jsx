@@ -1,8 +1,9 @@
 import React from "react";
 import { MapPin, Globe, Ruler, CheckCheck } from "lucide-react";
 import {
-  normalizeLocationData,
+  formatDistanceKm,
   formatLocation,
+  normalizeLocationData,
 } from "../../utils/locationUtils";
 
 /**
@@ -91,7 +92,7 @@ const LocationSection = ({
         {hasDistance && (
           <div className="flex items-start">
             <Ruler size={iconSize} className="mr-1 flex-shrink-0 mt-0.5" />
-            <span>{Math.round(distance)} km away</span>
+            <span>{formatDistanceKm(distance)} away</span>
           </div>
         )}
       </div>
@@ -110,7 +111,7 @@ const LocationSection = ({
             className={`flex items-center gap-1.5 text-sm ${distanceToneClass}`}
           >
             <Ruler size={14} className="flex-shrink-0" />
-            <span>{Math.round(distance)} km away</span>
+            <span>{formatDistanceKm(distance)} away</span>
           </span>
         ) : null;
 
