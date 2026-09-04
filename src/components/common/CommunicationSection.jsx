@@ -9,8 +9,12 @@ import { LANGUAGE_FEATURE_VISIBLE } from "../../constants/languages";
  * CommunicationSection
  *
  * How Lomir talks to the user. Shared by the registration form and the
- * profile's edit mode so the two cannot drift apart - the same reason
- * LocationInput is one component across five forms.
+ * settings page so the two cannot drift apart - the same reason LocationInput
+ * is one component across five forms.
+ *
+ * It lived in the profile's edit mode until 2026-09-04. It is a setting, not
+ * part of how someone presents themselves, and on the settings page it also
+ * applies immediately instead of waiting behind a Save button.
  *
  * Named broadly on purpose: the language is its first setting, and later
  * communication preferences (email notification opt-outs and the like) have
@@ -18,8 +22,12 @@ import { LANGUAGE_FEATURE_VISIBLE } from "../../constants/languages";
  *
  * ⚠️ Renders nothing while LANGUAGE_FEATURE_VISIBLE is false. Offering
  * "Deutsch" in a UI that then renders English is a promise the app cannot
- * keep; the section appears when the shell is actually translated. Callers
- * must gate the *payload* on the same flag - see the note there.
+ * keep; the section appears when the shell is actually translated.
+ *
+ * Callers must make sure nothing is *written* while the flag is false either.
+ * The registration form gates its payload explicitly, because it posts every
+ * field at once; the settings page needs no gate, because its only writer is
+ * this picker's own onChange and that cannot fire while nothing renders.
  *
  * @param {Object} props
  * @param {string} props.value - selected language code

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
@@ -8,10 +8,12 @@ import Alert from "../components/common/Alert";
 import ScreenAlert from "../components/common/ScreenAlert";
 import FormSectionDivider from "../components/common/FormSectionDivider";
 import VisibilityToggle from "../components/common/VisibilityToggle";
+import CommunicationSection from "../components/common/CommunicationSection";
 import BlocklistSection from "../components/users/BlocklistSection";
 import Modal from "../components/common/Modal";
 import { userService } from "../services/userService";
 import { teamService } from "../services/teamService";
+import { describeLanguageSelection } from "../utils/languageUtils";
 import {
   AlertTriangle,
   Eye,
@@ -245,6 +247,57 @@ const Settings = () => {
       setError("Failed to update visibility. Please try again.");
     } finally {
       setVisibilityLoading(false);
+    }
+  };
+
+  // ── Communication ────────────────────────────────────────────
+  // Moved here from the profile's edit mode: it is a setting, not part of how
+  // someone presents themselves, and it belongs with the other things that
+  // apply immediately rather than behind a Save button.
+  //
+  // Seeded with what the picker should *show*, not with what is stored. An
+  // account that never chose a language still has to display one, and that is
+  // the resolved default - a guess the user can see and change.
+  const [preferredLanguage, setPreferredLanguage] = useState(
+    () =>
+      describeLanguageSelection({
+        preferredLanguage: user?.preferredLanguage,
+        country: user?.country,
+      }).value,
+  );
+  const [languageLoading, setLanguageLoading] = useState(false);
+
+  // The seed above runs once, and on a cold load this page can render before
+  // /api/auth/me has answered. Without this the picker would keep showing the
+  // pre-login guess over an account that has a language stored.
+  useEffect(() => {
+    setPreferredLanguage(
+      describeLanguageSelection({
+        preferredLanguage: user?.preferredLanguage,
+        country: user?.country,
+      }).value,
+    );
+  }, [user?.preferredLanguage, user?.country]);
+
+  const handleLanguageChange = async (e) => {
+    const newValue = e.target.value;
+    const previousValue = preferredLanguage;
+    setPreferredLanguage(newValue);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      setLanguageLoading(true);
+      await userService.updateUser(user.id, { preferredLanguage: newValue });
+      // LanguageProvider watches user.preferredLanguage, so this is also what
+      // switches the interface over and mirrors the choice into localStorage.
+      updateUser({ preferredLanguage: newValue });
+      setSuccess("Language updated");
+    } catch {
+      setPreferredLanguage(previousValue); // revert on failure
+      setError("Failed to update language. Please try again.");
+    } finally {
+      setLanguageLoading(false);
     }
   };
 
@@ -1039,6 +1092,17 @@ const Settings = () => {
               </div>
             </div>
           </section>
+
+          {/* ── Communication ── */}
+          {/* Renders nothing while LANGUAGE_FEATURE_VISIBLE is false, which is
+              also why no payload gate is needed here: the only thing that
+              writes preferredLanguage is this picker's own onChange. */}
+          <CommunicationSection
+            value={preferredLanguage}
+            onChange={handleLanguageChange}
+            name="preferredLanguage"
+            disabled={languageLoading}
+          />
 
           {/* ── Danger Zone ── */}
           <section className="space-y-4">
