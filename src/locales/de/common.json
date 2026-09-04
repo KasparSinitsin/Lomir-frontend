@@ -1,0 +1,12 @@
+{
+  "communication": {
+    "sectionTitle": "Kommunikation",
+    "languageLabel": "Sprache der Lomir-App",
+    "languageHelp": "Lomir verwendet diese Sprache für die App und für die E-Mails, die wir dir schicken. Ohne eigene Wahl richten wir uns nach dem Land in deinem Profil und sonst nach deinem Browser."
+  },
+  "languageSelect": {
+    "placeholder": "Sprache auswählen",
+    "searchPlaceholder": "Zum Suchen tippen …",
+    "noResults": "Keine Sprachen gefunden"
+  }
+}

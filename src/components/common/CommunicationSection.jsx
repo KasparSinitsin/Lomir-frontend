@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { MessagesSquare } from "lucide-react";
 import FormSectionDivider from "./FormSectionDivider";
 import LanguageSelect from "./LanguageSelect";
@@ -26,26 +27,31 @@ import { LANGUAGE_FEATURE_VISIBLE } from "../../constants/languages";
  * @param {string} props.name - form field name (camelCase in the profile,
  *   snake_case in the registration form, which posts multipart)
  * @param {boolean} props.disabled
- * @param {string} props.helperText - the sentence under the field
  */
 const CommunicationSection = ({
   value,
   onChange,
   name = "preferredLanguage",
   disabled = false,
-  helperText = "Lomir uses this language for the app and for the emails we send you. Without a choice, we follow the country in your profile and otherwise your browser.",
 }) => {
+  const { t } = useTranslation();
+
   if (!LANGUAGE_FEATURE_VISIBLE) return null;
 
   const fieldId = `communication-${name}`;
 
   return (
     <section className="space-y-4">
-      <FormSectionDivider text="Communication" icon={MessagesSquare} />
+      <FormSectionDivider
+        text={t("communication.sectionTitle")}
+        icon={MessagesSquare}
+      />
 
       <div className="form-control w-full">
         <label className="label" htmlFor={fieldId}>
-          <span className="label-text">Lomir App Language</span>
+          <span className="label-text">
+            {t("communication.languageLabel")}
+          </span>
         </label>
 
         <LanguageSelect
@@ -56,7 +62,9 @@ const CommunicationSection = ({
           disabled={disabled}
         />
 
-        <p className="form-helper-text mt-2 px-1">{helperText}</p>
+        <p className="form-helper-text mt-2 px-1">
+          {t("communication.languageHelp")}
+        </p>
       </div>
     </section>
   );

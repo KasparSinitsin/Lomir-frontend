@@ -7,6 +7,7 @@ import {
   useLocation,
 } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
+import { LanguageProvider } from "./contexts/LanguageContext";
 import { UserModalProvider } from "./contexts/UserModalContext";
 import { TeamModalProvider } from "./contexts/TeamModalContext";
 import { ToastProvider } from "./contexts/ToastContext";
@@ -150,9 +151,13 @@ function AppLayout() {
 function App() {
   return (
     <AuthProvider>
-      <Router>
-        <AppLayout />
-      </Router>
+      {/* Inside AuthProvider: the account language outranks every other step
+          of the precedence chain, and it arrives with the user. */}
+      <LanguageProvider>
+        <Router>
+          <AppLayout />
+        </Router>
+      </LanguageProvider>
     </AuthProvider>
   );
 }
