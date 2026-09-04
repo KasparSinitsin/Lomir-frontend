@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { Check, ChevronDown, Search } from "lucide-react";
 import {
   SUPPORTED_LANGUAGES,
@@ -40,6 +41,7 @@ const LanguageSelect = ({
   className = "",
   id,
 }) => {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
@@ -177,7 +179,7 @@ const LanguageSelect = ({
                 setHighlightedIndex(0);
               }}
               onKeyDown={handleKeyDown}
-              placeholder="Type to search..."
+              placeholder={t("languageSelect.searchPlaceholder")}
               className="flex-1 bg-transparent outline-none text-sm min-w-0"
               autoComplete="off"
             />
@@ -194,7 +196,9 @@ const LanguageSelect = ({
                 )}
               </>
             ) : (
-              <span className="text-base-content/50">Select a language</span>
+              <span className="text-base-content/50">
+                {t("languageSelect.placeholder")}
+              </span>
             )}
           </span>
         )}
@@ -216,7 +220,7 @@ const LanguageSelect = ({
         >
           {filteredLanguages.length === 0 ? (
             <div className="px-3 py-4 text-center text-base-content/50 text-sm">
-              No languages found
+              {t("languageSelect.noResults")}
             </div>
           ) : (
             filteredLanguages.map((language, index) => {
