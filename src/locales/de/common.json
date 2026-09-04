@@ -4,6 +4,14 @@
     "languageLabel": "Sprache der Lomir-App",
     "languageHelp": "Lomir verwendet diese Sprache für die App und für die E-Mails, die wir dir schicken. Ohne eigene Wahl richten wir uns nach dem Land in deinem Profil und sonst nach deinem Browser."
   },
+  "countrySelect": {
+    "placeholder": "Land auswählen",
+    "searchPlaceholder": "Zum Suchen tippen …",
+    "noResults": "Keine Länder gefunden",
+    "groupCommon": "Häufig",
+    "groupAll": "Alle Länder",
+    "clear": "Auswahl löschen"
+  },
   "datetime": {
     "today": "Heute",
     "yesterday": "Gestern",
@@ -13,6 +21,22 @@
     "archiveRemainingHours": "{count, plural, one {# Stunde} other {# Stunden}}",
     "archiveRemainingDays": "{count, plural, one {# Tag} other {# Tage}}",
     "archiveRemainingUnderAnHour": "weniger als eine Stunde"
+  },
+  "focusAreas": {
+    "title": "Fokusbereiche",
+    "empty": "Noch keine Fokusbereiche",
+    "emptyTeam": "Noch keine Fokusbereiche hinzugefügt.",
+    "placeholder": "Fokusbereiche hinzufügen …",
+    "placeholderTeam": "Fokusbereiche hinzufügen …",
+    "searchPlaceholder": "Zum Suchen von Fokusbereichen tippen …",
+    "popularTitle": "Beliebte Fokusbereiche",
+    "relatedTitle": "Verwandte Fokusbereiche",
+    "searchResultsTitle": "Suchergebnisse",
+    "alreadyAdded": "Fokusbereich bereits hinzugefügt",
+    "loading": "Lädt …",
+    "fallbackName": "Fokusbereich {id}",
+    "remove": "{name} entfernen",
+    "removeGeneric": "Fokusbereich entfernen"
   },
   "footer": {
     "copyright": "Lomir - Team Up App © {year}",
@@ -25,10 +49,41 @@
     "source": "Quellcode",
     "instagram": "Instagram"
   },
+  "imageUploader": {
+    "uploadImage": "Bild hochladen",
+    "changeImage": "Bild ändern",
+    "previewAlt": "Vorschau",
+    "dropHere": "Bild hier ablegen",
+    "dragAndDrop": "Bild hierher ziehen oder zum Hochladen klicken",
+    "remove": "Entfernen",
+    "newImageSelected": "Neues Bild ausgewählt. Zum Hochladen speichern.",
+    "maxSizeHint": "Max. {maxSize} MB. Quadratische Bilder werden empfohlen.",
+    "errorNotAnImage": "Bitte wähle eine Bilddatei aus",
+    "errorAcceptedFormats": "Zulässige Formate: {formats}",
+    "errorTooLarge": "Das Bild muss kleiner als {maxSize} MB sein"
+  },
   "languageSelect": {
     "placeholder": "Sprache auswählen",
     "searchPlaceholder": "Zum Suchen tippen …",
     "noResults": "Keine Sprachen gefunden"
+  },
+  "location": {
+    "divider": "Standort",
+    "remoteToggle": "Das ist ein Remote-Team",
+    "remoteHelp": "Remote-Teams haben keinen festen Treffpunkt",
+    "country": "Land",
+    "countryOptional": "Land (optional)",
+    "postalCode": "Postleitzahl (optional)",
+    "postalCodePlaceholder": "z. B. 12345",
+    "clearPostalCode": "Postleitzahl löschen",
+    "city": "Stadt / Ort (optional)",
+    "cityPlaceholder": "z. B. Berlin",
+    "clearCity": "Stadt löschen",
+    "selectCountryToLookUp": "Wähle ein Land aus, damit wir das nachschlagen können.",
+    "notFoundInCountry": "In {country} nicht gefunden.",
+    "suggestedCity": "{city} ist der Ort zur Postleitzahl {postalCode}.",
+    "useSuggestedCity": "Übernehmen",
+    "useSuggestedCityAria": "{city} übernehmen"
   },
   "nav": {
     "login": "Anmelden",
@@ -78,5 +133,25 @@
     "roleApplicationCancelled": "{count, plural, one {# Rollenbewerbung} other {# Rollenbewerbungen}} zurückgezogen{teamCount, plural, =0 {} =1 {} other { in # Teams}}",
     "roleStatusChangedApplicant": "{count, plural, one {# Rolle, auf die du dich beworben hast, hat} other {# Rollen, auf die du dich beworben hast, haben}} sich geändert",
     "roleStatusChangedInvitee": "{count, plural, one {# Rolle, zu der du eingeladen wurdest, hat} other {# Rollen, zu denen du eingeladen wurdest, haben}} sich geändert"
+  },
+  "privacy": {
+    "location": "Die Standortangabe ist freiwillig. Gespeicherte Standortdaten nutzen wir, um Nutzer, Teams und Rollen in deiner Nähe vorzuschlagen und entfernungsbasierte Übereinstimmungen zu berechnen. Lomir fragt nicht nach einer Straßenanschrift. Je nach Sichtbarkeitseinstellungen können ungefähre Standortangaben für andere Nutzer sichtbar sein.",
+    "userLocation": "Die Standortangabe ist freiwillig. Du kannst Postleitzahl, Stadt und Land leer lassen oder später wieder entfernen. Wenn du Standortdaten angibst, nutzt Lomir sie, um Nutzer, Teams und Rollen in deiner Nähe vorzuschlagen und entfernungsbasierte Übereinstimmungen zu berechnen. Lomir fragt nie nach deiner Straßenanschrift. Je nach Sichtbarkeit deines Profils können ungefähre Standortangaben wie Postleitzahl, Stadt, Bezirk, Region oder Land für andere Nutzer sichtbar sein.",
+    "profileVisibilitySettings": "Öffentliche Profile sind für alle sichtbar, die Lomir besuchen – ob angemeldet oder nicht. Private Profile verringern die öffentliche Sichtbarkeit, deine Aktivität kann aber weiterhin in Teams, Nachrichten, Bewerbungen oder Badges auftauchen. Standortangaben, die du machst, können als ungefährer Standort in deinem öffentlichen Profil erscheinen.",
+    "avatarUpload": "Hochgeladene Bilder werden über ImageKit gespeichert und ausgeliefert. Dein Avatar kann je nach Sichtbarkeitseinstellungen für andere Nutzer sichtbar sein.",
+    "chatUpload": "Dateien und Bilder, die du im Chat teilst, sind für die Teilnehmer der Unterhaltung sichtbar. Bitte lade keine sensiblen oder vertraulichen Informationen hoch.",
+    "accountDeletion": "Das Löschen des Kontos ist endgültig. Dein Profil und deine Direktnachrichten werden sofort nach der Bestätigung gelöscht. Einzelne Verweise in Teams und Badges können als 'Former Lomir User' anonymisiert werden, damit Team- und Gesprächszusammenhänge erhalten bleiben."
+  },
+  "visibility": {
+    "title": "Sichtbarkeit",
+    "visible": "Für alle Nutzer sichtbar",
+    "hidden": "Verborgen",
+    "visibleDescription": "Alle können das finden und ansehen",
+    "hiddenDescription": "Nur du kannst das sehen",
+    "teamVisibleDescription": "Alle können dein Team finden und ansehen",
+    "teamHiddenDescription": "Nur Mitglieder können dieses Team sehen",
+    "profileVisibleDescription": "Dein Profil ist für andere auffindbar",
+    "profileHiddenDescription": "Dein Profil erscheint nicht in den Suchergebnissen",
+    "toggleAria": "Sichtbarkeit umschalten"
   }
 }

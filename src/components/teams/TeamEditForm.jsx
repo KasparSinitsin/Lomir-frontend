@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { useToast } from "../../contexts/ToastContext";
 import Button from "../common/Button";
 import Tooltip from "../common/Tooltip";
@@ -11,12 +12,10 @@ import { teamService } from "../../services/teamService";
 import ImageUploader from "../common/ImageUploader";
 import LocationInput from "../common/LocationInput";
 import TagInput from "../tags/TagInput";
-import { UI_TEXT } from "../../constants/uiText";
 import {
   useLocationAutoFill,
   describeLocationBlock,
 } from "../../hooks/useLocationAutoFill";
-import { AVATAR_UPLOAD_NOTICE } from "../../constants/privacyText";
 import { Camera, Users, Settings, Tag, Trash2, X, Save } from "lucide-react";
 
 const PRESET_OPTIONS = [2, 3, 4, 5, 6, 8, 10, 12, 15, 20];
@@ -52,6 +51,7 @@ const TeamEditForm = ({
   loading = false,
   onAvatarDeleted,
 }) => {
+  const { t } = useTranslation();
   const [uploadingImage] = useState(false);
   const [avatarDeleteLoading, setAvatarDeleteLoading] = useState(false);
   const [isAvatarDeleteDialogOpen, setIsAvatarDeleteDialogOpen] =
@@ -166,7 +166,9 @@ const TeamEditForm = ({
   const handleTagSelection = useCallback(
     (selected) => {
       const ids = (selected ?? [])
-        .map((t) => (typeof t === "object" ? (t.id ?? t.value ?? t) : t))
+        .map((tag) =>
+          typeof tag === "object" ? (tag.id ?? tag.value ?? tag) : tag,
+        )
         .map((x) => (x === "" || x == null ? null : String(x)))
         .filter((x) => typeof x === "string" && x.length > 0);
 
@@ -250,29 +252,33 @@ const TeamEditForm = ({
     // Build id -> name map from the team payload
     const nameById = new Map(
       teamTags
-        .map((t) => {
-          const id = Number(t?.id ?? t?.tag_id ?? t?.tagId ?? t?.tagID);
-          const name = t?.name ?? t?.label ?? t?.category;
+        .map((tag) => {
+          const id = Number(tag?.id ?? tag?.tag_id ?? tag?.tagId ?? tag?.tagID);
+          const name = tag?.name ?? tag?.label ?? tag?.category;
           return Number.isFinite(id) && id > 0 ? [id, name] : null;
         })
         .filter(Boolean),
     );
 
     return (formData.selectedTags ?? [])
-      .map((t) => {
+      .map((tag) => {
         // If we already have an object, keep it
-        if (t && typeof t === "object") {
-          const id = Number(t.id ?? t.tag_id ?? t.tagId ?? t.tagID ?? t.value);
-          const name = t.name ?? t.label ?? t.category;
+        if (tag && typeof tag === "object") {
+          const id = Number(
+            tag.id ?? tag.tag_id ?? tag.tagId ?? tag.tagID ?? tag.value,
+          );
+          const name = tag.name ?? tag.label ?? tag.category;
           return Number.isFinite(id) && id > 0 ? { id, name } : null;
         }
 
         // Otherwise treat it as an ID
-        const id = Number(t);
+        const id = Number(tag);
         if (!Number.isFinite(id) || id <= 0) return null;
 
+        // A missing name stays null - TagInput renders the translated
+        // "Focus Area {id}" fallback, so it must not be baked in here.
         const name = nameById.get(id);
-        return { id, name: name || `Focus Area ${id}` };
+        return { id, name: name || null };
       })
       .filter(Boolean);
   }, [formData.selectedTags, team?.tags]);
@@ -305,7 +311,7 @@ const TeamEditForm = ({
               size="mdPlus"
               disabled={loading || uploadingImage}
               loading={avatarDeleteLoading}
-              helpText={AVATAR_UPLOAD_NOTICE}
+              helpText={t("privacy.avatarUpload")}
               showRemoveButton={
                 !!(
                   formData.teamavatarUrl ||
@@ -593,7 +599,6 @@ const TeamEditForm = ({
             // Pass objects so TagInput can render names for preselected tags
             selectedTags={selectedFocusAreaTags}
             onTagsChange={handleTagSelection}
-            placeholder={UI_TEXT.focusAreas.searchPlaceholder}
             showPopularTags={true}
             maxSuggestions={8}
           />

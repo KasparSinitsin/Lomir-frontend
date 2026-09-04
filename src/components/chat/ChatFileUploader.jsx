@@ -1,6 +1,6 @@
 import React, { useState, useRef, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { Upload, X, FileText, File, FileSpreadsheet } from "lucide-react";
-import { CHAT_UPLOAD_NOTICE } from "../../constants/privacyText";
 
 const MAX_SIZE_MB = 25;
 
@@ -36,6 +36,7 @@ const ACCEPTED_EXTENSIONS =
   ".pdf,.doc,.docx,.xls,.xlsx,.csv,.ppt,.pptx,.txt,.zip,.rar";
 
 const ChatFileUploader = ({ onFileSelect, onClose }) => {
+  const { t } = useTranslation();
   const [isDragging, setIsDragging] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
   const [error, setError] = useState(null);
@@ -208,7 +209,7 @@ const ChatFileUploader = ({ onFileSelect, onClose }) => {
       )}
 
       {!error && (
-        <p className="form-helper-text mt-2">{CHAT_UPLOAD_NOTICE}</p>
+        <p className="form-helper-text mt-2">{t("privacy.chatUpload")}</p>
       )}
 
       {/* Action Buttons */}

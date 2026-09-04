@@ -1,11 +1,12 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Upload, X, ImagePlus } from "lucide-react";
-import { CHAT_UPLOAD_NOTICE } from "../../constants/privacyText";
 
 const MAX_SIZE_MB = 10;
 const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
 
 const ChatImageUploader = ({ onImageSelect, onClose }) => {
+  const { t } = useTranslation();
   const [isDragging, setIsDragging] = useState(false);
   const [previewUrl, setPreviewUrl] = useState(null);
   const [error, setError] = useState(null);
@@ -180,7 +181,7 @@ const ChatImageUploader = ({ onImageSelect, onClose }) => {
       )}
 
       {!error && (
-        <p className="form-helper-text mt-2">{CHAT_UPLOAD_NOTICE}</p>
+        <p className="form-helper-text mt-2">{t("privacy.chatUpload")}</p>
       )}
 
       {/* Action Buttons */}

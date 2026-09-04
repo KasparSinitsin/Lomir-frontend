@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import Card from "../components/common/Card";
@@ -20,10 +21,6 @@ import {
   Trash2,
   Users,
 } from "lucide-react";
-import {
-  ACCOUNT_DELETION_NOTICE,
-  PROFILE_VISIBILITY_SETTINGS_NOTICE,
-} from "../constants/privacyText";
 
 const DELETE_STEP_PASSWORD = "password";
 const DELETE_STEP_SUMMARY = "summary";
@@ -220,6 +217,7 @@ const normalizeTransferOptions = (members, currentUserId) =>
     .filter(Boolean);
 
 const Settings = () => {
+  const { t } = useTranslation();
   const { user, updateUser, logout, refreshBlocks } = useAuth();
   const navigate = useNavigate();
   const pendingEmail = user?.pendingEmail || user?.pending_email || null;
@@ -724,7 +722,7 @@ const Settings = () => {
               disabled={visibilityLoading}
             />
             <p className="form-helper-text px-1">
-              {PROFILE_VISIBILITY_SETTINGS_NOTICE}
+              {t("privacy.profileVisibilitySettings")}
             </p>
 
             {user?.id && (
@@ -1047,7 +1045,7 @@ const Settings = () => {
             <FormSectionDivider text="Danger Zone" icon={Trash2} />
 
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <p className="form-helper-text">{ACCOUNT_DELETION_NOTICE}</p>
+              <p className="form-helper-text">{t("privacy.accountDeletion")}</p>
               <Button
                 variant="errorOutline"
                 size="sm"
@@ -1091,7 +1089,7 @@ const Settings = () => {
           {deletionStep === DELETE_STEP_PASSWORD ? (
             <form onSubmit={handleDeletionPreview} className="space-y-4">
               <Alert type="warning" className="w-full">
-                {ACCOUNT_DELETION_NOTICE}
+                {t("privacy.accountDeletion")}
               </Alert>
 
               {deleteAlertError && (
@@ -1143,7 +1141,7 @@ const Settings = () => {
           ) : (
             <div className="space-y-4">
               <Alert type="warning" className="w-full mb-2">
-                Please review this carefully. {ACCOUNT_DELETION_NOTICE}
+                Please review this carefully. {t("privacy.accountDeletion")}
               </Alert>
 
               {deleteAlertError && (

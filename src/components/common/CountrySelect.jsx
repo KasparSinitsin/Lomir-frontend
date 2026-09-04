@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { ChevronDown, Search, Check, X } from "lucide-react";
 
 /**
@@ -7,6 +8,11 @@ import { ChevronDown, Search, Check, X } from "lucide-react";
  * - Common European countries at the top
  * - Multilingual search (English, German, French, Spanish, Italian, native names)
  * - Country flag emojis
+ *
+ * ⚠️ The 209 country NAMES are deliberately still English. Translating them is
+ * its own decision (a second curated list, or Intl.DisplayNames) and it also
+ * touches the search index, which is keyed by the names it indexes. Only the
+ * chrome around the list is translated here.
  */
 
 /**
@@ -434,10 +440,12 @@ const CountrySelect = ({
   onChange,
   name = "country",
   className = "",
-  placeholder = "Select a country",
+  // Resolved with t() below so the default follows the active language.
+  placeholder,
   disabled = false,
   showCommonFirst = true,
 }) => {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
@@ -644,14 +652,14 @@ const CountrySelect = ({
               value={searchTerm}
               onChange={handleInputChange}
               onKeyDown={handleKeyDown}
-              placeholder="Type to search..."
+              placeholder={t("countrySelect.searchPlaceholder")}
               className="flex-1 bg-transparent outline-none text-sm min-w-0"
               autoComplete="off"
             />
           </div>
         ) : (
           <span className={`truncate ${!displayValue ? "text-base-content/50" : ""}`}>
-            {displayValue || placeholder}
+            {displayValue || (placeholder ?? t("countrySelect.placeholder"))}
           </span>
         )}
 
@@ -661,7 +669,7 @@ const CountrySelect = ({
               type="button"
               onClick={handleClear}
               className="p-1 hover:bg-base-200 rounded transition-colors"
-              aria-label="Clear selection"
+              aria-label={t("countrySelect.clear")}
             >
               <X size={14} className="text-base-content/50" />
             </button>
@@ -683,7 +691,7 @@ const CountrySelect = ({
         >
           {flatFilteredList.length === 0 ? (
             <div className="px-3 py-4 text-center text-base-content/50 text-sm">
-              No countries found
+              {t("countrySelect.noResults")}
             </div>
           ) : filteredCountries.isSearching ? (
             // Flat list when searching
@@ -696,7 +704,7 @@ const CountrySelect = ({
               {filteredCountries.common.length > 0 && (
                 <>
                   <div className="px-3 py-1.5 text-xs font-semibold text-base-content/60 bg-base-200 sticky top-0">
-                    Common
+                    {t("countrySelect.groupCommon")}
                   </div>
                   {filteredCountries.common.map((country) => {
                     const element = renderCountryOption(country, runningIndex);
@@ -710,7 +718,7 @@ const CountrySelect = ({
               {filteredCountries.other.length > 0 && (
                 <>
                   <div className="px-3 py-1.5 text-xs font-semibold text-base-content/60 bg-base-200 sticky top-0">
-                    All Countries
+                    {t("countrySelect.groupAll")}
                   </div>
                   {filteredCountries.other.map((country) => {
                     const element = renderCountryOption(country, runningIndex);

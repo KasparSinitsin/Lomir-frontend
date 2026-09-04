@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import Modal from "../common/Modal";
 import Button from "../common/Button";
@@ -9,14 +10,12 @@ import TagInput from "../tags/TagInput";
 import LocationInput from "../common/LocationInput";
 import LocationModeToggle from "../common/LocationModeToggle";
 import FormSectionDivider from "../common/FormSectionDivider";
-import { UI_TEXT } from "../../constants/uiText";
 import { teamService } from "../../services/teamService";
 import { uploadToImageKit } from "../../config/imagekit";
 import {
   useLocationAutoFill,
   describeLocationBlock,
 } from "../../hooks/useLocationAutoFill";
-import { AVATAR_UPLOAD_NOTICE } from "../../constants/privacyText";
 import TeamDetailsModal from "./TeamDetailsModal";
 import {
   Users,
@@ -37,6 +36,7 @@ import {
  * @param {Function} onTeamCreated - Callback when team is successfully created (receives new team data)
  */
 const CreateTeamModal = ({ isOpen, onClose, onTeamCreated }) => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
 
   const UNLIMITED_VALUE = null; // submit null when unlimited
@@ -447,7 +447,7 @@ const CreateTeamModal = ({ isOpen, onClose, onTeamCreated }) => {
                     size="mdPlus"
                     shape="circle"
                     fallbackText={getTeamInitials()}
-                    helpText={AVATAR_UPLOAD_NOTICE}
+                    helpText={t("privacy.avatarUpload")}
                     disabled={loading}
                   />
                 </div>
@@ -716,7 +716,6 @@ const CreateTeamModal = ({ isOpen, onClose, onTeamCreated }) => {
                 <TagInput
                   selectedTags={formData.selectedTags}
                   onTagsChange={handleTagSelection}
-                  placeholder={UI_TEXT.focusAreas.searchPlaceholder}
                   showPopularTags={true}
                   maxSuggestions={8}
                 />

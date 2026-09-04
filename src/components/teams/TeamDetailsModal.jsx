@@ -6,6 +6,7 @@ import React, {
   useMemo,
   useRef,
 } from "react";
+import { useTranslation } from "react-i18next";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   formatDateLong,
@@ -46,7 +47,6 @@ import VisibilityToggle from "../common/VisibilityToggle";
 import UserDetailsModal from "../users/UserDetailsModal";
 import DemoAvatarOverlay from "../users/DemoAvatarOverlay";
 import TagsDisplaySection from "../tags/TagsDisplaySection";
-import { UI_TEXT } from "../../constants/uiText";
 import { useQueryClient } from "@tanstack/react-query";
 import { useStructuredTags } from "../../hooks/useTagQueries";
 import {
@@ -142,6 +142,7 @@ const TeamDetailsModal = ({
   boxZIndexStyle = null,
   teamMemberBadges,
 }) => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { id: urlTeamId } = useParams();
   const { user, isAuthenticated, blockedRelationshipIds } = useAuth();
@@ -577,7 +578,7 @@ const TeamDetailsModal = ({
 
     const ids = new Set(
       (currentUserTagsQuery.data ?? [])
-        .map((t) => Number(t.tagId ?? t.tag_id ?? t.id))
+        .map((tag) => Number(tag.tagId ?? tag.tag_id ?? tag.id))
         .filter(Number.isFinite),
     );
     // Set both state vars from one query result.
@@ -1077,10 +1078,10 @@ const TeamDetailsModal = ({
 
       // Always send tags
       submissionData.tags = (formData.selectedTags ?? [])
-        .map((t) =>
-          typeof t === "object"
-            ? (t.id ?? t.tag_id ?? t.tagId ?? t.tagID ?? t.value)
-            : t,
+        .map((tag) =>
+          typeof tag === "object"
+            ? (tag.id ?? tag.tag_id ?? tag.tagId ?? tag.tagID ?? tag.value)
+            : tag,
         )
         .map((x) => Number(x))
         .filter((id) => Number.isFinite(id) && id > 0)
@@ -1910,7 +1911,6 @@ on ${formatDateMedium(new Date((effectivePendingInvitation.createdAt ?? effectiv
                   {/* Team Focus Areas */}
                   {!isEditing && (
                     <TagsDisplaySection
-                      title={UI_TEXT.focusAreas.title}
                       tags={team?.tags || []}
                       matchingTagIds={showHighlightsForContext ? currentUserTagIds : null}
                       allTags={allTags}
@@ -1919,14 +1919,14 @@ on ${formatDateMedium(new Date((effectivePendingInvitation.createdAt ?? effectiv
                       onTagClick={handleTagClick}
                       onSupercategoryClick={handleSupercategoryClick}
                       entityType="team"
-                      emptyMessage={UI_TEXT.focusAreas.emptyTeam}
-                      placeholder={UI_TEXT.focusAreas.placeholderTeam}
+                      emptyMessage={t("focusAreas.emptyTeam")}
+                      placeholder={t("focusAreas.placeholderTeam")}
                       headerRight={showHighlightsForContext && currentUserTagIds && currentUserTagIds.size > 0 ? (() => {
                         const teamTags = team?.tags || [];
                         if (!Array.isArray(teamTags) || teamTags.length === 0) return null;
                         const total = teamTags.length;
-                        const matchCount = teamTags.filter((t) => {
-                          const tagId = Number(t.id ?? t.tag_id ?? t.tagId);
+                        const matchCount = teamTags.filter((tag) => {
+                          const tagId = Number(tag.id ?? tag.tag_id ?? tag.tagId);
                           return currentUserTagIds.has(tagId);
                         }).length;
                         if (matchCount > 0) {

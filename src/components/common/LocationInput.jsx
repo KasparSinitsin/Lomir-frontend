@@ -1,9 +1,9 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { MapPin, Globe, X } from "lucide-react";
 import CountrySelect from "./CountrySelect";
 import { getBrowserDefaultCountryCode } from "../../utils/locationUtils";
 import FormSectionDivider from "./FormSectionDivider";
-import { LOCATION_PRIVACY_NOTICE } from "../../constants/privacyText";
 
 /**
  * LocationInput Component
@@ -21,11 +21,13 @@ import { LOCATION_PRIVACY_NOTICE } from "../../constants/privacyText";
  * @param {boolean} props.disabled - Disable all inputs
  * @param {boolean} props.showRemoteToggle - Show "Remote team" toggle (for teams only)
  * @param {boolean} props.showDivider - Show section divider with icon
- * @param {string} props.dividerText - Text for the divider (default: "Location")
+ * @param {string} props.dividerText - Text for the divider (default: the
+ *   translated "Location")
  * @param {boolean} props.required - Mark fields as required
  * @param {Function} props.onFieldEdited - Called with "city" or "country" on manual edits
  * @param {Object} props.mismatch - Lookup disagreement to warn about, or null
- * @param {string} props.privacyNotice - Helper text shown below location fields
+ * @param {string} props.privacyNotice - Helper text shown below location
+ *   fields (default: the translated general location privacy notice)
  * @param {string} props.className - Additional CSS classes
  */
 /**
@@ -81,16 +83,20 @@ const LocationInput = ({
   disabled = false,
   showRemoteToggle = false,
   showDivider = true,
-  dividerText = "Location",
+  // Resolved with t() below, not here: a default frozen at module scope would
+  // keep the language that was active when the module first loaded.
+  dividerText,
   required = false,
   // Called when the user types in city or edits country, so the auto-fill can
   // stop overwriting a value someone entered by hand.
   onFieldEdited = () => {},
   // { type: "postalCodeNotFound" | "cityMismatch", ... } from useLocationAutoFill
   mismatch = null,
-  privacyNotice = LOCATION_PRIVACY_NOTICE,
+  privacyNotice,
   className = "",
 }) => {
+  const { t } = useTranslation();
+
   // Normalize form data - handle both snake_case and camelCase
   const isRemote = formData.is_remote || formData.isRemote || false;
   const postalCode = formData.postal_code ?? formData.postalCode ?? "";
@@ -142,7 +148,12 @@ const LocationInput = ({
   return (
     <div className={`space-y-4 ${className}`}>
       {/* Section Divider */}
-      {showDivider && <FormSectionDivider text={dividerText} icon={MapPin} />}
+      {showDivider && (
+        <FormSectionDivider
+          text={dividerText ?? t("location.divider")}
+          icon={MapPin}
+        />
+      )}
 
       {/* Remote Toggle - only for teams */}
       {showRemoteToggle && (
@@ -158,11 +169,11 @@ const LocationInput = ({
             />
             <div className="flex items-center gap-2">
               <Globe size={16} className="text-primary" />
-              <span className="label-text">This is a remote team</span>
+              <span className="label-text">{t("location.remoteToggle")}</span>
             </div>
           </label>
           <p className="form-helper-text ml-10">
-            Remote teams don't have a physical meeting location
+            {t("location.remoteHelp")}
           </p>
         </div>
       )}
@@ -189,11 +200,13 @@ const LocationInput = ({
             <div className="form-control w-full sm:col-span-2 lg:col-span-1">
               <label className="label">
                 <span className="label-text">
-                  Country
                   {required ? (
-                    <span className="text-error ml-1">*</span>
+                    <>
+                      {t("location.country")}
+                      <span className="text-error ml-1">*</span>
+                    </>
                   ) : (
-                    " (optional)"
+                    t("location.countryOptional")
                   )}
                 </span>
               </label>
@@ -201,7 +214,6 @@ const LocationInput = ({
                 value={country}
                 onChange={handleCountryChange}
                 name="country"
-                placeholder="Select country"
                 disabled={disabled}
               />
               {errors.country && (
@@ -215,12 +227,12 @@ const LocationInput = ({
             {/* Postal Code */}
             <div className="form-control w-full">
               <label className="label">
-                <span className="label-text">Postal Code (optional)</span>
+                <span className="label-text">{t("location.postalCode")}</span>
               </label>
               <ClearableInput
                 name="postal_code"
                 value={postalCode}
-                placeholder="e.g., 12345"
+                placeholder={t("location.postalCodePlaceholder")}
                 disabled={disabled}
                 hasError={Boolean(errors.postal_code)}
                 hasWarning={mismatch?.type === "postalCodeNotFound"}
@@ -228,7 +240,7 @@ const LocationInput = ({
                 onClear={() =>
                   onChange({ target: { name: "postal_code", value: "" } })
                 }
-                clearLabel="Clear postal code"
+                clearLabel={t("location.clearPostalCode")}
               />
               {errors.postal_code && (
                 <label className="label">
@@ -239,7 +251,7 @@ const LocationInput = ({
               )}
               {!errors.postal_code && lookupNeedsCountry && (
                 <p className="form-helper-text px-1">
-                  Select a country to look this up
+                  {t("location.selectCountryToLookUp")}
                 </p>
               )}
               {!errors.postal_code &&
@@ -247,8 +259,10 @@ const LocationInput = ({
                 mismatch?.type === "postalCodeNotFound" && (
                   <p className="text-xs text-warning mt-2 px-1">
                     {mismatch.countryName
-                      ? `Not found in ${mismatch.countryName}.`
-                      : "Select a country to look this up."}
+                      ? t("location.notFoundInCountry", {
+                          country: mismatch.countryName,
+                        })
+                      : t("location.selectCountryToLookUp")}
                   </p>
                 )}
             </div>
@@ -256,12 +270,12 @@ const LocationInput = ({
             {/* City / Town */}
             <div className="form-control w-full">
               <label className="label">
-                <span className="label-text">City / Town (optional)</span>
+                <span className="label-text">{t("location.city")}</span>
               </label>
               <ClearableInput
                 name="city"
                 value={city}
-                placeholder="e.g., Berlin"
+                placeholder={t("location.cityPlaceholder")}
                 disabled={disabled}
                 hasError={Boolean(errors.city)}
                 hasWarning={
@@ -278,7 +292,7 @@ const LocationInput = ({
                   onFieldEdited("city");
                   onChange({ target: { name: "city", value: "" } });
                 }}
-                clearLabel="Clear city"
+                clearLabel={t("location.clearCity")}
               />
               {errors.city && (
                 <label className="label">
@@ -289,16 +303,23 @@ const LocationInput = ({
               )}
               {mismatch?.type === "cityNotInCountry" && (
                 <p className="text-xs text-warning mt-2 px-1">
-                  {`Not found in ${mismatch.countryName}.`}
+                  {t("location.notFoundInCountry", {
+                    country: mismatch.countryName,
+                  })}
                 </p>
               )}
               {mismatch?.type === "cityMismatch" && (
                 <p className="text-xs text-warning mt-2 px-1">
-                  {`${mismatch.suggestedCity} is the city for ${mismatch.postalCode}. `}
+                  {t("location.suggestedCity", {
+                    city: mismatch.suggestedCity,
+                    postalCode: mismatch.postalCode,
+                  })}{" "}
                   <button
                     type="button"
                     className="link link-primary"
-                    aria-label={`Use ${mismatch.suggestedCity}`}
+                    aria-label={t("location.useSuggestedCityAria", {
+                      city: mismatch.suggestedCity,
+                    })}
                     onClick={() => {
                       onFieldEdited("city");
                       onChange({
@@ -309,7 +330,7 @@ const LocationInput = ({
                       });
                     }}
                   >
-                    Use it
+                    {t("location.useSuggestedCity")}
                   </button>
                 </p>
               )}
@@ -318,7 +339,7 @@ const LocationInput = ({
 
           {/* Helper text */}
           <p className="form-helper-text -mt-2 px-1">
-            {privacyNotice}
+            {privacyNotice ?? t("privacy.location")}
           </p>
         </div>
       )}
