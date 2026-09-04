@@ -40,7 +40,7 @@ import { tagService } from "../../services/tagService";
 import { useBadges, useSharedTeamsForAward } from "../../hooks/useBadgeQueries";
 import { useUserTags } from "../../hooks/useUserQueries";
 import { DEMO_PROFILE_TOOLTIP } from "../../utils/userHelpers";
-import { format } from "date-fns";
+import { formatDateMedium } from "../../utils/dateHelpers";
 
 /**
  * BadgeAwardModal Component
@@ -176,7 +176,7 @@ const BadgeAwardModal = ({
   const joinedDateText = (() => {
     if (!awardeeJoinedAt) return null;
     try {
-      return format(new Date(awardeeJoinedAt), "MMM d, yyyy");
+      return formatDateMedium(new Date(awardeeJoinedAt));
     } catch {
       return null;
     }

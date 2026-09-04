@@ -1,5 +1,8 @@
 import React, { useEffect, useState } from "react";
-import { format } from "date-fns";
+import {
+  formatDateMedium,
+  formatDateNumeric,
+} from "../../utils/dateHelpers";
 import {
   Users,
   Calendar,
@@ -972,10 +975,10 @@ const AwardCard = ({
             {awardedAt ? (
               <>
                 <span className="hidden sm:inline">
-                  {format(new Date(awardedAt), "MMM d, yyyy")}
+                  {formatDateMedium(new Date(awardedAt))}
                 </span>
                 <span className="sm:hidden">
-                  {format(new Date(awardedAt), "MM/dd/yy")}
+                  {formatDateNumeric(new Date(awardedAt))}
                 </span>
               </>
             ) : (

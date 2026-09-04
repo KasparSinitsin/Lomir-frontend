@@ -13,7 +13,10 @@ import {
 } from "../../utils/userHelpers";
 import DemoAvatarOverlay from "./DemoAvatarOverlay";
 import { getMatchTier } from "../../utils/matchScoreUtils";
-import { format } from "date-fns";
+import {
+  formatDateLong,
+  formatMonthYear,
+} from "../../utils/dateHelpers";
 
 /**
  * UserProfileHeaderSection Component
@@ -86,8 +89,8 @@ const UserProfileHeaderSection = ({
     if (!memberSince) return null;
     try {
       return {
-        short: format(new Date(memberSince), "MMM yyyy"),
-        full: format(new Date(memberSince), "MMMM d, yyyy"),
+        short: formatMonthYear(new Date(memberSince)),
+        full: formatDateLong(new Date(memberSince)),
       };
     } catch (error) {
       console.error("Error formatting member since date:", error);

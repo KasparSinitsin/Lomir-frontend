@@ -1,5 +1,5 @@
 import React from "react";
-import { format } from "date-fns";
+import { formatDateMedium } from "../../utils/dateHelpers";
 import {
   Users,
   UserSearch,
@@ -105,9 +105,8 @@ const TeamCardSubtitle = ({
               ? internalRoleInvitationTooltip
               : `You were invited to this team${
                   formattedDate
-                    ? `\non ${format(
+                    ? `\non ${formatDateMedium(
                         new Date(normalizedData.date),
-                        "MMM d, yyyy",
                       )}`
                     : ""
                 }`
@@ -155,8 +154,8 @@ const TeamCardSubtitle = ({
         <Tooltip
           content={
             isCombinedApplication
-              ? `You applied to join this team and fill a role${formattedDate ? `\non ${format(new Date(normalizedData.date), "MMM d, yyyy")}` : ""}`
-              : `You applied to join this team${formattedDate ? `\non ${format(new Date(normalizedData.date), "MMM d, yyyy")}` : ""}`
+              ? `You applied to join this team and fill a role${formattedDate ? `\non ${formatDateMedium(new Date(normalizedData.date))}` : ""}`
+              : `You applied to join this team${formattedDate ? `\non ${formatDateMedium(new Date(normalizedData.date))}` : ""}`
           }
         >
           <span className="flex items-center gap-0.5 whitespace-nowrap">

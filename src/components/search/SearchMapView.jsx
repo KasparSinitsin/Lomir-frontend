@@ -30,7 +30,10 @@ import {
   UserSearch,
   X,
 } from "lucide-react";
-import { format } from "date-fns";
+import {
+  formatDateMedium,
+  formatDateNumeric,
+} from "../../utils/dateHelpers";
 import VacantRoleDetailsModal from "../teams/VacantRoleDetailsModalLazy";
 import TeamApplicationDetailsModal from "../teams/TeamApplicationDetailsModal";
 import TeamInvitationDetailsModal from "../teams/TeamInvitationDetailsModal";
@@ -56,6 +59,7 @@ import {
   isSyntheticUser,
 } from "../../utils/userHelpers";
 import {
+  formatDistanceKm,
   formatLocation,
   getCountryCode,
   normalizeLocationData,
@@ -750,9 +754,9 @@ const getDistanceLabel = (item) => {
   );
 
   if (distance === null || distance >= 999999) return null;
-  if (distance === 0) return "0 km away";
-  if (distance < 1) return `${distance.toFixed(1)} km away`;
-  return `${Math.round(distance)} km away`;
+  // The three cases collapsed: formatDistanceKm keeps one decimal below a
+  // kilometre and rounds above it, which is what these branches did.
+  return `${formatDistanceKm(distance)} away`;
 };
 
 const getDistanceValue = (item) => {
@@ -1857,10 +1861,10 @@ const RoleSubline = ({
       <div className="mt-0.5 flex flex-wrap items-center gap-1 text-[11px] font-normal text-base-content/60">
         {scoreItem}
         {isValidDate && (
-          <Tooltip content={`Posted ${format(postedDate, "MMM d, yyyy")}`}>
+          <Tooltip content={`Posted ${formatDateMedium(postedDate)}`}>
             <span className="inline-flex items-center gap-1">
               <Calendar size={10} aria-hidden="true" />
-              <span>{format(postedDate, "MM/dd/yy")}</span>
+              <span>{formatDateNumeric(postedDate)}</span>
             </span>
           </Tooltip>
         )}
@@ -1909,10 +1913,10 @@ const RoleSubline = ({
     <div className="mt-0.5 flex flex-wrap items-center gap-1 text-[11px] font-normal text-base-content/60">
       {scoreItem}
       {isValidDate && (
-        <Tooltip content={`Posted ${format(postedDate, "MMM d, yyyy")}`}>
+        <Tooltip content={`Posted ${formatDateMedium(postedDate)}`}>
           <span className="inline-flex items-center gap-1">
             <Calendar size={10} aria-hidden="true" />
-            <span>{format(postedDate, "MM/dd/yy")}</span>
+            <span>{formatDateNumeric(postedDate)}</span>
           </span>
         </Tooltip>
       )}

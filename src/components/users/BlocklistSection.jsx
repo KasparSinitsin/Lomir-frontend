@@ -3,18 +3,8 @@ import { Ban, MapPin, Users, CalendarX, FlaskConical, UserX } from "lucide-react
 import { userService } from "../../services/userService";
 import { formatDisplayName } from "../../utils/nameFormatters";
 import { formatListLocation } from "../../utils/locationUtils";
-import { normalizeTimestampToDate } from "../../utils/dateHelpers";
+import { formatDateNumeric } from "../../utils/dateHelpers";
 import { DEMO_PROFILE_TOOLTIP, isSyntheticUser } from "../../utils/userHelpers";
-
-const formatShortDate = (value) => {
-  const date = normalizeTimestampToDate(value);
-  if (!date) return "";
-  return new Intl.DateTimeFormat("en-US", {
-    year: "2-digit",
-    month: "numeric",
-    day: "numeric",
-  }).format(date);
-};
 import UserAvatar from "./UserAvatar";
 import CardMetaRow from "../common/CardMetaRow";
 import CardMetaItem from "../common/CardMetaItem";
@@ -120,7 +110,7 @@ const BlocklistSection = ({ userId, onChange }) => {
                 ? blockedUser.shared_teams
                 : [];
             const isDemo = isSyntheticUser(blockedUser);
-            const blockedDate = formatShortDate(
+            const blockedDate = formatDateNumeric(
               blockedUser.createdAt ?? blockedUser.created_at,
             );
             const hasMetaRow =

@@ -1,5 +1,5 @@
 import React, { lazy, Suspense, useState, useEffect } from "react";
-import { format } from "date-fns";
+import { formatDateMedium } from "../../utils/dateHelpers";
 import {
   Send,
   Users,
@@ -336,7 +336,7 @@ const TeamApplicationModal = ({
   const teamCreatedAtRaw = displayTeam?.created_at ?? displayTeam?.createdAt ?? null;
   const teamCreatedAtText = (() => {
     if (!teamCreatedAtRaw) return null;
-    try { return format(new Date(teamCreatedAtRaw), "MMM d, yyyy"); } catch { return null; }
+    try { return formatDateMedium(new Date(teamCreatedAtRaw)); } catch { return null; }
   })();
   const shouldShowRolePicker =
     loadingRoles || vacantRoles.length > 0 || isRoleSectionExpanded;

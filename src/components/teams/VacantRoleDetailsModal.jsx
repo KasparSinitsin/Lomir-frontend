@@ -1,6 +1,11 @@
 import React, { useState, useEffect, useMemo, useLayoutEffect, useRef } from "react";
 import { useQueries, useQueryClient } from "@tanstack/react-query";
-import { format } from "date-fns";
+import {
+  formatDateLong,
+  formatDateMedium,
+  formatDateNumeric,
+  formatMonthNumeric,
+} from "../../utils/dateHelpers";
 import {
   MapPin,
   Globe,
@@ -1639,18 +1644,10 @@ const VacantRoleDetailsModal = ({
     return acc;
   }, {});
 
-  const formatDate = (dateStr) => {
-    if (!dateStr) return null;
-    try {
-      return new Date(dateStr).toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-      });
-    } catch {
-      return null;
-    }
-  };
+  // null rather than "" for a missing date: both call sites gate on
+  // truthiness, and null is what this returned before.
+  const formatDate = (dateStr) =>
+    dateStr ? formatDateMedium(new Date(dateStr)) : null;
 
   const getRoleCandidateMatch = (userId) => {
     if (userId == null) return null;
@@ -1774,8 +1771,8 @@ const VacantRoleDetailsModal = ({
     );
 
     return {
-      short: format(date, "MM/dd/yy"),
-      full: format(date, "MMM d, yyyy"),
+      short: formatDateNumeric(date),
+      full: formatDateMedium(date),
       label: isInternalRoleApplication
         ? "You applied to fill this role"
         : "You applied to join this team and fill this role",
@@ -1802,8 +1799,8 @@ const VacantRoleDetailsModal = ({
     );
 
     return {
-      short: format(date, "MM/dd/yy"),
-      full: format(date, "MMM d, yyyy"),
+      short: formatDateNumeric(date),
+      full: formatDateMedium(date),
       label: isInternalInvitation
         ? "You were invited to fill this role"
         : "You were invited to join this team and fill this role",
@@ -1815,8 +1812,8 @@ const VacantRoleDetailsModal = ({
     try {
       const date = new Date(createdAt);
       return {
-        short: format(date, "MM/yy"),
-        full: format(date, "MMMM d, yyyy"),
+        short: formatMonthNumeric(date),
+        full: formatDateLong(date),
         label: "Posted on",
       };
     } catch {

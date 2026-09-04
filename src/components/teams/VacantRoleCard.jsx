@@ -53,7 +53,10 @@ import {
 import { summarizeList } from "../../utils/listSummaryUtils";
 import { teamService } from "../../services/teamService";
 import { useAuth } from "../../contexts/AuthContext";
-import { format } from "date-fns";
+import {
+  formatDateMedium,
+  formatDateNumeric,
+} from "../../utils/dateHelpers";
 import { formatDisplayName } from "../../utils/nameFormatters";
 import {
   formatListLocation,
@@ -660,7 +663,7 @@ const VacantRoleCard = ({
     if (!rolePostedAt) return null;
 
     try {
-      return format(new Date(rolePostedAt), "MM/dd/yy");
+      return formatDateNumeric(new Date(rolePostedAt));
     } catch {
       return null;
     }
@@ -672,7 +675,7 @@ const VacantRoleCard = ({
     }
 
     try {
-      return `Posted ${format(new Date(rolePostedAt), "MMM d, yyyy")}`;
+      return `Posted ${formatDateMedium(new Date(rolePostedAt))}`;
     } catch {
       return "Posted";
     }

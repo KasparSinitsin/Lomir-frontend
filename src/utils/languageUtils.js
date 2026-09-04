@@ -1,8 +1,20 @@
+import i18n from "../i18n";
 import {
   DEFAULT_LANGUAGE_CODE,
   getLanguageForCountry,
   isSupportedLanguage,
 } from "../constants/languages";
+
+/**
+ * The language the app is rendered in right now, for Intl.
+ *
+ * Distinct from resolveLanguage(): that one *decides*, from the account, the
+ * browser and the country. This one only reports what was decided, and it is
+ * what every Intl formatter in the app has to be built with - dates, numbers
+ * and distances must not answer this question for themselves. dateHelpers.js
+ * used to, from its own country sets, and disagreed with the picker.
+ */
+export const getActiveLocale = () => i18n.language || DEFAULT_LANGUAGE_CODE;
 
 /**
  * Where a logged-out visitor's choice lives. Logged-in users have

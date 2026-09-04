@@ -1,6 +1,6 @@
 import React, { useRef, useLayoutEffect, useState, useEffect } from "react";
 import { Calendar, MapPin, FlaskConical } from "lucide-react";
-import { format } from "date-fns";
+import { formatDateMedium } from "../../utils/dateHelpers";
 import Tooltip from "./Tooltip";
 import {
   DEMO_PROFILE_TOOLTIP,
@@ -87,7 +87,7 @@ const PersonRequestCard = ({
     if (!date) return "Unknown date";
 
     try {
-      return format(new Date(date), "MMM d, yyyy");
+      return formatDateMedium(new Date(date));
     } catch (error) {
       console.error("Error formatting date:", error);
       return "Unknown date";

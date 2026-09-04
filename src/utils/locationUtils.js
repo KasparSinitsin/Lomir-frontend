@@ -4,6 +4,45 @@
  * Single source of truth for country mappings and location data normalization
  */
 
+import { getActiveLocale } from "./languageUtils";
+
+/**
+ * A distance with its unit, in the active language: "12 km" / "0.5 km" in
+ * English, "12 km" / "0,5 km" in German.
+ *
+ * The decimal separator is the point here - toFixed(1) always produces a dot,
+ * which is wrong in German and in most of Europe. Intl also carries the unit,
+ * so "km" never has to be concatenated in JSX.
+ *
+ * Sub-kilometre distances keep one decimal, everything else is rounded to a
+ * whole kilometre - the behaviour the search results already had.
+ *
+ * ⚠️ This returns the measurement only, never a sentence. The surrounding
+ * text ("… away") is still English in JSX and belongs to Phase 1: assembling
+ * it here would produce exactly the fragment-in-a-sentence shape that breaks
+ * on the first language with a different word order.
+ */
+export const formatDistanceKm = (distanceKm) => {
+  // Number(null) is 0 and Number("") is 0, both finite - so the empty cases
+  // have to be rejected before the conversion, or a missing distance renders
+  // as "0 km". Today both call sites gate on hasDistance and never pass one;
+  // that is their choice to change, not a guarantee this helper may rely on.
+  if (distanceKm === null || distanceKm === undefined || distanceKm === "") {
+    return "";
+  }
+  const value = Number(distanceKm);
+  if (!Number.isFinite(value)) return "";
+
+  const decimals = value > 0 && value < 1 ? 1 : 0;
+  return new Intl.NumberFormat(getActiveLocale(), {
+    style: "unit",
+    unit: "kilometer",
+    unitDisplay: "short",
+    maximumFractionDigits: decimals,
+    minimumFractionDigits: decimals,
+  }).format(value);
+};
+
 // Country code to English name mapping
 export const COUNTRY_NAMES = {
   DE: "Germany",
