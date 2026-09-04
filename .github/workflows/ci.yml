@@ -1,0 +1,52 @@
+# The two gates this project has always run by hand, run automatically.
+#
+# Before this, `npm run lint` and `npm run build` were part of the working
+# agreement rather than part of the process - and an agreement decays the
+# moment someone is in a hurry. Everything here has been green on every
+# branch so far; the point is that it stays that way without anyone
+# remembering to check.
+name: CI
+
+on:
+  pull_request:
+    branches: [dev, main]
+  # Also on the merge result: a PR can be green and still break dev when it
+  # lands next to something else that merged in the meantime.
+  push:
+    branches: [dev, main]
+
+# A new push to the same branch makes the previous run pointless.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Lint and build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # Active LTS. Local development runs Node 23; both build this
+          # project, and having CI on LTS is deliberate - it catches anything
+          # that only works on a newer runtime.
+          node-version: '22'
+          cache: npm
+
+      # ci, not install: it installs exactly the lockfile and fails if
+      # package.json and package-lock.json have drifted apart.
+      - run: npm ci
+
+      - run: npm run lint
+
+      # No secrets and no .env here. Verified: every VITE_* variable this app
+      # reads has a fallback, and the build is green without them. If that
+      # ever stops being true, this step fails rather than shipping a broken
+      # bundle from a machine that happened to have a .env.
+      - run: npm run build
