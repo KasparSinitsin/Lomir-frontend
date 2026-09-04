@@ -6,6 +6,7 @@ import React, {
   useRef,
 } from "react";
 import { createPortal } from "react-dom";
+import { useTranslation } from "react-i18next";
 import { useCombobox } from "downshift";
 import { X, Tag as TagIcon, TrendingUp, Sparkles, Layers, Check } from "lucide-react";
 import { tagService } from "../../services/tagService";
@@ -15,7 +16,6 @@ import {
   usePopularTags,
   useStructuredTags,
 } from "../../hooks/useTagQueries";
-import { UI_TEXT } from "../../constants/uiText";
 import { debounce } from "lodash";
 
 const MIN_QUERY_LEN = 2;
@@ -30,12 +30,15 @@ const TagInput = ({
   selectedTags = [],
   onTagsChange,
   onChange,
-  placeholder = UI_TEXT.focusAreas.searchPlaceholder,
+  // Resolved with t() below rather than as a default here, so it follows the
+  // active language instead of the one loaded when this module first ran.
+  placeholder,
   showPopularTags = true,
   maxSuggestions = 8,
   className = "",
   disabled = false,
 }) => {
+  const { t } = useTranslation();
   const handleTags = onTagsChange ?? onChange;
 
   const [inputValue, setInputValue] = useState("");
@@ -73,15 +76,18 @@ const TagInput = ({
     enabled: showPopularTags,
   });
 
-  const getTagId = (t) => {
-    if (t == null) return null;
-    if (typeof t === "number") return Number.isFinite(t) ? t : null;
-    if (typeof t === "string") {
-      const n = Number(t);
+  const getTagId = (candidate) => {
+    if (candidate == null) return null;
+    if (typeof candidate === "number")
+      return Number.isFinite(candidate) ? candidate : null;
+    if (typeof candidate === "string") {
+      const n = Number(candidate);
       return Number.isFinite(n) ? n : null;
     }
-    if (typeof t === "object") {
-      const n = Number(t.id ?? t.tag_id ?? t.tagId ?? t.value);
+    if (typeof candidate === "object") {
+      const n = Number(
+        candidate.id ?? candidate.tag_id ?? candidate.tagId ?? candidate.value,
+      );
       return Number.isFinite(n) ? n : null;
     }
     return null;
@@ -104,14 +110,16 @@ const TagInput = ({
 
     setTagMap((prev) => {
       const next = new Map(prev);
-      (tags || []).forEach((t) => {
-        const id = getTagId(t);
+      (tags || []).forEach((tag) => {
+        const id = getTagId(tag);
         if (id != null) {
-          // store with normalized id, but keep original object + ensure `name` exists
+          // Store with a normalized id, keeping the original object. `name`
+          // stays null when the source has none - the display fallback is a
+          // translated string and belongs where it is rendered, not in state.
           next.set(id, {
-            ...t,
+            ...tag,
             id,
-            name: t?.name ?? t?.label ?? t?.value ?? `Focus Area ${id}`,
+            name: tag?.name ?? tag?.label ?? tag?.value ?? null,
           });
         }
       });
@@ -153,8 +161,8 @@ const TagInput = ({
       setLoading(true);
       try {
         const results = await tagService.searchTags(q);
-        const filtered = (results || []).filter((t) => {
-          const id = getTagId(t);
+        const filtered = (results || []).filter((tag) => {
+          const id = getTagId(tag);
           return id != null && !selectedTagIdSet.has(id);
         });
 
@@ -206,11 +214,11 @@ const TagInput = ({
   const getSuggestionTitle = () => {
     switch (currentSuggestions.type) {
       case "popular":
-        return UI_TEXT.focusAreas.popularTitle;
+        return t("focusAreas.popularTitle");
       case "related":
-        return UI_TEXT.focusAreas.relatedTitle;
+        return t("focusAreas.relatedTitle");
       case "search":
-        return UI_TEXT.focusAreas.searchResultsTitle;
+        return t("focusAreas.searchResultsTitle");
       default:
         return "";
     }
@@ -472,7 +480,7 @@ const TagInput = ({
           else if (dsRef && typeof dsRef === "object") dsRef.current = node;
         }}
         type="text"
-        placeholder={placeholder}
+        placeholder={placeholder ?? t("focusAreas.searchPlaceholder")}
         className="input input-bordered w-full pr-10 focus:input-primary"
       />
 
@@ -487,12 +495,17 @@ const TagInput = ({
                   className="badge badge-primary badge-lg gap-2 leading-none items-start h-auto py-1.5"
                 >
                   <TagIcon size={14} className="shrink-0 mt-px" />
-                  {tag?.name ?? `Focus Area ${tagId}`}
+                  {tag?.name ??
+                    t("focusAreas.fallbackName", { id: String(tagId) })}
                   <button
                     type="button"
                     onClick={() => handleRemoveTag(tagId)}
                     className="hover:text-error transition-colors"
-                    aria-label={`Remove ${tag?.name ?? "focus area"}`}
+                    aria-label={
+                      tag?.name
+                        ? t("focusAreas.remove", { name: tag.name })
+                        : t("focusAreas.removeGeneric")
+                    }
                     disabled={disabled}
                   >
                     <X size={14} />
@@ -560,7 +573,7 @@ const TagInput = ({
                     {loading && (
                       <span className="text-xs opacity-70 flex items-center gap-1">
                         <span className="loading loading-spinner loading-xs"></span>
-                        Loading…
+                        {t("focusAreas.loading")}
                       </span>
                     )}
                   </span>
@@ -601,7 +614,11 @@ const TagInput = ({
                               type="button"
                               onMouseDown={(e) => e.preventDefault()}
                               disabled={alreadyAdded}
-                              title={alreadyAdded ? UI_TEXT.focusAreas.alreadyAdded : undefined}
+                              title={
+                                alreadyAdded
+                                  ? t("focusAreas.alreadyAdded")
+                                  : undefined
+                              }
                               className={`flex flex-row-reverse flex-wrap items-start w-full leading-none gap-x-2 gap-y-2 ${paddingClass} ${
                                 alreadyAdded
                                   ? "opacity-40 cursor-not-allowed"

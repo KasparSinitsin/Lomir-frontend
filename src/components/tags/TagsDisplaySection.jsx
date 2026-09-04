@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { Tag, Layers, Check, ChevronRight, ChevronUp } from "lucide-react";
 import {
   CATEGORY_COLORS,
@@ -13,7 +14,6 @@ import Tooltip from "../common/Tooltip";
 import Button from "../common/Button";
 import Alert from "../common/Alert";
 import TagInput from "./TagInput";
-import { UI_TEXT } from "../../constants/uiText";
 
 /**
  * Unified TagsDisplaySection Component
@@ -35,7 +35,9 @@ import { UI_TEXT } from "../../constants/uiText";
  * @param {string} className - Additional CSS classes
  */
 const TagsDisplaySection = ({
-  title = UI_TEXT.focusAreas.title,
+  // title, emptyMessage and placeholder are resolved with t() in the body, not
+  // as defaults here: a module-scope default freezes the language.
+  title,
   tags = [],
   allTags = [],
   canEdit = false,
@@ -45,12 +47,13 @@ const TagsDisplaySection = ({
   highlightTagName = null,
   highlightTagColor = null,
   matchingTagIds = null,
-  emptyMessage = UI_TEXT.focusAreas.empty,
-  placeholder = UI_TEXT.focusAreas.placeholder,
+  emptyMessage,
+  placeholder,
   entityType,
   className = "",
   headerRight = null,
 }) => {
+  const { t } = useTranslation();
   const [isEditing, setIsEditing] = useState(false);
   const [localSelectedTags, setLocalSelectedTags] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -441,7 +444,7 @@ const TagsDisplaySection = ({
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center">
             <Tag size={18} />
-            <h3 className="font-medium">{title}</h3>
+            <h3 className="font-medium">{title ?? t("focusAreas.title")}</h3>
           </div>
           <div className="flex space-x-2">
             <Button
@@ -480,7 +483,7 @@ const TagsDisplaySection = ({
         <TagInput
           selectedTags={localSelectedTags}
           onTagsChange={(newTags) => setLocalSelectedTags(newTags)}
-          placeholder={placeholder}
+          placeholder={placeholder ?? t("focusAreas.placeholder")}
           showPopularTags={true}
           maxSuggestions={10}
         />
@@ -498,7 +501,9 @@ const TagsDisplaySection = ({
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0 flex-1 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-x-3 gap-y-0.5">
               <div className="min-w-0 flex flex-wrap items-baseline gap-x-1 gap-y-0.5">
-                <h3 className="font-medium leading-[1.1] break-words sm:whitespace-nowrap">{title}</h3>
+                <h3 className="font-medium leading-[1.1] break-words sm:whitespace-nowrap">
+                  {title ?? t("focusAreas.title")}
+                </h3>
                 {totalCredits > 0 && (
                   <span className="min-w-0 text-sm font-normal text-base-content/60 whitespace-normal sm:whitespace-nowrap">
                     ({totalCredits} ct. in {pillCount} {pillCount === 1 ? 'area' : 'areas'})
@@ -580,7 +585,9 @@ const TagsDisplaySection = ({
           )}
         </>
       ) : (
-        <p className="text-sm text-base-content/60">{emptyMessage}</p>
+        <p className="text-sm text-base-content/60">
+          {emptyMessage ?? t("focusAreas.empty")}
+        </p>
       )}
     </div>
   );

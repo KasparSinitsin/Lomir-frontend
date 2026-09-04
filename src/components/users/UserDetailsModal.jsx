@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { UI_TEXT } from "../../constants/uiText";
 import Modal from "../common/Modal";
 import UserBioSection from "./UserBioSection";
 import LocationSection from "../common/LocationSection";
@@ -1020,9 +1019,7 @@ const UserDetailsModal = ({
 
             {/* Focus Areas */}
             <TagsDisplaySection
-              title={UI_TEXT.focusAreas.title}
               tags={userTags.length > 0 ? userTags : user?.tags}
-              emptyMessage={UI_TEXT.focusAreas.empty}
               onTagClick={handleTagClick}
               onSupercategoryClick={handleSupercategoryClick}
               matchingTagIds={

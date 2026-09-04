@@ -87,10 +87,33 @@ const stripComments = (source) => {
 const STRING = /"([^"\\]*(?:\\.[^"\\]*)*)"|'([^'\\]*(?:\\.[^'\\]*)*)'/g;
 
 const keyId = (namespace, key) => `${namespace}:${key}`;
-const splitKey = (key) => {
+const splitKey = (key, fallbackNamespace = DEFAULT_NAMESPACE) => {
   const separator = key.indexOf(":");
-  if (separator === -1) return [DEFAULT_NAMESPACE, key];
+  if (separator === -1) return [fallbackNamespace, key];
   return [key.slice(0, separator), key.slice(separator + 1)];
+};
+
+/**
+ * Which namespace an unprefixed key resolves to in a given file.
+ *
+ * `useTranslation("auth")` makes `t("privacy.location")` mean
+ * `auth:privacy.location`, not `common:privacy.location`. Assuming `common`
+ * everywhere made this check pass a real bug: a shared key used from a page
+ * that had claimed the `auth` namespace resolved to nothing and rendered as
+ * the raw key. Found while translating the shared form controls, 2026-09-04.
+ *
+ * Only the unambiguous case is handled - one namespace literal in the file and
+ * no bare `useTranslation()` beside it. Anything else keeps the old
+ * assumption, because guessing wrong here would fail CI on correct code.
+ */
+const HOOK = /useTranslation\(\s*(?:"([^"]*)"|'([^']*)')?\s*\)/g;
+const fileDefaultNamespace = (source) => {
+  const declared = new Set();
+  for (const match of source.matchAll(HOOK)) {
+    declared.add(match[1] ?? match[2] ?? DEFAULT_NAMESPACE);
+  }
+  if (declared.size !== 1) return DEFAULT_NAMESPACE;
+  return [...declared][0] || DEFAULT_NAMESPACE;
 };
 
 const collectUsedKeys = (files) => {
@@ -100,6 +123,7 @@ const collectUsedKeys = (files) => {
   for (const file of files) {
     if (file.startsWith(join(SRC, "locales"))) continue;
     const source = stripComments(readFileSync(file, "utf8"));
+    const namespaceOfFile = fileDefaultNamespace(source);
 
     for (const match of source.matchAll(CALL)) {
       // Scan to the call's closing paren, then keep the first argument.
@@ -129,7 +153,7 @@ const collectUsedKeys = (files) => {
       // real. Anything with no literal at all is a key this check cannot see.
       if (literals.length === 0) dynamic.push(`${where}  ${arg.trim().slice(0, 60)}`);
       for (const key of literals) {
-        const [namespace, namespaceKey] = splitKey(key);
+        const [namespace, namespaceKey] = splitKey(key, namespaceOfFile);
         const id = keyId(namespace, namespaceKey);
         if (!used.has(id)) used.set(id, []);
         used.get(id).push(where);

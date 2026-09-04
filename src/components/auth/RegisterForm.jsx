@@ -28,9 +28,6 @@ import {
 } from "../../hooks/useLocationAutoFill";
 import VisibilityToggle from "../common/VisibilityToggle";
 import TurnstileWidget from "../common/TurnstileWidget";
-import {
-  USER_LOCATION_PRIVACY_NOTICE,
-} from "../../constants/privacyText";
 
 const RegisterForm = () => {
   const { t } = useTranslation("auth");
@@ -1054,7 +1051,7 @@ const RegisterForm = () => {
                 showRemoteToggle={false}
                 showDivider={true}
                 dividerText={t("auth:register.sections.location")}
-                privacyNotice={USER_LOCATION_PRIVACY_NOTICE}
+                privacyNotice={t("common:privacy.userLocation")}
               />
             </section>
 
@@ -1089,8 +1086,7 @@ const RegisterForm = () => {
                     size="mdPlus"
                     shape="circle"
                     fallbackText={getUserInitialsFromForm()}
-                    helpText={t("auth:register.fields.avatarHelp")}
-                    removeButtonText={t("auth:register.fields.removeImage")}
+                    helpText={t("common:privacy.avatarUpload")}
                   />
                 </div>
               </div>

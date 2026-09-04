@@ -4,6 +4,14 @@
     "languageLabel": "Lomir App Language",
     "languageHelp": "Lomir uses this language for the app and for the emails we send you. Without a choice, we follow the country in your profile and otherwise your browser."
   },
+  "countrySelect": {
+    "placeholder": "Select a country",
+    "searchPlaceholder": "Type to search...",
+    "noResults": "No countries found",
+    "groupCommon": "Common",
+    "groupAll": "All Countries",
+    "clear": "Clear selection"
+  },
   "datetime": {
     "today": "Today",
     "yesterday": "Yesterday",
@@ -13,6 +21,22 @@
     "archiveRemainingHours": "{count, plural, one {# hour} other {# hours}}",
     "archiveRemainingDays": "{count, plural, one {# day} other {# days}}",
     "archiveRemainingUnderAnHour": "less than an hour"
+  },
+  "focusAreas": {
+    "title": "Focus Areas",
+    "empty": "No focus areas yet",
+    "emptyTeam": "No focus areas added yet.",
+    "placeholder": "Add focus areas...",
+    "placeholderTeam": "Add focus areas...",
+    "searchPlaceholder": "Type to search focus areas...",
+    "popularTitle": "Popular Focus Areas",
+    "relatedTitle": "Related Focus Areas",
+    "searchResultsTitle": "Search Results",
+    "alreadyAdded": "Focus area already added",
+    "loading": "Loading…",
+    "fallbackName": "Focus Area {id}",
+    "remove": "Remove {name}",
+    "removeGeneric": "Remove focus area"
   },
   "footer": {
     "copyright": "Lomir - Team Up App © {year}",
@@ -25,10 +49,41 @@
     "source": "Source",
     "instagram": "Instagram"
   },
+  "imageUploader": {
+    "uploadImage": "Upload image",
+    "changeImage": "Change image",
+    "previewAlt": "Preview",
+    "dropHere": "Drop image here",
+    "dragAndDrop": "Drag & drop or click to upload",
+    "remove": "Remove",
+    "newImageSelected": "New image selected. Save to upload.",
+    "maxSizeHint": "Max {maxSize}MB. Square images recommended.",
+    "errorNotAnImage": "Please select an image file",
+    "errorAcceptedFormats": "Accepted formats: {formats}",
+    "errorTooLarge": "Image must be less than {maxSize}MB"
+  },
   "languageSelect": {
     "placeholder": "Select a language",
     "searchPlaceholder": "Type to search...",
     "noResults": "No languages found"
+  },
+  "location": {
+    "divider": "Location",
+    "remoteToggle": "This is a remote team",
+    "remoteHelp": "Remote teams don't have a physical meeting location",
+    "country": "Country",
+    "countryOptional": "Country (optional)",
+    "postalCode": "Postal Code (optional)",
+    "postalCodePlaceholder": "e.g., 12345",
+    "clearPostalCode": "Clear postal code",
+    "city": "City / Town (optional)",
+    "cityPlaceholder": "e.g., Berlin",
+    "clearCity": "Clear city",
+    "selectCountryToLookUp": "Select a country to look this up.",
+    "notFoundInCountry": "Not found in {country}.",
+    "suggestedCity": "{city} is the city for {postalCode}.",
+    "useSuggestedCity": "Use it",
+    "useSuggestedCityAria": "Use {city}"
   },
   "nav": {
     "login": "Login",
@@ -78,5 +133,25 @@
     "roleApplicationCancelled": "{count, plural, one {# role application} other {# role applications}} withdrawn{teamCount, plural, =0 {} =1 {} other { in # teams}}",
     "roleStatusChangedApplicant": "{count, plural, one {# role} other {# roles}} you applied for changed",
     "roleStatusChangedInvitee": "{count, plural, one {# role} other {# roles}} you were invited to changed"
+  },
+  "privacy": {
+    "location": "Location is optional. We use saved location information to suggest nearby users, teams, and roles and to calculate distance-based matches. Lomir does not ask for a street address. Depending on visibility settings, approximate location details may be visible to other users.",
+    "userLocation": "Location is optional. You can leave postal code, city, and country empty or remove them later. If you add location information, Lomir uses it to suggest nearby users, teams, and roles and to calculate distance-based matches. Lomir never asks for your street address. Depending on your profile visibility, approximate location details such as postal code, city, district, region, or country may be visible to other users.",
+    "profileVisibilitySettings": "Public profiles are visible to anyone visiting Lomir, whether or not they are logged in. Private profiles reduce public visibility, but your activity may still appear in teams, messages, applications, or badges. Location details you add may be shown as part of your approximate public profile location.",
+    "avatarUpload": "Uploaded images are stored and delivered via ImageKit. Your avatar may be visible to other users depending on your visibility settings.",
+    "chatUpload": "Files and images shared in chat are visible to conversation participants. Please do not upload sensitive or confidential information.",
+    "accountDeletion": "Account deletion is permanent. Your profile and direct messages are deleted immediately after confirmation. Some team and badge references may be anonymized as 'Former Lomir User' to preserve team and conversation context."
+  },
+  "visibility": {
+    "title": "Visibility",
+    "visible": "Visible for all Users",
+    "hidden": "Hidden",
+    "visibleDescription": "Anyone can find and view this",
+    "hiddenDescription": "Only you can see this",
+    "teamVisibleDescription": "Anyone can find and view your team",
+    "teamHiddenDescription": "Only members can see this team",
+    "profileVisibleDescription": "Your profile will be discoverable by others",
+    "profileHiddenDescription": "Your profile will be hidden from search results",
+    "toggleAria": "Toggle visibility"
   }
 }

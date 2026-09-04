@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { Eye, EyeClosed } from "lucide-react";
 
 const VisibilityToggle = ({
@@ -11,18 +12,22 @@ const VisibilityToggle = ({
   helperText, // optional small text shown on the right of the label row
   error, // optional string
 
-  // Backwards compat: keep your current API
-  title = "Visibility",
-  visibleLabel = "Visible for all Users",
-  hiddenLabel = "Hidden",
-  visibleDescription = "Anyone can find and view this",
-  hiddenDescription = "Only you can see this",
+  // Backwards compat: keep your current API. The defaults are resolved with
+  // t() in the body rather than here, so a caller that passes nothing gets the
+  // active language instead of a string frozen at module scope.
+  title,
+  visibleLabel,
+  hiddenLabel,
+  visibleDescription,
+  hiddenDescription,
   entityType = "", // e.g. "team", "profile"
   className = "",
   disabled = false,
   id = undefined,
   showDescription = true,
 }) => {
+  const { t } = useTranslation();
+
   // Generate a unique ID if none is provided
   const inputId =
     id || `toggle-${name}-${Math.random().toString(36).substr(2, 9)}`;
@@ -31,21 +36,30 @@ const VisibilityToggle = ({
   const isChecked = checked === true;
 
   // Use label if provided, else fall back to title (so existing usage still works)
-  const fieldLabel = label ?? title;
+  const fieldLabel = label ?? title ?? t("visibility.title");
 
-  // Customize descriptions based on entityType if provided
+  // A description passed by the caller wins, then entityType supplies a better
+  // default than the generic one. This is the precedence `label`,
+  // `visibleLabel` and `hiddenLabel` already follow.
+  //
+  // It used to be the other way round, and that made a prop silently dead:
+  // RegisterForm passes entityType="profile" *and* its own hiddenDescription,
+  // so the sentence about the profile staying private until the email is
+  // verified never rendered, in either language.
   const getVisibleDescription = () => {
-    if (entityType === "team") return "Anyone can find and view your team";
+    if (visibleDescription != null) return visibleDescription;
+    if (entityType === "team") return t("visibility.teamVisibleDescription");
     if (entityType === "profile")
-      return "Your profile will be discoverable by others";
-    return visibleDescription;
+      return t("visibility.profileVisibleDescription");
+    return t("visibility.visibleDescription");
   };
 
   const getHiddenDescription = () => {
-    if (entityType === "team") return "Only members can see this team";
+    if (hiddenDescription != null) return hiddenDescription;
+    if (entityType === "team") return t("visibility.teamHiddenDescription");
     if (entityType === "profile")
-      return "Your profile will be hidden from search results";
-    return hiddenDescription;
+      return t("visibility.profileHiddenDescription");
+    return t("visibility.hiddenDescription");
   };
 
   const description = isChecked
@@ -87,7 +101,9 @@ const VisibilityToggle = ({
       )}
 
       <span className="text-base-content font-normal min-w-0 break-words">
-        {isChecked ? visibleLabel : hiddenLabel}
+        {isChecked
+          ? (visibleLabel ?? t("visibility.visible"))
+          : (hiddenLabel ?? t("visibility.hidden"))}
       </span>
     </div>
 
@@ -106,7 +122,7 @@ const VisibilityToggle = ({
         disabled={disabled}
         className="toggle toggle-primary"
       />
-      <span className="sr-only">Toggle visibility</span>
+      <span className="sr-only">{t("visibility.toggleAria")}</span>
     </label>
   </div>
 

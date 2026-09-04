@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useSearchParams } from "react-router-dom";
 import FormSectionDivider from "../components/common/FormSectionDivider";
@@ -61,16 +62,12 @@ import CommunicationSection from "../components/common/CommunicationSection";
 import { LANGUAGE_FEATURE_VISIBLE } from "../constants/languages";
 import { describeLanguageSelection } from "../utils/languageUtils";
 import VisibilityToggle from "../components/common/VisibilityToggle";
-import {
-  AVATAR_UPLOAD_NOTICE,
-  PROFILE_VISIBILITY_SETTINGS_NOTICE,
-  USER_LOCATION_PRIVACY_NOTICE,
-} from "../constants/privacyText";
 import { formatMonthYear } from "../utils/dateHelpers";
 
 const EMPTY_QUERY_ARRAY = [];
 
 const Profile = () => {
+  const { t } = useTranslation();
   const { user, updateUser } = useAuth();
   const queryClient = useQueryClient();
   const [localUser, setLocalUser] = useState(null);
@@ -1065,7 +1062,7 @@ const Profile = () => {
                     size="xl"
                     disabled={loading}
                     loading={avatarDeleteLoading}
-                    helpText={AVATAR_UPLOAD_NOTICE}
+                    helpText={t("privacy.avatarUpload")}
                     showRemoveButton={
                       !!(imagePreview || user?.avatarUrl) &&
                       !formData.profileImage
@@ -1177,7 +1174,7 @@ const Profile = () => {
                   disabled={loading}
                 />
                 <p className="form-helper-text mt-2 px-1">
-                  {PROFILE_VISIBILITY_SETTINGS_NOTICE}
+                  {t("privacy.profileVisibilitySettings")}
                 </p>
               </div>
             </section>
@@ -1201,8 +1198,7 @@ const Profile = () => {
                 disabled={loading}
                 showRemoteToggle={false}
                 showDivider={true}
-                dividerText="Location"
-                privacyNotice={USER_LOCATION_PRIVACY_NOTICE}
+                privacyNotice={t("privacy.userLocation")}
               />
             </section>
 
