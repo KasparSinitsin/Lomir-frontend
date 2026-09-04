@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import { useTranslation } from "react-i18next";
 import {
   ArrowRight,
   Award,
@@ -58,31 +59,28 @@ const SCREENSHOTS = {
  * equal bottom offsets would stagger the tops. The team modal is deliberately
  * set much higher, since a near-match at the lower edge read as a mistake.
  */
-const HERO_MODAL_SHOTS = [
+const getHeroModalShots = (t) => [
   {
     src: "/screenshots/modal-role.png",
-    alt: "Details of the open role selected on the map",
+    alt: t("home:screenshots.modalRoleAlt"),
     position: "hidden lg:block left-[calc(-7%_-_15px)] top-[60%] w-[30%] z-[3]",
-    captionTitle: "Open roles",
-    caption:
-      "An open role spells out what a team is still missing: the focus areas and badges they are hoping for, and how far away you may be based. Applying puts you forward for that one role rather than for the team in general, and you can follow what happens to your application.",
+    captionTitle: t("home:screenshots.modalRoleTitle"),
+    caption: t("home:screenshots.modalRoleCaption"),
   },
   {
     src: "/screenshots/modal-user.png",
-    alt: "Profile details for a person found through search",
+    alt: t("home:screenshots.modalUserAlt"),
     position: "hidden lg:block left-[52%] top-[60%] w-[30%] z-[2]",
-    captionTitle: "People",
-    caption:
-      "A profile gathers what someone is into: their focus areas and the badges other members awarded them for work they actually did together. From here you can start a chat, invite them into one of your teams, award them a badge yourself, or block them if you would rather not be contacted.",
+    captionTitle: t("home:screenshots.modalUserTitle"),
+    caption: t("home:screenshots.modalUserCaption"),
   },
   {
     src: "/screenshots/modal-team.png",
-    alt: "Team details with focus areas, badges and members",
+    alt: t("home:screenshots.modalTeamAlt"),
     position:
       "hidden lg:block right-[calc(-7%_-_15px)] top-[33%] w-[30%] z-[1]",
-    captionTitle: "Teams",
-    caption:
-      "A team page shows what the group is about, where it meets and who belongs to it, together with the focus areas and badges its members bring. If the team still has space, you can apply to join straight from here.",
+    captionTitle: t("home:screenshots.modalTeamTitle"),
+    caption: t("home:screenshots.modalTeamCaption"),
   },
 ];
 
@@ -105,7 +103,7 @@ const HERO_MODAL_SHOTS = [
  * caption below it, so image, text and close control are visible together. The
  * overlay scrolls as well, which only comes into play on very short windows.
  */
-const ScreenshotLightbox = ({ shot, onClose }) => {
+const ScreenshotLightbox = ({ shot, onClose, closeLabel }) => {
   useEffect(() => {
     if (!shot) return undefined;
 
@@ -135,7 +133,7 @@ const ScreenshotLightbox = ({ shot, onClose }) => {
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close enlarged screenshot"
+            aria-label={closeLabel}
             className="absolute -right-11 top-0 text-white/90 hover:text-white transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
           >
             <X className="w-7 h-7" />
@@ -171,11 +169,11 @@ const ScreenshotLightbox = ({ shot, onClose }) => {
  * keyboard and announces itself. Below lg the whole element is display:none,
  * which also takes it out of the tab order.
  */
-const FloatingShot = ({ src, alt, onOpen, className = "" }) => (
+const FloatingShot = ({ src, alt, onOpen, enlargeLabel, className = "" }) => (
   <button
     type="button"
     onClick={onOpen}
-    aria-label={`Enlarge screenshot: ${alt}`}
+    aria-label={enlargeLabel}
     className={`absolute overflow-hidden rounded-xl border border-base-200 shadow-2xl ring-1 ring-black/5 transition duration-200 hover:scale-[1.03] hover:shadow-[0_35px_60px_-12px_rgba(0,0,0,0.5)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${className}`}
   >
     <img src={src} alt={alt} loading="lazy" className="block w-full h-auto" />
@@ -250,6 +248,7 @@ const Feature = ({ icon, title, children }) => (
 );
 
 const Home = () => {
+  const { t } = useTranslation("home");
   const { isAuthenticated } = useAuth();
   const [isCreateTeamModalOpen, setIsCreateTeamModalOpen] = useState(false);
   // The screenshot currently shown full size, or null. Reuses the app's own
@@ -257,6 +256,7 @@ const Home = () => {
   const [enlargedShot, setEnlargedShot] = useState(null);
 
   const handleTeamCreated = () => undefined;
+  const heroModalShots = getHeroModalShots(t);
 
   return (
     <div className="space-y-16">
@@ -268,16 +268,14 @@ const Home = () => {
         <div className="text-center py-16 px-6">
           <img
             src={lomirWordmark}
-            alt="Lomir"
+            alt={t("home:hero.logoAlt")}
             className="h-10 sm:h-12 w-auto mx-auto mb-6"
           />
           <h1 className="text-3xl sm:text-4xl font-medium tracking-tight text-primary-focus mb-4 max-w-2xl mx-auto text-balance">
-            Find the people your project is missing.
+            {t("home:hero.title")}
           </h1>
           <p className="text-lg font-light text-base-content/80 mb-8 max-w-xl mx-auto">
-            Lomir matches you with collaborators nearby or worldwide — <br />
-            by shared focus areas, skills other people vouched for, and how far
-            you are willing to go.
+            {t("home:hero.description")}
           </p>
 
           <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
@@ -285,13 +283,13 @@ const Home = () => {
               <>
                 <Link to="/register" className="btn btn-primary">
                   <User className="w-4 h-4" />
-                  Create your free profile
+                  {t("home:hero.createProfile")}
                 </Link>
                 {/* No type parameter: the search page defaults to All, so the
                     first view mixes people, teams and open roles. */}
                 <Link to="/search" className="btn btn-primary">
                   <Search className="w-4 h-4" />
-                  Explore public teams &amp; more
+                  {t("home:hero.explore")}
                 </Link>
               </>
             ) : (
@@ -301,7 +299,7 @@ const Home = () => {
                   className="btn btn-outline btn-primary"
                 >
                   <Search className="w-4 h-4" />
-                  Browse teams
+                  {t("home:hero.browseTeams")}
                 </Link>
                 <button
                   type="button"
@@ -309,7 +307,7 @@ const Home = () => {
                   className="btn btn-outline btn-primary"
                 >
                   <Users className="w-4 h-4" />
-                  Create team
+                  {t("home:hero.createTeam")}
                 </button>
               </>
             )}
@@ -317,8 +315,7 @@ const Home = () => {
 
           {!isAuthenticated && (
             <p className="text-sm text-base-content/60 mt-4">
-              Get a first flavor of Lomir without registering: No account needed
-              to browse public teams and profiles.
+              {t("home:hero.anonymousNote")}
             </p>
           )}
         </div>
@@ -335,19 +332,22 @@ const Home = () => {
           <div className="relative w-full lg:pb-[8%]">
             <ScreenshotFrame
               src={SCREENSHOTS.search}
-              alt="Map search showing teams, people and open roles as pins"
-              caption="Search — teams, people and open roles"
+              alt={t("home:screenshots.searchAlt")}
+              caption={t("home:screenshots.searchCaption")}
               icon={<MapPin className="w-8 h-8" />}
               className="w-full"
             />
 
             {/* Positions and the reasoning behind them: HERO_MODAL_SHOTS. */}
-            {HERO_MODAL_SHOTS.map((shot) => (
+            {heroModalShots.map((shot) => (
               <FloatingShot
                 key={shot.src}
                 src={shot.src}
                 alt={shot.alt}
                 className={shot.position}
+                enlargeLabel={t("home:screenshots.enlarge", {
+                  alt: shot.alt,
+                })}
                 onOpen={() => setEnlargedShot(shot)}
               />
             ))}
@@ -357,8 +357,7 @@ const Home = () => {
               top margin clears the user modal, the one that now reaches
               furthest down, about 45px below the composition. */}
           <p className="hidden lg:block mt-16 text-center text-sm text-base-content/60">
-            These are real screens from the app. Click any of them to see it
-            full size, with a note on what the view is for.
+            {t("home:hero.screensNote")}
           </p>
         </div>
       </div>
@@ -367,10 +366,10 @@ const Home = () => {
       <Section spacing="">
         <div className="text-center mb-8">
           <h2 className="text-xl font-medium text-primary">
-            Find, connect &amp; create
+            {t("home:howItWorks.title")}
           </h2>
           <p className="text-base-content/70 text-sm mt-1">
-            What a free profile adds to looking around.
+            {t("home:howItWorks.subtitle")}
           </p>
         </div>
 
@@ -378,29 +377,23 @@ const Home = () => {
           <Step
             number="1"
             icon={<Search className="w-5 h-5" />}
-            title="Find and be found"
+            title={t("home:howItWorks.findTitle")}
           >
-            Search people, teams and open roles nearby or worldwide — and once
-            your profile is public, teams looking for your skills find you.
-            Every result carries a match score you can open up and check.
+            {t("home:howItWorks.findText")}
           </Step>
           <Step
             number="2"
             icon={<MessageCircle className="w-5 h-5" />}
-            title="Connect"
+            title={t("home:howItWorks.connectTitle")}
           >
-            Message anyone directly, apply for an open role, or accept an
-            invitation into a team. Every application and invitation stays
-            trackable, so you always know where you stand.
+            {t("home:howItWorks.connectText")}
           </Step>
           <Step
             number="3"
             icon={<Sparkles className="w-5 h-5" />}
-            title="Create"
+            title={t("home:howItWorks.createTitle")}
           >
-            Start your own team, publish the roles you still need to fill, and
-            invite the people you found. Afterwards, award badges to those who
-            actually showed up for the work.
+            {t("home:howItWorks.createText")}
           </Step>
         </div>
       </Section>
@@ -411,26 +404,23 @@ const Home = () => {
           <div className="flex flex-col-reverse md:flex-row items-center gap-8">
             <div className="md:w-1/2">
               <h2 className="text-xl font-medium text-primary mb-2">
-                Open roles, not vague calls for help
+                {t("home:rolesChat.rolesTitle")}
               </h2>
               <p className="text-base-content/80 mb-4">
-                Teams publish the roles they still need to fill, with the skills
-                attached. You can see at a glance where you would fit, apply
-                directly, and follow what happens to your application — instead
-                of writing into the void.
+                {t("home:rolesChat.rolesText")}
               </p>
               <Link
                 to={OPEN_ROLES_SEARCH_PATH}
                 className="btn btn-outline btn-primary btn-sm"
               >
-                Browse open roles
+                {t("home:rolesChat.rolesCta")}
                 <ArrowRight className="w-4 h-4" />
               </Link>
             </div>
             <ScreenshotFrame
               src={SCREENSHOTS.roles}
-              alt="An open role with the skills it asks for and how far it matches your profile"
-              caption="Open role — matched to your profile"
+              alt={t("home:screenshots.rolesAlt")}
+              caption={t("home:screenshots.rolesCaption")}
               icon={<UserPlus className="w-8 h-8" />}
               className="md:w-1/2"
             />
@@ -439,20 +429,17 @@ const Home = () => {
           <div className="flex flex-col md:flex-row items-center gap-8">
             <ScreenshotFrame
               src={SCREENSHOTS.chat}
-              alt="Team chat with mentions, replies and reactions"
-              caption="Chat — team conversation"
+              alt={t("home:screenshots.chatAlt")}
+              caption={t("home:screenshots.chatCaption")}
               icon={<MessageCircle className="w-8 h-8" />}
               className="md:w-1/2"
             />
             <div className="md:w-1/2">
               <h2 className="text-xl font-medium text-primary mb-2">
-                Everything the team says stays in one place
+                {t("home:rolesChat.chatTitle")}
               </h2>
               <p className="text-base-content/80">
-                Team and direct chat with mentions, replies, reactions, files,
-                and read receipts. Invitations, applications, and role changes
-                appear in the same thread, so a new member can read back and
-                understand how the team got here.
+                {t("home:rolesChat.chatText")}
               </p>
             </div>
           </div>
@@ -463,55 +450,49 @@ const Home = () => {
       <Section spacing="">
         <div className="text-center mb-8">
           <h2 className="text-xl font-medium text-primary">
-            What you get on Lomir
+            {t("home:features.title")}
           </h2>
           <p className="text-base-content/70 text-sm mt-1">
-            Built around finding the right people, not collecting followers.
+            {t("home:features.subtitle")}
           </p>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <Feature
             icon={<Percent className="w-8 h-8 text-primary" />}
-            title="A match score you can check"
+            title={t("home:features.matchTitle")}
           >
-            Shared focus areas count 40 percent, confirmed skills 30, and
-            distance 30. Open any match to see the breakdown.
+            {t("home:features.matchText")}
           </Feature>
           <Feature
             icon={<MapPin className="w-8 h-8 text-primary" />}
-            title="Search on a map"
+            title={t("home:features.mapTitle")}
           >
-            Browse teams and people as pins around you, or search worldwide when
-            location does not matter.
+            {t("home:features.mapText")}
           </Feature>
           <Feature
             icon={<Award className="w-8 h-8 text-primary" />}
-            title="Badges from real collaborators"
+            title={t("home:features.badgesTitle")}
           >
-            Skills are confirmed by the people you actually worked with, across
-            categories like technical, creative, and collaboration.
+            {t("home:features.badgesText")}
           </Feature>
           <Feature
             icon={<UserPlus className="w-8 h-8 text-primary" />}
-            title="Roles that say what is needed"
+            title={t("home:features.rolesTitle")}
           >
-            Teams name their open roles and required skills, so applying is a
-            concrete step rather than a guess.
+            {t("home:features.rolesText")}
           </Feature>
           <Feature
             icon={<MessageCircle className="w-8 h-8 text-primary" />}
-            title="Chat built for teams"
+            title={t("home:features.chatTitle")}
           >
-            Mentions, replies, reactions, file sharing, and notifications for
-            what actually concerns you.
+            {t("home:features.chatText")}
           </Feature>
           <Feature
             icon={<ShieldCheck className="w-8 h-8 text-primary" />}
-            title="Private by default"
+            title={t("home:features.privateTitle")}
           >
-            New profiles are invisible in public search until you decide
-            otherwise. You choose what each field reveals.
+            {t("home:features.privateText")}
           </Feature>
         </div>
       </Section>
@@ -521,35 +502,35 @@ const Home = () => {
         <div className="px-6 py-10 text-center">
           <h2 className="text-xl font-medium text-primary mb-2">
             {isAuthenticated
-              ? "Find your next team"
-              : "Free, and private by default"}
+              ? t("home:closing.authTitle")
+              : t("home:closing.guestTitle")}
           </h2>
           <p className="text-base-content/80 max-w-xl mx-auto mb-6">
             {isAuthenticated
-              ? "Browse the teams looking for people right now, or start your own and invite the people you find."
-              : "Lomir is a free, non-commercial project operated from Germany under the GDPR. No ads, no tracking, no selling your data — and the source code is public."}
+              ? t("home:closing.authText")
+              : t("home:closing.guestText")}
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
             {!isAuthenticated ? (
               <>
                 <Link to="/register" className="btn btn-primary">
                   <User className="w-4 h-4" />
-                  Create your free profile
+                  {t("home:closing.createProfile")}
                 </Link>
                 <Link to="/privacy" className="btn btn-primary">
                   <ShieldCheck className="w-4 h-4" />
-                  Read the privacy policy
+                  {t("home:closing.privacy")}
                 </Link>
               </>
             ) : (
               <>
                 <Link to="/search?type=teams" className="btn btn-primary">
                   <Search className="w-4 h-4" />
-                  Browse teams
+                  {t("home:closing.browseTeams")}
                 </Link>
                 <Link to="/teams/my-teams" className="btn btn-primary">
                   <Users className="w-4 h-4" />
-                  My teams
+                  {t("home:closing.myTeams")}
                 </Link>
               </>
             )}
@@ -567,6 +548,7 @@ const Home = () => {
           view stays sharp rather than being upscaled. */}
       <ScreenshotLightbox
         shot={enlargedShot}
+        closeLabel={t("home:screenshots.close")}
         onClose={() => setEnlargedShot(null)}
       />
     </div>

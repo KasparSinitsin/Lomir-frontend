@@ -25,7 +25,7 @@ import { IntlMessageFormat } from "intl-messageformat";
 
 const SRC = "src";
 const LOCALES = join(SRC, "locales");
-const NAMESPACE = "common";
+const DEFAULT_NAMESPACE = "common";
 
 const errors = [];
 const warnings = [];
@@ -86,6 +86,13 @@ const stripComments = (source) => {
 };
 const STRING = /"([^"\\]*(?:\\.[^"\\]*)*)"|'([^'\\]*(?:\\.[^'\\]*)*)'/g;
 
+const keyId = (namespace, key) => `${namespace}:${key}`;
+const splitKey = (key) => {
+  const separator = key.indexOf(":");
+  if (separator === -1) return [DEFAULT_NAMESPACE, key];
+  return [key.slice(0, separator), key.slice(separator + 1)];
+};
+
 const collectUsedKeys = (files) => {
   const used = new Map(); // key -> [where]
   const dynamic = [];
@@ -122,8 +129,10 @@ const collectUsedKeys = (files) => {
       // real. Anything with no literal at all is a key this check cannot see.
       if (literals.length === 0) dynamic.push(`${where}  ${arg.trim().slice(0, 60)}`);
       for (const key of literals) {
-        if (!used.has(key)) used.set(key, []);
-        used.get(key).push(where);
+        const [namespace, namespaceKey] = splitKey(key);
+        const id = keyId(namespace, namespaceKey);
+        if (!used.has(id)) used.set(id, []);
+        used.get(id).push(where);
       }
     }
   }
@@ -144,12 +153,21 @@ const languages = readdirSync(LOCALES).filter((entry) =>
 
 const messages = {};
 for (const lang of languages) {
-  const file = join(LOCALES, lang, `${NAMESPACE}.json`);
-  try {
-    messages[lang] = new Map(flatten(JSON.parse(readFileSync(file, "utf8"))));
-  } catch (error) {
-    errors.push(`${file}: cannot be read or is not valid JSON - ${error.message}`);
-    messages[lang] = new Map();
+  messages[lang] = new Map();
+  const namespaceFiles = readdirSync(join(LOCALES, lang)).filter((entry) =>
+    entry.endsWith(".json"),
+  );
+
+  for (const filename of namespaceFiles) {
+    const namespace = filename.replace(/\.json$/, "");
+    const file = join(LOCALES, lang, filename);
+    try {
+      for (const [key, value] of flatten(JSON.parse(readFileSync(file, "utf8")))) {
+        messages[lang].set(keyId(namespace, key), value);
+      }
+    } catch (error) {
+      errors.push(`${file}: cannot be read or is not valid JSON - ${error.message}`);
+    }
   }
 }
 
@@ -160,7 +178,10 @@ const { used, dynamic } = collectUsedKeys(walk(SRC));
 for (const [key, places] of used) {
   for (const lang of languages) {
     if (!messages[lang].has(key)) {
-      errors.push(`missing key "${key}" in ${lang}/${NAMESPACE}.json  (used at ${places[0]})`);
+      const [namespace, namespaceKey] = splitKey(key);
+      errors.push(
+        `missing key "${namespaceKey}" in ${lang}/${namespace}.json  (used at ${places[0]})`,
+      );
     }
   }
 }
