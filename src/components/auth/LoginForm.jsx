@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "../../contexts/AuthContext";
 import Card from "../common/Card";
 import Button from "../common/Button";
@@ -8,6 +9,7 @@ import ScreenAlert from "../common/ScreenAlert";
 import { Eye, EyeOff } from "lucide-react";
 
 const LoginForm = () => {
+  const { t } = useTranslation("auth");
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -28,15 +30,15 @@ const LoginForm = () => {
     const newErrors = {};
 
     if (!formData.email) {
-      newErrors.email = "Email is required";
+      newErrors.email = t("auth:login.errors.emailRequired");
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = "Email is invalid";
+      newErrors.email = t("auth:login.errors.emailInvalid");
     }
 
     if (!formData.password) {
-      newErrors.password = "Password is required";
+      newErrors.password = t("auth:login.errors.passwordRequired");
     } else if (formData.password.length < 6) {
-      newErrors.password = "Password incomplete or wrong";
+      newErrors.password = t("auth:login.errors.passwordIncomplete");
     }
 
     setErrors(newErrors);
@@ -72,7 +74,7 @@ const LoginForm = () => {
         setErrors({ form: result.message });
       }
     } catch {
-      setErrors({ form: "An unexpected error occurred. Please try again." });
+      setErrors({ form: t("auth:login.errors.unexpected") });
     } finally {
       setIsSubmitting(false);
     }
@@ -102,15 +104,15 @@ const LoginForm = () => {
       <div className="max-w-md mx-auto w-full">
         <Card>
           <h2 className="card-title text-2xl font-bold text-center justify-center mt-6 mb-4 text-success">
-            Login
+            {t("auth:login.title")}
           </h2>
           <p className="text-center text-base-content/70 mb-6">
-            Welcome back to Lomir
+            {t("auth:login.subtitle")}
           </p>
 
           <form onSubmit={handleSubmit} noValidate>
             <FormGroup
-              label="Email"
+              label={t("auth:common.email")}
               htmlFor="email"
               error={errors.email}
               required
@@ -127,7 +129,7 @@ const LoginForm = () => {
             </FormGroup>
 
             <FormGroup
-              label="Password"
+              label={t("auth:common.password")}
               htmlFor="password"
               error={errors.password}
               required
@@ -147,7 +149,11 @@ const LoginForm = () => {
                   className="absolute inset-y-0 right-0 flex items-center px-3 text-base-content/60 transition-colors hover:text-base-content"
                   onClick={() => setShowPassword((prev) => !prev)}
                   onMouseDown={(e) => e.preventDefault()}
-                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  aria-label={
+                    showPassword
+                      ? t("auth:common.hidePassword")
+                      : t("auth:common.showPassword")
+                  }
                   aria-pressed={showPassword}
                 >
                   {showPassword ? (
@@ -161,7 +167,7 @@ const LoginForm = () => {
 
             <div className="text-right mt-1">
               <Link to="/forgot-password" className="link link-primary text-sm">
-                Forgot password?
+                {t("auth:login.forgotPassword")}
               </Link>
             </div>
 
@@ -172,17 +178,19 @@ const LoginForm = () => {
                 fullWidth
                 disabled={isSubmitting}
               >
-                {isSubmitting ? "Logging in..." : "Login"}
+                {isSubmitting
+                  ? t("auth:login.submitting")
+                  : t("auth:common.login")}
               </Button>
             </div>
           </form>
 
-          <div className="divider my-6">OR</div>
+          <div className="divider my-6">{t("auth:common.or")}</div>
 
           <div className="text-center">
-            <p className="mb-2">Don't have an account?</p>
+            <p className="mb-2">{t("auth:login.noAccount")}</p>
             <Link to="/register" className="link link-primary">
-              Register
+              {t("auth:common.register")}
             </Link>
           </div>
         </Card>
