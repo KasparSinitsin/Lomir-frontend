@@ -19,8 +19,23 @@ export const DEFAULT_LANGUAGE_CODE = "en";
  * is the secondary line, so someone who does not read the endonym can still
  * tell what they are choosing.
  *
- * No flags. A language is not a country: 🇩🇪 next to "Deutsch" quietly tells
- * Austrians and the Swiss that this option is not for them.
+ * ⚠️ **The pickers carry no flags, and that is still the rule** - `LanguageSelect`
+ * and the settings section show endonym plus English name, nothing else. A
+ * language is not a country: 🇩🇪 next to "Deutsch" quietly tells Austrians and
+ * the Swiss that this option is not for them, and `COUNTRY_LANGUAGE_MAP` below
+ * maps AT and CH to German precisely because it is their language too.
+ *
+ * The **one** deliberate exception (Julia, 2026-09-04) is the navbar badge for
+ * signed-out visitors, where a 20px round mark has to be recognisable at a
+ * glance and there is no room for a word. That trade-off was accepted
+ * knowingly, not overlooked. The artwork lives in
+ * `src/components/layout/LanguageFlag.jsx` and deliberately **not** as a field
+ * on this list - a flag next to every entry here is exactly how the exception
+ * would leak back into the pickers.
+ *
+ * `en` is drawn with the British flag rather than the American one because
+ * Lomir is a European app - itself a choice with no correct answer, which is
+ * the second reason flags are avoided everywhere else.
  */
 export const SUPPORTED_LANGUAGES = [
   { code: "en", endonym: "English", englishName: "English" },
