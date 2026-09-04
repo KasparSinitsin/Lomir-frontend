@@ -8,5 +8,15 @@
     "placeholder": "Sprache auswählen",
     "searchPlaceholder": "Zum Suchen tippen …",
     "noResults": "Keine Sprachen gefunden"
+  },
+  "datetime": {
+    "today": "Heute",
+    "yesterday": "Gestern",
+    "timeOfDay": "{time} Uhr",
+    "justNow": "vor weniger als einer Minute",
+    "justNowShort": "vor < 1 Min.",
+    "archiveRemainingHours": "{count, plural, one {# Stunde} other {# Stunden}}",
+    "archiveRemainingDays": "{count, plural, one {# Tag} other {# Tage}}",
+    "archiveRemainingUnderAnHour": "weniger als eine Stunde"
   }
 }
