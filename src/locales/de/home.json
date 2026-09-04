@@ -1,0 +1,75 @@
+{
+  "hero": {
+    "logoAlt": "Lomir",
+    "title": "Finde die Menschen, die deinem Projekt noch fehlen.",
+    "description": "Lomir bringt dich mit Mitstreiterinnen und Mitstreitern in deiner Nähe oder weltweit zusammen - über gemeinsame Themen, bestätigte Fähigkeiten und die Entfernung, die für dich passt.",
+    "createProfile": "Kostenloses Profil erstellen",
+    "explore": "Öffentliche Teams & mehr entdecken",
+    "browseTeams": "Teams ansehen",
+    "createTeam": "Team erstellen",
+    "anonymousNote": "Du kannst Lomir erst einmal ohne Registrierung kennenlernen: Öffentliche Teams und Profile lassen sich auch ohne Account ansehen.",
+    "screensNote": "Das sind echte Ansichten aus der App. Klicke sie an, um sie groß zu sehen - mit einer kurzen Einordnung zur Ansicht."
+  },
+  "screenshots": {
+    "close": "Vergrößerten Screenshot schließen",
+    "enlarge": "Screenshot vergrößern: {alt}",
+    "searchAlt": "Kartensuche mit Teams, Personen und offenen Rollen als Pins",
+    "searchCaption": "Suche - Teams, Personen und offene Rollen",
+    "rolesAlt": "Eine offene Rolle mit gesuchten Fähigkeiten und ihrem Match zu deinem Profil",
+    "rolesCaption": "Offene Rolle - passend zu deinem Profil",
+    "chatAlt": "Team-Chat mit Erwähnungen, Antworten und Reaktionen",
+    "chatCaption": "Chat - Team-Unterhaltung",
+    "modalRoleAlt": "Details der auf der Karte ausgewählten offenen Rolle",
+    "modalRoleTitle": "Offene Rollen",
+    "modalRoleCaption": "Eine offene Rolle zeigt, was einem Team noch fehlt: die Themen und Badges, die gesucht werden, und wie weit entfernt du sein darfst. Deine Bewerbung gilt für genau diese Rolle und du kannst verfolgen, was damit passiert.",
+    "modalUserAlt": "Profildetails einer Person aus der Suche",
+    "modalUserTitle": "Menschen",
+    "modalUserCaption": "Ein Profil zeigt, wofür sich jemand interessiert: Fokusbereiche und Badges, die andere Mitglieder nach gemeinsamer Arbeit vergeben haben. Von dort kannst du chatten, die Person in eines deiner Teams einladen, selbst einen Badge vergeben oder sie blockieren, wenn du keinen Kontakt möchtest.",
+    "modalTeamAlt": "Teamdetails mit Fokusbereichen, Badges und Mitgliedern",
+    "modalTeamTitle": "Teams",
+    "modalTeamCaption": "Eine Teamseite zeigt, worum es der Gruppe geht, wo sie arbeitet und wer dazugehört - samt Fokusbereichen und Badges der Mitglieder. Wenn noch Platz ist, kannst du dich direkt von dort bewerben."
+  },
+  "howItWorks": {
+    "title": "Finden, verbinden & gründen",
+    "subtitle": "Was dir ein kostenloses Profil zusätzlich zum Umschauen bringt.",
+    "findTitle": "Finden und gefunden werden",
+    "findText": "Suche Menschen, Teams und offene Rollen in deiner Nähe oder weltweit - und sobald dein Profil öffentlich ist, können Teams mit passenden gesuchten Fähigkeiten dich finden. Jedes Ergebnis hat einen Match-Score, den du öffnen und prüfen kannst.",
+    "connectTitle": "Verbinden",
+    "connectText": "Schreibe Menschen direkt, bewirb dich auf eine offene Rolle oder nimm eine Einladung in ein Team an. Jede Bewerbung und Einladung bleibt nachvollziehbar, damit du immer weißt, wo du stehst.",
+    "createTitle": "Gründen",
+    "createText": "Starte dein eigenes Team, veröffentliche die Rollen, die ihr noch besetzen möchtet, und lade passende Menschen ein. Danach kannst du Badges an diejenigen vergeben, die wirklich mitgearbeitet haben."
+  },
+  "rolesChat": {
+    "rolesTitle": "Offene Rollen statt vager Hilferufe",
+    "rolesText": "Teams veröffentlichen, welche Rollen sie noch besetzen möchten - inklusive der gesuchten Fähigkeiten. Du siehst auf einen Blick, wo du passen würdest, kannst dich direkt bewerben und verfolgen, was aus deiner Bewerbung wird, statt ins Leere zu schreiben.",
+    "rolesCta": "Offene Rollen ansehen",
+    "chatTitle": "Alles, was das Team sagt, bleibt an einem Ort",
+    "chatText": "Team- und Direktchat mit Erwähnungen, Antworten, Reaktionen, Dateien und Lesebestätigungen. Einladungen, Bewerbungen und Rollenänderungen erscheinen im selben Verlauf, damit neue Mitglieder nachlesen können, wie das Team hierhergekommen ist."
+  },
+  "features": {
+    "title": "Was du mit Lomir bekommst",
+    "subtitle": "Gebaut, um die richtigen Menschen zu finden - nicht, um Follower zu sammeln.",
+    "matchTitle": "Ein Match-Score, den du prüfen kannst",
+    "matchText": "Gemeinsame Fokusbereiche zählen 40 Prozent, bestätigte Fähigkeiten 30 und Entfernung 30. Öffne jedes Match, um die Aufschlüsselung zu sehen.",
+    "mapTitle": "Suche auf der Karte",
+    "mapText": "Entdecke Teams und Menschen als Pins in deiner Umgebung oder suche weltweit, wenn Entfernung keine Rolle spielt.",
+    "badgesTitle": "Badges von echten Mitstreitern",
+    "badgesText": "Fähigkeiten werden von Menschen bestätigt, mit denen du wirklich gearbeitet hast - über Kategorien wie Technik, Kreativität und Zusammenarbeit hinweg.",
+    "rolesTitle": "Rollen, die klar sagen, was gebraucht wird",
+    "rolesText": "Teams benennen offene Rollen und die gesuchten Fähigkeiten, damit deine Bewerbung ein konkreter Schritt ist und kein Rätselraten.",
+    "chatTitle": "Chat für Teams",
+    "chatText": "Erwähnungen, Antworten, Reaktionen, Datei-Sharing und Benachrichtigungen für das, was dich wirklich betrifft.",
+    "privateTitle": "Standardmäßig privat",
+    "privateText": "Neue Profile sind in der öffentlichen Suche unsichtbar, bis du dich anders entscheidest. Du legst fest, was jedes Feld zeigt."
+  },
+  "closing": {
+    "authTitle": "Finde dein nächstes Team",
+    "guestTitle": "Kostenlos und standardmäßig privat",
+    "authText": "Sieh dir Teams an, die gerade Menschen suchen, oder starte dein eigenes und lade passende Personen ein.",
+    "guestText": "Lomir ist ein kostenloses, nicht-kommerzielles Projekt aus Deutschland unter der DSGVO. Keine Werbung, kein Tracking, kein Verkauf deiner Daten - und der Quellcode ist öffentlich.",
+    "browseTeams": "Teams ansehen",
+    "myTeams": "Meine Teams",
+    "createProfile": "Kostenloses Profil erstellen",
+    "privacy": "Datenschutzerklärung lesen"
+  }
+}

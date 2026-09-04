@@ -33,13 +33,39 @@ import deCommon from "../locales/de/common.json";
 
 /** Strings shared across pages. Page namespaces arrive with Phase 1. */
 export const DEFAULT_NAMESPACE = "common";
+export const PAGE_NAMESPACES = ["home"];
+
+const pageNamespaceLoaders = {
+  en: {
+    home: () => import("../locales/en/home.json"),
+  },
+  de: {
+    home: () => import("../locales/de/home.json"),
+  },
+};
+
+const pageNamespaceBackend = {
+  type: "backend",
+  read(language, namespace, callback) {
+    const baseLanguage = language.split("-")[0];
+    const loader = pageNamespaceLoaders[baseLanguage]?.[namespace];
+
+    if (!loader) {
+      callback(new Error(`No i18n namespace "${namespace}" for "${language}"`));
+      return;
+    }
+
+    loader()
+      .then((module) => callback(null, module.default ?? module))
+      .catch((error) => callback(error));
+  },
+};
 
 /**
  * Bundled statically because `common` is needed on every page - lazy-loading
  * it would only add a request to the critical path. The per-page namespaces
- * of Phase 1 are the ones that want lazy loading, and they will need a
- * backend (`i18next-resources-to-backend` over Vite's dynamic import) at that
- * point. Nothing is built for it here: two files do not need a loader.
+ * of Phase 1 are the ones that want lazy loading. They are listed explicitly
+ * in `pageNamespaceLoaders`, so Vite knows which JSON chunks to build.
  */
 const resources = {
   en: { [DEFAULT_NAMESPACE]: enCommon },
@@ -47,6 +73,7 @@ const resources = {
 };
 
 i18n
+  .use(pageNamespaceBackend)
   // ICU from the start. Adding it later means revisiting every string that
   // carries a placeholder - and it is the format translation tools speak,
   // which matters the moment a TMS is introduced. Placeholders are always
@@ -66,6 +93,7 @@ i18n
     load: "languageOnly",
     ns: [DEFAULT_NAMESPACE],
     defaultNS: DEFAULT_NAMESPACE,
+    partialBundledLanguages: true,
     // React escapes interpolated values already; escaping twice turns an
     // apostrophe into &#39; on screen.
     interpolation: { escapeValue: false },

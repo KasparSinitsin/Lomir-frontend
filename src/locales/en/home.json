@@ -1,0 +1,75 @@
+{
+  "hero": {
+    "logoAlt": "Lomir",
+    "title": "Find the people your project is missing.",
+    "description": "Lomir matches you with collaborators nearby or worldwide - by shared focus areas, skills other people vouched for, and how far you are willing to go.",
+    "createProfile": "Create your free profile",
+    "explore": "Explore public teams & more",
+    "browseTeams": "Browse teams",
+    "createTeam": "Create team",
+    "anonymousNote": "Get a first flavor of Lomir without registering: No account needed to browse public teams and profiles.",
+    "screensNote": "These are real screens from the app. Click any of them to see it full size, with a note on what the view is for."
+  },
+  "screenshots": {
+    "close": "Close enlarged screenshot",
+    "enlarge": "Enlarge screenshot: {alt}",
+    "searchAlt": "Map search showing teams, people and open roles as pins",
+    "searchCaption": "Search - teams, people and open roles",
+    "rolesAlt": "An open role with the skills it asks for and how far it matches your profile",
+    "rolesCaption": "Open role - matched to your profile",
+    "chatAlt": "Team chat with mentions, replies and reactions",
+    "chatCaption": "Chat - team conversation",
+    "modalRoleAlt": "Details of the open role selected on the map",
+    "modalRoleTitle": "Open roles",
+    "modalRoleCaption": "An open role spells out what a team is still missing: the focus areas and badges they are hoping for, and how far away you may be based. Applying puts you forward for that one role rather than for the team in general, and you can follow what happens to your application.",
+    "modalUserAlt": "Profile details for a person found through search",
+    "modalUserTitle": "People",
+    "modalUserCaption": "A profile gathers what someone is into: their focus areas and the badges other members awarded them for work they actually did together. From here you can start a chat, invite them into one of your teams, award them a badge yourself, or block them if you would rather not be contacted.",
+    "modalTeamAlt": "Team details with focus areas, badges and members",
+    "modalTeamTitle": "Teams",
+    "modalTeamCaption": "A team page shows what the group is about, where it meets and who belongs to it, together with the focus areas and badges its members bring. If the team still has space, you can apply to join straight from here."
+  },
+  "howItWorks": {
+    "title": "Find, connect & create",
+    "subtitle": "What a free profile adds to looking around.",
+    "findTitle": "Find and be found",
+    "findText": "Search people, teams and open roles nearby or worldwide - and once your profile is public, teams looking for your skills find you. Every result carries a match score you can open up and check.",
+    "connectTitle": "Connect",
+    "connectText": "Message anyone directly, apply for an open role, or accept an invitation into a team. Every application and invitation stays trackable, so you always know where you stand.",
+    "createTitle": "Create",
+    "createText": "Start your own team, publish the roles you still need to fill, and invite the people you found. Afterwards, award badges to those who actually showed up for the work."
+  },
+  "rolesChat": {
+    "rolesTitle": "Open roles, not vague calls for help",
+    "rolesText": "Teams publish the roles they still need to fill, with the skills attached. You can see at a glance where you would fit, apply directly, and follow what happens to your application - instead of writing into the void.",
+    "rolesCta": "Browse open roles",
+    "chatTitle": "Everything the team says stays in one place",
+    "chatText": "Team and direct chat with mentions, replies, reactions, files, and read receipts. Invitations, applications, and role changes appear in the same thread, so a new member can read back and understand how the team got here."
+  },
+  "features": {
+    "title": "What you get on Lomir",
+    "subtitle": "Built around finding the right people, not collecting followers.",
+    "matchTitle": "A match score you can check",
+    "matchText": "Shared focus areas count 40 percent, confirmed skills 30, and distance 30. Open any match to see the breakdown.",
+    "mapTitle": "Search on a map",
+    "mapText": "Browse teams and people as pins around you, or search worldwide when location does not matter.",
+    "badgesTitle": "Badges from real collaborators",
+    "badgesText": "Skills are confirmed by the people you actually worked with, across categories like technical, creative, and collaboration.",
+    "rolesTitle": "Roles that say what is needed",
+    "rolesText": "Teams name their open roles and required skills, so applying is a concrete step rather than a guess.",
+    "chatTitle": "Chat built for teams",
+    "chatText": "Mentions, replies, reactions, file sharing, and notifications for what actually concerns you.",
+    "privateTitle": "Private by default",
+    "privateText": "New profiles are invisible in public search until you decide otherwise. You choose what each field reveals."
+  },
+  "closing": {
+    "authTitle": "Find your next team",
+    "guestTitle": "Free, and private by default",
+    "authText": "Browse the teams looking for people right now, or start your own and invite the people you find.",
+    "guestText": "Lomir is a free, non-commercial project operated from Germany under the GDPR. No ads, no tracking, no selling your data - and the source code is public.",
+    "browseTeams": "Browse teams",
+    "myTeams": "My teams",
+    "createProfile": "Create your free profile",
+    "privacy": "Read the privacy policy"
+  }
+}
