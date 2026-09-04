@@ -1,4 +1,6 @@
-import { formatDistanceToNow, parseISO } from "date-fns";
+import { parseISO } from "date-fns";
+import i18n from "../i18n";
+import { DEFAULT_LANGUAGE_CODE } from "../constants/languages";
 
 // Maps country names (Nominatim) and ISO-2 codes to IANA timezone identifiers.
 // Country names come from the geocoding service (OpenStreetMap/Nominatim).
@@ -60,48 +62,25 @@ const CITY_TIMEZONES = {
   Canberra: "Australia/Sydney",
 };
 
-// ISO-2 codes and names for German-speaking countries.
-const GERMAN_LOCALE_COUNTRIES = new Set([
-  "DE", "AT", "CH", "LI",
-  "Germany", "Austria", "Switzerland", "Liechtenstein",
-  "Deutschland", "Österreich", "Schweiz", "Suisse", "Svizzera",
-]);
-
-// ISO-2 codes and names for English-speaking countries (AM/PM convention).
-const ENGLISH_LOCALE_COUNTRIES = new Set([
-  "US", "CA", "AU", "NZ", "IE", "GB", "ZA", "BS", "PH", "SG", "MY",
-  "United States", "Canada", "Australia", "New Zealand", "Ireland",
-  "United Kingdom", "South Africa", "Bahamas", "Philippines",
-  "Singapore", "Malaysia", "Australien",
-]);
-
-const ENGLISH_LOCALE_CITIES = new Set([
-  "Adelaide", "Sydney", "Melbourne", "Brisbane", "Perth", "Darwin",
-  "Hobart", "Canberra",
-]);
-
 // Set by AuthContext after the user profile is loaded.
 let _userTimezone = null;
-let _userLocale = null;
 
-// Call this from AuthContext whenever user data changes.
+/**
+ * Call this from AuthContext whenever user data changes.
+ *
+ * ⚠️ Timezone only. This function used to derive a *locale* from the profile
+ * country as well, through its own country and city sets - a second rule
+ * answering the same question as resolveLanguage(), and one that knew nothing
+ * about preferred_language. A user in Germany who chose English got an
+ * English UI with German dates. The one rule now lives in
+ * utils/languageUtils.js and reaches this file as i18n.language.
+ */
 export const setUserTimezone = (user) => {
-  if (!user) { _userTimezone = null; _userLocale = null; return; }
+  if (!user) { _userTimezone = null; return; }
 
   const country = (user.country || user.country_code || "").trim();
   const city = (user.city || "").trim();
-
-  // Derive locale from profile country.
-  const countryLower = country.toLowerCase();
   const cityLower = city.toLowerCase();
-  const isGerman = GERMAN_LOCALE_COUNTRIES.has(country) ||
-    [...GERMAN_LOCALE_COUNTRIES].some(k => k.toLowerCase() === countryLower);
-  const isEnglish = !isGerman && (
-    ENGLISH_LOCALE_COUNTRIES.has(country) ||
-    [...ENGLISH_LOCALE_COUNTRIES].some(k => k.toLowerCase() === countryLower) ||
-    [...ENGLISH_LOCALE_CITIES].some(k => k.toLowerCase() === cityLower)
-  );
-  _userLocale = isGerman ? "de-DE" : isEnglish ? "en-US" : null;
 
   const cityMatch = Object.keys(CITY_TIMEZONES).find(k => k.toLowerCase() === cityLower);
   if (cityMatch) {
@@ -127,7 +106,6 @@ export const setUserTimezone = (user) => {
   const postal = (user.postalCode || user.postal_code || "").trim();
   if (/^\d{5}$/.test(postal)) {
     _userTimezone = "Europe/Berlin";
-    _userLocale = "de-DE";
     return;
   }
 
@@ -140,9 +118,25 @@ export const setUserTimezone = (user) => {
 const resolveTimezone = () =>
   Intl.DateTimeFormat().resolvedOptions().timeZone || _userTimezone || "UTC";
 
-// Returns the best available locale: profile-derived > browser default.
-const resolveLocale = () =>
-  _userLocale || navigator.language || undefined;
+// The language the app is currently rendered in - the single source, shared
+// with every t() call. Not the browser locale: a user may have chosen against
+// it, and that choice has to reach date formatting too.
+const activeLocale = () => i18n.language || DEFAULT_LANGUAGE_CODE;
+
+// Intl.DateTimeFormat construction is the expensive part, formatting is cheap,
+// and these run per rendered message. Keyed by locale so a language change
+// simply misses the cache instead of needing invalidation.
+const formatterCache = new Map();
+const getDateFormatter = (options) => {
+  const locale = activeLocale();
+  const key = `${locale}|${JSON.stringify(options)}`;
+  let formatter = formatterCache.get(key);
+  if (!formatter) {
+    formatter = new Intl.DateTimeFormat(locale, options);
+    formatterCache.set(key, formatter);
+  }
+  return formatter;
+};
 
 const hasTimezoneOffset = (value) => /[zZ]$|[+-]\d{2}(?::?\d{2})?$/.test(value);
 
@@ -171,11 +165,98 @@ export const normalizeTimestampToDate = (value) => {
   return date && !Number.isNaN(date.getTime()) ? date : null;
 };
 
+/**
+ * The app's date formats, as named intentions rather than patterns.
+ *
+ * These replace ~43 date-fns format() calls that carried their own pattern
+ * string (`MMM d, yyyy`, `MM/dd/yy`, …). A pattern cannot be localized:
+ * passing a German locale to `MMM d, yyyy` fixes the month name and leaves
+ * the American order, so the correct-looking fix would need a pattern table
+ * per language. Intl style options get name *and* order right from CLDR, for
+ * every language, with nothing to maintain.
+ *
+ * Verified output, en / de:
+ *   Numeric   09/04/26          04.09.26
+ *   Medium    Sep 4, 2026       4. Sept. 2026
+ *   Long      September 4, 2026 4. September 2026
+ *   MonthYear September 2026    September 2026
+ *   MonthNumeric  09/26          09.26
+ *
+ * ⚠️ Exported but not called yet - the ~43 call sites move over in the
+ * follow-up branch feature/i18n-formatting. Not dead code; unfinished work.
+ */
+const dateFormatter = (options) => (value) => {
+  const date = normalizeTimestampToDate(value);
+  if (!date) return "";
+  return getDateFormatter(options).format(date);
+};
+
+export const formatDateNumeric = dateFormatter({
+  day: "2-digit", month: "2-digit", year: "2-digit",
+});
+export const formatDateMedium = dateFormatter({
+  day: "numeric", month: "short", year: "numeric",
+});
+export const formatDateLong = dateFormatter({
+  day: "numeric", month: "long", year: "numeric",
+});
+export const formatMonthYear = dateFormatter({
+  month: "long", year: "numeric",
+});
+export const formatMonthNumeric = dateFormatter({
+  month: "2-digit", year: "2-digit",
+});
+
+// Largest unit first; the search stops at the first one that fits.
+const RELATIVE_UNITS = [
+  ["year", 365 * 24 * 60 * 60 * 1000],
+  ["month", 30 * 24 * 60 * 60 * 1000],
+  ["day", 24 * 60 * 60 * 1000],
+  ["hour", 60 * 60 * 1000],
+  ["minute", 60 * 1000],
+];
+
+/**
+ * Relative time, e.g. "5 minutes ago" / "vor 5 Minuten".
+ *
+ * ⚠️ This replaces date-fns formatDistanceToNow, and it is not only about
+ * the language. The old code post-processed the English output with
+ * .replace("about ", "") and .replace("less than a minute ago", …) - string
+ * hacks that stop matching the moment the output is German, silently, with
+ * the unpatched text coming back instead. Intl.RelativeTimeFormat needs no
+ * post-processing, ships with the browser (no locale bundle to import) and is
+ * correct in every language.
+ *
+ * numeric: "always" keeps the current wording: "1 day ago", not "yesterday".
+ */
+const formatRelative = (date, { short = false } = {}) => {
+  const diffMs = date.getTime() - Date.now();
+  const absMs = Math.abs(diffMs);
+
+  // 30 s, not 60 s, and that is on purpose: date-fns switched to "1 minute
+  // ago" at 30 s, and a probe against the old implementation caught the
+  // difference. Rounding below does the rest, so 45 s still reads "1 minute
+  // ago" - the output is unchanged in English at every threshold.
+  if (absMs < 30 * 1000) {
+    return i18n.t(short ? "datetime.justNowShort" : "datetime.justNow");
+  }
+
+  // Anything between 30 s and a minute falls through the list; minute is the
+  // floor, so it is the fallback rather than an undefined destructure.
+  const [unit, unitMs] =
+    RELATIVE_UNITS.find(([, size]) => absMs >= size) ||
+    RELATIVE_UNITS[RELATIVE_UNITS.length - 1];
+
+  return new Intl.RelativeTimeFormat(activeLocale(), {
+    numeric: "always",
+  }).format(Math.round(diffMs / unitMs), unit);
+};
+
 export const formatRelativeChatTimestamp = (value) => {
   const date = normalizeTimestampToDate(value);
   if (!date) return "";
 
-  return formatDistanceToNow(date, { addSuffix: true }).replace("about ", "");
+  return formatRelative(date);
 };
 
 // Default archive grace period in days — mirrors the backend
@@ -195,16 +276,16 @@ export const formatArchiveTimeRemaining = (
   const deletionMs =
     archivedDate.getTime() + graceDays * 24 * 60 * 60 * 1000;
   const remainingMs = deletionMs - Date.now();
-  if (remainingMs <= 0) return "less than an hour";
+  if (remainingMs <= 0) return i18n.t("datetime.archiveRemainingUnderAnHour");
 
   const remainingHours = remainingMs / (60 * 60 * 1000);
   if (remainingHours < 24) {
     const hours = Math.max(1, Math.ceil(remainingHours));
-    return `${hours} ${hours === 1 ? "hour" : "hours"}`;
+    return i18n.t("datetime.archiveRemainingHours", { count: hours });
   }
 
   const days = Math.floor(remainingHours / 24);
-  return `${days} ${days === 1 ? "day" : "days"}`;
+  return i18n.t("datetime.archiveRemainingDays", { count: days });
 };
 
 // Milliseconds until formatArchiveTimeRemaining would next change its output:
@@ -232,28 +313,34 @@ export const msUntilNextArchiveChange = (
 };
 
 export const formatShortRelativeChatTimestamp = (value) => {
-  return formatRelativeChatTimestamp(value).replace(
-    "less than a minute ago",
-    "< minute ago",
-  );
+  const date = normalizeTimestampToDate(value);
+  if (!date) return "";
+
+  return formatRelative(date, { short: true });
 };
 
 export const formatLocalTime = (value) => {
   const date = normalizeTimestampToDate(value);
   if (!date) return "";
-  const locale = resolveLocale();
-  const isGerman = _userLocale != null && _userLocale.startsWith("de");
-  const isEnglish = _userLocale != null && _userLocale.startsWith("en");
-  const formatted = new Intl.DateTimeFormat(locale, {
+  // hour12 is no longer decided here: Intl derives it from the locale
+  // (en -> 2:05 PM, de -> 14:05), which is the same answer the old country
+  // sets tried to give. "Uhr" is a German convention Intl does not add, so it
+  // lives in the translation as a whole message with a named placeholder -
+  // never as a suffix concatenated in code.
+  const time = getDateFormatter({
     hour: "numeric",
     minute: "2-digit",
-    hour12: isGerman ? false : isEnglish ? true : undefined,
     timeZone: resolveTimezone(),
   }).format(date);
-  return isGerman ? `${formatted} Uhr` : formatted;
+  return i18n.t("datetime.timeOfDay", { time });
 };
 
 // Returns "YYYY-MM-DD" in the user's local timezone — used to group messages by day.
+//
+// ⚠️ en-CA is deliberate and must NOT follow the user's language. This is a
+// sort/compare key, not a display format: German would produce "4.9.2026",
+// the string comparisons in formatDateHeading and getDateGroupKey would stop
+// matching, and every message would land in its own day group.
 const toLocalDateString = (date, tz) =>
   new Intl.DateTimeFormat("en-CA", {
     timeZone: tz,
@@ -270,9 +357,9 @@ export const formatDateHeading = (value) => {
   const todayStr = toLocalDateString(new Date(), tz);
   const yesterday = new Date(Date.now() - 86_400_000);
   const yesterdayStr = toLocalDateString(yesterday, tz);
-  if (dateStr === todayStr) return "Today";
-  if (dateStr === yesterdayStr) return "Yesterday";
-  return new Intl.DateTimeFormat("en-US", {
+  if (dateStr === todayStr) return i18n.t("datetime.today");
+  if (dateStr === yesterdayStr) return i18n.t("datetime.yesterday");
+  return getDateFormatter({
     timeZone: tz,
     month: "long",
     day: "numeric",
