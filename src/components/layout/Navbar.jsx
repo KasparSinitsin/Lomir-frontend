@@ -35,68 +35,136 @@ import {
   isOwnMessage,
 } from "../../utils/messageNotificationUtils";
 
-const buildMessageTooltip = (count, teamCount, senderCount, mentionCount) => {
+const buildMessageTooltip = (t, count, teamCount, senderCount, mentionCount) => {
   if (!count && !mentionCount) return undefined;
   const parts = [];
   if (count) {
-    parts.push(`${count} unread message${count !== 1 ? "s" : ""}`);
-    if (teamCount > 0) parts.push(`in ${teamCount} team${teamCount !== 1 ? "s" : ""}`);
-    if (senderCount > 0) parts.push(`from ${senderCount} person${senderCount !== 1 ? "s" : ""}`);
+    parts.push(t("notifications.messages.unread", { count }));
+    if (teamCount > 0) {
+      parts.push(t("notifications.messages.teams", { count: teamCount }));
+    }
+    if (senderCount > 0) {
+      parts.push(t("notifications.messages.senders", { count: senderCount }));
+    }
   }
-  if (mentionCount) parts.push(`${mentionCount} mention${mentionCount !== 1 ? "s" : ""}`);
+  if (mentionCount) {
+    parts.push(t("notifications.messages.mentions", { count: mentionCount }));
+  }
   return parts.join("\n");
 };
 
-// tc = number of distinct teams for this notification type
-const teamSuffix = (tc) => tc > 1 ? ` in ${tc} teams` : "";
-const inYourTeam = (tc) => tc > 1 ? `in ${tc} of your teams` : "in one of your teams";
-const yourTeams = (tc) => tc > 1 ? `in ${tc} of your teams` : "one of your teams";
-
 const NOTIFICATION_TYPE_META = [
-  { keys: ["invitationReceived", "invitation_received"],             Icon: Mail,          text: (p, n, tc) => `${p(n, "team invitation")} for you${teamSuffix(tc)}` },
-  { keys: ["roleInvitation", "role_invitation"],                     Icon: UserSearch,    text: (p, n, tc) => `${p(n, "role invitation")} for you${teamSuffix(tc)}` },
-  { keys: ["roleApplicationDeferredInvite", "role_application_deferred_invite"], Icon: UserSearch, text: (p, n, tc) => `${p(n, "role offer")} created${teamSuffix(tc)}` },
-  { keys: ["roleAssigned", "role_assigned"],                         Icon: UserCheck,     text: (p, n, tc) => `${p(n, "role assignment")} ${inYourTeam(tc)}` },
-  { keys: ["invitationAccepted", "invitation_accepted"],             Icon: UserCheck,     text: (p, n, tc) => `${p(n, "invitation")} accepted${teamSuffix(tc)}` },
-  { keys: ["applicationReceived", "application_received"],           Icon: Mail,          text: (p, n, tc) => `${p(n, "team application")} to review${teamSuffix(tc)}` },
-  { keys: ["applicationApproved", "application_approved"],           Icon: UserPlus,      text: (p, n, tc) => `${p(n, "team")} joined successfully${teamSuffix(tc)}` },
-  { keys: ["applicationRejected", "application_rejected"],           Icon: CircleX,       text: (p, n, tc) => `Your team application${n !== 1 ? `s (${n})` : ""} rejected${teamSuffix(tc)}` },
-  { keys: ["badgeAwarded", "badge_awarded"],                         Icon: Award,         text: (p, n)     => `${p(n, "new badge award")} for you` },
-  { keys: ["memberJoined", "member_joined"],                         Icon: UserPlus,      text: (p, n, tc) => `${p(n, "new member")} joined ${yourTeams(tc)}` },
-  { keys: ["memberLeft", "member_left"],                             Icon: LogOut,        text: (p, n, tc) => `${p(n, "member")} left ${yourTeams(tc)}` },
-  { keys: ["memberRemoved", "member_removed"],                       Icon: UserMinus,     text: (p, n, tc) => `Removed from ${tc > 1 ? `${tc} of your teams` : "a team"}` },
-  { keys: ["roleChanged", "role_changed"],                           Icon: Pencil,        text: (p, n, tc) => `${p(n, "role change")} ${inYourTeam(tc)}` },
-  { keys: ["roleCreated", "role_created"],                           Icon: UserSearch,    text: (p, n, tc) => `${p(n, "new role")} opened ${inYourTeam(tc)}` },
-  { keys: ["roleUpdated", "role_updated"],                           Icon: Pencil,        text: (p, n, tc) => `${n} role${n !== 1 ? "s" : ""} edited ${inYourTeam(tc)}` },
-  { keys: ["roleDeleted", "role_deleted"],                           Icon: UserMinus,     text: (p, n, tc) => `${p(n, "role")} deleted ${inYourTeam(tc)}` },
-  { keys: ["roleClosed", "role_closed"],                             Icon: CircleX,       text: (p, n, tc) => `${p(n, "role")} closed ${inYourTeam(tc)}` },
-  { keys: ["roleFilled", "role_filled"],                             Icon: UserCheck,     text: (p, n, tc) => `${p(n, "role")} filled ${inYourTeam(tc)}` },
-  { keys: ["roleReopened", "role_reopened", "role_reopened_admin"],  Icon: UserSearch,    text: (p, n, tc) => `${p(n, "role")} reopened ${inYourTeam(tc)}` },
-  { keys: ["ownershipTransferred", "ownership_transferred"],         Icon: Crown,         text: (p, n)     => `${p(n, "ownership transfer")}` },
-  { keys: ["teamDeleted", "team_deleted"],                           Icon: AlertTriangle, text: (p, n)     => `${p(n, "team")} deleted` },
-  { keys: ["invitationDeclined", "invitation_declined"],             Icon: CircleX,       text: (p, n, tc) => `Your invitation${n !== 1 ? `s (${n})` : ""} declined${teamSuffix(tc)}` },
-  { keys: ["invitationCancelled", "invitation_cancelled"],           Icon: CircleX,       text: (p, n, tc) => `Your invitation${n !== 1 ? `s (${n})` : ""} cancelled${teamSuffix(tc)}` },
-  { keys: ["applicationCancelled", "application_cancelled"],               Icon: CircleX,       text: (p, n, tc) => `${p(n, "team application")} withdrawn${teamSuffix(tc)}` },
-  { keys: ["roleApplicationCancelled", "role_application_cancelled"],      Icon: CircleX,       text: (p, n, tc) => `${p(n, "role application")} withdrawn${teamSuffix(tc)}` },
-  { keys: ["roleStatusChangedApplicant", "role_status_changed_applicant"], Icon: Pencil,        text: (p, n)     => `${p(n, "role")} you applied for changed` },
-  { keys: ["roleStatusChangedInvitee",   "role_status_changed_invitee"],   Icon: Pencil,        text: (p, n)     => `${p(n, "role")} you were invited to changed` },
+  { keys: ["invitationReceived", "invitation_received"],             Icon: Mail,          translationKey: "notifications.invitationReceived" },
+  { keys: ["roleInvitation", "role_invitation"],                     Icon: UserSearch,    translationKey: "notifications.roleInvitation" },
+  { keys: ["roleApplicationDeferredInvite", "role_application_deferred_invite"], Icon: UserSearch, translationKey: "notifications.roleApplicationDeferredInvite" },
+  { keys: ["roleAssigned", "role_assigned"],                         Icon: UserCheck,     translationKey: "notifications.roleAssigned" },
+  { keys: ["invitationAccepted", "invitation_accepted"],             Icon: UserCheck,     translationKey: "notifications.invitationAccepted" },
+  { keys: ["applicationReceived", "application_received"],           Icon: Mail,          translationKey: "notifications.applicationReceived" },
+  { keys: ["applicationApproved", "application_approved"],           Icon: UserPlus,      translationKey: "notifications.applicationApproved" },
+  { keys: ["applicationRejected", "application_rejected"],           Icon: CircleX,       translationKey: "notifications.applicationRejected" },
+  { keys: ["badgeAwarded", "badge_awarded"],                         Icon: Award,         translationKey: "notifications.badgeAwarded" },
+  { keys: ["memberJoined", "member_joined"],                         Icon: UserPlus,      translationKey: "notifications.memberJoined" },
+  { keys: ["memberLeft", "member_left"],                             Icon: LogOut,        translationKey: "notifications.memberLeft" },
+  { keys: ["memberRemoved", "member_removed"],                       Icon: UserMinus,     translationKey: "notifications.memberRemoved" },
+  { keys: ["roleChanged", "role_changed"],                           Icon: Pencil,        translationKey: "notifications.roleChanged" },
+  { keys: ["roleCreated", "role_created"],                           Icon: UserSearch,    translationKey: "notifications.roleCreated" },
+  { keys: ["roleUpdated", "role_updated"],                           Icon: Pencil,        translationKey: "notifications.roleUpdated" },
+  { keys: ["roleDeleted", "role_deleted"],                           Icon: UserMinus,     translationKey: "notifications.roleDeleted" },
+  { keys: ["roleClosed", "role_closed"],                             Icon: CircleX,       translationKey: "notifications.roleClosed" },
+  { keys: ["roleFilled", "role_filled"],                             Icon: UserCheck,     translationKey: "notifications.roleFilled" },
+  { keys: ["roleReopened", "role_reopened", "role_reopened_admin"],  Icon: UserSearch,    translationKey: "notifications.roleReopened" },
+  { keys: ["ownershipTransferred", "ownership_transferred"],         Icon: Crown,         translationKey: "notifications.ownershipTransferred" },
+  { keys: ["teamDeleted", "team_deleted"],                           Icon: AlertTriangle, translationKey: "notifications.teamDeleted" },
+  { keys: ["invitationDeclined", "invitation_declined"],             Icon: CircleX,       translationKey: "notifications.invitationDeclined" },
+  { keys: ["invitationCancelled", "invitation_cancelled"],           Icon: CircleX,       translationKey: "notifications.invitationCancelled" },
+  { keys: ["applicationCancelled", "application_cancelled"],               Icon: CircleX,       translationKey: "notifications.applicationCancelled" },
+  { keys: ["roleApplicationCancelled", "role_application_cancelled"],      Icon: CircleX,       translationKey: "notifications.roleApplicationCancelled" },
+  { keys: ["roleStatusChangedApplicant", "role_status_changed_applicant"], Icon: Pencil,        translationKey: "notifications.roleStatusChangedApplicant" },
+  { keys: ["roleStatusChangedInvitee",   "role_status_changed_invitee"],   Icon: Pencil,        translationKey: "notifications.roleStatusChangedInvitee" },
 ];
 
-const buildNotificationTooltip = (count, types, teamCounts, onGroupClick) => {
+const translateNotificationLabel = (t, translationKey, count, teamCount) => {
+  const values = { count, teamCount };
+  switch (translationKey) {
+    case "notifications.invitationReceived":
+      return t("notifications.invitationReceived", values);
+    case "notifications.roleInvitation":
+      return t("notifications.roleInvitation", values);
+    case "notifications.roleApplicationDeferredInvite":
+      return t("notifications.roleApplicationDeferredInvite", values);
+    case "notifications.roleAssigned":
+      return t("notifications.roleAssigned", values);
+    case "notifications.invitationAccepted":
+      return t("notifications.invitationAccepted", values);
+    case "notifications.applicationReceived":
+      return t("notifications.applicationReceived", values);
+    case "notifications.applicationApproved":
+      return t("notifications.applicationApproved", values);
+    case "notifications.applicationRejected":
+      return t("notifications.applicationRejected", values);
+    case "notifications.badgeAwarded":
+      return t("notifications.badgeAwarded", values);
+    case "notifications.memberJoined":
+      return t("notifications.memberJoined", values);
+    case "notifications.memberLeft":
+      return t("notifications.memberLeft", values);
+    case "notifications.memberRemoved":
+      return t("notifications.memberRemoved", values);
+    case "notifications.roleChanged":
+      return t("notifications.roleChanged", values);
+    case "notifications.roleCreated":
+      return t("notifications.roleCreated", values);
+    case "notifications.roleUpdated":
+      return t("notifications.roleUpdated", values);
+    case "notifications.roleDeleted":
+      return t("notifications.roleDeleted", values);
+    case "notifications.roleClosed":
+      return t("notifications.roleClosed", values);
+    case "notifications.roleFilled":
+      return t("notifications.roleFilled", values);
+    case "notifications.roleReopened":
+      return t("notifications.roleReopened", values);
+    case "notifications.ownershipTransferred":
+      return t("notifications.ownershipTransferred", values);
+    case "notifications.teamDeleted":
+      return t("notifications.teamDeleted", values);
+    case "notifications.invitationDeclined":
+      return t("notifications.invitationDeclined", values);
+    case "notifications.invitationCancelled":
+      return t("notifications.invitationCancelled", values);
+    case "notifications.applicationCancelled":
+      return t("notifications.applicationCancelled", values);
+    case "notifications.roleApplicationCancelled":
+      return t("notifications.roleApplicationCancelled", values);
+    case "notifications.roleStatusChangedApplicant":
+      return t("notifications.roleStatusChangedApplicant", values);
+    case "notifications.roleStatusChangedInvitee":
+      return t("notifications.roleStatusChangedInvitee", values);
+    default:
+      return t("notifications.count", { count });
+  }
+};
+
+const buildNotificationTooltip = (t, count, types, teamCounts, onGroupClick) => {
   if (!count || !types) return undefined;
-  const p = (n, s) => `${n} ${s}${n !== 1 ? "s" : ""}`;
   const typeCount = (...keys) =>
     keys.reduce((sum, key) => sum + (Number(types[key]) || 0), 0);
   const typeTeamCount = (...keys) =>
     keys.reduce((max, key) => Math.max(max, Number(teamCounts?.[key]) || 0), 0);
 
-  const lines = NOTIFICATION_TYPE_META.map(({ keys, Icon, text }) => {
+  const lines = NOTIFICATION_TYPE_META.map(({ keys, Icon, translationKey }) => {
     const n = typeCount(...keys);
     const tc = typeTeamCount(...keys);
-    return n ? { keys, Icon, label: text(p, n, tc) } : null;
+    return n
+      ? {
+          keys,
+          Icon,
+          label: translateNotificationLabel(t, translationKey, n, tc),
+        }
+      : null;
   }).filter(Boolean);
 
-  if (!lines.length) return `${p(count, "notification")}`;
+  if (!lines.length) return t("notifications.count", { count });
 
   // Each type-group is a button: clicking it jumps to that group's oldest unread
   // notification. Hover shifts to the lighter primary green.
@@ -562,6 +630,7 @@ const Navbar = () => {
                     bellNotificationCount > 0
                       ? withMarkAllRead(
                           buildNotificationTooltip(
+                            t,
                             bellNotificationCount,
                             notificationTypeCounts,
                             notificationTypeTeamCounts,
@@ -596,6 +665,7 @@ const Navbar = () => {
                     hasChatActivity
                       ? withMarkAllRead(
                           buildMessageTooltip(
+                            t,
                             unreadMessageCount,
                             messageTeamCount,
                             messageSenderCount,

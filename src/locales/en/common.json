@@ -42,5 +42,41 @@
     "search": "Search",
     "settings": "Settings",
     "signUp": "Sign Up"
+  },
+  "notifications": {
+    "count": "{count, plural, one {# notification} other {# notifications}}",
+    "messages": {
+      "unread": "{count, plural, one {# unread message} other {# unread messages}}",
+      "teams": "{count, plural, one {in # team} other {in # teams}}",
+      "senders": "{count, plural, one {from # person} other {from # people}}",
+      "mentions": "{count, plural, one {# mention} other {# mentions}}"
+    },
+    "invitationReceived": "{count, plural, one {# team invitation} other {# team invitations}} for you{teamCount, plural, =0 {} =1 {} other { in # teams}}",
+    "roleInvitation": "{count, plural, one {# role invitation} other {# role invitations}} for you{teamCount, plural, =0 {} =1 {} other { in # teams}}",
+    "roleApplicationDeferredInvite": "{count, plural, one {# role offer} other {# role offers}} created{teamCount, plural, =0 {} =1 {} other { in # teams}}",
+    "roleAssigned": "{count, plural, one {# role assignment} other {# role assignments}} {teamCount, plural, =0 {in one of your teams} =1 {in one of your teams} other {in # of your teams}}",
+    "invitationAccepted": "{count, plural, one {# invitation} other {# invitations}} accepted{teamCount, plural, =0 {} =1 {} other { in # teams}}",
+    "applicationReceived": "{count, plural, one {# team application} other {# team applications}} to review{teamCount, plural, =0 {} =1 {} other { in # teams}}",
+    "applicationApproved": "{count, plural, one {Your team application was approved} other {# team applications were approved}}{teamCount, plural, =0 {} =1 {} other { in # teams}}",
+    "applicationRejected": "{count, plural, one {Your team application was} other {Your team applications (#) were}} rejected{teamCount, plural, =0 {} =1 {} other { in # teams}}",
+    "badgeAwarded": "{count, plural, one {# new badge award} other {# new badge awards}} for you",
+    "memberJoined": "{count, plural, one {# new member} other {# new members}} joined {teamCount, plural, =0 {one of your teams} =1 {one of your teams} other {# of your teams}}",
+    "memberLeft": "{count, plural, one {# member} other {# members}} left {teamCount, plural, =0 {one of your teams} =1 {one of your teams} other {# of your teams}}",
+    "memberRemoved": "Removed from {teamCount, plural, =0 {a team} =1 {a team} other {# of your teams}}",
+    "roleChanged": "{count, plural, one {# role change} other {# role changes}} {teamCount, plural, =0 {in one of your teams} =1 {in one of your teams} other {in # of your teams}}",
+    "roleCreated": "{count, plural, one {# new role} other {# new roles}} opened {teamCount, plural, =0 {in one of your teams} =1 {in one of your teams} other {in # of your teams}}",
+    "roleUpdated": "{count, plural, one {# role} other {# roles}} edited {teamCount, plural, =0 {in one of your teams} =1 {in one of your teams} other {in # of your teams}}",
+    "roleDeleted": "{count, plural, one {# role} other {# roles}} deleted {teamCount, plural, =0 {in one of your teams} =1 {in one of your teams} other {in # of your teams}}",
+    "roleClosed": "{count, plural, one {# role} other {# roles}} closed {teamCount, plural, =0 {in one of your teams} =1 {in one of your teams} other {in # of your teams}}",
+    "roleFilled": "{count, plural, one {# role} other {# roles}} filled {teamCount, plural, =0 {in one of your teams} =1 {in one of your teams} other {in # of your teams}}",
+    "roleReopened": "{count, plural, one {# role} other {# roles}} reopened {teamCount, plural, =0 {in one of your teams} =1 {in one of your teams} other {in # of your teams}}",
+    "ownershipTransferred": "{count, plural, one {# ownership transfer} other {# ownership transfers}}",
+    "teamDeleted": "{count, plural, one {# team} other {# teams}} deleted",
+    "invitationDeclined": "{count, plural, one {Your invitation was} other {Your invitations (#) were}} declined{teamCount, plural, =0 {} =1 {} other { in # teams}}",
+    "invitationCancelled": "{count, plural, one {Your invitation was} other {Your invitations (#) were}} cancelled{teamCount, plural, =0 {} =1 {} other { in # teams}}",
+    "applicationCancelled": "{count, plural, one {# team application} other {# team applications}} withdrawn{teamCount, plural, =0 {} =1 {} other { in # teams}}",
+    "roleApplicationCancelled": "{count, plural, one {# role application} other {# role applications}} withdrawn{teamCount, plural, =0 {} =1 {} other { in # teams}}",
+    "roleStatusChangedApplicant": "{count, plural, one {# role} other {# roles}} you applied for changed",
+    "roleStatusChangedInvitee": "{count, plural, one {# role} other {# roles}} you were invited to changed"
   }
 }
