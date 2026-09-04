@@ -1,15 +1,41 @@
-import { useEffect, useState, useRef } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 import { useSearchParams, Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import api from "../services/api";
 import Card from "../components/common/Card";
 import Button from "../components/common/Button";
 import { Loader2, BadgeCheck, Info, XCircle, MailCheck } from "lucide-react";
 
 const VerifyEmail = () => {
+  const { t } = useTranslation("auth");
   const [searchParams] = useSearchParams();
   const [status, setStatus] = useState("verifying");
   const [message, setMessage] = useState("");
   const hasVerified = useRef(false);
+
+  const verifyEmail = useCallback(async (token) => {
+    try {
+      const response = await api.get(`/api/auth/verify-email?token=${token}`);
+
+      if (response.data.success) {
+        setStatus("success");
+        setMessage(t("auth:verifyEmail.successMessage"));
+      }
+    } catch (error) {
+      console.error("Verification error:", error);
+
+      if (error.response?.status === 400) {
+        setStatus("info");
+        setMessage(t("auth:verifyEmail.alreadyUsed"));
+      } else {
+        setStatus("error");
+        setMessage(
+          error.response?.data?.message ||
+            t("auth:verifyEmail.fallbackError"),
+        );
+      }
+    }
+  }, [t]);
 
   useEffect(() => {
     const token = searchParams.get("token");
@@ -20,35 +46,9 @@ const VerifyEmail = () => {
       verifyEmail(token);
     } else {
       setStatus("error");
-      setMessage("No verification token found. Please check your email link.");
+      setMessage(t("auth:verifyEmail.missingToken"));
     }
-  }, [searchParams]);
-
-  const verifyEmail = async (token) => {
-    try {
-      const response = await api.get(`/api/auth/verify-email?token=${token}`);
-
-      if (response.data.success) {
-        setStatus("success");
-        setMessage("Your email has been verified successfully!");
-      }
-    } catch (error) {
-      console.error("Verification error:", error);
-
-      if (error.response?.status === 400) {
-        setStatus("info");
-        setMessage(
-          "This link has already been used. Your account may already be verified.",
-        );
-      } else {
-        setStatus("error");
-        setMessage(
-          error.response?.data?.message ||
-            "Verification failed. The link may be invalid or expired.",
-        );
-      }
-    }
-  };
+  }, [searchParams, t, verifyEmail]);
 
   const renderIcon = () => {
     const base = "mx-auto mb-4";
@@ -66,24 +66,24 @@ const VerifyEmail = () => {
   };
 
   const renderTitle = () => {
-    if (status === "verifying") return "Verifying your email…";
-    if (status === "success") return "Email verified";
-    if (status === "info") return "Already verified";
-    return "Verification failed";
+    if (status === "verifying") return t("auth:verifyEmail.title.verifying");
+    if (status === "success") return t("auth:verifyEmail.title.success");
+    if (status === "info") return t("auth:verifyEmail.title.info");
+    return t("auth:verifyEmail.title.error");
   };
 
   const renderBodyText = () => {
-    if (status === "verifying") return "Please wait a moment.";
+    if (status === "verifying") return t("auth:verifyEmail.body.verifying");
     if (status === "success")
-      return "Your account is now active. You can log in with your credentials.";
+      return t("auth:verifyEmail.body.success");
     if (status === "info")
-      return "Your account may already be verified. Try logging in.";
+      return t("auth:verifyEmail.body.info");
     return (
       <>
         {message}
         <br />
         <span className="text-sm mt-2 block">
-          If your verification link has expired, your registration may have been removed. You can sign up again with the same email address.
+          {t("auth:verifyEmail.body.expired")}
         </span>
       </>
     );
@@ -104,7 +104,7 @@ const VerifyEmail = () => {
           {status === "success" && (
             <Link to="/login" className="w-full">
               <Button variant="primary" fullWidth>
-                Log in to my account
+                {t("auth:verifyEmail.loginToAccount")}
               </Button>
             </Link>
           )}
@@ -112,7 +112,7 @@ const VerifyEmail = () => {
           {status === "info" && (
             <Link to="/login" className="w-full">
               <Button variant="primary" fullWidth>
-                Go to Login
+                {t("auth:common.goToLogin")}
               </Button>
             </Link>
           )}
@@ -121,12 +121,12 @@ const VerifyEmail = () => {
             <div className="space-y-3">
               <Link to="/login" className="w-full">
                 <Button variant="primary" fullWidth>
-                  Try Logging In
+                  {t("auth:verifyEmail.tryLogin")}
                 </Button>
               </Link>
               <Link to="/register" className="w-full">
                 <Button variant="ghost" fullWidth>
-                  Create New Account
+                  {t("auth:verifyEmail.createNewAccount")}
                 </Button>
               </Link>
             </div>
@@ -135,7 +135,7 @@ const VerifyEmail = () => {
           {status === "verifying" && (
             <div className="mt-2 text-sm text-base-content/60 flex items-center justify-center gap-2">
               <MailCheck size={16} className="text-primary" />
-              <span>Checking your verification link…</span>
+              <span>{t("auth:verifyEmail.checking")}</span>
             </div>
           )}
         </div>

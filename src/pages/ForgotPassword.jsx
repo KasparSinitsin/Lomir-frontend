@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import api from "../services/api";
 import Card from "../components/common/Card";
 import Button from "../components/common/Button";
@@ -8,6 +9,7 @@ import ScreenAlert from "../components/common/ScreenAlert";
 import { Mail, ArrowLeft, CheckCircle } from "lucide-react";
 
 const ForgotPassword = () => {
+  const { t } = useTranslation("auth");
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState("idle"); // idle, submitting, success, error
   const [message, setMessage] = useState("");
@@ -17,9 +19,9 @@ const ForgotPassword = () => {
     const newErrors = {};
 
     if (!email) {
-      newErrors.email = "Email is required";
+      newErrors.email = t("auth:forgotPassword.errors.emailRequired");
     } else if (!/\S+@\S+\.\S+/.test(email)) {
-      newErrors.email = "Please enter a valid email address";
+      newErrors.email = t("auth:forgotPassword.errors.emailInvalid");
     }
 
     setErrors(newErrors);
@@ -42,14 +44,14 @@ const ForgotPassword = () => {
       setStatus("success");
       setMessage(
         response.data.message ||
-          "If an account exists with this email, a password reset link has been sent.",
+          t("auth:forgotPassword.successFallback"),
       );
     } catch (error) {
       console.error("Forgot password error:", error);
       setStatus("error");
       setMessage(
         error.response?.data?.message ||
-          "Something went wrong. Please try again.",
+          t("auth:forgotPassword.errors.generic"),
       );
     }
   };
@@ -69,14 +71,13 @@ const ForgotPassword = () => {
             <CheckCircle size={56} className="mx-auto mb-4 text-success" />
 
             <h2 className="card-title text-2xl font-bold justify-center mb-3">
-              Check your email
+              {t("auth:forgotPassword.successTitle")}
             </h2>
 
             <p className="text-base-content/70 mb-6">{message}</p>
 
             <p className="text-sm text-base-content/60 mb-8">
-              Didn't receive the email? Check your spam folder or try again with
-              a different email address.
+              {t("auth:forgotPassword.successHelp")}
             </p>
 
             <div className="space-y-3">
@@ -88,13 +89,13 @@ const ForgotPassword = () => {
                   setEmail("");
                 }}
               >
-                Try another email
+                {t("auth:forgotPassword.tryAnother")}
               </Button>
 
               <Link to="/login" className="w-full block">
                 <Button variant="ghost" fullWidth>
                   <ArrowLeft size={16} className="mr-2" />
-                  Back to Login
+                  {t("auth:common.backToLogin")}
                 </Button>
               </Link>
             </div>
@@ -119,16 +120,16 @@ const ForgotPassword = () => {
           <div className="text-center mb-6">
             <Mail size={48} className="mx-auto mb-4 text-primary" />
             <h2 className="text-2xl font-bold text-primary">
-              Forgot Password?
+              {t("auth:forgotPassword.title")}
             </h2>
             <p className="text-base-content/70 mt-2">
-              No worries! Enter your email and we'll send you a reset link.
+              {t("auth:forgotPassword.description")}
             </p>
           </div>
 
           <form onSubmit={handleSubmit}>
             <FormGroup
-              label="Email Address"
+              label={t("auth:common.emailAddress")}
               htmlFor="email"
               error={errors.email}
               required
@@ -137,7 +138,7 @@ const ForgotPassword = () => {
                 id="email"
                 type="email"
                 name="email"
-                placeholder="Enter your email"
+                placeholder={t("auth:forgotPassword.placeholder")}
                 className={`input input-bordered w-full ${
                   errors.email ? "input-error" : ""
                 }`}
@@ -154,17 +155,21 @@ const ForgotPassword = () => {
                 fullWidth
                 disabled={status === "submitting"}
               >
-                {status === "submitting" ? "Sending..." : "Send Reset Link"}
+                {status === "submitting"
+                  ? t("auth:forgotPassword.submitting")
+                  : t("auth:forgotPassword.submit")}
               </Button>
             </div>
           </form>
 
-          <div className="divider my-6">OR</div>
+          <div className="divider my-6">{t("auth:common.or")}</div>
 
           <div className="text-center space-y-2">
-            <p className="text-base-content/70">Remember your password?</p>
+            <p className="text-base-content/70">
+              {t("auth:forgotPassword.remember")}
+            </p>
             <Link to="/login" className="link link-primary">
-              Back to Login
+              {t("auth:common.backToLogin")}
             </Link>
           </div>
         </div>
