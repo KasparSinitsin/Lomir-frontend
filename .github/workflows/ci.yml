@@ -45,6 +45,13 @@ jobs:
 
       - run: npm run lint
 
+      # Fails when a key is used but not defined, when the two languages have
+      # drifted apart, or when a message is not valid ICU. Deliberately in
+      # place before the ~1,200 strings are written rather than after: a check
+      # that first runs at the end reports hundreds of gaps at once, and that
+      # is the moment it gets switched off rather than satisfied.
+      - run: npm run i18n:check
+
       # No secrets and no .env here. Verified: every VITE_* variable this app
       # reads has a fallback, and the build is green without them. If that
       # ever stops being true, this step fails rather than shipping a broken
