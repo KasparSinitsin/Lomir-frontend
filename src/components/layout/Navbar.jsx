@@ -29,6 +29,7 @@ import { messageService } from "../../services/messageService";
 import { notificationService } from "../../services/notificationService";
 import useSocketEvents from "../../hooks/useSocketEvents";
 import NotificationBadge from "../common/NotificationBadge";
+import NavbarLanguageMenu from "./NavbarLanguageMenu";
 import {
   getMessageConversationTarget,
   isMessageForCurrentChatPath,
@@ -610,8 +611,8 @@ const Navbar = () => {
         </div>
 
         {/* Navigation & Auth - Right aligned */}
-        <div className="flex items-center space-x-3">
-          <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-2 sm:space-x-3">
+          <div className="flex items-center space-x-3 sm:space-x-4">
             {/* Notification Bell */}
             {isAuthenticated && (
               <div
@@ -748,15 +749,24 @@ const Navbar = () => {
               </ul>
             </div>
           ) : (
-            <div className="flex space-x-4">
-              <Link to="/login" className="neon btn-outline btn-sm">
+            <div className="flex shrink-0 space-x-2 sm:space-x-4">
+              <Link
+                to="/login"
+                className="neon btn-outline btn-sm whitespace-nowrap"
+              >
                 {t("nav.login")}
               </Link>
-              <Link to="/register" className="neon btn-sm">
+              <Link to="/register" className="neon btn-sm whitespace-nowrap">
                 {t("nav.signUp")}
               </Link>
             </div>
           )}
+
+          {/* Outermost on the right, after the Sign Up button. Signed-out
+              visitors only - signed-in users set their language in Settings,
+              where it lives on the account. Renders nothing while the
+              language feature is hidden. */}
+          <NavbarLanguageMenu />
         </div>
       </div>
     </div>

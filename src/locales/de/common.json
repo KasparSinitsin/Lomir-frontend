@@ -86,7 +86,9 @@
     "useSuggestedCityAria": "{city} übernehmen"
   },
   "nav": {
-    "login": "Anmelden",
+    "languageCurrent": "Sprache: {language} ({code})",
+    "languageSettings": "Spracheinstellungen",
+    "login": "Login",
     "logoAlt": "Lomir-Logo",
     "logout": "Abmelden",
     "markAllAsRead": "Alle als gelesen markieren",

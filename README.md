@@ -105,7 +105,22 @@ VITE_IMAGEKIT_URL_ENDPOINT=https://ik.imagekit.io/<your-id>
 
 # Contact page — set to a Lomir user ID to route authenticated users to in-app chat
 # VITE_LOMIR_CONTACT_USER_ID=<lomir-team-user-id>
+
+# Bilingual interface — the English/German language picker is being built and
+# is hidden unless this is set to true. Restart the dev server after changing it.
+# VITE_LANGUAGE_FEATURE_VISIBLE=true
 ```
+
+While running `npm run dev` you can also turn the language picker on from the
+browser console without restarting anything, and off again the same way:
+
+```js
+localStorage.setItem("lomir.languageFeaturePreview", "true"); // then reload
+localStorage.removeItem("lomir.languageFeaturePreview");      // then reload
+```
+
+This second switch exists only in a development server; it is compiled out of
+production builds.
 
 > Get the ImageKit values from the project owner.
 

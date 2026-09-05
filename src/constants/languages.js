@@ -19,8 +19,23 @@ export const DEFAULT_LANGUAGE_CODE = "en";
  * is the secondary line, so someone who does not read the endonym can still
  * tell what they are choosing.
  *
- * No flags. A language is not a country: 🇩🇪 next to "Deutsch" quietly tells
- * Austrians and the Swiss that this option is not for them.
+ * ⚠️ **The pickers carry no flags, and that is still the rule** - `LanguageSelect`
+ * and the settings section show endonym plus English name, nothing else. A
+ * language is not a country: 🇩🇪 next to "Deutsch" quietly tells Austrians and
+ * the Swiss that this option is not for them, and `COUNTRY_LANGUAGE_MAP` below
+ * maps AT and CH to German precisely because it is their language too.
+ *
+ * The **one** deliberate exception (Julia, 2026-09-04) is the navbar badge for
+ * signed-out visitors, where a 20px round mark has to be recognisable at a
+ * glance and there is no room for a word. That trade-off was accepted
+ * knowingly, not overlooked. The artwork lives in
+ * `src/components/layout/LanguageFlag.jsx` and deliberately **not** as a field
+ * on this list - a flag next to every entry here is exactly how the exception
+ * would leak back into the pickers.
+ *
+ * `en` is drawn with the British flag rather than the American one because
+ * Lomir is a European app - itself a choice with no correct answer, which is
+ * the second reason flags are avoided everywhere else.
  */
 export const SUPPORTED_LANGUAGES = [
   { code: "en", endonym: "English", englishName: "English" },
@@ -52,6 +67,38 @@ export const COUNTRY_LANGUAGE_MAP = {
 export const LANGUAGE_SEARCH_THRESHOLD = 8;
 
 /**
+ * localStorage key for the development preview switch below. Module-local on
+ * purpose - nothing else needs it, and an exported constant with no importer
+ * is the kind of dead weight ESLint cannot see.
+ *
+ * Also deliberately not in `languageUtils.js` beside `LANGUAGE_STORAGE_KEY`:
+ * that module imports this one, and moving the key there would make a cycle.
+ */
+const LANGUAGE_FEATURE_PREVIEW_KEY = "lomir.languageFeaturePreview";
+
+/**
+ * The `.env` opt-in. Absent everywhere it is not deliberately set, which
+ * includes every Vercel build.
+ */
+const envPreview = import.meta.env.VITE_LANGUAGE_FEATURE_VISIBLE === "true";
+
+/**
+ * The second opt-in, for a running dev server only. `import.meta.env.DEV` is
+ * replaced at build time, so this whole branch is dead code in a production
+ * bundle and cannot be reached by setting the key in a deployed app.
+ */
+const storagePreview = () => {
+  if (!import.meta.env.DEV) return false;
+  if (typeof window === "undefined") return false;
+  try {
+    return window.localStorage.getItem(LANGUAGE_FEATURE_PREVIEW_KEY) === "true";
+  } catch {
+    // Private mode, or storage disabled. Not a reason to fail on import.
+    return false;
+  }
+};
+
+/**
  * The reveal switch for the whole feature.
  *
  * A visible language picker over an untranslated UI reads as a broken
@@ -62,8 +109,29 @@ export const LANGUAGE_SEARCH_THRESHOLD = 8;
  * While this is false, the language is also not *sent* on save or
  * registration. Storing a value the user was never shown would turn a guess
  * into an explicit choice behind their back.
+ *
+ * **It is false unless something opts in, and nothing opts in by default.**
+ * Neither switch above exists in a Vercel build: the environment variable is
+ * not set there, and the localStorage branch is compiled out entirely. The
+ * two ways to turn it on while the feature is still being built:
+ *
+ * 1. `VITE_LANGUAGE_FEATURE_VISIBLE=true` in `.env`, then restart the dev
+ *    server. Works in any build, which is what makes it the switch to use
+ *    for a preview deployment - and the reason it must stay unset in
+ *    production until Phase 1 is finished.
+ * 2. In the browser console of a `npm run dev` session:
+ *    `localStorage.setItem("lomir.languageFeaturePreview", "true")`, then
+ *    reload. `localStorage.removeItem(...)` turns it off again. Nothing to
+ *    restart, which is what makes comparing both states quick.
+ *
+ * ⚠️ **Turning this on makes the app write.** The picker on Settings saves
+ * the moment a language is chosen, and registration starts sending the
+ * field. On an account that had no language, that stored value becomes an
+ * explicit choice and outranks the country rule from then on - and the
+ * picker cannot write it back to NULL, because "no language" is not a state
+ * it can render. Test with an account you are willing to leave that way.
  */
-export const LANGUAGE_FEATURE_VISIBLE = false;
+export const LANGUAGE_FEATURE_VISIBLE = envPreview || storagePreview();
 
 export const isSupportedLanguage = (code) =>
   typeof code === "string" && SUPPORTED_LANGUAGE_CODES.includes(code);
