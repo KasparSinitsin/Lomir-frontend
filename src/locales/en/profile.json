@@ -1,0 +1,106 @@
+{
+  "avatar": {
+    "removeBody": "Remove your profile picture? Your profile will show your initials instead.",
+    "removeConfirm": "Remove",
+    "removeTitle": "Remove Profile Picture",
+    "removing": "Removing..."
+  },
+  "badges": {
+    "award": {
+      "generic": "Contribution",
+      "personal": "Personal Contribution",
+      "project": "Project Contribution",
+      "team": "Team Contribution",
+      "unknownAwarder": "another user"
+    },
+    "deleteBody": "Delete \"{context}\" Award from {awarder} permanently? This removes only this awarded instance, not other awards for the same badge.",
+    "deleteBodyGeneric": "Delete this badge award permanently? This removes only this awarded instance, not other awards for the same badge.",
+    "deleteConfirm": "Delete",
+    "deleteTitle": "Delete Badge Award",
+    "deleting": "Deleting...",
+    "hideBody": "Hide \"{context}\" Award from {awarder} from others? You will still see it on your profile with a closed-eye marker.",
+    "hideBodyGeneric": "Hide this badge award from others? You will still see it on your profile with a closed-eye marker.",
+    "hideConfirm": "Hide",
+    "hideTitle": "Hide Badge Award",
+    "hiding": "Hiding..."
+  },
+  "edit": {
+    "bio": "About Me",
+    "bioPlaceholder": "Tell us about yourself",
+    "cancel": "Cancel",
+    "detailsSection": "Profile Details",
+    "firstName": "First Name",
+    "firstNamePlaceholder": "First Name",
+    "focusAreasLabel": "Select focus areas matching your interests and skills",
+    "focusAreasLabelShort": "Pick your interests and skills",
+    "focusAreasPlaceholder": "Type to search focus areas...",
+    "focusAreasSection": "Focus Areas",
+    "lastName": "Last Name",
+    "lastNamePlaceholder": "Last Name",
+    "pictureSection": "Profile Picture",
+    "removeCurrentPicture": "Remove Current Picture",
+    "save": "Save Changes",
+    "saving": "Saving...",
+    "title": "Edit Profile",
+    "username": "Username",
+    "usernameHelp": "3–20 characters, letters/numbers/underscore.",
+    "usernamePlaceholder": "Username"
+  },
+  "errors": {
+    "badgeMissingIdDelete": "Could not delete this badge award because it is missing an ID.",
+    "badgeMissingIdHide": "Could not hide this badge award because it is missing an ID.",
+    "badgeMissingIdShow": "Could not show this badge award because it is missing an ID.",
+    "deleteBadge": "Failed to delete badge award. Please try again.",
+    "hideBadge": "Failed to hide badge. Please try again.",
+    "imageUpload": "Failed to upload image. Please try a different image or try again later.",
+    "loadUser": "Failed to load user data. Please try again.",
+    "removePicture": "Failed to remove profile picture",
+    "removePictureRetry": "Failed to remove profile picture. Please try again.",
+    "showBadge": "Failed to make badge visible. Please try again.",
+    "unknown": "Unknown error",
+    "updateProfile": "Failed to update profile: {reason}"
+  },
+  "notFound": {
+    "body": "Please login again to access your profile.",
+    "loginCta": "Go to Login",
+    "title": "User Not Found"
+  },
+  "status": {
+    "badgeDeleted": "Badge award deleted.",
+    "badgeHidden": "Badge hidden from others.",
+    "badgeVisible": "Badge visible for others.",
+    "pictureRemoved": "Profile picture removed successfully",
+    "updated": "Profile updated successfully"
+  },
+  "validation": {
+    "firstNameRequired": "First name is required",
+    "usernameFormat": "Use 3–20 chars: letters, numbers, underscore",
+    "usernameRequired": "Username is required"
+  },
+  "view": {
+    "avatarAlt": "Profile",
+    "badges": "My Badges",
+    "demoProfile": "Demo Profile",
+    "edit": "Edit",
+    "email": "Email",
+    "focusAreas": "Focus Areas",
+    "joined": "Joined Lomir in {date}",
+    "location": "Location",
+    "memberSinceUnknown": "Unknown",
+    "noBadges": "No badges earned yet.",
+    "noFocusAreas": "No focus areas added yet.",
+    "noLocation": "No location added yet.",
+    "private": "Private",
+    "privateTooltip": "Private Profile - only visible for you\nChange in profile settings",
+    "public": "Public",
+    "publicTooltip": "Public Profile - visible for everyone\nChange in profile settings",
+    "title": "Your Profile"
+  },
+  "visibility": {
+    "label": "Profile Visibility",
+    "private": "Private Profile",
+    "privateDescription": "Your profile is hidden from search results, but may still appear where you interact.",
+    "public": "Public Profile",
+    "publicDescription": "Your profile can be discovered by other Lomir users."
+  }
+}

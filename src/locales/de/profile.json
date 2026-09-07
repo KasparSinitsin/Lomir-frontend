@@ -1,0 +1,106 @@
+{
+  "avatar": {
+    "removeBody": "Dein Profilbild entfernen? Dein Profil zeigt dann deine Initialen.",
+    "removeConfirm": "Entfernen",
+    "removeTitle": "Profilbild entfernen",
+    "removing": "Wird entfernt..."
+  },
+  "badges": {
+    "award": {
+      "generic": "Beitrag",
+      "personal": "Persönlicher Beitrag",
+      "project": "Projekt-Beitrag",
+      "team": "Team-Beitrag",
+      "unknownAwarder": "einem anderen Nutzer"
+    },
+    "deleteBody": "Die Auszeichnung „{context}“ von {awarder} endgültig löschen? Das entfernt nur diese eine Auszeichnung, nicht andere Auszeichnungen desselben Badges.",
+    "deleteBodyGeneric": "Diese Badge-Auszeichnung endgültig löschen? Das entfernt nur diese eine Auszeichnung, nicht andere Auszeichnungen desselben Badges.",
+    "deleteConfirm": "Löschen",
+    "deleteTitle": "Badge-Auszeichnung löschen",
+    "deleting": "Wird gelöscht...",
+    "hideBody": "Die Auszeichnung „{context}“ von {awarder} vor anderen verbergen? Du siehst sie weiterhin in deinem Profil, markiert mit einem geschlossenen Auge.",
+    "hideBodyGeneric": "Diese Badge-Auszeichnung vor anderen verbergen? Du siehst sie weiterhin in deinem Profil, markiert mit einem geschlossenen Auge.",
+    "hideConfirm": "Verbergen",
+    "hideTitle": "Badge-Auszeichnung verbergen",
+    "hiding": "Wird verborgen..."
+  },
+  "edit": {
+    "bio": "Über mich",
+    "bioPlaceholder": "Erzähl etwas über dich",
+    "cancel": "Abbrechen",
+    "detailsSection": "Profildetails",
+    "firstName": "Vorname",
+    "firstNamePlaceholder": "Vorname",
+    "focusAreasLabel": "Wähle Fokusbereiche, die zu deinen Interessen und Fähigkeiten passen",
+    "focusAreasLabelShort": "Wähle deine Interessen und Fähigkeiten",
+    "focusAreasPlaceholder": "Tippen, um Fokusbereiche zu suchen...",
+    "focusAreasSection": "Fokusbereiche",
+    "lastName": "Nachname",
+    "lastNamePlaceholder": "Nachname",
+    "pictureSection": "Profilbild",
+    "removeCurrentPicture": "Aktuelles Bild entfernen",
+    "save": "Änderungen speichern",
+    "saving": "Wird gespeichert...",
+    "title": "Profil bearbeiten",
+    "username": "Benutzername",
+    "usernameHelp": "3–20 Zeichen, Buchstaben/Zahlen/Unterstrich.",
+    "usernamePlaceholder": "Benutzername"
+  },
+  "errors": {
+    "badgeMissingIdDelete": "Diese Badge-Auszeichnung konnte nicht gelöscht werden, weil ihre ID fehlt.",
+    "badgeMissingIdHide": "Diese Badge-Auszeichnung konnte nicht verborgen werden, weil ihre ID fehlt.",
+    "badgeMissingIdShow": "Diese Badge-Auszeichnung konnte nicht angezeigt werden, weil ihre ID fehlt.",
+    "deleteBadge": "Die Badge-Auszeichnung konnte nicht gelöscht werden. Bitte versuche es noch einmal.",
+    "hideBadge": "Das Badge konnte nicht verborgen werden. Bitte versuche es noch einmal.",
+    "imageUpload": "Das Bild konnte nicht hochgeladen werden. Bitte versuche ein anderes Bild oder probiere es später noch einmal.",
+    "loadUser": "Die Nutzerdaten konnten nicht geladen werden. Bitte versuche es noch einmal.",
+    "removePicture": "Das Profilbild konnte nicht entfernt werden",
+    "removePictureRetry": "Das Profilbild konnte nicht entfernt werden. Bitte versuche es noch einmal.",
+    "showBadge": "Das Badge konnte nicht sichtbar gemacht werden. Bitte versuche es noch einmal.",
+    "unknown": "Unbekannter Fehler",
+    "updateProfile": "Das Profil konnte nicht aktualisiert werden: {reason}"
+  },
+  "notFound": {
+    "body": "Bitte melde dich erneut an, um auf dein Profil zuzugreifen.",
+    "loginCta": "Zur Anmeldung",
+    "title": "Benutzer nicht gefunden"
+  },
+  "status": {
+    "badgeDeleted": "Badge-Auszeichnung gelöscht.",
+    "badgeHidden": "Badge vor anderen verborgen.",
+    "badgeVisible": "Badge für andere sichtbar.",
+    "pictureRemoved": "Profilbild erfolgreich entfernt",
+    "updated": "Profil erfolgreich aktualisiert"
+  },
+  "validation": {
+    "firstNameRequired": "Vorname ist erforderlich",
+    "usernameFormat": "3–20 Zeichen: Buchstaben, Zahlen, Unterstrich",
+    "usernameRequired": "Benutzername ist erforderlich"
+  },
+  "view": {
+    "avatarAlt": "Profil",
+    "badges": "Meine Badges",
+    "demoProfile": "Demo-Profil",
+    "edit": "Bearbeiten",
+    "email": "E-Mail",
+    "focusAreas": "Fokusbereiche",
+    "joined": "Bei Lomir seit {date}",
+    "location": "Standort",
+    "memberSinceUnknown": "Unbekannt",
+    "noBadges": "Noch keine Badges erhalten.",
+    "noFocusAreas": "Noch keine Fokusbereiche hinzugefügt.",
+    "noLocation": "Noch kein Standort hinterlegt.",
+    "private": "Privat",
+    "privateTooltip": "Privates Profil - nur für dich sichtbar\nÄnderbar in den Profileinstellungen",
+    "public": "Öffentlich",
+    "publicTooltip": "Öffentliches Profil - für alle sichtbar\nÄnderbar in den Profileinstellungen",
+    "title": "Dein Profil"
+  },
+  "visibility": {
+    "label": "Profilsichtbarkeit",
+    "private": "Privates Profil",
+    "privateDescription": "Dein Profil erscheint nicht in den Suchergebnissen, kann aber dort auftauchen, wo du aktiv bist.",
+    "public": "Öffentliches Profil",
+    "publicDescription": "Dein Profil kann von anderen Lomir-Nutzern gefunden werden."
+  }
+}
