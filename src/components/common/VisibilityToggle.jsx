@@ -83,8 +83,17 @@ const VisibilityToggle = ({
       )}
 
 {/* Field body (input-like container) */}
+{/*
+  `whitespace-normal` is load-bearing, not decoration. daisyUI's `.input` sets
+  `white-space: nowrap` because it is meant to wrap a single-line field, and
+  this borrows the class as a *container* for a toggle plus a description - so
+  the description inherited nowrap and could never break, running out of the
+  box and being clipped on a phone. The state label's `break-words` next door
+  was inert for the same reason: overflow-wrap only breaks long words, it
+  cannot introduce a break at a space while nowrap is in force.
+*/}
 <div
-  className={`input input-bordered w-full h-auto px-4 py-3 ${
+  className={`input input-bordered w-full h-auto px-4 py-3 whitespace-normal ${
   error ? "input-error" : ""
 } ${disabled ? "opacity-60 cursor-not-allowed" : ""} flex flex-col items-start gap-0`}
 >
