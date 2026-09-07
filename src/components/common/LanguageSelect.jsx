@@ -5,6 +5,7 @@ import {
   SUPPORTED_LANGUAGES,
   LANGUAGE_SEARCH_THRESHOLD,
   getLanguageByCode,
+  getSecondaryLanguageName,
 } from "../../constants/languages";
 
 /**
@@ -59,7 +60,9 @@ const LanguageSelect = ({
     return SUPPORTED_LANGUAGES.filter(
       (language) =>
         language.endonym.toLowerCase().includes(search) ||
-        language.englishName.toLowerCase().includes(search) ||
+        Object.values(language.names ?? {}).some((name) =>
+          name.toLowerCase().includes(search),
+        ) ||
         language.code.toLowerCase() === search,
     );
   }, [searchTerm, showSearch]);
@@ -201,9 +204,23 @@ const LanguageSelect = ({
             {selectedLanguage ? (
               <>
                 <span>{selectedLanguage.endonym}</span>
-                {selectedLanguage.endonym !== selectedLanguage.englishName && (
-                  <span className="text-base-content/50 ml-2 text-sm">
-                    {selectedLanguage.englishName}
+                {/*
+                  Endonym, then the same language's name in the other language
+                  on offer: `Deutsch / German` and `English / Englisch`. Both
+                  rows carry two names, which is the point - the secondary
+                  name used to be the English one, so the English row showed a
+                  single word while the German row showed two (Julia,
+                  2026-09-05).
+
+                  The spaces around the slash are explicit text, not a margin.
+                  A margin looks identical on screen but leaves the accessible
+                  name - and anything copied out of the control - reading
+                  `Deutsch/ German`. A render probe caught exactly that.
+                */}
+                {getSecondaryLanguageName(selectedLanguage.code) && (
+                  <span className="text-base-content/50 text-sm">
+                    {" / "}
+                    {getSecondaryLanguageName(selectedLanguage.code)}
                   </span>
                 )}
               </>
@@ -254,9 +271,10 @@ const LanguageSelect = ({
                 >
                   <span className="truncate">
                     <span>{language.endonym}</span>
-                    {language.endonym !== language.englishName && (
-                      <span className="text-base-content/50 ml-2 text-sm">
-                        {language.englishName}
+                    {getSecondaryLanguageName(language.code) && (
+                      <span className="text-base-content/50 text-sm">
+                        {" / "}
+                        {getSecondaryLanguageName(language.code)}
                       </span>
                     )}
                   </span>

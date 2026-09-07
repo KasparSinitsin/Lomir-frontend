@@ -14,10 +14,11 @@
 export const DEFAULT_LANGUAGE_CODE = "en";
 
 /**
- * `endonym` is what the picker shows - the language's name in itself, the way
- * CountrySelect already lists countries by their native names. `englishName`
- * is the secondary line, so someone who does not read the endonym can still
- * tell what they are choosing.
+ * `endonym` is what the picker shows first - the language's name in itself, the
+ * way CountrySelect already lists countries by their native names. `names`
+ * holds the same language's name in every language on offer, and the picker's
+ * secondary line comes from there, so someone who does not read the endonym
+ * can still tell what they are choosing.
  *
  * ⚠️ **The pickers carry no flags, and that is still the rule** - `LanguageSelect`
  * and the settings section show endonym plus English name, nothing else. A
@@ -38,9 +39,39 @@ export const DEFAULT_LANGUAGE_CODE = "en";
  * the second reason flags are avoided everywhere else.
  */
 export const SUPPORTED_LANGUAGES = [
-  { code: "en", endonym: "English", englishName: "English" },
-  { code: "de", endonym: "Deutsch", englishName: "German" },
+  { code: "en", endonym: "English", names: { en: "English", de: "Englisch" } },
+  { code: "de", endonym: "Deutsch", names: { en: "German", de: "Deutsch" } },
 ];
+
+/**
+ * The second name a picker shows beside the endonym: this language's name in
+ * the *other* language on offer. That is what makes the two rows read the same
+ * way round - `English / Englisch` and `Deutsch / German` - rather than one
+ * entry carrying two names and the other only one, which is how it looked when
+ * the secondary name was always the English one (Julia, 2026-09-05).
+ *
+ * These names live here as data rather than in the locale files on purpose.
+ * The rendering needs a *fixed* language, not the active one, and `t()` only
+ * ever answers in the active language - reaching for `i18n.getFixedT` would
+ * also put the lookup beyond what `npm run i18n:check` can verify. The set is
+ * closed, small and changes only when a language is added, which is exactly
+ * when this file is edited anyway.
+ *
+ * ⚠️ **Defined for exactly two languages.** With a third, "the other one" stops
+ * naming anything and this has to become a deliberate choice - most likely the
+ * name in the active interface language, omitted when it repeats the endonym.
+ * The `names` map is already the right shape for that; only this function
+ * changes. See `HANDOVER-Internationalization.md`.
+ */
+export const getSecondaryLanguageName = (code) => {
+  const language = SUPPORTED_LANGUAGES.find((entry) => entry.code === code);
+  const other = SUPPORTED_LANGUAGES.find((entry) => entry.code !== code);
+
+  if (!language || !other) return null;
+
+  const name = language.names?.[other.code];
+  return name && name !== language.endonym ? name : null;
+};
 
 export const SUPPORTED_LANGUAGE_CODES = SUPPORTED_LANGUAGES.map((l) => l.code);
 
