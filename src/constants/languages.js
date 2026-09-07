@@ -20,23 +20,25 @@ export const DEFAULT_LANGUAGE_CODE = "en";
  * secondary line comes from there, so someone who does not read the endonym
  * can still tell what they are choosing.
  *
- * ⚠️ **The pickers carry no flags, and that is still the rule** - `LanguageSelect`
- * and the settings section show endonym plus English name, nothing else. A
- * language is not a country: 🇩🇪 next to "Deutsch" quietly tells Austrians and
- * the Swiss that this option is not for them, and `COUNTRY_LANGUAGE_MAP` below
- * maps AT and CH to German precisely because it is their language too.
+ * ⚠️ **The no-flags rule is withdrawn (Julia, 2026-09-05).** Flags now appear in
+ * the navbar badge *and* in `LanguageSelect`, which is what the settings section
+ * renders. The rule is rewritten here rather than left standing with a second
+ * exception, because a rule with two exceptions is not a rule and the next
+ * reader would not know which half to trust.
  *
- * The **one** deliberate exception (Julia, 2026-09-04) is the navbar badge for
- * signed-out visitors, where a 20px round mark has to be recognisable at a
- * glance and there is no room for a word. That trade-off was accepted
- * knowingly, not overlooked. The artwork lives in
- * `src/components/layout/LanguageFlag.jsx` and deliberately **not** as a field
- * on this list - a flag next to every entry here is exactly how the exception
- * would leak back into the pickers.
+ * **The objection it recorded still stands and is worth carrying:** a language
+ * is not a country. 🇩🇪 next to "Deutsch" quietly tells Austrians and the Swiss
+ * that this option is not for them, and `COUNTRY_LANGUAGE_MAP` below maps AT and
+ * CH to German precisely because it is their language too. The counterweight is
+ * that a round mark is recognisable at a glance where a word is not, and Julia
+ * chose that trade twice, knowingly. `en` is drawn with the British flag rather
+ * than the American one for the same reason the rule existed - there is no
+ * correct answer, only a European default.
  *
- * `en` is drawn with the British flag rather than the American one because
- * Lomir is a European app - itself a choice with no correct answer, which is
- * the second reason flags are avoided everywhere else.
+ * The artwork is deliberately **not** a field on this list. It lives in
+ * `src/components/common/LanguageFlag.jsx`, so adding a language here does not
+ * silently commit anyone to drawing a flag, and a code with no artwork renders
+ * nothing rather than a broken frame.
  */
 export const SUPPORTED_LANGUAGES = [
   { code: "en", endonym: "English", names: { en: "English", de: "Englisch" } },

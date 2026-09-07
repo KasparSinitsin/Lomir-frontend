@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Check, ChevronDown, Search } from "lucide-react";
+import LanguageFlag from "./LanguageFlag";
 import {
   SUPPORTED_LANGUAGES,
   LANGUAGE_SEARCH_THRESHOLD,
@@ -200,32 +201,45 @@ const LanguageSelect = ({
             />
           </div>
         ) : (
-          <span className="truncate">
+          <span className="flex min-w-0 items-center gap-2">
             {selectedLanguage ? (
               <>
-                <span>{selectedLanguage.endonym}</span>
                 {/*
-                  Endonym, then the same language's name in the other language
-                  on offer: `Deutsch / German` and `English / Englisch`. Both
-                  rows carry two names, which is the point - the secondary
-                  name used to be the English one, so the English row showed a
-                  single word while the German row showed two (Julia,
-                  2026-09-05).
-
-                  The spaces around the slash are explicit text, not a margin.
-                  A margin looks identical on screen but leaves the accessible
-                  name - and anything copied out of the control - reading
-                  `Deutsch/ German`. A render probe caught exactly that.
+                  The round flag, framed the way the navbar avatar is - the
+                  caller owns the frame, the component only paints inside it.
+                  `shrink-0` so it never gives way to a long name; the text is
+                  what truncates. See the note above `SUPPORTED_LANGUAGES` for
+                  why flags are here at all (Julia, 2026-09-05) and what the
+                  objection to them was.
                 */}
-                {getSecondaryLanguageName(selectedLanguage.code) && (
-                  <span className="text-base-content/50 text-sm">
-                    {" / "}
-                    {getSecondaryLanguageName(selectedLanguage.code)}
-                  </span>
-                )}
+                <span className="block h-5 w-5 shrink-0 overflow-hidden rounded-full">
+                  <LanguageFlag code={selectedLanguage.code} />
+                </span>
+                <span className="truncate">
+                  <span>{selectedLanguage.endonym}</span>
+                  {/*
+                    Endonym, then the same language's name in the other language
+                    on offer: `Deutsch / German` and `English / Englisch`. Both
+                    rows carry two names, which is the point - the secondary
+                    name used to be the English one, so the English row showed a
+                    single word while the German row showed two (Julia,
+                    2026-09-05).
+
+                    The spaces around the slash are explicit text, not a margin.
+                    A margin looks identical on screen but leaves the accessible
+                    name - and anything copied out of the control - reading
+                    `Deutsch/ German`. A render probe caught exactly that.
+                  */}
+                  {getSecondaryLanguageName(selectedLanguage.code) && (
+                    <span className="text-base-content/50 text-sm">
+                      {" / "}
+                      {getSecondaryLanguageName(selectedLanguage.code)}
+                    </span>
+                  )}
+                </span>
               </>
             ) : (
-              <span className="text-base-content/50">
+              <span className="truncate text-base-content/50">
                 {t("languageSelect.placeholder")}
               </span>
             )}
@@ -269,14 +283,19 @@ const LanguageSelect = ({
                     ${isSelected ? "bg-primary/5 font-medium" : ""}
                   `}
                 >
-                  <span className="truncate">
-                    <span>{language.endonym}</span>
-                    {getSecondaryLanguageName(language.code) && (
-                      <span className="text-base-content/50 text-sm">
-                        {" / "}
-                        {getSecondaryLanguageName(language.code)}
-                      </span>
-                    )}
+                  <span className="flex min-w-0 items-center gap-2">
+                    <span className="block h-5 w-5 shrink-0 overflow-hidden rounded-full">
+                      <LanguageFlag code={language.code} />
+                    </span>
+                    <span className="truncate">
+                      <span>{language.endonym}</span>
+                      {getSecondaryLanguageName(language.code) && (
+                        <span className="text-base-content/50 text-sm">
+                          {" / "}
+                          {getSecondaryLanguageName(language.code)}
+                        </span>
+                      )}
+                    </span>
                   </span>
                   {isSelected && (
                     <Check size={16} className="text-primary flex-shrink-0 ml-2" />

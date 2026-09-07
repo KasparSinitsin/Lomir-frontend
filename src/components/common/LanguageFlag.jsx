@@ -14,10 +14,18 @@ import React, { useId } from "react";
  * a box, and on Windows it renders as the bare letters "DE". None of that
  * survives being asked to look like the avatar.
  *
- * ⚠️ Flags live here and nowhere else. The rule above `SUPPORTED_LANGUAGES`
- * still holds for every picker - a language is not a country, and AT and CH
- * are German-speaking. This is the one navbar badge that was granted an
- * exception; do not import it into a list of languages.
+ * ⚠️ **This header used to say flags live here and nowhere else.** That held
+ * while the navbar badge was the only exception. On 2026-09-05 Julia asked for
+ * the flag in `LanguageSelect` too, so the rule above `SUPPORTED_LANGUAGES` was
+ * rewritten rather than left to be contradicted by the code. The objection it
+ * recorded has not gone away and is worth knowing: a language is not a country,
+ * and `COUNTRY_LANGUAGE_MAP` maps AT and CH to German precisely because German
+ * is theirs too - a German flag beside "Deutsch" quietly says otherwise.
+ *
+ * The file moved from `layout/` to `common/` with that change. It was in
+ * `layout/` to keep the exception visible; now that it is shared, the old home
+ * would have made `common/` import from `layout/`, which is a direction
+ * nothing else in this codebase goes.
  *
  * Adding a language means adding an entry here. A missing one renders nothing
  * rather than a broken frame.

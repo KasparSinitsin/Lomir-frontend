@@ -2,7 +2,7 @@ import React, { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Check } from "lucide-react";
 import Tooltip from "../common/Tooltip";
-import LanguageFlag from "./LanguageFlag";
+import LanguageFlag from "../common/LanguageFlag";
 import { useAuth } from "../../contexts/AuthContext";
 import { useLanguage } from "../../contexts/LanguageContext";
 import {
