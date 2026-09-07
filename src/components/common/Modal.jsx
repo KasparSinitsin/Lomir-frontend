@@ -1,4 +1,5 @@
 import React, { useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { createPortal } from "react-dom";
 import {
   useModalLayer,
@@ -60,6 +61,7 @@ const Modal = ({
   zIndexStyle = null,
   boxZIndexStyle = null,
 }) => {
+  const { t } = useTranslation();
   // Get z-index from context (will be default 50 if no provider above)
   const layerZIndex = useModalLayer();
 
@@ -128,7 +130,7 @@ const Modal = ({
       type="button"
       className="btn btn-sm btn-ghost ml-2"
       onClick={onClose}
-      aria-label="Close modal"
+      aria-label={t("modal.close")}
     >
       ✕
     </button>

@@ -635,10 +635,22 @@ const CountrySelect = ({
   return (
     <div ref={containerRef} className={`relative ${className}`}>
       {/* Main Input Container */}
+      {/*
+        `bg-none` is load-bearing, not tidying. daisyUI's `.select` paints its
+        own dropdown arrow as two linear-gradients, and this borrows the class
+        for a custom combobox that renders its own lucide ChevronDown - so both
+        showed, a filled triangle beside the icon. daisyUI suppresses it the
+        same way in its own join rules (`:not(:last-child){background-image:
+        none}`). `px-4` goes with it: `.select` sets `padding-inline: 1rem
+        1.75rem`, the wider end being the reserve for that triangle, which
+        leaves the icon visibly inset once the triangle is gone. Equal padding
+        on both sides is the point, so the shorthand is replaced rather than
+        half-overridden.
+      */}
       <div
         onClick={handleContainerClick}
         className={`
-          select select-bordered w-full flex items-center justify-between cursor-pointer
+          select select-bordered bg-none px-4 w-full flex items-center justify-between cursor-pointer
           ${disabled ? "opacity-50 cursor-not-allowed" : ""}
           ${isOpen ? "border-primary" : ""}
         `}

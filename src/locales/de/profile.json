@@ -1,0 +1,223 @@
+{
+  "avatar": {
+    "removeBody": "Dein Profilbild entfernen? Dein Profil zeigt dann deine Initialen.",
+    "removeConfirm": "Entfernen",
+    "removeTitle": "Profilbild entfernen",
+    "removing": "Wird entfernt..."
+  },
+  "badges": {
+    "award": {
+      "generic": "Beitrag",
+      "personal": "Persönlicher Beitrag",
+      "project": "Projekt-Beitrag",
+      "team": "Team-Beitrag",
+      "unknownAwarder": "einem anderen Nutzer"
+    },
+    "deleteBody": "Die Auszeichnung „{context}“ von {awarder} endgültig löschen? Das entfernt nur diese eine Auszeichnung, nicht andere Auszeichnungen desselben Badges.",
+    "deleteBodyGeneric": "Diese Badge-Auszeichnung endgültig löschen? Das entfernt nur diese eine Auszeichnung, nicht andere Auszeichnungen desselben Badges.",
+    "deleteConfirm": "Löschen",
+    "deleteTitle": "Badge-Auszeichnung löschen",
+    "deleting": "Wird gelöscht...",
+    "hideBody": "Die Auszeichnung „{context}“ von {awarder} vor anderen verbergen? Du siehst sie weiterhin in deinem Profil, markiert mit einem geschlossenen Auge.",
+    "hideBodyGeneric": "Diese Badge-Auszeichnung vor anderen verbergen? Du siehst sie weiterhin in deinem Profil, markiert mit einem geschlossenen Auge.",
+    "hideConfirm": "Verbergen",
+    "hideTitle": "Badge-Auszeichnung verbergen",
+    "hiding": "Wird verborgen..."
+  },
+  "blocklist": {
+    "blockedOn": "An diesem Tag blockiert",
+    "empty": "Du hast noch niemanden blockiert. Blockierte Nutzer können dir nicht schreiben und dein Profil nicht sehen, und du siehst ihres nicht.",
+    "errors": {
+      "load": "Deine Blockierliste konnte nicht geladen werden. Bitte versuche es noch einmal.",
+      "unblock": "Die Blockierung konnte nicht aufgehoben werden."
+    },
+    "heading": "Blockierte Nutzer",
+    "loading": "Blockierliste wird geladen…",
+    "notice": "Blockierte Nutzer können dir nicht schreiben und dein Profil nicht sehen, und du siehst ihres nicht.",
+    "sharedTeams": "{count, plural, one {# gemeinsames Team} other {# gemeinsame Teams}}",
+    "unblockBody": "{name} kann dir dann wieder schreiben und dein Profil sehen, und du siehst ihres.",
+    "unblockConfirm": "Entsperren",
+    "unblockTitle": "Von der Blockierliste entfernen?",
+    "unblocked": "{name} wurde von deiner Blockierliste entfernt.",
+    "unblocking": "Wird entsperrt…"
+  },
+  "edit": {
+    "bio": "Über mich",
+    "bioPlaceholder": "Erzähl etwas über dich",
+    "cancel": "Abbrechen",
+    "detailsSection": "Profildetails",
+    "firstName": "Vorname",
+    "firstNamePlaceholder": "Vorname",
+    "focusAreasLabel": "Wähle Fokusbereiche, die zu deinen Interessen und Fähigkeiten passen",
+    "focusAreasLabelShort": "Wähle deine Interessen und Fähigkeiten",
+    "focusAreasPlaceholder": "Tippen, um Fokusbereiche zu suchen...",
+    "focusAreasSection": "Fokusbereiche",
+    "lastName": "Nachname",
+    "lastNamePlaceholder": "Nachname",
+    "pictureSection": "Profilbild",
+    "removeCurrentPicture": "Aktuelles Bild entfernen",
+    "save": "Änderungen speichern",
+    "saving": "Wird gespeichert...",
+    "title": "Profil bearbeiten",
+    "username": "Benutzername",
+    "usernameHelp": "3–20 Zeichen, Buchstaben/Zahlen/Unterstrich.",
+    "usernamePlaceholder": "Benutzername"
+  },
+  "errors": {
+    "badgeMissingIdDelete": "Diese Badge-Auszeichnung konnte nicht gelöscht werden, weil ihre ID fehlt.",
+    "badgeMissingIdHide": "Diese Badge-Auszeichnung konnte nicht verborgen werden, weil ihre ID fehlt.",
+    "badgeMissingIdShow": "Diese Badge-Auszeichnung konnte nicht angezeigt werden, weil ihre ID fehlt.",
+    "deleteBadge": "Die Badge-Auszeichnung konnte nicht gelöscht werden. Bitte versuche es noch einmal.",
+    "hideBadge": "Das Badge konnte nicht verborgen werden. Bitte versuche es noch einmal.",
+    "imageUpload": "Das Bild konnte nicht hochgeladen werden. Bitte versuche ein anderes Bild oder probiere es später noch einmal.",
+    "loadUser": "Die Nutzerdaten konnten nicht geladen werden. Bitte versuche es noch einmal.",
+    "removePicture": "Das Profilbild konnte nicht entfernt werden",
+    "removePictureRetry": "Das Profilbild konnte nicht entfernt werden. Bitte versuche es noch einmal.",
+    "showBadge": "Das Badge konnte nicht sichtbar gemacht werden. Bitte versuche es noch einmal.",
+    "unknown": "Unbekannter Fehler",
+    "updateProfile": "Das Profil konnte nicht aktualisiert werden: {reason}"
+  },
+  "notFound": {
+    "body": "Bitte melde dich erneut an, um auf dein Profil zuzugreifen.",
+    "loginCta": "Zur Anmeldung",
+    "title": "Benutzer nicht gefunden"
+  },
+  "settings": {
+    "account": {
+      "cancel": "Abbrechen",
+      "change": "Ändern",
+      "confirmNewPassword": "Neues Passwort bestätigen",
+      "confirmWithPassword": "Mit aktuellem Passwort bestätigen",
+      "currentPassword": "Aktuelles Passwort",
+      "emailLabel": "E-Mail-Adresse",
+      "errors": {
+        "changePassword": "Das Passwort konnte nicht geändert werden",
+        "currentPasswordIncorrect": "Das aktuelle Passwort ist falsch",
+        "currentPasswordRequired": "Aktuelles Passwort ist erforderlich",
+        "invalidEmail": "Ungültige E-Mail-Adresse",
+        "newEmailRequired": "Neue E-Mail-Adresse ist erforderlich",
+        "newPasswordRequired": "Neues Passwort ist erforderlich",
+        "passwordComplexity": "Das Passwort muss mindestens einen Buchstaben und eine Zahl enthalten",
+        "passwordTooShort": "Das Passwort muss mindestens 8 Zeichen lang sein",
+        "passwordsDoNotMatch": "Die Passwörter stimmen nicht überein",
+        "sendVerification": "Die Bestätigungs-E-Mail konnte nicht gesendet werden"
+      },
+      "hidePassword": "Passwort ausblenden",
+      "newEmailLabel": "Neue E-Mail-Adresse",
+      "newEmailPlaceholder": "neu@email.de",
+      "newPassword": "Neues Passwort",
+      "passwordChanged": "Passwort erfolgreich geändert. Bitte melde dich mit deinem neuen Passwort an. Wir haben dir außerdem eine Bestätigungs-E-Mail geschickt.",
+      "passwordHelp": "Nach der Änderung erhältst du eine Bestätigungs-E-Mail zu deiner Passwortänderung. Du wirst aus deiner aktuellen Sitzung abgemeldet und zum Anmeldeformular geleitet, um dein neues Passwort zu verwenden.",
+      "passwordLabel": "Passwort",
+      "pendingEmail": "Änderung zu {email} steht aus. Sieh in dieses Postfach, um die neue Adresse zu bestätigen.",
+      "sendVerification": "Bestätigungs-E-Mail senden",
+      "showPassword": "Passwort anzeigen",
+      "updatePassword": "Passwort aktualisieren",
+      "verificationSent": "Bestätigungs-E-Mail an {email} gesendet. Deine aktuelle E-Mail-Adresse bleibt aktiv, bis du die neue bestätigst."
+    },
+    "delete": {
+      "button": "Account löschen",
+      "cancel": "Abbrechen",
+      "change": "Ändern",
+      "close": "Schließen",
+      "confirm": "Meinen Account löschen",
+      "continue": "Weiter",
+      "deleteHeading": "Teams, die gelöscht werden",
+      "errors": {
+        "deleteAccount": "Der Account konnte nicht gelöscht werden.",
+        "deleteAccountRetry": "Der Account konnte nicht gelöscht werden. Bitte versuche es noch einmal.",
+        "loadMembers": "Die Teammitglieder konnten nicht geladen werden. Bitte versuche es noch einmal.",
+        "loadSummary": "Die Übersicht zur Account-Löschung konnte nicht geladen werden. Bitte versuche es noch einmal.",
+        "passwordIncorrect": "Falsches Passwort",
+        "passwordRequired": "Passwort ist erforderlich"
+      },
+      "executing": "Dein Account wird gelöscht",
+      "loadingMembers": "Teammitglieder werden geladen...",
+      "memberCount": "{count, plural, one {# Mitglied} other {# Mitglieder}}",
+      "modalTitle": "Account löschen",
+      "noTransferOptions": "Es sind keine anderen Teammitglieder für eine Übergabe verfügbar.",
+      "passwordLabel": "Gib dein Passwort ein, um fortzufahren",
+      "reopenHeading": "Rollen, die wieder geöffnet werden",
+      "reviewNotice": "Bitte lies das sorgfältig.",
+      "roleParenthetical": " ({role})",
+      "roles": {
+        "admin": "Admin",
+        "member": "Mitglied",
+        "owner": "Eigentümer"
+      },
+      "selectedTeammate": "Ausgewähltes Teammitglied",
+      "soloTeamNotice": "Dieses Solo-Team wird sofort und endgültig gelöscht",
+      "step1": "Schritt 1 von 2: Passwort bestätigen",
+      "step2": "Schritt 2 von 2: Prüfen, was sich ändert",
+      "successorLabel": "Nachfolge:",
+      "successorOption": "{name} ({role})",
+      "summaryBadges": "{count, plural, one {# Badge-Auszeichnung, die du vergeben hast, zeigt künftig „Former Lomir User“} other {# Badge-Auszeichnungen, die du vergeben hast, zeigen künftig „Former Lomir User“}}",
+      "summaryHeading": "Übersicht",
+      "summaryMemberships": "{count, plural, one {# Teammitgliedschaft wird entfernt} other {# Teammitgliedschaften werden entfernt}}",
+      "summaryMessages": "{count, plural, one {# Direktnachricht wird gelöscht} other {# Direktnachrichten werden gelöscht}}",
+      "transferHeading": "Teams, die übergeben werden",
+      "transferTo": "Eigentum übertragen an",
+      "unknownMember": "Unbekanntes Mitglied",
+      "unknownTeam": "Unbekanntes Team",
+      "untitledRole": "Rolle ohne Namen",
+      "untitledTeam": "Team ohne Namen"
+    },
+    "errors": {
+      "language": "Die Sprache konnte nicht aktualisiert werden. Bitte versuche es noch einmal.",
+      "visibility": "Die Sichtbarkeit konnte nicht aktualisiert werden. Bitte versuche es noch einmal."
+    },
+    "sections": {
+      "account": "Account",
+      "dangerZone": "Gefahrenzone",
+      "privacy": "Privatsphäre"
+    },
+    "status": {
+      "languageUpdated": "Sprache aktualisiert",
+      "visibilityUpdated": "Profilsichtbarkeit aktualisiert"
+    },
+    "title": "Einstellungen",
+    "visibility": {
+      "label": "Profilsichtbarkeit",
+      "private": "Privates Profil",
+      "public": "Für alle sichtbar"
+    }
+  },
+  "status": {
+    "badgeDeleted": "Badge-Auszeichnung gelöscht.",
+    "badgeHidden": "Badge vor anderen verborgen.",
+    "badgeVisible": "Badge für andere sichtbar.",
+    "pictureRemoved": "Profilbild erfolgreich entfernt",
+    "updated": "Profil erfolgreich aktualisiert"
+  },
+  "validation": {
+    "firstNameRequired": "Vorname ist erforderlich",
+    "usernameFormat": "3–20 Zeichen: Buchstaben, Zahlen, Unterstrich",
+    "usernameRequired": "Benutzername ist erforderlich"
+  },
+  "view": {
+    "avatarAlt": "Profil",
+    "badges": "Meine Badges",
+    "demoProfile": "Demo-Profil",
+    "edit": "Bearbeiten",
+    "email": "E-Mail",
+    "focusAreas": "Fokusbereiche",
+    "joined": "Bei Lomir seit {date}",
+    "location": "Standort",
+    "memberSinceUnknown": "Unbekannt",
+    "noBadges": "Noch keine Badges erhalten.",
+    "noFocusAreas": "Noch keine Fokusbereiche hinzugefügt.",
+    "noLocation": "Noch kein Standort hinterlegt.",
+    "private": "Privat",
+    "privateTooltip": "Privates Profil - nur für dich sichtbar\nÄnderbar in den Profileinstellungen",
+    "public": "Öffentlich",
+    "publicTooltip": "Öffentliches Profil - für alle sichtbar\nÄnderbar in den Profileinstellungen",
+    "title": "Dein Profil"
+  },
+  "visibility": {
+    "label": "Profilsichtbarkeit",
+    "private": "Privates Profil",
+    "privateDescription": "Dein Profil erscheint nicht in den Suchergebnissen, kann aber dort auftauchen, wo du aktiv bist.",
+    "public": "Öffentliches Profil",
+    "publicDescription": "Dein Profil kann von anderen Lomir-Nutzern gefunden werden."
+  }
+}

@@ -67,19 +67,19 @@ const sameId = (left, right) =>
   right !== null &&
   String(left) === String(right);
 
-const formatRoleLabel = (role) => {
-  if (!role) return "Member";
-
-  return String(role)
+// Title-cases a role value that is outside the known vocabulary. The known
+// ones are translated by `roleLabel` in the component; this is the fallback.
+const formatRoleLabel = (role) =>
+  String(role)
     .split("_")
     .filter(Boolean)
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
-};
 
+/** Returns null - not an English placeholder - when nothing usable is set. */
 const getDisplayName = (entity) => {
   if (!entity || typeof entity !== "object") {
-    return "Unknown";
+    return null;
   }
 
   const directName = firstNonEmptyString(
@@ -99,15 +99,14 @@ const getDisplayName = (entity) => {
   const lastName = firstNonEmptyString(entity.lastName, entity.last_name);
   const fullName = [firstName, lastName].filter(Boolean).join(" ").trim();
 
-  return fullName || "Unknown";
+  return fullName || null;
 };
 
 const getTransferTeamId = (team) =>
   normalizeId(firstDefined(team?.teamId, team?.team_id, team?.id));
 
 const getTransferTeamName = (team) =>
-  firstNonEmptyString(team?.teamName, team?.team_name, team?.name) ||
-  "Untitled team";
+  firstNonEmptyString(team?.teamName, team?.team_name, team?.name);
 
 const getTransferTeamMemberCount = (team) =>
   toNumber(
@@ -153,15 +152,14 @@ const getDefaultSuccessor = (team) => {
   return {
     id: successorId,
     name:
-      (getDisplayName(nestedSuccessor) !== "Unknown" &&
-        getDisplayName(nestedSuccessor)) ||
+      getDisplayName(nestedSuccessor) ||
       firstNonEmptyString(
         team?.defaultSuccessorName,
         team?.default_successor_name,
         team?.successorName,
         team?.successor_name,
       ) ||
-      "Unknown member",
+      null,
     role:
       firstNonEmptyString(
         nestedSuccessor?.role,
@@ -174,12 +172,7 @@ const getDefaultSuccessor = (team) => {
 };
 
 const getRoleToReopenName = (role) =>
-  firstNonEmptyString(
-    role?.roleName,
-    role?.role_name,
-    role?.name,
-    role?.title,
-  ) || "Untitled role";
+  firstNonEmptyString(role?.roleName, role?.role_name, role?.name, role?.title);
 
 const getRoleToReopenTeamName = (role) =>
   firstNonEmptyString(
@@ -188,7 +181,7 @@ const getRoleToReopenTeamName = (role) =>
     role?.team?.name,
     role?.team?.teamName,
     role?.team?.team_name,
-  ) || "Unknown team";
+  );
 
 const getTeamMemberId = (member) =>
   normalizeId(
@@ -219,7 +212,7 @@ const normalizeTransferOptions = (members, currentUserId) =>
     .filter(Boolean);
 
 const Settings = () => {
-  const { t } = useTranslation();
+  const { t } = useTranslation("profile");
   const { user, updateUser, logout, refreshBlocks } = useAuth();
   const navigate = useNavigate();
   const pendingEmail = user?.pendingEmail || user?.pending_email || null;
@@ -241,10 +234,10 @@ const Settings = () => {
       setVisibilityLoading(true);
       await userService.updateUser(user.id, { isPublic: newValue });
       updateUser({ isPublic: newValue });
-      setSuccess("Profile visibility updated");
+      setSuccess(t("settings.status.visibilityUpdated"));
     } catch {
       setIsPublic(!newValue); // revert on failure
-      setError("Failed to update visibility. Please try again.");
+      setError(t("settings.errors.visibility"));
     } finally {
       setVisibilityLoading(false);
     }
@@ -292,10 +285,10 @@ const Settings = () => {
       // LanguageProvider watches user.preferredLanguage, so this is also what
       // switches the interface over and mirrors the choice into localStorage.
       updateUser({ preferredLanguage: newValue });
-      setSuccess("Language updated");
+      setSuccess(t("settings.status.languageUpdated"));
     } catch {
       setPreferredLanguage(previousValue); // revert on failure
-      setError("Failed to update language. Please try again.");
+      setError(t("settings.errors.language"));
     } finally {
       setLanguageLoading(false);
     }
@@ -312,11 +305,14 @@ const Settings = () => {
 
   const validateEmail = () => {
     const errs = {};
-    if (!emailData.newEmail) errs.newEmail = "New email is required";
+    if (!emailData.newEmail)
+      errs.newEmail = t("settings.account.errors.newEmailRequired");
     else if (!/\S+@\S+\.\S+/.test(emailData.newEmail))
-      errs.newEmail = "Invalid email address";
+      errs.newEmail = t("settings.account.errors.invalidEmail");
     if (!emailData.currentPasswordForEmail)
-      errs.currentPasswordForEmail = "Current password is required";
+      errs.currentPasswordForEmail = t(
+        "settings.account.errors.currentPasswordRequired",
+      );
     setEmailErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -338,7 +334,7 @@ const Settings = () => {
 
       updateUser({ pendingEmail: nextPendingEmail });
       setSuccess(
-        `Verification email sent to ${nextPendingEmail}. Your current email stays active until you confirm the new address.`,
+        t("settings.account.verificationSent", { email: nextPendingEmail }),
       );
       setEmailData({ newEmail: "", currentPasswordForEmail: "" });
       setShowEmailForm(false);
@@ -347,13 +343,15 @@ const Settings = () => {
         setEmailErrors((prev) => ({
           ...prev,
           currentPasswordForEmail:
-            err.response?.data?.message || "Current password is incorrect",
+            err.response?.data?.message ||
+            t("settings.account.errors.currentPasswordIncorrect"),
         }));
         return;
       }
 
       setError(
-        err.response?.data?.message || "Failed to send verification email",
+        err.response?.data?.message ||
+          t("settings.account.errors.sendVerification"),
       );
     } finally {
       setEmailLoading(false);
@@ -378,19 +376,20 @@ const Settings = () => {
   const validatePassword = () => {
     const errs = {};
     if (!passwordData.currentPassword)
-      errs.currentPassword = "Current password is required";
+      errs.currentPassword = t(
+        "settings.account.errors.currentPasswordRequired",
+      );
     if (!passwordData.newPassword)
-      errs.newPassword = "New password is required";
+      errs.newPassword = t("settings.account.errors.newPasswordRequired");
     else if (passwordData.newPassword.length < 8)
-      errs.newPassword = "Password must be at least 8 characters";
+      errs.newPassword = t("settings.account.errors.passwordTooShort");
     else if (
       !/[A-Za-z]/.test(passwordData.newPassword) ||
       !/\d/.test(passwordData.newPassword)
     )
-      errs.newPassword =
-        "Password must contain at least one letter and one number";
+      errs.newPassword = t("settings.account.errors.passwordComplexity");
     if (passwordData.newPassword !== passwordData.confirmPassword)
-      errs.confirmPassword = "Passwords do not match";
+      errs.confirmPassword = t("settings.account.errors.passwordsDoNotMatch");
     setPasswordErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -414,8 +413,7 @@ const Settings = () => {
       navigate("/login", {
         replace: true,
         state: {
-          message:
-            "Password changed successfully. Please log in with your new password. We've also sent a confirmation email.",
+          message: t("settings.account.passwordChanged"),
         },
       });
       return;
@@ -424,12 +422,16 @@ const Settings = () => {
         setPasswordErrors((prev) => ({
           ...prev,
           currentPassword:
-            err.response?.data?.message || "Current password is incorrect",
+            err.response?.data?.message ||
+            t("settings.account.errors.currentPasswordIncorrect"),
         }));
         return;
       }
 
-      setError(err.response?.data?.message || "Failed to change password");
+      setError(
+        err.response?.data?.message ||
+          t("settings.account.errors.changePassword"),
+      );
     } finally {
       setPasswordLoading(false);
     }
@@ -451,6 +453,28 @@ const Settings = () => {
   // ── Shared helpers ───────────────────────────────────────────
   const inputClass = (hasError) =>
     `input input-bordered w-full ${hasError ? "input-error" : ""}`;
+
+  // The module-level helpers return null where a name is missing, so the
+  // placeholder is resolved here in the active language. One of them used to
+  // be compared against the literal "Unknown", which a translation would have
+  // broken with nothing to catch it.
+  const teamName = (team) =>
+    getTransferTeamName(team) ?? t("settings.delete.untitledTeam");
+  const reopenRoleName = (role) =>
+    getRoleToReopenName(role) ?? t("settings.delete.untitledRole");
+  const reopenTeamName = (role) =>
+    getRoleToReopenTeamName(role) ?? t("settings.delete.unknownTeam");
+  const memberName = (name) => name ?? t("settings.delete.unknownMember");
+
+  // The role vocabulary is closed - owner / admin / member - so these are real
+  // keys rather than a generic capitalisation. Anything outside it keeps the
+  // title-cased fallback instead of rendering nothing.
+  const roleLabel = (role) => {
+    if (role === "owner") return t("settings.delete.roles.owner");
+    if (role === "admin") return t("settings.delete.roles.admin");
+    if (role === "member" || !role) return t("settings.delete.roles.member");
+    return formatRoleLabel(role);
+  };
 
   const FieldError = ({ msg }) =>
     msg ? <p className="text-xs text-error mt-2 px-1">{msg}</p> : null;
@@ -492,13 +516,16 @@ const Settings = () => {
   const directMessagesCount = toNumber(
     deletionPreviewData?.counts?.directMessages,
   );
+  // deleteError carries its own routing: a wrong password belongs under the
+  // password field, anything else in the alert above the form. That decision
+  // used to be made by comparing the message against the literal "Incorrect
+  // password" - a comparison a translation breaks silently.
   const passwordFieldError =
-    deletionStep === DELETE_STEP_PASSWORD &&
-    deleteError === "Incorrect password"
-      ? deleteError
+    deletionStep === DELETE_STEP_PASSWORD && deleteError?.field === "password"
+      ? deleteError.text
       : null;
   const deleteAlertError =
-    deleteError && deleteError !== "Incorrect password" ? deleteError : null;
+    deleteError && deleteError.field !== "password" ? deleteError.text : null;
 
   const getTransferOptionsForTeam = (team) => {
     const teamId = getTransferTeamId(team);
@@ -547,7 +574,7 @@ const Settings = () => {
 
     return {
       id: overrideId,
-      name: "Selected teammate",
+      name: t("settings.delete.selectedTeammate"),
       role: "member",
     };
   };
@@ -563,7 +590,7 @@ const Settings = () => {
     event.preventDefault();
 
     if (!deletePassword.trim()) {
-      setDeleteError("Password is required");
+      setDeleteError({ text: t("settings.delete.errors.passwordRequired") });
       return;
     }
 
@@ -579,7 +606,7 @@ const Settings = () => {
       if (previewResponse?.success === false) {
         throw new Error(
           previewResponse?.message ||
-            "Failed to load account deletion summary. Please try again.",
+            t("settings.delete.errors.loadSummary"),
         );
       }
 
@@ -593,13 +620,17 @@ const Settings = () => {
       setDeletionStep(DELETE_STEP_SUMMARY);
     } catch (err) {
       if (err.response?.status === 401) {
-        setDeleteError("Incorrect password");
+        setDeleteError({
+          field: "password",
+          text: t("settings.delete.errors.passwordIncorrect"),
+        });
       } else {
-        setDeleteError(
-          err.response?.data?.message ||
+        setDeleteError({
+          text:
+            err.response?.data?.message ||
             err.message ||
-            "Failed to load account deletion summary. Please try again.",
-        );
+            t("settings.delete.errors.loadSummary"),
+        });
       }
     } finally {
       setPreviewLoading(false);
@@ -659,10 +690,11 @@ const Settings = () => {
         [teamId]: options,
       }));
     } catch (err) {
-      setDeleteError(
-        err.response?.data?.message ||
-          "Failed to load team members. Please try again.",
-      );
+      setDeleteError({
+        text:
+          err.response?.data?.message ||
+          t("settings.delete.errors.loadMembers"),
+      });
     } finally {
       setTransferOptionsLoadingByTeam((prev) => ({
         ...prev,
@@ -715,18 +747,21 @@ const Settings = () => {
       );
 
       if (result?.success === false) {
-        throw new Error(result?.message || "Failed to delete account.");
+        throw new Error(
+          result?.message || t("settings.delete.errors.deleteAccount"),
+        );
       }
 
       logout();
       navigate("/", { replace: true });
     } catch (err) {
       setDeletionStep(DELETE_STEP_SUMMARY);
-      setDeleteError(
-        err.response?.data?.message ||
+      setDeleteError({
+        text:
+          err.response?.data?.message ||
           err.message ||
-          "Failed to delete account. Please try again.",
-      );
+          t("settings.delete.errors.deleteAccountRetry"),
+      });
     }
   };
 
@@ -751,7 +786,7 @@ const Settings = () => {
         {/* Page Header — sits directly in Card, no extra wrapper */}
         <div className="flex items-center justify-between p-6 pb-4">
           <h1 className="text-2xl sm:text-3xl font-medium text-primary">
-            Settings
+            {t("settings.title")}
           </h1>
         </div>
 
@@ -762,20 +797,20 @@ const Settings = () => {
         <div className="p-6 space-y-12">
           {/* ── Privacy ── */}
           <section className="space-y-4">
-            <FormSectionDivider text="Privacy" icon={Eye} />
+            <FormSectionDivider text={t("settings.sections.privacy")} icon={Eye} />
             <VisibilityToggle
               name="isPublic"
               checked={isPublic}
               onChange={handleVisibilityChange}
-              label="Profile Visibility"
+              label={t("settings.visibility.label")}
               entityType="profile"
-              visibleLabel="Visible to Everyone"
-              hiddenLabel="Private Profile"
+              visibleLabel={t("settings.visibility.public")}
+              hiddenLabel={t("settings.visibility.private")}
               showDescription={true}
               disabled={visibilityLoading}
             />
             <p className="form-helper-text px-1">
-              {t("privacy.profileVisibilitySettings")}
+              {t("common:privacy.profileVisibilitySettings")}
             </p>
 
             {user?.id && (
@@ -785,7 +820,7 @@ const Settings = () => {
 
           {/* ── Account ── */}
           <section className="space-y-4">
-            <FormSectionDivider text="Account" icon={KeyRound} />
+            <FormSectionDivider text={t("settings.sections.account")} icon={KeyRound} />
 
             <div
               className={`grid grid-cols-1 gap-4 items-start ${
@@ -797,7 +832,9 @@ const Settings = () => {
                 {/* Current email display */}
                 <div className="form-control w-full">
                   <label className="label">
-                    <span className="label-text">Email Address</span>
+                    <span className="label-text">
+                      {t("settings.account.emailLabel")}
+                    </span>
                   </label>
                   <div className="input input-bordered w-full flex items-center justify-between pr-2">
                     <span className="text-base-content/70">
@@ -813,13 +850,16 @@ const Settings = () => {
                         setShowCurrentPasswordForEmail(false);
                       }}
                     >
-                      {showEmailForm ? "Cancel" : "Change"}
+                      {showEmailForm
+                        ? t("settings.account.cancel")
+                        : t("settings.account.change")}
                     </button>
                   </div>
                   {pendingEmail && (
                     <p className="mt-2 text-sm text-info">
-                      Pending change to {pendingEmail}. Check that inbox to
-                      confirm the new address.
+                      {t("settings.account.pendingEmail", {
+                        email: pendingEmail,
+                      })}
                     </p>
                   )}
                 </div>
@@ -832,7 +872,9 @@ const Settings = () => {
                   >
                     <div className="form-control w-full">
                       <label className="label">
-                        <span className="label-text">New Email Address</span>
+                        <span className="label-text">
+                          {t("settings.account.newEmailLabel")}
+                        </span>
                       </label>
                       <input
                         type="email"
@@ -844,7 +886,7 @@ const Settings = () => {
                             newEmail: e.target.value,
                           })
                         }
-                        placeholder="new@email.com"
+                        placeholder={t("settings.account.newEmailPlaceholder")}
                       />
                       <FieldError msg={emailErrors.newEmail} />
                     </div>
@@ -852,7 +894,7 @@ const Settings = () => {
                     <div className="form-control w-full">
                       <label className="label">
                         <span className="label-text">
-                          Confirm with Current Password
+                          {t("settings.account.confirmWithPassword")}
                         </span>
                       </label>
                       <div className="relative">
@@ -879,8 +921,8 @@ const Settings = () => {
                           onMouseDown={(e) => e.preventDefault()}
                           aria-label={
                             showCurrentPasswordForEmail
-                              ? "Hide password"
-                              : "Show password"
+                              ? t("settings.account.hidePassword")
+                              : t("settings.account.showPassword")
                           }
                           aria-pressed={showCurrentPasswordForEmail}
                         >
@@ -905,7 +947,7 @@ const Settings = () => {
                         {emailLoading ? (
                           <span className="loading loading-spinner loading-xs" />
                         ) : (
-                          "Send Verification Email"
+                          t("settings.account.sendVerification")
                         )}
                       </Button>
                     </div>
@@ -918,7 +960,9 @@ const Settings = () => {
                 {/* Change password trigger */}
                 <div className="form-control w-full">
                   <label className="label">
-                    <span className="label-text">Password</span>
+                    <span className="label-text">
+                      {t("settings.account.passwordLabel")}
+                    </span>
                   </label>
                   <div className="input input-bordered w-full flex items-center justify-between pr-2">
                     <span className="text-base-content/70 tracking-widest text-sm">
@@ -936,7 +980,9 @@ const Settings = () => {
                         setShowConfirmPassword(false);
                       }}
                     >
-                      {showPasswordForm ? "Cancel" : "Change"}
+                      {showPasswordForm
+                        ? t("settings.account.cancel")
+                        : t("settings.account.change")}
                     </button>
                   </div>
                 </div>
@@ -949,7 +995,9 @@ const Settings = () => {
                   >
                     <div className="form-control w-full">
                       <label className="label">
-                        <span className="label-text">Current Password</span>
+                        <span className="label-text">
+                          {t("settings.account.currentPassword")}
+                        </span>
                       </label>
                       <div className="relative">
                         <input
@@ -973,8 +1021,8 @@ const Settings = () => {
                           onMouseDown={(e) => e.preventDefault()}
                           aria-label={
                             showCurrentPassword
-                              ? "Hide password"
-                              : "Show password"
+                              ? t("settings.account.hidePassword")
+                              : t("settings.account.showPassword")
                           }
                           aria-pressed={showCurrentPassword}
                         >
@@ -990,7 +1038,9 @@ const Settings = () => {
 
                     <div className="form-control w-full">
                       <label className="label">
-                        <span className="label-text">New Password</span>
+                        <span className="label-text">
+                          {t("settings.account.newPassword")}
+                        </span>
                       </label>
                       <div className="relative">
                         <input
@@ -1011,7 +1061,9 @@ const Settings = () => {
                           onClick={() => setShowNewPassword((prev) => !prev)}
                           onMouseDown={(e) => e.preventDefault()}
                           aria-label={
-                            showNewPassword ? "Hide password" : "Show password"
+                            showNewPassword
+                              ? t("settings.account.hidePassword")
+                              : t("settings.account.showPassword")
                           }
                           aria-pressed={showNewPassword}
                         >
@@ -1027,7 +1079,9 @@ const Settings = () => {
 
                     <div className="form-control w-full">
                       <label className="label">
-                        <span className="label-text">Confirm New Password</span>
+                        <span className="label-text">
+                          {t("settings.account.confirmNewPassword")}
+                        </span>
                       </label>
                       <div className="relative">
                         <input
@@ -1051,8 +1105,8 @@ const Settings = () => {
                           onMouseDown={(e) => e.preventDefault()}
                           aria-label={
                             showConfirmPassword
-                              ? "Hide password"
-                              : "Show password"
+                              ? t("settings.account.hidePassword")
+                              : t("settings.account.showPassword")
                           }
                           aria-pressed={showConfirmPassword}
                         >
@@ -1068,10 +1122,7 @@ const Settings = () => {
 
                     <div className="flex flex-col-reverse gap-4 !mt-[25px] pt-1 sm:flex-row sm:justify-between sm:items-start">
                       <p className="form-helper-text px-1 !mt-0">
-                        After updating your password, you will receive a
-                        confirmation email on your password change. You will be
-                        logged out of your current session and directed to the
-                        login form to use your new password.
+                        {t("settings.account.passwordHelp")}
                       </p>
                       <Button
                         type="submit"
@@ -1083,7 +1134,7 @@ const Settings = () => {
                         {passwordLoading ? (
                           <span className="loading loading-spinner loading-xs" />
                         ) : (
-                          "Update Password"
+                          t("settings.account.updatePassword")
                         )}
                       </Button>
                     </div>
@@ -1106,10 +1157,10 @@ const Settings = () => {
 
           {/* ── Danger Zone ── */}
           <section className="space-y-4">
-            <FormSectionDivider text="Danger Zone" icon={Trash2} />
+            <FormSectionDivider text={t("settings.sections.dangerZone")} icon={Trash2} />
 
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <p className="form-helper-text">{t("privacy.accountDeletion")}</p>
+              <p className="form-helper-text">{t("common:privacy.accountDeletion")}</p>
               <Button
                 variant="errorOutline"
                 size="sm"
@@ -1117,7 +1168,7 @@ const Settings = () => {
                 icon={<Trash2 size={16} />}
                 className="w-full sm:w-auto sm:flex-shrink-0 sm:ml-4"
               >
-                Delete Account
+                {t("settings.delete.button")}
               </Button>
             </div>
           </section>
@@ -1132,14 +1183,14 @@ const Settings = () => {
           title={
             <div>
               <h2 className="text-lg font-semibold text-primary">
-                Delete Account
+                {t("settings.delete.modalTitle")}
               </h2>
               <p className="mt-1 text-sm text-base-content/60">
                 {deletionStep === DELETE_STEP_PASSWORD
-                  ? "Step 1 of 2: Confirm your password"
+                  ? t("settings.delete.step1")
                   : deletionStep === DELETE_STEP_EXECUTING
-                    ? "Deleting your account"
-                    : "Step 2 of 2: Review what will change"}
+                    ? t("settings.delete.executing")
+                    : t("settings.delete.step2")}
               </p>
             </div>
           }
@@ -1153,7 +1204,7 @@ const Settings = () => {
           {deletionStep === DELETE_STEP_PASSWORD ? (
             <form onSubmit={handleDeletionPreview} className="space-y-4">
               <Alert type="warning" className="w-full">
-                {t("privacy.accountDeletion")}
+                {t("common:privacy.accountDeletion")}
               </Alert>
 
               {deleteAlertError && (
@@ -1167,7 +1218,7 @@ const Settings = () => {
               <div className="form-control w-full">
                 <label className="label">
                   <span className="label-text">
-                    Enter your password to continue
+                    {t("settings.delete.passwordLabel")}
                   </span>
                 </label>
                 <input
@@ -1187,7 +1238,7 @@ const Settings = () => {
                   onClick={closeDeleteModal}
                   disabled={previewLoading}
                 >
-                  Cancel
+                  {t("settings.delete.cancel")}
                 </Button>
                 <Button
                   type="submit"
@@ -1197,7 +1248,7 @@ const Settings = () => {
                   {previewLoading ? (
                     <span className="loading loading-spinner loading-sm" />
                   ) : (
-                    "Continue"
+                    t("settings.delete.continue")
                   )}
                 </Button>
               </div>
@@ -1205,7 +1256,8 @@ const Settings = () => {
           ) : (
             <div className="space-y-4">
               <Alert type="warning" className="w-full mb-2">
-                Please review this carefully. {t("privacy.accountDeletion")}
+                {t("settings.delete.reviewNotice")}{" "}
+                {t("common:privacy.accountDeletion")}
               </Alert>
 
               {deleteAlertError && (
@@ -1225,7 +1277,7 @@ const Settings = () => {
                   <div className="flex items-center gap-2 text-primary">
                     <Users size={18} />
                     <h3 className="text-base font-semibold">
-                      Teams to be transferred
+                      {t("settings.delete.transferHeading")}
                     </h3>
                   </div>
 
@@ -1243,26 +1295,29 @@ const Settings = () => {
 
                       return (
                         <div
-                          key={teamId ?? getTransferTeamName(team)}
+                          key={teamId ?? teamName(team)}
                           className="rounded-xl border border-base-300 bg-base-200/30 p-4 space-y-3"
                         >
                           <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                             <div className="space-y-1">
                               <p className="font-medium text-base-content">
-                                {getTransferTeamName(team)}
+                                {teamName(team)}
                               </p>
                               <p className="text-sm text-base-content/70">
-                                Successor:{" "}
+                                {t("settings.delete.successorLabel")}{" "}
                                 <span className="font-medium text-base-content">
-                                  {selectedSuccessor?.name || "Unknown member"}
+                                  {memberName(selectedSuccessor?.name)}
                                 </span>
                                 {selectedSuccessor?.role
-                                  ? ` (${formatRoleLabel(selectedSuccessor.role)})`
+                                  ? t("settings.delete.roleParenthetical", {
+                                      role: roleLabel(selectedSuccessor.role),
+                                    })
                                   : ""}
                               </p>
                               <p className="text-sm text-base-content/70">
-                                {memberCount}{" "}
-                                {memberCount === 1 ? "member" : "members"}
+                                {t("settings.delete.memberCount", {
+                                  count: memberCount,
+                                })}
                               </p>
                             </div>
 
@@ -1272,7 +1327,9 @@ const Settings = () => {
                               onClick={() => handleOpenTransferOptions(team)}
                               disabled={deletionStep === DELETE_STEP_EXECUTING}
                             >
-                              {isEditing ? "Close" : "Change"}
+                              {isEditing
+                                ? t("settings.delete.close")
+                                : t("settings.delete.change")}
                             </Button>
                           </div>
 
@@ -1280,14 +1337,14 @@ const Settings = () => {
                             <div className="form-control w-full">
                               <label className="label pb-2">
                                 <span className="label-text text-sm">
-                                  Transfer ownership to
+                                  {t("settings.delete.transferTo")}
                                 </span>
                               </label>
 
                               {isLoadingOptions ? (
                                 <div className="flex items-center gap-2 text-sm text-base-content/70">
                                   <span className="loading loading-spinner loading-sm" />
-                                  Loading team members...
+                                  {t("settings.delete.loadingMembers")}
                                 </div>
                               ) : transferOptions.length > 0 ? (
                                 <select
@@ -1305,15 +1362,16 @@ const Settings = () => {
                                 >
                                   {transferOptions.map((option) => (
                                     <option key={option.id} value={option.id}>
-                                      {option.name} (
-                                      {formatRoleLabel(option.role)})
+                                      {t("settings.delete.successorOption", {
+                                        name: memberName(option.name),
+                                        role: roleLabel(option.role),
+                                      })}
                                     </option>
                                   ))}
                                 </select>
                               ) : (
                                 <p className="text-sm text-warning">
-                                  No other team members are available for
-                                  transfer.
+                                  {t("settings.delete.noTransferOptions")}
                                 </p>
                               )}
                             </div>
@@ -1334,7 +1392,7 @@ const Settings = () => {
                   <div className="flex items-center gap-2 text-warning">
                     <AlertTriangle size={18} />
                     <h3 className="text-base font-semibold text-base-content">
-                      Teams to be deleted
+                      {t("settings.delete.deleteHeading")}
                     </h3>
                   </div>
 
@@ -1342,7 +1400,7 @@ const Settings = () => {
                     {teamsToDelete.map((team) => (
                       <div
                         key={
-                          getTransferTeamId(team) ?? getTransferTeamName(team)
+                          getTransferTeamId(team) ?? teamName(team)
                         }
                         className="flex items-start gap-3 rounded-xl border border-warning/30 bg-warning/10 p-4"
                       >
@@ -1352,11 +1410,10 @@ const Settings = () => {
                         />
                         <div>
                           <p className="font-medium text-base-content">
-                            {getTransferTeamName(team)}
+                            {teamName(team)}
                           </p>
                           <p className="text-sm text-warning">
-                            This solo team will be permanently deleted
-                            immediately
+                            {t("settings.delete.soloTeamNotice")}
                           </p>
                         </div>
                       </div>
@@ -1374,21 +1431,21 @@ const Settings = () => {
                   <div className="flex items-center gap-2 text-primary">
                     <Shield size={18} />
                     <h3 className="text-base font-semibold">
-                      Roles to be reopened
+                      {t("settings.delete.reopenHeading")}
                     </h3>
                   </div>
 
                   <div className="space-y-3">
                     {rolesToReopen.map((role, index) => (
                       <div
-                        key={`${getRoleToReopenTeamName(role)}-${getRoleToReopenName(role)}-${index}`}
+                        key={`${reopenTeamName(role)}-${reopenRoleName(role)}-${index}`}
                         className="rounded-xl border border-base-300 bg-base-200/30 p-4"
                       >
                         <p className="font-medium text-base-content">
-                          {getRoleToReopenName(role)}
+                          {reopenRoleName(role)}
                         </p>
                         <p className="text-sm text-base-content/70">
-                          {getRoleToReopenTeamName(role)}
+                          {reopenTeamName(role)}
                         </p>
                       </div>
                     ))}
@@ -1399,22 +1456,26 @@ const Settings = () => {
               <div className="space-y-4">
                 <div className="flex items-center gap-2 text-primary">
                   <Trash2 size={18} />
-                  <h3 className="text-base font-semibold">Summary</h3>
+                  <h3 className="text-base font-semibold">
+                    {t("settings.delete.summaryHeading")}
+                  </h3>
                 </div>
 
                 <div className="space-y-2 text-sm text-base-content/80">
                   <p>
-                    {badgeAwardsGivenCount} badge award
-                    {badgeAwardsGivenCount === 1 ? "" : "s"} you&apos;ve given
-                    will show &quot;Former Lomir User&quot;
+                    {t("settings.delete.summaryBadges", {
+                      count: badgeAwardsGivenCount,
+                    })}
                   </p>
                   <p>
-                    {teamMembershipsCount} team membership
-                    {teamMembershipsCount === 1 ? "" : "s"} will be removed
+                    {t("settings.delete.summaryMemberships", {
+                      count: teamMembershipsCount,
+                    })}
                   </p>
                   <p>
-                    {directMessagesCount} direct message
-                    {directMessagesCount === 1 ? "" : "s"} will be deleted
+                    {t("settings.delete.summaryMessages", {
+                      count: directMessagesCount,
+                    })}
                   </p>
                 </div>
               </div>
@@ -1425,7 +1486,7 @@ const Settings = () => {
                   onClick={closeDeleteModal}
                   disabled={deletionStep === DELETE_STEP_EXECUTING}
                 >
-                  Cancel
+                  {t("settings.delete.cancel")}
                 </Button>
                 <Button
                   variant="errorOutline"
@@ -1436,7 +1497,7 @@ const Settings = () => {
                   {deletionStep === DELETE_STEP_EXECUTING ? (
                     <span className="loading loading-spinner loading-sm" />
                   ) : (
-                    "Delete My Account"
+                    t("settings.delete.confirm")
                   )}
                 </Button>
               </div>

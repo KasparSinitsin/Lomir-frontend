@@ -4,6 +4,10 @@
     "languageLabel": "Lomir App Language",
     "languageHelp": "Lomir uses this language for the app and for the emails we send you. Without a choice, we follow the country in your profile and otherwise your browser."
   },
+  "confirmModal": {
+    "confirm": "Confirm",
+    "cancel": "Cancel"
+  },
   "countrySelect": {
     "placeholder": "Select a country",
     "searchPlaceholder": "Type to search...",
@@ -85,6 +89,9 @@
     "useSuggestedCity": "Use it",
     "useSuggestedCityAria": "Use {city}"
   },
+  "modal": {
+    "close": "Close modal"
+  },
   "nav": {
     "languageCurrent": "Language: {language} ({code})",
     "languageSettings": "Language Settings",
@@ -142,7 +149,7 @@
     "profileVisibilitySettings": "Public profiles are visible to anyone visiting Lomir, whether or not they are logged in. Private profiles reduce public visibility, but your activity may still appear in teams, messages, applications, or badges. Location details you add may be shown as part of your approximate public profile location.",
     "avatarUpload": "Uploaded images are stored and delivered via ImageKit. Your avatar may be visible to other users depending on your visibility settings.",
     "chatUpload": "Files and images shared in chat are visible to conversation participants. Please do not upload sensitive or confidential information.",
-    "accountDeletion": "Account deletion is permanent. Your profile and direct messages are deleted immediately after confirmation. Some team and badge references may be anonymized as 'Former Lomir User' to preserve team and conversation context."
+    "accountDeletion": "Account deletion is permanent. Your profile and direct messages are deleted immediately after confirmation. Some team and badge references may be anonymized as \"Former Lomir User\" to preserve team and conversation context."
   },
   "visibility": {
     "title": "Visibility",

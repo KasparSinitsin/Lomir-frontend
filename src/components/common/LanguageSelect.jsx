@@ -1,10 +1,12 @@
 import React, { useState, useRef, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Check, ChevronDown, Search } from "lucide-react";
+import LanguageFlag from "./LanguageFlag";
 import {
   SUPPORTED_LANGUAGES,
   LANGUAGE_SEARCH_THRESHOLD,
   getLanguageByCode,
+  getSecondaryLanguageName,
 } from "../../constants/languages";
 
 /**
@@ -59,7 +61,9 @@ const LanguageSelect = ({
     return SUPPORTED_LANGUAGES.filter(
       (language) =>
         language.endonym.toLowerCase().includes(search) ||
-        language.englishName.toLowerCase().includes(search) ||
+        Object.values(language.names ?? {}).some((name) =>
+          name.toLowerCase().includes(search),
+        ) ||
         language.code.toLowerCase() === search,
     );
   }, [searchTerm, showSearch]);
@@ -152,6 +156,18 @@ const LanguageSelect = ({
 
   return (
     <div ref={containerRef} className={`relative ${className}`}>
+      {/*
+        `bg-none` is load-bearing, not tidying. daisyUI's `.select` paints its
+        own dropdown arrow as two linear-gradients, and this borrows the class
+        for a custom combobox that renders its own lucide ChevronDown - so both
+        showed, a filled triangle beside the icon. daisyUI suppresses it the
+        same way in its own join rules (`:not(:last-child){background-image:
+        none}`). `px-4` goes with it: `.select` sets `padding-inline: 1rem
+        1.75rem`, the wider end being the reserve for that triangle, which
+        leaves the icon visibly inset once the triangle is gone. Equal padding
+        on both sides is the point, so the shorthand is replaced rather than
+        half-overridden.
+      */}
       <div
         id={id}
         role="combobox"
@@ -162,7 +178,7 @@ const LanguageSelect = ({
         onClick={() => (isOpen ? close() : open())}
         onKeyDown={handleKeyDown}
         className={`
-          select select-bordered w-full flex items-center justify-between cursor-pointer
+          select select-bordered bg-none px-4 w-full flex items-center justify-between cursor-pointer
           ${disabled ? "opacity-50 cursor-not-allowed" : ""}
           ${isOpen ? "border-primary" : ""}
         `}
@@ -185,18 +201,45 @@ const LanguageSelect = ({
             />
           </div>
         ) : (
-          <span className="truncate">
+          <span className="flex min-w-0 items-center gap-2">
             {selectedLanguage ? (
               <>
-                <span>{selectedLanguage.endonym}</span>
-                {selectedLanguage.endonym !== selectedLanguage.englishName && (
-                  <span className="text-base-content/50 ml-2 text-sm">
-                    {selectedLanguage.englishName}
-                  </span>
-                )}
+                {/*
+                  The round flag, framed the way the navbar avatar is - the
+                  caller owns the frame, the component only paints inside it.
+                  `shrink-0` so it never gives way to a long name; the text is
+                  what truncates. See the note above `SUPPORTED_LANGUAGES` for
+                  why flags are here at all (Julia, 2026-09-05) and what the
+                  objection to them was.
+                */}
+                <span className="block h-5 w-5 shrink-0 overflow-hidden rounded-full">
+                  <LanguageFlag code={selectedLanguage.code} />
+                </span>
+                <span className="truncate">
+                  <span>{selectedLanguage.endonym}</span>
+                  {/*
+                    Endonym, then the same language's name in the other language
+                    on offer: `Deutsch / German` and `English / Englisch`. Both
+                    rows carry two names, which is the point - the secondary
+                    name used to be the English one, so the English row showed a
+                    single word while the German row showed two (Julia,
+                    2026-09-05).
+
+                    The spaces around the slash are explicit text, not a margin.
+                    A margin looks identical on screen but leaves the accessible
+                    name - and anything copied out of the control - reading
+                    `Deutsch/ German`. A render probe caught exactly that.
+                  */}
+                  {getSecondaryLanguageName(selectedLanguage.code) && (
+                    <span className="text-base-content/50 text-sm">
+                      {" / "}
+                      {getSecondaryLanguageName(selectedLanguage.code)}
+                    </span>
+                  )}
+                </span>
               </>
             ) : (
-              <span className="text-base-content/50">
+              <span className="truncate text-base-content/50">
                 {t("languageSelect.placeholder")}
               </span>
             )}
@@ -240,13 +283,19 @@ const LanguageSelect = ({
                     ${isSelected ? "bg-primary/5 font-medium" : ""}
                   `}
                 >
-                  <span className="truncate">
-                    <span>{language.endonym}</span>
-                    {language.endonym !== language.englishName && (
-                      <span className="text-base-content/50 ml-2 text-sm">
-                        {language.englishName}
-                      </span>
-                    )}
+                  <span className="flex min-w-0 items-center gap-2">
+                    <span className="block h-5 w-5 shrink-0 overflow-hidden rounded-full">
+                      <LanguageFlag code={language.code} />
+                    </span>
+                    <span className="truncate">
+                      <span>{language.endonym}</span>
+                      {getSecondaryLanguageName(language.code) && (
+                        <span className="text-base-content/50 text-sm">
+                          {" / "}
+                          {getSecondaryLanguageName(language.code)}
+                        </span>
+                      )}
+                    </span>
                   </span>
                   {isSelected && (
                     <Check size={16} className="text-primary flex-shrink-0 ml-2" />

@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Ban, MapPin, Users, CalendarX, FlaskConical, UserX } from "lucide-react";
 import { userService } from "../../services/userService";
 import { formatDisplayName } from "../../utils/nameFormatters";
@@ -18,6 +19,8 @@ import ScreenAlert from "../common/ScreenAlert";
  * members section). Selecting a card opens a confirmation to unblock.
  */
 const BlocklistSection = ({ userId, onChange }) => {
+  // Rendered only inside Settings, so it reads the same page namespace.
+  const { t } = useTranslation("profile");
   const [blocked, setBlocked] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState(null);
@@ -36,12 +39,12 @@ const BlocklistSection = ({ userId, onChange }) => {
     } catch {
       setNotification({
         type: "error",
-        message: "Failed to load your blocklist. Please try again.",
+        message: t("blocklist.errors.load"),
       });
     } finally {
       setLoading(false);
     }
-  }, [userId]);
+  }, [userId, t]);
 
   useEffect(() => {
     loadBlocked();
@@ -55,7 +58,9 @@ const BlocklistSection = ({ userId, onChange }) => {
       setBlocked((prev) => prev.filter((u) => u.id !== selected.id));
       setNotification({
         type: "success",
-        message: `${formatDisplayName(selected)} has been removed from your blocklist.`,
+        message: t("blocklist.unblocked", {
+          name: formatDisplayName(selected),
+        }),
       });
       setSelected(null);
       onChange?.();
@@ -63,7 +68,7 @@ const BlocklistSection = ({ userId, onChange }) => {
       setNotification({
         type: "error",
         message:
-          error.response?.data?.message || "Failed to unblock this user.",
+          error.response?.data?.message || t("blocklist.errors.unblock"),
       });
     } finally {
       setUnblocking(false);
@@ -83,7 +88,7 @@ const BlocklistSection = ({ userId, onChange }) => {
         <Ban size={18} className="mr-2 text-primary flex-shrink-0" />
         <label className="label">
           <span className="label-text">
-            Blocked Users
+            {t("blocklist.heading")}
             {!loading && (
               <span className="label-text ml-1">({blocked.length})</span>
             )}
@@ -92,12 +97,9 @@ const BlocklistSection = ({ userId, onChange }) => {
       </div>
 
       {loading ? (
-        <p className="form-helper-text px-1">Loading your blocklist…</p>
+        <p className="form-helper-text px-1">{t("blocklist.loading")}</p>
       ) : blocked.length === 0 ? (
-        <p className="form-helper-text px-1">
-          You haven’t blocked anyone. Blocked users can’t message you or see your
-          profile, and you won’t see theirs.
-        </p>
+        <p className="form-helper-text px-1">{t("blocklist.empty")}</p>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {blocked.map((blockedUser) => {
@@ -139,7 +141,7 @@ const BlocklistSection = ({ userId, onChange }) => {
                     <CardMetaRow maxRows={3}>
                       {blockedDate && (
                         <Tooltip
-                          content="Blocked on this date"
+                          content={t("blocklist.blockedOn")}
                           wrapperClassName="flex shrink-0 items-center gap-1 text-base-content/60"
                         >
                           <CalendarX size={10} className="shrink-0" />
@@ -165,9 +167,9 @@ const BlocklistSection = ({ userId, onChange }) => {
                           content={
                             <div className="text-left">
                               <div className="font-medium mb-0.5">
-                                {sharedTeams.length === 1
-                                  ? "1 team in common"
-                                  : `${sharedTeams.length} teams in common`}
+                                {t("blocklist.sharedTeams", {
+                                  count: sharedTeams.length,
+                                })}
                               </div>
                               <ul className="list-disc list-inside space-y-0.5">
                                 {sharedTeams.map((name) => (
@@ -193,26 +195,24 @@ const BlocklistSection = ({ userId, onChange }) => {
       )}
 
       {!loading && blocked.length > 0 && (
-        <p className="form-helper-text px-1 mt-3">
-          Blocked users can’t message you or see your profile, and you won’t see
-          theirs.
-        </p>
+        <p className="form-helper-text px-1 mt-3">{t("blocklist.notice")}</p>
       )}
 
       <ConfirmModal
         isOpen={Boolean(selected)}
         onClose={() => !unblocking && setSelected(null)}
         onConfirm={handleConfirmUnblock}
-        title="Remove from blocklist?"
-        confirmLabel="Unblock"
-        loadingLabel="Unblocking…"
+        title={t("blocklist.unblockTitle")}
+        confirmLabel={t("blocklist.unblockConfirm")}
+        loadingLabel={t("blocklist.unblocking")}
         confirmIcon={<UserX size={16} />}
         loading={unblocking}
       >
         {selected && (
           <p className="text-base-content/80">
-            {formatDisplayName(selected)} will be able to message you and see
-            your profile again, and you’ll see theirs.
+            {t("blocklist.unblockBody", {
+              name: formatDisplayName(selected),
+            })}
           </p>
         )}
       </ConfirmModal>

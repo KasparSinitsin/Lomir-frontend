@@ -64,7 +64,7 @@ import { formatMonthYear } from "../utils/dateHelpers";
 const EMPTY_QUERY_ARRAY = [];
 
 const Profile = () => {
-  const { t } = useTranslation();
+  const { t } = useTranslation("profile");
   const { user, updateUser } = useAuth();
   const queryClient = useQueryClient();
   const [localUser, setLocalUser] = useState(null);
@@ -169,12 +169,12 @@ const Profile = () => {
   // Format member since date
   const getMemberSinceDate = () => {
     const date = user?.created_at || user?.createdAt;
-    if (!date) return "Unknown";
+    if (!date) return t("view.memberSinceUnknown");
     try {
       return formatMonthYear(new Date(date));
     } catch (error) {
       console.error("Error formatting member since date:", error);
-      return "Unknown";
+      return t("view.memberSinceUnknown");
     }
   };
 
@@ -286,9 +286,9 @@ const Profile = () => {
   useEffect(() => {
     if (profileUserError) {
       console.error("Error fetching user details:", profileUserError);
-      setError("Failed to load user data. Please try again.");
+      setError(t("errors.loadUser"));
     }
-  }, [profileUserError]);
+  }, [profileUserError, t]);
 
   // Reset image error state when user changes
   useEffect(() => {
@@ -477,17 +477,17 @@ const Profile = () => {
           profileImage: null,
         }));
 
-        setSuccess("Profile picture removed successfully");
+        setSuccess(t("status.pictureRemoved"));
         setIsAvatarDeleteDialogOpen(false);
       } else {
-        setError(response.message || "Failed to remove profile picture");
+        setError(response.message || t("errors.removePicture"));
       }
     } catch (error) {
       console.error("Error deleting avatar:", error);
       setError(
         error.response?.data?.message ||
           error.message ||
-          "Failed to remove profile picture. Please try again.",
+          t("errors.removePictureRetry"),
       );
     } finally {
       setAvatarDeleteLoading(false);
@@ -517,15 +517,15 @@ const Profile = () => {
 
     switch (contextType) {
       case "team":
-        return "Team Contribution";
+        return t("badges.award.team");
       case "project":
-        return "Project Contribution";
+        return t("badges.award.project");
       case "personal":
       case "profile":
       case "chat":
-        return "Personal Contribution";
+        return t("badges.award.personal");
       default:
-        return "Contribution";
+        return t("badges.award.generic");
     }
   };
   const getAwarderName = (award) => {
@@ -539,7 +539,7 @@ const Profile = () => {
       fullName ||
       award?.awardedByUsername ||
       award?.awarded_by_username ||
-      "another user"
+      t("badges.award.unknownAwarder")
     );
   };
   const getAwardTagName = (award) => award?.tagName ?? award?.tag_name ?? null;
@@ -590,7 +590,7 @@ const Profile = () => {
 
     const awardId = getAwardId(award);
     if (!awardId) {
-      setError("Could not hide this badge award because it is missing an ID.");
+      setError(t("errors.badgeMissingIdHide"));
       return;
     }
 
@@ -616,14 +616,14 @@ const Profile = () => {
         };
       });
 
-      setSuccess("Badge hidden from others.");
+      setSuccess(t("status.badgeHidden"));
       setPendingBadgeAction(null);
     } catch (err) {
       console.error("Failed to hide badge:", err);
       setError(
         err.response?.data?.message ||
           err.message ||
-          "Failed to hide badge. Please try again.",
+          t("errors.hideBadge"),
       );
     } finally {
       setBadgeActionLoadingKey(null);
@@ -635,7 +635,7 @@ const Profile = () => {
 
     const awardId = getAwardId(award);
     if (!awardId) {
-      setError("Could not show this badge award because it is missing an ID.");
+      setError(t("errors.badgeMissingIdShow"));
       return;
     }
 
@@ -659,13 +659,13 @@ const Profile = () => {
         };
       });
 
-      setSuccess("Badge visible for others.");
+      setSuccess(t("status.badgeVisible"));
     } catch (err) {
       console.error("Failed to show badge:", err);
       setError(
         err.response?.data?.message ||
           err.message ||
-          "Failed to make badge visible. Please try again.",
+          t("errors.showBadge"),
       );
     } finally {
       setBadgeActionLoadingKey(null);
@@ -677,7 +677,7 @@ const Profile = () => {
 
     const awardId = getAwardId(award);
     if (!awardId) {
-      setError("Could not delete this badge award because it is missing an ID.");
+      setError(t("errors.badgeMissingIdDelete"));
       return;
     }
 
@@ -742,14 +742,14 @@ const Profile = () => {
           : currentUser.badges,
       }));
 
-      setSuccess("Badge award deleted.");
+      setSuccess(t("status.badgeDeleted"));
       setPendingBadgeAction(null);
     } catch (err) {
       console.error("Failed to delete badge award:", err);
       setError(
         err.response?.data?.message ||
           err.message ||
-          "Failed to delete badge award. Please try again.",
+          t("errors.deleteBadge"),
       );
     } finally {
       setBadgeActionLoadingKey(null);
@@ -762,14 +762,14 @@ const Profile = () => {
 
     // Username validation
     if (!formData.username.trim()) {
-      errors.username = "Username is required";
+      errors.username = t("validation.usernameRequired");
     } else if (!/^[a-zA-Z0-9_]{3,20}$/.test(formData.username.trim())) {
-      errors.username = "Use 3–20 chars: letters, numbers, underscore";
+      errors.username = t("validation.usernameFormat");
     }
 
     // First name validation (optional)
     if (!formData.firstName.trim()) {
-      errors.firstName = "First name is required";
+      errors.firstName = t("validation.firstNameRequired");
     }
 
     // Add more validations if needed
@@ -830,9 +830,7 @@ const Profile = () => {
           setImagePreview(avatarUrl);
         } else {
           console.error("Avatar upload failed:", uploadResult.error);
-          setError(
-            "Failed to upload image. Please try a different image or try again later.",
-          );
+          setError(t("errors.imageUpload"));
           setLoading(false);
           return;
         }
@@ -846,7 +844,9 @@ const Profile = () => {
           response?.message || "No response received",
         );
         setError(
-          "Failed to update profile: " + (response?.message || "Unknown error"),
+          t("errors.updateProfile", {
+            reason: response?.message || t("errors.unknown"),
+          }),
         );
       } else {
         // Update tags along with profile
@@ -862,7 +862,7 @@ const Profile = () => {
 
         setIsEditing(false);
         clearEditModeParam();
-        setSuccess("Profile updated successfully");
+        setSuccess(t("status.updated"));
 
         // Create updated user object with correct avatar URL
         const updatedUser = {
@@ -914,7 +914,9 @@ const Profile = () => {
     } catch (error) {
       console.error("Error updating profile:", error);
       setError(
-        "Failed to update profile: " + (error.message || "Unknown error"),
+        t("errors.updateProfile", {
+          reason: error.message || t("errors.unknown"),
+        }),
       );
     } finally {
       setLoading(false);
@@ -928,11 +930,11 @@ const Profile = () => {
           <Card>
             <div className="text-center p-4">
               <h2 className="text-xl font-semibold text-error mb-4">
-                User Not Found
+                {t("notFound.title")}
               </h2>
-              <p className="mb-6">Please login again to access your profile.</p>
+              <p className="mb-6">{t("notFound.body")}</p>
               <Link to="/login" className="btn btn-primary">
-                Go to Login
+                {t("notFound.loginCta")}
               </Link>
             </div>
           </Card>
@@ -956,11 +958,25 @@ const Profile = () => {
   );
   const pendingBadgeAward = pendingBadgeAction?.award;
   const pendingBadgeActionType = pendingBadgeAction?.type;
-  const pendingBadgeAwardDescription = pendingBadgeAward
-    ? `"${getAwardContextLabel(pendingBadgeAward)}" Award from ${getAwarderName(
-        pendingBadgeAward,
-      )}`
-    : "this badge award";
+  // Whole sentences per case rather than one description spliced into two
+  // carrier sentences: German places the quoted context and the awarder
+  // differently, and a fragment gives a translator nothing to reorder.
+  const pendingBadgeActionBody = () => {
+    if (!pendingBadgeAward) {
+      return pendingBadgeActionType === "delete"
+        ? t("badges.deleteBodyGeneric")
+        : t("badges.hideBodyGeneric");
+    }
+
+    const values = {
+      context: getAwardContextLabel(pendingBadgeAward),
+      awarder: getAwarderName(pendingBadgeAward),
+    };
+
+    return pendingBadgeActionType === "delete"
+      ? t("badges.deleteBody", values)
+      : t("badges.hideBody", values);
+  };
   const pendingBadgeActionLoading = Boolean(
     pendingBadgeAward &&
       badgeActionLoadingKey ===
@@ -1012,12 +1028,12 @@ const Profile = () => {
           >
             <h2 className="text-2xl font-bold flex items-center gap-2">
               <Edit size={22} className="flex-shrink-0" />
-              Edit Profile
+              {t("edit.title")}
             </h2>
 
             {/* Profile Picture */}
             <section className="space-y-4">
-              <FormSectionDivider text="Profile Picture" icon={Camera} />
+              <FormSectionDivider text={t("edit.pictureSection")} icon={Camera} />
 
               <div className="w-full flex justify-center">
                 <div className="w-full max-w-md mt-5">
@@ -1038,12 +1054,12 @@ const Profile = () => {
                     size="xl"
                     disabled={loading}
                     loading={avatarDeleteLoading}
-                    helpText={t("privacy.avatarUpload")}
+                    helpText={t("common:privacy.avatarUpload")}
                     showRemoveButton={
                       !!(imagePreview || user?.avatarUrl) &&
                       !formData.profileImage
                     }
-                    removeButtonText="Remove Current Picture"
+                    removeButtonText={t("edit.removeCurrentPicture")}
                   />
                 </div>
               </div>
@@ -1051,13 +1067,13 @@ const Profile = () => {
 
             {/* Profile Details */}
             <section className="space-y-4">
-              <FormSectionDivider text="Profile Details" icon={User} />
+              <FormSectionDivider text={t("edit.detailsSection")} icon={User} />
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {/* Username */}
                 <div className="form-control w-full">
                   <label className="label">
-                    <span className="label-text">Username</span>
+                    <span className="label-text">{t("edit.username")}</span>
                   </label>
                   <input
                     type="text"
@@ -1067,7 +1083,7 @@ const Profile = () => {
                     className={`input input-bordered w-full ${
                       formErrors.username ? "input-error" : ""
                     }`}
-                    placeholder="Username"
+                    placeholder={t("edit.usernamePlaceholder")}
                     autoComplete="off"
                   />
                   {formErrors.username && (
@@ -1078,14 +1094,14 @@ const Profile = () => {
                     </label>
                   )}
                   <p className="form-helper-text">
-                    3–20 characters, letters/numbers/underscore.
+                    {t("edit.usernameHelp")}
                   </p>
                 </div>
 
                 {/* First Name */}
                 <div className="form-control w-full">
                   <label className="label">
-                    <span className="label-text">First Name</span>
+                    <span className="label-text">{t("edit.firstName")}</span>
                   </label>
                   <input
                     type="text"
@@ -1095,7 +1111,7 @@ const Profile = () => {
                     className={`input input-bordered w-full ${
                       formErrors.firstName ? "input-error" : ""
                     }`}
-                    placeholder="First Name"
+                    placeholder={t("edit.firstNamePlaceholder")}
                   />
                   {formErrors.firstName && (
                     <label className="label">
@@ -1109,7 +1125,7 @@ const Profile = () => {
                 {/* Last Name */}
                 <div className="form-control w-full">
                   <label className="label">
-                    <span className="label-text">Last Name</span>
+                    <span className="label-text">{t("edit.lastName")}</span>
                   </label>
                   <input
                     type="text"
@@ -1117,21 +1133,21 @@ const Profile = () => {
                     value={formData.lastName}
                     onChange={handleChange}
                     className="input input-bordered w-full"
-                    placeholder="Last Name"
+                    placeholder={t("edit.lastNamePlaceholder")}
                   />
                 </div>
               </div>
 
               <div className="form-control w-full">
                 <label className="label">
-                  <span className="label-text">About Me</span>
+                  <span className="label-text">{t("edit.bio")}</span>
                 </label>
                 <textarea
                   name="bio"
                   value={formData.bio}
                   onChange={handleChange}
                   className="textarea textarea-bordered w-full"
-                  placeholder="Tell us about yourself"
+                  placeholder={t("edit.bioPlaceholder")}
                   rows="4"
                 />
               </div>
@@ -1141,16 +1157,16 @@ const Profile = () => {
                   name="isPublic"
                   checked={formData.isPublic}
                   onChange={handleChange}
-                  label="Profile Visibility"
+                  label={t("visibility.label")}
                   entityType="profile"
-                  visibleLabel="Public Profile"
-                  hiddenLabel="Private Profile"
-                  visibleDescription="Your profile can be discovered by other Lomir users."
-                  hiddenDescription="Your profile is hidden from search results, but may still appear where you interact."
+                  visibleLabel={t("visibility.public")}
+                  hiddenLabel={t("visibility.private")}
+                  visibleDescription={t("visibility.publicDescription")}
+                  hiddenDescription={t("visibility.privateDescription")}
                   disabled={loading}
                 />
                 <p className="form-helper-text mt-2 px-1">
-                  {t("privacy.profileVisibilitySettings")}
+                  {t("common:privacy.profileVisibilitySettings")}
                 </p>
               </div>
             </section>
@@ -1174,22 +1190,22 @@ const Profile = () => {
                 disabled={loading}
                 showRemoteToggle={false}
                 showDivider={true}
-                privacyNotice={t("privacy.userLocation")}
+                privacyNotice={t("common:privacy.userLocation")}
               />
             </section>
 
             {/* Focus Areas */}
             <section className="space-y-4">
-              <FormSectionDivider text="Focus Areas" icon={Tag} />
+              <FormSectionDivider text={t("edit.focusAreasSection")} icon={Tag} />
 
               <div className="form-control w-full">
                 <label className="label">
                   <span className="label-text">
                     <span className="sm:hidden">
-                      Pick your interests and skills
+                      {t("edit.focusAreasLabelShort")}
                     </span>
                     <span className="hidden sm:inline">
-                      Select focus areas matching your interests and skills
+                      {t("edit.focusAreasLabel")}
                     </span>
                   </span>
                 </label>
@@ -1197,7 +1213,7 @@ const Profile = () => {
                 <TagInput
                   selectedTags={selectedTags}
                   onTagsChange={handleSelectedTagsChange}
-                  placeholder="Type to search focus areas..."
+                  placeholder={t("edit.focusAreasPlaceholder")}
                 />
               </div>
             </section>
@@ -1215,11 +1231,11 @@ const Profile = () => {
                   }}
                   disabled={loading}
                 >
-                Cancel
+                {t("edit.cancel")}
               </Button>
 
               <Button type="submit" variant="primary" disabled={loading}>
-                {loading ? "Saving..." : "Save Changes"}
+                {loading ? t("edit.saving") : t("edit.save")}
               </Button>
             </section>
           </form>
@@ -1228,7 +1244,7 @@ const Profile = () => {
             {/* Page Header with Title and Actions */}
             <div className="flex items-center justify-between p-6 pb-4">
               <h1 className="text-2xl sm:text-3xl font-medium text-primary">
-                Your Profile
+                {t("view.title")}
               </h1>
               <div className="flex gap-2">
                 <Button
@@ -1238,7 +1254,7 @@ const Profile = () => {
                   className="hover:bg-[#7ace82] hover:text-[#036b0c]"
                   icon={<Edit size={16} />}
                 >
-                  Edit
+                  {t("view.edit")}
                 </Button>
               </div>
             </div>
@@ -1254,7 +1270,7 @@ const Profile = () => {
                     {user.avatarUrl && !imageError ? (
                       <img
                         src={user.avatarUrl}
-                        alt="Profile"
+                        alt={t("view.avatarAlt")}
                         className="rounded-full object-cover w-full h-full"
                         onError={() => setImageError(true)}
                       />
@@ -1281,19 +1297,19 @@ const Profile = () => {
                     className="flex items-center text-base-content/70 tooltip tooltip-bottom tooltip-lomir cursor-help"
                     data-tip={
                       isProfilePublic()
-                        ? "Public Profile - visible for everyone\nChange in profile settings"
-                        : "Private Profile - only visible for you\nChange in profile settings"
+                        ? t("view.publicTooltip")
+                        : t("view.privateTooltip")
                     }
                   >
                     {isProfilePublic() ? (
                       <>
                         <Eye size={20} className="mr-1 text-green-600" />
-                        <span>Public</span>
+                        <span>{t("view.public")}</span>
                       </>
                     ) : (
                       <>
                         <EyeClosed size={20} className="mr-1 text-gray-500" />
-                        <span>Private</span>
+                        <span>{t("view.private")}</span>
                       </>
                     )}
                   </div>
@@ -1303,7 +1319,7 @@ const Profile = () => {
                       wrapperClassName="flex items-start text-base-content/50"
                     >
                       <FlaskConical className="h-3.5 w-auto mr-0.5 flex-shrink-0 mt-px" />
-                      <span className="leading-[1.15]">Demo Profile</span>
+                      <span className="leading-[1.15]">{t("view.demoProfile")}</span>
                     </Tooltip>
                   )}
                 </div>
@@ -1312,7 +1328,7 @@ const Profile = () => {
               {/* Member Since - DESKTOP ONLY, far right */}
               <div
                 className="hidden md:flex items-center text-base text-base-content/60 tooltip tooltip-bottom tooltip-lomir cursor-help flex-shrink-0"
-                data-tip={`Joined Lomir in ${getMemberSinceDate()}`}
+                data-tip={t("view.joined", { date: getMemberSinceDate() })}
               >
                 <Calendar size={16} className="mr-1" />
                 <span>{getMemberSinceDate()}</span>
@@ -1346,7 +1362,7 @@ const Profile = () => {
                             size={18}
                             className="mr-2 text-primary flex-shrink-0"
                           />
-                          <h3 className="font-medium">Email</h3>
+                          <h3 className="font-medium">{t("view.email")}</h3>
                         </div>
                         <p className="text-sm text-base-content/60">
                           {user.email}
@@ -1358,7 +1374,7 @@ const Profile = () => {
                             size={18}
                             className="mr-2 text-primary flex-shrink-0"
                           />
-                          <h3 className="font-medium">Location</h3>
+                          <h3 className="font-medium">{t("view.location")}</h3>
                         </div>
                         {hasProfileLocation ? (
                           <LocationDisplay
@@ -1373,20 +1389,20 @@ const Profile = () => {
                           />
                         ) : (
                           <p className="text-sm text-base-content/60">
-                            No location added yet.
+                            {t("view.noLocation")}
                           </p>
                         )}
                       </div>
                       <div ref={focusAreasSectionRef}>
                         <TagsDisplaySection
-                          title="Focus Areas"
+                          title={t("view.focusAreas")}
                           tags={
                             userTagObjects.length > 0
                               ? userTagObjects
                               : selectedTags
                           }
                           allTags={tags}
-                          emptyMessage="No focus areas added yet."
+                          emptyMessage={t("view.noFocusAreas")}
                           onTagClick={handleTagClick}
                           onSupercategoryClick={handleSupercategoryClick}
                           highlightTagName={highlightTagName}
@@ -1399,10 +1415,10 @@ const Profile = () => {
                             size={18}
                             className="mr-2 text-primary flex-shrink-0"
                           />
-                          <h3 className="font-medium">My Badges</h3>
+                          <h3 className="font-medium">{t("view.badges")}</h3>
                         </div>
                         <p className="text-sm text-base-content/60">
-                          No badges earned yet.
+                          {t("view.noBadges")}
                         </p>
                       </div>
                     </div>
@@ -1416,7 +1432,7 @@ const Profile = () => {
                               size={18}
                               className="mr-2 text-primary flex-shrink-0"
                             />
-                            <h3 className="font-medium">Email</h3>
+                            <h3 className="font-medium">{t("view.email")}</h3>
                           </div>
                           <p className="text-sm text-base-content/60">
                             {user.email}
@@ -1428,7 +1444,7 @@ const Profile = () => {
                               size={18}
                               className="mr-2 text-primary flex-shrink-0"
                             />
-                            <h3 className="font-medium">Location</h3>
+                            <h3 className="font-medium">{t("view.location")}</h3>
                           </div>
                           {hasProfileLocation ? (
                             <LocationDisplay
@@ -1443,21 +1459,21 @@ const Profile = () => {
                             />
                           ) : (
                             <p className="text-sm text-base-content/60">
-                              No location added yet.
+                              {t("view.noLocation")}
                             </p>
                           )}
                         </div>
                       </div>
                       <div ref={focusAreasSectionRef}>
                         <TagsDisplaySection
-                          title="Focus Areas"
+                          title={t("view.focusAreas")}
                           tags={
                             userTagObjects.length > 0
                               ? userTagObjects
                               : selectedTags
                           }
                           allTags={tags}
-                          emptyMessage="No focus areas added yet."
+                          emptyMessage={t("view.noFocusAreas")}
                           onTagClick={handleTagClick}
                           onSupercategoryClick={handleSupercategoryClick}
                           highlightTagName={highlightTagName}
@@ -1466,9 +1482,9 @@ const Profile = () => {
                       </div>
                       <div ref={badgesSectionRef}>
                         <BadgesDisplaySection
-                          title="My Badges"
+                          title={t("view.badges")}
                           badges={displayBadges}
-                          emptyMessage="No badges earned yet."
+                          emptyMessage={t("view.noBadges")}
                           maxVisible={8}
                           groupByCategory={true}
                           showCredits={true}
@@ -1504,16 +1520,15 @@ const Profile = () => {
         isOpen={isAvatarDeleteDialogOpen}
         onClose={closeAvatarDeleteDialog}
         onConfirm={confirmAvatarDelete}
-        title="Remove Profile Picture"
+        title={t("avatar.removeTitle")}
         loading={avatarDeleteLoading}
-        confirmLabel="Remove"
-        loadingLabel="Removing..."
+        confirmLabel={t("avatar.removeConfirm")}
+        loadingLabel={t("avatar.removing")}
         confirmVariant="error"
         confirmIcon={<Trash2 size={16} />}
       >
         <p className="text-sm text-base-content/80">
-          Remove your profile picture? Your profile will show your initials
-          instead.
+          {t("avatar.removeBody")}
         </p>
       </ConfirmModal>
 
@@ -1521,17 +1536,15 @@ const Profile = () => {
         isOpen={Boolean(pendingBadgeAction)}
         onClose={closePendingBadgeAction}
         onConfirm={confirmPendingBadgeAction}
-        title={pendingBadgeActionType === "delete" ? "Delete Badge Award" : "Hide Badge Award"}
+        title={pendingBadgeActionType === "delete" ? t("badges.deleteTitle") : t("badges.hideTitle")}
         loading={pendingBadgeActionLoading}
-        confirmLabel={pendingBadgeActionType === "delete" ? "Delete" : "Hide"}
-        loadingLabel={pendingBadgeActionType === "delete" ? "Deleting..." : "Hiding..."}
+        confirmLabel={pendingBadgeActionType === "delete" ? t("badges.deleteConfirm") : t("badges.hideConfirm")}
+        loadingLabel={pendingBadgeActionType === "delete" ? t("badges.deleting") : t("badges.hiding")}
         confirmVariant={pendingBadgeActionType === "delete" ? "error" : "primary"}
         confirmIcon={pendingBadgeActionType === "delete" ? <Trash2 size={16} /> : <EyeClosed size={16} />}
       >
         <p className="text-sm text-base-content/80">
-          {pendingBadgeActionType === "delete"
-            ? `Delete ${pendingBadgeAwardDescription} permanently? This removes only this awarded instance, not other awards for the same badge.`
-            : `Hide ${pendingBadgeAwardDescription} from others? You will still see it on your profile with a closed-eye marker.`}
+          {pendingBadgeActionBody()}
         </p>
       </ConfirmModal>
 
