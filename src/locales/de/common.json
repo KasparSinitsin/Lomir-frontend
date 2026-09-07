@@ -149,7 +149,7 @@
     "profileVisibilitySettings": "Öffentliche Profile sind für alle sichtbar, die Lomir besuchen – ob angemeldet oder nicht. Private Profile verringern die öffentliche Sichtbarkeit, deine Aktivität kann aber weiterhin in Teams, Nachrichten, Bewerbungen oder Badges auftauchen. Standortangaben, die du machst, können als ungefährer Standort in deinem öffentlichen Profil erscheinen.",
     "avatarUpload": "Hochgeladene Bilder werden über ImageKit gespeichert und ausgeliefert. Dein Avatar kann je nach Sichtbarkeitseinstellungen für andere Nutzer sichtbar sein.",
     "chatUpload": "Dateien und Bilder, die du im Chat teilst, sind für die Teilnehmer der Unterhaltung sichtbar. Bitte lade keine sensiblen oder vertraulichen Informationen hoch.",
-    "accountDeletion": "Das Löschen des Kontos ist endgültig. Dein Profil und deine Direktnachrichten werden sofort nach der Bestätigung gelöscht. Einzelne Verweise in Teams und Badges können als 'Former Lomir User' anonymisiert werden, damit Team- und Gesprächszusammenhänge erhalten bleiben."
+    "accountDeletion": "Das Löschen des Kontos ist endgültig. Dein Profil und deine Direktnachrichten werden sofort nach der Bestätigung gelöscht. Einzelne Verweise in Teams und Badges können als „Former Lomir User“ anonymisiert werden, damit Team- und Gesprächszusammenhänge erhalten bleiben."
   },
   "visibility": {
     "title": "Sichtbarkeit",

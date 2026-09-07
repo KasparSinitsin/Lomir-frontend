@@ -24,6 +24,23 @@
     "hideTitle": "Badge-Auszeichnung verbergen",
     "hiding": "Wird verborgen..."
   },
+  "blocklist": {
+    "blockedOn": "An diesem Tag blockiert",
+    "empty": "Du hast noch niemanden blockiert. Blockierte Nutzer können dir nicht schreiben und dein Profil nicht sehen, und du siehst ihres nicht.",
+    "errors": {
+      "load": "Deine Blockierliste konnte nicht geladen werden. Bitte versuche es noch einmal.",
+      "unblock": "Die Blockierung konnte nicht aufgehoben werden."
+    },
+    "heading": "Blockierte Nutzer",
+    "loading": "Blockierliste wird geladen…",
+    "notice": "Blockierte Nutzer können dir nicht schreiben und dein Profil nicht sehen, und du siehst ihres nicht.",
+    "sharedTeams": "{count, plural, one {# gemeinsames Team} other {# gemeinsame Teams}}",
+    "unblockBody": "{name} kann dir dann wieder schreiben und dein Profil sehen, und du siehst ihres.",
+    "unblockConfirm": "Entsperren",
+    "unblockTitle": "Von der Blockierliste entfernen?",
+    "unblocked": "{name} wurde von deiner Blockierliste entfernt.",
+    "unblocking": "Wird entsperrt…"
+  },
   "edit": {
     "bio": "Über mich",
     "bioPlaceholder": "Erzähl etwas über dich",
@@ -64,6 +81,106 @@
     "body": "Bitte melde dich erneut an, um auf dein Profil zuzugreifen.",
     "loginCta": "Zur Anmeldung",
     "title": "Benutzer nicht gefunden"
+  },
+  "settings": {
+    "account": {
+      "cancel": "Abbrechen",
+      "change": "Ändern",
+      "confirmNewPassword": "Neues Passwort bestätigen",
+      "confirmWithPassword": "Mit aktuellem Passwort bestätigen",
+      "currentPassword": "Aktuelles Passwort",
+      "emailLabel": "E-Mail-Adresse",
+      "errors": {
+        "changePassword": "Das Passwort konnte nicht geändert werden",
+        "currentPasswordIncorrect": "Das aktuelle Passwort ist falsch",
+        "currentPasswordRequired": "Aktuelles Passwort ist erforderlich",
+        "invalidEmail": "Ungültige E-Mail-Adresse",
+        "newEmailRequired": "Neue E-Mail-Adresse ist erforderlich",
+        "newPasswordRequired": "Neues Passwort ist erforderlich",
+        "passwordComplexity": "Das Passwort muss mindestens einen Buchstaben und eine Zahl enthalten",
+        "passwordTooShort": "Das Passwort muss mindestens 8 Zeichen lang sein",
+        "passwordsDoNotMatch": "Die Passwörter stimmen nicht überein",
+        "sendVerification": "Die Bestätigungs-E-Mail konnte nicht gesendet werden"
+      },
+      "hidePassword": "Passwort ausblenden",
+      "newEmailLabel": "Neue E-Mail-Adresse",
+      "newEmailPlaceholder": "neu@email.de",
+      "newPassword": "Neues Passwort",
+      "passwordChanged": "Passwort erfolgreich geändert. Bitte melde dich mit deinem neuen Passwort an. Wir haben dir außerdem eine Bestätigungs-E-Mail geschickt.",
+      "passwordHelp": "Nach der Änderung erhältst du eine Bestätigungs-E-Mail zu deiner Passwortänderung. Du wirst aus deiner aktuellen Sitzung abgemeldet und zum Anmeldeformular geleitet, um dein neues Passwort zu verwenden.",
+      "passwordLabel": "Passwort",
+      "pendingEmail": "Änderung zu {email} steht aus. Sieh in dieses Postfach, um die neue Adresse zu bestätigen.",
+      "sendVerification": "Bestätigungs-E-Mail senden",
+      "showPassword": "Passwort anzeigen",
+      "updatePassword": "Passwort aktualisieren",
+      "verificationSent": "Bestätigungs-E-Mail an {email} gesendet. Deine aktuelle E-Mail-Adresse bleibt aktiv, bis du die neue bestätigst."
+    },
+    "delete": {
+      "button": "Account löschen",
+      "cancel": "Abbrechen",
+      "change": "Ändern",
+      "close": "Schließen",
+      "confirm": "Meinen Account löschen",
+      "continue": "Weiter",
+      "deleteHeading": "Teams, die gelöscht werden",
+      "errors": {
+        "deleteAccount": "Der Account konnte nicht gelöscht werden.",
+        "deleteAccountRetry": "Der Account konnte nicht gelöscht werden. Bitte versuche es noch einmal.",
+        "loadMembers": "Die Teammitglieder konnten nicht geladen werden. Bitte versuche es noch einmal.",
+        "loadSummary": "Die Übersicht zur Account-Löschung konnte nicht geladen werden. Bitte versuche es noch einmal.",
+        "passwordIncorrect": "Falsches Passwort",
+        "passwordRequired": "Passwort ist erforderlich"
+      },
+      "executing": "Dein Account wird gelöscht",
+      "loadingMembers": "Teammitglieder werden geladen...",
+      "memberCount": "{count, plural, one {# Mitglied} other {# Mitglieder}}",
+      "modalTitle": "Account löschen",
+      "noTransferOptions": "Es sind keine anderen Teammitglieder für eine Übergabe verfügbar.",
+      "passwordLabel": "Gib dein Passwort ein, um fortzufahren",
+      "reopenHeading": "Rollen, die wieder geöffnet werden",
+      "reviewNotice": "Bitte lies das sorgfältig.",
+      "roleParenthetical": " ({role})",
+      "roles": {
+        "admin": "Admin",
+        "member": "Mitglied",
+        "owner": "Eigentümer"
+      },
+      "selectedTeammate": "Ausgewähltes Teammitglied",
+      "soloTeamNotice": "Dieses Solo-Team wird sofort und endgültig gelöscht",
+      "step1": "Schritt 1 von 2: Passwort bestätigen",
+      "step2": "Schritt 2 von 2: Prüfen, was sich ändert",
+      "successorLabel": "Nachfolge:",
+      "successorOption": "{name} ({role})",
+      "summaryBadges": "{count, plural, one {# Badge-Auszeichnung, die du vergeben hast, zeigt künftig „Former Lomir User“} other {# Badge-Auszeichnungen, die du vergeben hast, zeigen künftig „Former Lomir User“}}",
+      "summaryHeading": "Übersicht",
+      "summaryMemberships": "{count, plural, one {# Teammitgliedschaft wird entfernt} other {# Teammitgliedschaften werden entfernt}}",
+      "summaryMessages": "{count, plural, one {# Direktnachricht wird gelöscht} other {# Direktnachrichten werden gelöscht}}",
+      "transferHeading": "Teams, die übergeben werden",
+      "transferTo": "Eigentum übertragen an",
+      "unknownMember": "Unbekanntes Mitglied",
+      "unknownTeam": "Unbekanntes Team",
+      "untitledRole": "Rolle ohne Namen",
+      "untitledTeam": "Team ohne Namen"
+    },
+    "errors": {
+      "language": "Die Sprache konnte nicht aktualisiert werden. Bitte versuche es noch einmal.",
+      "visibility": "Die Sichtbarkeit konnte nicht aktualisiert werden. Bitte versuche es noch einmal."
+    },
+    "sections": {
+      "account": "Account",
+      "dangerZone": "Gefahrenzone",
+      "privacy": "Privatsphäre"
+    },
+    "status": {
+      "languageUpdated": "Sprache aktualisiert",
+      "visibilityUpdated": "Profilsichtbarkeit aktualisiert"
+    },
+    "title": "Einstellungen",
+    "visibility": {
+      "label": "Profilsichtbarkeit",
+      "private": "Privates Profil",
+      "public": "Für alle sichtbar"
+    }
   },
   "status": {
     "badgeDeleted": "Badge-Auszeichnung gelöscht.",

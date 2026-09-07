@@ -24,6 +24,23 @@
     "hideTitle": "Hide Badge Award",
     "hiding": "Hiding..."
   },
+  "blocklist": {
+    "blockedOn": "Blocked on this date",
+    "empty": "You haven’t blocked anyone. Blocked users can’t message you or see your profile, and you won’t see theirs.",
+    "errors": {
+      "load": "Failed to load your blocklist. Please try again.",
+      "unblock": "Failed to unblock this user."
+    },
+    "heading": "Blocked Users",
+    "loading": "Loading your blocklist…",
+    "notice": "Blocked users can’t message you or see your profile, and you won’t see theirs.",
+    "sharedTeams": "{count, plural, one {# team in common} other {# teams in common}}",
+    "unblockBody": "{name} will be able to message you and see your profile again, and you’ll see theirs.",
+    "unblockConfirm": "Unblock",
+    "unblockTitle": "Remove from blocklist?",
+    "unblocked": "{name} has been removed from your blocklist.",
+    "unblocking": "Unblocking…"
+  },
   "edit": {
     "bio": "About Me",
     "bioPlaceholder": "Tell us about yourself",
@@ -64,6 +81,106 @@
     "body": "Please login again to access your profile.",
     "loginCta": "Go to Login",
     "title": "User Not Found"
+  },
+  "settings": {
+    "account": {
+      "cancel": "Cancel",
+      "change": "Change",
+      "confirmNewPassword": "Confirm New Password",
+      "confirmWithPassword": "Confirm with Current Password",
+      "currentPassword": "Current Password",
+      "emailLabel": "Email Address",
+      "errors": {
+        "changePassword": "Failed to change password",
+        "currentPasswordIncorrect": "Current password is incorrect",
+        "currentPasswordRequired": "Current password is required",
+        "invalidEmail": "Invalid email address",
+        "newEmailRequired": "New email is required",
+        "newPasswordRequired": "New password is required",
+        "passwordComplexity": "Password must contain at least one letter and one number",
+        "passwordTooShort": "Password must be at least 8 characters",
+        "passwordsDoNotMatch": "Passwords do not match",
+        "sendVerification": "Failed to send verification email"
+      },
+      "hidePassword": "Hide password",
+      "newEmailLabel": "New Email Address",
+      "newEmailPlaceholder": "new@email.com",
+      "newPassword": "New Password",
+      "passwordChanged": "Password changed successfully. Please log in with your new password. We've also sent a confirmation email.",
+      "passwordHelp": "After updating your password, you will receive a confirmation email on your password change. You will be logged out of your current session and directed to the login form to use your new password.",
+      "passwordLabel": "Password",
+      "pendingEmail": "Pending change to {email}. Check that inbox to confirm the new address.",
+      "sendVerification": "Send Verification Email",
+      "showPassword": "Show password",
+      "updatePassword": "Update Password",
+      "verificationSent": "Verification email sent to {email}. Your current email stays active until you confirm the new address."
+    },
+    "delete": {
+      "button": "Delete Account",
+      "cancel": "Cancel",
+      "change": "Change",
+      "close": "Close",
+      "confirm": "Delete My Account",
+      "continue": "Continue",
+      "deleteHeading": "Teams to be deleted",
+      "errors": {
+        "deleteAccount": "Failed to delete account.",
+        "deleteAccountRetry": "Failed to delete account. Please try again.",
+        "loadMembers": "Failed to load team members. Please try again.",
+        "loadSummary": "Failed to load account deletion summary. Please try again.",
+        "passwordIncorrect": "Incorrect password",
+        "passwordRequired": "Password is required"
+      },
+      "executing": "Deleting your account",
+      "loadingMembers": "Loading team members...",
+      "memberCount": "{count, plural, one {# member} other {# members}}",
+      "modalTitle": "Delete Account",
+      "noTransferOptions": "No other team members are available for transfer.",
+      "passwordLabel": "Enter your password to continue",
+      "reopenHeading": "Roles to be reopened",
+      "reviewNotice": "Please review this carefully.",
+      "roleParenthetical": " ({role})",
+      "roles": {
+        "admin": "Admin",
+        "member": "Member",
+        "owner": "Owner"
+      },
+      "selectedTeammate": "Selected teammate",
+      "soloTeamNotice": "This solo team will be permanently deleted immediately",
+      "step1": "Step 1 of 2: Confirm your password",
+      "step2": "Step 2 of 2: Review what will change",
+      "successorLabel": "Successor:",
+      "successorOption": "{name} ({role})",
+      "summaryBadges": "{count, plural, one {# badge award you've given will show \"Former Lomir User\"} other {# badge awards you've given will show \"Former Lomir User\"}}",
+      "summaryHeading": "Summary",
+      "summaryMemberships": "{count, plural, one {# team membership will be removed} other {# team memberships will be removed}}",
+      "summaryMessages": "{count, plural, one {# direct message will be deleted} other {# direct messages will be deleted}}",
+      "transferHeading": "Teams to be transferred",
+      "transferTo": "Transfer ownership to",
+      "unknownMember": "Unknown member",
+      "unknownTeam": "Unknown team",
+      "untitledRole": "Untitled role",
+      "untitledTeam": "Untitled team"
+    },
+    "errors": {
+      "language": "Failed to update language. Please try again.",
+      "visibility": "Failed to update visibility. Please try again."
+    },
+    "sections": {
+      "account": "Account",
+      "dangerZone": "Danger Zone",
+      "privacy": "Privacy"
+    },
+    "status": {
+      "languageUpdated": "Language updated",
+      "visibilityUpdated": "Profile visibility updated"
+    },
+    "title": "Settings",
+    "visibility": {
+      "label": "Profile Visibility",
+      "private": "Private Profile",
+      "public": "Visible to Everyone"
+    }
   },
   "status": {
     "badgeDeleted": "Badge award deleted.",
