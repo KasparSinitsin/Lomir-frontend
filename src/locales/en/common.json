@@ -4,6 +4,10 @@
     "languageLabel": "Lomir App Language",
     "languageHelp": "Lomir uses this language for the app and for the emails we send you. Without a choice, we follow the country in your profile and otherwise your browser."
   },
+  "confirmModal": {
+    "confirm": "Confirm",
+    "cancel": "Cancel"
+  },
   "countrySelect": {
     "placeholder": "Select a country",
     "searchPlaceholder": "Type to search...",
@@ -84,6 +88,9 @@
     "suggestedCity": "{city} is the city for {postalCode}.",
     "useSuggestedCity": "Use it",
     "useSuggestedCityAria": "Use {city}"
+  },
+  "modal": {
+    "close": "Close modal"
   },
   "nav": {
     "languageCurrent": "Language: {language} ({code})",
