@@ -510,8 +510,14 @@ const TeamEditForm = ({
               )}
 
               {formData.maxMembersMode === "unlimited" && (
-                <div className="input input-bordered w-full flex items-center gap-2 opacity-70">
-                  <InfinityIcon className="h-4 w-4" />
+                // `h-auto whitespace-normal` mirrors VisibilityToggle: `.input`
+                // sets white-space:nowrap and a fixed height because it is meant
+                // to wrap a single-line field, and this borrows it as a container
+                // for an icon plus a label. German is markedly longer here
+                // (`Keine Mitgliederbegrenzung`), so without these the label
+                // cannot break and is clipped by the box instead.
+                <div className="input input-bordered w-full h-auto whitespace-normal flex items-center gap-2 opacity-70">
+                  <InfinityIcon className="h-4 w-4 flex-shrink-0" />
                   <span>No member limit</span>
                 </div>
               )}
