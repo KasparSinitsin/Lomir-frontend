@@ -274,6 +274,17 @@
     "roleStatusChangedApplicant": "{count, plural, one {# Rolle, auf die du dich beworben hast, hat} other {# Rollen, auf die du dich beworben hast, haben}} sich geändert",
     "roleStatusChangedInvitee": "{count, plural, one {# Rolle, zu der du eingeladen wurdest, hat} other {# Rollen, zu denen du eingeladen wurdest, haben}} sich geändert"
   },
+  "pagination": {
+    "showing": "Zeige <0>{start}</0> bis <1>{end}</1> von <2>{total}</2> {total, plural, one {Ergebnis} other {Ergebnissen}}",
+    "noResults": "Keine Ergebnisse",
+    "goToPrevious": "Zur vorherigen Seite",
+    "goToNext": "Zur nächsten Seite",
+    "previousPage": "Vorherige Seite",
+    "nextPage": "Nächste Seite",
+    "page": "Seite {page}",
+    "morePages": "Weitere Seiten",
+    "perPage": "Pro Seite:"
+  },
   "privacy": {
     "location": "Die Standortangabe ist freiwillig. Gespeicherte Standortdaten nutzen wir, um Nutzer, Teams und Rollen in deiner Nähe vorzuschlagen und entfernungsbasierte Übereinstimmungen zu berechnen. Lomir fragt nicht nach einer Straßenanschrift. Je nach Sichtbarkeitseinstellungen können ungefähre Standortangaben für andere Nutzer sichtbar sein.",
     "userLocation": "Die Standortangabe ist freiwillig. Du kannst Postleitzahl, Stadt und Land leer lassen oder später wieder entfernen. Wenn du Standortdaten angibst, nutzt Lomir sie, um Nutzer, Teams und Rollen in deiner Nähe vorzuschlagen und entfernungsbasierte Übereinstimmungen zu berechnen. Lomir fragt nie nach deiner Straßenanschrift. Je nach Sichtbarkeit deines Profils können ungefähre Standortangaben wie Postleitzahl, Stadt, Bezirk, Region oder Land für andere Nutzer sichtbar sein.",
@@ -281,6 +292,30 @@
     "avatarUpload": "Hochgeladene Bilder werden über ImageKit gespeichert und ausgeliefert. Dein Avatar kann je nach Sichtbarkeitseinstellungen für andere Nutzer sichtbar sein.",
     "chatUpload": "Dateien und Bilder, die du im Chat teilst, sind für die Teilnehmer der Unterhaltung sichtbar. Bitte lade keine sensiblen oder vertraulichen Informationen hoch.",
     "accountDeletion": "Das Löschen des Kontos ist endgültig. Dein Profil und deine Direktnachrichten werden sofort nach der Bestätigung gelöscht. Einzelne Verweise in Teams und Badges können als „Former Lomir User“ anonymisiert werden, damit Team- und Gesprächszusammenhänge erhalten bleiben."
+  },
+  "resultView": {
+    "groupLabel": "Ansicht",
+    "switchTo": "Zu {view} wechseln",
+    "card": {
+      "label": "Kachel",
+      "aria": "Kachelansicht",
+      "tooltip": "Kachelansicht"
+    },
+    "mini": {
+      "label": "Mini-Kachel",
+      "aria": "Mini-Kachelansicht",
+      "tooltip": "Mini-Kachelansicht"
+    },
+    "list": {
+      "label": "Liste",
+      "aria": "Listenansicht",
+      "tooltip": "Listenansicht"
+    },
+    "map": {
+      "label": "Karte",
+      "aria": "Kartenansicht",
+      "tooltip": "Kartenansicht"
+    }
   },
   "visibility": {
     "title": "Sichtbarkeit",

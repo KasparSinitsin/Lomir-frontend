@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { Link, useSearchParams } from "react-router-dom";
 import { useToast } from "../contexts/ToastContext";
 import PageContainer from "../components/layout/PageContainer";
@@ -62,6 +63,7 @@ const DEFAULT_PAGINATION = {
 };
 
 const MyTeams = () => {
+  const { t } = useTranslation("teams");
   const showToast = useToast();
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -117,9 +119,7 @@ const MyTeams = () => {
     [userTeamsResponse, teams.length],
   );
 
-  const teamsError = teamsIsError
-    ? "Failed to load teams. Please try again."
-    : null;
+  const teamsError = teamsIsError ? t("myTeams.loadError") : null;
 
   // Refresh every cached page after a mutation (create/leave/delete/accept).
   const invalidateUserTeams = useCallback(
@@ -164,7 +164,7 @@ const MyTeams = () => {
   // instead of falling back to their own per-card fetch; `{}` means loaded
   // (or errored) → cards stop waiting and just show no badges.
   const teamIds = useMemo(
-    () => teams.map((t) => t?.id).filter((id) => id != null),
+    () => teams.map((team) => team?.id).filter((id) => id != null),
     [teams],
   );
 
@@ -379,8 +379,8 @@ const MyTeams = () => {
   );
 
   const handleSendReminder = useCallback(async () => {
-    showToast("Reminder feature coming soon!", "violet");
-  }, [showToast]);
+    showToast(t("myTeams.reminderComingSoon"), "violet");
+  }, [showToast, t]);
 
   // Invitation handlers
   const handleInvitationAccept = useCallback(
@@ -534,11 +534,6 @@ const MyTeams = () => {
 
   const shouldShowTeamsPagination =
     pagination.totalTeams > DEFAULT_RESULTS_PER_PAGE;
-  const formatCountLabel = (
-    count,
-    singularLabel,
-    pluralLabel = `${singularLabel}s`,
-  ) => `${count} ${count === 1 ? singularLabel : pluralLabel}`;
   const hasTeamInvitations = sortedPendingInvitations.length > 0;
   const hasRoleInvitations = internalRoleInvitations.length > 0;
   const hasTeamApplications = sortedPendingApplications.length > 0;
@@ -547,26 +542,32 @@ const MyTeams = () => {
     hasTeamInvitations || hasRoleInvitations;
   const showPendingApplicationsSection =
     hasTeamApplications || hasRoleApplications;
-  const pendingInvitationsSubtitle = [
-    hasTeamInvitations
-      ? formatCountLabel(sortedPendingInvitations.length, "team invite")
-      : null,
-    hasRoleInvitations
-      ? formatCountLabel(internalRoleInvitations.length, "role invite")
-      : null,
-  ]
-    .filter(Boolean)
-    .join(" and ");
-  const pendingApplicationsSubtitle = [
-    hasTeamApplications
-      ? formatCountLabel(sortedPendingApplications.length, "team application")
-      : null,
-    hasRoleApplications
-      ? formatCountLabel(internalRoleApplications.length, "role application")
-      : null,
-  ]
-    .filter(Boolean)
-    .join(" and ");
+  const pendingInvitationsSubtitle =
+    hasTeamInvitations && hasRoleInvitations
+      ? t("myTeams.invitations.subtitleBoth", {
+          teamCount: sortedPendingInvitations.length,
+          roleCount: internalRoleInvitations.length,
+        })
+      : hasTeamInvitations
+        ? t("myTeams.invitations.subtitleTeams", {
+            count: sortedPendingInvitations.length,
+          })
+        : t("myTeams.invitations.subtitleRoles", {
+            count: internalRoleInvitations.length,
+          });
+  const pendingApplicationsSubtitle =
+    hasTeamApplications && hasRoleApplications
+      ? t("myTeams.applications.subtitleBoth", {
+          teamCount: sortedPendingApplications.length,
+          roleCount: internalRoleApplications.length,
+        })
+      : hasTeamApplications
+        ? t("myTeams.applications.subtitleTeams", {
+            count: sortedPendingApplications.length,
+          })
+        : t("myTeams.applications.subtitleRoles", {
+            count: internalRoleApplications.length,
+          });
 
   if (teamsLoading && loadingApplications && loadingInvitations) {
     return (
@@ -594,19 +595,23 @@ const MyTeams = () => {
           icon={<Plus size={16} />}
           onClick={() => setIsCreateTeamModalOpen(true)}
         >
-          Create New Team
+          {t("myTeams.createTeam")}
         </Button>
       </div>
       <Link to="/search?type=teams">
         <Button variant="primary" icon={<SearchIcon size={16} />}>
-          Search for Teams
+          {t("myTeams.searchTeams")}
         </Button>
       </Link>
     </div>
   );
 
   return (
-    <PageContainer title="My Teams" action={CreateTeamAction} variant="muted">
+    <PageContainer
+      title={t("myTeams.title")}
+      action={CreateTeamAction}
+      variant="muted"
+    >
       <div className="flex flex-wrap items-center justify-between gap-y-0.5 mb-6">
         <div className="flex flex-wrap items-center gap-1 -ml-2">
           <FilterSortOptionButton
@@ -616,7 +621,11 @@ const MyTeams = () => {
                 ? ArrowUpZA
                 : ArrowDownAZ
             }
-            label={sortBy === "name" && sortDir === "desc" ? "Z-A" : "A-Z"}
+            label={
+              sortBy === "name" && sortDir === "desc"
+                ? t("myTeams.sort.za")
+                : t("myTeams.sort.az")
+            }
             active={sortBy === "name"}
           />
           <FilterSortOptionButton
@@ -624,8 +633,8 @@ const MyTeams = () => {
             icon={Clock}
             label={
               sortBy === "recent" && sortDir === "asc"
-                ? "Inactive"
-                : "Active"
+                ? t("myTeams.sort.inactive")
+                : t("myTeams.sort.active")
             }
             active={sortBy === "recent"}
           />
@@ -633,7 +642,9 @@ const MyTeams = () => {
             onClick={() => handleSortChange("newest")}
             icon={Sparkles}
             label={
-              sortBy === "newest" && sortDir === "asc" ? "Oldest" : "Newest"
+              sortBy === "newest" && sortDir === "asc"
+                ? t("myTeams.sort.oldest")
+                : t("myTeams.sort.newest")
             }
             active={sortBy === "newest"}
           />
@@ -650,7 +661,7 @@ const MyTeams = () => {
       {/* Pending Invitations Section */}
       {showPendingInvitationsSection && (
         <Section
-          title="My Pending Invitations"
+          title={t("myTeams.invitations.title")}
           subtitle={pendingInvitationsSubtitle}
           className="mb-10"
           icon={
@@ -783,7 +794,7 @@ const MyTeams = () => {
       {/* Pending Applications Section */}
       {showPendingApplicationsSection && (
         <Section
-          title="My Pending Applications"
+          title={t("myTeams.applications.title")}
           subtitle={pendingApplicationsSubtitle}
           className="mb-10"
           icon={
@@ -887,8 +898,10 @@ const MyTeams = () => {
       {/* My Teams Section */}
       <Section
         id="my-teams-section"
-        title="Teams You're A Part Of"
-        subtitle={`${pagination.totalTeams} ${pagination.totalTeams === 1 ? 'Team' : 'Teams'} you've created or joined as a member`}
+        title={t("myTeams.memberTeams.title")}
+        subtitle={t("myTeams.memberTeams.subtitle", {
+          count: pagination.totalTeams,
+        })}
         icon={
           <Users
             className="h-5 w-5 text-[var(--color-primary-focus)]"
@@ -908,9 +921,9 @@ const MyTeams = () => {
             <Inbox className="w-3.5 h-3.5 shrink-0" />
             {sortBy === "requests"
               ? sortDir === "asc"
-                ? "Sorted by least requests"
-                : "Sorted by most requests"
-              : "Sort by most requests"}
+                ? t("myTeams.sort.byRequestsLeast")
+                : t("myTeams.sort.byRequestsMost")
+              : t("myTeams.sort.byRequests")}
           </button>
         }
         collapsible
@@ -922,18 +935,18 @@ const MyTeams = () => {
         ) : sortedTeams.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-base-content/70 mb-4">
-              You haven't joined any teams yet.
+              {t("myTeams.memberTeams.empty")}
             </p>
             <div className="flex flex-col items-center justify-center gap-3 sm:flex-row">
               <Button
                 variant="primary"
                 onClick={() => setIsCreateTeamModalOpen(true)}
               >
-                Create Your First Team
+                {t("myTeams.memberTeams.createFirst")}
               </Button>
               <Link to="/search?type=teams">
                 <Button variant="primary" icon={<SearchIcon size={16} />}>
-                  Find Teams
+                  {t("myTeams.memberTeams.findTeams")}
                 </Button>
               </Link>
             </div>

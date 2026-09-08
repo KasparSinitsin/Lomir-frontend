@@ -1,0 +1,39 @@
+{
+  "myTeams": {
+    "title": "My Teams",
+    "createTeam": "Create New Team",
+    "searchTeams": "Search for Teams",
+    "loadError": "Failed to load teams. Please try again.",
+    "reminderComingSoon": "Reminder feature coming soon!",
+    "sort": {
+      "az": "A-Z",
+      "za": "Z-A",
+      "active": "Active",
+      "inactive": "Inactive",
+      "newest": "Newest",
+      "oldest": "Oldest",
+      "byRequests": "Sort by most requests",
+      "byRequestsMost": "Sorted by most requests",
+      "byRequestsLeast": "Sorted by least requests"
+    },
+    "invitations": {
+      "title": "My Pending Invitations",
+      "subtitleTeams": "{count, plural, one {# team invite} other {# team invites}}",
+      "subtitleRoles": "{count, plural, one {# role invite} other {# role invites}}",
+      "subtitleBoth": "{teamCount, plural, one {# team invite} other {# team invites}} and {roleCount, plural, one {# role invite} other {# role invites}}"
+    },
+    "applications": {
+      "title": "My Pending Applications",
+      "subtitleTeams": "{count, plural, one {# team application} other {# team applications}}",
+      "subtitleRoles": "{count, plural, one {# role application} other {# role applications}}",
+      "subtitleBoth": "{teamCount, plural, one {# team application} other {# team applications}} and {roleCount, plural, one {# role application} other {# role applications}}"
+    },
+    "memberTeams": {
+      "title": "Teams You're A Part Of",
+      "subtitle": "{count, plural, one {# Team you've created or joined as a member} other {# Teams you've created or joined as a member}}",
+      "empty": "You haven't joined any teams yet.",
+      "createFirst": "Create Your First Team",
+      "findTeams": "Find Teams"
+    }
+  }
+}

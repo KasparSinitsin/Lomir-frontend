@@ -1,0 +1,39 @@
+{
+  "myTeams": {
+    "title": "Meine Teams",
+    "createTeam": "Neues Team erstellen",
+    "searchTeams": "Teams suchen",
+    "loadError": "Teams konnten nicht geladen werden. Bitte versuche es erneut.",
+    "reminderComingSoon": "Erinnerungsfunktion kommt bald!",
+    "sort": {
+      "az": "A-Z",
+      "za": "Z-A",
+      "active": "Aktiv",
+      "inactive": "Inaktiv",
+      "newest": "Neueste",
+      "oldest": "Älteste",
+      "byRequests": "Nach Anfragen sortieren",
+      "byRequestsMost": "Nach meisten Anfragen sortiert",
+      "byRequestsLeast": "Nach wenigsten Anfragen sortiert"
+    },
+    "invitations": {
+      "title": "Meine offenen Einladungen",
+      "subtitleTeams": "{count, plural, one {# Team-Einladung} other {# Team-Einladungen}}",
+      "subtitleRoles": "{count, plural, one {# Rollen-Einladung} other {# Rollen-Einladungen}}",
+      "subtitleBoth": "{teamCount, plural, one {# Team-Einladung} other {# Team-Einladungen}} und {roleCount, plural, one {# Rollen-Einladung} other {# Rollen-Einladungen}}"
+    },
+    "applications": {
+      "title": "Meine offenen Bewerbungen",
+      "subtitleTeams": "{count, plural, one {# Team-Bewerbung} other {# Team-Bewerbungen}}",
+      "subtitleRoles": "{count, plural, one {# Rollen-Bewerbung} other {# Rollen-Bewerbungen}}",
+      "subtitleBoth": "{teamCount, plural, one {# Team-Bewerbung} other {# Team-Bewerbungen}} und {roleCount, plural, one {# Rollen-Bewerbung} other {# Rollen-Bewerbungen}}"
+    },
+    "memberTeams": {
+      "title": "Teams, in denen du Mitglied bist",
+      "subtitle": "{count, plural, one {# Team, das du erstellt hast oder dem du als Mitglied beigetreten bist} other {# Teams, die du erstellt hast oder denen du als Mitglied beigetreten bist}}",
+      "empty": "Du bist noch keinem Team beigetreten.",
+      "createFirst": "Erstelle dein erstes Team",
+      "findTeams": "Teams finden"
+    }
+  }
+}

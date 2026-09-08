@@ -274,6 +274,17 @@
     "roleStatusChangedApplicant": "{count, plural, one {# role} other {# roles}} you applied for changed",
     "roleStatusChangedInvitee": "{count, plural, one {# role} other {# roles}} you were invited to changed"
   },
+  "pagination": {
+    "showing": "Showing <0>{start}</0> to <1>{end}</1> of <2>{total}</2> {total, plural, one {result} other {results}}",
+    "noResults": "No results",
+    "goToPrevious": "Go to previous page",
+    "goToNext": "Go to next page",
+    "previousPage": "Previous page",
+    "nextPage": "Next page",
+    "page": "Page {page}",
+    "morePages": "More pages",
+    "perPage": "Per page:"
+  },
   "privacy": {
     "location": "Location is optional. We use saved location information to suggest nearby users, teams, and roles and to calculate distance-based matches. Lomir does not ask for a street address. Depending on visibility settings, approximate location details may be visible to other users.",
     "userLocation": "Location is optional. You can leave postal code, city, and country empty or remove them later. If you add location information, Lomir uses it to suggest nearby users, teams, and roles and to calculate distance-based matches. Lomir never asks for your street address. Depending on your profile visibility, approximate location details such as postal code, city, district, region, or country may be visible to other users.",
@@ -281,6 +292,30 @@
     "avatarUpload": "Uploaded images are stored and delivered via ImageKit. Your avatar may be visible to other users depending on your visibility settings.",
     "chatUpload": "Files and images shared in chat are visible to conversation participants. Please do not upload sensitive or confidential information.",
     "accountDeletion": "Account deletion is permanent. Your profile and direct messages are deleted immediately after confirmation. Some team and badge references may be anonymized as \"Former Lomir User\" to preserve team and conversation context."
+  },
+  "resultView": {
+    "groupLabel": "Result view",
+    "switchTo": "Switch to {view}",
+    "card": {
+      "label": "Card",
+      "aria": "Card view",
+      "tooltip": "Card View"
+    },
+    "mini": {
+      "label": "Mini Card",
+      "aria": "Mini card view",
+      "tooltip": "Mini Card View"
+    },
+    "list": {
+      "label": "List",
+      "aria": "List view",
+      "tooltip": "List View"
+    },
+    "map": {
+      "label": "Map",
+      "aria": "Map view",
+      "tooltip": "Map View"
+    }
   },
   "visibility": {
     "title": "Visibility",
