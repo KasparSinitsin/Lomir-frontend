@@ -25,6 +25,14 @@
       "viewProfile": "Profil ansehen",
       "viewTeam": "Team ansehen"
     },
+    "category": {
+      "collaboration": "Zusammenarbeit",
+      "creative": "Kreatives Denken",
+      "leadership": "Führungsqualitäten",
+      "other": "Sonstige",
+      "personal": "Persönliche Eigenschaften",
+      "technical": "Technische Expertise"
+    },
     "modal": {
       "awards": "{count, plural, one {Auszeichnung} other {Auszeichnungen}}",
       "categories": "{count, plural, one {Kategorie} other {Kategorien}}",

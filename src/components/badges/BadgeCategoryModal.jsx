@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { getCategoryLabel } from "../../utils/badgeLabels";
 import { Users, Lightbulb, Award } from "lucide-react";
 import {
   CATEGORY_SECTION_PASTELS,
@@ -137,7 +138,9 @@ const BadgeCategoryModal = ({
               {getCategoryIcon(category, color, 20)}
             </span>
             <span className="font-semibold">
-              {category || t("badges.modal.categoryFallback")}
+              {category
+                ? getCategoryLabel(category, t)
+                : t("badges.modal.categoryFallback")}
             </span>
           </>
         ) : (
@@ -148,7 +151,9 @@ const BadgeCategoryModal = ({
                 {getCategoryIcon(category, color, 20)}
               </span>
               <span className="font-semibold">
-                {category || t("badges.modal.thisCategory")}
+                {category
+                  ? getCategoryLabel(category, t)
+                  : t("badges.modal.thisCategory")}
               </span>
             </span>
           </>

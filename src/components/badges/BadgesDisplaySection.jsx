@@ -1,5 +1,6 @@
 import React, { useRef, useEffect, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
+import { getCategoryLabel } from "../../utils/badgeLabels";
 import { Award, Check, ChevronRight, ChevronUp } from "lucide-react";
 import { getCategoryIcon } from "../../utils/badgeIconUtils";
 import Tooltip from "../common/Tooltip";
@@ -259,7 +260,8 @@ const BadgesDisplaySection = ({
                   className="badge badge-primary badge-outline p-3"
                   style={{ borderColor: badge.color, color: badge.color }}
                   title={
-badge.description || badge.category}
+                    badge.description || getCategoryLabel(badge.category, t)
+                  }
                 >
                   {badge.name}
                   {credits && showCredits && (
@@ -304,15 +306,16 @@ badge.description || badge.category}
                     categoryBadges[0]?.categoryAwarderCount ??
                     0,
                 );
+                const categoryLabel = getCategoryLabel(category, t);
                 const catTooltip =
                   catAwardCount > 0
                     ? t("badges.tooltip.category", {
-                        category,
+                        category: categoryLabel,
                         credits: catTotalCredits,
                         badgeCount: catAwardCount,
                         personCount: catAwarderCount,
                       })
-                    : category;
+                    : categoryLabel;
 
                 return (
                   <Tooltip content={catTooltip}>
@@ -362,7 +365,7 @@ badge.description || badge.category}
                           count: awardCount,
                           personCount: awarderCount,
                         })
-                      : badge.description || category;
+                      : badge.description || getCategoryLabel(category, t);
 
                   return (
                     <Tooltip

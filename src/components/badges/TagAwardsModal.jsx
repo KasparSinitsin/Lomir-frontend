@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { getCategoryLabel } from "../../utils/badgeLabels";
 import { Tag, Award, Users } from "lucide-react";
 import {
   CATEGORY_COLORS,
@@ -230,7 +231,7 @@ const TagAwardsModal = ({
                           className="font-medium text-sm"
                           style={{ color: catColor }}
                         >
-                          {category}
+                          {getCategoryLabel(category, t)}
                         </span>
                       </div>
 
