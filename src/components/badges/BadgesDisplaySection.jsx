@@ -1,6 +1,10 @@
 import React, { useRef, useEffect, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { getCategoryLabel } from "../../utils/badgeLabels";
+import {
+  getBadgeDescription,
+  getBadgeName,
+  getCategoryLabel,
+} from "../../utils/badgeLabels";
 import { Award, Check, ChevronRight, ChevronUp } from "lucide-react";
 import { getCategoryIcon } from "../../utils/badgeIconUtils";
 import Tooltip from "../common/Tooltip";
@@ -161,7 +165,7 @@ const BadgesDisplaySection = ({
             return (
               <span key={badge.id ?? badge.badge_id ?? badge.name}>
                 <span style={{ color: badge.color }} className="font-medium">
-                  {badge.name}
+                  {getBadgeName(badge.name, t)}
                   {credits && showCredits && (
                     <span className="opacity-70"> | {credits}ct.</span>
                   )}
@@ -260,10 +264,11 @@ const BadgesDisplaySection = ({
                   className="badge badge-primary badge-outline p-3"
                   style={{ borderColor: badge.color, color: badge.color }}
                   title={
-                    badge.description || getCategoryLabel(badge.category, t)
+                    getBadgeDescription(badge.name, badge.description, t) ||
+                    getCategoryLabel(badge.category, t)
                   }
                 >
-                  {badge.name}
+                  {getBadgeName(badge.name, t)}
                   {credits && showCredits && (
                     <span className="ml-1 opacity-80">| {credits}ct.</span>
                   )}
@@ -360,12 +365,16 @@ const BadgesDisplaySection = ({
                   const badgeTooltip =
                     awardCount > 0
                       ? t("badges.tooltip.badge", {
-                          name: badge.name,
+                          name: getBadgeName(badge.name, t),
                           credits: credits || 0,
                           count: awardCount,
                           personCount: awarderCount,
                         })
-                      : badge.description || getCategoryLabel(category, t);
+                      : getBadgeDescription(
+                          badge.name,
+                          badge.description,
+                          t,
+                        ) || getCategoryLabel(category, t);
 
                   return (
                     <Tooltip
@@ -418,7 +427,7 @@ const BadgesDisplaySection = ({
                             style={{ color: categoryColor }}
                           />
                         )}
-                        {badge.name}
+                        {getBadgeName(badge.name, t)}
                         {credits && showCredits && (
                           <span className="opacity-70 self-stretch border-l border-current pl-1 flex items-start">
                             {credits}ct.

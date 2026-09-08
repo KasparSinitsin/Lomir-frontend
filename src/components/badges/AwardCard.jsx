@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { getBadgeName } from "../../utils/badgeLabels";
 import {
   formatDateMedium,
   formatDateNumeric,
@@ -140,7 +141,9 @@ const AwardCard = ({
 
   // --- Normalize fields (camelCase + snake_case) ---
   const awardId = award?.awardId || award?.award_id || award?.id || null;
+  // Raw stored name — keep it, getBadgeIcon keys off it.
   const badgeName = award?.badgeName || award?.badge_name || "Badge";
+  const badgeDisplayName = getBadgeName(badgeName, t);
   const credits = Number(award?.credits ?? 0);
   const hideActionKey = `hide-${awardId}`;
   const showActionKey = `show-${awardId}`;
@@ -686,7 +689,7 @@ const AwardCard = ({
                   className="font-medium leading-tight truncate"
                   style={{ color: catColor }}
                 >
-                  {badgeName}
+                  {badgeDisplayName}
                 </span>
               </>
             ) : (

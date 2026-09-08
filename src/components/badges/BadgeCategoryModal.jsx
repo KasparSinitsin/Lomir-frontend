@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { getCategoryLabel } from "../../utils/badgeLabels";
+import { getBadgeName, getCategoryLabel } from "../../utils/badgeLabels";
 import { Users, Lightbulb, Award } from "lucide-react";
 import {
   CATEGORY_SECTION_PASTELS,
@@ -257,7 +257,7 @@ const BadgeCategoryModal = ({
                     <div className="flex items-center gap-2 min-w-0">
                       {getBadgeIcon(badgeName, color, 24)}
                       <span className="font-medium truncate" style={{ color }}>
-                        {badgeName}
+                        {getBadgeName(badgeName, t)}
                       </span>
                     </div>
 
@@ -285,7 +285,9 @@ const BadgeCategoryModal = ({
                           className="text-2xl font-bold truncate"
                           style={{ color }}
                         >
-                          {badgeName} Badge
+                          {t("badges.modal.badgeHeading", {
+                            name: getBadgeName(badgeName, t),
+                          })}
                         </span>
                       </div>
 
