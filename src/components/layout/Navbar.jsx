@@ -696,8 +696,22 @@ const Navbar = () => {
 
           {isAuthenticated && !location.pathname.startsWith("/teams/my-teams") && (
             <nav className="flex space-x-1 text-sm sm:text-base">
-              <Link to="/teams/my-teams" className={`${navLinkClasses} neon`}>
-                My Teams
+              {/* Two labels, not one. My Teams / Meine Teams is the useful
+                  wording - it distinguishes the teams you belong to from the
+                  search page filter simply called Teams, which means every
+                  team on Lomir. But the long form needs a 363px viewport and
+                  360px is a common Android width, where whitespace-nowrap
+                  would turn the overflow into a horizontal page scroll. So the
+                  short form shows only below sm, where the distinction matters
+                  least (the search filter is not on screen), and the full
+                  wording returns as soon as there is room. Same pattern the
+                  search page entity filter uses. */}
+              <Link
+                to="/teams/my-teams"
+                className={`${navLinkClasses} neon whitespace-nowrap`}
+              >
+                <span className="sm:hidden">{t("nav.myTeamsShort")}</span>
+                <span className="hidden sm:inline">{t("nav.myTeams")}</span>
               </Link>
             </nav>
           )}

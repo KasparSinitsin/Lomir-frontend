@@ -229,6 +229,8 @@
     "logout": "Logout",
     "markAllAsRead": "Mark all as read",
     "messages": "Messages",
+    "myTeams": "My Teams",
+    "myTeamsShort": "Teams",
     "notifications": "Notifications",
     "profile": "Profile",
     "profileImageAlt": "Profile",
