@@ -2,13 +2,13 @@
   "hero": {
     "logoAlt": "Lomir",
     "title": "Finde die Menschen, die deinem Projekt noch fehlen.",
-    "description": "Lomir bringt dich mit Mitstreiterinnen und Mitstreitern in deiner Nähe oder weltweit zusammen - über gemeinsame Themen, bestätigte Fähigkeiten und die Entfernung, die für dich passt.",
+    "description": "Lomir bringt dich mit Mitstreiterinnen und Mitstreitern in deiner Nähe oder weltweit zusammen. Finde Leute mit gemeinsamen Interessen oder suche jemanden für dein Team, der neue Kenntnisse mitbringt.",
     "createProfile": "Kostenloses Profil erstellen",
     "explore": "Öffentliche Teams & mehr entdecken",
     "browseTeams": "Teams ansehen",
     "createTeam": "Team erstellen",
     "anonymousNote": "Du kannst Lomir erst einmal ohne Registrierung kennenlernen: Öffentliche Teams und Profile lassen sich auch ohne Account ansehen.",
-    "screensNote": "Das sind echte Ansichten aus der App. Klicke sie an, um sie groß zu sehen - mit einer kurzen Einordnung zur Ansicht."
+    "screensNote": "Das hier sind echte Ansichten aus der App. Klicke sie an, um sie zu vergrößern und mehr Informationen zu sehen."
   },
   "screenshots": {
     "close": "Vergrößerten Screenshot schließen",
@@ -33,34 +33,34 @@
     "title": "Finden, verbinden & gründen",
     "subtitle": "Was dir ein kostenloses Profil zusätzlich zum Umschauen bringt.",
     "findTitle": "Finden und gefunden werden",
-    "findText": "Suche Menschen, Teams und offene Rollen in deiner Nähe oder weltweit - und sobald dein Profil öffentlich ist, können Teams mit passenden gesuchten Fähigkeiten dich finden. Jedes Ergebnis hat einen Match-Score, den du öffnen und prüfen kannst.",
+    "findText": "Sobald dein Profil öffentlich ist, können dich Teams mit passenden offenen Rollen finden. Aktiviere in deiner Suche den Match-Score, um deinen Fit nach Skills und Interessen mit den Suchtreffern zu sehen.",
     "connectTitle": "Verbinden",
-    "connectText": "Schreibe Menschen direkt, bewirb dich auf eine offene Rolle oder nimm eine Einladung in ein Team an. Jede Bewerbung und Einladung bleibt nachvollziehbar, damit du immer weißt, wo du stehst.",
-    "createTitle": "Gründen",
-    "createText": "Starte dein eigenes Team, veröffentliche die Rollen, die ihr noch besetzen möchtet, und lade passende Menschen ein. Danach kannst du Badges an diejenigen vergeben, die wirklich mitgearbeitet haben."
+    "connectText": "Behalte alle Neuigkeiten auf deiner „Meine Teams“-Seite und im Chat im Blick. Interagiere mit deinem Team, indem du Badges für gemeinsam geleistete Arbeit verleihst, und erhalte im Gegenzug Anerkennung für deinen Einsatz.",
+    "createTitle": "Etwas Neues beginnen",
+    "createText": "Gründe dein eigenes Team, veröffentliche Rollen, die ihr noch besetzen möchtet, und lade Mitstreiter ein."
   },
   "rolesChat": {
-    "rolesTitle": "Offene Rollen statt vager Hilferufe",
-    "rolesText": "Teams veröffentlichen, welche Rollen sie noch besetzen möchten - inklusive der gesuchten Fähigkeiten. Du siehst auf einen Blick, wo du passen würdest, kannst dich direkt bewerben und verfolgen, was aus deiner Bewerbung wird, statt ins Leere zu schreiben.",
+    "rolesTitle": "Klar definierte Rollen für ein treffsicheres Matching",
+    "rolesText": "Teams veröffentlichen, welche Rollen sie noch besetzen möchten - inklusive der gesuchten Fähigkeiten. Du siehst auf einen Blick, wo du passen würdest, kannst dich direkt bewerben und den Stand deiner Bewerbung verfolgen.",
     "rolesCta": "Offene Rollen ansehen",
-    "chatTitle": "Alles, was das Team sagt, bleibt an einem Ort",
-    "chatText": "Team- und Direktchat mit Erwähnungen, Antworten, Reaktionen, Dateien und Lesebestätigungen. Einladungen, Bewerbungen und Rollenänderungen erscheinen im selben Verlauf, damit neue Mitglieder nachlesen können, wie das Team hierhergekommen ist."
+    "chatTitle": "Alles, was im Team passiert, bleibt an einem Ort",
+    "chatText": "Team- und Direktchat mit Erwähnungen, Antworten, Reaktionen, Dateien und Lesebestätigungen. Einladungen, Bewerbungen und Rollenänderungen erscheinen in einem Verlauf, damit neue Mitglieder nachlesen können, wie sich das Team bis jetzt entwickelt hat."
   },
   "features": {
     "title": "Was du mit Lomir bekommst",
     "subtitle": "Gebaut, um die richtigen Menschen zu finden - nicht, um Follower zu sammeln.",
-    "matchTitle": "Ein Match-Score, den du prüfen kannst",
+    "matchTitle": "Der Macht-Score - Was ist das?",
     "matchText": "Gemeinsame Fokusbereiche zählen 40 Prozent, bestätigte Fähigkeiten 30 und Entfernung 30. Öffne jedes Match, um die Aufschlüsselung zu sehen.",
     "mapTitle": "Suche auf der Karte",
     "mapText": "Entdecke Teams und Menschen als Pins in deiner Umgebung oder suche weltweit, wenn Entfernung keine Rolle spielt.",
-    "badgesTitle": "Badges von echten Mitstreitern",
-    "badgesText": "Fähigkeiten werden von Menschen bestätigt, mit denen du wirklich gearbeitet hast - über Kategorien wie Technik, Kreativität und Zusammenarbeit hinweg.",
-    "rolesTitle": "Rollen, die klar sagen, was gebraucht wird",
-    "rolesText": "Teams benennen offene Rollen und die gesuchten Fähigkeiten, damit deine Bewerbung ein konkreter Schritt ist und kein Rätselraten.",
+    "badgesTitle": "Badges: Zeichen echter Anerkennung",
+    "badgesText": "Badges zeigen Dankbarkeit und Anerkennung für persönliche Stärken und Eigenschaften, aber auch für Beiträge zur Arbeit in einem Team oder an einem Projekt.",
+    "rolesTitle": "Klar definierte Rollenkriterien",
+    "rolesText": "Teams benennen offene Rollen und die gesuchten Fähigkeiten, damit die Voraussetzungen für deine Bewerbung transparent sind.",
     "chatTitle": "Chat für Teams",
     "chatText": "Erwähnungen, Antworten, Reaktionen, Datei-Sharing und Benachrichtigungen für das, was dich wirklich betrifft.",
     "privateTitle": "Standardmäßig privat",
-    "privateText": "Neue Profile sind in der öffentlichen Suche unsichtbar, bis du dich anders entscheidest. Du legst fest, was jedes Feld zeigt."
+    "privateText": "Neue Profile sind in der öffentlichen Suche unsichtbar, bis du dich anders entscheidest. Du legst fest, was du von dir preisgeben möchtest."
   },
   "closing": {
     "authTitle": "Finde dein nächstes Team",
