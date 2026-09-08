@@ -6,13 +6,6 @@
     "removing": "Removing..."
   },
   "badges": {
-    "award": {
-      "generic": "Contribution",
-      "personal": "Personal Contribution",
-      "project": "Project Contribution",
-      "team": "Team Contribution",
-      "unknownAwarder": "another user"
-    },
     "deleteBody": "Delete \"{context}\" Award from {awarder} permanently? This removes only this awarded instance, not other awards for the same badge.",
     "deleteBodyGeneric": "Delete this badge award permanently? This removes only this awarded instance, not other awards for the same badge.",
     "deleteConfirm": "Delete",

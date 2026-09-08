@@ -1,4 +1,13 @@
 {
+  "badges": {
+    "award": {
+      "generic": "Beitrag",
+      "personal": "Persönlicher Beitrag",
+      "project": "Projekt-Beitrag",
+      "team": "Team-Beitrag",
+      "unknownAwarder": "einem anderen Nutzer"
+    }
+  },
   "communication": {
     "sectionTitle": "Kommunikation",
     "languageLabel": "Sprache der Lomir-App",

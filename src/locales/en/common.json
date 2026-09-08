@@ -1,4 +1,13 @@
 {
+  "badges": {
+    "award": {
+      "generic": "Contribution",
+      "personal": "Personal Contribution",
+      "project": "Project Contribution",
+      "team": "Team Contribution",
+      "unknownAwarder": "another user"
+    }
+  },
   "communication": {
     "sectionTitle": "Communication",
     "languageLabel": "Lomir App Language",
