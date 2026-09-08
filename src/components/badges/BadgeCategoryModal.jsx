@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Users, Lightbulb, Award } from "lucide-react";
 import {
   CATEGORY_SECTION_PASTELS,
@@ -39,6 +40,7 @@ const BadgeCategoryModal = ({
   canViewPrivateAwardees = false,
   showAwarderAtBottom = false,
 }) => {
+  const { t } = useTranslation();
   // Team details modal state (for AwardCard team clicks)
   const [selectedTeamForDetails, setSelectedTeamForDetails] = useState(null);
   const [isTeamDetailsOpen, setIsTeamDetailsOpen] = useState(false);
@@ -135,18 +137,18 @@ const BadgeCategoryModal = ({
               {getCategoryIcon(category, color, 20)}
             </span>
             <span className="font-semibold">
-              {category || "Badge Category"}
+              {category || t("badges.modal.categoryFallback")}
             </span>
           </>
         ) : (
           <>
-            <span>Earned badges for </span>
+            <span>{t("badges.modal.categoryTitle")} </span>
             <span className="block md:inline">
               <span className="inline-block align-middle mr-1.5 shrink-0">
                 {getCategoryIcon(category, color, 20)}
               </span>
               <span className="font-semibold">
-                {category || "this category"}
+                {category || t("badges.modal.thisCategory")}
               </span>
             </span>
           </>
@@ -176,7 +178,9 @@ const BadgeCategoryModal = ({
                 <span className="inline-flex items-center gap-1 whitespace-nowrap">
                   <Award size={14} />
                   <span className="font-medium">{totalAwards}</span>
-                  <span className="hidden sm:inline">awards</span>
+                  <span className="hidden sm:inline">
+                    {t("badges.modal.awards", { count: totalAwards })}
+                  </span>
                 </span>
 
                 {/* People */}
@@ -184,7 +188,9 @@ const BadgeCategoryModal = ({
                   <Users size={14} />
                   <span className="font-medium">{peopleCount}</span>
                   <span className="hidden sm:inline">
-                    {peopleCount === 1 ? "person" : "people"}
+                    {t("badges.modal.peoplePersonal", {
+                      count: peopleCount,
+                    })}
                   </span>
                 </span>
 
@@ -196,7 +202,9 @@ const BadgeCategoryModal = ({
                       {creditedFocusAreaCount}
                     </span>
                     <span className="hidden sm:inline">
-                      focus {creditedFocusAreaCount === 1 ? "area" : "areas"}
+                      {t("badges.modal.focusAreasCount", {
+                        count: creditedFocusAreaCount,
+                      })}
                     </span>
                   </span>
                 )}
@@ -207,7 +215,7 @@ const BadgeCategoryModal = ({
                     <Users size={14} />
                     <span className="font-medium">{teamCount}</span>
                     <span className="hidden sm:inline">
-                      {teamCount === 1 ? "team" : "teams"}
+                      {t("badges.modal.teams", { count: teamCount })}
                     </span>
                   </span>
                 )}
@@ -229,7 +237,7 @@ const BadgeCategoryModal = ({
             </div>
           ) : sortedBadges.length === 0 ? (
             <p className="text-base-content/60 text-center py-8">
-              No detailed award information available.
+              {t("badges.modal.emptyCategory")}
             </p>
           ) : (
             sortedBadges.map(([badgeName, data]) => (

@@ -1071,9 +1071,7 @@ const UserDetailsModal = ({
 
             {/* Badges */}
             <BadgesDisplaySection
-              title="Badges"
               badges={visibleUserBadges}
-              emptyMessage="No badges earned yet"
               maxVisible={8}
               groupByCategory={true}
               showCredits={true}

@@ -1,4 +1,5 @@
 import React, { useRef, useEffect, useState, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { Award, Check, ChevronRight, ChevronUp } from "lucide-react";
 import { getCategoryIcon } from "../../utils/badgeIconUtils";
 import Tooltip from "../common/Tooltip";
@@ -15,9 +16,10 @@ import {
  * Displays badges in a compact format, optionally grouped by category
  * with category icons. Used in UserDetailsModal and other summary views.
  *
- * @param {string} title - Section title
+ * @param {string} [title] - Section title; falls back to common:badges.section.title
  * @param {Array} badges - Array of badge objects
- * @param {string} emptyMessage - Message when no badges
+ * @param {string} [emptyMessage] - Message when no badges; falls back to
+ *   common:badges.section.empty (pass undefined to keep the translated default)
  * @param {number} maxVisible - Maximum badges to show before "+N more"
  * @param {boolean} compact - Compact inline display mode
  * @param {string} className - Additional CSS classes
@@ -28,9 +30,9 @@ import {
  */
 
 const BadgesDisplaySection = ({
-  title = "Badges",
+  title,
   badges = [],
-  emptyMessage = "No badges earned yet",
+  emptyMessage,
   maxVisible = 6,
   compact = false,
   className = "",
@@ -43,7 +45,13 @@ const BadgesDisplaySection = ({
   headerRight = null,
 }) => {
   // Hooks must be called before any early returns (Rules of Hooks)
+  const { t } = useTranslation();
   const highlightRef = useRef(null);
+
+  // Resolved in the body, never in the parameter list: a default there would
+  // freeze whichever language loaded first. A caller-passed prop still wins.
+  const resolvedTitle = title ?? t("badges.section.title");
+  const resolvedEmptyMessage = emptyMessage ?? t("badges.section.empty");
 
   useEffect(() => {
     if (highlightBadgeName && highlightRef.current) {
@@ -91,7 +99,7 @@ const BadgesDisplaySection = ({
 
   const titleSummary = totalCredits > 0 ? (
     <span className="min-w-0 text-sm font-normal text-base-content/60 whitespace-normal sm:whitespace-nowrap">
-      ({totalCredits} ct. in {pillCount} {pillCount === 1 ? 'area' : 'areas'})
+      {t("badges.section.summary", { credits: totalCredits, count: pillCount })}
     </span>
   ) : null;
 
@@ -102,7 +110,7 @@ const BadgesDisplaySection = ({
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0 flex-1 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-x-3 gap-y-0.5">
             <div className="min-w-0 flex flex-wrap items-baseline gap-x-1 gap-y-0.5">
-              <h3 className="font-medium leading-[1.1] break-words sm:whitespace-nowrap">{title}</h3>
+              <h3 className="font-medium leading-[1.1] break-words sm:whitespace-nowrap">{resolvedTitle}</h3>
               {titleSummary}
             </div>
             {headerRight && (
@@ -121,7 +129,7 @@ const BadgesDisplaySection = ({
     return (
       <div className={className}>
         {sectionHeader}
-        <p className="text-sm text-base-content/60">{emptyMessage}</p>
+        <p className="text-sm text-base-content/60">{resolvedEmptyMessage}</p>
       </div>
     );
   }
@@ -228,7 +236,7 @@ const BadgesDisplaySection = ({
       onClick={() => setIsExpanded((v) => !v)}
     >
       {isExpanded ? <ChevronUp size={14} /> : <ChevronRight size={14} />}
-      {isExpanded ? "Show less" : "Show all"}
+      {isExpanded ? t("badges.section.showLess") : t("badges.section.showAll")}
     </button>
   ) : null;
 
@@ -250,7 +258,8 @@ const BadgesDisplaySection = ({
                   key={badge.id ?? badge.badge_id ?? badge.name}
                   className="badge badge-primary badge-outline p-3"
                   style={{ borderColor: badge.color, color: badge.color }}
-                  title={badge.description || badge.category}
+                  title={
+badge.description || badge.category}
                 >
                   {badge.name}
                   {credits && showCredits && (
@@ -297,7 +306,12 @@ const BadgesDisplaySection = ({
                 );
                 const catTooltip =
                   catAwardCount > 0
-                    ? `${category}: ${catTotalCredits}ct. awarded with ${catAwardCount} badge${catAwardCount === 1 ? "" : "s"} by ${catAwarderCount} ${catAwarderCount === 1 ? "person" : "people"}`
+                    ? t("badges.tooltip.category", {
+                        category,
+                        credits: catTotalCredits,
+                        badgeCount: catAwardCount,
+                        personCount: catAwarderCount,
+                      })
                     : category;
 
                 return (
@@ -342,7 +356,12 @@ const BadgesDisplaySection = ({
                   );
                   const badgeTooltip =
                     awardCount > 0
-                      ? `${badge.name}: ${credits || 0}ct. awarded ${awardCount} time${awardCount === 1 ? "" : "s"} by ${awarderCount} ${awarderCount === 1 ? "person" : "people"}`
+                      ? t("badges.tooltip.badge", {
+                          name: badge.name,
+                          credits: credits || 0,
+                          count: awardCount,
+                          personCount: awarderCount,
+                        })
                       : badge.description || category;
 
                   return (

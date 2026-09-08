@@ -6,6 +6,53 @@
       "project": "Projekt-Beitrag",
       "team": "Team-Beitrag",
       "unknownAwarder": "einem anderen Nutzer"
+    },
+    "card": {
+      "awardedBy": "Verliehen von",
+      "awardedTo": "Verliehen an",
+      "byShort": "von",
+      "toShort": "an",
+      "delete": "Badge-Auszeichnung löschen",
+      "hide": "Badge vor anderen verbergen",
+      "unhide": "Badge für andere sichtbar machen",
+      "personal": "Persönlich",
+      "privateProfile": "Privates Profil",
+      "project": "Projekt",
+      "projectLabel": "Projekt:",
+      "team": "Team",
+      "teamLabel": "Team:",
+      "unknown": "Unbekannt",
+      "viewProfile": "Profil ansehen",
+      "viewTeam": "Team ansehen"
+    },
+    "modal": {
+      "awards": "{count, plural, one {Auszeichnung} other {Auszeichnungen}}",
+      "categories": "{count, plural, one {Kategorie} other {Kategorien}}",
+      "categoryFallback": "Badge-Kategorie",
+      "categoryTitle": "Erworbene Badges für",
+      "emptyCategory": "Keine detaillierten Angaben zu dieser Auszeichnung verfügbar.",
+      "emptySupercategory": "In dieser Kategorie sind noch keine Badge-Auszeichnungen mit Fokusbereichen verknüpft.",
+      "emptyTag": "Zu diesem Fokusbereich gibt es noch keine Badge-Auszeichnungen.",
+      "focusAreas": "Fokusbereiche mit Auszeichnungen",
+      "focusAreasCount": "{count, plural, one {Fokusbereich} other {Fokusbereiche}}",
+      "peoplePersonal": "{count, plural, one {Person} other {Personen}}",
+      "peopleTeam": "{count, plural, one {Teammitglied mit Badges} other {Teammitglieder mit Badges}}",
+      "supercategoryTitleLong": "Erworbene Badges im Fokusbereich",
+      "supercategoryTitleShort": "Erworbene Badges in",
+      "teams": "{count, plural, one {Team} other {Teams}}",
+      "thisCategory": "dieser Kategorie"
+    },
+    "section": {
+      "empty": "Noch keine Badges erhalten",
+      "hidden": "Die Badges dieses Nutzers sind ausgeblendet.",
+      "showAll": "Alle anzeigen",
+      "showLess": "Weniger anzeigen",
+      "summary": "({credits} ct. in {count, plural, one {# Bereich} other {# Bereichen}})",
+      "title": "Badges"
+    },
+    "tooltip": {
+      "badge": "{name}: {credits}ct., {count, plural, one {einmal} other {#-mal}} vergeben von {personCount, plural, one {# Person} other {# Personen}}",
+      "category": "{category}: {credits}ct., vergeben mit {badgeCount, plural, one {# Badge} other {# Badges}} von {personCount, plural, one {# Person} other {# Personen}}"
     }
   },
   "communication": {

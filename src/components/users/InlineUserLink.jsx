@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { FlaskConical } from "lucide-react";
 import { useUserModalSafe } from "../../contexts/UserModalContext";
 import { useAuth } from "../../contexts/AuthContext";
@@ -102,6 +103,7 @@ const InlineUserLink = ({
   showAvatar = true,
   displayName,
 }) => {
+  const { t } = useTranslation();
   // Try to get global modal context (returns null if not available)
   const userModalContext = useUserModalSafe();
   const { blockedRelationshipIds } = useAuth();
@@ -143,7 +145,7 @@ const InlineUserLink = ({
   const name = isFormerUser
     ? getDisplayName(inlineUser)
     : isPrivateUser
-      ? "Private Profile"
+      ? t("badges.card.privateProfile")
       : displayName ?? getDisplayName(inlineUser);
   const showDemoIndicator =
     !isFormerUser && !isPrivateUser && isSyntheticUser(inlineUser);
@@ -172,7 +174,7 @@ const InlineUserLink = ({
       {/* Avatar */}
       {showAvatar && (
         <Tooltip
-          content={canClick ? "View profile" : null}
+          content={canClick ? t("badges.card.viewProfile") : null}
           wrapperClassName="inline-flex mr-1"
         >
           <UserAvatar
@@ -195,7 +197,7 @@ const InlineUserLink = ({
 
       {/* Name */}
       <Tooltip
-        content={canClick ? "View profile" : null}
+        content={canClick ? t("badges.card.viewProfile") : null}
         wrapperClassName="inline-flex min-w-0"
       >
         <span

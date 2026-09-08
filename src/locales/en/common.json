@@ -6,6 +6,53 @@
       "project": "Project Contribution",
       "team": "Team Contribution",
       "unknownAwarder": "another user"
+    },
+    "card": {
+      "awardedBy": "Awarded by",
+      "awardedTo": "Awarded to",
+      "byShort": "by",
+      "toShort": "to",
+      "delete": "Delete badge award",
+      "hide": "Hide badge from others",
+      "unhide": "Make badge visible for others",
+      "personal": "Personal",
+      "privateProfile": "Private Profile",
+      "project": "Project",
+      "projectLabel": "Project:",
+      "team": "Team",
+      "teamLabel": "Team:",
+      "unknown": "Unknown",
+      "viewProfile": "View profile",
+      "viewTeam": "View team"
+    },
+    "modal": {
+      "awards": "{count, plural, one {award} other {awards}}",
+      "categories": "{count, plural, one {category} other {categories}}",
+      "categoryFallback": "Badge Category",
+      "categoryTitle": "Earned badges for",
+      "emptyCategory": "No detailed award information available.",
+      "emptySupercategory": "No badge awards linked to focus areas in this category yet.",
+      "emptyTag": "No badge awards linked to this focus area yet.",
+      "focusAreas": "focus areas with awards",
+      "focusAreasCount": "{count, plural, one {focus area} other {focus areas}}",
+      "peoplePersonal": "{count, plural, one {person} other {people}}",
+      "peopleTeam": "{count, plural, one {team member with badges} other {team members with badges}}",
+      "supercategoryTitleLong": "Earned badges in the focus area of",
+      "supercategoryTitleShort": "Earned Badges in",
+      "teams": "{count, plural, one {team} other {teams}}",
+      "thisCategory": "this category"
+    },
+    "section": {
+      "empty": "No badges earned yet",
+      "hidden": "This user's badges are hidden.",
+      "showAll": "Show all",
+      "showLess": "Show less",
+      "summary": "({credits} ct. in {count, plural, one {# area} other {# areas}})",
+      "title": "Badges"
+    },
+    "tooltip": {
+      "badge": "{name}: {credits}ct. awarded {count, plural, one {# time} other {# times}} by {personCount, plural, one {# person} other {# people}}",
+      "category": "{category}: {credits}ct. awarded with {badgeCount, plural, one {# badge} other {# badges}} by {personCount, plural, one {# person} other {# people}}"
     }
   },
   "communication": {
