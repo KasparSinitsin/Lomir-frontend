@@ -2,7 +2,7 @@
   "hero": {
     "logoAlt": "Lomir",
     "title": "Find the people your project is missing.",
-    "description": "Lomir matches you with collaborators nearby or worldwide - by shared focus areas, skills other people vouched for, and how far you are willing to go.",
+    "description": "Lomir connects you with fellow members in your area or around the world. Find people with shared interests, or look for someone to join your team who brings new skills to the table.",
     "createProfile": "Create your free profile",
     "explore": "Explore public teams & more",
     "browseTeams": "Browse teams",
@@ -33,11 +33,11 @@
     "title": "Find, connect & create",
     "subtitle": "What a free profile adds to looking around.",
     "findTitle": "Find and be found",
-    "findText": "Search people, teams and open roles nearby or worldwide - and once your profile is public, teams looking for your skills find you. Every result carries a match score you can open up and check.",
+    "findText": "Once your profile is public, teams with relevant open roles can find you. Enable the Match Score in your search to see how well you match the search results based on your skills and interests.",
     "connectTitle": "Connect",
-    "connectText": "Message anyone directly, apply for an open role, or accept an invitation into a team. Every application and invitation stays trackable, so you always know where you stand.",
+    "connectText": "Keep track of all the latest updates on your My Teams page and in chat. Engage with your team by awarding badges for work done together and receive credit in return.",
     "createTitle": "Create",
-    "createText": "Start your own team, publish the roles you still need to fill, and invite the people you found. Afterwards, award badges to those who actually showed up for the work."
+    "createText": "With your own profile you can start your first team, publish the roles you still need to fill, and invite the people you found."
   },
   "rolesChat": {
     "rolesTitle": "Open roles, not vague calls for help",
@@ -49,7 +49,7 @@
   "features": {
     "title": "What you get on Lomir",
     "subtitle": "Built around finding the right people, not collecting followers.",
-    "matchTitle": "A match score you can check",
+    "matchTitle": "The match score - what is it?",
     "matchText": "Shared focus areas count 40 percent, confirmed skills 30, and distance 30. Open any match to see the breakdown.",
     "mapTitle": "Search on a map",
     "mapText": "Browse teams and people as pins around you, or search worldwide when location does not matter.",
