@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import PageContainer from "../components/layout/PageContainer";
 import Card from "../components/common/Card";
 import Button from "../components/common/Button";
@@ -18,6 +19,7 @@ const getUserDisplayName = (user) => {
 };
 
 const PublicProfile = () => {
+  const { t } = useTranslation();
   const { id } = useParams();
   const navigate = useNavigate();
   const [error, setError] = useState(null);
@@ -77,9 +79,11 @@ const PublicProfile = () => {
     : Array.isArray(user?.badges)
       ? user.badges
       : [];
+  // undefined = not parent-managed, so BadgesDisplaySection resolves its own
+  // translated default; only the hidden case overrides it.
   const badgeEmptyMessage = shouldHideBadges
-    ? "This user's badges are hidden."
-    : "No badges earned yet";
+    ? t("badges.section.hidden")
+    : undefined;
 
   if (loading) {
     return (
@@ -152,7 +156,6 @@ const PublicProfile = () => {
                 </div>
 
                 <BadgesDisplaySection
-                  title="Badges"
                   badges={badges}
                   emptyMessage={badgeEmptyMessage}
                   groupByCategory={true}

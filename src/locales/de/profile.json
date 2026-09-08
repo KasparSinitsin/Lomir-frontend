@@ -6,13 +6,6 @@
     "removing": "Wird entfernt..."
   },
   "badges": {
-    "award": {
-      "generic": "Beitrag",
-      "personal": "Persönlicher Beitrag",
-      "project": "Projekt-Beitrag",
-      "team": "Team-Beitrag",
-      "unknownAwarder": "einem anderen Nutzer"
-    },
     "deleteBody": "Die Auszeichnung „{context}“ von {awarder} endgültig löschen? Das entfernt nur diese eine Auszeichnung, nicht andere Auszeichnungen desselben Badges.",
     "deleteBodyGeneric": "Diese Badge-Auszeichnung endgültig löschen? Das entfernt nur diese eine Auszeichnung, nicht andere Auszeichnungen desselben Badges.",
     "deleteConfirm": "Löschen",

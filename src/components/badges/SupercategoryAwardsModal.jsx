@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Tag, Award, Users } from "lucide-react";
 import {
   CATEGORY_COLORS,
@@ -37,6 +38,7 @@ const SupercategoryAwardsModal = ({
   canViewPrivateAwardees = false,
   showAwarderAtBottom = false,
 }) => {
+  const { t } = useTranslation();
   // Internal TeamDetailsModal state (so the team click works even if parent doesn’t manage it)
   const [selectedTeamForDetails, setSelectedTeamForDetails] = useState(null);
   const [isTeamDetailsOpen, setIsTeamDetailsOpen] = useState(false);
@@ -111,9 +113,11 @@ const SupercategoryAwardsModal = ({
     >
       <span className="leading-[100%]">
         <span className="hidden md:inline">
-          Earned badges in the focus area of{" "}
+          {t("badges.modal.supercategoryTitleLong")}{" "}
         </span>
-        <span className="md:hidden">Earned Badges in </span>
+        <span className="md:hidden">
+          {t("badges.modal.supercategoryTitleShort")}{" "}
+        </span>
         <span className="block md:inline">
           <span className="inline-block align-middle mr-1.5 shrink-0">
             {getSupercategoryIcon(supercategory, 20)}
@@ -143,7 +147,7 @@ const SupercategoryAwardsModal = ({
             </div>
           ) : sortedTags.length === 0 ? (
             <p className="text-base-content/60 text-center py-8">
-              No badge awards linked to focus areas in this category yet.
+              {t("badges.modal.emptySupercategory")}
             </p>
           ) : (
             <>
@@ -154,7 +158,9 @@ const SupercategoryAwardsModal = ({
                     <Award size={14} />
                     <span className="font-medium">{visibleAwards.length}</span>
                     <span className="hidden sm:inline">
-                      award{visibleAwards.length !== 1 ? "s" : ""}
+                      {t("badges.modal.awards", {
+                        count: visibleAwards.length,
+                      })}
                     </span>
                   </span>
 
@@ -163,10 +169,10 @@ const SupercategoryAwardsModal = ({
                     <span className="font-medium">{personCount}</span>
                     <span className="hidden sm:inline">
                       {entityType === "team"
-                        ? `team member${personCount !== 1 ? "s" : ""} with badges`
-                        : personCount === 1
-                          ? "person"
-                          : "people"}
+                        ? t("badges.modal.peopleTeam", { count: personCount })
+                        : t("badges.modal.peoplePersonal", {
+                            count: personCount,
+                          })}
                     </span>
                   </span>
 
@@ -177,7 +183,7 @@ const SupercategoryAwardsModal = ({
                       {totalTagCount > 0 ? `/${totalTagCount}` : ""}
                     </span>
                     <span className="hidden sm:inline">
-                      focus areas with awards
+                      {t("badges.modal.focusAreas")}
                     </span>
                   </span>
                 </div>

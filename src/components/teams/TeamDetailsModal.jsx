@@ -1951,9 +1951,7 @@ on ${formatDateMedium(new Date((effectivePendingInvitation.createdAt ?? effectiv
                   {/* Team Badges */}
                   {!isEditing && teamBadges && teamBadges.length > 0 && (
                     <BadgesDisplaySection
-                      title="Badges"
                       badges={teamBadges}
-                      emptyMessage="No badges earned yet"
                       maxVisible={10}
                       groupByCategory={true}
                       showCredits={true}

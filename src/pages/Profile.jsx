@@ -517,15 +517,15 @@ const Profile = () => {
 
     switch (contextType) {
       case "team":
-        return t("badges.award.team");
+        return t("common:badges.award.team");
       case "project":
-        return t("badges.award.project");
+        return t("common:badges.award.project");
       case "personal":
       case "profile":
       case "chat":
-        return t("badges.award.personal");
+        return t("common:badges.award.personal");
       default:
-        return t("badges.award.generic");
+        return t("common:badges.award.generic");
     }
   };
   const getAwarderName = (award) => {
@@ -539,7 +539,7 @@ const Profile = () => {
       fullName ||
       award?.awardedByUsername ||
       award?.awarded_by_username ||
-      t("badges.award.unknownAwarder")
+      t("common:badges.award.unknownAwarder")
     );
   };
   const getAwardTagName = (award) => award?.tagName ?? award?.tag_name ?? null;

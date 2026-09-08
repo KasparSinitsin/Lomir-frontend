@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { getBadgeName } from "../../utils/badgeLabels";
 import {
   formatDateMedium,
   formatDateNumeric,
@@ -111,6 +113,7 @@ const AwardCard = ({
   canViewPrivateAwardees = false,
   showAwarderAtBottom = false,
 }) => {
+  const { t } = useTranslation();
   const mutedBadgeColor = "#6B7280";
   const mutedCardBackground = "#F3F4F6";
   const mutedHighlightBackground = "#E5E7EB";
@@ -138,7 +141,9 @@ const AwardCard = ({
 
   // --- Normalize fields (camelCase + snake_case) ---
   const awardId = award?.awardId || award?.award_id || award?.id || null;
+  // Raw stored name — keep it, getBadgeIcon keys off it.
   const badgeName = award?.badgeName || award?.badge_name || "Badge";
+  const badgeDisplayName = getBadgeName(badgeName, t);
   const credits = Number(award?.credits ?? 0);
   const hideActionKey = `hide-${awardId}`;
   const showActionKey = `show-${awardId}`;
@@ -503,7 +508,7 @@ const AwardCard = ({
   };
 
   const awarderName = shouldAnonymizeAwarder
-    ? "Private Profile"
+    ? t("badges.card.privateProfile")
     : awardedByFirstName
       ? `${awardedByFirstName}${awardedByLastName ? ` ${awardedByLastName}` : ""}`
       : awardedByUsername || getDeletedUserDisplayName(awardedByUser);
@@ -538,18 +543,21 @@ const AwardCard = ({
   const canOpenUser = Boolean(onOpenUser || userModalContext);
 
   // --- Context meta ---
+  // The labels come from common:badges.award.*, the same group Profile.jsx
+  // reads for its confirm dialogs — both can be on screen at once, so a
+  // second set of spellings here would drift.
   const getContextMeta = (type) => {
     switch (type) {
       case "team":
-        return { label: "Team contribution", Icon: Users };
+        return { label: t("badges.award.team"), Icon: Users };
       case "project":
-        return { label: "Project contribution", Icon: Briefcase };
+        return { label: t("badges.award.project"), Icon: Briefcase };
       case "personal":
       case "profile":
       case "chat":
-        return { label: "Personal contribution", Icon: User };
+        return { label: t("badges.award.personal"), Icon: User };
       default:
-        return { label: "Contribution", Icon: Info };
+        return { label: t("badges.award.generic"), Icon: Info };
     }
   };
 
@@ -607,7 +615,7 @@ const AwardCard = ({
         <div className="absolute -top-2 -right-2 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto focus-within:opacity-100 focus-within:pointer-events-auto transition-opacity inline-flex items-center gap-1">
           {onHideBadge && !isBadgeHidden && (
             <Tooltip
-              content="Hide badge from others"
+              content={t("badges.card.hide")}
               position="top"
               wrapperClassName="inline-flex"
             >
@@ -619,7 +627,7 @@ const AwardCard = ({
                 }}
                 disabled={isAnyBadgeActionLoading || !awardId}
                 className="bg-base-100 border border-base-300 rounded-full p-1 shadow-sm hover:shadow disabled:opacity-60 disabled:cursor-not-allowed"
-                aria-label="Hide badge from others"
+                aria-label={t("badges.card.hide")}
               >
                 {isHideLoading ? (
                   <Loader2
@@ -638,7 +646,7 @@ const AwardCard = ({
 
           {onDeleteAward && (
             <Tooltip
-              content="Delete badge award"
+              content={t("badges.card.delete")}
               position="top"
               wrapperClassName="inline-flex"
             >
@@ -650,7 +658,7 @@ const AwardCard = ({
                 }}
                 disabled={isAnyBadgeActionLoading || !awardId}
                 className="bg-base-100 border border-base-300 rounded-full p-1 shadow-sm hover:shadow disabled:opacity-60 disabled:cursor-not-allowed"
-                aria-label="Delete badge award"
+                aria-label={t("badges.card.delete")}
               >
                 {isDeleteLoading ? (
                   <Loader2
@@ -681,7 +689,7 @@ const AwardCard = ({
                   className="font-medium leading-tight truncate"
                   style={{ color: catColor }}
                 >
-                  {badgeName}
+                  {badgeDisplayName}
                 </span>
               </>
             ) : (
@@ -717,7 +725,7 @@ const AwardCard = ({
                     canOpenUser &&
                     !isDeletedAwarder &&
                     !shouldAnonymizeAwarder
-                      ? "View profile"
+                      ? t("badges.card.viewProfile")
                       : null
                   }
                   wrapperClassName="inline-flex min-w-0"
@@ -760,9 +768,9 @@ const AwardCard = ({
                 {contextType === "team" ? (
                   teamName ? (
                     <>
-                      <span className="flex-shrink-0">Team:</span>
+                      <span className="flex-shrink-0">{t("badges.card.teamLabel")}</span>
                       <Tooltip
-                        content={isTeamClickable ? "View team" : teamName}
+                        content={isTeamClickable ? t("badges.card.viewTeam") : teamName}
                         wrapperClassName="inline-flex min-w-0"
                       >
                         <span
@@ -787,18 +795,20 @@ const AwardCard = ({
                       )}
                     </>
                   ) : (
-                    <span className="truncate">Team</span>
+                    <span className="truncate">{t("badges.card.team")}</span>
                   )
                 ) : contextType === "project" && projectName ? (
                   <>
-                    <span className="flex-shrink-0">Project:</span>
+                    <span className="flex-shrink-0">{t("badges.card.projectLabel")}</span>
                     <span className="truncate text-base-content/70">
                       {projectName}
                     </span>
                   </>
                 ) : (
                   <span className="truncate">
-                    {contextType === "project" ? "Project" : "Personal"}
+                    {contextType === "project"
+                      ? t("badges.card.project")
+                      : t("badges.card.personal")}
                   </span>
                 )}
               </span>
@@ -811,9 +821,9 @@ const AwardCard = ({
                   size={11}
                   className="flex-shrink-0 text-base-content/70"
                 />
-                <span className="flex-shrink-0">Team:</span>
+                <span className="flex-shrink-0">{t("badges.card.teamLabel")}</span>
                 <Tooltip
-                  content={isTeamClickable ? "View team" : teamName}
+                  content={isTeamClickable ? t("badges.card.viewTeam") : teamName}
                   wrapperClassName="inline-flex min-w-0"
                 >
                   <span
@@ -846,7 +856,7 @@ const AwardCard = ({
                   size={11}
                   className="flex-shrink-0 text-base-content/70"
                 />
-                <span className="flex-shrink-0">Project:</span>
+                <span className="flex-shrink-0">{t("badges.card.projectLabel")}</span>
                 <span className="truncate text-base-content/70">
                   {projectName}
                 </span>
@@ -873,7 +883,7 @@ const AwardCard = ({
               />
               {onShowBadge && (
                 <Tooltip
-                  content="Make badge visible for others"
+                  content={t("badges.card.unhide")}
                   position="top"
                   wrapperClassName="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
                 >
@@ -885,7 +895,7 @@ const AwardCard = ({
                     }}
                     disabled={isAnyBadgeActionLoading || !awardId}
                     className="opacity-0 group-hover/visibility:opacity-100 bg-base-100 border border-base-300 rounded-full p-1 shadow-sm hover:shadow disabled:opacity-60 disabled:cursor-not-allowed transition-opacity"
-                    aria-label="Make badge visible for others"
+                    aria-label={t("badges.card.unhide")}
                   >
                     {isShowLoading ? (
                       <Loader2
@@ -931,7 +941,10 @@ const AwardCard = ({
           <InlineUserLink
             label={
               <>
-                <span className="hidden sm:inline">Awarded </span>to
+                <span className="hidden sm:inline">
+                  {t("badges.card.awardedTo")}
+                </span>
+                <span className="sm:hidden">{t("badges.card.toShort")}</span>
               </>
             }
             user={awardedToUser}
@@ -961,7 +974,10 @@ const AwardCard = ({
           <InlineUserLink
             label={
               <>
-                <span className="hidden sm:inline">Awarded </span>by
+                <span className="hidden sm:inline">
+                  {t("badges.card.awardedBy")}
+                </span>
+                <span className="sm:hidden">{t("badges.card.byShort")}</span>
               </>
             }
             user={awardedByUser}
@@ -982,7 +998,7 @@ const AwardCard = ({
                 </span>
               </>
             ) : (
-              <span>Unknown</span>
+              <span>{t("badges.card.unknown")}</span>
             )}
           </div>
         </div>

@@ -1,4 +1,6 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
+import { getCategoryLabel } from "../../utils/badgeLabels";
 import { Tag, Award, Users } from "lucide-react";
 import {
   CATEGORY_COLORS,
@@ -50,6 +52,7 @@ const TagAwardsModal = ({
   canViewPrivateAwardees = false,
   showAwarderAtBottom = false,
 }) => {
+  const { t } = useTranslation();
   // Internal TeamDetailsModal state (mirrors SupercategoryAwardsModal)
   const [selectedTeamForDetails, setSelectedTeamForDetails] = useState(null);
   const [isTeamDetailsOpen, setIsTeamDetailsOpen] = useState(false);
@@ -153,7 +156,7 @@ const TagAwardsModal = ({
             </div>
           ) : sortedCategories.length === 0 ? (
             <p className="text-base-content/60 text-center py-8">
-              No badge awards linked to this focus area yet.
+              {t("badges.modal.emptyTag")}
             </p>
           ) : (
             /* Summary bar */
@@ -165,7 +168,9 @@ const TagAwardsModal = ({
                     <Award size={14} />
                     <span className="font-medium">{visibleAwards.length}</span>
                     <span className="hidden sm:inline">
-                      award{visibleAwards.length !== 1 ? "s" : ""}
+                      {t("badges.modal.awards", {
+                        count: visibleAwards.length,
+                      })}
                     </span>
                   </span>
 
@@ -174,10 +179,10 @@ const TagAwardsModal = ({
                     <span className="font-medium">{personCount}</span>
                     <span className="hidden sm:inline">
                       {entityType === "team"
-                        ? `team member${personCount !== 1 ? "s" : ""} with badges`
-                        : personCount === 1
-                          ? "person"
-                          : "people"}
+                        ? t("badges.modal.peopleTeam", { count: personCount })
+                        : t("badges.modal.peoplePersonal", {
+                            count: personCount,
+                          })}
                     </span>
                   </span>
 
@@ -185,7 +190,9 @@ const TagAwardsModal = ({
                     <Tag size={14} />
                     <span className="font-medium">{creditedCategoryCount}</span>
                     <span className="hidden sm:inline">
-                      categor{creditedCategoryCount !== 1 ? "ies" : "y"}
+                      {t("badges.modal.categories", {
+                        count: creditedCategoryCount,
+                      })}
                     </span>
                   </span>
                 </div>
@@ -224,7 +231,7 @@ const TagAwardsModal = ({
                           className="font-medium text-sm"
                           style={{ color: catColor }}
                         >
-                          {category}
+                          {getCategoryLabel(category, t)}
                         </span>
                       </div>
 
