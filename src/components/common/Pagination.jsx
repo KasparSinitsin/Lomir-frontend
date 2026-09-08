@@ -1,4 +1,5 @@
 import React from "react";
+import { Trans, useTranslation } from "react-i18next";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import Tooltip from "./Tooltip";
 
@@ -29,6 +30,8 @@ const Pagination = ({
   resultsPerPageOptions = [10, 20, 30, 40],
   hideOnSinglePage = false,
 }) => {
+  const { t } = useTranslation();
+
   if (hideOnSinglePage ? totalPages <= 1 : totalPages <= 1 && totalItems === 0) {
     return null;
   }
@@ -120,26 +123,36 @@ const Pagination = ({
       <div className="text-xs text-base-content/70">
         {totalItems > 0 ? (
           <span>
-            Showing <span className="font-medium text-base-content">{startItem}</span> to{" "}
-            <span className="font-medium text-base-content">{endItem}</span> of{" "}
-            <span className="font-medium text-base-content">{totalItems}</span> results
+            <Trans
+              i18nKey="pagination.showing"
+              values={{ start: startItem, end: endItem, total: totalItems }}
+              components={[
+                <span key="start" className="font-medium text-base-content" />,
+                <span key="end" className="font-medium text-base-content" />,
+                <span key="total" className="font-medium text-base-content" />,
+              ]}
+            />
           </span>
         ) : (
-          <span>No results</span>
+          <span>{t("pagination.noResults")}</span>
         )}
       </div>
 
       {/* Page navigation */}
       {totalPages > 1 && (
         <div className="flex items-center gap-1 min-w-0">
-          <Tooltip content={currentPage === 1 ? null : "Go to previous page"} position="top" wrapperClassName="inline-flex">
+          <Tooltip
+            content={currentPage === 1 ? null : t("pagination.goToPrevious")}
+            position="top"
+            wrapperClassName="inline-flex"
+          >
             <button
               className={`inline-flex items-center justify-center text-base-content/50 hover:text-base-content transition-colors ${
                 currentPage === 1 ? "opacity-30" : ""
               }`}
               onClick={handlePrevious}
               disabled={currentPage === 1}
-              aria-label="Previous page"
+              aria-label={t("pagination.previousPage")}
             >
               <ChevronLeft size={13} />
             </button>
@@ -157,21 +170,29 @@ const Pagination = ({
               }`}
               onClick={() => handlePageClick(page)}
               disabled={page === "..."}
-              aria-label={typeof page === "number" ? `Page ${page}` : "More pages"}
+              aria-label={
+                typeof page === "number"
+                  ? t("pagination.page", { page })
+                  : t("pagination.morePages")
+              }
               aria-current={page === currentPage ? "page" : undefined}
             >
               {page}
             </button>
           ))}
 
-          <Tooltip content={currentPage === totalPages ? null : "Go to next page"} position="top" wrapperClassName="inline-flex">
+          <Tooltip
+            content={currentPage === totalPages ? null : t("pagination.goToNext")}
+            position="top"
+            wrapperClassName="inline-flex"
+          >
             <button
               className={`inline-flex items-center justify-center text-base-content/50 hover:text-base-content transition-colors ${
                 currentPage === totalPages ? "opacity-30" : ""
               }`}
               onClick={handleNext}
               disabled={currentPage === totalPages}
-              aria-label="Next page"
+              aria-label={t("pagination.nextPage")}
             >
               <ChevronRight size={13} />
             </button>
@@ -188,7 +209,7 @@ const Pagination = ({
       {showResultsPerPage && onResultsPerPageChange && (
         <div className="flex items-center gap-2 flex-shrink-0">
           <label htmlFor="resultsPerPage" className="text-xs text-base-content/70 whitespace-nowrap">
-            Per page:
+            {t("pagination.perPage")}
           </label>
           <select
             id="resultsPerPage"

@@ -107,6 +107,24 @@ const splitKey = (key, fallbackNamespace = DEFAULT_NAMESPACE) => {
  * assumption, because guessing wrong here would fail CI on correct code.
  */
 const HOOK = /useTranslation\(\s*(?:"([^"]*)"|'([^']*)')?\s*\)/g;
+
+/**
+ * The second way a key reaches the UI: `<Trans i18nKey="...">`.
+ *
+ * `t()` returns a string, so a sentence that keeps markup inside it - the
+ * pagination line, where the three numbers stay emphasised - has to go
+ * through react-i18next's <Trans>, which takes its key as a prop. The CALL
+ * scan above cannot see that. Without this pass such a key is reported as
+ * unused, and deleting it would pass the check.
+ *
+ * Matching the prop rather than the element keeps it multi-line safe;
+ * `i18nKey` is a react-i18next prop and appears nowhere else. The namespace
+ * resolves exactly as for t(): a "ns:" prefix on the key wins, otherwise the
+ * file's own useTranslation(...). A `<Trans ns="...">` prop would defeat
+ * that - none exists in the codebase today, and adding one would need this
+ * comment revisited.
+ */
+const TRANS_KEY = /\bi18nKey\s*=\s*(?:"([^"]+)"|'([^']+)')/g;
 const fileDefaultNamespace = (source) => {
   const declared = new Set();
   for (const match of source.matchAll(HOOK)) {
@@ -158,6 +176,15 @@ const collectUsedKeys = (files) => {
         if (!used.has(id)) used.set(id, []);
         used.get(id).push(where);
       }
+    }
+
+    for (const match of source.matchAll(TRANS_KEY)) {
+      const key = match[1] ?? match[2];
+      const line = source.slice(0, match.index).split("\n").length;
+      const [namespace, namespaceKey] = splitKey(key, namespaceOfFile);
+      const id = keyId(namespace, namespaceKey);
+      if (!used.has(id)) used.set(id, []);
+      used.get(id).push(`${relative(".", file)}:${line}`);
     }
   }
   return { used, dynamic };
@@ -231,7 +258,11 @@ for (const lang of languages) {
       continue;
     }
     try {
-      new IntlMessageFormat(value, lang);
+      // `ignoreTag` matches the runtime: i18next-icu constructs every message
+      // with `ignoreTag: true` so that <Trans>'s <0></0> placeholders survive
+      // ICU parsing. Without it this check rejects a message the app renders
+      // correctly - UNMATCHED_CLOSING_TAG on the pagination line.
+      new IntlMessageFormat(value, lang, undefined, { ignoreTag: true });
     } catch (error) {
       errors.push(`${lang}: "${key}" is not valid ICU - ${error.message.split("\n")[0]}`);
     }

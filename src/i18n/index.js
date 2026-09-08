@@ -33,18 +33,20 @@ import deCommon from "../locales/de/common.json";
 
 /** Strings shared across pages. Page namespaces arrive with Phase 1. */
 export const DEFAULT_NAMESPACE = "common";
-export const PAGE_NAMESPACES = ["home", "auth", "profile"];
+export const PAGE_NAMESPACES = ["home", "auth", "profile", "teams"];
 
 const pageNamespaceLoaders = {
   en: {
     auth: () => import("../locales/en/auth.json"),
     home: () => import("../locales/en/home.json"),
     profile: () => import("../locales/en/profile.json"),
+    teams: () => import("../locales/en/teams.json"),
   },
   de: {
     auth: () => import("../locales/de/auth.json"),
     home: () => import("../locales/de/home.json"),
     profile: () => import("../locales/de/profile.json"),
+    teams: () => import("../locales/de/teams.json"),
   },
 };
 

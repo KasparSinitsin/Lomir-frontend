@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import {
   Grid3x3,
   List as ListIcon,
@@ -13,31 +14,11 @@ const Grid3x2Icon = createLucideIcon("Grid3x2", [
   ["path", { d: "M15 3v18", key: "grid-3x2-col-2" }],
 ]);
 
-const VIEW_MODE_OPTIONS = {
-  card: {
-    label: "Card",
-    ariaLabel: "Card view",
-    tooltip: "Card View",
-    Icon: Grid3x2Icon,
-  },
-  mini: {
-    label: "Mini Card",
-    ariaLabel: "Mini card view",
-    tooltip: "Mini Card View",
-    Icon: Grid3x3,
-  },
-  list: {
-    label: "List",
-    ariaLabel: "List view",
-    tooltip: "List View",
-    Icon: ListIcon,
-  },
-  map: {
-    label: "Map",
-    ariaLabel: "Map view",
-    tooltip: "Map View",
-    Icon: MapIcon,
-  },
+const VIEW_MODE_ICONS = {
+  card: Grid3x2Icon,
+  mini: Grid3x3,
+  list: ListIcon,
+  map: MapIcon,
 };
 
 const ResultViewToggle = ({
@@ -47,21 +28,48 @@ const ResultViewToggle = ({
   align = "end",
   className = "",
 }) => {
+  const { t } = useTranslation();
   const alignmentClassName =
     align === "responsive-start" ? "justify-start sm:justify-end" : "justify-end";
+
+  // Written out per mode rather than built from `mode` as a template literal:
+  // `npm run i18n:check` only sees literal keys, and a dynamic one would drop
+  // all twelve out of the guard.
+  const viewModeLabels = {
+    card: {
+      label: t("resultView.card.label"),
+      ariaLabel: t("resultView.card.aria"),
+      tooltip: t("resultView.card.tooltip"),
+    },
+    mini: {
+      label: t("resultView.mini.label"),
+      ariaLabel: t("resultView.mini.aria"),
+      tooltip: t("resultView.mini.tooltip"),
+    },
+    list: {
+      label: t("resultView.list.label"),
+      ariaLabel: t("resultView.list.aria"),
+      tooltip: t("resultView.list.tooltip"),
+    },
+    map: {
+      label: t("resultView.map.label"),
+      ariaLabel: t("resultView.map.aria"),
+      tooltip: t("resultView.map.tooltip"),
+    },
+  };
 
   return (
     <div
       className={`flex flex-wrap items-center ${alignmentClassName} text-sm leading-[1.15] font-normal text-base-content/60 gap-x-1.5 gap-y-1 sm:gap-x-3 ${className}`}
       role="group"
-      aria-label="Result view"
+      aria-label={t("resultView.groupLabel")}
     >
       {modes.map((mode) => {
-        const option = VIEW_MODE_OPTIONS[mode];
-        if (!option) return null;
+        const option = viewModeLabels[mode];
+        const Icon = VIEW_MODE_ICONS[mode];
+        if (!option || !Icon) return null;
 
         const isActive = value === mode;
-        const Icon = option.Icon;
 
         return (
           <button
@@ -69,7 +77,11 @@ const ResultViewToggle = ({
             type="button"
             aria-pressed={isActive}
             aria-label={option.ariaLabel}
-            data-tip={isActive ? option.tooltip : `Switch to ${option.tooltip}`}
+            data-tip={
+              isActive
+                ? option.tooltip
+                : t("resultView.switchTo", { view: option.tooltip })
+            }
             onClick={() => onChange(mode)}
             className={`tooltip tooltip-top tooltip-lomir inline-flex items-center gap-1 rounded p-1 sm:p-0 hover:text-base-content transition-colors ${
               isActive ? "font-bold text-base-content" : ""
